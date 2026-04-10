@@ -5,12 +5,11 @@ Validates Supabase JWTs and resolves user tier from database.
 Tier is cached in Redis for 5 minutes to avoid per-request DB calls.
 """
 
-import json
 import logging
 from typing import Optional
 
 import jwt
-from fastapi import Depends, HTTPException, Header
+from fastapi import HTTPException, Header
 
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier

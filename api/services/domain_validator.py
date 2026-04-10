@@ -12,7 +12,6 @@ import ipaddress
 import logging
 import re
 import socket
-from typing import Union
 from urllib.parse import urlparse
 
 logger = logging.getLogger("linkshield.domain_validator")

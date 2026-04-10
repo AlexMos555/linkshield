@@ -18,13 +18,8 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import os
-import re
-import string
-from collections import Counter
 from difflib import SequenceMatcher
-from typing import Optional
 
 logger = logging.getLogger("linkshield.url_features")
 

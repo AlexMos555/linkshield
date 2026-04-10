@@ -52,7 +52,7 @@ jobs:
         run: pip install ruff
 
       - name: Lint
-        run: ruff check api/ tests/ ml/ --select E,F,W
+        run: ruff check api/ tests/ ml/
 
   docker:
     runs-on: ubuntu-latest

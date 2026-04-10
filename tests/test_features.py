@@ -74,7 +74,7 @@ def test_public_check_format():
     assert formatted["score"] == 0
     assert "install_url" in formatted
     assert "cta" in formatted
-    print(f"  Public format (safe): OK")
+    print("  Public format (safe): OK")
 
     # Dangerous domain
     result = DomainResult(
@@ -86,7 +86,7 @@ def test_public_check_format():
     assert formatted["safe"] is False
     assert formatted["score"] == 85
     assert len(formatted["signals"]) > 0
-    print(f"  Public format (dangerous): OK")
+    print("  Public format (dangerous): OK")
 
 
 def test_allowlist_fast_path_hosting():
@@ -126,19 +126,19 @@ def test_scoring_new_signals():
     signals = {"domain": "fast-flux.xyz", "dns_ttl": 30}
     score, _, reasons = calculate_score(signals)
     assert any(r.signal == "low_dns_ttl" for r in reasons)
-    print(f"  Low TTL: detected")
+    print("  Low TTL: detected")
 
     # Cross-domain redirect
     signals = {"domain": "trick.xyz", "redirect_cross_domain": True, "redirect_count": 4}
     score, _, reasons = calculate_score(signals)
     assert any("redirect" in r.signal for r in reasons)
-    print(f"  Redirect chain: detected")
+    print("  Redirect chain: detected")
 
     # New cert
     signals = {"domain": "newsite.xyz", "cert_age_days": 2}
     score, _, reasons = calculate_score(signals)
     assert any(r.signal == "new_certificate" for r in reasons)
-    print(f"  New cert: detected")
+    print("  New cert: detected")
 
 
 def test_confidence_levels():

@@ -1,0 +1,6 @@
+line-length = 140
+target-version = "py39"
+
+[lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]  # Line length handled by formatter, not linter

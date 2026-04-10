@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException, Request
 from api.services.scoring import calculate_score, _extract_base_domain, TOP_DOMAINS
 from api.services.domain_validator import validate_domain, DomainValidationError
 from api.services.cache import get_cached_result, cache_result
-from api.models.schemas import DomainResult, DomainReason, RiskLevel, ConfidenceLevel
+from api.models.schemas import DomainResult, RiskLevel, ConfidenceLevel
 
 logger = logging.getLogger("linkshield.public")
 

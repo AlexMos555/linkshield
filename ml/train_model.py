@@ -14,11 +14,10 @@ import json
 import os
 import sys
 import time
-import pickle
 from urllib.parse import urlparse
 
 import numpy as np
-from catboost import CatBoostClassifier, Pool
+from catboost import CatBoostClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     classification_report, confusion_matrix, roc_auc_score
@@ -32,7 +31,7 @@ from api.services.url_features import (
 )
 from api.services.scoring import (
     _extract_base_domain, _extract_tld, _shannon_entropy, _digit_ratio,
-    _special_char_count, _has_at_symbol, _has_fake_tld_in_subdomain,
+    _special_char_count, _has_fake_tld_in_subdomain,
     _is_url_shortener, _check_homograph, _check_typosquatting_v2,
     _check_brand_in_subdomain, _check_suspicious_keywords,
     HIGH_RISK_TLDS, MEDIUM_RISK_TLDS, TOP_DOMAINS,

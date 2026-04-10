@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from api.services.scoring import calculate_score, _extract_base_domain
+from api.services.scoring import calculate_score
 
 
 def load_phishing_domains(max_samples: int = 5000) -> list[str]:
@@ -160,13 +160,13 @@ def run_benchmark():
     print(f"  Avg score:           {sum(benign_scores)/len(benign_scores):.1f}")
     print(f"  Time:                {benign_time:.2f}s ({benign_time/len(benign)*1000:.1f}ms/domain)")
 
-    print(f"\n[Strict threshold: 'dangerous' only (score > 50)]")
+    print("\n[Strict threshold: 'dangerous' only (score > 50)]")
     print(f"  True Positive Rate (Recall): {tpr*100:.1f}%")
     print(f"  False Positive Rate:         {fpr*100:.2f}%")
     print(f"  Precision:                   {precision*100:.1f}%")
     print(f"  F1 Score:                    {f1*100:.1f}%")
 
-    print(f"\n[Broad threshold: 'caution + dangerous' (score > 20)]")
+    print("\n[Broad threshold: 'caution + dangerous' (score > 20)]")
     print(f"  True Positive Rate (Recall): {tpr_broad*100:.1f}%")
     print(f"  False Positive Rate:         {fpr_broad*100:.2f}%")
 

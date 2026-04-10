@@ -26,7 +26,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 import httpx
 
-from api.services.auth import get_current_user, get_optional_user
+from api.services.auth import get_optional_user
 from api.models.schemas import AuthUser
 
 logger = logging.getLogger("linkshield.breach")

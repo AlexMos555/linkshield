@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -24,7 +23,6 @@ from pydantic import BaseModel
 
 from api.services.auth import get_current_user
 from api.models.schemas import AuthUser
-from api.config import get_settings
 
 logger = logging.getLogger("linkshield.referral")
 

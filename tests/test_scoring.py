@@ -423,7 +423,8 @@ def test_circuit_breaker():
         assert breaker.state == CircuitState.OPEN
         result, ok = await breaker.call(success)
         assert ok is False
-        import time; time.sleep(0.15)
+        import time
+        time.sleep(0.15)
         assert breaker.state == CircuitState.HALF_OPEN
         _, ok = await breaker.call(success)
         assert ok is True and breaker.state == CircuitState.CLOSED

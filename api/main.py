@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import get_settings, validate_settings
-from api.models.schemas import HealthResponse
 from api.routers.check import router as check_router
 from api.routers.payments import router as payments_router
 from api.routers.user import router as user_router

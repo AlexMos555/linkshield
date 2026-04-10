@@ -9,7 +9,6 @@ All timestamps use UTC to avoid timezone inconsistencies.
 """
 
 import logging
-import time
 from datetime import datetime, timezone
 
 from fastapi import HTTPException

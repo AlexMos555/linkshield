@@ -22,7 +22,6 @@ import logging
 import ssl
 import socket
 from datetime import datetime, timezone
-from typing import Optional
 
 import httpx
 

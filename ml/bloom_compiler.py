@@ -13,7 +13,6 @@ local checks (<1ms) without API calls.
 
 import json
 import os
-import struct
 import sys
 import time
 
@@ -139,7 +138,7 @@ def compile_bloom():
     file_size = os.path.getsize(output_path)
     print(f"\nOutput: {output_path}")
     print(f"  File size: {file_size:,} bytes ({file_size/1024:.0f} KB)")
-    print(f"\nDone! Upload this file to CDN for extension clients.")
+    print("\nDone! Upload this file to CDN for extension clients.")
 
 
 if __name__ == "__main__":
