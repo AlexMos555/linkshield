@@ -1,18 +1,24 @@
 import { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from "react-native";
+import { useRouter } from "expo-router";
 import { colors, spacing, fontSize, levelColors } from "../../src/utils/theme";
 import { getRecentChecks } from "../../src/services/database";
 
 export default function HistoryScreen() {
+  const router = useRouter();
   const [checks, setChecks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  function load() {
     getRecentChecks(100).then((data) => {
       setChecks(data);
       setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
+      setRefreshing(false);
+    }).catch(() => { setLoading(false); setRefreshing(false); });
+  }
+
+  useEffect(() => { load(); }, []);
 
   const renderItem = ({ item }: { item: any }) => {
     const color = levelColors[item.level as keyof typeof levelColors] || colors.textMuted;
@@ -43,9 +49,12 @@ export default function HistoryScreen() {
     <View style={styles.container}>
       {checks.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>{"\u{1F4CB}"}</Text>
-          <Text style={styles.emptyTitle}>No history yet</Text>
-          <Text style={styles.empty}>Check a link to see it here. All data stays on your device.</Text>
+          <Text style={styles.emptyIcon}>{"\u{1F6E1}"}</Text>
+          <Text style={styles.emptyTitle}>No checks yet</Text>
+          <Text style={styles.empty}>Links you check will appear here.{"\n"}All data stays on your device.</Text>
+          <TouchableOpacity style={styles.emptyBtn} onPress={() => {}}>
+            <Text style={styles.emptyBtnText}>Check Your First Link</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -53,6 +62,9 @@ export default function HistoryScreen() {
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={{ padding: spacing.md }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.safe} />
+          }
         />
       )}
     </View>
@@ -64,7 +76,9 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl },
   emptyIcon: { fontSize: 48, marginBottom: spacing.md },
   emptyTitle: { color: colors.white, fontSize: fontSize.xl, fontWeight: "700", marginBottom: spacing.sm },
-  empty: { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center" },
+  empty: { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", lineHeight: 24 },
+  emptyBtn: { backgroundColor: colors.accent, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, marginTop: spacing.lg },
+  emptyBtnText: { color: colors.safeBg, fontWeight: "700", fontSize: fontSize.md },
   item: {
     flexDirection: "row", alignItems: "center", gap: spacing.md,
     backgroundColor: colors.bgCard, borderRadius: 12, padding: spacing.md,
