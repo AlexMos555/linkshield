@@ -181,8 +181,21 @@ function fmt(n) {
 
 // ── Init ──
 document.addEventListener("DOMContentLoaded", function() {
-  loadStats();
-  loadPageStatus();
+  // Show skeleton loading immediately
+  document.querySelectorAll(".stat-number").forEach(function(el) {
+    el.classList.add("skeleton", "loading");
+  });
+  document.getElementById("status-icon").classList.add("loading");
+
+  // Load everything
+  loadStats().then(function() {
+    document.querySelectorAll(".stat-number").forEach(function(el) {
+      el.classList.remove("skeleton", "loading");
+    });
+  });
+  loadPageStatus().then(function() {
+    document.getElementById("status-icon").classList.remove("loading");
+  });
   loadThreats();
   checkAha();
   checkUpgrade();

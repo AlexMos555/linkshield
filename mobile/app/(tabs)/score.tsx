@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, ScrollView, Animated, Easing } from "react-native";
 import { colors, spacing, fontSize } from "../../src/utils/theme";
 import { getStats, getWeeklyStats } from "../../src/services/database";
 
@@ -56,16 +56,44 @@ export default function ScoreScreen() {
   const scoreColor = score >= 80 ? colors.safe : score >= 50 ? colors.caution : colors.dangerous;
   const label = score >= 80 ? "Excellent" : score >= 60 ? "Good" : score >= 40 ? "Fair" : "Needs Work";
 
+  // Animated score counter
+  const animatedScore = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(animatedScore, {
+        toValue: score,
+        duration: 1200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [score]);
+
+  const displayScore = animatedScore.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, 100],
+    extrapolate: "clamp",
+  });
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Score Circle */}
-      <View style={styles.scoreContainer}>
+      {/* Score Circle — Animated */}
+      <Animated.View style={[styles.scoreContainer, { transform: [{ scale: scaleAnim }] }]}>
         <View style={[styles.scoreCircle, { borderColor: scoreColor }]}>
-          <Text style={[styles.scoreNum, { color: scoreColor }]}>{score}</Text>
+          <Animated.Text style={[styles.scoreNum, { color: scoreColor }]}>
+            {displayScore.interpolate({ inputRange: [0, 100], outputRange: ["0", "100"] })}
+          </Animated.Text>
         </View>
         <Text style={[styles.scoreLabel, { color: scoreColor }]}>{label}</Text>
         <Text style={styles.scoreSub}>Security Score</Text>
-      </View>
+      </Animated.View>
 
       {/* Breakdown */}
       <View style={styles.card}>

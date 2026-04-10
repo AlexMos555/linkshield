@@ -1,0 +1,69 @@
+{
+  "_meta": "LinkShield Design Tokens — single source of truth for all platforms",
+
+  "colors": {
+    "bg": {
+      "primary": "#0f172a",
+      "card": "#1e293b",
+      "input": "#111827",
+      "elevated": "#0b1120"
+    },
+    "border": {
+      "default": "#334155",
+      "subtle": "#1e293b"
+    },
+    "text": {
+      "primary": "#f8fafc",
+      "secondary": "#e2e8f0",
+      "muted": "#94a3b8",
+      "dim": "#64748b",
+      "dark": "#475569"
+    },
+    "status": {
+      "safe": "#22c55e",
+      "safeBg": "#052e16",
+      "caution": "#f59e0b",
+      "cautionBg": "#451a03",
+      "dangerous": "#ef4444",
+      "dangerousBg": "#450a0a"
+    },
+    "brand": {
+      "primary": "#3b82f6",
+      "primaryBg": "#1e3a5f",
+      "accent": "#22c55e"
+    }
+  },
+
+  "spacing": {
+    "xs": 4,
+    "sm": 8,
+    "md": 16,
+    "lg": 24,
+    "xl": 32,
+    "xxl": 48
+  },
+
+  "fontSize": {
+    "xs": 10,
+    "sm": 12,
+    "md": 14,
+    "lg": 16,
+    "xl": 20,
+    "xxl": 28,
+    "hero": 48
+  },
+
+  "borderRadius": {
+    "sm": 6,
+    "md": 10,
+    "lg": 14,
+    "xl": 16,
+    "full": 9999
+  },
+
+  "shadows": {
+    "card": "0 4px 12px rgba(0, 0, 0, 0.3)",
+    "popup": "0 8px 24px rgba(0, 0, 0, 0.4)",
+    "overlay": "0 8px 32px rgba(0, 0, 0, 0.5)"
+  }
+}

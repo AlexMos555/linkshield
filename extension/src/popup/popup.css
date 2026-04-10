@@ -289,6 +289,40 @@ body {
   color: #e2e8f0;
 }
 
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.stat-number.loading {
+  display: inline-block;
+  width: 40px;
+  height: 24px;
+}
+
+/* Status loading */
+.status-icon.loading {
+  background: #1e293b !important;
+  color: transparent;
+}
+
+/* Page status transitions */
+.page-status {
+  transition: border-color 0.3s ease;
+}
+
+.status-icon {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
 /* Scrollbar */
 .recent-list::-webkit-scrollbar {
   width: 4px;
