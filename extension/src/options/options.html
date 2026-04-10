@@ -97,6 +97,20 @@
   </div>
 
   <div class="section">
+    <h2>Advanced</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">API Server</div>
+        <div class="row-desc">Default: http://localhost:8000</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input id="api-url-input" placeholder="http://localhost:8000" style="width:180px;padding:6px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;outline:none;">
+        <button class="btn" id="save-api-url">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Referral</h2>
     <div class="row">
       <div>
@@ -176,6 +190,21 @@
         chrome.storage.local.remove(["recent_threats", "stats", "audits"], () => {
           location.reload();
         });
+      }
+    });
+
+    // Load API URL
+    chrome.storage.local.get(["api_url"], (data) => {
+      if (data.api_url) document.getElementById("api-url-input").value = data.api_url;
+    });
+
+    // Save API URL
+    document.getElementById("save-api-url").addEventListener("click", () => {
+      const url = document.getElementById("api-url-input").value.trim();
+      if (url) {
+        chrome.storage.local.set({ api_url: url });
+        document.getElementById("save-api-url").textContent = "Saved!";
+        setTimeout(() => document.getElementById("save-api-url").textContent = "Save", 2000);
       }
     });
 

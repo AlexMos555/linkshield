@@ -188,6 +188,24 @@ document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("status-icon").classList.add("loading");
 
   // Load everything
+  // Show onboarding tip on first open
+  chrome.storage.local.get(["tip_dismissed"], function(data) {
+    if (!data.tip_dismissed) {
+      document.getElementById("onboarding-tip").style.display = "block";
+      document.getElementById("dismiss-tip").onclick = function() {
+        document.getElementById("onboarding-tip").style.display = "none";
+        chrome.storage.local.set({ tip_dismissed: true });
+      };
+    }
+  });
+
+  // Check API availability
+  fetch("http://localhost:8000/health").then(function(r) {
+    if (!r.ok) throw new Error();
+  }).catch(function() {
+    document.getElementById("api-warning").style.display = "block";
+  });
+
   loadStats().then(function() {
     document.querySelectorAll(".stat-number").forEach(function(el) {
       el.classList.remove("skeleton", "loading");

@@ -233,6 +233,25 @@ body {
   text-decoration: underline;
 }
 
+/* Onboarding tip */
+.onboarding-tip {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%);
+  border: 1px solid #3b82f640;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  animation: ls-badge-appear 0.3s ease-out;
+}
+
+/* API warning */
+.api-warning {
+  background: #451a0340;
+  border: 1px solid #f59e0b30;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
 /* Upgrade Banner */
 .upgrade-banner {
   display: flex;

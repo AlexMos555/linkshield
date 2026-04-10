@@ -9,7 +9,13 @@
 // CONFIG
 // ═══════════════════════════════════════════════════
 
-const API_BASE = "http://localhost:8000"; // Change to https://api.linkshield.io in production
+// API URL — configurable from options page
+let API_BASE = "http://localhost:8000";
+
+// Load custom API URL from storage (set in options)
+chrome.storage.local.get(["api_url"], function(data) {
+  if (data.api_url) API_BASE = data.api_url;
+});
 const CACHE_TTL = { safe: 3600000, caution: 900000, dangerous: 300000 };
 const BLOOM_SIZE = 1437759;
 const BLOOM_HASH_COUNT = 10;
