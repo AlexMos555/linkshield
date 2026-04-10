@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LinkShield Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a; color: #e2e8f0;
+      max-width: 600px; margin: 0 auto; padding: 40px 20px;
+    }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .subtitle { color: #94a3b8; font-size: 14px; margin-bottom: 32px; }
+    .section { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .section h2 { font-size: 16px; margin-bottom: 12px; color: #f8fafc; }
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #334155; }
+    .row:last-child { border-bottom: none; }
+    .row-label { font-size: 14px; }
+    .row-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .slider {
+      position: absolute; cursor: pointer; inset: 0; background: #334155;
+      border-radius: 24px; transition: 0.3s;
+    }
+    .toggle .slider:before {
+      content: ""; position: absolute; width: 18px; height: 18px;
+      left: 3px; bottom: 3px; background: #f8fafc; border-radius: 50%; transition: 0.3s;
+    }
+    .toggle input:checked + .slider { background: #22c55e; }
+    .toggle input:checked + .slider:before { transform: translateX(20px); }
+    .btn { background: #1e293b; color: #60a5fa; border: 1px solid #334155; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .btn:hover { background: #334155; }
+    .btn-danger { color: #ef4444; border-color: #ef4444; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .stat { text-align: center; background: #111827; border-radius: 8px; padding: 12px; }
+    .stat-num { font-size: 24px; font-weight: bold; }
+    .stat-label { font-size: 11px; color: #64748b; }
+    .saved { color: #22c55e; font-size: 12px; margin-top: 8px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>LinkShield Settings</h1>
+  <p class="subtitle">Configure your phishing protection preferences</p>
+
+  <div class="section">
+    <h2>Protection</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">Auto-scan links</div>
+        <div class="row-desc">Automatically check all links on every page</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="auto-scan" checked><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div>
+        <div class="row-label">Show badges on links</div>
+        <div class="row-desc">Display safety indicators next to each link</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="show-badges" checked><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div>
+        <div class="row-label">Block dangerous pages</div>
+        <div class="row-desc">Show warning screen before opening dangerous sites</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="block-dangerous" checked><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Privacy</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">Privacy Audit on page load</div>
+        <div class="row-desc">Automatically run privacy audit when visiting new sites</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="auto-audit"><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div>
+        <div class="row-label">Anonymous usage stats</div>
+        <div class="row-desc">Help improve LinkShield by sharing anonymous aggregate stats</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="anon-stats"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Stats</h2>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-num" id="s-total">0</div><div class="stat-label">Links checked</div></div>
+      <div class="stat"><div class="stat-num" id="s-blocked" style="color:#ef4444">0</div><div class="stat-label">Threats blocked</div></div>
+      <div class="stat"><div class="stat-num" id="s-warned" style="color:#f59e0b">0</div><div class="stat-label">Warnings</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Referral</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">Your referral link</div>
+        <div class="row-desc">Share to give friends 7 days free</div>
+      </div>
+      <button class="btn" id="copy-referral">Copy link</button>
+    </div>
+    <div class="row">
+      <div>
+        <div class="row-label">Redeem a code</div>
+        <div class="row-desc">Got a code from a friend? Enter it here</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input id="referral-input" placeholder="CODE" style="width:80px;padding:6px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;text-transform:uppercase;outline:none;">
+        <button class="btn" id="redeem-code">Redeem</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Data</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">Clear local history</div>
+        <div class="row-desc">Delete all check history stored on this device</div>
+      </div>
+      <button class="btn btn-danger" id="clear-data">Clear data</button>
+    </div>
+    <div class="row">
+      <div>
+        <div class="row-label">Export history</div>
+        <div class="row-desc">Download your check history as JSON</div>
+      </div>
+      <button class="btn" id="export-data">Export</button>
+    </div>
+  </div>
+
+  <div class="saved" id="saved-msg">Settings saved</div>
+
+  <script>
+    // Load settings
+    chrome.storage.local.get(["settings", "stats"], (data) => {
+      const s = data.settings || {};
+      document.getElementById("auto-scan").checked = s.autoScan !== false;
+      document.getElementById("show-badges").checked = s.showBadges !== false;
+      document.getElementById("block-dangerous").checked = s.blockDangerous !== false;
+      document.getElementById("auto-audit").checked = s.autoAudit === true;
+      document.getElementById("anon-stats").checked = s.anonStats === true;
+
+      const stats = data.stats || {};
+      document.getElementById("s-total").textContent = stats.total_checks || 0;
+      document.getElementById("s-blocked").textContent = stats.threats_blocked || 0;
+      document.getElementById("s-warned").textContent = stats.threats_warned || 0;
+    });
+
+    // Save on toggle
+    document.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const settings = {
+          autoScan: document.getElementById("auto-scan").checked,
+          showBadges: document.getElementById("show-badges").checked,
+          blockDangerous: document.getElementById("block-dangerous").checked,
+          autoAudit: document.getElementById("auto-audit").checked,
+          anonStats: document.getElementById("anon-stats").checked,
+        };
+        chrome.storage.local.set({ settings });
+        const msg = document.getElementById("saved-msg");
+        msg.style.display = "block";
+        setTimeout(() => msg.style.display = "none", 2000);
+      });
+    });
+
+    // Clear data
+    document.getElementById("clear-data").addEventListener("click", () => {
+      if (confirm("Delete all local check history? This cannot be undone.")) {
+        chrome.storage.local.remove(["recent_threats", "stats", "audits"], () => {
+          location.reload();
+        });
+      }
+    });
+
+    // Copy referral link
+    document.getElementById("copy-referral").addEventListener("click", async () => {
+      const data = await chrome.storage.local.get(["referral_code"]);
+      let code = data.referral_code;
+      if (!code) {
+        // Generate a simple local code
+        code = Math.random().toString(36).substring(2, 10).toUpperCase();
+        await chrome.storage.local.set({ referral_code: code });
+      }
+      const url = "https://linkshield.io/ref/" + code;
+      await navigator.clipboard.writeText(url);
+      document.getElementById("copy-referral").textContent = "Copied!";
+      setTimeout(() => document.getElementById("copy-referral").textContent = "Copy link", 2000);
+    });
+
+    // Redeem referral code
+    document.getElementById("redeem-code").addEventListener("click", async () => {
+      const code = document.getElementById("referral-input").value.trim().toUpperCase();
+      if (!code) return;
+      await chrome.storage.local.set({ redeemed_code: code });
+      alert("Code " + code + " saved! You'll get 7 days of Personal plan when connected to your account.");
+    });
+
+    // Export
+    document.getElementById("export-data").addEventListener("click", () => {
+      chrome.storage.local.get(null, (data) => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "linkshield-export.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    });
+  </script>
+</body>
+</html>

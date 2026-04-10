@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkShield</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="shield-icon">&#x1F6E1;</span>
+        <h1>LinkShield</h1>
+      </div>
+      <span class="version">v0.1</span>
+    </header>
+
+    <!-- Page Status -->
+    <section class="page-status" id="page-status">
+      <div class="status-icon" id="status-icon">...</div>
+      <div class="status-text">
+        <div class="status-title" id="status-title">Scanning page...</div>
+        <div class="status-subtitle" id="status-subtitle">Checking links</div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number" id="total-checks">0</div>
+        <div class="stat-label">Links checked</div>
+      </div>
+      <div class="stat-card stat-danger">
+        <div class="stat-number" id="threats-blocked">0</div>
+        <div class="stat-label">Threats blocked</div>
+      </div>
+      <div class="stat-card stat-warn">
+        <div class="stat-number" id="threats-warned">0</div>
+        <div class="stat-label">Warnings</div>
+      </div>
+    </section>
+
+    <!-- Aha Moment Banner (shown once on first email scan) -->
+    <section class="aha-banner" id="aha-banner" style="display: none;">
+      <div class="aha-icon">&#x1F50D;</div>
+      <div class="aha-text">
+        <strong>LinkShield found <span id="aha-count">0</span> suspicious links</strong>
+        <span>that your browser didn't catch</span>
+      </div>
+    </section>
+
+    <!-- Upgrade Banner (for free users) -->
+    <section class="upgrade-banner" id="upgrade-banner" style="display:none;">
+      <div class="upgrade-text">
+        <strong>Free plan: <span id="checks-used">0</span>/10 checks today</strong>
+        <span>Upgrade for unlimited protection</span>
+      </div>
+      <a href="https://linkshield.io/pricing" target="_blank" class="upgrade-btn">Upgrade</a>
+    </section>
+
+    <!-- Recent Threats -->
+    <section class="recent-section">
+      <h3>Recent threats</h3>
+      <div id="recent-threats" class="recent-list">
+        <div class="empty-state">No threats detected yet. Browse normally &mdash; we're watching.</div>
+      </div>
+    </section>
+
+    <!-- Quick Actions Row 1 -->
+    <section class="actions-section">
+      <button id="btn-audit" class="action-btn" title="Privacy Audit this page">
+        &#x1F512; Audit
+      </button>
+      <button id="btn-score" class="action-btn" title="Your Security Score">
+        &#x1F3AF; Score
+      </button>
+      <button id="btn-weekly" class="action-btn" title="Weekly Report">
+        &#x1F4CA; Report
+      </button>
+    </section>
+    <!-- Quick Actions Row 2 -->
+    <section class="actions-section">
+      <button id="btn-breach" class="action-btn" title="Check if your email is in data breaches">
+        &#x1F513; Breach Check
+      </button>
+      <button id="btn-report" class="action-btn" title="Report incorrect result">
+        &#x1F4E2; Report
+      </button>
+      <button id="btn-whitelist" class="action-btn" title="Whitelist this site">
+        &#x2705; Trust
+      </button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="privacy-note">
+        &#x1F512; Your browsing data never leaves this device
+      </div>
+      <div class="footer-links">
+        <a href="https://linkshield.io" target="_blank">Website</a>
+        <a href="https://linkshield.io/pricing" target="_blank">Upgrade</a>
+        <a href="#" id="btn-settings">Settings</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

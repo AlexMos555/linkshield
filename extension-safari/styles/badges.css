@@ -1,0 +1,140 @@
+/* LinkShield — Visual Safety Badges */
+
+.ls-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: bold;
+  margin-left: 4px;
+  vertical-align: middle;
+  cursor: pointer;
+  position: relative;
+  line-height: 1;
+  flex-shrink: 0;
+  z-index: 10000;
+  transition: transform 0.15s ease;
+}
+
+.ls-badge:hover {
+  transform: scale(1.3);
+}
+
+.ls-safe {
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #86efac;
+}
+
+.ls-caution {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fcd34d;
+}
+
+.ls-dangerous {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  animation: ls-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ls-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.3); }
+  50% { box-shadow: 0 0 0 4px rgba(220, 38, 38, 0); }
+}
+
+/* Tooltip */
+
+.ls-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  z-index: 100000;
+  pointer-events: none;
+}
+
+.ls-badge:hover .ls-tooltip {
+  display: block;
+}
+
+.ls-tooltip-inner {
+  background: #1f2937;
+  color: #f3f4f6;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 220px;
+  max-width: 350px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.ls-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.ls-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ls-score {
+  margin-left: auto;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.ls-domain {
+  color: #9ca3af;
+  font-size: 11px;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ls-reason {
+  color: #d1d5db;
+  font-size: 11px;
+  white-space: normal;
+  line-height: 1.4;
+  margin-bottom: 2px;
+}
+
+.ls-confidence {
+  color: #f59e0b;
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.ls-footer {
+  color: #6b7280;
+  font-size: 10px;
+  margin-top: 6px;
+  text-align: right;
+}
+
+/* Tooltip arrow */
+.ls-tooltip-inner::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1f2937;
+}

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Data (large files)
+data/top-1m.csv
+data/phishtank.csv
+data/feature_log.jsonl
+data/bloom_top100k.json
+data/phishing_model.cbm
+
+# CatBoost training artifacts
+catboost_info/
+
+# Node
+node_modules/
+landing/.next/
+landing/out/
+
+# Extension build
+linkshield-extension.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

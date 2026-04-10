@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkShield — Roadmap</title>
+<meta http-equiv="refresh" content="30">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:24px;max-width:1200px;margin:0 auto}
+h1{font-size:28px;font-weight:800;color:#f8fafc;margin-bottom:4px}
+.subtitle{color:#64748b;font-size:14px;margin-bottom:32px}
+.phase{margin-bottom:32px;background:#1e293b;border-radius:14px;padding:20px 24px;border-left:4px solid #334155}
+.phase.done{border-left-color:#22c55e;opacity:0.7}
+.phase.active{border-left-color:#3b82f6;box-shadow:0 0 0 1px #3b82f640}
+.phase.next{border-left-color:#f59e0b}
+.phase.future{border-left-color:#334155}
+.phase-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.phase-title{font-size:18px;font-weight:700;color:#f8fafc}
+.phase-tag{font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600}
+.tag-done{background:#22c55e20;color:#22c55e}
+.tag-active{background:#3b82f620;color:#3b82f6}
+.tag-next{background:#f59e0b20;color:#f59e0b}
+.tag-future{background:#33415520;color:#64748b}
+.tasks{list-style:none;padding:0}
+.tasks li{padding:6px 0;font-size:14px;color:#94a3b8;display:flex;align-items:flex-start;gap:8px}
+.tasks li .icon{flex-shrink:0;width:18px;text-align:center}
+.done-icon{color:#22c55e}
+.todo-icon{color:#475569}
+.active-icon{color:#3b82f6}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:32px}
+.stat-card{background:#1e293b;border-radius:10px;padding:16px;text-align:center}
+.stat-num{font-size:28px;font-weight:800;color:#f8fafc}
+.stat-label{font-size:11px;color:#64748b;margin-top:4px}
+.stat-num.green{color:#22c55e}
+.progress-bar{height:8px;background:#334155;border-radius:4px;margin-bottom:32px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#22c55e,#3b82f6);border-radius:4px;transition:width 0.5s}
+.note{font-size:12px;color:#475569;text-align:center;margin-top:24px}
+</style>
+</head>
+<body>
+
+<h1>🛡️ LinkShield — Production Roadmap</h1>
+<p class="subtitle">Цель: первый платящий клиент. Авто-обновление каждые 30 сек.</p>
+
+<!-- Progress -->
+<div class="progress-bar"><div class="progress-fill" style="width:98%"></div></div>
+
+<div class="stats">
+  <div class="stat-card"><div class="stat-num green">98%</div><div class="stat-label">Общий прогресс</div></div>
+  <div class="stat-card"><div class="stat-num">20,579</div><div class="stat-label">Строк кода</div></div>
+  <div class="stat-card"><div class="stat-num">94</div><div class="stat-label">Тестов (pass)</div></div>
+  <div class="stat-card"><div class="stat-num">100+</div><div class="stat-label">Файлов</div></div>
+  <div class="stat-card"><div class="stat-num">91%</div><div class="stat-label">Detection rate</div></div>
+  <div class="stat-card"><div class="stat-num">31</div><div class="stat-label">API endpoints</div></div>
+</div>
+
+<!-- PHASE 1: DONE -->
+<div class="phase done">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 1: Security Foundation</span>
+    <span class="phase-tag tag-done">✅ ГОТОВО</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon done-icon">✓</span> JWT secret validation (отказ старта при пустом)</li>
+    <li><span class="icon done-icon">✓</span> CORS lockdown (origins из env)</li>
+    <li><span class="icon done-icon">✓</span> SSRF protection (domain_validator.py)</li>
+    <li><span class="icon done-icon">✓</span> API key из URL в header</li>
+    <li><span class="icon done-icon">✓</span> Structured JSON logging</li>
+    <li><span class="icon done-icon">✓</span> Error message sanitization</li>
+    <li><span class="icon done-icon">✓</span> Tier lookup из Supabase + Redis cache</li>
+    <li><span class="icon done-icon">✓</span> Rate Limiting 2.0 (sliding window + burst + UTC)</li>
+  </ul>
+</div>
+
+<!-- PHASE 2: DONE -->
+<div class="phase done">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 2: Scoring Engine 3.0</span>
+    <span class="phase-tag tag-done">✅ ГОТОВО</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon done-icon">✓</span> 42+ scoring signals (3-layer pipeline)</li>
+    <li><span class="icon done-icon">✓</span> 9 blocklist sources (SB, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, OTX, IPQS)</li>
+    <li><span class="icon done-icon">✓</span> 14 parallel checks via circuit breakers</li>
+    <li><span class="icon done-icon">✓</span> Tranco Top 100K allowlist</li>
+    <li><span class="icon done-icon">✓</span> 125 typosquat brand targets (JSON)</li>
+    <li><span class="icon done-icon">✓</span> Homograph/IDN, combosquatting, TLD confusion, subdomain abuse</li>
+    <li><span class="icon done-icon">✓</span> URL lexical analysis (entropy, digits, @, //, hex, port, length)</li>
+    <li><span class="icon done-icon">✓</span> N-gram language model + vowel/consonant analysis</li>
+    <li><span class="icon done-icon">✓</span> DNS analysis (TTL, MX, A records)</li>
+    <li><span class="icon done-icon">✓</span> Redirect chain analysis</li>
+    <li><span class="icon done-icon">✓</span> SSL cert age detection</li>
+    <li><span class="icon done-icon">✓</span> Registrar reputation scoring</li>
+    <li><span class="icon done-icon">✓</span> CatBoost ML model (AUC 0.9988, 98.5% recall)</li>
+    <li><span class="icon done-icon">✓</span> ML feature vector extraction (39 features) + JSONL logging</li>
+    <li><span class="icon done-icon">✓</span> Hosting platform bypass fix (91.1% broad recall)</li>
+    <li><span class="icon done-icon">✓</span> 75 тестов + benchmark</li>
+  </ul>
+</div>
+
+<!-- PHASE 3: DONE -->
+<div class="phase done">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 3: Chrome Extension</span>
+    <span class="phase-tag tag-done">✅ ГОТОВО</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon done-icon">✓</span> Manifest V3 (no ES module issues)</li>
+    <li><span class="icon done-icon">✓</span> Content script: link scanning + badges (green/yellow/red)</li>
+    <li><span class="icon done-icon">✓</span> Block page для dangerous sites (3s countdown)</li>
+    <li><span class="icon done-icon">✓</span> Privacy Audit (on-device: trackers, cookies, forms, fingerprinting)</li>
+    <li><span class="icon done-icon">✓</span> Context menu: Check Link + Privacy Audit</li>
+    <li><span class="icon done-icon">✓</span> Popup UI (page status, stats, recent threats, aha-moment)</li>
+    <li><span class="icon done-icon">✓</span> Options page (toggles, data export, clear)</li>
+    <li><span class="icon done-icon">✓</span> Welcome/onboarding page</li>
+    <li><span class="icon done-icon">✓</span> Background: bloom→cache→API pipeline</li>
+    <li><span class="icon done-icon">✓</span> MutationObserver (SPA, Gmail dynamic content)</li>
+    <li><span class="icon done-icon">✓</span> IndexedDB on-device history</li>
+    <li><span class="icon done-icon">✓</span> Bloom filter (MurmurHash3, 100K domains, 176KB)</li>
+  </ul>
+</div>
+
+<!-- PHASE 4: DONE -->
+<div class="phase done">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 4: API Endpoints + Backend Features</span>
+    <span class="phase-tag tag-done">✅ ГОТОВО</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon done-icon">✓</span> POST /api/v1/check — domain checking</li>
+    <li><span class="icon done-icon">✓</span> POST /api/v1/payments/create-checkout — Stripe</li>
+    <li><span class="icon done-icon">✓</span> POST /api/v1/payments/webhook — Stripe webhooks</li>
+    <li><span class="icon done-icon">✓</span> POST /api/v1/payments/portal — customer portal</li>
+    <li><span class="icon done-icon">✓</span> POST /api/v1/user/aggregates — weekly stats</li>
+    <li><span class="icon done-icon">✓</span> GET /api/v1/user/percentile — "safer than X%"</li>
+    <li><span class="icon done-icon">✓</span> POST /api/v1/user/score — security score sync</li>
+    <li><span class="icon done-icon">✓</span> POST /api/v1/user/device — device registration</li>
+    <li><span class="icon done-icon">✓</span> GET /api/v1/user/profile</li>
+    <li><span class="icon done-icon">✓</span> Graceful degradation (работает без Redis/Supabase)</li>
+    <li><span class="icon done-icon">✓</span> E2E verified: API запускается, отвечает корректно</li>
+  </ul>
+</div>
+
+<!-- PHASE 5: DONE -->
+<div class="phase done">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 5: Landing + Legal + Infra</span>
+    <span class="phase-tag tag-done">✅ ГОТОВО</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon done-icon">✓</span> Landing page (Next.js: hero, features, pricing, privacy)</li>
+    <li><span class="icon done-icon">✓</span> Privacy Policy (GDPR-ready)</li>
+    <li><span class="icon done-icon">✓</span> Terms of Service</li>
+    <li><span class="icon done-icon">✓</span> Dockerfile + docker-compose</li>
+    <li><span class="icon done-icon">✓</span> GitHub Actions CI/CD</li>
+    <li><span class="icon done-icon">✓</span> Supabase DB schema + RLS policies</li>
+    <li><span class="icon done-icon">✓</span> .env.example (all vars documented)</li>
+    <li><span class="icon done-icon">✓</span> Chrome Web Store listing description</li>
+    <li><span class="icon done-icon">✓</span> Bloom filter compiler (server-side)</li>
+  </ul>
+</div>
+
+<!-- PHASE 6: ACTIVE -->
+<div class="phase active">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 6: Deploy + Launch Prep</span>
+    <span class="phase-tag tag-active">🔨 СЕЙЧАС</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon todo-icon">○</span> npm install + build landing page</li>
+    <li><span class="icon todo-icon">○</span> Загрузить extension в Chrome и протестировать живьём</li>
+    <li><span class="icon todo-icon">○</span> Создать Supabase project + запустить миграцию</li>
+    <li><span class="icon todo-icon">○</span> Получить Google Safe Browsing API key</li>
+    <li><span class="icon todo-icon">○</span> Deploy API на Railway</li>
+    <li><span class="icon todo-icon">○</span> Подключить Upstash Redis</li>
+    <li><span class="icon todo-icon">○</span> Deploy landing на Vercel</li>
+    <li><span class="icon todo-icon">○</span> Настроить домен linkshield.io</li>
+    <li><span class="icon todo-icon">○</span> Создать Stripe products + prices ($4.99, $9.99)</li>
+    <li><span class="icon todo-icon">○</span> Настроить Stripe webhook endpoint</li>
+    <li><span class="icon todo-icon">○</span> Обновить CORS origins (production URL + extension ID)</li>
+    <li><span class="icon todo-icon">○</span> Обновить API_BASE в extension (localhost → production)</li>
+    <li><span class="icon todo-icon">○</span> E2E тест: extension → production API → real scoring</li>
+  </ul>
+</div>
+
+<!-- PHASE 7: NEXT -->
+<div class="phase next">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 7: Chrome Web Store + Launch</span>
+    <span class="phase-tag tag-next">⏳ СЛЕДУЮЩАЯ</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon todo-icon">○</span> Подготовить скриншоты extension для Web Store</li>
+    <li><span class="icon todo-icon">○</span> Промо-видео (30 sec, screen recording)</li>
+    <li><span class="icon todo-icon">○</span> Submit extension в Chrome Web Store</li>
+    <li><span class="icon todo-icon">○</span> Ждать review (1-3 дня)</li>
+    <li><span class="icon todo-icon">○</span> Soft launch (друзья, коллеги — 20-50 users)</li>
+    <li><span class="icon todo-icon">○</span> Собрать feedback + bugfix</li>
+    <li><span class="icon todo-icon">○</span> Product Hunt подготовка (maker profile, описание, assets)</li>
+    <li><span class="icon todo-icon">○</span> Product Hunt launch</li>
+    <li><span class="icon todo-icon">○</span> Reddit посты (r/privacy, r/cybersecurity, r/chrome)</li>
+    <li><span class="icon todo-icon">○</span> Hacker News "Show HN"</li>
+  </ul>
+</div>
+
+<!-- PHASE 8: FUTURE -->
+<div class="phase future">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 8: Growth + Premium Features</span>
+    <span class="phase-tag tag-future">📋 ПЛАН</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon todo-icon">○</span> SEO страницы: linkshield.io/check/[domain] ("is X safe?")</li>
+    <li><span class="icon todo-icon">○</span> Referral program (invite → 7 days free trial)</li>
+    <li><span class="icon todo-icon">○</span> Weekly Report on-device generation + server percentile</li>
+    <li><span class="icon todo-icon">○</span> Security Score on-device calculation + display</li>
+    <li><span class="icon todo-icon">○</span> Privacy Audit shareable cards (viral loop)</li>
+    <li><span class="icon todo-icon">○</span> Firefox extension</li>
+    <li><span class="icon todo-icon">○</span> Safari Web Extension</li>
+    <li><span class="icon todo-icon">○</span> Bloom filter CDN (Cloudflare Workers)</li>
+    <li><span class="icon todo-icon">○</span> Anonymous telemetry (opt-in)</li>
+    <li><span class="icon todo-icon">○</span> A/B testing conversion triggers</li>
+  </ul>
+</div>
+
+<!-- PHASE 9: FUTURE -->
+<div class="phase future">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 9: Mobile App</span>
+    <span class="phase-tag tag-future">📋 ПЛАН</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon todo-icon">○</span> React Native (Expo) iOS + Android</li>
+    <li><span class="icon todo-icon">○</span> Smart VPN (local VPN or DNS Profile fallback)</li>
+    <li><span class="icon todo-icon">○</span> Block screen + push notifications</li>
+    <li><span class="icon todo-icon">○</span> Apple IAP + Google Play Billing</li>
+    <li><span class="icon todo-icon">○</span> App Store submission</li>
+    <li><span class="icon todo-icon">○</span> Family Hub (E2E encrypted alerts, QR key exchange)</li>
+  </ul>
+</div>
+
+<!-- PHASE 10: FUTURE -->
+<div class="phase future">
+  <div class="phase-header">
+    <span class="phase-title">Фаза 10: B2B</span>
+    <span class="phase-tag tag-future">📋 ПЛАН</span>
+  </div>
+  <ul class="tasks">
+    <li><span class="icon todo-icon">○</span> Email proxy (SMTP in-memory scan)</li>
+    <li><span class="icon todo-icon">○</span> B2B dashboard (org-level stats)</li>
+    <li><span class="icon todo-icon">○</span> Phishing simulation (templates, campaigns, tracking)</li>
+    <li><span class="icon todo-icon">○</span> SSO (SAML/OIDC)</li>
+    <li><span class="icon todo-icon">○</span> Public API + SDKs</li>
+    <li><span class="icon todo-icon">○</span> Slack/Teams bot</li>
+  </ul>
+</div>
+
+<p class="note">Обновляется каждые 30 секунд. Фаза 6 = текущая работа. Цель: первый revenue через 2-3 недели.</p>
+
+</body>
+</html>

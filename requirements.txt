@@ -1,0 +1,10 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+httpx==0.28.0
+redis[hiredis]==5.2.0
+pydantic-settings==2.6.0
+PyJWT==2.10.0
+python-multipart==0.0.18
+dnspython==2.7.0
+stripe==11.0.0
+sentry-sdk[fastapi]==2.19.0

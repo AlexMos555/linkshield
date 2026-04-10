@@ -1,0 +1,32 @@
+{
+  "_meta": "Registrars with disproportionately high phishing domain registration rates. Source: APWG, Interisle Phishing Landscape 2024-2025, Spamhaus",
+  "high_risk": [
+    "NameSilo, LLC",
+    "Namecheap, Inc.",
+    "PDR Ltd. d/b/a PublicDomainRegistry.com",
+    "Hostinger Operations, UAB",
+    "Hosting Concepts B.V. d/b/a Registrar.eu",
+    "Eranet International Limited",
+    "Alibaba Cloud Computing Ltd.",
+    "West263 International Limited",
+    "Shinjiru Technology Sdn Bhd",
+    "URL Solutions Inc.",
+    "Key-Systems GmbH",
+    "Gname.com Pte. Ltd.",
+    "Dynadot, LLC",
+    "Porkbun LLC",
+    "Regtons Ltd.",
+    "SAV Multimed Sdn Bhd",
+    "Registrar of Domain Names REG.RU LLC",
+    "Internet Domain Service BS Corp",
+    "NiceNIC International Group Co., Limited",
+    "Tucows Domains Inc."
+  ],
+  "medium_risk": [
+    "GoDaddy.com, LLC",
+    "Google LLC",
+    "Amazon Registrar, Inc.",
+    "OVH sas",
+    "1&1 IONOS SE"
+  ]
+}
