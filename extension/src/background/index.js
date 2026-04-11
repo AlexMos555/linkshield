@@ -120,21 +120,39 @@ async function loadBloomFilter() {
 // ═══════════════════════════════════════════════════
 
 async function apiCheckDomains(domains, token) {
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
-  try {
-    const resp = await fetch(`${API_BASE}/api/v1/check`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ domains }),
-    });
-    if (resp.status === 429) return { error: "rate_limit", detail: await resp.json() };
-    if (!resp.ok) return { error: "api_error", status: resp.status };
-    return await resp.json();
-  } catch (e) {
-    return { error: "network", message: e.message };
+  // Try authenticated endpoint first (if user logged in)
+  if (token) {
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ domains }),
+      });
+      if (resp.ok) return await resp.json();
+      if (resp.status === 429) return { error: "rate_limit", detail: await resp.json() };
+    } catch (e) {}
   }
+
+  // Fallback: public endpoint (no auth, one domain at a time)
+  const results = [];
+  for (const domain of domains) {
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/public/check/${encodeURIComponent(domain)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        results.push({
+          domain: data.domain,
+          score: data.score,
+          level: data.level,
+          confidence: data.confidence || "medium",
+          reasons: (data.signals || []).map(s => ({ signal: "api", detail: s, weight: 10 })),
+        });
+      }
+    } catch (e) {}
+  }
+
+  if (results.length > 0) return { results };
+  return { error: "api_error" };
 }
 
 // ═══════════════════════════════════════════════════
