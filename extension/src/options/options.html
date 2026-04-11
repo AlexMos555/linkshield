@@ -97,6 +97,43 @@
   </div>
 
   <div class="section">
+    <h2>Custom Lists</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">Blocked Sites</div>
+        <div class="row-desc">Domains you always want blocked (one per line)</div>
+      </div>
+    </div>
+    <textarea id="custom-blocklist" rows="3" placeholder="example.com&#10;malware-site.xyz" style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;margin-top:8px;outline:none;"></textarea>
+    <div class="row">
+      <div>
+        <div class="row-label">Trusted Sites</div>
+        <div class="row-desc">Domains to never flag (your whitelist)</div>
+      </div>
+    </div>
+    <textarea id="custom-whitelist" rows="3" placeholder="my-internal-app.com&#10;trusted-site.org" style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;margin-top:8px;outline:none;"></textarea>
+    <button class="btn" id="save-lists" style="margin-top:8px;">Save Lists</button>
+  </div>
+
+  <div class="section">
+    <h2>Privacy Protection</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">Remove tracking parameters</div>
+        <div class="row-desc">Auto-strip fbclid, utm_*, gclid from URLs</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="clean-tracking" checked><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div>
+        <div class="row-label">Block crypto miners</div>
+        <div class="row-desc">Prevent websites from mining cryptocurrency</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="block-miners" checked><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Advanced</h2>
     <div class="row">
       <div>
@@ -190,6 +227,33 @@
         chrome.storage.local.remove(["recent_threats", "stats", "audits"], () => {
           location.reload();
         });
+      }
+    });
+
+    // Load custom lists
+    chrome.storage.local.get(["custom_blocklist", "custom_whitelist"], (data) => {
+      if (data.custom_blocklist) document.getElementById("custom-blocklist").value = data.custom_blocklist;
+      if (data.custom_whitelist) document.getElementById("custom-whitelist").value = data.custom_whitelist;
+    });
+
+    // Save custom lists
+    document.getElementById("save-lists").addEventListener("click", () => {
+      chrome.storage.local.set({
+        custom_blocklist: document.getElementById("custom-blocklist").value,
+        custom_whitelist: document.getElementById("custom-whitelist").value,
+      });
+      document.getElementById("save-lists").textContent = "Saved!";
+      setTimeout(() => document.getElementById("save-lists").textContent = "Save Lists", 2000);
+    });
+
+    // Load privacy settings
+    chrome.storage.local.get(["settings"], (data) => {
+      const s2 = data.settings || {};
+      if (document.getElementById("clean-tracking")) {
+        document.getElementById("clean-tracking").checked = s2.cleanTracking !== false;
+      }
+      if (document.getElementById("block-miners")) {
+        document.getElementById("block-miners").checked = s2.blockMiners !== false;
       }
     });
 

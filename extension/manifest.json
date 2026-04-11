@@ -26,6 +26,8 @@
       "matches": ["<all_urls>"],
       "js": [
         "src/utils/local-scorer.js",
+        "src/content/tracking-cleaner.js",
+        "src/content/crypto-blocker.js",
         "src/content/weekly-report.js",
         "src/content/security-score.js",
         "src/content/breach-check.js",
