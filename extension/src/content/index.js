@@ -65,28 +65,40 @@ async function scanPage() {
 }
 
 async function checkDomains(domains) {
-  // Try background service worker first
-  try {
-    var response = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: domains });
-    if (response && response.results && response.results.length > 0) {
-      _log("Got", response.results.length, "results from background");
-      return response.results;
-    }
-  } catch (e) {
-    _log("Background unavailable:", e.message);
-  }
-
-  // Fallback: local scoring (no API needed)
-  _log("Using local scorer for", domains.length, "domains");
   var results = [];
+
+  // ALWAYS score locally first — guaranteed to work
   for (var i = 0; i < domains.length; i++) {
     try {
-      // localScore is defined in local-scorer.js (loaded before this file)
-      results.push(localScore(domains[i]));
+      var lr = localScore(domains[i]);
+      results.push(lr);
+      _log("Local score:", domains[i], "→ score=" + lr.score, lr.level);
     } catch (e) {
+      _log("localScore error for", domains[i], e);
       results.push({ domain: domains[i], score: 0, level: "safe", reasons: [], source: "error" });
     }
   }
+
+  // Try to get better results from background (async, don't wait too long)
+  try {
+    var response = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: domains });
+    if (response && response.results && response.results.length > 0) {
+      _log("Background returned", response.results.length, "results, merging");
+      // Use background results where they have higher score (more info)
+      for (var j = 0; j < response.results.length; j++) {
+        var bgr = response.results[j];
+        for (var k = 0; k < results.length; k++) {
+          if (results[k].domain === bgr.domain && bgr.score >= results[k].score) {
+            results[k] = bgr;
+            _log("Upgraded from background:", bgr.domain, "→ score=" + bgr.score, bgr.level);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    _log("Background unavailable (using local scores):", e.message);
+  }
+
   return results;
 }
 
@@ -98,11 +110,8 @@ function addBadge(linkEl, result) {
   if (linkEl.querySelector("." + BADGE_CLASS)) return;
   linkEl.setAttribute(SCANNED_ATTR, "true");
 
-  // Don't badge safe links with score 0 (too noisy)
-  if (result.level === "safe" && result.score === 0) {
-    // Mark as scanned but no visible badge for known-safe
-    return;
-  }
+  // Show ALL badges — safe (green), caution (yellow), dangerous (red)
+  _log("Adding badge:", result.domain, "score=" + result.score, "level=" + result.level);
 
   var badge = document.createElement("span");
   badge.className = BADGE_CLASS;
