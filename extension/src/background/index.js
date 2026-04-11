@@ -201,8 +201,8 @@ async function handleCheckDomains(domains) {
           reasons: [{ signal: "rate_limited", detail: "Upgrade for unlimited checks", weight: 0 }],
         });
       }
-    } else if (resp.error === "network") {
-      // API unavailable — use full local scoring engine
+    } else {
+      // API error (401, network, etc.) — use full local scoring engine
       for (const d of needsApi) {
         var lr = localScoreFull(d);
         setCached(d, lr);
@@ -361,8 +361,13 @@ function localScoreFull(domain) {
   for(var b in _BRANDS){var leg=_BRANDS[b];if(domain===leg||base===leg)continue;
     if(nm===b&&"."+leg.split(".").pop()!==tld){s+=30;R.push({signal:"typosquatting",detail:"Impersonates "+leg+" (wrong TLD)",weight:30});break}
     if(nm===b)continue;
-    var norm=nm;for(var c in _CSUBS)norm=norm.split(c).join(_CSUBS[c]);
-    if(norm===b){s+=30;R.push({signal:"typosquatting",detail:"Impersonates "+leg+" (char substitution)",weight:30});break}
+    // Check name without suffixes like -verify, -login, -secure
+    var nmClean=nm.replace(/[-_](verify|login|secure|update|account|confirm|alert|support|help|app|web|mail)$/,"");
+    var norm=nmClean;for(var c in _CSUBS)norm=norm.split(c).join(_CSUBS[c]);
+    if(norm===b){s+=40;R.push({signal:"typosquatting",detail:"Impersonates "+leg+" (char substitution)",weight:40});break}
+    // Also check full name with subs
+    var normFull=nm;for(var c in _CSUBS)normFull=normFull.split(c).join(_CSUBS[c]);
+    if(normFull===b){s+=30;R.push({signal:"typosquatting",detail:"Impersonates "+leg+" (char substitution)",weight:30});break}
     if(nm.replace(/-/g,"")===b&&nm.indexOf("-")!==-1){s+=25;R.push({signal:"typosquatting",detail:"Impersonates "+leg+" (hyphen injection)",weight:25});break}
     if(nm.startsWith(b)&&nm.length>b.length){var sf=nm.slice(b.length).replace(/^-/,"");if(_SUS_WORDS.indexOf(sf)!==-1){s+=25;R.push({signal:"combosquatting",detail:"Impersonates "+leg+"-"+sf,weight:25});break}}
     if(nm.length===b.length&&nm.length>=4){var df=0;for(var i=0;i<nm.length;i++)if(nm[i]!==b[i])df++;if(df<=2){s+=25;R.push({signal:"typosquatting",detail:"Similar to "+leg,weight:25});break}}

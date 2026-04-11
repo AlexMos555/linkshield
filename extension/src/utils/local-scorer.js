@@ -174,10 +174,15 @@ function checkTyposquat(name, domain, base, tld) {
     }
     if (name === brand) continue;
 
-    // Char substitution
-    var normalized = name;
+    // Char substitution (also try with common suffixes stripped)
+    var nameClean = name.replace(/[-_](verify|login|secure|update|account|confirm|alert|support|help|app|web|mail)$/, "");
+    var normalized = nameClean;
     for (var c in CHAR_SUBS) normalized = normalized.split(c).join(CHAR_SUBS[c]);
     if (normalized === brand) return {brand: legit, method: "character substitution"};
+    // Try full name too
+    var normFull = name;
+    for (var c in CHAR_SUBS) normFull = normFull.split(c).join(CHAR_SUBS[c]);
+    if (normFull === brand) return {brand: legit, method: "character substitution"};
 
     // Hyphen injection
     if (name.replace(/-/g, "") === brand && name.indexOf("-") !== -1) {
