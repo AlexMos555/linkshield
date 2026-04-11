@@ -238,6 +238,21 @@ async function addRecentThreat(result) {
   await chrome.storage.local.set({ recent_threats: threats.slice(0, 50) });
 }
 
+// Update badge with today's threat count
+async function updateBadgeCount() {
+  try {
+    var data = await chrome.storage.local.get(["stats"]);
+    var s = data.stats || {};
+    var count = (s.threats_blocked || 0) + (s.threats_warned || 0);
+    if (count > 0) {
+      chrome.action.setBadgeText({ text: String(count) });
+      chrome.action.setBadgeBackgroundColor({ color: count > 5 ? "#ef4444" : "#f59e0b" });
+    } else {
+      chrome.action.setBadgeText({ text: "" });
+    }
+  } catch(e) {}
+}
+
 async function trackStats(results) {
   const data = await chrome.storage.local.get(["stats"]);
   const stats = data.stats || { total_checks: 0, threats_blocked: 0, threats_warned: 0, first_scan: null };
@@ -249,6 +264,7 @@ async function trackStats(results) {
     if (r.level === "caution") stats.threats_warned++;
   }
   await chrome.storage.local.set({ stats });
+  await updateBadgeCount();
 }
 
 // ═══════════════════════════════════════════════════

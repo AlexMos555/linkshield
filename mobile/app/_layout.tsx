@@ -19,6 +19,7 @@ export default function RootLayout() {
         <Stack.Screen name="breach" options={{ title: "Breach Check" }} />
         <Stack.Screen name="scanner" options={{ title: "QR Scanner" }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="shared" options={{ title: "Link Check", presentation: "modal" }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="upgrade" options={{ title: "Upgrade" }} />
         <Stack.Screen name="report" options={{ title: "Weekly Report" }} />
