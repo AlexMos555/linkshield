@@ -14,6 +14,4 @@ COPY ml/ ml/
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-ENV PORT=8000
-
-CMD uvicorn api.main:app --host 0.0.0.0 --port $PORT
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
