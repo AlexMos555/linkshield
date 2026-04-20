@@ -32,7 +32,8 @@ data/top-1m.csv
 data/phishtank.csv
 data/feature_log.jsonl
 data/bloom_top100k.json
-data/phishing_model.cbm
+# data/phishing_model.cbm — TRACKED (238 KB). Required for scoring tests +
+# production inference. Retrain via `ml/train_model.py`; commit the .cbm.
 
 # CatBoost training artifacts
 catboost_info/

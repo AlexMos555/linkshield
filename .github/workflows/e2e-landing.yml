@@ -32,7 +32,11 @@ jobs:
       # Monorepo uses npm workspaces — install from root
       - name: Install dependencies
         working-directory: .
-        run: npm ci
+        # --include=optional ensures platform-specific native bindings
+        # (e.g. @parcel/watcher-linux-x64-glibc used by next-intl + tailwind
+        # devServer) are installed. Without it, `next build` fails on CI
+        # Linux runners with "No prebuild of @parcel/watcher found".
+        run: npm ci --include=optional
 
       - name: Build landing
         run: npm run build
