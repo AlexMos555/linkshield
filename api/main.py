@@ -141,7 +141,20 @@ app.include_router(scam_router)
 
 @app.get("/health")
 async def health_check():
-    """Health check that verifies dependencies and circuit breaker states."""
+    """
+    Health check used by Railway's healthcheck probe + external monitors.
+
+    Returns HTTP 200 as long as the process is alive and can handle requests.
+    Dependency state (Redis, circuit breakers) is reported in the JSON body
+    so humans / dashboards can still see degradation, but we don't fail the
+    probe on it — Redis-less rate limiter falls open, and all breakers are
+    "closed" by default, so a cold boot without Redis is still a working
+    server from the user's perspective.
+
+    If a dependency is fundamentally broken (e.g., the process itself can't
+    serve), that surfaces as a crash / TCP failure and Railway will mark the
+    pod unhealthy anyway.
+    """
     from api.services.circuit_breaker import get_all_breaker_statuses
 
     redis_ok = False
@@ -155,9 +168,9 @@ async def health_check():
     breakers = get_all_breaker_statuses()
     any_open = any(b["state"] == "open" for b in breakers)
 
-    if not redis_ok:
-        status = "degraded"
-    elif any_open:
+    # status is INFORMATIONAL — we always return 200 OK so Railway's HTTP
+    # healthcheck succeeds. "degraded" is a soft signal, not a failure.
+    if not redis_ok or any_open:
         status = "degraded"
     else:
         status = "ok"

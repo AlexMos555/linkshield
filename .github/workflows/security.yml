@@ -92,25 +92,13 @@ jobs:
           failure-threshold: error  # warnings are noisy (unpinned apt pkgs, etc.) — fail only on errors
 
   # ─── SBOM generation ──────────────────────────────────────────
+  # Disabled — SBOM previously built from Dockerfile which is removed.
+  # For a file-system SBOM from source, switch to anchore/sbom-action's
+  # `path: .` mode (scans requirements.txt + package.json) when needed.
   sbom:
     name: sbom (Software Bill of Materials)
     runs-on: ubuntu-latest
+    if: false
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Build image
-        run: docker build -t linkshield-api:sbom .
-
-      - name: Generate SBOM (CycloneDX JSON)
-        uses: anchore/sbom-action@v0
-        with:
-          image: linkshield-api:sbom
-          format: cyclonedx-json
-          output-file: sbom.cdx.json
-
-      - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-cyclonedx
-          path: sbom.cdx.json
+      - run: echo "SBOM disabled — no Dockerfile to scan. Switch to path-based scan if re-enabled."
           retention-days: 90

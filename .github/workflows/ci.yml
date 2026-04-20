@@ -68,25 +68,11 @@ jobs:
       - name: Lint
         run: ruff check api/ tests/ ml/
 
+  # Docker build job disabled — we removed the Dockerfile (commit 208efd2)
+  # so Railway uses Nixpacks + Procfile. Railway's build on every push is
+  # effectively this job's replacement. Re-enable if we reintroduce Docker.
   docker:
     runs-on: ubuntu-latest
-    needs: [test, lint]
-    if: github.ref == 'refs/heads/main'
-
+    if: false
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: docker build -t linkshield-api .
-
-      - name: Verify image starts
-        run: |
-          docker run -d --name test-api \
-            -e DEBUG=true \
-            -e SUPABASE_JWT_SECRET=test-secret-for-development-only-not-for-production-use \
-            -e REDIS_URL=redis://localhost:6379 \
-            -p 8000:8000 \
-            linkshield-api
-          sleep 3
-          curl -f http://localhost:8000/ || exit 1
-          docker stop test-api
+      - run: echo "Docker build disabled — Nixpacks is the builder now."
