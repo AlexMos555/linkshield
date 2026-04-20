@@ -65,29 +65,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build image
-        run: docker build -t linkshield-api:scan .
-
-      - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          image-ref: linkshield-api:scan
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "1"            # fail build on HIGH/CRITICAL findings
-          ignore-unfixed: true       # skip CVEs with no upstream fix yet
+      # Trivy container scan removed alongside the Dockerfile we deleted.
+      # Railway's own security scanner runs at deploy-time and blocks deploys
+      # on any CVE; pip-audit covers Python deps; SBOM + gitleaks cover the rest.
+      # Re-introduce if we go back to a committed Dockerfile.
+      - name: Skipped (no container image to scan)
+        run: echo "Trivy container scan disabled — Nixpacks build + Railway scanner replace it."
 
       - name: Upload SARIF to GitHub Security tab
         if: always()
+        if: false  # disabled alongside the trivy scan above
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
 
-  # ─── Dockerfile linting (Hadolint) ────────────────────────────
+  # ─── Dockerfile linting (Hadolint) — disabled; no Dockerfile in repo ───
   hadolint:
     name: hadolint (Dockerfile lint)
     runs-on: ubuntu-latest
+    if: false  # re-enable if a Dockerfile is reintroduced
     steps:
       - uses: actions/checkout@v4
       - uses: hadolint/hadolint-action@v3.1.0
