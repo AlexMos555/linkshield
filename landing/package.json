@@ -15,7 +15,7 @@
     "@linkshield/api-client": "*",
     "@linkshield/api-types": "*",
     "@tailwindcss/postcss": "^4.2.2",
-    "next": "^15.0.0",
+    "next": "15.1.11",
     "next-intl": "^4.9.1",
     "postcss": "^8.5.9",
     "react": "^19.0.0",

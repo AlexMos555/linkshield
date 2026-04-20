@@ -25,93 +25,20 @@ from sklearn.metrics import (
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from api.services.url_features import (
-    bigram_score, trigram_uniqueness, vowel_consonant_ratio,
-    consecutive_consonants_max, char_diversity,
-)
-from api.services.scoring import (
-    _extract_base_domain, _extract_tld, _shannon_entropy, _digit_ratio,
-    _special_char_count, _has_fake_tld_in_subdomain,
-    _is_url_shortener, _check_homograph, _check_typosquatting_v2,
-    _check_brand_in_subdomain, _check_suspicious_keywords,
-    HIGH_RISK_TLDS, MEDIUM_RISK_TLDS, TOP_DOMAINS,
+# Feature extraction is shared with inference — single source of truth.
+# See api/services/ml_features.py. Training-only code below adds sklearn
+# bits; inference never has to import sklearn.
+from api.services.ml_features import (  # noqa: F401 — re-exported for back-compat
+    HOSTING_PLATFORMS,
+    extract_ml_features,
+    FEATURE_NAMES,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
-# Known hosting platforms where subdomains can be anyone's
-HOSTING_PLATFORMS = {
-    "pages.dev", "workers.dev", "netlify.app", "vercel.app",
-    "herokuapp.com", "github.io", "gitlab.io", "web.app",
-    "firebaseapp.com", "appspot.com", "azurewebsites.net",
-    "cloudfront.net", "s3.amazonaws.com", "blob.core.windows.net",
-    "onrender.com", "fly.dev", "railway.app", "deno.dev",
-    "blogspot.com", "wordpress.com", "wixsite.com", "weebly.com",
-    "myshopify.com", "square.site", "carrd.co", "notion.site",
-}
 
 
-def extract_ml_features(domain: str) -> dict[str, float]:
-    """Extract features for ML model — domain string only, no API calls."""
-    base = _extract_base_domain(domain)
-    name = base.split(".")[0] if "." in base else base
-    tld = _extract_tld(domain)
-
-    # Check if this is a subdomain on a hosting platform
-    is_hosting_subdomain = base in HOSTING_PLATFORMS
-    parts = domain.split(".")
-    user_part = parts[0] if len(parts) > 2 and is_hosting_subdomain else name
-
-    f = {}
-
-    # ── Length features ──
-    f["domain_length"] = len(domain)
-    f["name_length"] = len(name)
-    f["user_part_length"] = len(user_part)
-    f["dot_count"] = domain.count(".")
-    f["hyphen_count"] = domain.count("-")
-
-    # ── Character ratio features ──
-    f["digit_count"] = sum(c.isdigit() for c in user_part)
-    f["digit_ratio"] = _digit_ratio(user_part)
-    f["special_char_count"] = _special_char_count(domain)
-    f["alpha_count"] = sum(c.isalpha() for c in user_part)
-
-    # ── Entropy & randomness ──
-    f["shannon_entropy"] = _shannon_entropy(user_part)
-    f["bigram_score"] = bigram_score(user_part)
-    f["trigram_uniqueness"] = trigram_uniqueness(user_part)
-    f["vowel_consonant_ratio"] = vowel_consonant_ratio(user_part)
-    f["max_consecutive_consonants"] = consecutive_consonants_max(user_part)
-    f["char_diversity"] = char_diversity(user_part)
-
-    # ── Structural ──
-    f["subdomain_depth"] = max(0, domain.count(".") - 1)
-    f["is_hosting_subdomain"] = 1.0 if is_hosting_subdomain else 0.0
-    f["has_fake_tld_subdomain"] = 1.0 if _has_fake_tld_in_subdomain(domain) else 0.0
-
-    # ── TLD risk ──
-    f["tld_high_risk"] = 1.0 if tld in HIGH_RISK_TLDS else 0.0
-    f["tld_medium_risk"] = 1.0 if tld in MEDIUM_RISK_TLDS else 0.0
-    f["in_top_domains"] = 1.0 if base in TOP_DOMAINS and not is_hosting_subdomain else 0.0
-
-    # ─�� Brand impersonation ──
-    typo = _check_typosquatting_v2(domain)
-    f["is_typosquat"] = 1.0 if typo else 0.0
-    f["brand_in_subdomain"] = 1.0 if _check_brand_in_subdomain(domain) else 0.0
-    f["is_homograph"] = 1.0 if _check_homograph(domain) else 0.0
-    f["has_suspicious_keyword"] = 1.0 if _check_suspicious_keywords(domain) else 0.0
-    f["is_url_shortener"] = 1.0 if _is_url_shortener(domain) else 0.0
-
-    # ── Max brand similarity ──
-    from api.services.url_features import _max_brand_similarity
-    f["max_brand_similarity"] = _max_brand_similarity(user_part)
-
-    return f
-
-
-FEATURE_NAMES = list(extract_ml_features("example.com").keys())
 
 
 def load_phishing_domains(max_n: int = 10000) -> list[str]:

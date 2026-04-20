@@ -71,8 +71,9 @@ def ml_predict(domain: str) -> Optional[dict]:
         return None
 
     try:
-        # Import the same feature extractor used during training
-        from ml.train_model import extract_ml_features, FEATURE_NAMES
+        # Shared feature extractor — lives in api.services.ml_features so
+        # inference doesn't drag sklearn (training-only) into the image.
+        from api.services.ml_features import extract_ml_features, FEATURE_NAMES
 
         features = extract_ml_features(domain)
         feature_vector = [features[k] for k in FEATURE_NAMES]
