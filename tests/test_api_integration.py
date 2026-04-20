@@ -54,6 +54,9 @@ def test_scoring_pipeline():
     assert len(reasons) >= 3
 
     ml_available = ml_scorer._load_model()
+    # Note: scoring.RiskLevel uses {safe, caution, dangerous} — "caution" is the
+    # middle-tier (25–49 range), "dangerous" is 50+. email_analyzer has its own
+    # (unrelated) enum with "suspicious".
     if ml_available:
         assert score >= 50 and level.value == "dangerous", (
             f"With ML loaded, phishing domain should score dangerous, got {score}/{level.value}"
@@ -61,7 +64,7 @@ def test_scoring_pipeline():
     else:
         # Without ML the rule-based floor for this domain is ~38 (risky_tld_high +
         # suspicious_keyword + suspicious_ngram). Any lower means heuristics regressed.
-        assert score >= 30 and level.value in ("suspicious", "dangerous"), (
+        assert score >= 30 and level.value in ("caution", "dangerous"), (
             f"Without ML, heuristic floor should still catch obvious phishing, got {score}/{level.value}"
         )
 
