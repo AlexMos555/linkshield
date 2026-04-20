@@ -9,9 +9,13 @@ dnspython==2.7.0
 stripe==11.0.0
 sentry-sdk[fastapi]==2.19.0
 bcrypt==4.2.1
-# ML scoring — wraps the CatBoost model in data/phishing_model.cbm.
-# Pulls ~120 MB of numpy/scipy wheels; keep pinned so Railway build stays
-# reproducible. If catboost upstream drops Python 3.11 support we fall
-# back gracefully (ml_scorer._load_model catches ImportError).
-catboost==1.2.7
-numpy==1.26.4
+# NOTE: ML scoring (catboost + numpy) is NOT installed here.
+# Reason: catboost resident footprint is ~400MB — OOM-kills pods on Railway's
+# 512 MB starter plan. Without it, ml_scorer._load_model() gracefully fails
+# and scoring drops to rule-based only (obvious phishing still reaches
+# "suspicious" level but not "dangerous").
+#
+# To re-enable ML once we're on a larger plan (Pro / 1 GB+):
+#   pip install catboost==1.2.7 numpy==1.26.4
+#
+# Or wire ML as a separate worker service (Phase I) so API stays lean.
