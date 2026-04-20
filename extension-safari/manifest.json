@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "LinkShield — Phishing Protection",
-  "description": "Automatic phishing link detection. Your browsing data lives only on your device.",
+  "default_locale": "en",
+  "name": "__MSG_extension_name__",
+  "description": "__MSG_extension_description__",
   "version": "0.1.0",
-
   "permissions": [
     "activeTab",
     "storage",
@@ -11,19 +11,23 @@
     "contextMenus",
     "notifications"
   ],
-
   "host_permissions": [
-    "https://api.linkshield.io/*",
-    "http://localhost:8000/*"
+    "https://web-production-fe08.up.railway.app/*",
+    "https://*.linkshield.io/*",
+    "http://localhost:8000/*",
+    "https://mail.google.com/*",
+    "https://outlook.office.com/*",
+    "https://outlook.live.com/*",
+    "https://mail.yahoo.com/*"
   ],
-
   "background": {
     "service_worker": "src/background/index.js"
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "<all_urls>"
+      ],
       "js": [
         "src/utils/local-scorer.js",
         "src/content/weekly-report.js",
@@ -31,11 +35,24 @@
         "src/content/breach-check.js",
         "src/content/index.js"
       ],
-      "css": ["styles/badges.css"],
+      "css": [
+        "styles/badges.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://outlook.office.com/*",
+        "https://outlook.live.com/*",
+        "https://mail.yahoo.com/*"
+      ],
+      "js": [
+        "src/content/webmail.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_icon": {
@@ -45,9 +62,7 @@
       "128": "public/icons/icon128.png"
     }
   },
-
   "options_page": "src/options/options.html",
-
   "icons": {
     "16": "public/icons/icon16.png",
     "32": "public/icons/icon32.png",

@@ -63,6 +63,55 @@ class UserTier(str, Enum):
     business = "business"
 
 
+class SkillLevel(str, Enum):
+    """
+    Skill levels segment UX — one app, four very different presentations.
+
+    - `kids`   — simplified, parental-controlled, stricter blocking
+    - `regular` — default adult UX
+    - `granny` — accessibility focus (large fonts, voice alerts, red/green only)
+    - `pro`    — technical details (raw scores, threat types, headers)
+    """
+
+    kids = "kids"
+    regular = "regular"
+    granny = "granny"
+    pro = "pro"
+
+
+class UserSettings(BaseModel):
+    """User-scoped preferences that sync across devices."""
+
+    skill_level: SkillLevel = SkillLevel.regular
+    preferred_locale: str = "en"
+    voice_alerts_enabled: bool = False
+    font_scale: float = 1.0
+    parental_pin_set: bool = False  # read-only flag; PIN itself never returned
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "skill_level": "regular",
+                "preferred_locale": "en",
+                "voice_alerts_enabled": False,
+                "font_scale": 1.0,
+                "parental_pin_set": False,
+            }
+        }
+
+
+class UserSettingsUpdate(BaseModel):
+    """Partial update — all fields optional so clients can PATCH individually."""
+
+    skill_level: Optional[SkillLevel] = None
+    preferred_locale: Optional[str] = None
+    voice_alerts_enabled: Optional[bool] = None
+    font_scale: Optional[float] = None
+    # When present, a new 4-digit PIN for Kids Mode (hashed server-side).
+    # Set to empty string "" to clear.
+    parental_pin: Optional[str] = None
+
+
 class AuthUser(BaseModel):
     id: str
     email: Optional[str] = None

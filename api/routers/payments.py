@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from api.config import get_settings
 from api.services.auth import get_current_user
+from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 
 logger = logging.getLogger("linkshield.payments")
@@ -45,7 +46,11 @@ class CheckoutResponse(BaseModel):
     checkout_url: str
 
 
-@router.post("/create-checkout", response_model=CheckoutResponse)
+@router.post(
+    "/create-checkout",
+    response_model=CheckoutResponse,
+    dependencies=[Depends(rate_limit(mode="sensitive", category="checkout"))],
+)
 async def create_checkout(
     request: CheckoutRequest,
     user: AuthUser = Depends(get_current_user),
@@ -130,7 +135,10 @@ async def stripe_webhook(request: Request):
     return {"status": "ok"}
 
 
-@router.post("/portal")
+@router.post(
+    "/portal",
+    dependencies=[Depends(rate_limit(mode="sensitive", category="portal"))],
+)
 async def customer_portal(user: AuthUser = Depends(get_current_user)):
     """Create Stripe Customer Portal link for managing subscription."""
     try:

@@ -1,0 +1,129 @@
+# Production-hardened Docker Compose.
+# Run: docker compose -f docker-compose.prod.yml up -d
+#
+# This is the reference deployment for self-hosted / enterprise. Railway uses
+# its own runtime; this file documents the security posture we want EVERY env
+# to meet (read-only fs, dropped caps, no privilege escalation, resource caps).
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: linkshield-api:latest
+    restart: unless-stopped
+
+    # ── Secrets via env file (NEVER commit .env) ───────────────
+    env_file:
+      - .env
+    environment:
+      - PORT=8000
+      - DEBUG=false
+
+    # ── Network ─────────────────────────────────────────────────
+    # Bind only to localhost — put nginx/Caddy in front for TLS termination.
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - linkshield-internal
+
+    # ── Filesystem hardening ────────────────────────────────────
+    # Read-only root FS — attacker can't drop a webshell on disk.
+    read_only: true
+    # Allow tmp scratch space (needed for some libs that write temp files).
+    tmpfs:
+      - /tmp:size=64M,mode=1777,nosuid,nodev
+      - /var/run:size=4M,mode=755,nosuid,nodev
+
+    # ── Process hardening ───────────────────────────────────────
+    user: "10001:10001"           # Match non-root UID from Dockerfile
+    security_opt:
+      - no-new-privileges:true    # Prevent setuid escalation
+    cap_drop:
+      - ALL                       # Drop ALL Linux capabilities
+    # No cap_add — API doesn't need any.
+
+    # ── Resource limits (DoS protection) ────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+    # ── Logging — bounded so a log flood doesn't fill disk ──────
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    # ── Healthcheck (matches Dockerfile but explicit) ───────────
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command:
+      - "redis-server"
+      - "--save"
+      - ""                        # Disable RDB snapshots (we treat redis as ephemeral cache)
+      - "--appendonly"
+      - "no"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}"
+      - "--maxmemory"
+      - "256mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+      - "--protected-mode"
+      - "yes"
+
+    networks:
+      - linkshield-internal
+    # No host port exposed — only reachable from API container
+
+    read_only: true
+    tmpfs:
+      - /data:size=256M,mode=755
+
+    user: "999:999"               # Default redis UID in alpine image
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 320M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  linkshield-internal:
+    driver: bridge
+    # Internal-only network — no external access except via api's published port
+    internal: false

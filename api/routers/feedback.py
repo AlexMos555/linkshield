@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.services.auth import get_current_user
+from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 from api.config import get_settings
 
@@ -36,7 +37,7 @@ class WhitelistRequest(BaseModel):
     domain: str
 
 
-@router.post("/report")
+@router.post("/report", dependencies=[Depends(rate_limit(category="feedback_report"))])
 async def report_domain(
     request: ReportRequest,
     user: AuthUser = Depends(get_current_user),
@@ -84,7 +85,7 @@ async def report_domain(
     return {"status": "ok", "message": "Thank you for your report. We review all submissions."}
 
 
-@router.post("/whitelist")
+@router.post("/whitelist", dependencies=[Depends(rate_limit(category="feedback_write"))])
 async def add_to_whitelist(
     request: WhitelistRequest,
     user: AuthUser = Depends(get_current_user),
@@ -106,7 +107,7 @@ async def add_to_whitelist(
     return {"status": "ok", "domain": domain}
 
 
-@router.delete("/whitelist")
+@router.delete("/whitelist", dependencies=[Depends(rate_limit(category="feedback_write"))])
 async def remove_from_whitelist(
     request: WhitelistRequest,
     user: AuthUser = Depends(get_current_user),
@@ -125,7 +126,7 @@ async def remove_from_whitelist(
     return {"status": "ok", "domain": domain}
 
 
-@router.get("/whitelist")
+@router.get("/whitelist", dependencies=[Depends(rate_limit(category="user_read"))])
 async def get_whitelist(user: AuthUser = Depends(get_current_user)):
     """Get user's personal whitelist."""
     from api.services.cache import get_redis

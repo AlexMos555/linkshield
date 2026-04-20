@@ -2,56 +2,114 @@
  * LinkShield iOS VPN Tunnel (NEPacketTunnelProvider)
  *
  * DNS-only local VPN. Does NOT inspect traffic content.
- * Only intercepts DNS queries to check domains against blocklist.
+ * Only DNS queries are intercepted; all other traffic bypasses the tunnel.
  *
- * Setup: Add Network Extension target in Xcode with
- * NEPacketTunnelProvider capability.
+ * Hardening over the v0.1 skeleton:
+ * - Real upstream DNS forwarding over UDP (was returning the query as its own
+ *   response — nothing ever resolved).
+ * - Thread-safe blocklist / safe cache via `actor BlocklistCache`.
+ * - Swift 6 strict concurrency: all mutable state lives in actors; only
+ *   `Sendable` values cross boundaries.
+ * - System-domain guard centralized in `DomainPolicy` so it can be unit-tested
+ *   from the main app target without running the extension.
+ * - Logging via `os.Logger` (never `print`) per Swift security rules.
  *
- * Privacy: Only domain names are checked. No traffic content
- * is ever read, stored, or transmitted.
+ * Privacy invariants:
+ * - Only domain names are ever read — no TCP/UDP payload is inspected.
+ * - Checked domains leave the extension only as a GET to
+ *   `/api/v1/public/check/{domain}` (domain only, never a URL path).
+ * - App-group storage is `group.io.linkshield.app`; cleared on logout.
+ *
+ * Setup: Add a Network Extension target in Xcode with
+ * NEPacketTunnelProvider capability; register the App Group.
  */
 
+import Foundation
+import Network
 import NetworkExtension
+import os
 
-class PacketTunnelProvider: NEPacketTunnelProvider {
+private let log = Logger(subsystem: "io.linkshield.app", category: "vpn.tunnel")
+private let upstreamDNS = NWEndpoint.hostPort(host: "1.1.1.1", port: 53)
+private let appGroup = "group.io.linkshield.app"
+private let apiBase = "https://web-production-fe08.up.railway.app"
 
-    // Blocked domains cache
-    private var blockedDomains = Set<String>()
+/// Thread-safe blocklist + safe-domain cache. All writes happen inside the
+/// actor; reads return `Sendable` booleans so they are race-free.
+actor BlocklistCache {
+    private var blocked: Set<String> = []
+    private var safe: Set<String> = []
+    private let safeCacheCap = 10_000
 
-    // Bloom filter for known-safe domains (loaded from CDN)
-    private var bloomFilter: Data?
+    func isBlocked(_ domain: String) -> Bool { blocked.contains(domain) }
+    func isSafe(_ domain: String) -> Bool { safe.contains(domain) }
+
+    func markBlocked(_ domain: String) {
+        blocked.insert(domain)
+    }
+
+    func markSafe(_ domain: String) {
+        if safe.count >= safeCacheCap {
+            // Best-effort LRU: drop an arbitrary entry to bound memory.
+            if let first = safe.first { safe.remove(first) }
+        }
+        safe.insert(domain)
+    }
+}
+
+/// Platform-independent policy — unit-tested in the app target.
+enum DomainPolicy {
+    /// System suffixes we NEVER block to avoid bricking the device.
+    /// Update in sync with Android `LinkShieldVpnService.systemSuffixes`.
+    static let systemSuffixes: [String] = [
+        "apple.com",
+        "icloud.com",
+        "mzstatic.com",
+        "linkshield.io",
+        "cloudflare-dns.com",
+    ]
+
+    static func isSystemDomain(_ domain: String) -> Bool {
+        let lower = domain.lowercased()
+        return systemSuffixes.contains { lower == $0 || lower.hasSuffix("." + $0) }
+    }
+}
+
+final class PacketTunnelProvider: NEPacketTunnelProvider {
+
+    private let cache = BlocklistCache()
+    private var readTask: Task<Void, Never>?
+
+    // MARK: - Lifecycle
 
     override func startTunnel(
         options: [String: NSObject]?,
         completionHandler: @escaping (Error?) -> Void
     ) {
-        // Configure DNS settings
-        let dnsSettings = NEDNSSettings(servers: ["127.0.0.1"])
-        dnsSettings.matchDomains = [""] // Match all domains
+        let dnsSettings = NEDNSSettings(servers: ["10.0.0.1"])
+        dnsSettings.matchDomains = [""] // Every domain
 
-        let tunnelSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-        tunnelSettings.dnsSettings = dnsSettings
-
-        // Set up split tunnel (only DNS, no traffic)
-        tunnelSettings.ipv4Settings = NEIPv4Settings(
-            addresses: ["10.0.0.1"],
-            subnetMasks: ["255.255.255.0"]
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
+        settings.dnsSettings = dnsSettings
+        settings.ipv4Settings = NEIPv4Settings(
+            addresses: ["10.0.0.2"],
+            subnetMasks: ["255.255.255.255"]
         )
-        tunnelSettings.ipv4Settings?.includedRoutes = [] // No traffic routing
-        tunnelSettings.mtu = NSNumber(value: 1500)
+        // We route ONLY the synthetic DNS address through the tunnel. All
+        // application traffic bypasses us entirely.
+        settings.ipv4Settings?.includedRoutes = [
+            NEIPv4Route(destinationAddress: "10.0.0.1", subnetMask: "255.255.255.255")
+        ]
+        settings.mtu = NSNumber(value: 1500)
 
-        setTunnelNetworkSettings(tunnelSettings) { error in
+        setTunnelNetworkSettings(settings) { [weak self] error in
             if let error = error {
+                log.error("tunnel_start_failed: \(error.localizedDescription, privacy: .public)")
                 completionHandler(error)
                 return
             }
-
-            // Load bloom filter
-            self.loadBloomFilter()
-
-            // Start reading DNS packets
-            self.startDNSProxy()
-
+            self?.readTask = Task { [weak self] in await self?.readLoop() }
+            log.info("tunnel_started")
             completionHandler(nil)
         }
     }
@@ -60,154 +118,151 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         with reason: NEProviderStopReason,
         completionHandler: @escaping () -> Void
     ) {
+        readTask?.cancel()
+        readTask = nil
+        log.info("tunnel_stopped reason=\(reason.rawValue, privacy: .public)")
         completionHandler()
     }
 
-    // MARK: - DNS Proxy
+    // MARK: - Read / forward loop
 
-    private func startDNSProxy() {
-        // Read packets from the tunnel
-        packetFlow.readPackets { [weak self] packets, protocols in
-            guard let self = self else { return }
+    private func readLoop() async {
+        while !Task.isCancelled {
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                packetFlow.readPackets { [weak self] packets, protocols in
+                    Task { [weak self] in
+                        guard let self = self else { cont.resume(); return }
+                        await self.handle(packets: packets, protocols: protocols)
+                        cont.resume()
+                    }
+                }
+            }
+        }
+    }
 
-            for (index, packet) in packets.enumerated() {
-                self.handleDNSPacket(packet, protocolNumber: protocols[index])
+    private func handle(packets: [Data], protocols: [NSNumber]) async {
+        for (index, packet) in packets.enumerated() {
+            let proto = protocols[index]
+            guard let domain = DNSParser.extractDomain(from: packet) else {
+                // Not a parseable DNS query — drop silently (we only route DNS).
+                continue
             }
 
-            // Continue reading
-            self.startDNSProxy()
-        }
-    }
-
-    private func handleDNSPacket(_ packet: Data, protocolNumber: NSNumber) {
-        // Parse DNS query to extract domain name
-        guard let domain = extractDomainFromDNS(packet) else {
-            // Not a DNS packet or can't parse — forward as-is
-            packetFlow.writePackets([packet], withProtocols: [protocolNumber])
-            return
-        }
-
-        let normalizedDomain = domain.lowercased()
-
-        // Check if domain should be blocked
-        if shouldBlock(normalizedDomain) {
-            // Return NXDOMAIN response
-            if let nxResponse = createNXDOMAINResponse(for: packet) {
-                packetFlow.writePackets([nxResponse], withProtocols: [protocolNumber])
+            let normalized = domain.lowercased().trimmingCharacters(in: .init(charactersIn: "."))
+            if DomainPolicy.isSystemDomain(normalized) {
+                await forward(packet: packet, protocol: proto)
+                continue
             }
 
-            // Send notification to app
-            notifyBlocked(domain: normalizedDomain)
-            return
-        }
+            if await cache.isBlocked(normalized) {
+                if let nx = DNSParser.makeNXDomain(query: packet) {
+                    packetFlow.writePackets([nx], withProtocols: [proto])
+                }
+                await notifyBlocked(domain: normalized)
+                continue
+            }
 
-        // Domain is safe — forward packet to real DNS
-        packetFlow.writePackets([packet], withProtocols: [protocolNumber])
+            if await cache.isSafe(normalized) {
+                await forward(packet: packet, protocol: proto)
+                continue
+            }
+
+            // Unknown — forward immediately (fail-open) and check in background
+            await forward(packet: packet, protocol: proto)
+            Task.detached { [weak self] in
+                await self?.checkDomain(normalized)
+            }
+        }
     }
 
-    // MARK: - Domain Checking
+    // MARK: - Upstream DNS
 
-    private func shouldBlock(_ domain: String) -> Bool {
-        // Skip system domains
-        let systemSuffixes = ["apple.com", "icloud.com", "mzstatic.com", "linkshield.io"]
-        if systemSuffixes.contains(where: { domain.hasSuffix($0) }) {
-            return false
+    /// Forward a raw DNS query to Cloudflare 1.1.1.1 over UDP and inject the
+    /// response back into the tunnel. Uses `NWConnection` (Network.framework)
+    /// for proper cancellation + Sendable safety.
+    private func forward(packet: Data, `protocol`: NSNumber) async {
+        let queue = DispatchQueue(label: "io.linkshield.dns.forward")
+        let connection = NWConnection(to: upstreamDNS, using: .udp)
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            var resumed = false
+            let resumeOnce: @Sendable () -> Void = {
+                if !resumed { resumed = true; cont.resume() }
+            }
+            connection.stateUpdateHandler = { [weak self] state in
+                switch state {
+                case .ready:
+                    // Strip IP+UDP header (28 bytes) — upstream takes raw DNS payload
+                    let dnsPayload = packet.count > 28 ? packet.subdata(in: 28..<packet.count) : packet
+                    connection.send(content: dnsPayload, completion: .contentProcessed { error in
+                        if let error = error {
+                            log.error("dns_forward_send_failed: \(error.localizedDescription, privacy: .public)")
+                            connection.cancel()
+                            resumeOnce()
+                            return
+                        }
+                        connection.receiveMessage { [weak self] data, _, _, _ in
+                            defer {
+                                connection.cancel()
+                                resumeOnce()
+                            }
+                            guard let self = self, let data = data else { return }
+                            // Re-synthesize a full IP/UDP packet response so the
+                            // in-tunnel client sees a well-formed datagram.
+                            if let wrapped = DNSParser.wrapResponse(
+                                payload: data, basedOnQuery: packet
+                            ) {
+                                self.packetFlow.writePackets([wrapped], withProtocols: [`protocol`])
+                            }
+                        }
+                    })
+                case .failed(let error), .waiting(let error):
+                    log.error("dns_upstream_state: \(error.localizedDescription, privacy: .public)")
+                    connection.cancel()
+                    resumeOnce()
+                case .cancelled:
+                    resumeOnce()
+                default:
+                    break
+                }
+            }
+            connection.start(queue: queue)
         }
-
-        // Check local blocklist
-        if blockedDomains.contains(domain) {
-            return true
-        }
-
-        // Check bloom filter (known safe)
-        if isInBloomFilter(domain) {
-            return false
-        }
-
-        // Unknown domain — check API asynchronously
-        // For now, allow and check in background
-        checkDomainAsync(domain)
-        return false
     }
 
-    private func checkDomainAsync(_ domain: String) {
-        let url = URL(string: "https://api.linkshield.io/api/v1/public/check/\(domain)")!
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-            guard let data = data,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+    // MARK: - Background domain check
+
+    private func checkDomain(_ domain: String) async {
+        guard let url = URL(string: "\(apiBase)/api/v1/public/check/\(domain)") else { return }
+        var request = URLRequest(url: url, timeoutInterval: 3.0)
+        request.httpMethod = "GET"
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let level = json["level"] as? String else { return }
 
             if level == "dangerous" {
-                self?.blockedDomains.insert(domain)
-                self?.notifyBlocked(domain: domain)
+                await cache.markBlocked(domain)
+                await notifyBlocked(domain: domain)
+            } else {
+                await cache.markSafe(domain)
             }
-        }.resume()
-    }
-
-    // MARK: - Bloom Filter
-
-    private func loadBloomFilter() {
-        // Load from app group shared container or CDN
-        // For now, placeholder
-    }
-
-    private func isInBloomFilter(_ domain: String) -> Bool {
-        guard bloomFilter != nil else { return false }
-        // MurmurHash3 check — same as JS implementation
-        return false // Placeholder
-    }
-
-    // MARK: - DNS Parsing (simplified)
-
-    private func extractDomainFromDNS(_ packet: Data) -> String? {
-        // DNS packet starts at byte 12 (after IP header offset)
-        // This is a simplified parser — production needs full DNS parsing
-        guard packet.count > 20 else { return nil }
-
-        // Skip IP + UDP headers (28 bytes typically)
-        let dnsOffset = 28
-        guard packet.count > dnsOffset + 12 else { return nil }
-
-        var domain = ""
-        var pos = dnsOffset + 12 // Skip DNS header
-
-        while pos < packet.count {
-            let labelLength = Int(packet[pos])
-            if labelLength == 0 { break }
-            pos += 1
-
-            if pos + labelLength > packet.count { break }
-
-            let label = String(data: packet[pos..<pos + labelLength], encoding: .utf8) ?? ""
-            domain += (domain.isEmpty ? "" : ".") + label
-            pos += labelLength
+        } catch {
+            log.debug("check_api_error: \(error.localizedDescription, privacy: .public)")
+            // Fail-open — don't block on API failure
         }
-
-        return domain.isEmpty ? nil : domain
     }
 
-    private func createNXDOMAINResponse(for query: Data) -> Data? {
-        // Create a minimal NXDOMAIN DNS response
-        // In production, properly construct DNS response packet
-        guard query.count > 30 else { return nil }
+    // MARK: - Notifications (to main app via App Group)
 
-        var response = query
-        // Set QR bit (response) and RCODE = 3 (NXDOMAIN)
-        let dnsOffset = 28
-        if response.count > dnsOffset + 3 {
-            response[dnsOffset + 2] = 0x81 // QR=1, Opcode=0, AA=0, TC=0, RD=1
-            response[dnsOffset + 3] = 0x83 // RA=1, RCODE=3 (NXDOMAIN)
+    private func notifyBlocked(domain: String) async {
+        guard let defaults = UserDefaults(suiteName: appGroup) else { return }
+        var recent = defaults.stringArray(forKey: "blocked_domains") ?? []
+        recent.append("\(domain)|\(Date().timeIntervalSince1970)")
+        if recent.count > 100 {
+            recent = Array(recent.suffix(100))
         }
-        return response
-    }
-
-    // MARK: - Notifications
-
-    private func notifyBlocked(domain: String) {
-        // Post to app via Darwin notification or app group UserDefaults
-        let sharedDefaults = UserDefaults(suiteName: "group.io.linkshield.app")
-        var blocked = sharedDefaults?.stringArray(forKey: "blocked_domains") ?? []
-        blocked.append("\(domain)|\(Date().timeIntervalSince1970)")
-        sharedDefaults?.set(blocked.suffix(100), forKey: "blocked_domains")
+        defaults.set(recent, forKey: "blocked_domains")
     }
 }

@@ -1,0 +1,70 @@
+# LinkShield — Python project configuration
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linkshield-api"
+version = "0.2.0"
+description = "Privacy-first anti-phishing platform — backend API"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+# Make `api.*` imports work без sys.path.insert хаков
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+# Don't pick up benchmark as tests (different purpose)
+norecursedirs = [".git", ".venv", "venv", "node_modules", "catboost_info", "landing", "mobile", "extension", "extension-firefox", "extension-safari"]
+addopts = [
+    "-ra",           # show all non-passing test summaries
+    "--strict-markers",
+    "--tb=short",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+# Env for tests устанавливается в tests/conftest.py
+
+[tool.coverage.run]
+source = ["api"]
+omit = [
+    "api/__init__.py",
+    "*/tests/*",
+    "*/migrations/*",
+    "catboost_info/*",
+]
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ruff]
+line-length = 140
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]  # длина обрабатывается форматтером
+
+[tool.bandit]
+# Bandit static security analysis config
+# Run: bandit -r api/ -c pyproject.toml
+exclude_dirs = ["tests", ".venv", "venv", "node_modules", "data", "catboost_info"]
+# Skip rules that are noisy in our context:
+#   B101: assert_used — fine in tests / sanity checks
+#   B104: hardcoded_bind_all_interfaces — uvicorn 0.0.0.0 in container is intentional
+skips = ["B101", "B104"]

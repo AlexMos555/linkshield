@@ -12,10 +12,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from api.services.scoring import calculate_score, _extract_base_domain, TOP_DOMAINS
 from api.services.domain_validator import validate_domain, DomainValidationError
 from api.services.cache import get_cached_result, cache_result
+from api.services.rate_limiter import rate_limit
 from api.models.schemas import DomainResult, RiskLevel, ConfidenceLevel
 
 logger = logging.getLogger("linkshield.public")
@@ -23,7 +24,10 @@ logger = logging.getLogger("linkshield.public")
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
 
 
-@router.get("/check/{domain}")
+@router.get(
+    "/check/{domain}",
+    dependencies=[Depends(rate_limit(mode="ip", category="public_check"))],
+)
 async def public_check(domain: str, request: Request):
     """
     Public domain safety check. No auth required.
@@ -110,7 +114,10 @@ def _format_public_result(result: DomainResult) -> dict:
     }
 
 
-@router.get("/stats")
+@router.get(
+    "/stats",
+    dependencies=[Depends(rate_limit(mode="ip", category="public_stats"))],
+)
 async def platform_stats():
     """Global platform statistics for landing page and social proof."""
     return {

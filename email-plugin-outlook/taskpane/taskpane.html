@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>LinkShield — Scan this email</title>
+  <!-- Office.js: Microsoft's official host library for add-ins.
+       https://appsforoffice.microsoft.com is the only domain from which it
+       may be loaded to satisfy AppSource validation rules. -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="taskpane.css"/>
+</head>
+<body class="loading">
+  <main class="container" aria-live="polite">
+    <header class="header">
+      <span class="brand">LinkShield</span>
+      <span id="status-pill" class="pill pill--loading" aria-label="Status">
+        Scanning…
+      </span>
+    </header>
+
+    <!-- Primary verdict card — colour + headline swap based on level. -->
+    <section class="verdict" id="verdict" role="status" hidden>
+      <div class="verdict__icon" aria-hidden="true">🛡️</div>
+      <h1 class="verdict__title" id="verdict-title"></h1>
+      <p class="verdict__subtitle" id="verdict-subtitle"></p>
+      <div class="verdict__score" aria-label="Risk score">
+        <span id="verdict-score">0</span>/100
+      </div>
+    </section>
+
+    <!-- Findings list — collapsible grouping by category. -->
+    <section class="findings" id="findings" hidden>
+      <h2 class="section-title">Why LinkShield is warning you</h2>
+      <ul id="findings-list" class="findings-list"></ul>
+    </section>
+
+    <!-- Link inventory — helpful even on safe emails so users can see
+         what the email was actually pointing to. -->
+    <section class="links" id="links" hidden>
+      <h2 class="section-title">Links in this email</h2>
+      <ul id="links-list" class="links-list"></ul>
+    </section>
+
+    <div class="actions">
+      <button id="btn-report" class="btn btn--danger" type="button" hidden>
+        Report as phishing
+      </button>
+      <button id="btn-rescan" class="btn btn--secondary" type="button" hidden>
+        Rescan
+      </button>
+    </div>
+
+    <div class="error" id="error" hidden role="alert">
+      <strong>We couldn't scan this message.</strong>
+      <p id="error-detail"></p>
+    </div>
+
+    <footer class="footer">
+      <a href="https://linkshield.io/privacy-policy" target="_blank" rel="noopener">
+        Privacy
+      </a>
+      <span class="separator">·</span>
+      <a href="https://linkshield.io/support" target="_blank" rel="noopener">
+        Support
+      </a>
+    </footer>
+  </main>
+  <script src="taskpane.js" defer></script>
+</body>
+</html>

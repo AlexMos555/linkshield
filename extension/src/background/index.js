@@ -2,7 +2,20 @@
  * LinkShield Background — v3 (bullet-proof)
  */
 
-let API_BASE = "http://localhost:8000";
+// API base — production Railway default, override via Options page (chrome.storage.local.api_url)
+let API_BASE = "https://web-production-fe08.up.railway.app";
+try {
+  chrome.storage.local.get("api_url").then(function(data) {
+    if (data && typeof data.api_url === "string" && data.api_url.startsWith("http")) {
+      API_BASE = data.api_url.replace(/\/$/, "");
+    }
+  }).catch(function() {});
+  chrome.storage.onChanged.addListener(function(changes, area) {
+    if (area === "local" && changes && changes.api_url && typeof changes.api_url.newValue === "string") {
+      API_BASE = changes.api_url.newValue.replace(/\/$/, "");
+    }
+  });
+} catch (e) { /* ignore */ }
 chrome.storage.local.get(["api_url"], d => { if (d.api_url) API_BASE = d.api_url; });
 
 // ── Cache ──

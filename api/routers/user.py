@@ -18,7 +18,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.services.auth import get_current_user
-from api.models.schemas import AuthUser
+from api.services.rate_limiter import rate_limit
+from api.models.schemas import (
+    AuthUser,
+    SkillLevel,
+    UserSettings,
+    UserSettingsUpdate,
+)
 from api.config import get_settings
 
 logger = logging.getLogger("linkshield.user")
@@ -62,7 +68,7 @@ class ProfileResponse(BaseModel):
 
 # ── Endpoints ──
 
-@router.post("/aggregates")
+@router.post("/aggregates", dependencies=[Depends(rate_limit(category="user_write"))])
 async def submit_weekly_aggregate(
     data: WeeklyAggregateSubmit,
     user: AuthUser = Depends(get_current_user),
@@ -120,7 +126,11 @@ async def submit_weekly_aggregate(
         raise HTTPException(500, "Failed to submit aggregate")
 
 
-@router.get("/percentile", response_model=PercentileResponse)
+@router.get(
+    "/percentile",
+    response_model=PercentileResponse,
+    dependencies=[Depends(rate_limit(category="user_read"))],
+)
 async def get_percentile(user: AuthUser = Depends(get_current_user)):
     """
     Get user's percentile ranking based on weekly blocks.
@@ -208,7 +218,7 @@ async def get_percentile(user: AuthUser = Depends(get_current_user)):
         return PercentileResponse(percentile=50, total_blocks=0, bracket="calculating...")
 
 
-@router.post("/score")
+@router.post("/score", dependencies=[Depends(rate_limit(category="user_write"))])
 async def sync_score(
     data: ScoreSync,
     user: AuthUser = Depends(get_current_user),
@@ -253,7 +263,7 @@ async def sync_score(
         return {"status": "ok", "note": "Score sync failed, will retry"}
 
 
-@router.post("/device")
+@router.post("/device", dependencies=[Depends(rate_limit(category="user_write"))])
 async def register_device(
     data: DeviceRegister,
     user: AuthUser = Depends(get_current_user),
@@ -293,7 +303,171 @@ async def register_device(
         return {"status": "ok"}
 
 
-@router.get("/profile", response_model=ProfileResponse)
+_ALLOWED_LOCALES = frozenset(
+    {"en", "es", "hi", "pt", "ru", "ar", "fr", "de", "it", "id"}
+)
+
+
+def _hash_pin(pin: str) -> str:
+    """
+    Hash a 4-digit PIN with bcrypt.
+
+    We deliberately do NOT log the plaintext PIN anywhere. Callers must validate
+    format (4 digits) before invoking.
+    """
+    import bcrypt
+
+    # bcrypt is slow on purpose — 4-digit space is tiny, slow hash is the
+    # only defense against offline brute force once the hash is stolen.
+    return bcrypt.hashpw(pin.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
+
+
+@router.get(
+    "/settings",
+    response_model=UserSettings,
+    dependencies=[Depends(rate_limit(category="user_read"))],
+)
+async def get_user_settings(user: AuthUser = Depends(get_current_user)) -> UserSettings:
+    """
+    Return the current user's cross-device preferences (skill level, locale,
+    accessibility defaults). PIN is never returned — only the `parental_pin_set`
+    flag.
+    """
+    import httpx
+
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        # Degraded mode — return defaults so UI still renders
+        return UserSettings()
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(
+            f"{settings.supabase_url}/rest/v1/users",
+            params={
+                "id": f"eq.{user.id}",
+                "select": "skill_level,preferred_locale,voice_alerts_enabled,font_scale,parental_pin_hash",
+            },
+            headers={
+                "apikey": settings.supabase_service_key,
+                "Authorization": f"Bearer {settings.supabase_service_key}",
+            },
+        )
+        if resp.status_code != 200:
+            logger.warning("settings_fetch_failed", extra={"status": resp.status_code})
+            return UserSettings()
+        rows = resp.json()
+        if not rows:
+            return UserSettings()
+        row = rows[0]
+        try:
+            return UserSettings(
+                skill_level=SkillLevel(row.get("skill_level") or "regular"),
+                preferred_locale=row.get("preferred_locale") or "en",
+                voice_alerts_enabled=bool(row.get("voice_alerts_enabled", False)),
+                font_scale=float(row.get("font_scale") or 1.0),
+                parental_pin_set=bool(row.get("parental_pin_hash")),
+            )
+        except (ValueError, TypeError) as e:
+            logger.warning("settings_decode_failed", extra={"error": str(e)})
+            return UserSettings()
+
+
+@router.put(
+    "/settings",
+    response_model=UserSettings,
+    dependencies=[Depends(rate_limit(category="user_write"))],
+)
+async def update_user_settings(
+    update: UserSettingsUpdate,
+    user: AuthUser = Depends(get_current_user),
+) -> UserSettings:
+    """
+    Partial update of user settings. All fields optional.
+
+    Parental PIN behavior:
+    - Providing a non-empty `parental_pin` hashes and stores it.
+    - Providing `parental_pin=""` clears the PIN.
+    - Omitting `parental_pin` leaves the existing hash untouched.
+    """
+    # ── Validation ──
+    if update.font_scale is not None and not 0.8 <= update.font_scale <= 2.5:
+        raise HTTPException(
+            status_code=422,
+            detail="font_scale must be between 0.8 and 2.5",
+        )
+    if update.preferred_locale is not None and update.preferred_locale not in _ALLOWED_LOCALES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"preferred_locale must be one of: {sorted(_ALLOWED_LOCALES)}",
+        )
+    if update.parental_pin is not None and update.parental_pin != "":
+        pin = update.parental_pin
+        if not (pin.isdigit() and len(pin) == 4):
+            raise HTTPException(
+                status_code=422,
+                detail="parental_pin must be exactly 4 digits",
+            )
+
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        raise HTTPException(
+            status_code=503,
+            detail="User settings storage unavailable",
+        )
+
+    # Build update payload from non-None fields
+    payload: dict = {}
+    if update.skill_level is not None:
+        payload["skill_level"] = update.skill_level.value
+    if update.preferred_locale is not None:
+        payload["preferred_locale"] = update.preferred_locale
+    if update.voice_alerts_enabled is not None:
+        payload["voice_alerts_enabled"] = update.voice_alerts_enabled
+    if update.font_scale is not None:
+        payload["font_scale"] = update.font_scale
+    if update.parental_pin is not None:
+        if update.parental_pin == "":
+            payload["parental_pin_hash"] = None
+        else:
+            payload["parental_pin_hash"] = _hash_pin(update.parental_pin)
+
+    # Nothing to update — return current state
+    if not payload:
+        return await get_user_settings(user)
+
+    import httpx
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.patch(
+            f"{settings.supabase_url}/rest/v1/users",
+            params={"id": f"eq.{user.id}"},
+            json=payload,
+            headers={
+                "apikey": settings.supabase_service_key,
+                "Authorization": f"Bearer {settings.supabase_service_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation",
+            },
+        )
+        if resp.status_code not in (200, 204):
+            logger.warning(
+                "settings_update_failed",
+                extra={"status": resp.status_code, "user_id": user.id},
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to persist user settings",
+            )
+
+    # Re-fetch to return canonical state (with parental_pin_set derived flag)
+    return await get_user_settings(user)
+
+
+@router.get(
+    "/profile",
+    response_model=ProfileResponse,
+    dependencies=[Depends(rate_limit(category="user_read"))],
+)
 async def get_profile(user: AuthUser = Depends(get_current_user)):
     """Get user profile info."""
     return ProfileResponse(

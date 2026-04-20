@@ -1,106 +1,98 @@
 # STATE: LinkShield
 
+> Single source of truth для "где мы сейчас". Обновлено 2026-04-16.
+
 ## Current Position
-- **Milestone:** 1 (MVP — Chrome Extension)
-- **Phase:** Pre-Phase 1 (Architecture finalized)
-- **Status:** Ready to build
 
-## Key Decisions
+- **Active phase:** E₄ — Mobile native VPN (next)
+- **Overall completeness:** ~72% (E₁/E₂/E₃ all done — monorepo, email, 3 environments)
+- **Shipped this sprint:** monorepo с 4 packages, security hardening, landing i18n, extension redesign на 10 языках
 
-### Architecture: "Boring Database" (FINAL)
-Server stores account data (boring if leaked). Device stores behavior data (sensitive, never leaves).
+## Tech stack зафиксирован
 
-**Server (Supabase):**
-- users, subscriptions, devices, families, family_members
-- weekly_aggregates (total_checks, total_blocks — numbers only)
-- security_score (number only, not breakdown)
-- settings (synced across devices)
+**Monorepo root.** npm workspaces: packages/* + landing.
+```
+apps:     api (Railway), landing (Vercel), extension × 3, mobile (Expo RN)
+packages: i18n-strings, extension-core, api-types, api-client
+scripts:  build-i18n.py, build-extensions.sh, dump-openapi.py, generate-api-types.sh
+infra:    Dockerfile (multi-stage non-root), docker-compose.prod.yml, .github/workflows/
+docs:     docs/architecture/, SECURITY.md, .planning/
+```
 
-**Device (SQLite / IndexedDB):**
-- Full URL check history with details
-- Privacy Audit results per site
-- Security Score factors and breakdown
-- Weekly Report raw data
-- Tracker/fingerprinting encounter log
-- Family alert content (E2E encrypted)
+**External services wired:**
+- Supabase EU (eu-central-1 Frankfurt): `bpyqgzzclsbfvxthyfsf` — schema 003 применена, 12 таблиц
+- Railway API: `web-production-fe08.up.railway.app` — status 200, Redis off (ok degraded mode)
+- Vercel: `landing` project linked, 80+ SSG routes build успешен
+- GitHub: pre-commit gitleaks + CI security workflows активны
 
-**Rule:** server knows WHO. Device knows WHAT. Browsing behavior never leaves device.
+**External pending (user actions):**
+- Stripe account + 24 regional price IDs
+- Google Safe Browsing API key (console.cloud.google.com)
+- Redis provider (Upstash free tier или Railway addon)
+- Railway env vars обновление на новый EU Supabase (требуется `railway login`)
+- Выбор домена — ребрендинг (linkshield.com/.io недоступны как наши)
 
-**Breach scenario:** attacker gets emails + subscription status + "checked 2847 links this week." No URLs, no audits, no browsing profile.
+## Decisions locked
 
-### Auth & Payments
-- **Auth:** Supabase Auth (Apple, Google, email+password)
-- **Web payments:** Stripe
-- **Mobile payments:** Apple IAP + Google Play Billing (+ Stripe fallback)
-- **B2B:** Stripe Invoicing
-- **Cross-platform:** same account, login once
+**i18n — 10 языков.** en/ru native-quality. 8 draft (es/pt/fr/de/it/id/hi/ar) — нужна native review перед Chrome Web Store publish.
 
-### Tech Stack
-- **Backend:** FastAPI — URL analysis (logs domain+score, never full URL)
-- **Edge:** Cloudflare Workers — bloom filter CDN + URL check
-- **Database:** Supabase (PostgreSQL + Auth + Realtime)
-- **Payments:** Stripe + Apple IAP + Google Play
-- **On-device:** SQLite (mobile), IndexedDB (extension)
-- **Sync:** Supabase Realtime (settings + aggregates)
-- **Family relay:** Supabase Realtime + E2E encryption
-- **Extension:** TypeScript, Manifest V3
-- **Mobile:** React Native
-- **Landing:** Next.js 15
+**Regional pricing — 4 PPP tier:** T1 $5.99 / T2 $4.99 / T3 $2.49 / T4 $1.49 Personal. Pydantic response models → OpenAPI → TypeScript.
 
-### What this architecture unlocks
-1. Cross-device sync (settings + aggregates)
-2. Real percentile in Weekly Report (server aggregate)
-3. Simpler Family Hub (server membership + E2E content)
-4. Normal customer support (user has account)
-5. Opt-in email marketing (we know email)
-6. Server-enforced free tier (real rate limit by user_id)
-7. B2B on same infrastructure (add org_id)
-8. Stripe for everyone (simpler billing)
+**Pricing v2 — "feel value, then pay":** Free forever для блокировки. 50-threat soft limit на detailed explanations. Paid = Family / Granny Mode / Privacy Audit full / sync.
 
-### Privacy messaging
-"Your browsing data lives only on your device. Our servers know your account — not what you do online. Even if we're breached, attackers learn nothing about your online life."
+**4 skill levels:** Kids / Regular / Granny / Pro — schema готова, UI только Regular (Phase D ждёт).
 
-### Pricing
-| Tier | Price | Server data | Device data |
+**Security baseline.** Multi-stage Docker, non-root, CSP/HSTS/XFO, gitleaks pre-commit, 6-class threat model, rotation procedure.
+
+## Phases status
+
+| Phase | Title | Status | Notes |
 |---|---|---|---|
-| Free | $0 | Account + aggregates | Full history + audit |
-| Personal | $4.99/mo | Account + aggregates | Full history + audit |
-| Family | $9.99/mo | + family membership | + E2E alert content |
-| Business | $3.99/user/mo | + org aggregates | + employee device data |
+| A | Strategic foundation | ✅ done | 7 планов + 1 README архитектуры |
+| B | Shipping unblock | ⚠️ partial | Env-driven OK, Supabase OK, Vercel OK, pytest OK; ждём Stripe/GSB/Redis/Railway creds |
+| C | Regular User UX + i18n | ⚠️ partial | Popup/block/welcome/pricing готовы на 10 языках; landing секции Features/FAQ/Comparison/Testimonials ещё EN only |
+| D | Skill Levels | ⏳ schema ready | Всё в БД, UI ещё нет |
+| E₁ | Mobile → монорепо | ✅ done | api-client + i18n-strings integrated, 10 langs, RTL |
+| E₂ | Transactional Email | ✅ done | 7 templates × 10 langs, 61 tests, HMAC unsubscribe |
+| E₃ | dev/staging/prod environments | ✅ done | 3 envs, staging Supabase `dsjkfcllugmlegwymmth`, config guards, runbooks |
+| **E₄** | **Mobile native VPN** | 🔨 **СЕЙЧАС** | iOS PacketTunnel + Android VpnService — реализовать DNS interception |
+| F | Growth | 📋 planned | Web Store publish + Product Hunt + referral |
+| G | B2B | 📋 planned | Email proxy + phishing sim + SSO |
+| H | Infra as Code | 📋 planned | Terraform + status page + chaos drills |
 
-## Blockers
-- [ ] Домен linkshield.io
-- [ ] Supabase project setup
-- [ ] Google Safe Browsing API key
-- [ ] Apple Developer account ($99/yr)
-- [ ] Google Play Developer account ($25)
-- [ ] Stripe account
-- [ ] Cloudflare Workers account
-- [ ] Firebase project (push notifications)
+## Current work: Phase E₁ — Mobile → монорепо
 
-## Risks
+**Goal:** mobile/ подключён к packages/ так же как landing — убрать дубли типов и i18n.
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Apple VPN review | 2-4 weeks | DNS Profile fallback |
-| VPN conflict (~30% mobile) | Can't use local VPN | Smart auto-detection → DNS |
-| Server breach | Email + subscription exposed | No browsing data on server — boring leak |
-| Extension Aha-moment limited | Only open emails scanned | Still effective, add Gmail API later |
-| B2B compliance | SOC 2 questions | Minimal server data = minimal scope |
-| Supabase vendor lock-in | Migration pain | Standard PostgreSQL, can self-host |
+**Tasks:**
+1. Add `mobile/` в root `package.json` workspaces
+2. `mobile/src/services/api.ts` → заменить на `@linkshield/api-client`
+3. Расширить `scripts/build-i18n.py` чтобы генерировало `mobile/i18n/{locale}.json`
+4. Настроить `expo-localization` + `react-i18next` на эти 10 файлов
+5. Заменить hardcoded English строки в mobile на `t("key")` calls
+6. RTL support (`I18nManager.forceRTL` для ar)
+7. Smoke test через Expo Go — запускается, язык переключается
 
-## Open Questions
-- [ ] Название: LinkShield или ребрендинг?
-- [ ] Anonymous telemetry: opt-in anonymous aggregate for product analytics?
-- [ ] Safari extension: M1 or M2?
-- [ ] Gmail API for deeper Aha-moment: pursue after V1 launch?
+## Architectural invariants (НЕ нарушать)
 
-## Session Log
-- **S1:** Концепция: автоматическая защита. Extension → mobile → email proxy.
-- **S2:** Конкурентный анализ V1. GSD-план V1.
-- **S3:** Мокапы. Privacy architecture (bloom filter, domain-only).
-- **S4:** +Aha-moment, Weekly Report, Security Score, Family Hub, VPN conflict, Phishing Sim.
-- **S5:** Конкурентный анализ V2: 13 конкурентов, 6 гэпов подтверждены.
-- **S6:** Zero-storage architecture. Убрана база пользователей.
-- **S7:** Honesty audit: 7 проблем найдены и исправлены.
-- **S8:** "BORING DATABASE" — вернули серверную базу, но только для account data. Browsing behavior остаётся на устройстве. Решены: sync, percentile, Family Hub, support, free tier enforcement, B2B same infra, Stripe for all. Архитектура финализирована.
+1. **Privacy.** Никакие браузинг-данные (URL, history, audit результаты) не покидают устройство. Только домен + агрегаты.
+2. **Blocking is free forever.** Даже после 50-threat threshold блокировка работает. Paywall только на детали/семью/режимы.
+3. **Plain language.** Никакого жаргона в Regular Mode UI. Pro Mode может иметь technical terms.
+4. **i18n source of truth.** Все UI строки — в `packages/i18n-strings/src/*.json`. Hardcoded English = bug.
+5. **Contract-driven clients.** Все клиенты (landing/mobile/extension) импортируют `@linkshield/api-types` и `@linkshield/api-client`. Hand-rolled interfaces = bug.
+6. **Secrets never in git.** gitleaks pre-commit + CI. Все creds через env vars или Railway/Vercel dashboards.
+
+## Open questions (не блокеры)
+
+- Какой домен регать (linkshield.com занят, linkshield.io не наш)? Отложено до ребрендинга.
+- Email провайдер: Resend (modern, $20/mo) vs SES (дёшево, сложнее setup)? Решим в Phase E₂.
+- Stripe Adaptive Pricing vs ручные price IDs по странам? Ручные для контроля.
+
+## Session log (недавнее)
+
+- **2026-04-14 S10:** Phase A complete (7 планов + competitive-analysis v2 с UX axis). Установили claude-mem, antigravity skills, ultimate-guide MCP.
+- **2026-04-15 S11:** Phase B — Supabase EU migration, env-driven URLs в клиентах, pytest. Phase C — popup/block/welcome redesigned на 10 языков.
+- **2026-04-16 S12:** Landing i18n (next-intl), security hardening (Dockerfile/compose/headers/gitleaks/CI), monorepo refactor (packages/extension-core, packages/i18n-strings). Phase C partially, architecture principles documented.
+- **2026-04-16 S13:** api-types + api-client generated из OpenAPI. Landing pricing page переведена на @linkshield/api-client. Pydantic response models для pricing. Начинаем Phase E₁ (mobile монорепо).
+- **2026-04-16 S14 (now):** Phase E₁ + E₂ done. Mobile интегрирован в монорепо (api-client, i18n). Email infra: 7 React Email шаблонов × 10 языков, 600 i18n keys, 61 новых тестов, HMAC unsubscribe + RFC 8058 one-click, docs/runbooks/email.md, packages/email-templates/README.md. Активная фаза — E₃ (environments).
+- **2026-04-16 S15 (now):** Phase E₃ done. Staging Supabase project `dsjkfcllugmlegwymmth` created + migrations applied (Sydney удалён). `api/config.py` + `validate_settings()` enforce environment-aware rules: dev permissive, staging strict (Stripe test only), prod ruthless (sk_live_ required, JWT ≥64 chars, Sentry required). 24 новых `test_environment_guards` теста + 3 deploy workflows (staging auto-on-main, prod manual-dispatch with approval). Runbooks: deploy.md (PR → staging → approve → prod) + rollback.md (5-min RTO). Total: 250 pytest pass, 7 shared packages, 10 languages, 3 environments ready.

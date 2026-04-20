@@ -1,0 +1,20 @@
+{
+  "name": "@linkshield/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed fetch wrapper for the LinkShield API. Use this instead of raw fetch() — it enforces the HTTP contract, times out, and narrows error shapes.",
+  "types": "./src/index.ts",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src/**/*.ts"
+  ],
+  "dependencies": {
+    "@linkshield/api-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

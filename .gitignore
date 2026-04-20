@@ -6,10 +6,26 @@ __pycache__/
 venv/
 *.egg-info/
 
-# Environment
+# ── Environment / Secrets (CRITICAL — never commit) ─
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.keytab
+secrets/
+credentials.json
+service-account*.json
+.aws/
+.gcp/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.mypy_cache/
 
 # Data (large files)
 data/top-1m.csv
@@ -38,3 +54,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Claude Code / AI assistants
+.claude/
+.cursor/
+.ecc/

@@ -1,0 +1,225 @@
+{
+  "extension_name": {
+    "message": "LinkShield — Schutz vor betrügerischen Links"
+  },
+  "extension_description": {
+    "message": "Automatische Erkennung von Betrugs- und Phishing-Seiten. In einfacher Sprache, für alle."
+  },
+  "popup_brand": {
+    "message": "LinkShield"
+  },
+  "popup_settings_title": {
+    "message": "Einstellungen"
+  },
+  "status_scanning": {
+    "message": "Diese Seite wird überprüft…"
+  },
+  "status_safe_title": {
+    "message": "Diese Seite ist sicher"
+  },
+  "status_safe_subtitle": {
+    "message": "Keine Betrugslinks auf $DOMAIN$ gefunden",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Einige Links wirken verdächtig"
+  },
+  "status_warning_subtitle": {
+    "message": "$N$ Links auf dieser Seite sollten genauer geprüft werden",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "Das ist eine Betrugsseite"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ gibt sich als andere Seite aus, um Ihre Daten zu stehlen",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "Seite konnte nicht geprüft werden"
+  },
+  "status_unknown_subtitle": {
+    "message": "Bitte versuchen Sie es gleich noch einmal"
+  },
+  "action_close_tab": {
+    "message": "Diese Seite schließen"
+  },
+  "action_audit": {
+    "message": "Was diese Seite sammelt"
+  },
+  "action_week": {
+    "message": "Meine Woche"
+  },
+  "action_more": {
+    "message": "Mehr"
+  },
+  "action_less": {
+    "message": "Weniger"
+  },
+  "more_section_label": {
+    "message": "Weitere Werkzeuge"
+  },
+  "action_breach": {
+    "message": "E-Mail-Leck prüfen"
+  },
+  "action_score": {
+    "message": "Mein Sicherheitslevel"
+  },
+  "action_trust": {
+    "message": "Dieser Seite immer vertrauen"
+  },
+  "action_report": {
+    "message": "Falsches Ergebnis melden"
+  },
+  "stats_label_blocked": {
+    "message": "Betrug blockiert"
+  },
+  "stats_label_warned": {
+    "message": "Warnungen"
+  },
+  "stats_label_checked": {
+    "message": "Links geprüft"
+  },
+  "upgrade_free_count": {
+    "message": "Kostenlos: $USED$ von $LIMIT$ Prüfungen heute",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Upgrade"
+  },
+  "onboarding_welcome": {
+    "message": "Hallo! Ich bin LinkShield."
+  },
+  "onboarding_tip": {
+    "message": "Ich prüfe jeden Link auf jeder Seite. Gefährliche markiere ich rot. Unsicher? Rechtsklick → „Mit LinkShield prüfen\"."
+  },
+  "aha_found_scams": {
+    "message": "Ich habe $N$ Betrugslinks gefunden, die Ihr Browser übersehen hat",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Offline — Basisschutz aktiv"
+  },
+  "recent_empty": {
+    "message": "Noch nichts gefunden — surfen Sie normal weiter, ich passe auf."
+  },
+  "trust_footer": {
+    "message": "Ihre Daten verlassen dieses Gerät nie"
+  },
+  "block_title": {
+    "message": "STOPP"
+  },
+  "block_subtitle_scam": {
+    "message": "Das ist eine Betrugsseite"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ gibt sich als andere Seite aus, um Ihre Daten zu stehlen.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "Diese Seite gibt sich als $BRAND$ aus",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "So nutzen Betrüger solche Seiten:"
+  },
+  "block_scheme_step1": {
+    "message": "Sie werden nach Ihrem Passwort oder Bankdaten gefragt"
+  },
+  "block_scheme_step2": {
+    "message": "Der Betrüger stiehlt alles, was Sie eingeben"
+  },
+  "block_scheme_step3": {
+    "message": "Er plündert Ihr Konto oder stiehlt Ihre Identität"
+  },
+  "block_back_button": {
+    "message": "Zurück zur Sicherheit"
+  },
+  "block_proceed_button": {
+    "message": "Risiko verstanden — trotzdem öffnen"
+  },
+  "block_proceed_countdown": {
+    "message": "Noch $N$ Sekunden warten…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Geschützt durch LinkShield. Ihre Daten bleiben auf diesem Gerät."
+  },
+  "welcome_hero_title": {
+    "message": "Sie sind jetzt geschützt"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Jeder Link wird geprüft. Gefährliche werden automatisch blockiert."
+  },
+  "welcome_step1_title": {
+    "message": "Automatische Prüfung"
+  },
+  "welcome_step1_desc": {
+    "message": "Jede Seite, jeder Link. Grünes Zeichen: sicher. Rotes: Betrug."
+  },
+  "welcome_step2_title": {
+    "message": "Ihre Daten bleiben bei Ihnen"
+  },
+  "welcome_step2_desc": {
+    "message": "Wir prüfen nur Seitennamen. Ihr Verlauf verlässt dieses Gerät nie."
+  },
+  "welcome_step3_title": {
+    "message": "Keine Verzögerung"
+  },
+  "welcome_step3_desc": {
+    "message": "Die meisten Prüfungen laufen auf Ihrem Gerät in unter einer Sekunde."
+  },
+  "welcome_step4_title": {
+    "message": "Für die ganze Familie"
+  },
+  "welcome_step4_desc": {
+    "message": "Schützen Sie Eltern, Kinder, Großeltern mit einem Plan. Für jeden der passende Modus."
+  },
+  "welcome_cta_scan": {
+    "message": "Mein Postfach auf versteckten Betrug prüfen"
+  },
+  "welcome_cta_skip": {
+    "message": "Überspringen — jetzt browsen"
+  },
+  "welcome_trust_footer": {
+    "message": "Blockieren ist für immer kostenlos. Ihre Daten verlassen dieses Gerät nie."
+  },
+  "welcome_step_label": {
+    "message": "Schritt"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@linkshield/api-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generated TypeScript types for the LinkShield FastAPI. Source of truth: api/main.py → OpenAPI → these types. Do not edit src/openapi.d.ts by hand — it's regenerated.",
+  "types": "./src/index.d.ts",
+  "main": "./src/index.js",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./schema": {
+      "types": "./src/openapi.d.ts"
+    }
+  },
+  "files": [
+    "src/**/*.d.ts",
+    "src/**/*.js",
+    "schema/openapi.json"
+  ],
+  "scripts": {
+    "build": "bash ../../scripts/generate-api-types.sh",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.4",
+    "typescript": "^5.6.3"
+  }
+}

@@ -5,17 +5,25 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui",
+    "e2e:install": "playwright install --with-deps chromium webkit"
   },
   "dependencies": {
+    "@linkshield/api-client": "*",
+    "@linkshield/api-types": "*",
     "@tailwindcss/postcss": "^4.2.2",
     "next": "^15.0.0",
+    "next-intl": "^4.9.1",
     "postcss": "^8.5.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "25.5.2",
     "@types/react": "^19.0.0",
     "typescript": "^5.0.0"

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block Page Preview — LinkShield</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #0f172a; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .preview-controls {
+      position: fixed; top: 12px; left: 12px; z-index: 1;
+      background: rgba(15, 23, 42, 0.95); border: 1px solid #334155;
+      padding: 10px 14px; border-radius: 10px; color: #e2e8f0; font-size: 12px;
+      display: flex; flex-direction: column; gap: 6px; max-width: 260px;
+    }
+    .preview-controls input { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 12px; }
+    .preview-controls button { padding: 6px 10px; border-radius: 6px; border: none; background: #22c55e; color: #052e16; font-weight: 700; cursor: pointer; font-size: 12px; }
+    .preview-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+    .fake-page { padding: 40px; color: #64748b; }
+    .fake-page h1 { color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <!-- Preview controls -->
+  <div class="preview-controls">
+    <div class="preview-label">Block page preview</div>
+    <input id="domain-input" type="text" placeholder="Domain (e.g. sberbank-fake.ru)" value="sberbank-secure-login.ru">
+    <input id="brand-input" type="text" placeholder="Impersonated brand (optional)" value="Sberbank">
+    <button id="show-block">Show block page</button>
+    <div class="preview-label" style="margin-top: 4px;">Simulates what user sees when hitting scam site. Standalone — uses English fallback (no chrome.i18n).</div>
+  </div>
+
+  <!-- Fake page content behind overlay -->
+  <div class="fake-page">
+    <h1>Fake page content</h1>
+    <p>This is what a real webpage looks like before the block overlay covers it.</p>
+    <p>Click "Show block page" to render the LinkShield warning over this page.</p>
+  </div>
+
+  <script type="module">
+    import { showBlockPage } from '../content/block-page.js';
+
+    const domainInput = document.getElementById('domain-input');
+    const brandInput = document.getElementById('brand-input');
+    const showBtn = document.getElementById('show-block');
+
+    function render() {
+      const existing = document.getElementById('ls-block-overlay');
+      if (existing) existing.remove();
+      document.body.style.overflow = '';
+
+      const domain = domainInput.value.trim() || 'scam-example.com';
+      const brand = brandInput.value.trim();
+      const reasons = brand ? [{ detail: `Typosquat of ${brand}` }] : [];
+      showBlockPage({ domain, score: 95, reasons });
+    }
+
+    showBtn.addEventListener('click', render);
+    // Auto-render on page load
+    render();
+  </script>
+</body>
+</html>

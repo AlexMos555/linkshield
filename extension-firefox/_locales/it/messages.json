@@ -1,0 +1,225 @@
+{
+  "extension_name": {
+    "message": "LinkShield — Protezione dai link truffa"
+  },
+  "extension_description": {
+    "message": "Rilevamento automatico di siti truffa e phishing. In linguaggio semplice, per tutti."
+  },
+  "popup_brand": {
+    "message": "LinkShield"
+  },
+  "popup_settings_title": {
+    "message": "Impostazioni"
+  },
+  "status_scanning": {
+    "message": "Sto controllando questa pagina…"
+  },
+  "status_safe_title": {
+    "message": "Questa pagina è sicura"
+  },
+  "status_safe_subtitle": {
+    "message": "Nessun link truffa su $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Alcuni link sembrano sospetti"
+  },
+  "status_warning_subtitle": {
+    "message": "$N$ link in questa pagina meritano un controllo più attento",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "Questo è un sito truffa"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ si finge un altro sito per rubare i tuoi dati",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "Impossibile verificare questa pagina"
+  },
+  "status_unknown_subtitle": {
+    "message": "Riprova tra un momento"
+  },
+  "action_close_tab": {
+    "message": "Chiudi questa pagina"
+  },
+  "action_audit": {
+    "message": "Cosa raccoglie questo sito"
+  },
+  "action_week": {
+    "message": "La mia settimana"
+  },
+  "action_more": {
+    "message": "Altro"
+  },
+  "action_less": {
+    "message": "Meno"
+  },
+  "more_section_label": {
+    "message": "Altri strumenti"
+  },
+  "action_breach": {
+    "message": "Verifica fuga email"
+  },
+  "action_score": {
+    "message": "Il mio livello di sicurezza"
+  },
+  "action_trust": {
+    "message": "Fidati sempre di questo sito"
+  },
+  "action_report": {
+    "message": "Segnala risultato sbagliato"
+  },
+  "stats_label_blocked": {
+    "message": "Truffe bloccate"
+  },
+  "stats_label_warned": {
+    "message": "Avvisi"
+  },
+  "stats_label_checked": {
+    "message": "Link controllati"
+  },
+  "upgrade_free_count": {
+    "message": "Gratis: $USED$ di $LIMIT$ controlli oggi",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Aggiorna"
+  },
+  "onboarding_welcome": {
+    "message": "Ciao! Sono LinkShield."
+  },
+  "onboarding_tip": {
+    "message": "Controllo ogni link su ogni pagina. Quelli pericolosi li segno in rosso. In dubbio? Tasto destro → «Verifica con LinkShield»."
+  },
+  "aha_found_scams": {
+    "message": "Ho trovato $N$ link truffa che il tuo browser si era perso",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Offline — protezione di base attiva"
+  },
+  "recent_empty": {
+    "message": "Niente ancora — naviga tranquillo, ti sto guardando."
+  },
+  "trust_footer": {
+    "message": "I tuoi dati non lasciano mai questo dispositivo"
+  },
+  "block_title": {
+    "message": "STOP"
+  },
+  "block_subtitle_scam": {
+    "message": "Questo è un sito truffa"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ si finge un altro sito per rubare i tuoi dati.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "Questo sito finge di essere $BRAND$",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "Come i truffatori usano questi siti:"
+  },
+  "block_scheme_step1": {
+    "message": "Ti chiederanno la password o i dati bancari"
+  },
+  "block_scheme_step2": {
+    "message": "Il truffatore ruba tutto ciò che scrivi"
+  },
+  "block_scheme_step3": {
+    "message": "Svuotano il tuo conto o rubano la tua identità"
+  },
+  "block_back_button": {
+    "message": "Torna al sicuro"
+  },
+  "block_proceed_button": {
+    "message": "Capisco il rischio — apri comunque"
+  },
+  "block_proceed_countdown": {
+    "message": "Attendi $N$ secondi…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Protetto da LinkShield. I tuoi dati restano sul tuo dispositivo."
+  },
+  "welcome_hero_title": {
+    "message": "Ora sei protetto"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Ogni link che vedi viene controllato. Quelli pericolosi sono bloccati in automatico."
+  },
+  "welcome_step1_title": {
+    "message": "Controllo automatico"
+  },
+  "welcome_step1_desc": {
+    "message": "Ogni pagina, ogni link. Etichetta verde: sicuro. Rossa: truffa."
+  },
+  "welcome_step2_title": {
+    "message": "I tuoi dati restano con te"
+  },
+  "welcome_step2_desc": {
+    "message": "Controlliamo solo i nomi dei siti. La tua cronologia non lascia mai questo dispositivo."
+  },
+  "welcome_step3_title": {
+    "message": "Nessun rallentamento"
+  },
+  "welcome_step3_desc": {
+    "message": "La maggior parte dei controlli avviene sul tuo dispositivo in meno di un secondo."
+  },
+  "welcome_step4_title": {
+    "message": "Per tutta la famiglia"
+  },
+  "welcome_step4_desc": {
+    "message": "Proteggi genitori, figli, nonni con un solo piano. Modalità diverse per ciascuno."
+  },
+  "welcome_cta_scan": {
+    "message": "Controlla la mia casella per truffe nascoste"
+  },
+  "welcome_cta_skip": {
+    "message": "Salta — inizia a navigare"
+  },
+  "welcome_trust_footer": {
+    "message": "Il blocco è gratis per sempre. I tuoi dati non lasciano mai questo dispositivo."
+  },
+  "welcome_step_label": {
+    "message": "Passo"
+  }
+}

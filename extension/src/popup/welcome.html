@@ -6,168 +6,388 @@
   <title>Welcome to LinkShield</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
+    :root {
+      --bg: #0f172a;
+      --bg-elevated: #1e293b;
+      --border: rgba(51, 65, 85, 0.6);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --green: #22c55e;
+      --green-bg: rgba(34, 197, 94, 0.12);
+      --green-text: #4ade80;
+      --blue-text: #60a5fa;
+    }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.5;
+    }
+    body {
       display: flex;
       justify-content: center;
       align-items: center;
+      padding: 40px 20px;
+      background-image:
+        radial-gradient(ellipse at top, rgba(34, 197, 94, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
     }
+    [dir="rtl"] { font-family: "Noto Sans Arabic", -apple-system, sans-serif; }
+
     .container {
-      max-width: 520px;
-      padding: 40px;
+      max-width: 640px;
+      width: 100%;
       text-align: center;
     }
-    .shield { font-size: 64px; margin-bottom: 16px; }
+
+    /* Hero */
+    .hero-icon {
+      font-size: 76px;
+      line-height: 1;
+      margin-bottom: 20px;
+      animation: bounce-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes bounce-in { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
     h1 {
-      font-size: 28px;
-      font-weight: 700;
-      color: #f8fafc;
-      margin-bottom: 8px;
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
     }
     .subtitle {
-      font-size: 16px;
-      color: #94a3b8;
-      margin-bottom: 32px;
-      line-height: 1.5;
+      font-size: 17px;
+      color: var(--text-muted);
+      margin-bottom: 44px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
     }
-    .features {
+
+    /* Steps grid */
+    .steps {
       display: grid;
-      gap: 16px;
-      text-align: left;
-      margin-bottom: 32px;
-    }
-    .feature {
-      display: flex;
+      grid-template-columns: 1fr 1fr;
       gap: 14px;
-      align-items: flex-start;
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 16px;
+      text-align: start;
+      margin-bottom: 40px;
     }
-    .feature-icon {
-      font-size: 24px;
-      flex-shrink: 0;
-      width: 36px;
-      text-align: center;
+    @media (max-width: 560px) {
+      .steps { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
     }
-    .feature-title {
-      font-weight: 600;
-      font-size: 14px;
-      color: #f8fafc;
-      margin-bottom: 4px;
+    .step {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
     }
-    .feature-desc {
-      font-size: 12px;
-      color: #94a3b8;
-      line-height: 1.5;
+    .step:hover { transform: translateY(-2px); border-color: rgba(34, 197, 94, 0.4); }
+    .step-number {
+      position: absolute;
+      top: 14px;
+      inset-inline-end: 14px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--green-bg);
+      color: var(--green-text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 800;
+      border: 1px solid rgba(34, 197, 94, 0.3);
     }
-    .cta-button {
-      display: inline-block;
-      background: #22c55e;
-      color: #052e16;
-      border: none;
-      border-radius: 10px;
-      padding: 14px 32px;
+    .step-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .step-title {
       font-size: 16px;
       font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.15s, background 0.15s;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .step-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* CTAs */
+    .cta-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
       text-decoration: none;
+      transition: transform 0.1s, background 0.15s;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
     }
-    .cta-button:hover {
-      background: #16a34a;
-      transform: scale(1.03);
+    .btn-primary {
+      background: var(--green);
+      color: #052e16;
+      box-shadow: 0 6px 18px rgba(34, 197, 94, 0.3);
     }
-    .privacy-badge {
+    .btn-primary:hover { background: #16a34a; transform: translateY(-2px); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 16px;
+    }
+    .btn-secondary:hover { color: var(--text); }
+
+    /* Trust footer */
+    .trust {
+      margin-top: 32px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      margin-top: 20px;
       font-size: 12px;
-      color: #64748b;
-      background: #1e293b;
-      padding: 6px 14px;
+      color: var(--text-dim);
+      background: var(--bg-elevated);
+      padding: 8px 16px;
       border-radius: 20px;
+      border: 1px solid var(--border);
     }
-    .steps {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 24px;
+
+    /* Language selector (tiny, top-right corner) */
+    .lang-selector {
+      position: fixed;
+      top: 20px;
+      inset-inline-end: 20px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      outline: none;
     }
-    .step {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #334155;
-    }
-    .step.active { background: #22c55e; width: 24px; border-radius: 4px; }
+    .lang-selector:hover { color: var(--text); border-color: rgba(148, 163, 184, 0.5); }
   </style>
 </head>
 <body>
+  <!-- Language selector (visible only in preview/settings context) -->
+  <select class="lang-selector" id="lang-selector" aria-label="Language">
+    <option value="auto">🌐 Auto</option>
+    <option value="en">English</option>
+    <option value="ru">Русский</option>
+    <option value="es">Español</option>
+    <option value="pt">Português</option>
+    <option value="fr">Français</option>
+    <option value="de">Deutsch</option>
+    <option value="it">Italiano</option>
+    <option value="id">Bahasa</option>
+    <option value="hi">हिन्दी</option>
+    <option value="ar">العربية</option>
+  </select>
+
   <div class="container">
-    <div class="shield">&#x1F6E1;</div>
-    <h1>Welcome to LinkShield</h1>
-    <p class="subtitle">
-      You're now protected. LinkShield automatically checks every link you encounter.
+    <div class="hero-icon" aria-hidden="true">&#x1F6E1;</div>
+    <h1 data-i18n="welcome_hero_title">You're protected now</h1>
+    <p class="subtitle" data-i18n="welcome_hero_subtitle">
+      Every link you see is being checked. Dangerous ones will be blocked automatically.
     </p>
 
-    <div class="features">
-      <div class="feature">
-        <div class="feature-icon">&#x1F50D;</div>
-        <div>
-          <div class="feature-title">Automatic Link Scanning</div>
-          <div class="feature-desc">
-            Every link on every page is checked against 9 threat intelligence sources
-            and our ML model. Dangerous links get a red badge.
-          </div>
-        </div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-number" aria-hidden="true">1</span>
+        <span class="step-icon" aria-hidden="true">&#x1F50D;</span>
+        <div class="step-title" data-i18n="welcome_step1_title">Automatic scanning</div>
+        <div class="step-desc" data-i18n="welcome_step1_desc">Every page, every link. Green badge means safe. Red means scam.</div>
       </div>
 
-      <div class="feature">
-        <div class="feature-icon">&#x1F512;</div>
-        <div>
-          <div class="feature-title">Privacy Audit</div>
-          <div class="feature-desc">
-            Right-click any page to see what data it collects: trackers, cookies,
-            fingerprinting, and sensitive forms. Grade A through F.
-          </div>
-        </div>
+      <div class="step">
+        <span class="step-number" aria-hidden="true">2</span>
+        <span class="step-icon" aria-hidden="true">&#x1F512;</span>
+        <div class="step-title" data-i18n="welcome_step2_title">Your data stays with you</div>
+        <div class="step-desc" data-i18n="welcome_step2_desc">We only check domain names. Your browsing history never leaves this device.</div>
       </div>
 
-      <div class="feature">
-        <div class="feature-icon">&#x1F4F1;</div>
-        <div>
-          <div class="feature-title">Your Data Stays on Your Device</div>
-          <div class="feature-desc">
-            Browsing history never leaves your device. We only see domain names
-            for safety checks. Even if our servers are breached, your data is safe.
-          </div>
-        </div>
+      <div class="step">
+        <span class="step-number" aria-hidden="true">3</span>
+        <span class="step-icon" aria-hidden="true">&#x26A1;</span>
+        <div class="step-title" data-i18n="welcome_step3_title">No slowdown</div>
+        <div class="step-desc" data-i18n="welcome_step3_desc">Most checks happen on your device in under a second. Just browse normally.</div>
       </div>
 
-      <div class="feature">
-        <div class="feature-icon">&#x26A1;</div>
-        <div>
-          <div class="feature-title">Instant Protection</div>
-          <div class="feature-desc">
-            95% of checks happen locally in under 1ms using our bloom filter.
-            No slowdown, no waiting. Just browse normally.
-          </div>
-        </div>
+      <div class="step">
+        <span class="step-number" aria-hidden="true">4</span>
+        <span class="step-icon" aria-hidden="true">&#x1F46A;</span>
+        <div class="step-title" data-i18n="welcome_step4_title">For the whole family</div>
+        <div class="step-desc" data-i18n="welcome_step4_desc">Protect parents, kids, grandparents with one plan. Different modes for each.</div>
       </div>
     </div>
 
-    <a href="https://mail.google.com" class="cta-button" id="cta">
-      &#x1F4E7; Check My Inbox Now
-    </a>
+    <div class="cta-group">
+      <a href="https://mail.google.com" class="btn btn-primary" id="cta-scan">
+        <span data-i18n="welcome_cta_scan">&#x1F4E7; Scan my inbox for hidden scams</span>
+      </a>
+      <button class="btn btn-secondary" id="cta-skip" type="button" data-i18n="welcome_cta_skip">
+        Skip — start browsing
+      </button>
+    </div>
 
-    <div class="privacy-badge">
-      &#x1F512; Zero browsing data stored on our servers
+    <div class="trust">
+      <span aria-hidden="true">&#x1F512;</span>
+      <span data-i18n="welcome_trust_footer">Free forever for blocking. Your data never leaves this device.</span>
     </div>
   </div>
+
+  <script>
+    // ── Inline i18n with fallback ──
+    const WELCOME_EN = {
+      welcome_hero_title: "You're protected now",
+      welcome_hero_subtitle: "Every link you see is being checked. Dangerous ones will be blocked automatically.",
+      welcome_step1_title: "Automatic scanning",
+      welcome_step1_desc: "Every page, every link. Green badge means safe. Red means scam.",
+      welcome_step2_title: "Your data stays with you",
+      welcome_step2_desc: "We only check domain names. Your browsing history never leaves this device.",
+      welcome_step3_title: "No slowdown",
+      welcome_step3_desc: "Most checks happen on your device in under a second. Just browse normally.",
+      welcome_step4_title: "For the whole family",
+      welcome_step4_desc: "Protect parents, kids, grandparents with one plan. Different modes for each.",
+      welcome_cta_scan: "\uD83D\uDCE7 Scan my inbox for hidden scams",
+      welcome_cta_skip: "Skip — start browsing",
+      welcome_trust_footer: "Free forever for blocking. Your data never leaves this device.",
+    };
+
+    // Preview / standalone: optional overrides per language
+    const PREVIEW_LANGS = {
+      ru: {
+        welcome_hero_title: "Вы под защитой",
+        welcome_hero_subtitle: "Каждая ссылка, которую вы видите, проверяется. Опасные блокируются автоматически.",
+        welcome_step1_title: "Автоматическая проверка",
+        welcome_step1_desc: "Каждая страница, каждая ссылка. Зелёная отметка — безопасно. Красная — мошенники.",
+        welcome_step2_title: "Ваши данные остаются с вами",
+        welcome_step2_desc: "Мы проверяем только названия сайтов. История посещений никогда не покидает это устройство.",
+        welcome_step3_title: "Без тормозов",
+        welcome_step3_desc: "Большинство проверок происходит прямо на вашем устройстве за долю секунды.",
+        welcome_step4_title: "Для всей семьи",
+        welcome_step4_desc: "Защитите родителей, детей, бабушек одной подпиской. Разные режимы для каждого.",
+        welcome_cta_scan: "\uD83D\uDCE7 Проверить мою почту на мошенников",
+        welcome_cta_skip: "Пропустить — начать пользоваться",
+        welcome_trust_footer: "Блокировка бесплатна навсегда. Ваши данные не покидают это устройство.",
+      },
+      es: {
+        welcome_hero_title: "Ya estás protegido",
+        welcome_hero_subtitle: "Cada enlace que ves se revisa. Los peligrosos se bloquean automáticamente.",
+        welcome_step1_title: "Revisión automática",
+        welcome_step1_desc: "Cada página, cada enlace. Etiqueta verde: seguro. Roja: estafa.",
+        welcome_step2_title: "Tus datos se quedan contigo",
+        welcome_step2_desc: "Solo revisamos nombres de sitios. Tu historial nunca sale de este dispositivo.",
+        welcome_step3_title: "Sin ralentizar",
+        welcome_step3_desc: "La mayoría de revisiones ocurren en tu dispositivo en menos de un segundo.",
+        welcome_step4_title: "Para toda la familia",
+        welcome_step4_desc: "Protege a padres, hijos y abuelos con un solo plan. Modos distintos para cada uno.",
+        welcome_cta_scan: "\uD83D\uDCE7 Revisar mi bandeja por estafas ocultas",
+        welcome_cta_skip: "Saltar — empezar a navegar",
+        welcome_trust_footer: "El bloqueo siempre es gratis. Tus datos nunca salen de este dispositivo.",
+      },
+      ar: {
+        welcome_hero_title: "أنت محمي الآن",
+        welcome_hero_subtitle: "يتم فحص كل رابط تراه. الروابط الخطرة تُحظر تلقائيًا.",
+        welcome_step1_title: "فحص تلقائي",
+        welcome_step1_desc: "كل صفحة، كل رابط. العلامة الخضراء: آمن. الحمراء: احتيال.",
+        welcome_step2_title: "بياناتك تبقى معك",
+        welcome_step2_desc: "نفحص أسماء المواقع فقط. سجل تصفّحك لا يغادر هذا الجهاز أبدًا.",
+        welcome_step3_title: "دون تباطؤ",
+        welcome_step3_desc: "تتم معظم الفحوصات على جهازك في أقل من ثانية.",
+        welcome_step4_title: "للعائلة بأكملها",
+        welcome_step4_desc: "احمِ الوالدين والأطفال والأجداد بخطة واحدة. أوضاع مختلفة للجميع.",
+        welcome_cta_scan: "\uD83D\uDCE7 افحص بريدي بحثًا عن احتيال مخفي",
+        welcome_cta_skip: "تخطَّ — ابدأ التصفح",
+        welcome_trust_footer: "الحظر مجاني دائمًا. بياناتك لا تغادر هذا الجهاز أبدًا.",
+      },
+    };
+
+    function currentLang() {
+      const sel = document.getElementById("lang-selector");
+      if (sel && sel.value && sel.value !== "auto") return sel.value;
+      try {
+        if (typeof chrome !== "undefined" && chrome.i18n && chrome.i18n.getUILanguage) {
+          return chrome.i18n.getUILanguage().split("-")[0];
+        }
+      } catch (_) {}
+      return (navigator.language || "en").split("-")[0];
+    }
+
+    function translate(key) {
+      // 1. Try chrome.i18n (real extension context)
+      try {
+        if (typeof chrome !== "undefined" && chrome.i18n && chrome.i18n.getMessage) {
+          const sel = document.getElementById("lang-selector");
+          // Only use chrome.i18n if user selected auto; otherwise use PREVIEW_LANGS for live switch
+          if (!sel || sel.value === "auto") {
+            const msg = chrome.i18n.getMessage(key);
+            if (msg) return msg;
+          }
+        }
+      } catch (_) {}
+      // 2. Manual language override for preview
+      const lang = currentLang();
+      if (PREVIEW_LANGS[lang] && PREVIEW_LANGS[lang][key]) return PREVIEW_LANGS[lang][key];
+      // 3. English fallback
+      return WELCOME_EN[key] || key;
+    }
+
+    function applyI18n() {
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        const msg = translate(key);
+        if (msg) el.textContent = msg;
+      });
+      // Set document dir for RTL languages
+      document.documentElement.dir = (currentLang() === "ar") ? "rtl" : "ltr";
+      document.documentElement.lang = currentLang();
+    }
+
+    // Skip button — close this tab (or noop if can't)
+    document.getElementById("cta-skip").addEventListener("click", () => {
+      try {
+        if (typeof chrome !== "undefined" && chrome.tabs) {
+          chrome.tabs.getCurrent((tab) => {
+            if (tab) chrome.tabs.remove(tab.id);
+          });
+        } else {
+          window.close();
+        }
+      } catch (_) { window.close(); }
+    });
+
+    // Language selector — live preview
+    const sel = document.getElementById("lang-selector");
+    if (sel) {
+      sel.addEventListener("change", applyI18n);
+    }
+
+    // Initial render
+    applyI18n();
+  </script>
 </body>
 </html>

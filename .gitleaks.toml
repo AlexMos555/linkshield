@@ -1,0 +1,82 @@
+# gitleaks config — block these secret patterns from ever being committed.
+# Run: gitleaks detect / gitleaks protect
+# CI: .github/workflows/security.yml uses the same config.
+
+title = "LinkShield gitleaks config"
+
+[extend]
+# Inherit gitleaks default ruleset (covers AWS, GCP, GitHub, Stripe, etc.)
+useDefault = true
+
+# ── Project-specific patterns ──────────────────────────────────
+[[rules]]
+id = "supabase-access-token"
+description = "Supabase Management API personal access token"
+regex = '''sbp_[a-f0-9]{40}'''
+tags = ["supabase", "secret"]
+
+[[rules]]
+id = "supabase-secret-key"
+description = "Supabase secret API key (sb_secret_*)"
+regex = '''sb_secret_[A-Za-z0-9_-]{20,}'''
+tags = ["supabase", "secret"]
+
+[[rules]]
+id = "supabase-jwt"
+description = "Supabase JWT (anon/service_role)"
+# Match supabase-issued JWTs containing the supabase iss claim
+regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{40,}\.[A-Za-z0-9_-]{40,}'''
+tags = ["supabase", "jwt"]
+
+[[rules]]
+id = "stripe-secret-key"
+description = "Stripe secret API key"
+regex = '''sk_(test|live)_[A-Za-z0-9]{24,}'''
+tags = ["stripe", "secret"]
+
+[[rules]]
+id = "stripe-restricted-key"
+description = "Stripe restricted key"
+regex = '''rk_(test|live)_[A-Za-z0-9]{24,}'''
+tags = ["stripe", "secret"]
+
+[[rules]]
+id = "stripe-webhook-secret"
+description = "Stripe webhook signing secret"
+regex = '''whsec_[A-Za-z0-9]{32,}'''
+tags = ["stripe", "secret"]
+
+[[rules]]
+id = "google-api-key"
+description = "Google API key"
+regex = '''AIza[0-9A-Za-z_-]{35}'''
+tags = ["google", "secret"]
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI / Anthropic / generic Bearer-style API key"
+regex = '''(sk-proj-[A-Za-z0-9_-]{40,}|sk-ant-[A-Za-z0-9_-]{40,})'''
+tags = ["llm", "secret"]
+
+# ── Allowlist (legitimate placeholders / docs) ─────────────────
+[allowlist]
+description = "Files that contain placeholders, not real secrets"
+paths = [
+    '''^\.env\.example$''',
+    '''^\.gitleaks\.toml$''',           # this file's own examples
+    '''^api/services/pricing\.py$''',   # contains "price_PERSONAL_T1_MONTHLY" placeholders
+    '''^tests/.*\.py$''',               # tests use dummy secrets like "test-secret-..."
+    '''^\.planning/.*\.md$''',          # docs may reference secret formats
+]
+# Ignore obvious placeholder strings
+regexes = [
+    '''sbp_\.\.\.''',
+    '''sb_secret_\.\.\.''',
+    '''sk_test_\.\.\.''',
+    '''sk_live_\.\.\.''',
+    '''eyJ\.\.\.''',
+    '''YOUR_[A-Z_]+''',
+    '''placeholder''',
+    '''<your-.*>''',
+    '''<.*-here>''',
+]

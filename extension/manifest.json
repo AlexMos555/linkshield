@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LinkShield — Phishing Protection",
-  "description": "Automatic phishing link detection with privacy audit. Your browsing data lives only on your device.",
+  "default_locale": "en",
+  "name": "__MSG_extension_name__",
+  "description": "__MSG_extension_description__",
   "version": "0.1.0",
 
   "permissions": [
@@ -13,8 +14,13 @@
   ],
 
   "host_permissions": [
-    "https://api.linkshield.io/*",
-    "http://localhost:8000/*"
+    "https://web-production-fe08.up.railway.app/*",
+    "https://*.linkshield.io/*",
+    "http://localhost:8000/*",
+    "https://mail.google.com/*",
+    "https://outlook.office.com/*",
+    "https://outlook.live.com/*",
+    "https://mail.yahoo.com/*"
   ],
 
   "background": {
@@ -34,6 +40,16 @@
         "src/content/index.js"
       ],
       "css": ["styles/badges.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://outlook.office.com/*",
+        "https://outlook.live.com/*",
+        "https://mail.yahoo.com/*"
+      ],
+      "js": ["src/content/webmail.js"],
       "run_at": "document_idle"
     }
   ],

@@ -1,0 +1,225 @@
+{
+  "extension_name": {
+    "message": "LinkShield — Perlindungan dari tautan penipuan"
+  },
+  "extension_description": {
+    "message": "Deteksi otomatis situs penipuan dan phishing. Bahasa sederhana, untuk semua orang."
+  },
+  "popup_brand": {
+    "message": "LinkShield"
+  },
+  "popup_settings_title": {
+    "message": "Pengaturan"
+  },
+  "status_scanning": {
+    "message": "Memeriksa halaman ini…"
+  },
+  "status_safe_title": {
+    "message": "Halaman ini aman"
+  },
+  "status_safe_subtitle": {
+    "message": "Tidak ada tautan penipuan di $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Beberapa tautan terlihat mencurigakan"
+  },
+  "status_warning_subtitle": {
+    "message": "$N$ tautan di halaman ini perlu diperiksa lebih teliti",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "Ini situs penipuan"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ berpura-pura menjadi situs lain untuk mencuri data Anda",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "Tidak bisa memeriksa halaman ini"
+  },
+  "status_unknown_subtitle": {
+    "message": "Coba lagi sebentar"
+  },
+  "action_close_tab": {
+    "message": "Tutup halaman ini"
+  },
+  "action_audit": {
+    "message": "Apa yang dikumpulkan situs ini"
+  },
+  "action_week": {
+    "message": "Minggu saya"
+  },
+  "action_more": {
+    "message": "Lainnya"
+  },
+  "action_less": {
+    "message": "Lebih sedikit"
+  },
+  "more_section_label": {
+    "message": "Alat tambahan"
+  },
+  "action_breach": {
+    "message": "Cek kebocoran email"
+  },
+  "action_score": {
+    "message": "Tingkat keamanan saya"
+  },
+  "action_trust": {
+    "message": "Selalu percayai situs ini"
+  },
+  "action_report": {
+    "message": "Laporkan hasil salah"
+  },
+  "stats_label_blocked": {
+    "message": "Penipuan diblokir"
+  },
+  "stats_label_warned": {
+    "message": "Peringatan"
+  },
+  "stats_label_checked": {
+    "message": "Tautan diperiksa"
+  },
+  "upgrade_free_count": {
+    "message": "Gratis: $USED$ dari $LIMIT$ pemeriksaan hari ini",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Upgrade"
+  },
+  "onboarding_welcome": {
+    "message": "Hai! Saya LinkShield."
+  },
+  "onboarding_tip": {
+    "message": "Saya periksa setiap tautan di setiap halaman. Yang berbahaya saya tandai merah. Ragu? Klik kanan → «Periksa dengan LinkShield»."
+  },
+  "aha_found_scams": {
+    "message": "Saya menemukan $N$ tautan penipuan yang terlewat oleh browser Anda",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Offline — perlindungan dasar aktif"
+  },
+  "recent_empty": {
+    "message": "Belum ada apa-apa — berselancar saja, saya mengawasi."
+  },
+  "trust_footer": {
+    "message": "Data Anda tidak pernah meninggalkan perangkat ini"
+  },
+  "block_title": {
+    "message": "STOP"
+  },
+  "block_subtitle_scam": {
+    "message": "Ini situs penipuan"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ berpura-pura menjadi situs lain untuk mencuri data Anda.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "Situs ini berpura-pura menjadi $BRAND$",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "Bagaimana penipu menggunakan situs seperti ini:"
+  },
+  "block_scheme_step1": {
+    "message": "Anda akan diminta password atau data bank"
+  },
+  "block_scheme_step2": {
+    "message": "Penipu mencuri semua yang Anda ketik"
+  },
+  "block_scheme_step3": {
+    "message": "Mereka menguras rekening atau mencuri identitas Anda"
+  },
+  "block_back_button": {
+    "message": "Kembali ke tempat aman"
+  },
+  "block_proceed_button": {
+    "message": "Saya paham risikonya — tetap buka"
+  },
+  "block_proceed_countdown": {
+    "message": "Tunggu $N$ detik…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Dilindungi LinkShield. Data Anda tetap di perangkat ini."
+  },
+  "welcome_hero_title": {
+    "message": "Anda sekarang terlindungi"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Setiap tautan yang Anda lihat diperiksa. Yang berbahaya diblokir otomatis."
+  },
+  "welcome_step1_title": {
+    "message": "Pemeriksaan otomatis"
+  },
+  "welcome_step1_desc": {
+    "message": "Setiap halaman, setiap tautan. Tanda hijau: aman. Merah: penipuan."
+  },
+  "welcome_step2_title": {
+    "message": "Data Anda tetap milik Anda"
+  },
+  "welcome_step2_desc": {
+    "message": "Kami hanya memeriksa nama situs. Riwayat Anda tidak pernah meninggalkan perangkat ini."
+  },
+  "welcome_step3_title": {
+    "message": "Tanpa lambat"
+  },
+  "welcome_step3_desc": {
+    "message": "Sebagian besar pemeriksaan terjadi di perangkat Anda dalam kurang dari sedetik."
+  },
+  "welcome_step4_title": {
+    "message": "Untuk seluruh keluarga"
+  },
+  "welcome_step4_desc": {
+    "message": "Lindungi orang tua, anak, kakek-nenek dengan satu paket. Mode berbeda untuk masing-masing."
+  },
+  "welcome_cta_scan": {
+    "message": "Periksa kotak masuk saya dari penipuan tersembunyi"
+  },
+  "welcome_cta_skip": {
+    "message": "Lewati — mulai menjelajah"
+  },
+  "welcome_trust_footer": {
+    "message": "Pemblokiran gratis selamanya. Data Anda tidak pernah meninggalkan perangkat ini."
+  },
+  "welcome_step_label": {
+    "message": "Langkah"
+  }
+}

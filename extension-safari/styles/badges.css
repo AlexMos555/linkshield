@@ -23,6 +23,16 @@
   transform: scale(1.3);
 }
 
+/* Appear animation */
+@keyframes ls-badge-appear {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.ls-badge {
+  animation: ls-badge-appear 0.2s ease-out;
+}
+
 .ls-safe {
   background: #dcfce7;
   color: #16a34a;

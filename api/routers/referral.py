@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.services.auth import get_current_user
+from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 
 logger = logging.getLogger("linkshield.referral")
@@ -33,7 +34,7 @@ class RedeemRequest(BaseModel):
     code: str
 
 
-@router.post("/generate")
+@router.post("/generate", dependencies=[Depends(rate_limit(category="user_write"))])
 async def generate_referral(user: AuthUser = Depends(get_current_user)):
     """Generate unique referral code for user."""
     # Deterministic code from user_id (same user always gets same code)
@@ -66,7 +67,7 @@ async def generate_referral(user: AuthUser = Depends(get_current_user)):
     }
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(rate_limit(category="user_read"))])
 async def referral_stats(user: AuthUser = Depends(get_current_user)):
     """Get user's referral stats."""
     raw = f"ls-ref-{user.id}-{user.email or ''}"
@@ -91,7 +92,10 @@ async def referral_stats(user: AuthUser = Depends(get_current_user)):
     return {"code": code, "redeemed_count": 0, "reward_days_earned": 0}
 
 
-@router.post("/redeem")
+@router.post(
+    "/redeem",
+    dependencies=[Depends(rate_limit(mode="sensitive", category="referral_redeem"))],
+)
 async def redeem_referral(
     request: RedeemRequest,
     user: AuthUser = Depends(get_current_user),

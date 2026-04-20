@@ -1,0 +1,225 @@
+{
+  "extension_name": {
+    "message": "LinkShield — Защита от мошеннических ссылок"
+  },
+  "extension_description": {
+    "message": "Автоматическая защита от мошеннических сайтов и фишинга. Простым языком, понятно всем."
+  },
+  "popup_brand": {
+    "message": "LinkShield"
+  },
+  "popup_settings_title": {
+    "message": "Настройки"
+  },
+  "status_scanning": {
+    "message": "Проверяю страницу…"
+  },
+  "status_safe_title": {
+    "message": "Эта страница безопасна"
+  },
+  "status_safe_subtitle": {
+    "message": "На $DOMAIN$ не найдено мошеннических ссылок",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Некоторые ссылки подозрительные"
+  },
+  "status_warning_subtitle": {
+    "message": "На странице $N$ ссылок, которые стоит проверить внимательнее",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "Это мошеннический сайт"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ притворяется другим сайтом, чтобы украсть ваши данные",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "Не удалось проверить страницу"
+  },
+  "status_unknown_subtitle": {
+    "message": "Попробуйте через секунду"
+  },
+  "action_close_tab": {
+    "message": "Закрыть эту страницу"
+  },
+  "action_audit": {
+    "message": "Что собирает этот сайт"
+  },
+  "action_week": {
+    "message": "Моя неделя"
+  },
+  "action_more": {
+    "message": "Ещё"
+  },
+  "action_less": {
+    "message": "Свернуть"
+  },
+  "more_section_label": {
+    "message": "Дополнительно"
+  },
+  "action_breach": {
+    "message": "Проверить утечку email"
+  },
+  "action_score": {
+    "message": "Мой уровень защиты"
+  },
+  "action_trust": {
+    "message": "Всегда доверять этому сайту"
+  },
+  "action_report": {
+    "message": "Сообщить об ошибке"
+  },
+  "stats_label_blocked": {
+    "message": "Мошенников заблокировано"
+  },
+  "stats_label_warned": {
+    "message": "Предупреждений"
+  },
+  "stats_label_checked": {
+    "message": "Ссылок проверено"
+  },
+  "upgrade_free_count": {
+    "message": "Бесплатно: $USED$ из $LIMIT$ проверок сегодня",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Подписка"
+  },
+  "onboarding_welcome": {
+    "message": "Привет! Я LinkShield."
+  },
+  "onboarding_tip": {
+    "message": "Я проверяю каждую ссылку на странице. Опасные подсвечиваю красным. Если сомневаешься — правый клик → \"Проверить через LinkShield\"."
+  },
+  "aha_found_scams": {
+    "message": "Нашёл $N$ мошеннических ссылок, которые пропустил браузер",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Нет связи — работает базовая защита"
+  },
+  "recent_empty": {
+    "message": "Пока ничего не найдено — я слежу, пока вы пользуетесь интернетом."
+  },
+  "trust_footer": {
+    "message": "Ваши данные не покидают это устройство"
+  },
+  "block_title": {
+    "message": "СТОП"
+  },
+  "block_subtitle_scam": {
+    "message": "Это мошеннический сайт"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ притворяется другим сайтом, чтобы украсть ваши данные.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "Этот сайт притворяется $BRAND$",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "Как работают мошенники на таких сайтах:"
+  },
+  "block_scheme_step1": {
+    "message": "Вас попросят ввести пароль или данные банковской карты"
+  },
+  "block_scheme_step2": {
+    "message": "Мошенник украдёт всё, что вы введёте"
+  },
+  "block_scheme_step3": {
+    "message": "С вашего счёта снимут деньги или украдут личность"
+  },
+  "block_back_button": {
+    "message": "Вернуться в безопасность"
+  },
+  "block_proceed_button": {
+    "message": "Я понимаю риск — открыть всё равно"
+  },
+  "block_proceed_countdown": {
+    "message": "Подождите $N$ секунд…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Защищает LinkShield. Ваши данные остаются на этом устройстве."
+  },
+  "welcome_hero_title": {
+    "message": "Вы под защитой"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Каждая ссылка, которую вы видите, проверяется. Опасные блокируются автоматически."
+  },
+  "welcome_step1_title": {
+    "message": "Автоматическая проверка"
+  },
+  "welcome_step1_desc": {
+    "message": "Каждая страница, каждая ссылка. Зелёная отметка — безопасно. Красная — мошенники."
+  },
+  "welcome_step2_title": {
+    "message": "Ваши данные остаются с вами"
+  },
+  "welcome_step2_desc": {
+    "message": "Мы проверяем только названия сайтов. История посещений никогда не покидает это устройство."
+  },
+  "welcome_step3_title": {
+    "message": "Без тормозов"
+  },
+  "welcome_step3_desc": {
+    "message": "Большинство проверок происходит прямо на вашем устройстве за долю секунды."
+  },
+  "welcome_step4_title": {
+    "message": "Для всей семьи"
+  },
+  "welcome_step4_desc": {
+    "message": "Защитите родителей, детей, бабушек одной подпиской. Разные режимы для каждого."
+  },
+  "welcome_cta_scan": {
+    "message": "Проверить мою почту на мошенников"
+  },
+  "welcome_cta_skip": {
+    "message": "Пропустить — начать пользоваться"
+  },
+  "welcome_trust_footer": {
+    "message": "Блокировка бесплатна навсегда. Ваши данные не покидают это устройство."
+  },
+  "welcome_step_label": {
+    "message": "Шаг"
+  }
+}

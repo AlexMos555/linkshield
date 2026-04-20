@@ -1,0 +1,277 @@
+{
+  "Nav": {
+    "features": "Funciones",
+    "pricing": "Precios",
+    "privacy": "Privacidad",
+    "business": "Empresas",
+    "install": "Añadir a Chrome",
+    "install_short": "Instalar"
+  },
+  "Hero": {
+    "badge": "91% de detección de fraudes",
+    "title_part1": "Protección contra fraudes que",
+    "title_part2": "respeta tu privacidad",
+    "subtitle": "Revisión automática de enlaces en cada página. 9 fuentes de amenazas. Detección con ML. Tus datos de navegación nunca salen del dispositivo.",
+    "cta_primary": "Añadir a Chrome — gratis",
+    "cta_secondary": "Cómo funciona",
+    "cta_footer": "Protección básica gratis para siempre. Sin tarjeta."
+  },
+  "FinalCta": {
+    "title": "¿Listo para navegar seguro?",
+    "subtitle": "Miles ya navegan sin preocupación.",
+    "cta_primary": "Añadir a Chrome — gratis",
+    "cta_business": "Para empresas"
+  },
+  "Footer": {
+    "brand": "LinkShield",
+    "privacy": "Privacidad",
+    "terms": "Términos",
+    "contact": "Contacto",
+    "github": "GitHub",
+    "tagline": "Tus datos, tu dispositivo."
+  },
+  "LanguageSwitcher": {
+    "label": "Idioma"
+  },
+  "Features": {
+    "heading": "Todo lo que necesitas. Nada de lo que no.",
+    "items": [
+      {
+        "icon": "🔍",
+        "title": "Escaneo automático de enlaces",
+        "desc": "Cada enlace en cada página se verifica con 9 bases de amenazas. Insignias rojas, amarillas y verdes muestran la seguridad de un vistazo."
+      },
+      {
+        "icon": "🔒",
+        "title": "Auditoría de privacidad",
+        "desc": "Clic derecho en cualquier página para ver rastreadores, cookies, recolección de datos y fingerprinting. Calificación de A a F."
+      },
+      {
+        "icon": "🧠",
+        "title": "Detección con IA",
+        "desc": "Modelo CatBoost entrenado con más de 18.000 dominios. AUC 0,9988. Detecta phishing nuevo que los sistemas basados en reglas pasan por alto."
+      },
+      {
+        "icon": "⚡",
+        "title": "Protección instantánea",
+        "desc": "El 95% de las verificaciones se hacen localmente con un bloom filter en menos de 1 ms. Sin demoras. Sin esperas."
+      },
+      {
+        "icon": "📱",
+        "title": "Tus datos, tu dispositivo",
+        "desc": "El historial de navegación nunca llega a nuestros servidores. Solo vemos nombres de dominio. Aunque nos hackeen, tus datos están a salvo."
+      },
+      {
+        "icon": "📧",
+        "title": "Escáner de correo",
+        "desc": "Encuentra enlaces de phishing en Gmail y Outlook que tu navegador dejó pasar."
+      }
+    ]
+  },
+  "HowItWorks": {
+    "heading": "Cómo te protege LinkShield",
+    "steps": [
+      {
+        "step": "1",
+        "title": "Instala",
+        "desc": "Añade la extensión a Chrome. Toma 10 segundos."
+      },
+      {
+        "step": "2",
+        "title": "Navega",
+        "desc": "LinkShield verifica cada enlace automáticamente. No hace falta hacer nada."
+      },
+      {
+        "step": "3",
+        "title": "Mantente seguro",
+        "desc": "Los enlaces peligrosos reciben una insignia roja. Haz clic para ver detalles."
+      }
+    ]
+  },
+  "PricingTeaser": {
+    "heading": "Precios simples y transparentes",
+    "unit_forever": "/para siempre",
+    "unit_month": "/mes",
+    "most_popular": "Más popular",
+    "trial_note": "Todos los planes incluyen 14 días de prueba gratis. Cancela cuando quieras.",
+    "free": {
+      "name": "Free",
+      "price": "$0",
+      "features": [
+        "10 verificaciones API al día",
+        "Verificaciones locales ilimitadas",
+        "Auditoría de privacidad (solo calificación)",
+        "Insignias de enlace en todas las páginas"
+      ],
+      "cta": "Empezar"
+    },
+    "personal": {
+      "name": "Personal",
+      "price": "$4.99",
+      "features": [
+        "Verificaciones ilimitadas",
+        "Auditoría de privacidad completa",
+        "Informe semanal de seguridad",
+        "Puntuación de seguridad + consejos",
+        "Soporte prioritario"
+      ],
+      "cta": "Empezar prueba gratis"
+    },
+    "family": {
+      "name": "Family",
+      "price": "$9.99",
+      "features": [
+        "Todo de Personal",
+        "Hasta 6 dispositivos",
+        "Centro Familiar con alertas E2E",
+        "Modo parental"
+      ],
+      "cta": "Empezar prueba gratis"
+    }
+  },
+  "Comparison": {
+    "heading": "Cómo nos comparamos",
+    "headers": [
+      "Característica",
+      "LinkShield",
+      "Guardio",
+      "NordVPN TP",
+      "Norton 360",
+      "Extensiones gratis"
+    ],
+    "rows": [
+      [
+        "Precio",
+        "$4.99/mes",
+        "$9.99/mes",
+        "~$5/mes (con VPN)",
+        "$40-100/año",
+        "Gratis"
+      ],
+      [
+        "Plataformas",
+        "Las 5",
+        "Solo Chrome",
+        "Win/Mac",
+        "Todas",
+        "Solo navegador"
+      ],
+      [
+        "Auditoría de privacidad",
+        "✅",
+        "❌",
+        "❌",
+        "❌",
+        "❌"
+      ],
+      [
+        "Datos en el dispositivo",
+        "✅",
+        "❌",
+        "❌",
+        "❌",
+        "❌"
+      ],
+      [
+        "Detección por ML",
+        "✅",
+        "✅",
+        "✅",
+        "✅",
+        "❌"
+      ],
+      [
+        "Monitoreo de filtraciones",
+        "✅",
+        "❌",
+        "❌",
+        "✅",
+        "❌"
+      ],
+      [
+        "Centro Familiar",
+        "✅ (E2E)",
+        "❌",
+        "❌",
+        "✅",
+        "❌"
+      ],
+      [
+        "Simulación de phishing B2B",
+        "✅",
+        "❌",
+        "❌",
+        "❌",
+        "❌"
+      ]
+    ]
+  },
+  "Privacy": {
+    "heading": "La privacidad no es una función. Es la arquitectura.",
+    "server_heading": "Lo que sabe nuestro servidor",
+    "server_items": [
+      "Tu correo electrónico",
+      "Estado de la suscripción",
+      "Números agregados semanales"
+    ],
+    "server_note": "Si nos hackean: el atacante obtiene correos + suscripciones. Aburrido.",
+    "device_heading": "Lo que queda en tu dispositivo",
+    "device_items": [
+      "Historial completo de URL verificadas",
+      "Resultados de la Auditoría de privacidad",
+      "Desglose de la Puntuación de seguridad",
+      "Detalles del Informe semanal",
+      "Contenido de alertas familiares (cifrado E2E)"
+    ],
+    "device_note": "Si pierdes el dispositivo: protegido por el cifrado del sistema operativo."
+  },
+  "Testimonials": {
+    "heading": "Lo que dicen los usuarios",
+    "items": [
+      {
+        "q": "Por fin una herramienta de seguridad que no me espía. La Auditoría de privacidad abre los ojos.",
+        "n": "Alex K.",
+        "r": "Ingeniero de software"
+      },
+      {
+        "q": "Atrapó 3 enlaces de phishing en mi Gmail que Chrome pasó por alto. Vale cada centavo.",
+        "n": "María S.",
+        "r": "Gerente de marketing"
+      },
+      {
+        "q": "Reemplazamos KnowBe4 por LinkShield Business. La misma protección, a la cuarta parte del precio.",
+        "n": "James T.",
+        "r": "Director de TI"
+      }
+    ]
+  },
+  "FAQ": {
+    "heading": "Preguntas frecuentes",
+    "items": [
+      {
+        "q": "¿Cómo se protegen mis datos?",
+        "a": "Tu historial de navegación nunca sale del dispositivo. Nuestros servidores solo almacenan tu correo y el estado de la suscripción. Aunque nos hackeen, los atacantes no aprenden nada sobre tu actividad en línea."
+      },
+      {
+        "q": "¿Ralentiza la navegación?",
+        "a": "No. El 95% de las verificaciones se hacen localmente con bloom filter en menos de 1 ms. Solo los dominios desconocidos se envían a nuestra API (solo el nombre del dominio, nunca la URL completa)."
+      },
+      {
+        "q": "¿Puedo usarlo con una VPN?",
+        "a": "¡Sí! En móvil, LinkShield detecta automáticamente tu VPN y cambia al modo DNS, funcionando junto a NordVPN, ExpressVPN o cualquier otro proveedor."
+      },
+      {
+        "q": "¿Qué lo diferencia de Google Safe Browsing?",
+        "a": "Google Safe Browsing es reactivo: atrapa amenazas conocidas pero deja pasar phishing nuevo. LinkShield añade detección por ML, 8 fuentes adicionales de amenazas, Auditoría de privacidad, y no envía tus datos de navegación a Google."
+      },
+      {
+        "q": "¿Hay un plan gratuito?",
+        "a": "¡Sí! El plan gratuito incluye 10 verificaciones API al día, verificaciones locales ilimitadas por bloom filter y Auditoría de privacidad básica. La mayoría de usuarios casuales nunca necesita actualizar."
+      },
+      {
+        "q": "¿Cómo funciona la simulación de phishing?",
+        "a": "El plan Business incluye correos de phishing simulados enviados a tu equipo. Elige una plantilla, enviamos correos de prueba y rastreamos quién hace clic y quién reporta. Para capacitar, no para castigar."
+      }
+    ]
+  }
+}

@@ -5,7 +5,21 @@
  * Privacy: only domain names are sent — never full URLs or page content.
  */
 
-const API_BASE = "http://localhost:8000"; // TODO: change to https://api.linkshield.io in production
+// API base resolution: chrome.storage.local.api_url (dev override) → production Railway URL
+// To use local dev: Options page → set API URL to http://localhost:8000 → Save
+let API_BASE = "https://web-production-fe08.up.railway.app";
+try {
+  chrome.storage.local.get("api_url").then(function(data) {
+    if (data && typeof data.api_url === "string" && data.api_url.startsWith("http")) {
+      API_BASE = data.api_url.replace(/\/$/, "");
+    }
+  }).catch(function() {});
+  chrome.storage.onChanged.addListener(function(changes, area) {
+    if (area === "local" && changes && changes.api_url && typeof changes.api_url.newValue === "string") {
+      API_BASE = changes.api_url.newValue.replace(/\/$/, "");
+    }
+  });
+} catch (e) { /* storage not available (tests, edge cases) */ }
 
 /**
  * Check domains against LinkShield API

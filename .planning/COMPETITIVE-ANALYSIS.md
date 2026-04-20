@@ -644,3 +644,321 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 | VPN conflict resolution | None | Everyone requires their own VPN |
 
 **No competitor combines all three:** real-time link blocking + privacy audit + family hub + phishing simulation + email proxy. The niche is validated and open.
+
+---
+
+## ADDENDUM 2: дополнительные конкуренты + UX axis (2026-04-14)
+
+После gap-audit добавлены крупные по installbase игроки которых не было ранее, и введена ключевая **UX-for-regular-people axis** — мерило удобства для обычного человека (бабушка/родитель/не-техи), где LinkShield должен лидировать.
+
+### 14. Microsoft Edge SmartScreen
+
+**Что это:** встроенный в Edge фильтр фишинга/малвари. Также в Windows Defender, Outlook web.
+
+**Pricing:** Free (встроено в Windows / Edge).
+
+**Key features:**
+- Real-time URL reputation check против Microsoft reputation service
+- Downloaded file scan
+- Phishing form protection (предупреждает если ввели пароль на фейковом сайте)
+- Включено по умолчанию в Edge
+- Cross-integration с Outlook, Teams, Office
+
+**Strengths:**
+- Zero effort (по умолчанию)
+- Огромный installbase (миллиарды Edge + Windows юзеров)
+- Integration с Microsoft account для phishing auto-response
+- Password reuse detection
+
+**Weaknesses:**
+- **Только Edge** (не работает в Chrome/Firefox/Safari)
+- **Только Windows / Mac** Edge-only — не мобильная
+- Sends URLs to Microsoft (privacy concern для enterprise)
+- **Technical UX** — warning pages cryptic для обычного юзера
+- No privacy audit
+- No family features
+- Не работает на iOS/Android за пределами Edge mobile (~5% mobile market share)
+
+**LinkShield advantage:**
+- **Универсальность** — Chrome + Firefox + Safari + mobile VPN (Edge только Edge)
+- **Plain-language explanations** vs Microsoft technical warnings
+- **Privacy-by-design** — не шлём URL на сервер Microsoft
+- **Skill levels** — Granny/Kids modes
+- **Family Hub** — Microsoft не позволяет удалённое управление защитой семьи
+
+---
+
+### 15. Apple Safari — Fraudulent Website Warning
+
+**Что это:** встроенное в Safari (iOS + macOS) предупреждение о фишинге. Использует Google Safe Browsing данные (privacy-preserving через k-anonymity).
+
+**Pricing:** Free (встроено).
+
+**Key features:**
+- Warning page на известных phishing URLs (из Google Safe Browsing)
+- Private Relay (iCloud+ $0.99/mo) — скрывает IP от сайтов
+- Intelligent Tracking Prevention (блок cookies third-party)
+- Private Browsing mode
+
+**Strengths:**
+- Включено по умолчанию для всех Safari юзеров (~1B устройств)
+- Privacy-preserving (использует hash prefixes, не отправляет URL)
+- Apple ecosystem trust
+- iCloud+ добавляет Private Relay для mobile
+
+**Weaknesses:**
+- **Только Safari** — не работает в Chrome/Firefox на том же устройстве
+- **Базовое** — только blocklist, no ML, no proactive detection
+- **Reactive** — не ловит zero-day фишинг
+- No privacy audit (хотя ITP блокирует часть трекеров)
+- No family features
+- No explanations — просто "This is suspicious" без объяснения почему
+- Не протектит apps вне Safari (Instagram, WhatsApp, etc.)
+
+**LinkShield advantage:**
+- **Cross-browser** (Safari + Chrome + Firefox одновременно)
+- **ML detection** zero-day угроз vs Apple's blocklist-only
+- **Privacy Audit** — показываем что сайт собирает (не только блокируем трекеры)
+- **Mobile VPN** защищает все apps, не только Safari
+- **Plain language** + **Granny Mode** vs Apple's minimal warning
+
+---
+
+### 16. Brave Shields
+
+**Что это:** встроенный в Brave Browser ad/tracker/malware blocker. Privacy-focused браузер из коробки.
+
+**Pricing:** Free (монетизация через Brave Rewards / BAT crypto).
+
+**Key features:**
+- Aggressive ad/tracker blocking (built-in)
+- HTTPS upgrade
+- Malware site blocking
+- Fingerprinting randomization
+- IPFS support
+- Tor private windows
+
+**Strengths:**
+- All-in-one privacy browser
+- Наиболее жёсткий default privacy stance среди mainstream browsers
+- Tor integration
+- Zero configuration for privacy
+
+**Weaknesses:**
+- **Только Brave browser** (market share ~1%)
+- Требует смены браузера (barrier)
+- No plain-language privacy audit
+- No family features
+- No mobile protection за пределами Brave mobile
+- BAT crypto model — контрвоверсиален для некоторых
+- Shields UI для tech-savvy, не для бабушки
+
+**LinkShield advantage:**
+- **Работает в любом браузере** (Chrome, Safari, Firefox) — не требует смены
+- **Explains** что блокировано (а не просто блокирует тихо)
+- **Family Hub** + **Granny Mode** — Brave не имеет
+- **Универсальная mobile VPN защита** vs Brave только browser
+
+---
+
+### 17. DuckDuckGo Privacy Essentials
+
+**Что это:** Extension + браузер от DuckDuckGo. Privacy-first поиск + tracker blocking.
+
+**Pricing:** Free (revenue через search ads, не от user data).
+
+**Key features:**
+- Tracker blocking (auto)
+- HTTPS upgrade
+- Privacy grade per site (A-F)
+- Email protection (hide-my-email aliases)
+- App Tracking Protection (Android) — блокирует трекеры в apps
+- DuckDuckGo search engine (private)
+
+**Strengths:**
+- Established trusted brand в privacy space
+- Privacy grade per site — **близко к нашему Privacy Audit**
+- Email protection через алиасы (Duck Email)
+- App Tracking Protection на Android (killer feature)
+- Простая миссия — легко объяснить
+
+**Weaknesses:**
+- **Нет anti-phishing focus** — tracker/ad blocking, но не URL scoring для scams
+- **Privacy grade поверхностный** — не объясняет трекеры на человеческом
+- No family features / no granny mode
+- Mobile app ≠ browser protection (DDG mobile browser только)
+- Нет B2B / phishing simulation
+- Нет ML-based phishing detection
+
+**LinkShield advantage:**
+- **Phishing detection + Privacy Audit** — один продукт (DDG только privacy)
+- **Plain-language explanations** — мы говорим "этот сайт следит за вами как..." — DDG показывает grade без deep explanation
+- **Skill Levels** — Granny/Kids modes
+- **Family Hub** — DDG не имеет
+- **ML-based detection** для zero-day phishing vs DDG's list-based
+
+**Важно:** DDG — ближайший "values-aligned" competitor. Мы можем кооперироваться — наш Privacy Audit + их Email Protection.
+
+---
+
+### 18. Kaspersky (RU/CIS критически важный)
+
+**Что это:** российский антивирус + anti-phishing + VPN. Доминирует в RU/CIS рынке.
+
+**Pricing:**
+- Kaspersky Free (basic AV): бесплатно
+- Kaspersky Standard: ~$30/год на 1 устройство
+- Kaspersky Plus: $50/год + VPN + password manager
+- Kaspersky Premium: $80/год + identity protection + SafeKids
+
+**Key features:**
+- Real-time antivirus + anti-phishing filter
+- Safe Money (специальный защищённый браузер для банков)
+- VPN
+- Password manager
+- **SafeKids (parental controls)** — лидер в RU для родительского контроля
+- **Защита от онлайн-мошенничества** с объяснением на русском
+
+**Strengths:**
+- **Лидер в RU/CIS рынке** (~40-50% market share)
+- **SafeKids** — мощный parental controls product
+- **Русскоязычный интерфейс** с качественным переводом (не машинным)
+- Перформанс в AV-Comparatives tests — топ 3
+- Большая доверяемая бренд в CIS
+- **Safe Money** — защищённый банкинг (УНИКАЛЬНО)
+- Free tier хороший (basic protection)
+
+**Weaknesses:**
+- **US / EU ban** на gov use (2022+) — brand damage в западных рынках
+- **Full suite** — слишком много для юзера который хочет только links
+- **Performance heavy** — замедляет устройство
+- Сложный интерфейс (много вкладок)
+- No plain-language audit для обычного юзера
+- Privacy concerns (Russian company + западные санкции)
+- **Не работает в США / Канаде / UK** (запрещён для gov)
+
+**LinkShield advantage:**
+- **Не политический продукт** — работает везде, из любой страны
+- **Простота vs Kaspersky suite** — один фокус (links), не 15 фичей
+- **Privacy-first architecture** — серверы могут быть в ЕС / США
+- **Granny Mode** — Kaspersky SafeKids хорош но не Granny-focused
+- **Ценовая доступность** — $4.99 Personal vs $30+ Kaspersky Standard
+
+**Важно для RU-маркета:** после ухода multi-западных продуктов и ограничений на Kaspersky, есть открытый рынок. LinkShield как **neutral, privacy-first, affordable** продукт может занять позицию.
+
+---
+
+### 19. MetaMask / Phantom — crypto wallet warnings
+
+**Что это:** встроенные в crypto кошельки предупреждения о scam контрактах и phishing URLs.
+
+**Pricing:** Free (wallet sам бесплатен, revenue через swaps).
+
+**Key features:**
+- Blocklist known scam smart contracts (pre-transaction warning)
+- Phishing URL detection в connected dApps
+- "Malicious site" warning если dApp на blocklist
+- Transaction preview (what will actually happen)
+
+**Strengths:**
+- **Intercepts at transaction moment** — последняя линия защиты перед потерей $
+- Community-driven blocklist (crypto community alert fast)
+- Wallet-level integration (можно отменить tx перед подписанием)
+- Hardware wallet integration
+
+**Weaknesses:**
+- **Только crypto контекст** — не защищает от классического фишинга (банк, почта, соцсети)
+- Не предотвращает первичный фишинг (ввод seed phrase)
+- Требует crypto знаний
+- Reactive (после включения на blocklist)
+- No plain-language для non-crypto юзеров
+
+**LinkShield positioning:**
+Не конкурент — complementary. Мы блокируем фишинг **до** того как юзер попадает на scam dApp. MetaMask — последняя линия внутри wallet.
+
+**Возможная интеграция:** API для crypto-wallets — "check this dApp URL with LinkShield" до connection.
+
+---
+
+### 20. Telegram bot link checkers
+
+**Что это:** Боты в Telegram для проверки ссылок (например, @VirusTotalBot, @SafeBrowsingBot, @CheckUrlBot, @LinkCheckerBot).
+
+**Pricing:** Обычно Free (некоторые с премиум опциями).
+
+**Key features:**
+- Пересылаешь ссылку боту → отвечает safe/unsafe
+- Обычно использует VirusTotal API или Google Safe Browsing
+- Некоторые показывают screenshot / whois / redirect chain
+- Работает в messenger (не требует установки extension)
+
+**Strengths:**
+- **Zero install** — бот уже в Telegram
+- **Discoverable** — можно узнать от друзей, поделиться
+- Хорошо для manual проверки подозрительной ссылки
+- Работает на любой платформе (там где Telegram есть)
+
+**Weaknesses:**
+- **Manual** — нужно специально проверять каждую ссылку (не auto-scan)
+- **Ограничено Telegram** — не работает в других мессенджерах
+- **Нет family features**
+- Качество сильно варьируется
+- Ссылка отправляется на server (privacy concern)
+- Не протектит в browsers / desktop / mobile apps
+- Ephemeral — нет истории проверок, нет Privacy Audit
+
+**LinkShield advantage:**
+- **Auto-scan** на каждой странице — не надо ничего копировать/пересылать
+- **Privacy-first** — домен проверяется, не сам URL
+- **Cross-platform** — не ограничено одним мессенджером
+- **Family Hub** для защиты близких
+- **Persistent protection** — постоянная защита vs одноразовая проверка
+
+**Tactical:** может быть хорошим referral channel — "попробуй бот, потом поставь extension для автоматической защиты"
+
+---
+
+## Обновлённая competitive matrix с UX axis
+
+**UX-for-regular-people score** (1-10) — насколько удобно обычному не-техническому юзеру (бабушке, родителю) понять и использовать продукт.
+
+| Feature | LinkShield (plan) | Guardio | NordVPN TP | Malwarebytes BG | Netcraft | Bitdefender TL | Google SB | Apple Safari | Edge SmartScreen | Brave Shields | DuckDuckGo | Kaspersky | MetaMask | Telegram bots | KnowBe4 | Aura | Privacy Badger | Ghostery |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **UX for grandma (1-10)** | **9** ⭐ | 6 | 4 | 5 | 2 | 7 | 8 | 8 | 7 | 3 | 6 | 3 | 2 | 4 | 1 | 3 | 3 | 4 |
+| **Plain-language explanations** | **Yes** ⭐ | Partial | No | No | No | No | No | Basic | Basic | No | Partial | Partial | No | No | Training only | No | No | No |
+| **Granny Mode (huge fonts, voice)** | **Yes** ⭐ | No | No | No | No | No | No | iOS accessibility только | No | No | No | No | No | No | No | No | No | No |
+| **Auto-on by default** | **Yes** | Yes | Yes | Yes | No (install req) | No | Yes | Yes | Yes | Yes | No | Yes | Per-wallet | No (manual) | Admin setup | Yes | No | No |
+| **Family remote management** | **Yes** | Share plan | No | No | No | No | No | FamilyShare IAP | No | No | No | SafeKids | No | No | Admin Yes | Yes (parental) | No | No |
+| **Multi-language (10+)** | **Yes** (10) | 8+ | 12+ | 15+ | 6+ | 18+ | ~60 | 30+ | 20+ | 15+ | 9 | 20+ | 40+ | N/A | 35 | 8+ | 15+ | 10+ |
+| **Chrome ext** | Yes | Yes | No | Yes | Yes | Yes | Built-in | No | No | No (own browser) | Yes | Yes | Yes | N/A | No | No | Yes | Yes |
+| **Mobile all-app protect** | **Yes (VPN)** | Yes | Pro Win/Mac | No | No | No | No | iOS only | Android only | No | DDG browser | Premium | In-wallet | N/A | No | Yes (VPN) | No | No |
+| **Privacy audit (plain lang)** | **Yes** ⭐ | No | No | No | Partial | No | No | No | No | Partial | **Yes (grade)** | Partial | No | No | No | No | Silent | Detailed tech |
+| **Pricing transparency** | **Yes (regional)** | Yes | Bundle only | Free | Free | Free | Free | Free | Free | Free | Free | Multi-tier | Free | Free | Enterprise | Opaque | Free | Free |
+| **Free tier usability** | **Full block forever** ⭐ | Limited | N/A | Full | Full | Full | Full | Full | Full | Full | Full | Basic AV | Full | Full | N/A | N/A | Full | Full |
+
+**Обозначение:** ⭐ = LinkShield имеет уникальное преимущество или лидирует
+
+---
+
+## Ключевой инсайт новой аналитики
+
+**9/10 competitor'ов имеют UX score ≤7 для обычного юзера.** Только Apple Safari (8) близко к нам (цель 9+). Но Safari это:
+- Только их браузер
+- Только blocklist (без ML)
+- Без Family Hub / Granny Mode
+- Без cross-platform
+
+**Наш wedge:** **"защита для всех платформ, на 10 языках, с UX который понимает бабушка"**. Это не занято никем.
+
+---
+
+## Обновлённый positioning statement
+
+Прошлый: "The only link protection that works everywhere, explains everything, and proves its value every week."
+
+**Новый (v2, с учётом bab-first миссии):**
+
+"LinkShield — единственная защита от мошенничества онлайн, которая понятна даже вашей бабушке. Работает автоматически в Chrome, Firefox, Safari и на телефоне. Говорит на вашем языке, без технического жаргона. Покажет бабушке что сайт — мошенник, предупредит родителей что их ребёнок открыл опасную ссылку, объяснит обычному человеку почему надо закрыть эту страницу. Блокировка мошенников — всегда бесплатна. Платите только за защиту всей семьи и персональные режимы."
+
+(английская версия на лендинге будет адаптирована но с тем же message)
+

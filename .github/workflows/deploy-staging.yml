@@ -1,0 +1,66 @@
+name: Deploy to staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  staging-deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      ENVIRONMENT: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run pytest
+        env:
+          DEBUG: "true"
+          ENVIRONMENT: "development"
+          SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
+        run: pytest tests/ -q --maxfail=1
+
+      - name: Install Railway CLI
+        run: curl -fsSL https://railway.app/install.sh | sh
+
+      - name: Deploy to Railway staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGING }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE_STAGING }}
+        run: |
+          echo "Deploying main to Railway STAGING..."
+          ~/.railway/bin/railway up --service "$RAILWAY_SERVICE" --detach
+
+      - name: Wait for staging /health
+        env:
+          STAGING_HEALTH_URL: ${{ secrets.STAGING_HEALTH_URL }}
+        run: |
+          echo "Polling $STAGING_HEALTH_URL..."
+          for i in {1..30}; do
+            if curl --fail --silent "$STAGING_HEALTH_URL" > /dev/null; then
+              echo "✓ staging healthy"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Staging /health did not return 200 within 5 minutes. Railway will auto-rollback."
+          exit 1

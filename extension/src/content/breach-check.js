@@ -23,7 +23,7 @@ async function checkEmailBreach(email) {
   var suffix = hash.substring(5);
 
   try {
-    var resp = await fetch("http://localhost:8000/api/v1/breach/check/" + prefix);
+    var resp = await fetch((typeof window !== "undefined" && window.LINKSHIELD_API_BASE ? window.LINKSHIELD_API_BASE : "https://web-production-fe08.up.railway.app") + "/api/v1/breach/check/" + prefix);
     if (!resp.ok) return { error: "Service unavailable" };
 
     var data = await resp.json();

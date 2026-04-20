@@ -1,0 +1,225 @@
+{
+  "extension_name": {
+    "message": "LinkShield — Protección contra enlaces fraudulentos"
+  },
+  "extension_description": {
+    "message": "Detección automática de sitios fraudulentos y de phishing. En lenguaje sencillo, para todos."
+  },
+  "popup_brand": {
+    "message": "LinkShield"
+  },
+  "popup_settings_title": {
+    "message": "Ajustes"
+  },
+  "status_scanning": {
+    "message": "Revisando esta página…"
+  },
+  "status_safe_title": {
+    "message": "Esta página es segura"
+  },
+  "status_safe_subtitle": {
+    "message": "No hay enlaces fraudulentos en $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Algunos enlaces parecen sospechosos"
+  },
+  "status_warning_subtitle": {
+    "message": "$N$ enlaces en esta página necesitan una revisión más cuidadosa",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "Este es un sitio fraudulento"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ se hace pasar por otro sitio para robar tu información",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "No se pudo verificar esta página"
+  },
+  "status_unknown_subtitle": {
+    "message": "Inténtalo de nuevo en un momento"
+  },
+  "action_close_tab": {
+    "message": "Cerrar esta página"
+  },
+  "action_audit": {
+    "message": "Qué recopila este sitio"
+  },
+  "action_week": {
+    "message": "Mi semana"
+  },
+  "action_more": {
+    "message": "Más"
+  },
+  "action_less": {
+    "message": "Menos"
+  },
+  "more_section_label": {
+    "message": "Más herramientas"
+  },
+  "action_breach": {
+    "message": "Comprobar fuga de email"
+  },
+  "action_score": {
+    "message": "Mi nivel de seguridad"
+  },
+  "action_trust": {
+    "message": "Confiar siempre en este sitio"
+  },
+  "action_report": {
+    "message": "Reportar resultado incorrecto"
+  },
+  "stats_label_blocked": {
+    "message": "Estafas bloqueadas"
+  },
+  "stats_label_warned": {
+    "message": "Advertencias"
+  },
+  "stats_label_checked": {
+    "message": "Enlaces revisados"
+  },
+  "upgrade_free_count": {
+    "message": "Gratis: $USED$ de $LIMIT$ verificaciones hoy",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Mejorar"
+  },
+  "onboarding_welcome": {
+    "message": "¡Hola! Soy LinkShield."
+  },
+  "onboarding_tip": {
+    "message": "Reviso cada enlace de cada página. Los peligrosos los marco en rojo. Si tienes dudas, haz clic derecho → «Verificar con LinkShield»."
+  },
+  "aha_found_scams": {
+    "message": "Encontré $N$ enlaces fraudulentos que tu navegador dejó pasar",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Sin conexión — protección básica activa"
+  },
+  "recent_empty": {
+    "message": "Nada aún — navega normal, estoy vigilando."
+  },
+  "trust_footer": {
+    "message": "Tus datos nunca salen de este dispositivo"
+  },
+  "block_title": {
+    "message": "ALTO"
+  },
+  "block_subtitle_scam": {
+    "message": "Este es un sitio fraudulento"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ se hace pasar por otro sitio para robar tus datos.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "Este sitio finge ser $BRAND$",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "Cómo usan estos sitios los estafadores:"
+  },
+  "block_scheme_step1": {
+    "message": "Te pedirán tu contraseña o datos bancarios"
+  },
+  "block_scheme_step2": {
+    "message": "El estafador roba todo lo que escribas"
+  },
+  "block_scheme_step3": {
+    "message": "Vacían tu cuenta o suplantan tu identidad"
+  },
+  "block_back_button": {
+    "message": "Volver a un lugar seguro"
+  },
+  "block_proceed_button": {
+    "message": "Entiendo el riesgo — abrir de todos modos"
+  },
+  "block_proceed_countdown": {
+    "message": "Espera $N$ segundos…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Protegido por LinkShield. Tus datos quedan en tu dispositivo."
+  },
+  "welcome_hero_title": {
+    "message": "Ya estás protegido"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Cada enlace que ves se revisa. Los peligrosos se bloquean automáticamente."
+  },
+  "welcome_step1_title": {
+    "message": "Revisión automática"
+  },
+  "welcome_step1_desc": {
+    "message": "Cada página, cada enlace. Etiqueta verde: seguro. Roja: estafa."
+  },
+  "welcome_step2_title": {
+    "message": "Tus datos se quedan contigo"
+  },
+  "welcome_step2_desc": {
+    "message": "Solo revisamos nombres de sitios. Tu historial nunca sale de este dispositivo."
+  },
+  "welcome_step3_title": {
+    "message": "Sin ralentizar"
+  },
+  "welcome_step3_desc": {
+    "message": "La mayoría de revisiones ocurren en tu dispositivo en menos de un segundo."
+  },
+  "welcome_step4_title": {
+    "message": "Para toda la familia"
+  },
+  "welcome_step4_desc": {
+    "message": "Protege a padres, hijos y abuelos con un solo plan. Modos distintos para cada uno."
+  },
+  "welcome_cta_scan": {
+    "message": "Revisar mi bandeja por estafas ocultas"
+  },
+  "welcome_cta_skip": {
+    "message": "Saltar — empezar a navegar"
+  },
+  "welcome_trust_footer": {
+    "message": "El bloqueo siempre es gratis. Tus datos nunca salen de este dispositivo."
+  },
+  "welcome_step_label": {
+    "message": "Paso"
+  }
+}

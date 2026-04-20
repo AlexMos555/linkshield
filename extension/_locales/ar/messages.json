@@ -1,0 +1,225 @@
+{
+  "extension_name": {
+    "message": "LinkShield — الحماية من الروابط الاحتيالية"
+  },
+  "extension_description": {
+    "message": "كشف تلقائي لمواقع الاحتيال والتصيد. بلغة بسيطة، للجميع."
+  },
+  "popup_brand": {
+    "message": "LinkShield"
+  },
+  "popup_settings_title": {
+    "message": "الإعدادات"
+  },
+  "status_scanning": {
+    "message": "جارٍ فحص هذه الصفحة…"
+  },
+  "status_safe_title": {
+    "message": "هذه الصفحة آمنة"
+  },
+  "status_safe_subtitle": {
+    "message": "لم يتم العثور على روابط احتيالية في $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "بعض الروابط تبدو مشبوهة"
+  },
+  "status_warning_subtitle": {
+    "message": "$N$ روابط في هذه الصفحة تستدعي فحصًا أدق",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "هذا موقع احتيالي"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ ينتحل صفة موقع آخر لسرقة معلوماتك",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "تعذّر فحص هذه الصفحة"
+  },
+  "status_unknown_subtitle": {
+    "message": "حاول مرة أخرى بعد لحظة"
+  },
+  "action_close_tab": {
+    "message": "إغلاق هذه الصفحة"
+  },
+  "action_audit": {
+    "message": "ماذا يجمع هذا الموقع"
+  },
+  "action_week": {
+    "message": "أسبوعي"
+  },
+  "action_more": {
+    "message": "المزيد"
+  },
+  "action_less": {
+    "message": "أقل"
+  },
+  "more_section_label": {
+    "message": "أدوات إضافية"
+  },
+  "action_breach": {
+    "message": "تحقق من تسرّب البريد"
+  },
+  "action_score": {
+    "message": "مستوى حمايتي"
+  },
+  "action_trust": {
+    "message": "الوثوق بهذا الموقع دائمًا"
+  },
+  "action_report": {
+    "message": "الإبلاغ عن نتيجة خاطئة"
+  },
+  "stats_label_blocked": {
+    "message": "عمليات احتيال محظورة"
+  },
+  "stats_label_warned": {
+    "message": "تحذيرات"
+  },
+  "stats_label_checked": {
+    "message": "روابط مفحوصة"
+  },
+  "upgrade_free_count": {
+    "message": "مجاني: $USED$ من $LIMIT$ فحوصات اليوم",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "ترقية"
+  },
+  "onboarding_welcome": {
+    "message": "مرحبًا! أنا LinkShield."
+  },
+  "onboarding_tip": {
+    "message": "أفحص كل رابط في كل صفحة. الروابط الخطيرة أضع عليها علامة حمراء. هل لديك شك؟ زر الفأرة الأيمن ← «تحقق بواسطة LinkShield»."
+  },
+  "aha_found_scams": {
+    "message": "وجدت $N$ روابط احتيالية فوّتها متصفحك",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "غير متصل — الحماية الأساسية فعّالة"
+  },
+  "recent_empty": {
+    "message": "لا شيء بعد — تصفّح بشكل طبيعي، أنا أراقب."
+  },
+  "trust_footer": {
+    "message": "بياناتك لا تغادر هذا الجهاز أبدًا"
+  },
+  "block_title": {
+    "message": "قف"
+  },
+  "block_subtitle_scam": {
+    "message": "هذا موقع احتيالي"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ ينتحل صفة موقع آخر ليسرق معلوماتك.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "هذا الموقع ينتحل صفة $BRAND$",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "كيف يستغل المحتالون مثل هذه المواقع:"
+  },
+  "block_scheme_step1": {
+    "message": "سيُطلب منك كلمة المرور أو بيانات البنك"
+  },
+  "block_scheme_step2": {
+    "message": "يسرق المحتال كل ما تكتبه"
+  },
+  "block_scheme_step3": {
+    "message": "يفرغون حسابك أو ينتحلون هويتك"
+  },
+  "block_back_button": {
+    "message": "العودة إلى الأمان"
+  },
+  "block_proceed_button": {
+    "message": "أتفهّم الخطر — افتح على أي حال"
+  },
+  "block_proceed_countdown": {
+    "message": "انتظر $N$ ثوانٍ…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "محمي بواسطة LinkShield. بياناتك تبقى على جهازك."
+  },
+  "welcome_hero_title": {
+    "message": "أنت محمي الآن"
+  },
+  "welcome_hero_subtitle": {
+    "message": "يتم فحص كل رابط تراه. الروابط الخطرة تُحظر تلقائيًا."
+  },
+  "welcome_step1_title": {
+    "message": "فحص تلقائي"
+  },
+  "welcome_step1_desc": {
+    "message": "كل صفحة، كل رابط. العلامة الخضراء: آمن. الحمراء: احتيال."
+  },
+  "welcome_step2_title": {
+    "message": "بياناتك تبقى معك"
+  },
+  "welcome_step2_desc": {
+    "message": "نفحص أسماء المواقع فقط. سجل تصفّحك لا يغادر هذا الجهاز أبدًا."
+  },
+  "welcome_step3_title": {
+    "message": "دون تباطؤ"
+  },
+  "welcome_step3_desc": {
+    "message": "تتم معظم الفحوصات على جهازك في أقل من ثانية."
+  },
+  "welcome_step4_title": {
+    "message": "للعائلة بأكملها"
+  },
+  "welcome_step4_desc": {
+    "message": "احمِ الوالدين والأطفال والأجداد بخطة واحدة. أوضاع مختلفة للجميع."
+  },
+  "welcome_cta_scan": {
+    "message": "افحص بريدي بحثًا عن احتيال مخفي"
+  },
+  "welcome_cta_skip": {
+    "message": "تخطَّ — ابدأ التصفح"
+  },
+  "welcome_trust_footer": {
+    "message": "الحظر مجاني دائمًا. بياناتك لا تغادر هذا الجهاز أبدًا."
+  },
+  "welcome_step_label": {
+    "message": "خطوة"
+  }
+}

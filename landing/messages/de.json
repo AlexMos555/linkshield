@@ -1,0 +1,277 @@
+{
+  "Nav": {
+    "features": "Funktionen",
+    "pricing": "Preise",
+    "privacy": "Datenschutz",
+    "business": "Unternehmen",
+    "install": "Zu Chrome hinzufügen",
+    "install_short": "Installieren"
+  },
+  "Hero": {
+    "badge": "91% Betrugserkennung",
+    "title_part1": "Betrugsschutz, der",
+    "title_part2": "Ihre Privatsphäre respektiert",
+    "subtitle": "Automatische Linkprüfung auf jeder Seite. 9 Bedrohungsquellen. KI-basierte Erkennung. Ihre Browsing-Daten verlassen Ihr Gerät nie.",
+    "cta_primary": "Zu Chrome hinzufügen — kostenlos",
+    "cta_secondary": "So funktioniert's",
+    "cta_footer": "Grundschutz für immer kostenlos. Keine Kreditkarte."
+  },
+  "FinalCta": {
+    "title": "Bereit für sicheres Surfen?",
+    "subtitle": "Tausende surfen bereits sorgenfrei.",
+    "cta_primary": "Zu Chrome hinzufügen — kostenlos",
+    "cta_business": "Für Unternehmen"
+  },
+  "Footer": {
+    "brand": "LinkShield",
+    "privacy": "Datenschutz",
+    "terms": "AGB",
+    "contact": "Kontakt",
+    "github": "GitHub",
+    "tagline": "Ihre Daten, Ihr Gerät."
+  },
+  "LanguageSwitcher": {
+    "label": "Sprache"
+  },
+  "Features": {
+    "heading": "Everything you need. Nothing you don't.",
+    "items": [
+      {
+        "icon": "🔍",
+        "title": "Automatic Link Scanning",
+        "desc": "Every link on every page checked against 9 threat databases. Red, yellow, green badges show safety at a glance."
+      },
+      {
+        "icon": "🔒",
+        "title": "Privacy Audit",
+        "desc": "Right-click any page to see trackers, cookies, data collection, and fingerprinting. Grade A through F."
+      },
+      {
+        "icon": "🧠",
+        "title": "ML-Powered Detection",
+        "desc": "CatBoost model trained on 18K+ domains. 0.9988 AUC. Catches novel phishing that rule-based systems miss."
+      },
+      {
+        "icon": "⚡",
+        "title": "Instant Protection",
+        "desc": "95% of checks happen locally via bloom filter in under 1ms. No slowdown. No waiting."
+      },
+      {
+        "icon": "📱",
+        "title": "Your Data, Your Device",
+        "desc": "Browsing history never touches our servers. We only see domain names. Even if breached, your data is safe."
+      },
+      {
+        "icon": "📧",
+        "title": "Inbox Scanner",
+        "desc": "Finds phishing links in your Gmail and Outlook that your browser missed."
+      }
+    ]
+  },
+  "HowItWorks": {
+    "heading": "How LinkShield protects you",
+    "steps": [
+      {
+        "step": "1",
+        "title": "Install",
+        "desc": "Add the Chrome extension. Takes 10 seconds."
+      },
+      {
+        "step": "2",
+        "title": "Browse",
+        "desc": "LinkShield checks every link automatically. No action needed."
+      },
+      {
+        "step": "3",
+        "title": "Stay Safe",
+        "desc": "Dangerous links get red badges. Click for details."
+      }
+    ]
+  },
+  "PricingTeaser": {
+    "heading": "Simple, transparent pricing",
+    "unit_forever": "/forever",
+    "unit_month": "/month",
+    "most_popular": "Most Popular",
+    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
+    "free": {
+      "name": "Free",
+      "price": "$0",
+      "features": [
+        "10 API checks/day",
+        "Unlimited local checks",
+        "Privacy Audit (grade only)",
+        "Link badges on all pages"
+      ],
+      "cta": "Get Started"
+    },
+    "personal": {
+      "name": "Personal",
+      "price": "$4.99",
+      "features": [
+        "Unlimited checks",
+        "Full Privacy Audit breakdown",
+        "Weekly Security Report",
+        "Security Score + tips",
+        "Priority support"
+      ],
+      "cta": "Start Free Trial"
+    },
+    "family": {
+      "name": "Family",
+      "price": "$9.99",
+      "features": [
+        "Everything in Personal",
+        "Up to 6 devices",
+        "Family Hub with E2E alerts",
+        "Parental mode"
+      ],
+      "cta": "Start Free Trial"
+    }
+  },
+  "Comparison": {
+    "heading": "How we compare",
+    "headers": [
+      "Feature",
+      "LinkShield",
+      "Guardio",
+      "NordVPN TP",
+      "Norton 360",
+      "Free Extensions"
+    ],
+    "rows": [
+      [
+        "Price",
+        "$4.99/mo",
+        "$9.99/mo",
+        "~$5/mo (w/ VPN)",
+        "$40-100/yr",
+        "Free"
+      ],
+      [
+        "Platforms",
+        "All 5",
+        "Chrome only",
+        "Win/Mac",
+        "All",
+        "Browser only"
+      ],
+      [
+        "Privacy Audit",
+        "✅",
+        "❌",
+        "❌",
+        "❌",
+        "❌"
+      ],
+      [
+        "On-device data",
+        "✅",
+        "❌",
+        "❌",
+        "❌",
+        "❌"
+      ],
+      [
+        "ML detection",
+        "✅",
+        "✅",
+        "✅",
+        "✅",
+        "❌"
+      ],
+      [
+        "Breach monitoring",
+        "✅",
+        "❌",
+        "❌",
+        "✅",
+        "❌"
+      ],
+      [
+        "Family Hub",
+        "✅ (E2E)",
+        "❌",
+        "❌",
+        "✅",
+        "❌"
+      ],
+      [
+        "B2B Phishing sim",
+        "✅",
+        "❌",
+        "❌",
+        "❌",
+        "❌"
+      ]
+    ]
+  },
+  "Privacy": {
+    "heading": "Privacy is not a feature. It's the architecture.",
+    "server_heading": "What our server knows",
+    "server_items": [
+      "Your email address",
+      "Subscription status",
+      "Weekly aggregate numbers"
+    ],
+    "server_note": "If breached: attacker gets emails + subscription. Boring.",
+    "device_heading": "What stays on your device",
+    "device_items": [
+      "Full URL check history",
+      "Privacy Audit results",
+      "Security Score breakdown",
+      "Weekly Report details",
+      "Family alert content (E2E encrypted)"
+    ],
+    "device_note": "If device is lost: protected by OS encryption."
+  },
+  "Testimonials": {
+    "heading": "What users say",
+    "items": [
+      {
+        "q": "Finally, a security tool that doesn't spy on me. The Privacy Audit is eye-opening.",
+        "n": "Alex K.",
+        "r": "Software Engineer"
+      },
+      {
+        "q": "Caught 3 phishing links in my Gmail that Chrome missed. Worth every penny.",
+        "n": "Maria S.",
+        "r": "Marketing Manager"
+      },
+      {
+        "q": "We replaced KnowBe4 with LinkShield Business. Same protection, 1/4 the price.",
+        "n": "James T.",
+        "r": "IT Director"
+      }
+    ]
+  },
+  "FAQ": {
+    "heading": "FAQ",
+    "items": [
+      {
+        "q": "How is my data protected?",
+        "a": "Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if we're breached, attackers learn nothing about your online activity."
+      },
+      {
+        "q": "Does it slow down browsing?",
+        "a": "No. 95% of checks happen locally via bloom filter in under 1ms. Only unknown domains are sent to our API (domain name only, never full URLs)."
+      },
+      {
+        "q": "Can I use it with a VPN?",
+        "a": "Yes! On mobile, LinkShield auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
+      },
+      {
+        "q": "What's different from Google Safe Browsing?",
+        "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. LinkShield adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
+      },
+      {
+        "q": "Is there a free plan?",
+        "a": "Yes! The free plan includes 10 API checks/day, unlimited local bloom filter checks, and basic Privacy Audit. Most casual users never need to upgrade."
+      },
+      {
+        "q": "How does phishing simulation work?",
+        "a": "Business plan includes simulated phishing emails sent to your team. Pick a template, we send test emails, track who clicks vs. who reports. For training, not punishment."
+      }
+    ]
+  }
+}

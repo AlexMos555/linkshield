@@ -1,0 +1,822 @@
+{
+  "extension": {
+    "meta": {
+      "name": {
+        "text": "LinkShield — Protezione dai link truffa"
+      },
+      "description": {
+        "text": "Rilevamento automatico di siti truffa e phishing. In linguaggio semplice, per tutti."
+      }
+    },
+    "popup": {
+      "brand": {
+        "text": "LinkShield"
+      },
+      "settings_title": {
+        "text": "Impostazioni"
+      },
+      "status_scanning": {
+        "text": "Sto controllando questa pagina…"
+      },
+      "status_safe_title": {
+        "text": "Questa pagina è sicura"
+      },
+      "status_safe_subtitle": {
+        "text": "Nessun link truffa su $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "status_warning_title": {
+        "text": "Alcuni link sembrano sospetti"
+      },
+      "status_warning_subtitle": {
+        "text": "$N$ link in questa pagina meritano un controllo più attento",
+        "placeholders": {
+          "n": {
+            "content": "$1"
+          }
+        }
+      },
+      "status_danger_title": {
+        "text": "Questo è un sito truffa"
+      },
+      "status_danger_subtitle": {
+        "text": "$DOMAIN$ si finge un altro sito per rubare i tuoi dati",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "status_unknown_title": {
+        "text": "Impossibile verificare questa pagina"
+      },
+      "status_unknown_subtitle": {
+        "text": "Riprova tra un momento"
+      },
+      "action_close_tab": {
+        "text": "Chiudi questa pagina"
+      },
+      "action_audit": {
+        "text": "Cosa raccoglie questo sito"
+      },
+      "action_week": {
+        "text": "La mia settimana"
+      },
+      "action_more": {
+        "text": "Altro"
+      },
+      "action_less": {
+        "text": "Meno"
+      },
+      "more_section_label": {
+        "text": "Altri strumenti"
+      },
+      "action_breach": {
+        "text": "Verifica fuga email"
+      },
+      "action_score": {
+        "text": "Il mio livello di sicurezza"
+      },
+      "action_trust": {
+        "text": "Fidati sempre di questo sito"
+      },
+      "action_report": {
+        "text": "Segnala risultato sbagliato"
+      },
+      "stats_label_blocked": {
+        "text": "Truffe bloccate"
+      },
+      "stats_label_warned": {
+        "text": "Avvisi"
+      },
+      "stats_label_checked": {
+        "text": "Link controllati"
+      },
+      "upgrade_free_count": {
+        "text": "Gratis: $USED$ di $LIMIT$ controlli oggi",
+        "placeholders": {
+          "used": {
+            "content": "$1"
+          },
+          "limit": {
+            "content": "$2"
+          }
+        }
+      },
+      "upgrade_cta": {
+        "text": "Aggiorna"
+      },
+      "onboarding_welcome": {
+        "text": "Ciao! Sono LinkShield."
+      },
+      "onboarding_tip": {
+        "text": "Controllo ogni link su ogni pagina. Quelli pericolosi li segno in rosso. In dubbio? Tasto destro → «Verifica con LinkShield»."
+      },
+      "aha_found_scams": {
+        "text": "Ho trovato $N$ link truffa che il tuo browser si era perso",
+        "placeholders": {
+          "n": {
+            "content": "$1"
+          }
+        }
+      },
+      "offline_warning": {
+        "text": "Offline — protezione di base attiva"
+      },
+      "recent_empty": {
+        "text": "Niente ancora — naviga tranquillo, ti sto guardando."
+      }
+    },
+    "common": {
+      "trust_footer": {
+        "text": "I tuoi dati non lasciano mai questo dispositivo"
+      }
+    },
+    "block_page": {
+      "title": {
+        "text": "STOP"
+      },
+      "subtitle_scam": {
+        "text": "Questo è un sito truffa"
+      },
+      "explanation": {
+        "text": "$DOMAIN$ si finge un altro sito per rubare i tuoi dati.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "brand_impersonation": {
+        "text": "Questo sito finge di essere $BRAND$",
+        "placeholders": {
+          "brand": {
+            "content": "$1"
+          }
+        }
+      },
+      "scheme_heading": {
+        "text": "Come i truffatori usano questi siti:"
+      },
+      "scheme_step1": {
+        "text": "Ti chiederanno la password o i dati bancari"
+      },
+      "scheme_step2": {
+        "text": "Il truffatore ruba tutto ciò che scrivi"
+      },
+      "scheme_step3": {
+        "text": "Svuotano il tuo conto o rubano la tua identità"
+      },
+      "back_button": {
+        "text": "Torna al sicuro"
+      },
+      "proceed_button": {
+        "text": "Capisco il rischio — apri comunque"
+      },
+      "proceed_countdown": {
+        "text": "Attendi $N$ secondi…",
+        "placeholders": {
+          "n": {
+            "content": "$1"
+          }
+        }
+      },
+      "trust_footer": {
+        "text": "Protetto da LinkShield. I tuoi dati restano sul tuo dispositivo."
+      }
+    },
+    "welcome": {
+      "hero_title": {
+        "text": "Ora sei protetto"
+      },
+      "hero_subtitle": {
+        "text": "Ogni link che vedi viene controllato. Quelli pericolosi sono bloccati in automatico."
+      },
+      "step1_title": {
+        "text": "Controllo automatico"
+      },
+      "step1_desc": {
+        "text": "Ogni pagina, ogni link. Etichetta verde: sicuro. Rossa: truffa."
+      },
+      "step2_title": {
+        "text": "I tuoi dati restano con te"
+      },
+      "step2_desc": {
+        "text": "Controlliamo solo i nomi dei siti. La tua cronologia non lascia mai questo dispositivo."
+      },
+      "step3_title": {
+        "text": "Nessun rallentamento"
+      },
+      "step3_desc": {
+        "text": "La maggior parte dei controlli avviene sul tuo dispositivo in meno di un secondo."
+      },
+      "step4_title": {
+        "text": "Per tutta la famiglia"
+      },
+      "step4_desc": {
+        "text": "Proteggi genitori, figli, nonni con un solo piano. Modalità diverse per ciascuno."
+      },
+      "cta_scan": {
+        "text": "Controlla la mia casella per truffe nascoste"
+      },
+      "cta_skip": {
+        "text": "Salta — inizia a navigare"
+      },
+      "trust_footer": {
+        "text": "Il blocco è gratis per sempre. I tuoi dati non lasciano mai questo dispositivo."
+      },
+      "step_label": {
+        "text": "Passo"
+      }
+    }
+  },
+  "landing": {
+    "nav": {
+      "features": "Funzioni",
+      "pricing": "Prezzi",
+      "privacy": "Privacy",
+      "business": "Aziende",
+      "install": "Aggiungi a Chrome",
+      "install_short": "Installa"
+    },
+    "hero": {
+      "badge": "91% rilevamento truffe",
+      "title_part1": "Protezione dalle truffe che",
+      "title_part2": "rispetta la tua privacy",
+      "subtitle": "Controllo automatico dei link su ogni pagina. 9 fonti di minacce. Rilevamento con IA. I tuoi dati di navigazione non lasciano mai il tuo dispositivo.",
+      "cta_primary": "Aggiungi a Chrome — gratis",
+      "cta_secondary": "Come funziona",
+      "cta_footer": "Protezione base gratuita per sempre. Senza carta."
+    },
+    "final_cta": {
+      "title": "Pronto a navigare in sicurezza?",
+      "subtitle": "Migliaia navigano già senza preoccupazioni.",
+      "cta_primary": "Aggiungi a Chrome — gratis",
+      "cta_business": "Per le aziende"
+    },
+    "footer": {
+      "brand": "LinkShield",
+      "privacy": "Privacy",
+      "terms": "Termini",
+      "contact": "Contatti",
+      "github": "GitHub",
+      "tagline": "I tuoi dati, il tuo dispositivo."
+    },
+    "language_switcher": {
+      "label": "Lingua"
+    },
+    "features": {
+      "heading": "Everything you need. Nothing you don't.",
+      "items": [
+        {
+          "icon": "🔍",
+          "title": "Automatic Link Scanning",
+          "desc": "Every link on every page checked against 9 threat databases. Red, yellow, green badges show safety at a glance."
+        },
+        {
+          "icon": "🔒",
+          "title": "Privacy Audit",
+          "desc": "Right-click any page to see trackers, cookies, data collection, and fingerprinting. Grade A through F."
+        },
+        {
+          "icon": "🧠",
+          "title": "ML-Powered Detection",
+          "desc": "CatBoost model trained on 18K+ domains. 0.9988 AUC. Catches novel phishing that rule-based systems miss."
+        },
+        {
+          "icon": "⚡",
+          "title": "Instant Protection",
+          "desc": "95% of checks happen locally via bloom filter in under 1ms. No slowdown. No waiting."
+        },
+        {
+          "icon": "📱",
+          "title": "Your Data, Your Device",
+          "desc": "Browsing history never touches our servers. We only see domain names. Even if breached, your data is safe."
+        },
+        {
+          "icon": "📧",
+          "title": "Inbox Scanner",
+          "desc": "Finds phishing links in your Gmail and Outlook that your browser missed."
+        }
+      ]
+    },
+    "how_it_works": {
+      "heading": "How LinkShield protects you",
+      "steps": [
+        {
+          "step": "1",
+          "title": "Install",
+          "desc": "Add the Chrome extension. Takes 10 seconds."
+        },
+        {
+          "step": "2",
+          "title": "Browse",
+          "desc": "LinkShield checks every link automatically. No action needed."
+        },
+        {
+          "step": "3",
+          "title": "Stay Safe",
+          "desc": "Dangerous links get red badges. Click for details."
+        }
+      ]
+    },
+    "pricing_teaser": {
+      "heading": "Simple, transparent pricing",
+      "unit_forever": "/forever",
+      "unit_month": "/month",
+      "most_popular": "Most Popular",
+      "trial_note": "All plans include 14-day free trial. Cancel anytime.",
+      "free": {
+        "name": "Free",
+        "price": "$0",
+        "features": [
+          "10 API checks/day",
+          "Unlimited local checks",
+          "Privacy Audit (grade only)",
+          "Link badges on all pages"
+        ],
+        "cta": "Get Started"
+      },
+      "personal": {
+        "name": "Personal",
+        "price": "$4.99",
+        "features": [
+          "Unlimited checks",
+          "Full Privacy Audit breakdown",
+          "Weekly Security Report",
+          "Security Score + tips",
+          "Priority support"
+        ],
+        "cta": "Start Free Trial"
+      },
+      "family": {
+        "name": "Family",
+        "price": "$9.99",
+        "features": [
+          "Everything in Personal",
+          "Up to 6 devices",
+          "Family Hub with E2E alerts",
+          "Parental mode"
+        ],
+        "cta": "Start Free Trial"
+      }
+    },
+    "comparison": {
+      "heading": "How we compare",
+      "headers": [
+        "Feature",
+        "LinkShield",
+        "Guardio",
+        "NordVPN TP",
+        "Norton 360",
+        "Free Extensions"
+      ],
+      "rows": [
+        [
+          "Price",
+          "$4.99/mo",
+          "$9.99/mo",
+          "~$5/mo (w/ VPN)",
+          "$40-100/yr",
+          "Free"
+        ],
+        [
+          "Platforms",
+          "All 5",
+          "Chrome only",
+          "Win/Mac",
+          "All",
+          "Browser only"
+        ],
+        [
+          "Privacy Audit",
+          "✅",
+          "❌",
+          "❌",
+          "❌",
+          "❌"
+        ],
+        [
+          "On-device data",
+          "✅",
+          "❌",
+          "❌",
+          "❌",
+          "❌"
+        ],
+        [
+          "ML detection",
+          "✅",
+          "✅",
+          "✅",
+          "✅",
+          "❌"
+        ],
+        [
+          "Breach monitoring",
+          "✅",
+          "❌",
+          "❌",
+          "✅",
+          "❌"
+        ],
+        [
+          "Family Hub",
+          "✅ (E2E)",
+          "❌",
+          "❌",
+          "✅",
+          "❌"
+        ],
+        [
+          "B2B Phishing sim",
+          "✅",
+          "❌",
+          "❌",
+          "❌",
+          "❌"
+        ]
+      ]
+    },
+    "privacy": {
+      "heading": "Privacy is not a feature. It's the architecture.",
+      "server_heading": "What our server knows",
+      "server_items": [
+        "Your email address",
+        "Subscription status",
+        "Weekly aggregate numbers"
+      ],
+      "server_note": "If breached: attacker gets emails + subscription. Boring.",
+      "device_heading": "What stays on your device",
+      "device_items": [
+        "Full URL check history",
+        "Privacy Audit results",
+        "Security Score breakdown",
+        "Weekly Report details",
+        "Family alert content (E2E encrypted)"
+      ],
+      "device_note": "If device is lost: protected by OS encryption."
+    },
+    "testimonials": {
+      "heading": "What users say",
+      "items": [
+        {
+          "q": "Finally, a security tool that doesn't spy on me. The Privacy Audit is eye-opening.",
+          "n": "Alex K.",
+          "r": "Software Engineer"
+        },
+        {
+          "q": "Caught 3 phishing links in my Gmail that Chrome missed. Worth every penny.",
+          "n": "Maria S.",
+          "r": "Marketing Manager"
+        },
+        {
+          "q": "We replaced KnowBe4 with LinkShield Business. Same protection, 1/4 the price.",
+          "n": "James T.",
+          "r": "IT Director"
+        }
+      ]
+    },
+    "faq": {
+      "heading": "FAQ",
+      "items": [
+        {
+          "q": "How is my data protected?",
+          "a": "Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if we're breached, attackers learn nothing about your online activity."
+        },
+        {
+          "q": "Does it slow down browsing?",
+          "a": "No. 95% of checks happen locally via bloom filter in under 1ms. Only unknown domains are sent to our API (domain name only, never full URLs)."
+        },
+        {
+          "q": "Can I use it with a VPN?",
+          "a": "Yes! On mobile, LinkShield auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
+        },
+        {
+          "q": "What's different from Google Safe Browsing?",
+          "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. LinkShield adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
+        },
+        {
+          "q": "Is there a free plan?",
+          "a": "Yes! The free plan includes 10 API checks/day, unlimited local bloom filter checks, and basic Privacy Audit. Most casual users never need to upgrade."
+        },
+        {
+          "q": "How does phishing simulation work?",
+          "a": "Business plan includes simulated phishing emails sent to your team. Pick a template, we send test emails, track who clicks vs. who reports. For training, not punishment."
+        }
+      ]
+    }
+  },
+  "email": {
+    "common": {
+      "greeting_formal": {
+        "text": "Hello $NAME$,",
+        "placeholders": {
+          "name": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      },
+      "greeting_casual": {
+        "text": "Hi $NAME$,",
+        "placeholders": {
+          "name": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      },
+      "signature": {
+        "text": "— The LinkShield team",
+        "_needs_native_review": true
+      },
+      "trust_footer": {
+        "text": "LinkShield · Protection that stays on your device",
+        "_needs_native_review": true
+      },
+      "unsubscribe_link": {
+        "text": "Unsubscribe from these emails",
+        "_needs_native_review": true
+      },
+      "manage_preferences_link": {
+        "text": "Manage email preferences",
+        "_needs_native_review": true
+      },
+      "support_link": {
+        "text": "Contact support",
+        "_needs_native_review": true
+      },
+      "view_in_browser": {
+        "text": "View in browser",
+        "_needs_native_review": true
+      },
+      "footer_legal": {
+        "text": "You received this email because you have a LinkShield account.",
+        "_needs_native_review": true
+      },
+      "footer_address": {
+        "text": "LinkShield · San Francisco, CA",
+        "_needs_native_review": true
+      }
+    },
+    "welcome": {
+      "subject": {
+        "text": "Welcome to LinkShield — you're protected now",
+        "_needs_native_review": true
+      },
+      "preheader": {
+        "text": "Every link you see is being checked, automatically.",
+        "_needs_native_review": true
+      },
+      "hero_title": {
+        "text": "You're protected now",
+        "_needs_native_review": true
+      },
+      "body_p1": {
+        "text": "We'll quietly check every link you encounter. The dangerous ones get a red mark — you'll see them before clicking. That's it.",
+        "_needs_native_review": true
+      },
+      "body_p2": {
+        "text": "Your browsing data never leaves your device. We only check domain names, and your history is yours alone.",
+        "_needs_native_review": true
+      },
+      "cta_scan": {
+        "text": "Scan my inbox for hidden scams",
+        "_needs_native_review": true
+      },
+      "list_item_1": {
+        "text": "Automatic link checking on every page you visit",
+        "_needs_native_review": true
+      },
+      "list_item_2": {
+        "text": "Block dangerous sites before they steal your data",
+        "_needs_native_review": true
+      },
+      "list_item_3": {
+        "text": "Works across Chrome, Firefox, Safari, and your phone",
+        "_needs_native_review": true
+      },
+      "list_item_4": {
+        "text": "Your data stays on your device — always",
+        "_needs_native_review": true
+      }
+    },
+    "receipt": {
+      "subject": {
+        "text": "Your LinkShield receipt",
+        "_needs_native_review": true
+      },
+      "title": {
+        "text": "Payment received — thank you",
+        "_needs_native_review": true
+      },
+      "body_p1": {
+        "text": "Thanks for supporting LinkShield. Your subscription is active.",
+        "_needs_native_review": true
+      },
+      "plan_label": {
+        "text": "Plan",
+        "_needs_native_review": true
+      },
+      "amount_label": {
+        "text": "Amount",
+        "_needs_native_review": true
+      },
+      "next_billing": {
+        "text": "Next billing date: $DATE$",
+        "placeholders": {
+          "date": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      },
+      "invoice_link": {
+        "text": "Download invoice",
+        "_needs_native_review": true
+      }
+    },
+    "weekly_report": {
+      "subject": {
+        "text": "Your week on LinkShield",
+        "_needs_native_review": true
+      },
+      "preheader": {
+        "text": "See what we blocked this week.",
+        "_needs_native_review": true
+      },
+      "title": {
+        "text": "This week, LinkShield protected you from:",
+        "_needs_native_review": true
+      },
+      "body_p1": {
+        "text": "Here's what happened on your devices in the past 7 days.",
+        "_needs_native_review": true
+      },
+      "stat_blocks_label": {
+        "text": "Scams blocked",
+        "_needs_native_review": true
+      },
+      "stat_checks_label": {
+        "text": "Links checked",
+        "_needs_native_review": true
+      },
+      "percentile_body": {
+        "text": "You're safer than $PCT$% of LinkShield users this week.",
+        "placeholders": {
+          "pct": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      },
+      "cta_view_full": {
+        "text": "View the full report",
+        "_needs_native_review": true
+      }
+    },
+    "family_invite": {
+      "subject": {
+        "text": "$NAME$ invited you to join their LinkShield family",
+        "placeholders": {
+          "name": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      },
+      "preheader": {
+        "text": "Free protection on your devices, set up in 30 seconds.",
+        "_needs_native_review": true
+      },
+      "title": {
+        "text": "You've been invited to LinkShield Family",
+        "_needs_native_review": true
+      },
+      "body_p1": {
+        "text": "$NAME$ added you to their LinkShield family plan. You get the same protection on up to 2 of your devices — for free.",
+        "placeholders": {
+          "name": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      },
+      "cta_accept": {
+        "text": "Accept invitation",
+        "_needs_native_review": true
+      },
+      "body_p2_security": {
+        "text": "This invitation is for you only — it expires in 72 hours. Your family admin can't see what you browse; only alerts when something dangerous is blocked on your device.",
+        "_needs_native_review": true
+      }
+    },
+    "breach_alert": {
+      "subject": {
+        "text": "Your email was found in a data breach",
+        "_needs_native_review": true
+      },
+      "preheader": {
+        "text": "Change your password on affected sites soon.",
+        "_needs_native_review": true
+      },
+      "title": {
+        "text": "Your email appeared in a new breach",
+        "_needs_native_review": true
+      },
+      "body_p1": {
+        "text": "Your email was found in a recently disclosed data breach. This means your password on the affected site may be exposed.",
+        "_needs_native_review": true
+      },
+      "body_p2_recommendation": {
+        "text": "Change your password on that site now. If you use the same password elsewhere, change it there too. Consider a password manager — it's the only real fix.",
+        "_needs_native_review": true
+      },
+      "cta_change_password": {
+        "text": "See affected sites",
+        "_needs_native_review": true
+      }
+    },
+    "subscription_cancel": {
+      "subject": {
+        "text": "Your LinkShield subscription was canceled",
+        "_needs_native_review": true
+      },
+      "title": {
+        "text": "We'll be here if you come back",
+        "_needs_native_review": true
+      },
+      "body_p1": {
+        "text": "Your subscription has been canceled. Blocking scam sites continues to work for free — this is our ethical invariant, it won't change.",
+        "_needs_native_review": true
+      },
+      "body_p2_keep_free": {
+        "text": "You'll keep your free-tier features: link scanning, block pages, email leak checks, and basic Privacy Audit grades.",
+        "_needs_native_review": true
+      },
+      "cta_reactivate": {
+        "text": "Reactivate subscription",
+        "_needs_native_review": true
+      },
+      "date_label": {
+        "text": "Active until: $DATE$",
+        "placeholders": {
+          "date": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      }
+    },
+    "granny_mode_invite": {
+      "subject": {
+        "text": "$NAME$ set up LinkShield protection for you",
+        "placeholders": {
+          "name": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      },
+      "preheader": {
+        "text": "Simple protection from scams — set up by your family.",
+        "_needs_native_review": true
+      },
+      "title": {
+        "text": "Safety from online scams — set up for you",
+        "_needs_native_review": true
+      },
+      "body_p1_to_grandchild": {
+        "text": "$NAME$ set up LinkShield protection on your devices with extra-large text and voice alerts. You don't need to do anything — it's already working.",
+        "placeholders": {
+          "name": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      },
+      "body_p2_what_it_does": {
+        "text": "When a scammer tries to trick you with a fake bank website or delivery notice, LinkShield stops it before you enter anything. A clear warning shows in big letters: 'STOP — this is a scam site'.",
+        "_needs_native_review": true
+      },
+      "cta_setup": {
+        "text": "Open the app",
+        "_needs_native_review": true
+      },
+      "reassurance": {
+        "text": "If you're not sure what to do, tap the 'Ask family' button in the app — $NAME$ gets a message and can help.",
+        "placeholders": {
+          "name": {
+            "content": "$1"
+          }
+        },
+        "_needs_native_review": true
+      }
+    }
+  }
+}

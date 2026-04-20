@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DEBUG: "true"
+      SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
 
     steps:
       - uses: actions/checkout@v4
@@ -20,22 +23,33 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
-      - name: Run tests
-        run: python -m tests.test_scoring
-        env:
-          DEBUG: "true"
+      - name: Run pytest with coverage
+        run: |
+          pytest tests/ \
+            --cov=api \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=50
 
-      - name: Run benchmark
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        continue-on-error: true
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+      - name: Run benchmark (if PhishTank data available)
         run: |
           if [ -f data/phishtank.csv ]; then
             python -m tests.benchmark_scoring
           else
             echo "PhishTank data not available, skipping benchmark"
           fi
-        env:
-          DEBUG: "true"
 
   lint:
     runs-on: ubuntu-latest
@@ -49,7 +63,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.8.6
 
       - name: Lint
         run: ruff check api/ tests/ ml/
@@ -69,6 +83,7 @@ jobs:
         run: |
           docker run -d --name test-api \
             -e DEBUG=true \
+            -e SUPABASE_JWT_SECRET=test-secret-for-development-only-not-for-production-use \
             -e REDIS_URL=redis://localhost:6379 \
             -p 8000:8000 \
             linkshield-api

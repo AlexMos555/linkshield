@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.services.auth import get_current_user
+from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 from api.config import get_settings
 
@@ -54,7 +55,10 @@ class SimulationResult(BaseModel):
     created_at: str
 
 
-@router.post("/create")
+@router.post(
+    "/create",
+    dependencies=[Depends(rate_limit(mode="sensitive", category="org_create"))],
+)
 async def create_org(
     request: CreateOrgRequest,
     user: AuthUser = Depends(get_current_user),
@@ -102,7 +106,10 @@ async def create_org(
         raise HTTPException(500, "Failed to create organization")
 
 
-@router.get("/{org_id}/dashboard")
+@router.get(
+    "/{org_id}/dashboard",
+    dependencies=[Depends(rate_limit(category="user_read"))],
+)
 async def org_dashboard(
     org_id: str,
     user: AuthUser = Depends(get_current_user),
@@ -129,7 +136,10 @@ async def org_dashboard(
     }
 
 
-@router.post("/{org_id}/members")
+@router.post(
+    "/{org_id}/members",
+    dependencies=[Depends(rate_limit(category="org_write"))],
+)
 async def add_member(
     org_id: str,
     request: AddMemberRequest,
@@ -146,7 +156,10 @@ async def add_member(
     }
 
 
-@router.post("/{org_id}/simulate")
+@router.post(
+    "/{org_id}/simulate",
+    dependencies=[Depends(rate_limit(mode="sensitive", category="org_simulate"))],
+)
 async def launch_simulation(
     org_id: str,
     request: SimulationRequest,
@@ -185,7 +198,10 @@ async def launch_simulation(
     }
 
 
-@router.get("/{org_id}/simulations")
+@router.get(
+    "/{org_id}/simulations",
+    dependencies=[Depends(rate_limit(category="user_read"))],
+)
 async def list_simulations(
     org_id: str,
     user: AuthUser = Depends(get_current_user),
@@ -226,7 +242,7 @@ SIMULATION_TEMPLATES = {
 }
 
 
-@router.get("/templates")
+@router.get("/templates", dependencies=[Depends(rate_limit(category="user_read"))])
 async def list_templates(user: AuthUser = Depends(get_current_user)):
     """List available phishing simulation templates."""
     return {"templates": SIMULATION_TEMPLATES}

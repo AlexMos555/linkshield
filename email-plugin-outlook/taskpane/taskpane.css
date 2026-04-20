@@ -1,0 +1,182 @@
+/* LinkShield Outlook taskpane — scoped styles.
+   Dark theme matching landing + extension for brand consistency. */
+
+:root {
+  --bg: #0f172a;
+  --bg-card: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --brand: #22c55e;
+  --safe: #22c55e;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --radius: 10px;
+  --space: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  padding: 16px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 16px;
+  color: #fff;
+}
+
+.pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pill--loading { background: var(--border); color: var(--text-muted); }
+.pill--safe { background: rgba(34, 197, 94, 0.15); color: var(--safe); }
+.pill--warn { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+.pill--danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+.verdict {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  text-align: center;
+  border: 2px solid var(--border);
+}
+
+.verdict--safe { border-color: var(--safe); }
+.verdict--warn { border-color: var(--warn); }
+.verdict--danger { border-color: var(--danger); }
+
+.verdict__icon { font-size: 32px; margin-bottom: 8px; }
+.verdict__title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.verdict__subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+.verdict__score { font-size: 12px; color: var(--text-muted); }
+.verdict__score span { font-size: 18px; font-weight: 700; color: var(--text); }
+
+.section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.findings, .links {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.findings-list, .links-list { list-style: none; }
+
+.finding {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.finding:last-child { border-bottom: none; }
+
+.finding__severity {
+  flex-shrink: 0;
+  width: 6px;
+  border-radius: 3px;
+}
+.finding__severity--high { background: var(--danger); }
+.finding__severity--med { background: var(--warn); }
+.finding__severity--low { background: var(--text-muted); }
+
+.finding__body { flex: 1; min-width: 0; }
+.finding__message { color: var(--text); font-weight: 500; }
+.finding__evidence {
+  color: var(--text-muted);
+  font-family: ui-monospace, SF Mono, monospace;
+  font-size: 11px;
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.link-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.link-item:last-child { border-bottom: none; }
+.link-item__text { color: var(--text); margin-bottom: 2px; }
+.link-item__url {
+  color: var(--text-muted);
+  font-family: ui-monospace, SF Mono, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn:active { opacity: 0.8; }
+.btn--danger { background: var(--danger); color: #fff; }
+.btn--secondary { background: var(--border); color: var(--text); }
+
+.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.error strong { display: block; color: var(--danger); margin-bottom: 4px; }
+.error p { color: var(--text-muted); }
+
+.footer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.footer a { color: var(--text-muted); text-decoration: none; }
+.footer a:hover { color: var(--text); text-decoration: underline; }
+.separator { margin: 0 4px; }
+
+body.loading .verdict,
+body.loading .findings,
+body.loading .links,
+body.loading .actions { display: none; }

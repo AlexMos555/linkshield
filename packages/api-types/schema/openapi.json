@@ -1,0 +1,2236 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LinkShield API",
+    "description": "Phishing protection API. Checks domains for safety. Your browsing data lives on your device — we only see domain names.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/check": {
+      "post": {
+        "tags": [
+          "check"
+        ],
+        "summary": "Check Domains",
+        "description": "Check one or more domains for phishing/safety.\n\nSpeed tiers:\n  - Cached: <1ms (Redis)\n  - Allowlisted: <1ms (Tranco 100K, no API calls)\n  - Full analysis: 2-5s (14 parallel checks)\n\nPrivacy: only domain names processed. Full URLs never logged.",
+        "operationId": "check_domains_api_v1_check_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/create-checkout": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "Create Checkout",
+        "description": "Create a Stripe Checkout session for subscription.",
+        "operationId": "create_checkout_api_v1_payments_create_checkout_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/webhook": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "Stripe Webhook",
+        "description": "Handle Stripe webhook events.",
+        "operationId": "stripe_webhook_api_v1_payments_webhook_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/portal": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "Customer Portal",
+        "description": "Create Stripe Customer Portal link for managing subscription.",
+        "operationId": "customer_portal_api_v1_payments_portal_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/aggregates": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Submit Weekly Aggregate",
+        "description": "Submit weekly aggregate numbers from device.\nCalled once per week by the extension/app.\nServer stores ONLY numbers — no URLs, no details.",
+        "operationId": "submit_weekly_aggregate_api_v1_user_aggregates_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyAggregateSubmit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/percentile": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Get Percentile",
+        "description": "Get user's percentile ranking based on weekly blocks.\n\"Safer than X% of users\" — computed from all users' aggregates.",
+        "operationId": "get_percentile_api_v1_user_percentile_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PercentileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/score": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Sync Score",
+        "description": "Sync security score NUMBER from device.\nScore is CALCULATED on device. Server stores the number only.\nDetails/breakdown stay on device.",
+        "operationId": "sync_score_api_v1_user_score_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScoreSync"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/device": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Register Device",
+        "description": "Register or update device for multi-device sync.",
+        "operationId": "register_device_api_v1_user_device_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegister"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/profile": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Get Profile",
+        "description": "Get user profile info.",
+        "operationId": "get_profile_api_v1_user_profile_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/report": {
+      "post": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Report Domain",
+        "description": "Report a false positive (safe site flagged) or false negative (phishing not caught).\nStored for ML model retraining and manual review.",
+        "operationId": "report_domain_api_v1_feedback_report_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/whitelist": {
+      "post": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Add To Whitelist",
+        "description": "Add a domain to user's personal whitelist (always marked safe).",
+        "operationId": "add_to_whitelist_api_v1_feedback_whitelist_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhitelistRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Remove From Whitelist",
+        "description": "Remove domain from personal whitelist.",
+        "operationId": "remove_from_whitelist_api_v1_feedback_whitelist_delete",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhitelistRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Get Whitelist",
+        "description": "Get user's personal whitelist.",
+        "operationId": "get_whitelist_api_v1_feedback_whitelist_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/check/{domain}": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Public Check",
+        "description": "Public domain safety check. No auth required.\nRate limited by IP (10/min). Used for SEO pages and embeds.\nReturns simplified result without full analysis (fast, no external API calls).",
+        "operationId": "public_check_api_v1_public_check__domain__get",
+        "parameters": [
+          {
+            "name": "domain",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Domain"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/stats": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Platform Stats",
+        "description": "Global platform statistics for landing page and social proof.",
+        "operationId": "platform_stats_api_v1_public_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/breach/check/{hash_prefix}": {
+      "get": {
+        "tags": [
+          "breach"
+        ],
+        "summary": "Check Breach",
+        "description": "k-anonymity breach check.\n\nSend first 5 characters of SHA-1(email) hash.\nReturns list of matching hash suffixes with breach counts.\nClient compares locally — we never see your full hash.",
+        "operationId": "check_breach_api_v1_breach_check__hash_prefix__get",
+        "parameters": [
+          {
+            "name": "hash_prefix",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Hash Prefix"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/breach/domain/{domain}": {
+      "get": {
+        "tags": [
+          "breach"
+        ],
+        "summary": "Check Domain Breaches",
+        "description": "Check if a domain has been involved in known data breaches.\nUses HIBP v3 API (requires API key for this endpoint).\nFalls back to basic info without key.",
+        "operationId": "check_domain_breaches_api_v1_breach_domain__domain__get",
+        "parameters": [
+          {
+            "name": "domain",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Domain"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/referral/generate": {
+      "post": {
+        "tags": [
+          "referral"
+        ],
+        "summary": "Generate Referral",
+        "description": "Generate unique referral code for user.",
+        "operationId": "generate_referral_api_v1_referral_generate_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/referral/stats": {
+      "get": {
+        "tags": [
+          "referral"
+        ],
+        "summary": "Referral Stats",
+        "description": "Get user's referral stats.",
+        "operationId": "referral_stats_api_v1_referral_stats_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/referral/redeem": {
+      "post": {
+        "tags": [
+          "referral"
+        ],
+        "summary": "Redeem Referral",
+        "description": "Redeem a referral code. Gives 7-day Personal trial to redeemer + 7 days to referrer.",
+        "operationId": "redeem_referral_api_v1_referral_redeem_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/org/create": {
+      "post": {
+        "tags": [
+          "organization"
+        ],
+        "summary": "Create Org",
+        "description": "Create a new organization. Requires business tier.",
+        "operationId": "create_org_api_v1_org_create_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrgRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/org/{org_id}/dashboard": {
+      "get": {
+        "tags": [
+          "organization"
+        ],
+        "summary": "Org Dashboard",
+        "description": "Organization threat dashboard.\nShows aggregate stats — individual user data is NOT visible to admins.",
+        "operationId": "org_dashboard_api_v1_org__org_id__dashboard_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/org/{org_id}/members": {
+      "post": {
+        "tags": [
+          "organization"
+        ],
+        "summary": "Add Member",
+        "description": "Add member to organization.",
+        "operationId": "add_member_api_v1_org__org_id__members_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/org/{org_id}/simulate": {
+      "post": {
+        "tags": [
+          "organization"
+        ],
+        "summary": "Launch Simulation",
+        "description": "Launch phishing simulation campaign.\n\nTemplates:\n  - generic_phishing: \"Your account will be suspended\"\n  - credential_harvest: Fake login page\n  - invoice_scam: Fake invoice attachment\n  - ceo_fraud: \"CEO\" requests urgent wire transfer\n\nPrivacy: simulations only target verified org member emails.\nResults track who clicked/reported — for training, not punishment.",
+        "operationId": "launch_simulation_api_v1_org__org_id__simulate_post",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/org/{org_id}/simulations": {
+      "get": {
+        "tags": [
+          "organization"
+        ],
+        "summary": "List Simulations",
+        "description": "List all phishing simulation campaigns for this org.",
+        "operationId": "list_simulations_api_v1_org__org_id__simulations_get",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/org/templates": {
+      "get": {
+        "tags": [
+          "organization"
+        ],
+        "summary": "List Templates",
+        "description": "List available phishing simulation templates.",
+        "operationId": "list_templates_api_v1_org_templates_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pricing/for-country": {
+      "get": {
+        "tags": [
+          "pricing"
+        ],
+        "summary": "Prices For Country",
+        "description": "Return pricing for all plans (personal, family, business) × intervals (monthly, yearly)\nfor the given country's PPP tier.",
+        "operationId": "prices_for_country_api_v1_pricing_for_country_get",
+        "parameters": [
+          {
+            "name": "cc",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 2
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ISO 3166-1 alpha-2 country code. Omit for default tier 2 (base) pricing.",
+              "title": "Cc"
+            },
+            "description": "ISO 3166-1 alpha-2 country code. Omit for default tier 2 (base) pricing."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingForCountryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pricing/tiers": {
+      "get": {
+        "tags": [
+          "pricing"
+        ],
+        "summary": "Pricing Tiers",
+        "description": "Full tier reference — which countries are in each tier + base prices.",
+        "operationId": "pricing_tiers_api_v1_pricing_tiers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingTiersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Health check that verifies dependencies and circuit breaker states.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddMemberRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "member"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "AddMemberRequest"
+      },
+      "CheckRequest": {
+        "properties": {
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Domains",
+            "description": "Domains to check"
+          }
+        },
+        "type": "object",
+        "required": [
+          "domains"
+        ],
+        "title": "CheckRequest",
+        "examples": [
+          {
+            "domains": [
+              "google.com",
+              "paypa1-verify.tk"
+            ]
+          }
+        ]
+      },
+      "CheckResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DomainResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "checked_at": {
+            "type": "string",
+            "title": "Checked At"
+          },
+          "api_calls_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Calls Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results",
+          "checked_at"
+        ],
+        "title": "CheckResponse"
+      },
+      "CheckoutRequest": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "title": "Plan"
+          },
+          "success_url": {
+            "type": "string",
+            "title": "Success Url",
+            "default": "https://linkshield.io/success"
+          },
+          "cancel_url": {
+            "type": "string",
+            "title": "Cancel Url",
+            "default": "https://linkshield.io/pricing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan"
+        ],
+        "title": "CheckoutRequest"
+      },
+      "CheckoutResponse": {
+        "properties": {
+          "checkout_url": {
+            "type": "string",
+            "title": "Checkout Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checkout_url"
+        ],
+        "title": "CheckoutResponse"
+      },
+      "ConfidenceLevel": {
+        "type": "string",
+        "enum": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "ConfidenceLevel"
+      },
+      "CreateOrgRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CreateOrgRequest"
+      },
+      "DeviceRegister": {
+        "properties": {
+          "device_hash": {
+            "type": "string",
+            "title": "Device Hash"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "app_version": {
+            "type": "string",
+            "title": "App Version",
+            "default": "0.1.0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_hash",
+          "platform"
+        ],
+        "title": "DeviceRegister"
+      },
+      "DomainReason": {
+        "properties": {
+          "signal": {
+            "type": "string",
+            "title": "Signal"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "weight": {
+            "type": "integer",
+            "title": "Weight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal",
+          "detail",
+          "weight"
+        ],
+        "title": "DomainReason"
+      },
+      "DomainResult": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score"
+          },
+          "level": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/ConfidenceLevel",
+            "default": "medium"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/DomainReason"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "domain_age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain Age Days"
+          },
+          "has_ssl": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Ssl"
+          },
+          "ssl_issuer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssl Issuer"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "domain",
+          "score",
+          "level",
+          "reasons"
+        ],
+        "title": "DomainResult"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PercentileResponse": {
+        "properties": {
+          "percentile": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Percentile"
+          },
+          "total_blocks": {
+            "type": "integer",
+            "title": "Total Blocks"
+          },
+          "bracket": {
+            "type": "string",
+            "title": "Bracket"
+          }
+        },
+        "type": "object",
+        "required": [
+          "percentile",
+          "total_blocks",
+          "bracket"
+        ],
+        "title": "PercentileResponse"
+      },
+      "PlanIntervals": {
+        "properties": {
+          "monthly": {
+            "$ref": "#/components/schemas/PricePoint"
+          },
+          "yearly": {
+            "$ref": "#/components/schemas/PricePoint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monthly",
+          "yearly"
+        ],
+        "title": "PlanIntervals"
+      },
+      "PricePoint": {
+        "properties": {
+          "amount": {
+            "type": "number",
+            "title": "Amount",
+            "description": "Display price in USD (monthly or yearly total)"
+          },
+          "monthly_equivalent": {
+            "type": "number",
+            "title": "Monthly Equivalent",
+            "description": "Equivalent monthly rate for comparison"
+          },
+          "interval": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "yearly"
+            ],
+            "title": "Interval"
+          },
+          "stripe_price_id": {
+            "type": "string",
+            "title": "Stripe Price Id",
+            "description": "Stripe price ID for checkout session"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "monthly_equivalent",
+          "interval",
+          "stripe_price_id"
+        ],
+        "title": "PricePoint",
+        "description": "One price (monthly or yearly) for a single plan in a single tier."
+      },
+      "PricingForCountryResponse": {
+        "properties": {
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country",
+            "description": "Echoed ISO 3166-1 alpha-2 country code (uppercased). None when no cc was provided."
+          },
+          "tier": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "title": "Tier",
+            "description": "PPP pricing tier. 1=Premium, 2=Base (default), 3=Mid-emerging, 4=Affordable."
+          },
+          "currency": {
+            "type": "string",
+            "const": "USD",
+            "title": "Currency",
+            "default": "USD"
+          },
+          "plans": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlanIntervals"
+            },
+            "propertyNames": {
+              "enum": [
+                "personal",
+                "family",
+                "business"
+              ]
+            },
+            "type": "object",
+            "title": "Plans"
+          },
+          "messaging": {
+            "$ref": "#/components/schemas/PricingMessaging"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tier",
+          "plans",
+          "messaging"
+        ],
+        "title": "PricingForCountryResponse"
+      },
+      "PricingMessaging": {
+        "properties": {
+          "blocking_is_free_forever": {
+            "type": "boolean",
+            "title": "Blocking Is Free Forever",
+            "description": "Ethical invariant: scam site blocking never requires payment. Always true."
+          },
+          "free_threat_threshold": {
+            "type": "integer",
+            "title": "Free Threat Threshold",
+            "description": "Number of detailed threat explanations given free. After this, paywall gates the DETAILS (not the block itself)."
+          },
+          "what_paid_unlocks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "What Paid Unlocks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "blocking_is_free_forever",
+          "free_threat_threshold",
+          "what_paid_unlocks"
+        ],
+        "title": "PricingMessaging"
+      },
+      "PricingTiersResponse": {
+        "properties": {
+          "tiers": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TierDescription"
+            },
+            "propertyNames": {
+              "enum": [
+                "1",
+                "2",
+                "3",
+                "4"
+              ]
+            },
+            "type": "object",
+            "title": "Tiers"
+          },
+          "base_prices_usd_monthly": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Base Prices Usd Monthly"
+          },
+          "notes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiers",
+          "base_prices_usd_monthly",
+          "notes"
+        ],
+        "title": "PricingTiersResponse"
+      },
+      "ProfileResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier"
+          },
+          "devices": {
+            "type": "integer",
+            "title": "Devices"
+          },
+          "member_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Since"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "tier",
+          "devices",
+          "member_since"
+        ],
+        "title": "ProfileResponse"
+      },
+      "RedeemRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "RedeemRequest"
+      },
+      "ReportRequest": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "report_type": {
+            "type": "string",
+            "title": "Report Type",
+            "description": "false_positive or false_negative"
+          },
+          "current_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Score"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "domain",
+          "report_type"
+        ],
+        "title": "ReportRequest"
+      },
+      "RiskLevel": {
+        "type": "string",
+        "enum": [
+          "safe",
+          "caution",
+          "dangerous"
+        ],
+        "title": "RiskLevel"
+      },
+      "ScoreSync": {
+        "properties": {
+          "score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "score"
+        ],
+        "title": "ScoreSync"
+      },
+      "SimulationRequest": {
+        "properties": {
+          "template": {
+            "type": "string",
+            "title": "Template",
+            "default": "generic_phishing"
+          },
+          "target_emails": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Target Emails"
+          },
+          "sender_name": {
+            "type": "string",
+            "title": "Sender Name",
+            "default": "IT Security"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject",
+            "default": "Action Required: Verify Your Account"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_emails"
+        ],
+        "title": "SimulationRequest"
+      },
+      "TierDescription": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "multiplier": {
+            "type": "number",
+            "title": "Multiplier"
+          },
+          "countries": {
+            "title": "Countries",
+            "description": "List of ISO country codes, or a human-readable note for tier 2 (default)."
+          },
+          "examples": {
+            "type": "string",
+            "title": "Examples"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "multiplier",
+          "countries",
+          "examples"
+        ],
+        "title": "TierDescription"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WeeklyAggregateSubmit": {
+        "properties": {
+          "total_checks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Checks"
+          },
+          "total_blocks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Blocks"
+          },
+          "total_warnings": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Warnings",
+            "default": 0
+          },
+          "total_trackers": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Trackers",
+            "default": 0
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_checks",
+          "total_blocks"
+        ],
+        "title": "WeeklyAggregateSubmit"
+      },
+      "WhitelistRequest": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "domain"
+        ],
+        "title": "WhitelistRequest"
+      }
+    }
+  }
+}

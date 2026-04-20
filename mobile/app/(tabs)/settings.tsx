@@ -1,16 +1,87 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { colors, spacing, fontSize } from "../../src/utils/theme";
 import { pruneOldChecks } from "../../src/services/database";
+
+type SkillLevel = "kids" | "regular" | "granny" | "pro";
+
+const SKILL_DEFAULTS: Record<SkillLevel, { fontScale: number; voiceAlerts: boolean }> = {
+  kids:    { fontScale: 1.0, voiceAlerts: false },
+  regular: { fontScale: 1.0, voiceAlerts: false },
+  granny:  { fontScale: 1.3, voiceAlerts: true  },
+  pro:     { fontScale: 1.0, voiceAlerts: false },
+};
+
+const SKILL_OPTIONS: Array<{ value: SkillLevel; label: string; desc: string; icon: string }> = [
+  { value: "kids",    icon: "👶", label: "Kids",    desc: "Simple blocking with parental PIN. Strict mode." },
+  { value: "regular", icon: "🙋", label: "Regular", desc: "Default. Clear warnings, balanced details." },
+  { value: "granny",  icon: "👵", label: "Granny",  desc: "Large text, simple words, voice alerts." },
+  { value: "pro",     icon: "🧑‍💻", label: "Pro",    desc: "Raw scores, threat types, technical details." },
+];
+
+async function pushSkillToApi(
+  patch: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const token = await SecureStore.getItemAsync("auth_token");
+    if (!token) return;
+    const apiBase =
+      (await SecureStore.getItemAsync("api_url")) ||
+      "https://web-production-fe08.up.railway.app";
+    await fetch(`${apiBase}/api/v1/user/settings`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(patch),
+    });
+  } catch {
+    // Offline or unauthenticated — SecureStore stays authoritative locally
+  }
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [notifications, setNotifications] = useState(true);
   const [autoCheck, setAutoCheck] = useState(true);
   const [weeklyReport, setWeeklyReport] = useState(true);
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
+
+  // Load persisted skill on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = (await SecureStore.getItemAsync("skill_level")) as SkillLevel | null;
+        if (stored && ["kids", "regular", "granny", "pro"].includes(stored)) {
+          setSkillLevel(stored);
+        }
+      } catch {
+        // SecureStore unavailable — stay on default
+      }
+    })();
+  }, []);
+
+  async function handleSkillChange(next: SkillLevel): Promise<void> {
+    setSkillLevel(next);
+    try {
+      await SecureStore.setItemAsync("skill_level", next);
+      const defaults = SKILL_DEFAULTS[next];
+      await SecureStore.setItemAsync("font_scale", String(defaults.fontScale));
+      await SecureStore.setItemAsync("voice_alerts", String(defaults.voiceAlerts));
+    } catch {
+      // Best-effort: UI state is still updated so the user sees the change
+    }
+    await pushSkillToApi({
+      skill_level: next,
+      font_scale: SKILL_DEFAULTS[next].fontScale,
+      voice_alerts_enabled: SKILL_DEFAULTS[next].voiceAlerts,
+    });
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -38,6 +109,37 @@ export default function SettingsScreen() {
           </View>
           <Text style={styles.rowArrow}>&rarr;</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Skill Level */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Skill Level</Text>
+        {SKILL_OPTIONS.map((opt) => {
+          const isActive = skillLevel === opt.value;
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.row, isActive && styles.rowActive]}
+              onPress={() => handleSkillChange(opt.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={`${opt.label} mode. ${opt.desc}`}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowLabel}>
+                  {opt.icon}  {opt.label}
+                </Text>
+                <Text style={styles.rowDesc}>{opt.desc}</Text>
+              </View>
+              <View
+                style={[
+                  styles.radioDot,
+                  isActive && styles.radioDotActive,
+                ]}
+              />
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Protection */}
@@ -148,5 +250,14 @@ const styles = StyleSheet.create({
   },
   privacyNote: {
     textAlign: "center", color: colors.textMuted, fontSize: fontSize.sm, marginTop: spacing.md,
+  },
+  rowActive: { backgroundColor: "rgba(34, 197, 94, 0.08)" },
+  radioDot: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: colors.border,
+  },
+  radioDotActive: {
+    borderColor: colors.safe,
+    backgroundColor: colors.safe,
   },
 });

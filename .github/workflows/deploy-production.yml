@@ -1,0 +1,98 @@
+name: Deploy to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA from main to deploy (required)"
+        required: true
+        type: string
+      skip_staging:
+        description: "Skip staging verification (HOTFIX ONLY — document why)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  production-deploy:
+    runs-on: ubuntu-latest
+    # This environment has a required reviewer rule configured in GitHub settings.
+    # A second team member must click "Approve" before this job runs.
+    environment: production
+    env:
+      ENVIRONMENT: production
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run pytest (last sanity check)
+        env:
+          DEBUG: "true"
+          ENVIRONMENT: "development"
+          SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
+        run: pytest tests/ -q --maxfail=1
+
+      - name: Verify staging is green (unless skipped)
+        if: ${{ !inputs.skip_staging }}
+        env:
+          STAGING_HEALTH_URL: ${{ secrets.STAGING_HEALTH_URL }}
+        run: |
+          echo "Verifying staging is green before promoting to prod..."
+          resp=$(curl --fail --silent "$STAGING_HEALTH_URL") || {
+            echo "ERROR: staging is not healthy. Fix staging first, or pass skip_staging=true with justification."
+            exit 1
+          }
+          echo "✓ staging healthy: $resp"
+
+      - name: Install Railway CLI
+        run: curl -fsSL https://railway.app/install.sh | sh
+
+      - name: Deploy to Railway production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_PRODUCTION }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE_PRODUCTION }}
+        run: |
+          echo "Deploying commit ${{ inputs.commit_sha }} to Railway PRODUCTION..."
+          ~/.railway/bin/railway up --service "$RAILWAY_SERVICE" --detach
+
+      - name: Wait for production /health
+        env:
+          PROD_HEALTH_URL: ${{ secrets.PROD_HEALTH_URL }}
+        run: |
+          echo "Polling $PROD_HEALTH_URL..."
+          for i in {1..30}; do
+            if curl --fail --silent "$PROD_HEALTH_URL" > /dev/null; then
+              echo "✓ production healthy"
+              exit 0
+            fi
+            echo "  attempt $i/30: not ready, waiting 10s..."
+            sleep 10
+          done
+          echo "::error::Production /health did not return 200 within 5 minutes."
+          echo "::error::Railway auto-rolled back. Check Railway logs + Sentry + see runbooks/rollback.md."
+          exit 1
+
+      - name: Log deploy event
+        if: success()
+        run: |
+          echo "::notice::Production deploy SUCCESS for commit ${{ inputs.commit_sha }}"
+          echo "Skipped staging: ${{ inputs.skip_staging }}"

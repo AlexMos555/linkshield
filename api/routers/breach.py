@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException
 import httpx
 
 from api.services.auth import get_optional_user
+from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 
 logger = logging.getLogger("linkshield.breach")
@@ -34,7 +35,10 @@ logger = logging.getLogger("linkshield.breach")
 router = APIRouter(prefix="/api/v1/breach", tags=["breach"])
 
 
-@router.get("/check/{hash_prefix}")
+@router.get(
+    "/check/{hash_prefix}",
+    dependencies=[Depends(rate_limit(mode="ip", category="breach_check"))],
+)
 async def check_breach(
     hash_prefix: str,
     user: Optional[AuthUser] = Depends(get_optional_user),
@@ -93,7 +97,10 @@ async def check_breach(
         raise HTTPException(502, "Breach check temporarily unavailable")
 
 
-@router.get("/domain/{domain}")
+@router.get(
+    "/domain/{domain}",
+    dependencies=[Depends(rate_limit(mode="ip", category="breach_domain"))],
+)
 async def check_domain_breaches(
     domain: str,
     user: Optional[AuthUser] = Depends(get_optional_user),

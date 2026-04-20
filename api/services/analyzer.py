@@ -218,29 +218,10 @@ def _is_ip_address(domain: str) -> bool:
 # ═══════════════════════════════════════════════════════════════
 # CHECK 1: Google Safe Browsing
 # ═══════════════════════════════════════════════════════════════
+# The real implementation lives in api.services.safe_browsing — this re-export
+# keeps backward compatibility for the circuit breaker wiring in analyze_domain.
 
-async def check_safe_browsing(domain: str) -> bool:
-    settings = get_settings()
-    if not settings.google_safe_browsing_key:
-        return False
-
-    url = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
-    headers = {"x-goog-api-key": settings.google_safe_browsing_key}
-    payload = {
-        "client": {"clientId": "linkshield", "clientVersion": "0.2.0"},
-        "threatInfo": {
-            "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
-            "platformTypes": ["ANY_PLATFORM"],
-            "threatEntryTypes": ["URL"],
-            "threatEntries": [{"url": f"http://{domain}/"}, {"url": f"https://{domain}/"}],
-        },
-    }
-    async with httpx.AsyncClient(timeout=3.0) as client:
-        resp = await client.post(url, json=payload, headers=headers)
-        hit = bool(resp.json().get("matches"))
-        if hit:
-            logger.info("safe_browsing_hit", extra={"domain": domain})
-        return hit
+from api.services.safe_browsing import check_safe_browsing  # noqa: E402,F401
 
 
 # ═══════════════════════════════════════════════════════════════

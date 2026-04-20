@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  LinkShield Outlook Add-in manifest.
+
+  Uses the v1.1 Office Add-in schema (stable, broad compatibility).
+  When Microsoft fully rolls out the unified manifest (preview in 2025),
+  we'll mirror this into `manifest.json` alongside.
+
+  Hosting contract:
+    https://addin.linkshield.io/outlook/taskpane/taskpane.html
+    https://addin.linkshield.io/outlook/commands/commands.html
+  The domain `addin.linkshield.io` is served by the landing CDN with
+  CORS/CSP locked down — see docs/runbooks/email-plugin.md.
+-->
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
+  xsi:type="MailApp">
+
+  <Id>f8b5a4c3-2e6d-4e7a-8b19-linkshield-outlook</Id>
+  <Version>0.1.0</Version>
+  <ProviderName>LinkShield</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="LinkShield — Phishing protection"/>
+  <Description DefaultValue="Scan inbound emails for phishing — links, sender spoofing, credential-theft patterns. Privacy-first: analysis happens on your device except for domain reputation lookups."/>
+  <IconUrl DefaultValue="https://addin.linkshield.io/outlook/assets/icon-64.png"/>
+  <HighResolutionIconUrl DefaultValue="https://addin.linkshield.io/outlook/assets/icon-128.png"/>
+  <SupportUrl DefaultValue="https://linkshield.io/support"/>
+
+  <AppDomains>
+    <AppDomain>https://linkshield.io</AppDomain>
+    <AppDomain>https://web-production-fe08.up.railway.app</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Mailbox"/>
+  </Hosts>
+
+  <Requirements>
+    <Sets>
+      <!-- Mailbox 1.5 lets us read message headers + body -->
+      <Set Name="Mailbox" MinVersion="1.5"/>
+    </Sets>
+  </Requirements>
+
+  <FormSettings>
+    <Form xsi:type="ItemRead">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://addin.linkshield.io/outlook/taskpane/taskpane.html"/>
+        <RequestedHeight>450</RequestedHeight>
+      </DesktopSettings>
+    </Form>
+  </FormSettings>
+
+  <!-- We only need to read the item currently open; never to send on the
+       user's behalf. This is the narrowest permission Outlook offers
+       for a ReadItem scenario. -->
+  <Permissions>ReadItem</Permissions>
+
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read"/>
+  </Rule>
+
+  <DisableEntityHighlighting>false</DisableEntityHighlighting>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Requirements>
+      <bt:Sets DefaultMinVersion="1.5">
+        <bt:Set Name="Mailbox"/>
+      </bt:Sets>
+    </Requirements>
+
+    <Hosts>
+      <Host xsi:type="MailHost">
+        <DesktopFormFactor>
+
+          <FunctionFile resid="functionFileUrl"/>
+
+          <ExtensionPoint xsi:type="MessageReadCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="msgReadLinkShieldGroup">
+                <Label resid="groupLabel"/>
+                <Control xsi:type="Button" id="msgReadLinkShieldScan">
+                  <Label resid="scanBtnLabel"/>
+                  <Supertip>
+                    <Title resid="scanBtnTitle"/>
+                    <Description resid="scanBtnDesc"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="icon16"/>
+                    <bt:Image size="32" resid="icon32"/>
+                    <bt:Image size="80" resid="icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="taskpaneUrl"/>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="msgReadLinkShieldReport">
+                  <Label resid="reportBtnLabel"/>
+                  <Supertip>
+                    <Title resid="reportBtnTitle"/>
+                    <Description resid="reportBtnDesc"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="icon16"/>
+                    <bt:Image size="32" resid="icon32"/>
+                    <bt:Image size="80" resid="icon80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>reportPhishing</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Images>
+        <bt:Image id="icon16" DefaultValue="https://addin.linkshield.io/outlook/assets/icon-16.png"/>
+        <bt:Image id="icon32" DefaultValue="https://addin.linkshield.io/outlook/assets/icon-32.png"/>
+        <bt:Image id="icon80" DefaultValue="https://addin.linkshield.io/outlook/assets/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="functionFileUrl" DefaultValue="https://addin.linkshield.io/outlook/commands/commands.html"/>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://addin.linkshield.io/outlook/taskpane/taskpane.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="groupLabel" DefaultValue="LinkShield"/>
+        <bt:String id="scanBtnLabel" DefaultValue="Scan email"/>
+        <bt:String id="scanBtnTitle" DefaultValue="Scan for phishing"/>
+        <bt:String id="reportBtnLabel" DefaultValue="Report phishing"/>
+        <bt:String id="reportBtnTitle" DefaultValue="Report this email"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="scanBtnDesc" DefaultValue="Check this email against LinkShield's phishing database. Analyses sender, body patterns, and every link."/>
+        <bt:String id="reportBtnDesc" DefaultValue="Flag this email as phishing so other LinkShield users are warned about similar attacks."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

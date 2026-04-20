@@ -1,0 +1,118 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Re-scan weekly to catch newly disclosed CVEs in dependencies
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write   # required by github/codeql + Trivy SARIF upload
+
+jobs:
+  # ─── Secret scanning ──────────────────────────────────────────
+  gitleaks:
+    name: gitleaks (committed secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks needs full history
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  # ─── Python SAST (bandit) ─────────────────────────────────────
+  bandit:
+    name: bandit (Python SAST)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install bandit
+        run: pip install "bandit[toml]==1.8.0"
+      - name: Run bandit
+        run: bandit -r api/ -ll -ii  # -ll: medium severity+, -ii: medium confidence+
+
+  # ─── Python dependency vulnerabilities (pip-audit) ────────────
+  pip-audit:
+    name: pip-audit (Python deps CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pip-audit
+        run: pip install pip-audit==2.7.3
+      - name: Audit deps
+        run: pip-audit --requirement requirements.txt --strict --vulnerability-service osv
+
+  # ─── Container image scan (Trivy) ─────────────────────────────
+  trivy-image:
+    name: trivy (container CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t linkshield-api:scan .
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: linkshield-api:scan
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"            # fail build on HIGH/CRITICAL findings
+          ignore-unfixed: true       # skip CVEs with no upstream fix yet
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+  # ─── Dockerfile linting (Hadolint) ────────────────────────────
+  hadolint:
+    name: hadolint (Dockerfile lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
+  # ─── SBOM generation ──────────────────────────────────────────
+  sbom:
+    name: sbom (Software Bill of Materials)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t linkshield-api:sbom .
+
+      - name: Generate SBOM (CycloneDX JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          image: linkshield-api:sbom
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          retention-days: 90

@@ -1,0 +1,55 @@
+# Pre-commit hooks — run automatically on every `git commit`.
+# Install once: `pip install pre-commit && pre-commit install`
+# Run manually: `pre-commit run --all-files`
+#
+# These hooks are the FIRST line of defense against committing secrets.
+# CI runs the same checks again as the second line.
+
+repos:
+  # ─── Secret detection (PRIMARY DEFENSE) ───────────────────────
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: "🔒 gitleaks — block committed secrets"
+        # `protect` mode scans only staged files for speed
+        args: ["protect", "--staged", "--config=.gitleaks.toml", "--no-banner", "--redact"]
+
+  # ─── Built-in correctness/safety hooks ────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]   # block >1MB files (model weights go via Git LFS or .gitignore)
+      - id: check-merge-conflict
+      - id: check-yaml
+        exclude: '^\.github/workflows/.*\.ya?ml$'  # actions allow !!tags
+      - id: check-json
+        exclude: 'tsconfig.*\.json$'  # tsconfig allows comments — invalid JSON
+      - id: check-toml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+        types: [python]
+      - id: trailing-whitespace
+        types: [python]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+        types: [python]
+
+  # ─── Python — ruff (lint) ─────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  # ─── Python — bandit (SAST) ───────────────────────────────────
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.0
+    hooks:
+      - id: bandit
+        args: ["-q", "-c", "pyproject.toml", "-r", "api/"]
+        additional_dependencies: ["bandit[toml]"]
+        # Skip tests — they intentionally use weak crypto / dummy secrets
+        exclude: '^tests/'

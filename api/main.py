@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from api.services.security_headers import SecurityHeadersMiddleware
 
 from api.config import get_settings, validate_settings
 from api.routers.check import router as check_router
@@ -14,6 +15,11 @@ from api.routers.public import router as public_router
 from api.routers.breach import router as breach_router
 from api.routers.referral import router as referral_router
 from api.routers.org import router as org_router
+from api.routers.pricing import router as pricing_router
+from api.routers.email_unsubscribe import router as email_unsubscribe_router
+from api.routers.email import router as email_router
+from api.routers.phone import router as phone_router
+from api.routers.scam import router as scam_router
 from api.services.cache import close_redis, get_redis
 from api.services.logger import setup_logging
 
@@ -64,6 +70,11 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+# Security headers — HSTS, CSP, X-Frame-Options, etc. Defense in depth.
+# Order matters: SecurityHeaders runs LAST in request flow → FIRST in response flow,
+# so it's the last middleware added (Starlette wraps in reverse order).
+app.add_middleware(SecurityHeadersMiddleware)
+
 
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
@@ -101,6 +112,11 @@ app.include_router(public_router)
 app.include_router(breach_router)
 app.include_router(referral_router)
 app.include_router(org_router)
+app.include_router(pricing_router)
+app.include_router(email_unsubscribe_router)
+app.include_router(email_router)
+app.include_router(phone_router)
+app.include_router(scam_router)
 
 
 @app.get("/health")

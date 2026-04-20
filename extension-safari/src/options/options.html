@@ -38,11 +38,98 @@
     .stat-num { font-size: 24px; font-weight: bold; }
     .stat-label { font-size: 11px; color: #64748b; }
     .saved { color: #22c55e; font-size: 12px; margin-top: 8px; display: none; }
+
+    /* Skill Level cards */
+    .skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .skill-card {
+      display: block; padding: 12px; border-radius: 10px; border: 2px solid #334155;
+      cursor: pointer; transition: border-color .2s, background .2s;
+    }
+    .skill-card input[type="radio"] { display: none; }
+    .skill-card:hover { background: #263244; }
+    .skill-card.active { border-color: #22c55e; background: #052e16; }
+    .skill-title { font-weight: 600; font-size: 14px; }
+    .skill-desc { font-size: 12px; color: #94a3b8; margin-top: 2px; line-height: 1.4; }
+    .skill-opt { margin-top: 14px; padding-top: 12px; border-top: 1px solid #334155; }
+    .skill-opt[hidden] { display: none; }
+    input[type="range"] { accent-color: #22c55e; width: 160px; }
+    .pin-input {
+      width: 80px; padding: 6px 10px; border-radius: 6px;
+      border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
+      font-size: 14px; letter-spacing: 4px; text-align: center; outline: none;
+    }
   </style>
 </head>
 <body>
   <h1>LinkShield Settings</h1>
   <p class="subtitle">Configure your phishing protection preferences</p>
+
+  <div class="section">
+    <h2 data-i18n="skill_level_heading">Skill Level</h2>
+    <p class="row-desc" style="margin-bottom: 12px;" data-i18n="skill_level_subtitle">
+      Adjust LinkShield's presentation for different users. You can change this anytime.
+    </p>
+    <div class="skill-grid">
+      <label class="skill-card" data-skill="kids">
+        <input type="radio" name="skill-level" value="kids">
+        <div class="skill-title" data-i18n="skill_kids_title">👶 Kids</div>
+        <div class="skill-desc" data-i18n="skill_kids_desc">Simple blocking with parental PIN lock. Strict mode.</div>
+      </label>
+      <label class="skill-card active" data-skill="regular">
+        <input type="radio" name="skill-level" value="regular" checked>
+        <div class="skill-title" data-i18n="skill_regular_title">🙋 Regular</div>
+        <div class="skill-desc" data-i18n="skill_regular_desc">Default for most users. Clear warnings, balanced details.</div>
+      </label>
+      <label class="skill-card" data-skill="granny">
+        <input type="radio" name="skill-level" value="granny">
+        <div class="skill-title" data-i18n="skill_granny_title">👵 Granny</div>
+        <div class="skill-desc" data-i18n="skill_granny_desc">Large text, simple words, voice alerts. Red/green only.</div>
+      </label>
+      <label class="skill-card" data-skill="pro">
+        <input type="radio" name="skill-level" value="pro">
+        <div class="skill-title" data-i18n="skill_pro_title">🧑‍💻 Pro</div>
+        <div class="skill-desc" data-i18n="skill_pro_desc">Raw scores, threat types, headers, whois. Technical details.</div>
+      </label>
+    </div>
+
+    <div class="skill-opt" id="skill-opt-font" hidden>
+      <div class="row">
+        <div>
+          <div class="row-label" data-i18n="font_scale_label">Text size</div>
+          <div class="row-desc" data-i18n="font_scale_desc">Larger text across popups and warnings</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="range" id="font-scale" min="0.8" max="2.5" step="0.1" value="1.0">
+          <span id="font-scale-val" style="font-size:12px;color:#94a3b8;width:32px;text-align:right;">1.0×</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="skill-opt" id="skill-opt-voice" hidden>
+      <div class="row">
+        <div>
+          <div class="row-label" data-i18n="voice_alerts_label">Voice alerts</div>
+          <div class="row-desc" data-i18n="voice_alerts_desc">Speak warnings aloud when a dangerous link is detected</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="voice-alerts"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="skill-opt" id="skill-opt-pin" hidden>
+      <div class="row">
+        <div>
+          <div class="row-label" data-i18n="parental_pin_label">Parental PIN</div>
+          <div class="row-desc" data-i18n="parental_pin_desc">4 digits — required to change Kids Mode settings</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="password" id="parental-pin" class="pin-input" inputmode="numeric" maxlength="4" pattern="\d{4}" placeholder="••••" aria-label="Parental PIN">
+          <button class="btn" id="save-pin" data-i18n="save_pin_btn">Set PIN</button>
+          <button class="btn" id="clear-pin" data-i18n="clear_pin_btn" hidden>Clear</button>
+        </div>
+      </div>
+      <div class="row-desc" id="pin-status" style="margin-top:6px;"></div>
+    </div>
+  </div>
 
   <div class="section">
     <h2>Protection</h2>
@@ -97,6 +184,57 @@
   </div>
 
   <div class="section">
+    <h2>Custom Lists</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">Blocked Sites</div>
+        <div class="row-desc">Domains you always want blocked (one per line)</div>
+      </div>
+    </div>
+    <textarea id="custom-blocklist" rows="3" placeholder="example.com&#10;malware-site.xyz" style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;margin-top:8px;outline:none;"></textarea>
+    <div class="row">
+      <div>
+        <div class="row-label">Trusted Sites</div>
+        <div class="row-desc">Domains to never flag (your whitelist)</div>
+      </div>
+    </div>
+    <textarea id="custom-whitelist" rows="3" placeholder="my-internal-app.com&#10;trusted-site.org" style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;margin-top:8px;outline:none;"></textarea>
+    <button class="btn" id="save-lists" style="margin-top:8px;">Save Lists</button>
+  </div>
+
+  <div class="section">
+    <h2>Privacy Protection</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">Remove tracking parameters</div>
+        <div class="row-desc">Auto-strip fbclid, utm_*, gclid from URLs</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="clean-tracking" checked><span class="slider"></span></label>
+    </div>
+    <div class="row">
+      <div>
+        <div class="row-label">Block crypto miners</div>
+        <div class="row-desc">Prevent websites from mining cryptocurrency</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="block-miners" checked><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Advanced</h2>
+    <div class="row">
+      <div>
+        <div class="row-label">API Server</div>
+        <div class="row-desc">Default: http://localhost:8000</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input id="api-url-input" placeholder="http://localhost:8000" style="width:180px;padding:6px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;outline:none;">
+        <button class="btn" id="save-api-url">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Referral</h2>
     <div class="row">
       <div>
@@ -137,83 +275,6 @@
 
   <div class="saved" id="saved-msg">Settings saved</div>
 
-  <script>
-    // Load settings
-    chrome.storage.local.get(["settings", "stats"], (data) => {
-      const s = data.settings || {};
-      document.getElementById("auto-scan").checked = s.autoScan !== false;
-      document.getElementById("show-badges").checked = s.showBadges !== false;
-      document.getElementById("block-dangerous").checked = s.blockDangerous !== false;
-      document.getElementById("auto-audit").checked = s.autoAudit === true;
-      document.getElementById("anon-stats").checked = s.anonStats === true;
-
-      const stats = data.stats || {};
-      document.getElementById("s-total").textContent = stats.total_checks || 0;
-      document.getElementById("s-blocked").textContent = stats.threats_blocked || 0;
-      document.getElementById("s-warned").textContent = stats.threats_warned || 0;
-    });
-
-    // Save on toggle
-    document.querySelectorAll("input[type=checkbox]").forEach((cb) => {
-      cb.addEventListener("change", () => {
-        const settings = {
-          autoScan: document.getElementById("auto-scan").checked,
-          showBadges: document.getElementById("show-badges").checked,
-          blockDangerous: document.getElementById("block-dangerous").checked,
-          autoAudit: document.getElementById("auto-audit").checked,
-          anonStats: document.getElementById("anon-stats").checked,
-        };
-        chrome.storage.local.set({ settings });
-        const msg = document.getElementById("saved-msg");
-        msg.style.display = "block";
-        setTimeout(() => msg.style.display = "none", 2000);
-      });
-    });
-
-    // Clear data
-    document.getElementById("clear-data").addEventListener("click", () => {
-      if (confirm("Delete all local check history? This cannot be undone.")) {
-        chrome.storage.local.remove(["recent_threats", "stats", "audits"], () => {
-          location.reload();
-        });
-      }
-    });
-
-    // Copy referral link
-    document.getElementById("copy-referral").addEventListener("click", async () => {
-      const data = await chrome.storage.local.get(["referral_code"]);
-      let code = data.referral_code;
-      if (!code) {
-        // Generate a simple local code
-        code = Math.random().toString(36).substring(2, 10).toUpperCase();
-        await chrome.storage.local.set({ referral_code: code });
-      }
-      const url = "https://linkshield.io/ref/" + code;
-      await navigator.clipboard.writeText(url);
-      document.getElementById("copy-referral").textContent = "Copied!";
-      setTimeout(() => document.getElementById("copy-referral").textContent = "Copy link", 2000);
-    });
-
-    // Redeem referral code
-    document.getElementById("redeem-code").addEventListener("click", async () => {
-      const code = document.getElementById("referral-input").value.trim().toUpperCase();
-      if (!code) return;
-      await chrome.storage.local.set({ redeemed_code: code });
-      alert("Code " + code + " saved! You'll get 7 days of Personal plan when connected to your account.");
-    });
-
-    // Export
-    document.getElementById("export-data").addEventListener("click", () => {
-      chrome.storage.local.get(null, (data) => {
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "linkshield-export.json";
-        a.click();
-        URL.revokeObjectURL(url);
-      });
-    });
-  </script>
+  <script src="options.js"></script>
 </body>
 </html>
