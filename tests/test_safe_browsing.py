@@ -11,10 +11,8 @@ Covers:
 """
 from __future__ import annotations
 
-import asyncio
-import json
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Dict
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest

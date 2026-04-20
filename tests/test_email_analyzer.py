@@ -15,7 +15,6 @@ from fastapi.testclient import TestClient
 
 from api.models.schemas import AuthUser, UserTier
 from api.services.email_analyzer import (
-    AnalysisResult,
     EmailBody,
     EmailHeaders,
     Finding,

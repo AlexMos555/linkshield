@@ -20,13 +20,13 @@ boundary, uniformly across the codebase.
 
 import logging
 from datetime import datetime, timezone
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal
 
 from fastapi import Depends, HTTPException, Request
 
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
-from api.services.auth import get_current_user, get_optional_user
+from api.services.auth import get_current_user
 from api.services.cache import get_redis
 
 logger = logging.getLogger("linkshield.rate_limiter")

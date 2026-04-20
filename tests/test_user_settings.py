@@ -12,9 +12,7 @@ Covers:
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 

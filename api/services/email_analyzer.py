@@ -23,8 +23,7 @@ from __future__ import annotations
 
 import logging
 import re
-import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Awaitable, Callable, Iterable, Optional
 
@@ -102,8 +101,8 @@ class AnalysisResult:
                 for f in self.findings
             ],
             "links": [
-                {"url": l.url, "display_text": l.display_text, "domain": l.domain}
-                for l in self.links
+                {"url": link.url, "display_text": link.display_text, "domain": link.domain}
+                for link in self.links
             ],
         }
 

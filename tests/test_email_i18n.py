@@ -89,7 +89,7 @@ def _find_placeholders(text: str):
     return set(re.findall(r"\$([A-Z_]+)\$", text))
 
 
-@pytest.mark.parametrize("locale", [l for l in LOCALES if l != "en"])
+@pytest.mark.parametrize("locale", [loc for loc in LOCALES if loc != "en"])
 def test_placeholders_preserved_in_translation(locale, en_email):
     data = _load(locale)
     leaves = _leaves(data.get("email", {}), "email")
