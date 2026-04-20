@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     debug: bool = False
     # Environment discriminator — governs validate_settings() rules
     environment: Environment = "development"
+    # If true, misconfigured production env crashes the container at startup
+    # (paranoid mode — no silent degradation). If false (default), we log an
+    # error and continue serving with whatever we have. Set strict_config=true
+    # only when you know every prod env var is provisioned. Typical rollout:
+    # first deploy with strict_config=false, watch logs for missing vars, set
+    # them one by one, flip to true once the error log is clean.
+    strict_config: bool = False
 
     # Supabase
     supabase_url: str = ""

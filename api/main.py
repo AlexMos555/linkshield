@@ -42,10 +42,30 @@ if _sentry_dsn:
 async def lifespan(app: FastAPI):
     # ── Startup ──
     settings = get_settings()
-    validate_settings(settings)  # Raises RuntimeError if critical config missing
+    # Misconfiguration mode:
+    #   strict_config=true  → validate_settings crashes the container (old
+    #     behaviour, safest for prod once everything is wired).
+    #   strict_config=false → log the error loudly and keep serving with
+    #     whatever we have. Prevents a missing optional secret from taking
+    #     down the whole pod during rollout.
+    try:
+        validate_settings(settings)
+    except Exception as e:
+        if settings.strict_config:
+            logger.critical("startup_validation_failed_strict", extra={"error": str(e)})
+            raise
+        logger.error(
+            "startup_validation_failed_lax_mode",
+            extra={"error": str(e), "environment": settings.environment},
+        )
     logger.info(
         "LinkShield API starting",
-        extra={"debug": settings.debug, "origins": settings.get_allowed_origins()},
+        extra={
+            "debug": settings.debug,
+            "environment": settings.environment,
+            "origins": settings.get_allowed_origins(),
+            "strict_config": settings.strict_config,
+        },
     )
     yield
     # ── Shutdown ──
