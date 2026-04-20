@@ -9,3 +9,9 @@ dnspython==2.7.0
 stripe==11.0.0
 sentry-sdk[fastapi]==2.19.0
 bcrypt==4.2.1
+# ML scoring — wraps the CatBoost model in data/phishing_model.cbm.
+# Pulls ~120 MB of numpy/scipy wheels; keep pinned so Railway build stays
+# reproducible. If catboost upstream drops Python 3.11 support we fall
+# back gracefully (ml_scorer._load_model catches ImportError).
+catboost==1.2.7
+numpy==1.26.4
