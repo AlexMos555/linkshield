@@ -19,7 +19,7 @@ jobs:
     name: gitleaks (committed secrets)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0   # gitleaks needs full history
       - name: Run gitleaks
@@ -33,7 +33,7 @@ jobs:
     name: bandit (Python SAST)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -47,7 +47,7 @@ jobs:
     name: pip-audit (Python deps CVEs)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -63,7 +63,7 @@ jobs:
     name: trivy (container CVEs)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Trivy container scan removed alongside the Dockerfile we deleted.
       # Railway's own security scanner runs at deploy-time and blocks deploys
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     if: false  # re-enable if a Dockerfile is reintroduced
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile

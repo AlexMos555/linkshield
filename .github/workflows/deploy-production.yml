@@ -30,7 +30,7 @@ jobs:
       ENVIRONMENT: production
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.commit_sha }}
 
