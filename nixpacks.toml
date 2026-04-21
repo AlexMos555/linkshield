@@ -2,3 +2,17 @@ providers = ["python"]
 
 [variables]
 NIXPACKS_PYTHON_VERSION = "3.11"
+
+[phases.setup]
+nixPkgs = ["python311", "gcc"]
+aptPkgs = ["python3-venv"]
+
+[phases.install]
+cmds = [
+    "python -m venv --copies /opt/venv",
+    ". /opt/venv/bin/activate && pip install --no-cache-dir --upgrade pip",
+    ". /opt/venv/bin/activate && pip install --no-cache-dir -r requirements.txt",
+]
+
+[start]
+cmd = ". /opt/venv/bin/activate && python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT"
