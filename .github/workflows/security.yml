@@ -101,4 +101,3 @@ jobs:
     if: false
     steps:
       - run: echo "SBOM disabled — no Dockerfile to scan. Switch to path-based scan if re-enabled."
-          retention-days: 90

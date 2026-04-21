@@ -1,8 +1,10 @@
 name: Deploy to staging
 
 on:
-  push:
-    branches: [main]
+  # Auto-deploy disabled: production is handled by Railway's native GitHub
+  # integration, and no separate Railway staging service/secrets exist yet.
+  # Re-enable the push trigger once RAILWAY_TOKEN_STAGING + RAILWAY_SERVICE_STAGING
+  # secrets are populated and a staging environment exists in Railway.
   workflow_dispatch:
 
 concurrency:
