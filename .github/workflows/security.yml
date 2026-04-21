@@ -73,7 +73,6 @@ jobs:
         run: echo "Trivy container scan disabled — Nixpacks build + Railway scanner replace it."
 
       - name: Upload SARIF to GitHub Security tab
-        if: always()
         if: false  # disabled alongside the trivy scan above
         uses: github/codeql-action/upload-sarif@v3
         with:
