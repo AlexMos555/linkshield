@@ -120,7 +120,7 @@ def render_template(
         template: key from the registry
         locale: target language; falls back to English if not rendered
         fixture_overrides: {fixture_value: real_value} pairs, e.g.
-            {"Alex": user.first_name, "https://cleanway.example/scan": scan_link}
+            {"Alex": user.first_name, "https://cleanway.ai/scan": scan_link}
     """
     if locale not in SUPPORTED_LOCALES:
         logger.warning("email.locale.unknown", extra={"locale": locale, "fallback": "en"})
@@ -361,7 +361,7 @@ async def send_template(
 
 def _get_settings() -> dict[str, str]:
     return {
-        "from_addr": os.environ.get("EMAIL_FROM_ADDR", "no-reply@cleanway.example"),
+        "from_addr": os.environ.get("EMAIL_FROM_ADDR", "no-reply@cleanway.ai"),
         "from_name": os.environ.get("EMAIL_FROM_NAME", "Cleanway"),
-        "from_domain": os.environ.get("EMAIL_FROM_DOMAIN", "cleanway.example"),
+        "from_domain": os.environ.get("EMAIL_FROM_DOMAIN", "cleanway.ai"),
     }
