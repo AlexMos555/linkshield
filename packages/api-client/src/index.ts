@@ -9,7 +9,7 @@
  *
  * Usage:
  *   import { createClient } from "@cleanway/api-client";
- *   const api = createClient({ baseUrl: "https://web-production-fe08.up.railway.app" });
+ *   const api = createClient({ baseUrl: "https://api.cleanway.ai" });
  *   const { data, error } = await api.pricing.forCountry("US");
  *   if (error) return showErrorUI(error);
  *   render(data.plans.personal.monthly);

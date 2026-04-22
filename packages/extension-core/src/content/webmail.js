@@ -100,7 +100,7 @@
   // ── Config ───────────────────────────────────────────────────────────────
   const BANNER_ID = "cleanway-webmail-banner";
   const DEBOUNCE_MS = 600;
-  const DEFAULT_API_BASE = "https://web-production-fe08.up.railway.app";
+  const DEFAULT_API_BASE = "https://api.cleanway.ai";
 
   // ── Resolve adapter ──────────────────────────────────────────────────────
   const host = location.hostname;

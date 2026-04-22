@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Fair, regional pricing. Free forever for blocking phishing. Pay only for details, family protection, and accessibility modes.",
 };
 
-const DEFAULT_API_URL = "https://web-production-fe08.up.railway.app";
+const DEFAULT_API_URL = "https://api.cleanway.ai";
 
 // Shared API client — typed, timeout-enforced, never throws.
 // One instance per SSR render is fine: it's stateless, just closes over config.

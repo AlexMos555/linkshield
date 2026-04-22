@@ -31,7 +31,7 @@
 
   <AppDomains>
     <AppDomain>https://cleanway.ai</AppDomain>
-    <AppDomain>https://web-production-fe08.up.railway.app</AppDomain>
+    <AppDomain>https://api.cleanway.ai</AppDomain>
   </AppDomains>
 
   <Hosts>

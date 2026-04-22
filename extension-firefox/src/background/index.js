@@ -5,7 +5,7 @@ if (typeof browser !== "undefined" && (typeof chrome === "undefined" || !chrome.
  */
 
 // API base — production Railway default, override via Options page (chrome.storage.local.api_url)
-let API_BASE = "https://web-production-fe08.up.railway.app";
+let API_BASE = "https://api.cleanway.ai";
 try {
   chrome.storage.local.get("api_url").then(function(data) {
     if (data && typeof data.api_url === "string" && data.api_url.startsWith("http")) {

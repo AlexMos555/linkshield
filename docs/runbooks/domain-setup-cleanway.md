@@ -52,7 +52,7 @@ After DNS is live:
 ## Part 4 — Update Vercel env vars
 
 1. Vercel → `landing` → **Settings** → **Environment Variables**
-2. Update `NEXT_PUBLIC_API_URL` from `https://web-production-fe08.up.railway.app` to `https://api.cleanway.ai`
+2. Update `NEXT_PUBLIC_API_URL` from the default Railway URL (e.g. `https://web-production-xxxx.up.railway.app`) to `https://api.cleanway.ai`
 3. Redeploy latest production deployment (Deployments → ⋯ → Redeploy, **uncheck** "Use existing build cache")
 
 ---

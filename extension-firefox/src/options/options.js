@@ -76,7 +76,7 @@ async function pushSkillToApi(patch) {
     const stored = await chrome.storage.local.get(["auth_token", "api_url"]);
     if (!stored.auth_token) return;
     const apiBase =
-      stored.api_url || "https://web-production-fe08.up.railway.app";
+      stored.api_url || "https://api.cleanway.ai";
     await fetch(apiBase + "/api/v1/user/settings", {
       method: "PUT",
       headers: {

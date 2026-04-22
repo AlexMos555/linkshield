@@ -275,7 +275,7 @@ class CleanwayVpnService : VpnService() {
         private const val VPN_GATEWAY_IP = "10.0.0.1"
         private const val UPSTREAM_DNS_HOST = "1.1.1.1"
         private const val UPSTREAM_DNS_PORT = 53
-        private const val API_BASE = "https://web-production-fe08.up.railway.app"
+        private const val API_BASE = "https://api.cleanway.ai"
         private const val SAFE_CACHE_CAP = 10_000
     }
 }

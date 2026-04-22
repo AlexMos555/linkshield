@@ -61,7 +61,7 @@ Minimum для `ENVIRONMENT=production`:
 `PHISHTANK_API_KEY`, `IPQUALITYSCORE_KEY`, `HIBP_API_KEY`, `BLOOM_FILTER_CDN_URL`, `AWS_REGION`/`EMAIL_PROVIDER=ses` (если включена рассылка).
 
 ### Hardcoded dev URLs
-`web-production-fe08.up.railway.app` захардкожен как **fallback** в:
+`api.cleanway.ai` захардкожен как **fallback** в:
 - `landing/app/[locale]/check/[domain]/page.tsx:25`
 - `landing/app/[locale]/pricing/page.tsx:10`
 - `mobile/src/services/api.ts` (fallback для `EXPO_PUBLIC_API_URL`)
@@ -105,7 +105,7 @@ Minimum для `ENVIRONMENT=production`:
 `EXPO_PUBLIC_API_URL` (с fallback на Railway URL), `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`. Проверяется в `mobile/src/services/supabase.ts` через `cleanValue()` — отсекает placeholder'ы `YOUR_PROJECT`, `YOUR_ANON_KEY`, `example.supabase.co`.
 
 ### API URL
-`mobile/src/services/api.ts:21` — приоритет: `process.env.EXPO_PUBLIC_API_URL` → `Constants.expoConfig.extra.apiUrl` → fallback `https://web-production-fe08.up.railway.app`. **Настраиваемо — хорошо.**
+`mobile/src/services/api.ts:21` — приоритет: `process.env.EXPO_PUBLIC_API_URL` → `Constants.expoConfig.extra.apiUrl` → fallback `https://api.cleanway.ai`. **Настраиваемо — хорошо.**
 
 ### Чего не хватает для prod-билда
 - **`eas.json` отсутствует** (`ls mobile/eas.json` → пусто). Без него `eas build` не работает.
@@ -124,7 +124,7 @@ Minimum для `ENVIRONMENT=production`:
 ## 5. Browser extensions
 
 ### API URL
-`packages/extension-core/src/utils/api.js:9` — `let API_BASE = "https://web-production-fe08.up.railway.app"` + override через `chrome.storage.local.api_url` (dev). **Хорошо.**
+`packages/extension-core/src/utils/api.js:9` — `let API_BASE = "https://api.cleanway.ai"` + override через `chrome.storage.local.api_url` (dev). **Хорошо.**
 
 ### host_permissions (`extension/manifest.json`)
 `railway.app/*`, `*.cleanway.ai/*`, `localhost:8000/*`, `mail.google.com/*`, `outlook.office.com/*`, `outlook.live.com/*`, `mail.yahoo.com/*`. Покрытие webmail соответствует `packages/extension-core/src/content/webmail.js`. OK.
@@ -160,7 +160,7 @@ Minimum для `ENVIRONMENT=production`:
 `next-intl@4.9.1` с `i18n/request.ts` + `i18n/routing.ts`. Сообщения в `messages/{en,es,hi,pt,ru,ar,fr,de,it,id}.json` (10 языков — стратегия v2).
 
 ### Security concerns
-- Fallback API URL `web-production-fe08.up.railway.app` — не секрет, нормально.
+- Fallback API URL `api.cleanway.ai` — не секрет, нормально.
 - **Vercel incident email сегодня** — отдельный runbook уже есть (`docs/runbooks/vercel-incident-response.md`). **Ротировать**: OAuth tokens, Vercel tokens, любые API keys, которые могли быть в env на Vercel.
 - В `next.config.ts` нет `headers()` → CSP/HSTS **не настроены на уровне Next**. Это делает backend middleware, но landing тоже должен.
 
@@ -239,7 +239,7 @@ Minimum для `ENVIRONMENT=production`:
 - [ ] **Ротировать секреты после Vercel incident.** *Why:* Vercel прислал security email сегодня. *How:* см. `docs/runbooks/vercel-incident-response.md` + ротировать: Supabase service key, Stripe restricted keys, любые токены в Vercel env.
 - [ ] **Vercel env vars.** *Why:* landing без `NEXT_PUBLIC_API_URL` работает на fallback Railway URL (некрасиво, CORS проблемы потом). *How:* Vercel → Project → Settings → Environment Variables → `NEXT_PUBLIC_API_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_STRIPE_PUB_KEY`.
 - [ ] **Stripe webhook endpoint.** *Why:* subscriptions событий не достигают backend. *How:* Stripe Dashboard → Webhooks → Add endpoint → `https://[api-prod]/api/v1/payments/webhook` → copy signing secret → Railway env `STRIPE_WEBHOOK_SECRET`.
-- [ ] **Custom domain для API.** *Why:* `web-production-fe08.up.railway.app` захардкожен в 5+ местах; custom domain даёт стабильность если Railway service пересоздастся. *How:* Railway → Settings → Domains → Generate → добавить CNAME `api.cleanway.ai` → обновить fallback'и в landing/mobile/extension.
+- [ ] **Custom domain для API.** *Why:* `api.cleanway.ai` захардкожен в 5+ местах; custom domain даёт стабильность если Railway service пересоздастся. *How:* Railway → Settings → Domains → Generate → добавить CNAME `api.cleanway.ai` → обновить fallback'и в landing/mobile/extension.
 - [ ] **Supabase: RLS проверить в Supabase SQL Editor**. *Why:* если миграция 001 запустилась без RLS policy на часть таблиц → утечка данных через PostgREST. *How:* `SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public';` — все должны быть `t`.
 
 ### SHOULD DO (quality)

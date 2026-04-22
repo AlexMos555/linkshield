@@ -9,7 +9,7 @@
  */
 "use strict";
 
-const API_BASE = "https://web-production-fe08.up.railway.app";
+const API_BASE = "https://api.cleanway.ai";
 
 Office.onReady(() => {
   Office.actions.associate("reportPhishing", reportPhishing);

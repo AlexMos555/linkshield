@@ -12,7 +12,7 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://web-production-fe08.up.railway.app/*",
+    "https://api.cleanway.ai/*",
     "https://*.cleanway.ai/*",
     "http://localhost:8000/*",
     "https://mail.google.com/*",

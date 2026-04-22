@@ -31,7 +31,7 @@ async function pushSkillToApi(
     if (!token) return;
     const apiBase =
       (await SecureStore.getItemAsync("api_url")) ||
-      "https://web-production-fe08.up.railway.app";
+      "https://api.cleanway.ai";
     await fetch(`${apiBase}/api/v1/user/settings`, {
       method: "PUT",
       headers: {

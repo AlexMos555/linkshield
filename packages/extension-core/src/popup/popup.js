@@ -333,7 +333,7 @@ function wireButtons() {
 async function checkApiHealth() {
   var base = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
     ? window.CLEANWAY_API_BASE
-    : "https://web-production-fe08.up.railway.app";
+    : "https://api.cleanway.ai";
   try {
     var r = await fetch(base + "/health", { method: "GET" });
     if (!r.ok) $("offline-banner").hidden = false;

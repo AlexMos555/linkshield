@@ -10,7 +10,7 @@
 
 | Сервис | Назначение | Где | Статус |
 |---|---|---|---|
-| **Railway** | Backend API (FastAPI) | `web-production-fe08.up.railway.app` | 🔴 502 |
+| **Railway** | Backend API (FastAPI) | `api.cleanway.ai` | 🔴 502 |
 | **Supabase** | DB + Auth (EU Frankfurt) | `bpyqgzzclsbfvxthyfsf.supabase.co` | 🟢 migrations 001–005 applied |
 | **Vercel** | Landing (Next.js) | `cleanway-landing` project | 🟡 Security incident pending response |
 | **GitHub** | Repo + CI | `AlexMos555/cleanway` | 🟡 3 workflows red (docker + sbom + deploy-staging) |
@@ -31,7 +31,7 @@
 
 ## 🔴 БЛОК 1 — Railway API /health=200 (сегодня, 1-2 часа)
 
-**Цель:** GET https://web-production-fe08.up.railway.app/health → 200 OK.
+**Цель:** GET https://api.cleanway.ai/health → 200 OK.
 
 ### Шаг 1.1 — Проверить Railway Healthcheck Path
 - [ ] Открыть: https://railway.com/project/3568c94d-3805-4b66-9972-b63a5d6816e7/service/d73d59e3-ae86-49b1-a089-29a2bcdabc89/settings
@@ -60,7 +60,7 @@ ALLOWED_ORIGINS=https://cleanway.ai,https://www.cleanway.ai,https://mail.google.
 - [ ] Save — Railway сделает auto-redeploy.
 
 ### Шаг 1.3 — Дождаться redeploy + проверить
-- [ ] Через 3-5 мин открыть https://web-production-fe08.up.railway.app/health
+- [ ] Через 3-5 мин открыть https://api.cleanway.ai/health
 - [ ] Ожидаю: `{"status": "degraded", "redis": "down", ...}` с HTTP 200
 - [ ] Если всё ещё 502 → смотрим **Railway → Deployments → топовый → Deploy Logs** → ищем `startup_validation_failed_lax_mode` → фиксим точечно
 
@@ -84,7 +84,7 @@ ALLOWED_ORIGINS=https://cleanway.ai,https://www.cleanway.ai,https://mail.google.
 - [ ] Save → API service auto-redeploys
 
 ### Шаг 2.2 — Проверка
-- [ ] https://web-production-fe08.up.railway.app/health → `{"status": "ok", "redis": "ok"}` ✓
+- [ ] https://api.cleanway.ai/health → `{"status": "ok", "redis": "ok"}` ✓
 - [ ] Rate limit endpoint → 200 (ранее бросал 500 без Redis)
 
 **Альтернатива:** Upstash (https://upstash.com) free tier → 10K commands/day — хватит на старт, `REDIS_URL` тот же формат.
@@ -106,7 +106,7 @@ ALLOWED_ORIGINS=https://cleanway.ai,https://www.cleanway.ai,https://mail.google.
 
 ### Шаг 3.2 — Vercel env vars
 - [ ] Vercel → cleanway-landing → Settings → Environment Variables → добавить:
-  - `NEXT_PUBLIC_API_URL=https://web-production-fe08.up.railway.app` (или custom domain когда будет)
+  - `NEXT_PUBLIC_API_URL=https://api.cleanway.ai` (или custom domain когда будет)
   - `NEXT_PUBLIC_SUPABASE_URL=https://bpyqgzzclsbfvxthyfsf.supabase.co`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key из Supabase>`
 - [ ] Каждому toggled **"Sensitive"** (шифрование at-rest)

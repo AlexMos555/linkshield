@@ -24,7 +24,7 @@ import {
 const API_BASE = (
   (typeof process !== "undefined" && process.env?.EXPO_PUBLIC_API_URL) ||
   (Constants.expoConfig?.extra?.apiUrl as string | undefined) ||
-  "https://web-production-fe08.up.railway.app"
+  "https://api.cleanway.ai"
 ).replace(/\/+$/, "");
 
 // ─── Auth token state (set by auth flow after Supabase sign-in) ──

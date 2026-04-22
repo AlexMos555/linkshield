@@ -32,7 +32,7 @@ import os
 private let log = Logger(subsystem: "ai.cleanway.app", category: "vpn.tunnel")
 private let upstreamDNS = NWEndpoint.hostPort(host: "1.1.1.1", port: 53)
 private let appGroup = "group.ai.cleanway.app"
-private let apiBase = "https://web-production-fe08.up.railway.app"
+private let apiBase = "https://api.cleanway.ai"
 
 /// Thread-safe blocklist + safe-domain cache. All writes happen inside the
 /// actor; reads return `Sendable` booleans so they are race-free.

@@ -22,7 +22,7 @@ export default async function CheckPage({ params }: Props) {
   // Fetch from API (server-side)
   let result: any = null;
   try {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://web-production-fe08.up.railway.app";
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.cleanway.ai";
     const resp = await fetch(`${apiBase}/api/v1/public/check/${decodedDomain}`, {
       next: { revalidate: 3600 }, // Cache for 1 hour
     });
