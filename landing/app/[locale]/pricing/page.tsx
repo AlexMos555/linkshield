@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { createClient, type PricingFor } from "@linkshield/api-client";
+import { createClient, type PricingFor } from "@cleanway/api-client";
 import PricingClient from "./PricingClient";
 
 export const metadata: Metadata = {
-  title: "Pricing — LinkShield",
+  title: "Pricing — Cleanway",
   description: "Fair, regional pricing. Free forever for blocking phishing. Pay only for details, family protection, and accessibility modes.",
 };
 
@@ -76,7 +76,7 @@ export default async function PricingPage({
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="text-xl font-extrabold text-white">LinkShield</a>
+          <a href="/" className="text-xl font-extrabold text-white">Cleanway</a>
           <div className="hidden md:flex items-center gap-6">
             <a href="/#features" className="text-sm text-slate-400 hover:text-white transition">Features</a>
             <a href="/pricing" className="text-sm text-white font-semibold">Pricing</a>
@@ -193,7 +193,7 @@ export default async function PricingPage({
             {[
               {
                 q: "Do I really get blocking for free, forever?",
-                a: "Yes. Phishing site blocking is a right, not a feature to paywall. You could use LinkShield free for 20 years and it would block every known scam site the whole time.",
+                a: "Yes. Phishing site blocking is a right, not a feature to paywall. You could use Cleanway free for 20 years and it would block every known scam site the whole time.",
               },
               {
                 q: "What happens after 50 blocked threats on the free tier?",

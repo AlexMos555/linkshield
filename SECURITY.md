@@ -1,10 +1,10 @@
 # Security Policy
 
-LinkShield protects people from scammers. If we get breached or backdoored, we become the attack vector. This document describes what we do to prevent that — and what to do if it happens anyway.
+Cleanway protects people from scammers. If we get breached or backdoored, we become the attack vector. This document describes what we do to prevent that — and what to do if it happens anyway.
 
 ## Reporting Vulnerabilities
 
-**Email:** security@linkshield.io
+**Email:** security@cleanway.ai
 **PGP key:** _coming_ — request via `/contact` for now.
 
 **Please:**
@@ -31,7 +31,7 @@ In scope:
 - Container escape from our published images
 
 Out of scope:
-- Social engineering of LinkShield staff
+- Social engineering of Cleanway staff
 - Physical attacks
 - DoS via volumetric flooding (use Cloudflare layer)
 - Attacks requiring root on user's own device
@@ -60,7 +60,7 @@ We model 6 attacker classes. Defenses are mapped per class.
 **Defenses:** 2FA mandatory on GitHub / Vercel / Stripe / Supabase. Branch protection on `main` (required reviews, signed commits, no force push). Deploy keys scoped per service. CI runs in restricted runner with minimal `GITHUB_TOKEN` scope. Secret rotation procedure documented (below).
 
 ### T5 — Compromised user device (malware, evil browser ext)
-**Goal:** read LinkShield local storage, inject scripts.
+**Goal:** read Cleanway local storage, inject scripts.
 **Defenses:** Manifest V3 strict CSP, `web_accessible_resources` minimized, no `eval` or `unsafe-inline` in popup/welcome, content scripts use `chrome.runtime` message passing (no DOM injection of secrets), all stored data is non-sensitive (badges, threat counters, settings — no auth tokens longer than 1 hour).
 
 ### T6 — Compromised CDN (Cloudflare bloom-filter delivery)

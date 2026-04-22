@@ -1,5 +1,5 @@
 /**
- * LinkShield Popup — Regular Mode (default) v2
+ * Cleanway Popup — Regular Mode (default) v2
  * Логика: 1 главный статус + 2 secondary + expandable more.
  * Никакого жаргона. i18n через chrome.i18n.getMessage с fallback.
  */
@@ -22,7 +22,7 @@ var FALLBACK_EN = {
   upgrade_free_count: "Free: $1 of $2 checks today",
   recent_empty: "Nothing found yet — browse normally, I'm watching.",
   // static i18n keys (for applyI18n fallback when chrome.i18n isn't available)
-  popup_brand: "LinkShield",
+  popup_brand: "Cleanway",
   popup_settings_title: "Settings",
   action_close_tab: "Close this page",
   action_audit: "What this site collects",
@@ -36,8 +36,8 @@ var FALLBACK_EN = {
   stats_label_warned: "Warnings",
   stats_label_checked: "Links checked",
   upgrade_cta: "Upgrade",
-  onboarding_welcome: "Welcome to LinkShield!",
-  onboarding_tip: "I'll check every link you see. Dangerous ones get a red mark. Try right-clicking a link → \"Check with LinkShield\".",
+  onboarding_welcome: "Welcome to Cleanway!",
+  onboarding_tip: "I'll check every link you see. Dangerous ones get a red mark. Try right-clicking a link → \"Check with Cleanway\".",
   offline_warning: "Offline — using basic protection",
   trust_footer: "Your data never leaves this device",
 };
@@ -331,8 +331,8 @@ function wireButtons() {
 
 // ─── Health check (offline indicator) ─────────────────────────
 async function checkApiHealth() {
-  var base = (typeof window !== "undefined" && window.LINKSHIELD_API_BASE)
-    ? window.LINKSHIELD_API_BASE
+  var base = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
+    ? window.CLEANWAY_API_BASE
     : "https://web-production-fe08.up.railway.app";
   try {
     var r = await fetch(base + "/health", { method: "GET" });
@@ -390,12 +390,12 @@ function applySkillLevelStyles() {
       );
       document.body.classList.add("skill-" + skill);
       // Font scaling via CSS custom property
-      document.documentElement.style.setProperty("--linkshield-font-scale", scale);
+      document.documentElement.style.setProperty("--cleanway-font-scale", scale);
       document.documentElement.style.fontSize = (16 * scale) + "px";
     });
   } catch (e) {
     // Preview mode (no chrome.storage) — just apply default
-    document.documentElement.style.setProperty("--linkshield-font-scale", 1.0);
+    document.documentElement.style.setProperty("--cleanway-font-scale", 1.0);
   }
 }
 

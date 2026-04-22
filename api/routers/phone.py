@@ -23,7 +23,7 @@ from api.models.schemas import AuthUser
 from api.services.auth import get_current_user, get_optional_user
 from api.services.rate_limiter import rate_limit
 
-logger = logging.getLogger("linkshield.phone")
+logger = logging.getLogger("cleanway.phone")
 
 router = APIRouter(prefix="/api/v1/phone", tags=["phone"])
 

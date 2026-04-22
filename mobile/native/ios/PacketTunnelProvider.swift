@@ -1,5 +1,5 @@
 /**
- * LinkShield iOS VPN Tunnel (NEPacketTunnelProvider)
+ * Cleanway iOS VPN Tunnel (NEPacketTunnelProvider)
  *
  * DNS-only local VPN. Does NOT inspect traffic content.
  * Only DNS queries are intercepted; all other traffic bypasses the tunnel.
@@ -18,7 +18,7 @@
  * - Only domain names are ever read — no TCP/UDP payload is inspected.
  * - Checked domains leave the extension only as a GET to
  *   `/api/v1/public/check/{domain}` (domain only, never a URL path).
- * - App-group storage is `group.io.linkshield.app`; cleared on logout.
+ * - App-group storage is `group.ai.cleanway.app`; cleared on logout.
  *
  * Setup: Add a Network Extension target in Xcode with
  * NEPacketTunnelProvider capability; register the App Group.
@@ -29,9 +29,9 @@ import Network
 import NetworkExtension
 import os
 
-private let log = Logger(subsystem: "io.linkshield.app", category: "vpn.tunnel")
+private let log = Logger(subsystem: "ai.cleanway.app", category: "vpn.tunnel")
 private let upstreamDNS = NWEndpoint.hostPort(host: "1.1.1.1", port: 53)
-private let appGroup = "group.io.linkshield.app"
+private let appGroup = "group.ai.cleanway.app"
 private let apiBase = "https://web-production-fe08.up.railway.app"
 
 /// Thread-safe blocklist + safe-domain cache. All writes happen inside the
@@ -60,12 +60,12 @@ actor BlocklistCache {
 /// Platform-independent policy — unit-tested in the app target.
 enum DomainPolicy {
     /// System suffixes we NEVER block to avoid bricking the device.
-    /// Update in sync with Android `LinkShieldVpnService.systemSuffixes`.
+    /// Update in sync with Android `CleanwayVpnService.systemSuffixes`.
     static let systemSuffixes: [String] = [
         "apple.com",
         "icloud.com",
         "mzstatic.com",
-        "linkshield.io",
+        "cleanway.ai",
         "cloudflare-dns.com",
     ]
 
@@ -181,7 +181,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     /// response back into the tunnel. Uses `NWConnection` (Network.framework)
     /// for proper cancellation + Sendable safety.
     private func forward(packet: Data, `protocol`: NSNumber) async {
-        let queue = DispatchQueue(label: "io.linkshield.dns.forward")
+        let queue = DispatchQueue(label: "ai.cleanway.dns.forward")
         let connection = NWConnection(to: upstreamDNS, using: .udp)
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             var resumed = false

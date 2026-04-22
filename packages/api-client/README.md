@@ -1,13 +1,13 @@
-# @linkshield/api-client
+# @cleanway/api-client
 
-Typed fetch wrapper for the LinkShield API. Landing, mobile, and extensions import this — never raw `fetch()`.
+Typed fetch wrapper for the Cleanway API. Landing, mobile, and extensions import this — never raw `fetch()`.
 
 ## Why
 
 Raw `fetch` + hand-rolled types = silent breakage on API changes, inconsistent error handling, no timeout, accidental privacy leaks (sending full URLs instead of domains).
 
 This package:
-- **Types from `@linkshield/api-types`** (single source of truth)
+- **Types from `@cleanway/api-types`** (single source of truth)
 - **Result type** instead of throwing — `{ data, error }`, typed error kinds
 - **Timeout** (8s default, abortable) — no hanging requests
 - **Bearer token via callback** — works with async JWT retrieval (Supabase `getSession`)
@@ -17,7 +17,7 @@ This package:
 ## Usage
 
 ```typescript
-import { createClient } from "@linkshield/api-client";
+import { createClient } from "@cleanway/api-client";
 
 const api = createClient({
   baseUrl: process.env.NEXT_PUBLIC_API_URL!,
@@ -47,7 +47,7 @@ if (pricing) {
 ## Adding a new endpoint
 
 1. Add the route in `api/routers/foo.py`
-2. Run `npm run build:api-types` (regenerates `@linkshield/api-types`)
+2. Run `npm run build:api-types` (regenerates `@cleanway/api-types`)
 3. Add a typed method here in `src/index.ts`:
    ```typescript
    foo: {
@@ -56,7 +56,7 @@ if (pricing) {
      }
    }
    ```
-4. Export it via the `LinkShieldClient` interface
+4. Export it via the `CleanwayClient` interface
 
 ## Error taxonomy
 

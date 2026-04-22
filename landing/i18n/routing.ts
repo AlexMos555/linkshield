@@ -1,7 +1,7 @@
 import { defineRouting } from "next-intl/routing";
 
 /**
- * LinkShield supports 10 languages — see .planning/I18N_ARCHITECTURE.md
+ * Cleanway supports 10 languages — see .planning/I18N_ARCHITECTURE.md
  * RTL (Arabic) handled via CSS `dir="rtl"` on locale === "ar".
  */
 export const routing = defineRouting({

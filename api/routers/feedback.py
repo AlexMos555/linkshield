@@ -21,7 +21,7 @@ from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 from api.config import get_settings
 
-logger = logging.getLogger("linkshield.feedback")
+logger = logging.getLogger("cleanway.feedback")
 
 router = APIRouter(prefix="/api/v1/feedback", tags=["feedback"])
 

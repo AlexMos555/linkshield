@@ -1,4 +1,4 @@
-# LinkShield for Outlook
+# Cleanway for Outlook
 
 Inbox phishing protection for Microsoft Outlook (desktop + web + Mac).
 
@@ -57,18 +57,18 @@ npx --yes http-server ./email-plugin-outlook \
 ```
 
 Then edit `manifest.xml` temporarily: replace every
-`https://addin.linkshield.io/` with `https://localhost:3443/`, sideload
+`https://addin.cleanway.ai/` with `https://localhost:3443/`, sideload
 via the Outlook web UI:
 
 1. Outlook on the web → gear icon → **Get Add-ins** → **My Add-ins** → **Custom add-ins** → **Add from file…** → pick `manifest.xml`.
-2. Open any email. The "LinkShield" ribbon group appears on the Home tab.
+2. Open any email. The "Cleanway" ribbon group appears on the Home tab.
 
 Revert `manifest.xml` before committing.
 
 ## Production deploy
 
 1. Build the taskpane/commands bundle (no bundler today — assets are raw HTML/CSS/JS, served as-is).
-2. Push to the `addin.linkshield.io` CDN (Vercel subdomain of landing; see `landing/vercel.json` routes).
+2. Push to the `addin.cleanway.ai` CDN (Vercel subdomain of landing; see `landing/vercel.json` routes).
 3. Submit `manifest.xml` to the [Microsoft 365 Admin Center](https://admin.microsoft.com) (for org-managed distribution) or to [AppSource](https://appsource.microsoft.com/) (for general availability).
 4. AppSource review typically takes 5–10 business days.
 
@@ -91,5 +91,5 @@ Functional smoke for each platform:
 
 - **SSO via Outlook identity** — use `Office.auth.getAccessToken()` so the add-in runs as the signed-in user, matching quotas on the mobile app.
 - **Attachment scanning** — SHA-256 + AV lookup; needs `ReadWriteItem` permission bump + an AppSource re-review.
-- **Classify into folders** — move confirmed phishing into a "LinkShield Quarantine" folder; same permission bump.
+- **Classify into folders** — move confirmed phishing into a "Cleanway Quarantine" folder; same permission bump.
 - **Per-org admin rules** — enterprise customers configure "always block senders matching *" from their admin console.

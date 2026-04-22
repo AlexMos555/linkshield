@@ -1,6 +1,6 @@
 # Environments
 
-LinkShield runs in three isolated environments. Each has its own Supabase project, Stripe mode, Sentry project, and email provider configuration.
+Cleanway runs in three isolated environments. Each has its own Supabase project, Stripe mode, Sentry project, and email provider configuration.
 
 ## Overview
 

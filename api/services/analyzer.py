@@ -42,7 +42,7 @@ from api.services.circuit_breaker import (
 )
 from api.models.schemas import DomainResult, DomainReason, RiskLevel, ConfidenceLevel
 
-logger = logging.getLogger("linkshield.analyzer")
+logger = logging.getLogger("cleanway.analyzer")
 
 
 # ═══════════════════════════════════════════════════════════════

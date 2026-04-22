@@ -1,4 +1,4 @@
--- LinkShield "Boring Database" Schema
+-- Cleanway "Boring Database" Schema
 -- Server stores WHO you are. Device stores WHAT you do.
 -- If this leaks: emails + subscription status. No URLs, no browsing data.
 

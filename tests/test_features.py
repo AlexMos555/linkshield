@@ -36,7 +36,7 @@ def test_breach_k_anonymity():
 def test_referral_code_generation():
     """Referral codes are deterministic per user."""
     user_id = "test-user-001"
-    email = "test@linkshield.io"
+    email = "test@cleanway.ai"
     raw = f"ls-ref-{user_id}-{email}"
     code = hashlib.sha256(raw.encode()).hexdigest()[:8].upper()
 
@@ -168,7 +168,7 @@ def test_feature_extraction():
 
 
 if __name__ == "__main__":
-    print("LinkShield Feature Tests")
+    print("Cleanway Feature Tests")
     print("=" * 50)
 
     tests = [

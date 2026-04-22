@@ -1,12 +1,12 @@
 {
   "extension_name": {
-    "message": "LinkShield — Schutz vor betrügerischen Links"
+    "message": "Cleanway — Schutz vor betrügerischen Links"
   },
   "extension_description": {
     "message": "Automatische Erkennung von Betrugs- und Phishing-Seiten. In einfacher Sprache, für alle."
   },
   "popup_brand": {
-    "message": "LinkShield"
+    "message": "Cleanway"
   },
   "popup_settings_title": {
     "message": "Einstellungen"
@@ -107,10 +107,10 @@
     "message": "Upgrade"
   },
   "onboarding_welcome": {
-    "message": "Hallo! Ich bin LinkShield."
+    "message": "Hallo! Ich bin Cleanway."
   },
   "onboarding_tip": {
-    "message": "Ich prüfe jeden Link auf jeder Seite. Gefährliche markiere ich rot. Unsicher? Rechtsklick → „Mit LinkShield prüfen\"."
+    "message": "Ich prüfe jeden Link auf jeder Seite. Gefährliche markiere ich rot. Unsicher? Rechtsklick → „Mit Cleanway prüfen\"."
   },
   "aha_found_scams": {
     "message": "Ich habe $N$ Betrugslinks gefunden, die Ihr Browser übersehen hat",
@@ -178,7 +178,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Geschützt durch LinkShield. Ihre Daten bleiben auf diesem Gerät."
+    "message": "Geschützt durch Cleanway. Ihre Daten bleiben auf diesem Gerät."
   },
   "welcome_hero_title": {
     "message": "Sie sind jetzt geschützt"

@@ -19,7 +19,7 @@ from api.services.cache import get_cached_result, cache_result
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import DomainResult, RiskLevel, ConfidenceLevel
 
-logger = logging.getLogger("linkshield.public")
+logger = logging.getLogger("cleanway.public")
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
 
@@ -44,7 +44,7 @@ async def public_check(domain: str, request: Request):
         if count == 1:
             await r.expire(ip_key, 60)
         if count > 10:
-            raise HTTPException(429, "Rate limit exceeded. Install LinkShield extension for unlimited checks.")
+            raise HTTPException(429, "Rate limit exceeded. Install Cleanway extension for unlimited checks.")
     except HTTPException:
         raise
     except Exception:
@@ -109,8 +109,8 @@ def _format_public_result(result: DomainResult) -> dict:
         "verdict": verdicts.get(result.level.value, ""),
         "signals": [r.detail for r in (result.reasons or [])[:5]],
         "checked_at": datetime.now(timezone.utc).isoformat(),
-        "cta": "Install LinkShield for real-time protection with 9 threat intelligence sources.",
-        "install_url": "https://chrome.google.com/webstore/detail/linkshield",
+        "cta": "Install Cleanway for real-time protection with 9 threat intelligence sources.",
+        "install_url": "https://chrome.google.com/webstore/detail/cleanway",
     }
 
 

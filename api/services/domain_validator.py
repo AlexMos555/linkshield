@@ -14,7 +14,7 @@ import re
 import socket
 from urllib.parse import urlparse
 
-logger = logging.getLogger("linkshield.domain_validator")
+logger = logging.getLogger("cleanway.domain_validator")
 
 # RFC 1035: max domain length is 253 characters
 _MAX_DOMAIN_LENGTH = 253

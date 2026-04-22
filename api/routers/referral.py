@@ -6,7 +6,7 @@ Referral System.
   POST /api/v1/referral/redeem — redeem referral code (7-day free trial)
 
 Flow:
-  1. User A generates referral link: linkshield.io/ref/ABC123
+  1. User A generates referral link: cleanway.ai/ref/ABC123
   2. User B clicks link and installs extension
   3. User B redeems code → gets 7-day Personal trial
   4. User A gets 7 days added to their subscription
@@ -25,7 +25,7 @@ from api.services.auth import get_current_user
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 
-logger = logging.getLogger("linkshield.referral")
+logger = logging.getLogger("cleanway.referral")
 
 router = APIRouter(prefix="/api/v1/referral", tags=["referral"])
 
@@ -58,7 +58,7 @@ async def generate_referral(user: AuthUser = Depends(get_current_user)):
     except Exception:
         pass
 
-    referral_url = f"https://linkshield.io/ref/{code}"
+    referral_url = f"https://cleanway.ai/ref/{code}"
 
     return {
         "code": code,
@@ -82,7 +82,7 @@ async def referral_stats(user: AuthUser = Depends(get_current_user)):
             info = json.loads(data)
             return {
                 "code": code,
-                "url": f"https://linkshield.io/ref/{code}",
+                "url": f"https://cleanway.ai/ref/{code}",
                 "redeemed_count": info.get("redeemed_count", 0),
                 "reward_days_earned": info.get("redeemed_count", 0) * 7,
             }

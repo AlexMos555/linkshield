@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://linkshield.io";
+  const baseUrl = "https://cleanway.ai";
 
   // Static pages
   const staticPages = [

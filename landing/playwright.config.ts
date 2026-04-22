@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * LinkShield landing E2E config.
+ * Cleanway landing E2E config.
  *
  * Runs against a local Next.js dev server by default. CI can override via
  * BASE_URL env var to point at staging/production.

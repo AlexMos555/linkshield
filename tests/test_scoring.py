@@ -1,4 +1,4 @@
-"""Tests for LinkShield Scoring Engine 3.0 — 30+ signals."""
+"""Tests for Cleanway Scoring Engine 3.0 — 30+ signals."""
 import os
 import sys
 
@@ -692,7 +692,7 @@ def test_extract_base_domain():
 
 # ═══════════════════════════════════════════════════════════════
 if __name__ == "__main__":
-    print("LinkShield Scoring Engine 3.0 — 30+ Signal Tests")
+    print("Cleanway Scoring Engine 3.0 — 30+ Signal Tests")
     print("=" * 55)
 
     sections = [

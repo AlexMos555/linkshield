@@ -1,8 +1,8 @@
 {
-  "name": "@linkshield/api-types",
+  "name": "@cleanway/api-types",
   "version": "0.1.0",
   "private": true,
-  "description": "Generated TypeScript types for the LinkShield FastAPI. Source of truth: api/main.py → OpenAPI → these types. Do not edit src/openapi.d.ts by hand — it's regenerated.",
+  "description": "Generated TypeScript types for the Cleanway FastAPI. Source of truth: api/main.py → OpenAPI → these types. Do not edit src/openapi.d.ts by hand — it's regenerated.",
   "types": "./src/index.d.ts",
   "main": "./src/index.js",
   "exports": {

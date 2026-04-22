@@ -1,5 +1,5 @@
 /**
- * @linkshield/email-templates — public entry point.
+ * @cleanway/email-templates — public entry point.
  *
  * Registry of all transactional email templates.
  * Backend code uses `renderTemplate(templateKey, locale, props)` to produce

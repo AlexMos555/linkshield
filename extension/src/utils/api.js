@@ -1,7 +1,7 @@
 /**
- * LinkShield API Client
+ * Cleanway API Client
  *
- * Handles communication with the LinkShield backend.
+ * Handles communication with the Cleanway backend.
  * Privacy: only domain names are sent — never full URLs or page content.
  */
 
@@ -22,7 +22,7 @@ try {
 } catch (e) { /* storage not available (tests, edge cases) */ }
 
 /**
- * Check domains against LinkShield API
+ * Check domains against Cleanway API
  * @param {string[]} domains - List of domain names to check
  * @param {string} [token] - Optional JWT auth token
  * @returns {Promise<{results: Array, checked_at: string, api_calls_remaining: number}>}

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "LinkShield",
-    "slug": "linkshield",
+    "name": "Cleanway",
+    "slug": "cleanway",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "linkshield",
+    "scheme": "cleanway",
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
@@ -14,9 +14,9 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "io.linkshield.app",
+      "bundleIdentifier": "ai.cleanway.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "LinkShield uses the camera to scan QR codes and check if links are safe."
+        "NSCameraUsageDescription": "Cleanway uses the camera to scan QR codes and check if links are safe."
       }
     },
     "android": {
@@ -24,7 +24,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "package": "io.linkshield.app",
+      "package": "ai.cleanway.app",
       "intentFilters": [
         {
           "action": "android.intent.action.SEND",
@@ -45,7 +45,7 @@
           ],
           "data": [
             {
-              "scheme": "linkshield"
+              "scheme": "cleanway"
             }
           ]
         }
@@ -59,7 +59,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow LinkShield to scan QR codes"
+          "cameraPermission": "Allow Cleanway to scan QR codes"
         }
       ],
       "expo-asset",

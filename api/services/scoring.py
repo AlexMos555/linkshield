@@ -30,7 +30,7 @@ from typing import Optional
 
 from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
 
-logger = logging.getLogger("linkshield.scoring")
+logger = logging.getLogger("cleanway.scoring")
 
 # ═══════════════════════════════════════════════════════════════
 # DATA LOADING

@@ -30,7 +30,7 @@ from api.services.rate_limiter import rate_limit
 from api.services.safe_browsing import get_client as get_safe_browsing
 from api.services.circuit_breaker import safe_browsing_breaker
 
-logger = logging.getLogger("linkshield.email.analyze")
+logger = logging.getLogger("cleanway.email.analyze")
 
 router = APIRouter(prefix="/api/v1/email", tags=["email"])
 

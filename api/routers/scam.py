@@ -28,7 +28,7 @@ from api.services.auth import get_current_user
 from api.services.email_analyzer import ALL_BODY_PATTERNS, _aggregate_score, _level_for_score, Finding
 from api.services.rate_limiter import rate_limit
 
-logger = logging.getLogger("linkshield.scam")
+logger = logging.getLogger("cleanway.scam")
 
 router = APIRouter(prefix="/api/v1/scam", tags=["scam"])
 

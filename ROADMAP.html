@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LinkShield — Roadmap v2</title>
+<title>Cleanway — Roadmap v2</title>
 <meta http-equiv="refresh" content="60">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -62,7 +62,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
 </head>
 <body>
 
-<h1>🛡️ LinkShield — Production Roadmap v3</h1>
+<h1>🛡️ Cleanway — Production Roadmap v3</h1>
 <p class="subtitle">Обновлено 2026-04-16. Авто-рефреш каждую минуту.</p>
 
 <div class="mission">
@@ -97,7 +97,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
   </div>
   <div class="dec-card">
     <h3>💰 Региональные цены (4 tier)</h3>
-    <p>T1 (US/EU): $5.99 / T2 (RU/BR): $4.99 / T3 (LATAM/SEA): $2.49 / T4 (IN/ID): $1.49. Pydantic response models + @linkshield/api-types.</p>
+    <p>T1 (US/EU): $5.99 / T2 (RU/BR): $4.99 / T3 (LATAM/SEA): $2.49 / T4 (IN/ID): $1.49. Pydantic response models + @cleanway/api-types.</p>
   </div>
   <div class="dec-card">
     <h3>🏗️ Монорепо + shared packages</h3>
@@ -197,10 +197,10 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon done-icon">✓</span> <strong>/pricing с regional detection</strong> — автоматически определяет tier по стране</li>
     <li><span class="icon done-icon">✓</span> <strong>next-intl для 10 языков</strong> — /ru/pricing, /ar/business, /hi/privacy-policy, etc.</li>
     <li><span class="icon done-icon">✓</span> <strong>LanguageSwitcher</strong> в навбаре (native names + RTL)</li>
-    <li><span class="icon done-icon">✓</span> <strong>@linkshield/api-client</strong> вместо raw fetch (timeout, typed errors, Result<T,E>)</li>
+    <li><span class="icon done-icon">✓</span> <strong>@cleanway/api-client</strong> вместо raw fetch (timeout, typed errors, Result<T,E>)</li>
     <li><span class="icon done-icon">✓</span> <strong>Vercel project подключён</strong>, build статически генерит 80+ SSG routes</li>
     <li><span class="icon partial-icon">⚠</span> Hero/Nav/CTA/Footer переведены, но Features/FAQ/Comparison/Testimonials секции пока только EN</li>
-    <li><span class="icon todo-icon">○</span> Custom domain не подключён (linkshield.com не наш — нужен ребрендинг)</li>
+    <li><span class="icon todo-icon">○</span> Custom domain не подключён (cleanway.ai не наш — нужен ребрендинг)</li>
   </ul>
 </div>
 
@@ -215,7 +215,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon done-icon">✓</span> Env-driven API URL (EXPO_PUBLIC_API_URL) — hardcoded localhost убран</li>
     <li><span class="icon partial-icon">⚠</span> <strong>НЕ подключён к монорепо</strong> — свой api.ts, свои типы, свои i18n файлы (дубли!)</li>
     <li><span class="icon partial-icon">⚠</span> <strong>iOS VPN: PacketTunnelProvider.swift = 80 строк скелета, НЕТ реальной DNS interception</strong></li>
-    <li><span class="icon partial-icon">⚠</span> Android: LinkShieldVpnService.kt тоже скелет</li>
+    <li><span class="icon partial-icon">⚠</span> Android: CleanwayVpnService.kt тоже скелет</li>
     <li><span class="icon partial-icon">⚠</span> Apple IAP / Google Play Billing не интегрированы</li>
   </ul>
 </div>
@@ -275,7 +275,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon todo-icon">○</span> Upstash Redis (free tier 10K commands/day) или Railway Redis addon</li>
     <li><span class="icon todo-icon">○</span> Railway env vars обновить на новый EU Supabase (нужен railway login)</li>
     <li><span class="icon todo-icon">○</span> Удалить старый Sydney Supabase project после verification</li>
-    <li><span class="icon todo-icon">○</span> Решить с доменом (linkshield.com занят, linkshield.io не наш — нужен ребрендинг)</li>
+    <li><span class="icon todo-icon">○</span> Решить с доменом (cleanway.ai занят, cleanway.ai не наш — нужен ребрендинг)</li>
     <li><span class="icon todo-icon">○</span> E2E: extension загрузить в Chrome Dev → реальный API → реальный score</li>
   </ul>
 </div>
@@ -296,7 +296,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon done-icon">✓</span> <strong>10 языков draft</strong>: en/ru + 8 draft (es/pt/fr/de/it/id/hi/ar)</li>
     <li><span class="icon done-icon">✓</span> <strong>RTL support</strong> для арабского (dir="rtl" + logical properties)</li>
     <li><span class="icon done-icon">✓</span> Pydantic response models для pricing endpoints (типизированный контракт)</li>
-    <li><span class="icon done-icon">✓</span> <strong>@linkshield/api-types + @linkshield/api-client</strong>: OpenAPI → TypeScript → typed clients</li>
+    <li><span class="icon done-icon">✓</span> <strong>@cleanway/api-types + @cleanway/api-client</strong>: OpenAPI → TypeScript → typed clients</li>
     <li><span class="icon todo-icon">○</span> Features/FAQ/Comparison/Testimonials секции лендинга (сейчас EN only, нужно в 10 языках)</li>
     <li><span class="icon todo-icon">○</span> Реализовать pricing v2: 50-threat counter + threshold hit UX (schema 003 уже готова)</li>
     <li><span class="icon todo-icon">○</span> Native review 8 draft-переводов (es/pt/fr/de/it/id/hi/ar) перед Chrome Web Store publish</li>
@@ -324,13 +324,13 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
 <!-- ========== PHASE E1 — Mobile Monorepo (DONE) ========== -->
 <div class="phase done">
   <div class="phase-header">
-    <div><span class="phase-title">Phase E₁ — Mobile → монорепо</span><div class="phase-subtitle">mobile на @linkshield/api-client + 10 языков через i18next</div></div>
+    <div><span class="phase-title">Phase E₁ — Mobile → монорепо</span><div class="phase-subtitle">mobile на @cleanway/api-client + 10 языков через i18next</div></div>
     <span class="phase-tag tag-done">✅ ГОТОВО</span>
   </div>
   <ul class="tasks">
     <li><span class="icon todo-icon">○</span> Добавить <code>mobile/</code> в npm workspaces root package.json</li>
-    <li><span class="icon todo-icon">○</span> Заменить <code>mobile/src/services/api.ts</code> на <code>@linkshield/api-client</code></li>
-    <li><span class="icon todo-icon">○</span> Переключить типы на <code>@linkshield/api-types</code> (убрать hand-rolled interfaces)</li>
+    <li><span class="icon todo-icon">○</span> Заменить <code>mobile/src/services/api.ts</code> на <code>@cleanway/api-client</code></li>
+    <li><span class="icon todo-icon">○</span> Переключить типы на <code>@cleanway/api-types</code> (убрать hand-rolled interfaces)</li>
     <li><span class="icon todo-icon">○</span> Расширить <code>scripts/build-i18n.py</code> → генерить <code>mobile/i18n/{locale}.json</code> (expo-localization compatible)</li>
     <li><span class="icon todo-icon">○</span> Подключить expo-localization + react-i18next на полученные 10 locales</li>
     <li><span class="icon todo-icon">○</span> Заменить все hardcoded UI строки на <code>t("popup.status_safe_title")</code></li>
@@ -366,7 +366,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
   </div>
   <ul class="tasks">
     <li><span class="icon todo-icon">○</span> <code>.env-examples/</code>: .env.development, .env.staging, .env.production</li>
-    <li><span class="icon todo-icon">○</span> Railway: второй проект для staging (linkshield-api-staging)</li>
+    <li><span class="icon todo-icon">○</span> Railway: второй проект для staging (cleanway-api-staging)</li>
     <li><span class="icon todo-icon">○</span> Supabase: отдельный staging project (в той же org), free tier</li>
     <li><span class="icon todo-icon">○</span> Vercel preview deploys на каждый PR (автоматически)</li>
     <li><span class="icon todo-icon">○</span> Stripe: test mode keys для staging, live keys только для prod</li>
@@ -407,7 +407,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
   <ul class="tasks">
     <li><span class="icon todo-icon">○</span> Chrome Web Store / AMO / Safari Store submissions</li>
     <li><span class="icon todo-icon">○</span> Product Hunt launch + HN "Show HN"</li>
-    <li><span class="icon todo-icon">○</span> SEO: linkshield.io/check/[domain] для каждого языка</li>
+    <li><span class="icon todo-icon">○</span> SEO: cleanway.ai/check/[domain] для каждого языка</li>
     <li><span class="icon todo-icon">○</span> Referral program (inviter → 1 month free)</li>
     <li><span class="icon todo-icon">○</span> Shareable cards: Privacy Audit A-F grade для вирусного loop</li>
     <li><span class="icon todo-icon">○</span> Anonymous opt-in телеметрия для улучшения ML</li>
@@ -437,7 +437,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon todo-icon">○</span> Terraform: Railway services + Redis + env vars управляются кодом</li>
     <li><span class="icon todo-icon">○</span> Terraform: Vercel project + custom domain + DNS</li>
     <li><span class="icon todo-icon">○</span> Cloudflare: Workers для bloom filter CDN + DDoS protection + WAF rules</li>
-    <li><span class="icon todo-icon">○</span> Status page (status.linkshield.???) с uptime по компонентам</li>
+    <li><span class="icon todo-icon">○</span> Status page (status.cleanway.???) с uptime по компонентам</li>
     <li><span class="icon todo-icon">○</span> Incident runbooks — полные (не только secret rotation)</li>
     <li><span class="icon todo-icon">○</span> Quarterly chaos drill (намеренно валим prod staging → тест recovery)</li>
   </ul>
@@ -455,7 +455,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon done-icon">✓</span> <strong>packages/extension-core</strong>: popup/block/welcome/content scripts в 1 копии → синкается в chrome/firefox/safari</li>
     <li><span class="icon done-icon">✓</span> <strong>packages/api-types</strong>: генерируется из FastAPI OpenAPI (1871 строк TS типов)</li>
     <li><span class="icon done-icon">✓</span> <strong>packages/api-client</strong>: типизированный fetch wrapper с Result<T,E>, timeout, privacy normalization</li>
-    <li><span class="icon done-icon">✓</span> <strong>npm workspaces</strong> подключён: landing импортирует @linkshield/api-client</li>
+    <li><span class="icon done-icon">✓</span> <strong>npm workspaces</strong> подключён: landing импортирует @cleanway/api-client</li>
     <li><span class="icon done-icon">✓</span> <strong>scripts/build-i18n.py</strong>, <strong>build-extensions.sh</strong>, <strong>generate-api-types.sh</strong></li>
     <li><span class="icon todo-icon">○</span> Добавить <code>mobile/</code> в workspaces (Phase E₁)</li>
     <li><span class="icon todo-icon">○</span> Добавить <code>packages/email-templates/</code> (Phase E₂)</li>

@@ -1,7 +1,7 @@
 # App Store / Play Store Listing
 
 ## App Name
-LinkShield — Phishing Protection
+Cleanway — Phishing Protection
 
 ## Subtitle (30 chars)
 Safe browsing, private data
@@ -11,13 +11,13 @@ phishing protection, link checker, safe browsing, privacy, scam detector, malwar
 
 ## Description
 
-LinkShield protects you from phishing and scam links — automatically.
+Cleanway protects you from phishing and scam links — automatically.
 
 WHAT IT DOES:
-Check any link instantly. Paste a URL, scan a QR code, or share a link from any app — LinkShield tells you if it's safe in seconds. 9 threat intelligence sources and a machine learning model analyze every domain.
+Check any link instantly. Paste a URL, scan a QR code, or share a link from any app — Cleanway tells you if it's safe in seconds. 9 threat intelligence sources and a machine learning model analyze every domain.
 
 YOUR DATA STAYS ON YOUR DEVICE:
-Unlike other security apps, LinkShield stores your browsing history only on your device. Our servers see only domain names for safety checks — never full URLs, never page content. Even if our servers are breached, your data is safe.
+Unlike other security apps, Cleanway stores your browsing history only on your device. Our servers see only domain names for safety checks — never full URLs, never page content. Even if our servers are breached, your data is safe.
 
 FEATURES:
 - Check any link by pasting, sharing, or scanning QR codes
@@ -53,10 +53,10 @@ Utilities (iOS) / Tools (Android)
 4+ (iOS) / Everyone (Android)
 
 ## Privacy URL
-https://linkshield.io/privacy-policy
+https://cleanway.ai/privacy-policy
 
 ## Support URL
-https://linkshield.io/support
+https://cleanway.ai/support
 
 ## What's New (v0.1.0)
 Initial release:

@@ -19,7 +19,7 @@ export default function ScannerScreen() {
       <View style={styles.container}>
         <Text style={styles.icon}>{"\u{1F4F7}"}</Text>
         <Text style={styles.title}>Camera Access</Text>
-        <Text style={styles.text}>LinkShield needs camera access to scan QR codes and check if links are safe.</Text>
+        <Text style={styles.text}>Cleanway needs camera access to scan QR codes and check if links are safe.</Text>
         <TouchableOpacity style={styles.btn} onPress={requestPermission}>
           <Text style={styles.btnText}>Allow Camera</Text>
         </TouchableOpacity>

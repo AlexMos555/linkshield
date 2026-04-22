@@ -1,12 +1,12 @@
 /**
- * LinkShield Outlook taskpane — pulls the current message out of Office.js,
- * posts it to the LinkShield analyzer, renders the verdict.
+ * Cleanway Outlook taskpane — pulls the current message out of Office.js,
+ * posts it to the Cleanway analyzer, renders the verdict.
  *
  * Privacy contract:
  * - Only the sender address + display name, auth headers, subject, and body
  *   text leave the device. Recipients, CCs, attachment content, full MIME
  *   headers, thread metadata are all untouched.
- * - The user's Supabase access token (stored by the LinkShield mobile app
+ * - The user's Supabase access token (stored by the Cleanway mobile app
  *   / extension after sign-in) is NOT available to the add-in — so we run
  *   as an anonymous user until Outlook SSO is wired. The backend accepts
  *   anonymous `/api/v1/email/analyze` calls under stricter IP rate limits.
@@ -14,7 +14,7 @@
  * Lifecycle:
  * 1. `Office.onReady` fires → we have a valid `Office.context.mailbox.item`
  * 2. `loadMessage()` reads headers + body via Office APIs
- * 3. `scanMessage()` POSTs to the LinkShield API
+ * 3. `scanMessage()` POSTs to the Cleanway API
  * 4. `renderVerdict()` paints the UI
  */
 "use strict";
@@ -82,7 +82,7 @@ async function runScan() {
     showError(
       err && err.message
         ? err.message
-        : "Couldn't reach the LinkShield server.",
+        : "Couldn't reach the Cleanway server.",
     );
   } finally {
     els.body.classList.remove("loading");

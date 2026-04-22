@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "LinkShield API",
+    "title": "Cleanway API",
     "description": "Phishing protection API. Checks domains for safety. Your browsing data lives on your device — we only see domain names.",
     "version": "0.1.0"
   },
@@ -1567,12 +1567,12 @@
           "success_url": {
             "type": "string",
             "title": "Success Url",
-            "default": "https://linkshield.io/success"
+            "default": "https://cleanway.ai/success"
           },
           "cancel_url": {
             "type": "string",
             "title": "Cancel Url",
-            "default": "https://linkshield.io/pricing"
+            "default": "https://cleanway.ai/pricing"
           }
         },
         "type": "object",

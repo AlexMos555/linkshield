@@ -2,7 +2,7 @@
   "extension": {
     "meta": {
       "name": {
-        "text": "LinkShield — Protección contra enlaces fraudulentos"
+        "text": "Cleanway — Protección contra enlaces fraudulentos"
       },
       "description": {
         "text": "Detección automática de sitios fraudulentos y de phishing. En lenguaje sencillo, para todos."
@@ -10,7 +10,7 @@
     },
     "popup": {
       "brand": {
-        "text": "LinkShield"
+        "text": "Cleanway"
       },
       "settings_title": {
         "text": "Ajustes"
@@ -111,10 +111,10 @@
         "text": "Mejorar"
       },
       "onboarding_welcome": {
-        "text": "¡Hola! Soy LinkShield."
+        "text": "¡Hola! Soy Cleanway."
       },
       "onboarding_tip": {
-        "text": "Reviso cada enlace de cada página. Los peligrosos los marco en rojo. Si tienes dudas, haz clic derecho → «Verificar con LinkShield»."
+        "text": "Reviso cada enlace de cada página. Los peligrosos los marco en rojo. Si tienes dudas, haz clic derecho → «Verificar con Cleanway»."
       },
       "aha_found_scams": {
         "text": "Encontré $N$ enlaces fraudulentos que tu navegador dejó pasar",
@@ -186,7 +186,7 @@
         }
       },
       "trust_footer": {
-        "text": "Protegido por LinkShield. Tus datos quedan en tu dispositivo."
+        "text": "Protegido por Cleanway. Tus datos quedan en tu dispositivo."
       }
     },
     "welcome": {
@@ -259,7 +259,7 @@
       "cta_business": "Para empresas"
     },
     "footer": {
-      "brand": "LinkShield",
+      "brand": "Cleanway",
       "privacy": "Privacidad",
       "terms": "Términos",
       "contact": "Contacto",
@@ -305,7 +305,7 @@
       ]
     },
     "how_it_works": {
-      "heading": "Cómo te protege LinkShield",
+      "heading": "Cómo te protege Cleanway",
       "steps": [
         {
           "step": "1",
@@ -315,7 +315,7 @@
         {
           "step": "2",
           "title": "Navega",
-          "desc": "LinkShield verifica cada enlace automáticamente. No hace falta hacer nada."
+          "desc": "Cleanway verifica cada enlace automáticamente. No hace falta hacer nada."
         },
         {
           "step": "3",
@@ -369,7 +369,7 @@
       "heading": "Cómo nos comparamos",
       "headers": [
         "Característica",
-        "LinkShield",
+        "Cleanway",
         "Guardio",
         "NordVPN TP",
         "Norton 360",
@@ -475,7 +475,7 @@
           "r": "Gerente de marketing"
         },
         {
-          "q": "Reemplazamos KnowBe4 por LinkShield Business. La misma protección, a la cuarta parte del precio.",
+          "q": "Reemplazamos KnowBe4 por Cleanway Business. La misma protección, a la cuarta parte del precio.",
           "n": "James T.",
           "r": "Director de TI"
         }
@@ -494,11 +494,11 @@
         },
         {
           "q": "¿Puedo usarlo con una VPN?",
-          "a": "¡Sí! En móvil, LinkShield detecta automáticamente tu VPN y cambia al modo DNS, funcionando junto a NordVPN, ExpressVPN o cualquier otro proveedor."
+          "a": "¡Sí! En móvil, Cleanway detecta automáticamente tu VPN y cambia al modo DNS, funcionando junto a NordVPN, ExpressVPN o cualquier otro proveedor."
         },
         {
           "q": "¿Qué lo diferencia de Google Safe Browsing?",
-          "a": "Google Safe Browsing es reactivo: atrapa amenazas conocidas pero deja pasar phishing nuevo. LinkShield añade detección por ML, 8 fuentes adicionales de amenazas, Auditoría de privacidad, y no envía tus datos de navegación a Google."
+          "a": "Google Safe Browsing es reactivo: atrapa amenazas conocidas pero deja pasar phishing nuevo. Cleanway añade detección por ML, 8 fuentes adicionales de amenazas, Auditoría de privacidad, y no envía tus datos de navegación a Google."
         },
         {
           "q": "¿Hay un plan gratuito?",
@@ -530,10 +530,10 @@
         }
       },
       "signature": {
-        "text": "— El equipo de LinkShield"
+        "text": "— El equipo de Cleanway"
       },
       "trust_footer": {
-        "text": "LinkShield · Protección que se queda en tu dispositivo"
+        "text": "Cleanway · Protección que se queda en tu dispositivo"
       },
       "unsubscribe_link": {
         "text": "Darse de baja de estos correos"
@@ -548,15 +548,15 @@
         "text": "Ver en navegador"
       },
       "footer_legal": {
-        "text": "Recibiste este correo porque tienes una cuenta en LinkShield."
+        "text": "Recibiste este correo porque tienes una cuenta en Cleanway."
       },
       "footer_address": {
-        "text": "LinkShield · San Francisco, CA"
+        "text": "Cleanway · San Francisco, CA"
       }
     },
     "welcome": {
       "subject": {
-        "text": "Bienvenido a LinkShield — ya estás protegido"
+        "text": "Bienvenido a Cleanway — ya estás protegido"
       },
       "preheader": {
         "text": "Cada enlace que ves se comprueba automáticamente."
@@ -588,13 +588,13 @@
     },
     "receipt": {
       "subject": {
-        "text": "Tu recibo de LinkShield"
+        "text": "Tu recibo de Cleanway"
       },
       "title": {
         "text": "Pago recibido — gracias"
       },
       "body_p1": {
-        "text": "Gracias por apoyar LinkShield. Tu suscripción está activa."
+        "text": "Gracias por apoyar Cleanway. Tu suscripción está activa."
       },
       "plan_label": {
         "text": "Plan"
@@ -616,13 +616,13 @@
     },
     "weekly_report": {
       "subject": {
-        "text": "Tu semana en LinkShield"
+        "text": "Tu semana en Cleanway"
       },
       "preheader": {
         "text": "Mira lo que bloqueamos esta semana."
       },
       "title": {
-        "text": "Esta semana, LinkShield te protegió de:"
+        "text": "Esta semana, Cleanway te protegió de:"
       },
       "body_p1": {
         "text": "Esto ha pasado en tus dispositivos durante los últimos 7 días."
@@ -634,7 +634,7 @@
         "text": "Enlaces revisados"
       },
       "percentile_body": {
-        "text": "Estás más seguro que el $PCT$% de los usuarios de LinkShield esta semana.",
+        "text": "Estás más seguro que el $PCT$% de los usuarios de Cleanway esta semana.",
         "placeholders": {
           "pct": {
             "content": "$1"
@@ -647,7 +647,7 @@
     },
     "family_invite": {
       "subject": {
-        "text": "$NAME$ te invitó a su familia de LinkShield",
+        "text": "$NAME$ te invitó a su familia de Cleanway",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -658,10 +658,10 @@
         "text": "Protección gratis en tus dispositivos, configurada en 30 segundos."
       },
       "title": {
-        "text": "Te han invitado a LinkShield Family"
+        "text": "Te han invitado a Cleanway Family"
       },
       "body_p1": {
-        "text": "$NAME$ te añadió a su plan familiar de LinkShield. Obtienes la misma protección en hasta 2 de tus dispositivos — gratis.",
+        "text": "$NAME$ te añadió a su plan familiar de Cleanway. Obtienes la misma protección en hasta 2 de tus dispositivos — gratis.",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -697,7 +697,7 @@
     },
     "subscription_cancel": {
       "subject": {
-        "text": "Tu suscripción a LinkShield ha sido cancelada"
+        "text": "Tu suscripción a Cleanway ha sido cancelada"
       },
       "title": {
         "text": "Estaremos aquí si vuelves"
@@ -722,7 +722,7 @@
     },
     "granny_mode_invite": {
       "subject": {
-        "text": "$NAME$ configuró protección de LinkShield para ti",
+        "text": "$NAME$ configuró protección de Cleanway para ti",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -736,7 +736,7 @@
         "text": "Seguridad contra estafas en línea — configurada para ti"
       },
       "body_p1_to_grandchild": {
-        "text": "$NAME$ configuró la protección de LinkShield en tus dispositivos con letra más grande y alertas por voz. No necesitas hacer nada — ya está funcionando.",
+        "text": "$NAME$ configuró la protección de Cleanway en tus dispositivos con letra más grande y alertas por voz. No necesitas hacer nada — ya está funcionando.",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -744,7 +744,7 @@
         }
       },
       "body_p2_what_it_does": {
-        "text": "Cuando un estafador intente engañarte con un sitio falso de banco o un aviso de entrega, LinkShield lo detiene antes de que escribas algo. Aparece un aviso claro en letras grandes: «ALTO — este es un sitio fraudulento»."
+        "text": "Cuando un estafador intente engañarte con un sitio falso de banco o un aviso de entrega, Cleanway lo detiene antes de que escribas algo. Aparece un aviso claro en letras grandes: «ALTO — este es un sitio fraudulento»."
       },
       "cta_setup": {
         "text": "Abrir la aplicación"

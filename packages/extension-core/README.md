@@ -1,6 +1,6 @@
-# @linkshield/extension-core
+# @cleanway/extension-core
 
-Single source of truth for LinkShield browser extension code. Chrome, Firefox, and Safari all sync from here.
+Single source of truth for Cleanway browser extension code. Chrome, Firefox, and Safari all sync from here.
 
 ## Why this exists
 

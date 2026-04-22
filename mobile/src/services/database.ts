@@ -18,7 +18,7 @@ async function getDB() {
 
   try {
     const SQLite = require("expo-sqlite");
-    _db = await SQLite.openDatabaseAsync("linkshield.db");
+    _db = await SQLite.openDatabaseAsync("cleanway.db");
     await _db.execAsync(`
       CREATE TABLE IF NOT EXISTS checks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

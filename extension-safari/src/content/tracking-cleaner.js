@@ -58,7 +58,7 @@ function cleanTrackingParams() {
     if (cleanUrl !== window.location.href) {
       window.history.replaceState(null, "", cleanUrl);
       _cleanedCount += removed.length;
-      console.debug("[LinkShield] Cleaned tracking params:", removed.join(", "));
+      console.debug("[Cleanway] Cleaned tracking params:", removed.join(", "));
     }
   }
 }

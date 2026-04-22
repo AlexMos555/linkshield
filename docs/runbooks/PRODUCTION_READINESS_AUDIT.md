@@ -1,4 +1,4 @@
-# LinkShield — Production Readiness Audit
+# Cleanway — Production Readiness Audit
 
 **Дата:** 2026-04-20 · **Коммит:** `fe72d42` (main) · **Аудитор:** ccd-agent
 
@@ -11,9 +11,9 @@
 ### Current state
 - **`railway.json`** → `{"build": {"builder": "NIXPACKS"}}` — только builder, нет `deploy.startCommand`.
 - **`Procfile`** → `web: python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT` (последний фикс `a342c24`).
-- **`Dockerfile`** → удалён (коммит `208efd2`), но в репо остались: `docker-compose.yml`, `docker-compose.prod.yml`, а в `security.yml` job'ы `trivy-image` / `sbom` всё ещё вызывают `docker build -t linkshield-api:sbom .` — **это сломано** (job `sbom` упадёт с "no Dockerfile").
+- **`Dockerfile`** → удалён (коммит `208efd2`), но в репо остались: `docker-compose.yml`, `docker-compose.prod.yml`, а в `security.yml` job'ы `trivy-image` / `sbom` всё ещё вызывают `docker build -t cleanway-api:sbom .` — **это сломано** (job `sbom` упадёт с "no Dockerfile").
 - **`requirements.txt`** (15 строк): FastAPI 0.115, uvicorn[standard] 0.32, httpx, redis[hiredis], pydantic-settings, PyJWT, python-multipart, dnspython, stripe, sentry-sdk[fastapi], bcrypt. **catboost/numpy убраны** намеренно (OOM на 512 MB starter).
-- **`.github/workflows/ci.yml`** job `docker:` тоже делает `docker build -t linkshield-api .` → **упадёт** (нет Dockerfile). Это сломанный pipeline в CI.
+- **`.github/workflows/ci.yml`** job `docker:` тоже делает `docker build -t cleanway-api .` → **упадёт** (нет Dockerfile). Это сломанный pipeline в CI.
 
 ### Conflicts / verdict
 - **Конфликта Procfile vs Dockerfile больше нет** (Dockerfile удалён). Railway использует Nixpacks + Procfile — корректно.
@@ -44,7 +44,7 @@ Minimum для `ENVIRONMENT=production`:
 ### Все 40+ settings (дефолты)
 - `app_name`, `debug=False`, `environment="development"`, `strict_config=False`
 - Supabase: `supabase_url/anon_key/service_key/jwt_secret` = `""`
-- CORS: `allowed_origins` = `linkshield.io,www.linkshield.io,staging.linkshield.io,mail.google.com,outlook.office.com,outlook.live.com,mail.yahoo.com`
+- CORS: `allowed_origins` = `cleanway.ai,www.cleanway.ai,staging.cleanway.ai,mail.google.com,outlook.office.com,outlook.live.com,mail.yahoo.com`
 - `redis_url="redis://localhost:6379"`
 - Threat intel keys: `google_safe_browsing_key`, `phishtank_api_key`, `ipqualityscore_key`, `hibp_api_key` = `""`
 - `sentry_dsn=""`
@@ -68,7 +68,7 @@ Minimum для `ENVIRONMENT=production`:
 - `packages/extension-core/src/utils/api.js:9`
 - `extension/manifest.json` host_permissions
 
-Это **fine для MVP** (fallback), но когда получите `api.linkshield.io` custom domain — поменять на него.
+Это **fine для MVP** (fallback), но когда получите `api.cleanway.ai` custom domain — поменять на него.
 
 ### strict_config=false
 `api/config.py:31` — **правильный выбор на время роллаута**. Как только в Railway все env выставлены и `/health=ok`, флипнуть в `true` (env `STRICT_CONFIG=true`), чтобы неправильный деплой ронял под сразу, а не тихо.
@@ -109,15 +109,15 @@ Minimum для `ENVIRONMENT=production`:
 
 ### Чего не хватает для prod-билда
 - **`eas.json` отсутствует** (`ls mobile/eas.json` → пусто). Без него `eas build` не работает.
-- В `app.json`: bundle ID `io.linkshield.app` (ios+android), есть intent filter для `text/plain` (share) и scheme `linkshield://`. Норм.
+- В `app.json`: bundle ID `ai.cleanway.app` (ios+android), есть intent filter для `text/plain` (share) и scheme `cleanway://`. Норм.
 - **Expo secrets не настроены** — EAS не знает `EXPO_PUBLIC_*` при билде в облаке.
 - Отсутствуют: adaptive-icon на отдельных плотностях, splash в нескольких размерах, `notification.icon`, metadata для App Store / Play Store.
 
 ### Fix
 - [ ] Создать `mobile/eas.json` с профилями `development`, `preview`, `production`, каждый с `env: { EXPO_PUBLIC_API_URL: …, EXPO_PUBLIC_SUPABASE_URL: …, EXPO_PUBLIC_SUPABASE_ANON_KEY: … }`.
 - [ ] `eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "…" --type string` — для anon key (остальные можно в `eas.json`).
-- [ ] App Store Connect: создать app `io.linkshield.app`, заполнить screenshots (6.5" iPhone + 12.9" iPad), privacy labels (Data Not Collected ✓ для browsing).
-- [ ] Google Play Console: создать app, privacy policy URL = `linkshield.io/privacy`.
+- [ ] App Store Connect: создать app `ai.cleanway.app`, заполнить screenshots (6.5" iPhone + 12.9" iPad), privacy labels (Data Not Collected ✓ для browsing).
+- [ ] Google Play Console: создать app, privacy policy URL = `cleanway.ai/privacy`.
 
 ---
 
@@ -127,7 +127,7 @@ Minimum для `ENVIRONMENT=production`:
 `packages/extension-core/src/utils/api.js:9` — `let API_BASE = "https://web-production-fe08.up.railway.app"` + override через `chrome.storage.local.api_url` (dev). **Хорошо.**
 
 ### host_permissions (`extension/manifest.json`)
-`railway.app/*`, `*.linkshield.io/*`, `localhost:8000/*`, `mail.google.com/*`, `outlook.office.com/*`, `outlook.live.com/*`, `mail.yahoo.com/*`. Покрытие webmail соответствует `packages/extension-core/src/content/webmail.js`. OK.
+`railway.app/*`, `*.cleanway.ai/*`, `localhost:8000/*`, `mail.google.com/*`, `outlook.office.com/*`, `outlook.live.com/*`, `mail.yahoo.com/*`. Покрытие webmail соответствует `packages/extension-core/src/content/webmail.js`. OK.
 
 ### Статус 3 сборок
 - `extension/` — MV3 (Chrome/Edge) ✅
@@ -169,7 +169,7 @@ Minimum для `ENVIRONMENT=production`:
 - `metadata` экспортируется в `[locale]/layout.tsx` (не открывал, надо валидировать).
 
 ### Fix
-- [ ] Vercel dashboard (https://vercel.com/[team]/linkshield/settings/environment-variables): ротировать все токены (incident response).
+- [ ] Vercel dashboard (https://vercel.com/[team]/cleanway/settings/environment-variables): ротировать все токены (incident response).
 - [ ] Добавить `landing/app/sitemap.ts` + `landing/app/robots.ts`.
 - [ ] В `next.config.ts` добавить `async headers()` с HSTS/CSP/X-Frame-Options.
 
@@ -177,13 +177,13 @@ Minimum для `ENVIRONMENT=production`:
 
 ## 7. Shared packages
 
-- **`packages/api-client/src/index.ts`** (230+ строк) — типизированный fetch wrapper над `@linkshield/api-types`. 4 namespace: check, pricing, health + payments. **Актуален**, отражает backend (`/api/v1/check`, `/api/v1/pricing/*`, `/health`).
+- **`packages/api-client/src/index.ts`** (230+ строк) — типизированный fetch wrapper над `@cleanway/api-types`. 4 namespace: check, pricing, health + payments. **Актуален**, отражает backend (`/api/v1/check`, `/api/v1/pricing/*`, `/health`).
 - **`packages/api-types/`** — есть `openapi.d.ts` сгенерированный из OpenAPI spec + `schema/` (vendor dump). Последний апдейт 2026-04-20. Выглядит синхронизированным.
 - **`packages/i18n-strings/src/`** — 10 json файлов (ar, de, en, es, fr, hi, id, it, pt, ru) = 10 языков стратегии.
 - **`packages/extension-core/src/`** — источник правды для 3 extension сборок (extension/, extension-firefox/, extension-safari/ — это синкнутые копии).
 - **`packages/email-templates/`** — новый (Apr 20), ещё не проверял use sites.
 
-**Риск:** `api-client` и `api-types` не опубликованы в npm, подключены как workspaces (`"@linkshield/api-client": "*"`). Если кто-то не запустил `npm install` в корне — imports ломаются.
+**Риск:** `api-client` и `api-types` не опубликованы в npm, подключены как workspaces (`"@cleanway/api-client": "*"`). Если кто-то не запустил `npm install` в корне — imports ломаются.
 
 ---
 
@@ -195,7 +195,7 @@ Minimum для `ENVIRONMENT=production`:
 | **Google Safe Browsing** | Threat DB для проверки доменов | Опциональный, есть код интеграции | Free (до 10K QPD) | Создать key в GCP console, положить в `GOOGLE_SAFE_BROWSING_KEY` |
 | **Sentry** | Error tracking | Инициализируется в `main.py:28` если есть `SENTRY_DSN`; `validate_settings` требует в prod | Free (5K events/mo) → $26/mo | Создать project на sentry.io, положить DSN в Railway |
 | **Redis** | Rate limit + cache | `REDIS_URL` в config, подключение через `api.services.cache` | Upstash free 10K cmd/day → $10/mo | **Не подключено в Railway** — без Redis rate limiting сломан |
-| **SES / Resend** | Транзакционные email (welcome, breach alerts) | Env поля в `.env-examples/.env.production`, но не проверены кодом | SES $0.10/1K, Resend $20/mo | Verify domain `mail.linkshield.io`, настроить SPF/DKIM/DMARC |
+| **SES / Resend** | Транзакционные email (welcome, breach alerts) | Env поля в `.env-examples/.env.production`, но не проверены кодом | SES $0.10/1K, Resend $20/mo | Verify domain `mail.cleanway.ai`, настроить SPF/DKIM/DMARC |
 | **Whisper / OpenAI** | Voice transcription (Phase H4) | Код в `api/routers/scam.py` (не открывал) | $0.006/min | Phase H4, не блокер для launch |
 | **Anthropic** | LLM scam detection (Phase H4) | Та же история | $0.003/1K input, $0.015/1K output | Phase H4, не блокер |
 | **Google Play / Apple Dev** | Mobile distribution | Нет eas.json → ничего не подписывается | Apple $99/год, Google $25 one-time | Зарегистрировать, создать app listings |
@@ -239,7 +239,7 @@ Minimum для `ENVIRONMENT=production`:
 - [ ] **Ротировать секреты после Vercel incident.** *Why:* Vercel прислал security email сегодня. *How:* см. `docs/runbooks/vercel-incident-response.md` + ротировать: Supabase service key, Stripe restricted keys, любые токены в Vercel env.
 - [ ] **Vercel env vars.** *Why:* landing без `NEXT_PUBLIC_API_URL` работает на fallback Railway URL (некрасиво, CORS проблемы потом). *How:* Vercel → Project → Settings → Environment Variables → `NEXT_PUBLIC_API_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_STRIPE_PUB_KEY`.
 - [ ] **Stripe webhook endpoint.** *Why:* subscriptions событий не достигают backend. *How:* Stripe Dashboard → Webhooks → Add endpoint → `https://[api-prod]/api/v1/payments/webhook` → copy signing secret → Railway env `STRIPE_WEBHOOK_SECRET`.
-- [ ] **Custom domain для API.** *Why:* `web-production-fe08.up.railway.app` захардкожен в 5+ местах; custom domain даёт стабильность если Railway service пересоздастся. *How:* Railway → Settings → Domains → Generate → добавить CNAME `api.linkshield.io` → обновить fallback'и в landing/mobile/extension.
+- [ ] **Custom domain для API.** *Why:* `web-production-fe08.up.railway.app` захардкожен в 5+ местах; custom domain даёт стабильность если Railway service пересоздастся. *How:* Railway → Settings → Domains → Generate → добавить CNAME `api.cleanway.ai` → обновить fallback'и в landing/mobile/extension.
 - [ ] **Supabase: RLS проверить в Supabase SQL Editor**. *Why:* если миграция 001 запустилась без RLS policy на часть таблиц → утечка данных через PostgREST. *How:* `SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public';` — все должны быть `t`.
 
 ### SHOULD DO (quality)

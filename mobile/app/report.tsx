@@ -45,7 +45,7 @@ export default function ReportScreen() {
 
   async function shareReport() {
     await Share.share({
-      message: `My LinkShield Weekly Report:\n${stats.total_checks} links checked, ${stats.threats_blocked} threats blocked.\nI'm safer than ${percentile}% of users.\n\nhttps://linkshield.io`,
+      message: `My Cleanway Weekly Report:\n${stats.total_checks} links checked, ${stats.threats_blocked} threats blocked.\nI'm safer than ${percentile}% of users.\n\nhttps://cleanway.ai`,
     });
   }
 

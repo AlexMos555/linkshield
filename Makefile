@@ -1,4 +1,4 @@
-# LinkShield — Common Commands
+# Cleanway — Common Commands
 
 .PHONY: dev test benchmark build deploy extension landing
 
@@ -32,11 +32,11 @@ build-landing:  ## Build Next.js landing page
 	cd landing && npm install && npx next build
 
 build-extension:  ## Package extension for Chrome Web Store
-	cd extension && zip -r ../linkshield-extension.zip . -x "*.md" "STORE_LISTING.md"
-	@echo "Extension packaged: linkshield-extension.zip"
+	cd extension && zip -r ../cleanway-extension.zip . -x "*.md" "STORE_LISTING.md"
+	@echo "Extension packaged: cleanway-extension.zip"
 
 build-docker:  ## Build Docker image
-	docker build -t linkshield-api .
+	docker build -t cleanway-api .
 
 # ── Deploy ──
 
@@ -50,7 +50,7 @@ lint:  ## Run linter
 
 clean:  ## Clean build artifacts
 	rm -rf landing/.next landing/node_modules __pycache__ **/__pycache__
-	rm -f linkshield-extension.zip
+	rm -f cleanway-extension.zip
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'

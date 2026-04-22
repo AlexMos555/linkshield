@@ -1,10 +1,10 @@
-# LinkShield
+# Cleanway
 
 Privacy-first phishing protection platform. Your browsing data lives only on your device.
 
-## What is LinkShield?
+## What is Cleanway?
 
-LinkShield automatically checks every link you encounter against 9 threat intelligence sources and a machine learning model. Dangerous sites are blocked before they can harm you.
+Cleanway automatically checks every link you encounter against 9 threat intelligence sources and a machine learning model. Dangerous sites are blocked before they can harm you.
 
 **Key difference:** Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if breached, attackers learn nothing about your online activity.
 
@@ -93,4 +93,4 @@ MIT
 
 ## Privacy Policy
 
-https://linkshield.io/privacy-policy
+https://cleanway.ai/privacy-policy

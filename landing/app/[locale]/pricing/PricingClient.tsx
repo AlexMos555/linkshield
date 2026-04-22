@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { PricingFor } from "@linkshield/api-client";
+import type { PricingFor } from "@cleanway/api-client";
 
 // All shapes come from the generated contract — no hand-rolled types here.
 // If the API changes, `npm run build:api-types` regenerates the types and this

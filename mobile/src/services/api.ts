@@ -1,5 +1,5 @@
 /**
- * LinkShield Mobile API — thin wrapper over @linkshield/api-client.
+ * Cleanway Mobile API — thin wrapper over @cleanway/api-client.
  *
  * Before: hand-rolled fetch with copy-pasted DomainResult types, no timeout,
  *         throws on HTTP errors, no privacy normalization.
@@ -14,9 +14,9 @@ import {
   type DomainResult,
   type PricingFor,
   type ApiError,
-  type LinkShieldClient,
+  type CleanwayClient,
   type Result,
-} from "@linkshield/api-client";
+} from "@cleanway/api-client";
 
 // ─── Config ───────────────────────────────────────────────────────
 // EXPO_PUBLIC_API_URL is inlined at build time. Override per-environment
@@ -37,7 +37,7 @@ export function setAuthToken(token: string | null): void {
 }
 
 // ─── Singleton client ────────────────────────────────────────────
-const _client: LinkShieldClient = createClient({
+const _client: CleanwayClient = createClient({
   baseUrl: API_BASE,
   timeoutMs: 6_000,
   getAuthToken: () => _authToken,
@@ -64,7 +64,7 @@ export async function checkApiHealth(): Promise<boolean> {
 }
 
 // Re-export types so call sites don't need 3 imports
-export type { DomainResult, PricingFor, ApiError, Result } from "@linkshield/api-client";
+export type { DomainResult, PricingFor, ApiError, Result } from "@cleanway/api-client";
 
 // Legacy shim: some older screens call `checkDomains([...])`. Keep for now —
 // delete once all call sites migrate to singular checkDomain().
@@ -112,7 +112,7 @@ export async function checkSingleDomain(domain: string): Promise<DomainResult> {
 
 /**
  * Breach check — k-anonymity via 5-char SHA-1 prefix.
- * Legacy endpoint, not yet wrapped in @linkshield/api-client. Falls back to direct fetch.
+ * Legacy endpoint, not yet wrapped in @cleanway/api-client. Falls back to direct fetch.
  */
 export interface BreachSuffix {
   suffix: string;

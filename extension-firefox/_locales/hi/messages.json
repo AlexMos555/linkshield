@@ -1,12 +1,12 @@
 {
   "extension_name": {
-    "message": "LinkShield — धोखाधड़ी वाले लिंक से सुरक्षा"
+    "message": "Cleanway — धोखाधड़ी वाले लिंक से सुरक्षा"
   },
   "extension_description": {
     "message": "धोखाधड़ी और फ़िशिंग साइटों का स्वचालित पता लगाना। सरल भाषा में, सबके लिए।"
   },
   "popup_brand": {
-    "message": "LinkShield"
+    "message": "Cleanway"
   },
   "popup_settings_title": {
     "message": "सेटिंग्स"
@@ -107,10 +107,10 @@
     "message": "अपग्रेड"
   },
   "onboarding_welcome": {
-    "message": "नमस्ते! मैं LinkShield हूँ।"
+    "message": "नमस्ते! मैं Cleanway हूँ।"
   },
   "onboarding_tip": {
-    "message": "मैं हर पेज पर हर लिंक की जाँच करता हूँ। ख़तरनाक लिंक लाल रंग में दिखेंगे। शक है? दायाँ क्लिक → «LinkShield से जाँचें»।"
+    "message": "मैं हर पेज पर हर लिंक की जाँच करता हूँ। ख़तरनाक लिंक लाल रंग में दिखेंगे। शक है? दायाँ क्लिक → «Cleanway से जाँचें»।"
   },
   "aha_found_scams": {
     "message": "आपके ब्राउज़र ने $N$ धोखाधड़ी वाले लिंक नहीं पकड़े — मैंने पकड़े",
@@ -178,7 +178,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "LinkShield से सुरक्षित। आपका डेटा इसी डिवाइस पर रहता है।"
+    "message": "Cleanway से सुरक्षित। आपका डेटा इसी डिवाइस पर रहता है।"
   },
   "welcome_hero_title": {
     "message": "अब आप सुरक्षित हैं"

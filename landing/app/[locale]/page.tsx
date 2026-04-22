@@ -67,7 +67,7 @@ export default async function Home({ params }: HomeProps) {
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="text-xl font-extrabold text-white">LinkShield</span>
+          <span className="text-xl font-extrabold text-white">Cleanway</span>
           <div className="hidden md:flex items-center gap-5">
             <a href="#features" className="text-sm text-slate-400 hover:text-white transition">{nav("features")}</a>
             <a href="/pricing" className="text-sm text-slate-400 hover:text-white transition">{nav("pricing")}</a>
@@ -277,10 +277,10 @@ export default async function Home({ params }: HomeProps) {
           <div className="flex justify-center gap-6 mb-4">
             <a href="/privacy-policy" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("privacy")}</a>
             <a href="/terms" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("terms")}</a>
-            <a href="mailto:support@linkshield.io" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("contact")}</a>
-            <a href="https://github.com/AlexMos555/linkshield" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("github")}</a>
+            <a href="mailto:support@cleanway.ai" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("contact")}</a>
+            <a href="https://github.com/AlexMos555/cleanway" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("github")}</a>
           </div>
-          <p className="text-xs text-slate-600">&copy; 2026 LinkShield. {footer("tagline")}</p>
+          <p className="text-xs text-slate-600">&copy; 2026 Cleanway. {footer("tagline")}</p>
         </div>
       </footer>
     </div>

@@ -2,7 +2,7 @@
   "extension": {
     "meta": {
       "name": {
-        "text": "LinkShield — धोखाधड़ी वाले लिंक से सुरक्षा"
+        "text": "Cleanway — धोखाधड़ी वाले लिंक से सुरक्षा"
       },
       "description": {
         "text": "धोखाधड़ी और फ़िशिंग साइटों का स्वचालित पता लगाना। सरल भाषा में, सबके लिए।"
@@ -10,7 +10,7 @@
     },
     "popup": {
       "brand": {
-        "text": "LinkShield"
+        "text": "Cleanway"
       },
       "settings_title": {
         "text": "सेटिंग्स"
@@ -111,10 +111,10 @@
         "text": "अपग्रेड"
       },
       "onboarding_welcome": {
-        "text": "नमस्ते! मैं LinkShield हूँ।"
+        "text": "नमस्ते! मैं Cleanway हूँ।"
       },
       "onboarding_tip": {
-        "text": "मैं हर पेज पर हर लिंक की जाँच करता हूँ। ख़तरनाक लिंक लाल रंग में दिखेंगे। शक है? दायाँ क्लिक → «LinkShield से जाँचें»।"
+        "text": "मैं हर पेज पर हर लिंक की जाँच करता हूँ। ख़तरनाक लिंक लाल रंग में दिखेंगे। शक है? दायाँ क्लिक → «Cleanway से जाँचें»।"
       },
       "aha_found_scams": {
         "text": "आपके ब्राउज़र ने $N$ धोखाधड़ी वाले लिंक नहीं पकड़े — मैंने पकड़े",
@@ -186,7 +186,7 @@
         }
       },
       "trust_footer": {
-        "text": "LinkShield से सुरक्षित। आपका डेटा इसी डिवाइस पर रहता है।"
+        "text": "Cleanway से सुरक्षित। आपका डेटा इसी डिवाइस पर रहता है।"
       }
     },
     "welcome": {
@@ -259,7 +259,7 @@
       "cta_business": "व्यवसायों के लिए"
     },
     "footer": {
-      "brand": "LinkShield",
+      "brand": "Cleanway",
       "privacy": "गोपनीयता",
       "terms": "शर्तें",
       "contact": "संपर्क",
@@ -305,7 +305,7 @@
       ]
     },
     "how_it_works": {
-      "heading": "How LinkShield protects you",
+      "heading": "How Cleanway protects you",
       "steps": [
         {
           "step": "1",
@@ -315,7 +315,7 @@
         {
           "step": "2",
           "title": "Browse",
-          "desc": "LinkShield checks every link automatically. No action needed."
+          "desc": "Cleanway checks every link automatically. No action needed."
         },
         {
           "step": "3",
@@ -369,7 +369,7 @@
       "heading": "How we compare",
       "headers": [
         "Feature",
-        "LinkShield",
+        "Cleanway",
         "Guardio",
         "NordVPN TP",
         "Norton 360",
@@ -475,7 +475,7 @@
           "r": "Marketing Manager"
         },
         {
-          "q": "We replaced KnowBe4 with LinkShield Business. Same protection, 1/4 the price.",
+          "q": "We replaced KnowBe4 with Cleanway Business. Same protection, 1/4 the price.",
           "n": "James T.",
           "r": "IT Director"
         }
@@ -494,11 +494,11 @@
         },
         {
           "q": "Can I use it with a VPN?",
-          "a": "Yes! On mobile, LinkShield auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
+          "a": "Yes! On mobile, Cleanway auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
         },
         {
           "q": "What's different from Google Safe Browsing?",
-          "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. LinkShield adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
+          "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. Cleanway adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
         },
         {
           "q": "Is there a free plan?",
@@ -532,11 +532,11 @@
         "_needs_native_review": true
       },
       "signature": {
-        "text": "— The LinkShield team",
+        "text": "— The Cleanway team",
         "_needs_native_review": true
       },
       "trust_footer": {
-        "text": "LinkShield · Protection that stays on your device",
+        "text": "Cleanway · Protection that stays on your device",
         "_needs_native_review": true
       },
       "unsubscribe_link": {
@@ -556,17 +556,17 @@
         "_needs_native_review": true
       },
       "footer_legal": {
-        "text": "You received this email because you have a LinkShield account.",
+        "text": "You received this email because you have a Cleanway account.",
         "_needs_native_review": true
       },
       "footer_address": {
-        "text": "LinkShield · San Francisco, CA",
+        "text": "Cleanway · San Francisco, CA",
         "_needs_native_review": true
       }
     },
     "welcome": {
       "subject": {
-        "text": "Welcome to LinkShield — you're protected now",
+        "text": "Welcome to Cleanway — you're protected now",
         "_needs_native_review": true
       },
       "preheader": {
@@ -608,7 +608,7 @@
     },
     "receipt": {
       "subject": {
-        "text": "Your LinkShield receipt",
+        "text": "Your Cleanway receipt",
         "_needs_native_review": true
       },
       "title": {
@@ -616,7 +616,7 @@
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "Thanks for supporting LinkShield. Your subscription is active.",
+        "text": "Thanks for supporting Cleanway. Your subscription is active.",
         "_needs_native_review": true
       },
       "plan_label": {
@@ -643,7 +643,7 @@
     },
     "weekly_report": {
       "subject": {
-        "text": "Your week on LinkShield",
+        "text": "Your week on Cleanway",
         "_needs_native_review": true
       },
       "preheader": {
@@ -651,7 +651,7 @@
         "_needs_native_review": true
       },
       "title": {
-        "text": "This week, LinkShield protected you from:",
+        "text": "This week, Cleanway protected you from:",
         "_needs_native_review": true
       },
       "body_p1": {
@@ -667,7 +667,7 @@
         "_needs_native_review": true
       },
       "percentile_body": {
-        "text": "You're safer than $PCT$% of LinkShield users this week.",
+        "text": "You're safer than $PCT$% of Cleanway users this week.",
         "placeholders": {
           "pct": {
             "content": "$1"
@@ -682,7 +682,7 @@
     },
     "family_invite": {
       "subject": {
-        "text": "$NAME$ invited you to join their LinkShield family",
+        "text": "$NAME$ invited you to join their Cleanway family",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -695,11 +695,11 @@
         "_needs_native_review": true
       },
       "title": {
-        "text": "You've been invited to LinkShield Family",
+        "text": "You've been invited to Cleanway Family",
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "$NAME$ added you to their LinkShield family plan. You get the same protection on up to 2 of your devices — for free.",
+        "text": "$NAME$ added you to their Cleanway family plan. You get the same protection on up to 2 of your devices — for free.",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -744,7 +744,7 @@
     },
     "subscription_cancel": {
       "subject": {
-        "text": "Your LinkShield subscription was canceled",
+        "text": "Your Cleanway subscription was canceled",
         "_needs_native_review": true
       },
       "title": {
@@ -775,7 +775,7 @@
     },
     "granny_mode_invite": {
       "subject": {
-        "text": "$NAME$ set up LinkShield protection for you",
+        "text": "$NAME$ set up Cleanway protection for you",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -792,7 +792,7 @@
         "_needs_native_review": true
       },
       "body_p1_to_grandchild": {
-        "text": "$NAME$ set up LinkShield protection on your devices with extra-large text and voice alerts. You don't need to do anything — it's already working.",
+        "text": "$NAME$ set up Cleanway protection on your devices with extra-large text and voice alerts. You don't need to do anything — it's already working.",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -801,7 +801,7 @@
         "_needs_native_review": true
       },
       "body_p2_what_it_does": {
-        "text": "When a scammer tries to trick you with a fake bank website or delivery notice, LinkShield stops it before you enter anything. A clear warning shows in big letters: 'STOP — this is a scam site'.",
+        "text": "When a scammer tries to trick you with a fake bank website or delivery notice, Cleanway stops it before you enter anything. A clear warning shows in big letters: 'STOP — this is a scam site'.",
         "_needs_native_review": true
       },
       "cta_setup": {

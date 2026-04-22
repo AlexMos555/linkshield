@@ -2,7 +2,7 @@
 # Run: gitleaks detect / gitleaks protect
 # CI: .github/workflows/security.yml uses the same config.
 
-title = "LinkShield gitleaks config"
+title = "Cleanway gitleaks config"
 
 [extend]
 # Inherit gitleaks default ruleset (covers AWS, GCP, GitHub, Stripe, etc.)

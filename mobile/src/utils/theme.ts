@@ -1,5 +1,5 @@
 /**
- * LinkShield Dark Theme
+ * Cleanway Dark Theme
  */
 
 export const colors = {

@@ -10,7 +10,7 @@
     "alarms",
     "contextMenus",
     "https://web-production-fe08.up.railway.app/*",
-    "https://*.linkshield.io/*",
+    "https://*.cleanway.ai/*",
     "http://localhost:8000/*",
     "https://mail.google.com/*",
     "https://outlook.office.com/*",
@@ -71,7 +71,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "linkshield@linkshield.io",
+      "id": "cleanway@cleanway.ai",
       "strict_min_version": "109.0"
     }
   }

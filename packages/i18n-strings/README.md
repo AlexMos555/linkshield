@@ -1,6 +1,6 @@
-# @linkshield/i18n-strings
+# @cleanway/i18n-strings
 
-Single source of truth for UI strings across all LinkShield clients (extensions × 3, landing, mobile).
+Single source of truth for UI strings across all Cleanway clients (extensions × 3, landing, mobile).
 
 ## Why this exists
 

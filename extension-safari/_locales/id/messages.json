@@ -1,12 +1,12 @@
 {
   "extension_name": {
-    "message": "LinkShield — Perlindungan dari tautan penipuan"
+    "message": "Cleanway — Perlindungan dari tautan penipuan"
   },
   "extension_description": {
     "message": "Deteksi otomatis situs penipuan dan phishing. Bahasa sederhana, untuk semua orang."
   },
   "popup_brand": {
-    "message": "LinkShield"
+    "message": "Cleanway"
   },
   "popup_settings_title": {
     "message": "Pengaturan"
@@ -107,10 +107,10 @@
     "message": "Upgrade"
   },
   "onboarding_welcome": {
-    "message": "Hai! Saya LinkShield."
+    "message": "Hai! Saya Cleanway."
   },
   "onboarding_tip": {
-    "message": "Saya periksa setiap tautan di setiap halaman. Yang berbahaya saya tandai merah. Ragu? Klik kanan → «Periksa dengan LinkShield»."
+    "message": "Saya periksa setiap tautan di setiap halaman. Yang berbahaya saya tandai merah. Ragu? Klik kanan → «Periksa dengan Cleanway»."
   },
   "aha_found_scams": {
     "message": "Saya menemukan $N$ tautan penipuan yang terlewat oleh browser Anda",
@@ -178,7 +178,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Dilindungi LinkShield. Data Anda tetap di perangkat ini."
+    "message": "Dilindungi Cleanway. Data Anda tetap di perangkat ini."
   },
   "welcome_hero_title": {
     "message": "Anda sekarang terlindungi"

@@ -197,14 +197,14 @@ export default function HomeScreen() {
 
       {/* How it works */}
       <View style={s.howCard}>
-        <Text style={s.howTitle}>How LinkShield protects you</Text>
+        <Text style={s.howTitle}>How Cleanway protects you</Text>
         <View style={s.howRow}>
           <Text style={s.howIcon}>{"\u{1F4CB}"}</Text>
           <Text style={s.howText}>Copy a link anywhere — we detect and check it automatically</Text>
         </View>
         <View style={s.howRow}>
           <Text style={s.howIcon}>{"\u{1F4E4}"}</Text>
-          <Text style={s.howText}>Share a link from any app → LinkShield checks it</Text>
+          <Text style={s.howText}>Share a link from any app → Cleanway checks it</Text>
         </View>
         <View style={s.howRow}>
           <Text style={s.howIcon}>{"\u{1F4F7}"}</Text>

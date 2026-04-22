@@ -14,7 +14,7 @@ If all three: rollback. If unclear: still rollback; investigate after.
 
 ### Option 1: Railway one-click (fastest, ~90 seconds)
 
-1. Go to **Railway → linkshield-api-prod → Deployments**
+1. Go to **Railway → cleanway-api-prod → Deployments**
 2. Find the last green deploy (usually just above the broken one)
 3. Click its **⋯** menu → **Redeploy this version**
 4. Poll `/health` every 10s until 200 OK

@@ -31,7 +31,7 @@ export default function UpgradeScreen() {
 
   function handleUpgrade(plan: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Linking.openURL(`https://linkshield.io/pricing?plan=${plan}`);
+    Linking.openURL(`https://cleanway.ai/pricing?plan=${plan}`);
   }
 
   return (

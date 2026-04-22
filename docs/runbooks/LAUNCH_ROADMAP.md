@@ -1,4 +1,4 @@
-# 🚀 LinkShield Launch Roadmap — Master Checklist
+# 🚀 Cleanway Launch Roadmap — Master Checklist
 
 **Обновлено:** 2026-04-20 · **Commit:** `fe72d42` · **Статус:** 🟡 Railway 502, остальное работает локально
 
@@ -12,8 +12,8 @@
 |---|---|---|---|
 | **Railway** | Backend API (FastAPI) | `web-production-fe08.up.railway.app` | 🔴 502 |
 | **Supabase** | DB + Auth (EU Frankfurt) | `bpyqgzzclsbfvxthyfsf.supabase.co` | 🟢 migrations 001–005 applied |
-| **Vercel** | Landing (Next.js) | `linkshield-landing` project | 🟡 Security incident pending response |
-| **GitHub** | Repo + CI | `AlexMos555/linkshield` | 🟡 3 workflows red (docker + sbom + deploy-staging) |
+| **Vercel** | Landing (Next.js) | `cleanway-landing` project | 🟡 Security incident pending response |
+| **GitHub** | Repo + CI | `AlexMos555/cleanway` | 🟡 3 workflows red (docker + sbom + deploy-staging) |
 | **Redis** | Rate limit + cache | **НЕТ** | 🔴 Не provisioned |
 | **Stripe** | Платежи | Keys в `.env-examples` | 🟠 Нет live account |
 | **Google Safe Browsing** | Threat DB | `GOOGLE_SAFE_BROWSING_KEY` empty | 🟠 Нет ключа |
@@ -23,7 +23,7 @@
 | **Google Play** | Android distrib | — | 🟠 Нет аккаунта |
 | **Chrome Web Store** | Chrome Ext distrib | — | 🟠 Нет листинга |
 | **Firefox AMO** | Firefox Ext distrib | — | 🟠 Нет листинга |
-| **Домен + DNS** | `linkshield.io` vs бренд | Домен ещё не выбран | 🟠 Pending бренд |
+| **Домен + DNS** | `cleanway.ai` vs бренд | Домен ещё не выбран | 🟠 Pending бренд |
 
 Легенда: 🟢 готово · 🟡 в процессе · 🔴 блокер (критично) · 🟠 внешний сервис (нужен аккаунт)
 
@@ -52,7 +52,7 @@ SUPABASE_URL=https://bpyqgzzclsbfvxthyfsf.supabase.co
 SUPABASE_ANON_KEY=<copy from Supabase dashboard → Project Settings → API → anon/public>
 SUPABASE_SERVICE_KEY=<copy from Supabase dashboard → Project Settings → API → service_role>
 SUPABASE_JWT_SECRET=<copy from Supabase → Settings → API → JWT Secret>
-ALLOWED_ORIGINS=https://linkshield.io,https://www.linkshield.io,https://mail.google.com,https://outlook.office.com,https://outlook.live.com,https://mail.yahoo.com
+ALLOWED_ORIGINS=https://cleanway.ai,https://www.cleanway.ai,https://mail.google.com,https://outlook.office.com,https://outlook.live.com,https://mail.yahoo.com
 ```
 
 **Почему `ENVIRONMENT=development`** временно: в development `validate_settings` лояльнее (не требует Sentry/sk_live/ и т.п.). Переключим на `production` в Блоке 4.
@@ -105,7 +105,7 @@ ALLOWED_ORIGINS=https://linkshield.io,https://www.linkshield.io,https://mail.goo
 - [ ] https://github.com/settings/security-log → ищем подозрительные Vercel OAuth authorizations
 
 ### Шаг 3.2 — Vercel env vars
-- [ ] Vercel → linkshield-landing → Settings → Environment Variables → добавить:
+- [ ] Vercel → cleanway-landing → Settings → Environment Variables → добавить:
   - `NEXT_PUBLIC_API_URL=https://web-production-fe08.up.railway.app` (или custom domain когда будет)
   - `NEXT_PUBLIC_SUPABASE_URL=https://bpyqgzzclsbfvxthyfsf.supabase.co`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key из Supabase>`
@@ -113,7 +113,7 @@ ALLOWED_ORIGINS=https://linkshield.io,https://www.linkshield.io,https://mail.goo
 - [ ] Redeploy landing
 
 ### Шаг 3.3 — Проверить deployments
-- [ ] Vercel → linkshield-landing → Deployments → проверить что последние 30 дней — только с твоих commit SHA
+- [ ] Vercel → cleanway-landing → Deployments → проверить что последние 30 дней — только с твоих commit SHA
 
 **Подробности:** `docs/runbooks/vercel-incident-response.md`.
 
@@ -129,7 +129,7 @@ ALLOWED_ORIGINS=https://linkshield.io,https://www.linkshield.io,https://mail.goo
 - [ ] Redeploy → проверить что первый error (ручной `curl /api/v1/check -X POST -d 'bad json'`) появляется в Sentry dashboard
 
 ### Шаг 4.2 — Google Safe Browsing
-- [ ] https://console.cloud.google.com → создать project `linkshield-prod` → Enable Safe Browsing API
+- [ ] https://console.cloud.google.com → создать project `cleanway-prod` → Enable Safe Browsing API
 - [ ] APIs & Services → Credentials → Create API Key
 - [ ] Restrict key → API restrictions → Safe Browsing API only
 - [ ] Railway env `GOOGLE_SAFE_BROWSING_KEY=AIzaSy...`
@@ -153,7 +153,7 @@ ALLOWED_ORIGINS=https://linkshield.io,https://www.linkshield.io,https://mail.goo
 ## 🟠 БЛОК 5 — Внешние сервисы для monetization (пока ты ждёшь аккаунты)
 
 ### Шаг 5.1 — Домен
-- [ ] **Выбрать бренд** (не linkshield.com — занят, не linkshield.io — тоже не наш)
+- [ ] **Выбрать бренд** (не cleanway.ai — занят, не cleanway.ai — тоже не наш)
 - [ ] Купить домен (Namecheap / Cloudflare Registrar)
 - [ ] Создать CNAME `api.[brand].com` → Railway service URL
 - [ ] CNAME `www.[brand].com` → Vercel landing
@@ -176,14 +176,14 @@ ALLOWED_ORIGINS=https://linkshield.io,https://www.linkshield.io,https://mail.goo
 
 ### Шаг 5.4 — Apple Developer ($99/год)
 - [ ] https://developer.apple.com → Enroll (нужен legal entity)
-- [ ] App Store Connect → создать app `io.linkshield.app`
+- [ ] App Store Connect → создать app `ai.cleanway.app`
 - [ ] Screenshots для iPhone 6.5" и iPad 12.9"
 - [ ] Privacy Nutrition Labels: Data Not Collected (browsing), минимум
 - [ ] Safari Extension: через Xcode `xcrun safari-web-extension-converter extension-safari/`
 
 ### Шаг 5.5 — Google Play ($25 one-time)
 - [ ] https://play.google.com/console → Enroll
-- [ ] Создать app с package `io.linkshield.app`
+- [ ] Создать app с package `ai.cleanway.app`
 - [ ] Screenshots (phone + tablet)
 - [ ] Privacy policy URL = `https://[brand].com/privacy`
 - [ ] Data safety form
@@ -220,7 +220,7 @@ ALLOWED_ORIGINS=https://linkshield.io,https://www.linkshield.io,https://mail.goo
 - [ ] Если отсутствуют — генерировать через Figma / AI (иконка уже должна быть)
 
 ### Шаг 6.3 — Mobile native VPN config
-- [ ] Мне: создать Expo config plugin `mobile/plugins/with-linkshield-vpn/` (iOS Network Extension + Android VpnService)
+- [ ] Мне: создать Expo config plugin `mobile/plugins/with-cleanway-vpn/` (iOS Network Extension + Android VpnService)
 - [ ] Ты: тест VPN на физическом устройстве (запрашивает permission)
 
 ---

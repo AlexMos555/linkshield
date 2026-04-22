@@ -1,5 +1,5 @@
 /**
- * LinkShield Webmail Guardian — Gmail + Outlook Web + Yahoo Mail.
+ * Cleanway Webmail Guardian — Gmail + Outlook Web + Yahoo Mail.
  *
  * Runs as a content script on mail.google.com, outlook.office.com /
  * outlook.live.com, and mail.yahoo.com. For the currently-open
@@ -98,7 +98,7 @@
   }
 
   // ── Config ───────────────────────────────────────────────────────────────
-  const BANNER_ID = "linkshield-webmail-banner";
+  const BANNER_ID = "cleanway-webmail-banner";
   const DEBOUNCE_MS = 600;
   const DEFAULT_API_BASE = "https://web-production-fe08.up.railway.app";
 
@@ -129,14 +129,14 @@
       return;
     }
 
-    const sig = container.dataset.linkshieldSignature ||
+    const sig = container.dataset.cleanwaySignature ||
       `${adapter.subject()}|${adapter.sender()}|${container.textContent.length}`;
     if (sig === lastSignature) return; // already scanned this message
     lastSignature = sig;
-    container.dataset.linkshieldSignature = sig;
+    container.dataset.cleanwaySignature = sig;
 
     runScan(container).catch((err) => {
-      console.warn("[LinkShield] webmail scan failed:", err && err.message);
+      console.warn("[Cleanway] webmail scan failed:", err && err.message);
     });
   }
 
@@ -217,13 +217,13 @@
     let bg = "#f1f5f9", fg = "#334155", border = "#cbd5e1";
 
     if (opts.state === "scanning") {
-      icon = "🛡️"; headline = "LinkShield is scanning this email…";
+      icon = "🛡️"; headline = "Cleanway is scanning this email…";
     } else if (opts.state === "rate_limited") {
-      icon = "⏳"; headline = "LinkShield is rate-limited — please wait";
+      icon = "⏳"; headline = "Cleanway is rate-limited — please wait";
       detail = "Too many scans from this network right now. Try again in a minute.";
       bg = "#fef3c7"; fg = "#713f12"; border = "#fcd34d";
     } else if (opts.state === "error") {
-      icon = "⚠️"; headline = "LinkShield couldn't reach the server";
+      icon = "⚠️"; headline = "Cleanway couldn't reach the server";
       detail = opts.error || "";
       bg = "#fef3c7"; fg = "#713f12"; border = "#fcd34d";
     } else if (opts.state === "ready") {

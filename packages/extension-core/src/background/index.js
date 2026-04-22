@@ -1,5 +1,5 @@
 /**
- * LinkShield Background — v3 (bullet-proof)
+ * Cleanway Background — v3 (bullet-proof)
  */
 
 // API base — production Railway default, override via Options page (chrome.storage.local.api_url)
@@ -172,7 +172,7 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
 
 // ── Context menu ──
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({ id: "check-link", title: "Check with LinkShield", contexts: ["link"] });
+  chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
   chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
 });
 

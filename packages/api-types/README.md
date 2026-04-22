@@ -1,6 +1,6 @@
-# @linkshield/api-types
+# @cleanway/api-types
 
-**Generated** TypeScript types for the LinkShield FastAPI backend. Single source of truth for the HTTP contract.
+**Generated** TypeScript types for the Cleanway FastAPI backend. Single source of truth for the HTTP contract.
 
 ## Why
 
@@ -24,7 +24,7 @@ The script:
 ## How to use
 
 ```typescript
-import type { DomainResult, PricingFor, RiskLevel } from "@linkshield/api-types";
+import type { DomainResult, PricingFor, RiskLevel } from "@cleanway/api-types";
 
 function renderBadge(result: DomainResult) {
   if (result.level === "dangerous") return "🔴";
@@ -36,7 +36,7 @@ function renderBadge(result: DomainResult) {
 Or for direct path-based access (advanced):
 
 ```typescript
-import type { paths } from "@linkshield/api-types";
+import type { paths } from "@cleanway/api-types";
 
 type ThisEndpointResponse = paths["/api/v1/check"]["post"]["responses"][200]["content"]["application/json"];
 ```

@@ -68,7 +68,7 @@ def load_benign_domains(max_n: int = 10000) -> list[str]:
 
 def train():
     print("=" * 60)
-    print("LinkShield ML Model Training — CatBoost")
+    print("Cleanway ML Model Training — CatBoost")
     print("=" * 60)
 
     # ── Load data ──

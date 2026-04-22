@@ -5,12 +5,12 @@ type Props = { params: Promise<{ domain: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain } = await params;
   return {
-    title: `Is ${domain} safe? — LinkShield Safety Check`,
+    title: `Is ${domain} safe? — Cleanway Safety Check`,
     description: `Check if ${domain} is a phishing or scam website. Free safety analysis with 42+ detection signals and 9 threat intelligence sources.`,
     openGraph: {
       title: `Is ${domain} safe?`,
-      description: `LinkShield safety report for ${domain}`,
-      url: `https://linkshield.io/check/${domain}`,
+      description: `Cleanway safety report for ${domain}`,
+      url: `https://cleanway.ai/check/${domain}`,
     },
   };
 }
@@ -57,7 +57,7 @@ export default async function CheckPage({ params }: Props) {
     <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh" }}>
       <nav style={{ background: "#0f172af0", borderBottom: "1px solid #1e293b", padding: "14px 24px" }}>
         <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>LinkShield</a>
+          <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>Cleanway</a>
           <a href="https://chrome.google.com/webstore" style={{ background: "#22c55e", color: "#052e16", padding: "8px 18px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Add to Chrome</a>
         </div>
       </nav>
@@ -99,7 +99,7 @@ export default async function CheckPage({ params }: Props) {
 
           {result?.confidence === "low" && (
             <p style={{ fontSize: 13, color: "#f59e0b", fontStyle: "italic" }}>
-              This is a basic analysis. Install LinkShield for real-time protection with 9 threat intelligence sources.
+              This is a basic analysis. Install Cleanway for real-time protection with 9 threat intelligence sources.
             </p>
           )}
         </div>
@@ -110,7 +110,7 @@ export default async function CheckPage({ params }: Props) {
             Get real-time protection
           </h2>
           <p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>
-            LinkShield checks every link automatically. 9 threat sources, ML-powered, zero data stored.
+            Cleanway checks every link automatically. 9 threat sources, ML-powered, zero data stored.
           </p>
           <a href="https://chrome.google.com/webstore" style={{ display: "inline-block", background: "#22c55e", color: "#052e16", padding: "12px 28px", borderRadius: 10, fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
             Add to Chrome &mdash; Free
@@ -124,9 +124,9 @@ export default async function CheckPage({ params }: Props) {
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebPage",
-              name: `Is ${decodedDomain} safe? - LinkShield`,
+              name: `Is ${decodedDomain} safe? - Cleanway`,
               description: `Safety check for ${decodedDomain}. Score: ${score}/100.`,
-              url: `https://linkshield.io/check/${decodedDomain}`,
+              url: `https://cleanway.ai/check/${decodedDomain}`,
             }),
           }}
         />

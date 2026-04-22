@@ -1,4 +1,4 @@
-"""Shared pytest fixtures + environment setup for LinkShield tests."""
+"""Shared pytest fixtures + environment setup for Cleanway tests."""
 import os
 
 # Set DEBUG before any api.* imports — prevents crash on missing prod-only env vars

@@ -18,7 +18,7 @@
  * - IPv6 — the tunnel is v4-only today.
  */
 
-package io.linkshield.app
+package ai.cleanway.app
 
 object DnsUtil {
     const val IP_UDP_HEADER = 28

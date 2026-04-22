@@ -646,12 +646,12 @@ export interface components {
             plan: string;
             /**
              * Success Url
-             * @default https://linkshield.io/success
+             * @default https://cleanway.ai/success
              */
             success_url: string;
             /**
              * Cancel Url
-             * @default https://linkshield.io/pricing
+             * @default https://cleanway.ai/pricing
              */
             cancel_url: string;
         };

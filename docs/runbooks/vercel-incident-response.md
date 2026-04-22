@@ -26,9 +26,9 @@ our public landing. Which is already public.
 
 If an attacker got our Vercel **account** credentials, they could:
 
-- Push a malicious landing build that pretends to be LinkShield and
+- Push a malicious landing build that pretends to be Cleanway and
   exfiltrates visitor input.
-- Redirect `linkshield.io` DNS from Vercel dashboard.
+- Redirect `cleanway.ai` DNS from Vercel dashboard.
 - Install a malicious Vercel-GitHub integration to read/write the repo.
 - Access the payment + usage metadata Vercel records for the account.
 
@@ -51,7 +51,7 @@ If an attacker got our Vercel **account** credentials, they could:
      are all fine.
 
 4. **Vercel → Integrations → GitHub App**
-   - Confirm only `AlexMos555/linkshield` is installed (not "All repos").
+   - Confirm only `AlexMos555/cleanway` is installed (not "All repos").
    - If anything else is listed, remove it.
 
 5. **GitHub → Settings → Security log**
@@ -70,7 +70,7 @@ If an attacker got our Vercel **account** credentials, they could:
    (Vercel lets you scope tokens to a team + project).
 
 8. **Review recent landing deployments**
-   https://vercel.com/dashboard → linkshield-landing → Deployments.
+   https://vercel.com/dashboard → cleanway-landing → Deployments.
    Any deploy SHA not in our git log → rollback to last known-good.
 
 9. **Lock Vercel domain DNS**

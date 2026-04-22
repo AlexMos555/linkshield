@@ -24,7 +24,7 @@ The config auto-starts `next dev` on port 3000 if nothing is listening.
 Override the target with `BASE_URL`:
 
 ```bash
-BASE_URL=https://staging.linkshield.io npm run e2e
+BASE_URL=https://staging.cleanway.ai npm run e2e
 ```
 
 ### CI

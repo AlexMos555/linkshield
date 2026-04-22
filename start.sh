@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════
-# LinkShield — Start Everything
+# Cleanway — Start Everything
 # Usage: ./start.sh
 # ═══════════════════════════════════════════════════
 
@@ -8,7 +8,7 @@ set -e
 cd "$(dirname "$0")"
 
 echo ""
-echo "  🛡️  LinkShield — Starting All Services"
+echo "  🛡️  Cleanway — Starting All Services"
 echo "  ═══════════════════════════════════════"
 echo ""
 
@@ -19,7 +19,7 @@ sleep 1
 
 # ── 1. Start API ──
 echo "  [1/3] Starting API server..."
-DEBUG=true nohup python3 -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload > /tmp/linkshield-api.log 2>&1 &
+DEBUG=true nohup python3 -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload > /tmp/cleanway-api.log 2>&1 &
 API_PID=$!
 sleep 3
 
@@ -28,7 +28,7 @@ if curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; then
   echo "        ✅ API running at http://127.0.0.1:8000"
   echo "        📖 Docs at http://127.0.0.1:8000/docs"
 else
-  echo "        ❌ API failed to start. Check /tmp/linkshield-api.log"
+  echo "        ❌ API failed to start. Check /tmp/cleanway-api.log"
 fi
 
 # ── 2. Start Landing ──
@@ -37,7 +37,7 @@ cd landing
 if [ ! -d "node_modules" ]; then
   npm install --silent 2>/dev/null
 fi
-nohup npx next dev -p 3000 > /tmp/linkshield-landing.log 2>&1 &
+nohup npx next dev -p 3000 > /tmp/cleanway-landing.log 2>&1 &
 LANDING_PID=$!
 cd ..
 sleep 3
@@ -45,7 +45,7 @@ sleep 3
 if curl -s http://127.0.0.1:3000 > /dev/null 2>&1; then
   echo "        ✅ Landing at http://127.0.0.1:3000"
 else
-  echo "        ⚠️  Landing starting... (check /tmp/linkshield-landing.log)"
+  echo "        ⚠️  Landing starting... (check /tmp/cleanway-landing.log)"
 fi
 
 # ── 3. Extension ──
@@ -69,8 +69,8 @@ echo "  Landing:   http://127.0.0.1:3000"
 echo "  Extension: Load unpacked from ./extension"
 echo ""
 echo "  Logs:"
-echo "    API:     tail -f /tmp/linkshield-api.log"
-echo "    Landing: tail -f /tmp/linkshield-landing.log"
+echo "    API:     tail -f /tmp/cleanway-api.log"
+echo "    Landing: tail -f /tmp/cleanway-landing.log"
 echo ""
 echo "  Stop all: pkill -f 'uvicorn|next'"
 echo "  ═══════════════════════════════════════"

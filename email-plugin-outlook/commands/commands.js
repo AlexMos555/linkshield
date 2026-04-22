@@ -27,7 +27,7 @@ function reportPhishing(event) {
     finishWithNotification(
       event,
       "error",
-      "LinkShield couldn't identify the sender for this message.",
+      "Cleanway couldn't identify the sender for this message.",
     );
     return;
   }
@@ -49,7 +49,7 @@ function reportPhishing(event) {
       finishWithNotification(
         event,
         "success",
-        "Reported to LinkShield. Thanks for protecting others.",
+        "Reported to Cleanway. Thanks for protecting others.",
       );
     })
     .catch((err) => {
@@ -74,7 +74,7 @@ function finishWithNotification(event, kind, message) {
   const item = Office.context.mailbox.item;
   if (item && item.notificationMessages && item.notificationMessages.replaceAsync) {
     item.notificationMessages.replaceAsync(
-      "linkshield-report",
+      "cleanway-report",
       {
         type: icon,
         message: message.slice(0, 150),

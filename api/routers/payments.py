@@ -23,7 +23,7 @@ from api.services.auth import get_current_user
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 
-logger = logging.getLogger("linkshield.payments")
+logger = logging.getLogger("cleanway.payments")
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
@@ -38,8 +38,8 @@ PRICE_IDS = {
 
 class CheckoutRequest(BaseModel):
     plan: str  # "personal_monthly", "personal_yearly", "family_monthly", "family_yearly"
-    success_url: str = "https://linkshield.io/success"
-    cancel_url: str = "https://linkshield.io/pricing"
+    success_url: str = "https://cleanway.ai/success"
+    cancel_url: str = "https://cleanway.ai/pricing"
 
 
 class CheckoutResponse(BaseModel):
@@ -157,7 +157,7 @@ async def customer_portal(user: AuthUser = Depends(get_current_user)):
 
         session = stripe.billing_portal.Session.create(
             customer=customers.data[0].id,
-            return_url="https://linkshield.io/settings",
+            return_url="https://cleanway.ai/settings",
         )
         return {"portal_url": session.url}
 

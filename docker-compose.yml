@@ -16,11 +16,11 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-linkshield_dev}
+    command: redis-server --requirepass ${REDIS_PASSWORD:-cleanway_dev}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-linkshield_dev}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-cleanway_dev}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3

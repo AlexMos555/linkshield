@@ -1,4 +1,4 @@
-// LinkShield Options Page Script
+// Cleanway Options Page Script
 
 // ══════════════════════════════════════════════════════════════════════
 // Skill Level (Kids / Regular / Granny / Pro)
@@ -87,7 +87,7 @@ async function pushSkillToApi(patch) {
     });
   } catch (e) {
     // Offline or unauthenticated — local storage still authoritative
-    console.warn("[LinkShield] skill sync failed:", e && e.message);
+    console.warn("[Cleanway] skill sync failed:", e && e.message);
   }
 }
 
@@ -242,7 +242,7 @@ document.getElementById("copy-referral").addEventListener("click", async () => {
     code = Math.random().toString(36).substring(2, 10).toUpperCase();
     await chrome.storage.local.set({ referral_code: code });
   }
-  const url = "https://linkshield.io/ref/" + code;
+  const url = "https://cleanway.ai/ref/" + code;
   await navigator.clipboard.writeText(url);
   document.getElementById("copy-referral").textContent = "Copied!";
   setTimeout(() => document.getElementById("copy-referral").textContent = "Copy link", 2000);
@@ -263,7 +263,7 @@ document.getElementById("export-data").addEventListener("click", () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "linkshield-export.json";
+    a.download = "cleanway-export.json";
     a.click();
     URL.revokeObjectURL(url);
   });

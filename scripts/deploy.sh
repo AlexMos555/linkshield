@@ -1,11 +1,11 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════
-# LinkShield — Full Deploy Script
+# Cleanway — Full Deploy Script
 # Run: chmod +x scripts/deploy.sh && ./scripts/deploy.sh
 # ═══════════════════════════════════════════════════
 
 set -e
-echo "🛡️  LinkShield Deploy"
+echo "🛡️  Cleanway Deploy"
 echo "===================="
 
 # Colors
@@ -100,11 +100,11 @@ echo ""
 echo "6. Update extension:"
 echo "   # Set API_BASE in extension/src/background/index.js"
 echo "   # Set ALLOWED_ORIGINS in .env (include extension ID)"
-echo "   # Re-zip: cd extension && zip -r ../linkshield.zip ."
+echo "   # Re-zip: cd extension && zip -r ../cleanway.zip ."
 echo ""
 echo "7. Submit to Chrome Web Store:"
 echo "   # https://chrome.google.com/webstore/devconsole"
-echo "   # Upload linkshield-extension.zip"
+echo "   # Upload cleanway-extension.zip"
 echo "   # Fill listing from extension/STORE_LISTING.md"
 echo ""
 echo -e "${GREEN}Done! All code is built and ready.${NC}"

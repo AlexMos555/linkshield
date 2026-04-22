@@ -22,7 +22,7 @@ from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 from api.config import get_settings
 
-logger = logging.getLogger("linkshield.org")
+logger = logging.getLogger("cleanway.org")
 
 router = APIRouter(prefix="/api/v1/org", tags=["organization"])
 
@@ -194,7 +194,7 @@ async def launch_simulation(
         "sender_name": request.sender_name,
         "subject": request.subject,
         "message": f"Simulation queued. {len(request.target_emails)} emails will be sent within 24 hours.",
-        "tracking_url": f"https://linkshield.io/org/{org_id}/sim/{sim_id}",
+        "tracking_url": f"https://cleanway.ai/org/{org_id}/sim/{sim_id}",
     }
 
 

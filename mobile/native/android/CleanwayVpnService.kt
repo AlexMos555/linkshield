@@ -1,5 +1,5 @@
 /**
- * LinkShield Android VPN Service
+ * Cleanway Android VPN Service
  *
  * DNS-only local VPN. Intercepts DNS queries, decides locally whether a
  * domain is blocked, otherwise forwards the query to Cloudflare's 1.1.1.1
@@ -26,14 +26,14 @@
  * Setup: `AndroidManifest.xml` must declare:
  *   <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
  *   <service
- *     android:name="io.linkshield.app.LinkShieldVpnService"
+ *     android:name="ai.cleanway.app.CleanwayVpnService"
  *     android:permission="android.permission.BIND_VPN_SERVICE"
  *     android:exported="false">
  *     <intent-filter><action android:name="android.net.VpnService" /></intent-filter>
  *   </service>
  */
 
-package io.linkshield.app
+package ai.cleanway.app
 
 import android.content.Intent
 import android.net.VpnService
@@ -49,7 +49,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-class LinkShieldVpnService : VpnService() {
+class CleanwayVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
 
@@ -77,7 +77,7 @@ class LinkShieldVpnService : VpnService() {
 
     private fun startVpn() {
         val builder = Builder()
-            .setSession("LinkShield")
+            .setSession("Cleanway")
             .addAddress(VPN_CLIENT_IP, 32)
             .addDnsServer(VPN_GATEWAY_IP)
             .addRoute(VPN_GATEWAY_IP, 32) // Only route DNS to us
@@ -98,7 +98,7 @@ class LinkShieldVpnService : VpnService() {
         running = true
         Log.i(TAG, "tunnel_started")
 
-        Thread({ dnsProxyLoop() }, "LinkShield-DNS").start()
+        Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
     }
 
     private fun stopVpn() {
@@ -265,9 +265,9 @@ class LinkShieldVpnService : VpnService() {
     }
 
     companion object {
-        private const val TAG = "LinkShieldVPN"
-        const val ACTION_STOP = "io.linkshield.VPN_STOP"
-        const val ACTION_DOMAIN_BLOCKED = "io.linkshield.DOMAIN_BLOCKED"
+        private const val TAG = "CleanwayVPN"
+        const val ACTION_STOP = "ai.cleanway.VPN_STOP"
+        const val ACTION_DOMAIN_BLOCKED = "ai.cleanway.DOMAIN_BLOCKED"
         const val EXTRA_DOMAIN = "domain"
         const val EXTRA_TIMESTAMP = "ts_ms"
 
@@ -290,7 +290,7 @@ object DomainPolicy {
         "google.com",
         "googleapis.com",
         "android.com",
-        "linkshield.io",
+        "cleanway.ai",
         "cloudflare-dns.com",
     )
 

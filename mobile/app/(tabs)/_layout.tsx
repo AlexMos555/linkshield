@@ -22,7 +22,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Shield",
-          headerTitle: "LinkShield",
+          headerTitle: "Cleanway",
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>&#x1F6E1;</Text>,
         }}
       />

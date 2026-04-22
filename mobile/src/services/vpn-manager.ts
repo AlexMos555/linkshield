@@ -64,7 +64,7 @@ export async function startProtection(): Promise<ProtectionStatus> {
 
   if (mode === "vpn") {
     // Start local VPN tunnel
-    // Requires native module: LinkShieldVPN.start()
+    // Requires native module: CleanwayVPN.start()
     _status = { mode: "vpn", active: true, vpnConflict: false, domainsChecked: 0, domainsBlocked: 0 };
   } else if (mode === "dns") {
     // Configure DNS profile
@@ -110,7 +110,7 @@ export function getDNSSetupInstructions(platform: "ios" | "android"): string[] {
       "1. Go to Settings → General → VPN & Device Management",
       "2. Tap 'DNS' → 'Configure DNS'",
       "3. Select 'Manual'",
-      "4. Add DNS server: dns.linkshield.io",
+      "4. Add DNS server: dns.cleanway.ai",
       "5. Save",
       "",
       "Or install our DNS profile (tap button below)",
@@ -119,7 +119,7 @@ export function getDNSSetupInstructions(platform: "ios" | "android"): string[] {
   return [
     "1. Go to Settings → Network & Internet → Private DNS",
     "2. Select 'Private DNS provider hostname'",
-    "3. Enter: dns.linkshield.io",
+    "3. Enter: dns.cleanway.ai",
     "4. Save",
   ];
 }

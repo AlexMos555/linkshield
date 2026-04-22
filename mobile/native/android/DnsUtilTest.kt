@@ -7,7 +7,7 @@
  *   ./gradlew :vpn:test
  */
 
-package io.linkshield.app
+package ai.cleanway.app
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -191,7 +191,7 @@ class DomainPolicyTest {
         assertTrue(DomainPolicy.isSystemDomain("google.com"))
         assertTrue(DomainPolicy.isSystemDomain("api.googleapis.com"))
         assertTrue(DomainPolicy.isSystemDomain("play.google.com"))
-        assertTrue(DomainPolicy.isSystemDomain("linkshield.io"))
+        assertTrue(DomainPolicy.isSystemDomain("cleanway.ai"))
         assertTrue(DomainPolicy.isSystemDomain("clients3.cloudflare-dns.com"))
     }
 

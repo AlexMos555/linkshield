@@ -2,12 +2,12 @@ export default function Terms() {
   return (
     <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh" }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "60px 24px" }}>
-        <a href="/" style={{ color: "#60a5fa", fontSize: 14, textDecoration: "none" }}>&larr; Back to LinkShield</a>
+        <a href="/" style={{ color: "#60a5fa", fontSize: 14, textDecoration: "none" }}>&larr; Back to Cleanway</a>
         <h1 style={{ fontSize: 36, fontWeight: 800, color: "#f8fafc", margin: "24px 0 8px" }}>Terms of Service</h1>
         <p style={{ color: "#64748b", marginBottom: 40 }}>Last updated: April 7, 2026</p>
 
         <S t="1. Service Description">
-          <p>LinkShield provides phishing protection through browser extensions, mobile applications, and web APIs. The service checks domain names against threat intelligence databases and provides risk assessments.</p>
+          <p>Cleanway provides phishing protection through browser extensions, mobile applications, and web APIs. The service checks domain names against threat intelligence databases and provides risk assessments.</p>
         </S>
 
         <S t="2. Accounts">
@@ -15,7 +15,7 @@ export default function Terms() {
         </S>
 
         <S t="3. Free and Paid Plans">
-          <p>LinkShield offers free and paid subscription plans. Free plans include limited API checks per day. Paid plans provide unlimited checks and additional features.</p>
+          <p>Cleanway offers free and paid subscription plans. Free plans include limited API checks per day. Paid plans provide unlimited checks and additional features.</p>
           <p>Paid subscriptions are billed monthly or annually through Stripe, Apple In-App Purchase, or Google Play Billing. All subscriptions include a 14-day free trial.</p>
           <p>You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period. No refunds are provided for partial billing periods.</p>
         </S>
@@ -35,7 +35,7 @@ export default function Terms() {
         </S>
 
         <S t="5. Accuracy and Limitations">
-          <p>LinkShield provides risk assessments based on multiple data sources and machine learning. These assessments are advisory and not definitive.</p>
+          <p>Cleanway provides risk assessments based on multiple data sources and machine learning. These assessments are advisory and not definitive.</p>
           <p><strong>We do not guarantee:</strong></p>
           <ul>
             <li>100% detection of all phishing or malicious sites</li>
@@ -43,20 +43,20 @@ export default function Terms() {
             <li>Real-time detection of newly created phishing sites</li>
             <li>Protection against all forms of online fraud</li>
           </ul>
-          <p>LinkShield is one layer of protection and should be used alongside other security practices (strong passwords, 2FA, caution with suspicious emails).</p>
+          <p>Cleanway is one layer of protection and should be used alongside other security practices (strong passwords, 2FA, caution with suspicious emails).</p>
         </S>
 
         <S t="6. Privacy">
-          <p>Your use of LinkShield is governed by our <a href="/privacy-policy" style={{ color: "#60a5fa" }}>Privacy Policy</a>. In summary: your browsing data stays on your device, and our servers store only account information.</p>
+          <p>Your use of Cleanway is governed by our <a href="/privacy-policy" style={{ color: "#60a5fa" }}>Privacy Policy</a>. In summary: your browsing data stays on your device, and our servers store only account information.</p>
         </S>
 
         <S t="7. Intellectual Property">
-          <p>LinkShield and its original content, features, and functionality are owned by LinkShield and protected by international copyright, trademark, and other intellectual property laws.</p>
+          <p>Cleanway and its original content, features, and functionality are owned by Cleanway and protected by international copyright, trademark, and other intellectual property laws.</p>
           <p>The browser extension client-side code is open source. The server-side scoring engine, ML models, and threat intelligence aggregation are proprietary.</p>
         </S>
 
         <S t="8. Limitation of Liability">
-          <p>LinkShield is provided &quot;as is&quot; without warranties of any kind. To the maximum extent permitted by law, LinkShield shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of data, loss of profits, or business interruption.</p>
+          <p>Cleanway is provided &quot;as is&quot; without warranties of any kind. To the maximum extent permitted by law, Cleanway shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of data, loss of profits, or business interruption.</p>
           <p>Our total liability for any claim shall not exceed the amount you paid for the service in the 12 months preceding the claim.</p>
         </S>
 
@@ -69,11 +69,11 @@ export default function Terms() {
         </S>
 
         <S t="11. Governing Law">
-          <p>These terms are governed by the laws of the jurisdiction in which LinkShield operates, without regard to conflict of law provisions.</p>
+          <p>These terms are governed by the laws of the jurisdiction in which Cleanway operates, without regard to conflict of law provisions.</p>
         </S>
 
         <S t="12. Contact">
-          <p>Questions about these terms: <a href="mailto:legal@linkshield.io" style={{ color: "#60a5fa" }}>legal@linkshield.io</a></p>
+          <p>Questions about these terms: <a href="mailto:legal@cleanway.ai" style={{ color: "#60a5fa" }}>legal@cleanway.ai</a></p>
         </S>
       </div>
     </div>

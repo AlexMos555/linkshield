@@ -89,7 +89,7 @@ test("comparison table shows competitor columns", async ({ page }) => {
   await page.goto("/en");
   // Competitor names are brand names — identical across all locales
   const body = page.locator("body");
-  await expect(body).toContainText("LinkShield");
+  await expect(body).toContainText("Cleanway");
   await expect(body).toContainText("Guardio");
   await expect(body).toContainText("Norton 360");
 });

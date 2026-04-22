@@ -3,7 +3,7 @@ export default function BusinessPage() {
     <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh" }}>
       <nav style={{ background: "#0f172af0", borderBottom: "1px solid #1e293b", padding: "14px 24px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>LinkShield</a>
+          <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>Cleanway</a>
           <a href="/business#pricing" style={{ background: "#3b82f6", color: "white", padding: "8px 18px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Start Free Trial</a>
         </div>
       </nav>
@@ -38,7 +38,7 @@ export default function BusinessPage() {
             </ul>
           </div>
           <div style={{ background: "#1e293b", borderRadius: 14, padding: 24, border: "1px solid #22c55e40" }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#22c55e", marginBottom: 12 }}>LinkShield Business</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#22c55e", marginBottom: 12 }}>Cleanway Business</h3>
             <ul style={{ listStyle: "none", padding: 0, color: "#94a3b8", fontSize: 14, lineHeight: 2 }}>
               <li style={{ color: "#22c55e" }}>1-seat minimum</li>
               <li style={{ color: "#22c55e" }}>$3.99/user/month ($48/year)</li>
@@ -72,7 +72,7 @@ export default function BusinessPage() {
           <h2 style={{ fontSize: 24, fontWeight: 800, color: "#f8fafc", marginBottom: 8 }}>$3.99/user/month</h2>
           <p style={{ color: "#94a3b8", marginBottom: 24 }}>Billed monthly. Cancel anytime. 14-day free trial.</p>
           <p style={{ color: "#64748b", fontSize: 14 }}>Includes: real-time blocking, phishing simulation, org dashboard, SSO, API access, priority support.</p>
-          <a href="mailto:business@linkshield.io" style={{ display: "inline-block", background: "#3b82f6", color: "white", padding: "14px 32px", borderRadius: 10, fontWeight: 700, fontSize: 16, textDecoration: "none", marginTop: 20 }}>
+          <a href="mailto:business@cleanway.ai" style={{ display: "inline-block", background: "#3b82f6", color: "white", padding: "14px 32px", borderRadius: 10, fontWeight: 700, fontSize: 16, textDecoration: "none", marginTop: 20 }}>
             Start Free Trial
           </a>
         </div>

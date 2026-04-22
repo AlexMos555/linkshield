@@ -6,13 +6,13 @@
  *
  * Run:
  *   swift test --package-path mobile/native/ios    (stand-alone)
- *   xcodebuild test -scheme LinkShield -only-testing:LinkShieldTests/DNSParserTests
+ *   xcodebuild test -scheme Cleanway -only-testing:CleanwayTests/DNSParserTests
  */
 
 import Foundation
 import Testing
 
-@testable import LinkShieldVPN
+@testable import CleanwayVPN
 
 // ─── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -166,7 +166,7 @@ func systemSuffixesNeverBlocked() {
     #expect(DomainPolicy.isSystemDomain("www.apple.com"))
     #expect(DomainPolicy.isSystemDomain("api.icloud.com"))
     #expect(DomainPolicy.isSystemDomain("mzstatic.com"))
-    #expect(DomainPolicy.isSystemDomain("linkshield.io"))
+    #expect(DomainPolicy.isSystemDomain("cleanway.ai"))
 }
 
 @Test("non-system domains are not system domains")

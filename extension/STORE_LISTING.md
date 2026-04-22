@@ -1,14 +1,14 @@
 # Chrome Web Store Listing
 
 ## Name
-LinkShield — Phishing Protection
+Cleanway — Phishing Protection
 
 ## Short Description (132 chars max)
 Automatic phishing link detection with privacy audit. 9 threat sources, ML-powered. Your browsing data never leaves your device.
 
 ## Detailed Description
 
-LinkShield automatically checks every link you encounter against 9 threat intelligence sources and a machine learning model trained to catch phishing.
+Cleanway automatically checks every link you encounter against 9 threat intelligence sources and a machine learning model trained to catch phishing.
 
 WHAT IT DOES:
 - Scans every link on every page — red, yellow, green badges show safety at a glance
@@ -46,7 +46,7 @@ PERMISSIONS EXPLAINED:
 - "Read and change all your data on all websites" — Required to scan links on pages. We only read link URLs (never page content).
 - "Storage" — Stores your settings and check history ON YOUR DEVICE only.
 
-Open source clients. Privacy policy: https://linkshield.io/privacy-policy
+Open source clients. Privacy policy: https://cleanway.ai/privacy-policy
 
 ## Category
 Productivity
@@ -55,10 +55,10 @@ Productivity
 English
 
 ## Website
-https://linkshield.io
+https://cleanway.ai
 
 ## Support URL
-https://linkshield.io/support
+https://cleanway.ai/support
 
 ## Privacy Policy URL
-https://linkshield.io/privacy-policy
+https://cleanway.ai/privacy-policy

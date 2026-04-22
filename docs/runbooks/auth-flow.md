@@ -1,7 +1,7 @@
 # Auth Flow Audit (Mobile)
 
 Status: **#10 audit complete** — P0 bugs fixed, remaining work itemized.
-Scope: the LinkShield mobile app (Expo/React Native). Landing + extension
+Scope: the Cleanway mobile app (Expo/React Native). Landing + extension
 currently have no auth UI (they rely on the mobile app to sign in and the
 API token to be copied into their storage — see the `Open questions`
 section below for a proposal).
@@ -27,7 +27,7 @@ transparently.
 | Sign up | ✅ Works | `auth.ts::signUp` | Returns `null` when email confirmation required — UI prompts user to check inbox |
 | Sign out | ✅ Works | `auth.ts::signOut` | Best-effort API call + clears SecureStore |
 | Token refresh | ✅ Works | `auth.ts::refreshAccessToken` | Called transparently by `restoreSession` when <2 min to expiry; clears session on 401 |
-| Session restore on cold boot | ✅ Works | `app/_layout.tsx` + `auth.ts::restoreSession` | Runs in `useEffect`, sets in-memory token for `@linkshield/api-client` |
+| Session restore on cold boot | ✅ Works | `app/_layout.tsx` + `auth.ts::restoreSession` | Runs in `useEffect`, sets in-memory token for `@cleanway/api-client` |
 | Password reset request | ✅ Works | `auth.ts::sendPasswordResetEmail` | GoTrue's `/recover` returns 200 even for non-existent emails (anti-enumeration) |
 | Guest mode | ✅ Works | `auth.tsx::"Continue without account"` | No auth = no sync, check quota only |
 
@@ -50,7 +50,7 @@ transparently.
 
 ## P1 gaps — recommended follow-ups
 
-1. **Email verification deep link**. Supabase sends a `https://<project>.supabase.co/auth/v1/verify?token=...` link. On mobile we should register the scheme `linkshield://verify?token=...` as the `redirectTo` and handle it in a deep-link route. Currently the user has to click the email link on a device where the mobile app can intercept it.
+1. **Email verification deep link**. Supabase sends a `https://<project>.supabase.co/auth/v1/verify?token=...` link. On mobile we should register the scheme `cleanway://verify?token=...` as the `redirectTo` and handle it in a deep-link route. Currently the user has to click the email link on a device where the mobile app can intercept it.
 2. **OAuth providers**. Mobile has zero social login. Apple Sign In is mandatory for App Store approval if any third-party auth is offered — so consider adding it along with Google when we wire OAuth.
 3. **Biometric gate** (optional but a good practice). Cache an "unlocked-until-ts" boolean; prompt `LocalAuthentication.authenticateAsync` when starting the app if a session exists. Improves mobile security without hurting UX.
 4. **Rate limit awareness**. Backend rate-limits login attempts but the mobile UI doesn't show a "try again in N seconds" countdown. Parse the `Retry-After` header from a 429 and surface.

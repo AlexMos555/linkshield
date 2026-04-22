@@ -30,7 +30,7 @@ from api.services.auth import get_optional_user
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 
-logger = logging.getLogger("linkshield.breach")
+logger = logging.getLogger("cleanway.breach")
 
 router = APIRouter(prefix="/api/v1/breach", tags=["breach"])
 
@@ -60,7 +60,7 @@ async def check_breach(
             resp = await client.get(
                 f"https://api.pwnedpasswords.com/range/{prefix}",
                 headers={
-                    "User-Agent": "LinkShield-BreachCheck",
+                    "User-Agent": "Cleanway-BreachCheck",
                     "Add-Padding": "true",  # Adds padding to prevent response size analysis
                 },
             )
@@ -130,7 +130,7 @@ async def check_domain_breaches(
                 f"https://haveibeenpwned.com/api/v3/breaches?domain={domain}",
                 headers={
                     "hibp-api-key": hibp_key,
-                    "User-Agent": "LinkShield-BreachCheck",
+                    "User-Agent": "Cleanway-BreachCheck",
                 },
             )
 

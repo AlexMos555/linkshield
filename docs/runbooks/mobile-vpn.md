@@ -1,6 +1,6 @@
 # Mobile native VPN — integration runbook
 
-LinkShield mobile ships a DNS-only VPN on both platforms. The native code lives in:
+Cleanway mobile ships a DNS-only VPN on both platforms. The native code lives in:
 
 ```
 mobile/native/ios/
@@ -8,7 +8,7 @@ mobile/native/ios/
   DNSParser.swift              — pure-Swift wire-format parser (testable)
   DNSParserTests.swift         — Swift Testing suite
 mobile/native/android/
-  LinkShieldVpnService.kt      — VpnService entry point
+  CleanwayVpnService.kt      — VpnService entry point
   DnsUtil.kt                   — pure-Kotlin wire-format parser (testable)
   DnsUtilTest.kt               — kotlin.test JVM suite
 ```
@@ -17,19 +17,19 @@ mobile/native/android/
 
 - Only DNS queries are parsed. No TCP/UDP payload is ever inspected.
 - Only domain names leave the device (via `GET /api/v1/public/check/{domain}`).
-- System suffixes (`google.com`, `apple.com`, `linkshield.io`, …) are NEVER blocked — they are centralized in `DomainPolicy` on both platforms. Keep the two lists in sync.
+- System suffixes (`google.com`, `apple.com`, `cleanway.ai`, …) are NEVER blocked — they are centralized in `DomainPolicy` on both platforms. Keep the two lists in sync.
 
 ## Expo integration — required config plugin
 
 The current Expo managed workflow does not register the native VPN targets. A config plugin is required to:
 
-1. **iOS**: add a Network Extension target with `NEPacketTunnelProvider` entitlement, wire the `App Groups` capability to `group.io.linkshield.app`, and copy `PacketTunnelProvider.swift` + `DNSParser.swift` into the extension target.
-2. **Android**: add `VpnService` declaration + `BIND_VPN_SERVICE` permission to the merged `AndroidManifest.xml`, and include `LinkShieldVpnService.kt` + `DnsUtil.kt` in the app sources.
+1. **iOS**: add a Network Extension target with `NEPacketTunnelProvider` entitlement, wire the `App Groups` capability to `group.ai.cleanway.app`, and copy `PacketTunnelProvider.swift` + `DNSParser.swift` into the extension target.
+2. **Android**: add `VpnService` declaration + `BIND_VPN_SERVICE` permission to the merged `AndroidManifest.xml`, and include `CleanwayVpnService.kt` + `DnsUtil.kt` in the app sources.
 
 Scaffold:
 
 ```
-mobile/plugins/with-linkshield-vpn/
+mobile/plugins/with-cleanway-vpn/
   index.ts             — entry plugin, composes iOS + Android
   ios.ts               — withXcodeProject + withEntitlementsPlist
   android.ts           — withAndroidManifest + withSourceFiles
@@ -40,7 +40,7 @@ Apply in `app.json`:
 ```json
 {
   "expo": {
-    "plugins": ["./plugins/with-linkshield-vpn"]
+    "plugins": ["./plugins/with-cleanway-vpn"]
   }
 }
 ```
@@ -49,15 +49,15 @@ Apply in `app.json`:
 
 **iOS** (from main app target — no simulator required):
 ```bash
-xcodebuild test -scheme LinkShield \
-  -only-testing:LinkShieldTests/DNSParserTests \
+xcodebuild test -scheme Cleanway \
+  -only-testing:CleanwayTests/DNSParserTests \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
 **Android** (pure JVM):
 ```bash
-./gradlew :app:testDebugUnitTest --tests "io.linkshield.app.DnsUtil*"
-./gradlew :app:testDebugUnitTest --tests "io.linkshield.app.DomainPolicyTest"
+./gradlew :app:testDebugUnitTest --tests "ai.cleanway.app.DnsUtil*"
+./gradlew :app:testDebugUnitTest --tests "ai.cleanway.app.DomainPolicyTest"
 ```
 
 Both suites parse synthesized DNS query packets to assert:
@@ -82,20 +82,20 @@ Both suites parse synthesized DNS query packets to assert:
 
 ### iOS
 
-1. Attach via Xcode → Debug → Attach to Process → pick `LinkShield (Extension)` once the VPN is enabled.
-2. Console app on the Mac: filter for `subsystem == "io.linkshield.app"` and `category == "vpn.tunnel"`.
+1. Attach via Xcode → Debug → Attach to Process → pick `Cleanway (Extension)` once the VPN is enabled.
+2. Console app on the Mac: filter for `subsystem == "ai.cleanway.app"` and `category == "vpn.tunnel"`.
 3. If the tunnel fails to start, the error message is logged via `os.Logger.error("tunnel_start_failed: …")`.
 
 ### Android
 
 ```bash
-adb logcat -s LinkShieldVPN:V
+adb logcat -s CleanwayVPN:V
 ```
 
 Expected log stream on healthy startup:
 
 ```
-LinkShieldVPN I tunnel_started
+CleanwayVPN I tunnel_started
 ```
 
 If it logs `establish() returned null`, the VPN permission was revoked — prompt the user to re-enable via the app.

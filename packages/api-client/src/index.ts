@@ -1,14 +1,14 @@
 /**
- * @linkshield/api-client
+ * @cleanway/api-client
  *
- * Thin, typed fetch wrapper for the LinkShield API. Goals:
- *   1. Single contract — consumers import types from @linkshield/api-types
+ * Thin, typed fetch wrapper for the Cleanway API. Goals:
+ *   1. Single contract — consumers import types from @cleanway/api-types
  *   2. Fail predictably — timeout, typed errors (no thrown strings)
  *   3. No framework assumption — works in Next.js (server + client), RN, extensions, plain browsers
  *   4. Privacy-preserving — never serializes full URLs to the server; only domains go over the wire
  *
  * Usage:
- *   import { createClient } from "@linkshield/api-client";
+ *   import { createClient } from "@cleanway/api-client";
  *   const api = createClient({ baseUrl: "https://web-production-fe08.up.railway.app" });
  *   const { data, error } = await api.pricing.forCountry("US");
  *   if (error) return showErrorUI(error);
@@ -19,7 +19,7 @@ import type {
   PricingFor,
   PricingTiers,
   HealthResponse,
-} from "@linkshield/api-types";
+} from "@cleanway/api-types";
 
 // ── Error shapes ──────────────────────────────────────────────────
 
@@ -168,7 +168,7 @@ function extractErrorMessage(body: unknown): string | undefined {
 
 // ── Public client shape ───────────────────────────────────────────
 
-export interface LinkShieldClient {
+export interface CleanwayClient {
   readonly baseUrl: string;
   health(): Promise<Result<HealthResponse>>;
   check: {
@@ -183,7 +183,7 @@ export interface LinkShieldClient {
   };
 }
 
-export function createClient(opts: ClientOptions): LinkShieldClient {
+export function createClient(opts: ClientOptions): CleanwayClient {
   return {
     baseUrl: opts.baseUrl,
 
@@ -221,4 +221,4 @@ export function createClient(opts: ClientOptions): LinkShieldClient {
 }
 
 // Re-export the underlying types so consumers don't need 2 imports
-export type { DomainResult, PricingFor, PricingTiers, HealthResponse } from "@linkshield/api-types";
+export type { DomainResult, PricingFor, PricingTiers, HealthResponse } from "@cleanway/api-types";

@@ -14,7 +14,7 @@ from fastapi import HTTPException, Header
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
 
-logger = logging.getLogger("linkshield.auth")
+logger = logging.getLogger("cleanway.auth")
 
 # Cache tier in Redis for 5 minutes
 _TIER_CACHE_TTL = 300

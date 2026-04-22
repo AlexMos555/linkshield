@@ -1,4 +1,4 @@
-# @linkshield/email-templates
+# @cleanway/email-templates
 
 Transactional email templates — 7 templates × 10 languages, pre-rendered at build time, sent via provider-agnostic Python service.
 
@@ -42,16 +42,16 @@ Transactional email templates — 7 templates × 10 languages, pre-rendered at b
 
 | Template | Subject (EN) | Trigger |
 |---|---|---|
-| `welcome` | "Welcome to LinkShield — you're protected now" | Account created |
-| `receipt` | "Your LinkShield receipt" | Stripe payment succeeded |
-| `weekly_report` | "Your week on LinkShield" | Sunday 08:00 UTC cron |
-| `family_invite` | "$NAME$ invited you to join their LinkShield family" | Family admin adds member |
+| `welcome` | "Welcome to Cleanway — you're protected now" | Account created |
+| `receipt` | "Your Cleanway receipt" | Stripe payment succeeded |
+| `weekly_report` | "Your week on Cleanway" | Sunday 08:00 UTC cron |
+| `family_invite` | "$NAME$ invited you to join their Cleanway family" | Family admin adds member |
 | `breach_alert` | "Your email was found in a data breach" | HIBP webhook / breach check match |
-| `subscription_cancel` | "Your LinkShield subscription was canceled" | Stripe subscription.deleted |
-| `granny_mode_invite` | "$NAME$ set up LinkShield protection for you" | Family admin enables Granny mode on a member device |
+| `subscription_cancel` | "Your Cleanway subscription was canceled" | Stripe subscription.deleted |
+| `granny_mode_invite` | "$NAME$ set up Cleanway protection for you" | Family admin enables Granny mode on a member device |
 
 Each template has a specific tone:
-- `granny_mode_invite` uses simplest vocabulary, assumes recipient is 60+ and may not have seen LinkShield before
+- `granny_mode_invite` uses simplest vocabulary, assumes recipient is 60+ and may not have seen Cleanway before
 - `receipt` is formal ("Hello NAME") — contains financial info
 - `weekly_report` is warm-casual ("Hi NAME") — retention-focused
 - `breach_alert` is urgent but not scary — "change your password" with clear next step
@@ -80,7 +80,7 @@ Each template has a specific tone:
 ```bash
 node scripts/build-emails.mjs
 # or via npm workspaces:
-npm run build -w @linkshield/email-templates
+npm run build -w @cleanway/email-templates
 ```
 
 Output:
@@ -90,7 +90,7 @@ Output:
 
 ## Substitution model
 
-Templates are rendered with FIXTURE values (`Alex`, `https://linkshield.example/...`).
+Templates are rendered with FIXTURE values (`Alex`, `https://cleanway.example/...`).
 Backend substitutes by REPLACING the fixture string with the real value.
 
 Example: template rendered with `firstName: "Alex"` → HTML contains "Hi Alex,".

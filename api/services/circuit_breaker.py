@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Coroutine, TypeVar
 
-logger = logging.getLogger("linkshield.circuit_breaker")
+logger = logging.getLogger("cleanway.circuit_breaker")
 
 T = TypeVar("T")
 

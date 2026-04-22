@@ -1,5 +1,5 @@
 {
-  "name": "linkshield-landing",
+  "name": "cleanway-landing",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,8 +12,8 @@
     "e2e:install": "playwright install --with-deps chromium webkit"
   },
   "dependencies": {
-    "@linkshield/api-client": "*",
-    "@linkshield/api-types": "*",
+    "@cleanway/api-client": "*",
+    "@cleanway/api-types": "*",
     "@tailwindcss/postcss": "^4.2.2",
     "next": "15.1.11",
     "next-intl": "^4.9.1",

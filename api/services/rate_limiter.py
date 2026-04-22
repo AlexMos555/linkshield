@@ -29,7 +29,7 @@ from api.models.schemas import AuthUser, UserTier
 from api.services.auth import get_current_user
 from api.services.cache import get_redis
 
-logger = logging.getLogger("linkshield.rate_limiter")
+logger = logging.getLogger("cleanway.rate_limiter")
 
 RateLimitMode = Literal["user", "ip", "sensitive", "public"]
 
@@ -86,7 +86,7 @@ async def check_rate_limit(user: AuthUser, num_domains: int = 1) -> int:
                     "daily_limit": daily_limit,
                     "used": current,
                     "tier": user.tier.value,
-                    "upgrade_url": "https://linkshield.io/pricing",
+                    "upgrade_url": "https://cleanway.ai/pricing",
                 },
             )
 

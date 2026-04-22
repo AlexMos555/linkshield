@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Optional
 
-logger = logging.getLogger("linkshield.ml_scorer")
+logger = logging.getLogger("cleanway.ml_scorer")
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 _model = None

@@ -35,7 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-logger = logging.getLogger("linkshield.email")
+logger = logging.getLogger("cleanway.email")
 
 # ─── Template manifest (built by scripts/build-emails.mjs) ──────
 _ROOT = Path(__file__).resolve().parent.parent.parent
@@ -120,7 +120,7 @@ def render_template(
         template: key from the registry
         locale: target language; falls back to English if not rendered
         fixture_overrides: {fixture_value: real_value} pairs, e.g.
-            {"Alex": user.first_name, "https://linkshield.example/scan": scan_link}
+            {"Alex": user.first_name, "https://cleanway.example/scan": scan_link}
     """
     if locale not in SUPPORTED_LOCALES:
         logger.warning("email.locale.unknown", extra={"locale": locale, "fallback": "en"})
@@ -343,9 +343,9 @@ async def send_template(
         # Signal this is automated so replies don't create support tickets
         "Auto-Submitted": "auto-generated",
         "Precedence": "bulk",
-        # X-LinkShield-* for internal correlation
-        "X-LinkShield-Template": template,
-        "X-LinkShield-Locale": locale,
+        # X-Cleanway-* for internal correlation
+        "X-Cleanway-Template": template,
+        "X-Cleanway-Locale": locale,
     }
 
     return await get_provider().send(
@@ -361,7 +361,7 @@ async def send_template(
 
 def _get_settings() -> dict[str, str]:
     return {
-        "from_addr": os.environ.get("EMAIL_FROM_ADDR", "no-reply@linkshield.example"),
-        "from_name": os.environ.get("EMAIL_FROM_NAME", "LinkShield"),
-        "from_domain": os.environ.get("EMAIL_FROM_DOMAIN", "linkshield.example"),
+        "from_addr": os.environ.get("EMAIL_FROM_ADDR", "no-reply@cleanway.example"),
+        "from_name": os.environ.get("EMAIL_FROM_NAME", "Cleanway"),
+        "from_domain": os.environ.get("EMAIL_FROM_DOMAIN", "cleanway.example"),
     }

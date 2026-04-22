@@ -31,7 +31,7 @@ export default function AuthScreen() {
 
     if (!isSupabaseConfigured()) {
       setError(
-        "Authentication is not configured. Contact support@linkshield.io.",
+        "Authentication is not configured. Contact support@cleanway.ai.",
       );
       return;
     }

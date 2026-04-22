@@ -2,12 +2,12 @@ export default function PrivacyPolicy() {
   return (
     <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh" }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "60px 24px" }}>
-        <a href="/" style={{ color: "#60a5fa", fontSize: 14, textDecoration: "none" }}>&larr; Back to LinkShield</a>
+        <a href="/" style={{ color: "#60a5fa", fontSize: 14, textDecoration: "none" }}>&larr; Back to Cleanway</a>
         <h1 style={{ fontSize: 36, fontWeight: 800, color: "#f8fafc", margin: "24px 0 8px" }}>Privacy Policy</h1>
         <p style={{ color: "#64748b", marginBottom: 40 }}>Last updated: April 7, 2026</p>
 
-        <Section title="1. What LinkShield Does">
-          <p>LinkShield is a phishing protection service that checks domain names against threat intelligence databases. We provide a browser extension, mobile app, and API.</p>
+        <Section title="1. What Cleanway Does">
+          <p>Cleanway is a phishing protection service that checks domain names against threat intelligence databases. We provide a browser extension, mobile app, and API.</p>
         </Section>
 
         <Section title="2. Our Core Privacy Principle">
@@ -99,7 +99,7 @@ export default function PrivacyPolicy() {
         </Section>
 
         <Section title="10. Children">
-          <p>LinkShield is not directed at children under 13. We do not knowingly collect personal data from children under 13. Family Hub parental features are managed by the account holder (parent/guardian).</p>
+          <p>Cleanway is not directed at children under 13. We do not knowingly collect personal data from children under 13. Family Hub parental features are managed by the account holder (parent/guardian).</p>
         </Section>
 
         <Section title="11. Changes to This Policy">
@@ -107,7 +107,7 @@ export default function PrivacyPolicy() {
         </Section>
 
         <Section title="12. Contact">
-          <p>Email: <a href="mailto:privacy@linkshield.io" style={{ color: "#60a5fa" }}>privacy@linkshield.io</a></p>
+          <p>Email: <a href="mailto:privacy@cleanway.ai" style={{ color: "#60a5fa" }}>privacy@cleanway.ai</a></p>
         </Section>
       </div>
     </div>

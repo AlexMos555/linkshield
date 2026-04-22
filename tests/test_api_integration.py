@@ -1,5 +1,5 @@
 """
-Integration tests for LinkShield API.
+Integration tests for Cleanway API.
 Tests the full request pipeline: auth → rate limit → scoring → response.
 Run: python3 -m tests.test_api_integration
 """
@@ -17,7 +17,7 @@ import jwt
 # Generate test JWT token
 TEST_SECRET = "test-secret-for-development-only-not-for-production-use"
 TEST_TOKEN = jwt.encode(
-    {"sub": "test-user-001", "email": "test@linkshield.io", "aud": "authenticated"},
+    {"sub": "test-user-001", "email": "test@cleanway.ai", "aud": "authenticated"},
     TEST_SECRET,
     algorithm="HS256",
 )
@@ -209,7 +209,7 @@ def test_schemas():
 
 
 if __name__ == "__main__":
-    print("LinkShield Integration Tests")
+    print("Cleanway Integration Tests")
     print("=" * 50)
 
     tests = [

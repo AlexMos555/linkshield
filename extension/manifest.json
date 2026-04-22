@@ -15,7 +15,7 @@
 
   "host_permissions": [
     "https://web-production-fe08.up.railway.app/*",
-    "https://*.linkshield.io/*",
+    "https://*.cleanway.ai/*",
     "http://localhost:8000/*",
     "https://mail.google.com/*",
     "https://outlook.office.com/*",
@@ -76,7 +76,7 @@
   "commands": {
     "_execute_action": {
       "suggested_key": { "default": "Ctrl+Shift+L", "mac": "Command+Shift+L" },
-      "description": "Open LinkShield popup"
+      "description": "Open Cleanway popup"
     },
     "check-page": {
       "suggested_key": { "default": "Ctrl+Shift+K", "mac": "Command+Shift+K" },

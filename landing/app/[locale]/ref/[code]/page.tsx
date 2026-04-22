@@ -5,8 +5,8 @@ type Props = { params: Promise<{ code: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
   return {
-    title: "Join LinkShield — Free 7-Day Trial",
-    description: "Your friend invited you to LinkShield. Get 7 days of unlimited phishing protection free.",
+    title: "Join Cleanway — Free 7-Day Trial",
+    description: "Your friend invited you to Cleanway. Get 7 days of unlimited phishing protection free.",
   };
 }
 
@@ -18,7 +18,7 @@ export default async function ReferralPage({ params }: Props) {
       <div style={{ textAlign: "center", maxWidth: 480, padding: 24 }}>
         <div style={{ fontSize: 64, marginBottom: 16 }}>&#x1F6E1;</div>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", marginBottom: 8 }}>
-          Your friend invited you to LinkShield
+          Your friend invited you to Cleanway
         </h1>
         <p style={{ color: "#94a3b8", fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>
           Get <strong style={{ color: "#22c55e" }}>7 days free</strong> of unlimited phishing protection.
@@ -35,7 +35,7 @@ export default async function ReferralPage({ params }: Props) {
           padding: "14px 32px", borderRadius: 10, fontWeight: 700, fontSize: 16, textDecoration: "none",
           marginBottom: 12,
         }}>
-          Install LinkShield
+          Install Cleanway
         </a>
 
         <p style={{ fontSize: 13, color: "#64748b" }}>

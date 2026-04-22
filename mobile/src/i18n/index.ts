@@ -1,5 +1,5 @@
 /**
- * LinkShield mobile i18n setup.
+ * Cleanway mobile i18n setup.
  *
  * Single source of truth: packages/i18n-strings/src/{locale}.json → rebuilt
  * via `scripts/build-i18n.py` into mobile/i18n/{locale}.json.

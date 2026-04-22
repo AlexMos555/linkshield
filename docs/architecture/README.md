@@ -1,11 +1,11 @@
-# LinkShield Architecture
+# Cleanway Architecture
 
 > Last updated: 2026-04-16
 
 ## Monorepo layout
 
 ```
-linkshield/
+cleanway/
 ├── apps/                      ← Deployable applications (thin wrappers)
 │   └── (in migration)
 │

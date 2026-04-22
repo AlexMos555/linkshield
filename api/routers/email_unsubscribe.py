@@ -31,7 +31,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from api.services.rate_limiter import unsubscribe_rate_limit
 
-logger = logging.getLogger("linkshield.email.unsubscribe")
+logger = logging.getLogger("cleanway.email.unsubscribe")
 
 router = APIRouter(prefix="/api/v1/email", tags=["email"])
 
@@ -138,7 +138,7 @@ _UNSUB_PAGE_HTML = """\
 <html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Unsubscribe — LinkShield</title>
+<title>Unsubscribe — Cleanway</title>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
        background:#f8fafc;color:#0f172a;margin:0;padding:40px 20px;text-align:center}
@@ -152,7 +152,7 @@ _UNSUB_PAGE_HTML = """\
 </style>
 </head><body>
 <div class="card">
-  <h1>Unsubscribe from LinkShield emails?</h1>
+  <h1>Unsubscribe from Cleanway emails?</h1>
   <p>You'll stop receiving <strong>__TEMPLATE__</strong> emails. Blocking scam sites keeps working — that's never email-gated.</p>
   <form method="POST" action="/api/v1/email/unsubscribe/__TOKEN__">
     <button type="submit">Yes, unsubscribe me</button>

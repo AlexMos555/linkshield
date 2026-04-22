@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Sitemap: https://linkshield.io/sitemap.xml
+Sitemap: https://cleanway.ai/sitemap.xml

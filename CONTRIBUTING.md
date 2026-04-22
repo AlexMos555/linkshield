@@ -1,12 +1,12 @@
-# Contributing to LinkShield
+# Contributing to Cleanway
 
 Thank you for your interest in contributing!
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/linkshield.git
-cd linkshield
+git clone https://github.com/YOUR_USERNAME/cleanway.git
+cd cleanway
 cp .env.example .env
 pip install -r requirements.txt
 make dev  # API on localhost:8000

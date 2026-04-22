@@ -1,6 +1,6 @@
 {
   "extension_name": {
-    "message": "LinkShield — Protection from scam links",
+    "message": "Cleanway — Protection from scam links",
     "description": "Extension name shown in Chrome Web Store"
   },
   "extension_description": {
@@ -8,7 +8,7 @@
     "description": "Short description for Chrome Web Store"
   },
   "popup_brand": {
-    "message": "LinkShield"
+    "message": "Cleanway"
   },
   "popup_settings_title": {
     "message": "Settings"
@@ -109,10 +109,10 @@
     "message": "Upgrade"
   },
   "onboarding_welcome": {
-    "message": "Welcome to LinkShield!"
+    "message": "Welcome to Cleanway!"
   },
   "onboarding_tip": {
-    "message": "I'll check every link you see. Dangerous ones get a red mark. Try right-clicking a link → \"Check with LinkShield\"."
+    "message": "I'll check every link you see. Dangerous ones get a red mark. Try right-clicking a link → \"Check with Cleanway\"."
   },
   "aha_found_scams": {
     "message": "I found $N$ scam links your browser missed",
@@ -180,7 +180,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Protected by LinkShield. Your data stays on your device."
+    "message": "Protected by Cleanway. Your data stays on your device."
   },
   "welcome_hero_title": {
     "message": "You're protected now"

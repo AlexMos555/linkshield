@@ -27,7 +27,7 @@ from api.models.schemas import (
 )
 from api.config import get_settings
 
-logger = logging.getLogger("linkshield.user")
+logger = logging.getLogger("cleanway.user")
 
 router = APIRouter(prefix="/api/v1/user", tags=["user"])
 

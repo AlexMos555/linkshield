@@ -205,11 +205,11 @@ export default function SettingsScreen() {
       {/* About */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
-        <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("https://linkshield.io/privacy-policy")}>
+        <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("https://cleanway.ai/privacy-policy")}>
           <Text style={styles.rowLabel}>Privacy Policy</Text>
           <Text style={styles.rowArrow}>&rarr;</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("https://linkshield.io/terms")}>
+        <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("https://cleanway.ai/terms")}>
           <Text style={styles.rowLabel}>Terms of Service</Text>
           <Text style={styles.rowArrow}>&rarr;</Text>
         </TouchableOpacity>

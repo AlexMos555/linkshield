@@ -80,7 +80,7 @@ def benchmark_domain(domain: str) -> tuple[int, str]:
 
 def run_benchmark():
     print("=" * 60)
-    print("LinkShield Scoring Engine — Detection Rate Benchmark")
+    print("Cleanway Scoring Engine — Detection Rate Benchmark")
     print("=" * 60)
 
     # Load datasets

@@ -15,7 +15,7 @@
 
 const BLOOM_STORAGE_KEY = "bloom_filter";
 const BLOOM_META_KEY = "bloom_meta";
-const BLOOM_CDN_URL = "https://cdn.linkshield.io/bloom/top100k.json"; // TODO: setup CDN
+const BLOOM_CDN_URL = "https://cdn.cleanway.ai/bloom/top100k.json"; // TODO: setup CDN
 const BLOOM_UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Bloom filter parameters for 100K items, 0.1% FP rate
@@ -119,7 +119,7 @@ export async function loadBloomFilter() {
       if (age < BLOOM_UPDATE_INTERVAL_MS) {
         _bloomBits = new Uint8Array(stored[BLOOM_STORAGE_KEY]);
         _bloomLoaded = true;
-        console.debug(`[LinkShield] Bloom filter loaded from cache (${_bloomBits.length} bytes, ${meta.domains} domains)`);
+        console.debug(`[Cleanway] Bloom filter loaded from cache (${_bloomBits.length} bytes, ${meta.domains} domains)`);
         return;
       }
     }
@@ -127,7 +127,7 @@ export async function loadBloomFilter() {
     // Download fresh from CDN
     await updateBloomFilter();
   } catch (e) {
-    console.debug("[LinkShield] Bloom filter load failed:", e.message);
+    console.debug("[Cleanway] Bloom filter load failed:", e.message);
 
     // Fallback: build from local top domains list
     await buildLocalBloomFilter();
@@ -156,9 +156,9 @@ async function updateBloomFilter() {
       },
     });
 
-    console.debug(`[LinkShield] Bloom filter updated from CDN (${data.domain_count} domains)`);
+    console.debug(`[Cleanway] Bloom filter updated from CDN (${data.domain_count} domains)`);
   } catch (e) {
-    console.debug("[LinkShield] CDN bloom filter unavailable:", e.message);
+    console.debug("[Cleanway] CDN bloom filter unavailable:", e.message);
     await buildLocalBloomFilter();
   }
 }
@@ -185,7 +185,7 @@ async function buildLocalBloomFilter() {
   _bloomBits = bloomBuild(topDomains);
   _bloomLoaded = true;
 
-  console.debug(`[LinkShield] Bloom filter built locally (${topDomains.length} domains)`);
+  console.debug(`[Cleanway] Bloom filter built locally (${topDomains.length} domains)`);
 }
 
 /**

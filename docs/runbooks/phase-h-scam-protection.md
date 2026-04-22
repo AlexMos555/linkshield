@@ -1,6 +1,6 @@
 # Phase H — Scam protection architecture
 
-Scope of Phase H: expand LinkShield beyond link/domain reputation into
+Scope of Phase H: expand Cleanway beyond link/domain reputation into
 **interactive scam channels** — phone calls, SMS, pasted messenger
 conversations, voice recordings.
 
@@ -183,7 +183,7 @@ Return structured verdict to client
 
 The user records the call with the **platform recorder** (iPhone Voice
 Memos via conference call, Samsung/Pixel/Xiaomi built-in call recording,
-or just speakerphone + external recorder). LinkShield **never** records
+or just speakerphone + external recorder). Cleanway **never** records
 anything itself.
 
 This keeps us out of the "wiretapping" legal bucket. We're an analyzer
@@ -194,7 +194,7 @@ Caveat: if the user shares a recording they made WITHOUT consent of the
 other party, **that** is the user's legal problem, not ours. Our share
 sheet copy must include a reminder:
 
-> "LinkShield analyzes recordings you make. Laws about recording calls
+> "Cleanway analyzes recordings you make. Laws about recording calls
 > vary by country — check local laws before recording."
 
 ### Technical

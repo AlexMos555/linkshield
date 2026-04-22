@@ -1,8 +1,8 @@
 {
-  "name": "@linkshield/email-templates",
+  "name": "@cleanway/email-templates",
   "version": "0.1.0",
   "private": true,
-  "description": "Transactional email templates for LinkShield. React Email source → HTML + plaintext output, localized via @linkshield/i18n-strings. Provider-agnostic: backend picks Resend/SES at runtime.",
+  "description": "Transactional email templates for Cleanway. React Email source → HTML + plaintext output, localized via @cleanway/i18n-strings. Provider-agnostic: backend picks Resend/SES at runtime.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

@@ -1,10 +1,10 @@
-# LinkShield — Installation Guide
+# Cleanway — Installation Guide
 
 ## Quick Start (30 seconds)
 
 ### 1. Start all services
 ```bash
-cd /Users/aleksandrmoskotin/Desktop/LinkShield/LinkShield
+cd /Users/aleksandrmoskotin/Desktop/Cleanway/Cleanway
 ./start.sh
 ```
 
@@ -17,14 +17,14 @@ This starts:
 1. Open **chrome://extensions/** in Chrome
 2. Toggle **Developer mode** ON (top right corner)
 3. Click **Load unpacked**
-4. Select folder: `/Users/aleksandrmoskotin/Desktop/LinkShield/LinkShield/extension`
+4. Select folder: `/Users/aleksandrmoskotin/Desktop/Cleanway/Cleanway/extension`
 5. Done! The shield icon appears in your toolbar
 
 ### 3. Use it
 
 - **Browse any page** — green/yellow/red badges appear on links
 - **Click the shield icon** — see page safety status + stats
-- **Right-click any link** → "Check link with LinkShield"
+- **Right-click any link** → "Check link with Cleanway"
 - **Right-click any page** → "Privacy Audit this page"
 - **Visit a phishing site** → full-page block warning
 

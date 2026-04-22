@@ -1,7 +1,7 @@
 /**
  * Block Page — full-screen warning overlay for scam sites.
  *
- * The most critical UX moment in LinkShield: user is about to lose money
+ * The most critical UX moment in Cleanway: user is about to lose money
  * to a scammer. Plain language, no jargon, 5-second countdown before
  * "I understand the risk" option becomes clickable.
  *
@@ -22,7 +22,7 @@ const BLOCK_EN = {
   block_back_button: "Go back to safety",
   block_proceed_button: "I understand the risk — open anyway",
   block_proceed_countdown: "Wait $N$ seconds…",
-  block_trust_footer: "Protected by LinkShield. Your data stays on your device.",
+  block_trust_footer: "Protected by Cleanway. Your data stays on your device.",
 };
 
 function bt(key, subs) {

@@ -50,7 +50,7 @@ function blockMinerScripts() {
       if (src.includes(domain)) {
         script.remove();
         _minersBlocked++;
-        console.warn("[LinkShield] Blocked crypto miner:", src);
+        console.warn("[Cleanway] Blocked crypto miner:", src);
         return;
       }
     }
@@ -61,9 +61,9 @@ function blockMinerScripts() {
     var content = script.textContent || "";
     for (var pattern of MINER_PATTERNS) {
       if (pattern.test(content)) {
-        script.textContent = "/* Blocked by LinkShield: crypto miner */";
+        script.textContent = "/* Blocked by Cleanway: crypto miner */";
         _minersBlocked++;
-        console.warn("[LinkShield] Blocked inline crypto miner");
+        console.warn("[Cleanway] Blocked inline crypto miner");
         return;
       }
     }
@@ -83,7 +83,7 @@ var _minerObserver = new MutationObserver(function(mutations) {
           if (src.includes(domain)) {
             node.remove();
             _minersBlocked++;
-            console.warn("[LinkShield] Blocked injected crypto miner:", src);
+            console.warn("[Cleanway] Blocked injected crypto miner:", src);
             return;
           }
         }

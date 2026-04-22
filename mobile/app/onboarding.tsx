@@ -13,7 +13,7 @@ const slides = [
   {
     icon: "\u{1F6E1}",
     title: "Automatic Protection",
-    desc: "LinkShield checks every link you open against 9 threat intelligence sources and an ML model. Dangerous sites are blocked before they can harm you.",
+    desc: "Cleanway checks every link you open against 9 threat intelligence sources and an ML model. Dangerous sites are blocked before they can harm you.",
   },
   {
     icon: "\u{1F512}",
@@ -23,7 +23,7 @@ const slides = [
   {
     icon: "\u{26A1}",
     title: "Set & Forget",
-    desc: "Enable protection once — LinkShield works silently in the background. VPN mode checks every domain. No action needed from you.",
+    desc: "Enable protection once — Cleanway works silently in the background. VPN mode checks every domain. No action needed from you.",
   },
 ];
 

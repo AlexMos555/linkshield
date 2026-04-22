@@ -106,7 +106,7 @@ export default function ResultScreen() {
         style={styles.shareBtn}
         onPress={() => {
           Share.share({
-            message: `${result.domain} is ${label} (score: ${result.score}/100). Checked with LinkShield — https://linkshield.io/check/${result.domain}`,
+            message: `${result.domain} is ${label} (score: ${result.score}/100). Checked with Cleanway — https://cleanway.ai/check/${result.domain}`,
           });
         }}
       >

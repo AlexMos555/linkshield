@@ -23,7 +23,7 @@
     "cta_business": "Para empresas"
   },
   "Footer": {
-    "brand": "LinkShield",
+    "brand": "Cleanway",
     "privacy": "Privacidad",
     "terms": "Términos",
     "contact": "Contacto",
@@ -69,7 +69,7 @@
     ]
   },
   "HowItWorks": {
-    "heading": "Cómo te protege LinkShield",
+    "heading": "Cómo te protege Cleanway",
     "steps": [
       {
         "step": "1",
@@ -79,7 +79,7 @@
       {
         "step": "2",
         "title": "Navega",
-        "desc": "LinkShield verifica cada enlace automáticamente. No hace falta hacer nada."
+        "desc": "Cleanway verifica cada enlace automáticamente. No hace falta hacer nada."
       },
       {
         "step": "3",
@@ -133,7 +133,7 @@
     "heading": "Cómo nos comparamos",
     "headers": [
       "Característica",
-      "LinkShield",
+      "Cleanway",
       "Guardio",
       "NordVPN TP",
       "Norton 360",
@@ -239,7 +239,7 @@
         "r": "Gerente de marketing"
       },
       {
-        "q": "Reemplazamos KnowBe4 por LinkShield Business. La misma protección, a la cuarta parte del precio.",
+        "q": "Reemplazamos KnowBe4 por Cleanway Business. La misma protección, a la cuarta parte del precio.",
         "n": "James T.",
         "r": "Director de TI"
       }
@@ -258,11 +258,11 @@
       },
       {
         "q": "¿Puedo usarlo con una VPN?",
-        "a": "¡Sí! En móvil, LinkShield detecta automáticamente tu VPN y cambia al modo DNS, funcionando junto a NordVPN, ExpressVPN o cualquier otro proveedor."
+        "a": "¡Sí! En móvil, Cleanway detecta automáticamente tu VPN y cambia al modo DNS, funcionando junto a NordVPN, ExpressVPN o cualquier otro proveedor."
       },
       {
         "q": "¿Qué lo diferencia de Google Safe Browsing?",
-        "a": "Google Safe Browsing es reactivo: atrapa amenazas conocidas pero deja pasar phishing nuevo. LinkShield añade detección por ML, 8 fuentes adicionales de amenazas, Auditoría de privacidad, y no envía tus datos de navegación a Google."
+        "a": "Google Safe Browsing es reactivo: atrapa amenazas conocidas pero deja pasar phishing nuevo. Cleanway añade detección por ML, 8 fuentes adicionales de amenazas, Auditoría de privacidad, y no envía tus datos de navegación a Google."
       },
       {
         "q": "¿Hay un plan gratuito?",

@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
-logger = logging.getLogger("linkshield.config")
+logger = logging.getLogger("cleanway.config")
 
 # Minimum acceptable JWT secret length per environment
 _MIN_JWT_SECRET_LENGTH_DEV = 32
@@ -19,7 +19,7 @@ Environment = Literal["development", "staging", "production"]
 
 class Settings(BaseSettings):
     # App
-    app_name: str = "LinkShield API"
+    app_name: str = "Cleanway API"
     debug: bool = False
     # Environment discriminator — governs validate_settings() rules
     environment: Environment = "development"
@@ -38,15 +38,15 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
 
     # CORS — comma-separated allowed origins.
-    # Default covers linkshield web + all webmail providers the extension
+    # Default covers cleanway web + all webmail providers the extension
     # content-script targets. Keep in sync with:
     #   packages/extension-core/src/content/webmail.js  (host allowlist)
     #   extension/manifest.json                         (host_permissions)
     # Production can override via env ALLOWED_ORIGINS="...comma-list..."
     allowed_origins: str = (
-        "https://linkshield.io,"
-        "https://www.linkshield.io,"
-        "https://staging.linkshield.io,"
+        "https://cleanway.ai,"
+        "https://www.cleanway.ai,"
+        "https://staging.cleanway.ai,"
         "https://mail.google.com,"
         "https://outlook.office.com,"
         "https://outlook.live.com,"

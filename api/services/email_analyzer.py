@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Awaitable, Callable, Iterable, Optional
 
-logger = logging.getLogger("linkshield.email_analyzer")
+logger = logging.getLogger("cleanway.email_analyzer")
 
 
 # ─── Types ────────────────────────────────────────────────────────────────────

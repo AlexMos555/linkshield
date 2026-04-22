@@ -33,10 +33,10 @@ SECTIONS: dict[str, dict[str, Any]] = {
             ],
         },
         "how_it_works": {
-            "heading": "How LinkShield protects you",
+            "heading": "How Cleanway protects you",
             "steps": [
                 {"step": "1", "title": "Install", "desc": "Add the Chrome extension. Takes 10 seconds."},
-                {"step": "2", "title": "Browse", "desc": "LinkShield checks every link automatically. No action needed."},
+                {"step": "2", "title": "Browse", "desc": "Cleanway checks every link automatically. No action needed."},
                 {"step": "3", "title": "Stay Safe", "desc": "Dangerous links get red badges. Click for details."},
             ],
         },
@@ -52,7 +52,7 @@ SECTIONS: dict[str, dict[str, Any]] = {
         },
         "comparison": {
             "heading": "How we compare",
-            "headers": ["Feature", "LinkShield", "Guardio", "NordVPN TP", "Norton 360", "Free Extensions"],
+            "headers": ["Feature", "Cleanway", "Guardio", "NordVPN TP", "Norton 360", "Free Extensions"],
             "rows": [
                 ["Price", "$4.99/mo", "$9.99/mo", "~$5/mo (w/ VPN)", "$40-100/yr", "Free"],
                 ["Platforms", "All 5", "Chrome only", "Win/Mac", "All", "Browser only"],
@@ -78,7 +78,7 @@ SECTIONS: dict[str, dict[str, Any]] = {
             "items": [
                 {"q": "Finally, a security tool that doesn't spy on me. The Privacy Audit is eye-opening.", "n": "Alex K.", "r": "Software Engineer"},
                 {"q": "Caught 3 phishing links in my Gmail that Chrome missed. Worth every penny.", "n": "Maria S.", "r": "Marketing Manager"},
-                {"q": "We replaced KnowBe4 with LinkShield Business. Same protection, 1/4 the price.", "n": "James T.", "r": "IT Director"},
+                {"q": "We replaced KnowBe4 with Cleanway Business. Same protection, 1/4 the price.", "n": "James T.", "r": "IT Director"},
             ],
         },
         "faq": {
@@ -86,8 +86,8 @@ SECTIONS: dict[str, dict[str, Any]] = {
             "items": [
                 {"q": "How is my data protected?", "a": "Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if we're breached, attackers learn nothing about your online activity."},
                 {"q": "Does it slow down browsing?", "a": "No. 95% of checks happen locally via bloom filter in under 1ms. Only unknown domains are sent to our API (domain name only, never full URLs)."},
-                {"q": "Can I use it with a VPN?", "a": "Yes! On mobile, LinkShield auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."},
-                {"q": "What's different from Google Safe Browsing?", "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. LinkShield adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."},
+                {"q": "Can I use it with a VPN?", "a": "Yes! On mobile, Cleanway auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."},
+                {"q": "What's different from Google Safe Browsing?", "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. Cleanway adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."},
                 {"q": "Is there a free plan?", "a": "Yes! The free plan includes 10 API checks/day, unlimited local bloom filter checks, and basic Privacy Audit. Most casual users never need to upgrade."},
                 {"q": "How does phishing simulation work?", "a": "Business plan includes simulated phishing emails sent to your team. Pick a template, we send test emails, track who clicks vs. who reports. For training, not punishment."},
             ],
@@ -105,9 +105,9 @@ SECTIONS: dict[str, dict[str, Any]] = {
                 {"icon": "📧", "title": "Сканер почты", "desc": "Находит фишинговые ссылки в Gmail и Outlook, которые пропустил браузер."},
             ],
         },
-        "how_it_works": {"heading": "Как LinkShield вас защищает", "steps": [
+        "how_it_works": {"heading": "Как Cleanway вас защищает", "steps": [
             {"step": "1", "title": "Установите", "desc": "Добавьте расширение в Chrome. Займёт 10 секунд."},
-            {"step": "2", "title": "Пользуйтесь", "desc": "LinkShield проверяет каждую ссылку автоматически. Ничего делать не нужно."},
+            {"step": "2", "title": "Пользуйтесь", "desc": "Cleanway проверяет каждую ссылку автоматически. Ничего делать не нужно."},
             {"step": "3", "title": "Оставайтесь в безопасности", "desc": "Опасные ссылки помечаются красным. Нажмите, чтобы узнать подробности."},
         ]},
         "pricing_teaser": {"heading": "Простые и прозрачные цены", "unit_forever": "/навсегда", "unit_month": "/месяц", "most_popular": "Популярный выбор", "trial_note": "Все планы включают 14-дневный бесплатный период. Отмена в любой момент.",
@@ -115,7 +115,7 @@ SECTIONS: dict[str, dict[str, Any]] = {
             "personal": {"name": "Personal", "price": "$4.99", "features": ["Неограниченные проверки", "Полный разбор аудита приватности", "Еженедельный отчёт о безопасности", "Оценка безопасности + советы", "Приоритетная поддержка"], "cta": "Попробовать бесплатно"},
             "family": {"name": "Family", "price": "$9.99", "features": ["Всё из Personal", "До 6 устройств", "Семейный центр с E2E-оповещениями", "Родительский режим"], "cta": "Попробовать бесплатно"},
         },
-        "comparison": {"heading": "Сравнение с альтернативами", "headers": ["Функция", "LinkShield", "Guardio", "NordVPN TP", "Norton 360", "Бесплатные расширения"], "rows": [
+        "comparison": {"heading": "Сравнение с альтернативами", "headers": ["Функция", "Cleanway", "Guardio", "NordVPN TP", "Norton 360", "Бесплатные расширения"], "rows": [
             ["Цена", "$4.99/мес", "$9.99/мес", "~$5/мес (с VPN)", "$40-100/год", "Бесплатно"],
             ["Платформы", "Все 5", "Только Chrome", "Win/Mac", "Все", "Только браузер"],
             ["Аудит приватности", "✅", "❌", "❌", "❌", "❌"],
@@ -129,13 +129,13 @@ SECTIONS: dict[str, dict[str, Any]] = {
         "testimonials": {"heading": "Что говорят пользователи", "items": [
             {"q": "Наконец-то инструмент безопасности, который не шпионит за мной. Аудит приватности открывает глаза.", "n": "Алексей К.", "r": "Инженер-программист"},
             {"q": "Поймал 3 фишинговые ссылки в моём Gmail, которые пропустил Chrome. Стоит своих денег.", "n": "Мария С.", "r": "Маркетолог"},
-            {"q": "Мы заменили KnowBe4 на LinkShield Business. Такая же защита, в 4 раза дешевле.", "n": "Джеймс Т.", "r": "IT-директор"},
+            {"q": "Мы заменили KnowBe4 на Cleanway Business. Такая же защита, в 4 раза дешевле.", "n": "Джеймс Т.", "r": "IT-директор"},
         ]},
         "faq": {"heading": "Частые вопросы", "items": [
             {"q": "Как защищены мои данные?", "a": "История просмотров никогда не покидает ваше устройство. На наших серверах хранится только email и статус подписки. Даже если нас взломают, злоумышленники ничего не узнают о вашей активности в интернете."},
             {"q": "Замедляет ли работу браузера?", "a": "Нет. 95% проверок выполняется локально через bloom-фильтр быстрее, чем за 1 мс. На наш API отправляются только неизвестные домены (только имя домена, никогда не полный URL)."},
-            {"q": "Можно ли использовать с VPN?", "a": "Да! На мобильных устройствах LinkShield автоматически определяет VPN и переключается в режим DNS, работая вместе с NordVPN, ExpressVPN или любым другим провайдером."},
-            {"q": "Чем отличается от Google Safe Browsing?", "a": "Google Safe Browsing — реактивный: ловит известные угрозы, но пропускает новый фишинг. LinkShield добавляет ML-детекцию, 8 дополнительных источников угроз, аудит приватности — и не отправляет данные о просмотрах в Google."},
+            {"q": "Можно ли использовать с VPN?", "a": "Да! На мобильных устройствах Cleanway автоматически определяет VPN и переключается в режим DNS, работая вместе с NordVPN, ExpressVPN или любым другим провайдером."},
+            {"q": "Чем отличается от Google Safe Browsing?", "a": "Google Safe Browsing — реактивный: ловит известные угрозы, но пропускает новый фишинг. Cleanway добавляет ML-детекцию, 8 дополнительных источников угроз, аудит приватности — и не отправляет данные о просмотрах в Google."},
             {"q": "Есть ли бесплатный план?", "a": "Да! Бесплатный план включает 10 API-проверок в день, неограниченные локальные проверки через bloom-фильтр и базовый аудит приватности. Большинству обычных пользователей хватит его навсегда."},
             {"q": "Как работает симуляция фишинга?", "a": "План Business включает симулированные фишинговые письма для вашей команды. Выберите шаблон — мы отправим тестовые письма и отследим, кто нажал ссылку, а кто сообщил об угрозе. Для обучения, а не наказания."},
         ]},
@@ -149,16 +149,16 @@ SECTIONS: dict[str, dict[str, Any]] = {
             {"icon": "📱", "title": "Tus datos, tu dispositivo", "desc": "El historial de navegación nunca llega a nuestros servidores. Solo vemos nombres de dominio. Aunque nos hackeen, tus datos están a salvo."},
             {"icon": "📧", "title": "Escáner de correo", "desc": "Encuentra enlaces de phishing en Gmail y Outlook que tu navegador dejó pasar."},
         ]},
-        "how_it_works": {"heading": "Cómo te protege LinkShield", "steps": [
+        "how_it_works": {"heading": "Cómo te protege Cleanway", "steps": [
             {"step": "1", "title": "Instala", "desc": "Añade la extensión a Chrome. Toma 10 segundos."},
-            {"step": "2", "title": "Navega", "desc": "LinkShield verifica cada enlace automáticamente. No hace falta hacer nada."},
+            {"step": "2", "title": "Navega", "desc": "Cleanway verifica cada enlace automáticamente. No hace falta hacer nada."},
             {"step": "3", "title": "Mantente seguro", "desc": "Los enlaces peligrosos reciben una insignia roja. Haz clic para ver detalles."},
         ]},
         "pricing_teaser": {"heading": "Precios simples y transparentes", "unit_forever": "/para siempre", "unit_month": "/mes", "most_popular": "Más popular", "trial_note": "Todos los planes incluyen 14 días de prueba gratis. Cancela cuando quieras.",
             "free": {"name": "Free", "price": "$0", "features": ["10 verificaciones API al día", "Verificaciones locales ilimitadas", "Auditoría de privacidad (solo calificación)", "Insignias de enlace en todas las páginas"], "cta": "Empezar"},
             "personal": {"name": "Personal", "price": "$4.99", "features": ["Verificaciones ilimitadas", "Auditoría de privacidad completa", "Informe semanal de seguridad", "Puntuación de seguridad + consejos", "Soporte prioritario"], "cta": "Empezar prueba gratis"},
             "family": {"name": "Family", "price": "$9.99", "features": ["Todo de Personal", "Hasta 6 dispositivos", "Centro Familiar con alertas E2E", "Modo parental"], "cta": "Empezar prueba gratis"}},
-        "comparison": {"heading": "Cómo nos comparamos", "headers": ["Característica", "LinkShield", "Guardio", "NordVPN TP", "Norton 360", "Extensiones gratis"], "rows": [
+        "comparison": {"heading": "Cómo nos comparamos", "headers": ["Característica", "Cleanway", "Guardio", "NordVPN TP", "Norton 360", "Extensiones gratis"], "rows": [
             ["Precio", "$4.99/mes", "$9.99/mes", "~$5/mes (con VPN)", "$40-100/año", "Gratis"],
             ["Plataformas", "Las 5", "Solo Chrome", "Win/Mac", "Todas", "Solo navegador"],
             ["Auditoría de privacidad", "✅", "❌", "❌", "❌", "❌"],
@@ -172,13 +172,13 @@ SECTIONS: dict[str, dict[str, Any]] = {
         "testimonials": {"heading": "Lo que dicen los usuarios", "items": [
             {"q": "Por fin una herramienta de seguridad que no me espía. La Auditoría de privacidad abre los ojos.", "n": "Alex K.", "r": "Ingeniero de software"},
             {"q": "Atrapó 3 enlaces de phishing en mi Gmail que Chrome pasó por alto. Vale cada centavo.", "n": "María S.", "r": "Gerente de marketing"},
-            {"q": "Reemplazamos KnowBe4 por LinkShield Business. La misma protección, a la cuarta parte del precio.", "n": "James T.", "r": "Director de TI"},
+            {"q": "Reemplazamos KnowBe4 por Cleanway Business. La misma protección, a la cuarta parte del precio.", "n": "James T.", "r": "Director de TI"},
         ]},
         "faq": {"heading": "Preguntas frecuentes", "items": [
             {"q": "¿Cómo se protegen mis datos?", "a": "Tu historial de navegación nunca sale del dispositivo. Nuestros servidores solo almacenan tu correo y el estado de la suscripción. Aunque nos hackeen, los atacantes no aprenden nada sobre tu actividad en línea."},
             {"q": "¿Ralentiza la navegación?", "a": "No. El 95% de las verificaciones se hacen localmente con bloom filter en menos de 1 ms. Solo los dominios desconocidos se envían a nuestra API (solo el nombre del dominio, nunca la URL completa)."},
-            {"q": "¿Puedo usarlo con una VPN?", "a": "¡Sí! En móvil, LinkShield detecta automáticamente tu VPN y cambia al modo DNS, funcionando junto a NordVPN, ExpressVPN o cualquier otro proveedor."},
-            {"q": "¿Qué lo diferencia de Google Safe Browsing?", "a": "Google Safe Browsing es reactivo: atrapa amenazas conocidas pero deja pasar phishing nuevo. LinkShield añade detección por ML, 8 fuentes adicionales de amenazas, Auditoría de privacidad, y no envía tus datos de navegación a Google."},
+            {"q": "¿Puedo usarlo con una VPN?", "a": "¡Sí! En móvil, Cleanway detecta automáticamente tu VPN y cambia al modo DNS, funcionando junto a NordVPN, ExpressVPN o cualquier otro proveedor."},
+            {"q": "¿Qué lo diferencia de Google Safe Browsing?", "a": "Google Safe Browsing es reactivo: atrapa amenazas conocidas pero deja pasar phishing nuevo. Cleanway añade detección por ML, 8 fuentes adicionales de amenazas, Auditoría de privacidad, y no envía tus datos de navegación a Google."},
             {"q": "¿Hay un plan gratuito?", "a": "¡Sí! El plan gratuito incluye 10 verificaciones API al día, verificaciones locales ilimitadas por bloom filter y Auditoría de privacidad básica. La mayoría de usuarios casuales nunca necesita actualizar."},
             {"q": "¿Cómo funciona la simulación de phishing?", "a": "El plan Business incluye correos de phishing simulados enviados a tu equipo. Elige una plantilla, enviamos correos de prueba y rastreamos quién hace clic y quién reporta. Para capacitar, no para castigar."},
         ]},

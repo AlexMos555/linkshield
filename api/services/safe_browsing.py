@@ -39,14 +39,14 @@ import httpx
 from api.config import get_settings
 from api.services.cache import get_redis
 
-logger = logging.getLogger("linkshield.safe_browsing")
+logger = logging.getLogger("cleanway.safe_browsing")
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
 GSB_API_URL = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
 GSB_MAX_URLS_PER_REQUEST = 500  # Google documented cap per request
 GSB_TIMEOUT_SECONDS = 3.0
-GSB_CLIENT_ID = "linkshield"
+GSB_CLIENT_ID = "cleanway"
 GSB_CLIENT_VERSION = "0.3.0"
 GSB_RETRY_COUNT = 2  # Total attempts = 1 + RETRY_COUNT
 

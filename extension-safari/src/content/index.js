@@ -1,5 +1,5 @@
 /**
- * LinkShield Content Script
+ * Cleanway Content Script
  *
  * 1. Scan all links → add safety badges
  * 2. Check current page → block if dangerous
@@ -12,7 +12,7 @@ var _scanTimeout = null;
 var _debugMode = true; // Set false in production
 
 function _log() {
-  if (_debugMode) console.log.apply(console, ["[LinkShield]"].concat(Array.from(arguments)));
+  if (_debugMode) console.log.apply(console, ["[Cleanway]"].concat(Array.from(arguments)));
 }
 
 // ═══════════════════════════════════════════════════
@@ -145,7 +145,7 @@ function addBadge(linkEl, result) {
     '<span class="ls-score">Score: ' + result.score + '/100</span></div>' +
     '<div class="ls-domain">' + result.domain + '</div>' +
     reasons +
-    '<div class="ls-footer">LinkShield</div></div>';
+    '<div class="ls-footer">Cleanway</div></div>';
   badge.appendChild(tooltip);
 
   linkEl.style.position = "relative";
@@ -165,7 +165,7 @@ function showBlockPage(result) {
 
   var overlay = document.createElement("div");
   overlay.id = "ls-block-overlay";
-  overlay.innerHTML = '<div style="position:fixed;inset:0;z-index:2147483647;background:#0f172aee;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#e2e8f0;"><div style="max-width:480px;text-align:center;padding:40px 24px;"><div style="font-size:64px;margin-bottom:20px;">\u{1F6E1}</div><h1 style="font-size:28px;font-weight:800;color:#f8fafc;margin:0 0 8px;">Dangerous Site</h1><p style="font-size:16px;color:#94a3b8;margin:0 0 24px;">LinkShield blocked <strong style="color:#ef4444;">' + result.domain + '</strong> (score: ' + result.score + '/100)</p><div style="background:#1e293b;border-radius:12px;padding:16px;text-align:left;margin-bottom:24px;font-size:14px;border:1px solid #ef444440;">' + (reasons || 'Multiple risk signals detected') + '</div><button id="ls-go-back" style="background:#22c55e;color:#052e16;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">\u2190 Go Back</button><button id="ls-proceed" style="background:transparent;color:#64748b;border:1px solid #334155;border-radius:10px;padding:12px 32px;font-size:14px;cursor:pointer;width:100%;opacity:0.5;" disabled>Proceed anyway (3s)</button></div></div>';
+  overlay.innerHTML = '<div style="position:fixed;inset:0;z-index:2147483647;background:#0f172aee;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#e2e8f0;"><div style="max-width:480px;text-align:center;padding:40px 24px;"><div style="font-size:64px;margin-bottom:20px;">\u{1F6E1}</div><h1 style="font-size:28px;font-weight:800;color:#f8fafc;margin:0 0 8px;">Dangerous Site</h1><p style="font-size:16px;color:#94a3b8;margin:0 0 24px;">Cleanway blocked <strong style="color:#ef4444;">' + result.domain + '</strong> (score: ' + result.score + '/100)</p><div style="background:#1e293b;border-radius:12px;padding:16px;text-align:left;margin-bottom:24px;font-size:14px;border:1px solid #ef444440;">' + (reasons || 'Multiple risk signals detected') + '</div><button id="ls-go-back" style="background:#22c55e;color:#052e16;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">\u2190 Go Back</button><button id="ls-proceed" style="background:transparent;color:#64748b;border:1px solid #334155;border-radius:10px;padding:12px 32px;font-size:14px;cursor:pointer;width:100%;opacity:0.5;" disabled>Proceed anyway (3s)</button></div></div>';
 
   document.body.appendChild(overlay);
   document.body.style.overflow = "hidden";

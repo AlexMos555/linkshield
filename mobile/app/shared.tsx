@@ -1,10 +1,10 @@
 /**
- * Shared URL screen — opens when user shares a link TO LinkShield
+ * Shared URL screen — opens when user shares a link TO Cleanway
  * from any app (Safari, Chrome, Messages, WhatsApp, etc.)
  *
  * Flow:
- *   User in Safari → Share → LinkShield → instant result
- *   User in WhatsApp → long press link → Share → LinkShield → alert if dangerous
+ *   User in Safari → Share → Cleanway → instant result
+ *   User in WhatsApp → long press link → Share → Cleanway → alert if dangerous
  */
 
 import { useEffect, useState } from "react";

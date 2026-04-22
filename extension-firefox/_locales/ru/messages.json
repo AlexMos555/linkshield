@@ -1,12 +1,12 @@
 {
   "extension_name": {
-    "message": "LinkShield — Защита от мошеннических ссылок"
+    "message": "Cleanway — Защита от мошеннических ссылок"
   },
   "extension_description": {
     "message": "Автоматическая защита от мошеннических сайтов и фишинга. Простым языком, понятно всем."
   },
   "popup_brand": {
-    "message": "LinkShield"
+    "message": "Cleanway"
   },
   "popup_settings_title": {
     "message": "Настройки"
@@ -107,10 +107,10 @@
     "message": "Подписка"
   },
   "onboarding_welcome": {
-    "message": "Привет! Я LinkShield."
+    "message": "Привет! Я Cleanway."
   },
   "onboarding_tip": {
-    "message": "Я проверяю каждую ссылку на странице. Опасные подсвечиваю красным. Если сомневаешься — правый клик → \"Проверить через LinkShield\"."
+    "message": "Я проверяю каждую ссылку на странице. Опасные подсвечиваю красным. Если сомневаешься — правый клик → \"Проверить через Cleanway\"."
   },
   "aha_found_scams": {
     "message": "Нашёл $N$ мошеннических ссылок, которые пропустил браузер",
@@ -178,7 +178,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Защищает LinkShield. Ваши данные остаются на этом устройстве."
+    "message": "Защищает Cleanway. Ваши данные остаются на этом устройстве."
   },
   "welcome_hero_title": {
     "message": "Вы под защитой"

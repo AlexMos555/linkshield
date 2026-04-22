@@ -21,7 +21,7 @@ import logging
 import os
 from difflib import SequenceMatcher
 
-logger = logging.getLogger("linkshield.url_features")
+logger = logging.getLogger("cleanway.url_features")
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 

@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: linkshield-api:latest
+    image: cleanway-api:latest
     restart: unless-stopped
 
     # ── Secrets via env file (NEVER commit .env) ───────────────
@@ -25,7 +25,7 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     networks:
-      - linkshield-internal
+      - cleanway-internal
 
     # ── Filesystem hardening ────────────────────────────────────
     # Read-only root FS — attacker can't drop a webshell on disk.
@@ -91,7 +91,7 @@ services:
       - "yes"
 
     networks:
-      - linkshield-internal
+      - cleanway-internal
     # No host port exposed — only reachable from API container
 
     read_only: true
@@ -123,7 +123,7 @@ services:
       retries: 3
 
 networks:
-  linkshield-internal:
+  cleanway-internal:
     driver: bridge
     # Internal-only network — no external access except via api's published port
     internal: false

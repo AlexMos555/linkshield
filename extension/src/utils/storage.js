@@ -9,7 +9,7 @@
  *   settings: { key, value }
  */
 
-const DB_NAME = "linkshield";
+const DB_NAME = "cleanway";
 const DB_VERSION = 1;
 
 let _db = null;

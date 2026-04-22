@@ -23,7 +23,7 @@
     "cta_business": "للشركات"
   },
   "Footer": {
-    "brand": "LinkShield",
+    "brand": "Cleanway",
     "privacy": "الخصوصية",
     "terms": "الشروط",
     "contact": "التواصل",
@@ -69,7 +69,7 @@
     ]
   },
   "HowItWorks": {
-    "heading": "How LinkShield protects you",
+    "heading": "How Cleanway protects you",
     "steps": [
       {
         "step": "1",
@@ -79,7 +79,7 @@
       {
         "step": "2",
         "title": "Browse",
-        "desc": "LinkShield checks every link automatically. No action needed."
+        "desc": "Cleanway checks every link automatically. No action needed."
       },
       {
         "step": "3",
@@ -133,7 +133,7 @@
     "heading": "How we compare",
     "headers": [
       "Feature",
-      "LinkShield",
+      "Cleanway",
       "Guardio",
       "NordVPN TP",
       "Norton 360",
@@ -239,7 +239,7 @@
         "r": "Marketing Manager"
       },
       {
-        "q": "We replaced KnowBe4 with LinkShield Business. Same protection, 1/4 the price.",
+        "q": "We replaced KnowBe4 with Cleanway Business. Same protection, 1/4 the price.",
         "n": "James T.",
         "r": "IT Director"
       }
@@ -258,11 +258,11 @@
       },
       {
         "q": "Can I use it with a VPN?",
-        "a": "Yes! On mobile, LinkShield auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
+        "a": "Yes! On mobile, Cleanway auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
       },
       {
         "q": "What's different from Google Safe Browsing?",
-        "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. LinkShield adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
+        "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. Cleanway adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
       },
       {
         "q": "Is there a free plan?",

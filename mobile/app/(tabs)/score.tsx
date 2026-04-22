@@ -46,7 +46,7 @@ export default function ScoreScreen() {
     f.push({ label: "App active", points: 10, detail: "Mobile protection enabled" });
 
     // Base protection
-    f.push({ label: "Base", points: 50, detail: "LinkShield installed" });
+    f.push({ label: "Base", points: 50, detail: "Cleanway installed" });
 
     s = Math.max(0, Math.min(100, s));
     setScore(s);

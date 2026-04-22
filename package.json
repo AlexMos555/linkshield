@@ -1,8 +1,8 @@
 {
-  "name": "linkshield-monorepo",
+  "name": "cleanway-monorepo",
   "version": "0.0.0",
   "private": true,
-  "description": "LinkShield root \u2014 npm workspaces for shared packages across landing, mobile, extensions.",
+  "description": "Cleanway root \u2014 npm workspaces for shared packages across landing, mobile, extensions.",
   "workspaces": [
     "packages/api-types",
     "packages/api-client",

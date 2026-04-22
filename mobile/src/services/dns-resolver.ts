@@ -1,5 +1,5 @@
 /**
- * LinkShield DNS Resolver
+ * Cleanway DNS Resolver
  *
  * Custom DNS-over-HTTPS (DoH) resolver that checks every domain
  * against our blocklist before resolving.
@@ -56,7 +56,7 @@ export async function shouldBlockDomain(domain: string): Promise<{
   // In production, load bloom filter from CDN
   // For now, check against API
   try {
-    const resp = await fetch(`https://api.linkshield.io/api/v1/public/check/${domain}`);
+    const resp = await fetch(`https://api.cleanway.ai/api/v1/public/check/${domain}`);
     if (resp.ok) {
       const data = await resp.json();
       if (data.level === "dangerous") {
@@ -85,7 +85,7 @@ function isSystemDomain(domain: string): boolean {
     "googleapis.com", "gstatic.com", "google.com", // Google
     "microsoft.com", "windows.net", "msftconnecttest.com", // Microsoft
     "local", "localhost", "internal",
-    "linkshield.io", // Our own domain
+    "cleanway.ai", // Our own domain
   ];
   return systemSuffixes.some(s => domain === s || domain.endsWith("." + s));
 }

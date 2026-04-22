@@ -25,7 +25,7 @@ from api.services.logger import setup_logging
 
 # Initialize structured logging before anything else
 setup_logging(debug=get_settings().debug)
-logger = logging.getLogger("linkshield.app")
+logger = logging.getLogger("cleanway.app")
 
 # Initialize Sentry (error tracking)
 _sentry_dsn = get_settings().sentry_dsn
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
             extra={"error": str(e), "environment": settings.environment},
         )
     logger.info(
-        "LinkShield API starting",
+        "Cleanway API starting",
         extra={
             "debug": settings.debug,
             "environment": settings.environment,
@@ -70,11 +70,11 @@ async def lifespan(app: FastAPI):
     yield
     # ── Shutdown ──
     await close_redis()
-    logger.info("LinkShield API shutdown complete")
+    logger.info("Cleanway API shutdown complete")
 
 
 app = FastAPI(
-    title="LinkShield API",
+    title="Cleanway API",
     description="Phishing protection API. Checks domains for safety. Your browsing data lives on your device — we only see domain names.",
     version="0.1.0",
     lifespan=lifespan,
@@ -108,7 +108,7 @@ async def request_logging_middleware(request: Request, call_next):
     # Add tracing headers
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
-    response.headers["X-Powered-By"] = "LinkShield"
+    response.headers["X-Powered-By"] = "Cleanway"
 
     logger.info(
         "request",
@@ -186,7 +186,7 @@ async def health_check():
 @app.get("/")
 async def root():
     return {
-        "service": "LinkShield API",
+        "service": "Cleanway API",
         "version": "0.1.0",
         "privacy": "We see domain names only. Your browsing history lives on your device.",
         "docs": "/docs",

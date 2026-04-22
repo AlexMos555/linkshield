@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 
 export const metadata: Metadata = {
-  title: "LinkShield — Protection from scam links",
+  title: "Cleanway — Protection from scam links",
   description:
     "Automatic scam link detection with plain-language explanations. 91% detection rate, 10 languages, your browsing data stays on your device.",
   keywords: [
@@ -18,14 +18,14 @@ export const metadata: Metadata = {
     "safe browsing",
   ],
   openGraph: {
-    title: "LinkShield — Protection from scam links",
+    title: "Cleanway — Protection from scam links",
     description: "Your browsing data lives only on your device.",
-    siteName: "LinkShield",
+    siteName: "Cleanway",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "LinkShield — Protection from scam links",
+    title: "Cleanway — Protection from scam links",
     description: "91% scam detection. 10 languages. Zero data stored.",
   },
 };

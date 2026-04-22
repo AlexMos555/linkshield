@@ -5,7 +5,7 @@
  *   - Proper HTML5 doctype, lang, dir (RTL for Arabic)
  *   - Meta tags (viewport, color-scheme, format-detection)
  *   - Preheader (invisible preview text shown in inbox list)
- *   - Header with LinkShield branding
+ *   - Header with Cleanway branding
  *   - Footer with unsubscribe + address (CAN-SPAM compliance)
  *   - Signed unsubscribe URL so click can be processed without login
  *
@@ -119,7 +119,7 @@ export function Shell({
           )}
 
           <Section style={header}>
-            <Text style={brand}>🛡️&nbsp;LinkShield</Text>
+            <Text style={brand}>🛡️&nbsp;Cleanway</Text>
           </Section>
 
           {children}
@@ -137,7 +137,7 @@ export function Shell({
                 </Link>
               )}
               <span style={{ color: "#cbd5e1" }}>·</span>
-              <Link href="https://linkshield.example/support" style={footerLink}>
+              <Link href="https://cleanway.example/support" style={footerLink}>
                 {t(locale, "email.common.support_link")}
               </Link>
             </Text>

@@ -1,5 +1,5 @@
 /**
- * @linkshield/api-types — public entry point.
+ * @cleanway/api-types — public entry point.
  *
  * Re-exports hand-picked types from the auto-generated openapi.d.ts
  * with friendly short names that consumers (landing, mobile, extension) import.

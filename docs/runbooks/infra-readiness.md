@@ -8,7 +8,7 @@ here.
 
 ```
 developer push                      │
-  └→ github.com/AlexMos555/linkshield
+  └→ github.com/AlexMos555/cleanway
         ├→ GitHub Actions: CI      (pytest + ruff + coverage)
         ├→ GitHub Actions: Security (gitleaks, bandit, pip-audit, trivy, hadolint)
         ├→ GitHub Actions: E2E      (Playwright landing suite)
@@ -26,7 +26,7 @@ developer push                      │
 | API (FastAPI) | Railway `honest-playfulness-web` | `GET /health` → 200 "ok"/"degraded" | Rolling deploy — old pod stays up until new passes healthcheck |
 | Redis (rate limiter) | Not provisioned yet | — | Rate limiters fail-open; requests always served |
 | Supabase Postgres EU | `bpyqgzzclsbfvxthyfsf.supabase.co` | `supabase projects api list --project-ref bpyqgzzclsbfvxthyfsf` | API endpoints that hit Supabase return 503 degraded; reads of `users`/`subscriptions` fall back to defaults |
-| Landing (Next.js 15.1.11) | Vercel project `linkshield-landing` | Prod URL → 200 | Last-known-good SSG served; deployments auto-promote |
+| Landing (Next.js 15.1.11) | Vercel project `cleanway-landing` | Prod URL → 200 | Last-known-good SSG served; deployments auto-promote |
 | Extension (Chrome/FF/Safari) | Self-hosted until store publish | Built via `bash scripts/build-extensions.sh` | User reloads from `chrome://extensions` |
 | Mobile (Expo) | TestFlight / Play Internal | `expo dev` | Guest mode keeps working without backend |
 
@@ -139,7 +139,7 @@ Pending (operator actions — I cannot do these without credentials):
 
 ## If /health returns 5xx or the pod crash-loops
 
-1. `gh api repos/AlexMos555/linkshield/commits/<sha>/status` — look at
+1. `gh api repos/AlexMos555/cleanway/commits/<sha>/status` — look at
    `honest-playfulness - web` for the Railway deploy URL.
 2. Open the URL → Deployments → click the failed deploy → Build logs.
    Common failures:
