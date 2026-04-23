@@ -137,7 +137,7 @@ export function Shell({
                 </Link>
               )}
               <span style={{ color: "#cbd5e1" }}>·</span>
-              <Link href="https://cleanway.example/support" style={footerLink}>
+              <Link href="https://cleanway.ai/support" style={footerLink}>
                 {t(locale, "email.common.support_link")}
               </Link>
             </Text>

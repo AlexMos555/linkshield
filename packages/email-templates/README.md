@@ -90,7 +90,7 @@ Output:
 
 ## Substitution model
 
-Templates are rendered with FIXTURE values (`Alex`, `https://cleanway.example/...`).
+Templates are rendered with FIXTURE values (`Alex`, `https://cleanway.ai/...`).
 Backend substitutes by REPLACING the fixture string with the real value.
 
 Example: template rendered with `firstName: "Alex"` → HTML contains "Hi Alex,".

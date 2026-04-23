@@ -19,7 +19,7 @@ Operational procedures for Cleanway's transactional email system. For how the co
 ## First-time setup per environment
 
 ### 1. Pick a sending domain
-We don't own `cleanway.example` — that's the dev placeholder. Before prod send:
+We don't own `cleanway.ai` — that's the dev placeholder. Before prod send:
 - Decide the marketing domain (see brand decision in `.planning/STATE.md`)
 - Subdomain for transactional: `mail.<domain>` or `send.<domain>` — keeps marketing domain clean of bounces
 - Set `EMAIL_FROM_DOMAIN=mail.yourdomain.com` in prod env
