@@ -23,11 +23,12 @@ body {
   color: var(--text-secondary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
 }
 
-/* Smooth scroll */
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 /* Gradient text */
