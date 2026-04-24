@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+- **Stripe open redirect** — `CheckoutRequest.success_url` / `cancel_url` now allowlist-validated against `cleanway.ai` apex/www. Attackers can no longer pipe Stripe checkout through attacker-controlled landing URLs.
+- **Extension host permissions** — Dropped `http://localhost:8000/*` from production manifests (Chrome/Firefox/Safari). Published extensions no longer leak auth to any local service on port 8000.
+- **Subscriptions RLS** — Documented intentional default-deny on `subscriptions` writes; all writes go through service_role on the backend.
+
+### Changed
+- **Rebrand** — Full migration from LinkShield to Cleanway (cleanway.ai). Infrastructure, extensions, landing, mobile, i18n, and CORS all updated.
+- **API host** — Backend URL migrated from Railway to `api.cleanway.ai` across all platform targets (20+ files).
+- **Sentry** — Added env-gated Sentry DSN integration for landing (Next.js) and mobile (Expo).
+
+### Fixed
+- **Mobile Safari** — Horizontal scroll regression on landing page (`fd99a9e`).
+- **Supabase RLS** — Enabled RLS on `families` / `orgs` / `org_members` tables; pinned `search_path` on `get_pricing_tier` and `report_phone` functions.
+
+### Removed
+- **Dead i18n** — `welcome_step_label` (`extension.welcome.step_label`) from `packages/i18n-strings/src/` and 50 generated locale files.
+- **Unused import** — `get_current_user` from `api/routers/email.py`.
+
+### Tests
+- 382 backend tests passing (was 373). Added 9 parameterized tests for `CheckoutRequest` URL validation.
+
 ## [0.1.0] - 2026-04-08
 
 ### Added
