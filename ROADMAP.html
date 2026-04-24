@@ -63,14 +63,14 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
 <body>
 
 <h1>🛡️ Cleanway — Production Roadmap v3</h1>
-<p class="subtitle">Обновлено 2026-04-16. Авто-рефреш каждую минуту.</p>
+<p class="subtitle">Обновлено 2026-04-25. Авто-рефреш каждую минуту.</p>
 
 <div class="mission">
 <strong>Миссия:</strong> сделать самый удобный для обычного человека защитник от фишинга. Без жаргона, с автопроверкой, с чёткими визуальными сигналами "всё в порядке" / "ОПАСНО". Блокировка бесплатна навсегда — это этический принцип. Продаём ценность (семья, детали, персонализация), не снимаем искусственный лимит. Спасаем обычных людей от мошенников — бабушек, родителей, детей.
 </div>
 
-<h2>Общий прогресс: ~72%</h2>
-<div class="progress-bar"><div class="progress-fill" style="width:72%"></div></div>
+<h2>Общий прогресс: ~78%</h2>
+<div class="progress-bar"><div class="progress-fill" style="width:78%"></div></div>
 
 <div class="legend">
   <span class="legend-item"><span class="legend-dot ld-done"></span>Готово</span>
@@ -81,7 +81,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
 </div>
 
 <div class="stats">
-  <div class="stat-card"><div class="stat-num green">250</div><div class="stat-label">Тестов (пасс)</div></div>
+  <div class="stat-card"><div class="stat-num green">382</div><div class="stat-label">Тестов (пасс)</div></div>
   <div class="stat-card"><div class="stat-num green">91%</div><div class="stat-label">Detection rate</div></div>
   <div class="stat-card"><div class="stat-num green">10/10</div><div class="stat-label">Языков готово</div></div>
   <div class="stat-card"><div class="stat-num blue">4</div><div class="stat-label">Ценовых tier'а</div></div>
@@ -200,7 +200,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon done-icon">✓</span> <strong>@cleanway/api-client</strong> вместо raw fetch (timeout, typed errors, Result<T,E>)</li>
     <li><span class="icon done-icon">✓</span> <strong>Vercel project подключён</strong>, build статически генерит 80+ SSG routes</li>
     <li><span class="icon partial-icon">⚠</span> Hero/Nav/CTA/Footer переведены, но Features/FAQ/Comparison/Testimonials секции пока только EN</li>
-    <li><span class="icon todo-icon">○</span> Custom domain не подключён (cleanway.ai не наш — нужен ребрендинг)</li>
+    <li><span class="icon done-icon">✓</span> Custom domain подключён: cleanway.ai live на Vercel (HTTPS, www→apex), api.cleanway.ai на Railway — 2026-04-22</li>
   </ul>
 </div>
 
@@ -233,7 +233,7 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon done-icon">✓</span> <strong>CI security workflow</strong>: gitleaks + bandit + pip-audit + Trivy (container CVEs) + Hadolint + SBOM</li>
     <li><span class="icon done-icon">✓</span> <strong>docker-compose.prod.yml</strong>: read-only, cap_drop ALL, no-new-privileges, resource limits</li>
     <li><span class="icon done-icon">✓</span> <strong>SECURITY.md</strong>: 6-class threat model, secret rotation procedure, backup/recovery matrix</li>
-    <li><span class="icon done-icon">✓</span> <strong>Pytest migration</strong>: 165 тестов pass, 55% coverage (pricing 100%, scoring 89%, schemas 100%)</li>
+    <li><span class="icon done-icon">✓</span> <strong>Pytest migration</strong>: 382 тестов pass (pricing 100%, scoring 89%, schemas 100%, payments validator 100%)</li>
     <li><span class="icon done-icon">✓</span> GitHub Actions расширен: test + lint + docker + security workflows</li>
   </ul>
 </div>
@@ -273,9 +273,9 @@ h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
     <li><span class="icon todo-icon">○</span> Google Safe Browsing API key (console.cloud.google.com — free tier)</li>
     <li><span class="icon todo-icon">○</span> Stripe account + 24 regional price IDs (3 plans × 4 tier × 2 interval)</li>
     <li><span class="icon todo-icon">○</span> Upstash Redis (free tier 10K commands/day) или Railway Redis addon</li>
-    <li><span class="icon todo-icon">○</span> Railway env vars обновить на новый EU Supabase (нужен railway login)</li>
+    <li><span class="icon done-icon">✓</span> Railway env vars обновлены на EU Supabase + ALLOWED_ORIGINS для cleanway.ai/www (2026-04-22)</li>
     <li><span class="icon todo-icon">○</span> Удалить старый Sydney Supabase project после verification</li>
-    <li><span class="icon todo-icon">○</span> Решить с доменом (cleanway.ai занят, cleanway.ai не наш — нужен ребрендинг)</li>
+    <li><span class="icon done-icon">✓</span> Домен: cleanway.ai куплен и полностью переехали (ребренд LinkShield→Cleanway, DNS/SSL/CORS/Sentry wired 2026-04-22)</li>
     <li><span class="icon todo-icon">○</span> E2E: extension загрузить в Chrome Dev → реальный API → реальный score</li>
   </ul>
 </div>
