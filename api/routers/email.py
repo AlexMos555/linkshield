@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from api.models.schemas import AuthUser
-from api.services.auth import get_current_user, get_optional_user  # noqa: F401
+from api.services.auth import get_optional_user
 from api.services.email_analyzer import (
     AnalysisResult,
     EmailBody,

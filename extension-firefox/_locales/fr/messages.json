@@ -218,8 +218,5 @@
   },
   "welcome_trust_footer": {
     "message": "Le blocage est toujours gratuit. Vos données ne quittent jamais cet appareil."
-  },
-  "welcome_step_label": {
-    "message": "Étape"
   }
 }

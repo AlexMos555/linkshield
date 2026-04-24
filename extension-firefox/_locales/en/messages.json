@@ -220,8 +220,5 @@
   },
   "welcome_trust_footer": {
     "message": "Free forever for blocking. Your data never leaves this device."
-  },
-  "welcome_step_label": {
-    "message": "Step"
   }
 }
