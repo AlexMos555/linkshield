@@ -10,6 +10,7 @@ User-facing API endpoints.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -470,10 +471,52 @@ async def update_user_settings(
 )
 async def get_profile(user: AuthUser = Depends(get_current_user)):
     """Get user profile info."""
+    import httpx
+
+    settings = get_settings()
+    devices_count = 0
+    member_since: Optional[str] = None
+
+    if settings.supabase_url and settings.supabase_service_key:
+        headers = {
+            "apikey": settings.supabase_service_key,
+            "Authorization": f"Bearer {settings.supabase_service_key}",
+            "Prefer": "count=exact",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                devices_resp, user_resp = await asyncio.gather(
+                    client.get(
+                        f"{settings.supabase_url}/rest/v1/devices",
+                        params={"user_id": f"eq.{user.id}", "select": "id"},
+                        headers={**headers, "Range-Unit": "items", "Range": "0-0"},
+                    ),
+                    client.get(
+                        f"{settings.supabase_url}/rest/v1/users",
+                        params={"id": f"eq.{user.id}", "select": "created_at"},
+                        headers=headers,
+                    ),
+                    return_exceptions=True,
+                )
+
+            if isinstance(devices_resp, httpx.Response) and devices_resp.status_code in (200, 206):
+                content_range = devices_resp.headers.get("content-range", "")
+                if "/" in content_range:
+                    total = content_range.rsplit("/", 1)[-1]
+                    if total.isdigit():
+                        devices_count = int(total)
+
+            if isinstance(user_resp, httpx.Response) and user_resp.status_code == 200:
+                rows = user_resp.json()
+                if rows and rows[0].get("created_at"):
+                    member_since = rows[0]["created_at"]
+        except Exception as e:
+            logger.warning("profile_fetch_error", extra={"error": str(e)})
+
     return ProfileResponse(
         id=user.id,
         email=user.email,
         tier=user.tier.value,
-        devices=0,  # TODO: count from DB
-        member_since=None,
+        devices=devices_count,
+        member_since=member_since,
     )

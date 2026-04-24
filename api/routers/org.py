@@ -68,7 +68,10 @@ async def create_org(
 
     settings = get_settings()
     if not settings.supabase_url or not settings.supabase_service_key:
-        # Return mock for demo
+        # In production this is a hard failure — we won't fake a business org.
+        # In dev/staging the mock helps local flows without Supabase configured.
+        if settings.environment == "production":
+            raise HTTPException(503, "Database not configured")
         org_id = hashlib.sha256(f"{user.id}-{request.name}".encode()).hexdigest()[:12]
         return {
             "org_id": org_id,
@@ -76,6 +79,7 @@ async def create_org(
             "admin": user.email,
             "tier": "business",
             "created_at": datetime.now(timezone.utc).isoformat(),
+            "mock": True,
         }
 
     try:

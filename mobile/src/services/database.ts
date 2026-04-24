@@ -10,14 +10,16 @@ import { Platform } from "react-native";
 let _memoryChecks: any[] = [];
 let _memorySettings: Record<string, string> = {};
 let _isNative = Platform.OS !== "web";
-let _db: any = null;
+type SQLiteDB = import("expo-sqlite").SQLiteDatabase;
 
-async function getDB() {
+let _db: SQLiteDB | null = null;
+
+async function getDB(): Promise<SQLiteDB | null> {
   if (!_isNative) return null;
   if (_db) return _db;
 
   try {
-    const SQLite = require("expo-sqlite");
+    const SQLite = require("expo-sqlite") as typeof import("expo-sqlite");
     _db = await SQLite.openDatabaseAsync("cleanway.db");
     await _db.execAsync(`
       CREATE TABLE IF NOT EXISTS checks (
