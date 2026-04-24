@@ -16,7 +16,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from api.config import get_settings
 from api.services.auth import get_current_user
@@ -36,10 +36,20 @@ PRICE_IDS = {
 }
 
 
+_ALLOWED_REDIRECT_PREFIXES = ("https://cleanway.ai/", "https://www.cleanway.ai/")
+
+
 class CheckoutRequest(BaseModel):
     plan: str  # "personal_monthly", "personal_yearly", "family_monthly", "family_yearly"
     success_url: str = "https://cleanway.ai/success"
     cancel_url: str = "https://cleanway.ai/pricing"
+
+    @field_validator("success_url", "cancel_url")
+    @classmethod
+    def _must_be_cleanway_domain(cls, v: str) -> str:
+        if not any(v.startswith(p) for p in _ALLOWED_REDIRECT_PREFIXES):
+            raise ValueError("URL must be on cleanway.ai domain")
+        return v
 
 
 class CheckoutResponse(BaseModel):

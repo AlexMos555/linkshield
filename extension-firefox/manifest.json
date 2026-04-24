@@ -11,7 +11,6 @@
     "contextMenus",
     "https://api.cleanway.ai/*",
     "https://*.cleanway.ai/*",
-    "http://localhost:8000/*",
     "https://mail.google.com/*",
     "https://outlook.office.com/*",
     "https://outlook.live.com/*",

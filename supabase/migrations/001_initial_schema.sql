@@ -143,6 +143,10 @@ ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users read own data" ON users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users update own data" ON users FOR UPDATE USING (auth.uid() = id);
 
+-- subscriptions: users can read their own row only. No INSERT/UPDATE/DELETE policy
+-- is defined intentionally — all writes go through the FastAPI backend using the
+-- service_role key (Stripe webhook → upsert). RLS default-deny blocks any direct
+-- writes attempted with a user JWT via the Supabase client SDK.
 CREATE POLICY "Users read own subscription" ON subscriptions FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "Users manage own devices" ON devices FOR ALL USING (auth.uid() = user_id);
