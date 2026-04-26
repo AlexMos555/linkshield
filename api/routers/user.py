@@ -67,6 +67,36 @@ class ProfileResponse(BaseModel):
     member_since: Optional[str]
 
 
+# Pricing v2: free users see full threat detail for the first N dangerous
+# blocks, then detail-only is gated (block itself ALWAYS works — ethical
+# baseline). Tunable via env if conversion data shows we set this wrong.
+FREEMIUM_DETAIL_GATING_THRESHOLD: int = 50
+
+
+class ThreatStatus(BaseModel):
+    """Cumulative blocked-threats counter + freemium detail gating state."""
+
+    threats_blocked_lifetime: int = 0
+    threshold: int = FREEMIUM_DETAIL_GATING_THRESHOLD
+    # `gated` is true when this user should see the upsell nudge instead of
+    # full threat detail. Block UI itself never depends on this flag.
+    gated: bool = False
+    tier: str = "free"
+    nudge_shown_at: Optional[str] = None  # ISO 8601
+    nudge_count: int = 0
+
+
+class IncrementThreatsRequest(BaseModel):
+    """Extension/mobile reports N newly-blocked threats since last sync."""
+
+    count: int = Field(default=1, ge=1, le=1000)
+
+
+def _is_gated(tier: str, counter: int) -> bool:
+    """Detail gating only applies to free tier past the threshold."""
+    return tier == "free" and counter >= FREEMIUM_DETAIL_GATING_THRESHOLD
+
+
 # ── Endpoints ──
 
 @router.post("/aggregates", dependencies=[Depends(rate_limit(category="user_write"))])
@@ -519,4 +549,150 @@ async def get_profile(user: AuthUser = Depends(get_current_user)):
         tier=user.tier.value,
         devices=devices_count,
         member_since=member_since,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Pricing v2: 50-threat freemium counter + detail gating
+# ═══════════════════════════════════════════════════════════════════
+#
+# Block UI is FREE FOREVER. Every blocked threat protects the user
+# regardless of subscription state — that is the ethical baseline.
+#
+# What's gated for free users past the threshold:
+#   - "Why this is dangerous" detail panel
+#   - Domain history / scheme breakdown
+#   - Annotated page screenshot
+#
+# Server tracks the lifetime counter so the gating decision survives
+# extension reinstalls and works across devices for the same account.
+
+async def _fetch_threat_row(
+    user_id: str,
+    *,
+    base_url: str,
+    service_key: str,
+) -> dict:
+    """Read threats_blocked_lifetime + nudge fields. Empty dict if none."""
+    import httpx
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(
+            f"{base_url}/rest/v1/user_settings",
+            params={
+                "user_id": f"eq.{user_id}",
+                "select": "threats_blocked_lifetime,threshold_nudge_shown_at,threshold_nudge_count",
+            },
+            headers={
+                "apikey": service_key,
+                "Authorization": f"Bearer {service_key}",
+            },
+        )
+    if resp.status_code != 200:
+        logger.warning("threat_row_fetch_failed", extra={"status": resp.status_code})
+        return {}
+    rows = resp.json()
+    return rows[0] if rows else {}
+
+
+@router.get(
+    "/threats/status",
+    response_model=ThreatStatus,
+    dependencies=[Depends(rate_limit(category="user_read"))],
+)
+async def get_threat_status(user: AuthUser = Depends(get_current_user)) -> ThreatStatus:
+    """Return blocked-threats counter + freemium gating decision."""
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        # Degraded mode — return zeroed counter; gating disabled until DB recovers.
+        return ThreatStatus(tier=user.tier.value)
+
+    row = await _fetch_threat_row(
+        user.id,
+        base_url=settings.supabase_url,
+        service_key=settings.supabase_service_key,
+    )
+    counter = int(row.get("threats_blocked_lifetime") or 0)
+    return ThreatStatus(
+        threats_blocked_lifetime=counter,
+        gated=_is_gated(user.tier.value, counter),
+        tier=user.tier.value,
+        nudge_shown_at=row.get("threshold_nudge_shown_at"),
+        nudge_count=int(row.get("threshold_nudge_count") or 0),
+    )
+
+
+@router.post(
+    "/threats/increment",
+    response_model=ThreatStatus,
+    dependencies=[Depends(rate_limit(category="user_write"))],
+)
+async def increment_threats(
+    body: IncrementThreatsRequest,
+    user: AuthUser = Depends(get_current_user),
+) -> ThreatStatus:
+    """
+    Add `body.count` to the lifetime threat counter and return new state.
+
+    On the FIRST crossing of the gating threshold for a free user, set
+    `threshold_nudge_shown_at` so the client can decide cadence for showing
+    the upsell nudge. We do not bump nudge_count here — that's the client's
+    responsibility once it actually renders the nudge UI.
+    """
+    import httpx
+
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        raise HTTPException(503, "User settings storage unavailable")
+
+    # Read current state to compute first-crossing transition
+    row = await _fetch_threat_row(
+        user.id,
+        base_url=settings.supabase_url,
+        service_key=settings.supabase_service_key,
+    )
+    prev_counter = int(row.get("threats_blocked_lifetime") or 0)
+    new_counter = prev_counter + body.count
+    nudge_shown_at = row.get("threshold_nudge_shown_at")
+    crossed_now = (
+        prev_counter < FREEMIUM_DETAIL_GATING_THRESHOLD
+        and new_counter >= FREEMIUM_DETAIL_GATING_THRESHOLD
+        and user.tier.value == "free"
+    )
+    if crossed_now and not nudge_shown_at:
+        nudge_shown_at = datetime.now(timezone.utc).isoformat()
+
+    payload = {
+        "user_id": user.id,
+        "threats_blocked_lifetime": new_counter,
+        "threshold_nudge_shown_at": nudge_shown_at,
+        "threshold_nudge_count": int(row.get("threshold_nudge_count") or 0),
+    }
+    headers = {
+        "apikey": settings.supabase_service_key,
+        "Authorization": f"Bearer {settings.supabase_service_key}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.post(
+            f"{settings.supabase_url}/rest/v1/user_settings",
+            headers=headers,
+            json=payload,
+        )
+
+    if resp.status_code not in (200, 201, 204):
+        logger.warning(
+            "threat_counter_persist_failed",
+            extra={"status": resp.status_code, "user_id": user.id},
+        )
+        raise HTTPException(500, "Failed to persist threat counter")
+
+    return ThreatStatus(
+        threats_blocked_lifetime=new_counter,
+        gated=_is_gated(user.tier.value, new_counter),
+        tier=user.tier.value,
+        nudge_shown_at=nudge_shown_at,
+        nudge_count=int(row.get("threshold_nudge_count") or 0),
     )
