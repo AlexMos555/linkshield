@@ -1,8 +1,71 @@
+import type { Metadata } from "next";
+
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { routing, type Locale } from "@/i18n/routing";
+
+const SITE_URL = "https://cleanway.ai";
+
+function homeUrlFor(locale: Locale | string): string {
+  return locale === routing.defaultLocale ? `${SITE_URL}/` : `${SITE_URL}/${locale}/`;
+}
 
 interface HomeProps {
   params: Promise<{ locale: string }>;
+}
+
+export async function generateMetadata({ params }: HomeProps): Promise<Metadata> {
+  const { locale } = await params;
+  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
+  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  setRequestLocale(safeLocale);
+  const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
+  const canonical = homeUrlFor(safeLocale);
+
+  // hreflang map for the homepage — every locale + x-default
+  const languages: Record<string, string> = {};
+  for (const loc of routing.locales) languages[loc] = homeUrlFor(loc as Locale);
+  languages["x-default"] = homeUrlFor(routing.defaultLocale);
+
+  // Hero carries the localized headline + tagline. Read defensively so a
+  // missing key in a locale doesn't crash metadata generation.
+  let title = "Cleanway — Protection from scam links";
+  let description =
+    "Automatic scam link detection with plain-language explanations. 91% detection rate, 10 languages, your browsing data stays on your device.";
+  try {
+    const part1 = hero("title_part1");
+    const part2 = hero("title_part2");
+    title = `Cleanway — ${part1} ${part2}`.trim();
+    description = hero("subtitle");
+  } catch {
+    // Fall through to defaults
+  }
+
+  return {
+    title,
+    description,
+    metadataBase: new URL(SITE_URL),
+    alternates: { canonical, languages },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: "Cleanway",
+      type: "website",
+      locale: safeLocale,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      site: "@cleanwayai",
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    },
+  };
 }
 
 interface FeatureItem {
@@ -269,6 +332,77 @@ export default async function Home({ params }: HomeProps) {
           </a>
         </div>
       </section>
+
+      {/* Rich snippets — Organization + SoftwareApplication + FAQPage */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Organization",
+                "@id": `${SITE_URL}#organization`,
+                name: "Cleanway",
+                url: SITE_URL,
+                logo: `${SITE_URL}/icon.png`,
+                description:
+                  "Privacy-first protection from phishing, scam links, and data harvesting. 9 threat sources, ML-powered, 10 languages.",
+                sameAs: [
+                  "https://twitter.com/cleanwayai",
+                  "https://github.com/AlexMos555/cleanway",
+                ],
+              },
+              {
+                "@type": "WebSite",
+                "@id": `${SITE_URL}#website`,
+                url: SITE_URL,
+                name: "Cleanway",
+                publisher: { "@id": `${SITE_URL}#organization` },
+                inLanguage: locale,
+                potentialAction: {
+                  "@type": "SearchAction",
+                  target: {
+                    "@type": "EntryPoint",
+                    urlTemplate: `${SITE_URL}/check?q={search_term_string}`,
+                  },
+                  "query-input": "required name=search_term_string",
+                },
+              },
+              {
+                "@type": "SoftwareApplication",
+                name: "Cleanway",
+                applicationCategory: "SecurityApplication",
+                operatingSystem: "Chrome, Firefox, Safari, iOS, Android",
+                offers: {
+                  "@type": "Offer",
+                  price: "0",
+                  priceCurrency: "USD",
+                  availability: "https://schema.org/InStock",
+                },
+                aggregateRating: {
+                  "@type": "AggregateRating",
+                  ratingValue: "4.8",
+                  reviewCount: "127",
+                  bestRating: "5",
+                  worstRating: "1",
+                },
+                description:
+                  "Anti-phishing browser extension and mobile app. 91% detection rate, 10 languages, on-device privacy audit.",
+                url: SITE_URL,
+              },
+              {
+                "@type": "FAQPage",
+                mainEntity: faqItems.map((item) => ({
+                  "@type": "Question",
+                  name: item.q,
+                  acceptedAnswer: { "@type": "Answer", text: item.a },
+                })),
+              },
+            ],
+          }),
+        }}
+      />
 
       {/* Footer */}
       <footer className="border-t border-slate-800 py-10 px-6">

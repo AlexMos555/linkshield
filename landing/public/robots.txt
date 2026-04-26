@@ -1,4 +1,30 @@
+# Cleanway — privacy-first phishing protection.
+# Robots are welcome to crawl every public page so /check/{domain} and
+# /audit/{domain} pages can be indexed in 10 languages.
+
 User-agent: *
 Allow: /
 Disallow: /api/
+
+# Block AI training crawlers — we publish content but don't consent to it
+# being scraped for model training. Search-engine crawlers (Googlebot,
+# Bingbot, etc.) are NOT blocked by these rules.
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
 Sitemap: https://cleanway.ai/sitemap.xml
