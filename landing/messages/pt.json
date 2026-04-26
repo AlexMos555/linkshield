@@ -34,37 +34,37 @@
     "label": "Idioma"
   },
   "Features": {
-    "heading": "Everything you need. Nothing you don't.",
+    "heading": "Tudo o que você precisa. Nada do que não precisa.",
     "items": [
       {
         "icon": "🔍",
-        "title": "Automatic Link Scanning",
-        "desc": "Every link on every page checked against 9 threat databases. Red, yellow, green badges show safety at a glance."
+        "title": "Verificação automática de links",
+        "desc": "Cada link em cada página verificado contra 9 bancos de dados de ameaças. Selos vermelho, amarelo e verde mostram a segurança num relance."
       },
       {
         "icon": "🔒",
-        "title": "Privacy Audit",
-        "desc": "Right-click any page to see trackers, cookies, data collection, and fingerprinting. Grade A through F."
+        "title": "Auditoria de privacidade",
+        "desc": "Clique com o botão direito em qualquer página para ver rastreadores, cookies, coleta de dados e fingerprinting. Nota de A a F."
       },
       {
         "icon": "🧠",
-        "title": "ML-Powered Detection",
-        "desc": "CatBoost model trained on 18K+ domains. 0.9988 AUC. Catches novel phishing that rule-based systems miss."
+        "title": "Detecção com IA",
+        "desc": "Modelo CatBoost treinado em mais de 18 mil domínios. AUC 0,9988. Detecta phishing novo que sistemas baseados em regras não pegam."
       },
       {
         "icon": "⚡",
-        "title": "Instant Protection",
-        "desc": "95% of checks happen locally via bloom filter in under 1ms. No slowdown. No waiting."
+        "title": "Proteção instantânea",
+        "desc": "95% das verificações acontecem localmente via bloom filter em menos de 1 ms. Sem lentidão. Sem espera."
       },
       {
         "icon": "📱",
-        "title": "Your Data, Your Device",
-        "desc": "Browsing history never touches our servers. We only see domain names. Even if breached, your data is safe."
+        "title": "Seus dados, seu dispositivo",
+        "desc": "Seu histórico de navegação nunca toca nossos servidores. Vemos apenas nomes de domínio. Mesmo em caso de vazamento, seus dados estão seguros."
       },
       {
         "icon": "📧",
-        "title": "Inbox Scanner",
-        "desc": "Finds phishing links in your Gmail and Outlook that your browser missed."
+        "title": "Scanner da caixa de entrada",
+        "desc": "Encontra links de phishing no seu Gmail e Outlook que o navegador deixou passar."
       }
     ]
   },
@@ -130,34 +130,34 @@
     }
   },
   "Comparison": {
-    "heading": "How we compare",
+    "heading": "Como nos comparamos",
     "headers": [
-      "Feature",
+      "Recurso",
       "Cleanway",
       "Guardio",
       "NordVPN TP",
       "Norton 360",
-      "Free Extensions"
+      "Extensões grátis"
     ],
     "rows": [
       [
-        "Price",
-        "$4.99/mo",
-        "$9.99/mo",
-        "~$5/mo (w/ VPN)",
-        "$40-100/yr",
-        "Free"
+        "Preço",
+        "$4.99/mês",
+        "$9.99/mês",
+        "~$5/mês (c/ VPN)",
+        "$40-100/ano",
+        "Grátis"
       ],
       [
-        "Platforms",
-        "All 5",
-        "Chrome only",
+        "Plataformas",
+        "Todas as 5",
+        "Apenas Chrome",
         "Win/Mac",
-        "All",
-        "Browser only"
+        "Todas",
+        "Apenas navegador"
       ],
       [
-        "Privacy Audit",
+        "Auditoria de privacidade",
         "✅",
         "❌",
         "❌",
@@ -165,7 +165,7 @@
         "❌"
       ],
       [
-        "On-device data",
+        "Dados no dispositivo",
         "✅",
         "❌",
         "❌",
@@ -173,7 +173,7 @@
         "❌"
       ],
       [
-        "ML detection",
+        "Detecção por ML",
         "✅",
         "✅",
         "✅",
@@ -181,7 +181,7 @@
         "❌"
       ],
       [
-        "Breach monitoring",
+        "Monitoramento de vazamentos",
         "✅",
         "❌",
         "❌",
@@ -189,7 +189,7 @@
         "❌"
       ],
       [
-        "Family Hub",
+        "Hub Familiar",
         "✅ (E2E)",
         "❌",
         "❌",
@@ -197,7 +197,7 @@
         "❌"
       ],
       [
-        "B2B Phishing sim",
+        "Simulação de phishing B2B",
         "✅",
         "❌",
         "❌",
@@ -226,51 +226,51 @@
     "device_note": "If device is lost: protected by OS encryption."
   },
   "Testimonials": {
-    "heading": "What users say",
+    "heading": "O que dizem os usuários",
     "items": [
       {
-        "q": "Finally, a security tool that doesn't spy on me. The Privacy Audit is eye-opening.",
+        "q": "Finalmente, uma ferramenta de segurança que não me espiona. A Auditoria de privacidade abre os olhos.",
         "n": "Alex K.",
-        "r": "Software Engineer"
+        "r": "Engenheiro de software"
       },
       {
-        "q": "Caught 3 phishing links in my Gmail that Chrome missed. Worth every penny.",
+        "q": "Pegou 3 links de phishing no meu Gmail que o Chrome deixou passar. Vale cada centavo.",
         "n": "Maria S.",
-        "r": "Marketing Manager"
+        "r": "Gerente de marketing"
       },
       {
-        "q": "We replaced KnowBe4 with Cleanway Business. Same protection, 1/4 the price.",
+        "q": "Substituímos o KnowBe4 pelo Cleanway Business. Mesma proteção, 1/4 do preço.",
         "n": "James T.",
-        "r": "IT Director"
+        "r": "Diretor de TI"
       }
     ]
   },
   "FAQ": {
-    "heading": "FAQ",
+    "heading": "Perguntas frequentes",
     "items": [
       {
-        "q": "How is my data protected?",
-        "a": "Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if we're breached, attackers learn nothing about your online activity."
+        "q": "Como meus dados são protegidos?",
+        "a": "Seu histórico de navegação nunca sai do seu dispositivo. Nossos servidores armazenam apenas seu e-mail e o status da assinatura. Mesmo que sejamos invadidos, os atacantes não saberão nada sobre sua atividade online."
       },
       {
-        "q": "Does it slow down browsing?",
-        "a": "No. 95% of checks happen locally via bloom filter in under 1ms. Only unknown domains are sent to our API (domain name only, never full URLs)."
+        "q": "A navegação fica mais lenta?",
+        "a": "Não. 95% das verificações acontecem localmente via bloom filter em menos de 1 ms. Apenas domínios desconhecidos são enviados à nossa API (somente o nome do domínio, nunca a URL completa)."
       },
       {
-        "q": "Can I use it with a VPN?",
-        "a": "Yes! On mobile, Cleanway auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
+        "q": "Posso usar com VPN?",
+        "a": "Sim! No celular, o Cleanway detecta automaticamente sua VPN e muda para o modo DNS, funcionando junto com NordVPN, ExpressVPN ou qualquer outro provedor."
       },
       {
-        "q": "What's different from Google Safe Browsing?",
-        "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. Cleanway adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
+        "q": "Qual a diferença em relação ao Google Safe Browsing?",
+        "a": "O Google Safe Browsing é reativo — pega ameaças conhecidas, mas perde phishing novo. O Cleanway adiciona detecção por ML, 8 fontes adicionais de ameaça, Auditoria de privacidade e não envia seus dados de navegação para o Google."
       },
       {
-        "q": "Is there a free plan?",
-        "a": "Yes! The free plan includes 10 API checks/day, unlimited local bloom filter checks, and basic Privacy Audit. Most casual users never need to upgrade."
+        "q": "Existe um plano gratuito?",
+        "a": "Sim! O plano gratuito inclui 10 verificações de API por dia, verificações ilimitadas no bloom filter local e Auditoria de privacidade básica. A maioria dos usuários casuais nunca precisa fazer upgrade."
       },
       {
-        "q": "How does phishing simulation work?",
-        "a": "Business plan includes simulated phishing emails sent to your team. Pick a template, we send test emails, track who clicks vs. who reports. For training, not punishment."
+        "q": "Como funciona a simulação de phishing?",
+        "a": "O plano Business inclui e-mails de phishing simulados enviados à sua equipe. Escolha um modelo, enviamos os e-mails de teste e acompanhamos quem clica vs. quem reporta. Para treinamento, não para punir."
       }
     ]
   }

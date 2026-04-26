@@ -34,37 +34,37 @@
     "label": "اللغة"
   },
   "Features": {
-    "heading": "Everything you need. Nothing you don't.",
+    "heading": "كل ما تحتاجه. لا شيء زائد.",
     "items": [
       {
         "icon": "🔍",
-        "title": "Automatic Link Scanning",
-        "desc": "Every link on every page checked against 9 threat databases. Red, yellow, green badges show safety at a glance."
+        "title": "فحص تلقائي للروابط",
+        "desc": "كل رابط في كل صفحة يُفحص مقابل 9 قواعد بيانات للتهديدات. شارات حمراء وصفراء وخضراء توضح الأمان بنظرة واحدة."
       },
       {
         "icon": "🔒",
-        "title": "Privacy Audit",
-        "desc": "Right-click any page to see trackers, cookies, data collection, and fingerprinting. Grade A through F."
+        "title": "تدقيق الخصوصية",
+        "desc": "انقر بزر الفأرة الأيمن على أي صفحة لرؤية المتعقبات وملفات الكوكيز وجمع البيانات والبصمة الرقمية. تقييم من A إلى F."
       },
       {
         "icon": "🧠",
-        "title": "ML-Powered Detection",
-        "desc": "CatBoost model trained on 18K+ domains. 0.9988 AUC. Catches novel phishing that rule-based systems miss."
+        "title": "كشف بالذكاء الاصطناعي",
+        "desc": "نموذج CatBoost مدرَّب على أكثر من 18 ألف نطاق. AUC 0.9988. يكتشف التصيد الجديد الذي تفوته الأنظمة المعتمدة على القواعد."
       },
       {
         "icon": "⚡",
-        "title": "Instant Protection",
-        "desc": "95% of checks happen locally via bloom filter in under 1ms. No slowdown. No waiting."
+        "title": "حماية فورية",
+        "desc": "95% من الفحوصات تجري محلياً عبر بلوم فلتر في أقل من 1 ميلي ثانية. لا تباطؤ. لا انتظار."
       },
       {
         "icon": "📱",
-        "title": "Your Data, Your Device",
-        "desc": "Browsing history never touches our servers. We only see domain names. Even if breached, your data is safe."
+        "title": "بياناتك، جهازك",
+        "desc": "سجل التصفح لا يصل أبداً إلى خوادمنا. نرى فقط أسماء النطاقات. حتى في حالة الاختراق، بياناتك آمنة."
       },
       {
         "icon": "📧",
-        "title": "Inbox Scanner",
-        "desc": "Finds phishing links in your Gmail and Outlook that your browser missed."
+        "title": "ماسح صندوق الوارد",
+        "desc": "يعثر على روابط التصيد في Gmail و Outlook التي فاتت متصفحك."
       }
     ]
   },
@@ -130,34 +130,34 @@
     }
   },
   "Comparison": {
-    "heading": "How we compare",
+    "heading": "المقارنة",
     "headers": [
-      "Feature",
+      "الميزة",
       "Cleanway",
       "Guardio",
       "NordVPN TP",
       "Norton 360",
-      "Free Extensions"
+      "إضافات مجانية"
     ],
     "rows": [
       [
-        "Price",
-        "$4.99/mo",
-        "$9.99/mo",
-        "~$5/mo (w/ VPN)",
-        "$40-100/yr",
-        "Free"
+        "السعر",
+        "4.99 $/شهر",
+        "9.99 $/شهر",
+        "~5 $/شهر (مع VPN)",
+        "40-100 $/سنة",
+        "مجاناً"
       ],
       [
-        "Platforms",
-        "All 5",
-        "Chrome only",
+        "المنصات",
+        "كل الـ5",
+        "Chrome فقط",
         "Win/Mac",
-        "All",
-        "Browser only"
+        "الكل",
+        "المتصفح فقط"
       ],
       [
-        "Privacy Audit",
+        "تدقيق الخصوصية",
         "✅",
         "❌",
         "❌",
@@ -165,7 +165,7 @@
         "❌"
       ],
       [
-        "On-device data",
+        "البيانات على الجهاز",
         "✅",
         "❌",
         "❌",
@@ -173,7 +173,7 @@
         "❌"
       ],
       [
-        "ML detection",
+        "كشف بالتعلم الآلي",
         "✅",
         "✅",
         "✅",
@@ -181,7 +181,7 @@
         "❌"
       ],
       [
-        "Breach monitoring",
+        "مراقبة التسريبات",
         "✅",
         "❌",
         "❌",
@@ -189,7 +189,7 @@
         "❌"
       ],
       [
-        "Family Hub",
+        "مركز العائلة",
         "✅ (E2E)",
         "❌",
         "❌",
@@ -197,7 +197,7 @@
         "❌"
       ],
       [
-        "B2B Phishing sim",
+        "محاكاة تصيد B2B",
         "✅",
         "❌",
         "❌",
@@ -226,51 +226,51 @@
     "device_note": "If device is lost: protected by OS encryption."
   },
   "Testimonials": {
-    "heading": "What users say",
+    "heading": "ماذا يقول المستخدمون",
     "items": [
       {
-        "q": "Finally, a security tool that doesn't spy on me. The Privacy Audit is eye-opening.",
+        "q": "أخيراً، أداة أمان لا تتجسس عليّ. تدقيق الخصوصية يفتح العين.",
         "n": "Alex K.",
-        "r": "Software Engineer"
+        "r": "مهندس برمجيات"
       },
       {
-        "q": "Caught 3 phishing links in my Gmail that Chrome missed. Worth every penny.",
+        "q": "التقط 3 روابط تصيد في Gmail فاتت Chrome. يستحق كل قرش.",
         "n": "Maria S.",
-        "r": "Marketing Manager"
+        "r": "مديرة تسويق"
       },
       {
-        "q": "We replaced KnowBe4 with Cleanway Business. Same protection, 1/4 the price.",
+        "q": "استبدلنا KnowBe4 بـ Cleanway Business. نفس الحماية، بربع السعر.",
         "n": "James T.",
-        "r": "IT Director"
+        "r": "مدير تقنية المعلومات"
       }
     ]
   },
   "FAQ": {
-    "heading": "FAQ",
+    "heading": "الأسئلة الشائعة",
     "items": [
       {
-        "q": "How is my data protected?",
-        "a": "Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if we're breached, attackers learn nothing about your online activity."
+        "q": "كيف تُحمى بياناتي؟",
+        "a": "سجل التصفح لا يغادر جهازك أبداً. خوادمنا تخزن فقط بريدك الإلكتروني وحالة الاشتراك. حتى لو تعرضنا للاختراق، لن يعرف المهاجمون شيئاً عن نشاطك على الإنترنت."
       },
       {
-        "q": "Does it slow down browsing?",
-        "a": "No. 95% of checks happen locally via bloom filter in under 1ms. Only unknown domains are sent to our API (domain name only, never full URLs)."
+        "q": "هل يُبطئ التصفح؟",
+        "a": "لا. 95% من الفحوصات تجري محلياً عبر بلوم فلتر في أقل من 1 ميلي ثانية. فقط النطاقات غير المعروفة تُرسل إلى API لدينا (اسم النطاق فقط، وليس الرابط الكامل أبداً)."
       },
       {
-        "q": "Can I use it with a VPN?",
-        "a": "Yes! On mobile, Cleanway auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
+        "q": "هل يمكنني استخدامه مع VPN؟",
+        "a": "نعم! على الجوال، يكتشف Cleanway VPN تلقائياً ويتحول إلى وضع DNS، ويعمل جنباً إلى جنب مع NordVPN و ExpressVPN أو أي مزود آخر."
       },
       {
-        "q": "What's different from Google Safe Browsing?",
-        "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. Cleanway adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
+        "q": "ما الفرق بينه وبين Google Safe Browsing؟",
+        "a": "Google Safe Browsing تفاعلي — يلتقط التهديدات المعروفة لكنه يفوت التصيد الجديد. يضيف Cleanway كشفاً بالتعلم الآلي و 8 مصادر تهديد إضافية وتدقيق خصوصية، ولا يرسل بيانات تصفحك إلى Google."
       },
       {
-        "q": "Is there a free plan?",
-        "a": "Yes! The free plan includes 10 API checks/day, unlimited local bloom filter checks, and basic Privacy Audit. Most casual users never need to upgrade."
+        "q": "هل توجد خطة مجانية؟",
+        "a": "نعم! تشمل الخطة المجانية 10 فحوصات API يومياً وفحوصات بلوم فلتر محلية غير محدودة وتدقيق خصوصية أساسي. معظم المستخدمين العاديين لا يحتاجون أبداً إلى الترقية."
       },
       {
-        "q": "How does phishing simulation work?",
-        "a": "Business plan includes simulated phishing emails sent to your team. Pick a template, we send test emails, track who clicks vs. who reports. For training, not punishment."
+        "q": "كيف تعمل محاكاة التصيد؟",
+        "a": "تتضمن خطة الأعمال رسائل بريد إلكتروني تصيد محاكاة تُرسل إلى فريقك. اختر قالباً، ونرسل رسائل اختبار، ونتعقب من ينقر مقابل من يبلِّغ. للتدريب، لا للعقاب."
       }
     ]
   }

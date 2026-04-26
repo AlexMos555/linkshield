@@ -267,37 +267,37 @@
       "label": "Bahasa"
     },
     "features": {
-      "heading": "Everything you need. Nothing you don't.",
+      "heading": "Semua yang Anda butuhkan. Tidak ada yang berlebih.",
       "items": [
         {
           "icon": "🔍",
-          "title": "Automatic Link Scanning",
-          "desc": "Every link on every page checked against 9 threat databases. Red, yellow, green badges show safety at a glance."
+          "title": "Pemindaian tautan otomatis",
+          "desc": "Setiap tautan di setiap halaman diperiksa terhadap 9 basis data ancaman. Lencana merah, kuning, hijau menunjukkan keamanan secara sekilas."
         },
         {
           "icon": "🔒",
-          "title": "Privacy Audit",
-          "desc": "Right-click any page to see trackers, cookies, data collection, and fingerprinting. Grade A through F."
+          "title": "Audit privasi",
+          "desc": "Klik kanan di halaman mana pun untuk melihat pelacak, cookie, pengumpulan data, dan fingerprinting. Nilai A hingga F."
         },
         {
           "icon": "🧠",
-          "title": "ML-Powered Detection",
-          "desc": "CatBoost model trained on 18K+ domains. 0.9988 AUC. Catches novel phishing that rule-based systems miss."
+          "title": "Deteksi bertenaga ML",
+          "desc": "Model CatBoost dilatih pada 18 ribu+ domain. AUC 0,9988. Mendeteksi phishing baru yang dilewatkan sistem berbasis aturan."
         },
         {
           "icon": "⚡",
-          "title": "Instant Protection",
-          "desc": "95% of checks happen locally via bloom filter in under 1ms. No slowdown. No waiting."
+          "title": "Perlindungan instan",
+          "desc": "95% pemeriksaan terjadi secara lokal melalui bloom filter dalam waktu kurang dari 1 ms. Tanpa lambat. Tanpa menunggu."
         },
         {
           "icon": "📱",
-          "title": "Your Data, Your Device",
-          "desc": "Browsing history never touches our servers. We only see domain names. Even if breached, your data is safe."
+          "title": "Data Anda, perangkat Anda",
+          "desc": "Riwayat penjelajahan tidak pernah menyentuh server kami. Kami hanya melihat nama domain. Bahkan jika terjadi kebocoran, data Anda aman."
         },
         {
           "icon": "📧",
-          "title": "Inbox Scanner",
-          "desc": "Finds phishing links in your Gmail and Outlook that your browser missed."
+          "title": "Pemindai kotak masuk",
+          "desc": "Menemukan tautan phishing di Gmail dan Outlook yang dilewatkan peramban Anda."
         }
       ]
     },
@@ -363,34 +363,34 @@
       }
     },
     "comparison": {
-      "heading": "How we compare",
+      "heading": "Perbandingan",
       "headers": [
-        "Feature",
+        "Fitur",
         "Cleanway",
         "Guardio",
         "NordVPN TP",
         "Norton 360",
-        "Free Extensions"
+        "Ekstensi gratis"
       ],
       "rows": [
         [
-          "Price",
-          "$4.99/mo",
-          "$9.99/mo",
-          "~$5/mo (w/ VPN)",
-          "$40-100/yr",
-          "Free"
+          "Harga",
+          "$4.99/bln",
+          "$9.99/bln",
+          "~$5/bln (dgn VPN)",
+          "$40-100/thn",
+          "Gratis"
         ],
         [
-          "Platforms",
-          "All 5",
-          "Chrome only",
+          "Platform",
+          "Semua 5",
+          "Hanya Chrome",
           "Win/Mac",
-          "All",
-          "Browser only"
+          "Semua",
+          "Hanya peramban"
         ],
         [
-          "Privacy Audit",
+          "Audit privasi",
           "✅",
           "❌",
           "❌",
@@ -398,7 +398,7 @@
           "❌"
         ],
         [
-          "On-device data",
+          "Data di perangkat",
           "✅",
           "❌",
           "❌",
@@ -406,7 +406,7 @@
           "❌"
         ],
         [
-          "ML detection",
+          "Deteksi ML",
           "✅",
           "✅",
           "✅",
@@ -414,7 +414,7 @@
           "❌"
         ],
         [
-          "Breach monitoring",
+          "Pemantauan kebocoran",
           "✅",
           "❌",
           "❌",
@@ -422,7 +422,7 @@
           "❌"
         ],
         [
-          "Family Hub",
+          "Hub Keluarga",
           "✅ (E2E)",
           "❌",
           "❌",
@@ -430,7 +430,7 @@
           "❌"
         ],
         [
-          "B2B Phishing sim",
+          "Simulasi phishing B2B",
           "✅",
           "❌",
           "❌",
@@ -459,51 +459,51 @@
       "device_note": "If device is lost: protected by OS encryption."
     },
     "testimonials": {
-      "heading": "What users say",
+      "heading": "Apa kata pengguna",
       "items": [
         {
-          "q": "Finally, a security tool that doesn't spy on me. The Privacy Audit is eye-opening.",
+          "q": "Akhirnya, alat keamanan yang tidak memata-matai saya. Audit privasi membuka mata.",
           "n": "Alex K.",
-          "r": "Software Engineer"
+          "r": "Insinyur perangkat lunak"
         },
         {
-          "q": "Caught 3 phishing links in my Gmail that Chrome missed. Worth every penny.",
+          "q": "Menangkap 3 tautan phishing di Gmail saya yang dilewatkan Chrome. Sangat sepadan.",
           "n": "Maria S.",
-          "r": "Marketing Manager"
+          "r": "Manajer pemasaran"
         },
         {
-          "q": "We replaced KnowBe4 with Cleanway Business. Same protection, 1/4 the price.",
+          "q": "Kami mengganti KnowBe4 dengan Cleanway Business. Perlindungan sama, harga 1/4-nya.",
           "n": "James T.",
-          "r": "IT Director"
+          "r": "Direktur TI"
         }
       ]
     },
     "faq": {
-      "heading": "FAQ",
+      "heading": "Pertanyaan umum",
       "items": [
         {
-          "q": "How is my data protected?",
-          "a": "Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if we're breached, attackers learn nothing about your online activity."
+          "q": "Bagaimana data saya dilindungi?",
+          "a": "Riwayat penjelajahan Anda tidak pernah meninggalkan perangkat Anda. Server kami hanya menyimpan email dan status langganan. Bahkan jika kami diretas, peretas tidak akan tahu apa-apa tentang aktivitas online Anda."
         },
         {
-          "q": "Does it slow down browsing?",
-          "a": "No. 95% of checks happen locally via bloom filter in under 1ms. Only unknown domains are sent to our API (domain name only, never full URLs)."
+          "q": "Apakah memperlambat penjelajahan?",
+          "a": "Tidak. 95% pemeriksaan terjadi secara lokal melalui bloom filter dalam waktu kurang dari 1 ms. Hanya domain yang tidak dikenal dikirim ke API kami (hanya nama domain, bukan URL lengkap)."
         },
         {
-          "q": "Can I use it with a VPN?",
-          "a": "Yes! On mobile, Cleanway auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
+          "q": "Bisakah saya menggunakannya dengan VPN?",
+          "a": "Ya! Di seluler, Cleanway mendeteksi VPN Anda secara otomatis dan beralih ke mode DNS, bekerja bersama NordVPN, ExpressVPN, atau penyedia lain mana pun."
         },
         {
-          "q": "What's different from Google Safe Browsing?",
-          "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. Cleanway adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
+          "q": "Apa bedanya dengan Google Safe Browsing?",
+          "a": "Google Safe Browsing bersifat reaktif — menangkap ancaman yang diketahui tetapi melewatkan phishing baru. Cleanway menambahkan deteksi ML, 8 sumber ancaman tambahan, Audit privasi, dan tidak mengirimkan data penjelajahan Anda ke Google."
         },
         {
-          "q": "Is there a free plan?",
-          "a": "Yes! The free plan includes 10 API checks/day, unlimited local bloom filter checks, and basic Privacy Audit. Most casual users never need to upgrade."
+          "q": "Apakah ada paket gratis?",
+          "a": "Ya! Paket gratis mencakup 10 pemeriksaan API per hari, pemeriksaan bloom filter lokal tanpa batas, dan Audit privasi dasar. Sebagian besar pengguna kasual tidak pernah perlu meningkatkan paket."
         },
         {
-          "q": "How does phishing simulation work?",
-          "a": "Business plan includes simulated phishing emails sent to your team. Pick a template, we send test emails, track who clicks vs. who reports. For training, not punishment."
+          "q": "Bagaimana cara kerja simulasi phishing?",
+          "a": "Paket Business mencakup email phishing simulasi yang dikirim ke tim Anda. Pilih template, kami kirim email uji, dan melacak siapa yang mengeklik vs siapa yang melaporkan. Untuk pelatihan, bukan hukuman."
         }
       ]
     }

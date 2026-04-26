@@ -34,37 +34,37 @@
     "label": "भाषा"
   },
   "Features": {
-    "heading": "Everything you need. Nothing you don't.",
+    "heading": "वो सब जो आपको चाहिए। कुछ भी फ़ालतू नहीं।",
     "items": [
       {
         "icon": "🔍",
-        "title": "Automatic Link Scanning",
-        "desc": "Every link on every page checked against 9 threat databases. Red, yellow, green badges show safety at a glance."
+        "title": "स्वचालित लिंक स्कैनिंग",
+        "desc": "हर पेज पर हर लिंक की 9 खतरा डेटाबेस के विरुद्ध जाँच। लाल, पीले और हरे बैज एक नज़र में सुरक्षा दिखाते हैं।"
       },
       {
         "icon": "🔒",
-        "title": "Privacy Audit",
-        "desc": "Right-click any page to see trackers, cookies, data collection, and fingerprinting. Grade A through F."
+        "title": "गोपनीयता ऑडिट",
+        "desc": "किसी भी पेज पर राइट-क्लिक करके ट्रैकर, कुकीज़, डेटा संग्रह और फ़िंगरप्रिंटिंग देखें। ग्रेड A से F तक।"
       },
       {
         "icon": "🧠",
-        "title": "ML-Powered Detection",
-        "desc": "CatBoost model trained on 18K+ domains. 0.9988 AUC. Catches novel phishing that rule-based systems miss."
+        "title": "ML-संचालित पहचान",
+        "desc": "18,000+ डोमेन पर प्रशिक्षित CatBoost मॉडल। AUC 0.9988. नए फ़िशिंग को पकड़ता है जो नियम-आधारित सिस्टम चूक जाते हैं।"
       },
       {
         "icon": "⚡",
-        "title": "Instant Protection",
-        "desc": "95% of checks happen locally via bloom filter in under 1ms. No slowdown. No waiting."
+        "title": "तत्काल सुरक्षा",
+        "desc": "95% जाँचें ब्लूम फ़िल्टर के माध्यम से 1 मिलीसेकंड से कम में स्थानीय रूप से होती हैं। कोई धीमापन नहीं। कोई इंतज़ार नहीं।"
       },
       {
         "icon": "📱",
-        "title": "Your Data, Your Device",
-        "desc": "Browsing history never touches our servers. We only see domain names. Even if breached, your data is safe."
+        "title": "आपका डेटा, आपका डिवाइस",
+        "desc": "ब्राउज़िंग इतिहास हमारे सर्वर तक कभी नहीं पहुँचता। हम केवल डोमेन नाम देखते हैं। डेटा लीक होने पर भी आपका डेटा सुरक्षित है।"
       },
       {
         "icon": "📧",
-        "title": "Inbox Scanner",
-        "desc": "Finds phishing links in your Gmail and Outlook that your browser missed."
+        "title": "इनबॉक्स स्कैनर",
+        "desc": "आपके Gmail और Outlook में फ़िशिंग लिंक ढूँढता है जो ब्राउज़र चूक गया।"
       }
     ]
   },
@@ -130,34 +130,34 @@
     }
   },
   "Comparison": {
-    "heading": "How we compare",
+    "heading": "तुलना",
     "headers": [
-      "Feature",
+      "सुविधा",
       "Cleanway",
       "Guardio",
       "NordVPN TP",
       "Norton 360",
-      "Free Extensions"
+      "मुफ़्त एक्सटेंशन"
     ],
     "rows": [
       [
-        "Price",
-        "$4.99/mo",
-        "$9.99/mo",
-        "~$5/mo (w/ VPN)",
-        "$40-100/yr",
-        "Free"
+        "कीमत",
+        "$4.99/महीना",
+        "$9.99/महीना",
+        "~$5/महीना (VPN के साथ)",
+        "$40-100/साल",
+        "मुफ़्त"
       ],
       [
-        "Platforms",
-        "All 5",
-        "Chrome only",
+        "प्लेटफ़ॉर्म",
+        "सभी 5",
+        "केवल Chrome",
         "Win/Mac",
-        "All",
-        "Browser only"
+        "सभी",
+        "केवल ब्राउज़र"
       ],
       [
-        "Privacy Audit",
+        "गोपनीयता ऑडिट",
         "✅",
         "❌",
         "❌",
@@ -165,7 +165,7 @@
         "❌"
       ],
       [
-        "On-device data",
+        "डिवाइस पर डेटा",
         "✅",
         "❌",
         "❌",
@@ -173,7 +173,7 @@
         "❌"
       ],
       [
-        "ML detection",
+        "ML पहचान",
         "✅",
         "✅",
         "✅",
@@ -181,7 +181,7 @@
         "❌"
       ],
       [
-        "Breach monitoring",
+        "डेटा लीक निगरानी",
         "✅",
         "❌",
         "❌",
@@ -189,7 +189,7 @@
         "❌"
       ],
       [
-        "Family Hub",
+        "परिवार हब",
         "✅ (E2E)",
         "❌",
         "❌",
@@ -197,7 +197,7 @@
         "❌"
       ],
       [
-        "B2B Phishing sim",
+        "B2B फ़िशिंग सिमुलेशन",
         "✅",
         "❌",
         "❌",
@@ -226,51 +226,51 @@
     "device_note": "If device is lost: protected by OS encryption."
   },
   "Testimonials": {
-    "heading": "What users say",
+    "heading": "उपयोगकर्ता क्या कहते हैं",
     "items": [
       {
-        "q": "Finally, a security tool that doesn't spy on me. The Privacy Audit is eye-opening.",
+        "q": "अंत में, एक सुरक्षा उपकरण जो मेरी जासूसी नहीं करता। गोपनीयता ऑडिट आँखें खोलने वाला है।",
         "n": "Alex K.",
-        "r": "Software Engineer"
+        "r": "सॉफ़्टवेयर इंजीनियर"
       },
       {
-        "q": "Caught 3 phishing links in my Gmail that Chrome missed. Worth every penny.",
+        "q": "मेरे Gmail में 3 फ़िशिंग लिंक पकड़े जो Chrome चूक गया। हर पैसा वसूल।",
         "n": "Maria S.",
-        "r": "Marketing Manager"
+        "r": "मार्केटिंग मैनेजर"
       },
       {
-        "q": "We replaced KnowBe4 with Cleanway Business. Same protection, 1/4 the price.",
+        "q": "हमने KnowBe4 को Cleanway Business से बदल दिया। वही सुरक्षा, 1/4 कीमत।",
         "n": "James T.",
-        "r": "IT Director"
+        "r": "IT निदेशक"
       }
     ]
   },
   "FAQ": {
-    "heading": "FAQ",
+    "heading": "अक्सर पूछे जाने वाले प्रश्न",
     "items": [
       {
-        "q": "How is my data protected?",
-        "a": "Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if we're breached, attackers learn nothing about your online activity."
+        "q": "मेरा डेटा कैसे सुरक्षित है?",
+        "a": "आपका ब्राउज़िंग इतिहास कभी आपके डिवाइस से बाहर नहीं जाता। हमारे सर्वर केवल आपका ईमेल और सब्सक्रिप्शन स्थिति संग्रहीत करते हैं। हम पर हमला होने पर भी हमलावर आपकी ऑनलाइन गतिविधि के बारे में कुछ नहीं जान पाएँगे।"
       },
       {
-        "q": "Does it slow down browsing?",
-        "a": "No. 95% of checks happen locally via bloom filter in under 1ms. Only unknown domains are sent to our API (domain name only, never full URLs)."
+        "q": "क्या यह ब्राउज़िंग को धीमा करता है?",
+        "a": "नहीं। 95% जाँचें ब्लूम फ़िल्टर के माध्यम से 1 मिलीसेकंड से कम में स्थानीय रूप से होती हैं। केवल अज्ञात डोमेन हमारे API को भेजे जाते हैं (केवल डोमेन नाम, कभी पूरा URL नहीं)।"
       },
       {
-        "q": "Can I use it with a VPN?",
-        "a": "Yes! On mobile, Cleanway auto-detects your VPN and switches to DNS mode, working alongside NordVPN, ExpressVPN, or any other provider."
+        "q": "क्या मैं इसे VPN के साथ इस्तेमाल कर सकता हूँ?",
+        "a": "हाँ! मोबाइल पर, Cleanway आपके VPN को स्वचालित रूप से पहचानकर DNS मोड में स्विच करता है, NordVPN, ExpressVPN या किसी भी अन्य प्रदाता के साथ काम करता है।"
       },
       {
-        "q": "What's different from Google Safe Browsing?",
-        "a": "Google Safe Browsing is reactive — it catches known threats but misses new phishing. Cleanway adds ML detection, 8 additional threat sources, Privacy Audit, and doesn't send your browsing data to Google."
+        "q": "Google Safe Browsing से क्या अलग है?",
+        "a": "Google Safe Browsing प्रतिक्रियात्मक है — यह ज्ञात खतरों को पकड़ता है लेकिन नए फ़िशिंग को चूक जाता है। Cleanway ML पहचान, 8 अतिरिक्त खतरा स्रोत, गोपनीयता ऑडिट जोड़ता है, और आपका ब्राउज़िंग डेटा Google को नहीं भेजता।"
       },
       {
-        "q": "Is there a free plan?",
-        "a": "Yes! The free plan includes 10 API checks/day, unlimited local bloom filter checks, and basic Privacy Audit. Most casual users never need to upgrade."
+        "q": "क्या कोई मुफ़्त प्लान है?",
+        "a": "हाँ! मुफ़्त प्लान में प्रति दिन 10 API जाँचें, असीमित स्थानीय ब्लूम फ़िल्टर जाँचें और बुनियादी गोपनीयता ऑडिट शामिल हैं। अधिकांश सामान्य उपयोगकर्ताओं को कभी अपग्रेड की ज़रूरत नहीं पड़ती।"
       },
       {
-        "q": "How does phishing simulation work?",
-        "a": "Business plan includes simulated phishing emails sent to your team. Pick a template, we send test emails, track who clicks vs. who reports. For training, not punishment."
+        "q": "फ़िशिंग सिमुलेशन कैसे काम करता है?",
+        "a": "Business प्लान में आपकी टीम को भेजे जाने वाले सिम्युलेटेड फ़िशिंग ईमेल शामिल हैं। एक टेम्प्लेट चुनें, हम परीक्षण ईमेल भेजते हैं और ट्रैक करते हैं कि कौन क्लिक करता है बनाम कौन रिपोर्ट करता है। प्रशिक्षण के लिए, सज़ा के लिए नहीं।"
       }
     ]
   }
