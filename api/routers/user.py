@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -57,6 +57,38 @@ class DeviceRegister(BaseModel):
     device_hash: str
     platform: str  # chrome, firefox, safari, ios, android
     app_version: str = "0.1.0"
+
+
+class DeviceOverrideUpdate(BaseModel):
+    """Per-device overrides — used by Family Hub to set Granny Mode on
+    grandmother's phone without changing her account-level default.
+
+    All fields optional so PATCH semantics work; setting any to None
+    explicitly clears the override and falls back to the user-level value.
+    """
+
+    skill_level_override: Optional[SkillLevel] = None
+    voice_alerts_enabled: Optional[bool] = None
+    font_scale: Optional[float] = None
+    clear_overrides: bool = False  # if True, wipe all overrides (back to user defaults)
+
+
+class EffectiveSkillResponse(BaseModel):
+    """Resolved skill + accessibility for a specific device.
+
+    Resolution rule: device override (if set) wins over user default.
+    Returned to extension/mobile so the UI can render with the right
+    density, fonts, voice alerts, etc.
+    """
+
+    device_hash: str
+    skill_level: SkillLevel
+    voice_alerts_enabled: bool
+    font_scale: float
+    # Provenance — useful for the client UI to show "Set by family admin"
+    skill_source: Literal["device_override", "user_default"]
+    voice_source: Literal["device_override", "user_default"]
+    font_source: Literal["device_override", "user_default"]
 
 
 class ProfileResponse(BaseModel):
@@ -696,3 +728,218 @@ async def increment_threats(
         nudge_shown_at=nudge_shown_at,
         nudge_count=int(row.get("threshold_nudge_count") or 0),
     )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Skill Levels — device override + effective resolution
+# ═══════════════════════════════════════════════════════════════════
+#
+# Two layers in the schema (migration 003 + 004):
+#   users.skill_level / .voice_alerts_enabled / .font_scale  ← user default
+#   devices.skill_level_override / .voice_alerts_enabled / .font_scale  ← per-device override
+#
+# Family Hub use case: an admin enables Granny Mode on grandmother's
+# specific phone without changing her own account-level default. The
+# extension/mobile client reads /effective to know which mode to render.
+
+
+async def _fetch_user_skill_defaults(
+    user_id: str,
+    *,
+    base_url: str,
+    service_key: str,
+) -> dict:
+    """Read user-level skill + accessibility defaults from `users` table."""
+    import httpx
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(
+            f"{base_url}/rest/v1/users",
+            params={
+                "id": f"eq.{user_id}",
+                "select": "skill_level,voice_alerts_enabled,font_scale",
+            },
+            headers={
+                "apikey": service_key,
+                "Authorization": f"Bearer {service_key}",
+            },
+        )
+    if resp.status_code != 200:
+        return {}
+    rows = resp.json()
+    return rows[0] if rows else {}
+
+
+async def _fetch_device_overrides(
+    user_id: str,
+    device_hash: str,
+    *,
+    base_url: str,
+    service_key: str,
+) -> dict:
+    """Read device-level overrides from `devices` table.
+
+    Filters on (user_id, device_hash) so a stolen device hash from another
+    account can't be used to read a foreign user's overrides.
+    """
+    import httpx
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(
+            f"{base_url}/rest/v1/devices",
+            params={
+                "user_id": f"eq.{user_id}",
+                "device_hash": f"eq.{device_hash}",
+                "select": "skill_level_override,voice_alerts_enabled,font_scale",
+            },
+            headers={
+                "apikey": service_key,
+                "Authorization": f"Bearer {service_key}",
+            },
+        )
+    if resp.status_code != 200:
+        return {}
+    rows = resp.json()
+    return rows[0] if rows else {}
+
+
+@router.get(
+    "/device/{device_hash}/effective",
+    response_model=EffectiveSkillResponse,
+    dependencies=[Depends(rate_limit(category="user_read"))],
+)
+async def get_effective_skill(
+    device_hash: str,
+    user: AuthUser = Depends(get_current_user),
+) -> EffectiveSkillResponse:
+    """Resolve effective skill level + accessibility for this device.
+
+    Device-level override wins; falls back to user-level default. Used by
+    extension and mobile clients to know which UX mode to render.
+    """
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        # Degraded — return safe defaults
+        return EffectiveSkillResponse(
+            device_hash=device_hash,
+            skill_level=SkillLevel.regular,
+            voice_alerts_enabled=False,
+            font_scale=1.0,
+            skill_source="user_default",
+            voice_source="user_default",
+            font_source="user_default",
+        )
+
+    user_row = await _fetch_user_skill_defaults(
+        user.id,
+        base_url=settings.supabase_url,
+        service_key=settings.supabase_service_key,
+    )
+    device_row = await _fetch_device_overrides(
+        user.id,
+        device_hash,
+        base_url=settings.supabase_url,
+        service_key=settings.supabase_service_key,
+    )
+
+    user_skill = SkillLevel(user_row.get("skill_level") or "regular")
+    user_voice = bool(user_row.get("voice_alerts_enabled", False))
+    user_font = float(user_row.get("font_scale") or 1.0)
+
+    skill_override = device_row.get("skill_level_override")
+    voice_override = device_row.get("voice_alerts_enabled")
+    font_override = device_row.get("font_scale")
+
+    skill = SkillLevel(skill_override) if skill_override else user_skill
+    skill_source: Literal["device_override", "user_default"] = (
+        "device_override" if skill_override else "user_default"
+    )
+    voice = bool(voice_override) if voice_override is not None else user_voice
+    voice_source: Literal["device_override", "user_default"] = (
+        "device_override" if voice_override is not None else "user_default"
+    )
+    font = float(font_override) if font_override is not None else user_font
+    font_source: Literal["device_override", "user_default"] = (
+        "device_override" if font_override is not None else "user_default"
+    )
+
+    return EffectiveSkillResponse(
+        device_hash=device_hash,
+        skill_level=skill,
+        voice_alerts_enabled=voice,
+        font_scale=font,
+        skill_source=skill_source,
+        voice_source=voice_source,
+        font_source=font_source,
+    )
+
+
+@router.patch(
+    "/device/{device_hash}/overrides",
+    response_model=EffectiveSkillResponse,
+    dependencies=[Depends(rate_limit(category="user_write"))],
+)
+async def update_device_overrides(
+    device_hash: str,
+    body: DeviceOverrideUpdate,
+    user: AuthUser = Depends(get_current_user),
+) -> EffectiveSkillResponse:
+    """Set or clear device-level overrides for this user's device.
+
+    Validates font_scale 0.8..2.5 (matches DB CHECK constraint). Authorization
+    is implicit: we filter on (user_id=user.id, device_hash) so a user can
+    only change their own devices' overrides. Family Hub admin operations
+    on a family member's device go through the family router (TODO).
+    """
+    if body.font_scale is not None and not 0.8 <= body.font_scale <= 2.5:
+        raise HTTPException(422, "font_scale must be between 0.8 and 2.5")
+
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        raise HTTPException(503, "Device storage unavailable")
+
+    payload: dict = {}
+    if body.clear_overrides:
+        payload = {
+            "skill_level_override": None,
+            "voice_alerts_enabled": False,
+            "font_scale": 1.0,
+        }
+    else:
+        if body.skill_level_override is not None:
+            payload["skill_level_override"] = body.skill_level_override.value
+        if body.voice_alerts_enabled is not None:
+            payload["voice_alerts_enabled"] = body.voice_alerts_enabled
+        if body.font_scale is not None:
+            payload["font_scale"] = body.font_scale
+
+    if not payload:
+        # Nothing to write — return current effective state
+        return await get_effective_skill(device_hash, user)
+
+    import httpx
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.patch(
+            f"{settings.supabase_url}/rest/v1/devices",
+            params={
+                "user_id": f"eq.{user.id}",
+                "device_hash": f"eq.{device_hash}",
+            },
+            json=payload,
+            headers={
+                "apikey": settings.supabase_service_key,
+                "Authorization": f"Bearer {settings.supabase_service_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+            },
+        )
+    if resp.status_code not in (200, 204):
+        logger.warning(
+            "device_overrides_update_failed",
+            extra={"status": resp.status_code, "user_id": user.id},
+        )
+        raise HTTPException(500, "Failed to persist device overrides")
+
+    # Re-resolve to return canonical effective state
+    return await get_effective_skill(device_hash, user)
