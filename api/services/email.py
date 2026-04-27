@@ -149,6 +149,11 @@ class SendResult:
     provider_message_id: Optional[str]
     error: Optional[str]
     send_id: str  # our internal UUID for correlation
+    # Set when send_template suppresses a send because the user has
+    # unsubscribed from this template. ok stays True (not an error)
+    # but `skipped` lets callers tell suppression apart from a real send.
+    skipped: bool = False
+    skip_reason: Optional[str] = None
 
 
 class EmailProvider:
@@ -324,6 +329,7 @@ async def send_template(
     locale: str,
     fixture_overrides: dict[str, Any],
     unsubscribe_url: str,
+    user_id: Optional[str] = None,
 ) -> SendResult:
     """Render + send a transactional email.
 
@@ -332,7 +338,32 @@ async def send_template(
       2. List-Unsubscribe-Post header (RFC 8058) — enables one-click without visiting page
 
     We assume fixture_overrides includes the unsubscribe_url mapping.
+
+    If `user_id` is provided we check the recorded unsubscribe state and
+    skip the send (returning a SendResult with skipped=True) when the
+    user has opted out of this template. Receipts and security-critical
+    transactional templates should NOT pass user_id, since suppression
+    must not silently drop legally-required messages.
     """
+    if user_id is not None:
+        # Local import avoids an import cycle (router imports the email service in tests)
+        from api.routers.email_unsubscribe import is_unsubscribed
+
+        if await is_unsubscribed(user_id, template):
+            send_id = str(uuid.uuid4())
+            logger.info(
+                "email.skipped_unsubscribed",
+                extra={"template": template, "send_id": send_id},
+            )
+            return SendResult(
+                ok=True,
+                provider_message_id=None,
+                error=None,
+                send_id=send_id,
+                skipped=True,
+                skip_reason="user_unsubscribed",
+            )
+
     rendered = render_template(template, locale, fixture_overrides)
 
     settings = _get_settings()

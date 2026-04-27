@@ -121,16 +121,133 @@ def verify_token(token: str) -> Optional[dict]:
 async def _process_unsubscribe(payload: dict) -> None:
     """Mark user + template as unsubscribed in Supabase.
 
-    Actual DB write is best-effort — logged so ops can reconcile if Supabase is
-    down. The click has already happened; failing to record it should not show
-    a confusing error to the user.
+    Persistence model: we upsert into `user_settings` and merge into the
+    existing JSONB `settings` object the path
+        settings.email_optout[template_key] = true
+
+    Why this shape (not a separate column / table):
+      - Already-existing `settings` JSONB has top-level keys like `theme`
+        and `weekly_report`. Adding `email_optout` keeps everything together.
+      - PostgREST supports `?on_conflict=user_id` upsert which lets us write
+        without a prior SELECT race window.
+
+    Best-effort: a Supabase outage MUST NOT show the user an error. The
+    click already happened — fail-silent and log so ops can reconcile.
     """
+    uid = payload["uid"]
+    template_key = payload["template"]
     logger.info(
         "email.unsubscribe.recorded",
-        extra={"uid": payload["uid"], "template": payload["template"]},
+        extra={"uid": uid, "template": template_key},
     )
-    # TODO: wire Supabase client once user_settings.email_prefs column exists
-    # For now: intentional no-op + log. Operator reconciles from logs until impl.
+
+    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+    service_key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+    if not supabase_url or not service_key:
+        # Dev / unconfigured — log only, no DB write. Operators reconcile
+        # from logs until Supabase env is wired.
+        logger.warning(
+            "email.unsubscribe.persisted_skipped_no_supabase",
+            extra={"uid": uid, "template": template_key},
+        )
+        return
+
+    import httpx
+
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+    }
+    timeout = httpx.Timeout(5.0)
+
+    # Read current settings JSONB so we can preserve any other keys.
+    current: dict = {}
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.get(
+                f"{supabase_url}/rest/v1/user_settings",
+                params={"user_id": f"eq.{uid}", "select": "settings"},
+                headers=headers,
+            )
+            if resp.status_code == 200:
+                rows = resp.json()
+                if rows and isinstance(rows[0].get("settings"), dict):
+                    current = rows[0]["settings"]
+    except Exception as e:  # pragma: no cover — network failure path
+        logger.warning(
+            "email.unsubscribe.read_failed",
+            extra={"uid": uid, "template": template_key, "error": str(e)},
+        )
+
+    # Merge — preserve existing keys (theme, weekly_report, etc.)
+    new_optout = {**(current.get("email_optout") or {}), template_key: True}
+    new_settings = {**current, "email_optout": new_optout}
+
+    payload_json = {"user_id": uid, "settings": new_settings}
+    write_headers = {
+        **headers,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.post(
+                f"{supabase_url}/rest/v1/user_settings",
+                json=payload_json,
+                headers=write_headers,
+            )
+        if resp.status_code not in (200, 201, 204):
+            logger.warning(
+                "email.unsubscribe.persist_failed",
+                extra={
+                    "uid": uid,
+                    "template": template_key,
+                    "status": resp.status_code,
+                },
+            )
+    except Exception as e:  # pragma: no cover — network failure path
+        logger.warning(
+            "email.unsubscribe.persist_exception",
+            extra={"uid": uid, "template": template_key, "error": str(e)},
+        )
+
+
+async def is_unsubscribed(user_id: str, template_key: str) -> bool:
+    """Return True if the user has opted out of this template.
+
+    Used by the email send path to skip rather than send. Conservative on
+    failure: if Supabase is unreachable we return False (i.e. assume not
+    unsubscribed) so transactional emails (receipts, security alerts) still
+    go out. The send-side suppression is a courtesy, not the legal lever —
+    actual compliance comes from the recorded unsubscribe event itself.
+    """
+    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+    service_key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+    if not supabase_url or not service_key:
+        return False
+
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(3.0)) as client:
+            resp = await client.get(
+                f"{supabase_url}/rest/v1/user_settings",
+                params={"user_id": f"eq.{user_id}", "select": "settings"},
+                headers={
+                    "apikey": service_key,
+                    "Authorization": f"Bearer {service_key}",
+                },
+            )
+        if resp.status_code != 200:
+            return False
+        rows = resp.json()
+        if not rows:
+            return False
+        settings = rows[0].get("settings") or {}
+        optout = settings.get("email_optout") or {}
+        return bool(optout.get(template_key))
+    except Exception:  # pragma: no cover — network failure path
+        return False
 
 
 _UNSUB_PAGE_HTML = """\
