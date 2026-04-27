@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -6,6 +6,7 @@ import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://cleanway.ai"),
+  manifest: "/manifest.webmanifest",
   title: "Cleanway — Protection from scam links",
   description:
     "Automatic scam link detection with plain-language explanations. 91% detection rate, 10 languages, your browsing data stays on your device.",
@@ -31,6 +32,15 @@ export const metadata: Metadata = {
     description: "91% scam detection. 10 languages. Zero data stored.",
     site: "@cleanwayai",
   },
+};
+
+// Viewport / theme color — Next 15 wants this as a separate export so it
+// can be served as a meta tag without re-rendering the page metadata.
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export function generateStaticParams() {
