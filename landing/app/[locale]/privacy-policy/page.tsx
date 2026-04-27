@@ -1,3 +1,54 @@
+import type { Metadata } from "next";
+
+import { routing, type Locale } from "@/i18n/routing";
+
+const SITE_URL = "https://cleanway.ai";
+
+function urlFor(locale: Locale | string, path: string): string {
+  return locale === routing.defaultLocale ? `${SITE_URL}${path}` : `${SITE_URL}/${locale}${path}`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
+  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const canonical = urlFor(safeLocale, "/privacy-policy");
+
+  const languages: Record<string, string> = {};
+  for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, "/privacy-policy");
+  languages["x-default"] = urlFor(routing.defaultLocale, "/privacy-policy");
+
+  const title = "Privacy Policy — Cleanway";
+  const description =
+    "Cleanway's privacy policy. Your browsing data lives only on your device — our servers store only emails and subscription status, never URLs.";
+
+  return {
+    title,
+    description,
+    metadataBase: new URL(SITE_URL),
+    alternates: { canonical, languages },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: "Cleanway",
+      type: "article",
+      locale: safeLocale,
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      site: "@cleanwayai",
+    },
+    robots: { index: true, follow: true },
+  };
+}
+
 export default function PrivacyPolicy() {
   return (
     <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh" }}>

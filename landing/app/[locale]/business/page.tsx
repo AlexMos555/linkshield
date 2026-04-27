@@ -1,3 +1,58 @@
+import type { Metadata } from "next";
+
+import { routing, type Locale } from "@/i18n/routing";
+
+const SITE_URL = "https://cleanway.ai";
+
+function urlFor(locale: Locale | string, path: string): string {
+  return locale === routing.defaultLocale ? `${SITE_URL}${path}` : `${SITE_URL}/${locale}${path}`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
+  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const canonical = urlFor(safeLocale, "/business");
+
+  const languages: Record<string, string> = {};
+  for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, "/business");
+  languages["x-default"] = urlFor(routing.defaultLocale, "/business");
+
+  const title = "Cleanway for Business — Phishing Protection + Simulation Training";
+  const description =
+    "Real-time link blocking + phishing simulation campaigns for teams. $3.99/user/month, no minimum seats, no sales call. Alternative to KnowBe4, Proofpoint, Mimecast Awareness.";
+
+  return {
+    title,
+    description,
+    metadataBase: new URL(SITE_URL),
+    alternates: { canonical, languages },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: "Cleanway",
+      type: "website",
+      locale: safeLocale,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      site: "@cleanwayai",
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    },
+  };
+}
+
 export default function BusinessPage() {
   return (
     <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh" }}>
