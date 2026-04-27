@@ -150,10 +150,28 @@ class SendResult:
     error: Optional[str]
     send_id: str  # our internal UUID for correlation
     # Set when send_template suppresses a send because the user has
-    # unsubscribed from this template. ok stays True (not an error)
-    # but `skipped` lets callers tell suppression apart from a real send.
+    # unsubscribed from this template OR has hit the per-user rate
+    # limit. ok stays True (not an error) but `skipped` lets callers
+    # distinguish suppression from a real send.
     skipped: bool = False
     skip_reason: Optional[str] = None
+
+
+# Per-user-per-template send budgets, keyed on TemplateKey.
+# (max_sends, window_seconds). Tuned to the actual purpose of each
+# template — receipts can fire ~5/day to handle billing churn, weekly
+# reports cap at 1/week (rounded up to 8 days for clock skew),
+# breach alerts allow bursty delivery during incident waves, and
+# welcome / cancellation are basically once-only.
+EMAIL_RATE_BUDGETS: dict[TemplateKey, tuple[int, int]] = {
+    "welcome": (1, 7 * 86400),                  # 1 per week (resend allowance after auth glitch)
+    "receipt": (5, 86400),                      # 5 per 24h — billing edge cases
+    "weekly_report": (1, 8 * 86400),            # 1 per week + slack
+    "family_invite": (10, 86400),               # 10 per 24h — admin onboarding bursts
+    "breach_alert": (20, 86400),                # 20 per 24h — wave of leaked creds
+    "subscription_cancel": (3, 86400),          # 3 per 24h — billing retries
+    "granny_mode_invite": (10, 86400),          # same as family_invite
+}
 
 
 class EmailProvider:
@@ -322,6 +340,44 @@ def get_provider() -> EmailProvider:
 # ─── Public send API ───────────────────────────────────────────────
 
 
+async def _check_email_rate_limit(user_id: str, template: TemplateKey) -> bool:
+    """Return True if the send is within budget, False if it should be skipped.
+
+    Sliding-window-ish: an INCR + first-write EXPIRE bucket, lossy at
+    window boundaries but cheap (1 RTT in the success path) and good
+    enough to stop runaway loops or hostile patterns.
+
+    Fails OPEN on Redis errors — operational outages must not block
+    legitimate transactional sends. The unsubscribe persistence layer
+    is the legal compliance lever; rate limits here are a courtesy that
+    protect domain reputation against bugs and abuse.
+    """
+    budget = EMAIL_RATE_BUDGETS.get(template)
+    if budget is None:
+        return True
+    max_count, window_seconds = budget
+
+    try:
+        from api.services.cache import get_redis  # local — Redis is optional infra
+
+        r = await get_redis()
+        if r is None:
+            return True  # No Redis → fail open
+        key = f"email_rl:{template}:{user_id}"
+        count = await r.incr(key)
+        if count == 1:
+            # Only set TTL on the first hit so the window is anchored
+            # to the first send, not refreshed on every increment.
+            await r.expire(key, window_seconds)
+        return int(count) <= max_count
+    except Exception as e:  # pragma: no cover — Redis outage path
+        logger.warning(
+            "email.rate_limit.check_failed_fail_open",
+            extra={"template": template, "error": str(e)},
+        )
+        return True
+
+
 async def send_template(
     *,
     to: str,
@@ -362,6 +418,21 @@ async def send_template(
                 send_id=send_id,
                 skipped=True,
                 skip_reason="user_unsubscribed",
+            )
+
+        if not await _check_email_rate_limit(user_id, template):
+            send_id = str(uuid.uuid4())
+            logger.warning(
+                "email.skipped_rate_limited",
+                extra={"template": template, "send_id": send_id},
+            )
+            return SendResult(
+                ok=True,
+                provider_message_id=None,
+                error=None,
+                send_id=send_id,
+                skipped=True,
+                skip_reason="rate_limited",
             )
 
     rendered = render_template(template, locale, fixture_overrides)
