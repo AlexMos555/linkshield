@@ -1,472 +1,703 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en" dir="ltr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cleanway — Roadmap v2</title>
-<meta http-equiv="refresh" content="60">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cleanway — Production Roadmap v4</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:24px;max-width:1200px;margin:0 auto;line-height:1.5}
-h1{font-size:28px;font-weight:800;color:#f8fafc;margin-bottom:4px}
-h2{font-size:18px;color:#f8fafc;margin:28px 0 12px;font-weight:700}
-.subtitle{color:#64748b;font-size:14px;margin-bottom:8px}
-.mission{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-left:4px solid #3b82f6;border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:14px;color:#cbd5e1}
-.mission strong{color:#f8fafc}
-.phase{margin-bottom:20px;background:#1e293b;border-radius:14px;padding:20px 24px;border-left:4px solid #334155}
-.phase.done{border-left-color:#22c55e;opacity:0.8}
-.phase.partial{border-left-color:#eab308}
-.phase.active{border-left-color:#3b82f6;box-shadow:0 0 0 1px #3b82f640}
-.phase.next{border-left-color:#f59e0b}
-.phase.future{border-left-color:#334155}
-.phase-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
-.phase-title{font-size:17px;font-weight:700;color:#f8fafc}
-.phase-subtitle{font-size:12px;color:#94a3b8;margin-top:2px;font-weight:400}
-.phase-tag{font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600;white-space:nowrap}
-.tag-done{background:#22c55e20;color:#22c55e}
-.tag-partial{background:#eab30820;color:#eab308}
-.tag-active{background:#3b82f620;color:#3b82f6}
-.tag-next{background:#f59e0b20;color:#f59e0b}
-.tag-future{background:#33415520;color:#64748b}
-.tasks{list-style:none;padding:0}
-.tasks li{padding:5px 0;font-size:14px;color:#94a3b8;display:flex;align-items:flex-start;gap:8px}
-.tasks li .icon{flex-shrink:0;width:18px;text-align:center}
-.done-icon{color:#22c55e}
-.todo-icon{color:#475569}
-.partial-icon{color:#eab308}
-.active-icon{color:#3b82f6}
-.note-inline{color:#64748b;font-size:12px;font-style:italic}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:28px}
-.stat-card{background:#1e293b;border-radius:10px;padding:14px;text-align:center}
-.stat-num{font-size:26px;font-weight:800;color:#f8fafc}
-.stat-label{font-size:11px;color:#64748b;margin-top:4px}
-.stat-num.green{color:#22c55e}
-.stat-num.yellow{color:#eab308}
-.stat-num.blue{color:#3b82f6}
-.progress-bar{height:10px;background:#334155;border-radius:5px;margin-bottom:28px;overflow:hidden;position:relative}
-.progress-fill{height:100%;background:linear-gradient(90deg,#22c55e,#eab308 50%,#334155 50%);border-radius:5px;transition:width 0.5s}
-.decisions{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:28px}
-.dec-card{background:#1e293b;border-radius:10px;padding:14px 16px;border-left:3px solid #3b82f6}
-.dec-card h3{font-size:13px;color:#f8fafc;margin-bottom:6px}
-.dec-card p{font-size:12px;color:#94a3b8;line-height:1.4}
-.note{font-size:12px;color:#475569;text-align:center;margin-top:28px;padding-top:20px;border-top:1px solid #1e293b}
-.legend{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;font-size:11px;color:#64748b}
-.legend-item{display:flex;align-items:center;gap:4px}
-.legend-dot{width:8px;height:8px;border-radius:50%}
-.ld-done{background:#22c55e}
-.ld-partial{background:#eab308}
-.ld-active{background:#3b82f6}
-.ld-next{background:#f59e0b}
-.ld-future{background:#64748b}
+  :root {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --bg-card-soft: #1e293b80;
+    --border: #334155;
+    --border-soft: #1e293b;
+    --text: #e2e8f0;
+    --text-soft: #94a3b8;
+    --text-faint: #64748b;
+    --green: #22c55e;
+    --green-soft: #22c55e20;
+    --yellow: #eab308;
+    --yellow-soft: #eab30820;
+    --blue: #3b82f6;
+    --blue-soft: #3b82f620;
+    --red: #ef4444;
+    --red-soft: #ef444420;
+    --slate: #64748b;
+    --slate-soft: #64748b20;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+  header { margin-bottom: 24px; border-bottom: 1px solid var(--border-soft); padding-bottom: 24px; }
+  h1 { font-size: 32px; margin: 0 0 8px; font-weight: 800; letter-spacing: -0.02em; }
+  .subtitle { color: var(--text-soft); font-size: 14px; margin: 0; }
+  .subtitle a { color: var(--blue); text-decoration: none; }
+
+  /* Progress bar */
+  .progress-section { margin: 24px 0 32px; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .progress-label h2 { font-size: 16px; margin: 0; font-weight: 700; color: var(--text); }
+  .progress-pct { font-size: 28px; font-weight: 800; color: var(--green); }
+  .progress-bar {
+    height: 14px;
+    background: var(--bg-card);
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green) 0%, #16a34a 100%);
+    transition: width 0.3s;
+  }
+
+  /* Stat grid */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 20px 0 32px;
+  }
+  .stat {
+    background: var(--bg-card);
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border-soft);
+  }
+  .stat-num { font-size: 24px; font-weight: 800; color: var(--text); }
+  .stat-num.green { color: var(--green); }
+  .stat-num.blue { color: var(--blue); }
+  .stat-label { font-size: 12px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 24px;
+    font-size: 13px;
+  }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 16px;
+    border: 1px solid;
+  }
+  .legend-done { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .legend-partial { background: var(--yellow-soft); border-color: var(--yellow); color: var(--yellow); }
+  .legend-next { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+  .legend-blocked { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  .legend-future { background: var(--slate-soft); border-color: var(--slate); color: var(--slate); }
+
+  /* Phase blocks */
+  details {
+    background: var(--bg-card);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border-soft);
+    overflow: hidden;
+  }
+  summary {
+    cursor: pointer;
+    padding: 16px 20px;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  summary:hover { background: var(--bg-card-soft); }
+  summary::-webkit-details-marker { display: none; }
+  summary h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  summary .phase-meta {
+    font-size: 12px;
+    color: var(--text-faint);
+    display: flex;
+    gap: 12px;
+  }
+  summary .phase-meta span.count { color: var(--text-soft); }
+  details[open] summary { border-bottom: 1px solid var(--border-soft); }
+  .phase-body { padding: 4px 20px 20px; }
+  .phase-tagline { color: var(--text-soft); font-size: 13px; margin: 12px 0 16px; }
+
+  /* Task list */
+  ul.tasks { list-style: none; padding: 0; margin: 0; }
+  ul.tasks li {
+    padding: 10px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 14px;
+  }
+  ul.tasks li:last-child { border-bottom: none; }
+  .icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    margin-top: 1px;
+  }
+  .icon-done { background: var(--green-soft); color: var(--green); border: 1px solid var(--green); }
+  .icon-partial { background: var(--yellow-soft); color: var(--yellow); border: 1px solid var(--yellow); }
+  .icon-next { background: var(--blue-soft); color: var(--blue); border: 1px solid var(--blue); }
+  .icon-blocked { background: var(--red-soft); color: var(--red); border: 1px solid var(--red); }
+  .icon-future { background: var(--slate-soft); color: var(--slate); border: 1px solid var(--slate); }
+
+  .task-content { flex: 1; }
+  .task-title { color: var(--text); font-weight: 500; }
+  .task-meta { color: var(--text-faint); font-size: 12px; margin-top: 2px; }
+  .task-meta code {
+    background: var(--bg);
+    color: var(--text-soft);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .task-meta a {
+    color: var(--blue);
+    text-decoration: none;
+  }
+  .task-meta a:hover { text-decoration: underline; }
+  .badge-blocker {
+    display: inline-block;
+    background: var(--red-soft);
+    color: var(--red);
+    padding: 1px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    margin-left: 6px;
+    font-weight: 600;
+  }
+  .badge-time {
+    display: inline-block;
+    color: var(--text-faint);
+    font-size: 11px;
+    margin-left: 6px;
+  }
+
+  /* Session log */
+  .session-log {
+    margin-top: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .session-log h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .session-log p.session-when {
+    color: var(--text-faint);
+    margin: 0 0 16px;
+    font-size: 12px;
+  }
+  table.commits {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.commits th, table.commits td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  table.commits th {
+    color: var(--text-faint);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  table.commits tr:last-child td { border-bottom: none; }
+  table.commits code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--green);
+    font-size: 12px;
+  }
+  table.commits .ttype {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .ttype-feat { background: var(--green-soft); color: var(--green); }
+  .ttype-fix { background: var(--yellow-soft); color: var(--yellow); }
+  .ttype-test { background: var(--blue-soft); color: var(--blue); }
+  .ttype-chore { background: var(--slate-soft); color: var(--slate); }
+  .ttype-ci { background: var(--blue-soft); color: var(--blue); }
+  .ttype-docs { background: var(--slate-soft); color: var(--slate); }
+  .ttype-security { background: var(--red-soft); color: var(--red); }
+  .ttype-i18n { background: var(--green-soft); color: var(--green); }
+
+  /* Footer */
+  footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-soft);
+    color: var(--text-faint);
+    font-size: 12px;
+    text-align: center;
+  }
+  footer a { color: var(--blue); text-decoration: none; }
+
+  /* Phase tag in summary */
+  .phase-tag {
+    display: inline-block;
+    width: 28px;
+    text-align: center;
+    background: var(--bg);
+    color: var(--text-soft);
+    border-radius: 6px;
+    padding: 2px 0;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .phase-status {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .ps-done { background: var(--green-soft); color: var(--green); }
+  .ps-partial { background: var(--yellow-soft); color: var(--yellow); }
+  .ps-next { background: var(--blue-soft); color: var(--blue); }
+  .ps-blocked { background: var(--red-soft); color: var(--red); }
+  .ps-future { background: var(--slate-soft); color: var(--slate); }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<h1>🛡️ Cleanway — Production Roadmap v3</h1>
-<p class="subtitle">Обновлено 2026-04-25. Авто-рефреш каждую минуту.</p>
+<header>
+  <h1>🧹 Cleanway — Production Roadmap v4</h1>
+  <p class="subtitle">
+    Updated 2026-04-27 · Source of truth for cross-session progress checking ·
+    <a href="https://github.com/AlexMos555/linkshield">github</a> ·
+    <a href="https://cleanway.ai">cleanway.ai</a>
+  </p>
+</header>
 
-<div class="mission">
-<strong>Миссия:</strong> сделать самый удобный для обычного человека защитник от фишинга. Без жаргона, с автопроверкой, с чёткими визуальными сигналами "всё в порядке" / "ОПАСНО". Блокировка бесплатна навсегда — это этический принцип. Продаём ценность (семья, детали, персонализация), не снимаем искусственный лимит. Спасаем обычных людей от мошенников — бабушек, родителей, детей.
+<!-- Progress bar -->
+<section class="progress-section">
+  <div class="progress-label">
+    <h2>Overall progress</h2>
+    <div class="progress-pct">~84%</div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" style="width:84%"></div></div>
+</section>
+
+<!-- Stats -->
+<section class="stat-grid">
+  <div class="stat"><div class="stat-num green">488</div><div class="stat-label">Backend tests passing</div></div>
+  <div class="stat"><div class="stat-num green">91%</div><div class="stat-label">Phishing detection</div></div>
+  <div class="stat"><div class="stat-num blue">10/10</div><div class="stat-label">Locales</div></div>
+  <div class="stat"><div class="stat-num blue">4</div><div class="stat-label">Pricing tiers (PPP)</div></div>
+  <div class="stat"><div class="stat-num">1110</div><div class="stat-label">SEO URLs in sitemap</div></div>
+  <div class="stat"><div class="stat-num">12 210</div><div class="stat-label">Hreflang alternates</div></div>
+  <div class="stat"><div class="stat-num">7</div><div class="stat-label">Email templates</div></div>
+  <div class="stat"><div class="stat-num">3</div><div class="stat-label">Browser extensions</div></div>
+</section>
+
+<!-- Legend -->
+<section class="legend">
+  <span class="legend-item legend-done">✓ DONE</span>
+  <span class="legend-item legend-partial">⚠ PARTIAL</span>
+  <span class="legend-item legend-next">▶ NEXT (autonomous)</span>
+  <span class="legend-item legend-blocked">⊘ BLOCKED on you</span>
+  <span class="legend-item legend-future">○ FUTURE</span>
+</section>
+
+<!-- ═════════ PHASE A ═════════ -->
+<details open>
+  <summary>
+    <h3><span class="phase-tag">A</span> Strategic foundation</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-done">DONE</span>
+      <span class="count">8 / 8</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">All planning docs locked in: PRD, requirements, competitive analysis, i18n architecture, pricing matrix, skill-level UX specs.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">PROJECT.md, REQUIREMENTS.md, ROADMAP</div><div class="task-meta">Internationalization strategy, Pricing v2, Skill Levels, Phase A→H plan</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">COMPETITIVE-ANALYSIS.md</div><div class="task-meta">Norton, Guardio, NordVPN TP, Edge SmartScreen, Brave, DDG, Kaspersky, MetaMask</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">I18N_ARCHITECTURE.md</div><div class="task-meta">next-intl for landing, chrome.i18n for extensions, react-i18next for mobile</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">PRICING_MATRIX.md</div><div class="task-meta">4 PPP tiers, Stripe price IDs, billing-country logic</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">SKILL_LEVELS.md</div><div class="task-meta">Kids, Regular, Granny, Pro UX specifications</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">.gitignore / .dockerignore / .env.example</div><div class="task-meta">All file scaffolding in place</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Naming finalized: <strong>Cleanway</strong></div><div class="task-meta">After 55+ rejected candidates; cleanway.ai purchased and live</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Defense-in-depth threat model</div><div class="task-meta">SECURITY.md covers 6 threat classes, secret rotation, backup matrix</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE B ═════════ -->
+<details open>
+  <summary>
+    <h3><span class="phase-tag">B</span> Shipping unblock</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-partial">PARTIAL</span>
+      <span class="count">7 / 11</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Without these, no one can use the product. Code is done; remaining items are external accounts.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Env-driven API URL across all clients</div><div class="task-meta">extension × 3 + mobile + landing — no more hardcoded localhost</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Railway deploy stable, api.cleanway.ai responds 200</div><div class="task-meta">Custom domain wired 2026-04-22; ALLOWED_ORIGINS includes cleanway.ai</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Supabase EU active</div><div class="task-meta">Frankfurt project, schema 001-007 applied, RLS clean</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Vercel project connected, landing live</div><div class="task-meta">cleanway.ai HTTPS 200, www→apex 307, 80+ SSG routes generated</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Pytest 488 tests passing</div><div class="task-meta">Was 165 at start of project</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Stripe open redirect fix</div><div class="task-meta">field_validator on success_url/cancel_url <code>c0e179e</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Production extension manifests cleaned</div><div class="task-meta">Removed http://localhost:8000/* from Chrome/Firefox/Safari builds</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Google Safe Browsing API key <span class="badge-blocker">P0 · USER</span></div><div class="task-meta">console.cloud.google.com → Enable Safe Browsing → Railway env <code>GOOGLE_SAFE_BROWSING_API_KEY</code> · 10 min</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Stripe account + 24 regional price IDs <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">3 plans × 4 tiers × 2 intervals · needs business info + bank</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Upstash Redis (or Railway addon) <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Free tier 10K cmd/day · backs rate limit + referral counters</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Rotate Supabase keys <span class="badge-blocker">P0 · USER</span></div><div class="task-meta">Supabase dashboard → Settings → API → Regenerate · 2 min</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE C ═════════ -->
+<details open>
+  <summary>
+    <h3><span class="phase-tag">C</span> Regular user UX + i18n</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-partial">PARTIAL</span>
+      <span class="count">11 / 13</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Jargon-free, 10 languages, freemium counter, full SEO suite.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Popup redesigned (1 main status + 2 secondary + More menu)</div><div class="task-meta">Chrome/Firefox/Safari sync from packages/extension-core</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Welcome + block page redesigned</div><div class="task-meta">Block has 5s countdown + STOP big visual; welcome has live language switcher</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Glossary jargon replaced</div><div class="task-meta">phishing → scam, audit → what this site collects, etc. across all 10 langs</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">10 languages (en/ru/es/pt/fr/de/it/id/hi/ar)</div><div class="task-meta">RTL for Arabic, single source packages/i18n-strings</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Landing Features/FAQ/Comparison/Testimonials translated</div><div class="task-meta">7 missing locales filled (pt/fr/de/it/id/hi/ar) <code>5af41a4</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">/pricing page with regional detection (4 tiers)</div><div class="task-meta">Auto-detects from country, all 10 locales</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Pricing v2: 50-threat counter + threshold gating <span class="badge-blocker" style="background:var(--green-soft);color:var(--green)">P2 · DONE</span></div><div class="task-meta">GET /threats/status, POST /threats/increment, first-crossing nudge stamp <code>438909c</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">@cleanway/api-types + @cleanway/api-client</div><div class="task-meta">OpenAPI → TypeScript → typed client with Result, timeout, privacy normalization</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Viral SEO loop on /check/{domain}</div><div class="task-meta">Dynamic OG image per scan + hreflang + Review JSON-LD <code>7dac212</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Homepage + /audit + /pricing + /business + /privacy + /terms SEO</div><div class="task-meta">Per-locale metadata, Organization + WebSite + SoftwareApp + FAQPage + Product/Offer JSON-LD <code>af039f8 083e248 cfa020a</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">PWA manifest — installable web app</div><div class="task-meta">"Add to Home Screen" on iOS Safari + Android Chrome <code>ca8f874</code></div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Native review of 8 draft translations <span class="badge-blocker">P2 · HUMANS</span></div><div class="task-meta">es/pt/fr/de/it/id/hi/ar before Chrome Web Store publish · need native speakers</div></div></li>
+      <li><span class="icon icon-next">▶</span><div class="task-content"><div class="task-title">Pricing v2 frontend: paywall nudge UI in extension</div><div class="task-meta">Backend API ready; needs popup UX wiring to show "Unlock details" CTA after threshold cross · autonomous-able</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE D ═════════ -->
+<details open>
+  <summary>
+    <h3><span class="phase-tag">D</span> Skill Levels (Kids / Granny / Pro)</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-partial">PARTIAL</span>
+      <span class="count">3 / 8</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Different UX for different people. Backend wiring done; UI design + Family Hub crypto pending.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Schema ready (003 + 004)</div><div class="task-meta">users.skill_level, devices.skill_level_override, voice_alerts_enabled, font_scale, parental_pin_hash</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Skill selector backend wired</div><div class="task-meta">PUT /user/settings, GET /user/device/{hash}/effective (resolves device override + user default), PATCH overrides <code>395af6f</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Effective resolution + provenance tags</div><div class="task-meta">UI gets "Set by family admin" badge per field</div></div></li>
+      <li><span class="icon icon-next">▶</span><div class="task-content"><div class="task-title">Settings page in extension/mobile with skill selector</div><div class="task-meta">Backend ready; needs UI work · could be autonomous if UX direction confirmed</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Granny Mode UI</div><div class="task-meta">Font 1.5-2x, 2-color palette, Web Speech API voice alerts, "Ask grandchild" button · UX decisions needed</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Kids Mode UI</div><div class="task-meta">Gamified (XP, achievements), parental controls, simplified language</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Pro Mode UI</div><div class="task-meta">Full signal breakdown, JSON exports, raw ML scores</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Family Hub backend (E2E alerts, libsodium, QR + PIN invite)</div><div class="task-meta">Crypto + protocol design needed · large scope</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE E1 ═════════ -->
+<details>
+  <summary>
+    <h3><span class="phase-tag">E1</span> Mobile → monorepo</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-done">DONE</span>
+      <span class="count">6 / 6</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Mobile uses @cleanway/api-client + 10-language i18n via shared packages.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">mobile/ in npm workspaces, on @cleanway/api-client</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">@cleanway/api-types replaces hand-rolled interfaces</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">build-i18n.py generates mobile/i18n/{locale}.json</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">expo-localization + react-i18next on 10 locales</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Mobile TS clean (was 6 errors in database.ts)</div><div class="task-meta">SQLite types via expo-sqlite type-only import <code>a50e351</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Real /user/profile data (devices count + member_since)</div><div class="task-meta">Was hardcoded TODO=0 <code>a50e351</code></div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE E2 ═════════ -->
+<details open>
+  <summary>
+    <h3><span class="phase-tag">E2</span> Transactional email</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-partial">PARTIAL</span>
+      <span class="count">7 / 10</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">7 templates × 10 languages, RFC 8058 compliance, rate limiting. DKIM/SPF/DMARC + provider account pending.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">packages/email-templates with 7 templates</div><div class="task-meta">welcome, receipt, weekly_report, family_invite, breach_alert, subscription_cancel, granny_mode_invite</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Provider-agnostic api/services/email.py</div><div class="task-meta">Resend / SES / noop runtime selection</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">i18n integration via packages/i18n-strings email.* namespace</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">RFC 8058 unsubscribe persistence + send-side suppression</div><div class="task-meta">Was no-op TODO; now writes user_settings.email_optout, send_template skips opted-out users <code>4bff4be</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Per-user-per-template rate limit</div><div class="task-meta">Redis INCR+EXPIRE budgets per template, fails open on outage <code>0b905db</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Cross-locale render parity tests</div><div class="task-meta">45 tests covering all 10 locales, fallback, Unicode, no-double-replace <code>6654f0d</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Email service rate-limit fail-open semantics</div><div class="task-meta">Redis offline → transactional emails (receipts) still go out</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Email provider account (Zoho Free or AWS SES) <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Zoho Free 5 users → MX records → support@/security@cleanway.ai · 20 min</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">DKIM + SPF + DMARC on cleanway.ai <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Squarespace DNS records after email provider chosen</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Bounce + complaint webhook handling <span class="badge-blocker">DEPENDS</span></div><div class="task-meta">Provider-specific (Resend/SES); needs provider chosen first</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE E3 ═════════ -->
+<details>
+  <summary>
+    <h3><span class="phase-tag">E3</span> Dev / staging / prod environments</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-blocked">BLOCKED</span>
+      <span class="count">2 / 8</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Three environments + Supabase staging + config guards + deploy runbooks.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">.env-examples/ with development/staging/production templates</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">B2B mock guarded for production (returns 503 if Supabase missing)</div><div class="task-meta">Was always returning fake data <code>a50e351</code></div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Railway staging service <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Second Railway project (cleanway-api-staging) · CLI deploy workflow already wired, awaiting RAILWAY_TOKEN_STAGING secret</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Supabase staging project <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Free tier in same org</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Vercel preview deploys per PR <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Toggle in Vercel project settings</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Stripe test-mode keys for staging</div><div class="task-meta">Depends on Stripe account</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">CI: PR → staging deploy → manual approve → prod</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Runbook: rollback in 5 minutes (Railway + Supabase point-in-time)</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE E4 ═════════ -->
+<details>
+  <summary>
+    <h3><span class="phase-tag">E4</span> Mobile native VPN</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-blocked">BLOCKED</span>
+      <span class="count">0 / 9</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Real DNS interception, Apple/Google IAP, store submissions. Out of scope for autonomous backend work — needs Xcode/Android Studio + dev accounts.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">iOS PacketTunnelProvider real DNS interception <span class="badge-blocker">XCODE</span></div><div class="task-meta">Currently 80-line skeleton</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Android VpnService DNS query parsing <span class="badge-blocker">ANDROID STUDIO</span></div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Smart VPN logic (no-VPN → local; existing-VPN → DNS profile)</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Apple IAP + Google Play Billing</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Push notifications (FCM iOS + Android)</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">QR scanner</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">iOS widget (protection status)</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">App Store submission <span class="badge-blocker">$99 + 1-3wk review</span></div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Google Play submission + Data Safety form <span class="badge-blocker">$25</span></div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE F ═════════ -->
+<details open>
+  <summary>
+    <h3><span class="phase-tag">F</span> Growth</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-partial">PARTIAL</span>
+      <span class="count">5 / 9</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Distribution, viral loops, marketing.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Viral OG share cards on /check + /audit</div><div class="task-meta">Edge runtime PNG with grade circle, brand bar, CTA · auto-pulled by social platforms <code>7dac212 af039f8</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Web Share API on /check pages</div><div class="task-meta">Native share sheet on mobile + desktop fallback (X/LinkedIn/Reddit/TG/WA/Email)</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">SEO sitemap with 1110 URLs across 10 locales</div><div class="task-meta">75 phishing-target domains pre-seeded; 12 210 hreflang alternates</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Anti-AI-training in robots.txt</div><div class="task-meta">Blocks GPTBot/ClaudeBot/CCBot/anthropic-ai/Google-Extended/PerplexityBot</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Referral program with credit grant</div><div class="task-meta">Was bookkeeping-only; now grants 7 days to BOTH parties via user_settings <code>d52b93f</code></div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Chrome Web Store submission <span class="badge-blocker">$5 USER</span></div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Firefox AMO submission <span class="badge-blocker">USER · FREE</span></div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Product Hunt + HN "Show HN" launch <span class="badge-blocker">USER</span></div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">USPTO Trademark Class 9 + 42 <span class="badge-blocker">$500 USER</span></div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE G ═════════ -->
+<details>
+  <summary>
+    <h3><span class="phase-tag">G</span> B2B</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-future">FUTURE</span>
+      <span class="count">0 / 4</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Email proxy, SSO, phishing simulation, public API. After MVP traction.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Email proxy SMTP (SPF/DKIM/DMARC passthrough, scan-before-inbox)</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">B2B dashboard + SSO (SAML/OIDC) + SCIM provisioning</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Phishing simulation (campaigns, micro-training, tracking)</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Public API + SDKs + Slack/Teams bots</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ PHASE H ═════════ -->
+<details>
+  <summary>
+    <h3><span class="phase-tag">H</span> Infrastructure as Code</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-future">FUTURE</span>
+      <span class="count">0 / 7</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Terraform, Cloudflare Workers, status page, chaos drills. After product-market fit.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Terraform: Supabase + Railway + Vercel</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Cloudflare Workers for bloom filter CDN + WAF + DDoS</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Status page (status.cleanway.ai)</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Incident runbooks (full)</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Quarterly chaos drills</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">SOC2 / GDPR DPIA documentation</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Disaster recovery + multi-region failover</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ ARCH PRINCIPLES ═════════ -->
+<details>
+  <summary>
+    <h3>🏗️ Architecture invariants (locked in)</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-done">ACTIVE</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Monorepo + shared packages</div><div class="task-meta">i18n-strings, extension-core, api-types, api-client, email-templates · one source of truth per concern</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Defense in depth (gitleaks, bandit, pip-audit, Trivy, Hadolint)</div><div class="task-meta">All in CI pipeline + pre-commit hooks</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Privacy invariant: blocking is FREE FOREVER</div><div class="task-meta">Pricing v2 gates DETAILS, never the block itself · ethical baseline</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">No browsing data on servers</div><div class="task-meta">user_settings stores email + sub status only · device-local SQLite for history</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">RLS enabled on all 17 Supabase tables</div><div class="task-meta">Migration 006 closed families/orgs gap; 007 pinned function search_path</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<!-- ═════════ TODAY'S SESSION LOG ═════════ -->
+<section class="session-log">
+  <h2>Session log — 2026-04-26 → 2026-04-27</h2>
+  <p class="session-when">13 commits · 88 new tests (400 → 488) · 9 features shipped autonomously</p>
+
+  <table class="commits">
+    <thead>
+      <tr>
+        <th>SHA</th>
+        <th>Type</th>
+        <th>Title</th>
+        <th>Tests</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>438909c</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Pricing v2 — 50-threat freemium counter + detail gating</td><td>+18</td></tr>
+      <tr><td><code>7dac212</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Viral SEO loop on /check — OG image + hreflang + JSON-LD</td><td>—</td></tr>
+      <tr><td><code>af039f8</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Homepage + /audit SEO + AI-bot blocking robots.txt</td><td>—</td></tr>
+      <tr><td><code>4bff4be</code></td><td><span class="ttype ttype-feat">feat</span></td><td>RFC 8058 unsubscribe — actual persistence + send-side suppression</td><td>+11</td></tr>
+      <tr><td><code>083e248</code></td><td><span class="ttype ttype-feat">feat</span></td><td>/pricing SEO + Product JSON-LD with regional Offers</td><td>—</td></tr>
+      <tr><td><code>ca8f874</code></td><td><span class="ttype ttype-feat">feat</span></td><td>PWA manifest — installable web app + home-screen install loop</td><td>—</td></tr>
+      <tr><td><code>cfa020a</code></td><td><span class="ttype ttype-feat">feat</span></td><td>SEO metadata for /business + /privacy-policy + /terms</td><td>—</td></tr>
+      <tr><td><code>0b905db</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Per-user-per-template email rate limit</td><td>+9</td></tr>
+      <tr><td><code>395af6f</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Skill levels — device override + effective resolution endpoints</td><td>+8</td></tr>
+      <tr><td><code>d52b93f</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Referral program — actual credit grant + persistence</td><td>+15</td></tr>
+      <tr><td><code>324627f</code></td><td><span class="ttype ttype-test">test</span></td><td>Stabilize test_verify_rejects_tampered_signature (~6% flake)</td><td>—</td></tr>
+      <tr><td><code>6654f0d</code></td><td><span class="ttype ttype-test">test</span></td><td>Cross-locale email render parity — 45 new tests covering all 10 langs</td><td>+45</td></tr>
+      <tr><td><code>b684acd</code></td><td><span class="ttype ttype-ci">ci</span></td><td>Drop unused typing imports flagged by full ruff scan</td><td>—</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═════════ IMMEDIATE NEXT ═════════ -->
+<details open>
+  <summary>
+    <h3>🎯 What to do next</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-next">PRIORITIZED</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Shortest path to revenue + visibility.</p>
+
+    <h4 style="color: var(--red); margin-top: 8px;">🔴 P0 · Your action (≤30 min each)</h4>
+    <ul class="tasks">
+      <li><span class="icon icon-blocked">1</span><div class="task-content"><div class="task-title">Rotate Supabase keys (anon + service_role)</div><div class="task-meta">Supabase Dashboard → Settings → API → Regenerate · 2 min</div></div></li>
+      <li><span class="icon icon-blocked">2</span><div class="task-content"><div class="task-title">Google Safe Browsing API key</div><div class="task-meta">cloud.google.com → Enable Safe Browsing → Railway env <code>GOOGLE_SAFE_BROWSING_API_KEY</code> · 10 min</div></div></li>
+      <li><span class="icon icon-blocked">3</span><div class="task-content"><div class="task-title">Sentry DSN</div><div class="task-meta">sentry.io → new Cleanway project → Railway <code>SENTRY_DSN</code> + Vercel <code>NEXT_PUBLIC_SENTRY_DSN</code> · 15 min</div></div></li>
+      <li><span class="icon icon-blocked">4</span><div class="task-content"><div class="task-title">Social handles @cleanwayai (X/IG/TikTok/LinkedIn/YT/GitHub)</div><div class="task-meta">Reserve while still free · 30 min</div></div></li>
+    </ul>
+
+    <h4 style="color: var(--blue); margin-top: 16px;">▶ Next autonomous (no user blocker)</h4>
+    <ul class="tasks">
+      <li><span class="icon icon-next">a</span><div class="task-content"><div class="task-title">Pricing v2 frontend nudge UI in extension popup</div><div class="task-meta">Backend ready (438909c); needs popup wiring to fetch /threats/status and show "Unlock details" CTA after threshold cross</div></div></li>
+      <li><span class="icon icon-next">b</span><div class="task-content"><div class="task-title">Skill selector UI in extension settings</div><div class="task-meta">Backend ready (395af6f); needs settings panel + dropdown</div></div></li>
+      <li><span class="icon icon-next">c</span><div class="task-content"><div class="task-title">Service worker for landing (offline cache + push hook)</div><div class="task-meta">PWA manifest done; SW unlocks push notifications + offline /check</div></div></li>
+      <li><span class="icon icon-next">d</span><div class="task-content"><div class="task-title">Email build pipeline fix (TS → JS compile step)</div><div class="task-meta">build-emails.mjs imports .ts, runtime fails; needs tsc/esbuild step before render. Unblocks physical HTML snapshots.</div></div></li>
+      <li><span class="icon icon-next">e</span><div class="task-content"><div class="task-title">Family Hub backend (libsodium AES-256-GCM E2E alerts)</div><div class="task-meta">Schema ready; protocol design + crypto wiring · medium scope</div></div></li>
+      <li><span class="icon icon-next">f</span><div class="task-content"><div class="task-title">Privacy Audit shareable A-F grade card</div><div class="task-meta">Static badge image generator; viral loop · small scope</div></div></li>
+    </ul>
+  </div>
+</details>
+
+<footer>
+  Auto-generated · last updated 2026-04-27 · main @ <code>b684acd</code>
+  · <a href="https://github.com/AlexMos555/linkshield/actions">CI status</a>
+</footer>
+
 </div>
-
-<h2>Общий прогресс: ~78%</h2>
-<div class="progress-bar"><div class="progress-fill" style="width:78%"></div></div>
-
-<div class="legend">
-  <span class="legend-item"><span class="legend-dot ld-done"></span>Готово</span>
-  <span class="legend-item"><span class="legend-dot ld-partial"></span>Частично</span>
-  <span class="legend-item"><span class="legend-dot ld-active"></span>Сейчас</span>
-  <span class="legend-item"><span class="legend-dot ld-next"></span>Следующее</span>
-  <span class="legend-item"><span class="legend-dot ld-future"></span>Будущее</span>
-</div>
-
-<div class="stats">
-  <div class="stat-card"><div class="stat-num green">382</div><div class="stat-label">Тестов (пасс)</div></div>
-  <div class="stat-card"><div class="stat-num green">91%</div><div class="stat-label">Detection rate</div></div>
-  <div class="stat-card"><div class="stat-num green">10/10</div><div class="stat-label">Языков готово</div></div>
-  <div class="stat-card"><div class="stat-num blue">4</div><div class="stat-label">Ценовых tier'а</div></div>
-  <div class="stat-card"><div class="stat-num green">5</div><div class="stat-label">Shared packages</div></div>
-  <div class="stat-card"><div class="stat-num green">7/7</div><div class="stat-label">Email шаблонов</div></div>
-</div>
-
-<h2>Ключевые решения</h2>
-<div class="decisions">
-  <div class="dec-card">
-    <h3>🌐 i18n — 10 языков (ГОТОВО)</h3>
-    <p>en, es, hi, pt, ru, ar, fr, de, it, id. Единый источник в packages/i18n-strings. RTL для арабского.</p>
-  </div>
-  <div class="dec-card">
-    <h3>💰 Региональные цены (4 tier)</h3>
-    <p>T1 (US/EU): $5.99 / T2 (RU/BR): $4.99 / T3 (LATAM/SEA): $2.49 / T4 (IN/ID): $1.49. Pydantic response models + @cleanway/api-types.</p>
-  </div>
-  <div class="dec-card">
-    <h3>🏗️ Монорепо + shared packages</h3>
-    <p>packages/ (i18n-strings, extension-core, api-types, api-client). Правка строки/попапа/API-контракта в 1 месте.</p>
-  </div>
-  <div class="dec-card">
-    <h3>🔒 Defense in depth (ГОТОВО)</h3>
-    <p>Multi-stage Docker, non-root, CSP+HSTS+XFO+Permissions, gitleaks pre-commit, Trivy/Bandit/pip-audit в CI, threat model на 6 классов.</p>
-  </div>
-  <div class="dec-card">
-    <h3>🆓 Pricing v2: "feel value first"</h3>
-    <p>Блок всегда бесплатен. Первые 50 опасных — полные детали. Платим за семью + детали + Granny Mode.</p>
-  </div>
-  <div class="dec-card">
-    <h3>👥 4 Skill уровня</h3>
-    <p>Kids / Regular / Granny / Pro. Ручной выбор в settings. Family Hub управляет удалённо.</p>
-  </div>
-</div>
-
-<!-- ========== ЧТО УЖЕ ЕСТЬ ========== -->
-<h2>✅ Что уже построено (не всё — будет перепроверено в Phase C)</h2>
-
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Security Foundation</span><div class="phase-subtitle">JWT, CORS, SSRF, rate limiting — backend основа</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> JWT secret validation (отказ старта при пустом)</li>
-    <li><span class="icon done-icon">✓</span> CORS lockdown (origins из env)</li>
-    <li><span class="icon done-icon">✓</span> SSRF protection (domain_validator.py)</li>
-    <li><span class="icon done-icon">✓</span> Structured JSON logging + Sentry integration</li>
-    <li><span class="icon done-icon">✓</span> Rate Limiting 2.0 (sliding window + burst + UTC)</li>
-    <li><span class="icon done-icon">✓</span> Error message sanitization</li>
-  </ul>
-</div>
-
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Scoring Engine 3.0</span><div class="phase-subtitle">42+ сигналов, 9 blocklist'ов, ML модель</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> 42+ scoring signals (3-layer pipeline)</li>
-    <li><span class="icon done-icon">✓</span> 9 blocklist sources (Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, OTX, IPQS)</li>
-    <li><span class="icon done-icon">✓</span> CatBoost ML модель — AUC 0.9988, файл 238KB реально загружается</li>
-    <li><span class="icon done-icon">✓</span> Homograph/IDN, typosquat (125 брендов), n-gram, DNS, cert age</li>
-    <li><span class="icon done-icon">✓</span> 75 тестов пасс + benchmark</li>
-  </ul>
-</div>
-
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Chrome/Firefox/Safari Extensions — redesigned + i18n</span><div class="phase-subtitle">Popup переделан, block page, welcome, 10 языков, единый extension-core</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> Manifest V3 Chrome, V2 Firefox, V3 Safari — все 3 синхронизируются из packages/extension-core</li>
-    <li><span class="icon done-icon">✓</span> Bloom filter (MurmurHash3, 176KB), link badges, block page, context menu</li>
-    <li><span class="icon done-icon">✓</span> Privacy Audit on-device (trackers, cookies, fingerprinting)</li>
-    <li><span class="icon done-icon">✓</span> <strong>Popup redesigned</strong>: 1 главный статус + 2 secondary + More menu (bye, 6 кнопок)</li>
-    <li><span class="icon done-icon">✓</span> <strong>Block page redesigned</strong>: большой STOP + scheme + 5s countdown</li>
-    <li><span class="icon done-icon">✓</span> <strong>Welcome redesigned</strong> с live language switcher</li>
-    <li><span class="icon done-icon">✓</span> <strong>i18n: 10 языков</strong> (en/ru/es/pt/fr/de/it/id/hi/ar) с RTL для арабского</li>
-    <li><span class="icon done-icon">✓</span> <strong>Env-driven API URL</strong> — убран hardcoded localhost из всех клиентов</li>
-    <li><span class="icon done-icon">✓</span> Жаргон заменён во всех 10 языках (no "phishing"/"audit"/"breach")</li>
-  </ul>
-</div>
-
-<div class="phase partial">
-  <div class="phase-header">
-    <div><span class="phase-title">Backend API</span><div class="phase-subtitle">28 endpoints, Pydantic models, security headers. Supabase EU active.</div></div>
-    <span class="phase-tag tag-partial">⚠️ ЧАСТИЧНО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> POST /check (домен), breach k-anonymity, user aggregates, percentile</li>
-    <li><span class="icon done-icon">✓</span> Stripe create-checkout + webhook + portal</li>
-    <li><span class="icon done-icon">✓</span> <strong>Supabase EU active</strong> (eu-central-1 Frankfurt, schema 003 применена)</li>
-    <li><span class="icon done-icon">✓</span> <strong>/api/v1/pricing/*</strong> с Pydantic response models — типизированный контракт</li>
-    <li><span class="icon done-icon">✓</span> <strong>Security headers middleware</strong>: HSTS, CSP, XFO, XCTO, Referrer, Permissions, COOP, CORP</li>
-    <li><span class="icon done-icon">✓</span> <strong>Multi-stage Dockerfile</strong>: non-root UID 10001, read-only fs, no secrets baked in</li>
-    <li><span class="icon partial-icon">⚠</span> user/profile devices=0 TODO (не считает реально)</li>
-    <li><span class="icon partial-icon">⚠</span> B2B org endpoints возвращают мок при недоступности Supabase</li>
-    <li><span class="icon todo-icon">○</span> Stripe price IDs не созданы (есть placeholders в pricing.py)</li>
-    <li><span class="icon todo-icon">○</span> Google Safe Browsing API key не получен</li>
-    <li><span class="icon todo-icon">○</span> Redis (Upstash/Railway addon) не подключён к production</li>
-  </ul>
-</div>
-
-<div class="phase partial">
-  <div class="phase-header">
-    <div><span class="phase-title">Landing Page — i18n + pricing</span><div class="phase-subtitle">Next.js 15 App Router, 10 локалей, типизированный API client</div></div>
-    <span class="phase-tag tag-partial">⚠️ ЧАСТИЧНО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> Hero, Privacy Policy, Terms, Business, /check/[domain], /audit/[domain], /ref/[code]</li>
-    <li><span class="icon done-icon">✓</span> <strong>/pricing с regional detection</strong> — автоматически определяет tier по стране</li>
-    <li><span class="icon done-icon">✓</span> <strong>next-intl для 10 языков</strong> — /ru/pricing, /ar/business, /hi/privacy-policy, etc.</li>
-    <li><span class="icon done-icon">✓</span> <strong>LanguageSwitcher</strong> в навбаре (native names + RTL)</li>
-    <li><span class="icon done-icon">✓</span> <strong>@cleanway/api-client</strong> вместо raw fetch (timeout, typed errors, Result<T,E>)</li>
-    <li><span class="icon done-icon">✓</span> <strong>Vercel project подключён</strong>, build статически генерит 80+ SSG routes</li>
-    <li><span class="icon partial-icon">⚠</span> Hero/Nav/CTA/Footer переведены, но Features/FAQ/Comparison/Testimonials секции пока только EN</li>
-    <li><span class="icon done-icon">✓</span> Custom domain подключён: cleanway.ai live на Vercel (HTTPS, www→apex), api.cleanway.ai на Railway — 2026-04-22</li>
-  </ul>
-</div>
-
-<div class="phase partial">
-  <div class="phase-header">
-    <div><span class="phase-title">Mobile App (React Native)</span><div class="phase-subtitle">14 экранов есть, но VPN — скелет, не интегрирован с packages/</div></div>
-    <span class="phase-tag tag-partial">⚠️ ЧАСТИЧНО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> Expo app, 14 screens (tabs: index/settings/history/score + отд. auth/check/breach/scanner/upgrade/onboarding/report)</li>
-    <li><span class="icon done-icon">✓</span> Services: API client, SQLite, DNS resolver, VPN manager (JS-часть)</li>
-    <li><span class="icon done-icon">✓</span> Env-driven API URL (EXPO_PUBLIC_API_URL) — hardcoded localhost убран</li>
-    <li><span class="icon partial-icon">⚠</span> <strong>НЕ подключён к монорепо</strong> — свой api.ts, свои типы, свои i18n файлы (дубли!)</li>
-    <li><span class="icon partial-icon">⚠</span> <strong>iOS VPN: PacketTunnelProvider.swift = 80 строк скелета, НЕТ реальной DNS interception</strong></li>
-    <li><span class="icon partial-icon">⚠</span> Android: CleanwayVpnService.kt тоже скелет</li>
-    <li><span class="icon partial-icon">⚠</span> Apple IAP / Google Play Billing не интегрированы</li>
-  </ul>
-</div>
-
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Infra / Tests / Security</span><div class="phase-subtitle">pytest формат, defense in depth, pre-commit gitleaks, CI security scans</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> <strong>Multi-stage Dockerfile</strong>: non-root UID 10001, read-only fs, tini, healthcheck, no secrets</li>
-    <li><span class="icon done-icon">✓</span> <strong>.dockerignore + .gitignore</strong>: блокируют все типы секретов (.env*, *.pem, *.key, credentials, .aws, .gcp)</li>
-    <li><span class="icon done-icon">✓</span> <strong>Security headers</strong>: HSTS, CSP (strict API / scoped docs), XFO DENY, XCTO nosniff, Referrer, Permissions, COOP, CORP</li>
-    <li><span class="icon done-icon">✓</span> <strong>Pre-commit hooks</strong>: gitleaks + bandit + ruff + detect-private-key + check-large-files</li>
-    <li><span class="icon done-icon">✓</span> <strong>CI security workflow</strong>: gitleaks + bandit + pip-audit + Trivy (container CVEs) + Hadolint + SBOM</li>
-    <li><span class="icon done-icon">✓</span> <strong>docker-compose.prod.yml</strong>: read-only, cap_drop ALL, no-new-privileges, resource limits</li>
-    <li><span class="icon done-icon">✓</span> <strong>SECURITY.md</strong>: 6-class threat model, secret rotation procedure, backup/recovery matrix</li>
-    <li><span class="icon done-icon">✓</span> <strong>Pytest migration</strong>: 382 тестов pass (pricing 100%, scoring 89%, schemas 100%, payments validator 100%)</li>
-    <li><span class="icon done-icon">✓</span> GitHub Actions расширен: test + lint + docker + security workflows</li>
-  </ul>
-</div>
-
-<!-- ========== 5-фазный план ========== -->
-<h2>🗺️ Производство: 5-фазный план</h2>
-
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase A — Стратегический фундамент</span><div class="phase-subtitle">Все планы и решения зафиксированы</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> ROADMAP.html (этот документ) — честные галочки</li>
-    <li><span class="icon done-icon">✓</span> PROJECT.md (intl strategy + pricing v2 + skill levels)</li>
-    <li><span class="icon done-icon">✓</span> REQUIREMENTS.md (i18n, skill levels, pricing v2)</li>
-    <li><span class="icon done-icon">✓</span> COMPETITIVE-ANALYSIS.md (+Edge SmartScreen, Apple Safari, Brave, DDG, Kaspersky, MetaMask, Telegram bots) + UX-axis</li>
-    <li><span class="icon done-icon">✓</span> I18N_ARCHITECTURE.md (библиотеки для landing/extension/mobile)</li>
-    <li><span class="icon done-icon">✓</span> PRICING_MATRIX.md (4 tier, Stripe price IDs, billing country логика)</li>
-    <li><span class="icon done-icon">✓</span> SKILL_LEVELS.md (Kids/Regular/Granny/Pro UX спеки)</li>
-    <li><span class="icon done-icon">✓</span> .gitignore/.dockerignore/.env.example — все файлы на месте</li>
-  </ul>
-</div>
-
-<!-- ========== PHASE B ========== -->
-<div class="phase partial">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase B — Shipping unblock</span><div class="phase-subtitle">Без этого никто не может пользоваться</div></div>
-    <span class="phase-tag tag-partial">⚠️ ЧАСТИЧНО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> <strong>Env-driven API URL</strong> во всех клиентах (extension × 3, mobile, landing) — все localhost:8000 убраны</li>
-    <li><span class="icon done-icon">✓</span> Railway деплой стабилен (api.cleanway.ai отвечает 200)</li>
-    <li><span class="icon done-icon">✓</span> <strong>Supabase EU активен</strong>: project bpyqgzzclsbfvxthyfsf в eu-central-1, schema 003 применена (12 таблиц)</li>
-    <li><span class="icon done-icon">✓</span> Vercel project подключён (prj_UspMAm0t7sz5UhB7Wd6zyMRqwO6C), landing build работает</li>
-    <li><span class="icon done-icon">✓</span> Тесты в pytest формате — 165 pass, coverage 55%</li>
-    <li><span class="icon todo-icon">○</span> Google Safe Browsing API key (console.cloud.google.com — free tier)</li>
-    <li><span class="icon todo-icon">○</span> Stripe account + 24 regional price IDs (3 plans × 4 tier × 2 interval)</li>
-    <li><span class="icon todo-icon">○</span> Upstash Redis (free tier 10K commands/day) или Railway Redis addon</li>
-    <li><span class="icon done-icon">✓</span> Railway env vars обновлены на EU Supabase + ALLOWED_ORIGINS для cleanway.ai/www (2026-04-22)</li>
-    <li><span class="icon todo-icon">○</span> Удалить старый Sydney Supabase project после verification</li>
-    <li><span class="icon done-icon">✓</span> Домен: cleanway.ai куплен и полностью переехали (ребренд LinkShield→Cleanway, DNS/SSL/CORS/Sentry wired 2026-04-22)</li>
-    <li><span class="icon todo-icon">○</span> E2E: extension загрузить в Chrome Dev → реальный API → реальный score</li>
-  </ul>
-</div>
-
-<!-- ========== PHASE C ========== -->
-<div class="phase partial">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase C — Regular User UX + i18n</span><div class="phase-subtitle">Обычный человек, без жаргона, 10 языков</div></div>
-    <span class="phase-tag tag-partial">⚠️ ЧАСТИЧНО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> <strong>Popup redesigned</strong>: 1 главный статус + 2 secondary + More menu (Chrome/Firefox/Safari)</li>
-    <li><span class="icon done-icon">✓</span> <strong>Глоссарий замен жаргона</strong>: phishing→scam site/мошеннический сайт, audit→what this site collects, etc.</li>
-    <li><span class="icon done-icon">✓</span> <strong>Welcome redesigned</strong> с live language switcher</li>
-    <li><span class="icon done-icon">✓</span> <strong>Block page redesigned</strong>: большое STOP, scheme steps, 5s countdown</li>
-    <li><span class="icon done-icon">✓</span> <strong>/pricing страница</strong> с regional detection (4 tier автоматически)</li>
-    <li><span class="icon done-icon">✓</span> <strong>i18n инфраструктура</strong>: next-intl для landing, chrome.i18n для extensions, packages/i18n-strings единый источник</li>
-    <li><span class="icon done-icon">✓</span> <strong>10 языков draft</strong>: en/ru + 8 draft (es/pt/fr/de/it/id/hi/ar)</li>
-    <li><span class="icon done-icon">✓</span> <strong>RTL support</strong> для арабского (dir="rtl" + logical properties)</li>
-    <li><span class="icon done-icon">✓</span> Pydantic response models для pricing endpoints (типизированный контракт)</li>
-    <li><span class="icon done-icon">✓</span> <strong>@cleanway/api-types + @cleanway/api-client</strong>: OpenAPI → TypeScript → typed clients</li>
-    <li><span class="icon todo-icon">○</span> Features/FAQ/Comparison/Testimonials секции лендинга (сейчас EN only, нужно в 10 языках)</li>
-    <li><span class="icon todo-icon">○</span> Реализовать pricing v2: 50-threat counter + threshold hit UX (schema 003 уже готова)</li>
-    <li><span class="icon todo-icon">○</span> Native review 8 draft-переводов (es/pt/fr/de/it/id/hi/ar) перед Chrome Web Store publish</li>
-  </ul>
-</div>
-
-<!-- ========== PHASE D ========== -->
-<div class="phase future">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase D — Skill Levels (Kids / Granny / Pro)</span><div class="phase-subtitle">Разные UX для разных людей</div></div>
-    <span class="phase-tag tag-future">📋 ПЛАН</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> Schema готова: users.skill_level, devices.skill_level_override, devices.voice_alerts_enabled, devices.font_scale</li>
-    <li><span class="icon todo-icon">○</span> Skill-level selector в Settings + sync state (Supabase user_settings)</li>
-    <li><span class="icon todo-icon">○</span> <strong>Granny Mode</strong>: шрифт 1.5-2x, 2 цвета, голосовые алерты (Web Speech API), "Спросить внука" кнопка</li>
-    <li><span class="icon todo-icon">○</span> <strong>Kids Mode</strong>: gamified (XP, достижения), parental controls, упрощённый язык</li>
-    <li><span class="icon todo-icon">○</span> <strong>Pro Mode</strong>: full signals breakdown, JSON exports, raw model scores</li>
-    <li><span class="icon todo-icon">○</span> <strong>Family Hub backend</strong>: E2E alerts (libsodium AES-256-GCM), remote skill-level управление</li>
-    <li><span class="icon todo-icon">○</span> QR key exchange + link-PIN invite flow</li>
-    <li><span class="icon todo-icon">○</span> Family dashboard: список устройств, последние алерты, настройки per-член</li>
-  </ul>
-</div>
-
-<!-- ========== PHASE E1 — Mobile Monorepo (DONE) ========== -->
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase E₁ — Mobile → монорепо</span><div class="phase-subtitle">mobile на @cleanway/api-client + 10 языков через i18next</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon todo-icon">○</span> Добавить <code>mobile/</code> в npm workspaces root package.json</li>
-    <li><span class="icon todo-icon">○</span> Заменить <code>mobile/src/services/api.ts</code> на <code>@cleanway/api-client</code></li>
-    <li><span class="icon todo-icon">○</span> Переключить типы на <code>@cleanway/api-types</code> (убрать hand-rolled interfaces)</li>
-    <li><span class="icon todo-icon">○</span> Расширить <code>scripts/build-i18n.py</code> → генерить <code>mobile/i18n/{locale}.json</code> (expo-localization compatible)</li>
-    <li><span class="icon todo-icon">○</span> Подключить expo-localization + react-i18next на полученные 10 locales</li>
-    <li><span class="icon todo-icon">○</span> Заменить все hardcoded UI строки на <code>t("popup.status_safe_title")</code></li>
-    <li><span class="icon todo-icon">○</span> Smoke test: Expo Go запускает, переключение языка работает, RTL для ar</li>
-  </ul>
-</div>
-
-<!-- ========== PHASE E2 — Email (DONE) ========== -->
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase E₂ — Transactional Email</span><div class="phase-subtitle">7 шаблонов × 10 языков, 61 тест, Resend/SES готовы, RFC 8058 one-click unsubscribe</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon todo-icon">○</span> <strong>packages/email-templates/</strong>: React Email шаблонизатор, MJML fallback для старых клиентов</li>
-    <li><span class="icon todo-icon">○</span> Интеграция с <code>packages/i18n-strings</code> namespace <code>email.*</code></li>
-    <li><span class="icon todo-icon">○</span> <strong>7 шаблонов</strong>: welcome / stripe-receipt / weekly-report / family-invite / breach-alert / subscription-cancel / granny-mode-invite</li>
-    <li><span class="icon todo-icon">○</span> <strong>api/services/email.py</strong>: провайдер-агностичный (Resend для dev/staging, AWS SES для prod)</li>
-    <li><span class="icon todo-icon">○</span> DKIM + SPF + DMARC на выбранном домене</li>
-    <li><span class="icon todo-icon">○</span> Snapshot-тесты рендеринга во всех 10 языках (pytest)</li>
-    <li><span class="icon todo-icon">○</span> Локализация subject line по <code>users.preferred_locale</code></li>
-    <li><span class="icon todo-icon">○</span> Unsubscribe flow (обязательно для CAN-SPAM / GDPR) + one-click header (RFC 8058)</li>
-    <li><span class="icon todo-icon">○</span> Bounce + complaint handling через provider webhook</li>
-    <li><span class="icon todo-icon">○</span> Rate limiting по user_id чтобы не спамить случайно</li>
-  </ul>
-</div>
-
-<!-- ========== PHASE E3 — Environments (DONE) ========== -->
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase E₃ — dev / staging / prod окружения</span><div class="phase-subtitle">3 окружения + Supabase staging + config guards + deploy runbooks</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon todo-icon">○</span> <code>.env-examples/</code>: .env.development, .env.staging, .env.production</li>
-    <li><span class="icon todo-icon">○</span> Railway: второй проект для staging (cleanway-api-staging)</li>
-    <li><span class="icon todo-icon">○</span> Supabase: отдельный staging project (в той же org), free tier</li>
-    <li><span class="icon todo-icon">○</span> Vercel preview deploys на каждый PR (автоматически)</li>
-    <li><span class="icon todo-icon">○</span> Stripe: test mode keys для staging, live keys только для prod</li>
-    <li><span class="icon todo-icon">○</span> Email провайдер: Resend dev sandbox для staging, SES только prod</li>
-    <li><span class="icon todo-icon">○</span> CI обновить: тесты на PR → deploy staging автоматом → manual approve → prod</li>
-    <li><span class="icon todo-icon">○</span> Runbook: как откатить prod за 5 минут (Railway rollback + Supabase point-in-time)</li>
-  </ul>
-</div>
-
-<!-- ========== PHASE E — Mobile native ========== -->
-<div class="phase future">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase E₄ — Mobile реально работающий (native VPN)</span><div class="phase-subtitle">Native VPN, App Store, Play Store</div></div>
-    <span class="phase-tag tag-future">📋 ПЛАН</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon todo-icon">○</span> <strong>iOS PacketTunnelProvider</strong>: реальная DNS interception, bloom filter lookup, fallback на API</li>
-    <li><span class="icon todo-icon">○</span> <strong>Android VpnService</strong>: DatagramSocket + DNS query parsing</li>
-    <li><span class="icon todo-icon">○</span> Smart VPN logic: no VPN → local VPN / has VPN → DNS profile fallback</li>
-    <li><span class="icon todo-icon">○</span> Block screen с Granny/Regular/Kids UX (из Phase D)</li>
-    <li><span class="icon todo-icon">○</span> Push notifications на блок (FCM iOS + Android)</li>
-    <li><span class="icon todo-icon">○</span> Apple IAP + Google Play Billing с regional pricing (те же 4 tier)</li>
-    <li><span class="icon todo-icon">○</span> QR-код сканер (check link)</li>
-    <li><span class="icon todo-icon">○</span> iOS widget (статус защиты)</li>
-    <li><span class="icon todo-icon">○</span> App Store submission (VPN category — review 1-3 недели)</li>
-    <li><span class="icon todo-icon">○</span> Google Play submission + Data Safety</li>
-  </ul>
-</div>
-
-<!-- ========== ДАЛЬНЕЙШЕЕ ========== -->
-<h2>📅 После MVP — Growth + B2B + Infra</h2>
-
-<div class="phase future">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase F — Growth</span></div>
-    <span class="phase-tag tag-future">📋 ПЛАН</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon todo-icon">○</span> Chrome Web Store / AMO / Safari Store submissions</li>
-    <li><span class="icon todo-icon">○</span> Product Hunt launch + HN "Show HN"</li>
-    <li><span class="icon todo-icon">○</span> SEO: cleanway.ai/check/[domain] для каждого языка</li>
-    <li><span class="icon todo-icon">○</span> Referral program (inviter → 1 month free)</li>
-    <li><span class="icon todo-icon">○</span> Shareable cards: Privacy Audit A-F grade для вирусного loop</li>
-    <li><span class="icon todo-icon">○</span> Anonymous opt-in телеметрия для улучшения ML</li>
-  </ul>
-</div>
-
-<div class="phase future">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase G — B2B</span></div>
-    <span class="phase-tag tag-future">📋 ПЛАН</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon todo-icon">○</span> Email proxy SMTP (SPF/DKIM/DMARC passthrough, scan-before-inbox)</li>
-    <li><span class="icon todo-icon">○</span> B2B dashboard (org-level stats, SSO SAML/OIDC, SCIM provisioning)</li>
-    <li><span class="icon todo-icon">○</span> Phishing simulation (templates, campaigns, tracking, micro-training)</li>
-    <li><span class="icon todo-icon">○</span> Public API + SDKs + Slack/Teams bots</li>
-  </ul>
-</div>
-
-<div class="phase future">
-  <div class="phase-header">
-    <div><span class="phase-title">Phase H — Infra as Code</span></div>
-    <span class="phase-tag tag-future">📋 ПЛАН</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon todo-icon">○</span> Terraform: Supabase projects (dev/staging/prod в разных регионах для геораспределения)</li>
-    <li><span class="icon todo-icon">○</span> Terraform: Railway services + Redis + env vars управляются кодом</li>
-    <li><span class="icon todo-icon">○</span> Terraform: Vercel project + custom domain + DNS</li>
-    <li><span class="icon todo-icon">○</span> Cloudflare: Workers для bloom filter CDN + DDoS protection + WAF rules</li>
-    <li><span class="icon todo-icon">○</span> Status page (status.cleanway.???) с uptime по компонентам</li>
-    <li><span class="icon todo-icon">○</span> Incident runbooks — полные (не только secret rotation)</li>
-    <li><span class="icon todo-icon">○</span> Quarterly chaos drill (намеренно валим prod staging → тест recovery)</li>
-  </ul>
-</div>
-
-<!-- Архитектурные принципы -->
-<h2>🏗️ Архитектурные принципы</h2>
-<div class="phase done">
-  <div class="phase-header">
-    <div><span class="phase-title">Monorepo + shared packages (ГОТОВО)</span><div class="phase-subtitle">Одно изменение = одно место</div></div>
-    <span class="phase-tag tag-done">✅ ГОТОВО</span>
-  </div>
-  <ul class="tasks">
-    <li><span class="icon done-icon">✓</span> <strong>packages/i18n-strings</strong>: 840 строк × 10 языков в 1 источнике → 30 extension + 10 landing файлов генерятся</li>
-    <li><span class="icon done-icon">✓</span> <strong>packages/extension-core</strong>: popup/block/welcome/content scripts в 1 копии → синкается в chrome/firefox/safari</li>
-    <li><span class="icon done-icon">✓</span> <strong>packages/api-types</strong>: генерируется из FastAPI OpenAPI (1871 строк TS типов)</li>
-    <li><span class="icon done-icon">✓</span> <strong>packages/api-client</strong>: типизированный fetch wrapper с Result<T,E>, timeout, privacy normalization</li>
-    <li><span class="icon done-icon">✓</span> <strong>npm workspaces</strong> подключён: landing импортирует @cleanway/api-client</li>
-    <li><span class="icon done-icon">✓</span> <strong>scripts/build-i18n.py</strong>, <strong>build-extensions.sh</strong>, <strong>generate-api-types.sh</strong></li>
-    <li><span class="icon todo-icon">○</span> Добавить <code>mobile/</code> в workspaces (Phase E₁)</li>
-    <li><span class="icon todo-icon">○</span> Добавить <code>packages/email-templates/</code> (Phase E₂)</li>
-  </ul>
-</div>
-
-<p class="note">
-Файл обновляется вручную после завершения подзадач.
-Источник правды — планы в <code>.planning/</code>: PROJECT.md, REQUIREMENTS.md, STATE.md, COMPETITIVE-ANALYSIS.md, I18N_ARCHITECTURE.md, PRICING_MATRIX.md, SKILL_LEVELS.md.
-Архитектурная документация: <code>docs/architecture/</code>. Безопасность: <code>SECURITY.md</code>.
-</p>
-
 </body>
 </html>
