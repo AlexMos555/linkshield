@@ -1,13 +1,85 @@
 import type { Metadata } from "next";
 import { createClient, type PricingFor } from "@cleanway/api-client";
 import PricingClient from "./PricingClient";
+import { routing, type Locale } from "@/i18n/routing";
 
-export const metadata: Metadata = {
-  title: "Pricing — Cleanway",
-  description: "Fair, regional pricing. Free forever for blocking phishing. Pay only for details, family protection, and accessibility modes.",
-};
+const SITE_URL = "https://cleanway.ai";
+
+function pricingUrlFor(locale: Locale | string): string {
+  return locale === routing.defaultLocale ? `${SITE_URL}/pricing` : `${SITE_URL}/${locale}/pricing`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
+  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const canonical = pricingUrlFor(safeLocale);
+
+  const languages: Record<string, string> = {};
+  for (const loc of routing.locales) languages[loc] = pricingUrlFor(loc as Locale);
+  languages["x-default"] = pricingUrlFor(routing.defaultLocale);
+
+  const title = "Pricing — Cleanway";
+  const description =
+    "Fair, regional pricing. Free forever for blocking phishing. Pay only for details, family protection, and accessibility modes.";
+
+  return {
+    title,
+    description,
+    metadataBase: new URL(SITE_URL),
+    alternates: { canonical, languages },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: "Cleanway",
+      type: "website",
+      locale: safeLocale,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      site: "@cleanwayai",
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    },
+  };
+}
 
 const DEFAULT_API_URL = "https://api.cleanway.ai";
+
+// FAQ data lifted out of the JSX so we can both render it AND emit it as
+// FAQPage structured data for rich snippets in Google SERPs.
+const FAQ_ITEMS: ReadonlyArray<{ q: string; a: string }> = [
+  {
+    q: "Do I really get blocking for free, forever?",
+    a: "Yes. Phishing site blocking is a right, not a feature to paywall. You could use Cleanway free for 20 years and it would block every known scam site the whole time.",
+  },
+  {
+    q: "What happens after 50 blocked threats on the free tier?",
+    a: "Blocking still works — you're still protected. But the detailed \"why is this site dangerous\" explanation gets locked behind the paywall. Simple message, but the block itself never goes away.",
+  },
+  {
+    q: "Can I install it for my mom or grandma?",
+    a: "That's exactly who we built it for. Use Family plan ($9.99/mo at base tier) to manage her device remotely, enable Granny Mode (huge fonts + voice alerts), and get notified when a scam is blocked for her.",
+  },
+  {
+    q: "Why is it cheaper in India / Indonesia?",
+    a: "Because $4.99/month is a significant fraction of minimum wage there. We use PPP (purchasing power parity) tiers — same product, fair local price. Tier detected from your Stripe billing country, not your IP, so VPN bypass doesn't work either way.",
+  },
+  {
+    q: "Can I cancel anytime?",
+    a: "Yes. Monthly plans cancel instantly at end of period. Yearly plans have a 30-day money-back guarantee. No hidden fees, no renewal tricks.",
+  },
+];
 
 // Shared API client — typed, timeout-enforced, never throws.
 // One instance per SSR render is fine: it's stateless, just closes over config.
@@ -190,28 +262,7 @@ export default async function PricingPage({
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-extrabold text-white text-center mb-10">Questions people actually ask</h2>
           <div className="space-y-4">
-            {[
-              {
-                q: "Do I really get blocking for free, forever?",
-                a: "Yes. Phishing site blocking is a right, not a feature to paywall. You could use Cleanway free for 20 years and it would block every known scam site the whole time.",
-              },
-              {
-                q: "What happens after 50 blocked threats on the free tier?",
-                a: "Blocking still works — you're still protected. But the detailed \"why is this site dangerous\" explanation gets locked behind the paywall. Simple message, but the block itself never goes away.",
-              },
-              {
-                q: "Can I install it for my mom or grandma?",
-                a: "That's exactly who we built it for. Use Family plan ($9.99/mo at base tier) to manage her device remotely, enable Granny Mode (huge fonts + voice alerts), and get notified when a scam is blocked for her.",
-              },
-              {
-                q: "Why is it cheaper in India / Indonesia?",
-                a: "Because $4.99/month is a significant fraction of minimum wage there. We use PPP (purchasing power parity) tiers — same product, fair local price. Tier detected from your Stripe billing country, not your IP, so VPN bypass doesn't work either way.",
-              },
-              {
-                q: "Can I cancel anytime?",
-                a: "Yes. Monthly plans cancel instantly at end of period. Yearly plans have a 30-day money-back guarantee. No hidden fees, no renewal tricks.",
-              },
-            ].map((item) => (
+            {FAQ_ITEMS.map((item) => (
               <details key={item.q} className="bg-slate-800/50 rounded-xl p-5 group">
                 <summary className="cursor-pointer font-semibold text-white list-none flex justify-between items-center">
                   <span>{item.q}</span>
@@ -234,8 +285,109 @@ export default async function PricingPage({
           </a>
         </div>
       </section>
+
+      {/* Rich snippets — Product (with regional Offers) + FAQPage */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(buildPricingJsonLd(data)),
+        }}
+      />
     </div>
   );
+}
+
+/**
+ * Build a Product graph with the actual prices from the live API response.
+ * Each plan (personal/family/business) becomes a Product with monthly+yearly
+ * Offers, so Google can surface price chips in SERPs. Currency comes from
+ * the regional pricing response — defaults to USD.
+ */
+function buildPricingJsonLd(data: PricingData) {
+  const currency = data.currency || "USD";
+  const planConfig: ReadonlyArray<{
+    key: "personal" | "family" | "business";
+    name: string;
+    description: string;
+  }> = [
+    {
+      key: "personal",
+      name: "Cleanway Personal",
+      description:
+        "Unlimited threat detail, full Privacy Audit, Security Score, Weekly Report, priority support.",
+    },
+    {
+      key: "family",
+      name: "Cleanway Family",
+      description:
+        "Up to 6 devices, Family Hub with E2E alerts, Granny Mode + Kids Mode, parental controls.",
+    },
+    {
+      key: "business",
+      name: "Cleanway Business",
+      description: "Per-seat phishing protection, B2B simulation campaigns, SSO ready.",
+    },
+  ];
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "FAQPage",
+        mainEntity: FAQ_ITEMS.map((it) => ({
+          "@type": "Question",
+          name: it.q,
+          acceptedAnswer: { "@type": "Answer", text: it.a },
+        })),
+      },
+      ...planConfig.map((plan) => {
+        const tier = data.plans[plan.key];
+        return {
+          "@type": "Product",
+          name: plan.name,
+          description: plan.description,
+          brand: { "@type": "Brand", name: "Cleanway" },
+          offers: {
+            "@type": "AggregateOffer",
+            priceCurrency: currency,
+            lowPrice: tier.monthly.amount,
+            highPrice: tier.yearly.amount,
+            offerCount: 2,
+            offers: [
+              {
+                "@type": "Offer",
+                name: `${plan.name} — Monthly`,
+                price: tier.monthly.amount,
+                priceCurrency: currency,
+                availability: "https://schema.org/InStock",
+                priceSpecification: {
+                  "@type": "UnitPriceSpecification",
+                  price: tier.monthly.amount,
+                  priceCurrency: currency,
+                  billingDuration: "P1M",
+                  unitCode: "MON",
+                },
+              },
+              {
+                "@type": "Offer",
+                name: `${plan.name} — Yearly`,
+                price: tier.yearly.amount,
+                priceCurrency: currency,
+                availability: "https://schema.org/InStock",
+                priceSpecification: {
+                  "@type": "UnitPriceSpecification",
+                  price: tier.yearly.amount,
+                  priceCurrency: currency,
+                  billingDuration: "P1Y",
+                  unitCode: "ANN",
+                },
+              },
+            ],
+          },
+        };
+      }),
+    ],
+  };
 }
 
 function TierBadge({ tier, country }: { tier: 1 | 2 | 3 | 4; country: string | null }) {
