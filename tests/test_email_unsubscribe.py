@@ -30,9 +30,13 @@ class TestTokenSigning:
         assert eu.verify_token(f"{mutated}.{sig}") is None
 
     def test_verify_rejects_tampered_signature(self):
+        # NOTE: mutating the LAST base64 char is unreliable — the trailing
+        # char of an unpadded base64 of 32 bytes encodes only 2 meaningful
+        # bits, so 60/64 char swaps decode to the same bytes (flaky ~6%).
+        # Mutate the FIRST char instead — always changes a full byte.
         token = eu.mint_token(user_id="user-123", email_template="welcome")
         payload_part, sig = token.split(".", 1)
-        mutated_sig = sig[:-1] + ("A" if sig[-1] != "A" else "B")
+        mutated_sig = ("A" if sig[0] != "A" else "B") + sig[1:]
         assert eu.verify_token(f"{payload_part}.{mutated_sig}") is None
 
     def test_verify_rejects_garbage(self):
