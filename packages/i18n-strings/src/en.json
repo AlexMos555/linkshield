@@ -131,6 +131,20 @@
       },
       "recent_empty": {
         "text": "Nothing found yet — browse normally, I'm watching."
+      },
+      "nudge_threshold_title": {
+        "text": "You've blocked $COUNT$+ scam sites!",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "Blocking stays free forever. Unlock the full \"why dangerous\" details on Personal."
+      },
+      "nudge_threshold_cta": {
+        "text": "See details"
       }
     },
     "common": {

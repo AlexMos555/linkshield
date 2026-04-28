@@ -129,6 +129,20 @@
       },
       "recent_empty": {
         "text": "Nada ainda — navegue normalmente, estou de olho."
+      },
+      "nudge_threshold_title": {
+        "text": "Você bloqueou $COUNT$+ sites de golpe!",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "Bloquear permanece grátis para sempre. Desbloqueie os detalhes completos de \"por que é perigoso\" no plano Personal."
+      },
+      "nudge_threshold_cta": {
+        "text": "Ver detalhes"
       }
     },
     "common": {

@@ -126,6 +126,20 @@
   "recent_empty": {
     "message": "Пока ничего не найдено — я слежу, пока вы пользуетесь интернетом."
   },
+  "nudge_threshold_title": {
+    "message": "Вы заблокировали $COUNT$+ мошеннических сайтов!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Блокировка остаётся бесплатной навсегда. Откройте полные детали «почему опасно» на тарифе Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "Открыть детали"
+  },
   "trust_footer": {
     "message": "Ваши данные не покидают это устройство"
   },

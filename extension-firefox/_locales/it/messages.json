@@ -126,6 +126,20 @@
   "recent_empty": {
     "message": "Niente ancora — naviga tranquillo, ti sto guardando."
   },
+  "nudge_threshold_title": {
+    "message": "Hai bloccato $COUNT$+ siti truffa!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Il blocco rimane gratuito per sempre. Sblocca i dettagli completi su \"perché è pericoloso\" con Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "Vedi dettagli"
+  },
   "trust_footer": {
     "message": "I tuoi dati non lasciano mai questo dispositivo"
   },

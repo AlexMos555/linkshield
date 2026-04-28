@@ -129,6 +129,20 @@
       },
       "recent_empty": {
         "text": "Пока ничего не найдено — я слежу, пока вы пользуетесь интернетом."
+      },
+      "nudge_threshold_title": {
+        "text": "Вы заблокировали $COUNT$+ мошеннических сайтов!",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "Блокировка остаётся бесплатной навсегда. Откройте полные детали «почему опасно» на тарифе Personal."
+      },
+      "nudge_threshold_cta": {
+        "text": "Открыть детали"
       }
     },
     "common": {

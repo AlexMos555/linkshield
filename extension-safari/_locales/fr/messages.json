@@ -126,6 +126,20 @@
   "recent_empty": {
     "message": "Rien pour l'instant — naviguez normalement, je surveille."
   },
+  "nudge_threshold_title": {
+    "message": "Vous avez bloqué $COUNT$+ sites d'arnaque !",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Le blocage reste gratuit à vie. Débloquez les détails complets « pourquoi c'est dangereux » sur Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "Voir les détails"
+  },
   "trust_footer": {
     "message": "Vos données ne quittent jamais cet appareil"
   },

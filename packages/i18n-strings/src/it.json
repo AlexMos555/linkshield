@@ -129,6 +129,20 @@
       },
       "recent_empty": {
         "text": "Niente ancora — naviga tranquillo, ti sto guardando."
+      },
+      "nudge_threshold_title": {
+        "text": "Hai bloccato $COUNT$+ siti truffa!",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "Il blocco rimane gratuito per sempre. Sblocca i dettagli completi su \"perché è pericoloso\" con Personal."
+      },
+      "nudge_threshold_cta": {
+        "text": "Vedi dettagli"
       }
     },
     "common": {

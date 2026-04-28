@@ -128,6 +128,20 @@
   "recent_empty": {
     "message": "Nothing found yet — browse normally, I'm watching."
   },
+  "nudge_threshold_title": {
+    "message": "You've blocked $COUNT$+ scam sites!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Blocking stays free forever. Unlock the full \"why dangerous\" details on Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "See details"
+  },
   "trust_footer": {
     "message": "Your data never leaves this device"
   },

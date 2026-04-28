@@ -126,6 +126,20 @@
   "recent_empty": {
     "message": "لا شيء بعد — تصفّح بشكل طبيعي، أنا أراقب."
   },
+  "nudge_threshold_title": {
+    "message": "لقد حظرت $COUNT$+ موقعًا احتيالياً!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "الحظر يظل مجانياً للأبد. افتح كامل تفاصيل \"لماذا خطير\" في خطة Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "عرض التفاصيل"
+  },
   "trust_footer": {
     "message": "بياناتك لا تغادر هذا الجهاز أبدًا"
   },

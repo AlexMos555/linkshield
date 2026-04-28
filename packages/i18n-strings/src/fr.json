@@ -129,6 +129,20 @@
       },
       "recent_empty": {
         "text": "Rien pour l'instant — naviguez normalement, je surveille."
+      },
+      "nudge_threshold_title": {
+        "text": "Vous avez bloqué $COUNT$+ sites d'arnaque !",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "Le blocage reste gratuit à vie. Débloquez les détails complets « pourquoi c'est dangereux » sur Personal."
+      },
+      "nudge_threshold_cta": {
+        "text": "Voir les détails"
       }
     },
     "common": {

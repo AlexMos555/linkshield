@@ -56,6 +56,62 @@ export async function checkDomains(domains, token = null) {
 }
 
 /**
+ * Fetch the freemium-threshold + paid-tier gating state for the user.
+ *
+ * Returns null when no auth token (anonymous user — server-side counter
+ * isn't tracked) or when the API is unreachable. Callers should treat
+ * null as "show no nudge" and gracefully degrade.
+ *
+ * Shape: { threats_blocked_lifetime, threshold, gated, tier,
+ *          nudge_shown_at, nudge_count }
+ *
+ * @param {string|null} token JWT
+ * @returns {Promise<object|null>}
+ */
+export async function fetchThreatStatus(token) {
+  if (!token) return null;
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/user/threats/status`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Increment the lifetime threat counter when extension blocks a scam.
+ *
+ * Best-effort: no error surfacing — the block already happened
+ * client-side and the user shouldn't see a red toast because the
+ * server counter sync flaked.
+ *
+ * @param {string|null} token JWT
+ * @param {number} count number of threats freshly blocked since last sync
+ * @returns {Promise<object|null>} updated status or null
+ */
+export async function incrementThreatCounter(token, count = 1) {
+  if (!token || count < 1) return null;
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/user/threats/increment`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ count }),
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Extract unique domains from a list of URLs
  * @param {string[]} urls
  * @returns {string[]}

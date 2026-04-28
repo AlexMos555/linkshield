@@ -126,6 +126,20 @@
   "recent_empty": {
     "message": "Nada ainda — navegue normalmente, estou de olho."
   },
+  "nudge_threshold_title": {
+    "message": "Você bloqueou $COUNT$+ sites de golpe!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Bloquear permanece grátis para sempre. Desbloqueie os detalhes completos de \"por que é perigoso\" no plano Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "Ver detalhes"
+  },
   "trust_footer": {
     "message": "Seus dados nunca saem deste dispositivo"
   },

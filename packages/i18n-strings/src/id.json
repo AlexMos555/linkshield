@@ -129,6 +129,20 @@
       },
       "recent_empty": {
         "text": "Belum ada apa-apa — berselancar saja, saya mengawasi."
+      },
+      "nudge_threshold_title": {
+        "text": "Anda telah memblokir $COUNT$+ situs penipuan!",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "Pemblokiran tetap gratis selamanya. Buka detail lengkap \"mengapa berbahaya\" di paket Personal."
+      },
+      "nudge_threshold_cta": {
+        "text": "Lihat detail"
       }
     },
     "common": {

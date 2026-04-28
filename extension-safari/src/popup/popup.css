@@ -214,6 +214,33 @@ body { width: 380px; min-height: 300px; }
 }
 .banner-link:hover { background: var(--green-text); }
 
+/* Pricing v2 threshold nudge — celebratory: green-tinted, two-line copy.
+   Distinct from .banner-upgrade (daily quota) so the user can tell them
+   apart at a glance. */
+.banner-threshold {
+  background: linear-gradient(90deg, var(--green-bg), var(--blue-bg));
+  color: var(--text);
+  border: 1px solid var(--green);
+  padding: 12px 14px;
+  align-items: flex-start;
+}
+.banner-threshold .banner-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-grow: 1;
+}
+.banner-threshold .banner-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-text);
+}
+.banner-threshold .banner-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
 /* ── More (expandable) ── */
 .more {
   margin: 0 18px 14px;

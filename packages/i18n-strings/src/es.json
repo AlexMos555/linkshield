@@ -129,6 +129,20 @@
       },
       "recent_empty": {
         "text": "Nada aún — navega normal, estoy vigilando."
+      },
+      "nudge_threshold_title": {
+        "text": "¡Has bloqueado $COUNT$+ sitios de estafa!",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "Bloquear siempre será gratis. Desbloquea los detalles completos de \"por qué es peligroso\" en Personal."
+      },
+      "nudge_threshold_cta": {
+        "text": "Ver detalles"
       }
     },
     "common": {

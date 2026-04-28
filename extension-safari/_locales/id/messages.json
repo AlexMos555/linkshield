@@ -126,6 +126,20 @@
   "recent_empty": {
     "message": "Belum ada apa-apa — berselancar saja, saya mengawasi."
   },
+  "nudge_threshold_title": {
+    "message": "Anda telah memblokir $COUNT$+ situs penipuan!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Pemblokiran tetap gratis selamanya. Buka detail lengkap \"mengapa berbahaya\" di paket Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "Lihat detail"
+  },
   "trust_footer": {
     "message": "Data Anda tidak pernah meninggalkan perangkat ini"
   },

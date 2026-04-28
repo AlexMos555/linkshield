@@ -57,10 +57,20 @@
       <span class="banner-text" data-i18n="offline_warning">Offline — using basic protection</span>
     </section>
 
-    <!-- Upgrade nudge (when free threshold near) -->
+    <!-- Upgrade nudge (when free daily-quota threshold near) -->
     <section class="banner banner-upgrade" id="upgrade-banner" hidden>
       <span class="banner-text" id="upgrade-text"></span>
       <a class="banner-link" id="upgrade-cta" href="https://cleanway.ai/pricing" target="_blank" data-i18n="upgrade_cta">Upgrade</a>
+    </section>
+
+    <!-- Pricing v2 threshold nudge — celebratory framing for free users
+         past 50 blocked threats. Block always works; this gates DETAILS. -->
+    <section class="banner banner-threshold" id="threshold-nudge" hidden>
+      <div class="banner-block">
+        <strong class="banner-text" id="threshold-title" data-i18n="nudge_threshold_title">You've blocked 50+ scam sites!</strong>
+        <span class="banner-sub" id="threshold-subtitle" data-i18n="nudge_threshold_subtitle">Blocking stays free forever. Unlock the full "why dangerous" details on Personal.</span>
+      </div>
+      <a class="banner-link" id="threshold-cta" href="https://cleanway.ai/pricing" target="_blank" data-i18n="nudge_threshold_cta">See details</a>
     </section>
 
     <!-- Expandable "More" section -->

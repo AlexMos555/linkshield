@@ -129,6 +129,20 @@
       },
       "recent_empty": {
         "text": "Noch nichts gefunden — surfen Sie normal weiter, ich passe auf."
+      },
+      "nudge_threshold_title": {
+        "text": "Sie haben $COUNT$+ Betrugsseiten blockiert!",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "Blockieren bleibt für immer kostenlos. Schalten Sie die vollständigen \"Warum gefährlich\"-Details auf Personal frei."
+      },
+      "nudge_threshold_cta": {
+        "text": "Details ansehen"
       }
     },
     "common": {

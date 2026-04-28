@@ -20,6 +20,11 @@ var FALLBACK_EN = {
   status_unknown_subtitle: "Try again in a moment",
   aha_found_scams: "I found $1 scam links your browser missed",
   upgrade_free_count: "Free: $1 of $2 checks today",
+  // Pricing v2 — celebratory framing, NOT a paywall threat.
+  // Block always works; this nudges details upgrade only.
+  nudge_threshold_title: "You've blocked $1+ scam sites!",
+  nudge_threshold_subtitle: "Blocking stays free forever. Unlock the full \"why dangerous\" details on Personal.",
+  nudge_threshold_cta: "See details",
   recent_empty: "Nothing found yet — browse normally, I'm watching.",
   // static i18n keys (for applyI18n fallback when chrome.i18n isn't available)
   popup_brand: "Cleanway",
@@ -247,6 +252,43 @@ async function loadUpgradeBanner() {
   } catch (e) {}
 }
 
+// ─── Pricing v2 threshold nudge — server-tracked freemium ──────
+//
+// Calls GET /api/v1/user/threats/status. When the server says
+// gated === true (free user past 50 lifetime blocks), we surface a
+// celebratory nudge: "You've blocked 50+ scam sites!" — block keeps
+// working, only the WHY-detail panel is gated. Skips silently when:
+//   - no auth token (anonymous user — server-side counter not tracked)
+//   - API down / non-200
+//   - paid tier (gated is false from server side regardless of count)
+//   - threshold not yet reached
+//
+// Server is source of truth; client never duplicates the gating logic.
+async function loadThresholdNudge() {
+  var nudge = $("threshold-nudge");
+  if (!nudge) return;
+  try {
+    var stored = await chrome.storage.local.get(["auth_token"]);
+    var token = stored && stored.auth_token;
+    if (!token) return;
+
+    // Lazy-import the helper so the popup still works in preview mode
+    // where ESM imports may not resolve.
+    var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+    var status = await apiModule.fetchThreatStatus(token);
+    if (!status || !status.gated) return;
+
+    var count = Number(status.threats_blocked_lifetime) || 0;
+    var titleEl = $("threshold-title");
+    if (titleEl) {
+      titleEl.textContent = t("nudge_threshold_title", [String(count)]);
+    }
+    nudge.hidden = false;
+  } catch (e) {
+    // Failure → render no nudge. The user sees the regular UI.
+  }
+}
+
 // ─── Onboarding tip (first open only) ─────────────────────────
 async function loadOnboardingTip() {
   try {
@@ -416,6 +458,7 @@ document.addEventListener("DOMContentLoaded", function() {
   loadRecentThreats();
   loadAhaBanner();
   loadUpgradeBanner();
+  loadThresholdNudge();
   loadOnboardingTip();
   checkApiHealth();
 });

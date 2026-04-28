@@ -126,6 +126,20 @@
   "recent_empty": {
     "message": "Nada aún — navega normal, estoy vigilando."
   },
+  "nudge_threshold_title": {
+    "message": "¡Has bloqueado $COUNT$+ sitios de estafa!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Bloquear siempre será gratis. Desbloquea los detalles completos de \"por qué es peligroso\" en Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "Ver detalles"
+  },
   "trust_footer": {
     "message": "Tus datos nunca salen de este dispositivo"
   },

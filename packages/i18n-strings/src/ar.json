@@ -129,6 +129,20 @@
       },
       "recent_empty": {
         "text": "لا شيء بعد — تصفّح بشكل طبيعي، أنا أراقب."
+      },
+      "nudge_threshold_title": {
+        "text": "لقد حظرت $COUNT$+ موقعًا احتيالياً!",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "nudge_threshold_subtitle": {
+        "text": "الحظر يظل مجانياً للأبد. افتح كامل تفاصيل \"لماذا خطير\" في خطة Personal."
+      },
+      "nudge_threshold_cta": {
+        "text": "عرض التفاصيل"
       }
     },
     "common": {

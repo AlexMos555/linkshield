@@ -126,6 +126,20 @@
   "recent_empty": {
     "message": "अभी कुछ नहीं मिला — सामान्य रूप से सर्फ़ करें, मैं नज़र रख रहा हूँ।"
   },
+  "nudge_threshold_title": {
+    "message": "आपने $COUNT$+ धोखाधड़ी साइटें ब्लॉक की हैं!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "ब्लॉकिंग हमेशा मुफ़्त रहती है। Personal प्लान पर \"क्यों ख़तरनाक है\" का पूरा विवरण देखें।"
+  },
+  "nudge_threshold_cta": {
+    "message": "विवरण देखें"
+  },
   "trust_footer": {
     "message": "आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता"
   },
