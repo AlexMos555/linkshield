@@ -17,7 +17,10 @@
     "build:all": "npm run build:api-types && npm run build:i18n && npm run build:extensions && npm run build:emails",
     "test:api": "pytest tests/ -q",
     "build:landing": "npm -w landing run build",
-    "build:emails": "node scripts/build-emails.mjs"
+    "build:emails": "tsx scripts/build-emails.mjs"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
   },
   "engines": {
     "node": ">=18"

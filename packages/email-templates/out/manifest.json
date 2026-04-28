@@ -1,0 +1,144 @@
+{
+  "welcome": {
+    "subjects": {
+      "en": "Welcome to Cleanway — you're protected now",
+      "ru": "Добро пожаловать в Cleanway — защита работает",
+      "es": "Bienvenido a Cleanway — ya estás protegido",
+      "pt": "Welcome to Cleanway — you're protected now",
+      "fr": "Welcome to Cleanway — you're protected now",
+      "de": "Welcome to Cleanway — you're protected now",
+      "it": "Welcome to Cleanway — you're protected now",
+      "id": "Welcome to Cleanway — you're protected now",
+      "hi": "Welcome to Cleanway — you're protected now",
+      "ar": "Welcome to Cleanway — you're protected now"
+    },
+    "fixture_props": {
+      "firstName": "Alex",
+      "scanInboxUrl": "https://cleanway.example/scan",
+      "unsubscribeUrl": "https://cleanway.example/u/abc123",
+      "viewInBrowserUrl": "https://cleanway.example/emails/welcome/abc123"
+    }
+  },
+  "receipt": {
+    "subjects": {
+      "en": "Your Cleanway receipt",
+      "ru": "Чек от Cleanway",
+      "es": "Tu recibo de Cleanway",
+      "pt": "Your Cleanway receipt",
+      "fr": "Your Cleanway receipt",
+      "de": "Your Cleanway receipt",
+      "it": "Your Cleanway receipt",
+      "id": "Your Cleanway receipt",
+      "hi": "Your Cleanway receipt",
+      "ar": "Your Cleanway receipt"
+    },
+    "fixture_props": {
+      "firstName": "Alex",
+      "planLabel": "Personal (Monthly)",
+      "amountFormatted": "$4.99",
+      "nextBillingDate": "May 16, 2026",
+      "invoiceUrl": "https://cleanway.example/invoices/inv_abc",
+      "unsubscribeUrl": "https://cleanway.example/u/abc123"
+    }
+  },
+  "weekly_report": {
+    "subjects": {
+      "en": "Your week on Cleanway",
+      "ru": "Ваша неделя с Cleanway",
+      "es": "Tu semana en Cleanway",
+      "pt": "Your week on Cleanway",
+      "fr": "Your week on Cleanway",
+      "de": "Your week on Cleanway",
+      "it": "Your week on Cleanway",
+      "id": "Your week on Cleanway",
+      "hi": "Your week on Cleanway",
+      "ar": "Your week on Cleanway"
+    },
+    "fixture_props": {
+      "firstName": "Alex",
+      "blocksCount": 7,
+      "checksCount": 1247,
+      "percentile": 89,
+      "fullReportUrl": "https://cleanway.example/report/abc",
+      "unsubscribeUrl": "https://cleanway.example/u/abc123"
+    }
+  },
+  "family_invite": {
+    "subjects": {
+      "en": "Maria invited you to join their Cleanway family",
+      "ru": "Maria пригласил(а) вас в семью Cleanway",
+      "es": "Maria te invitó a su familia de Cleanway",
+      "pt": "Maria invited you to join their Cleanway family",
+      "fr": "Maria invited you to join their Cleanway family",
+      "de": "Maria invited you to join their Cleanway family",
+      "it": "Maria invited you to join their Cleanway family",
+      "id": "Maria invited you to join their Cleanway family",
+      "hi": "Maria invited you to join their Cleanway family",
+      "ar": "Maria invited you to join their Cleanway family"
+    },
+    "fixture_props": {
+      "inviterName": "Maria",
+      "acceptUrl": "https://cleanway.example/family/accept/tok_xyz",
+      "unsubscribeUrl": "https://cleanway.example/u/abc123"
+    }
+  },
+  "breach_alert": {
+    "subjects": {
+      "en": "Your email was found in a data breach",
+      "ru": "Ваш email попал в утечку данных",
+      "es": "Tu email apareció en una filtración de datos",
+      "pt": "Your email was found in a data breach",
+      "fr": "Your email was found in a data breach",
+      "de": "Your email was found in a data breach",
+      "it": "Your email was found in a data breach",
+      "id": "Your email was found in a data breach",
+      "hi": "Your email was found in a data breach",
+      "ar": "Your email was found in a data breach"
+    },
+    "fixture_props": {
+      "firstName": "Alex",
+      "affectedSite": "Acme Cloud (disclosed 2026-03-15)",
+      "changePasswordUrl": "https://cleanway.example/breach/details",
+      "unsubscribeUrl": "https://cleanway.example/u/abc123"
+    }
+  },
+  "subscription_cancel": {
+    "subjects": {
+      "en": "Your Cleanway subscription was canceled",
+      "ru": "Ваша подписка Cleanway отменена",
+      "es": "Tu suscripción a Cleanway ha sido cancelada",
+      "pt": "Your Cleanway subscription was canceled",
+      "fr": "Your Cleanway subscription was canceled",
+      "de": "Your Cleanway subscription was canceled",
+      "it": "Your Cleanway subscription was canceled",
+      "id": "Your Cleanway subscription was canceled",
+      "hi": "Your Cleanway subscription was canceled",
+      "ar": "Your Cleanway subscription was canceled"
+    },
+    "fixture_props": {
+      "firstName": "Alex",
+      "activeUntil": "June 1, 2026",
+      "reactivateUrl": "https://cleanway.example/reactivate",
+      "unsubscribeUrl": "https://cleanway.example/u/abc123"
+    }
+  },
+  "granny_mode_invite": {
+    "subjects": {
+      "en": "Alex set up Cleanway protection for you",
+      "ru": "Alex настроил(а) для вас защиту Cleanway",
+      "es": "Alex configuró protección de Cleanway para ti",
+      "pt": "Alex set up Cleanway protection for you",
+      "fr": "Alex set up Cleanway protection for you",
+      "de": "Alex set up Cleanway protection for you",
+      "it": "Alex set up Cleanway protection for you",
+      "id": "Alex set up Cleanway protection for you",
+      "hi": "Alex set up Cleanway protection for you",
+      "ar": "Alex set up Cleanway protection for you"
+    },
+    "fixture_props": {
+      "familyAdminName": "Alex",
+      "setupUrl": "https://cleanway.example/setup",
+      "unsubscribeUrl": "https://cleanway.example/u/abc123"
+    }
+  }
+}
