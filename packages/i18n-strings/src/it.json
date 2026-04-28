@@ -143,6 +143,36 @@
       },
       "nudge_threshold_cta": {
         "text": "Vedi dettagli"
+      },
+      "device_override_heading": {
+        "text": "Questo dispositivo"
+      },
+      "device_override_subtitle": {
+        "text": "Applica livello e accessibilità solo a questa installazione del browser. Gli altri dispositivi dell'account mantengono il valore predefinito."
+      },
+      "device_effective_label": {
+        "text": "Attivo ora"
+      },
+      "device_override_toggle_label": {
+        "text": "Sostituisci solo su questo dispositivo"
+      },
+      "device_override_toggle_desc": {
+        "text": "Quando attivo, i controlli sotto vengono salvati solo su questo dispositivo — il valore predefinito dell'account non cambia."
+      },
+      "device_voice_label": {
+        "text": "Avvisi vocali su questo dispositivo"
+      },
+      "device_font_label": {
+        "text": "Dimensione del testo su questo dispositivo"
+      },
+      "device_clear_overrides_label": {
+        "text": "Cancella tutte le sostituzioni del dispositivo"
+      },
+      "device_clear_overrides_desc": {
+        "text": "Ripristina questo dispositivo al valore predefinito del tuo account."
+      },
+      "device_clear_overrides_btn": {
+        "text": "Cancella"
       }
     },
     "common": {

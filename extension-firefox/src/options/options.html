@@ -58,6 +58,24 @@
       border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
       font-size: 14px; letter-spacing: 4px; text-align: center; outline: none;
     }
+    /* Provenance badges — show when a setting comes from a device override
+       vs the account default. Useful when Family Hub admin has remotely
+       changed grandma's specific phone. */
+    .device-source-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      flex-shrink: 0;
+    }
+    .device-source-badge[data-source="device_override"] {
+      background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6;
+    }
+    .device-source-badge[data-source="user_default"] {
+      background: #1e293b; color: #94a3b8; border: 1px solid #334155;
+    }
   </style>
 </head>
 <body>
@@ -128,6 +146,80 @@
         </div>
       </div>
       <div class="row-desc" id="pin-status" style="margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <!-- Device-level override (Family Hub) — apply Granny/Kids/Pro to
+       just THIS device without touching the account-level default. -->
+  <div class="section" id="device-override-section" hidden>
+    <h2 data-i18n="device_override_heading">This device</h2>
+    <p class="row-desc" style="margin-bottom: 12px;" data-i18n="device_override_subtitle">
+      Apply skill level + accessibility to just this browser install. Other devices on this account stay on your default.
+    </p>
+
+    <!-- Effective state row -->
+    <div class="row">
+      <div>
+        <div class="row-label" data-i18n="device_effective_label">Currently active</div>
+        <div class="row-desc" id="device-effective-summary">—</div>
+      </div>
+      <span class="device-source-badge" id="device-skill-source" hidden></span>
+    </div>
+
+    <!-- Override toggle -->
+    <div class="row">
+      <div>
+        <div class="row-label" data-i18n="device_override_toggle_label">Override on this device only</div>
+        <div class="row-desc" data-i18n="device_override_toggle_desc">When on, the controls below write only to this device — your account default is unchanged.</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="device-override-on"><span class="slider"></span></label>
+    </div>
+
+    <!-- Per-device controls (visible only when override is on) -->
+    <div id="device-override-controls" hidden>
+      <div class="skill-grid" style="margin-top: 8px;">
+        <label class="skill-card" data-skill="kids">
+          <input type="radio" name="device-skill-level" value="kids">
+          <div class="skill-title" data-i18n="skill_kids_title">👶 Kids</div>
+        </label>
+        <label class="skill-card" data-skill="regular">
+          <input type="radio" name="device-skill-level" value="regular">
+          <div class="skill-title" data-i18n="skill_regular_title">🙋 Regular</div>
+        </label>
+        <label class="skill-card" data-skill="granny">
+          <input type="radio" name="device-skill-level" value="granny">
+          <div class="skill-title" data-i18n="skill_granny_title">👵 Granny</div>
+        </label>
+        <label class="skill-card" data-skill="pro">
+          <input type="radio" name="device-skill-level" value="pro">
+          <div class="skill-title" data-i18n="skill_pro_title">🧑‍💻 Pro</div>
+        </label>
+      </div>
+
+      <div class="row" style="margin-top: 12px;">
+        <div>
+          <div class="row-label" data-i18n="device_voice_label">Voice alerts on this device</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="device-voice-alerts"><span class="slider"></span></label>
+      </div>
+
+      <div class="row">
+        <div>
+          <div class="row-label" data-i18n="device_font_label">Text size on this device</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="range" id="device-font-scale" min="0.8" max="2.5" step="0.1" value="1.0">
+          <span id="device-font-scale-val" style="font-size:12px;color:#94a3b8;width:32px;text-align:right;">1.0×</span>
+        </div>
+      </div>
+
+      <div class="row" style="border-top: 1px solid #334155; padding-top: 12px; margin-top: 12px;">
+        <div>
+          <div class="row-label" data-i18n="device_clear_overrides_label">Clear all device overrides</div>
+          <div class="row-desc" data-i18n="device_clear_overrides_desc">Reverts this device to your account default.</div>
+        </div>
+        <button class="btn" id="device-clear-overrides" data-i18n="device_clear_overrides_btn">Clear</button>
+      </div>
     </div>
   </div>
 

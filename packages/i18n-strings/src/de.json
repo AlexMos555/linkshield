@@ -143,6 +143,36 @@
       },
       "nudge_threshold_cta": {
         "text": "Details ansehen"
+      },
+      "device_override_heading": {
+        "text": "Dieses Gerät"
+      },
+      "device_override_subtitle": {
+        "text": "Skill-Level und Barrierefreiheit nur für diese Browser-Installation anwenden. Andere Geräte des Kontos behalten den Standard."
+      },
+      "device_effective_label": {
+        "text": "Aktuell aktiv"
+      },
+      "device_override_toggle_label": {
+        "text": "Nur auf diesem Gerät überschreiben"
+      },
+      "device_override_toggle_desc": {
+        "text": "Wenn aktiviert, werden die Einstellungen unten nur auf diesem Gerät gespeichert — Ihr Konto-Standard ändert sich nicht."
+      },
+      "device_voice_label": {
+        "text": "Sprachhinweise auf diesem Gerät"
+      },
+      "device_font_label": {
+        "text": "Textgröße auf diesem Gerät"
+      },
+      "device_clear_overrides_label": {
+        "text": "Alle Gerätüberschreibungen löschen"
+      },
+      "device_clear_overrides_desc": {
+        "text": "Setzt dieses Gerät auf Ihren Konto-Standard zurück."
+      },
+      "device_clear_overrides_btn": {
+        "text": "Löschen"
       }
     },
     "common": {

@@ -143,6 +143,36 @@
       },
       "nudge_threshold_cta": {
         "text": "Lihat detail"
+      },
+      "device_override_heading": {
+        "text": "Perangkat ini"
+      },
+      "device_override_subtitle": {
+        "text": "Terapkan tingkat dan aksesibilitas hanya pada instalasi peramban ini. Perangkat lain di akun ini tetap menggunakan default."
+      },
+      "device_effective_label": {
+        "text": "Aktif sekarang"
+      },
+      "device_override_toggle_label": {
+        "text": "Ganti hanya di perangkat ini"
+      },
+      "device_override_toggle_desc": {
+        "text": "Saat aktif, kontrol di bawah hanya tersimpan di perangkat ini — default akun Anda tidak berubah."
+      },
+      "device_voice_label": {
+        "text": "Peringatan suara di perangkat ini"
+      },
+      "device_font_label": {
+        "text": "Ukuran teks di perangkat ini"
+      },
+      "device_clear_overrides_label": {
+        "text": "Hapus semua penggantian perangkat"
+      },
+      "device_clear_overrides_desc": {
+        "text": "Mengembalikan perangkat ini ke default akun Anda."
+      },
+      "device_clear_overrides_btn": {
+        "text": "Hapus"
       }
     },
     "common": {

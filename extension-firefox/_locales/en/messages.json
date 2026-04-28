@@ -142,6 +142,36 @@
   "nudge_threshold_cta": {
     "message": "See details"
   },
+  "device_override_heading": {
+    "message": "This device"
+  },
+  "device_override_subtitle": {
+    "message": "Apply skill level + accessibility to just this browser install. Other devices on this account stay on your default."
+  },
+  "device_effective_label": {
+    "message": "Currently active"
+  },
+  "device_override_toggle_label": {
+    "message": "Override on this device only"
+  },
+  "device_override_toggle_desc": {
+    "message": "When on, the controls below write only to this device — your account default is unchanged."
+  },
+  "device_voice_label": {
+    "message": "Voice alerts on this device"
+  },
+  "device_font_label": {
+    "message": "Text size on this device"
+  },
+  "device_clear_overrides_label": {
+    "message": "Clear all device overrides"
+  },
+  "device_clear_overrides_desc": {
+    "message": "Reverts this device to your account default."
+  },
+  "device_clear_overrides_btn": {
+    "message": "Clear"
+  },
   "trust_footer": {
     "message": "Your data never leaves this device"
   },

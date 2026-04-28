@@ -140,6 +140,36 @@
   "nudge_threshold_cta": {
     "message": "عرض التفاصيل"
   },
+  "device_override_heading": {
+    "message": "هذا الجهاز"
+  },
+  "device_override_subtitle": {
+    "message": "طبّق المستوى وإمكانية الوصول على هذا التثبيت للمتصفح فقط. تبقى الأجهزة الأخرى في الحساب على الإعداد الافتراضي."
+  },
+  "device_effective_label": {
+    "message": "نشط الآن"
+  },
+  "device_override_toggle_label": {
+    "message": "استبدال على هذا الجهاز فقط"
+  },
+  "device_override_toggle_desc": {
+    "message": "عند التشغيل، تُحفَظ عناصر التحكم أدناه على هذا الجهاز فقط — لا يتغير إعداد حسابك الافتراضي."
+  },
+  "device_voice_label": {
+    "message": "التنبيهات الصوتية على هذا الجهاز"
+  },
+  "device_font_label": {
+    "message": "حجم النص على هذا الجهاز"
+  },
+  "device_clear_overrides_label": {
+    "message": "مسح جميع تجاوزات الجهاز"
+  },
+  "device_clear_overrides_desc": {
+    "message": "يعيد هذا الجهاز إلى الإعداد الافتراضي لحسابك."
+  },
+  "device_clear_overrides_btn": {
+    "message": "مسح"
+  },
   "trust_footer": {
     "message": "بياناتك لا تغادر هذا الجهاز أبدًا"
   },

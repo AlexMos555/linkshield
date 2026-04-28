@@ -143,6 +143,36 @@
       },
       "nudge_threshold_cta": {
         "text": "विवरण देखें"
+      },
+      "device_override_heading": {
+        "text": "यह डिवाइस"
+      },
+      "device_override_subtitle": {
+        "text": "केवल इस ब्राउज़र इंस्टॉलेशन पर स्किल लेवल और सुगमता लागू करें। इस अकाउंट के अन्य डिवाइस आपके डिफ़ॉल्ट पर रहेंगे।"
+      },
+      "device_effective_label": {
+        "text": "अभी सक्रिय"
+      },
+      "device_override_toggle_label": {
+        "text": "केवल इस डिवाइस पर ओवरराइड करें"
+      },
+      "device_override_toggle_desc": {
+        "text": "चालू होने पर, नीचे के नियंत्रण केवल इस डिवाइस पर सहेजे जाते हैं — आपकी अकाउंट डिफ़ॉल्ट नहीं बदलती।"
+      },
+      "device_voice_label": {
+        "text": "इस डिवाइस पर वॉइस अलर्ट"
+      },
+      "device_font_label": {
+        "text": "इस डिवाइस पर टेक्स्ट का आकार"
+      },
+      "device_clear_overrides_label": {
+        "text": "सभी डिवाइस ओवरराइड साफ़ करें"
+      },
+      "device_clear_overrides_desc": {
+        "text": "इस डिवाइस को आपकी अकाउंट डिफ़ॉल्ट पर वापस लाता है।"
+      },
+      "device_clear_overrides_btn": {
+        "text": "साफ़ करें"
       }
     },
     "common": {

@@ -143,6 +143,36 @@
       },
       "nudge_threshold_cta": {
         "text": "Открыть детали"
+      },
+      "device_override_heading": {
+        "text": "Это устройство"
+      },
+      "device_override_subtitle": {
+        "text": "Применить уровень навыка и настройки доступности только для этой установки браузера. Другие устройства аккаунта останутся со значениями по умолчанию."
+      },
+      "device_effective_label": {
+        "text": "Сейчас активно"
+      },
+      "device_override_toggle_label": {
+        "text": "Изменить только на этом устройстве"
+      },
+      "device_override_toggle_desc": {
+        "text": "Когда включено, настройки ниже сохранятся только на этом устройстве — настройки аккаунта не изменятся."
+      },
+      "device_voice_label": {
+        "text": "Голосовые оповещения на этом устройстве"
+      },
+      "device_font_label": {
+        "text": "Размер текста на этом устройстве"
+      },
+      "device_clear_overrides_label": {
+        "text": "Сбросить все локальные переопределения"
+      },
+      "device_clear_overrides_desc": {
+        "text": "Вернёт это устройство к настройкам аккаунта."
+      },
+      "device_clear_overrides_btn": {
+        "text": "Сбросить"
       }
     },
     "common": {

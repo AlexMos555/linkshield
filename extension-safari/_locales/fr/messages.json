@@ -140,6 +140,36 @@
   "nudge_threshold_cta": {
     "message": "Voir les détails"
   },
+  "device_override_heading": {
+    "message": "Cet appareil"
+  },
+  "device_override_subtitle": {
+    "message": "Appliquer le niveau et l'accessibilité uniquement à cette installation du navigateur. Les autres appareils du compte conservent la valeur par défaut."
+  },
+  "device_effective_label": {
+    "message": "Actuellement actif"
+  },
+  "device_override_toggle_label": {
+    "message": "Modifier uniquement sur cet appareil"
+  },
+  "device_override_toggle_desc": {
+    "message": "Lorsque activé, les contrôles ci-dessous sont enregistrés uniquement sur cet appareil — votre valeur de compte ne change pas."
+  },
+  "device_voice_label": {
+    "message": "Alertes vocales sur cet appareil"
+  },
+  "device_font_label": {
+    "message": "Taille du texte sur cet appareil"
+  },
+  "device_clear_overrides_label": {
+    "message": "Effacer toutes les substitutions de l'appareil"
+  },
+  "device_clear_overrides_desc": {
+    "message": "Revient cet appareil au paramètre par défaut de votre compte."
+  },
+  "device_clear_overrides_btn": {
+    "message": "Effacer"
+  },
   "trust_footer": {
     "message": "Vos données ne quittent jamais cet appareil"
   },

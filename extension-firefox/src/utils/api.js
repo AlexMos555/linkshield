@@ -56,6 +56,107 @@ export async function checkDomains(domains, token = null) {
 }
 
 /**
+ * Resolve a stable device hash (UUID v4) for this browser install.
+ *
+ * Persisted in chrome.storage.local so it survives popup/options
+ * reloads and extension restarts. A user reinstalling the extension
+ * gets a new hash — that's intentional: it represents "this install"
+ * not "this physical machine", which matches how the backend
+ * `devices` table is keyed (user_id + device_hash UNIQUE).
+ *
+ * @returns {Promise<string>}
+ */
+export async function getDeviceHash() {
+  try {
+    const stored = await chrome.storage.local.get("device_hash");
+    if (stored && typeof stored.device_hash === "string" && stored.device_hash.length > 0) {
+      return stored.device_hash;
+    }
+    const fresh = generateUuid();
+    await chrome.storage.local.set({ device_hash: fresh });
+    return fresh;
+  } catch {
+    // Storage unavailable (preview / very edge cases) — return a
+    // session-scoped UUID. Won't persist but the helper still returns
+    // a string so callers don't have to null-check.
+    return generateUuid();
+  }
+}
+
+function generateUuid() {
+  // crypto.randomUUID is available in MV3 service workers + popups
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for older runtimes
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/**
+ * Fetch the resolved effective skill + accessibility for THIS device.
+ *
+ * Returns { device_hash, skill_level, voice_alerts_enabled, font_scale,
+ *           skill_source, voice_source, font_source }
+ * where each *_source is "device_override" or "user_default" — used by
+ * the options UI to show "Set on this device" badges per field.
+ *
+ * @param {string|null} token JWT
+ * @param {string} deviceHash from getDeviceHash()
+ * @returns {Promise<object|null>}
+ */
+export async function fetchEffectiveSkill(token, deviceHash) {
+  if (!token || !deviceHash) return null;
+  try {
+    const url = `${API_BASE}/api/v1/user/device/${encodeURIComponent(deviceHash)}/effective`;
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * PATCH device-scoped overrides — Family Hub use case (admin enables
+ * Granny Mode on grandmother's specific phone without changing her
+ * account-level default).
+ *
+ * Payload accepts any subset of:
+ *   { skill_level_override, voice_alerts_enabled, font_scale,
+ *     clear_overrides }
+ *
+ * @param {string|null} token
+ * @param {string} deviceHash
+ * @param {object} payload
+ * @returns {Promise<object|null>}
+ */
+export async function patchDeviceOverrides(token, deviceHash, payload) {
+  if (!token || !deviceHash) return null;
+  try {
+    const url = `${API_BASE}/api/v1/user/device/${encodeURIComponent(deviceHash)}/overrides`;
+    const resp = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload || {}),
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch the freemium-threshold + paid-tier gating state for the user.
  *
  * Returns null when no auth token (anonymous user — server-side counter

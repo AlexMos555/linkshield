@@ -256,6 +256,171 @@ document.getElementById("redeem-code").addEventListener("click", async () => {
   alert("Code " + code + " saved!");
 });
 
+// ─── Device-level override (Family Hub) ─────────────────────────
+//
+// Reads /api/v1/user/device/{hash}/effective on load to populate the
+// resolved state + provenance badges. PATCH /overrides on change.
+// Section stays hidden when there's no auth_token — this whole feature
+// only makes sense for signed-in users with a server-side account.
+
+async function lazyApi() {
+  return import(chrome.runtime.getURL("utils/api.js"));
+}
+
+const SKILL_LABELS = {
+  kids: "Kids",
+  regular: "Regular",
+  granny: "Granny",
+  pro: "Pro",
+};
+
+function setSkillCardActive(name, value) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach((radio) => {
+    const card = radio.closest(".skill-card");
+    if (!card) return;
+    card.classList.toggle("active", radio.value === value);
+    radio.checked = radio.value === value;
+  });
+}
+
+async function refreshDeviceOverridePanel() {
+  const section = document.getElementById("device-override-section");
+  if (!section) return;
+  let stored;
+  try {
+    stored = await chrome.storage.local.get(["auth_token"]);
+  } catch {
+    return;
+  }
+  if (!stored || !stored.auth_token) {
+    // Anonymous user — feature only applies to signed-in accounts.
+    section.hidden = true;
+    return;
+  }
+  let api;
+  try {
+    api = await lazyApi();
+  } catch {
+    section.hidden = true;
+    return;
+  }
+
+  const hash = await api.getDeviceHash();
+  const effective = await api.fetchEffectiveSkill(stored.auth_token, hash);
+  if (!effective) {
+    // API down → keep panel hidden so the user doesn't see broken UI
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+
+  const summary = document.getElementById("device-effective-summary");
+  if (summary) {
+    const label = SKILL_LABELS[effective.skill_level] || effective.skill_level;
+    summary.textContent = `${label} · ${effective.font_scale.toFixed(1)}× · ${
+      effective.voice_alerts_enabled ? "voice on" : "voice off"
+    }`;
+  }
+  const badge = document.getElementById("device-skill-source");
+  if (badge) {
+    badge.hidden = false;
+    badge.setAttribute("data-source", effective.skill_source);
+    badge.textContent =
+      effective.skill_source === "device_override"
+        ? "Set on this device"
+        : "From your account";
+  }
+
+  // Reflect controls if any field already has a device-level override
+  const anyOverride =
+    effective.skill_source === "device_override" ||
+    effective.voice_source === "device_override" ||
+    effective.font_source === "device_override";
+  document.getElementById("device-override-on").checked = anyOverride;
+  document.getElementById("device-override-controls").hidden = !anyOverride;
+
+  setSkillCardActive("device-skill-level", effective.skill_level);
+  document.getElementById("device-voice-alerts").checked = !!effective.voice_alerts_enabled;
+  const fontEl = document.getElementById("device-font-scale");
+  fontEl.value = String(effective.font_scale);
+  document.getElementById("device-font-scale-val").textContent = effective.font_scale.toFixed(1) + "×";
+}
+
+async function pushDeviceOverride(payload) {
+  let stored;
+  try {
+    stored = await chrome.storage.local.get(["auth_token"]);
+  } catch {
+    return;
+  }
+  if (!stored || !stored.auth_token) return;
+  const api = await lazyApi();
+  const hash = await api.getDeviceHash();
+  const updated = await api.patchDeviceOverrides(stored.auth_token, hash, payload);
+  if (updated) {
+    // Re-render so badges + summary reflect the new resolved state
+    await refreshDeviceOverridePanel();
+  }
+}
+
+// Toggle override on/off
+const overrideToggle = document.getElementById("device-override-on");
+if (overrideToggle) {
+  overrideToggle.addEventListener("change", async (e) => {
+    const on = !!e.target.checked;
+    document.getElementById("device-override-controls").hidden = !on;
+    if (!on) {
+      // Switching OFF wipes all device overrides → revert to user defaults
+      await pushDeviceOverride({ clear_overrides: true });
+    }
+  });
+}
+
+// Per-device skill level
+document.querySelectorAll('input[name="device-skill-level"]').forEach((radio) => {
+  radio.addEventListener("change", async (e) => {
+    setSkillCardActive("device-skill-level", e.target.value);
+    await pushDeviceOverride({ skill_level_override: e.target.value });
+  });
+});
+
+// Per-device voice
+const dvVoice = document.getElementById("device-voice-alerts");
+if (dvVoice) {
+  dvVoice.addEventListener("change", async (e) => {
+    await pushDeviceOverride({ voice_alerts_enabled: !!e.target.checked });
+  });
+}
+
+// Per-device font
+const dvFont = document.getElementById("device-font-scale");
+if (dvFont) {
+  dvFont.addEventListener("input", (e) => {
+    document.getElementById("device-font-scale-val").textContent =
+      parseFloat(e.target.value).toFixed(1) + "×";
+  });
+  dvFont.addEventListener("change", async (e) => {
+    const v = parseFloat(e.target.value);
+    if (!Number.isNaN(v) && v >= 0.8 && v <= 2.5) {
+      await pushDeviceOverride({ font_scale: v });
+    }
+  });
+}
+
+// Clear all device overrides
+const dvClear = document.getElementById("device-clear-overrides");
+if (dvClear) {
+  dvClear.addEventListener("click", async () => {
+    await pushDeviceOverride({ clear_overrides: true });
+    document.getElementById("device-override-on").checked = false;
+    document.getElementById("device-override-controls").hidden = true;
+  });
+}
+
+// Initial load
+refreshDeviceOverridePanel().catch(() => {});
+
 // Export
 document.getElementById("export-data").addEventListener("click", () => {
   chrome.storage.local.get(null, (data) => {

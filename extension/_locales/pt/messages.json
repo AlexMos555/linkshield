@@ -140,6 +140,36 @@
   "nudge_threshold_cta": {
     "message": "Ver detalhes"
   },
+  "device_override_heading": {
+    "message": "Este dispositivo"
+  },
+  "device_override_subtitle": {
+    "message": "Aplica nível e acessibilidade apenas a esta instalação do navegador. Os outros dispositivos da conta mantêm o valor padrão."
+  },
+  "device_effective_label": {
+    "message": "Ativo agora"
+  },
+  "device_override_toggle_label": {
+    "message": "Substituir apenas neste dispositivo"
+  },
+  "device_override_toggle_desc": {
+    "message": "Quando ativo, os controles abaixo gravam apenas neste dispositivo — o padrão da conta não muda."
+  },
+  "device_voice_label": {
+    "message": "Alertas de voz neste dispositivo"
+  },
+  "device_font_label": {
+    "message": "Tamanho do texto neste dispositivo"
+  },
+  "device_clear_overrides_label": {
+    "message": "Limpar todas as substituições do dispositivo"
+  },
+  "device_clear_overrides_desc": {
+    "message": "Reverte este dispositivo para o padrão da conta."
+  },
+  "device_clear_overrides_btn": {
+    "message": "Limpar"
+  },
   "trust_footer": {
     "message": "Seus dados nunca saem deste dispositivo"
   },
