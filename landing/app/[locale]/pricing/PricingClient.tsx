@@ -7,9 +7,59 @@ import type { PricingFor } from "@cleanway/api-client";
 // component fails to compile until it's updated. That's the whole point.
 type PricingData = PricingFor;
 type Interval = "monthly" | "yearly";
+type PaidPlan = "personal" | "family";
 
 interface PricingClientProps {
   data: PricingData;
+}
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
+
+/**
+ * Kick off a Stripe Checkout session for the chosen plan + interval.
+ *
+ * Auth status is unknown from the client's perspective (we don't have a
+ * landing-side login UI yet), so we attempt the POST and:
+ *   - 200: redirect to the Stripe-hosted checkout URL
+ *   - 401: redirect to /signup?plan=X so the user can create an account
+ *          and resume the checkout flow
+ *   - other: show a friendly error and stay on the page
+ */
+async function startCheckout(plan: PaidPlan, interval: Interval): Promise<void> {
+  const planKey = `${plan}_${interval}`; // matches backend CheckoutRequest.plan
+  const success_url = "https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}";
+  const cancel_url = "https://cleanway.ai/pricing";
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${API_BASE}/api/v1/payments/checkout`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan: planKey, success_url, cancel_url }),
+    });
+  } catch {
+    alert("Couldn't reach our servers. Please try again in a moment.");
+    return;
+  }
+
+  if (resp.status === 401) {
+    window.location.href = `/signup?plan=${plan}&interval=${interval}`;
+    return;
+  }
+
+  if (!resp.ok) {
+    alert("Couldn't start checkout. Please try again or contact support.");
+    return;
+  }
+
+  const data = (await resp.json().catch(() => null)) as { checkout_url?: string } | null;
+  if (!data || !data.checkout_url) {
+    alert("Checkout didn't return a redirect URL — please contact support.");
+    return;
+  }
+  window.location.href = data.checkout_url;
 }
 
 export default function PricingClient({ data }: PricingClientProps) {
@@ -75,6 +125,7 @@ export default function PricingClient({ data }: PricingClientProps) {
             ]}
             cta="Try 14 days free"
             emphasis={false}
+            paidPlan="personal"
           />
 
           {/* Family — emphasized */}
@@ -96,6 +147,7 @@ export default function PricingClient({ data }: PricingClientProps) {
             cta="Try 14 days free"
             emphasis={true}
             badge="Most popular"
+            paidPlan="family"
           />
 
           {/* Business */}
@@ -143,9 +195,13 @@ interface PlanCardProps {
   ctaHref?: string;
   emphasis: boolean;
   badge?: string;
+  // When set, the CTA becomes a button that hits /payments/checkout
+  // for that plan + current interval. Free plan and Business stay as
+  // anchor links via ctaHref.
+  paidPlan?: PaidPlan;
 }
 
-function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuffix, features, cta, ctaHref = "#", emphasis, badge }: PlanCardProps) {
+function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuffix, features, cta, ctaHref = "#", emphasis, badge, paidPlan }: PlanCardProps) {
   const displayPrice = price === 0 ? "$0" : `$${price.toFixed(2)}`;
   const intervalLabel = price === 0 ? "" : interval === "monthly" ? "/mo" : "/yr";
 
@@ -184,14 +240,30 @@ function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuf
           </li>
         ))}
       </ul>
-      <a
-        href={ctaHref}
-        className={`block text-center px-4 py-3 rounded-xl font-semibold transition ${
-          emphasis ? "bg-green-500 text-green-950 hover:bg-green-400" : "bg-slate-700 text-white hover:bg-slate-600"
-        }`}
-      >
-        {cta}
-      </a>
+      {paidPlan ? (
+        <button
+          type="button"
+          onClick={() => {
+            void startCheckout(paidPlan, interval);
+          }}
+          className={`block w-full text-center px-4 py-3 rounded-xl font-semibold transition ${
+            emphasis
+              ? "bg-green-500 text-green-950 hover:bg-green-400"
+              : "bg-slate-700 text-white hover:bg-slate-600"
+          }`}
+        >
+          {cta}
+        </button>
+      ) : (
+        <a
+          href={ctaHref}
+          className={`block text-center px-4 py-3 rounded-xl font-semibold transition ${
+            emphasis ? "bg-green-500 text-green-950 hover:bg-green-400" : "bg-slate-700 text-white hover:bg-slate-600"
+          }`}
+        >
+          {cta}
+        </a>
+      )}
     </div>
   );
 }

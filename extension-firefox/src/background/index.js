@@ -136,16 +136,37 @@ async function handleCheck(domains) {
   }
 
   // Track stats
+  let dangerousBlocksThisBatch = 0;
   try {
     const data = await chrome.storage.local.get(["stats"]);
     const stats = data.stats || { total_checks: 0, threats_blocked: 0, threats_warned: 0 };
     for (const r of results) {
       stats.total_checks++;
-      if (r.level === "dangerous") stats.threats_blocked++;
+      if (r.level === "dangerous") {
+        stats.threats_blocked++;
+        dangerousBlocksThisBatch++;
+      }
       if (r.level === "caution") stats.threats_warned++;
     }
     await chrome.storage.local.set({ stats });
   } catch (e) {}
+
+  // Server-side lifetime counter for the Pricing v2 freemium gating —
+  // only increment for confirmed DANGEROUS blocks (caution/warnings
+  // don't count against the threshold). Best-effort: silent on
+  // network errors and on anonymous users (no auth_token).
+  if (dangerousBlocksThisBatch > 0) {
+    try {
+      const stored = await chrome.storage.local.get(["auth_token"]);
+      if (stored && stored.auth_token) {
+        const apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+        await apiModule.incrementThreatCounter(stored.auth_token, dangerousBlocksThisBatch);
+      }
+    } catch (e) {
+      // No-op: a missed sync just means the popup nudge appears later
+      // than ideal — block UX itself is unaffected.
+    }
+  }
 
   // Badge
   try {
@@ -169,6 +190,19 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (msg.type === "GET_STATS") {
     chrome.storage.local.get(["stats"]).then(d => respond(d.stats || {}));
     return true;
+  }
+  // Open a tab — used by Privacy Audit's "Share grade" button. Content
+  // scripts can't reliably open new windows (popup blockers, sandboxed
+  // hosts), so we delegate to the background which has the tabs perm.
+  if (msg.type === "OPEN_TAB" && typeof msg.url === "string") {
+    try {
+      // Whitelist: only open URLs we own. A compromised content script
+      // shouldn't be able to use the background as a generic tab opener.
+      if (msg.url.startsWith("https://cleanway.ai/")) {
+        chrome.tabs.create({ url: msg.url });
+      }
+    } catch (e) {}
+    return false;
   }
 });
 

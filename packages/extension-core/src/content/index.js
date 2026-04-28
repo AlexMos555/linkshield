@@ -253,12 +253,31 @@ function runPrivacyAudit() {
   var old = document.getElementById("ls-audit-result");
   if (old) old.remove();
 
+  // Build share URL — viral asset on cleanway.ai/audit/{host}/grade/{letter}.
+  // OG image + canonical landing page exist at this path; the button
+  // opens that page in a new tab so the user can share it socially.
+  var shareUrl = "https://cleanway.ai/audit/" + encodeURIComponent(host) + "/grade/" + grade;
+
   var div = document.createElement("div");
   div.id = "ls-audit-result";
-  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;width:300px;border:1px solid ' + color + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:32px;font-weight:bold;color:' + color + ';">' + grade + '</span><div><div style="font-size:14px;font-weight:600;">Privacy Audit</div><div style="font-size:11px;color:#94a3b8;">' + host + '</div></div></div><span id="ls-audit-close" style="cursor:pointer;color:#6b7280;font-size:18px;">\u00D7</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + trackers.length + '</div><div style="color:#94a3b8;font-size:10px;">Trackers</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + cookies + '</div><div style="color:#94a3b8;font-size:10px;">Cookies</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + sensitive + '</div><div style="color:#94a3b8;font-size:10px;">Data fields</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (fp ? "Yes" : "No") + '</div><div style="color:#94a3b8;font-size:10px;">Fingerprint</div></div></div><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;">\uD83D\uDD12 Ran on your device</div></div>';
+  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;width:300px;border:1px solid ' + color + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:32px;font-weight:bold;color:' + color + ';">' + grade + '</span><div><div style="font-size:14px;font-weight:600;">Privacy Audit</div><div style="font-size:11px;color:#94a3b8;">' + host + '</div></div></div><span id="ls-audit-close" style="cursor:pointer;color:#6b7280;font-size:18px;">\u00D7</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + trackers.length + '</div><div style="color:#94a3b8;font-size:10px;">Trackers</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + cookies + '</div><div style="color:#94a3b8;font-size:10px;">Cookies</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + sensitive + '</div><div style="color:#94a3b8;font-size:10px;">Data fields</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (fp ? "Yes" : "No") + '</div><div style="color:#94a3b8;font-size:10px;">Fingerprint</div></div></div><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;"><button id="ls-audit-share" style="margin-top:12px;width:100%;background:' + color + ';color:#0a0e15;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">Share grade</button><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;">\uD83D\uDD12 Ran on your device</div></div>';
 
   document.body.appendChild(div);
   document.getElementById("ls-audit-close").onclick = function() { div.remove(); };
+  var shareBtn = document.getElementById("ls-audit-share");
+  if (shareBtn) {
+    shareBtn.onclick = function() {
+      // Ask the background to open the tab — content scripts can't reliably
+      // open windows on every host (popup blockers, sandboxed contexts).
+      try {
+        if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({ type: "OPEN_TAB", url: shareUrl });
+          return;
+        }
+      } catch (e) {}
+      window.open(shareUrl, "_blank", "noopener");
+    };
+  }
   setTimeout(function() { if (div.parentNode) div.remove(); }, 15000);
 }
 
