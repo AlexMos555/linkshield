@@ -17,6 +17,7 @@ from api.routers.referral import router as referral_router
 from api.routers.org import router as org_router
 from api.routers.pricing import router as pricing_router
 from api.routers.email_unsubscribe import router as email_unsubscribe_router
+from api.routers.family import router as family_router
 from api.routers.email import router as email_router
 from api.routers.phone import router as phone_router
 from api.routers.scam import router as scam_router
@@ -134,6 +135,7 @@ app.include_router(referral_router)
 app.include_router(org_router)
 app.include_router(pricing_router)
 app.include_router(email_unsubscribe_router)
+app.include_router(family_router)
 app.include_router(email_router)
 app.include_router(phone_router)
 app.include_router(scam_router)
