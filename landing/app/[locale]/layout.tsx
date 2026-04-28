@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
+
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
@@ -67,6 +69,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   return (
     <html lang={locale} dir={dir}>
       <body style={{ margin: 0 }}>
+        <ServiceWorkerRegistration />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>
