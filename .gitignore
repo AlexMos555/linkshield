@@ -49,6 +49,18 @@ linkshield-extension.zip
 # OS
 .DS_Store
 Thumbs.db
+# macOS Finder / iCloud creates "filename 2.ext" duplicates when there's
+# a name collision (e.g. unzip into a dir that already has the file).
+# Catch them all so they never sneak into commits.
+* 2.zip
+* 2.png
+* 2.json
+* 2.tsx
+* 2.ts
+* 2.jsx
+* 2.js
+* 2.py
+* 2.md
 
 # IDE
 .vscode/
