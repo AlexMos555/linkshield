@@ -3,7 +3,7 @@ import warnings
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger("cleanway.config")
@@ -57,7 +57,18 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
 
     # Google Safe Browsing
-    google_safe_browsing_key: str = ""
+    # Accepts both env var spellings — GOOGLE_SAFE_BROWSING_API_KEY is the
+    # industry-standard form (Stripe / Supabase / OpenAI all use _API_KEY),
+    # GOOGLE_SAFE_BROWSING_KEY is the legacy form we shipped originally.
+    # Pydantic's AliasChoices picks whichever is set; if both, the API_KEY
+    # form wins (listed first).
+    google_safe_browsing_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "GOOGLE_SAFE_BROWSING_API_KEY",
+            "GOOGLE_SAFE_BROWSING_KEY",
+        ),
+    )
 
     # PhishTank (no key needed for free tier, but optional)
     phishtank_api_key: str = ""
