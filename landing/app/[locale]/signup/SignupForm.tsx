@@ -2,31 +2,39 @@
 
 import { useState } from "react";
 
+import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
+
 interface SignupFormProps {
   planFromQuery: string | null;
   intervalFromQuery: string | null;
 }
 
 /**
- * Skeleton signup form.
+ * Magic-link signup form via Supabase Auth.
  *
- * No real auth wired yet — this is the stub that exists so /pricing's
- * 401-redirect lands on a sensible page rather than a 404. Two paths:
+ * Flow:
+ *   1. User enters email + clicks Continue.
+ *   2. supabase.auth.signInWithOtp() fires; Supabase sends the user a
+ *      magic-link email (one-time login URL).
+ *   3. User clicks the link → lands on /auth/callback which exchanges
+ *      the URL hash for a session → redirects back to /pricing or
+ *      wherever they came from.
+ *   4. After session is set, /payments/checkout works because the user
+ *      is now authenticated.
  *
- * 1. Email + password (the default fields below) — the form posts to
- *    /api/v1/auth/signup once that endpoint exists. Until then,
- *    submitting opens a mailto: with the user's intent so we can
- *    capture leads via support@cleanway.ai inbox.
+ * This avoids password storage entirely — a single-factor passwordless
+ * login that's good enough for a privacy-first product. Adding password
+ * support is a one-line swap to signInWithPassword later.
  *
- * 2. Magic-link button — same backend path will accept email-only.
- *
- * When the auth backend lands, the form action wires up automatically;
- * the UI here doesn't need to change beyond removing the mailto fallback.
+ * Fallback when NEXT_PUBLIC_SUPABASE_* env vars are absent: the form
+ * sends a mailto: with the user's intent so leads aren't dropped while
+ * Supabase Auth is being wired in Vercel/Railway.
  */
 export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupFormProps) {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -38,24 +46,72 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
 
     setSubmitting(true);
     try {
-      // Once the auth backend lands, swap this for:
-      //   POST /api/v1/auth/signup (or magic-link / OAuth flow)
-      // and chain into checkout. For now we capture the lead via mailto
-      // so an interested user is never lost.
-      const subject = encodeURIComponent("Signup interest — Cleanway");
-      const planLine = planFromQuery
-        ? `Plan: ${planFromQuery}${intervalFromQuery ? ` (${intervalFromQuery})` : ""}\n`
-        : "";
-      const body = encodeURIComponent(
-        `Hi Cleanway team,\n\nI'd like to sign up.\n\n${planLine}Email: ${email}\n\nPlease let me know when signup goes live.\n`
-      );
-      window.location.href = `mailto:support@cleanway.ai?subject=${subject}&body=${body}`;
-    } catch {
-      setError("Something went wrong. Please email support@cleanway.ai directly.");
+      // No env config → fall back to mailto so leads are still captured.
+      if (!isAuthConfigured()) {
+        const subject = encodeURIComponent("Signup interest — Cleanway");
+        const planLine = planFromQuery
+          ? `Plan: ${planFromQuery}${intervalFromQuery ? ` (${intervalFromQuery})` : ""}\n`
+          : "";
+        const body = encodeURIComponent(
+          `Hi Cleanway team,\n\nI'd like to sign up.\n\n${planLine}Email: ${email}\n\nPlease let me know when signup goes live.\n`
+        );
+        window.location.href = `mailto:support@cleanway.ai?subject=${subject}&body=${body}`;
+        return;
+      }
+
+      // Build the redirect URL: after the magic link is clicked, Supabase
+      // bounces back here with #access_token=... in the URL hash. The
+      // callback route exchanges it for a session cookie.
+      const next = planFromQuery
+        ? `/pricing?plan=${planFromQuery}${intervalFromQuery ? `&interval=${intervalFromQuery}` : ""}`
+        : "/";
+      const redirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+
+      const supabase = getSupabaseClient();
+      const { error: signInError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirect,
+          shouldCreateUser: true,
+        },
+      });
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+      setSent(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(`Couldn't send the magic link: ${msg}`);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (sent) {
+    return (
+      <div
+        style={{
+          background: "#1e293b",
+          border: "1px solid #22c55e40",
+          borderRadius: 12,
+          padding: 24,
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: 40, marginBottom: 12 }}>📩</div>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px" }}>
+          Check your inbox
+        </h2>
+        <p style={{ fontSize: 14, color: "#94a3b8", margin: "0 0 6px", lineHeight: 1.6 }}>
+          We sent a magic-link sign-in to <strong style={{ color: "#f8fafc" }}>{email}</strong>.
+        </p>
+        <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>
+          Click the link to finish signing in. The page will continue automatically.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -101,13 +157,13 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
           marginTop: 4,
         }}
       >
-        {submitting ? "Sending…" : planFromQuery ? "Continue to checkout" : "Continue"}
+        {submitting ? "Sending magic link…" : planFromQuery ? "Email me a sign-in link" : "Continue"}
       </button>
 
       <p style={{ fontSize: 12, color: "#64748b", marginTop: 8, lineHeight: 1.5 }}>
-        Signup is rolling out. We&apos;ll email you when it goes live for your account, or you can{" "}
+        We&apos;ll email you a one-time sign-in link. No password to remember. Or{" "}
         <a href="https://chrome.google.com/webstore" style={{ color: "#60a5fa" }}>install the extension free</a>{" "}
-        right now — blocking always works without an account.
+        — blocking always works without an account.
       </p>
     </form>
   );

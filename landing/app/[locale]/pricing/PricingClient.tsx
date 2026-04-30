@@ -2,6 +2,8 @@
 import { useState } from "react";
 import type { PricingFor } from "@cleanway/api-client";
 
+import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
+
 // All shapes come from the generated contract — no hand-rolled types here.
 // If the API changes, `npm run build:api-types` regenerates the types and this
 // component fails to compile until it's updated. That's the whole point.
@@ -31,12 +33,29 @@ async function startCheckout(plan: PaidPlan, interval: Interval): Promise<void> 
   const success_url = "https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}";
   const cancel_url = "https://cleanway.ai/pricing";
 
+  // Pull the Supabase session token so the backend's get_current_user
+  // dependency accepts the request. If Supabase isn't configured yet
+  // (NEXT_PUBLIC_SUPABASE_* missing in this build), token is null and
+  // the backend will 401 — handled below by sending the user to /signup.
+  let bearer: string | null = null;
+  if (isAuthConfigured()) {
+    try {
+      const { data } = await getSupabaseClient().auth.getSession();
+      bearer = data.session?.access_token ?? null;
+    } catch {
+      bearer = null;
+    }
+  }
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (bearer) headers["Authorization"] = `Bearer ${bearer}`;
+
   let resp: Response;
   try {
     resp = await fetch(`${API_BASE}/api/v1/payments/checkout`, {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ plan: planKey, success_url, cancel_url }),
     });
   } catch {
