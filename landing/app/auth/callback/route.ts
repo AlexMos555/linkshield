@@ -27,9 +27,26 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await getSupabaseServer();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     return NextResponse.redirect(`${origin}/signup?error=${encodeURIComponent(error.message)}`);
+  }
+
+  // Fire-and-forget welcome email. The endpoint is idempotent so a
+  // user clicking the magic link twice doesn't double-send. Failures
+  // are silent — they don't block sign-in, the user gets in either way.
+  const accessToken = data.session?.access_token;
+  if (accessToken) {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
+    fetch(`${apiBase}/api/v1/users/welcome`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }).catch(() => {
+      // Welcome email is a courtesy — never block sign-in on it.
+    });
   }
 
   // Cookie is now set; redirect to the originally-intended page.

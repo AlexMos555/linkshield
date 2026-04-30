@@ -943,3 +943,118 @@ async def update_device_overrides(
 
     # Re-resolve to return canonical effective state
     return await get_effective_skill(device_hash, user)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Welcome email — fired by /auth/callback once after first signin
+# ═══════════════════════════════════════════════════════════════════
+#
+# Idempotent: checks user_settings.settings.welcome_sent_at; if non-null
+# we silently no-op so a double-click on the magic-link doesn't double-
+# send. With EMAIL_PROVIDER="noop" (default until prod email is wired)
+# the send is logged only — no actual mail leaves. Switching the env to
+# "resend" or "ses" activates real delivery without any code change.
+
+
+class WelcomeResponse(BaseModel):
+    sent: bool
+    reason: Optional[str] = None
+
+
+@router.post(
+    "/welcome",
+    response_model=WelcomeResponse,
+    dependencies=[Depends(rate_limit(category="user_write"))],
+)
+async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> WelcomeResponse:
+    """First-signin welcome email. Idempotent — won't re-send."""
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        return WelcomeResponse(sent=False, reason="storage_unavailable")
+
+    import httpx
+
+    headers = {
+        "apikey": settings.supabase_service_key,
+        "Authorization": f"Bearer {settings.supabase_service_key}",
+    }
+
+    # Read the existing settings JSONB so we can preserve other keys.
+    current: dict = {}
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{settings.supabase_url}/rest/v1/user_settings",
+                params={"user_id": f"eq.{user.id}", "select": "settings"},
+                headers=headers,
+            )
+            if resp.status_code == 200:
+                rows = resp.json()
+                if rows and isinstance(rows[0].get("settings"), dict):
+                    current = rows[0]["settings"]
+    except Exception as e:  # pragma: no cover — network failure path
+        logger.warning("welcome.read_failed", extra={"user_id": user.id, "error": str(e)})
+
+    if current.get("welcome_sent_at"):
+        return WelcomeResponse(sent=False, reason="already_sent")
+
+    # Send via the email service. It auto-skips real delivery when
+    # EMAIL_PROVIDER is "noop" (dev default), but still returns ok=True
+    # so the persistence flow proceeds — we DON'T want to re-send the
+    # next time the user authenticates just because the email provider
+    # wasn't ready yet.
+    try:
+        from api.services.email import send_template
+
+        # Build the unsubscribe URL using existing token mint helper.
+        from api.routers.email_unsubscribe import mint_token
+
+        unsub_token = mint_token(user_id=user.id, email_template="welcome")
+        unsub_url = f"https://cleanway.ai/api/v1/email/unsubscribe/{unsub_token}"
+
+        result = await send_template(
+            to=user.email or "",
+            user_id=user.id,
+            template="welcome",
+            locale="en",  # TODO: pull from user.preferred_locale
+            fixture_overrides={"unsubscribe_url": unsub_url},
+            unsubscribe_url=unsub_url,
+        )
+    except Exception as e:
+        logger.warning("welcome.send_exception", extra={"user_id": user.id, "error": str(e)})
+        # Don't mark welcome_sent_at — let the next call retry.
+        return WelcomeResponse(sent=False, reason="send_error")
+
+    if not result.ok:
+        return WelcomeResponse(sent=False, reason="send_failed")
+
+    # Mark sent. Even when the provider was "noop" we mark — the only
+    # thing the timestamp protects against is double-sends, and the
+    # operator can clear the field if they need a re-send after wiring
+    # a real provider.
+    new_settings = {
+        **current,
+        "welcome_sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+    write_headers = {
+        **headers,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            persist = await client.post(
+                f"{settings.supabase_url}/rest/v1/user_settings",
+                json={"user_id": user.id, "settings": new_settings},
+                headers=write_headers,
+            )
+        if persist.status_code not in (200, 201, 204):
+            logger.warning(
+                "welcome.persist_failed",
+                extra={"user_id": user.id, "status": persist.status_code},
+            )
+    except Exception as e:  # pragma: no cover
+        logger.warning("welcome.persist_exception", extra={"user_id": user.id, "error": str(e)})
+
+    logger.info("welcome.sent", extra={"user_id": user.id, "skipped": result.skipped})
+    return WelcomeResponse(sent=not result.skipped, reason=result.skip_reason)
