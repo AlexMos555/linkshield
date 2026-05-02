@@ -170,6 +170,66 @@
   "device_clear_overrides_btn": {
     "message": "साफ़ करें"
   },
+  "family_hub_heading": {
+    "message": "परिवार हब"
+  },
+  "family_hub_subtitle": {
+    "message": "जब आपके प्रियजनों के डिवाइस पर धोखाधड़ी ब्लॉक हो, तो आपको सूचित किया जाएगा। एंड-टू-एंड एन्क्रिप्शन — Cleanway भी अलर्ट नहीं पढ़ता।"
+  },
+  "family_loading": {
+    "message": "लोड हो रहा है…"
+  },
+  "family_none_label": {
+    "message": "आप अभी किसी परिवार में नहीं हैं"
+  },
+  "family_none_desc": {
+    "message": "एक बनाएँ और 5 लोगों तक को आमंत्रित करें। या कोड के साथ मौजूदा परिवार में शामिल हों।"
+  },
+  "family_create_btn": {
+    "message": "परिवार बनाएँ"
+  },
+  "family_join_btn": {
+    "message": "कोड से शामिल हों"
+  },
+  "family_accept_btn": {
+    "message": "शामिल हों"
+  },
+  "family_members_label": {
+    "message": "सदस्य"
+  },
+  "family_invite_label": {
+    "message": "सदस्य को आमंत्रित करें"
+  },
+  "family_invite_desc": {
+    "message": "एक बार उपयोग का कोड + PIN बनाता है। SMS से या व्यक्तिगत रूप से भेजें।"
+  },
+  "family_invite_btn": {
+    "message": "आमंत्रण बनाएँ"
+  },
+  "family_alerts_label": {
+    "message": "हाल के अलर्ट"
+  },
+  "family_alerts_empty": {
+    "message": "अभी कोई अलर्ट नहीं — परिवार के ब्लॉक यहाँ दिखेंगे।"
+  },
+  "family_invite_modal_title": {
+    "message": "इसे अपने परिवार के सदस्य से साझा करें"
+  },
+  "family_invite_modal_desc": {
+    "message": "दोनों मान एक बार दिखते हैं। डायलॉग बंद होने के बाद आप उन्हें फिर नहीं देख पाएँगे — ज़रूरत पड़ने पर नया आमंत्रण बनाएँ।"
+  },
+  "family_invite_code_label": {
+    "message": "कोड"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "दोनों कॉपी करें"
+  },
+  "family_invite_close_btn": {
+    "message": "हो गया"
+  },
   "trust_footer": {
     "message": "आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता"
   },

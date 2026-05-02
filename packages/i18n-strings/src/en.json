@@ -175,6 +175,66 @@
       },
       "device_clear_overrides_btn": {
         "text": "Clear"
+      },
+      "family_hub_heading": {
+        "text": "Family Hub"
+      },
+      "family_hub_subtitle": {
+        "text": "Get notified when scams are blocked on your loved ones' devices. End-to-end encrypted — even Cleanway can't read the alerts."
+      },
+      "family_loading": {
+        "text": "Loading…"
+      },
+      "family_none_label": {
+        "text": "You're not in a family yet"
+      },
+      "family_none_desc": {
+        "text": "Create one and invite up to 5 others. Or join an existing family using a code."
+      },
+      "family_create_btn": {
+        "text": "Create family"
+      },
+      "family_join_btn": {
+        "text": "Join with code"
+      },
+      "family_accept_btn": {
+        "text": "Join"
+      },
+      "family_members_label": {
+        "text": "members"
+      },
+      "family_invite_label": {
+        "text": "Invite a family member"
+      },
+      "family_invite_desc": {
+        "text": "Generates a one-time code + PIN. Send them by SMS or in person."
+      },
+      "family_invite_btn": {
+        "text": "Generate invite"
+      },
+      "family_alerts_label": {
+        "text": "Recent alerts"
+      },
+      "family_alerts_empty": {
+        "text": "No alerts yet — you'll see family blocks here as they happen."
+      },
+      "family_invite_modal_title": {
+        "text": "Share this with your family member"
+      },
+      "family_invite_modal_desc": {
+        "text": "Both values appear once. After this dialog closes, you can't see them again — generate another invite if needed."
+      },
+      "family_invite_code_label": {
+        "text": "Code"
+      },
+      "family_invite_pin_label": {
+        "text": "PIN"
+      },
+      "family_invite_copy_btn": {
+        "text": "Copy both"
+      },
+      "family_invite_close_btn": {
+        "text": "Done"
       }
     },
     "common": {

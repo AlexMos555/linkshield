@@ -173,6 +173,66 @@
       },
       "device_clear_overrides_btn": {
         "text": "Effacer"
+      },
+      "family_hub_heading": {
+        "text": "Espace Famille"
+      },
+      "family_hub_subtitle": {
+        "text": "Soyez alerté quand des arnaques sont bloquées sur les appareils de vos proches. Chiffrement de bout en bout — même Cleanway ne lit pas les alertes."
+      },
+      "family_loading": {
+        "text": "Chargement…"
+      },
+      "family_none_label": {
+        "text": "Vous n'êtes pas encore dans une famille"
+      },
+      "family_none_desc": {
+        "text": "Créez-en une et invitez jusqu'à 5 personnes. Ou rejoignez une famille existante avec un code."
+      },
+      "family_create_btn": {
+        "text": "Créer une famille"
+      },
+      "family_join_btn": {
+        "text": "Rejoindre avec un code"
+      },
+      "family_accept_btn": {
+        "text": "Rejoindre"
+      },
+      "family_members_label": {
+        "text": "membres"
+      },
+      "family_invite_label": {
+        "text": "Inviter un membre"
+      },
+      "family_invite_desc": {
+        "text": "Génère un code + PIN à usage unique. Envoyez-les par SMS ou en personne."
+      },
+      "family_invite_btn": {
+        "text": "Générer l'invitation"
+      },
+      "family_alerts_label": {
+        "text": "Alertes récentes"
+      },
+      "family_alerts_empty": {
+        "text": "Aucune alerte pour l'instant — les blocages familiaux apparaîtront ici."
+      },
+      "family_invite_modal_title": {
+        "text": "Partagez ceci avec votre proche"
+      },
+      "family_invite_modal_desc": {
+        "text": "Les deux valeurs apparaissent une fois. Une fois cette fenêtre fermée, vous ne pourrez plus les voir — générez une autre invitation si besoin."
+      },
+      "family_invite_code_label": {
+        "text": "Code"
+      },
+      "family_invite_pin_label": {
+        "text": "PIN"
+      },
+      "family_invite_copy_btn": {
+        "text": "Copier les deux"
+      },
+      "family_invite_close_btn": {
+        "text": "Terminé"
       }
     },
     "common": {

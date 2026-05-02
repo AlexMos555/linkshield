@@ -173,6 +173,66 @@
       },
       "device_clear_overrides_btn": {
         "text": "Borrar"
+      },
+      "family_hub_heading": {
+        "text": "Centro Familiar"
+      },
+      "family_hub_subtitle": {
+        "text": "Recibe avisos cuando se bloqueen estafas en los dispositivos de tus seres queridos. Cifrado de extremo a extremo — ni Cleanway lee las alertas."
+      },
+      "family_loading": {
+        "text": "Cargando…"
+      },
+      "family_none_label": {
+        "text": "Aún no estás en una familia"
+      },
+      "family_none_desc": {
+        "text": "Crea una e invita hasta 5 personas. O únete a una existente con un código."
+      },
+      "family_create_btn": {
+        "text": "Crear familia"
+      },
+      "family_join_btn": {
+        "text": "Unirse con código"
+      },
+      "family_accept_btn": {
+        "text": "Unirme"
+      },
+      "family_members_label": {
+        "text": "miembros"
+      },
+      "family_invite_label": {
+        "text": "Invitar a un miembro"
+      },
+      "family_invite_desc": {
+        "text": "Genera un código + PIN de un solo uso. Envíalos por SMS o en persona."
+      },
+      "family_invite_btn": {
+        "text": "Generar invitación"
+      },
+      "family_alerts_label": {
+        "text": "Alertas recientes"
+      },
+      "family_alerts_empty": {
+        "text": "Aún sin alertas — aquí verás los bloqueos de la familia."
+      },
+      "family_invite_modal_title": {
+        "text": "Comparte esto con tu familiar"
+      },
+      "family_invite_modal_desc": {
+        "text": "Ambos valores aparecen una vez. Tras cerrar el cuadro no podrás verlos otra vez — genera otra invitación si lo necesitas."
+      },
+      "family_invite_code_label": {
+        "text": "Código"
+      },
+      "family_invite_pin_label": {
+        "text": "PIN"
+      },
+      "family_invite_copy_btn": {
+        "text": "Copiar ambos"
+      },
+      "family_invite_close_btn": {
+        "text": "Listo"
       }
     },
     "common": {

@@ -147,6 +147,17 @@ class ListAlertsResponse(BaseModel):
     alerts: List[StoredAlert]
 
 
+class MyFamily(BaseModel):
+    family_id: str
+    name: str
+    role: str
+    member_count: int
+
+
+class MyFamiliesResponse(BaseModel):
+    families: List[MyFamily]
+
+
 # ─── Helpers ───────────────────────────────────────────────────────
 
 
@@ -239,6 +250,86 @@ async def _is_family_member(family_id: str, user_id: str) -> Optional[str]:
 
 
 # ─── Endpoints ─────────────────────────────────────────────────────
+
+
+@router.get(
+    "/mine",
+    response_model=MyFamiliesResponse,
+    dependencies=[Depends(rate_limit(category="user_read"))],
+)
+async def list_my_families(
+    user: AuthUser = Depends(get_current_user),
+) -> MyFamiliesResponse:
+    """Return families the caller is a member of, with their role.
+
+    The UI's first call when opening the Family Hub panel — needs to
+    know whether to show "Create / Join" (no families) or the active-
+    family controls (one or more families).
+
+    Empty list is a perfectly valid response and not an error.
+    """
+    # All my memberships
+    members_resp = await _supabase_request(
+        "GET",
+        "family_members",
+        params={
+            "user_id": f"eq.{user.id}",
+            "select": "family_id,role",
+        },
+    )
+    if members_resp.status_code != 200:
+        return MyFamiliesResponse(families=[])
+
+    rows = members_resp.json()
+    if not rows:
+        return MyFamiliesResponse(families=[])
+
+    family_ids = [r["family_id"] for r in rows if r.get("family_id")]
+    if not family_ids:
+        return MyFamiliesResponse(families=[])
+
+    # Resolve family names in one round-trip
+    fams_resp = await _supabase_request(
+        "GET",
+        "families",
+        params={
+            "id": f"in.({','.join(family_ids)})",
+            "select": "id,name",
+        },
+    )
+    name_by_id: dict[str, str] = {}
+    if fams_resp.status_code == 200:
+        for row in fams_resp.json():
+            name_by_id[row["id"]] = row.get("name") or "My Family"
+
+    # Member counts — single query for all my families.
+    counts: dict[str, int] = {}
+    counts_resp = await _supabase_request(
+        "GET",
+        "family_members",
+        params={
+            "family_id": f"in.({','.join(family_ids)})",
+            "select": "family_id",
+        },
+    )
+    if counts_resp.status_code == 200:
+        for row in counts_resp.json():
+            fid = row.get("family_id")
+            if fid:
+                counts[fid] = counts.get(fid, 0) + 1
+
+    out: List[MyFamily] = []
+    for r in rows:
+        fid = r["family_id"]
+        out.append(
+            MyFamily(
+                family_id=fid,
+                name=name_by_id.get(fid, "My Family"),
+                role=r.get("role") or "member",
+                member_count=counts.get(fid, 1),
+            )
+        )
+    return MyFamiliesResponse(families=out)
 
 
 @router.post(

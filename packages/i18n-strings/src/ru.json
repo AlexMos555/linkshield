@@ -173,6 +173,66 @@
       },
       "device_clear_overrides_btn": {
         "text": "Сбросить"
+      },
+      "family_hub_heading": {
+        "text": "Семейный центр"
+      },
+      "family_hub_subtitle": {
+        "text": "Получайте уведомления, когда блокируется мошенничество на устройствах близких. Сквозное шифрование — даже Cleanway не читает оповещения."
+      },
+      "family_loading": {
+        "text": "Загружаем…"
+      },
+      "family_none_label": {
+        "text": "Вы ещё не в семье"
+      },
+      "family_none_desc": {
+        "text": "Создайте свою и пригласите до 5 человек. Или вступите в существующую по коду."
+      },
+      "family_create_btn": {
+        "text": "Создать семью"
+      },
+      "family_join_btn": {
+        "text": "Присоединиться по коду"
+      },
+      "family_accept_btn": {
+        "text": "Войти"
+      },
+      "family_members_label": {
+        "text": "участников"
+      },
+      "family_invite_label": {
+        "text": "Пригласить члена семьи"
+      },
+      "family_invite_desc": {
+        "text": "Сгенерирует одноразовый код + PIN. Отправьте по SMS или передайте лично."
+      },
+      "family_invite_btn": {
+        "text": "Создать приглашение"
+      },
+      "family_alerts_label": {
+        "text": "Недавние оповещения"
+      },
+      "family_alerts_empty": {
+        "text": "Пока пусто — здесь появятся блокировки семьи."
+      },
+      "family_invite_modal_title": {
+        "text": "Передайте это члену семьи"
+      },
+      "family_invite_modal_desc": {
+        "text": "Оба значения показываются один раз. После закрытия окна вы их не увидите — создайте новое приглашение, если нужно."
+      },
+      "family_invite_code_label": {
+        "text": "Код"
+      },
+      "family_invite_pin_label": {
+        "text": "PIN"
+      },
+      "family_invite_copy_btn": {
+        "text": "Скопировать оба"
+      },
+      "family_invite_close_btn": {
+        "text": "Готово"
       }
     },
     "common": {

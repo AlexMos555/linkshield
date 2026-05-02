@@ -173,6 +173,66 @@
       },
       "device_clear_overrides_btn": {
         "text": "Hapus"
+      },
+      "family_hub_heading": {
+        "text": "Pusat Keluarga"
+      },
+      "family_hub_subtitle": {
+        "text": "Dapatkan pemberitahuan saat penipuan diblokir di perangkat orang yang Anda sayangi. Enkripsi end-to-end — Cleanway pun tidak membaca peringatannya."
+      },
+      "family_loading": {
+        "text": "Memuat…"
+      },
+      "family_none_label": {
+        "text": "Anda belum dalam keluarga"
+      },
+      "family_none_desc": {
+        "text": "Buat satu dan undang hingga 5 orang. Atau bergabung dengan keluarga yang sudah ada lewat kode."
+      },
+      "family_create_btn": {
+        "text": "Buat keluarga"
+      },
+      "family_join_btn": {
+        "text": "Gabung dengan kode"
+      },
+      "family_accept_btn": {
+        "text": "Gabung"
+      },
+      "family_members_label": {
+        "text": "anggota"
+      },
+      "family_invite_label": {
+        "text": "Undang anggota"
+      },
+      "family_invite_desc": {
+        "text": "Membuat kode + PIN sekali pakai. Kirim lewat SMS atau langsung."
+      },
+      "family_invite_btn": {
+        "text": "Buat undangan"
+      },
+      "family_alerts_label": {
+        "text": "Peringatan terbaru"
+      },
+      "family_alerts_empty": {
+        "text": "Belum ada peringatan — pemblokiran keluarga akan muncul di sini."
+      },
+      "family_invite_modal_title": {
+        "text": "Bagikan ini dengan anggota keluarga"
+      },
+      "family_invite_modal_desc": {
+        "text": "Kedua nilai hanya muncul sekali. Setelah dialog ditutup Anda tidak bisa melihatnya lagi — buat undangan baru jika perlu."
+      },
+      "family_invite_code_label": {
+        "text": "Kode"
+      },
+      "family_invite_pin_label": {
+        "text": "PIN"
+      },
+      "family_invite_copy_btn": {
+        "text": "Salin keduanya"
+      },
+      "family_invite_close_btn": {
+        "text": "Selesai"
       }
     },
     "common": {

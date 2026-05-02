@@ -433,3 +433,253 @@ document.getElementById("export-data").addEventListener("click", () => {
     URL.revokeObjectURL(url);
   });
 });
+
+// ─── Family Hub ───────────────────────────────────────────────────
+//
+// State machine:
+//   loading  → fetch /family/mine
+//   none     → "Create" + "Join" CTAs
+//   active   → list members + recent alerts (+ owner-only invite)
+//
+// Auth: requires chrome.storage.local.auth_token (Supabase access
+// token from a successful sign-in). Without it the section stays
+// hidden — sign-in flow lives in /signup on the landing page.
+//
+// Crypto: family-crypto.js + tweetnacl globals already loaded by
+// options.html. We import family-api.js + family-crypto.js as ES
+// modules so the existing chrome.runtime.getURL pattern works.
+
+async function lazyFamilyApi() {
+  return import(chrome.runtime.getURL("utils/family-api.js"));
+}
+
+async function lazyFamilyCrypto() {
+  return import(chrome.runtime.getURL("utils/family-crypto.js"));
+}
+
+function showFamilyState(name) {
+  const states = ["loading", "none", "active"];
+  for (const s of states) {
+    const el = document.getElementById(`family-state-${s}`);
+    if (el) el.hidden = s !== name;
+  }
+}
+
+let _familyState = { token: null, currentFamilyId: null, members: [] };
+
+async function loadFamilyHub() {
+  const section = document.getElementById("family-hub-section");
+  if (!section) return;
+
+  let stored;
+  try {
+    stored = await chrome.storage.local.get(["auth_token"]);
+  } catch {
+    return;
+  }
+  if (!stored || !stored.auth_token) {
+    // Anonymous — Family Hub only makes sense for signed-in users.
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+  showFamilyState("loading");
+  _familyState.token = stored.auth_token;
+
+  const api = await lazyFamilyApi();
+  const mine = await api.listMyFamilies(stored.auth_token);
+  if (!mine || !Array.isArray(mine.families) || mine.families.length === 0) {
+    showFamilyState("none");
+    return;
+  }
+
+  // Single-family UX for v1 — pick the first. Multi-family is a future
+  // iteration (rare case: user belongs to two families).
+  const fam = mine.families[0];
+  _familyState.currentFamilyId = fam.family_id;
+
+  // Make sure my keypair is registered server-side so siblings can
+  // encrypt to me. Idempotent (server-side ON CONFLICT, client-side
+  // chrome.storage cache).
+  try {
+    const crypto = await lazyFamilyCrypto();
+    const kp = await crypto.getOrCreateKeypair();
+    await api.registerMyKey(stored.auth_token, fam.family_id, kp.publicKeyB64);
+  } catch (e) {
+    console.warn("[Cleanway] family key register failed:", e && e.message);
+  }
+
+  const members = await api.listMembers(stored.auth_token, fam.family_id);
+  _familyState.members = (members && members.members) || [];
+
+  document.getElementById("family-active-name").textContent = fam.name;
+  document.getElementById("family-active-count").textContent = String(fam.member_count);
+  const roleBadge = document.getElementById("family-active-role");
+  roleBadge.textContent = fam.role;
+  roleBadge.setAttribute("data-source", fam.role === "owner" ? "device_override" : "user_default");
+
+  document.getElementById("family-owner-controls").hidden = fam.role !== "owner";
+
+  renderFamilyMembers(_familyState.members, stored.auth_token);
+  renderFamilyAlerts(stored.auth_token, fam.family_id);
+
+  showFamilyState("active");
+}
+
+function renderFamilyMembers(members) {
+  const container = document.getElementById("family-members-list");
+  if (!container) return;
+  container.innerHTML = "";
+  for (const m of members) {
+    const row = document.createElement("div");
+    row.className = "family-member-row";
+    const dot = document.createElement("span");
+    dot.style.cssText = `width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: ${m.public_key_b64 ? "#22c55e" : "#64748b"};`;
+    const label = document.createElement("span");
+    label.style.flex = "1";
+    label.style.color = "#e2e8f0";
+    // We don't have email/name here — backend returns user_id only.
+    // Show shortened ID + role for now; future iteration can join with
+    // public.users to surface display_name.
+    label.textContent = `${m.user_id.slice(0, 8)}… (${m.role})`;
+    if (!m.public_key_b64) {
+      const note = document.createElement("span");
+      note.style.cssText = "font-size: 11px; color: #f59e0b;";
+      note.textContent = "no key yet";
+      row.appendChild(dot);
+      row.appendChild(label);
+      row.appendChild(note);
+    } else {
+      row.appendChild(dot);
+      row.appendChild(label);
+    }
+    container.appendChild(row);
+  }
+}
+
+async function renderFamilyAlerts(token, familyId) {
+  const container = document.getElementById("family-alerts-list");
+  if (!container) return;
+
+  const api = await lazyFamilyApi();
+  const list = await api.listAlerts(token, familyId);
+  if (!list || !Array.isArray(list.alerts) || list.alerts.length === 0) {
+    // Keep the i18n empty-state default
+    return;
+  }
+
+  const crypto = await lazyFamilyCrypto();
+  const kp = await crypto.getOrCreateKeypair();
+
+  const decrypted = [];
+  for (const env of list.alerts) {
+    const opened = crypto.decryptForMe(
+      {
+        ciphertext_b64: env.ciphertext_b64,
+        nonce_b64: env.nonce_b64,
+        sender_pubkey_b64: env.sender_pubkey_b64,
+      },
+      kp.secretKeyB64
+    );
+    if (opened) {
+      decrypted.push({ ...opened, _server_id: env.id, _at: env.created_at });
+    }
+  }
+
+  if (!decrypted.length) {
+    return; // All envelopes failed to decrypt — show empty state
+  }
+
+  container.innerHTML = "";
+  for (const a of decrypted) {
+    const row = document.createElement("div");
+    row.className = "family-alert-row";
+    const domain = document.createElement("div");
+    domain.className = "domain";
+    domain.textContent = a.domain || "(unknown domain)";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const when = a._at ? new Date(a._at).toLocaleString() : "";
+    meta.textContent = `${a.level || "blocked"} · ${when}`;
+    row.appendChild(domain);
+    row.appendChild(meta);
+    container.appendChild(row);
+  }
+}
+
+// ─── Event handlers ───────────────────────────────────────────────
+
+document.getElementById("family-create-btn")?.addEventListener("click", async () => {
+  const stored = await chrome.storage.local.get(["auth_token"]);
+  if (!stored.auth_token) return;
+  const api = await lazyFamilyApi();
+  const created = await api.createFamily(stored.auth_token, "My Family");
+  if (created) {
+    // Re-render — the keypair register + member fetch happens in loadFamilyHub.
+    await loadFamilyHub();
+  } else {
+    alert("Couldn't create family. Try again in a moment.");
+  }
+});
+
+document.getElementById("family-join-toggle-btn")?.addEventListener("click", () => {
+  const form = document.getElementById("family-join-form");
+  if (form) form.hidden = !form.hidden;
+});
+
+document.getElementById("family-accept-btn")?.addEventListener("click", async () => {
+  const code = (document.getElementById("family-join-code")?.value || "").trim();
+  const pin = (document.getElementById("family-join-pin")?.value || "").trim();
+  const errBox = document.getElementById("family-join-error");
+  if (!code || !/^\d{4}$/.test(pin)) {
+    errBox.textContent = "Please enter a code and 4-digit PIN.";
+    errBox.hidden = false;
+    return;
+  }
+  errBox.hidden = true;
+  const stored = await chrome.storage.local.get(["auth_token"]);
+  if (!stored.auth_token) return;
+  const api = await lazyFamilyApi();
+  const joined = await api.acceptInvite(stored.auth_token, code, pin);
+  if (joined) {
+    await loadFamilyHub();
+  } else {
+    errBox.textContent = "Invalid or expired invite.";
+    errBox.hidden = false;
+  }
+});
+
+document.getElementById("family-invite-btn")?.addEventListener("click", async () => {
+  if (!_familyState.currentFamilyId || !_familyState.token) return;
+  const api = await lazyFamilyApi();
+  const invite = await api.createInvite(_familyState.token, _familyState.currentFamilyId);
+  if (!invite) {
+    alert("Couldn't create invite. Try again in a moment.");
+    return;
+  }
+  // Show modal with code+PIN — appears ONCE, server keeps only hashes.
+  const modal = document.getElementById("family-invite-modal");
+  document.getElementById("family-invite-code-display").textContent = invite.code;
+  document.getElementById("family-invite-pin-display").textContent = invite.pin;
+  modal.hidden = false;
+
+  document.getElementById("family-invite-copy-btn").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(`Cleanway Family invite\nCode: ${invite.code}\nPIN: ${invite.pin}`);
+      document.getElementById("family-invite-copy-btn").textContent = "Copied ✓";
+      setTimeout(() => {
+        const btn = document.getElementById("family-invite-copy-btn");
+        if (btn) btn.textContent = "Copy both";
+      }, 2000);
+    } catch {
+      // Clipboard blocked
+    }
+  };
+  document.getElementById("family-invite-close-btn").onclick = () => {
+    modal.hidden = true;
+  };
+});
+
+// Initial load
+loadFamilyHub().catch(() => {});

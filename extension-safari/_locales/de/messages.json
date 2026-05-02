@@ -170,6 +170,66 @@
   "device_clear_overrides_btn": {
     "message": "Löschen"
   },
+  "family_hub_heading": {
+    "message": "Familien-Hub"
+  },
+  "family_hub_subtitle": {
+    "message": "Werden Sie benachrichtigt, wenn auf den Geräten Ihrer Liebsten Betrug blockiert wird. Ende-zu-Ende verschlüsselt — selbst Cleanway liest die Hinweise nicht."
+  },
+  "family_loading": {
+    "message": "Lädt…"
+  },
+  "family_none_label": {
+    "message": "Sie sind noch nicht in einer Familie"
+  },
+  "family_none_desc": {
+    "message": "Erstellen Sie eine und laden Sie bis zu 5 Personen ein. Oder treten Sie einer bestehenden mit einem Code bei."
+  },
+  "family_create_btn": {
+    "message": "Familie erstellen"
+  },
+  "family_join_btn": {
+    "message": "Mit Code beitreten"
+  },
+  "family_accept_btn": {
+    "message": "Beitreten"
+  },
+  "family_members_label": {
+    "message": "Mitglieder"
+  },
+  "family_invite_label": {
+    "message": "Mitglied einladen"
+  },
+  "family_invite_desc": {
+    "message": "Erzeugt einen Einmal-Code + PIN. Per SMS oder persönlich weitergeben."
+  },
+  "family_invite_btn": {
+    "message": "Einladung erzeugen"
+  },
+  "family_alerts_label": {
+    "message": "Neueste Hinweise"
+  },
+  "family_alerts_empty": {
+    "message": "Noch keine Hinweise — Familien-Blockaden erscheinen hier."
+  },
+  "family_invite_modal_title": {
+    "message": "Geben Sie das an Ihr Familienmitglied"
+  },
+  "family_invite_modal_desc": {
+    "message": "Beide Werte erscheinen einmal. Nach dem Schließen können Sie sie nicht mehr sehen — generieren Sie bei Bedarf eine neue Einladung."
+  },
+  "family_invite_code_label": {
+    "message": "Code"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "Beides kopieren"
+  },
+  "family_invite_close_btn": {
+    "message": "Fertig"
+  },
   "trust_footer": {
     "message": "Ihre Daten verlassen dieses Gerät nie"
   },

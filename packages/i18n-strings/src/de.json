@@ -173,6 +173,66 @@
       },
       "device_clear_overrides_btn": {
         "text": "Löschen"
+      },
+      "family_hub_heading": {
+        "text": "Familien-Hub"
+      },
+      "family_hub_subtitle": {
+        "text": "Werden Sie benachrichtigt, wenn auf den Geräten Ihrer Liebsten Betrug blockiert wird. Ende-zu-Ende verschlüsselt — selbst Cleanway liest die Hinweise nicht."
+      },
+      "family_loading": {
+        "text": "Lädt…"
+      },
+      "family_none_label": {
+        "text": "Sie sind noch nicht in einer Familie"
+      },
+      "family_none_desc": {
+        "text": "Erstellen Sie eine und laden Sie bis zu 5 Personen ein. Oder treten Sie einer bestehenden mit einem Code bei."
+      },
+      "family_create_btn": {
+        "text": "Familie erstellen"
+      },
+      "family_join_btn": {
+        "text": "Mit Code beitreten"
+      },
+      "family_accept_btn": {
+        "text": "Beitreten"
+      },
+      "family_members_label": {
+        "text": "Mitglieder"
+      },
+      "family_invite_label": {
+        "text": "Mitglied einladen"
+      },
+      "family_invite_desc": {
+        "text": "Erzeugt einen Einmal-Code + PIN. Per SMS oder persönlich weitergeben."
+      },
+      "family_invite_btn": {
+        "text": "Einladung erzeugen"
+      },
+      "family_alerts_label": {
+        "text": "Neueste Hinweise"
+      },
+      "family_alerts_empty": {
+        "text": "Noch keine Hinweise — Familien-Blockaden erscheinen hier."
+      },
+      "family_invite_modal_title": {
+        "text": "Geben Sie das an Ihr Familienmitglied"
+      },
+      "family_invite_modal_desc": {
+        "text": "Beide Werte erscheinen einmal. Nach dem Schließen können Sie sie nicht mehr sehen — generieren Sie bei Bedarf eine neue Einladung."
+      },
+      "family_invite_code_label": {
+        "text": "Code"
+      },
+      "family_invite_pin_label": {
+        "text": "PIN"
+      },
+      "family_invite_copy_btn": {
+        "text": "Beides kopieren"
+      },
+      "family_invite_close_btn": {
+        "text": "Fertig"
       }
     },
     "common": {

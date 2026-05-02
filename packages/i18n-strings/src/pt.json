@@ -173,6 +173,66 @@
       },
       "device_clear_overrides_btn": {
         "text": "Limpar"
+      },
+      "family_hub_heading": {
+        "text": "Hub Familiar"
+      },
+      "family_hub_subtitle": {
+        "text": "Receba alertas quando golpes forem bloqueados nos dispositivos dos seus entes queridos. Criptografia ponta a ponta — nem o Cleanway lê os alertas."
+      },
+      "family_loading": {
+        "text": "Carregando…"
+      },
+      "family_none_label": {
+        "text": "Você ainda não está em uma família"
+      },
+      "family_none_desc": {
+        "text": "Crie uma e convide até 5 pessoas. Ou entre em uma já existente com um código."
+      },
+      "family_create_btn": {
+        "text": "Criar família"
+      },
+      "family_join_btn": {
+        "text": "Entrar com código"
+      },
+      "family_accept_btn": {
+        "text": "Entrar"
+      },
+      "family_members_label": {
+        "text": "membros"
+      },
+      "family_invite_label": {
+        "text": "Convidar um membro"
+      },
+      "family_invite_desc": {
+        "text": "Gera um código + PIN de uso único. Envie por SMS ou pessoalmente."
+      },
+      "family_invite_btn": {
+        "text": "Gerar convite"
+      },
+      "family_alerts_label": {
+        "text": "Alertas recentes"
+      },
+      "family_alerts_empty": {
+        "text": "Sem alertas ainda — aqui aparecem os bloqueios da família."
+      },
+      "family_invite_modal_title": {
+        "text": "Compartilhe isto com seu familiar"
+      },
+      "family_invite_modal_desc": {
+        "text": "Ambos os valores aparecem uma vez. Após fechar este diálogo não poderá vê-los de novo — gere outro convite se precisar."
+      },
+      "family_invite_code_label": {
+        "text": "Código"
+      },
+      "family_invite_pin_label": {
+        "text": "PIN"
+      },
+      "family_invite_copy_btn": {
+        "text": "Copiar ambos"
+      },
+      "family_invite_close_btn": {
+        "text": "Concluído"
       }
     },
     "common": {

@@ -50,6 +50,15 @@ async function _fetch(path, { method = "GET", token, body } = {}) {
 
 // ─── Family lifecycle ──────────────────────────────────────────────
 
+/**
+ * Returns { families: [{family_id, name, role, member_count}, ...] }.
+ * UI's first call when opening Family Hub — drives the state machine
+ * (no families → "Create / Join", ≥1 → active panel).
+ */
+export async function listMyFamilies(token) {
+  return _fetch("/api/v1/family/mine", { token });
+}
+
 export async function createFamily(token, name = "My Family") {
   return _fetch("/api/v1/family", { method: "POST", token, body: { name } });
 }

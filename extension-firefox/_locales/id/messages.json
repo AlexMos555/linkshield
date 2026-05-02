@@ -170,6 +170,66 @@
   "device_clear_overrides_btn": {
     "message": "Hapus"
   },
+  "family_hub_heading": {
+    "message": "Pusat Keluarga"
+  },
+  "family_hub_subtitle": {
+    "message": "Dapatkan pemberitahuan saat penipuan diblokir di perangkat orang yang Anda sayangi. Enkripsi end-to-end — Cleanway pun tidak membaca peringatannya."
+  },
+  "family_loading": {
+    "message": "Memuat…"
+  },
+  "family_none_label": {
+    "message": "Anda belum dalam keluarga"
+  },
+  "family_none_desc": {
+    "message": "Buat satu dan undang hingga 5 orang. Atau bergabung dengan keluarga yang sudah ada lewat kode."
+  },
+  "family_create_btn": {
+    "message": "Buat keluarga"
+  },
+  "family_join_btn": {
+    "message": "Gabung dengan kode"
+  },
+  "family_accept_btn": {
+    "message": "Gabung"
+  },
+  "family_members_label": {
+    "message": "anggota"
+  },
+  "family_invite_label": {
+    "message": "Undang anggota"
+  },
+  "family_invite_desc": {
+    "message": "Membuat kode + PIN sekali pakai. Kirim lewat SMS atau langsung."
+  },
+  "family_invite_btn": {
+    "message": "Buat undangan"
+  },
+  "family_alerts_label": {
+    "message": "Peringatan terbaru"
+  },
+  "family_alerts_empty": {
+    "message": "Belum ada peringatan — pemblokiran keluarga akan muncul di sini."
+  },
+  "family_invite_modal_title": {
+    "message": "Bagikan ini dengan anggota keluarga"
+  },
+  "family_invite_modal_desc": {
+    "message": "Kedua nilai hanya muncul sekali. Setelah dialog ditutup Anda tidak bisa melihatnya lagi — buat undangan baru jika perlu."
+  },
+  "family_invite_code_label": {
+    "message": "Kode"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "Salin keduanya"
+  },
+  "family_invite_close_btn": {
+    "message": "Selesai"
+  },
   "trust_footer": {
     "message": "Data Anda tidak pernah meninggalkan perangkat ini"
   },

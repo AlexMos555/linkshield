@@ -173,6 +173,66 @@
       },
       "device_clear_overrides_btn": {
         "text": "مسح"
+      },
+      "family_hub_heading": {
+        "text": "مركز العائلة"
+      },
+      "family_hub_subtitle": {
+        "text": "احصل على تنبيهات عند حظر عمليات احتيال على أجهزة أحبائك. تشفير من طرف إلى طرف — حتى Cleanway لا يقرأ التنبيهات."
+      },
+      "family_loading": {
+        "text": "جارٍ التحميل…"
+      },
+      "family_none_label": {
+        "text": "أنت لست في عائلة بعد"
+      },
+      "family_none_desc": {
+        "text": "أنشئ واحدة وادعُ حتى 5 أشخاص. أو انضم إلى عائلة موجودة برمز."
+      },
+      "family_create_btn": {
+        "text": "إنشاء عائلة"
+      },
+      "family_join_btn": {
+        "text": "الانضمام برمز"
+      },
+      "family_accept_btn": {
+        "text": "انضمام"
+      },
+      "family_members_label": {
+        "text": "أعضاء"
+      },
+      "family_invite_label": {
+        "text": "دعوة عضو في العائلة"
+      },
+      "family_invite_desc": {
+        "text": "ينشئ رمزاً + PIN لاستخدام واحد. أرسلها عبر SMS أو شخصياً."
+      },
+      "family_invite_btn": {
+        "text": "إنشاء الدعوة"
+      },
+      "family_alerts_label": {
+        "text": "التنبيهات الأخيرة"
+      },
+      "family_alerts_empty": {
+        "text": "لا توجد تنبيهات بعد — ستظهر هنا حالات الحظر العائلية."
+      },
+      "family_invite_modal_title": {
+        "text": "شارك هذا مع فرد من عائلتك"
+      },
+      "family_invite_modal_desc": {
+        "text": "تظهر القيمتان مرة واحدة فقط. بعد إغلاق هذه النافذة لن تتمكن من رؤيتهما مجدداً — أنشئ دعوة أخرى إن لزم."
+      },
+      "family_invite_code_label": {
+        "text": "الرمز"
+      },
+      "family_invite_pin_label": {
+        "text": "PIN"
+      },
+      "family_invite_copy_btn": {
+        "text": "نسخ الكليهما"
+      },
+      "family_invite_close_btn": {
+        "text": "تم"
       }
     },
     "common": {

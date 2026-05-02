@@ -117,6 +117,11 @@ class FakeSupabase:
                 if v.startswith("eq."):
                     val = v[3:]
                     out = [r for r in out if str(r.get(k)) == val]
+                elif v.startswith("in.("):
+                    # PostgREST `in.(a,b,c)` — comma-separated list of values
+                    inner = v[len("in."):].strip("()")
+                    allowed = {item.strip() for item in inner.split(",") if item.strip()}
+                    out = [r for r in out if str(r.get(k)) in allowed]
                 elif v == "is.null":
                     out = [r for r in out if r.get(k) is None]
             return out
@@ -140,6 +145,9 @@ class FakeSupabase:
                         row = {"id": new_id, "owner_id": body["owner_id"], "name": body.get("name", "My Family")}
                         fake.families[new_id] = row
                         return _Resp(201, [row])
+                    if method == "GET":
+                        # /family/mine queries here with ?id=in.(...) — list lookup.
+                        return _Resp(200, _filter(list(fake.families.values()), params))
                 if url.endswith("/family_members"):
                     if method == "GET":
                         return _Resp(200, _filter(fake.members, params))
@@ -203,6 +211,40 @@ def fake_sb(monkeypatch):
     fake = FakeSupabase()
     monkeypatch.setattr(_httpx, "AsyncClient", fake.build())
     return fake
+
+
+# ─── /family/mine GET ─────────────────────────────────────────────
+
+
+def test_mine_returns_empty_when_no_membership(authed_user, supabase_ok, fake_sb, client_factory):
+    client = client_factory(authed_user)
+    resp = client.get("/api/v1/family/mine")
+    assert resp.status_code == 200
+    assert resp.json() == {"families": []}
+
+
+def test_mine_returns_families_with_role_and_count(supabase_ok, fake_sb, client_factory):
+    """user-A is owner of fam-1 (3 members) and member of fam-2 (2 members)."""
+    fake_sb.families["fam-1"] = {"id": "fam-1", "owner_id": "user-A", "name": "Smiths"}
+    fake_sb.families["fam-2"] = {"id": "fam-2", "owner_id": "user-X", "name": "Joneses"}
+    fake_sb.members.append({"family_id": "fam-1", "user_id": "user-A", "role": "owner"})
+    fake_sb.members.append({"family_id": "fam-1", "user_id": "user-B", "role": "member"})
+    fake_sb.members.append({"family_id": "fam-1", "user_id": "user-C", "role": "member"})
+    fake_sb.members.append({"family_id": "fam-2", "user_id": "user-X", "role": "owner"})
+    fake_sb.members.append({"family_id": "fam-2", "user_id": "user-A", "role": "member"})
+
+    a = AuthUser(id="user-A", email="a@t.com", tier=UserTier.free)
+    resp = client_factory(a).get("/api/v1/family/mine")
+    assert resp.status_code == 200
+    body = resp.json()
+    by_id = {f["family_id"]: f for f in body["families"]}
+    assert len(by_id) == 2
+    assert by_id["fam-1"]["role"] == "owner"
+    assert by_id["fam-1"]["name"] == "Smiths"
+    assert by_id["fam-1"]["member_count"] == 3
+    assert by_id["fam-2"]["role"] == "member"
+    assert by_id["fam-2"]["name"] == "Joneses"
+    assert by_id["fam-2"]["member_count"] == 2
 
 
 # ─── /family POST (create) ────────────────────────────────────────
