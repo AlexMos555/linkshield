@@ -109,6 +109,13 @@ export default function SettingsScreen() {
           </View>
           <Text style={styles.rowArrow}>&rarr;</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.row} onPress={() => router.push("/family")}>
+          <View>
+            <Text style={styles.rowLabel}>Family Hub</Text>
+            <Text style={styles.rowDesc}>End-to-end encrypted alerts for loved ones</Text>
+          </View>
+          <Text style={styles.rowArrow}>&rarr;</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Skill Level */}
