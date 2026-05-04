@@ -55,7 +55,7 @@ export default function Terms() {
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "60px 24px" }}>
         <a href="/" style={{ color: "#60a5fa", fontSize: 14, textDecoration: "none" }}>&larr; Back to Cleanway</a>
         <h1 style={{ fontSize: 36, fontWeight: 800, color: "#f8fafc", margin: "24px 0 8px" }}>Terms of Service</h1>
-        <p style={{ color: "#64748b", marginBottom: 40 }}>Last updated: April 7, 2026</p>
+        <p style={{ color: "#64748b", marginBottom: 40 }}>Last updated: May 4, 2026</p>
 
         <S t="1. Service Description">
           <p>Cleanway provides phishing protection through browser extensions, mobile applications, and web APIs. The service checks domain names against threat intelligence databases and provides risk assessments.</p>
@@ -81,8 +81,21 @@ export default function Terms() {
             <li>Use the service to generate false security reports about legitimate businesses</li>
             <li>Submit automated bulk requests beyond your plan limits</li>
             <li>Interfere with the service or its infrastructure</li>
+            <li>Use Family Hub to send unsolicited content, spam, or harassment to other users; the encryption is meant to protect family privacy, not to shield abusive behavior</li>
+            <li>Add a person to a Family Hub group without their consent (including dependents who can refuse — children get explicit say once they&apos;re old enough)</li>
+            <li>Attempt to break the end-to-end encryption (e.g. by deriving secret keys from public keys) or claim that you have</li>
           </ul>
-          <p>Violation may result in immediate account suspension.</p>
+          <p>Violation may result in immediate account suspension. We process abuse reports manually — when an alleged victim reports unwanted Family Hub messages we will revoke the inviter&apos;s ability to add new members and may terminate their account, even though we cannot read the message content itself.</p>
+        </S>
+
+        <S t="4a. Family Hub specifics">
+          <p>Family Hub is end-to-end encrypted (see <a href="/privacy-policy" style={{ color: "#60a5fa" }}>Privacy Policy §6</a> for the technical details). Practical consequences:</p>
+          <ul>
+            <li><strong>We cannot recover lost private keys.</strong> If every device in your family is wiped at the same time, past alerts addressed to those devices become permanently unreadable. We can revoke + re-issue keypairs for future alerts but the historical ciphertexts are gone.</li>
+            <li><strong>Invite codes appear once.</strong> The 4-digit PIN + invite code are shown to the inviter at creation time only. Lost them? Generate a new invite — old ones expire 7 days after creation regardless.</li>
+            <li><strong>You are responsible for who you invite.</strong> An invitee accepting your invite gains access to the encrypted alert stream of every member of that family. Pick wisely; the invariant is "people you trust to know what scams you nearly fell for."</li>
+            <li><strong>Family alerts are advisory.</strong> They tell you a scam was blocked on a relative&apos;s device. They are not a substitute for direct check-ins, conservatorship, or other legal/medical safeguards for vulnerable family members.</li>
+          </ul>
         </S>
 
         <S t="5. Accuracy and Limitations">

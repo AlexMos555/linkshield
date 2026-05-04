@@ -55,7 +55,7 @@ export default function PrivacyPolicy() {
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "60px 24px" }}>
         <a href="/" style={{ color: "#60a5fa", fontSize: 14, textDecoration: "none" }}>&larr; Back to Cleanway</a>
         <h1 style={{ fontSize: 36, fontWeight: 800, color: "#f8fafc", margin: "24px 0 8px" }}>Privacy Policy</h1>
-        <p style={{ color: "#64748b", marginBottom: 40 }}>Last updated: April 7, 2026</p>
+        <p style={{ color: "#64748b", marginBottom: 40 }}>Last updated: May 4, 2026</p>
 
         <Section title="1. What Cleanway Does">
           <p>Cleanway is a phishing protection service that checks domain names against threat intelligence databases. We provide a browser extension, mobile app, and API.</p>
@@ -69,13 +69,15 @@ export default function PrivacyPolicy() {
         <Section title="3. What Data We Collect">
           <h4 style={{ color: "#22c55e", marginTop: 16 }}>Data stored on our servers</h4>
           <ul>
-            <li>Email address (for account management)</li>
-            <li>Authentication provider (Google, Apple, or email)</li>
-            <li>Subscription status and tier (free, personal, family)</li>
+            <li>Email address (for account management and magic-link sign-in)</li>
+            <li>Authentication provider (Google, Apple, or email magic link)</li>
+            <li>Subscription status and tier (free, personal, family, business)</li>
             <li>Device list (anonymous device hash, platform, last seen)</li>
             <li>Weekly aggregate numbers only: total checks, total blocks, total trackers, security score number</li>
-            <li>Family membership (who is in your family group)</li>
-            <li>User settings (notification preferences, theme)</li>
+            <li>Lifetime threats-blocked counter (a number, no domains) — used to surface upgrade prompts after the freemium threshold</li>
+            <li>Family membership (who is in your family group, public keys, role)</li>
+            <li>Family alert ciphertexts (end-to-end encrypted; see §6)</li>
+            <li>User settings (notification preferences, theme, skill level, font scale)</li>
           </ul>
 
           <h4 style={{ color: "#f59e0b", marginTop: 16 }}>Data stored only on your device (never sent to our servers)</h4>
@@ -85,7 +87,8 @@ export default function PrivacyPolicy() {
             <li>Security Score breakdown and factor details</li>
             <li>Weekly Report raw data and trends</li>
             <li>Tracker encounter log</li>
-            <li>Family alert content (end-to-end encrypted)</li>
+            <li>Plaintext family alert content (decrypted locally)</li>
+            <li>Your Family Hub private key (never leaves the device)</li>
           </ul>
 
           <h4 style={{ color: "#ef4444", marginTop: 16 }}>Data we NEVER collect</h4>
@@ -121,12 +124,35 @@ export default function PrivacyPolicy() {
           <p>These services receive only the domain name. They do not receive your identity, IP address, or any browsing context.</p>
         </Section>
 
-        <Section title="6. Family Hub">
-          <p>Family alerts are end-to-end encrypted using AES-256-GCM. Our servers relay encrypted blobs between family members but cannot decrypt them. We see: family group membership, encrypted payload, and timestamps. We cannot see: threat details, domain names, or alert content.</p>
+        <Section title="6. Family Hub (end-to-end encryption)">
+          <p>Family Hub alerts are end-to-end encrypted using <strong>curve25519 + XSalsa20-Poly1305</strong> (the libsodium <code>nacl.box</code> primitive). Each family member&apos;s device generates a keypair locally. The public half is uploaded to our server so siblings can encrypt to it; the private half <strong>never leaves the device</strong>.</p>
+          <p>What our server can see:</p>
+          <ul>
+            <li>That you belong to a specific family group (the relationship graph)</li>
+            <li>Your public key + version</li>
+            <li>The ciphertext bytes of each alert (we cannot decrypt them)</li>
+            <li>The 24-byte nonce + sender public key per envelope</li>
+            <li>Timestamps and recipient routing (which encrypted blob is addressed to which user)</li>
+            <li>The alert type label (e.g., <code>block</code>) — chosen by your client; defaults to a single neutral value</li>
+          </ul>
+          <p>What our server <strong>cannot</strong> see — even if compromised:</p>
+          <ul>
+            <li>Which domain was blocked</li>
+            <li>The threat score, level, or reasoning</li>
+            <li>Any free-form fields the sender attached</li>
+          </ul>
+          <p><strong>Invite tokens</strong> (code + 4-digit PIN) are stored as <code>sha256</code> + <code>bcrypt</code> hashes respectively. The raw values are shown to the inviter exactly once at creation time; we cannot retrieve them later.</p>
+          <p>If you delete your account or remove yourself from a family, we revoke your public key and remove pending alerts addressed to you. Past alerts already decrypted on your device remain on that device.</p>
         </Section>
 
         <Section title="7. Payments">
-          <p>Payments are processed by Stripe. We do not store credit card numbers, bank account details, or other financial information. Stripe&apos;s privacy policy applies to payment processing.</p>
+          <p>Payments are processed by Stripe. We do not store credit card numbers, bank account details, or other financial information. We receive only a Stripe customer ID + the result of each charge (succeeded / failed / refunded). Stripe&apos;s privacy policy applies to payment processing.</p>
+          <p>Regional pricing is determined by your <em>billing country</em> (declared during Stripe checkout), not your IP address. We do not track or geolocate your traffic to set prices.</p>
+        </Section>
+
+        <Section title="7a. Error tracking (Sentry)">
+          <p>When the extension, mobile app, or our website encounters a software error, we send a stack trace + browser/OS metadata to Sentry to help us fix bugs. We mask all DOM text and form inputs in any session replay so the contents of pages you visit are never captured.</p>
+          <p>Error reports are kept for 90 days then deleted. You can opt out by setting <code>NEXT_PUBLIC_SENTRY_DSN</code> to an empty string in a self-hosted build, or by blocking the Sentry domain in your network rules.</p>
         </Section>
 
         <Section title="8. Data Retention">
