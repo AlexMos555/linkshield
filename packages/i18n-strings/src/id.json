@@ -667,7 +667,7 @@
     },
     "welcome": {
       "subject": {
-        "text": "Welcome to Cleanway — you're protected now",
+        "text": "Selamat datang di Cleanway — Anda sudah terlindungi",
         "_needs_native_review": true
       },
       "preheader": {
@@ -709,7 +709,7 @@
     },
     "receipt": {
       "subject": {
-        "text": "Your Cleanway receipt",
+        "text": "Tanda terima Cleanway Anda",
         "_needs_native_review": true
       },
       "title": {
@@ -744,7 +744,7 @@
     },
     "weekly_report": {
       "subject": {
-        "text": "Your week on Cleanway",
+        "text": "Pekan Anda di Cleanway",
         "_needs_native_review": true
       },
       "preheader": {
@@ -783,7 +783,7 @@
     },
     "family_invite": {
       "subject": {
-        "text": "$NAME$ invited you to join their Cleanway family",
+        "text": "$NAME$ mengundang Anda ke keluarga Cleanway-nya",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -819,7 +819,7 @@
     },
     "breach_alert": {
       "subject": {
-        "text": "Your email was found in a data breach",
+        "text": "Email Anda ditemukan dalam kebocoran data",
         "_needs_native_review": true
       },
       "preheader": {
@@ -845,7 +845,7 @@
     },
     "subscription_cancel": {
       "subject": {
-        "text": "Your Cleanway subscription was canceled",
+        "text": "Langganan Cleanway Anda telah dibatalkan",
         "_needs_native_review": true
       },
       "title": {
@@ -876,7 +876,7 @@
     },
     "granny_mode_invite": {
       "subject": {
-        "text": "$NAME$ set up Cleanway protection for you",
+        "text": "$NAME$ menyiapkan perlindungan Cleanway untuk Anda",
         "placeholders": {
           "name": {
             "content": "$1"
