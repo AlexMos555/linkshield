@@ -236,6 +236,52 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
   chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
+  // Family Hub poller — fires every minute while the user is signed
+  // in + has a family cached. Fan-out (background side) ensures the
+  // server has the alert; this poller surfaces incoming siblings'
+  // alerts as OS notifications.
+  void (async () => {
+    try {
+      const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
+      notifier.ensureFamilyPollAlarm(1);
+    } catch (e) { /* alarms permission missing — silent */ }
+  })();
+});
+
+// Re-arm the alarm on every SW startup (the SW can get evicted; alarms
+// survive eviction, but installing on startup is idempotent insurance).
+void (async () => {
+  try {
+    const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
+    notifier.ensureFamilyPollAlarm(1);
+  } catch (e) { /* silent */ }
+})();
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  try {
+    const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
+    if (notifier.isFamilyPollAlarm(alarm.name)) {
+      await notifier.pollAndNotify();
+    }
+  } catch (e) {
+    // Silent — pollAndNotify is fail-open. A missed minute is fine.
+  }
+});
+
+chrome.notifications.onClicked.addListener(async (notificationId) => {
+  try {
+    const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
+    if (!notifier.isFamilyNotificationId(notificationId)) return;
+    // Open the Options page Family Hub section. chrome.runtime.
+    // openOptionsPage() is the canonical way; some MV3 builds need a
+    // tabs.create fallback if the options page isn't declared.
+    try {
+      chrome.runtime.openOptionsPage();
+    } catch {
+      chrome.tabs.create({ url: chrome.runtime.getURL("src/options/options.html") });
+    }
+    chrome.notifications.clear(notificationId);
+  } catch (e) { /* silent */ }
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
