@@ -4,6 +4,20 @@ if (typeof browser !== "undefined" && (typeof chrome === "undefined" || !chrome.
  * Cleanway Background — v3 (bullet-proof)
  */
 
+// Load TweetNaCl into the SW global scope BEFORE any handlers run, so
+// utils/family-crypto.js (loaded later via dynamic import) finds
+// globalThis.nacl. importScripts is the only way to do this in MV3
+// classic-script SWs; if it fails (manifest mode mismatch, manifest
+// glob excluded the file), Family Hub fan-out is silently disabled.
+try {
+  importScripts(
+    chrome.runtime.getURL("src/utils/vendor/tweetnacl.min.js"),
+    chrome.runtime.getURL("src/utils/vendor/tweetnacl-util.min.js")
+  );
+} catch (e) {
+  console.warn("[Cleanway] tweetnacl load failed; family fan-out disabled:", e && e.message);
+}
+
 // API base — production Railway default, override via Options page (chrome.storage.local.api_url)
 let API_BASE = "https://api.cleanway.ai";
 try {
@@ -161,6 +175,20 @@ async function handleCheck(domains) {
       if (stored && stored.auth_token) {
         const apiModule = await import(chrome.runtime.getURL("utils/api.js"));
         await apiModule.incrementThreatCounter(stored.auth_token, dangerousBlocksThisBatch);
+
+        // Family Hub auto-fan-out: encrypt this batch of dangerous
+        // results to every sibling's pubkey (cached by options.js
+        // last time the user opened Family Hub) and POST to
+        // /family/{id}/alerts. Server stays blind — encryption
+        // happens here. Dedup window inside fanOutAlerts prevents
+        // spam from page reloads.
+        try {
+          const fanout = await import(chrome.runtime.getURL("utils/family-fanout.js"));
+          const dangerous = results.filter(r => r.level === "dangerous");
+          await fanout.fanOutAlerts(stored.auth_token, dangerous);
+        } catch (e) {
+          // Silent — family alerts are courtesy; never block UX.
+        }
       }
     } catch (e) {
       // No-op: a missed sync just means the popup nudge appears later

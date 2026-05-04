@@ -524,6 +524,24 @@ async function loadFamilyHub() {
   renderFamilyMembers(_familyState.members, stored.auth_token);
   renderFamilyAlerts(stored.auth_token, fam.family_id);
 
+  // Cache pubkeys for the background-script auto-fan-out path.
+  // Without this, background.js can't encrypt new alerts (it has no
+  // access to /family/{id}/members on every block). Re-cached on every
+  // Family Hub render so adding a new sibling propagates within minutes.
+  try {
+    const fanout = await import(chrome.runtime.getURL("utils/family-fanout.js"));
+    // Resolve my own user_id by JWT decode — sub claim is the user id.
+    let myUid = null;
+    try {
+      const parts = stored.auth_token.split(".");
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      myUid = payload.sub || null;
+    } catch { /* malformed token — leave myUid null, all members will be siblings */ }
+    await fanout.setFamilyCache(fam.family_id, myUid, _familyState.members);
+  } catch (e) {
+    console.warn("[Cleanway] family cache update failed:", e && e.message);
+  }
+
   showFamilyState("active");
 }
 
