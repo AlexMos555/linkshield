@@ -316,9 +316,9 @@
 <section class="progress-section">
   <div class="progress-label">
     <h2>Overall progress</h2>
-    <div class="progress-pct">~91%</div>
+    <div class="progress-pct">~92%</div>
   </div>
-  <div class="progress-bar"><div class="progress-fill" style="width:91%"></div></div>
+  <div class="progress-bar"><div class="progress-fill" style="width:92%"></div></div>
 </section>
 
 <!-- Stats -->
@@ -372,7 +372,7 @@
     <h3><span class="phase-tag">B</span> Shipping unblock</h3>
     <div class="phase-meta">
       <span class="phase-status ps-partial">PARTIAL</span>
-      <span class="count">7 / 11</span>
+      <span class="count">8 / 12</span>
     </div>
   </summary>
   <div class="phase-body">
@@ -382,9 +382,10 @@
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Railway deploy stable, api.cleanway.ai responds 200</div><div class="task-meta">Custom domain wired 2026-04-22; ALLOWED_ORIGINS includes cleanway.ai</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Supabase EU active</div><div class="task-meta">Frankfurt project, schema 001-007 applied, RLS clean</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Vercel project connected, landing live</div><div class="task-meta">cleanway.ai HTTPS 200, www→apex 307, 80+ SSG routes generated</div></div></li>
-      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Pytest 488 tests passing</div><div class="task-meta">Was 165 at start of project</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Pytest 521 tests passing</div><div class="task-meta">Was 165 at project start; +33 since 488 mark (Stripe webhook + Family Hub fanout/notify, etc.)</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Stripe open redirect fix</div><div class="task-meta">field_validator on success_url/cancel_url <code>c0e179e</code></div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Production extension manifests cleaned</div><div class="task-meta">Removed http://localhost:8000/* from Chrome/Firefox/Safari builds</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">CI lockfile-sync guard</div><div class="task-meta">Workflow runs <code>npm ci --ignore-scripts</code> on every package.json change; fails the PR if the workspace-root <code>package-lock.json</code> drifts. Closes the class of bug we hit twice in 2026 (post-rebrand + post-dependabot @types/node) <code>b061807</code></div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Google Safe Browsing API key <span class="badge-blocker">P0 · USER</span></div><div class="task-meta">console.cloud.google.com → Enable Safe Browsing → Railway env <code>GOOGLE_SAFE_BROWSING_API_KEY</code> · 10 min</div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Stripe account + 24 regional price IDs <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">3 plans × 4 tiers × 2 intervals · needs business info + bank</div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Upstash Redis (or Railway addon) <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Free tier 10K cmd/day · backs rate limit + referral counters</div></div></li>
@@ -416,7 +417,7 @@
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Viral SEO loop on /check/{domain}</div><div class="task-meta">Dynamic OG image per scan + hreflang + Review JSON-LD <code>7dac212</code></div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Homepage + /audit + /pricing + /business + /privacy + /terms SEO</div><div class="task-meta">Per-locale metadata, Organization + WebSite + SoftwareApp + FAQPage + Product/Offer JSON-LD <code>af039f8 083e248 cfa020a</code></div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">PWA manifest — installable web app</div><div class="task-meta">"Add to Home Screen" on iOS Safari + Android Chrome <code>ca8f874</code></div></div></li>
-      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Native review of 8 draft translations <span class="badge-blocker">P2 · HUMANS</span></div><div class="task-meta">es/pt/fr/de/it/id/hi/ar before Chrome Web Store publish · need native speakers</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Native review of 8 draft translations <span class="badge-blocker">P2 · HUMANS</span></div><div class="task-meta">es/pt/fr/de/it/id/hi/ar before Chrome Web Store publish · need native speakers · pre-review pass shipped 5 obvious fixes (ru × 2, ar × 2, de × 1) — Family Hub strings <code>10bf853</code></div></div></li>
       <li><span class="icon icon-next">▶</span><div class="task-content"><div class="task-title">Pricing v2 frontend: paywall nudge UI in extension</div><div class="task-meta">Backend API ready; needs popup UX wiring to show "Unlock details" CTA after threshold cross · autonomous-able</div></div></li>
     </ul>
   </div>
@@ -428,7 +429,7 @@
     <h3><span class="phase-tag">D</span> Skill Levels (Kids / Granny / Pro)</h3>
     <div class="phase-meta">
       <span class="phase-status ps-partial">PARTIAL</span>
-      <span class="count">3 / 8</span>
+      <span class="count">4 / 8</span>
     </div>
   </summary>
   <div class="phase-body">
@@ -474,7 +475,7 @@
     <h3><span class="phase-tag">E2</span> Transactional email</h3>
     <div class="phase-meta">
       <span class="phase-status ps-partial">PARTIAL</span>
-      <span class="count">7 / 10</span>
+      <span class="count">9 / 12</span>
     </div>
   </summary>
   <div class="phase-body">
@@ -487,6 +488,8 @@
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Per-user-per-template rate limit</div><div class="task-meta">Redis INCR+EXPIRE budgets per template, fails open on outage <code>0b905db</code></div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Cross-locale render parity tests</div><div class="task-meta">45 tests covering all 10 locales, fallback, Unicode, no-double-replace <code>6654f0d</code></div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Email service rate-limit fail-open semantics</div><div class="task-meta">Redis offline → transactional emails (receipts) still go out</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Welcome email honors user.preferred_locale</div><div class="task-meta">Was hardcoded <code>locale="en"</code>; now reads <code>user_settings.preferred_locale</code> on send. Defaults to "en" for legacy rows. <code>d792c39</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">63 email subject lines translated for 9 non-EN locales</div><div class="task-meta">7 templates × 9 langs (ru/es/pt/fr/de/it/id/hi/ar) <code>f5a21fd</code></div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Email provider account (Zoho Free or AWS SES) <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Zoho Free 5 users → MX records → support@/security@cleanway.ai · 20 min</div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">DKIM + SPF + DMARC on cleanway.ai <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Squarespace DNS records after email provider chosen</div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Bounce + complaint webhook handling <span class="badge-blocker">DEPENDS</span></div><div class="task-meta">Provider-specific (Resend/SES); needs provider chosen first</div></div></li>
@@ -630,10 +633,10 @@
   </div>
 </details>
 
-<!-- ═════════ TODAY'S SESSION LOG ═════════ -->
+<!-- ═════════ SESSION LOG ═════════ -->
 <section class="session-log">
-  <h2>Session log — 2026-04-26 → 2026-04-27</h2>
-  <p class="session-when">13 commits · 88 new tests (400 → 488) · 9 features shipped autonomously</p>
+  <h2>Session log — 2026-04-28 → 2026-05-05</h2>
+  <p class="session-when">26 commits · +33 tests (488 → 521) · Family Hub end-to-end + dependabot triage + CI hardening</p>
 
   <table class="commits">
     <thead>
@@ -645,19 +648,31 @@
       </tr>
     </thead>
     <tbody>
-      <tr><td><code>438909c</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Pricing v2 — 50-threat freemium counter + detail gating</td><td>+18</td></tr>
-      <tr><td><code>7dac212</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Viral SEO loop on /check — OG image + hreflang + JSON-LD</td><td>—</td></tr>
-      <tr><td><code>af039f8</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Homepage + /audit SEO + AI-bot blocking robots.txt</td><td>—</td></tr>
-      <tr><td><code>4bff4be</code></td><td><span class="ttype ttype-feat">feat</span></td><td>RFC 8058 unsubscribe — actual persistence + send-side suppression</td><td>+11</td></tr>
-      <tr><td><code>083e248</code></td><td><span class="ttype ttype-feat">feat</span></td><td>/pricing SEO + Product JSON-LD with regional Offers</td><td>—</td></tr>
-      <tr><td><code>ca8f874</code></td><td><span class="ttype ttype-feat">feat</span></td><td>PWA manifest — installable web app + home-screen install loop</td><td>—</td></tr>
-      <tr><td><code>cfa020a</code></td><td><span class="ttype ttype-feat">feat</span></td><td>SEO metadata for /business + /privacy-policy + /terms</td><td>—</td></tr>
-      <tr><td><code>0b905db</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Per-user-per-template email rate limit</td><td>+9</td></tr>
-      <tr><td><code>395af6f</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Skill levels — device override + effective resolution endpoints</td><td>+8</td></tr>
-      <tr><td><code>d52b93f</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Referral program — actual credit grant + persistence</td><td>+15</td></tr>
-      <tr><td><code>324627f</code></td><td><span class="ttype ttype-test">test</span></td><td>Stabilize test_verify_rejects_tampered_signature (~6% flake)</td><td>—</td></tr>
-      <tr><td><code>6654f0d</code></td><td><span class="ttype ttype-test">test</span></td><td>Cross-locale email render parity — 45 new tests covering all 10 langs</td><td>+45</td></tr>
-      <tr><td><code>b684acd</code></td><td><span class="ttype ttype-ci">ci</span></td><td>Drop unused typing imports flagged by full ruff scan</td><td>—</td></tr>
+      <tr><td><code>10bf853</code></td><td><span class="ttype ttype-feat">i18n</span></td><td>Native-review fixes for ru / ar / de Family Hub strings</td><td>—</td></tr>
+      <tr><td><code>d792c39</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Welcome email respects user.preferred_locale (was hardcoded "en")</td><td>—</td></tr>
+      <tr><td><code>b061807</code></td><td><span class="ttype ttype-ci">ci</span></td><td>Lockfile workflow re-runs when its own file changes</td><td>—</td></tr>
+      <tr><td><code>e04ed01</code></td><td><span class="ttype ttype-ci">ci</span></td><td>Lockfile sync uses npm ci (was platform-sensitive regen-and-diff)</td><td>—</td></tr>
+      <tr><td><code>f3086d7</code></td><td><span class="ttype ttype-feat">chore</span></td><td>Lockfile guard + invite-URL UMD util + smoke test (caught subdomain phish bug)</td><td>+16</td></tr>
+      <tr><td><code>a30678c</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Family Hub QR + shareable link + /family/join landing</td><td>—</td></tr>
+      <tr><td colspan="4" style="font-size:11px;color:var(--text-soft);padding-top:6px;border-top:1px dashed var(--border)">9 dependabot bumps merged (4 pip + 5 GH Actions); 4 majors deferred; 3 RN closed (Expo SDK 53 blocker)</td></tr>
+      <tr><td><code>1fbf083</code></td><td><span class="ttype ttype-feat">db</span></td><td>Migration 011 — hot-query indexes (family_members, family_alerts)</td><td>—</td></tr>
+      <tr><td><code>bd1b38e</code></td><td><span class="ttype ttype-test">test</span></td><td>Stripe webhook integration tests — 14 new cases</td><td>+14</td></tr>
+      <tr><td><code>f5a21fd</code></td><td><span class="ttype ttype-feat">i18n</span></td><td>63 email subject translations for 9 non-EN locales × 7 templates</td><td>—</td></tr>
+      <tr><td><code>98e6e3e</code></td><td><span class="ttype ttype-feat">docs</span></td><td>Privacy + terms updated for Family Hub E2E + Sentry + Pricing v2</td><td>—</td></tr>
+      <tr><td><code>d5c83b1</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Family Hub local notifications — poll + OS notification on new alerts</td><td>—</td></tr>
+      <tr><td><code>0daf2e6</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Family Hub auto-fan-out — every block reaches family in real time</td><td>—</td></tr>
+      <tr><td><code>59af72f</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Mobile Family Hub Phase 2 — full UI screen with state machine</td><td>—</td></tr>
+      <tr><td><code>a438154</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Mobile Family Hub Phase 1 — Supabase SDK + crypto + REST client</td><td>—</td></tr>
+      <tr><td><code>231541f</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Family Hub UI end-to-end + GET /family/mine</td><td>+3</td></tr>
+      <tr><td><code>1d8903f</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Family Hub client crypto + API client (TweetNaCl box)</td><td>—</td></tr>
+      <tr><td><code>53746dd</code></td><td><span class="ttype ttype-feat">db</span></td><td>Migration 010 — auto-create public.users on Supabase Auth signup</td><td>—</td></tr>
+      <tr><td><code>cd4fad6</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Sentry landing wiring + welcome email autonomous trigger</td><td>—</td></tr>
+      <tr><td><code>c400a94</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Supabase Auth magic-link signup + checkout token wiring</td><td>—</td></tr>
+      <tr><td><code>6fe4b59</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Email build pipeline — tsx runtime + 140 rendered templates committed</td><td>—</td></tr>
+      <tr><td><code>a1cd312</code></td><td><span class="ttype ttype-feat">script</span></td><td>create_stripe_prices.py — one-shot for the 24 Stripe price IDs</td><td>—</td></tr>
+      <tr><td><code>a763e68</code></td><td><span class="ttype ttype-feat">feat</span></td><td>/success page for Stripe post-checkout redirect</td><td>—</td></tr>
+      <tr><td><code>0ce61f6</code></td><td><span class="ttype ttype-feat">feat</span></td><td>/signup skeleton — graceful destination for /pricing 401</td><td>—</td></tr>
+      <tr><td><code>3825a3a</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Accept GOOGLE_SAFE_BROWSING_API_KEY too — match industry naming</td><td>—</td></tr>
     </tbody>
   </table>
 </section>
@@ -686,15 +701,15 @@
       <li><span class="icon icon-next">a</span><div class="task-content"><div class="task-title">Pricing v2 frontend nudge UI in extension popup</div><div class="task-meta">Backend ready (438909c); needs popup wiring to fetch /threats/status and show "Unlock details" CTA after threshold cross</div></div></li>
       <li><span class="icon icon-next">b</span><div class="task-content"><div class="task-title">Skill selector UI in extension settings</div><div class="task-meta">Backend ready (395af6f); needs settings panel + dropdown</div></div></li>
       <li><span class="icon icon-next">c</span><div class="task-content"><div class="task-title">Service worker for landing (offline cache + push hook)</div><div class="task-meta">PWA manifest done; SW unlocks push notifications + offline /check</div></div></li>
-      <li><span class="icon icon-next">d</span><div class="task-content"><div class="task-title">Email build pipeline fix (TS → JS compile step)</div><div class="task-meta">build-emails.mjs imports .ts, runtime fails; needs tsc/esbuild step before render. Unblocks physical HTML snapshots.</div></div></li>
-      <li><span class="icon icon-next">e</span><div class="task-content"><div class="task-title">Family Hub backend (libsodium AES-256-GCM E2E alerts)</div><div class="task-meta">Schema ready; protocol design + crypto wiring · medium scope</div></div></li>
-      <li><span class="icon icon-next">f</span><div class="task-content"><div class="task-title">Privacy Audit shareable A-F grade card</div><div class="task-meta">Static badge image generator; viral loop · small scope</div></div></li>
+      <li><span class="icon icon-next">d</span><div class="task-content"><div class="task-title">Privacy Audit shareable A-F grade card</div><div class="task-meta">Static badge image generator; viral loop · small scope</div></div></li>
+      <li><span class="icon icon-next">e</span><div class="task-content"><div class="task-title">Stale TODOs in API code</div><div class="task-meta"><code>scam.py:276</code> Whisper voice transcription stub · <code>user.py:892</code> family-router cross-concern docstring TODO</div></div></li>
+      <li><span class="icon icon-next">f</span><div class="task-content"><div class="task-title">Bloom filter wiring or cleanup decision</div><div class="task-meta">200 LOC of well-documented infrastructure in <code>extension-core/src/utils/bloom.js</code> with no callers + a <code>// TODO: setup CDN</code> at the top. Wire it (95% local-check feature) or delete it.</div></div></li>
     </ul>
   </div>
 </details>
 
 <footer>
-  Auto-generated · last updated 2026-04-27 · main @ <code>b684acd</code>
+  Auto-generated · last updated 2026-05-05 · main @ <code>10bf853</code>
   · <a href="https://github.com/AlexMos555/linkshield/actions">CI status</a>
 </footer>
 
