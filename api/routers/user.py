@@ -979,19 +979,29 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
         "Authorization": f"Bearer {settings.supabase_service_key}",
     }
 
-    # Read the existing settings JSONB so we can preserve other keys.
+    # Read the existing settings JSONB so we can preserve other keys, and
+    # the preferred_locale column so the welcome email goes out in the
+    # user's chosen language. The locale defaults to "en" if the column is
+    # null (legacy users) or the row is missing entirely (new users whose
+    # trigger row hasn't materialised yet).
     current: dict = {}
+    user_locale = "en"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
                 f"{settings.supabase_url}/rest/v1/user_settings",
-                params={"user_id": f"eq.{user.id}", "select": "settings"},
+                params={
+                    "user_id": f"eq.{user.id}",
+                    "select": "settings,preferred_locale",
+                },
                 headers=headers,
             )
             if resp.status_code == 200:
                 rows = resp.json()
-                if rows and isinstance(rows[0].get("settings"), dict):
-                    current = rows[0]["settings"]
+                if rows:
+                    if isinstance(rows[0].get("settings"), dict):
+                        current = rows[0]["settings"]
+                    user_locale = rows[0].get("preferred_locale") or "en"
     except Exception as e:  # pragma: no cover — network failure path
         logger.warning("welcome.read_failed", extra={"user_id": user.id, "error": str(e)})
 
@@ -1016,7 +1026,7 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
             to=user.email or "",
             user_id=user.id,
             template="welcome",
-            locale="en",  # TODO: pull from user.preferred_locale
+            locale=user_locale,
             fixture_overrides={"unsubscribe_url": unsub_url},
             unsubscribe_url=unsub_url,
         )
