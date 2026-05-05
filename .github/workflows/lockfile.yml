@@ -39,19 +39,22 @@ jobs:
         with:
           node-version: "20"
 
-      # `--package-lock-only` regenerates the lock against every
-      # package.json in the workspace tree without writing node_modules.
-      # `--ignore-scripts` keeps lifecycle hooks from running on a fresh
-      # checkout (faster + safer for CI).
-      - name: Regenerate package-lock.json
-        run: npm install --package-lock-only --ignore-scripts
+      # The regen-and-diff approach is platform-sensitive: Linux records
+      # libc arrays for optional native deps (fsevents, lightningcss-…),
+      # macOS doesn't, so a lock generated on a dev's Mac will never match
+      # one regenerated on Ubuntu. `npm ci` is platform-neutral: it just
+      # checks that every package.json constraint resolves to the locked
+      # version, and fails (non-zero exit) if anything's out of sync.
+      #
+      # --ignore-scripts: skip postinstall hooks. We don't need them; we're
+      #                   not running the code, only validating the lock.
+      # --no-audit / --no-fund: cosmetic noise we don't need in CI logs.
+      - name: Verify package-lock matches workspace package.json files
+        run: npm ci --no-audit --ignore-scripts --no-fund
 
-      - name: Fail if package-lock.json drifted
+      - name: Helpful failure message
+        if: failure()
         run: |
-          if ! git diff --exit-code package-lock.json; then
-            echo ""
-            echo "::error::package-lock.json is out of sync with the workspace's package.json files."
-            echo "::error::Run 'npm install --package-lock-only' locally and commit the resulting lock."
-            exit 1
-          fi
-          echo "✓ package-lock.json matches the workspace package.json files."
+          echo ""
+          echo "::error::package-lock.json is out of sync with one or more workspace package.json files."
+          echo "::error::Run 'npm install --package-lock-only' locally and commit the resulting lock."
