@@ -233,6 +233,21 @@
       },
       "family_invite_close_btn": {
         "text": "تم"
+      },
+      "family_invite_qr_label": {
+        "text": "أو امسح بالهاتف"
+      },
+      "family_invite_link_label": {
+        "text": "أو شارك هذا الرابط"
+      },
+      "family_invite_link_copy_btn": {
+        "text": "نسخ الرابط"
+      },
+      "family_join_code_placeholder": {
+        "text": "الرمز أو رابط الدعوة"
+      },
+      "family_join_paste_hint": {
+        "text": "نصيحة: ألصق رابط دعوة Cleanway في الحقل الأول — سيُملأ رمز PIN تلقائيًا."
       }
     },
     "common": {

@@ -230,6 +230,21 @@
   "family_invite_close_btn": {
     "message": "Готово"
   },
+  "family_invite_qr_label": {
+    "message": "Или отсканируйте с телефона"
+  },
+  "family_invite_link_label": {
+    "message": "Или поделитесь этой ссылкой"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "Копировать ссылку"
+  },
+  "family_join_code_placeholder": {
+    "message": "Код или ссылка-приглашение"
+  },
+  "family_join_paste_hint": {
+    "message": "Подсказка: вставьте ссылку-приглашение Cleanway в первое поле — PIN подставится автоматически."
+  },
   "trust_footer": {
     "message": "Ваши данные не покидают это устройство"
   },

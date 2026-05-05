@@ -230,6 +230,21 @@
   "family_invite_close_btn": {
     "message": "हो गया"
   },
+  "family_invite_qr_label": {
+    "message": "या फ़ोन से स्कैन करें"
+  },
+  "family_invite_link_label": {
+    "message": "या यह लिंक शेयर करें"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "लिंक कॉपी करें"
+  },
+  "family_join_code_placeholder": {
+    "message": "कोड या आमंत्रण लिंक चिपकाएँ"
+  },
+  "family_join_paste_hint": {
+    "message": "सुझाव: पहले फ़ील्ड में Cleanway आमंत्रण लिंक चिपकाएँ — PIN अपने आप भर जाएगा।"
+  },
   "trust_footer": {
     "message": "आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता"
   },

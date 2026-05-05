@@ -232,6 +232,21 @@
   "family_invite_close_btn": {
     "message": "Done"
   },
+  "family_invite_qr_label": {
+    "message": "Or scan with phone"
+  },
+  "family_invite_link_label": {
+    "message": "Or share this link"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "Copy link"
+  },
+  "family_join_code_placeholder": {
+    "message": "Code or paste invite link"
+  },
+  "family_join_paste_hint": {
+    "message": "Tip: paste a Cleanway invite link in the first field — it'll fill in the PIN for you."
+  },
   "trust_footer": {
     "message": "Your data never leaves this device"
   },

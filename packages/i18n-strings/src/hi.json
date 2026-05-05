@@ -233,6 +233,21 @@
       },
       "family_invite_close_btn": {
         "text": "हो गया"
+      },
+      "family_invite_qr_label": {
+        "text": "या फ़ोन से स्कैन करें"
+      },
+      "family_invite_link_label": {
+        "text": "या यह लिंक शेयर करें"
+      },
+      "family_invite_link_copy_btn": {
+        "text": "लिंक कॉपी करें"
+      },
+      "family_join_code_placeholder": {
+        "text": "कोड या आमंत्रण लिंक चिपकाएँ"
+      },
+      "family_join_paste_hint": {
+        "text": "सुझाव: पहले फ़ील्ड में Cleanway आमंत्रण लिंक चिपकाएँ — PIN अपने आप भर जाएगा।"
       }
     },
     "common": {

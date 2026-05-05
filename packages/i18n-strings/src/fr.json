@@ -233,6 +233,21 @@
       },
       "family_invite_close_btn": {
         "text": "Terminé"
+      },
+      "family_invite_qr_label": {
+        "text": "Ou scannez avec le téléphone"
+      },
+      "family_invite_link_label": {
+        "text": "Ou partagez ce lien"
+      },
+      "family_invite_link_copy_btn": {
+        "text": "Copier le lien"
+      },
+      "family_join_code_placeholder": {
+        "text": "Code ou collez le lien"
+      },
+      "family_join_paste_hint": {
+        "text": "Astuce : collez un lien d'invitation Cleanway dans le premier champ — le PIN se remplira tout seul."
       }
     },
     "common": {

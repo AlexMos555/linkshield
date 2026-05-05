@@ -230,6 +230,21 @@
   "family_invite_close_btn": {
     "message": "Selesai"
   },
+  "family_invite_qr_label": {
+    "message": "Atau pindai dengan ponsel"
+  },
+  "family_invite_link_label": {
+    "message": "Atau bagikan tautan ini"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "Salin tautan"
+  },
+  "family_join_code_placeholder": {
+    "message": "Kode atau tempel tautan undangan"
+  },
+  "family_join_paste_hint": {
+    "message": "Tips: tempel tautan undangan Cleanway di kolom pertama — PIN akan terisi otomatis."
+  },
   "trust_footer": {
     "message": "Data Anda tidak pernah meninggalkan perangkat ini"
   },

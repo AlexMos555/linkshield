@@ -230,6 +230,21 @@
   "family_invite_close_btn": {
     "message": "Fertig"
   },
+  "family_invite_qr_label": {
+    "message": "Oder mit dem Handy scannen"
+  },
+  "family_invite_link_label": {
+    "message": "Oder diesen Link teilen"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "Link kopieren"
+  },
+  "family_join_code_placeholder": {
+    "message": "Code oder Einladungslink"
+  },
+  "family_join_paste_hint": {
+    "message": "Tipp: Cleanway-Einladungslink ins erste Feld einfügen — die PIN wird automatisch ausgefüllt."
+  },
   "trust_footer": {
     "message": "Ihre Daten verlassen dieses Gerät nie"
   },

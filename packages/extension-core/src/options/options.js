@@ -646,9 +646,48 @@ document.getElementById("family-join-toggle-btn")?.addEventListener("click", () 
   if (form) form.hidden = !form.hidden;
 });
 
+// Detect a pasted Cleanway invite URL and pull code+PIN out of the hash.
+// Hash params (after #) never reach the server, so the secrets stay client-only.
+// Returns { code, pin } when the input is a recognizable invite URL, else null.
+function _parseInviteUrl(input) {
+  if (!input) return null;
+  let url;
+  try {
+    url = new URL(input.trim());
+  } catch {
+    return null;
+  }
+  if (!/cleanway\./.test(url.hostname)) return null;
+  if (!/\/family\/join\b/.test(url.pathname)) return null;
+  const hash = url.hash.replace(/^#/, "");
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  const code = params.get("code");
+  const pin = params.get("pin");
+  if (!code || !pin) return null;
+  return { code, pin };
+}
+
+// As soon as a URL is pasted into the code field, hydrate both inputs.
+document.getElementById("family-join-code")?.addEventListener("input", (e) => {
+  const parsed = _parseInviteUrl(e.target.value);
+  if (parsed) {
+    e.target.value = parsed.code;
+    const pinInput = document.getElementById("family-join-pin");
+    if (pinInput) pinInput.value = parsed.pin;
+  }
+});
+
 document.getElementById("family-accept-btn")?.addEventListener("click", async () => {
-  const code = (document.getElementById("family-join-code")?.value || "").trim();
-  const pin = (document.getElementById("family-join-pin")?.value || "").trim();
+  let code = (document.getElementById("family-join-code")?.value || "").trim();
+  let pin = (document.getElementById("family-join-pin")?.value || "").trim();
+  // Belt-and-suspenders: if the user clicks Join before the input handler fires,
+  // unpack the URL here too.
+  const parsed = _parseInviteUrl(code);
+  if (parsed) {
+    code = parsed.code;
+    pin = parsed.pin;
+  }
   const errBox = document.getElementById("family-join-error");
   if (!code || !/^\d{4}$/.test(pin)) {
     errBox.textContent = "Please enter a code and 4-digit PIN.";
@@ -680,6 +719,43 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
   const modal = document.getElementById("family-invite-modal");
   document.getElementById("family-invite-code-display").textContent = invite.code;
   document.getElementById("family-invite-pin-display").textContent = invite.pin;
+
+  // Build a shareable URL. Hash params (#…) stay client-side, so the
+  // server never sees code/PIN even if cleanway.ai logs the request.
+  const inviteUrl =
+    "https://cleanway.ai/family/join#code=" +
+    encodeURIComponent(invite.code) +
+    "&pin=" +
+    encodeURIComponent(invite.pin);
+
+  // Render the QR if the vendored generator is loaded. Wrapped in a try/
+  // catch so a broken QR never blocks the modal — the manual code+PIN are
+  // still visible above.
+  const qrWrap = document.getElementById("family-invite-qr-wrap");
+  const qrEl = document.getElementById("family-invite-qr");
+  if (qrEl) qrEl.innerHTML = "";
+  try {
+    if (typeof qrcode !== "undefined" && qrEl) {
+      // Type 0 = auto-pick smallest version that fits; M = 15% redundancy
+      // (good middle ground for screens-photographed-by-phone).
+      const q = qrcode(0, "M");
+      q.addData(inviteUrl);
+      q.make();
+      // 4-pixel module, 4-module quiet zone — scans cleanly from a phone.
+      qrEl.innerHTML = q.createImgTag(4, 4, "Cleanway family invite QR");
+      if (qrWrap) qrWrap.hidden = false;
+    }
+  } catch (e) {
+    if (qrWrap) qrWrap.hidden = true;
+    console.warn("QR render failed", e);
+  }
+
+  // Shareable link block.
+  const linkWrap = document.getElementById("family-invite-link-wrap");
+  const linkDisplay = document.getElementById("family-invite-link-display");
+  if (linkDisplay) linkDisplay.textContent = inviteUrl;
+  if (linkWrap) linkWrap.hidden = false;
+
   modal.hidden = false;
 
   document.getElementById("family-invite-copy-btn").onclick = async () => {
@@ -694,8 +770,28 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
       // Clipboard blocked
     }
   };
+
+  const linkCopyBtn = document.getElementById("family-invite-link-copy-btn");
+  if (linkCopyBtn) {
+    linkCopyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        linkCopyBtn.textContent = "Copied ✓";
+        setTimeout(() => {
+          const btn = document.getElementById("family-invite-link-copy-btn");
+          if (btn) btn.textContent = "Copy link";
+        }, 2000);
+      } catch {
+        // Clipboard blocked
+      }
+    };
+  }
+
   document.getElementById("family-invite-close-btn").onclick = () => {
     modal.hidden = true;
+    // Hide the link/QR sections so the next open of an empty modal looks clean.
+    if (qrWrap) qrWrap.hidden = true;
+    if (linkWrap) linkWrap.hidden = true;
   };
 });
 
