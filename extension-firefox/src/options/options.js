@@ -646,31 +646,14 @@ document.getElementById("family-join-toggle-btn")?.addEventListener("click", () 
   if (form) form.hidden = !form.hidden;
 });
 
-// Detect a pasted Cleanway invite URL and pull code+PIN out of the hash.
-// Hash params (after #) never reach the server, so the secrets stay client-only.
-// Returns { code, pin } when the input is a recognizable invite URL, else null.
-function _parseInviteUrl(input) {
-  if (!input) return null;
-  let url;
-  try {
-    url = new URL(input.trim());
-  } catch {
-    return null;
-  }
-  if (!/cleanway\./.test(url.hostname)) return null;
-  if (!/\/family\/join\b/.test(url.pathname)) return null;
-  const hash = url.hash.replace(/^#/, "");
-  if (!hash) return null;
-  const params = new URLSearchParams(hash);
-  const code = params.get("code");
-  const pin = params.get("pin");
-  if (!code || !pin) return null;
-  return { code, pin };
-}
+// Pasting a Cleanway invite URL into the code field auto-populates both
+// fields. The shared parser lives in utils/family-invite-url.js so it can be
+// covered by Node smoke tests; here we just consume the global it exports.
+const _inviteHelpers = (typeof self !== "undefined" && self.familyInviteUrl) || null;
 
-// As soon as a URL is pasted into the code field, hydrate both inputs.
 document.getElementById("family-join-code")?.addEventListener("input", (e) => {
-  const parsed = _parseInviteUrl(e.target.value);
+  if (!_inviteHelpers) return;
+  const parsed = _inviteHelpers.parseInviteUrl(e.target.value);
   if (parsed) {
     e.target.value = parsed.code;
     const pinInput = document.getElementById("family-join-pin");
@@ -683,7 +666,7 @@ document.getElementById("family-accept-btn")?.addEventListener("click", async ()
   let pin = (document.getElementById("family-join-pin")?.value || "").trim();
   // Belt-and-suspenders: if the user clicks Join before the input handler fires,
   // unpack the URL here too.
-  const parsed = _parseInviteUrl(code);
+  const parsed = _inviteHelpers ? _inviteHelpers.parseInviteUrl(code) : null;
   if (parsed) {
     code = parsed.code;
     pin = parsed.pin;
@@ -720,13 +703,14 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
   document.getElementById("family-invite-code-display").textContent = invite.code;
   document.getElementById("family-invite-pin-display").textContent = invite.pin;
 
-  // Build a shareable URL. Hash params (#…) stay client-side, so the
-  // server never sees code/PIN even if cleanway.ai logs the request.
-  const inviteUrl =
-    "https://cleanway.ai/family/join#code=" +
-    encodeURIComponent(invite.code) +
-    "&pin=" +
-    encodeURIComponent(invite.pin);
+  // Build a shareable URL via the shared helper (same encoding rules as the
+  // landing /family/join route + the smoke tests).
+  const inviteUrl = _inviteHelpers
+    ? _inviteHelpers.buildInviteUrl(invite.code, invite.pin)
+    : "https://cleanway.ai/family/join#code=" +
+      encodeURIComponent(invite.code) +
+      "&pin=" +
+      encodeURIComponent(invite.pin);
 
   // Render the QR if the vendored generator is loaded. Wrapped in a try/
   // catch so a broken QR never blocks the modal — the manual code+PIN are

@@ -1,0 +1,57 @@
+name: Lockfile sync
+
+# We hit the same class of bug TWICE in 2026:
+#   - 591 (post-rebrand): bulk rename mutated package names but didn't
+#     touch package-lock.json → CI's `npm ci` failed.
+#   - 2026-05-05 (post-dependabot): dependabot bumped @types/node in
+#     `landing/package.json` only; the workspace-root lock didn't pick
+#     up the new resolution → E2E's `npm ci` failed on main.
+#
+# This workflow catches both cases at PR time. Trigger on any PR that
+# touches a `package.json`. We regenerate `package-lock.json` (no install
+# needed — `--package-lock-only` is offline-friendly and fast) and fail
+# if the resulting diff is non-empty. The fix on the developer side is
+# always the same: run `npm install --package-lock-only` locally and
+# commit the resulting lock.
+
+on:
+  pull_request:
+    paths:
+      - "**/package.json"
+      - "package-lock.json"
+      - ".github/workflows/lockfile.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**/package.json"
+      - "package-lock.json"
+
+jobs:
+  verify:
+    name: Verify package-lock is in sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      # `--package-lock-only` regenerates the lock against every
+      # package.json in the workspace tree without writing node_modules.
+      # `--ignore-scripts` keeps lifecycle hooks from running on a fresh
+      # checkout (faster + safer for CI).
+      - name: Regenerate package-lock.json
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Fail if package-lock.json drifted
+        run: |
+          if ! git diff --exit-code package-lock.json; then
+            echo ""
+            echo "::error::package-lock.json is out of sync with the workspace's package.json files."
+            echo "::error::Run 'npm install --package-lock-only' locally and commit the resulting lock."
+            exit 1
+          fi
+          echo "✓ package-lock.json matches the workspace package.json files."
