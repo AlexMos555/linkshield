@@ -25,6 +25,7 @@ on:
     paths:
       - "**/package.json"
       - "package-lock.json"
+      - ".github/workflows/lockfile.yml"
 
 jobs:
   verify:
