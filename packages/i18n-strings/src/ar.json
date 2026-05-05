@@ -205,7 +205,7 @@
         "text": "دعوة عضو في العائلة"
       },
       "family_invite_desc": {
-        "text": "ينشئ رمزاً + PIN لاستخدام واحد. أرسلها عبر SMS أو شخصياً."
+        "text": "ينشئ رمزاً + PIN لاستخدام واحد. أرسلهما عبر SMS أو شخصياً."
       },
       "family_invite_btn": {
         "text": "إنشاء الدعوة"
@@ -229,7 +229,7 @@
         "text": "PIN"
       },
       "family_invite_copy_btn": {
-        "text": "نسخ الكليهما"
+        "text": "نسخ كليهما"
       },
       "family_invite_close_btn": {
         "text": "تم"

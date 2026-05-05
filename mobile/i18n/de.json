@@ -59,7 +59,7 @@
   "extension.popup.family_invite_btn": "Einladung erzeugen",
   "extension.popup.family_alerts_label": "Neueste Hinweise",
   "extension.popup.family_alerts_empty": "Noch keine Hinweise — Familien-Blockaden erscheinen hier.",
-  "extension.popup.family_invite_modal_title": "Geben Sie das an Ihr Familienmitglied",
+  "extension.popup.family_invite_modal_title": "Teilen Sie das mit Ihrem Familienmitglied",
   "extension.popup.family_invite_modal_desc": "Beide Werte erscheinen einmal. Nach dem Schließen können Sie sie nicht mehr sehen — generieren Sie bei Bedarf eine neue Einladung.",
   "extension.popup.family_invite_code_label": "Code",
   "extension.popup.family_invite_pin_label": "PIN",
