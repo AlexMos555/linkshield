@@ -47,6 +47,18 @@ class CheckoutRequest(BaseModel):
     @field_validator("success_url", "cancel_url")
     @classmethod
     def _must_be_cleanway_domain(cls, v: str) -> str:
+        # Defense layer 1: reject control characters anywhere. CR/LF would
+        # let an attacker craft a Stripe success_url that smuggles a
+        # `Location:` header into the redirect (HTTP response splitting),
+        # null bytes truncate string parsers in legacy stacks, etc.
+        # tests/test_payments_validators.py covers each variant explicitly.
+        if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in v):
+            raise ValueError("URL must not contain control characters")
+        # Defense layer 2: cap absolute length so an attacker can't push
+        # a 10 MB URL through the validator and stress Stripe's API.
+        if len(v) > 2048:
+            raise ValueError("URL too long")
+        # Defense layer 3: must be on a known Cleanway origin.
         if not any(v.startswith(p) for p in _ALLOWED_REDIRECT_PREFIXES):
             raise ValueError("URL must be on cleanway.ai domain")
         return v
