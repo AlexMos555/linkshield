@@ -34,4 +34,16 @@ if (dsn) {
       }),
     ],
   });
+
+  // Expose Sentry on `window` for debugging from DevTools console:
+  //   Sentry.captureMessage("verify…")
+  //   Sentry.captureException(new Error("…"))
+  // The SDK's automatic onerror/onunhandledrejection handlers work without
+  // this, but `window.Sentry` is invaluable when debugging "is the SDK
+  // even loaded on this page?" type questions in production. No security
+  // implication — Sentry SDK doesn't expose any sensitive surface, and
+  // we don't load any third-party JS that could abuse it.
+  if (typeof window !== "undefined") {
+    (window as unknown as { Sentry: typeof Sentry }).Sentry = Sentry;
+  }
 }
