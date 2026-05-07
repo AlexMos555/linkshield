@@ -103,6 +103,20 @@ class Settings(BaseSettings):
     sensitive_action_limit: int = 10               # 10 per hour per user
     sensitive_action_window_seconds: int = 3600    # 1 hour window
 
+    # Rate limiter behavior when Redis is unreachable.
+    #
+    # `false` (DEFAULT) — fail OPEN: log a warning and allow the request.
+    #   This is the right default for dev / staging — a Redis blip
+    #   shouldn't take down the whole API.
+    #
+    # `true` (PRODUCTION) — fail CLOSED: respond 503 to the request.
+    #   Set RATE_LIMIT_FAIL_CLOSED=true in Railway prod env so a Redis
+    #   outage doesn't silently disable abuse protection. Without this,
+    #   an attacker who notices Redis is down can hammer the free tier
+    #   and burn our 3rd-party API quotas (Google Safe Browsing, IPQS,
+    #   etc.) until we notice.
+    rate_limit_fail_closed: bool = False
+
     # Rate limits — unsubscribe endpoint (per IP, very strict to prevent abuse)
     unsubscribe_limit_per_window: int = 20         # 20 attempts per hour per IP
     unsubscribe_window_seconds: int = 3600

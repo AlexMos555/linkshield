@@ -250,6 +250,84 @@ async def test_redis_failure_fails_open(monkeypatch, authed_user):
     assert remaining >= 0
 
 
+# ── Fail-CLOSED env flag (RATE_LIMIT_FAIL_CLOSED=true) ─────────────────
+# In production we want a Redis outage to STOP serving traffic, not
+# silently allow unlimited requests. This regression suite pins each
+# of the three Redis-dependent paths to 503 when the flag is on.
+
+
+def _enable_fail_closed(monkeypatch):
+    from api import config
+
+    monkeypatch.setattr(config.get_settings(), "rate_limit_fail_closed", True, raising=False)
+
+
+@pytest.mark.asyncio
+async def test_user_rate_limiter_fails_closed_when_flag_on(monkeypatch, authed_user):
+    from fastapi import HTTPException
+
+    from api.services import rate_limiter
+
+    async def _boom():
+        raise ConnectionError("redis is down")
+
+    monkeypatch.setattr(rate_limiter, "get_redis", _boom)
+    _enable_fail_closed(monkeypatch)
+
+    with pytest.raises(HTTPException) as exc:
+        await rate_limiter.check_rate_limit(authed_user, num_domains=1)
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_ip_rate_limiter_fails_closed_when_flag_on(monkeypatch):
+    from fastapi import HTTPException
+
+    from api.services import rate_limiter
+
+    async def _boom():
+        raise ConnectionError("redis is down")
+
+    monkeypatch.setattr(rate_limiter, "get_redis", _boom)
+    _enable_fail_closed(monkeypatch)
+
+    with pytest.raises(HTTPException) as exc:
+        await rate_limiter.check_ip_rate_limit("203.0.113.5", "test_cat", limit=10, window_seconds=60)
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_sensitive_action_limiter_fails_closed_when_flag_on(monkeypatch, authed_user):
+    from fastapi import HTTPException
+
+    from api.services import rate_limiter
+
+    async def _boom():
+        raise ConnectionError("redis is down")
+
+    monkeypatch.setattr(rate_limiter, "get_redis", _boom)
+    _enable_fail_closed(monkeypatch)
+
+    with pytest.raises(HTTPException) as exc:
+        await rate_limiter.check_sensitive_action_limit(authed_user, "checkout")
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_default_remains_fail_open(monkeypatch, authed_user):
+    """Pin the dev default — without the env flag, behavior must NOT change."""
+    from api.services import rate_limiter
+
+    async def _boom():
+        raise ConnectionError("redis is down")
+
+    monkeypatch.setattr(rate_limiter, "get_redis", _boom)
+    # Deliberately do NOT set rate_limit_fail_closed.
+
+    remaining = await rate_limiter.check_rate_limit(authed_user, num_domains=1)
+    assert remaining >= 0  # fail-open still works
+
+
 def test_extract_client_ip_prefers_xff():
     """X-Forwarded-For takes precedence over request.client for proxied setups."""
     from unittest.mock import MagicMock

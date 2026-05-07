@@ -95,9 +95,21 @@ async def check_rate_limit(user: AuthUser, num_domains: int = 1) -> int:
     except HTTPException:
         raise  # Re-raise 429
     except Exception as e:
-        # Redis unavailable — allow request but log warning
+        # Redis unavailable. Two failure modes, governed by config:
+        #   fail-OPEN (default, dev/staging): log + allow the request.
+        #   fail-CLOSED (RATE_LIMIT_FAIL_CLOSED=true, prod): refuse.
+        # Without the latter, an attacker who realises Redis is down can
+        # bypass per-user quotas entirely and burn our paid API budget.
         logger.warning("rate_limiter_redis_unavailable", extra={"error": str(e)})
-        return daily_limit  # Assume full quota available
+        if get_settings().rate_limit_fail_closed:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "Rate limit service unavailable. Please retry shortly.",
+                    "retry_after_seconds": 30,
+                },
+            )
+        return daily_limit  # fail-open: assume full quota available
 
 
 async def _check_burst_limit(
@@ -186,6 +198,14 @@ async def check_ip_rate_limit(
         raise
     except Exception as e:
         logger.warning("ip_rate_limiter_redis_unavailable", extra={"error": str(e)})
+        if get_settings().rate_limit_fail_closed:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "Rate limit service unavailable. Please retry shortly.",
+                    "retry_after_seconds": 30,
+                },
+            )
         return limit
 
 
@@ -229,6 +249,14 @@ async def check_sensitive_action_limit(user: AuthUser, category: str) -> int:
         logger.warning(
             "sensitive_action_limiter_redis_unavailable", extra={"error": str(e)}
         )
+        if settings.rate_limit_fail_closed:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "Rate limit service unavailable. Please retry shortly.",
+                    "retry_after_seconds": 30,
+                },
+            )
         return settings.sensitive_action_limit
 
 
