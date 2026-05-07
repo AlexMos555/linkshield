@@ -56,6 +56,14 @@ INVITE_CODE_LENGTH_BYTES = 9  # ~12 base32 chars after encoding
 PUBLIC_KEY_LENGTH = 32  # curve25519
 ALERT_DEFAULT_TTL_DAYS = 30
 
+# Family Hub allows max 5 active members per family. 10 invites/day per
+# family covers legitimate re-issuance (somebody lost the code, PIN got
+# typed wrong, family member's phone died on the day they were supposed
+# to join) without giving an owner a runway to spam every relative with
+# 200 different codes. Higher per-USER cap (rate_limit mode=sensitive,
+# 10/hour shared with checkout etc.) catches cross-family abuse.
+MAX_INVITES_PER_FAMILY_PER_DAY = 10
+
 
 # ─── Models ────────────────────────────────────────────────────────
 
@@ -247,6 +255,65 @@ async def _is_family_member(family_id: str, user_id: str) -> Optional[str]:
     if not rows:
         return None
     return rows[0].get("role")
+
+
+async def _check_family_invite_quota(family_id: str) -> None:
+    """Enforce MAX_INVITES_PER_FAMILY_PER_DAY via Redis INCR.
+
+    Keys are scoped per (family_id, UTC date) and TTL'd to 24h so stale
+    entries vanish naturally — no maintenance cron needed.
+
+    Failure modes mirror api/services/rate_limiter.py:
+      - Redis healthy & under cap → OK
+      - Redis healthy & at cap    → 429 (with retry hint)
+      - Redis unreachable & rate_limit_fail_closed=true → 503
+      - Redis unreachable & rate_limit_fail_closed=false → allow (logged)
+    """
+    from api.services.cache import get_redis
+
+    today_utc = datetime.now(timezone.utc).date().isoformat()
+    key = f"family_invite_quota:{family_id}:{today_utc}"
+
+    try:
+        r = await get_redis()
+        # INCR is atomic: even with concurrent owner clicks the count is
+        # monotonic. EXPIRE only on first hit (count == 1) to avoid
+        # ratcheting the TTL forward on every request.
+        count = await r.incr(key)
+        if count == 1:
+            await r.expire(key, 86400)
+        if count > MAX_INVITES_PER_FAMILY_PER_DAY:
+            ttl = await r.ttl(key)
+            logger.warning(
+                "family_invite_quota_exceeded",
+                extra={"family_id": family_id, "count": count, "limit": MAX_INVITES_PER_FAMILY_PER_DAY},
+            )
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": (
+                        f"This family already issued {MAX_INVITES_PER_FAMILY_PER_DAY} "
+                        "invites today. Wait 24h or revoke unused invites first."
+                    ),
+                    "limit": MAX_INVITES_PER_FAMILY_PER_DAY,
+                    "retry_after_seconds": max(int(ttl) if ttl and ttl > 0 else 86400, 1),
+                },
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(
+            "family_invite_quota_redis_unavailable",
+            extra={"family_id": family_id, "error": str(e)},
+        )
+        if get_settings().rate_limit_fail_closed:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "Family invite service unavailable. Please retry shortly.",
+                    "retry_after_seconds": 30,
+                },
+            )
 
 
 # ─── Endpoints ─────────────────────────────────────────────────────
@@ -501,6 +568,15 @@ async def create_invite(
     role = await _is_family_member(family_id, user.id)
     if role != "owner":
         raise HTTPException(403, "Only the family owner can create invites")
+
+    # ── Per-family-per-day quota ──────────────────────────────────
+    # The sensitive rate limit on this route is per-USER (10/hour). That
+    # protects cross-family spamming but lets one owner generate many
+    # invites for a single target family if they wait between hours.
+    # This per-FAMILY cap closes the loop. Daily window keys naturally
+    # rotate at UTC midnight; legit grandma re-issuance (lost code, PIN
+    # typo) needs at most 2-3, so 10 is comfortable headroom.
+    await _check_family_invite_quota(family_id)
 
     # base32-friendly random bytes → 14-char code (no padding)
     raw_code = secrets.token_urlsafe(INVITE_CODE_LENGTH_BYTES)

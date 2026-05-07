@@ -213,6 +213,52 @@ def fake_sb(monkeypatch):
     return fake
 
 
+# ─── In-memory FakeRedis for the per-family invite quota ──────────
+
+
+class _FakeRedis:
+    """Same shape as the rate-limiter FakeRedis — kept local so we
+    don't fight test_rate_limiting's module on import order."""
+
+    def __init__(self) -> None:
+        self._data: Dict[str, int] = {}
+        self._ttls: Dict[str, int] = {}
+
+    async def incr(self, key: str) -> int:
+        self._data[key] = int(self._data.get(key, 0)) + 1
+        return self._data[key]
+
+    async def expire(self, key: str, seconds: int) -> bool:
+        self._ttls[key] = seconds
+        return True
+
+    async def ttl(self, key: str) -> int:
+        return self._ttls.get(key, -1)
+
+    async def ping(self):
+        return True
+
+    async def close(self):  # pragma: no cover
+        return None
+
+
+@pytest.fixture
+def fake_redis(monkeypatch):
+    """Patch get_redis in api.services.cache so the family router's
+    `from api.services.cache import get_redis` (inside the helper)
+    picks up the fake. Keep returning the same instance across calls
+    so a test can hammer 11 invites and observe the counter survive."""
+    from api.services import cache
+
+    fake = _FakeRedis()
+
+    async def _get_fake():
+        return fake
+
+    monkeypatch.setattr(cache, "get_redis", _get_fake)
+    return fake
+
+
 # ─── /family/mine GET ─────────────────────────────────────────────
 
 
@@ -380,6 +426,98 @@ def test_member_cannot_create_invite(authed_user, supabase_ok, fake_sb, client_f
     client = client_factory(authed_user)
     resp = client.post("/api/v1/family/fam/invite")
     assert resp.status_code == 403
+
+
+# ─── Per-family-per-day invite quota ──────────────────────────────
+
+
+def test_invite_quota_blocks_after_10_per_family_per_day(
+    authed_user, supabase_ok, fake_sb, fake_redis, client_factory
+):
+    """Owner can create up to 10 invites for ONE family in a 24h window.
+    The 11th must 429. Caps a real abuse vector: bug or malicious owner
+    spamming distinct invite codes that all reach the same family."""
+    client = client_factory(authed_user)
+    fid = client.post("/api/v1/family", json={"name": "Smiths"}).json()["family_id"]
+
+    # First 10 must all succeed.
+    for i in range(10):
+        resp = client.post(f"/api/v1/family/{fid}/invite")
+        assert resp.status_code == 200, f"invite #{i + 1} unexpectedly rejected: {resp.text}"
+
+    # 11th hits the quota → 429 with retry hint.
+    resp = client.post(f"/api/v1/family/{fid}/invite")
+    assert resp.status_code == 429
+    body = resp.json()
+    assert body["detail"]["limit"] == 10
+    assert body["detail"]["retry_after_seconds"] > 0
+
+
+def test_invite_quota_is_per_family_not_per_owner(
+    authed_user, supabase_ok, fake_sb, fake_redis, client_factory
+):
+    """If one owner runs two families, hitting the cap on family A must
+    NOT affect family B. Counter is keyed on family_id, not user_id."""
+    client = client_factory(authed_user)
+    fid_a = client.post("/api/v1/family", json={"name": "A"}).json()["family_id"]
+    fid_b = client.post("/api/v1/family", json={"name": "B"}).json()["family_id"]
+
+    # Burn family A's quota.
+    for _ in range(10):
+        assert client.post(f"/api/v1/family/{fid_a}/invite").status_code == 200
+    assert client.post(f"/api/v1/family/{fid_a}/invite").status_code == 429
+
+    # Family B's first invite must still go through.
+    resp = client.post(f"/api/v1/family/{fid_b}/invite")
+    assert resp.status_code == 200, resp.text
+
+
+def test_invite_quota_redis_down_fails_open_by_default(
+    authed_user, supabase_ok, fake_sb, monkeypatch, client_factory
+):
+    """Default config (rate_limit_fail_closed=False): a Redis outage must
+    NOT take Family Hub down. Mirrors the rate-limiter convention."""
+    from api.services import cache
+
+    async def _boom():
+        raise ConnectionError("redis is down")
+
+    monkeypatch.setattr(cache, "get_redis", _boom)
+
+    client = client_factory(authed_user)
+    fid = client.post("/api/v1/family", json={"name": "X"}).json()["family_id"]
+    # Even though the quota check can't read Redis, the invite still
+    # succeeds — fail-open default.
+    resp = client.post(f"/api/v1/family/{fid}/invite")
+    assert resp.status_code == 200
+
+
+def test_invite_quota_redis_down_fails_closed_when_flag_on(
+    authed_user, supabase_ok, fake_sb, fake_redis, monkeypatch, client_factory
+):
+    """RATE_LIMIT_FAIL_CLOSED=true (prod): Redis outage → 503, not
+    silently allowing unlimited invites.
+
+    Setup order matters: we need a family to exist BEFORE flipping the
+    flag, because the family-create endpoint shares the sensitive
+    rate-limiter, which would also fail-closed on a dead Redis. So we
+    let the fake_redis fixture run first (sets up working Redis), make
+    the family, THEN swap to a broken Redis and toggle the flag for
+    the actual quota path."""
+    from api import config
+    from api.services import cache
+
+    client = client_factory(authed_user)
+    fid = client.post("/api/v1/family", json={"name": "X"}).json()["family_id"]
+
+    async def _boom():
+        raise ConnectionError("redis is down")
+
+    monkeypatch.setattr(cache, "get_redis", _boom)
+    monkeypatch.setattr(config.get_settings(), "rate_limit_fail_closed", True, raising=False)
+
+    resp = client.post(f"/api/v1/family/{fid}/invite")
+    assert resp.status_code == 503
 
 
 # ─── /family/accept ───────────────────────────────────────────────
