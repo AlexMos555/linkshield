@@ -185,6 +185,90 @@ async def health_check():
     }
 
 
+@app.get("/health/deep")
+async def health_deep_check():
+    """
+    Deep health check — pings every downstream we depend on and FAILS HARD
+    (HTTP 503) when any of them is unreachable.
+
+    Different semantics from /health:
+      - /health      → "is this Railway pod alive enough to serve?". Always
+                       200 unless the pod itself is dead. Used by Railway's
+                       healthcheck probe so a transient Supabase blip doesn't
+                       cycle pods.
+      - /health/deep → "is the WHOLE system actually serving real users?".
+                       This is what an external monitor / StatusPage hits to
+                       page on-call when something downstream actually broke.
+
+    Checks:
+      - Supabase REST: HEAD against /rest/v1/ with anon key. We don't care
+        about response body, just that a TCP+TLS+auth handshake succeeds.
+        2-second timeout — Supabase EU is on the same continent so anything
+        slower is already a problem worth flagging.
+      - Redis: PING. We separate this from the Supabase check so the JSON
+        body can pinpoint which one failed.
+
+    Per-component results in the body even on the failure path so a human
+    debugging the 503 sees instantly which one broke.
+    """
+    settings = get_settings()
+    components: dict[str, dict] = {}
+
+    # ── Redis ──
+    try:
+        r = await get_redis()
+        # asyncio.wait_for guards against a hung connection — without it a
+        # half-open Redis socket can block the request indefinitely and the
+        # Railway probe times out instead of getting our clean 503.
+        import asyncio
+
+        await asyncio.wait_for(r.ping(), timeout=2.0)
+        components["redis"] = {"ok": True}
+    except Exception as e:
+        components["redis"] = {"ok": False, "error": type(e).__name__}
+
+    # ── Supabase REST ──
+    if not settings.supabase_url or not settings.supabase_anon_key:
+        components["supabase"] = {"ok": False, "error": "not_configured"}
+    else:
+        try:
+            import httpx
+
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                # The /rest/v1/ root returns 200 with `{"swagger":"2.0",...}`
+                # when the project is up. HEAD would be lighter but Supabase
+                # rejects HEAD on the schema route, so a GET is the
+                # well-known canonical probe.
+                resp = await client.get(
+                    f"{settings.supabase_url.rstrip('/')}/rest/v1/",
+                    headers={
+                        "apikey": settings.supabase_anon_key,
+                        "Authorization": f"Bearer {settings.supabase_anon_key}",
+                    },
+                )
+                if resp.status_code in (200, 401):
+                    # 401 means "Supabase is up and rejected our anon as
+                    # expected" — which from a connectivity standpoint is
+                    # still a successful probe. We're not testing auth here.
+                    components["supabase"] = {"ok": True, "status": resp.status_code}
+                else:
+                    components["supabase"] = {
+                        "ok": False,
+                        "status": resp.status_code,
+                    }
+        except Exception as e:
+            components["supabase"] = {"ok": False, "error": type(e).__name__}
+
+    all_ok = all(c.get("ok") for c in components.values())
+    body = {"status": "ok" if all_ok else "degraded", "components": components}
+    if all_ok:
+        return body
+    # Fail HARD on degraded so external monitors page someone.
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(status_code=503, content=body)
+
+
 @app.get("/")
 async def root():
     return {
