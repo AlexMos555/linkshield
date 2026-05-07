@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTransition, type ChangeEvent } from "react";
 import { LOCALE_NAMES, routing, type Locale } from "@/i18n/routing";
 
@@ -12,7 +12,6 @@ import { LOCALE_NAMES, routing, type Locale } from "@/i18n/routing";
 export function LanguageSwitcher() {
   const t = useTranslations("LanguageSwitcher");
   const current = useLocale() as Locale;
-  const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
@@ -36,8 +35,29 @@ export function LanguageSwitcher() {
       newPath = "/" + [next, ...rest].join("/");
     }
 
+    // ── The locale-cookie tug-of-war ──
+    // Without this line, switching to the *default* locale (English) from
+    // any non-default page silently fails:
+    //   1. User on /es/check → cookie NEXT_LOCALE=es is set.
+    //   2. Switcher computes newPath = "/check" (English has no prefix).
+    //   3. router.replace("/check") → middleware sees cookie=es, decides
+    //      "user prefers Spanish", 307-redirects back to /es/check.
+    //   4. UI looks broken; English is the only locale that "doesn't work".
+    // Setting the cookie here BEFORE navigation tells middleware which
+    // locale we actually want, breaking the loop.
+    if (typeof document !== "undefined") {
+      document.cookie = `NEXT_LOCALE=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    }
+
+    // Hard navigation (window.location) instead of router.replace so the
+    // updated cookie is sent on the very next request. router.replace
+    // would do a client-side transition that doesn't re-issue the
+    // request with the new cookie until the next full reload, which
+    // causes a one-page-old flicker of the previous locale.
     startTransition(() => {
-      router.replace(newPath);
+      if (typeof window !== "undefined") {
+        window.location.assign(newPath);
+      }
     });
   }
 
