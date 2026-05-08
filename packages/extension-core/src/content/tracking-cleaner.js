@@ -66,12 +66,39 @@ function cleanTrackingParams() {
 // Clean on page load
 cleanTrackingParams();
 
-// Clean on navigation (SPA)
-var _lastUrl = window.location.href;
-var _cleanObserver = new MutationObserver(function() {
-  if (window.location.href !== _lastUrl) {
-    _lastUrl = window.location.href;
+// Clean on navigation (SPA).
+//
+// The previous version used a MutationObserver on document.body with
+// subtree:true and reacted to ANY mutation just to spot a URL change.
+// On heavy SPAs (Twitter, Facebook, modern dashboards) the body
+// mutates many times per second — that observer was burning CPU on
+// every keystroke / scroll-induced lazy-load just to do an O(1) URL
+// comparison.
+//
+// History API hooks are O(1) and fire exactly once per navigation:
+//   - popstate covers back/forward navigation
+//   - pushState/replaceState are wrapped to cover programmatic SPA nav
+// The "did URL change" guard inside cleanTrackingParams() doubles as
+// the base case for the recursion that wrapping replaceState would
+// otherwise cause (we call replaceState ourselves to write the
+// cleaned URL — without the guard it'd loop).
+window.addEventListener("popstate", cleanTrackingParams);
+
+(function wrapHistoryMethod(method) {
+  var original = window.history[method];
+  if (typeof original !== "function") return;
+  window.history[method] = function() {
+    var ret = original.apply(this, arguments);
     cleanTrackingParams();
-  }
-});
-_cleanObserver.observe(document.body, { childList: true, subtree: true });
+    return ret;
+  };
+})("pushState");
+(function wrapHistoryMethod(method) {
+  var original = window.history[method];
+  if (typeof original !== "function") return;
+  window.history[method] = function() {
+    var ret = original.apply(this, arguments);
+    cleanTrackingParams();
+    return ret;
+  };
+})("replaceState");
