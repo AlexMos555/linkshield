@@ -46,6 +46,37 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
 
     setSubmitting(true);
     try {
+      // ── Disposable-email gate ───────────────────────────────────
+      // Hit our backend before kicking off Supabase Auth so an
+      // attacker doesn't waste our magic-link send-rate budget on
+      // mailinator.com / 10minutemail.com / etc. Defense-in-depth:
+      // the backend is also rate-limited 60/hr/IP on this endpoint,
+      // and Supabase Auth itself rate-limits magic links separately.
+      // We fail-OPEN here on network error: a Cleanway API blip
+      // shouldn't block legitimate signups.
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
+        const dispResp = await fetch(`${apiBase}/api/v1/auth/check-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        if (dispResp.ok) {
+          const { disposable, domain } = await dispResp.json();
+          if (disposable) {
+            setError(
+              `Sorry — ${domain} is a disposable / temporary email service. Please use a real address so we can deliver alerts.`,
+            );
+            return;
+          }
+        }
+        // 4xx (e.g., 422 malformed) or 5xx → silent fail-open.
+        // The basic format check above + Supabase's own validation
+        // will catch obvious garbage; legit signups go through.
+      } catch {
+        // Network failure → fail-open, see comment above.
+      }
+
       // No env config → fall back to mailto so leads are still captured.
       if (!isAuthConfigured()) {
         const subject = encodeURIComponent("Signup interest — Cleanway");
