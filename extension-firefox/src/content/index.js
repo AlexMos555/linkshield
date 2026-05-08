@@ -107,7 +107,10 @@ async function checkDomains(domains) {
 // ═══════════════════════════════════════════════════
 
 function addBadge(linkEl, result) {
-  if (linkEl.querySelector("." + BADGE_CLASS)) return;
+  // Already-badged check needs to look at the SIBLING after the link,
+  // not inside it (we no longer inject as a child — see comment below).
+  var existingNext = linkEl.nextElementSibling;
+  if (existingNext && existingNext.classList && existingNext.classList.contains(BADGE_CLASS)) return;
   linkEl.setAttribute(SCANNED_ATTR, "true");
 
   // Show ALL badges — safe (green), caution (yellow), dangerous (red)
@@ -148,8 +151,24 @@ function addBadge(linkEl, result) {
     '<div class="ls-footer">Cleanway</div></div>';
   badge.appendChild(tooltip);
 
-  linkEl.style.position = "relative";
-  linkEl.appendChild(badge);
+  // ── Sibling, not child — was breaking real sites ──
+  // The pre-fix version did:
+  //     linkEl.style.position = "relative";
+  //     linkEl.appendChild(badge);
+  // Two real problems on production sites:
+  //   1. Forced `position: relative` on every <a> overrode site CSS.
+  //      Nav menus and dropdown items that relied on
+  //      `position: absolute` lost their positioning → visible layout
+  //      shift ("плыла вёрстка").
+  //   2. Badge as CHILD of the link meant clicks could land on the
+  //      badge span and event-delegated handlers like
+  //      target.closest('a') would still bubble correctly, BUT sites
+  //      using strict `event.target.matches(...)` checks treated the
+  //      span as the click target and ignored it → "buttons don't
+  //      click".
+  // insertAdjacentElement('afterend') puts the badge OUTSIDE the
+  // link entirely. Site layout untouched, click target unaffected.
+  linkEl.insertAdjacentElement("afterend", badge);
   _log("Badge added:", result.domain, result.level, result.score);
 }
 
