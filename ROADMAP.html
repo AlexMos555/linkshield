@@ -316,9 +316,9 @@
 <section class="progress-section">
   <div class="progress-label">
     <h2>Overall progress</h2>
-    <div class="progress-pct">~92%</div>
+    <div class="progress-pct">~93%</div>
   </div>
-  <div class="progress-bar"><div class="progress-fill" style="width:92%"></div></div>
+  <div class="progress-bar"><div class="progress-fill" style="width:93%"></div></div>
 </section>
 
 <!-- Stats -->
@@ -372,7 +372,7 @@
     <h3><span class="phase-tag">B</span> Shipping unblock</h3>
     <div class="phase-meta">
       <span class="phase-status ps-partial">PARTIAL</span>
-      <span class="count">8 / 12</span>
+      <span class="count">12 / 16</span>
     </div>
   </summary>
   <div class="phase-body">
@@ -382,10 +382,14 @@
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Railway deploy stable, api.cleanway.ai responds 200</div><div class="task-meta">Custom domain wired 2026-04-22; ALLOWED_ORIGINS includes cleanway.ai</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Supabase EU active</div><div class="task-meta">Frankfurt project, schema 001-007 applied, RLS clean</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Vercel project connected, landing live</div><div class="task-meta">cleanway.ai HTTPS 200, www→apex 307, 80+ SSG routes generated</div></div></li>
-      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Pytest 521 tests passing</div><div class="task-meta">Was 165 at project start; +33 since 488 mark (Stripe webhook + Family Hub fanout/notify, etc.)</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Pytest 555 tests passing</div><div class="task-meta">Was 165 at project start; +67 since 488 mark (Stripe webhook + Family Hub fanout/notify + redirect-validator hardening + /health/deep + rate-limit fail-CLOSED + family-invite quota)</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Stripe open redirect fix</div><div class="task-meta">field_validator on success_url/cancel_url <code>c0e179e</code></div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Production extension manifests cleaned</div><div class="task-meta">Removed http://localhost:8000/* from Chrome/Firefox/Safari builds</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">CI lockfile-sync guard</div><div class="task-meta">Workflow runs <code>npm ci --ignore-scripts</code> on every package.json change; fails the PR if the workspace-root <code>package-lock.json</code> drifts. Closes the class of bug we hit twice in 2026 (post-rebrand + post-dependabot @types/node) <code>b061807</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Stripe redirect validator hardened — CRLF + URL-length DoS</div><div class="task-meta">Test caught <code>https://cleanway.ai/\\r\\nLocation: evil.com/</code> passing the prefix check (HTTP response splitting via Stripe forward). Validator now rejects control chars + caps URL at 2 KB. Off-domain rejection covers 21 attacker payloads (userinfo spoof, IDN homograph, etc.) <code>c2d5d0c</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title"><code>/health/deep</code> — hard healthcheck for external monitors</div><div class="task-meta">Returns 503 when Redis or Supabase unreachable; 200 otherwise. <code>/health</code> stays soft (Railway probe doesn't cycle pods on transient blips). 8 new tests pinned both behaviors <code>0c1515c</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Rate limiter <code>RATE_LIMIT_FAIL_CLOSED</code> env flag</div><div class="task-meta">Prod: Redis outage → 503 (not silent fail-open burning paid 3rd-party API budget). Dev/staging keeps fail-open default. Wired in 3 limiter paths (user / IP / sensitive) + 4 tests <code>a270ca0</code></div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Family-invite per-family-per-day quota (10/day)</div><div class="task-meta">Closes confusion-attack: owner spamming distinct invite codes at one family. Per-FAMILY counter via Redis INCR + EXPIRE; orthogonal to per-USER sensitive limit. 4 new tests <code>1b3e4ac</code></div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Google Safe Browsing API key <span class="badge-blocker">P0 · USER</span></div><div class="task-meta">console.cloud.google.com → Enable Safe Browsing → Railway env <code>GOOGLE_SAFE_BROWSING_API_KEY</code> · 10 min</div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Stripe account + 24 regional price IDs <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">3 plans × 4 tiers × 2 intervals · needs business info + bank</div></div></li>
       <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Upstash Redis (or Railway addon) <span class="badge-blocker">P1 · USER</span></div><div class="task-meta">Free tier 10K cmd/day · backs rate limit + referral counters</div></div></li>
@@ -546,6 +550,33 @@
   </div>
 </details>
 
+<!-- ═════════ PHASE E5 — third product surface: email plugin ═════════ -->
+<details open>
+  <summary>
+    <h3><span class="phase-tag">E5</span> Email plugin (third product)</h3>
+    <div class="phase-meta">
+      <span class="phase-status ps-partial">PARTIAL</span>
+      <span class="count">3 / 11</span>
+    </div>
+  </summary>
+  <div class="phase-body">
+    <p class="phase-tagline">Cleanway is three products in one repo: <strong>browser extension</strong>, <strong>mobile app</strong>, and <strong>email plugin</strong>. The third surface scans users' INBOUND mail for phishing — orthogonal from Phase E2 (transactional email Cleanway sends OUT). Three delivery channels: webmail content script (Gmail / Outlook Web / Yahoo) ships with the extension; native Outlook add-in for desktop / mobile clients; future Apple Mail / Thunderbird / IMAP gateway.</p>
+    <ul class="tasks">
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Webmail content script (Gmail / Outlook Web / Yahoo)</div><div class="task-meta">299 LOC in <code>packages/extension-core/src/content/webmail.js</code> · ships with all 3 extensions via build-extensions.sh</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title"><code>POST /api/v1/email/analyze</code> backend</div><div class="task-meta">657 LOC <code>api/services/email_analyzer.py</code> + <code>api/routers/email.py</code> · IP-rate-limited (<code>email_analyze_public</code>) · sender-spoofing + body-pattern + scam-pattern findings</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Outlook add-in code complete (Win + Mac + Web + iOS + Android)</div><div class="task-meta">688 LOC in <code>email-plugin-outlook/</code> · manifest.xml + taskpane + commands · sideload-tested on Outlook web</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Outlook plugin hosting on <code>addin.cleanway.ai</code> <span class="badge-blocker">DNS · USER</span></div><div class="task-meta">Vercel subdomain for landing serving raw <code>email-plugin-outlook/</code> assets (taskpane HTML/CSS/JS) · DNS CNAME needed (~30 min · me + you)</div></div></li>
+      <li><span class="icon icon-blocked">⊘</span><div class="task-content"><div class="task-title">Microsoft AppSource submission <span class="badge-blocker">USER · 5–10d review</span></div><div class="task-meta">Free dev account; submit <code>manifest.xml</code> after addin.cleanway.ai live · for org-managed via Microsoft 365 Admin Center first, then public AppSource</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">SSO via Outlook identity</div><div class="task-meta"><code>Office.auth.getAccessToken()</code> so the add-in runs as the signed-in user, matching mobile-app quotas</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Attachment scanning (SHA-256 + AV lookup)</div><div class="task-meta">Needs <code>ReadWriteItem</code> permission bump + AppSource re-review</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">"Move phishing to quarantine folder"</div><div class="task-meta">Same permission bump · Cleanway Quarantine folder + auto-classify rules</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Apple Mail extension (macOS)</div><div class="task-meta">MailKit-based extension · Apple Developer account required · medium scope</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">Thunderbird add-on</div><div class="task-meta">WebExtension API · MX-100K niche but vocal user base · small scope</div></div></li>
+      <li><span class="icon icon-future">○</span><div class="task-content"><div class="task-title">IMAP-gateway / Sieve filter (B2B / self-hosted)</div><div class="task-meta">For orgs running Postfix / iCloud+ / mailcow · scan-before-deliver via Milter or Sieve · part of B2B Phase G email proxy</div></div></li>
+    </ul>
+  </div>
+</details>
+
 <!-- ═════════ PHASE F ═════════ -->
 <details open>
   <summary>
@@ -635,8 +666,8 @@
 
 <!-- ═════════ SESSION LOG ═════════ -->
 <section class="session-log">
-  <h2>Session log — 2026-04-28 → 2026-05-05</h2>
-  <p class="session-when">26 commits · +33 tests (488 → 521) · Family Hub end-to-end + dependabot triage + CI hardening</p>
+  <h2>Session log — 2026-04-28 → 2026-05-08</h2>
+  <p class="session-when">35+ commits · +67 tests (488 → 555) · Family Hub end-to-end · dependabot triage · CI hardening · Sentry wired prod · security follow-throughs (CRLF, fail-closed, invite quota)</p>
 
   <table class="commits">
     <thead>
@@ -648,6 +679,15 @@
       </tr>
     </thead>
     <tbody>
+      <tr><td><code>1b3e4ac</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Family-invite per-family-per-day quota (10/day) + 4 tests</td><td>+4</td></tr>
+      <tr><td><code>a270ca0</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Rate limiter <code>RATE_LIMIT_FAIL_CLOSED</code> env flag for prod + 4 tests</td><td>+4</td></tr>
+      <tr><td><code>5115064</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Always-wrap <code>withSentryConfig</code> — Sentry SDK was never bundled into client</td><td>—</td></tr>
+      <tr><td><code>b2f359b</code></td><td><span class="ttype ttype-feat">fix</span></td><td>English locale switcher cookie loop (every other locale worked)</td><td>—</td></tr>
+      <tr><td><code>1e4d0c4</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Expose <code>window.Sentry</code> for DevTools debugging</td><td>—</td></tr>
+      <tr><td><code>0c1515c</code></td><td><span class="ttype ttype-feat">feat</span></td><td><code>/health/deep</code> — hard healthcheck for external monitors + 8 tests</td><td>+8</td></tr>
+      <tr><td><code>c2d5d0c</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Stripe redirect validator: CRLF injection + URL-length DoS hardening + 18 cases</td><td>+18</td></tr>
+      <tr><td><code>bf545e6</code></td><td><span class="ttype ttype-feat">fix</span></td><td>.env.example stale <code>cleanway.io</code> → <code>cleanway.ai</code> CORS example</td><td>—</td></tr>
+      <tr><td colspan="4" style="font-size:11px;color:var(--text-soft);padding-top:6px;border-top:1px dashed var(--border)">─ pre-May-6 (Family Hub end-to-end arc) ─</td></tr>
       <tr><td><code>10bf853</code></td><td><span class="ttype ttype-feat">i18n</span></td><td>Native-review fixes for ru / ar / de Family Hub strings</td><td>—</td></tr>
       <tr><td><code>d792c39</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Welcome email respects user.preferred_locale (was hardcoded "en")</td><td>—</td></tr>
       <tr><td><code>b061807</code></td><td><span class="ttype ttype-ci">ci</span></td><td>Lockfile workflow re-runs when its own file changes</td><td>—</td></tr>
@@ -709,7 +749,7 @@
 </details>
 
 <footer>
-  Auto-generated · last updated 2026-05-05 · main @ <code>10bf853</code>
+  Auto-generated · last updated 2026-05-08 · main @ <code>1b3e4ac</code>
   · <a href="https://github.com/AlexMos555/linkshield/actions">CI status</a>
 </footer>
 
