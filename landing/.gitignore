@@ -7,3 +7,7 @@ playwright/.cache/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Built by scripts/sync-addin.cjs from email-plugin-outlook/ during `next build`.
+# Single source of truth lives in /email-plugin-outlook/.
+public/outlook/

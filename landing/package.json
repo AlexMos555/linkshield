@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node ../scripts/sync-addin.cjs",
     "build": "next build",
     "start": "next start",
     "e2e": "playwright test",
