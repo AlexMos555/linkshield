@@ -331,6 +331,15 @@ _log("Content script loaded on", window.location.hostname);
     var domain = window.location.hostname.toLowerCase();
     if (!domain || domain === "localhost" || domain.length < 4) return;
 
+    // ── Never auto-block our own domains ──
+    // Defense-in-depth: if api.cleanway.ai ever returns level="dangerous"
+    // for cleanway.ai itself (server-side bug, ML false-positive, race
+    // during a deploy), the user would see our scary full-page block
+    // overlay on our own marketing / pricing page. Game over for trust.
+    // The tiny client-side allow-list catches that worst case without
+    // affecting normal API verdicts for any other domain.
+    if (domain === "cleanway.ai" || domain.endsWith(".cleanway.ai")) return;
+
     var results = await checkDomains([domain]);
     if (results && results[0] && results[0].level === "dangerous") {
       showBlockPage(results[0]);
