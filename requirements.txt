@@ -6,7 +6,7 @@ pydantic-settings==2.6.0
 PyJWT==2.12.1
 python-multipart==0.0.18
 dnspython==2.8.0
-stripe==11.0.0
+stripe==15.1.0
 sentry-sdk[fastapi]==2.19.0
 bcrypt==4.2.1
 # NOTE: ML scoring (catboost + numpy) is NOT installed here.
