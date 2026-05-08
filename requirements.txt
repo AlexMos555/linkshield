@@ -8,7 +8,7 @@ python-multipart==0.0.18
 dnspython==2.8.0
 stripe==11.0.0
 sentry-sdk[fastapi]==2.19.0
-bcrypt==4.2.1
+bcrypt==5.0.0
 # NOTE: ML scoring (catboost + numpy) is NOT installed here.
 # Reason: catboost resident footprint is ~400MB — OOM-kills pods on Railway's
 # 512 MB starter plan. Without it, ml_scorer._load_model() gracefully fails
