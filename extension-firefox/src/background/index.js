@@ -234,7 +234,7 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   }
 });
 
-// ── Context menu ──
+// ── Context menu + recurring alarms ──
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
   chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
@@ -248,6 +248,16 @@ chrome.runtime.onInstalled.addListener(() => {
       notifier.ensureFamilyPollAlarm(1);
     } catch (e) { /* alarms permission missing — silent */ }
   })();
+
+  // Daily history prune — Privacy Policy promises 30-day on-device
+  // retention; the prune helper has been there since launch but
+  // nobody was actually invoking it, so IndexedDB grew unbounded.
+  // chrome.alarms persists across SW eviction, so once installed the
+  // schedule keeps firing without further setup.
+  chrome.alarms.create("cleanway_history_prune", {
+    delayInMinutes: 5,           // first prune shortly after install
+    periodInMinutes: 24 * 60,    // every 24h after that
+  });
 });
 
 // Re-arm the alarm on every SW startup (the SW can get evicted; alarms
@@ -260,13 +270,26 @@ void (async () => {
 })();
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
+  // Family Hub minute poller
   try {
     const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
     if (notifier.isFamilyPollAlarm(alarm.name)) {
       await notifier.pollAndNotify();
+      return;
     }
   } catch (e) {
     // Silent — pollAndNotify is fail-open. A missed minute is fine.
+  }
+
+  // Daily local-history prune (30-day rolling retention per Privacy Policy)
+  if (alarm.name === "cleanway_history_prune") {
+    try {
+      const storage = await import(chrome.runtime.getURL("utils/storage.js"));
+      await storage.pruneOldChecks();
+    } catch (e) {
+      // Silent — IndexedDB transient failure isn't user-facing. Worst
+      // case is one missed daily prune; tomorrow's run catches up.
+    }
   }
 });
 
