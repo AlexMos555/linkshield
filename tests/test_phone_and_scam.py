@@ -226,7 +226,11 @@ class TestScamAnalyzeVoice:
         )
         assert resp.status_code == 200
         body = resp.json()
-        # Stub returns explicit "pending" via summary copy
+        # Stub returns explicit "pending" verdict + 0 score so UIs don't
+        # render a misleading "suspicious" indicator on legit voice
+        # memos. Summary carries the human-readable explanation.
+        assert body["verdict"] == "transcription_pending"
+        assert body["risk_score"] == 0
         assert "transcription" in body["summary"].lower()
 
     def test_rejects_non_audio_mime(self, authed_client, supabase_off):

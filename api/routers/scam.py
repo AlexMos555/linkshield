@@ -90,8 +90,16 @@ class AnalyzeTextRequest(BaseModel):
 
 
 class ScamVerdict(BaseModel):
-    verdict: str  # safe | suspicious | scam
-    risk_score: int  # 0–100
+    # Allowed values:
+    #   safe                   → classifier saw nothing scammy
+    #   suspicious             → some red flags, recommend caution
+    #   scam                   → strong scam signal, recommend block/report
+    #   transcription_pending  → voice endpoint only — STT not configured
+    #                            yet, client should queue / retry / fall
+    #                            back to text input. risk_score is 0 in
+    #                            this case (NOT a real verdict).
+    verdict: str
+    risk_score: int  # 0–100; ignore for verdict == "transcription_pending"
     reason_codes: list[str]
     language: Optional[str] = None
     summary: str = Field(
@@ -275,14 +283,21 @@ async def analyze_voice(
 
     # TODO(H₄): run Whisper on `blob` → transcript, then pass to classifier.
     # Until then, return an honest "pending" state so UIs can queue/retry.
+    #
+    # Was previously verdict="suspicious" + risk_score=50, which made any
+    # client UI render a yellow-warning indicator on legit voice memos.
+    # No frontend calls this endpoint yet (audited 2026-05-09 — zero
+    # references in landing/mobile/packages), so switching the verdict
+    # value is safe. UIs that wire this later get a clear "we don't
+    # know yet" signal instead of a fake "suspicious" verdict.
     logger.info(
         "scam_voice_pending",
         extra={"user_id": user.id, "bytes": len(blob), "mime": file.content_type},
     )
     return ScamVerdict(
-        verdict="suspicious",
-        risk_score=50,
-        reason_codes=["other"],
+        verdict="transcription_pending",
+        risk_score=0,
+        reason_codes=[],
         language=language,
         summary="Voice transcription is pending — external STT service not yet configured.",
     )
