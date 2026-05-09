@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.services.auth import get_current_user
+from api.services.auth import get_current_user, get_optional_user
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 from api.config import get_settings
@@ -37,10 +37,15 @@ class WhitelistRequest(BaseModel):
     domain: str
 
 
-@router.post("/report", dependencies=[Depends(rate_limit(category="feedback_report"))])
+@router.post("/report", dependencies=[Depends(rate_limit(mode="ip", category="feedback_report"))])
 async def report_domain(
     request: ReportRequest,
-    user: AuthUser = Depends(get_current_user),
+    # Anonymous reports allowed: the Outlook add-in (and any future
+    # surface that runs without a Cleanway session) needs to submit
+    # phishing reports too. user_id is NULLABLE in feedback_reports
+    # (see migration 002), so an anonymous row is valid. The IP rate
+    # limit on this endpoint protects against trivial spam.
+    user: Optional[AuthUser] = Depends(get_optional_user),
 ):
     """
     Report a false positive (safe site flagged) or false negative (phishing not caught).
@@ -57,7 +62,7 @@ async def report_domain(
         "domain": request.domain,
         "type": request.report_type,
         "score": request.current_score,
-        "user_id": user.id,
+        "user_id": user.id if user else None,
     })
 
     if settings.supabase_url and settings.supabase_service_key:
@@ -71,7 +76,7 @@ async def report_domain(
                         "Content-Type": "application/json",
                     },
                     json={
-                        "user_id": user.id,
+                        "user_id": user.id if user else None,
                         "domain": request.domain,
                         "report_type": request.report_type,
                         "score_at_report": request.current_score,

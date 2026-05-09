@@ -308,20 +308,33 @@ async function reportPhishing() {
   els.btnReport.textContent = "Reporting…";
   try {
     const message = await loadMessage();
-    // Hit the feedback endpoint if authenticated; otherwise, queue locally.
-    // The backend honours the same /feedback/report endpoint used by the
-    // mobile app and browser extension. An anonymous submission still
-    // contributes to the domain-level crowd source.
-    await fetch(`${API_BASE}/api/v1/feedback/report`, {
+    // The backend's /feedback/report expects a domain-shaped report, not
+    // a free-form email blob. Extract the sender's domain (everything
+    // after the LAST '@' to handle weird quoted-local-part edge cases),
+    // and pack subject + outlook source into the comment field for
+    // human review on the moderation dashboard.
+    //
+    // /feedback/report now accepts anonymous submissions (Optional user
+    // dependency); the Outlook taskpane has no Cleanway session yet
+    // (Outlook SSO is a future task). Backend rate-limits by IP.
+    const senderDomain = message.from_address
+      ? String(message.from_address).split("@").pop().trim().toLowerCase()
+      : "";
+    if (!senderDomain) {
+      throw new Error("Couldn't determine sender domain");
+    }
+    const resp = await fetch(`${API_BASE}/api/v1/feedback/report`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        source: "outlook",
-        reason: "phishing",
-        sender: message.from_address,
-        subject: message.subject,
+        domain: senderDomain,
+        report_type: "false_negative",
+        comment: `[outlook] subject="${(message.subject || "").slice(0, 200)}" sender="${message.from_address || ""}"`,
       }),
     });
+    if (!resp.ok) {
+      throw new Error(`API responded ${resp.status}`);
+    }
     els.btnReport.textContent = "✓ Reported";
   } catch {
     els.btnReport.textContent = "Retry report";
