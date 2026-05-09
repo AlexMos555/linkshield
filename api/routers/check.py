@@ -26,7 +26,12 @@ from api.models.schemas import (
     ConfidenceLevel,
 )
 from api.services.analyzer import analyze_domain
-from api.services.auth import get_current_user
+# /check is the most expensive auth-required endpoint — fans out to
+# Google Safe Browsing + IPQS + a half dozen other paid providers per
+# domain. Use the disposable-email-blocking variant so a sophisticated
+# bypass of the /signup pre-flight (calling Supabase Auth directly with
+# our public anon key) still doesn't burn API budget.
+from api.services.auth import get_current_user_no_disposable as get_current_user
 from api.services.cache import get_cached_result, cache_result
 from api.services.rate_limiter import check_rate_limit
 from api.services.domain_validator import validate_domain, normalize_domain, DomainValidationError

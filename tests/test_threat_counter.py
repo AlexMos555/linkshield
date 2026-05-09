@@ -75,10 +75,18 @@ def supabase_ok(monkeypatch):
 
 def _make_app(authed: AuthUser):
     from api.main import app as fastapi_app
-    from api.services.auth import get_current_user, get_optional_user
+    from api.services.auth import (
+        get_current_user,
+        get_current_user_no_disposable,
+        get_optional_user,
+    )
 
     fastapi_app.dependency_overrides[get_current_user] = lambda: authed
     fastapi_app.dependency_overrides[get_optional_user] = lambda: authed
+    # /threats/increment now uses the disposable-blocking variant; tests
+    # need the override too. Test fixtures use real-looking emails so
+    # the disposable check passes through naturally.
+    fastapi_app.dependency_overrides[get_current_user_no_disposable] = lambda: authed
     return fastapi_app
 
 

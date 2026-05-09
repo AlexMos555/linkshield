@@ -18,7 +18,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.services.auth import get_current_user
+from api.services.auth import get_current_user, get_current_user_no_disposable
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import (
     AuthUser,
@@ -661,7 +661,13 @@ async def get_threat_status(user: AuthUser = Depends(get_current_user)) -> Threa
 )
 async def increment_threats(
     body: IncrementThreatsRequest,
-    user: AuthUser = Depends(get_current_user),
+    # Disposable-email gate: this is the freemium counter — bumped on every
+    # blocked threat. A bot signed up via disposable email could otherwise
+    # park on this endpoint and consume the 50/day cap silently. Endpoints
+    # that just READ user state (settings, profile, threat-status) keep
+    # plain get_current_user so a real user with a disposable address can
+    # still manage / cancel their account.
+    user: AuthUser = Depends(get_current_user_no_disposable),
 ) -> ThreatStatus:
     """
     Add `body.count` to the lifetime threat counter and return new state.

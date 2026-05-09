@@ -79,6 +79,49 @@ async def get_optional_user(
         return None
 
 
+async def get_current_user_no_disposable(
+    authorization: Optional[str] = Header(None),
+) -> AuthUser:
+    """`get_current_user` plus a domain check against the disposable
+    blocklist (mailinator, 10minutemail, …).
+
+    The /signup landing form already pre-flights via /auth/check-email,
+    but anyone with our public Supabase anon key can call signInWithOtp
+    directly and bypass that. This dependency is the second layer:
+    even with a forged session, calls to expensive endpoints (think
+    /check, which fans out to Google Safe Browsing + IPQS + half a
+    dozen other paid providers) get refused before they burn quota.
+
+    Paid users with disposable addresses are vanishingly rare (you don't
+    pay $9/mo from a mailinator inbox), so we don't bother carving an
+    exception for tier > free. If a real customer ever hits this,
+    support email path stays open via /unsubscribe / /settings which
+    use plain `get_current_user` so they can still update their address.
+    """
+    user = await get_current_user(authorization)
+    # Lazy import — keeps the module-level import graph small for
+    # tests that stub auth without loading the 5400-domain blocklist.
+    from api.services.email_validator import is_disposable_email
+
+    if user.email and is_disposable_email(user.email):
+        logger.warning(
+            "disposable_email_blocked_at_endpoint",
+            extra={"user_id": user.id, "domain": user.email.rsplit("@", 1)[-1]},
+        )
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": (
+                    "Free-tier checks aren't available for disposable / "
+                    "throwaway email addresses. Update your account to a "
+                    "real email or contact support."
+                ),
+                "support_url": "https://cleanway.ai/support",
+            },
+        )
+    return user
+
+
 async def _resolve_user_tier(user_id: str) -> UserTier:
     """
     Look up user's subscription tier.
