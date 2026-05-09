@@ -39,16 +39,25 @@ router = APIRouter(prefix="/api/v1/email", tags=["email"])
 
 
 class AnalyzeEmailRequest(BaseModel):
-    from_address: str = Field("", description="RFC-5322 from address, e.g. security@chase.com")
-    from_display: str = Field("", description="Display name, e.g. 'Chase Security'")
-    reply_to: str = Field("", description="Reply-To address, if different from From")
-    subject: str = Field("", description="Email subject line")
-    return_path: str = Field("", description="Return-Path header value")
-    spf: Optional[str] = Field(None, description="SPF result from Authentication-Results")
-    dkim: Optional[str] = Field(None, description="DKIM result from Authentication-Results")
-    dmarc: Optional[str] = Field(None, description="DMARC result from Authentication-Results")
-    body_text: str = Field("", description="Plain-text body")
-    body_html: str = Field("", description="HTML body (if available)")
+    # Length caps below are defense against payload-size DoS. The analyzer
+    # runs multiple regex passes (.*? in _ANCHOR_RE, sub() in _strip_html)
+    # over body_html — a malicious 100MB blob would pin the worker for
+    # seconds, blocking other requests on the same process. RFC 5321
+    # caps email-address fields at 320 chars; subject lines at 998 (one
+    # SMTP line); body sizes are practical limits — average email is
+    # ~5KB, marketing newsletters max around 20KB, base64-inlined images
+    # push HTML up to a few hundred KB. We cap aggressively well above
+    # those numbers but well below "trash the worker."
+    from_address: str = Field("", max_length=320, description="RFC-5322 from address, e.g. security@chase.com")
+    from_display: str = Field("", max_length=256, description="Display name, e.g. 'Chase Security'")
+    reply_to: str = Field("", max_length=320, description="Reply-To address, if different from From")
+    subject: str = Field("", max_length=1024, description="Email subject line")
+    return_path: str = Field("", max_length=320, description="Return-Path header value")
+    spf: Optional[str] = Field(None, max_length=256, description="SPF result from Authentication-Results")
+    dkim: Optional[str] = Field(None, max_length=256, description="DKIM result from Authentication-Results")
+    dmarc: Optional[str] = Field(None, max_length=256, description="DMARC result from Authentication-Results")
+    body_text: str = Field("", max_length=100_000, description="Plain-text body (cap 100 KB)")
+    body_html: str = Field("", max_length=500_000, description="HTML body if available (cap 500 KB)")
 
 
 class AnalyzeEmailResponse(BaseModel):

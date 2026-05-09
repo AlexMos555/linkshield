@@ -30,6 +30,16 @@ from typing import Awaitable, Callable, Iterable, Optional
 logger = logging.getLogger("cleanway.email_analyzer")
 
 
+# ─── Worst-case caps ─────────────────────────────────────────────────────────
+# Defense against malicious / pathological inputs. These complement the
+# pydantic max_length on the inbound request — even after a 500KB body
+# slips past, the per-link reputation check could fan out to thousands of
+# domain queries if the email contains a link bomb. We cap the unique
+# domains we'll fan out on so a phishing email with 20K links only burns
+# the first MAX_LINKS_TO_CHECK lookups (still plenty for a real verdict).
+MAX_LINKS_TO_CHECK = 100
+
+
 # ─── Types ────────────────────────────────────────────────────────────────────
 
 
@@ -216,12 +226,20 @@ async def analyze_email(
     # 4. Extract links (used by both UI highlighting and URL reputation)
     links = tuple(_extract_links(body))
 
-    # 5. Check each unique domain via injected checker
+    # 5. Check each unique domain via injected checker.
+    # Capped at MAX_LINKS_TO_CHECK distinct domains so a link-bomb
+    # phishing email can't fan out to thousands of GSB lookups.
     if check_domain is not None:
         seen: set[str] = set()
         for link in links:
             if not link.domain or link.domain in seen:
                 continue
+            if len(seen) >= MAX_LINKS_TO_CHECK:
+                logger.info(
+                    "email_link_check_truncated",
+                    extra={"unique_domains": len(seen), "cap": MAX_LINKS_TO_CHECK},
+                )
+                break
             seen.add(link.domain)
             try:
                 is_bad = await check_domain(link.domain)

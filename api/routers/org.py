@@ -32,15 +32,23 @@ class CreateOrgRequest(BaseModel):
 
 
 class AddMemberRequest(BaseModel):
-    email: str
-    role: str = "member"  # admin | member
+    # RFC 5321 caps emails at 320 chars. role is enum-validated in handler.
+    email: str = Field(..., max_length=320)
+    role: str = Field("member", max_length=16)  # admin | member
 
 
 class SimulationRequest(BaseModel):
-    template: str = "generic_phishing"  # generic_phishing | credential_harvest | invoice_scam | ceo_fraud
+    # template is enum-validated by the handler (whitelist of 4 values);
+    # the cap exists so a malformed request can't reach the validator
+    # with a 100KB string and pin a worker on Pydantic processing.
+    template: str = Field("generic_phishing", max_length=64)
     target_emails: list[str] = Field(..., min_length=1, max_length=500)
-    sender_name: str = "IT Security"
-    subject: str = "Action Required: Verify Your Account"
+    # sender_name and subject end up in the simulated phishing email body.
+    # 256 / 1024 chars match RFC norms (display name / Subject header) and
+    # prevent payload-bomb attacks from B2B admin accounts whose sessions
+    # might be compromised.
+    sender_name: str = Field("IT Security", max_length=256)
+    subject: str = Field("Action Required: Verify Your Account", max_length=1024)
 
 
 class SimulationResult(BaseModel):

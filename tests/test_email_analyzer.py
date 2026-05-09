@@ -414,3 +414,77 @@ def test_analyze_endpoint_accepts_anonymous(client_as_user, monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["level"] == "safe"
+
+
+# ─── DoS-hardening regressions ──────────────────────────────────
+
+
+def test_analyze_endpoint_rejects_oversized_html_body(client_as_user):
+    """A 600KB body_html crosses our 500KB cap. Pydantic must reject
+    with 422 before the analyzer runs any regex over the blob."""
+    huge_html = "<p>" + ("x" * 600_000) + "</p>"
+    resp = client_as_user.post(
+        "/api/v1/email/analyze",
+        json={
+            "from_address": "x@example.com",
+            "subject": "huge",
+            "body_html": huge_html,
+        },
+    )
+    assert resp.status_code == 422
+
+
+def test_analyze_endpoint_rejects_oversized_text_body(client_as_user):
+    """body_text cap is 100KB. 200KB triggers 422."""
+    huge_text = "x" * 200_000
+    resp = client_as_user.post(
+        "/api/v1/email/analyze",
+        json={
+            "from_address": "x@example.com",
+            "subject": "huge",
+            "body_text": huge_text,
+        },
+    )
+    assert resp.status_code == 422
+
+
+def test_analyze_endpoint_rejects_oversized_subject(client_as_user):
+    """subject cap = 1024; 5000 chars triggers 422 before analysis."""
+    resp = client_as_user.post(
+        "/api/v1/email/analyze",
+        json={
+            "from_address": "x@example.com",
+            "subject": "x" * 5000,
+        },
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_analyzer_caps_link_lookups_at_max():
+    """Link-bomb defense: an email with 200 distinct URLs must result
+    in ≤ MAX_LINKS_TO_CHECK domain checks. Without the cap a malicious
+    sender could fan out to 20K Google Safe Browsing lookups per
+    request and burn our paid quota."""
+    from api.services.email_analyzer import (
+        EmailBody,
+        EmailHeaders,
+        MAX_LINKS_TO_CHECK,
+        analyze_email,
+    )
+
+    # Build 200 unique anchors
+    anchors = "".join(f'<a href="https://evil-{i}.example/">x</a>' for i in range(200))
+    body = EmailBody(text="", html=anchors)
+    headers = EmailHeaders(from_address="x@example.com", subject="link bomb")
+
+    calls: list[str] = []
+
+    async def fake_check(domain: str) -> bool:
+        calls.append(domain)
+        return False
+
+    await analyze_email(headers, body, fake_check)
+    assert len(calls) <= MAX_LINKS_TO_CHECK
+    # Must have actually used the cap (otherwise the test isn't testing anything).
+    assert len(calls) == MAX_LINKS_TO_CHECK
