@@ -58,7 +58,7 @@ description = "OpenAI / Anthropic / generic Bearer-style API key"
 regex = '''(sk-proj-[A-Za-z0-9_-]{40,}|sk-ant-[A-Za-z0-9_-]{40,})'''
 tags = ["llm", "secret"]
 
-# ── Allowlist (legitimate placeholders / docs) ─────────────────
+# ── Allowlist (legitimate placeholders / docs / false positives) ──
 [allowlist]
 description = "Files that contain placeholders, not real secrets"
 paths = [
@@ -67,6 +67,19 @@ paths = [
     '''^api/services/pricing\.py$''',   # contains "price_PERSONAL_T1_MONTHLY" placeholders
     '''^tests/.*\.py$''',               # tests use dummy secrets like "test-secret-..."
     '''^\.planning/.*\.md$''',          # docs may reference secret formats
+    # ── False positives from gitleaks generic-api-key heuristic ──
+    # All three patterns below trip the same heuristic — long base64-ish
+    # strings — but contain ZERO real secrets. Verified by inspection
+    # of every flagged line. Match by basename so source + generated
+    # copies in extension/, extension-firefox/, extension-safari/ are
+    # all covered.
+    '''family-crypto\.(js|ts)$''',      # TweetNaCl operations: keypair() outputs
+                                         # in comments/logs look like API keys
+    '''family-fanout\.js$''',           # public-key caching code; cached value
+                                         # bytes mimic API-key shape
+    '''top_100k\.json$''',              # Tranco top-100K bloom-filter seed —
+                                         # a handful of legit domain names look
+                                         # base64-shaped to the heuristic
 ]
 # Ignore obvious placeholder strings
 regexes = [
