@@ -121,7 +121,17 @@ async def create_checkout(
 
 @router.post("/webhook")
 async def stripe_webhook(request: Request):
-    """Handle Stripe webhook events."""
+    """Handle Stripe webhook events.
+
+    Stripe documents "events may be delivered more than once" — they
+    retry on any 5xx / timeout for up to 72 hours with exponential
+    backoff. Without dedup, a retried checkout.session.completed
+    upserts the subscription twice; a retried subscription.updated
+    can race with newer events and flip status backward.
+
+    We dedup by event.id with a Redis SETNX + 7-day TTL. Already-seen
+    events return 200 OK (so Stripe stops retrying) but skip processing.
+    """
     try:
         import stripe
     except ImportError:
@@ -140,10 +150,42 @@ async def stripe_webhook(request: Request):
         logger.warning("webhook_signature_invalid", extra={"error": str(e)})
         raise HTTPException(400, "Invalid signature")
 
+    event_id = event.get("id", "")
     event_type = event["type"]
     data = event["data"]["object"]
 
-    logger.info("webhook_received", extra={"type": event_type})
+    # ── Idempotency gate ───────────────────────────────────────
+    # SETNX returns 1 if we just claimed the key, 0 if it was already
+    # taken (= duplicate delivery). 7-day TTL covers Stripe's 72-hour
+    # retry window with headroom. Failure mode: Redis unreachable →
+    # log + process anyway. Better to risk one duplicate write than to
+    # silently drop a legitimate billing event because Redis blipped.
+    if event_id:
+        try:
+            from api.services.cache import get_redis
+
+            r = await get_redis()
+            claimed = await r.set(
+                f"stripe:event:{event_id}",
+                "1",
+                nx=True,
+                ex=7 * 24 * 3600,
+            )
+            if not claimed:
+                logger.info(
+                    "webhook_duplicate_skipped",
+                    extra={"event_id": event_id, "type": event_type},
+                )
+                return {"status": "ok", "duplicate": True}
+        except Exception as e:
+            logger.warning(
+                "webhook_idempotency_redis_unavailable",
+                extra={"event_id": event_id, "error": str(e)},
+            )
+            # Fall through and process — accept the risk of duplicate
+            # processing over the risk of dropping a real event.
+
+    logger.info("webhook_received", extra={"type": event_type, "event_id": event_id})
 
     if event_type == "checkout.session.completed":
         await _handle_checkout_completed(data)
