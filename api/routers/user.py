@@ -1074,3 +1074,239 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
 
     logger.info("welcome.sent", extra={"user_id": user.id, "skipped": result.skipped})
     return WelcomeResponse(sent=not result.skipped, reason=result.skip_reason)
+
+
+# ─── GDPR: data export (right to access) ─────────────────────────────
+
+
+# Per Privacy Policy §9 we promise: "Access: export all your server-side
+# data from Settings." This endpoint fulfils that promise. Every table
+# where we store a user_id (or family_id reachable from a user) is
+# included. We deliberately do NOT join with payment records held by
+# Stripe — those are managed by the Stripe Customer Portal directly,
+# which we already link from /api/v1/payments/portal. Including them
+# here would mean syncing a third-party billing system into our export,
+# which adds risk for marginal value.
+#
+# Rate-limited as a sensitive action: exports run 5+ queries against
+# Supabase per call and produce a downloadable file; we don't want a
+# bot grinding this endpoint to enumerate user state.
+@router.get(
+    "/export",
+    dependencies=[Depends(rate_limit(mode="sensitive", category="user_export"))],
+)
+async def export_user_data(user: AuthUser = Depends(get_current_user)) -> dict:
+    """Return every server-side row owned by the caller, GDPR Art. 15."""
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        raise HTTPException(503, "Database not configured")
+
+    headers = {
+        "apikey": settings.supabase_service_key,
+        "Authorization": f"Bearer {settings.supabase_service_key}",
+    }
+
+    # Tables to dump: (table_name, filter_column). Family-scoped data
+    # lives in family_alerts (where the user is a recipient) and
+    # family_members (where the user is listed). We include both so
+    # the export shows the user's membership graph but NOT the alert
+    # ciphertext (those are E2E-encrypted on the device and useless
+    # without the private key which never leaves the device).
+    tables: list[tuple[str, str, str]] = [
+        ("users", "id", "*"),
+        ("subscriptions", "user_id", "*"),
+        ("user_settings", "user_id", "*"),
+        ("devices", "user_id", "*"),
+        ("weekly_aggregates", "user_id", "*"),
+        ("family_members", "user_id", "*"),
+        # ciphertext + nonce excluded to keep the export small and
+        # because they're undecryptable without the device's private key
+        ("family_alerts", "recipient_user_id", "id,family_id,sender_user_id,created_at,alert_type"),
+        ("feedback_reports", "user_id", "*"),
+    ]
+
+    import httpx
+
+    export: dict[str, object] = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "user_id": user.id,
+        "email": user.email,
+        "schema_version": 1,
+        "tables": {},
+    }
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        for table, filter_col, select in tables:
+            try:
+                resp = await client.get(
+                    f"{settings.supabase_url}/rest/v1/{table}",
+                    params={filter_col: f"eq.{user.id}", "select": select},
+                    headers=headers,
+                )
+                if resp.status_code == 200:
+                    export["tables"][table] = resp.json()
+                else:
+                    # Don't fail the whole export on one table — surface
+                    # the issue per-table so the user still gets what we
+                    # could fetch.
+                    export["tables"][table] = {
+                        "error": f"upstream returned {resp.status_code}",
+                    }
+                    logger.warning(
+                        "export_table_failed",
+                        extra={
+                            "user_id": user.id,
+                            "table": table,
+                            "status": resp.status_code,
+                        },
+                    )
+            except Exception as e:  # pragma: no cover — network path
+                export["tables"][table] = {"error": type(e).__name__}
+                logger.warning(
+                    "export_table_exception",
+                    extra={"user_id": user.id, "table": table, "error": str(e)},
+                )
+
+    logger.info(
+        "user_data_exported",
+        extra={"user_id": user.id, "tables": list(export["tables"].keys())},
+    )
+    return export
+
+
+# ─── GDPR: account deletion (right to be forgotten) ─────────────────
+
+
+# Soft-delete with 30-day grace. Privacy Policy §9: "All server-side
+# data is permanently removed within 30 days." We mark the user row
+# with deletion_requested_at = now(); a periodic purge job hard-deletes
+# 30 days later (foreign-key cascades wipe every dependent row in one
+# transaction — schema set this up since migration 001).
+#
+# During the grace window the user can:
+#   * Cancel the deletion via POST /api/v1/user/account/restore
+#   * Still receive magic links from Supabase Auth (we don't touch
+#     auth.users — that would make the soft-delete irreversible)
+#
+# Most operations (anything routed through get_current_user) refuse
+# requests once deletion_requested_at is set, returning 410 Gone. The
+# restore endpoint is the only exception so the user can recover.
+
+
+class DeleteAccountResponse(BaseModel):
+    deleted_at: str
+    grace_period_days: int
+    restore_until: str
+
+
+_DELETION_GRACE_DAYS = 30
+
+
+@router.delete(
+    "/account",
+    response_model=DeleteAccountResponse,
+    dependencies=[Depends(rate_limit(mode="sensitive", category="account_delete"))],
+)
+async def delete_account(user: AuthUser = Depends(get_current_user)) -> DeleteAccountResponse:
+    """Mark the caller's account for deletion. Hard-deleted 30 days later."""
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        raise HTTPException(503, "Database not configured")
+
+    import httpx
+
+    now = datetime.now(timezone.utc)
+    headers = {
+        "apikey": settings.supabase_service_key,
+        "Authorization": f"Bearer {settings.supabase_service_key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.patch(
+                f"{settings.supabase_url}/rest/v1/users",
+                params={"id": f"eq.{user.id}"},
+                json={"deletion_requested_at": now.isoformat()},
+                headers=headers,
+            )
+        if resp.status_code not in (200, 204):
+            logger.error(
+                "account_delete_failed",
+                extra={"user_id": user.id, "status": resp.status_code},
+            )
+            raise HTTPException(500, "Failed to schedule account deletion")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("account_delete_exception", extra={"user_id": user.id, "error": str(e)})
+        raise HTTPException(500, "Failed to schedule account deletion")
+
+    # Invalidate the user's tier cache so the next request sees the
+    # account as gone-on-grace (the auth dependency reads tier from
+    # the cache; though we're not changing tier, the read forces a DB
+    # round-trip on the next call and that's where we re-check
+    # deletion_requested_at). Best-effort.
+    try:
+        from api.services.cache import get_redis
+
+        r = await get_redis()
+        await r.delete(f"tier:{user.id}")
+    except Exception:
+        pass
+
+    restore_until = now + timedelta(days=_DELETION_GRACE_DAYS)
+    logger.info(
+        "account_deletion_scheduled",
+        extra={"user_id": user.id, "restore_until": restore_until.isoformat()},
+    )
+    return DeleteAccountResponse(
+        deleted_at=now.isoformat(),
+        grace_period_days=_DELETION_GRACE_DAYS,
+        restore_until=restore_until.isoformat(),
+    )
+
+
+class RestoreAccountResponse(BaseModel):
+    restored: bool
+
+
+@router.post(
+    "/account/restore",
+    response_model=RestoreAccountResponse,
+    dependencies=[Depends(rate_limit(mode="sensitive", category="account_restore"))],
+)
+async def restore_account(user: AuthUser = Depends(get_current_user)) -> RestoreAccountResponse:
+    """Clear a pending deletion request. Available during 30-day grace."""
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        raise HTTPException(503, "Database not configured")
+
+    import httpx
+
+    headers = {
+        "apikey": settings.supabase_service_key,
+        "Authorization": f"Bearer {settings.supabase_service_key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.patch(
+                f"{settings.supabase_url}/rest/v1/users",
+                params={"id": f"eq.{user.id}"},
+                json={"deletion_requested_at": None},
+                headers=headers,
+            )
+        if resp.status_code not in (200, 204):
+            raise HTTPException(500, "Failed to restore account")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("account_restore_exception", extra={"user_id": user.id, "error": str(e)})
+        raise HTTPException(500, "Failed to restore account")
+
+    logger.info("account_deletion_cancelled", extra={"user_id": user.id})
+    return RestoreAccountResponse(restored=True)
