@@ -316,9 +316,9 @@
 <section class="progress-section">
   <div class="progress-label">
     <h2>Overall progress</h2>
-    <div class="progress-pct">~93%</div>
+    <div class="progress-pct">~95%</div>
   </div>
-  <div class="progress-bar"><div class="progress-fill" style="width:93%"></div></div>
+  <div class="progress-bar"><div class="progress-fill" style="width:95%"></div></div>
 </section>
 
 <!-- Stats -->
@@ -382,7 +382,7 @@
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Railway deploy stable, api.cleanway.ai responds 200</div><div class="task-meta">Custom domain wired 2026-04-22; ALLOWED_ORIGINS includes cleanway.ai</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Supabase EU active</div><div class="task-meta">Frankfurt project, schema 001-007 applied, RLS clean</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Vercel project connected, landing live</div><div class="task-meta">cleanway.ai HTTPS 200, www→apex 307, 80+ SSG routes generated</div></div></li>
-      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Pytest 555 tests passing</div><div class="task-meta">Was 165 at project start; +67 since 488 mark (Stripe webhook + Family Hub fanout/notify + redirect-validator hardening + /health/deep + rate-limit fail-CLOSED + family-invite quota)</div></div></li>
+      <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Pytest 601 tests passing</div><div class="task-meta">Was 165 at project start; +113 since 488 mark. Latest dig: badge layout fix, tracking-cleaner perf, server-side disposable gate, voice endpoint honest verdict, Outlook Report-phishing 3-bug fix, email + org DoS hardening, background LRU + abortable fetch, CheckRequest per-item cap, Stripe webhook idempotency, GDPR Art. 15 export + Art. 17 soft-delete, gitleaks false-positive allowlist.</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Stripe open redirect fix</div><div class="task-meta">field_validator on success_url/cancel_url <code>c0e179e</code></div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">Production extension manifests cleaned</div><div class="task-meta">Removed http://localhost:8000/* from Chrome/Firefox/Safari builds</div></div></li>
       <li><span class="icon icon-done">✓</span><div class="task-content"><div class="task-title">CI lockfile-sync guard</div><div class="task-meta">Workflow runs <code>npm ci --ignore-scripts</code> on every package.json change; fails the PR if the workspace-root <code>package-lock.json</code> drifts. Closes the class of bug we hit twice in 2026 (post-rebrand + post-dependabot @types/node) <code>b061807</code></div></div></li>
@@ -666,8 +666,8 @@
 
 <!-- ═════════ SESSION LOG ═════════ -->
 <section class="session-log">
-  <h2>Session log — 2026-04-28 → 2026-05-08</h2>
-  <p class="session-when">35+ commits · +67 tests (488 → 555) · Family Hub end-to-end · dependabot triage · CI hardening · Sentry wired prod · security follow-throughs (CRLF, fail-closed, invite quota)</p>
+  <h2>Session log — 2026-04-28 → 2026-05-11</h2>
+  <p class="session-when">50+ commits · +113 tests (488 → 601) · Family Hub end-to-end · dependabot triage · CI hardening · Sentry wired prod · enterprise-grade audit pass: badge bug, tracking-cleaner perf, disposable-email defense-in-depth, voice endpoint honesty, Outlook Report-phishing fix, payload DoS hardening, background LRU + abortable fetch, Stripe webhook idempotency, GDPR Art. 15 + 17, gitleaks allowlist for false positives</p>
 
   <table class="commits">
     <thead>
@@ -749,7 +749,7 @@
 </details>
 
 <footer>
-  Auto-generated · last updated 2026-05-08 · main @ <code>1b3e4ac</code>
+  Auto-generated · last updated 2026-05-11 · main @ <code>6308223</code>
   · <a href="https://github.com/AlexMos555/linkshield/actions">CI status</a>
 </footer>
 
