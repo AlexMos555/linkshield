@@ -32,10 +32,42 @@ try {
 } catch (e) { /* ignore */ }
 chrome.storage.local.get(["api_url"], d => { if (d.api_url) API_BASE = d.api_url; });
 
-// ── Cache ──
+// ── Cache (bounded LRU) ──
+// MV3 service workers can stay alive for hours during active browsing.
+// A plain Map grows unbounded — every distinct domain the user sees adds
+// an entry that's never evicted unless re-queried (the TTL check in
+// getCached returns null but doesn't delete). On a heavy day of news +
+// social scrolling that's easily 10k+ entries, hundreds of KB resident.
+//
+// JavaScript's Map preserves insertion order, so we can implement LRU
+// cheaply: on hit, re-insert to bump to the tail; on size cap, evict
+// the head (oldest). 1000 entries cover any realistic browsing session.
+const _CACHE_TTL_MS = 3600000;       // 1 hour
+const _CACHE_MAX_ENTRIES = 1000;
 const _cache = new Map();
-function getCached(d) { const e = _cache.get(d); if (!e || Date.now() - e.ts > 3600000) return null; return e.r; }
-function setCached(d, r) { _cache.set(d, { r, ts: Date.now() }); }
+
+function getCached(d) {
+  const e = _cache.get(d);
+  if (!e) return null;
+  if (Date.now() - e.ts > _CACHE_TTL_MS) {
+    _cache.delete(d);  // actively reap stale entry
+    return null;
+  }
+  // LRU touch: move to tail by re-inserting
+  _cache.delete(d);
+  _cache.set(d, e);
+  return e.r;
+}
+
+function setCached(d, r) {
+  // Evict oldest if at cap. Map.keys() iterates in insertion order, so
+  // .next().value is the oldest entry (least recently inserted/touched).
+  if (_cache.size >= _CACHE_MAX_ENTRIES) {
+    const oldest = _cache.keys().next().value;
+    if (oldest !== undefined) _cache.delete(oldest);
+  }
+  _cache.set(d, { r, ts: Date.now() });
+}
 
 // ── Safe domains ──
 const SAFE = new Set(["google.com","youtube.com","facebook.com","amazon.com","wikipedia.org","twitter.com","instagram.com","linkedin.com","reddit.com","apple.com","microsoft.com","github.com","netflix.com","whatsapp.com","tiktok.com","yahoo.com","bing.com","zoom.us","paypal.com","stripe.com","x.com","shopify.com","wordpress.com","medium.com","notion.so","slack.com","discord.com","telegram.org","spotify.com","twitch.tv","stackoverflow.com","cloudflare.com","dropbox.com","adobe.com","ebay.com","walmart.com","chase.com","cnn.com","bbc.com","nytimes.com","google.ru","vk.com","yandex.ru","mail.ru"]);
@@ -43,11 +75,20 @@ const SAFE = new Set(["google.com","youtube.com","facebook.com","amazon.com","wi
 function baseDomain(d) { var p = d.split("."); return p.length >= 2 ? p.slice(-2).join(".") : d; }
 
 // ── Fetch with timeout ──
+// The previous version raced fetch() against a setTimeout-reject, which
+// rejects the OUTER promise on timeout but leaves the underlying fetch
+// running until the network stack finishes. Under a fetch-storm (e.g. a
+// SPA generating links faster than the API responds) that piles up
+// abandoned requests holding sockets, descriptors and listeners — slow
+// memory bloat in the service worker.
+//
+// AbortController fixes it: signal goes into fetch(), and on timeout
+// we call abort() which actively cancels the request. Resources reclaim
+// immediately.
 function fetchWithTimeout(url, ms) {
-  return Promise.race([
-    fetch(url),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))
-  ]);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
 
 // ── Local scoring (instant, no network) ──
