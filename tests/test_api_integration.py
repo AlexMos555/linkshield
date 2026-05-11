@@ -192,11 +192,33 @@ def test_public_endpoint_format():
 
 def test_schemas():
     """Pydantic schemas validate correctly."""
-    from api.models.schemas import CheckRequest, DomainResult, RiskLevel, ConfidenceLevel
+    from pydantic import ValidationError
+
+    from api.models.schemas import (
+        CheckRequest,
+        ConfidenceLevel,
+        DomainResult,
+        RiskLevel,
+    )
 
     # Valid request
     req = CheckRequest(domains=["google.com", "evil.com"])
     assert len(req.domains) == 2
+
+    # ── Per-domain length cap (RFC 1035 → 253 chars) ────────────
+    # The outer list cap (50) alone allows ~10 MB total payload by
+    # stuffing a single 10 MB string in. validate_domain rejects it
+    # later, but only AFTER Pydantic deserialization + a downstream
+    # normalize/set pass — wasted worker CPU. Item-level cap rejects
+    # at deserialization.
+    try:
+        CheckRequest(domains=["x" * 254])
+    except ValidationError:
+        pass
+    else:
+        raise AssertionError(
+            "CheckRequest must reject domains longer than 253 chars"
+        )
 
     # Score validation
     result = DomainResult(

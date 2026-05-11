@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from enum import Enum
-from typing import Optional
+from typing import Annotated, Optional
 
 
 class RiskLevel(str, Enum):
@@ -15,8 +15,17 @@ class ConfidenceLevel(str, Enum):
     low = "low"        # <3 APIs or very limited data
 
 
+# Per-element string cap: RFC 1035 limits a full DNS name to 253 chars.
+# Anything longer is invalid by spec, but without this cap the outer
+# list cap (max 50 entries) alone allows ~10 MB total payload by
+# stuffing one 10 MB string in. validate_domain() would later reject
+# it, but Pydantic deserialization + a downstream `set()`/normalize
+# pass already burn worker CPU before we get there.
+DomainStr = Annotated[str, StringConstraints(max_length=253)]
+
+
 class CheckRequest(BaseModel):
-    domains: list[str] = Field(..., min_length=1, max_length=50, description="Domains to check")
+    domains: list[DomainStr] = Field(..., min_length=1, max_length=50, description="Domains to check")
 
     model_config = {
         "json_schema_extra": {
