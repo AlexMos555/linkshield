@@ -303,6 +303,21 @@ async def customer_portal(user: AuthUser = Depends(get_current_user)):
 
 # ── Webhook handlers ──
 
+def _tier_from_plan_key(plan: str) -> str:
+    """Map 'personal_monthly' / 'family_yearly' / 'business_monthly' → tier.
+
+    Used by webhook handlers to translate the metadata.plan we set during
+    checkout into the subscriptions.tier value our DB stores. Before
+    this helper, the inline logic only checked personal/family —
+    business plans silently fell through to 'personal', giving B2B
+    customers Personal-tier limits despite paying for Business."""
+    if "business" in plan:
+        return "business"
+    if "family" in plan:
+        return "family"
+    return "personal"
+
+
 async def _handle_checkout_completed(session: dict):
     """New subscription created."""
     user_id = session.get("metadata", {}).get("user_id")
@@ -313,11 +328,19 @@ async def _handle_checkout_completed(session: dict):
         logger.warning("checkout_no_user_id")
         return
 
-    # Determine tier from plan
-    tier = "personal" if "personal" in plan else "family" if "family" in plan else "personal"
+    tier = _tier_from_plan_key(plan)
 
     await _update_subscription(user_id, tier, "active", "stripe", subscription_id)
     logger.info("subscription_created", extra={"user_id": user_id, "tier": tier})
+
+    from api.services import audit_log
+    await audit_log.write(
+        action="subscription.created",
+        target_kind="subscription",
+        target_id=subscription_id or user_id,
+        actor_user_id=user_id,
+        meta={"tier": tier, "plan": plan, "provider": "stripe"},
+    )
 
 
 async def _handle_subscription_updated(subscription: dict):
@@ -331,6 +354,19 @@ async def _handle_subscription_updated(subscription: dict):
     mapped_status = "active" if status in ("active", "trialing") else "past_due" if status == "past_due" else "cancelled"
     await _update_subscription(user_id, None, mapped_status, "stripe", subscription.get("id"))
 
+    from api.services import audit_log
+    await audit_log.write(
+        action="subscription.status_changed",
+        target_kind="subscription",
+        target_id=subscription.get("id") or user_id,
+        actor_user_id=user_id,
+        meta={
+            "stripe_status": status,
+            "mapped_status": mapped_status,
+            "stripe_event": "subscription.updated",
+        },
+    )
+
 
 async def _handle_subscription_deleted(subscription: dict):
     """Subscription cancelled."""
@@ -338,6 +374,15 @@ async def _handle_subscription_deleted(subscription: dict):
     if user_id:
         await _update_subscription(user_id, "free", "cancelled", "stripe", subscription.get("id"))
         logger.info("subscription_cancelled", extra={"user_id": user_id})
+
+        from api.services import audit_log
+        await audit_log.write(
+            action="subscription.cancelled",
+            target_kind="subscription",
+            target_id=subscription.get("id") or user_id,
+            actor_user_id=user_id,
+            meta={"stripe_event": "subscription.deleted"},
+        )
 
 
 async def _handle_payment_failed(invoice: dict):

@@ -74,6 +74,10 @@ class FakeSubscriptionsTable:
     def __init__(self) -> None:
         self.posts: List[Dict[str, Any]] = []
         self.urls: List[str] = []
+        # Separate list for /rest/v1/audit_log writes — keeps the
+        # existing subscriptions assertions undisturbed when audit
+        # rows fire alongside the main write.
+        self.audit_posts: List[Dict[str, Any]] = []
 
     def build(self):
         recorder = self
@@ -100,6 +104,8 @@ class FakeSubscriptionsTable:
                 if "/rest/v1/subscriptions" in url:
                     recorder.posts.append(json or {})
                     recorder.urls.append(url)
+                elif "/rest/v1/audit_log" in url:
+                    recorder.audit_posts.append(json or {})
                 return _Resp(201)
 
         return _Client
@@ -667,3 +673,99 @@ def test_customer_deleted_without_user_id_logs_skips(
     )
     assert resp.status_code == 200
     assert fake_subscriptions.posts == []
+
+
+# ─── Business plan tier mapping (regression) ───────────────────
+
+
+def test_checkout_business_plan_maps_to_business_tier(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """The inline tier-from-plan logic before this fix checked only
+    'personal' / 'family' substrings, so 'business_monthly' silently
+    fell through to 'personal'. A B2B customer paying for Business
+    would have ended up with Personal-tier limits in our DB."""
+    payload = _event(
+        "checkout.session.completed",
+        {
+            "metadata": {"user_id": "user-biz", "plan": "business_yearly"},
+            "subscription": "sub_biz",
+        },
+    )
+    resp = client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    assert resp.status_code == 200
+    # The first POST (recorded by FakeSubscriptionsTable) is the
+    # subscription upsert. audit_log writes come AFTER and go through
+    # the same recorder. We just need the subscription row to carry
+    # tier='business'.
+    sub_writes = [p for p in fake_subscriptions.posts if "tier" in p]
+    assert sub_writes, "no subscription upsert recorded"
+    assert sub_writes[0]["tier"] == "business"
+
+
+def test_tier_from_plan_helper():
+    """Pure-function test of the tier mapping used by the webhook."""
+    from api.routers.payments import _tier_from_plan_key
+
+    assert _tier_from_plan_key("personal_monthly") == "personal"
+    assert _tier_from_plan_key("personal_yearly") == "personal"
+    assert _tier_from_plan_key("family_monthly") == "family"
+    assert _tier_from_plan_key("family_yearly") == "family"
+    assert _tier_from_plan_key("business_monthly") == "business"
+    assert _tier_from_plan_key("business_yearly") == "business"
+    # Unknown plan → personal (safer than crashing the webhook).
+    assert _tier_from_plan_key("garbage") == "personal"
+
+
+# ─── Audit-log rows on each event (regression for compliance) ──
+
+
+def test_subscription_created_writes_audit_row(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """checkout.session.completed → audit row with action
+    'subscription.created' so compliance teams can answer 'when did
+    this customer subscribe?' without joining Stripe history."""
+    payload = _event(
+        "checkout.session.completed",
+        {
+            "metadata": {"user_id": "user-aud", "plan": "personal_monthly"},
+            "subscription": "sub_aud",
+        },
+    )
+    client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    audit_rows = [
+        p for p in fake_subscriptions.audit_posts
+        if p.get("action") == "subscription.created"
+    ]
+    assert len(audit_rows) == 1
+    assert audit_rows[0]["target_id"] == "sub_aud"
+    assert audit_rows[0]["actor_user_id"] == "user-aud"
+
+
+def test_subscription_cancelled_writes_audit_row(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    payload = _event(
+        "customer.subscription.deleted",
+        {"id": "sub_cancel_aud", "metadata": {"user_id": "user-cancel"}},
+    )
+    client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    audit_rows = [
+        p for p in fake_subscriptions.audit_posts
+        if p.get("action") == "subscription.cancelled"
+    ]
+    assert len(audit_rows) == 1
+    assert audit_rows[0]["target_id"] == "sub_cancel_aud"
