@@ -38,7 +38,11 @@ export async function GET(request: NextRequest) {
   const accessToken = data.session?.access_token;
   if (accessToken) {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
-    fetch(`${apiBase}/api/v1/users/welcome`, {
+    // Note: backend route is /api/v1/user/welcome (singular). The
+    // pluralised path here previously 404'd silently on every login,
+    // meaning the welcome email never fired even when the email
+    // provider was wired.
+    fetch(`${apiBase}/api/v1/user/welcome`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -558,3 +558,112 @@ def test_subscribe_then_cancel_then_resubscribe_each_step_persists(
     final = fake_subscriptions.posts[-1]
     assert final["tier"] == "family"
     assert final["status"] == "active"
+
+
+# ─── Lifecycle events beyond the core 4 (trial / renewal / customer) ──
+
+
+def test_trial_will_end_returns_200_no_persistence(
+    client, supabase_ok, fake_subscriptions, fake_redis, caplog
+):
+    """customer.subscription.trial_will_end fires 3 days before trial
+    conversion. We log + accept so Stripe doesn't retry; persistence
+    is intentionally untouched (the actual DB write happens when the
+    trial converts and customer.subscription.updated fires)."""
+    import logging
+
+    payload = _event(
+        "customer.subscription.trial_will_end",
+        {
+            "id": "sub_trial",
+            "status": "trialing",
+            "trial_end": 1715965200,
+            "metadata": {"user_id": "user-trial"},
+        },
+    )
+    with caplog.at_level(logging.INFO):
+        resp = client.post(
+            "/api/v1/payments/webhook",
+            content=payload,
+            headers={"stripe-signature": _sign(payload)},
+        )
+    assert resp.status_code == 200
+    # No persistence on this event — Stripe will fire .updated when the
+    # trial actually converts.
+    assert fake_subscriptions.posts == []
+    # And the structured log breadcrumb is in place for Sentry.
+    assert any("trial_will_end" in r.message for r in caplog.records)
+
+
+def test_invoice_paid_returns_200_no_persistence(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """invoice.paid is the authoritative recovery signal after a
+    past_due cycle. customer.subscription.updated does the actual DB
+    write; this handler just structured-logs for analytics."""
+    payload = _event(
+        "invoice.paid",
+        {
+            "id": "in_paid_test",
+            "subscription": "sub_recovered",
+            "amount_paid": 999,
+            "metadata": {"user_id": "user-recovered"},
+        },
+    )
+    resp = client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    assert resp.status_code == 200
+    assert fake_subscriptions.posts == []
+
+
+def test_customer_deleted_with_user_id_drops_to_free(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """If Stripe deletes the customer entirely (operator cleanup),
+    we must drop their tier to free so our resolver doesn't keep
+    surfacing paid access for a customer that no longer exists in
+    Stripe. Requires the customer object to carry user_id in metadata
+    — Stripe lets us set it at customer-create time; we currently set
+    it on subscriptions, so this path only fires for callers who set
+    it on the customer too. Logged either way."""
+    payload = _event(
+        "customer.deleted",
+        {
+            "id": "cus_test_deleted",
+            "metadata": {"user_id": "user-stripe-deleted"},
+        },
+    )
+    resp = client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    assert resp.status_code == 200
+    # Drops to free + cancelled in subscriptions
+    assert len(fake_subscriptions.posts) == 1
+    final = fake_subscriptions.posts[0]
+    assert final["user_id"] == "user-stripe-deleted"
+    assert final["tier"] == "free"
+    assert final["status"] == "cancelled"
+
+
+def test_customer_deleted_without_user_id_logs_skips(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """Without metadata.user_id we can't attribute the deletion safely.
+    Log + return 200 so Stripe doesn't retry, but DON'T mis-cancel some
+    random user."""
+    payload = _event(
+        "customer.deleted",
+        {"id": "cus_no_meta"},
+    )
+    resp = client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    assert resp.status_code == 200
+    assert fake_subscriptions.posts == []

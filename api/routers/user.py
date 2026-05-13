@@ -1261,6 +1261,17 @@ async def delete_account(user: AuthUser = Depends(get_current_user)) -> DeleteAc
         "account_deletion_scheduled",
         extra={"user_id": user.id, "restore_until": restore_until.isoformat()},
     )
+
+    # Audit trail — compliance/SAR. Best-effort; never blocks the user.
+    from api.services import audit_log
+    await audit_log.write(
+        action="account.delete_requested",
+        target_kind="user",
+        target_id=user.id,
+        actor_user_id=user.id,
+        meta={"restore_until": restore_until.isoformat()},
+    )
+
     return DeleteAccountResponse(
         deleted_at=now.isoformat(),
         grace_period_days=_DELETION_GRACE_DAYS,
@@ -1309,4 +1320,11 @@ async def restore_account(user: AuthUser = Depends(get_current_user)) -> Restore
         raise HTTPException(500, "Failed to restore account")
 
     logger.info("account_deletion_cancelled", extra={"user_id": user.id})
+    from api.services import audit_log
+    await audit_log.write(
+        action="account.restored",
+        target_kind="user",
+        target_id=user.id,
+        actor_user_id=user.id,
+    )
     return RestoreAccountResponse(restored=True)

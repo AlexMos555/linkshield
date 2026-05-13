@@ -237,6 +237,25 @@ async def stripe_webhook(request: Request):
         await _handle_subscription_updated(data)
     elif event_type == "customer.subscription.deleted":
         await _handle_subscription_deleted(data)
+    elif event_type == "customer.subscription.trial_will_end":
+        # Stripe fires this 3 days before a trial ends. Used for the
+        # "your trial ends Friday, click here to keep your plan or
+        # cancel" email — without it, every user gets a surprise
+        # charge at trial end and we eat the chargeback. Persistence
+        # untouched; downstream email job reads logs / a future
+        # trial_ending_at column.
+        await _handle_trial_will_end(data)
+    elif event_type == "invoice.paid":
+        # Successful renewal payment. After a past_due cycle this is
+        # how we know the customer is back to good standing — Stripe
+        # also sends subscription.updated, but invoice.paid is the
+        # authoritative signal for "money actually changed hands."
+        await _handle_invoice_paid(data)
+    elif event_type == "customer.deleted":
+        # Stripe-side customer deletion (operator-initiated cleanup,
+        # support tool, etc.). Cancel any subscriptions we have on
+        # file for that customer to keep our DB consistent.
+        await _handle_customer_deleted(data)
     elif event_type == "invoice.payment_failed":
         await _handle_payment_failed(data)
 
@@ -325,6 +344,64 @@ async def _handle_payment_failed(invoice: dict):
     """Payment failed."""
     subscription_id = invoice.get("subscription")
     logger.warning("payment_failed", extra={"subscription_id": subscription_id})
+
+
+async def _handle_trial_will_end(subscription: dict):
+    """Stripe fires this exactly 3 days before a trialing subscription
+    converts to paid. Currently we just log + structured-log it for
+    Sentry breadcrumb context; the email-template `trial_ending` exists
+    in packages/email-templates/ and will be wired to fire from this
+    handler once the email provider is activated."""
+    user_id = subscription.get("metadata", {}).get("user_id")
+    trial_end = subscription.get("trial_end")  # epoch seconds
+    logger.info(
+        "trial_will_end",
+        extra={
+            "user_id": user_id,
+            "subscription_id": subscription.get("id"),
+            "trial_end_epoch": trial_end,
+        },
+    )
+
+
+async def _handle_invoice_paid(invoice: dict):
+    """Successful renewal. After a past_due cycle this is the
+    authoritative recovery signal — money changed hands, the customer
+    is good. Stripe also fires customer.subscription.updated when status
+    flips back to 'active'; that's where the actual DB write happens.
+    Here we just emit a structured log so analytics / Sentry can pin
+    the recovery moment to the actual payment."""
+    user_id = (invoice.get("metadata") or {}).get("user_id")
+    subscription_id = invoice.get("subscription")
+    amount_paid = invoice.get("amount_paid")  # cents
+    logger.info(
+        "invoice_paid",
+        extra={
+            "user_id": user_id,
+            "subscription_id": subscription_id,
+            "amount_paid_cents": amount_paid,
+        },
+    )
+
+
+async def _handle_customer_deleted(customer: dict):
+    """Stripe customer was deleted (support tool / operator-initiated
+    cleanup). Drop the user to free in our DB so the tier resolver
+    doesn't show paid access for a customer Stripe no longer knows.
+
+    The Stripe customer doesn't always carry our user_id in metadata,
+    so we have to look up by stripe_customer_id. Until we add that
+    column on subscriptions, we log + skip the persistence update —
+    safer than mis-attributing the cancellation. (Migration to add
+    stripe_customer_id is a future hardening, not blocking ship.)"""
+    customer_id = customer.get("id")
+    user_id = (customer.get("metadata") or {}).get("user_id")
+    logger.warning(
+        "stripe_customer_deleted",
+        extra={"customer_id": customer_id, "user_id": user_id},
+    )
+    if user_id:
+        await _update_subscription(user_id, "free", "cancelled", "stripe", None)
 
 
 async def _update_subscription(
