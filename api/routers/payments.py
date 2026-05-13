@@ -263,9 +263,15 @@ async def customer_portal(user: AuthUser = Depends(get_current_user)):
         if not customers.data:
             raise HTTPException(404, "No subscription found")
 
+        # return_url is where Stripe sends the user after they close the
+        # portal (or after they cancel / upgrade). /settings on landing
+        # doesn't exist yet (web settings UI lives inside the extension
+        # popup + mobile app, not on the marketing site). Redirecting to
+        # /pricing makes the most sense — it shows their tier options
+        # again and reflects the change they just made via the portal.
         session = stripe.billing_portal.Session.create(
             customer=customers.data[0].id,
-            return_url="https://cleanway.ai/settings",
+            return_url="https://cleanway.ai/pricing",
         )
         return {"portal_url": session.url}
 
