@@ -602,8 +602,24 @@ async def create_invite(
     if not rows:
         raise HTTPException(500, "Failed to create invite")
 
+    invite_id = rows[0]["id"]
+    # Audit trail: who created an invite to which family + when. Code+PIN
+    # are NOT logged (they appear once to the inviter and we keep only
+    # hashes server-side — logging them would defeat the security model).
+    from api.services import audit_log
+    await audit_log.write(
+        action="family.invite_created",
+        target_kind="family",
+        target_id=family_id,
+        actor_user_id=user.id,
+        meta={
+            "invite_id": invite_id,
+            "expires_at": expires.isoformat(),
+        },
+    )
+
     return InviteCreateResponse(
-        invite_id=rows[0]["id"],
+        invite_id=invite_id,
         code=raw_code,
         pin=pin,
         expires_at=expires.isoformat(),
@@ -677,6 +693,21 @@ async def accept_invite(
     )
     if redeem_resp.status_code not in (200, 204):
         logger.warning("family.invite_redeem_mark_failed", extra={"status": redeem_resp.status_code})
+
+    # Audit trail: who joined which family + via which invite. Useful
+    # for "I never joined this family — please remove me" support cases
+    # and SAR responses.
+    from api.services import audit_log
+    await audit_log.write(
+        action="family.invite_accepted",
+        target_kind="family",
+        target_id=invite["family_id"],
+        actor_user_id=user.id,
+        meta={
+            "invite_id": invite["id"],
+            "inviter_user_id": invite.get("inviter_id"),
+        },
+    )
 
     return AcceptInviteResponse(family_id=invite["family_id"], role="member")
 
