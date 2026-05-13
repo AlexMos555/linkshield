@@ -66,10 +66,14 @@ def supabase_ok(monkeypatch):
 
 
 class FakeSubscriptionsTable:
-    """Captures POSTs to /rest/v1/subscriptions so we can assert on the body."""
+    """Captures POSTs to /rest/v1/subscriptions so we can assert on the
+    body AND the URL (the latter pins the `on_conflict=user_id` upsert
+    semantics introduced after migration 013).
+    """
 
     def __init__(self) -> None:
         self.posts: List[Dict[str, Any]] = []
+        self.urls: List[str] = []
 
     def build(self):
         recorder = self
@@ -77,6 +81,7 @@ class FakeSubscriptionsTable:
         class _Resp:
             def __init__(self, status: int):
                 self.status_code = status
+                self.text = ""
 
             def json(self):
                 return [{"ok": True}]
@@ -94,6 +99,7 @@ class FakeSubscriptionsTable:
             async def post(self, url, headers=None, json=None, params=None):
                 if "/rest/v1/subscriptions" in url:
                     recorder.posts.append(json or {})
+                    recorder.urls.append(url)
                 return _Resp(201)
 
         return _Client
@@ -474,3 +480,81 @@ def test_redis_down_fails_open_processes_anyway(
     assert resp.status_code == 200
     # Event still processed despite Redis being down.
     assert len(fake_subscriptions.posts) == 1
+
+
+# ─── Upsert semantics (single-row per user) ─────────────────────
+
+
+def test_upsert_url_uses_on_conflict_user_id(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """Migration 013 added UNIQUE(user_id). Webhook MUST pass
+    `on_conflict=user_id` so PostgREST merges the existing row instead
+    of inserting a new one. Without this header the cancel path would
+    leave the original active row in place and the user would keep
+    paid access forever."""
+    payload = _event(
+        "checkout.session.completed",
+        {
+            "metadata": {"user_id": "user-upsert", "plan": "personal_monthly"},
+            "subscription": "sub_upsert",
+        },
+    )
+    resp = client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    assert resp.status_code == 200
+    assert len(fake_subscriptions.urls) == 1
+    assert "on_conflict=user_id" in fake_subscriptions.urls[0], (
+        f"upsert URL missing on_conflict=user_id: {fake_subscriptions.urls[0]}"
+    )
+
+
+def test_subscribe_then_cancel_then_resubscribe_each_step_persists(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """End-to-end sequence: a real customer who subscribes, cancels,
+    then re-subscribes. Each event must persist a body that reflects
+    the new state — not pile up alongside the old one. We can't fake
+    the Supabase UPSERT in this test harness, but we CAN verify the
+    payload sequence is what we'd want PostgREST to merge."""
+    # 1. Subscribe → active personal
+    p1 = _event(
+        "checkout.session.completed",
+        {"metadata": {"user_id": "user-loop", "plan": "personal_monthly"}, "subscription": "sub_1"},
+    )
+    client.post("/api/v1/payments/webhook", content=p1, headers={"stripe-signature": _sign(p1)})
+
+    # 2. Cancel → free + cancelled
+    import json as _json
+    p2_body = _json.loads(p1.decode())
+    p2_body["id"] = "evt_cancel_loop"
+    p2_body["type"] = "customer.subscription.deleted"
+    p2_body["data"]["object"] = {
+        "id": "sub_1",
+        "metadata": {"user_id": "user-loop"},
+    }
+    p2 = _json.dumps(p2_body).encode()
+    client.post("/api/v1/payments/webhook", content=p2, headers={"stripe-signature": _sign(p2)})
+
+    # 3. Re-subscribe → active family
+    p3_body = _json.loads(p1.decode())
+    p3_body["id"] = "evt_resub"
+    p3_body["data"]["object"]["metadata"]["plan"] = "family_yearly"
+    p3_body["data"]["object"]["subscription"] = "sub_2"
+    p3 = _json.dumps(p3_body).encode()
+    client.post("/api/v1/payments/webhook", content=p3, headers={"stripe-signature": _sign(p3)})
+
+    assert len(fake_subscriptions.posts) == 3
+    # Each upsert is for the same user_id (merge target on prod)
+    for p in fake_subscriptions.posts:
+        assert p["user_id"] == "user-loop"
+    # And all three URLs carry the conflict resolver
+    for url in fake_subscriptions.urls:
+        assert "on_conflict=user_id" in url
+    # The final state is what survives a real merge: family + active
+    final = fake_subscriptions.posts[-1]
+    assert final["tier"] == "family"
+    assert final["status"] == "active"

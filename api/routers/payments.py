@@ -340,13 +340,20 @@ async def _update_subscription(
         logger.warning("supabase_not_configured_for_subscription_update")
         return
 
-    # Update Supabase
+    # Update Supabase — one row per user_id, mutated in place. Migration
+    # 013 added UNIQUE(user_id), so the `on_conflict=user_id` query param
+    # tells PostgREST to actually merge instead of inserting a new row.
+    # Without this, the previous flow inserted a row on every event:
+    # cancel → status='cancelled' row alongside an existing status='active'
+    # row → tier resolver still found the active one → user kept paid
+    # access after cancellation. That's a revenue / fairness bug we'd
+    # have shipped to prod without this fix.
     try:
         headers = {
             "apikey": settings.supabase_service_key,
             "Authorization": f"Bearer {settings.supabase_service_key}",
             "Content-Type": "application/json",
-            "Prefer": "resolution=merge-duplicates",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
         }
 
         body = {
@@ -360,11 +367,21 @@ async def _update_subscription(
             body["provider_subscription_id"] = provider_id
 
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(
-                f"{settings.supabase_url}/rest/v1/subscriptions",
+            resp = await client.post(
+                f"{settings.supabase_url}/rest/v1/subscriptions"
+                f"?on_conflict=user_id",
                 headers=headers,
                 json=body,
             )
+            if resp.status_code not in (200, 201, 204):
+                logger.warning(
+                    "subscription_upsert_unexpected_status",
+                    extra={
+                        "user_id": user_id,
+                        "status_code": resp.status_code,
+                        "body": resp.text[:200],
+                    },
+                )
     except Exception as e:
         logger.error("subscription_update_error", extra={"error": str(e)})
 
