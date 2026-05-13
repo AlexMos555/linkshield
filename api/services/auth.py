@@ -168,11 +168,24 @@ async def _fetch_tier_from_supabase(user_id: str) -> UserTier:
         return UserTier.free
 
     try:
+        # We grant paid tier on BOTH `active` AND `past_due`. Stripe sends
+        # `past_due` while it's retrying a failed payment (typical dunning
+        # window is 1-2 weeks); revoking the user's tier instantly on the
+        # first declined card is hostile UX. If the retry cycle fails,
+        # Stripe eventually sends `customer.subscription.deleted` which our
+        # webhook maps to status='cancelled' — the user falls to free
+        # naturally at that point.
+        #
+        # order=created_at.desc + limit=1: when a user has historical
+        # cancelled rows alongside a current row, pick the most recent.
+        # Otherwise the unordered query could return any row and a stale
+        # cancelled row would override a fresh active subscription.
         url = (
             f"{settings.supabase_url}/rest/v1/subscriptions"
             f"?user_id=eq.{user_id}"
-            f"&status=eq.active"
+            f"&status=in.(active,past_due)"
             f"&select=tier"
+            f"&order=created_at.desc"
             f"&limit=1"
         )
         headers = {
