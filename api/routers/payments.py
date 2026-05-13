@@ -2,9 +2,16 @@
 Stripe Payments Router.
 
 Handles:
-  1. POST /api/v1/payments/create-checkout — create Stripe Checkout session
-  2. POST /api/v1/payments/webhook — Stripe webhook handler
+  1. POST /api/v1/payments/checkout — create Stripe Checkout session
+     (alias /create-checkout kept for legacy callers)
+  2. POST /api/v1/payments/webhook — Stripe webhook handler (idempotent
+     on event.id via Redis SETNX, 7-day TTL)
   3. POST /api/v1/payments/portal — Stripe Customer Portal link
+
+Real Stripe price IDs are resolved at request time from
+api.services.pricing.STRIPE_PRICE_IDS, which reads
+STRIPE_PRICE_{PLAN}_T{TIER}_{INTERVAL} env vars populated by
+scripts/create_stripe_prices.py.
 
 Tier updates are written to Supabase subscriptions table
 and cached in Redis for fast tier lookups.
@@ -27,13 +34,31 @@ logger = logging.getLogger("cleanway.payments")
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
-# Stripe price IDs (set in env or hardcode after creating in Stripe Dashboard)
-PRICE_IDS = {
-    "personal_monthly": "price_PERSONAL_MONTHLY",  # $4.99/mo
-    "personal_yearly": "price_PERSONAL_YEARLY",     # $49.99/yr
-    "family_monthly": "price_FAMILY_MONTHLY",       # $9.99/mo
-    "family_yearly": "price_FAMILY_YEARLY",         # $99.99/yr
-}
+# Map the legacy client-side "plan_interval" string (e.g. "personal_monthly")
+# to a real Stripe price ID, fetched from STRIPE_PRICE_IDS in pricing.py
+# (which itself reads STRIPE_PRICE_{PLAN}_T{TIER}_{INTERVAL} env vars
+# populated by scripts/create_stripe_prices.py).
+#
+# Tier defaults to 1 (US/EU/UK pricing). When we wire country-based tier
+# resolution end-to-end (the data is already in pricing.py's
+# infer_tier_from_country, just not threaded through the checkout call
+# yet), this becomes the user's resolved tier.
+_DEFAULT_TIER = 1
+
+
+def _resolve_price_id(plan_interval: str) -> str | None:
+    """Translate 'personal_monthly' / 'family_yearly' / 'business_monthly'
+    into a real Stripe price ID. Returns None on a malformed key."""
+    from api.services.pricing import STRIPE_PRICE_IDS
+
+    if "_" not in plan_interval:
+        return None
+    plan, interval = plan_interval.rsplit("_", 1)
+    if plan not in STRIPE_PRICE_IDS:
+        return None
+    if interval not in ("monthly", "yearly"):
+        return None
+    return STRIPE_PRICE_IDS[plan][_DEFAULT_TIER][interval]
 
 
 _ALLOWED_REDIRECT_PREFIXES = ("https://cleanway.ai/", "https://www.cleanway.ai/")
@@ -69,7 +94,7 @@ class CheckoutResponse(BaseModel):
 
 
 @router.post(
-    "/create-checkout",
+    "/checkout",
     response_model=CheckoutResponse,
     dependencies=[Depends(rate_limit(mode="sensitive", category="checkout"))],
 )
@@ -77,7 +102,11 @@ async def create_checkout(
     request: CheckoutRequest,
     user: AuthUser = Depends(get_current_user),
 ):
-    """Create a Stripe Checkout session for subscription."""
+    """Create a Stripe Checkout session for subscription.
+
+    Endpoint path is /checkout (matches the landing PricingClient).
+    /create-checkout is preserved as an alias below for any code that
+    might still reference the legacy name."""
     try:
         import stripe
     except ImportError:
@@ -90,7 +119,7 @@ async def create_checkout(
 
     stripe.api_key = stripe_key
 
-    price_id = PRICE_IDS.get(request.plan)
+    price_id = _resolve_price_id(request.plan)
     if not price_id:
         raise HTTPException(400, f"Invalid plan: {request.plan}")
 
@@ -117,6 +146,21 @@ async def create_checkout(
     except Exception as e:
         logger.error("checkout_error", extra={"error": str(e)})
         raise HTTPException(500, "Failed to create checkout session")
+
+
+# Alias for any caller still on the legacy path. Kept thin so the
+# bulk of the logic lives in one place. Drop this after a release cycle
+# once we're confident no production caller hits the old URL.
+@router.post(
+    "/create-checkout",
+    response_model=CheckoutResponse,
+    dependencies=[Depends(rate_limit(mode="sensitive", category="checkout"))],
+)
+async def create_checkout_legacy(
+    request: CheckoutRequest,
+    user: AuthUser = Depends(get_current_user),
+):
+    return await create_checkout(request, user)
 
 
 @router.post("/webhook")

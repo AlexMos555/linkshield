@@ -13,6 +13,7 @@ Tiers by purchasing power parity (PPP):
 """
 from __future__ import annotations
 
+import os as _os
 from dataclasses import dataclass
 from typing import Literal
 
@@ -72,29 +73,34 @@ _TIER_MULTIPLIERS: dict[Tier, float] = {
     4: 0.3,   # affordable -70%
 }
 
-# ─── Stripe price IDs (filled in when products are created) ────
-# Format: STRIPE_PRICE_IDS[plan][tier][interval] → "price_xxxx"
-# These placeholders will be replaced with real IDs from Stripe dashboard.
+# ─── Stripe price IDs ──────────────────────────────────────────
+# Each Plan × Tier × Interval combination maps to a Stripe price ID
+# created by `scripts/create_stripe_prices.py`. The script outputs 24
+# lines like `STRIPE_PRICE_PERSONAL_T1_MONTHLY=price_1QabC...` to paste
+# into Railway env vars; this module reads them at import time.
+#
+# Until those env vars are populated (dev / staging without Stripe wired)
+# we fall back to a deterministic placeholder so /api/v1/pricing still
+# serves a parseable response. Calling Stripe Checkout with the
+# placeholder will fail at Stripe's end ("No such price …") — that's
+# the right failure mode: it surfaces the missing env var loudly
+# instead of silently 500-ing.
+
+
+def _resolve_price_id(plan: "Plan", tier: "Tier", interval: "Interval") -> str:
+    env_var = f"STRIPE_PRICE_{plan.upper()}_T{tier}_{interval.upper()}"
+    return _os.environ.get(env_var, f"price_{plan.upper()}_T{tier}_{interval.upper()}_PLACEHOLDER")
+
 
 STRIPE_PRICE_IDS: dict[Plan, dict[Tier, dict[Interval, str]]] = {
-    "personal": {
-        1: {"monthly": "price_PERSONAL_T1_MONTHLY", "yearly": "price_PERSONAL_T1_YEARLY"},
-        2: {"monthly": "price_PERSONAL_T2_MONTHLY", "yearly": "price_PERSONAL_T2_YEARLY"},
-        3: {"monthly": "price_PERSONAL_T3_MONTHLY", "yearly": "price_PERSONAL_T3_YEARLY"},
-        4: {"monthly": "price_PERSONAL_T4_MONTHLY", "yearly": "price_PERSONAL_T4_YEARLY"},
-    },
-    "family": {
-        1: {"monthly": "price_FAMILY_T1_MONTHLY", "yearly": "price_FAMILY_T1_YEARLY"},
-        2: {"monthly": "price_FAMILY_T2_MONTHLY", "yearly": "price_FAMILY_T2_YEARLY"},
-        3: {"monthly": "price_FAMILY_T3_MONTHLY", "yearly": "price_FAMILY_T3_YEARLY"},
-        4: {"monthly": "price_FAMILY_T4_MONTHLY", "yearly": "price_FAMILY_T4_YEARLY"},
-    },
-    "business": {
-        1: {"monthly": "price_BUSINESS_T1_MONTHLY", "yearly": "price_BUSINESS_T1_YEARLY"},
-        2: {"monthly": "price_BUSINESS_T2_MONTHLY", "yearly": "price_BUSINESS_T2_YEARLY"},
-        3: {"monthly": "price_BUSINESS_T3_MONTHLY", "yearly": "price_BUSINESS_T3_YEARLY"},
-        4: {"monthly": "price_BUSINESS_T4_MONTHLY", "yearly": "price_BUSINESS_T4_YEARLY"},
-    },
+    plan: {
+        tier: {
+            interval: _resolve_price_id(plan, tier, interval)
+            for interval in ("monthly", "yearly")
+        }
+        for tier in (1, 2, 3, 4)
+    }
+    for plan in ("personal", "family", "business")
 }
 
 

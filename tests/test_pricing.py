@@ -98,9 +98,15 @@ def test_family_more_expensive_than_personal():
 
 
 def test_stripe_price_id_returned():
-    """Every quote includes a Stripe price ID placeholder."""
+    """Every quote includes a Stripe price ID. When the operator hasn't
+    populated STRIPE_PRICE_{PLAN}_T{TIER}_{INTERVAL} env vars yet, we
+    fall back to a deterministic *_PLACEHOLDER suffix so the field is
+    parseable but Stripe will refuse it loudly (No such price …)."""
     q = get_price("personal", 2, "monthly")
-    assert q.stripe_price_id == "price_PERSONAL_T2_MONTHLY"
+    # In test env there's no STRIPE_PRICE_PERSONAL_T2_MONTHLY set, so
+    # the placeholder is what we expect. A populated env would return
+    # the real Stripe ID instead.
+    assert q.stripe_price_id == "price_PERSONAL_T2_MONTHLY_PLACEHOLDER"
 
 
 # ═══════════════════════════════════════════════════════════════

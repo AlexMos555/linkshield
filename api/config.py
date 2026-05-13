@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     public_rate_limit_window_seconds: int = 3600  # 1 hour window
 
     # Rate limits — sensitive actions (per user, stricter)
-    # Applied to /payments/create-checkout, /payments/portal, /org/create
+    # Applied to /payments/checkout, /payments/portal, /org/create
     sensitive_action_limit: int = 10               # 10 per hour per user
     sensitive_action_window_seconds: int = 3600    # 1 hour window
 
