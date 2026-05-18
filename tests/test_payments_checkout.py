@@ -227,3 +227,50 @@ def test_checkout_500_when_stripe_key_missing(client, authed_user, monkeypatch):
         headers={"Authorization": "Bearer fake"},
     )
     assert resp.status_code == 500
+
+
+# ─── Idempotency-key on Stripe Checkout ────────────────────────
+
+
+def test_checkout_passes_idempotency_key(
+    client, stripe_configured, real_price_env, stripe_stub
+):
+    """Double-click on Subscribe within the same 5-minute window must
+    NOT create two pending Checkout sessions on Stripe. We do this
+    by passing an idempotency_key derived from (user, plan, 5-min
+    bucket) — Stripe returns the same session for identical keys
+    within a 24h replay window."""
+    client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": "personal_monthly"},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert len(stripe_stub) == 1
+    idem = stripe_stub[0].get("idempotency_key")
+    assert idem is not None, "idempotency_key not passed to Stripe"
+    # Key shape: contains user id + plan so different users + plans
+    # don't collide. The 5-min bucket trails as a numeric suffix.
+    assert "user-checkout" in idem
+    assert "personal_monthly" in idem
+
+
+def test_checkout_different_plan_yields_different_idem_key(
+    client, stripe_configured, real_price_env, stripe_stub
+):
+    """Switching plan within the same minute must NOT return the
+    previous plan's checkout URL — different plan = different key
+    = different Stripe session."""
+    client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": "personal_monthly"},
+        headers={"Authorization": "Bearer fake"},
+    )
+    client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": "family_yearly"},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert len(stripe_stub) == 2
+    k1 = stripe_stub[0]["idempotency_key"]
+    k2 = stripe_stub[1]["idempotency_key"]
+    assert k1 != k2, f"different plans must produce different keys: {k1} == {k2}"

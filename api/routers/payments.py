@@ -125,6 +125,18 @@ async def create_checkout(
         raise HTTPException(400, f"Invalid plan: {request.plan}")
 
     try:
+        # Stripe idempotency: identical (user, plan) calls within the
+        # same 5-minute bucket return the SAME Checkout session, so a
+        # double-click on Subscribe doesn't create two pending sessions
+        # in Stripe (each of which would hold the Stripe customer in
+        # a half-completed state until expiry). Bucket size keeps the
+        # key short-enough that legitimate retry after a minor delay
+        # still gets a fresh session if the previous one expired.
+        import time as _time
+
+        bucket = int(_time.time() // 300)  # 5-minute slot
+        idem_key = f"checkout:{user.id}:{request.plan}:{bucket}"
+
         session = stripe.checkout.Session.create(
             mode="subscription",
             customer_email=user.email,
@@ -139,6 +151,7 @@ async def create_checkout(
                 "metadata": {"user_id": user.id},
                 "trial_period_days": 14,
             },
+            idempotency_key=idem_key,
         )
 
         logger.info("checkout_created", extra={"user_id": user.id, "plan": request.plan})
