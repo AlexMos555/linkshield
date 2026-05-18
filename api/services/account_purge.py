@@ -113,6 +113,23 @@ async def purge_expired_accounts() -> dict:
         "account_purge.complete",
         extra={"deleted": len(deleted_ids), "ids": deleted_ids, "cutoff": cutoff},
     )
+
+    # Write one audit row per deleted user. audit_log.actor_user_id is
+    # NULL (system event — the cron, not a human, fired this). The
+    # row's target_id pins which user got purged + when, which is
+    # exactly what a compliance review needs after the fact (the
+    # users.id row itself is gone forever now). audit_log rows do NOT
+    # cascade on users.id — see migration 014.
+    from api.services import audit_log
+    for uid in deleted_ids:
+        await audit_log.write(
+            action="account.hard_deleted",
+            target_kind="user",
+            target_id=uid,
+            actor_user_id=None,  # system / cron
+            meta={"grace_days": GRACE_DAYS, "cutoff": cutoff},
+        )
+
     return {"deleted": len(deleted_ids), "ids": deleted_ids}
 
 

@@ -769,3 +769,88 @@ def test_subscription_cancelled_writes_audit_row(
     ]
     assert len(audit_rows) == 1
     assert audit_rows[0]["target_id"] == "sub_cancel_aud"
+
+
+# ─── Current-period sync (renewal-date awareness) ──────────────
+
+
+def test_subscription_updated_persists_current_period(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """customer.subscription.updated carries current_period_start and
+    current_period_end as Unix epoch seconds. We must convert + persist
+    those so the UI can render 'renews on Aug 14' and support can
+    answer expiration questions from our DB without a Stripe round
+    trip."""
+    # Stripe sends epoch seconds; our handler converts to ISO-8601 UTC.
+    # Pick two specific epochs and assert the exact ISO round-trip.
+    from datetime import datetime, timezone
+
+    start_epoch = 1786723200  # 2026-08-14T16:00:00+00:00
+    end_epoch = 1789315200    # 2026-09-13T16:00:00+00:00
+    expected_start = datetime.fromtimestamp(start_epoch, tz=timezone.utc).isoformat()
+    expected_end = datetime.fromtimestamp(end_epoch, tz=timezone.utc).isoformat()
+
+    payload = _event(
+        "customer.subscription.updated",
+        {
+            "id": "sub_periods",
+            "status": "active",
+            "metadata": {"user_id": "user-periods"},
+            "current_period_start": start_epoch,
+            "current_period_end": end_epoch,
+        },
+    )
+    resp = client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    assert resp.status_code == 200
+    sub_writes = fake_subscriptions.posts
+    assert len(sub_writes) == 1
+    body = sub_writes[0]
+    assert body["current_period_start"] == expected_start
+    assert body["current_period_end"] == expected_end
+
+
+def test_subscription_updated_handles_missing_period(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """When Stripe omits the period fields (older API versions, weird
+    edge cases) we must NOT crash and NOT write null garbage — just
+    skip those fields entirely so the existing row's period stays
+    untouched."""
+    payload = _event(
+        "customer.subscription.updated",
+        {
+            "id": "sub_no_period",
+            "status": "active",
+            "metadata": {"user_id": "user-no-period"},
+            # current_period_start / _end absent
+        },
+    )
+    resp = client.post(
+        "/api/v1/payments/webhook",
+        content=payload,
+        headers={"stripe-signature": _sign(payload)},
+    )
+    assert resp.status_code == 200
+    body = fake_subscriptions.posts[0]
+    assert "current_period_start" not in body
+    assert "current_period_end" not in body
+
+
+def test_epoch_to_iso_helper():
+    """The conversion helper must be defensive — None, 0, junk should
+    all return None rather than raise."""
+    from datetime import datetime, timezone
+
+    from api.routers.payments import _epoch_to_iso
+
+    assert _epoch_to_iso(None) is None
+    assert _epoch_to_iso(0) is None
+    assert _epoch_to_iso("garbage") is None
+    # A known good value round-trips deterministically.
+    iso = _epoch_to_iso(1786723200)
+    assert iso == datetime.fromtimestamp(1786723200, tz=timezone.utc).isoformat()

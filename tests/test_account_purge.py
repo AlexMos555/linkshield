@@ -26,6 +26,10 @@ class _SupabaseStub:
         self.list_status = 200
         self.delete_status = 204
         self.requests: List[Dict[str, Any]] = []
+        # audit_log writes go through .post(); kept separate so existing
+        # assertions on .requests (GET+DELETE only) stay correct after
+        # the purge job started emitting audit rows.
+        self.audit_posts: List[Dict[str, Any]] = []
 
     def build(self):
         stub = self
@@ -59,6 +63,11 @@ class _SupabaseStub:
                     {"method": method, "url": url, "params": dict(params or {})}
                 )
                 return _Resp(stub.delete_status)
+
+            async def post(self, url, json=None, headers=None, **_kw):
+                if "/rest/v1/audit_log" in url:
+                    stub.audit_posts.append(json or {})
+                return _Resp(201)
 
         return _Client
 
@@ -188,3 +197,25 @@ async def test_delete_failure_surfaces_candidate_ids(supabase_ok, supabase_stub)
     assert result["deleted"] == 0
     assert "error" in result
     assert result["candidates"] == ["user-x"]
+
+
+@pytest.mark.asyncio
+async def test_purge_writes_audit_row_per_deleted_user(supabase_ok, supabase_stub):
+    """Compliance: every account.hard_deleted must leave an audit_log
+    row. The user row is gone forever after the DELETE — the audit
+    trail is what a reviewer reaches for to answer 'did we honour the
+    SAR / deletion request?' post-fact."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "u1"}, {"id": "u2"}, {"id": "u3"}]
+
+    result = await purge_expired_accounts()
+    assert result["deleted"] == 3
+
+    # One audit row per deleted user, all flagged as account.hard_deleted.
+    actions = [row.get("action") for row in supabase_stub.audit_posts]
+    assert actions == ["account.hard_deleted"] * 3
+    target_ids = {row["target_id"] for row in supabase_stub.audit_posts}
+    assert target_ids == {"u1", "u2", "u3"}
+    # actor_user_id is NULL — this is a system-cron event, not a human.
+    assert all(row.get("actor_user_id") is None for row in supabase_stub.audit_posts)

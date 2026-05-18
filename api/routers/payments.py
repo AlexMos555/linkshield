@@ -20,6 +20,7 @@ and cached in Redis for fast tier lookups.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -352,7 +353,16 @@ async def _handle_subscription_updated(subscription: dict):
         return
 
     mapped_status = "active" if status in ("active", "trialing") else "past_due" if status == "past_due" else "cancelled"
-    await _update_subscription(user_id, None, mapped_status, "stripe", subscription.get("id"))
+    # Persist the current billing period so the UI can show "renews
+    # Aug 14" and support can answer "when does this expire" from our
+    # DB without a Stripe round trip. Stripe sends epoch seconds.
+    period_start = _epoch_to_iso(subscription.get("current_period_start"))
+    period_end = _epoch_to_iso(subscription.get("current_period_end"))
+    await _update_subscription(
+        user_id, None, mapped_status, "stripe", subscription.get("id"),
+        current_period_start=period_start,
+        current_period_end=period_end,
+    )
 
     from api.services import audit_log
     await audit_log.write(
@@ -449,11 +459,39 @@ async def _handle_customer_deleted(customer: dict):
         await _update_subscription(user_id, "free", "cancelled", "stripe", None)
 
 
+def _epoch_to_iso(epoch: Optional[int]) -> Optional[str]:
+    """Stripe sends timestamps as Unix epoch seconds; our DB column is
+    TIMESTAMPTZ. Convert defensively (returns None for None / 0 / weird
+    inputs rather than raising)."""
+    if not epoch:
+        return None
+    try:
+        return datetime.fromtimestamp(int(epoch), tz=timezone.utc).isoformat()
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
 async def _update_subscription(
-    user_id: str, tier: Optional[str], status: str,
-    provider: str, provider_id: Optional[str]
+    user_id: str,
+    tier: Optional[str],
+    status: str,
+    provider: str,
+    provider_id: Optional[str],
+    *,
+    current_period_start: Optional[str] = None,
+    current_period_end: Optional[str] = None,
 ):
-    """Update subscription in Supabase + invalidate Redis tier cache."""
+    """Update subscription in Supabase + invalidate Redis tier cache.
+
+    `current_period_*` are ISO-8601 strings. The Stripe payload carries
+    them as epoch seconds — callers should run them through
+    `_epoch_to_iso()`. Persisting them gives us:
+      - 'expires on Sep 13' UI string without an extra Stripe round trip
+      - graceful expiry awareness (resolver can prune stale tier even if
+        we somehow miss the deleted webhook)
+      - support team can answer 'when does this user's subscription
+        renew/expire?' from our own DB
+    """
     import httpx
     from api.services.cache import get_redis
 
@@ -487,6 +525,10 @@ async def _update_subscription(
             body["tier"] = tier
         if provider_id:
             body["provider_subscription_id"] = provider_id
+        if current_period_start is not None:
+            body["current_period_start"] = current_period_start
+        if current_period_end is not None:
+            body["current_period_end"] = current_period_end
 
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.post(

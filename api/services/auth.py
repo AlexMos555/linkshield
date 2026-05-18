@@ -53,6 +53,22 @@ async def get_current_user(
         # Resolve tier from DB (cached in Redis)
         tier = await _resolve_user_tier(user_id)
 
+        # Attach context to Sentry's request-scoped scope so any
+        # subsequent error within this request is pre-tagged with
+        # the authenticated user_id + tier. Triage in Sentry without
+        # this would require correlating by request_id manually.
+        # We deliberately DO NOT pass `email` — privacy invariant +
+        # our own data-scrubbing config already strips it.
+        try:
+            import sentry_sdk
+
+            sentry_sdk.set_user(
+                {"id": user_id, "tier": tier.value if hasattr(tier, "value") else str(tier)}
+            )
+        except Exception:
+            # Sentry isn't configured in dev / tests — silent.
+            pass
+
         return AuthUser(
             id=user_id,
             email=email,
