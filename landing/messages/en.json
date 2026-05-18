@@ -54,7 +54,7 @@
       {
         "icon": "⚡",
         "title": "Instant Protection",
-        "desc": "95% of checks happen locally via bloom filter in under 1ms. No slowdown. No waiting."
+        "desc": "Most domains check instantly against an on-device safe-list. We only contact our servers for unknown domains, and we send only the domain name — never the full URL."
       },
       {
         "icon": "📱",
@@ -254,7 +254,7 @@
       },
       {
         "q": "Does it slow down browsing?",
-        "a": "No. 95% of checks happen locally via bloom filter in under 1ms. Only unknown domains are sent to our API (domain name only, never full URLs)."
+        "a": "No. Most domains resolve instantly against an on-device safe-list. Only unknown domains are sent to our API, and we send only the domain name — never the full URL."
       },
       {
         "q": "Can I use it with a VPN?",
@@ -266,7 +266,7 @@
       },
       {
         "q": "Is there a free plan?",
-        "a": "Yes! The free plan includes 10 API checks/day, unlimited local bloom filter checks, and basic Privacy Audit. Most casual users never need to upgrade."
+        "a": "Yes! The free plan includes 10 API checks/day for unknown domains, unlimited instant checks against the on-device safe-list, and basic Privacy Audit. Most casual users never need to upgrade."
       },
       {
         "q": "How does phishing simulation work?",

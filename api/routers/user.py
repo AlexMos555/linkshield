@@ -1123,6 +1123,14 @@ async def export_user_data(user: AuthUser = Depends(get_current_user)) -> dict:
         # because they're undecryptable without the device's private key
         ("family_alerts", "recipient_user_id", "id,family_id,sender_user_id,created_at,alert_type"),
         ("feedback_reports", "user_id", "*"),
+        # Audit log rows where THIS user was the actor — gives the SAR
+        # response a full timeline of their privileged actions (account
+        # delete requests, family invites created/accepted, etc.).
+        # actor_ip_hash is intentionally included (it's already a hash,
+        # not the raw IP) — operators may want it for cross-row
+        # correlation. The audit_log table's RLS allows service_role
+        # reads, which is what we use here.
+        ("audit_log", "actor_user_id", "*"),
     ]
 
     import httpx

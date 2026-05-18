@@ -104,7 +104,7 @@ export default function PrivacyPolicy() {
 
         <Section title="4. How Domain Checking Works">
           <p>When you visit a page, our extension extracts domain names from links and sends only the domain names (e.g., &quot;example.com&quot;) to our API for checking. We never receive the full URL, path, query parameters, or page content.</p>
-          <p>95% of checks happen locally on your device via a bloom filter, without contacting our servers at all.</p>
+          <p>Most domain checks resolve instantly against an on-device safe-list of well-known good domains (google.com, gmail.com, microsoft.com, etc.). Only domains not on that list are sent to our API for full analysis — and even then we receive only the domain name, never the full URL.</p>
           <p>Our server logs contain: domain name, risk score, and timestamp. These logs do NOT contain your user ID, IP address, or any information that could link a domain check to your identity.</p>
         </Section>
 

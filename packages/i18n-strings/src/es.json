@@ -406,7 +406,7 @@
         {
           "icon": "⚡",
           "title": "Protección instantánea",
-          "desc": "El 95% de las verificaciones se hacen localmente con un bloom filter en menos de 1 ms. Sin demoras. Sin esperas."
+          "desc": "La mayoría de los dominios se comprueban al instante en una lista local de seguros. Solo los dominios desconocidos llegan a nuestros servidores — y solo el nombre del dominio, nunca la URL completa."
         },
         {
           "icon": "📱",
@@ -606,7 +606,7 @@
         },
         {
           "q": "¿Ralentiza la navegación?",
-          "a": "No. El 95% de las verificaciones se hacen localmente con bloom filter en menos de 1 ms. Solo los dominios desconocidos se envían a nuestra API (solo el nombre del dominio, nunca la URL completa)."
+          "a": "No. La mayoría de los dominios se resuelven al instante en una lista local. Solo los dominios desconocidos se envían a nuestra API, y enviamos solo el nombre del dominio, nunca la URL completa."
         },
         {
           "q": "¿Puedo usarlo con una VPN?",
@@ -618,7 +618,7 @@
         },
         {
           "q": "¿Hay un plan gratuito?",
-          "a": "¡Sí! El plan gratuito incluye 10 verificaciones API al día, verificaciones locales ilimitadas por bloom filter y Auditoría de privacidad básica. La mayoría de usuarios casuales nunca necesita actualizar."
+          "a": "¡Sí! El plan gratuito incluye 10 comprobaciones API/día para dominios desconocidos, comprobaciones instantáneas ilimitadas en la lista local, y Privacy Audit básico. La mayoría de los usuarios no necesitan actualizar."
         },
         {
           "q": "¿Cómo funciona la simulación de phishing?",

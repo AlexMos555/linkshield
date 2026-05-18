@@ -127,6 +127,7 @@ def test_export_returns_all_user_tables(client, supabase_ok, supabase_stub):
         "family_members",
         "family_alerts",
         "feedback_reports",
+        "audit_log",
     }
     assert set(body["tables"].keys()) == expected_tables
 
@@ -145,6 +146,7 @@ def test_export_filters_by_user_id_per_table(client, supabase_ok, supabase_stub)
         "family_members": "user_id",
         "family_alerts": "recipient_user_id",
         "feedback_reports": "user_id",
+        "audit_log": "actor_user_id",
     }
     for got in supabase_stub.gets:
         table = got["url"].rsplit("/", 1)[-1]

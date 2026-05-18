@@ -406,7 +406,7 @@
         {
           "icon": "⚡",
           "title": "Sofortiger Schutz",
-          "desc": "95% der Prüfungen erfolgen lokal über Bloom Filter in unter 1 ms. Keine Verzögerung. Kein Warten."
+          "desc": "Die meisten Domains werden sofort gegen eine lokale Vertrauensliste geprüft. Nur unbekannte Domains gehen an unsere Server — und nur der Domainname, niemals die vollständige URL."
         },
         {
           "icon": "📱",
@@ -606,7 +606,7 @@
         },
         {
           "q": "Verlangsamt es das Surfen?",
-          "a": "Nein. 95% der Prüfungen erfolgen lokal über Bloom Filter in unter 1 ms. Nur unbekannte Domains werden an unsere API gesendet (nur Domainname, nie vollständige URLs)."
+          "a": "Nein. Die meisten Domains werden sofort gegen eine lokale Liste geprüft. Nur unbekannte Domains werden an unsere API gesendet, und wir senden nur den Domainnamen — niemals die vollständige URL."
         },
         {
           "q": "Kann ich es mit einem VPN nutzen?",
@@ -618,7 +618,7 @@
         },
         {
           "q": "Gibt es einen kostenlosen Tarif?",
-          "a": "Ja! Der kostenlose Tarif umfasst 10 API-Prüfungen pro Tag, unbegrenzte lokale Bloom-Filter-Prüfungen und ein einfaches Datenschutz-Audit. Die meisten Gelegenheitsnutzer brauchen nie ein Upgrade."
+          "a": "Ja! Der kostenlose Tarif umfasst 10 API-Prüfungen pro Tag für unbekannte Domains, unbegrenzte sofortige Prüfungen gegen die lokale Liste und ein einfaches Datenschutz-Audit. Die meisten Gelegenheitsnutzer brauchen nie ein Upgrade."
         },
         {
           "q": "Wie funktioniert die Phishing-Simulation?",

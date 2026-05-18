@@ -54,7 +54,7 @@
       {
         "icon": "⚡",
         "title": "Protezione istantanea",
-        "desc": "Il 95% dei controlli avviene localmente tramite bloom filter in meno di 1 ms. Nessun rallentamento. Nessuna attesa."
+        "desc": "La maggior parte dei domini viene controllata istantaneamente su una lista locale di domini fidati. Solo i domini sconosciuti raggiungono i nostri server — e solo il nome del dominio, mai l'URL completo."
       },
       {
         "icon": "📱",
@@ -254,7 +254,7 @@
       },
       {
         "q": "Rallenta la navigazione?",
-        "a": "No. Il 95% dei controlli avviene localmente tramite bloom filter in meno di 1 ms. Solo i domini sconosciuti vengono inviati alla nostra API (solo il nome del dominio, mai l'URL completo)."
+        "a": "No. La maggior parte dei domini si risolve istantaneamente tramite una lista locale. Solo i domini sconosciuti vengono inviati alla nostra API, e inviamo solo il nome del dominio — mai l'URL completo."
       },
       {
         "q": "Posso usarlo con una VPN?",
@@ -266,7 +266,7 @@
       },
       {
         "q": "Esiste un piano gratuito?",
-        "a": "Sì! Il piano gratuito include 10 controlli API al giorno, controlli illimitati con bloom filter locale e Audit della privacy di base. La maggior parte degli utenti occasionali non ha mai bisogno di passare a un piano a pagamento."
+        "a": "Sì! Il piano gratuito include 10 controlli API al giorno per i domini sconosciuti, controlli istantanei illimitati sulla lista locale e un Privacy Audit di base. La maggior parte degli utenti occasionali non ha bisogno di aggiornare."
       },
       {
         "q": "Come funziona la simulazione di phishing?",

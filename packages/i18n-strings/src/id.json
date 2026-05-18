@@ -406,7 +406,7 @@
         {
           "icon": "⚡",
           "title": "Perlindungan instan",
-          "desc": "95% pemeriksaan terjadi secara lokal melalui bloom filter dalam waktu kurang dari 1 ms. Tanpa lambat. Tanpa menunggu."
+          "desc": "Sebagian besar domain diperiksa langsung di perangkat melalui daftar aman lokal. Hanya domain yang tidak dikenal yang dikirim ke server kami — dan hanya nama domain, tidak pernah URL lengkap."
         },
         {
           "icon": "📱",
@@ -606,7 +606,7 @@
         },
         {
           "q": "Apakah memperlambat penjelajahan?",
-          "a": "Tidak. 95% pemeriksaan terjadi secara lokal melalui bloom filter dalam waktu kurang dari 1 ms. Hanya domain yang tidak dikenal dikirim ke API kami (hanya nama domain, bukan URL lengkap)."
+          "a": "Tidak. Sebagian besar domain diselesaikan langsung melalui daftar lokal. Hanya domain yang tidak dikenal yang dikirim ke API kami, dan kami hanya mengirim nama domain — tidak pernah URL lengkap."
         },
         {
           "q": "Bisakah saya menggunakannya dengan VPN?",
@@ -618,7 +618,7 @@
         },
         {
           "q": "Apakah ada paket gratis?",
-          "a": "Ya! Paket gratis mencakup 10 pemeriksaan API per hari, pemeriksaan bloom filter lokal tanpa batas, dan Audit privasi dasar. Sebagian besar pengguna kasual tidak pernah perlu meningkatkan paket."
+          "a": "Ya! Paket gratis mencakup 10 pemeriksaan API/hari untuk domain tak dikenal, pemeriksaan instan tanpa batas melalui daftar lokal, dan Privacy Audit dasar. Sebagian besar pengguna kasual tidak perlu meningkatkan."
         },
         {
           "q": "Bagaimana cara kerja simulasi phishing?",
