@@ -340,12 +340,13 @@ async def test_domain_checker_errors_are_swallowed():
 @pytest.fixture
 def client_as_user():
     from api.main import app
-    from api.services.auth import get_current_user
+    from api.services.auth import get_current_user, get_current_user_including_deleted
 
     async def _fake_user():
         return AuthUser(id="test-user", email="t@test.com", tier=UserTier.free)
 
     app.dependency_overrides[get_current_user] = _fake_user
+    app.dependency_overrides[get_current_user_including_deleted] = _fake_user
     yield TestClient(app)
     app.dependency_overrides.clear()
 

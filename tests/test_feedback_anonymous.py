@@ -127,7 +127,7 @@ def test_anonymous_missing_domain_422(client, supabase_ok, fake_supabase):
 def test_authenticated_report_attaches_user_id(client, supabase_ok, fake_supabase):
     """When a JWT is present, user_id flows to the persisted row."""
     from api.main import app
-    from api.services.auth import get_current_user, get_optional_user
+    from api.services.auth import get_current_user, get_current_user_including_deleted, get_optional_user
 
     fake_user = AuthUser(id="user-42", email="alice@gmail.com", tier=UserTier.free)
 
@@ -135,6 +135,7 @@ def test_authenticated_report_attaches_user_id(client, supabase_ok, fake_supabas
         return fake_user
 
     app.dependency_overrides[get_current_user] = _override
+    app.dependency_overrides[get_current_user_including_deleted] = _override
     app.dependency_overrides[get_optional_user] = _override
     try:
         resp = client.post(

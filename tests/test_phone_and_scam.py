@@ -47,12 +47,13 @@ class TestVerdictForCounts:
 @pytest.fixture
 def authed_client():
     from api.main import app
-    from api.services.auth import get_current_user, get_optional_user
+    from api.services.auth import get_current_user, get_current_user_including_deleted, get_optional_user
 
     async def _user():
         return AuthUser(id="11111111-1111-1111-1111-111111111111", email="u@t.test", tier=UserTier.free)
 
     app.dependency_overrides[get_current_user] = _user
+    app.dependency_overrides[get_current_user_including_deleted] = _user
     app.dependency_overrides[get_optional_user] = _user
     yield TestClient(app)
     app.dependency_overrides.clear()

@@ -26,7 +26,7 @@ from fastapi import Depends, HTTPException, Request
 
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
-from api.services.auth import get_current_user
+from api.services.auth import get_current_user_including_deleted
 from api.services.cache import get_redis
 
 logger = logging.getLogger("cleanway.rate_limiter")
@@ -304,10 +304,21 @@ def rate_limit(
     declare `Depends(rate_limit(...))` without passing the user.
     """
 
+    # Both auth-flavoured rate-limit modes depend on the
+    # soft-delete-bypassing user resolver (`get_current_user_including_deleted`).
+    # Reason: a rate limit is a quota concept, NOT a soft-delete gate.
+    # The route's own `Depends(get_current_user)` is what enforces the
+    # 410 lock on regular endpoints; rate_limit just needs a user_id
+    # to key off. If we left rate_limit depending on the strict
+    # variant, then any route that uses BOTH `Depends(rate_limit(...))`
+    # AND `Depends(get_current_user_including_deleted)` (like /restore
+    # and /export) would still hit the 410 via the rate-limit dep's
+    # transitive resolution.
+
     if mode == "user":
 
         async def user_dep(
-            user: AuthUser = Depends(get_current_user),
+            user: AuthUser = Depends(get_current_user_including_deleted),
         ) -> None:
             await check_rate_limit(user, num_domains=cost)
 
@@ -316,7 +327,7 @@ def rate_limit(
     if mode == "sensitive":
 
         async def sensitive_dep(
-            user: AuthUser = Depends(get_current_user),
+            user: AuthUser = Depends(get_current_user_including_deleted),
         ) -> None:
             await check_sensitive_action_limit(user, category)
 

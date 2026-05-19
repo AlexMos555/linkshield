@@ -94,12 +94,13 @@ def stripe_stub(monkeypatch):
 @pytest.fixture
 def client(authed_user):
     from api.main import app
-    from api.services.auth import get_current_user
+    from api.services.auth import get_current_user, get_current_user_including_deleted
 
     async def _override():
         return authed_user
 
     app.dependency_overrides[get_current_user] = _override
+    app.dependency_overrides[get_current_user_including_deleted] = _override
     try:
         yield TestClient(app)
     finally:

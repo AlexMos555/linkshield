@@ -56,9 +56,10 @@ def supabase_ok(monkeypatch):
 
 def _make_app(authed: AuthUser):
     from api.main import app as fastapi_app
-    from api.services.auth import get_current_user, get_optional_user
+    from api.services.auth import get_current_user, get_current_user_including_deleted, get_optional_user
 
     fastapi_app.dependency_overrides[get_current_user] = lambda: authed
+    fastapi_app.dependency_overrides[get_current_user_including_deleted] = lambda: authed
     fastapi_app.dependency_overrides[get_optional_user] = lambda: authed
     return fastapi_app
 

@@ -18,7 +18,11 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.services.auth import get_current_user, get_current_user_no_disposable
+from api.services.auth import (
+    get_current_user,
+    get_current_user_including_deleted,
+    get_current_user_no_disposable,
+)
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import (
     AuthUser,
@@ -1095,7 +1099,12 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
     "/export",
     dependencies=[Depends(rate_limit(mode="sensitive", category="user_export"))],
 )
-async def export_user_data(user: AuthUser = Depends(get_current_user)) -> dict:
+async def export_user_data(
+    # GDPR Art. 15: a soft-deleted user (deletion_requested_at set,
+    # in 30-day grace) MUST still be able to export their data —
+    # locking them out of access would defeat their own access right.
+    user: AuthUser = Depends(get_current_user_including_deleted),
+) -> dict:
     """Return every server-side row owned by the caller, GDPR Art. 15."""
     settings = get_settings()
     if not settings.supabase_url or not settings.supabase_service_key:
@@ -1252,15 +1261,22 @@ async def delete_account(user: AuthUser = Depends(get_current_user)) -> DeleteAc
         raise HTTPException(500, "Failed to schedule account deletion")
 
     # Invalidate the user's tier cache so the next request sees the
-    # account as gone-on-grace (the auth dependency reads tier from
-    # the cache; though we're not changing tier, the read forces a DB
-    # round-trip on the next call and that's where we re-check
-    # deletion_requested_at). Best-effort.
+    # Two Redis ops, both best-effort:
+    #   1. Invalidate the tier cache so the next request re-reads from
+    #      Supabase (catches any post-PATCH state that we want fresh).
+    #   2. Set a `deleted:{user_id}` flag with TTL = grace window.
+    #      The auth dependency reads this on every authenticated
+    #      request and 410-rejects (except on /restore and /export).
+    #      If Redis is dead, the soft-delete gate silently fails open
+    #      — better one user briefly past the gate than the whole API
+    #      unavailable.
     try:
         from api.services.cache import get_redis
 
         r = await get_redis()
         await r.delete(f"tier:{user.id}")
+        grace_seconds = _DELETION_GRACE_DAYS * 24 * 3600
+        await r.setex(f"deleted:{user.id}", grace_seconds, "1")
     except Exception:
         pass
 
@@ -1296,7 +1312,13 @@ class RestoreAccountResponse(BaseModel):
     response_model=RestoreAccountResponse,
     dependencies=[Depends(rate_limit(mode="sensitive", category="account_restore"))],
 )
-async def restore_account(user: AuthUser = Depends(get_current_user)) -> RestoreAccountResponse:
+async def restore_account(
+    # Soft-deleted users obviously need access to this endpoint —
+    # it's the way out of the deletion grace. The plain
+    # get_current_user dependency would 410 them before they
+    # could reach the handler.
+    user: AuthUser = Depends(get_current_user_including_deleted),
+) -> RestoreAccountResponse:
     """Clear a pending deletion request. Available during 30-day grace."""
     settings = get_settings()
     if not settings.supabase_url or not settings.supabase_service_key:
@@ -1328,6 +1350,20 @@ async def restore_account(user: AuthUser = Depends(get_current_user)) -> Restore
         raise HTTPException(500, "Failed to restore account")
 
     logger.info("account_deletion_cancelled", extra={"user_id": user.id})
+
+    # Drop the Redis lock-flag so the next authenticated request goes
+    # through `get_current_user` without the 410. Also invalidate the
+    # tier cache so a stale 'free' value from during-grace doesn't
+    # linger after restore.
+    try:
+        from api.services.cache import get_redis
+
+        r = await get_redis()
+        await r.delete(f"deleted:{user.id}")
+        await r.delete(f"tier:{user.id}")
+    except Exception:
+        pass
+
     from api.services import audit_log
     await audit_log.write(
         action="account.restored",

@@ -48,7 +48,7 @@ def _make_client_for(user: AuthUser) -> TestClient:
     Supabase) never runs in tests; only the disposable-check logic
     matters here."""
     from api.main import app
-    from api.services.auth import get_current_user, get_current_user_no_disposable
+    from api.services.auth import get_current_user, get_current_user_including_deleted, get_current_user_no_disposable
 
     async def _override_plain():
         return user
@@ -67,6 +67,7 @@ def _make_client_for(user: AuthUser) -> TestClient:
         return user
 
     app.dependency_overrides[get_current_user] = _override_plain
+    app.dependency_overrides[get_current_user_including_deleted] = _override_plain
     app.dependency_overrides[get_current_user_no_disposable] = _override_with_check
     return TestClient(app)
 

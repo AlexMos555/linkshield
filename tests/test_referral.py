@@ -37,9 +37,10 @@ def authed_user():
 @pytest.fixture
 def app(authed_user):
     from api.main import app as fastapi_app
-    from api.services.auth import get_current_user, get_optional_user
+    from api.services.auth import get_current_user, get_current_user_including_deleted, get_optional_user
 
     fastapi_app.dependency_overrides[get_current_user] = lambda: authed_user
+    fastapi_app.dependency_overrides[get_current_user_including_deleted] = lambda: authed_user
     fastapi_app.dependency_overrides[get_optional_user] = lambda: authed_user
     yield fastapi_app
     fastapi_app.dependency_overrides.clear()
