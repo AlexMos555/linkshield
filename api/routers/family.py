@@ -435,6 +435,18 @@ async def create_family(
         logger.warning("family.owner_add_failed", extra={"status": member_resp.status_code})
         # Owner row missing is recoverable; family row exists. Surface to caller.
 
+    # Audit trail: family creation is a rare org-relevant event. The
+    # family name is intentionally NOT in meta — it's user-supplied free
+    # text and could contain PII (e.g. "Иванов Family"). The family_id
+    # alone is enough for forensic correlation.
+    from api.services import audit_log
+    await audit_log.write(
+        action="family.created",
+        target_kind="family",
+        target_id=family_id,
+        actor_user_id=user.id,
+    )
+
     return CreateFamilyResponse(family_id=family_id, name=body.name)
 
 
@@ -475,6 +487,21 @@ async def register_key(
     if resp.status_code not in (200, 201, 204):
         logger.warning("family.key_register_failed", extra={"status": resp.status_code})
         raise HTTPException(500, "Failed to register key")
+
+    # Audit trail: E2E key registration is a privacy-critical event. If
+    # a user's key is replaced unexpectedly, that's a red flag (could be
+    # an attacker with a compromised JWT rotating the pubkey to intercept
+    # alerts). The pubkey itself is NOT logged — it's public material but
+    # the audit table is service-role only and we don't need it for
+    # forensics; key_version + timestamp are enough.
+    from api.services import audit_log
+    await audit_log.write(
+        action="family.key_registered",
+        target_kind="family",
+        target_id=family_id,
+        actor_user_id=user.id,
+        meta={"key_version": body.key_version},
+    )
 
     return RegisterKeyResponse(
         family_id=family_id, user_id=user.id, key_version=body.key_version

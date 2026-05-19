@@ -60,6 +60,11 @@ class _SupabaseRecorder:
                 )
                 return _Resp(204)
 
+            async def get(self, url, headers=None, params=None):
+                # /users settings GET returns a representative row so the
+                # canonical state re-fetch in update_user_settings can complete.
+                return _Resp(200)
+
         return _Client
 
 
@@ -229,3 +234,46 @@ def test_restore_account_writes_audit_row(client, supabase_ok, supabase_recorder
     ]
     assert len(audit_rows) == 1
     assert audit_rows[0]["target_id"] == "user-audit"
+
+
+# ─── PIN-change audit ──────────────────────────────────────────
+
+
+def test_set_parental_pin_writes_audit_row(client, supabase_ok, supabase_recorder):
+    """PIN set/rotated → audit row with action=user.parental_pin_changed.
+    The PIN itself is NEVER in meta."""
+    resp = client.put("/api/v1/user/settings", json={"parental_pin": "1234"})
+    assert resp.status_code == 200
+    pin_rows = [
+        p for p in supabase_recorder.audit_posts
+        if p.get("action") == "user.parental_pin_changed"
+    ]
+    assert len(pin_rows) == 1
+    row = pin_rows[0]
+    assert row["target_id"] == "user-audit"
+    assert row["actor_user_id"] == "user-audit"
+    # PIN must never appear anywhere in the audit row.
+    blob = str(row)
+    assert "1234" not in blob, "Raw PIN leaked into audit row"
+
+
+def test_clear_parental_pin_writes_audit_row(client, supabase_ok, supabase_recorder):
+    """PIN cleared → user.parental_pin_cleared."""
+    resp = client.put("/api/v1/user/settings", json={"parental_pin": ""})
+    assert resp.status_code == 200
+    pin_rows = [
+        p for p in supabase_recorder.audit_posts
+        if p.get("action") == "user.parental_pin_cleared"
+    ]
+    assert len(pin_rows) == 1
+
+
+def test_settings_update_without_pin_skips_pin_audit(client, supabase_ok, supabase_recorder):
+    """Updating font_scale alone must NOT emit a PIN audit row."""
+    resp = client.put("/api/v1/user/settings", json={"font_scale": 1.2})
+    assert resp.status_code == 200
+    pin_rows = [
+        p for p in supabase_recorder.audit_posts
+        if "parental_pin" in p.get("action", "")
+    ]
+    assert pin_rows == []

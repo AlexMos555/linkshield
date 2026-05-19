@@ -492,11 +492,18 @@ async def update_user_settings(
         payload["voice_alerts_enabled"] = update.voice_alerts_enabled
     if update.font_scale is not None:
         payload["font_scale"] = update.font_scale
+    # Capture PIN-change intent for audit trail BEFORE we issue the PATCH.
+    # We treat "set" and "rotated" as the same audit event — distinguishing
+    # them would require a pre-read of the row, which isn't worth the extra
+    # round-trip when the verb alone is enough for forensics.
+    pin_audit_event: Optional[str] = None
     if update.parental_pin is not None:
         if update.parental_pin == "":
             payload["parental_pin_hash"] = None
+            pin_audit_event = "user.parental_pin_cleared"
         else:
             payload["parental_pin_hash"] = _hash_pin(update.parental_pin)
+            pin_audit_event = "user.parental_pin_changed"
 
     # Nothing to update — return current state
     if not payload:
@@ -525,6 +532,20 @@ async def update_user_settings(
                 status_code=500,
                 detail="Failed to persist user settings",
             )
+
+    # Audit trail for security-sensitive settings changes. PIN protects
+    # parental controls — set/changed/cleared are all worth a row. The
+    # hash is NEVER in meta — only the verb. We don't distinguish "set
+    # first time" vs "rotated" because that requires a prior-state read
+    # and isn't actionable forensically (the action verb is enough).
+    if pin_audit_event is not None:
+        from api.services import audit_log
+        await audit_log.write(
+            action=pin_audit_event,
+            target_kind="user",
+            target_id=user.id,
+            actor_user_id=user.id,
+        )
 
     # Re-fetch to return canonical state (with parental_pin_set derived flag)
     return await get_user_settings(user)
