@@ -78,6 +78,32 @@ jobs:
       - name: Lint
         run: ruff check api/ tests/ ml/
 
+  openapi-drift:
+    # Pin packages/api-types/schema/openapi.json to the live FastAPI app.
+    # If a PR adds a route or schema but forgets to run `npm run build:api-types`,
+    # this job fails so the stale spec doesn't leak into the typed clients.
+    runs-on: ubuntu-latest
+    env:
+      DEBUG: "true"
+      SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Regenerate spec
+        run: python3 scripts/dump-openapi.py
+      - name: Verify spec in repo matches regenerated
+        run: |
+          if ! git diff --exit-code -- packages/api-types/schema/openapi.json; then
+            echo ""
+            echo "ERROR: packages/api-types/schema/openapi.json is out of date."
+            echo "Run 'npm run build:api-types' locally and commit the result."
+            exit 1
+          fi
+
   # Docker build job disabled — we removed the Dockerfile (commit 208efd2)
   # so Railway uses Nixpacks + Procfile. Railway's build on every push is
   # effectively this job's replacement. Re-enable if we reintroduce Docker.

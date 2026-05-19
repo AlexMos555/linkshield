@@ -22,12 +22,30 @@ python3 "$SCRIPT_DIR/dump-openapi.py" "$SCHEMA_FILE"
 echo ""
 echo "→ Step 2/2: Generate TypeScript types"
 
-if [[ ! -d "$PKG/node_modules" ]]; then
-  echo "  Installing api-types devDependencies (first run)..."
-  (cd "$ROOT" && npm install --silent --prefix "$PKG")
+# Locate openapi-typescript binary — npm workspaces hoist devDeps to the
+# repo-root node_modules, so the package-level path may not exist. Try
+# the hoisted path first, then fall back to the per-package path for
+# non-workspace setups, then install if neither is found.
+find_openapi_bin() {
+  if [[ -x "$ROOT/node_modules/.bin/openapi-typescript" ]]; then
+    echo "$ROOT/node_modules/.bin/openapi-typescript"
+  elif [[ -x "$PKG/node_modules/.bin/openapi-typescript" ]]; then
+    echo "$PKG/node_modules/.bin/openapi-typescript"
+  fi
+}
+
+OPENAPI_BIN="$(find_openapi_bin)"
+if [[ -z "$OPENAPI_BIN" ]]; then
+  echo "  Installing workspace devDependencies (first run)..."
+  (cd "$ROOT" && npm install --silent)
+  OPENAPI_BIN="$(find_openapi_bin)"
+  if [[ -z "$OPENAPI_BIN" ]]; then
+    echo "ERROR: openapi-typescript binary not found after install" >&2
+    exit 1
+  fi
 fi
 
-"$PKG/node_modules/.bin/openapi-typescript" "$SCHEMA_FILE" \
+"$OPENAPI_BIN" "$SCHEMA_FILE" \
   --output "$TYPES_FILE" \
   --properties-required-by-default \
   2>&1 | sed 's/^/  /' || {

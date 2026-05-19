@@ -66,14 +66,73 @@
         }
       }
     },
-    "/api/v1/payments/create-checkout": {
+    "/api/v1/payments/checkout": {
       "post": {
         "tags": [
           "payments"
         ],
         "summary": "Create Checkout",
-        "description": "Create a Stripe Checkout session for subscription.",
-        "operationId": "create_checkout_api_v1_payments_create_checkout_post",
+        "description": "Create a Stripe Checkout session for subscription.\n\nEndpoint path is /checkout (matches the landing PricingClient).\n/create-checkout is preserved as an alias below for any code that\nmight still reference the legacy name.",
+        "operationId": "create_checkout_api_v1_payments_checkout_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/create-checkout": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "Create Checkout Legacy",
+        "operationId": "create_checkout_legacy_api_v1_payments_create_checkout_post",
         "parameters": [
           {
             "name": "authorization",
@@ -132,7 +191,7 @@
           "payments"
         ],
         "summary": "Stripe Webhook",
-        "description": "Handle Stripe webhook events.",
+        "description": "Handle Stripe webhook events.\n\nStripe documents \"events may be delivered more than once\" — they\nretry on any 5xx / timeout for up to 72 hours with exponential\nbackoff. Without dedup, a retried checkout.session.completed\nupserts the subscription twice; a retried subscription.updated\ncan race with newer events and flip status backward.\n\nWe dedup by event.id with a Redis SETNX + 7-day TTL. Already-seen\nevents return 200 OK (so Stripe stops retrying) but skip processing.",
         "operationId": "stripe_webhook_api_v1_payments_webhook_post",
         "responses": {
           "200": {
@@ -418,6 +477,114 @@
         }
       }
     },
+    "/api/v1/user/settings": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Get User Settings",
+        "description": "Return the current user's cross-device preferences (skill level, locale,\naccessibility defaults). PIN is never returned — only the `parental_pin_set`\nflag.",
+        "operationId": "get_user_settings_api_v1_user_settings_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Update User Settings",
+        "description": "Partial update of user settings. All fields optional.\n\nParental PIN behavior:\n- Providing a non-empty `parental_pin` hashes and stores it.\n- Providing `parental_pin=\"\"` clears the PIN.\n- Omitting `parental_pin` leaves the existing hash untouched.",
+        "operationId": "update_user_settings_api_v1_user_settings_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/user/profile": {
       "get": {
         "tags": [
@@ -451,6 +618,446 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/threats/status": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Get Threat Status",
+        "description": "Return blocked-threats counter + freemium gating decision.",
+        "operationId": "get_threat_status_api_v1_user_threats_status_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreatStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/threats/increment": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Increment Threats",
+        "description": "Add `body.count` to the lifetime threat counter and return new state.\n\nOn the FIRST crossing of the gating threshold for a free user, set\n`threshold_nudge_shown_at` so the client can decide cadence for showing\nthe upsell nudge. We do not bump nudge_count here — that's the client's\nresponsibility once it actually renders the nudge UI.",
+        "operationId": "increment_threats_api_v1_user_threats_increment_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncrementThreatsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThreatStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/device/{device_hash}/effective": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Get Effective Skill",
+        "description": "Resolve effective skill level + accessibility for this device.\n\nDevice-level override wins; falls back to user-level default. Used by\nextension and mobile clients to know which UX mode to render.",
+        "operationId": "get_effective_skill_api_v1_user_device__device_hash__effective_get",
+        "parameters": [
+          {
+            "name": "device_hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Hash"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveSkillResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/device/{device_hash}/overrides": {
+      "patch": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Update Device Overrides",
+        "description": "Set or clear device-level overrides for this user's device.\n\nValidates font_scale 0.8..2.5 (matches DB CHECK constraint). Authorization\nis implicit: we filter on (user_id=user.id, device_hash) so a user can\nonly change their own devices' overrides. Family Hub admin operations\non a family member's device go through the family router (TODO).",
+        "operationId": "update_device_overrides_api_v1_user_device__device_hash__overrides_patch",
+        "parameters": [
+          {
+            "name": "device_hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Hash"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceOverrideUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveSkillResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/welcome": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Trigger Welcome Email",
+        "description": "First-signin welcome email. Idempotent — won't re-send.",
+        "operationId": "trigger_welcome_email_api_v1_user_welcome_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WelcomeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/export": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Export User Data",
+        "description": "Return every server-side row owned by the caller, GDPR Art. 15.",
+        "operationId": "export_user_data_api_v1_user_export_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Export User Data Api V1 User Export Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/account": {
+      "delete": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Delete Account",
+        "description": "Mark the caller's account for deletion. Hard-deleted 30 days later.",
+        "operationId": "delete_account_api_v1_user_account_delete",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteAccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/account/restore": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Restore Account",
+        "description": "Clear a pending deletion request. Available during 30-day grace.",
+        "operationId": "restore_account_api_v1_user_account_restore_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreAccountResponse"
                 }
               }
             }
@@ -867,7 +1474,7 @@
           "referral"
         ],
         "summary": "Generate Referral",
-        "description": "Generate unique referral code for user.",
+        "description": "Generate (or fetch existing) referral code for the user.\n\nIdempotent: same user → same code. We upsert the Redis mapping so the\ncode → owner record exists for redeem-time lookups.",
         "operationId": "generate_referral_api_v1_referral_generate_post",
         "parameters": [
           {
@@ -915,7 +1522,7 @@
           "referral"
         ],
         "summary": "Referral Stats",
-        "description": "Get user's referral stats.",
+        "description": "Return the user's referral code, share URL, and redemption count.",
         "operationId": "referral_stats_api_v1_referral_stats_get",
         "parameters": [
           {
@@ -963,7 +1570,7 @@
           "referral"
         ],
         "summary": "Redeem Referral",
-        "description": "Redeem a referral code. Gives 7-day Personal trial to redeemer + 7 days to referrer.",
+        "description": "Redeem a referral code. Grants 7 days credit to redeemer and referrer.",
         "operationId": "redeem_referral_api_v1_referral_redeem_post",
         "parameters": [
           {
@@ -1445,11 +2052,952 @@
         }
       }
     },
+    "/api/v1/email/unsubscribe/{token}": {
+      "get": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Unsubscribe Landing",
+        "description": "Render a confirmation page. User must POST to actually unsubscribe.",
+        "operationId": "unsubscribe_landing_api_v1_email_unsubscribe__token__get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Unsubscribe Confirm",
+        "description": "Process unsubscribe. Supports both browser POST and RFC 8058 one-click.",
+        "operationId": "unsubscribe_confirm_api_v1_email_unsubscribe__token__post",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/family/mine": {
+      "get": {
+        "tags": [
+          "family"
+        ],
+        "summary": "List My Families",
+        "description": "Return families the caller is a member of, with their role.\n\nThe UI's first call when opening the Family Hub panel — needs to\nknow whether to show \"Create / Join\" (no families) or the active-\nfamily controls (one or more families).\n\nEmpty list is a perfectly valid response and not an error.",
+        "operationId": "list_my_families_api_v1_family_mine_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyFamiliesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/family": {
+      "post": {
+        "tags": [
+          "family"
+        ],
+        "summary": "Create Family",
+        "description": "Create a family with the caller as owner.",
+        "operationId": "create_family_api_v1_family_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFamilyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateFamilyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/family/{family_id}/keys": {
+      "post": {
+        "tags": [
+          "family"
+        ],
+        "summary": "Register Key",
+        "description": "Upsert my curve25519 public key for this family.",
+        "operationId": "register_key_api_v1_family__family_id__keys_post",
+        "parameters": [
+          {
+            "name": "family_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Family Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterKeyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/family/{family_id}/members": {
+      "get": {
+        "tags": [
+          "family"
+        ],
+        "summary": "List Members",
+        "description": "List all members + their public keys so the client can encrypt to them.",
+        "operationId": "list_members_api_v1_family__family_id__members_get",
+        "parameters": [
+          {
+            "name": "family_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Family Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyMembersResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/family/{family_id}/invite": {
+      "post": {
+        "tags": [
+          "family"
+        ],
+        "summary": "Create Invite",
+        "description": "Owner-only: generate one-time code+PIN. Caller must surface them\nout-of-band; the server keeps only hashes.",
+        "operationId": "create_invite_api_v1_family__family_id__invite_post",
+        "parameters": [
+          {
+            "name": "family_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Family Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/family/accept": {
+      "post": {
+        "tags": [
+          "family"
+        ],
+        "summary": "Accept Invite",
+        "description": "Redeem a (code, PIN) pair — joins caller to the family as a member.",
+        "operationId": "accept_invite_api_v1_family_accept_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInviteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptInviteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/family/{family_id}/alerts": {
+      "post": {
+        "tags": [
+          "family"
+        ],
+        "summary": "Submit Alerts",
+        "description": "Submit per-recipient ciphertexts. Server stores raw bytes; never\ndecrypts. Each envelope is an independent row.\n\nSender (caller) MUST be a family member; recipients MUST also be\nfamily members (we don't validate every individual recipient row\nhere — that's enforced by the FK + the membership index doesn't\nallow strangers to receive). For now we enforce the sender check\nand trust the FK.",
+        "operationId": "submit_alerts_api_v1_family__family_id__alerts_post",
+        "parameters": [
+          {
+            "name": "family_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Family Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitAlertsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitAlertsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "family"
+        ],
+        "summary": "List Alerts",
+        "description": "List ciphertexts addressed to the caller. Server doesn't decrypt.",
+        "operationId": "list_alerts_api_v1_family__family_id__alerts_get",
+        "parameters": [
+          {
+            "name": "family_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Family Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListAlertsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/email/analyze": {
+      "post": {
+        "tags": [
+          "email"
+        ],
+        "summary": "Analyze",
+        "description": "Analyze a single inbound email for phishing markers. The client passes\nalready-parsed header fields + body — we never ask for the raw MIME\nstream because\n(a) Outlook/Gmail clients already parse it for us, and\n(b) sending the full raw email would leak PII / internal headers into\n    our logs.\n\nBoth authenticated and anonymous callers are accepted. Anonymous calls\nare capped by per-IP rate limits; authenticated calls are additionally\ncharged against the user's daily quota so abuse attribution stays\npossible.",
+        "operationId": "analyze_api_v1_email_analyze_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeEmailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/phone/report": {
+      "post": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Report Phone",
+        "description": "Record a scam/spam/legit report against a hashed phone number.\n\nAuth required — we throttle per user, which prevents the most common\nmass-poisoning attack on crowd-sourced number databases.",
+        "operationId": "report_phone_api_v1_phone_report_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneReport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Report Phone Api V1 Phone Report Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/phone/lookup/{phone_hash}": {
+      "get": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Lookup Phone",
+        "description": "Caller-ID pre-answer check. Public — IP-rate-limited. Returns the\nstrongest signal we have:\n\n- `verified_legit` — this hash is in `verified_numbers` for `cc`.\n  The response carries the org name + category so the native phone UI\n  can show \"📞 Sberbank (bank)\".\n- `scam` / `spam` — 3+ reports of that kind dominate the counts.\n- `legit` — opposite: legitimate reports outweigh.\n- `unknown` — no data; native UI shows no badge.",
+        "operationId": "lookup_phone_api_v1_phone_lookup__phone_hash__get",
+        "parameters": [
+          {
+            "name": "phone_hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Phone Hash"
+            }
+          },
+          {
+            "name": "cc",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Cc"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneLookupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scam/analyze_text": {
+      "post": {
+        "tags": [
+          "scam"
+        ],
+        "summary": "Analyze Text",
+        "description": "Classify pasted text (SMS / DM / email / transcript) as scam or not.\n\nThe user's raw text is NEVER persisted. Only the structured verdict\n+ reason codes are written to `scam_analyses`.",
+        "operationId": "analyze_text_api_v1_scam_analyze_text_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeTextRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScamVerdict"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scam/analyze_voice": {
+      "post": {
+        "tags": [
+          "scam"
+        ],
+        "summary": "Analyze Voice",
+        "description": "Transcribe a voice recording and classify the transcript.\n\nCurrent implementation is a **stub** until the Whisper integration\nlands (ANTHROPIC_API_KEY / OPENAI_API_KEY). Returns an explicit\n\"transcription_pending\" status so clients can render the right UX.",
+        "operationId": "analyze_voice_api_v1_scam_analyze_voice_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_voice_api_v1_scam_analyze_voice_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScamVerdict"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/check-email": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Check Email",
+        "operationId": "check_email_api_v1_auth_check_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckEmailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health Check",
-        "description": "Health check that verifies dependencies and circuit breaker states.",
+        "description": "Health check used by Railway's healthcheck probe + external monitors.\n\nReturns HTTP 200 as long as the process is alive and can handle requests.\nDependency state (Redis, circuit breakers) is reported in the JSON body\nso humans / dashboards can still see degradation, but we don't fail the\nprobe on it — Redis-less rate limiter falls open, and all breakers are\n\"closed\" by default, so a cold boot without Redis is still a working\nserver from the user's perspective.\n\nIf a dependency is fundamentally broken (e.g., the process itself can't\nserve), that surfaces as a crash / TCP failure and Railway will mark the\npod unhealthy anyway.",
         "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/deep": {
+      "get": {
+        "summary": "Health Deep Check",
+        "description": "Deep health check — pings every downstream we depend on and FAILS HARD\n(HTTP 503) when any of them is unreachable.\n\nDifferent semantics from /health:\n  - /health      → \"is this Railway pod alive enough to serve?\". Always\n                   200 unless the pod itself is dead. Used by Railway's\n                   healthcheck probe so a transient Supabase blip doesn't\n                   cycle pods.\n  - /health/deep → \"is the WHOLE system actually serving real users?\".\n                   This is what an external monitor / StatusPage hits to\n                   page on-call when something downstream actually broke.\n\nChecks:\n  - Supabase REST: HEAD against /rest/v1/ with anon key. We don't care\n    about response body, just that a TCP+TLS+auth handshake succeeds.\n    2-second timeout — Supabase EU is on the same continent so anything\n    slower is already a problem worth flagging.\n  - Redis: PING. We separate this from the Supabase check so the JSON\n    body can pinpoint which one failed.\n\nPer-component results in the body even on the failure path so a human\ndebugging the 503 sees instantly which one broke.",
+        "operationId": "health_deep_check_health_deep_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1481,14 +3029,55 @@
   },
   "components": {
     "schemas": {
+      "AcceptInviteRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 6,
+            "title": "Code"
+          },
+          "pin": {
+            "type": "string",
+            "pattern": "^\\d{4}$",
+            "title": "Pin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "pin"
+        ],
+        "title": "AcceptInviteRequest"
+      },
+      "AcceptInviteResponse": {
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "title": "Family Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "family_id",
+          "role"
+        ],
+        "title": "AcceptInviteResponse"
+      },
       "AddMemberRequest": {
         "properties": {
           "email": {
             "type": "string",
+            "maxLength": 320,
             "title": "Email"
           },
           "role": {
             "type": "string",
+            "maxLength": 16,
             "title": "Role",
             "default": "member"
           }
@@ -1499,11 +3088,315 @@
         ],
         "title": "AddMemberRequest"
       },
+      "AlertEnvelope": {
+        "properties": {
+          "recipient_user_id": {
+            "type": "string",
+            "title": "Recipient User Id"
+          },
+          "ciphertext_b64": {
+            "type": "string",
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Ciphertext B64"
+          },
+          "nonce_b64": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Nonce B64"
+          },
+          "sender_pubkey_b64": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Sender Pubkey B64"
+          },
+          "alert_type": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Alert Type",
+            "default": "block"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recipient_user_id",
+          "ciphertext_b64",
+          "nonce_b64",
+          "sender_pubkey_b64"
+        ],
+        "title": "AlertEnvelope",
+        "description": "One per recipient. The same source alert produces N envelopes."
+      },
+      "AnalyzeEmailRequest": {
+        "properties": {
+          "from_address": {
+            "type": "string",
+            "maxLength": 320,
+            "title": "From Address",
+            "description": "RFC-5322 from address, e.g. security@chase.com",
+            "default": ""
+          },
+          "from_display": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "From Display",
+            "description": "Display name, e.g. 'Chase Security'",
+            "default": ""
+          },
+          "reply_to": {
+            "type": "string",
+            "maxLength": 320,
+            "title": "Reply To",
+            "description": "Reply-To address, if different from From",
+            "default": ""
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 1024,
+            "title": "Subject",
+            "description": "Email subject line",
+            "default": ""
+          },
+          "return_path": {
+            "type": "string",
+            "maxLength": 320,
+            "title": "Return Path",
+            "description": "Return-Path header value",
+            "default": ""
+          },
+          "spf": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spf",
+            "description": "SPF result from Authentication-Results"
+          },
+          "dkim": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dkim",
+            "description": "DKIM result from Authentication-Results"
+          },
+          "dmarc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dmarc",
+            "description": "DMARC result from Authentication-Results"
+          },
+          "body_text": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Body Text",
+            "description": "Plain-text body (cap 100 KB)",
+            "default": ""
+          },
+          "body_html": {
+            "type": "string",
+            "maxLength": 500000,
+            "title": "Body Html",
+            "description": "HTML body if available (cap 500 KB)",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AnalyzeEmailRequest"
+      },
+      "AnalyzeEmailResponse": {
+        "properties": {
+          "level": {
+            "type": "string",
+            "title": "Level"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "findings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "links": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Links"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "score",
+          "findings",
+          "links"
+        ],
+        "title": "AnalyzeEmailResponse"
+      },
+      "AnalyzeTextRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Text"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "text_paste | sms | email | screenshot | voice_file",
+            "default": "text_paste"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AnalyzeTextRequest"
+      },
+      "Body_analyze_voice_api_v1_scam_analyze_voice_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File",
+            "description": "Audio file, ≤25MB, ≤10min"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_analyze_voice_api_v1_scam_analyze_voice_post"
+      },
+      "Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post": {
+        "properties": {
+          "List_Unsubscribe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Unsubscribe"
+          }
+        },
+        "type": "object",
+        "title": "Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post"
+      },
+      "CheckEmailRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "CheckEmailRequest"
+      },
+      "CheckEmailResponse": {
+        "properties": {
+          "disposable": {
+            "type": "boolean",
+            "title": "Disposable"
+          },
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "disposable",
+          "domain"
+        ],
+        "title": "CheckEmailResponse"
+      },
       "CheckRequest": {
         "properties": {
           "domains": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 253
             },
             "type": "array",
             "maxItems": 50,
@@ -1603,6 +3496,37 @@
         ],
         "title": "ConfidenceLevel"
       },
+      "CreateFamilyRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "default": "My Family"
+          }
+        },
+        "type": "object",
+        "title": "CreateFamilyRequest"
+      },
+      "CreateFamilyResponse": {
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "title": "Family Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "family_id",
+          "name"
+        ],
+        "title": "CreateFamilyResponse"
+      },
       "CreateOrgRequest": {
         "properties": {
           "name": {
@@ -1617,6 +3541,73 @@
           "name"
         ],
         "title": "CreateOrgRequest"
+      },
+      "DeleteAccountResponse": {
+        "properties": {
+          "deleted_at": {
+            "type": "string",
+            "title": "Deleted At"
+          },
+          "grace_period_days": {
+            "type": "integer",
+            "title": "Grace Period Days"
+          },
+          "restore_until": {
+            "type": "string",
+            "title": "Restore Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deleted_at",
+          "grace_period_days",
+          "restore_until"
+        ],
+        "title": "DeleteAccountResponse"
+      },
+      "DeviceOverrideUpdate": {
+        "properties": {
+          "skill_level_override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SkillLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "voice_alerts_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Alerts Enabled"
+          },
+          "font_scale": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Font Scale"
+          },
+          "clear_overrides": {
+            "type": "boolean",
+            "title": "Clear Overrides",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "DeviceOverrideUpdate",
+        "description": "Per-device overrides — used by Family Hub to set Granny Mode on\ngrandmother's phone without changing her account-level default.\n\nAll fields optional so PATCH semantics work; setting any to None\nexplicitly clears the override and falls back to the user-level value."
       },
       "DeviceRegister": {
         "properties": {
@@ -1738,6 +3729,136 @@
         ],
         "title": "DomainResult"
       },
+      "EffectiveSkillResponse": {
+        "properties": {
+          "device_hash": {
+            "type": "string",
+            "title": "Device Hash"
+          },
+          "skill_level": {
+            "$ref": "#/components/schemas/SkillLevel"
+          },
+          "voice_alerts_enabled": {
+            "type": "boolean",
+            "title": "Voice Alerts Enabled"
+          },
+          "font_scale": {
+            "type": "number",
+            "title": "Font Scale"
+          },
+          "skill_source": {
+            "type": "string",
+            "enum": [
+              "device_override",
+              "user_default"
+            ],
+            "title": "Skill Source"
+          },
+          "voice_source": {
+            "type": "string",
+            "enum": [
+              "device_override",
+              "user_default"
+            ],
+            "title": "Voice Source"
+          },
+          "font_source": {
+            "type": "string",
+            "enum": [
+              "device_override",
+              "user_default"
+            ],
+            "title": "Font Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_hash",
+          "skill_level",
+          "voice_alerts_enabled",
+          "font_scale",
+          "skill_source",
+          "voice_source",
+          "font_source"
+        ],
+        "title": "EffectiveSkillResponse",
+        "description": "Resolved skill + accessibility for a specific device.\n\nResolution rule: device override (if set) wins over user default.\nReturned to extension/mobile so the UI can render with the right\ndensity, fonts, voice alerts, etc."
+      },
+      "FamilyMember": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "joined_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Joined At"
+          },
+          "public_key_b64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Key B64"
+          },
+          "key_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "role",
+          "joined_at",
+          "public_key_b64",
+          "key_version"
+        ],
+        "title": "FamilyMember"
+      },
+      "FamilyMembersResponse": {
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "title": "Family Id"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/FamilyMember"
+            },
+            "type": "array",
+            "title": "Members"
+          }
+        },
+        "type": "object",
+        "required": [
+          "family_id",
+          "members"
+        ],
+        "title": "FamilyMembersResponse"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1750,6 +3871,114 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IncrementThreatsRequest": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "title": "IncrementThreatsRequest",
+        "description": "Extension/mobile reports N newly-blocked threats since last sync."
+      },
+      "InviteCreateResponse": {
+        "properties": {
+          "invite_id": {
+            "type": "string",
+            "title": "Invite Id"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "pin": {
+            "type": "string",
+            "title": "Pin"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invite_id",
+          "code",
+          "pin",
+          "expires_at"
+        ],
+        "title": "InviteCreateResponse",
+        "description": "Returned ONCE at creation. Inviter must surface to the invitee\nout-of-band (text/scan/etc.); these values are never re-fetched."
+      },
+      "ListAlertsResponse": {
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "title": "Family Id"
+          },
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/StoredAlert"
+            },
+            "type": "array",
+            "title": "Alerts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "family_id",
+          "alerts"
+        ],
+        "title": "ListAlertsResponse"
+      },
+      "MyFamiliesResponse": {
+        "properties": {
+          "families": {
+            "items": {
+              "$ref": "#/components/schemas/MyFamily"
+            },
+            "type": "array",
+            "title": "Families"
+          }
+        },
+        "type": "object",
+        "required": [
+          "families"
+        ],
+        "title": "MyFamiliesResponse"
+      },
+      "MyFamily": {
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "title": "Family Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "member_count": {
+            "type": "integer",
+            "title": "Member Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "family_id",
+          "name",
+          "role",
+          "member_count"
+        ],
+        "title": "MyFamily"
       },
       "PercentileResponse": {
         "properties": {
@@ -1775,6 +4004,127 @@
           "bracket"
         ],
         "title": "PercentileResponse"
+      },
+      "PhoneLookupResponse": {
+        "properties": {
+          "known": {
+            "type": "boolean",
+            "title": "Known"
+          },
+          "verdict": {
+            "type": "string",
+            "title": "Verdict",
+            "description": "'verified_legit' | 'scam' | 'spam' | 'legit' | 'unknown' — the strongest signal we have."
+          },
+          "org_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Name"
+          },
+          "org_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Category"
+          },
+          "scam_count": {
+            "type": "integer",
+            "title": "Scam Count",
+            "default": 0
+          },
+          "spam_count": {
+            "type": "integer",
+            "title": "Spam Count",
+            "default": 0
+          },
+          "legit_count": {
+            "type": "integer",
+            "title": "Legit Count",
+            "default": 0
+          },
+          "top_tags": {
+            "items": {
+              "$ref": "#/components/schemas/PhoneLookupTag"
+            },
+            "type": "array",
+            "title": "Top Tags",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "known",
+          "verdict"
+        ],
+        "title": "PhoneLookupResponse"
+      },
+      "PhoneLookupTag": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "count"
+        ],
+        "title": "PhoneLookupTag"
+      },
+      "PhoneReport": {
+        "properties": {
+          "phone_hash": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Phone Hash"
+          },
+          "country_code": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Country Code"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "scam | spam | legit"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone_hash",
+          "country_code",
+          "kind"
+        ],
+        "title": "PhoneReport"
       },
       "PlanIntervals": {
         "properties": {
@@ -2013,6 +4363,51 @@
         ],
         "title": "RedeemRequest"
       },
+      "RegisterKeyRequest": {
+        "properties": {
+          "public_key_b64": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 40,
+            "title": "Public Key B64"
+          },
+          "key_version": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Key Version",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "public_key_b64"
+        ],
+        "title": "RegisterKeyRequest"
+      },
+      "RegisterKeyResponse": {
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "title": "Family Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "key_version": {
+            "type": "integer",
+            "title": "Key Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "family_id",
+          "user_id",
+          "key_version"
+        ],
+        "title": "RegisterKeyResponse"
+      },
       "ReportRequest": {
         "properties": {
           "domain": {
@@ -2055,6 +4450,19 @@
         ],
         "title": "ReportRequest"
       },
+      "RestoreAccountResponse": {
+        "properties": {
+          "restored": {
+            "type": "boolean",
+            "title": "Restored"
+          }
+        },
+        "type": "object",
+        "required": [
+          "restored"
+        ],
+        "title": "RestoreAccountResponse"
+      },
       "RiskLevel": {
         "type": "string",
         "enum": [
@@ -2063,6 +4471,49 @@
           "dangerous"
         ],
         "title": "RiskLevel"
+      },
+      "ScamVerdict": {
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "title": "Verdict"
+          },
+          "risk_score": {
+            "type": "integer",
+            "title": "Risk Score"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "description": "One-sentence human-readable summary of why the classifier flagged it. Empty when verdict == safe.",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "verdict",
+          "risk_score",
+          "reason_codes"
+        ],
+        "title": "ScamVerdict"
       },
       "ScoreSync": {
         "properties": {
@@ -2083,6 +4534,7 @@
         "properties": {
           "template": {
             "type": "string",
+            "maxLength": 64,
             "title": "Template",
             "default": "generic_phishing"
           },
@@ -2097,11 +4549,13 @@
           },
           "sender_name": {
             "type": "string",
+            "maxLength": 256,
             "title": "Sender Name",
             "default": "IT Security"
           },
           "subject": {
             "type": "string",
+            "maxLength": 1024,
             "title": "Subject",
             "default": "Action Required: Verify Your Account"
           }
@@ -2111,6 +4565,176 @@
           "target_emails"
         ],
         "title": "SimulationRequest"
+      },
+      "SkillLevel": {
+        "type": "string",
+        "enum": [
+          "kids",
+          "regular",
+          "granny",
+          "pro"
+        ],
+        "title": "SkillLevel",
+        "description": "Skill levels segment UX — one app, four very different presentations.\n\n- `kids`   — simplified, parental-controlled, stricter blocking\n- `regular` — default adult UX\n- `granny` — accessibility focus (large fonts, voice alerts, red/green only)\n- `pro`    — technical details (raw scores, threat types, headers)"
+      },
+      "StoredAlert": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "sender_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender User Id"
+          },
+          "sender_pubkey_b64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sender Pubkey B64"
+          },
+          "nonce_b64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nonce B64"
+          },
+          "ciphertext_b64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ciphertext B64"
+          },
+          "alert_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Type"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sender_user_id",
+          "sender_pubkey_b64",
+          "nonce_b64",
+          "ciphertext_b64",
+          "alert_type",
+          "created_at"
+        ],
+        "title": "StoredAlert"
+      },
+      "SubmitAlertsRequest": {
+        "properties": {
+          "envelopes": {
+            "items": {
+              "$ref": "#/components/schemas/AlertEnvelope"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Envelopes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "envelopes"
+        ],
+        "title": "SubmitAlertsRequest"
+      },
+      "SubmitAlertsResponse": {
+        "properties": {
+          "accepted": {
+            "type": "integer",
+            "title": "Accepted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accepted"
+        ],
+        "title": "SubmitAlertsResponse"
+      },
+      "ThreatStatus": {
+        "properties": {
+          "threats_blocked_lifetime": {
+            "type": "integer",
+            "title": "Threats Blocked Lifetime",
+            "default": 0
+          },
+          "threshold": {
+            "type": "integer",
+            "title": "Threshold",
+            "default": 50
+          },
+          "gated": {
+            "type": "boolean",
+            "title": "Gated",
+            "default": false
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier",
+            "default": "free"
+          },
+          "nudge_shown_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nudge Shown At"
+          },
+          "nudge_count": {
+            "type": "integer",
+            "title": "Nudge Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "ThreatStatus",
+        "description": "Cumulative blocked-threats counter + freemium detail gating state."
       },
       "TierDescription": {
         "properties": {
@@ -2139,6 +4763,105 @@
           "examples"
         ],
         "title": "TierDescription"
+      },
+      "UserSettings": {
+        "properties": {
+          "skill_level": {
+            "$ref": "#/components/schemas/SkillLevel",
+            "default": "regular"
+          },
+          "preferred_locale": {
+            "type": "string",
+            "title": "Preferred Locale",
+            "default": "en"
+          },
+          "voice_alerts_enabled": {
+            "type": "boolean",
+            "title": "Voice Alerts Enabled",
+            "default": false
+          },
+          "font_scale": {
+            "type": "number",
+            "title": "Font Scale",
+            "default": 1.0
+          },
+          "parental_pin_set": {
+            "type": "boolean",
+            "title": "Parental Pin Set",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "UserSettings",
+        "description": "User-scoped preferences that sync across devices.",
+        "example": {
+          "font_scale": 1.0,
+          "parental_pin_set": false,
+          "preferred_locale": "en",
+          "skill_level": "regular",
+          "voice_alerts_enabled": false
+        }
+      },
+      "UserSettingsUpdate": {
+        "properties": {
+          "skill_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SkillLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preferred_locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Locale"
+          },
+          "voice_alerts_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Alerts Enabled"
+          },
+          "font_scale": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Font Scale"
+          },
+          "parental_pin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parental Pin"
+          }
+        },
+        "type": "object",
+        "title": "UserSettingsUpdate",
+        "description": "Partial update — all fields optional so clients can PATCH individually."
       },
       "ValidationError": {
         "properties": {
@@ -2217,6 +4940,30 @@
           "total_blocks"
         ],
         "title": "WeeklyAggregateSubmit"
+      },
+      "WelcomeResponse": {
+        "properties": {
+          "sent": {
+            "type": "boolean",
+            "title": "Sent"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent"
+        ],
+        "title": "WelcomeResponse"
       },
       "WhitelistRequest": {
         "properties": {

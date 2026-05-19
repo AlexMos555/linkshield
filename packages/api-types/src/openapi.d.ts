@@ -31,7 +31,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payments/create-checkout": {
+    "/api/v1/payments/checkout": {
         parameters: {
             query?: never;
             header?: never;
@@ -43,8 +43,29 @@ export interface paths {
         /**
          * Create Checkout
          * @description Create a Stripe Checkout session for subscription.
+         *
+         *     Endpoint path is /checkout (matches the landing PricingClient).
+         *     /create-checkout is preserved as an alias below for any code that
+         *     might still reference the legacy name.
          */
-        post: operations["create_checkout_api_v1_payments_create_checkout_post"];
+        post: operations["create_checkout_api_v1_payments_checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/create-checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Checkout Legacy */
+        post: operations["create_checkout_legacy_api_v1_payments_create_checkout_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -63,6 +84,15 @@ export interface paths {
         /**
          * Stripe Webhook
          * @description Handle Stripe webhook events.
+         *
+         *     Stripe documents "events may be delivered more than once" — they
+         *     retry on any 5xx / timeout for up to 72 hours with exponential
+         *     backoff. Without dedup, a retried checkout.session.completed
+         *     upserts the subscription twice; a retried subscription.updated
+         *     can race with newer events and flip status backward.
+         *
+         *     We dedup by event.id with a Redis SETNX + 7-day TTL. Already-seen
+         *     events return 200 OK (so Stripe stops retrying) but skip processing.
          */
         post: operations["stripe_webhook_api_v1_payments_webhook_post"];
         delete?: never;
@@ -176,6 +206,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/user/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get User Settings
+         * @description Return the current user's cross-device preferences (skill level, locale,
+         *     accessibility defaults). PIN is never returned — only the `parental_pin_set`
+         *     flag.
+         */
+        get: operations["get_user_settings_api_v1_user_settings_get"];
+        /**
+         * Update User Settings
+         * @description Partial update of user settings. All fields optional.
+         *
+         *     Parental PIN behavior:
+         *     - Providing a non-empty `parental_pin` hashes and stores it.
+         *     - Providing `parental_pin=""` clears the PIN.
+         *     - Omitting `parental_pin` leaves the existing hash untouched.
+         */
+        put: operations["update_user_settings_api_v1_user_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/user/profile": {
         parameters: {
             query?: never;
@@ -190,6 +251,179 @@ export interface paths {
         get: operations["get_profile_api_v1_user_profile_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/threats/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Threat Status
+         * @description Return blocked-threats counter + freemium gating decision.
+         */
+        get: operations["get_threat_status_api_v1_user_threats_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/threats/increment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Increment Threats
+         * @description Add `body.count` to the lifetime threat counter and return new state.
+         *
+         *     On the FIRST crossing of the gating threshold for a free user, set
+         *     `threshold_nudge_shown_at` so the client can decide cadence for showing
+         *     the upsell nudge. We do not bump nudge_count here — that's the client's
+         *     responsibility once it actually renders the nudge UI.
+         */
+        post: operations["increment_threats_api_v1_user_threats_increment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/device/{device_hash}/effective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Effective Skill
+         * @description Resolve effective skill level + accessibility for this device.
+         *
+         *     Device-level override wins; falls back to user-level default. Used by
+         *     extension and mobile clients to know which UX mode to render.
+         */
+        get: operations["get_effective_skill_api_v1_user_device__device_hash__effective_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/device/{device_hash}/overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Device Overrides
+         * @description Set or clear device-level overrides for this user's device.
+         *
+         *     Validates font_scale 0.8..2.5 (matches DB CHECK constraint). Authorization
+         *     is implicit: we filter on (user_id=user.id, device_hash) so a user can
+         *     only change their own devices' overrides. Family Hub admin operations
+         *     on a family member's device go through the family router (TODO).
+         */
+        patch: operations["update_device_overrides_api_v1_user_device__device_hash__overrides_patch"];
+        trace?: never;
+    };
+    "/api/v1/user/welcome": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Welcome Email
+         * @description First-signin welcome email. Idempotent — won't re-send.
+         */
+        post: operations["trigger_welcome_email_api_v1_user_welcome_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export User Data
+         * @description Return every server-side row owned by the caller, GDPR Art. 15.
+         */
+        get: operations["export_user_data_api_v1_user_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Account
+         * @description Mark the caller's account for deletion. Hard-deleted 30 days later.
+         */
+        delete: operations["delete_account_api_v1_user_account_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/account/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Account
+         * @description Clear a pending deletion request. Available during 30-day grace.
+         */
+        post: operations["restore_account_api_v1_user_account_restore_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -344,7 +578,10 @@ export interface paths {
         put?: never;
         /**
          * Generate Referral
-         * @description Generate unique referral code for user.
+         * @description Generate (or fetch existing) referral code for the user.
+         *
+         *     Idempotent: same user → same code. We upsert the Redis mapping so the
+         *     code → owner record exists for redeem-time lookups.
          */
         post: operations["generate_referral_api_v1_referral_generate_post"];
         delete?: never;
@@ -362,7 +599,7 @@ export interface paths {
         };
         /**
          * Referral Stats
-         * @description Get user's referral stats.
+         * @description Return the user's referral code, share URL, and redemption count.
          */
         get: operations["referral_stats_api_v1_referral_stats_get"];
         put?: never;
@@ -384,7 +621,7 @@ export interface paths {
         put?: never;
         /**
          * Redeem Referral
-         * @description Redeem a referral code. Gives 7-day Personal trial to redeemer + 7 days to referrer.
+         * @description Redeem a referral code. Grants 7 days credit to redeemer and referrer.
          */
         post: operations["redeem_referral_api_v1_referral_redeem_post"];
         delete?: never;
@@ -564,6 +801,333 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/email/unsubscribe/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unsubscribe Landing
+         * @description Render a confirmation page. User must POST to actually unsubscribe.
+         */
+        get: operations["unsubscribe_landing_api_v1_email_unsubscribe__token__get"];
+        put?: never;
+        /**
+         * Unsubscribe Confirm
+         * @description Process unsubscribe. Supports both browser POST and RFC 8058 one-click.
+         */
+        post: operations["unsubscribe_confirm_api_v1_email_unsubscribe__token__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List My Families
+         * @description Return families the caller is a member of, with their role.
+         *
+         *     The UI's first call when opening the Family Hub panel — needs to
+         *     know whether to show "Create / Join" (no families) or the active-
+         *     family controls (one or more families).
+         *
+         *     Empty list is a perfectly valid response and not an error.
+         */
+        get: operations["list_my_families_api_v1_family_mine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Family
+         * @description Create a family with the caller as owner.
+         */
+        post: operations["create_family_api_v1_family_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/{family_id}/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register Key
+         * @description Upsert my curve25519 public key for this family.
+         */
+        post: operations["register_key_api_v1_family__family_id__keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/{family_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Members
+         * @description List all members + their public keys so the client can encrypt to them.
+         */
+        get: operations["list_members_api_v1_family__family_id__members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/{family_id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Invite
+         * @description Owner-only: generate one-time code+PIN. Caller must surface them
+         *     out-of-band; the server keeps only hashes.
+         */
+        post: operations["create_invite_api_v1_family__family_id__invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Invite
+         * @description Redeem a (code, PIN) pair — joins caller to the family as a member.
+         */
+        post: operations["accept_invite_api_v1_family_accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/family/{family_id}/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Alerts
+         * @description List ciphertexts addressed to the caller. Server doesn't decrypt.
+         */
+        get: operations["list_alerts_api_v1_family__family_id__alerts_get"];
+        put?: never;
+        /**
+         * Submit Alerts
+         * @description Submit per-recipient ciphertexts. Server stores raw bytes; never
+         *     decrypts. Each envelope is an independent row.
+         *
+         *     Sender (caller) MUST be a family member; recipients MUST also be
+         *     family members (we don't validate every individual recipient row
+         *     here — that's enforced by the FK + the membership index doesn't
+         *     allow strangers to receive). For now we enforce the sender check
+         *     and trust the FK.
+         */
+        post: operations["submit_alerts_api_v1_family__family_id__alerts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/email/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze
+         * @description Analyze a single inbound email for phishing markers. The client passes
+         *     already-parsed header fields + body — we never ask for the raw MIME
+         *     stream because
+         *     (a) Outlook/Gmail clients already parse it for us, and
+         *     (b) sending the full raw email would leak PII / internal headers into
+         *         our logs.
+         *
+         *     Both authenticated and anonymous callers are accepted. Anonymous calls
+         *     are capped by per-IP rate limits; authenticated calls are additionally
+         *     charged against the user's daily quota so abuse attribution stays
+         *     possible.
+         */
+        post: operations["analyze_api_v1_email_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/phone/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report Phone
+         * @description Record a scam/spam/legit report against a hashed phone number.
+         *
+         *     Auth required — we throttle per user, which prevents the most common
+         *     mass-poisoning attack on crowd-sourced number databases.
+         */
+        post: operations["report_phone_api_v1_phone_report_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/phone/lookup/{phone_hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lookup Phone
+         * @description Caller-ID pre-answer check. Public — IP-rate-limited. Returns the
+         *     strongest signal we have:
+         *
+         *     - `verified_legit` — this hash is in `verified_numbers` for `cc`.
+         *       The response carries the org name + category so the native phone UI
+         *       can show "📞 Sberbank (bank)".
+         *     - `scam` / `spam` — 3+ reports of that kind dominate the counts.
+         *     - `legit` — opposite: legitimate reports outweigh.
+         *     - `unknown` — no data; native UI shows no badge.
+         */
+        get: operations["lookup_phone_api_v1_phone_lookup__phone_hash__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scam/analyze_text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Text
+         * @description Classify pasted text (SMS / DM / email / transcript) as scam or not.
+         *
+         *     The user's raw text is NEVER persisted. Only the structured verdict
+         *     + reason codes are written to `scam_analyses`.
+         */
+        post: operations["analyze_text_api_v1_scam_analyze_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scam/analyze_voice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Voice
+         * @description Transcribe a voice recording and classify the transcript.
+         *
+         *     Current implementation is a **stub** until the Whisper integration
+         *     lands (ANTHROPIC_API_KEY / OPENAI_API_KEY). Returns an explicit
+         *     "transcription_pending" status so clients can render the right UX.
+         */
+        post: operations["analyze_voice_api_v1_scam_analyze_voice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/check-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check Email */
+        post: operations["check_email_api_v1_auth_check_email_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -573,9 +1137,61 @@ export interface paths {
         };
         /**
          * Health Check
-         * @description Health check that verifies dependencies and circuit breaker states.
+         * @description Health check used by Railway's healthcheck probe + external monitors.
+         *
+         *     Returns HTTP 200 as long as the process is alive and can handle requests.
+         *     Dependency state (Redis, circuit breakers) is reported in the JSON body
+         *     so humans / dashboards can still see degradation, but we don't fail the
+         *     probe on it — Redis-less rate limiter falls open, and all breakers are
+         *     "closed" by default, so a cold boot without Redis is still a working
+         *     server from the user's perspective.
+         *
+         *     If a dependency is fundamentally broken (e.g., the process itself can't
+         *     serve), that surfaces as a crash / TCP failure and Railway will mark the
+         *     pod unhealthy anyway.
          */
         get: operations["health_check_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/deep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Deep Check
+         * @description Deep health check — pings every downstream we depend on and FAILS HARD
+         *     (HTTP 503) when any of them is unreachable.
+         *
+         *     Different semantics from /health:
+         *       - /health      → "is this Railway pod alive enough to serve?". Always
+         *                        200 unless the pod itself is dead. Used by Railway's
+         *                        healthcheck probe so a transient Supabase blip doesn't
+         *                        cycle pods.
+         *       - /health/deep → "is the WHOLE system actually serving real users?".
+         *                        This is what an external monitor / StatusPage hits to
+         *                        page on-call when something downstream actually broke.
+         *
+         *     Checks:
+         *       - Supabase REST: HEAD against /rest/v1/ with anon key. We don't care
+         *         about response body, just that a TCP+TLS+auth handshake succeeds.
+         *         2-second timeout — Supabase EU is on the same continent so anything
+         *         slower is already a problem worth flagging.
+         *       - Redis: PING. We separate this from the Supabase check so the JSON
+         *         body can pinpoint which one failed.
+         *
+         *     Per-component results in the body even on the failure path so a human
+         *     debugging the 503 sees instantly which one broke.
+         */
+        get: operations["health_deep_check_health_deep_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -605,6 +1221,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptInviteRequest */
+        AcceptInviteRequest: {
+            /** Code */
+            code: string;
+            /** Pin */
+            pin: string;
+        };
+        /** AcceptInviteResponse */
+        AcceptInviteResponse: {
+            /** Family Id */
+            family_id: string;
+            /** Role */
+            role: string;
+        };
         /** AddMemberRequest */
         AddMemberRequest: {
             /** Email */
@@ -614,6 +1244,145 @@ export interface components {
              * @default member
              */
             role: string;
+        };
+        /**
+         * AlertEnvelope
+         * @description One per recipient. The same source alert produces N envelopes.
+         */
+        AlertEnvelope: {
+            /** Recipient User Id */
+            recipient_user_id: string;
+            /** Ciphertext B64 */
+            ciphertext_b64: string;
+            /** Nonce B64 */
+            nonce_b64: string;
+            /** Sender Pubkey B64 */
+            sender_pubkey_b64: string;
+            /**
+             * Alert Type
+             * @default block
+             */
+            alert_type: string;
+        };
+        /** AnalyzeEmailRequest */
+        AnalyzeEmailRequest: {
+            /**
+             * From Address
+             * @description RFC-5322 from address, e.g. security@chase.com
+             * @default
+             */
+            from_address: string;
+            /**
+             * From Display
+             * @description Display name, e.g. 'Chase Security'
+             * @default
+             */
+            from_display: string;
+            /**
+             * Reply To
+             * @description Reply-To address, if different from From
+             * @default
+             */
+            reply_to: string;
+            /**
+             * Subject
+             * @description Email subject line
+             * @default
+             */
+            subject: string;
+            /**
+             * Return Path
+             * @description Return-Path header value
+             * @default
+             */
+            return_path: string;
+            /**
+             * Spf
+             * @description SPF result from Authentication-Results
+             */
+            spf: string | null;
+            /**
+             * Dkim
+             * @description DKIM result from Authentication-Results
+             */
+            dkim: string | null;
+            /**
+             * Dmarc
+             * @description DMARC result from Authentication-Results
+             */
+            dmarc: string | null;
+            /**
+             * Body Text
+             * @description Plain-text body (cap 100 KB)
+             * @default
+             */
+            body_text: string;
+            /**
+             * Body Html
+             * @description HTML body if available (cap 500 KB)
+             * @default
+             */
+            body_html: string;
+        };
+        /** AnalyzeEmailResponse */
+        AnalyzeEmailResponse: {
+            /** Level */
+            level: string;
+            /** Score */
+            score: number;
+            /** Findings */
+            findings: {
+                [key: string]: unknown;
+            }[];
+            /** Links */
+            links: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** AnalyzeTextRequest */
+        AnalyzeTextRequest: {
+            /** Text */
+            text: string;
+            /** Language */
+            language?: string | null;
+            /**
+             * Source
+             * @description text_paste | sms | email | screenshot | voice_file
+             * @default text_paste
+             */
+            source: string;
+            /** Country Code */
+            country_code?: string | null;
+        };
+        /** Body_analyze_voice_api_v1_scam_analyze_voice_post */
+        Body_analyze_voice_api_v1_scam_analyze_voice_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Audio file, ≤25MB, ≤10min
+             */
+            file: string;
+            /** Language */
+            language?: string | null;
+            /** Country Code */
+            country_code?: string | null;
+        };
+        /** Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post */
+        Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post: {
+            /** List Unsubscribe */
+            List_Unsubscribe: string | null;
+        };
+        /** CheckEmailRequest */
+        CheckEmailRequest: {
+            /** Email */
+            email: string;
+        };
+        /** CheckEmailResponse */
+        CheckEmailResponse: {
+            /** Disposable */
+            disposable: boolean;
+            /** Domain */
+            domain: string;
         };
         /**
          * CheckRequest
@@ -665,10 +1434,54 @@ export interface components {
          * @enum {string}
          */
         ConfidenceLevel: "high" | "medium" | "low";
+        /** CreateFamilyRequest */
+        CreateFamilyRequest: {
+            /**
+             * Name
+             * @default My Family
+             */
+            name: string;
+        };
+        /** CreateFamilyResponse */
+        CreateFamilyResponse: {
+            /** Family Id */
+            family_id: string;
+            /** Name */
+            name: string;
+        };
         /** CreateOrgRequest */
         CreateOrgRequest: {
             /** Name */
             name: string;
+        };
+        /** DeleteAccountResponse */
+        DeleteAccountResponse: {
+            /** Deleted At */
+            deleted_at: string;
+            /** Grace Period Days */
+            grace_period_days: number;
+            /** Restore Until */
+            restore_until: string;
+        };
+        /**
+         * DeviceOverrideUpdate
+         * @description Per-device overrides — used by Family Hub to set Granny Mode on
+         *     grandmother's phone without changing her account-level default.
+         *
+         *     All fields optional so PATCH semantics work; setting any to None
+         *     explicitly clears the override and falls back to the user-level value.
+         */
+        DeviceOverrideUpdate: {
+            skill_level_override: components["schemas"]["SkillLevel"] | null;
+            /** Voice Alerts Enabled */
+            voice_alerts_enabled: boolean | null;
+            /** Font Scale */
+            font_scale: number | null;
+            /**
+             * Clear Overrides
+             * @default false
+             */
+            clear_overrides: boolean;
         };
         /** DeviceRegister */
         DeviceRegister: {
@@ -714,10 +1527,111 @@ export interface components {
              */
             cached: boolean;
         };
+        /**
+         * EffectiveSkillResponse
+         * @description Resolved skill + accessibility for a specific device.
+         *
+         *     Resolution rule: device override (if set) wins over user default.
+         *     Returned to extension/mobile so the UI can render with the right
+         *     density, fonts, voice alerts, etc.
+         */
+        EffectiveSkillResponse: {
+            /** Device Hash */
+            device_hash: string;
+            skill_level: components["schemas"]["SkillLevel"];
+            /** Voice Alerts Enabled */
+            voice_alerts_enabled: boolean;
+            /** Font Scale */
+            font_scale: number;
+            /**
+             * Skill Source
+             * @enum {string}
+             */
+            skill_source: "device_override" | "user_default";
+            /**
+             * Voice Source
+             * @enum {string}
+             */
+            voice_source: "device_override" | "user_default";
+            /**
+             * Font Source
+             * @enum {string}
+             */
+            font_source: "device_override" | "user_default";
+        };
+        /** FamilyMember */
+        FamilyMember: {
+            /** User Id */
+            user_id: string;
+            /** Role */
+            role: string;
+            /** Joined At */
+            joined_at: string | null;
+            /** Public Key B64 */
+            public_key_b64: string | null;
+            /** Key Version */
+            key_version: number | null;
+        };
+        /** FamilyMembersResponse */
+        FamilyMembersResponse: {
+            /** Family Id */
+            family_id: string;
+            /** Members */
+            members: components["schemas"]["FamilyMember"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * IncrementThreatsRequest
+         * @description Extension/mobile reports N newly-blocked threats since last sync.
+         */
+        IncrementThreatsRequest: {
+            /**
+             * Count
+             * @default 1
+             */
+            count: number;
+        };
+        /**
+         * InviteCreateResponse
+         * @description Returned ONCE at creation. Inviter must surface to the invitee
+         *     out-of-band (text/scan/etc.); these values are never re-fetched.
+         */
+        InviteCreateResponse: {
+            /** Invite Id */
+            invite_id: string;
+            /** Code */
+            code: string;
+            /** Pin */
+            pin: string;
+            /** Expires At */
+            expires_at: string;
+        };
+        /** ListAlertsResponse */
+        ListAlertsResponse: {
+            /** Family Id */
+            family_id: string;
+            /** Alerts */
+            alerts: components["schemas"]["StoredAlert"][];
+        };
+        /** MyFamiliesResponse */
+        MyFamiliesResponse: {
+            /** Families */
+            families: components["schemas"]["MyFamily"][];
+        };
+        /** MyFamily */
+        MyFamily: {
+            /** Family Id */
+            family_id: string;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+            /** Member Count */
+            member_count: number;
         };
         /** PercentileResponse */
         PercentileResponse: {
@@ -727,6 +1641,61 @@ export interface components {
             total_blocks: number;
             /** Bracket */
             bracket: string;
+        };
+        /** PhoneLookupResponse */
+        PhoneLookupResponse: {
+            /** Known */
+            known: boolean;
+            /**
+             * Verdict
+             * @description 'verified_legit' | 'scam' | 'spam' | 'legit' | 'unknown' — the strongest signal we have.
+             */
+            verdict: string;
+            /** Org Name */
+            org_name?: string | null;
+            /** Org Category */
+            org_category?: string | null;
+            /**
+             * Scam Count
+             * @default 0
+             */
+            scam_count: number;
+            /**
+             * Spam Count
+             * @default 0
+             */
+            spam_count: number;
+            /**
+             * Legit Count
+             * @default 0
+             */
+            legit_count: number;
+            /**
+             * Top Tags
+             * @default []
+             */
+            top_tags: components["schemas"]["PhoneLookupTag"][];
+        };
+        /** PhoneLookupTag */
+        PhoneLookupTag: {
+            /** Name */
+            name: string;
+            /** Count */
+            count: number;
+        };
+        /** PhoneReport */
+        PhoneReport: {
+            /** Phone Hash */
+            phone_hash: string;
+            /** Country Code */
+            country_code: string;
+            /**
+             * Kind
+             * @description scam | spam | legit
+             */
+            kind: string;
+            /** Tag */
+            tag?: string | null;
         };
         /** PlanIntervals */
         PlanIntervals: {
@@ -832,6 +1801,25 @@ export interface components {
             /** Code */
             code: string;
         };
+        /** RegisterKeyRequest */
+        RegisterKeyRequest: {
+            /** Public Key B64 */
+            public_key_b64: string;
+            /**
+             * Key Version
+             * @default 1
+             */
+            key_version: number;
+        };
+        /** RegisterKeyResponse */
+        RegisterKeyResponse: {
+            /** Family Id */
+            family_id: string;
+            /** User Id */
+            user_id: string;
+            /** Key Version */
+            key_version: number;
+        };
         /** ReportRequest */
         ReportRequest: {
             /** Domain */
@@ -846,11 +1834,33 @@ export interface components {
             /** Comment */
             comment?: string | null;
         };
+        /** RestoreAccountResponse */
+        RestoreAccountResponse: {
+            /** Restored */
+            restored: boolean;
+        };
         /**
          * RiskLevel
          * @enum {string}
          */
         RiskLevel: "safe" | "caution" | "dangerous";
+        /** ScamVerdict */
+        ScamVerdict: {
+            /** Verdict */
+            verdict: string;
+            /** Risk Score */
+            risk_score: number;
+            /** Reason Codes */
+            reason_codes: string[];
+            /** Language */
+            language?: string | null;
+            /**
+             * Summary
+             * @description One-sentence human-readable summary of why the classifier flagged it. Empty when verdict == safe.
+             * @default
+             */
+            summary: string;
+        };
         /** ScoreSync */
         ScoreSync: {
             /** Score */
@@ -876,6 +1886,77 @@ export interface components {
              */
             subject: string;
         };
+        /**
+         * SkillLevel
+         * @description Skill levels segment UX — one app, four very different presentations.
+         *
+         *     - `kids`   — simplified, parental-controlled, stricter blocking
+         *     - `regular` — default adult UX
+         *     - `granny` — accessibility focus (large fonts, voice alerts, red/green only)
+         *     - `pro`    — technical details (raw scores, threat types, headers)
+         * @enum {string}
+         */
+        SkillLevel: "kids" | "regular" | "granny" | "pro";
+        /** StoredAlert */
+        StoredAlert: {
+            /** Id */
+            id: string;
+            /** Sender User Id */
+            sender_user_id: string | null;
+            /** Sender Pubkey B64 */
+            sender_pubkey_b64: string | null;
+            /** Nonce B64 */
+            nonce_b64: string | null;
+            /** Ciphertext B64 */
+            ciphertext_b64: string | null;
+            /** Alert Type */
+            alert_type: string | null;
+            /** Created At */
+            created_at: string | null;
+        };
+        /** SubmitAlertsRequest */
+        SubmitAlertsRequest: {
+            /** Envelopes */
+            envelopes: components["schemas"]["AlertEnvelope"][];
+        };
+        /** SubmitAlertsResponse */
+        SubmitAlertsResponse: {
+            /** Accepted */
+            accepted: number;
+        };
+        /**
+         * ThreatStatus
+         * @description Cumulative blocked-threats counter + freemium detail gating state.
+         */
+        ThreatStatus: {
+            /**
+             * Threats Blocked Lifetime
+             * @default 0
+             */
+            threats_blocked_lifetime: number;
+            /**
+             * Threshold
+             * @default 50
+             */
+            threshold: number;
+            /**
+             * Gated
+             * @default false
+             */
+            gated: boolean;
+            /**
+             * Tier
+             * @default free
+             */
+            tier: string;
+            /** Nudge Shown At */
+            nudge_shown_at: string | null;
+            /**
+             * Nudge Count
+             * @default 0
+             */
+            nudge_count: number;
+        };
         /** TierDescription */
         TierDescription: {
             /** Name */
@@ -889,6 +1970,56 @@ export interface components {
             countries: unknown;
             /** Examples */
             examples: string;
+        };
+        /**
+         * UserSettings
+         * @description User-scoped preferences that sync across devices.
+         * @example {
+         *       "font_scale": 1,
+         *       "parental_pin_set": false,
+         *       "preferred_locale": "en",
+         *       "skill_level": "regular",
+         *       "voice_alerts_enabled": false
+         *     }
+         */
+        UserSettings: {
+            /** @default regular */
+            skill_level: components["schemas"]["SkillLevel"];
+            /**
+             * Preferred Locale
+             * @default en
+             */
+            preferred_locale: string;
+            /**
+             * Voice Alerts Enabled
+             * @default false
+             */
+            voice_alerts_enabled: boolean;
+            /**
+             * Font Scale
+             * @default 1
+             */
+            font_scale: number;
+            /**
+             * Parental Pin Set
+             * @default false
+             */
+            parental_pin_set: boolean;
+        };
+        /**
+         * UserSettingsUpdate
+         * @description Partial update — all fields optional so clients can PATCH individually.
+         */
+        UserSettingsUpdate: {
+            skill_level: components["schemas"]["SkillLevel"] | null;
+            /** Preferred Locale */
+            preferred_locale: string | null;
+            /** Voice Alerts Enabled */
+            voice_alerts_enabled: boolean | null;
+            /** Font Scale */
+            font_scale: number | null;
+            /** Parental Pin */
+            parental_pin: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -917,6 +2048,13 @@ export interface components {
             total_trackers: number;
             /** Score */
             score?: number | null;
+        };
+        /** WelcomeResponse */
+        WelcomeResponse: {
+            /** Sent */
+            sent: boolean;
+            /** Reason */
+            reason?: string | null;
         };
         /** WhitelistRequest */
         WhitelistRequest: {
@@ -967,7 +2105,42 @@ export interface operations {
             };
         };
     };
-    create_checkout_api_v1_payments_create_checkout_post: {
+    create_checkout_api_v1_payments_checkout_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_checkout_legacy_api_v1_payments_create_checkout_post: {
         parameters: {
             query?: never;
             header?: {
@@ -1189,6 +2362,72 @@ export interface operations {
             };
         };
     };
+    get_user_settings_api_v1_user_settings_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_user_settings_api_v1_user_settings_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_profile_api_v1_user_profile_get: {
         parameters: {
             query?: never;
@@ -1207,6 +2446,268 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_threat_status_api_v1_user_threats_status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreatStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    increment_threats_api_v1_user_threats_increment_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncrementThreatsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreatStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_effective_skill_api_v1_user_device__device_hash__effective_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                device_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectiveSkillResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_device_overrides_api_v1_user_device__device_hash__overrides_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                device_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceOverrideUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectiveSkillResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_welcome_email_api_v1_user_welcome_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WelcomeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_user_data_api_v1_user_export_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_account_api_v1_user_account_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeleteAccountResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_account_api_v1_user_account_restore_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreAccountResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1828,7 +3329,577 @@ export interface operations {
             };
         };
     };
+    unsubscribe_landing_api_v1_email_unsubscribe__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_confirm_api_v1_email_unsubscribe__token__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_my_families_api_v1_family_mine_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyFamiliesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_family_api_v1_family_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFamilyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateFamilyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_key_api_v1_family__family_id__keys_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                family_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterKeyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_members_api_v1_family__family_id__members_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                family_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FamilyMembersResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_invite_api_v1_family__family_id__invite_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                family_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_invite_api_v1_family_accept_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptInviteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_alerts_api_v1_family__family_id__alerts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                family_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListAlertsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_alerts_api_v1_family__family_id__alerts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                family_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitAlertsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitAlertsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_api_v1_email_analyze_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalyzeEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyzeEmailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_phone_api_v1_phone_report_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneReport"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lookup_phone_api_v1_phone_lookup__phone_hash__get: {
+        parameters: {
+            query?: {
+                cc?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                phone_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneLookupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_text_api_v1_scam_analyze_text_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalyzeTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScamVerdict"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_voice_api_v1_scam_analyze_voice_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_analyze_voice_api_v1_scam_analyze_voice_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScamVerdict"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_email_api_v1_auth_check_email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckEmailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_check_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    health_deep_check_health_deep_get: {
         parameters: {
             query?: never;
             header?: never;
