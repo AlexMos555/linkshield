@@ -3,7 +3,7 @@
   "info": {
     "title": "Cleanway API",
     "description": "Phishing protection API. Checks domains for safety. Your browsing data lives on your device — we only see domain names.",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "paths": {
     "/api/v1/check": {

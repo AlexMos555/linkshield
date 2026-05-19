@@ -75,10 +75,12 @@ async def lifespan(app: FastAPI):
     logger.info("Cleanway API shutdown complete")
 
 
+from api import __version__, __service_name__
+
 app = FastAPI(
-    title="Cleanway API",
+    title=__service_name__,
     description="Phishing protection API. Checks domains for safety. Your browsing data lives on your device — we only see domain names.",
-    version="0.1.0",
+    version=__version__,
     lifespan=lifespan,
 )
 
@@ -181,7 +183,7 @@ async def health_check():
 
     return {
         "status": status,
-        "version": "0.2.0",
+        "version": __version__,
         "redis": "ok" if redis_ok else "down",
         "circuit_breakers": breakers,
     }
@@ -274,8 +276,8 @@ async def health_deep_check():
 @app.get("/")
 async def root():
     return {
-        "service": "Cleanway API",
-        "version": "0.1.0",
+        "service": __service_name__,
+        "version": __version__,
         "privacy": "We see domain names only. Your browsing history lives on your device.",
         "docs": "/docs",
     }

@@ -62,6 +62,8 @@ class CheckResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"  # "ok" or "degraded"
+    # The /health handler overrides this with api.__version__. Default
+    # is just for OpenAPI examples and Pydantic instantiation.
     version: str = "0.1.0"
 
 
