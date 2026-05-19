@@ -24,11 +24,15 @@ import type {
 // ── Error shapes ──────────────────────────────────────────────────
 
 export type ApiErrorKind =
-  | "network"          // fetch itself threw (offline, DNS, CORS, TLS)
-  | "timeout"          // our AbortController fired
-  | "http_4xx"         // client error (bad input, unauthorized, rate limited)
-  | "http_5xx"         // server error
-  | "invalid_json"     // response body didn't parse
+  | "network"           // fetch itself threw (offline, DNS, CORS, TLS)
+  | "timeout"           // our AbortController fired
+  | "unauthorized"      // 401 — JWT missing/expired/invalid; client should re-auth
+  | "forbidden"         // 403 — auth ok but caller lacks permission
+  | "rate_limited"      // 429 — back off; respect Retry-After if present
+  | "account_locked"    // 410 — soft-deleted; UI must offer /restore flow
+  | "http_4xx"          // other client errors (validation, not found, etc.)
+  | "http_5xx"          // server error
+  | "invalid_json"      // response body didn't parse
   | "contract_mismatch"; // (future) runtime schema validation failure
 
 export interface ApiError {
@@ -37,6 +41,10 @@ export interface ApiError {
   message: string;
   /** Optional raw response body, when we could read it */
   body?: unknown;
+  /** For account_locked (410), the URL to POST to restore the account. */
+  restoreUrl?: string;
+  /** For rate_limited (429), seconds to wait before retrying (from Retry-After). */
+  retryAfterSeconds?: number;
 }
 
 export type Result<T> =
@@ -128,12 +136,7 @@ async function request<T>(
   if (!resp.ok) {
     return {
       data: null,
-      error: {
-        kind: resp.status >= 500 ? "http_5xx" : "http_4xx",
-        status: resp.status,
-        message: extractErrorMessage(parsed) ?? `HTTP ${resp.status}`,
-        body: parsed ?? text,
-      },
+      error: mapHttpError(resp, parsed, text),
     };
   }
 
@@ -150,6 +153,80 @@ async function request<T>(
   }
 
   return { data: parsed as T, error: null };
+}
+
+/**
+ * Map an HTTP error response into a typed ApiError.
+ *
+ * Specific statuses (401/403/410/429) get dedicated `kind` values so callers
+ * can switch on them without reasoning about status codes. The 410 case
+ * extracts the restore_url that the FastAPI handler embeds in `detail`.
+ */
+function mapHttpError(
+  resp: Response,
+  parsed: unknown,
+  rawText: string,
+): ApiError {
+  const status = resp.status;
+  const baseMessage = extractErrorMessage(parsed) ?? `HTTP ${status}`;
+
+  if (status === 401) {
+    return { kind: "unauthorized", status, message: baseMessage, body: parsed ?? rawText };
+  }
+  if (status === 403) {
+    return { kind: "forbidden", status, message: baseMessage, body: parsed ?? rawText };
+  }
+  if (status === 410) {
+    return {
+      kind: "account_locked",
+      status,
+      message: baseMessage,
+      body: parsed ?? rawText,
+      restoreUrl: extractRestoreUrl(parsed),
+    };
+  }
+  if (status === 429) {
+    const retryAfter = resp.headers.get("retry-after");
+    const retryAfterSeconds = retryAfter ? parseRetryAfter(retryAfter) : undefined;
+    return {
+      kind: "rate_limited",
+      status,
+      message: baseMessage,
+      body: parsed ?? rawText,
+      retryAfterSeconds,
+    };
+  }
+  return {
+    kind: status >= 500 ? "http_5xx" : "http_4xx",
+    status,
+    message: baseMessage,
+    body: parsed ?? rawText,
+  };
+}
+
+/** Pull restore_url out of FastAPI's `detail: {error, restore_url}` envelope. */
+function extractRestoreUrl(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const b = body as Record<string, unknown>;
+  const detail = b.detail;
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    const d = detail as Record<string, unknown>;
+    if (typeof d.restore_url === "string") return d.restore_url;
+  }
+  if (typeof b.restore_url === "string") return b.restore_url;
+  return undefined;
+}
+
+/** Retry-After is either delta-seconds or an HTTP-date. We handle both. */
+function parseRetryAfter(value: string): number | undefined {
+  const asNumber = Number(value.trim());
+  if (Number.isFinite(asNumber) && asNumber >= 0) return asNumber;
+  const asDate = Date.parse(value);
+  if (!Number.isNaN(asDate)) {
+    const delta = Math.ceil((asDate - Date.now()) / 1000);
+    return delta > 0 ? delta : 0;
+  }
+  return undefined;
 }
 
 function extractErrorMessage(body: unknown): string | undefined {

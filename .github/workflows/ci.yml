@@ -51,6 +51,16 @@ jobs:
             echo "PhishTank data not available, skipping benchmark"
           fi
 
+      - name: Set up Node (for TS package tests)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test api-client error mapping
+        # Pins the typed-error contract that mobile + landing + extensions
+        # all rely on. Uses node's built-in TS stripper — no test runner needed.
+        run: npm run test:api-client
+
   lint:
     runs-on: ubuntu-latest
 

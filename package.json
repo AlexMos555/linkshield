@@ -16,6 +16,7 @@
     "build:api-types": "bash scripts/generate-api-types.sh",
     "build:all": "npm run build:api-types && npm run build:i18n && npm run build:extensions && npm run build:emails",
     "test:api": "pytest tests/ -q",
+    "test:api-client": "NODE_NO_WARNINGS=1 node --experimental-strip-types scripts/test-api-client-errors.mjs",
     "build:landing": "npm -w landing run build",
     "build:emails": "tsx scripts/build-emails.mjs"
   },
