@@ -107,6 +107,16 @@ async def create_org(
             if resp.status_code in (200, 201):
                 data = resp.json()
                 org = data[0] if isinstance(data, list) else data
+                # Audit trail: org creation is a billing-relevant event (the
+                # admin will be billed against the business tier). Name is
+                # NOT in meta — could be PII (e.g. real company name).
+                from api.services import audit_log
+                await audit_log.write(
+                    action="org.created",
+                    target_kind="org",
+                    target_id=str(org["id"]),
+                    actor_user_id=user.id,
+                )
                 return {"org_id": org["id"], "name": request.name, "admin": user.email}
 
         raise HTTPException(500, "Failed to create organization")
