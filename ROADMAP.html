@@ -316,14 +316,14 @@
 <section class="progress-section">
   <div class="progress-label">
     <h2>Overall progress</h2>
-    <div class="progress-pct">~96%</div>
+    <div class="progress-pct">~97%</div>
   </div>
-  <div class="progress-bar"><div class="progress-fill" style="width:96%"></div></div>
+  <div class="progress-bar"><div class="progress-fill" style="width:97%"></div></div>
 </section>
 
 <!-- Stats -->
 <section class="stat-grid">
-  <div class="stat"><div class="stat-num green">507</div><div class="stat-label">Backend tests passing</div></div>
+  <div class="stat"><div class="stat-num green">650</div><div class="stat-label">Backend tests passing</div></div>
   <div class="stat"><div class="stat-num green">91%</div><div class="stat-label">Phishing detection</div></div>
   <div class="stat"><div class="stat-num blue">10/10</div><div class="stat-label">Locales</div></div>
   <div class="stat"><div class="stat-num blue">4</div><div class="stat-label">Pricing tiers (PPP)</div></div>
@@ -664,7 +664,50 @@
   </div>
 </details>
 
-<!-- ═════════ SESSION LOG ═════════ -->
+<!-- ═════════ SESSION LOG — 2026-05-12 → 2026-05-19 ═════════ -->
+<section class="session-log">
+  <h2>Session log — 2026-05-12 → 2026-05-19</h2>
+  <p class="session-when">14 commits · +49 tests (601 → 650) · Stripe-pipeline correctness arc + soft-delete account lock + typed api-client errors + OpenAPI sync + audit-log expansion</p>
+
+  <table class="commits">
+    <thead>
+      <tr>
+        <th>SHA</th>
+        <th>Type</th>
+        <th>Title</th>
+        <th>Tests</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><code>f986e36</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Audit org.created — Stripe billing-relevant event</td><td>—</td></tr>
+      <tr><td><code>6818440</code></td><td><span class="ttype ttype-feat">chore</span></td><td>Unify API version in <code>api/__init__.py</code> (0.1.0 ↔ 0.2.0 drift fix)</td><td>—</td></tr>
+      <tr><td><code>716e3b9</code></td><td><span class="ttype ttype-ci">chore</span></td><td>Regenerate OpenAPI (+3015 lines) + CI drift guard + workspace-bin lookup fix</td><td>—</td></tr>
+      <tr><td><code>45eebdf</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Typed api-client error kinds (401/403/410/429) + restoreUrl + Retry-After parsing</td><td>+9</td></tr>
+      <tr><td><code>741da9b</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Audit family.created + family.key_registered + parental_pin change/clear</td><td>+3</td></tr>
+      <tr><td><code>ed1fa8c</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Soft-delete account-lock — 410 Gone during 30d grace + restore/export bypass</td><td>+5</td></tr>
+      <tr><td><code>9cfb3b8</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Stripe Checkout idempotency_key prevents double-session on retry</td><td>—</td></tr>
+      <tr><td><code>6614e94</code></td><td><span class="ttype ttype-feat">chore</span></td><td>Delete dead bloom-filter code + replace false "95% bloom" marketing claim</td><td>—</td></tr>
+      <tr><td><code>20fc432</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Persist Stripe period dates + Sentry user context + purge audit trail</td><td>—</td></tr>
+      <tr><td><code>350896c</code></td><td><span class="ttype ttype-feat">docs</span></td><td>roadmap 95→96% + May 12-13 Stripe pipeline arc</td><td>—</td></tr>
+      <tr><td><code>0c8c9d4</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Family audit-log on invite create + accept</td><td>—</td></tr>
+      <tr><td><code>b47ea5e</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Business plan tier mapping + audit-log on every Stripe event</td><td>—</td></tr>
+      <tr><td><code>70771f1</code></td><td><span class="ttype ttype-feat">feat</span></td><td>Webhook event coverage (trial_will_end, invoice.paid, customer.deleted) + welcome-email URL fix</td><td>—</td></tr>
+      <tr><td><code>dad1ff6</code></td><td><span class="ttype ttype-feat">fix</span></td><td>Subscriptions UNIQUE(user_id) + on_conflict upsert — revenue/cancel bug</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <p class="session-when" style="margin-top:14px">
+    <strong>Highlights:</strong> Stripe pipeline is now production-ready
+    (idempotency, period dates, all critical webhook events, audit trail on
+    every state transition). GDPR Art. 17 grace is enforced (410 Gone +
+    restore CTA, not just a deletion_requested_at column). The typed
+    api-client surface tells mobile/landing/extensions exactly what kind of
+    4xx they got — UI can render "Restore account" or "Wait Nm" without
+    inspecting status codes. OpenAPI is back in sync and pinned by CI.
+  </p>
+</section>
+
+<!-- ═════════ SESSION LOG — 2026-04-28 → 2026-05-11 ═════════ -->
 <section class="session-log">
   <h2>Session log — 2026-04-28 → 2026-05-11</h2>
   <p class="session-when">50+ commits · +113 tests (488 → 601) · Family Hub end-to-end · dependabot triage · CI hardening · Sentry wired prod · enterprise-grade audit pass: badge bug, tracking-cleaner perf, disposable-email defense-in-depth, voice endpoint honesty, Outlook Report-phishing fix, payload DoS hardening, background LRU + abortable fetch, Stripe webhook idempotency, GDPR Art. 15 + 17, gitleaks allowlist for false positives</p>
@@ -749,7 +792,7 @@
 </details>
 
 <footer>
-  Auto-generated · last updated 2026-05-13 · main @ <code>0c8c9d4</code>
+  Auto-generated · last updated 2026-05-19 · main @ <code>f986e36</code>
   · <a href="https://github.com/AlexMos555/linkshield/actions">CI status</a>
 </footer>
 
