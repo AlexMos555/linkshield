@@ -85,7 +85,7 @@ jobs:
     if: false  # re-enable if a Dockerfile is reintroduced
     steps:
       - uses: actions/checkout@v6
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile
           failure-threshold: error  # warnings are noisy (unpinned apt pkgs, etc.) — fail only on errors
