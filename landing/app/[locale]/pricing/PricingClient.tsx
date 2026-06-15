@@ -36,7 +36,30 @@ function localePath(locale: string, path: string): string {
   return locale === DEFAULT_LOCALE ? path : `/${locale}${path}`;
 }
 
-async function startCheckout(plan: PaidPlan, interval: Interval, locale: string): Promise<void> {
+/**
+ * Outcome of a checkout attempt — the click handler swallows the
+ * promise and renders inline error UI based on the reason. Replaces
+ * the old alert()-based reporting which blocked the UI thread and
+ * couldn't be styled. (Audit landing UX MEDIUM "Three checkout error
+ * paths use browser alert() — blocks the UI thread and cannot be
+ * styled".)
+ */
+type CheckoutError =
+  | "network"
+  | "server"
+  | "bad_response"
+  | "invalid_url"
+  | "wrong_host";
+
+type CheckoutOutcome =
+  | { ok: true }
+  | { ok: false; reason: CheckoutError };
+
+async function startCheckout(
+  plan: PaidPlan,
+  interval: Interval,
+  locale: string,
+): Promise<CheckoutOutcome> {
   const planKey = `${plan}_${interval}`; // matches backend CheckoutRequest.plan
   const success_url = "https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}";
   const cancel_url = "https://cleanway.ai/pricing";
@@ -67,13 +90,12 @@ async function startCheckout(plan: PaidPlan, interval: Interval, locale: string)
       body: JSON.stringify({ plan: planKey, success_url, cancel_url }),
     });
   } catch {
-    alert("Couldn't reach our servers. Please try again in a moment.");
-    return;
+    return { ok: false, reason: "network" };
   }
 
   if (resp.status === 401) {
     window.location.href = localePath(locale, `/signup?plan=${plan}&interval=${interval}`);
-    return;
+    return { ok: true };
   }
 
   if (resp.status === 410) {
@@ -82,18 +104,16 @@ async function startCheckout(plan: PaidPlan, interval: Interval, locale: string)
     // restore page (preserving their locale prefix) instead of letting
     // them bounce through generic error UX.
     window.location.href = localePath(locale, "/account/restore?reason=locked");
-    return;
+    return { ok: true };
   }
 
   if (!resp.ok) {
-    alert("Couldn't start checkout. Please try again or contact support.");
-    return;
+    return { ok: false, reason: "server" };
   }
 
   const data = (await resp.json().catch(() => null)) as { checkout_url?: string } | null;
   if (!data || !data.checkout_url) {
-    alert("Checkout didn't return a redirect URL — please contact support.");
-    return;
+    return { ok: false, reason: "bad_response" };
   }
 
   // Origin validation. The backend SHOULD only ever return a
@@ -108,15 +128,22 @@ async function startCheckout(plan: PaidPlan, interval: Interval, locale: string)
   try {
     target = new URL(data.checkout_url);
   } catch {
-    alert("Checkout returned an invalid URL — please contact support.");
-    return;
+    return { ok: false, reason: "invalid_url" };
   }
   if (target.protocol !== "https:" || target.hostname !== "checkout.stripe.com") {
-    alert("Checkout returned an unexpected URL — please contact support.");
-    return;
+    return { ok: false, reason: "wrong_host" };
   }
   window.location.href = target.href;
+  return { ok: true };
 }
+
+const CHECKOUT_ERROR_COPY: Record<CheckoutError, string> = {
+  network: "Couldn't reach our servers. Please try again in a moment.",
+  server: "Couldn't start checkout. Please try again or contact support.",
+  bad_response: "Checkout didn't return a redirect URL — please contact support.",
+  invalid_url: "Checkout returned an invalid URL — please contact support.",
+  wrong_host: "Checkout returned an unexpected URL — please contact support.",
+};
 
 export default function PricingClient({ data }: PricingClientProps) {
   const [interval, setInterval] = useState<Interval>("monthly");
@@ -264,6 +291,8 @@ interface PlanCardProps {
 
 function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuffix, features, cta, ctaHref = "#", emphasis, badge, paidPlan }: PlanCardProps) {
   const locale = useLocale();
+  const [checkoutError, setCheckoutError] = useState<CheckoutError | null>(null);
+  const [checkoutPending, setCheckoutPending] = useState(false);
   const displayPrice = price === 0 ? "$0" : `$${price.toFixed(2)}`;
   const intervalLabel = price === 0 ? "" : interval === "monthly" ? "/mo" : "/yr";
 
@@ -303,19 +332,46 @@ function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuf
         ))}
       </ul>
       {paidPlan ? (
-        <button
-          type="button"
-          onClick={() => {
-            void startCheckout(paidPlan, interval, locale);
-          }}
-          className={`block w-full text-center px-4 py-3 rounded-xl font-semibold transition ${
-            emphasis
-              ? "bg-green-500 text-green-950 hover:bg-green-400"
-              : "bg-slate-700 text-white hover:bg-slate-600"
-          }`}
-        >
-          {cta}
-        </button>
+        <>
+          <button
+            type="button"
+            disabled={checkoutPending}
+            aria-busy={checkoutPending}
+            onClick={async () => {
+              setCheckoutError(null);
+              setCheckoutPending(true);
+              const result = await startCheckout(paidPlan, interval, locale);
+              if (!result.ok) {
+                setCheckoutError(result.reason);
+                setCheckoutPending(false);
+              }
+              // On success window.location.href has fired — keep the
+              // spinner up so the user doesn't double-click while the
+              // browser navigates away.
+            }}
+            className={`block w-full text-center px-4 py-3 rounded-xl font-semibold transition ${
+              checkoutPending
+                ? "opacity-70 cursor-wait"
+                : ""
+            } ${
+              emphasis
+                ? "bg-green-500 text-green-950 hover:bg-green-400"
+                : "bg-slate-700 text-white hover:bg-slate-600"
+            }`}
+          >
+            {checkoutPending ? "Loading…" : cta}
+          </button>
+          {/* aria-live polite so screen readers announce the error
+              when it appears without interrupting whatever's being
+              read. Replaces the blocking alert() flow. */}
+          <div role="status" aria-live="polite" className="mt-3">
+            {checkoutError && (
+              <div className="text-sm text-red-200 bg-red-500/10 border border-red-500/40 rounded-lg px-3 py-2">
+                {CHECKOUT_ERROR_COPY[checkoutError]}
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         <a
           href={ctaHref}

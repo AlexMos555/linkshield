@@ -40,11 +40,21 @@ actor BlocklistCache {
     private var blocked: Set<String> = []
     private var safe: Set<String> = []
     private let safeCacheCap = 10_000
+    /// Mirror cap for the blocklist. Without it, long-running VPN
+    /// sessions accumulated unbounded blocked entries — extra pressure
+    /// inside the Network Extension's tight ~50 MB cap. Same eviction
+    /// policy as the safe set. (Audit mobile-native LOW
+    /// "Blocked-domains cache is unbounded on both platforms — memory
+    /// grows without limit for long-running VPN sessions".)
+    private let blockedCacheCap = 10_000
 
     func isBlocked(_ domain: String) -> Bool { blocked.contains(domain) }
     func isSafe(_ domain: String) -> Bool { safe.contains(domain) }
 
     func markBlocked(_ domain: String) {
+        if blocked.count >= blockedCacheCap {
+            if let first = blocked.first { blocked.remove(first) }
+        }
         blocked.insert(domain)
     }
 
@@ -195,11 +205,29 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     /// before promoting to TestFlight.
     private static let forwardTimeoutSeconds: Double = 5.0
 
+    /// Single shared queue for every DNS-forward callback. Allocating a
+    /// fresh DispatchQueue per packet (the original implementation)
+    /// burns CPU + RAM proportional to throughput; under sustained DNS
+    /// load this contributed measurably to battery drain on iPhone.
+    /// (Audit mobile-native LOW "iOS forward() allocates a new
+    /// DispatchQueue on every DNS packet — O(n) queue allocation under
+    /// load causes battery drain".)
+    ///
+    /// concurrent + utility QoS matches NWConnection's needs:
+    ///   - concurrent so a slow upstream doesn't block other queries
+    ///   - utility QoS is appropriate for background network work,
+    ///     keeps the call out of the user-interactive lane.
+    private let forwardQueue = DispatchQueue(
+        label: "ai.cleanway.dns.forward",
+        qos: .utility,
+        attributes: .concurrent
+    )
+
     /// Forward a raw DNS query to Cloudflare 1.1.1.1 over UDP and inject the
     /// response back into the tunnel. Uses `NWConnection` (Network.framework)
     /// for proper cancellation + Sendable safety.
     private func forward(packet: Data, `protocol`: NSNumber) async {
-        let queue = DispatchQueue(label: "ai.cleanway.dns.forward")
+        let queue = self.forwardQueue
         let connection = NWConnection(to: upstreamDNS, using: .udp)
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             var resumed = false

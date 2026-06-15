@@ -186,7 +186,15 @@ class CleanwayVpnService : VpnService() {
                 val outgoing = DatagramPacket(packet, dnsStart, dnsLen, upstream, UPSTREAM_DNS_PORT)
                 socket.send(outgoing)
 
-                val replyBuffer = ByteArray(2048)
+                // EDNS0 messages can advertise up to 4096 bytes of UDP
+                // payload (RFC 6891). A 2048-byte buffer silently
+                // truncated DNSSEC + large TXT/MX answers, causing the
+                // tunnel to write a partial response to the kernel and
+                // making the user's apps treat the lookup as malformed.
+                // 4096 matches Cloudflare 1.1.1.1's advertised buffer.
+                // (Audit mobile-native LOW "Android DNS reply buffer
+                // is 2048 bytes — EDNS0 responses silently truncated".)
+                val replyBuffer = ByteArray(4096)
                 val reply = DatagramPacket(replyBuffer, replyBuffer.size)
                 socket.receive(reply)
 
@@ -240,6 +248,17 @@ class CleanwayVpnService : VpnService() {
                         false
                     }
                     if (isDangerous) {
+                        if (blockedDomains.size >= BLOCKED_CACHE_CAP) {
+                            // Same cap as safeDomains — without it the
+                            // set grows unbounded across the VPN
+                            // session and adds RAM pressure inside the
+                            // Network Extension's tight memory window.
+                            // (Audit mobile-native LOW
+                            // "Blocked-domains cache is unbounded on
+                            // both platforms — memory grows without
+                            // limit for long-running VPN sessions".)
+                            blockedDomains.firstOrNull()?.let(blockedDomains::remove)
+                        }
                         blockedDomains.add(domain)
                         notifyBlocked(domain)
                     } else {
@@ -298,6 +317,7 @@ class CleanwayVpnService : VpnService() {
         private const val UPSTREAM_DNS_PORT = 53
         private const val API_BASE = "https://api.cleanway.ai"
         private const val SAFE_CACHE_CAP = 10_000
+        private const val BLOCKED_CACHE_CAP = 10_000
     }
 }
 

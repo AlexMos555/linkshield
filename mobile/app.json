@@ -17,6 +17,11 @@
       "bundleIdentifier": "ai.cleanway.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Cleanway uses the camera to scan QR codes and check if links are safe."
+      },
+      "entitlements": {
+        "com.apple.developer.networking.networkextension": [
+          "packet-tunnel-provider"
+        ]
       }
     },
     "android": {
@@ -25,6 +30,11 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
+      "permissions": [
+        "android.permission.BIND_VPN_SERVICE",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
       "intentFilters": [
         {
           "action": "android.intent.action.SEND",
