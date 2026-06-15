@@ -78,7 +78,17 @@ export async function GET(request: NextRequest) {
   const supabase = await getSupabaseServer();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(`${origin}/signup?error=${encodeURIComponent(error.message)}`);
+    // Don't echo Supabase's raw error message in the URL — those
+    // strings sometimes contain operational details (provider names,
+    // internal IDs, debugging hints) that the Referer header would
+    // then leak to every third-party fetched by the /signup page.
+    // Use a stable code instead; /signup maps it to user-friendly
+    // copy. The real error is logged server-side for debugging.
+    // (Audit landing-security LOW "Supabase auth error.message
+    // reflected verbatim into URL query string, leaking internal
+    // error details via Referer".)
+    console.error("[auth/callback] exchangeCodeForSession failed:", error.message);
+    return NextResponse.redirect(`${origin}/signup?error=exchange_failed`);
   }
 
   const accessToken = data.session?.access_token;

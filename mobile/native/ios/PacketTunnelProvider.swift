@@ -70,7 +70,15 @@ actor BlocklistCache {
 /// Platform-independent policy — unit-tested in the app target.
 enum DomainPolicy {
     /// System suffixes we NEVER block to avoid bricking the device.
-    /// Update in sync with Android `CleanwayVpnService.systemSuffixes`.
+    ///
+    /// Platform-specific by design — iOS needs Apple/iCloud/MZStatic
+    /// while Android needs Google/Android. The shared entries
+    /// (cleanway.ai, cloudflare-dns.com) are the ones to keep in sync;
+    /// the platform-anchor entries are intentionally divergent. Don't
+    /// confuse "lists are different" with "lists are drifted". (Audit
+    /// mobile-native LOW "DomainPolicy 'keep in sync' comment
+    /// contradicts intentionally divergent platform suffix lists —
+    /// misleads future contributors".)
     static let systemSuffixes: [String] = [
         "apple.com",
         "icloud.com",

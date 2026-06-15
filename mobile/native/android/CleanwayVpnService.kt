@@ -322,9 +322,16 @@ class CleanwayVpnService : VpnService() {
 }
 
 /**
- * Platform-independent allowlist of system suffixes that must NEVER be
- * blocked — losing these bricks connectivity. Keep in sync with the iOS
- * equivalent in `PacketTunnelProvider.swift::DomainPolicy.systemSuffixes`.
+ * Allowlist of system suffixes that must NEVER be blocked — losing
+ * these bricks connectivity.
+ *
+ * Platform-specific by design — Android needs Google / Android while
+ * iOS needs Apple / iCloud / MZStatic. The shared entries
+ * (cleanway.ai, cloudflare-dns.com) ARE the ones to keep in sync with
+ * the iOS list in `PacketTunnelProvider.swift::DomainPolicy.systemSuffixes`;
+ * the platform-anchor entries are intentionally divergent. (Audit
+ * mobile-native LOW "DomainPolicy 'keep in sync' comment contradicts
+ * intentionally divergent platform suffix lists".)
  */
 object DomainPolicy {
     private val systemSuffixes = listOf(

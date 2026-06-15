@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { routing, type Locale } from "@/i18n/routing";
+import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 import SignupForm from "./SignupForm";
 
 const SITE_URL = "https://cleanway.ai";
@@ -36,6 +36,7 @@ export async function generateMetadata({
 
 type Props = {
   searchParams: Promise<{ plan?: string; interval?: string }>;
+  params: Promise<{ locale: string }>;
 };
 
 const VALID_PLANS = new Set(["personal", "family", "business"]);
@@ -47,8 +48,16 @@ const PLAN_LABELS: Record<string, string> = {
   business: "Business",
 };
 
-export default async function SignupPage({ searchParams }: Props) {
+export default async function SignupPage({ searchParams, params }: Props) {
   const sp = await searchParams;
+  const { locale } = await params;
+  // "Back" arrow must mirror in RTL. ← reads as "left" everywhere — in
+  // Arabic that LOOKS like "forward". → in Arabic locale gives the
+  // user-expected "back" direction. (Audit landing-a11y LOW
+  // "Hardcoded left-arrow '← Back to pricing' in signup/page.tsx is
+  // mirrored-wrong in Arabic RTL".)
+  const isRtl = (RTL_LOCALES as readonly string[]).includes(locale);
+  const backArrow = isRtl ? "→" : "←";
   const plan = sp.plan && VALID_PLANS.has(sp.plan) ? sp.plan : null;
   const interval = sp.interval && VALID_INTERVALS.has(sp.interval) ? sp.interval : null;
 
@@ -67,7 +76,7 @@ export default async function SignupPage({ searchParams }: Props) {
             Cleanway
           </a>
           <a href="/pricing" style={{ color: "#94a3b8", textDecoration: "none", fontSize: 14 }}>
-            ← Back to pricing
+            {backArrow} Back to pricing
           </a>
         </div>
       </nav>
