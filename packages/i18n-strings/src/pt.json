@@ -673,6 +673,21 @@
       "error_generic": "Algo deu errado. Por favor, contate o suporte.",
       "footer_note": "Mudou de ideia sobre restaurar? Apenas feche esta aba. Após 30 dias da solicitação original de exclusão, seus dados são apagados permanentemente de forma automática.",
       "brand": "Cleanway"
+    },
+    "success": {
+      "page_title": "Bem-vindo ao Cleanway",
+      "page_description": "Sua assinatura está ativa. Adicione o Cleanway ao seu navegador para começar a bloquear links fraudulentos.",
+      "heading": "Pronto!",
+      "subheading": "Sua assinatura está ativa. O recibo e o e-mail de boas-vindas estão a caminho.",
+      "next_steps_heading": "Próximo: fique protegido",
+      "step1_title": "Adicione ao navegador",
+      "step1_body": "Um clique. O Cleanway começa a verificar links instantaneamente.",
+      "step2_title": "Baixe o app móvel",
+      "step2_body": "iOS e Android. A mesma proteção em movimento.",
+      "step3_title": "Convide a família (plano Family)",
+      "step3_body": "Entre no celular de um familiar e envie um convite em Settings → Family Hub.",
+      "support_question": "Dúvidas sobre sua assinatura? Escreva para",
+      "reference_label": "Referência"
     }
   },
   "email": {

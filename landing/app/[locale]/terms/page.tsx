@@ -52,7 +52,7 @@ export async function generateMetadata({
 export default function Terms() {
   return (
     <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh" }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "60px 24px" }}>
+      <main style={{ maxWidth: 760, margin: "0 auto", padding: "60px 24px" }}>
         <a href="/" style={{ color: "#60a5fa", fontSize: 14, textDecoration: "none" }}>&larr; Back to Cleanway</a>
         <h1 style={{ fontSize: 36, fontWeight: 800, color: "#f8fafc", margin: "24px 0 8px" }}>Terms of Service</h1>
         <p style={{ color: "#64748b", marginBottom: 40 }}>Last updated: May 4, 2026</p>
@@ -139,7 +139,7 @@ export default function Terms() {
         <S t="12. Contact">
           <p>Questions about these terms: <a href="mailto:legal@cleanway.ai" style={{ color: "#60a5fa" }}>legal@cleanway.ai</a></p>
         </S>
-      </div>
+      </main>
     </div>
   );
 }

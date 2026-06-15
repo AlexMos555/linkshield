@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { routing, type Locale } from "@/i18n/routing";
 
@@ -17,13 +18,15 @@ export async function generateMetadata({
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
 
+  const t = await getTranslations({ locale: safeLocale, namespace: "Success" });
+
   const languages: Record<string, string> = {};
   for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale);
   languages["x-default"] = urlFor(routing.defaultLocale);
 
   return {
-    title: "Welcome to Cleanway",
-    description: "Your subscription is active. Add Cleanway to your browser to start blocking scam links.",
+    title: t("page_title"),
+    description: t("page_description"),
     metadataBase: new URL(SITE_URL),
     alternates: { canonical: urlFor(safeLocale), languages },
     // Confirmation pages are not indexable — they're personal post-checkout
@@ -34,10 +37,15 @@ export async function generateMetadata({
 
 type Props = {
   searchParams: Promise<{ session_id?: string }>;
+  params: Promise<{ locale: string }>;
 };
 
-export default async function SuccessPage({ searchParams }: Props) {
+export default async function SuccessPage({ searchParams, params }: Props) {
   const { session_id } = await searchParams;
+  const { locale } = await params;
+  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
+  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const t = await getTranslations({ locale: safeLocale, namespace: "Success" });
 
   return (
     <div
@@ -56,9 +64,11 @@ export default async function SuccessPage({ searchParams }: Props) {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "80px 24px", textAlign: "center" }}>
-        {/* Success indicator */}
+      <main style={{ maxWidth: 600, margin: "0 auto", padding: "80px 24px", textAlign: "center" }}>
+        {/* Success indicator — decorative checkmark, hidden from
+            screen readers because the heading below carries the meaning. */}
         <div
+          aria-hidden="true"
           style={{
             width: 96,
             height: 96,
@@ -76,23 +86,23 @@ export default async function SuccessPage({ searchParams }: Props) {
         </div>
 
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#f8fafc", marginBottom: 12 }}>
-          You&apos;re in!
+          {t("heading")}
         </h1>
         <p style={{ fontSize: 17, color: "#94a3b8", lineHeight: 1.6, marginBottom: 32 }}>
-          Your subscription is active. Receipt and welcome email are on the way.
+          {t("subheading")}
         </p>
 
         {/* Next steps card */}
         <div style={{ background: "#1e293b", borderRadius: 16, padding: 28, textAlign: "left", border: "1px solid #334155" }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", marginTop: 0, marginBottom: 16 }}>
-            Next: get protected
+            {t("next_steps_heading")}
           </h2>
 
           <div style={{ display: "flex", gap: 14, marginBottom: 16, alignItems: "flex-start" }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#22c55e", color: "#052e16", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>1</div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>Add to your browser</div>
-              <div style={{ fontSize: 13, color: "#94a3b8" }}>One click. Cleanway starts checking links instantly.</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>{t("step1_title")}</div>
+              <div style={{ fontSize: 13, color: "#94a3b8" }}>{t("step1_body")}</div>
               <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <a href="https://chrome.google.com/webstore" style={{ background: "#22c55e", color: "#052e16", padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Chrome</a>
                 <a href="https://addons.mozilla.org" style={{ background: "#0f172a", color: "#f8fafc", padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none", border: "1px solid #334155" }}>Firefox</a>
@@ -104,36 +114,36 @@ export default async function SuccessPage({ searchParams }: Props) {
           <div style={{ display: "flex", gap: 14, marginBottom: 16, alignItems: "flex-start" }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#3b82f6", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>2</div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>Get the mobile app</div>
-              <div style={{ fontSize: 13, color: "#94a3b8" }}>iOS and Android. Same protection on the go.</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>{t("step2_title")}</div>
+              <div style={{ fontSize: 13, color: "#94a3b8" }}>{t("step2_body")}</div>
             </div>
           </div>
 
           <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f59e0b", color: "#1f2937", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>3</div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>Invite family (Family plan)</div>
-              <div style={{ fontSize: 13, color: "#94a3b8" }}>
-                Sign in on a family member&apos;s phone, send them an invite from Settings → Family Hub.
-              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>{t("step3_title")}</div>
+              <div style={{ fontSize: 13, color: "#94a3b8" }}>{t("step3_body")}</div>
             </div>
           </div>
         </div>
 
-        {/* Support footer */}
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 32, lineHeight: 1.6 }}>
-          Questions about your subscription? Email{" "}
+        {/* Support footer. The #475569 colour previously used here failed
+            WCAG AA at 2.36:1 against the dark background; #94a3b8 passes
+            ~4.5:1. (Audit landing-a11y MEDIUM contrast.) */}
+        <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 32, lineHeight: 1.6 }}>
+          {t("support_question")}{" "}
           <a href="mailto:support@cleanway.ai" style={{ color: "#60a5fa" }}>support@cleanway.ai</a>
           {session_id ? (
             <>
               <br />
-              <span style={{ fontSize: 11, color: "#475569" }}>
-                Reference: <code style={{ color: "#64748b", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{session_id.slice(0, 12)}…</code>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                {t("reference_label")}: <code style={{ color: "#94a3b8", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{session_id.slice(0, 12)}…</code>
               </span>
             </>
           ) : null}
         </p>
-      </div>
+      </main>
     </div>
   );
 }

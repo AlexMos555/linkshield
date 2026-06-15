@@ -675,6 +675,21 @@
       "error_generic": "Something went wrong. Please contact support.",
       "footer_note": "Changed your mind about restoring? Just close this tab. After 30 days from the original deletion request, your data is permanently wiped automatically.",
       "brand": "Cleanway"
+    },
+    "success": {
+      "page_title": "Welcome to Cleanway",
+      "page_description": "Your subscription is active. Add Cleanway to your browser to start blocking scam links.",
+      "heading": "You're in!",
+      "subheading": "Your subscription is active. Receipt and welcome email are on the way.",
+      "next_steps_heading": "Next: get protected",
+      "step1_title": "Add to your browser",
+      "step1_body": "One click. Cleanway starts checking links instantly.",
+      "step2_title": "Get the mobile app",
+      "step2_body": "iOS and Android. Same protection on the go.",
+      "step3_title": "Invite family (Family plan)",
+      "step3_body": "Sign in on a family member's phone, send them an invite from Settings → Family Hub.",
+      "support_question": "Questions about your subscription? Email",
+      "reference_label": "Reference"
     }
   },
   "email": {

@@ -292,5 +292,20 @@
     "error_generic": "Algo salió mal. Por favor contacta con soporte.",
     "footer_note": "¿Cambiaste de opinión sobre restaurar? Solo cierra esta pestaña. Después de 30 días desde la solicitud original de eliminación, tus datos se borran permanentemente de forma automática.",
     "brand": "Cleanway"
+  },
+  "Success": {
+    "page_title": "Bienvenido a Cleanway",
+    "page_description": "Tu suscripción está activa. Añade Cleanway a tu navegador para empezar a bloquear enlaces fraudulentos.",
+    "heading": "¡Listo!",
+    "subheading": "Tu suscripción está activa. El recibo y el correo de bienvenida están en camino.",
+    "next_steps_heading": "Siguiente: protégete",
+    "step1_title": "Añade la extensión",
+    "step1_body": "Un clic. Cleanway empieza a comprobar enlaces al instante.",
+    "step2_title": "Descarga la app móvil",
+    "step2_body": "iOS y Android. La misma protección en movimiento.",
+    "step3_title": "Invita a la familia (plan Family)",
+    "step3_body": "Inicia sesión en el teléfono de un familiar y envíale una invitación desde Settings → Family Hub.",
+    "support_question": "¿Preguntas sobre tu suscripción? Escribe a",
+    "reference_label": "Referencia"
   }
 }

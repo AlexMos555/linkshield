@@ -673,6 +673,21 @@
       "error_generic": "Terjadi kesalahan. Mohon hubungi dukungan.",
       "footer_note": "Berubah pikiran tentang pemulihan? Cukup tutup tab ini. Setelah 30 hari sejak permintaan penghapusan asli, data Anda dihapus secara permanen secara otomatis.",
       "brand": "Cleanway"
+    },
+    "success": {
+      "page_title": "Selamat datang di Cleanway",
+      "page_description": "Langganan Anda aktif. Tambahkan Cleanway ke browser untuk mulai memblokir tautan penipuan.",
+      "heading": "Berhasil!",
+      "subheading": "Langganan Anda aktif. Tanda terima dan email selamat datang sedang dikirim.",
+      "next_steps_heading": "Selanjutnya: dapatkan perlindungan",
+      "step1_title": "Tambahkan ke browser",
+      "step1_body": "Satu klik. Cleanway segera memeriksa tautan.",
+      "step2_title": "Dapatkan aplikasi seluler",
+      "step2_body": "iOS dan Android. Perlindungan yang sama saat bepergian.",
+      "step3_title": "Undang keluarga (paket Family)",
+      "step3_body": "Masuk di telepon anggota keluarga dan kirim undangan dari Settings → Family Hub.",
+      "support_question": "Pertanyaan tentang langganan Anda? Kirim email ke",
+      "reference_label": "Referensi"
     }
   },
   "email": {

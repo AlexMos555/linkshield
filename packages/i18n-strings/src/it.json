@@ -673,6 +673,21 @@
       "error_generic": "Qualcosa è andato storto. Contatta l'assistenza.",
       "footer_note": "Hai cambiato idea sul ripristino? Chiudi semplicemente questa scheda. Dopo 30 giorni dalla richiesta di eliminazione originale, i tuoi dati vengono cancellati definitivamente in automatico.",
       "brand": "Cleanway"
+    },
+    "success": {
+      "page_title": "Benvenuto in Cleanway",
+      "page_description": "Il tuo abbonamento è attivo. Aggiungi Cleanway al browser per iniziare a bloccare i link truffaldini.",
+      "heading": "Tutto pronto!",
+      "subheading": "Il tuo abbonamento è attivo. Ricevuta ed email di benvenuto in arrivo.",
+      "next_steps_heading": "Avanti: proteggiti",
+      "step1_title": "Aggiungi al browser",
+      "step1_body": "Un clic. Cleanway inizia a controllare i link all'istante.",
+      "step2_title": "Scarica l'app mobile",
+      "step2_body": "iOS e Android. La stessa protezione in movimento.",
+      "step3_title": "Invita la famiglia (piano Family)",
+      "step3_body": "Accedi sul telefono di un familiare e invia un invito da Settings → Family Hub.",
+      "support_question": "Domande sull'abbonamento? Scrivi a",
+      "reference_label": "Riferimento"
     }
   },
   "email": {

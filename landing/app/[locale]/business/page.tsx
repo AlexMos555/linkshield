@@ -63,7 +63,7 @@ export default function BusinessPage() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px" }}>
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ display: "inline-block", background: "#3b82f620", color: "#3b82f6", border: "1px solid #3b82f640", padding: "6px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600, marginBottom: 24 }}>
             For Teams &amp; Organizations
@@ -131,7 +131,7 @@ export default function BusinessPage() {
             Start Free Trial
           </a>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

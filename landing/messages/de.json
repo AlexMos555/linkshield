@@ -292,5 +292,20 @@
     "error_generic": "Etwas ist schiefgelaufen. Bitte kontaktieren Sie den Support.",
     "footer_note": "Doch nicht wiederherstellen? Schließen Sie einfach diesen Tab. 30 Tage nach der ursprünglichen Löschanfrage werden Ihre Daten automatisch endgültig gelöscht.",
     "brand": "Cleanway"
+  },
+  "Success": {
+    "page_title": "Willkommen bei Cleanway",
+    "page_description": "Ihr Abonnement ist aktiv. Fügen Sie Cleanway zu Ihrem Browser hinzu, um Phishing-Links zu blockieren.",
+    "heading": "Geschafft!",
+    "subheading": "Ihr Abonnement ist aktiv. Quittung und Willkommens-E-Mail sind unterwegs.",
+    "next_steps_heading": "Als Nächstes: Schutz aktivieren",
+    "step1_title": "Im Browser installieren",
+    "step1_body": "Ein Klick. Cleanway prüft Links sofort.",
+    "step2_title": "Mobile App holen",
+    "step2_body": "iOS und Android. Derselbe Schutz unterwegs.",
+    "step3_title": "Familie einladen (Family-Tarif)",
+    "step3_body": "Melden Sie sich auf dem Telefon eines Familienmitglieds an und senden Sie eine Einladung über Settings → Family Hub.",
+    "support_question": "Fragen zu Ihrem Abonnement? Schreiben Sie an",
+    "reference_label": "Referenz"
   }
 }
