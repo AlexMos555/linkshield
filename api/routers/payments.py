@@ -137,7 +137,11 @@ async def create_checkout(
         bucket = int(_time.time() // 300)  # 5-minute slot
         idem_key = f"checkout:{user.id}:{request.plan}:{bucket}"
 
-        session = stripe.checkout.Session.create(
+        # stripe v11 ships native async variants for every resource.
+        # Using sync create() inside an async handler pins the event loop
+        # for the full Stripe RTT (300–800ms US-East) and starves every
+        # other concurrent request on this worker. (Audit backend-async-2.)
+        session = await stripe.checkout.Session.create_async(
             mode="subscription",
             customer_email=user.email,
             line_items=[{"price": price_id, "quantity": 1}],
@@ -291,8 +295,9 @@ async def customer_portal(user: AuthUser = Depends(get_current_user)):
     stripe.api_key = getattr(settings, "stripe_secret_key", "")
 
     try:
-        # Find Stripe customer by email
-        customers = stripe.Customer.list(email=user.email, limit=1)
+        # Find Stripe customer by email — async to keep the worker
+        # responsive during the round-trip. (Audit backend-async-2.)
+        customers = await stripe.Customer.list_async(email=user.email, limit=1)
         if not customers.data:
             raise HTTPException(404, "No subscription found")
 
@@ -302,7 +307,7 @@ async def customer_portal(user: AuthUser = Depends(get_current_user)):
         # popup + mobile app, not on the marketing site). Redirecting to
         # /pricing makes the most sense — it shows their tier options
         # again and reflects the change they just made via the portal.
-        session = stripe.billing_portal.Session.create(
+        session = await stripe.billing_portal.Session.create_async(
             customer=customers.data[0].id,
             return_url="https://cleanway.ai/pricing",
         )

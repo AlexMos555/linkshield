@@ -117,6 +117,17 @@ class Settings(BaseSettings):
     #   etc.) until we notice.
     rate_limit_fail_closed: bool = False
 
+    # Comma-separated CIDRs whose X-Forwarded-For header we trust. Empty
+    # in dev/local (the legacy "leftmost XFF" behaviour kicks in so
+    # tests and `uvicorn --host 0.0.0.0` work unchanged). Production
+    # MUST set this to the egress range of the proxy in front of us
+    # (Railway / Vercel / Cloudflare). Without it, any caller can
+    # fake their rate-limit key by sending a fresh X-Forwarded-For
+    # on every request and bypass per-IP quotas entirely.
+    # See _extract_client_ip() in api/services/rate_limiter.py.
+    # validate_settings() enforces this is set when env=production.
+    trusted_proxy_cidrs: str = ""
+
     # Rate limits — unsubscribe endpoint (per IP, very strict to prevent abuse)
     unsubscribe_limit_per_window: int = 20         # 20 attempts per hour per IP
     unsubscribe_window_seconds: int = 3600
@@ -243,6 +254,35 @@ def validate_settings(settings: "Settings") -> None:
         raise ConfigError(
             "Production requires SENTRY_DSN for error tracking. "
             "Sign up at sentry.io and set the DSN env var."
+        )
+
+    # 5b) Rate limiter fail-mode in prod (audit backend HIGH).
+    #
+    # When Redis is unreachable the limiter has two failure modes:
+    #   fail-OPEN  → log and let the request through with full quota
+    #   fail-CLOSED → return 503 so the abuse path stays blocked
+    #
+    # The default is fail-OPEN so dev / staging never get a wedged
+    # local box when their redis container is down. Production must
+    # opt in to fail-CLOSED — without it, anyone who notices Redis
+    # is flaky can drain our entire paid-API budget (Safe Browsing,
+    # IPQS, etc.) without ever hitting a quota wall.
+    if env == "production" and not settings.rate_limit_fail_closed:
+        raise ConfigError(
+            "Production requires RATE_LIMIT_FAIL_CLOSED=true. "
+            "Without it, a Redis outage silently disables every per-user "
+            "and per-IP quota and lets attackers burn through our paid "
+            "API budget. Set the env var on Railway and redeploy."
+        )
+
+    # 5c) X-Forwarded-For trust list in prod (audit backend-security HIGH).
+    if env == "production" and not _is_safe_nonempty(settings.trusted_proxy_cidrs):
+        raise ConfigError(
+            "Production requires TRUSTED_PROXY_CIDRS (comma-separated). "
+            "Without it the rate limiter trusts whatever X-Forwarded-For "
+            "value the client sends — an attacker can rotate IPs in the "
+            "header and bypass per-IP quotas. Set this to Railway's "
+            "egress CIDR (or your fronting proxy's range) and redeploy."
         )
 
     # 6) Soft warnings (not fatal)

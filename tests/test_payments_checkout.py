@@ -73,9 +73,13 @@ def real_price_env(monkeypatch):
 
 @pytest.fixture
 def stripe_stub(monkeypatch):
-    """Stub stripe.checkout.Session.create so we can capture the price_id
-    that the handler actually sends — that's the whole point of these
-    tests. Also short-circuits the Stripe network call."""
+    """Stub stripe.checkout.Session.create_async so we can capture the
+    price_id that the handler actually sends — that's the whole point
+    of these tests. Also short-circuits the Stripe network call.
+
+    Patches BOTH create_async (production path post backend-async-2
+    fix) and the legacy sync create() so the fixture still works if a
+    future revert switches back."""
     import stripe
 
     captured: list[dict] = []
@@ -83,10 +87,15 @@ def stripe_stub(monkeypatch):
     class _FakeSession:
         url = "https://checkout.stripe.com/c/fake_session"
 
+    async def _fake_create_async(**kwargs):
+        captured.append(kwargs)
+        return _FakeSession()
+
     def _fake_create(**kwargs):
         captured.append(kwargs)
         return _FakeSession()
 
+    monkeypatch.setattr(stripe.checkout.Session, "create_async", _fake_create_async)
     monkeypatch.setattr(stripe.checkout.Session, "create", _fake_create)
     return captured
 

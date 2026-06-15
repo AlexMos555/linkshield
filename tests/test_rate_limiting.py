@@ -55,6 +55,16 @@ class FakeRedis:
     async def close(self):  # pragma: no cover
         return None
 
+    async def eval(self, _script: str, _numkeys: int, key: str, *args) -> int:
+        """Stand-in for the atomic INCR+TTL Lua used by the rate
+        limiter. The exact script body doesn't matter here — we
+        emulate its observable behavior: increment, set TTL on first
+        write, return the new count."""
+        self._data[key] = int(self._data.get(key, 0)) + 1
+        if self._data[key] == 1 and args:
+            self._ttls[key] = int(args[0])
+        return self._data[key]
+
     def reset(self) -> None:
         self._data.clear()
         self._ttls.clear()

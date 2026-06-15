@@ -114,6 +114,11 @@ class TestProduction:
             "supabase_service_key": "eyJ...prod-svc",
             "stripe_secret_key": "sk_live_FAKE_FIXTURE_accepted_in_prod",
             "sentry_dsn": "https://abc@sentry.io/prod",
+            # Audit findings backend-security HIGH: prod must
+            # enforce both. Tests covering those guards override
+            # explicitly; the happy-path fixture provides them.
+            "rate_limit_fail_closed": True,
+            "trusted_proxy_cidrs": "10.0.0.0/8",
         }
         defaults.update(overrides)
         return _make(**defaults)
@@ -161,3 +166,33 @@ def test_unknown_environment_rejected_at_load():
 
 def test_config_error_is_runtime_error():
     assert issubclass(ConfigError, RuntimeError)
+
+
+class TestProductionFailClosedGuard:
+    """Audit backend-security HIGH: production with rate_limit_fail_closed
+    off is a footgun — a Redis blip silently disables every quota."""
+
+    def _prod(self, **overrides) -> Settings:
+        # Same as TestProduction._base but inlined so we don't entangle
+        # the test with future fixture changes.
+        defaults = dict(
+            environment="production",
+            debug=False,
+            supabase_jwt_secret="prod-long-secret-absolutely-at-least-sixty-four-characters-okayyy",
+            supabase_url="https://prod.supabase.co",
+            supabase_service_key="eyJ...prod-svc",
+            stripe_secret_key="sk_live_FAKE",
+            sentry_dsn="https://abc@sentry.io/prod",
+            rate_limit_fail_closed=True,
+            trusted_proxy_cidrs="10.0.0.0/8",
+        )
+        defaults.update(overrides)
+        return _make(**defaults)
+
+    def test_default_false_rejected_in_prod(self):
+        with pytest.raises(ConfigError, match="RATE_LIMIT_FAIL_CLOSED=true"):
+            validate_settings(self._prod(rate_limit_fail_closed=False))
+
+    def test_empty_trusted_proxy_cidrs_rejected_in_prod(self):
+        with pytest.raises(ConfigError, match="TRUSTED_PROXY_CIDRS"):
+            validate_settings(self._prod(trusted_proxy_cidrs=""))

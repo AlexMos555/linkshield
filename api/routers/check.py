@@ -33,7 +33,7 @@ from api.services.analyzer import analyze_domain
 # our public anon key) still doesn't burn API budget.
 from api.services.auth import get_current_user_no_disposable as get_current_user
 from api.services.cache import get_cached_result, cache_result
-from api.services.rate_limiter import check_rate_limit
+from api.services.rate_limiter import check_burst_only, check_rate_limit
 from api.services.domain_validator import validate_domain, normalize_domain, DomainValidationError
 
 router = APIRouter(prefix="/api/v1", tags=["check"])
@@ -89,6 +89,13 @@ async def check_domains(
     request: CheckRequest,
     user: AuthUser = Depends(get_current_user),
 ):
+    # Burst rate limit BEFORE we touch the cache, so a user firing
+    # 1000 requests/sec at known-cached domains still gets throttled.
+    # Daily quota is still keyed off `needs_analysis` further down —
+    # cached lookups are free in API-spend terms (correctly), they
+    # just can't be a free DDoS path. (Audit backend-security HIGH
+    # "/check has no route-level rate limit".)
+    await check_burst_only(user)
     """
     Check one or more domains for phishing/safety.
 

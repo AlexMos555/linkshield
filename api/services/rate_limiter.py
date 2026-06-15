@@ -112,6 +112,33 @@ async def check_rate_limit(user: AuthUser, num_domains: int = 1) -> int:
         return daily_limit  # fail-open: assume full quota available
 
 
+#
+# Atomic INCR + first-write TTL.
+#
+# Naïve `INCR key; if current == 1: EXPIRE key seconds` has a crash
+# window: if the process dies between the two commands, the key is
+# left with value=1 and NO TTL — it persists forever, and the rate
+# limiter treats the user as if they've already burned one slot and
+# never refreshes. Three call sites had this bug (burst + IP + sensitive,
+# audit finding backend-async / rate_limit).
+#
+# The Lua script runs atomically inside Redis: either both operations
+# happen or neither does. Returns the post-increment count to the
+# caller so the existing limit-check logic is unchanged.
+_INCR_WITH_TTL_LUA = """
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return current
+"""
+
+
+async def _incr_with_ttl_on_first(r, key: str, window_seconds: int) -> int:
+    """Atomic equivalent of `INCR + (EXPIRE if first)`. Returns the new value."""
+    return int(await r.eval(_INCR_WITH_TTL_LUA, 1, key, window_seconds))
+
+
 async def _check_burst_limit(
     r, user_id: str, max_burst: int, window_seconds: int
 ) -> None:
@@ -121,11 +148,7 @@ async def _check_burst_limit(
     """
     burst_key = f"rate:burst:{user_id}"
 
-    current = await r.incr(burst_key)
-
-    # Set TTL on first increment
-    if current == 1:
-        await r.expire(burst_key, window_seconds)
+    current = await _incr_with_ttl_on_first(r, burst_key, window_seconds)
 
     if current > max_burst:
         ttl = await r.ttl(burst_key)
@@ -140,6 +163,39 @@ async def _check_burst_limit(
                 "retry_after_seconds": max(ttl, 1),
             },
         )
+
+
+async def check_burst_only(user: AuthUser) -> None:
+    """
+    Burst rate limit without touching the daily quota.
+
+    Used as a route-level dependency on endpoints whose work is partly
+    cached (so a request that "uses 0 API calls" still consumes our
+    /check endpoint's CPU + DB lookups). Without this, a paid user
+    can hammer cached lookups at any rate they like — audit finding
+    backend-security HIGH "/check has no route-level rate limit".
+
+    Fails open on Redis outages unless `rate_limit_fail_closed=true`
+    (matching the rest of the limiter's contract).
+    """
+    settings = get_settings()
+    try:
+        r = await get_redis()
+        await _check_burst_limit(
+            r, user.id, settings.burst_limit, settings.burst_window_seconds
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("burst_limiter_redis_unavailable", extra={"error": str(e)})
+        if settings.rate_limit_fail_closed:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "Rate limit service unavailable. Please retry shortly.",
+                    "retry_after_seconds": 30,
+                },
+            )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -167,10 +223,7 @@ async def check_ip_rate_limit(
 
     try:
         r = await get_redis()
-        current = await r.incr(key)
-
-        if current == 1:
-            await r.expire(key, window_seconds)
+        current = await _incr_with_ttl_on_first(r, key, window_seconds)
 
         if current > limit:
             ttl = await r.ttl(key)
@@ -220,9 +273,9 @@ async def check_sensitive_action_limit(user: AuthUser, category: str) -> int:
     key = f"rate:sensitive:{category}:{user.id}"
     try:
         r = await get_redis()
-        current = await r.incr(key)
-        if current == 1:
-            await r.expire(key, settings.sensitive_action_window_seconds)
+        current = await _incr_with_ttl_on_first(
+            r, key, settings.sensitive_action_window_seconds
+        )
 
         if current > settings.sensitive_action_limit:
             ttl = await r.ttl(key)
@@ -267,17 +320,71 @@ async def check_sensitive_action_limit(user: AuthUser, category: str) -> int:
 
 def _extract_client_ip(request: Request) -> str:
     """
-    Resolve real client IP, honoring X-Forwarded-For from the proxy.
+    Resolve real client IP, honoring X-Forwarded-For only when the
+    immediate upstream is a trusted proxy.
 
-    Railway/Vercel terminate TLS and forward via headers — we take the first
-    entry in XFF which is the original client.
+    Threat model (audit backend-security HIGH): a request that arrives
+    direct (no proxy in front) carries whatever X-Forwarded-For the
+    attacker sent. Blindly taking `xff.split(',')[0]` let any caller
+    pick their own rate-limit key — send a different XFF on every
+    request and effectively bypass per-IP quotas entirely.
+
+    The fix:
+      - When the immediate caller (request.client.host) IS in our
+        trust list, the proxy is responsible for replacing/appending
+        the client's real IP — we honor the leftmost XFF entry.
+      - When it is NOT, ignore XFF and use the TCP peer address.
+        That's still a rate-limit signal (it caps the offending box),
+        just one the caller can't forge.
+
+    `trusted_proxy_cidrs` is empty by default — locally everything
+    runs unproxied, so we keep the legacy "leftmost XFF" behavior.
+    Production sets it to Railway's egress range (also covers Vercel
+    when it sits in front of the API).
     """
-    xff = request.headers.get("x-forwarded-for")
+    settings = get_settings()
+    peer = request.client.host if request.client else None
+
+    raw_trusted = (settings.trusted_proxy_cidrs or "").strip()
+    trusted_cidrs = [c.strip() for c in raw_trusted.split(",") if c.strip()]
+
+    xff_trusted: bool
+    if not trusted_cidrs:
+        # No trust list configured → behave the same as before
+        # (dev/local where there's no proxy in front anyway). Safe
+        # because validate_settings will require this to be set
+        # before flipping rate_limit_fail_closed on in prod.
+        xff_trusted = True
+    elif peer is None:
+        xff_trusted = False
+    else:
+        xff_trusted = _ip_in_any_cidr(peer, trusted_cidrs)
+
+    xff = request.headers.get("x-forwarded-for") if xff_trusted else None
     if xff:
         return xff.split(",")[0].strip()
-    if request.client and request.client.host:
-        return request.client.host
+    if peer:
+        return peer
     return "unknown"
+
+
+def _ip_in_any_cidr(ip_str: str, cidrs: list[str]) -> bool:
+    """True if `ip_str` matches any CIDR. Tolerant of bad input —
+    a malformed setting value silently denies trust rather than
+    crashing the rate limit dependency."""
+    import ipaddress
+
+    try:
+        ip = ipaddress.ip_address(ip_str.strip().lstrip("[").rstrip("]"))
+    except ValueError:
+        return False
+    for cidr in cidrs:
+        try:
+            if ip in ipaddress.ip_network(cidr, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
 
 
 def rate_limit(
