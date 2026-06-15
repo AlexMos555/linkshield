@@ -17,6 +17,30 @@ try {
 }
 
 /**
+ * Service-worker debug mode toggle. The original code had 6 unconditional
+ * console.log lines on the /check hot path — every URL the user opened
+ * fired one or more. In production that's pointless DevTools noise and
+ * eats a non-trivial amount of CPU. Match the content-script convention
+ * (`_debugMode = false` since the audit batch) so prod ships quiet.
+ *
+ * Override at runtime from DevTools:
+ *   chrome.storage.local.set({ cleanway_debug: true })
+ * Or set DEBUG=true on extension reload (manifest cant carry env vars).
+ * (Audit extension-mv3 LOW "6 console.log calls in hot-path background.js
+ * fire on every URL check".)
+ */
+let _debugMode = false;
+try {
+  chrome.storage.local.get("cleanway_debug").then(function(d) {
+    if (d && d.cleanway_debug === true) _debugMode = true;
+  }).catch(function() {});
+} catch (e) { /* storage unavailable in some test contexts */ }
+
+function _log() {
+  if (_debugMode) console.log.apply(console, ["[LS]"].concat(Array.from(arguments)));
+}
+
+/**
  * Minimal serial mutex for the MV3 service worker. Pure JS closure
  * pattern — no external dep, no setTimeout. Each runExclusive() call
  * waits for the previous critical section's promise to resolve, then
@@ -160,7 +184,7 @@ function scoreLocally(domain) {
 
 // ── Main handler ──
 async function handleCheck(domains) {
-  console.log("[LS] Checking", domains.length, "domains");
+  _log("Checking", domains.length, "domains");
   const results = [];
   const toCheck = [];
 
@@ -180,7 +204,7 @@ async function handleCheck(domains) {
   const localResults = {};
   for (const d of toCheck) {
     localResults[d] = scoreLocally(d);
-    console.log("[LS] Local:", d, "score=" + localResults[d].score, localResults[d].level);
+    _log("Local:", d, "score=" + localResults[d].score, localResults[d].level);
   }
 
   // Try API for each domain (with 3s timeout), improve local result if API responds
@@ -196,13 +220,13 @@ async function handleCheck(domains) {
           reasons: (data.signals || []).map(s => ({signal:"api",detail:s,weight:10})),
           source: "api",
         };
-        console.log("[LS] API:", d, "score=" + r.score, r.level);
+        _log("API:", d, "score=" + r.score, r.level);
         setCached(d, r);
         results.push(r);
         continue;
       }
     } catch (e) {
-      console.log("[LS] API timeout/error for", d, "- using local score");
+      _log("API timeout/error for", d, "- using local score");
     }
 
     // Use local result
@@ -281,7 +305,7 @@ async function handleCheck(domains) {
     }
   } catch (e) {}
 
-  console.log("[LS] Returning", results.length, "results");
+  _log("Returning", results.length, "results");
   return { results };
 }
 
@@ -420,4 +444,4 @@ chrome.commands.onCommand.addListener(async (cmd) => {
   }
 });
 
-console.log("[LS] Background ready, API:", API_BASE);
+_log("Background ready, API:", API_BASE);
