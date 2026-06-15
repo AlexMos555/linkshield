@@ -174,7 +174,7 @@ export default async function PricingPage({
             We believe safety from online scams is a basic right. Block phishing sites — always free.
             Pay only for details, family protection, and accessibility modes.
           </p>
-          <TierBadge tier={data.tier} country={data.country} />
+          <TierBadge tier={data.tier} country={data.country ?? null} />
         </div>
       </section>
 
