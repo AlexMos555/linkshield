@@ -602,6 +602,101 @@ def test_accept_invalid_code_returns_404(authed_user, supabase_ok, fake_sb, clie
     assert resp.status_code == 404
 
 
+def test_accept_pin_lockout_after_five_wrong_attempts(
+    authed_user, supabase_ok, fake_sb, client_factory, monkeypatch
+):
+    """Five wrong PINs in a row burn the invite — even the correct PIN
+    on the 6th attempt fails. Audit backend MEDIUM PIN brute-force
+    lockout.
+
+    We mock get_redis with a minimal FakeRedis that supports eval()
+    (mirroring the Lua INCR+EXPIRE path used by the rate limiter)."""
+    class _FakeRedis:
+        def __init__(self) -> None:
+            self._kv: dict[str, int] = {}
+
+        async def eval(self, _script, _numkeys, key, *_args):
+            self._kv[key] = self._kv.get(key, 0) + 1
+            return self._kv[key]
+
+        async def get(self, key):
+            return self._kv.get(key)
+
+        async def setex(self, key, _ttl, val):
+            self._kv[key] = val
+            return True
+
+        async def delete(self, *keys):
+            for k in keys:
+                self._kv.pop(k, None)
+            return len(keys)
+
+    fake = _FakeRedis()
+
+    async def _get():
+        return fake
+
+    monkeypatch.setattr("api.services.cache.get_redis", _get)
+
+    inviter = AuthUser(id="user-locker", email="lock@t.com", tier=UserTier.free)
+    client_factory(inviter).post("/api/v1/family", json={"name": "L"})
+    fid = list(fake_sb.families.keys())[0]
+    invite = client_factory(inviter).post(f"/api/v1/family/{fid}/invite").json()
+
+    # 5 wrong PINs — all return 404
+    accepter = AuthUser(id="user-attacker", email="a@t.com", tier=UserTier.free)
+    accept_client = client_factory(accepter)
+    for i in range(5):
+        resp = accept_client.post(
+            "/api/v1/family/accept",
+            json={"code": invite["code"], "pin": f"{i:04d}"},
+        )
+        assert resp.status_code == 404, f"attempt {i+1} returned {resp.status_code}"
+
+    # 6th attempt — even with the CORRECT PIN, the invite is burned.
+    resp = accept_client.post(
+        "/api/v1/family/accept",
+        json={"code": invite["code"], "pin": invite["pin"]},
+    )
+    assert resp.status_code == 404
+    # Same body shape as a non-existent invite — no enumeration.
+    assert "Invalid or expired" in resp.text or "invite" in resp.text.lower()
+
+
+def test_accept_pin_lockout_fails_open_on_redis_outage(
+    authed_user, supabase_ok, fake_sb, client_factory, monkeypatch
+):
+    """If Redis is unreachable, wrong-PIN attempts still 404 (the auth
+    check itself works without Redis) but we DON'T burn the invite —
+    that would punish legitimate users for our Redis outage."""
+    async def _boom():
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr("api.services.cache.get_redis", _boom)
+
+    inviter = AuthUser(id="user-flake", email="f@t.com", tier=UserTier.free)
+    client_factory(inviter).post("/api/v1/family", json={"name": "K"})
+    fid = list(fake_sb.families.keys())[0]
+    invite = client_factory(inviter).post(f"/api/v1/family/{fid}/invite").json()
+
+    accepter = AuthUser(id="user-real-user", email="ok@t.com", tier=UserTier.free)
+    accept_client = client_factory(accepter)
+    # Five wrong PINs — still 404 each
+    for i in range(5):
+        resp = accept_client.post(
+            "/api/v1/family/accept",
+            json={"code": invite["code"], "pin": f"{i:04d}"},
+        )
+        assert resp.status_code == 404
+
+    # Real PIN STILL works because Redis-out fails open on lockout
+    resp = accept_client.post(
+        "/api/v1/family/accept",
+        json={"code": invite["code"], "pin": invite["pin"]},
+    )
+    assert resp.status_code == 200, resp.text
+
+
 # ─── /family/{id}/alerts (submit + list) ─────────────────────────
 
 

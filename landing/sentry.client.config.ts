@@ -43,15 +43,20 @@ if (dsn) {
     ],
   });
 
-  // Expose Sentry on `window` for debugging from DevTools console:
-  //   Sentry.captureMessage("verify…")
-  //   Sentry.captureException(new Error("…"))
-  // The SDK's automatic onerror/onunhandledrejection handlers work without
-  // this, but `window.Sentry` is invaluable when debugging "is the SDK
-  // even loaded on this page?" type questions in production. No security
-  // implication — Sentry SDK doesn't expose any sensitive surface, and
-  // we don't load any third-party JS that could abuse it.
-  if (typeof window !== "undefined") {
+  // Expose Sentry on `window` only in non-production builds.
+  //
+  // The audit (landing-security LOW "window.Sentry SDK exposed as a
+  // global on every production page, enabling Sentry quota exhaustion")
+  // flagged the earlier "always expose" code: any third-party script
+  // running on the page (a future analytics tag, a typo'd CDN URL,
+  // a compromised dependency) could call
+  // window.Sentry.captureMessage(...) in a loop and burn through our
+  // Sentry quota. In production we don't need DevTools debugging on
+  // every page; the SDK's onerror handlers cover the real failure
+  // path. In preview/dev we still expose it so engineers can verify
+  // the SDK is loaded.
+  const env = process.env.NEXT_PUBLIC_VERCEL_ENV;
+  if (typeof window !== "undefined" && env !== "production") {
     (window as unknown as { Sentry: typeof Sentry }).Sentry = Sentry;
   }
 }

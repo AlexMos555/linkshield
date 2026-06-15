@@ -29,9 +29,17 @@ async function pushSkillToApi(
   try {
     const token = await SecureStore.getItemAsync("auth_token");
     if (!token) return;
+    // Audit mobile MEDIUM "settings.tsx reads API base URL from
+    // SecureStore at runtime — creates a URL-injection vector":
+    // previously we honoured `api_url` in SecureStore as an override.
+    // A jailbroken phone / shared device / debugger access to
+    // SecureStore could write an attacker URL and silently
+    // exfiltrate every settings PATCH (including parental PIN hash).
+    // EXPO_PUBLIC_API_URL is inlined at build time and cannot be
+    // changed by a runtime attacker; the rest of the app already
+    // uses this canonical source via services/api.ts.
     const apiBase =
-      (await SecureStore.getItemAsync("api_url")) ||
-      "https://api.cleanway.ai";
+      process.env.EXPO_PUBLIC_API_URL || "https://api.cleanway.ai";
     await fetch(`${apiBase}/api/v1/user/settings`, {
       method: "PUT",
       headers: {

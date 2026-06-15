@@ -689,9 +689,73 @@ async def accept_invite(
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(404, "Invalid or expired invite")
 
+    # PIN brute-force lockout.
+    #
+    # A 4-digit PIN has 10000 possibilities. Without a per-invite
+    # attempt counter, an attacker who somehow learns a valid code
+    # (shared screenshot, MITM on SMS, leaked from a parent's chat)
+    # could brute every PIN at the limiter's free-tier ceiling
+    # (~25 req/s) in roughly 7 minutes. We track failed attempts in
+    # Redis keyed by invite id and revoke the invite after 5 misses.
+    # Successful redeem clears the counter (it's stored against the
+    # invite, which becomes immutable once redeemed_at is set).
+    # (Audit finding backend MEDIUM "No test for PIN brute-force
+    # lockout on family invite accept endpoint".)
+    pin_attempts_key = f"family:pin_attempts:{invite['id']}"
+    PIN_MAX_ATTEMPTS = 5
+    PIN_ATTEMPT_TTL_SECONDS = 24 * 3600  # match invite expiry envelope
+
     if not _verify_pin(body.pin, invite["pin_hash"]):
-        # Don't distinguish "bad PIN" from "bad code" — same error message
-        # so an attacker can't enumerate valid codes via the PIN check.
+        # Increment + cap. Lua-atomic helper from rate_limiter handles
+        # the INCR + EXPIRE-on-first race; reusing it keeps a single
+        # source of truth for "stale Redis key" semantics.
+        attempts: int
+        try:
+            from api.services.cache import get_redis
+            from api.services.rate_limiter import _incr_with_ttl_on_first
+
+            r = await get_redis()
+            attempts = await _incr_with_ttl_on_first(
+                r, pin_attempts_key, PIN_ATTEMPT_TTL_SECONDS
+            )
+        except Exception:
+            # Redis blip — fail open on the LOCKOUT (don't punish a
+            # legitimate user with a 410 when Redis is down) but the
+            # caller still gets 404 from the PIN mismatch below.
+            attempts = 0
+
+        if attempts >= PIN_MAX_ATTEMPTS:
+            # Burn the invite so further attempts can't succeed even
+            # if the attacker eventually guesses correctly. The PATCH
+            # is idempotent — if it already redeemed_at=NOT NULL the
+            # filter matches zero rows.
+            try:
+                await _supabase_request(
+                    "PATCH",
+                    "family_invites",
+                    params={
+                        "id": f"eq.{invite['id']}",
+                        "redeemed_at": "is.null",
+                    },
+                    json={
+                        "redeemed_at": datetime.now(timezone.utc).isoformat(),
+                        "redeemed_by_user_id": None,  # null = burned by lockout
+                    },
+                    extra_headers={"Prefer": "return=minimal"},
+                )
+            except Exception:
+                logger.warning(
+                    "family.invite_lockout_burn_failed",
+                    extra={"invite_id": invite["id"]},
+                )
+            logger.warning(
+                "family.invite_pin_lockout",
+                extra={"invite_id": invite["id"], "caller": user.id, "attempts": attempts},
+            )
+        # Don't distinguish "bad PIN" from "bad code" — same error
+        # message so an attacker can't enumerate valid codes via the
+        # PIN check, and same response whether or not we just burned
+        # the invite. The attacker learns nothing new on the wire.
         raise HTTPException(404, "Invalid or expired invite")
 
     if invite["inviter_id"] == user.id:

@@ -82,6 +82,40 @@ async def purge_expired_accounts() -> dict:
             logger.info("account_purge.no_candidates", extra={"cutoff": cutoff})
             return {"deleted": 0}
 
+        # Step 1.5: GDPR Art. 17 — anonymise audit_log rows BEFORE the
+        # cascade DELETE.
+        #
+        # audit_log.actor_user_id has no FK cascade (see migration 014),
+        # so historical rows would otherwise persist with the deleted
+        # user's UUID forever. The compliance-friendly answer: keep the
+        # event timeline (the action verb + timestamp + meta), null the
+        # actor so the row is no longer personal data tied to the user.
+        # (Audit backend MEDIUM "audit_log table has no retention
+        # policy or row cap, and the GDPR purge cron is not wired to
+        # clean it".)
+        for uid in deleted_ids:
+            try:
+                anon_resp = await client.request(
+                    "PATCH",
+                    f"{settings.supabase_url}/rest/v1/audit_log",
+                    params={"actor_user_id": f"eq.{uid}"},
+                    json={"actor_user_id": None},
+                    headers={**headers, "Prefer": "return=minimal"},
+                )
+                if anon_resp.status_code not in (200, 204):
+                    logger.warning(
+                        "account_purge.audit_anonymise_failed",
+                        extra={
+                            "user_id": uid,
+                            "status": anon_resp.status_code,
+                        },
+                    )
+            except Exception as e:
+                logger.warning(
+                    "account_purge.audit_anonymise_exception",
+                    extra={"user_id": uid, "error": str(e)},
+                )
+
         # Step 2: hard-delete. We rely on the cascading foreign keys
         # established in migration 001 — a single DELETE on users.id
         # wipes every dependent row across 8+ tables.

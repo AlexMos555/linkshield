@@ -97,7 +97,11 @@ def supabase_stub(monkeypatch):
 @pytest.mark.asyncio
 async def test_purges_expired_accounts(supabase_ok, supabase_stub):
     """Two candidates past the grace window → both hard-deleted, IDs
-    returned in the summary."""
+    returned in the summary.
+
+    Method sequence is GET (list) → PATCH × N (anonymise audit_log per
+    user, GDPR Art. 17) → DELETE (cascade through FKs).
+    """
     from api.services.account_purge import purge_expired_accounts
 
     supabase_stub.list_response = [{"id": "user-a"}, {"id": "user-b"}]
@@ -106,9 +110,61 @@ async def test_purges_expired_accounts(supabase_ok, supabase_stub):
 
     assert result["deleted"] == 2
     assert set(result["ids"]) == {"user-a", "user-b"}
-    # GET request lists candidates, request("DELETE", ...) hard-deletes.
     methods = [r["method"] for r in supabase_stub.requests]
-    assert methods == ["GET", "DELETE"]
+    # GET, PATCH (user-a), PATCH (user-b), DELETE
+    assert methods == ["GET", "PATCH", "PATCH", "DELETE"]
+
+
+@pytest.mark.asyncio
+async def test_anonymises_audit_log_before_user_delete(supabase_ok, supabase_stub):
+    """Audit log rows where actor_user_id = deleted user must have the
+    actor nulled BEFORE the user row is wiped. Otherwise the audit
+    table would carry the deleted user's UUID indefinitely with no
+    FK to enforce cascade. (Audit MEDIUM "audit_log table has no
+    retention policy or row cap, and the GDPR purge cron is not
+    wired to clean it".)"""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-x"}]
+    await purge_expired_accounts()
+
+    # The PATCH carries the right filter + body.
+    patches = [r for r in supabase_stub.requests if r["method"] == "PATCH"]
+    assert len(patches) == 1
+    assert "/rest/v1/audit_log" in patches[0]["url"]
+    assert patches[0]["params"]["actor_user_id"] == "eq.user-x"
+
+
+@pytest.mark.asyncio
+async def test_delete_filter_params_pin_grace_window(
+    supabase_ok, supabase_stub
+):
+    """The DELETE call MUST carry the same deletion_requested_at <= cutoff
+    filter as the listing GET — otherwise a misconfigured cron could
+    wipe accounts that haven't yet finished the 30-day grace.
+
+    (Audit MEDIUM "account_purge DELETE filter params never asserted:
+    wrong-cutoff regression would go undetected".)"""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-c"}]
+    await purge_expired_accounts()
+
+    delete_call = next(
+        r for r in supabase_stub.requests if r["method"] == "DELETE"
+    )
+    assert delete_call["url"].endswith("/rest/v1/users"), delete_call["url"]
+    raw = delete_call["params"]["deletion_requested_at"]
+    assert raw.startswith("lte."), raw
+    # The exact cutoff value matches the GET's cutoff (computed once
+    # at the top of purge_expired_accounts).
+    list_cutoff = next(
+        r for r in supabase_stub.requests if r["method"] == "GET"
+    )["params"]["deletion_requested_at"]
+    assert raw == list_cutoff, (
+        "DELETE cutoff drifted from GET cutoff — a misconfigured cron "
+        "could now wipe users still inside their grace window."
+    )
 
 
 @pytest.mark.asyncio
