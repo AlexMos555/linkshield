@@ -12,6 +12,8 @@
  */
 import * as Sentry from "@sentry/nextjs";
 
+import { beforeBreadcrumbScrub, beforeSendScrub } from "./lib/sentry-scrub";
+
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 if (dsn) {
@@ -20,6 +22,12 @@ if (dsn) {
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? "development",
     release: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
     tracesSampleRate: 0.1,
+    // PII scrubbing — drop emails / JWTs / Stripe IDs from every event
+    // before Sentry sees it. Marketing copy says privacy-first; events
+    // retain for 90 days and employees have read access.
+    sendDefaultPii: false,
+    beforeSend: beforeSendScrub,
+    beforeBreadcrumb: beforeBreadcrumbScrub,
     // Replays only in production — they cost more quota.
     replaysSessionSampleRate: process.env.NEXT_PUBLIC_VERCEL_ENV === "production" ? 0.01 : 0,
     replaysOnErrorSampleRate: 1.0,

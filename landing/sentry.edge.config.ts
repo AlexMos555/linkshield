@@ -6,6 +6,8 @@
  */
 import * as Sentry from "@sentry/nextjs";
 
+import { beforeBreadcrumbScrub, beforeSendScrub } from "./lib/sentry-scrub";
+
 const dsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 if (dsn) {
@@ -14,5 +16,8 @@ if (dsn) {
     environment: process.env.VERCEL_ENV ?? "development",
     release: process.env.VERCEL_GIT_COMMIT_SHA,
     tracesSampleRate: 0.1,
+    sendDefaultPii: false,
+    beforeSend: beforeSendScrub,
+    beforeBreadcrumb: beforeBreadcrumbScrub,
   });
 }

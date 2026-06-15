@@ -30,13 +30,30 @@ from api.services.logger import setup_logging
 setup_logging(debug=get_settings().debug)
 logger = logging.getLogger("cleanway.app")
 
-# Initialize Sentry (error tracking)
+# Initialize Sentry (error tracking) with PII scrubbing.
+# Sentry retains events for up to 90 days; raw emails / JWTs / Stripe
+# IDs would contradict our privacy-first marketing. The scrubber walks
+# every event + breadcrumb payload before Sentry sees it. See
+# api/services/sentry_scrubber.py for the redaction rules.
 _sentry_dsn = get_settings().sentry_dsn
 if _sentry_dsn:
     try:
         import sentry_sdk
-        sentry_sdk.init(dsn=_sentry_dsn, traces_sample_rate=0.1, environment="production" if not get_settings().debug else "development")
-        logger.info("Sentry initialized")
+
+        from api.services.sentry_scrubber import before_breadcrumb, before_send
+
+        sentry_sdk.init(
+            dsn=_sentry_dsn,
+            traces_sample_rate=0.1,
+            environment="production" if not get_settings().debug else "development",
+            # send_default_pii is False by default in modern sentry-sdk but
+            # we set it explicitly so a future SDK version bumping the
+            # default to True doesn't silently leak.
+            send_default_pii=False,
+            before_send=before_send,
+            before_breadcrumb=before_breadcrumb,
+        )
+        logger.info("Sentry initialized with PII scrubber")
     except ImportError:
         logger.debug("sentry-sdk not installed, skipping")
 
