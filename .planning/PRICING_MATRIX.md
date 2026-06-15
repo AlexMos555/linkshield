@@ -1,4 +1,4 @@
-# Pricing Matrix — LinkShield v2
+# Pricing Matrix — Cleanway v2
 
 > Locked 2026-04-14. См. также PROJECT.md раздел "Business Model".
 
@@ -56,7 +56,7 @@ IN, ID, VN, PK, BD, EG, NG, KE, LK, MM, NP, KH, LA, MW, UG, TZ, ZW, ZM, MZ, SN, 
 3 products, каждый с 4 price IDs (по tier) + monthly/yearly → **3 × 4 × 2 = 24 price IDs**
 
 ```
-Product: "LinkShield Personal"
+Product: "Cleanway Personal"
 ├── price_personal_t1_monthly  ($5.99)
 ├── price_personal_t1_yearly   ($59.90 — 2 months off)
 ├── price_personal_t2_monthly  ($4.99)
@@ -66,10 +66,10 @@ Product: "LinkShield Personal"
 ├── price_personal_t4_monthly  ($1.49)
 └── price_personal_t4_yearly   ($14.90)
 
-Product: "LinkShield Family"
+Product: "Cleanway Family"
 ├── (same pattern, $11.99/$9.99/$4.99/$2.99 monthly)
 
-Product: "LinkShield Business"
+Product: "Cleanway Business"
 ├── (per-seat pricing, $4.99/$3.99/$1.99/$0.99 per user/month)
 ```
 
@@ -136,7 +136,7 @@ iOS IAP и Google Play Billing — отдельная вселенная. Apple/
 ### iOS Apple IAP
 - Apple имеет свои 175 price tiers
 - Map our 4 tiers → Apple's nearest tiers per country
-- Products: com.linkshield.personal.monthly, com.linkshield.family.monthly, com.linkshield.business.monthly
+- Products: com.cleanway.personal.monthly, com.cleanway.family.monthly, com.cleanway.business.monthly
 - Server-side receipt validation
 - Cross-platform: если юзер купил через web (Stripe) — активен на mobile тоже (subscription state через Supabase)
 

@@ -1,4 +1,4 @@
-# LinkShield — Quick Start for Claude Code
+# Cleanway — Quick Start for Claude Code
 
 ## Setup
 
@@ -7,7 +7,7 @@
 npx get-shit-done-cc@latest
 
 # 2. Open project
-cd LinkShield
+cd Cleanway
 git init
 
 # 3. Verify GSD sees the project

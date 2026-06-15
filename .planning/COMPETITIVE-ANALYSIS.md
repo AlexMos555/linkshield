@@ -1,8 +1,8 @@
-# LinkShield — Competitive Analysis
+# Cleanway — Competitive Analysis
 
 ## Executive summary
 
-The anti-phishing market in 2026 is fragmented across four categories: browser extensions (Guardio, Netcraft, Malwarebytes), VPN-bundled protection (NordVPN, Bitdefender), mobile security apps (Norton, Avira, Bitdefender), and B2B security awareness platforms (KnowBe4, Proofpoint). No single product delivers automatic, cross-platform link protection with a plain-language privacy audit. This is LinkShield's wedge.
+The anti-phishing market in 2026 is fragmented across four categories: browser extensions (Guardio, Netcraft, Malwarebytes), VPN-bundled protection (NordVPN, Bitdefender), mobile security apps (Norton, Avira, Bitdefender), and B2B security awareness platforms (KnowBe4, Proofpoint). No single product delivers automatic, cross-platform link protection with a plain-language privacy audit. This is Cleanway's wedge.
 
 ---
 
@@ -48,7 +48,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 - Requires Gmail access to scan emails (privacy concern)
 - Not a full antivirus (no device scanning)
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - Privacy Audit fills a gap Guardio doesn't touch
 - Cross-browser support (Chrome + Firefox + Safari)
 - Family Hub with alert sharing (Guardio has family plan but no real-time family alerts)
@@ -93,7 +93,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 - No customizable sensitivity settings
 - No weekly report or engagement features
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - Works on ALL platforms including mobile with rich UI
 - Not tied to VPN (works alongside NordVPN via DNS mode)
 - Privacy Audit explains what sites collect
@@ -136,7 +136,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 - No reporting or engagement features
 - No B2B capabilities
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - Mobile protection (VPN/DNS covers all apps)
 - Privacy Audit is a differentiator they don't have
 - Family Hub, Security Score, Weekly Report drive retention
@@ -178,7 +178,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 - Risk rating can be confusing for non-technical users
 - No B2B self-service offering
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - UX designed for regular people, not security professionals
 - Mobile protection via VPN/DNS
 - Privacy Audit translates technical data into human language
@@ -222,7 +222,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 - No B2B capabilities
 - No engagement features
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - Full cross-platform protection (browser + mobile + email)
 - Privacy Audit (plain-language site data collection report)
 - Subscription model funds dedicated development
@@ -265,7 +265,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 - No family features
 - No B2B offering
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - Aha-moment can show "here are phishing links Chrome missed in your inbox"
 - Privacy Audit (Chrome doesn't tell you about trackers or data collection)
 - Proactive protection (bloom filter + multiple data sources vs Google's single DB)
@@ -322,7 +322,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 - Platinum content limited (complaints about value vs price)
 - Enterprise sales cycle (contact sales, demos, POC)
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - No minimum seats (from 1 user)
 - Self-service setup (minutes, not weeks)
 - Combined protection + simulation (block threats AND train employees)
@@ -362,7 +362,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 - No B2B
 - Limited reputation databases
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - Full cross-platform (iOS + Android + browser + email)
 - Privacy Audit
 - Family Hub, Security Score
@@ -373,7 +373,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 
 ## Competitive matrix
 
-| Feature | LinkShield | Guardio | NordVPN TP | Malwarebytes BG | Netcraft | Bitdefender TL | Google SB | KnowBe4 |
+| Feature | Cleanway | Guardio | NordVPN TP | Malwarebytes BG | Netcraft | Bitdefender TL | Google SB | KnowBe4 |
 |---|---|---|---|---|---|---|---|---|
 | **Pricing** | $0-9.99/mo | $9.99-14.99/mo | Bundled w/VPN | Free | Free | Free | Free | $16-35/user/yr |
 | **Chrome extension** | Yes | Yes | No | Yes | Yes | Yes | Built-in | No |
@@ -395,7 +395,7 @@ The anti-phishing market in 2026 is fragmented across four categories: browser e
 
 ---
 
-## Market gaps LinkShield exploits
+## Market gaps Cleanway exploits
 
 **Gap 1: No one does plain-language privacy audit.**
 Netcraft shows technical data. Privacy Badger blocks trackers. Nobody translates "14 trackers, canvas fingerprinting, 34 third-party cookies" into "This site is tracking you across the internet and can identify your device."
@@ -419,7 +419,7 @@ Many anti-phishing mobile solutions rely on VPN. If user already has a VPN, they
 
 ## Positioning strategy
 
-LinkShield occupies a unique position: simpler and cheaper than enterprise tools (KnowBe4), more comprehensive than browser-only extensions (Guardio, Netcraft, Malwarebytes), and independent from VPN bundles (NordVPN, Bitdefender).
+Cleanway occupies a unique position: simpler and cheaper than enterprise tools (KnowBe4), more comprehensive than browser-only extensions (Guardio, Netcraft, Malwarebytes), and independent from VPN bundles (NordVPN, Bitdefender).
 
 **Against Guardio:** "Same protection, half the price, plus privacy audit and family alerts."
 
@@ -483,7 +483,7 @@ LinkShield occupies a unique position: simpler and cheaper than enterprise tools
 - DATA BREACH: Aura lost 900,000 customer records in March 2026
 - Identity-first, security-second product philosophy
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - FOCUSED: one job done perfectly vs Aura's 15 features done OK
 - 5x cheaper ($4.99 vs $12-30/mo)
 - Privacy Audit: Aura doesn't explain what sites collect
@@ -494,7 +494,7 @@ LinkShield occupies a unique position: simpler and cheaper than enterprise tools
 - Open-source clients (Aura is closed-source)
 - No identity theft insurance needed — we PREVENT, they RECOVER
 
-**Key insight:** Aura competes in a different category (identity protection with security extras) but overlaps on phishing blocking. Their Safe Browsing is a checkbox feature, not a core product. LinkShield's phishing protection is deeper and more visible.
+**Key insight:** Aura competes in a different category (identity protection with security extras) but overlaps on phishing blocking. Their Safe Browsing is a checkbox feature, not a core product. Cleanway's phishing protection is deeper and more visible.
 
 ---
 
@@ -527,7 +527,7 @@ LinkShield occupies a unique position: simpler and cheaper than enterprise tools
 - No email protection, no family features, no score
 - Technical UI not designed for regular users
 
-**LinkShield positioning:** Privacy Badger blocks trackers. LinkShield EXPLAINS them. Different products with complementary goals. Our Privacy Audit shows what trackers do in plain language — Privacy Badger just blocks silently.
+**Cleanway positioning:** Privacy Badger blocks trackers. Cleanway EXPLAINS them. Different products with complementary goals. Our Privacy Audit shows what trackers do in plain language — Privacy Badger just blocks silently.
 
 ---
 
@@ -561,7 +561,7 @@ LinkShield occupies a unique position: simpler and cheaper than enterprise tools
 - No security score or weekly reports
 - Revenue model unclear (donation + optional subscription)
 
-**LinkShield positioning:** Ghostery is closest to our Privacy Audit feature — they show tracker details. BUT: they don't check if links are safe/phishing, they don't work on mobile across all apps, they have no family hub, no email proxy, no phishing simulation. We combine Ghostery's transparency with Guardio's protection in one product.
+**Cleanway positioning:** Ghostery is closest to our Privacy Audit feature — they show tracker details. BUT: they don't check if links are safe/phishing, they don't work on mobile across all apps, they have no family hub, no email proxy, no phishing simulation. We combine Ghostery's transparency with Guardio's protection in one product.
 
 ---
 
@@ -591,7 +591,7 @@ LinkShield occupies a unique position: simpler and cheaper than enterprise tools
 - No phishing simulation
 - No email proxy
 
-**LinkShield positioning:** F-Secure is a traditional AV suite. We're a focused anti-phishing product. Different categories.
+**Cleanway positioning:** F-Secure is a traditional AV suite. We're a focused anti-phishing product. Different categories.
 
 ---
 
@@ -626,7 +626,7 @@ LinkShield occupies a unique position: simpler and cheaper than enterprise tools
 - Bloated suite — many features most people don't need
 - Heavy app, drains battery more than lightweight alternatives
 
-**LinkShield positioning:** Norton is a swiss army knife. LinkShield is a scalpel. We do ONE thing (link protection) and do it better, simpler, cheaper. "Norton protects your device. LinkShield protects YOU."
+**Cleanway positioning:** Norton is a swiss army knife. Cleanway is a scalpel. We do ONE thing (link protection) and do it better, simpler, cheaper. "Norton protects your device. Cleanway protects YOU."
 
 ---
 
@@ -649,7 +649,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 
 ## ADDENDUM 2: дополнительные конкуренты + UX axis (2026-04-14)
 
-После gap-audit добавлены крупные по installbase игроки которых не было ранее, и введена ключевая **UX-for-regular-people axis** — мерило удобства для обычного человека (бабушка/родитель/не-техи), где LinkShield должен лидировать.
+После gap-audit добавлены крупные по installbase игроки которых не было ранее, и введена ключевая **UX-for-regular-people axis** — мерило удобства для обычного человека (бабушка/родитель/не-техи), где Cleanway должен лидировать.
 
 ### 14. Microsoft Edge SmartScreen
 
@@ -679,7 +679,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 - No family features
 - Не работает на iOS/Android за пределами Edge mobile (~5% mobile market share)
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - **Универсальность** — Chrome + Firefox + Safari + mobile VPN (Edge только Edge)
 - **Plain-language explanations** vs Microsoft technical warnings
 - **Privacy-by-design** — не шлём URL на сервер Microsoft
@@ -715,7 +715,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 - No explanations — просто "This is suspicious" без объяснения почему
 - Не протектит apps вне Safari (Instagram, WhatsApp, etc.)
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - **Cross-browser** (Safari + Chrome + Firefox одновременно)
 - **ML detection** zero-day угроз vs Apple's blocklist-only
 - **Privacy Audit** — показываем что сайт собирает (не только блокируем трекеры)
@@ -753,7 +753,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 - BAT crypto model — контрвоверсиален для некоторых
 - Shields UI для tech-savvy, не для бабушки
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - **Работает в любом браузере** (Chrome, Safari, Firefox) — не требует смены
 - **Explains** что блокировано (а не просто блокирует тихо)
 - **Family Hub** + **Granny Mode** — Brave не имеет
@@ -790,7 +790,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 - Нет B2B / phishing simulation
 - Нет ML-based phishing detection
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - **Phishing detection + Privacy Audit** — один продукт (DDG только privacy)
 - **Plain-language explanations** — мы говорим "этот сайт следит за вами как..." — DDG показывает grade без deep explanation
 - **Skill Levels** — Granny/Kids modes
@@ -837,14 +837,14 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 - Privacy concerns (Russian company + западные санкции)
 - **Не работает в США / Канаде / UK** (запрещён для gov)
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - **Не политический продукт** — работает везде, из любой страны
 - **Простота vs Kaspersky suite** — один фокус (links), не 15 фичей
 - **Privacy-first architecture** — серверы могут быть в ЕС / США
 - **Granny Mode** — Kaspersky SafeKids хорош но не Granny-focused
 - **Ценовая доступность** — $4.99 Personal vs $30+ Kaspersky Standard
 
-**Важно для RU-маркета:** после ухода multi-западных продуктов и ограничений на Kaspersky, есть открытый рынок. LinkShield как **neutral, privacy-first, affordable** продукт может занять позицию.
+**Важно для RU-маркета:** после ухода multi-западных продуктов и ограничений на Kaspersky, есть открытый рынок. Cleanway как **neutral, privacy-first, affordable** продукт может занять позицию.
 
 ---
 
@@ -873,10 +873,10 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 - Reactive (после включения на blocklist)
 - No plain-language для non-crypto юзеров
 
-**LinkShield positioning:**
+**Cleanway positioning:**
 Не конкурент — complementary. Мы блокируем фишинг **до** того как юзер попадает на scam dApp. MetaMask — последняя линия внутри wallet.
 
-**Возможная интеграция:** API для crypto-wallets — "check this dApp URL with LinkShield" до connection.
+**Возможная интеграция:** API для crypto-wallets — "check this dApp URL with Cleanway" до connection.
 
 ---
 
@@ -907,7 +907,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 - Не протектит в browsers / desktop / mobile apps
 - Ephemeral — нет истории проверок, нет Privacy Audit
 
-**LinkShield advantage:**
+**Cleanway advantage:**
 - **Auto-scan** на каждой странице — не надо ничего копировать/пересылать
 - **Privacy-first** — домен проверяется, не сам URL
 - **Cross-platform** — не ограничено одним мессенджером
@@ -922,7 +922,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 
 **UX-for-regular-people score** (1-10) — насколько удобно обычному не-техническому юзеру (бабушке, родителю) понять и использовать продукт.
 
-| Feature | LinkShield (plan) | Guardio | NordVPN TP | Malwarebytes BG | Netcraft | Bitdefender TL | Google SB | Apple Safari | Edge SmartScreen | Brave Shields | DuckDuckGo | Kaspersky | MetaMask | Telegram bots | KnowBe4 | Aura | Privacy Badger | Ghostery |
+| Feature | Cleanway (plan) | Guardio | NordVPN TP | Malwarebytes BG | Netcraft | Bitdefender TL | Google SB | Apple Safari | Edge SmartScreen | Brave Shields | DuckDuckGo | Kaspersky | MetaMask | Telegram bots | KnowBe4 | Aura | Privacy Badger | Ghostery |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **UX for grandma (1-10)** | **9** ⭐ | 6 | 4 | 5 | 2 | 7 | 8 | 8 | 7 | 3 | 6 | 3 | 2 | 4 | 1 | 3 | 3 | 4 |
 | **Plain-language explanations** | **Yes** ⭐ | Partial | No | No | No | No | No | Basic | Basic | No | Partial | Partial | No | No | Training only | No | No | No |
@@ -936,7 +936,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 | **Pricing transparency** | **Yes (regional)** | Yes | Bundle only | Free | Free | Free | Free | Free | Free | Free | Free | Multi-tier | Free | Free | Enterprise | Opaque | Free | Free |
 | **Free tier usability** | **Full block forever** ⭐ | Limited | N/A | Full | Full | Full | Full | Full | Full | Full | Full | Basic AV | Full | Full | N/A | N/A | Full | Full |
 
-**Обозначение:** ⭐ = LinkShield имеет уникальное преимущество или лидирует
+**Обозначение:** ⭐ = Cleanway имеет уникальное преимущество или лидирует
 
 ---
 
@@ -958,7 +958,7 @@ After deeper research, all 6 market gaps remain CONFIRMED:
 
 **Новый (v2, с учётом bab-first миссии):**
 
-"LinkShield — единственная защита от мошенничества онлайн, которая понятна даже вашей бабушке. Работает автоматически в Chrome, Firefox, Safari и на телефоне. Говорит на вашем языке, без технического жаргона. Покажет бабушке что сайт — мошенник, предупредит родителей что их ребёнок открыл опасную ссылку, объяснит обычному человеку почему надо закрыть эту страницу. Блокировка мошенников — всегда бесплатна. Платите только за защиту всей семьи и персональные режимы."
+"Cleanway — единственная защита от мошенничества онлайн, которая понятна даже вашей бабушке. Работает автоматически в Chrome, Firefox, Safari и на телефоне. Говорит на вашем языке, без технического жаргона. Покажет бабушке что сайт — мошенник, предупредит родителей что их ребёнок открыл опасную ссылку, объяснит обычному человеку почему надо закрыть эту страницу. Блокировка мошенников — всегда бесплатна. Платите только за защиту всей семьи и персональные режимы."
 
 (английская версия на лендинге будет адаптирована но с тем же message)
 

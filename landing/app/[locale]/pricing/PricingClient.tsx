@@ -95,7 +95,27 @@ async function startCheckout(plan: PaidPlan, interval: Interval, locale: string)
     alert("Checkout didn't return a redirect URL — please contact support.");
     return;
   }
-  window.location.href = data.checkout_url;
+
+  // Origin validation. The backend SHOULD only ever return a
+  // checkout.stripe.com URL, but verifying client-side closes the
+  // open-redirect class: a compromised /payments/checkout endpoint
+  // (server-side template-injection, misconfigured Stripe SDK, etc.)
+  // could otherwise hand the client back any URL and we'd redirect
+  // straight to it. (Audit landing-security MEDIUM "checkout_url
+  // from API assigned to window.location.href with no origin
+  // validation".)
+  let target: URL;
+  try {
+    target = new URL(data.checkout_url);
+  } catch {
+    alert("Checkout returned an invalid URL — please contact support.");
+    return;
+  }
+  if (target.protocol !== "https:" || target.hostname !== "checkout.stripe.com") {
+    alert("Checkout returned an unexpected URL — please contact support.");
+    return;
+  }
+  window.location.href = target.href;
 }
 
 export default function PricingClient({ data }: PricingClientProps) {

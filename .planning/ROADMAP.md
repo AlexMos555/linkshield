@@ -1,4 +1,4 @@
-# ROADMAP: LinkShield (Mobile-First)
+# ROADMAP: Cleanway (Mobile-First)
 
 ## Milestone 1: MVP — Backend + Mobile App + Landing (16 weeks)
 
@@ -30,7 +30,7 @@
 - Supabase Auth: Apple, Google (in-app sign in)
 - Apple IAP + Google Play Billing
 - Stripe Checkout (for web/landing subscribers)
-- Landing page (linkshield.io): Next.js 15, privacy-first messaging
+- Landing page (cleanway.ai): Next.js 15, privacy-first messaging
 - iOS App Store submission (VPN category — submit early, review takes 2-4 weeks)
 - Google Play submission + Data Safety
 - Freemium: unlimited bloom filter, 10 API/day server-enforced

@@ -678,7 +678,7 @@
   "email": {
     "common": {
       "greeting_formal": {
-        "text": "Hello $NAME$,",
+        "text": "أهلًا $NAME$،",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -687,7 +687,7 @@
         "_needs_native_review": true
       },
       "greeting_casual": {
-        "text": "Hi $NAME$,",
+        "text": "مرحبًا $NAME$،",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -696,35 +696,35 @@
         "_needs_native_review": true
       },
       "signature": {
-        "text": "— The Cleanway team",
+        "text": "— فريق Cleanway",
         "_needs_native_review": true
       },
       "trust_footer": {
-        "text": "Cleanway · Protection that stays on your device",
+        "text": "Cleanway · حماية تبقى على جهازك",
         "_needs_native_review": true
       },
       "unsubscribe_link": {
-        "text": "Unsubscribe from these emails",
+        "text": "إلغاء الاشتراك من هذه الرسائل",
         "_needs_native_review": true
       },
       "manage_preferences_link": {
-        "text": "Manage email preferences",
+        "text": "إدارة تفضيلات البريد",
         "_needs_native_review": true
       },
       "support_link": {
-        "text": "Contact support",
+        "text": "تواصل مع الدعم",
         "_needs_native_review": true
       },
       "view_in_browser": {
-        "text": "View in browser",
+        "text": "عرض في المتصفح",
         "_needs_native_review": true
       },
       "footer_legal": {
-        "text": "You received this email because you have a Cleanway account.",
+        "text": "تتلقى هذا البريد لأن لديك حسابًا في Cleanway.",
         "_needs_native_review": true
       },
       "footer_address": {
-        "text": "Cleanway · San Francisco, CA",
+        "text": "Cleanway · سان فرانسيسكو، كاليفورنيا",
         "_needs_native_review": true
       }
     },
@@ -734,39 +734,39 @@
         "_needs_native_review": true
       },
       "preheader": {
-        "text": "Every link you see is being checked, automatically.",
+        "text": "كل رابط يصلك يتم فحصه — تلقائيًا.",
         "_needs_native_review": true
       },
       "hero_title": {
-        "text": "You're protected now",
+        "text": "أنت محمي الآن",
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "We'll quietly check every link you encounter. The dangerous ones get a red mark — you'll see them before clicking. That's it.",
+        "text": "سنفحص بهدوء كل رابط تصادفه. الروابط الخطيرة تحصل على علامة حمراء — ستراها قبل النقر. هذا كل شيء.",
         "_needs_native_review": true
       },
       "body_p2": {
-        "text": "Your browsing data never leaves your device. We only check domain names, and your history is yours alone.",
+        "text": "بيانات تصفحك لا تغادر جهازك أبدًا. نتحقق فقط من أسماء النطاقات، وسجلك يخصك وحدك.",
         "_needs_native_review": true
       },
       "cta_scan": {
-        "text": "Scan my inbox for hidden scams",
+        "text": "افحص بريدي بحثًا عن عمليات احتيال مخفية",
         "_needs_native_review": true
       },
       "list_item_1": {
-        "text": "Automatic link checking on every page you visit",
+        "text": "كل رابط في متصفحك يُفحص قبل أن تنقر عليه.",
         "_needs_native_review": true
       },
       "list_item_2": {
-        "text": "Block dangerous sites before they steal your data",
+        "text": "المواقع الاحتيالية تُحجب فورًا مع شرح بلغة بسيطة.",
         "_needs_native_review": true
       },
       "list_item_3": {
-        "text": "Works across Chrome, Firefox, Safari, and your phone",
+        "text": "بيانات التصفح تبقى على جهازك. نحن لا نحتفظ بسجل لزياراتك.",
         "_needs_native_review": true
       },
       "list_item_4": {
-        "text": "Your data stays on your device — always",
+        "text": "الإضافة تعمل مع Chrome وFirefox وSafari، وأيضًا على iOS وAndroid.",
         "_needs_native_review": true
       }
     },
@@ -776,23 +776,23 @@
         "_needs_native_review": true
       },
       "title": {
-        "text": "Payment received — thank you",
+        "text": "تأكيد الدفع",
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "Thanks for supporting Cleanway. Your subscription is active.",
+        "text": "شكرًا لدعم Cleanway. اشتراكك نشط.",
         "_needs_native_review": true
       },
       "plan_label": {
-        "text": "Plan",
+        "text": "الخطة",
         "_needs_native_review": true
       },
       "amount_label": {
-        "text": "Amount",
+        "text": "المبلغ",
         "_needs_native_review": true
       },
       "next_billing": {
-        "text": "Next billing date: $DATE$",
+        "text": "تاريخ الفوترة القادم: $DATE$",
         "placeholders": {
           "date": {
             "content": "$1"
@@ -801,7 +801,7 @@
         "_needs_native_review": true
       },
       "invoice_link": {
-        "text": "Download invoice",
+        "text": "تحميل الفاتورة",
         "_needs_native_review": true
       }
     },
@@ -811,27 +811,27 @@
         "_needs_native_review": true
       },
       "preheader": {
-        "text": "See what we blocked this week.",
+        "text": "تقريرك الأسبوعي: $COUNT$ موقعًا احتياليًا تم حجبه.",
         "_needs_native_review": true
       },
       "title": {
-        "text": "This week, Cleanway protected you from:",
+        "text": "تقريرك الأسبوعي",
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "Here's what happened on your devices in the past 7 days.",
+        "text": "هذا ما حدث على أجهزتك في الأيام السبعة الماضية.",
         "_needs_native_review": true
       },
       "stat_blocks_label": {
-        "text": "Scams blocked",
+        "text": "عمليات الاحتيال المحجوبة",
         "_needs_native_review": true
       },
       "stat_checks_label": {
-        "text": "Links checked",
+        "text": "الروابط المفحوصة",
         "_needs_native_review": true
       },
       "percentile_body": {
-        "text": "You're safer than $PCT$% of Cleanway users this week.",
+        "text": "أنت أكثر أمانًا من $PCT$% من مستخدمي Cleanway هذا الأسبوع.",
         "placeholders": {
           "pct": {
             "content": "$1"
@@ -840,7 +840,7 @@
         "_needs_native_review": true
       },
       "cta_view_full": {
-        "text": "View the full report",
+        "text": "اعرض التقرير الكامل",
         "_needs_native_review": true
       }
     },
@@ -855,15 +855,15 @@
         "_needs_native_review": true
       },
       "preheader": {
-        "text": "Free protection on your devices, set up in 30 seconds.",
+        "text": "$INVITER$ يدعوك للانضمام إلى عائلة Cleanway.",
         "_needs_native_review": true
       },
       "title": {
-        "text": "You've been invited to Cleanway Family",
+        "text": "تمت دعوتك إلى عائلة على Cleanway",
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "$NAME$ added you to their Cleanway family plan. You get the same protection on up to 2 of your devices — for free.",
+        "text": "$NAME$ أضافك إلى خطة العائلة في Cleanway. تحصل على نفس الحماية على ما يصل إلى جهازين خاصين بك — مجانًا.",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -872,11 +872,11 @@
         "_needs_native_review": true
       },
       "cta_accept": {
-        "text": "Accept invitation",
+        "text": "قبول الدعوة",
         "_needs_native_review": true
       },
       "body_p2_security": {
-        "text": "This invitation is for you only — it expires in 72 hours. Your family admin can't see what you browse; only alerts when something dangerous is blocked on your device.",
+        "text": "هذه الدعوة مخصصة لك وحدك — تنتهي خلال 72 ساعة. مسؤول عائلتك لا يستطيع رؤية ما تتصفحه؛ فقط تنبيهات عند حجب شيء خطير على جهازك.",
         "_needs_native_review": true
       }
     },
@@ -886,23 +886,23 @@
         "_needs_native_review": true
       },
       "preheader": {
-        "text": "Change your password on affected sites soon.",
+        "text": "غيّر كلمة المرور على المواقع المتأثرة قريبًا.",
         "_needs_native_review": true
       },
       "title": {
-        "text": "Your email appeared in a new breach",
+        "text": "بريدك ظهر في تسريب جديد",
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "Your email was found in a recently disclosed data breach. This means your password on the affected site may be exposed.",
+        "text": "تم العثور على بريدك الإلكتروني في تسريب بيانات تم الكشف عنه مؤخرًا. الموقع المتأثر مذكور أدناه.",
         "_needs_native_review": true
       },
       "body_p2_recommendation": {
-        "text": "Change your password on that site now. If you use the same password elsewhere, change it there too. Consider a password manager — it's the only real fix.",
+        "text": "غيّر كلمة المرور على ذلك الموقع الآن. إذا كنت تستخدم نفس كلمة المرور في مواقع أخرى، غيّرها هناك أيضًا.",
         "_needs_native_review": true
       },
       "cta_change_password": {
-        "text": "See affected sites",
+        "text": "اعرض المواقع المتأثرة",
         "_needs_native_review": true
       }
     },
@@ -912,23 +912,23 @@
         "_needs_native_review": true
       },
       "title": {
-        "text": "We'll be here if you come back",
+        "text": "تم إلغاء اشتراكك",
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "Your subscription has been canceled. Blocking scam sites continues to work for free — this is our ethical invariant, it won't change.",
+        "text": "تم إلغاء اشتراكك بنجاح. لن يُجدَّد، ولن تُحاسَب مرة أخرى.",
         "_needs_native_review": true
       },
       "body_p2_keep_free": {
-        "text": "You'll keep your free-tier features: link scanning, block pages, email leak checks, and basic Privacy Audit grades.",
+        "text": "ستحتفظ بميزات الخطة المجانية: فحص الروابط، صفحات الحجب، فحص تسريبات البريد، ودرجات تدقيق الخصوصية الأساسية.",
         "_needs_native_review": true
       },
       "cta_reactivate": {
-        "text": "Reactivate subscription",
+        "text": "إعادة تفعيل في أي وقت",
         "_needs_native_review": true
       },
       "date_label": {
-        "text": "Active until: $DATE$",
+        "text": "نشط حتى: $DATE$",
         "placeholders": {
           "date": {
             "content": "$1"
@@ -948,15 +948,15 @@
         "_needs_native_review": true
       },
       "preheader": {
-        "text": "Simple protection from scams — set up by your family.",
+        "text": "إعدادات أسهل وأكثر وضوحًا لمن يحب.",
         "_needs_native_review": true
       },
       "title": {
-        "text": "Safety from online scams — set up for you",
+        "text": "وضع الحماية المُبسَّط",
         "_needs_native_review": true
       },
       "body_p1_to_grandchild": {
-        "text": "$NAME$ set up Cleanway protection on your devices with extra-large text and voice alerts. You don't need to do anything — it's already working.",
+        "text": "$NAME$ أعدّ حماية Cleanway على أجهزتك بنص أكبر وتنبيهات صوتية. لا تحتاج إلى فعل شيء — كل شيء يعمل بالفعل.",
         "placeholders": {
           "name": {
             "content": "$1"
@@ -965,15 +965,15 @@
         "_needs_native_review": true
       },
       "body_p2_what_it_does": {
-        "text": "When a scammer tries to trick you with a fake bank website or delivery notice, Cleanway stops it before you enter anything. A clear warning shows in big letters: 'STOP — this is a scam site'.",
+        "text": "عندما يحاول محتال خداعك بموقع بنك مزيف أو إشعار توصيل، Cleanway يوقفه قبل أن تُدخل أي شيء. يظهر تحذير واضح بأحرف كبيرة: 'توقف — هذا موقع احتيال'.",
         "_needs_native_review": true
       },
       "cta_setup": {
-        "text": "Open the app",
+        "text": "افتح التطبيق",
         "_needs_native_review": true
       },
       "reassurance": {
-        "text": "If you're not sure what to do, tap the 'Ask family' button in the app — $NAME$ gets a message and can help.",
+        "text": "إذا لم تكن متأكدًا مما تفعل، اضغط زر 'اسأل العائلة' في التطبيق — $NAME$ سيتلقى رسالة ويمكنه مساعدتك.",
         "placeholders": {
           "name": {
             "content": "$1"

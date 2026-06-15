@@ -1,4 +1,4 @@
-# I18N Architecture — LinkShield
+# I18N Architecture — Cleanway
 
 > Locked 2026-04-14. Applies to all 3 clients (landing, extension × 3, mobile) + backend error messages.
 
@@ -59,7 +59,7 @@
    python scripts/translate.py --source en --target es,hi,pt,ru,ar,fr,de,it,id
    ```
    - Читает `en.json` из каждого клиента
-   - Отправляет в DeepL API (glossary настроен на LinkShield-specific terms)
+   - Отправляет в DeepL API (glossary настроен на Cleanway-specific terms)
    - Пишет `{locale}.json`
 2. **Human review (обязательно):**
    - **Russian** и **English** — самостоятельно (основная аудитория)
@@ -68,7 +68,7 @@
 
 ### Glossary (DeepL custom)
 Термины которые должны переводиться одинаково везде:
-- "LinkShield" → не переводить (brand)
+- "Cleanway" → не переводить (brand)
 - "Granny Mode" → локализованный эквивалент ("Режим Бабушки", "Modo Abuela", "ただし дедовский режим" — no wait, это японский не нужен)
 - "Family Hub" → "Семейный Хаб", etc.
 - "Scam site" (regular mode) → простая локальная версия
@@ -88,7 +88,7 @@
 ## File structure
 
 ```
-LinkShield/
+Cleanway/
 ├── landing/
 │   ├── messages/
 │   │   ├── en.json
@@ -151,7 +151,7 @@ LinkShield/
     "personal": "Personal",
     "family": "Family",
     "business": "Business",
-    "threat_threshold_nudge": "LinkShield has saved you {count} times. Consider supporting the project + protect your family with {plan} plan."
+    "threat_threshold_nudge": "Cleanway has saved you {count} times. Consider supporting the project + protect your family with {plan} plan."
   }
 }
 ```

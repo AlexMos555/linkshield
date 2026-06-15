@@ -1,4 +1,4 @@
-# REQUIREMENTS: LinkShield v2
+# REQUIREMENTS: Cleanway v2
 
 > Зафиксировано 2026-04-14 после gap-audit. Заменяет старую версию.
 > См. также: PROJECT.md, I18N_ARCHITECTURE.md, PRICING_MATRIX.md, SKILL_LEVELS.md.
@@ -44,7 +44,7 @@ Default Regular Mode UI не содержит терминов: phishing, audit,
 
 ### R2.B1 — Env-driven API URL
 **Критерий:** во всех клиентах (extension × 3, mobile, landing) URL API задаётся переменной окружения / build-time config, не hardcoded.
-- extension/src/utils/api.js: `API_BASE = process.env.LINKSHIELD_API_URL || 'https://api.linkshield.io'`
+- extension/src/utils/api.js: `API_BASE = process.env.CLEANWAY_API_URL || 'https://api.cleanway.ai'`
 - extension-firefox, extension-safari: аналогично
 - mobile/src/services/api.ts: аналогично через expo env
 - landing: через `NEXT_PUBLIC_API_URL`
@@ -78,10 +78,10 @@ Free tier: 10K lookups/day. Создаётся в console.cloud.google.com. До
 Production Redis для rate limiting + domain cache. URL в env `REDIS_URL`.
 
 ### R2.B7 — Vercel deploy landing + domain
-**Критерий:** `linkshield.io` резолвится на Vercel deployment.
+**Критерий:** `cleanway.ai` резолвится на Vercel deployment.
 - Deploy landing/ как Next.js app
 - Environment vars: NEXT_PUBLIC_API_URL, NEXT_PUBLIC_STRIPE_PUB_KEY
-- Custom domain linkshield.io + www.linkshield.io
+- Custom domain cleanway.ai + www.cleanway.ai
 - SSL (Vercel auto)
 
 ### R2.B8 — Pytest migration

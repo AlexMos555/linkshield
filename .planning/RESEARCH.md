@@ -1,4 +1,4 @@
-# RESEARCH: LinkShield — Technical Architecture (Final)
+# RESEARCH: Cleanway — Technical Architecture (Final)
 
 ## "Boring Database" Architecture
 

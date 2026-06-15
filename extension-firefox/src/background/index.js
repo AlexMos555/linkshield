@@ -18,6 +18,29 @@ try {
   console.warn("[Cleanway] tweetnacl load failed; family fan-out disabled:", e && e.message);
 }
 
+/**
+ * Minimal serial mutex for the MV3 service worker. Pure JS closure
+ * pattern — no external dep, no setTimeout. Each runExclusive() call
+ * waits for the previous critical section's promise to resolve, then
+ * runs its task. The chain head is the only mutable state.
+ *
+ * Used by handleCheck() to guard chrome.storage.local.stats RMW so
+ * concurrent CHECK_DOMAINS messages from multiple tabs can't lose
+ * increments. (Audit extension-mv3 MEDIUM stats counter race.)
+ */
+const _statsMutex = (() => {
+  let chain = Promise.resolve();
+  return {
+    async runExclusive(task) {
+      const run = chain.then(task, task);
+      // Swallow rejection in the chain so a failed task doesn't poison
+      // every subsequent run; the original promise still rejects.
+      chain = run.catch(() => {});
+      return run;
+    },
+  };
+})();
+
 // API base — production Railway default, override via Options page (chrome.storage.local.api_url)
 let API_BASE = "https://api.cleanway.ai";
 try {
@@ -190,20 +213,34 @@ async function handleCheck(domains) {
     results.push(lr);
   }
 
-  // Track stats
+  // Track stats — guarded by an async mutex.
+  //
+  // The MV3 service worker can dispatch multiple handleCheck() calls
+  // concurrently (one per tab message in flight). Without serialisation,
+  // two read/modify/write cycles on chrome.storage.local.stats can
+  // interleave: A reads {blocked:5}, B reads {blocked:5}, both write
+  // {blocked:6} — and one block is lost from the user's lifetime tally.
+  // (Audit extension-mv3 MEDIUM "Stats counter has an unguarded
+  // read-modify-write race in the MV3 service worker".)
+  //
+  // The mutex is a single rotating promise chain in module scope; each
+  // handleCheck appends its critical section to the chain and awaits
+  // the chain head. Under low contention this is effectively free.
   let dangerousBlocksThisBatch = 0;
   try {
-    const data = await chrome.storage.local.get(["stats"]);
-    const stats = data.stats || { total_checks: 0, threats_blocked: 0, threats_warned: 0 };
-    for (const r of results) {
-      stats.total_checks++;
-      if (r.level === "dangerous") {
-        stats.threats_blocked++;
-        dangerousBlocksThisBatch++;
+    await _statsMutex.runExclusive(async () => {
+      const data = await chrome.storage.local.get(["stats"]);
+      const stats = data.stats || { total_checks: 0, threats_blocked: 0, threats_warned: 0 };
+      for (const r of results) {
+        stats.total_checks++;
+        if (r.level === "dangerous") {
+          stats.threats_blocked++;
+          dangerousBlocksThisBatch++;
+        }
+        if (r.level === "caution") stats.threats_warned++;
       }
-      if (r.level === "caution") stats.threats_warned++;
-    }
-    await chrome.storage.local.set({ stats });
+      await chrome.storage.local.set({ stats });
+    });
   } catch (e) {}
 
   // Server-side lifetime counter for the Pricing v2 freemium gating —
@@ -253,11 +290,24 @@ async function handleCheck(domains) {
 // ── Messages ──
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (msg.type === "CHECK_DOMAINS") {
-    handleCheck(msg.domains).then(respond);
+    // .catch() prevents an uncaught promise rejection from silently
+    // closing the message channel — the content script then waits the
+    // full timeout for a respond() that never comes. Returning an
+    // explicit error shape lets callers fall back to local scoring.
+    // (Audit extension-mv3 MEDIUM "handleCheck(...).then(respond) has
+    // no .catch() — rejection closes the message channel silently".)
+    handleCheck(msg.domains)
+      .then(respond)
+      .catch((err) => {
+        try { respond({ error: "background_failure", message: String(err && err.message ? err.message : err) }); }
+        catch (e) { /* port closed before respond fired — nothing we can do */ }
+      });
     return true;
   }
   if (msg.type === "GET_STATS") {
-    chrome.storage.local.get(["stats"]).then(d => respond(d.stats || {}));
+    chrome.storage.local.get(["stats"])
+      .then((d) => respond(d.stats || {}))
+      .catch(() => respond({}));
     return true;
   }
   // Open a tab — used by Privacy Audit's "Share grade" button. Content

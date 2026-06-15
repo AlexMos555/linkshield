@@ -1,4 +1,4 @@
-# STATE: LinkShield
+# STATE: Cleanway
 
 > Single source of truth для "где мы сейчас". Обновлено 2026-04-16.
 
@@ -30,7 +30,7 @@ docs:     docs/architecture/, SECURITY.md, .planning/
 - Google Safe Browsing API key (console.cloud.google.com)
 - Redis provider (Upstash free tier или Railway addon)
 - Railway env vars обновление на новый EU Supabase (требуется `railway login`)
-- Выбор домена — ребрендинг (linkshield.com/.io недоступны как наши)
+- Выбор домена — ребрендинг (cleanway.com/.io недоступны как наши)
 
 ## Decisions locked
 
@@ -66,7 +66,7 @@ docs:     docs/architecture/, SECURITY.md, .planning/
 
 **Tasks:**
 1. Add `mobile/` в root `package.json` workspaces
-2. `mobile/src/services/api.ts` → заменить на `@linkshield/api-client`
+2. `mobile/src/services/api.ts` → заменить на `@cleanway/api-client`
 3. Расширить `scripts/build-i18n.py` чтобы генерировало `mobile/i18n/{locale}.json`
 4. Настроить `expo-localization` + `react-i18next` на эти 10 файлов
 5. Заменить hardcoded English строки в mobile на `t("key")` calls
@@ -79,12 +79,12 @@ docs:     docs/architecture/, SECURITY.md, .planning/
 2. **Blocking is free forever.** Даже после 50-threat threshold блокировка работает. Paywall только на детали/семью/режимы.
 3. **Plain language.** Никакого жаргона в Regular Mode UI. Pro Mode может иметь technical terms.
 4. **i18n source of truth.** Все UI строки — в `packages/i18n-strings/src/*.json`. Hardcoded English = bug.
-5. **Contract-driven clients.** Все клиенты (landing/mobile/extension) импортируют `@linkshield/api-types` и `@linkshield/api-client`. Hand-rolled interfaces = bug.
+5. **Contract-driven clients.** Все клиенты (landing/mobile/extension) импортируют `@cleanway/api-types` и `@cleanway/api-client`. Hand-rolled interfaces = bug.
 6. **Secrets never in git.** gitleaks pre-commit + CI. Все creds через env vars или Railway/Vercel dashboards.
 
 ## Open questions (не блокеры)
 
-- Какой домен регать (linkshield.com занят, linkshield.io не наш)? Отложено до ребрендинга.
+- Какой домен регать (cleanway.com занят, cleanway.ai не наш)? Отложено до ребрендинга.
 - Email провайдер: Resend (modern, $20/mo) vs SES (дёшево, сложнее setup)? Решим в Phase E₂.
 - Stripe Adaptive Pricing vs ручные price IDs по странам? Ручные для контроля.
 
@@ -93,6 +93,6 @@ docs:     docs/architecture/, SECURITY.md, .planning/
 - **2026-04-14 S10:** Phase A complete (7 планов + competitive-analysis v2 с UX axis). Установили claude-mem, antigravity skills, ultimate-guide MCP.
 - **2026-04-15 S11:** Phase B — Supabase EU migration, env-driven URLs в клиентах, pytest. Phase C — popup/block/welcome redesigned на 10 языков.
 - **2026-04-16 S12:** Landing i18n (next-intl), security hardening (Dockerfile/compose/headers/gitleaks/CI), monorepo refactor (packages/extension-core, packages/i18n-strings). Phase C partially, architecture principles documented.
-- **2026-04-16 S13:** api-types + api-client generated из OpenAPI. Landing pricing page переведена на @linkshield/api-client. Pydantic response models для pricing. Начинаем Phase E₁ (mobile монорепо).
+- **2026-04-16 S13:** api-types + api-client generated из OpenAPI. Landing pricing page переведена на @cleanway/api-client. Pydantic response models для pricing. Начинаем Phase E₁ (mobile монорепо).
 - **2026-04-16 S14 (now):** Phase E₁ + E₂ done. Mobile интегрирован в монорепо (api-client, i18n). Email infra: 7 React Email шаблонов × 10 языков, 600 i18n keys, 61 новых тестов, HMAC unsubscribe + RFC 8058 one-click, docs/runbooks/email.md, packages/email-templates/README.md. Активная фаза — E₃ (environments).
 - **2026-04-16 S15 (now):** Phase E₃ done. Staging Supabase project `dsjkfcllugmlegwymmth` created + migrations applied (Sydney удалён). `api/config.py` + `validate_settings()` enforce environment-aware rules: dev permissive, staging strict (Stripe test only), prod ruthless (sk_live_ required, JWT ≥64 chars, Sentry required). 24 новых `test_environment_guards` теста + 3 deploy workflows (staging auto-on-main, prod manual-dispatch with approval). Runbooks: deploy.md (PR → staging → approve → prod) + rollback.md (5-min RTO). Total: 250 pytest pass, 7 shared packages, 10 languages, 3 environments ready.
