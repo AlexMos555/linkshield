@@ -25,6 +25,16 @@ interface FetchOpts {
   body?: unknown;
 }
 
+/**
+ * Hard ceiling for any Family Hub API call. Without it a bad network
+ * (the user just walked into an elevator, captive portal, etc.) leaves
+ * the screen in a permanent loading spinner because fetch() has no
+ * built-in timeout. Picked 15 s to match the api-client's default
+ * generosity for end-user-initiated requests. (Audit mobile-ts HIGH
+ * family-api-no-timeout.)
+ */
+const FAMILY_FETCH_TIMEOUT_MS = 15_000;
+
 async function _fetch<T>(path: string, opts: FetchOpts): Promise<T | null> {
   if (!opts.token) return null;
   const headers: Record<string, string> = {
@@ -32,17 +42,23 @@ async function _fetch<T>(path: string, opts: FetchOpts): Promise<T | null> {
   };
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FAMILY_FETCH_TIMEOUT_MS);
+
   try {
     const resp = await fetch(`${API_BASE}${path}`, {
       method: opts.method ?? "GET",
       headers,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal: controller.signal,
     });
     if (!resp.ok) return null;
     const text = await resp.text();
     return text ? (JSON.parse(text) as T) : ({} as T);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

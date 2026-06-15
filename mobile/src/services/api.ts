@@ -36,6 +36,36 @@ export function setAuthToken(token: string | null): void {
   _authToken = token;
 }
 
+// ─── Account-lock (410) event bus ─────────────────────────────────
+//
+// The api-client returns `kind: "account_locked"` on any HTTP 410. We
+// surface that to the UI via a singleton EventEmitter so that any
+// screen which makes an authenticated call can transparently route
+// the user to the restore flow without each call site reimplementing
+// the same `if (error.kind === "account_locked") { ... }` check.
+//
+// The AccountLockedModal mounted in app/_layout.tsx subscribes once
+// at boot and renders the restore overlay when fired. UI handlers
+// only need to await the API call as before — the modal takes care
+// of presenting the restore CTA, calling /restore, and clearing the
+// flag on success. (Audit mobile-ts HIGH account-locked-410-unhandled.)
+import { EventEmitter } from "events";
+
+export const accountLockedEvents = new EventEmitter();
+
+/** Last seen restoreUrl from a 410 response, for the modal. */
+let _lastRestoreUrl: string | null = null;
+export function getLastRestoreUrl(): string | null {
+  return _lastRestoreUrl;
+}
+
+function _maybeEmitAccountLocked(error: ApiError | null): void {
+  if (error && error.kind === "account_locked") {
+    _lastRestoreUrl = error.restoreUrl ?? "/api/v1/user/account/restore";
+    accountLockedEvents.emit("locked", { restoreUrl: _lastRestoreUrl });
+  }
+}
+
 // ─── Singleton client ────────────────────────────────────────────
 const _client: CleanwayClient = createClient({
   baseUrl: API_BASE,
@@ -51,16 +81,49 @@ const _client: CleanwayClient = createClient({
 // Keep the surface small — mobile UI should depend on these, not the client directly.
 
 export async function checkDomain(domain: string): Promise<Result<DomainResult>> {
-  return _client.check.publicDomain(domain);
+  const r = await _client.check.publicDomain(domain);
+  _maybeEmitAccountLocked(r.error);
+  return r;
 }
 
 export async function getPricingForCountry(cc?: string | null): Promise<Result<PricingFor>> {
-  return _client.pricing.forCountry(cc);
+  const r = await _client.pricing.forCountry(cc);
+  _maybeEmitAccountLocked(r.error);
+  return r;
 }
 
 export async function checkApiHealth(): Promise<boolean> {
   const { error } = await _client.health();
+  _maybeEmitAccountLocked(error);
   return error === null;
+}
+
+/**
+ * POST /api/v1/user/account/restore — called by AccountLockedModal
+ * when the user confirms the restore. The api-client doesn't expose
+ * this verb yet because it's not in the typed surface; we do a
+ * raw fetch here to keep the dependency surface small. Returns true
+ * on success; the modal closes itself.
+ */
+export async function restoreAccount(): Promise<boolean> {
+  if (!_authToken) return false;
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/user/account/restore`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${_authToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (resp.ok) {
+      _lastRestoreUrl = null;
+      accountLockedEvents.emit("restored");
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 // Re-export types so call sites don't need 3 imports

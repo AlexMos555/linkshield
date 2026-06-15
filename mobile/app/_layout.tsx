@@ -3,6 +3,13 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { restoreSession } from "../src/services/auth";
 import { setAuthToken } from "../src/services/api";
+// Side-effecting import: initialises i18next at boot so every screen
+// can immediately `useTranslation()`. Previously the module was authored
+// but never imported anywhere — all 10 locales were dead code on
+// device, and every string fell back to the en hard-coded literal.
+// (Audit mobile-ts HIGH mobile-i18n-dead-code.)
+import "../src/i18n";
+import { AccountLockedModal } from "../src/components/AccountLockedModal";
 
 export default function RootLayout() {
   // Restore previously-persisted Supabase session on cold boot. Runs once.
@@ -48,6 +55,9 @@ export default function RootLayout() {
         <Stack.Screen name="upgrade" options={{ title: "Upgrade" }} />
         <Stack.Screen name="report" options={{ title: "Weekly Report" }} />
       </Stack>
+      {/* Global overlay — subscribes to accountLockedEvents and renders
+          the restore CTA whenever any authed call returns 410 Gone. */}
+      <AccountLockedModal />
     </>
   );
 }
