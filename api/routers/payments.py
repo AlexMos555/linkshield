@@ -276,6 +276,23 @@ async def stripe_webhook(request: Request):
         await _handle_customer_deleted(data)
     elif event_type == "invoice.payment_failed":
         await _handle_payment_failed(data)
+    elif event_type == "charge.refunded":
+        # Operator / customer / dispute issued a refund. The audit
+        # trail matters here: a refunded charge has to immediately
+        # drop the user's tier back to free (otherwise they keep
+        # paid features for the rest of the current billing period
+        # without having paid). Stripe sometimes ALSO fires
+        # customer.subscription.deleted but only when the refund is
+        # paired with an explicit subscription cancellation — a
+        # standalone refund of a single invoice does not, so we
+        # handle the tier drop ourselves.
+        await _handle_charge_refunded(data)
+    elif event_type == "charge.dispute.created":
+        # Customer (or their bank) filed a chargeback. Account stays
+        # functional during the dispute (Stripe gives us ~20 days to
+        # respond), but we audit-log it for fraud review and tag the
+        # user so support can de-prioritise their tickets if needed.
+        await _handle_charge_dispute(data)
 
     return {"status": "ok"}
 
@@ -453,6 +470,117 @@ async def _handle_invoice_paid(invoice: dict):
             "user_id": user_id,
             "subscription_id": subscription_id,
             "amount_paid_cents": amount_paid,
+        },
+    )
+
+
+async def _handle_charge_refunded(charge: dict):
+    """A charge was refunded (full or partial). For paid Cleanway
+    subscriptions this means the user got their money back for the
+    current period — we drop their tier to free immediately rather
+    than wait for the next renewal cycle. If the refund is partial
+    (Stripe sets `amount_refunded < amount`) we still drop, on the
+    rationale that partial refunds are operator-driven goodwill and
+    we prefer being generous on the access-revoke side too — the user
+    is welcome to re-subscribe.
+
+    audit_log records the refund + refund cause so finance / fraud
+    review can correlate with internal reasons.
+    """
+    customer_id = charge.get("customer")
+    user_id = (charge.get("metadata") or {}).get("user_id")
+    amount = charge.get("amount") or 0
+    amount_refunded = charge.get("amount_refunded") or 0
+    currency = charge.get("currency")
+    reason = (charge.get("refunds") or {}).get("data", [{}])
+    reason = reason[0].get("reason") if reason else None
+
+    logger.info(
+        "charge_refunded",
+        extra={
+            "customer_id": customer_id,
+            "user_id": user_id,
+            "amount_cents": amount,
+            "amount_refunded_cents": amount_refunded,
+            "currency": currency,
+            "reason": reason,
+        },
+    )
+
+    if user_id:
+        # Tier resolver looks at the active subscriptions row; flipping
+        # status to refunded + tier to free makes the next /check call
+        # treat them as a free user. If they have a still-active
+        # subscription on Stripe's side (partial refund of a previous
+        # period), Stripe will eventually fire a subscription.updated
+        # which will correct the state — but in the meantime our DB is
+        # conservative.
+        await _update_subscription(user_id, "free", "refunded", "stripe", None)
+
+        from api.services import audit_log
+        await audit_log.write(
+            action="subscription.refunded",
+            target_kind="subscription",
+            target_id=charge.get("id") or user_id,
+            actor_user_id=user_id,
+            meta={
+                "stripe_event": "charge.refunded",
+                "amount_refunded_cents": amount_refunded,
+                "currency": currency,
+                "reason": reason,
+            },
+        )
+
+
+async def _handle_charge_dispute(charge_or_dispute: dict):
+    """Customer (or their bank) filed a chargeback. Stripe's
+    charge.dispute.created event payload contains the dispute object
+    directly, with `.charge` pointing at the original charge id.
+
+    We DON'T downgrade the user here — Stripe gives merchants ~20 days
+    to respond with evidence, and revoking access mid-dispute is bad
+    UX if the dispute turns out to be fraud-against-us (stolen card
+    used to buy a subscription, real cardholder disputes). Instead we:
+      - audit-log the event so support / finance can pull a report
+      - log structured so Sentry breadcrumb context shows it
+      - flag the user in a future fraud_review_required column once
+        we add one
+
+    If the dispute is LOST (charge.dispute.closed with status=lost),
+    that's when we drop tier — covered in a future handler when we
+    wire that event.
+    """
+    dispute_id = charge_or_dispute.get("id")
+    charge_id = charge_or_dispute.get("charge")
+    amount = charge_or_dispute.get("amount") or 0
+    currency = charge_or_dispute.get("currency")
+    reason = charge_or_dispute.get("reason")
+    user_id = (charge_or_dispute.get("metadata") or {}).get("user_id")
+
+    logger.warning(
+        "charge_dispute_created",
+        extra={
+            "dispute_id": dispute_id,
+            "charge_id": charge_id,
+            "amount_cents": amount,
+            "currency": currency,
+            "reason": reason,
+            "user_id": user_id,
+        },
+    )
+
+    from api.services import audit_log
+    await audit_log.write(
+        action="subscription.dispute_opened",
+        target_kind="subscription",
+        target_id=dispute_id or charge_id or "unknown",
+        actor_user_id=user_id,
+        meta={
+            "stripe_event": "charge.dispute.created",
+            "amount_cents": amount,
+            "currency": currency,
+            "reason": reason,
+            "charge_id": charge_id,
         },
     )
 
