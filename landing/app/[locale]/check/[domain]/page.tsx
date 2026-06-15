@@ -300,9 +300,15 @@ export default async function CheckPage({ params }: Props) {
         <div style={{ marginTop: 32, textAlign: "center" }}>
           <p style={{ color: "#64748b", fontSize: 14, marginBottom: 12 }}>Check another domain:</p>
           <form action="/check" method="get" style={{ display: "flex", gap: 8, maxWidth: 400, margin: "0 auto" }}>
+            {/* aria-label provides an accessible name for the input.
+                Placeholder text alone disappears on focus + isn't read
+                by some screen readers. (Audit landing-a11y MEDIUM
+                "Domain search form in check/[domain]/page.tsx has no
+                accessible label — placeholder only".) */}
             <input
               name="q"
               placeholder="Enter domain..."
+              aria-label="Domain to check"
               style={{
                 flex: 1,
                 padding: "10px 14px",

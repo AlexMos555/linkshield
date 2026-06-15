@@ -45,6 +45,7 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.URL
+import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -218,7 +219,27 @@ class CleanwayVpnService : VpnService() {
             try {
                 if (conn.responseCode == 200) {
                     val body = conn.inputStream.bufferedReader().use { it.readText() }
-                    if (body.contains("\"dangerous\"")) {
+                    // Parse the JSON response properly instead of substring-
+                    // matching "\"dangerous\"" anywhere in the body — the
+                    // old check would false-positive on safe sites whose
+                    // domain or one of the `reasons[].detail` strings
+                    // happened to contain the literal word "dangerous"
+                    // (e.g. "potentially dangerous extension" in a CDN
+                    // description). The iOS counterpart already does this
+                    // via Codable; matching it keeps platform behavior
+                    // identical. (Audit mobile-native MEDIUM Android DNS
+                    // substring match.)
+                    val isDangerous = try {
+                        val json = JSONObject(body)
+                        json.optString("level") == "dangerous"
+                    } catch (e: Exception) {
+                        Log.w(TAG, "check_response_parse_failed: ${e.message}")
+                        // Conservative on parse error: don't block a domain
+                        // we couldn't classify; the user's other layers
+                        // (extension, mobile app) will catch it.
+                        false
+                    }
+                    if (isDangerous) {
                         blockedDomains.add(domain)
                         notifyBlocked(domain)
                     } else {
