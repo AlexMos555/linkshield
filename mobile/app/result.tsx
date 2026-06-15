@@ -14,16 +14,39 @@ export default function ResultScreen() {
 
   useEffect(() => {
     if (!domain) return;
-    checkSingleDomain(domain)
-      .then((r) => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await checkSingleDomain(domain);
+        if (cancelled) return;
         setResult(r);
-        saveCheck(r);
-        if (r.level === "dangerous") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        else if (r.level === "caution") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+        // Persist before kicking off the haptic so that if the user
+        // immediately navigates away the SQLite write has at least
+        // started. Failure is logged but doesn't block the UI — the
+        // visible result is what matters; the history row is bonus.
+        // (Audit mobile-ts LOW saveCheck-no-await race.)
+        try {
+          await saveCheck(r);
+        } catch {
+          // Silent — best-effort persistence.
+        }
+        if (r.level === "dangerous") {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        } else if (r.level === "caution") {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        } else {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } catch (e: unknown) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Check failed");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [domain]);
 
   if (loading) {
@@ -105,8 +128,14 @@ export default function ResultScreen() {
       <TouchableOpacity
         style={styles.shareBtn}
         onPress={() => {
-          Share.share({
+          // Audit mobile-ts LOW: previously fired without await/catch —
+          // a user dismissing the share sheet rejected the promise and
+          // we lost the error silently. Now we await + ignore Cancel
+          // (it's not really an error) and let the result fall through.
+          void Share.share({
             message: `${result.domain} is ${label} (score: ${result.score}/100). Checked with Cleanway — https://cleanway.ai/check/${result.domain}`,
+          }).catch(() => {
+            /* User dismissed share sheet — not an error worth surfacing. */
           });
         }}
       >
