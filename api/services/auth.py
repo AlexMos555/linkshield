@@ -20,12 +20,20 @@ logger = logging.getLogger("cleanway.auth")
 _TIER_CACHE_TTL = 300
 
 
-async def get_current_user(
-    authorization: Optional[str] = Header(None),
-) -> AuthUser:
+async def _decode_jwt_and_resolve(authorization: Optional[str]) -> AuthUser:
     """
-    Validate Supabase JWT and return authenticated user.
-    Tier is resolved from Supabase DB (cached in Redis).
+    Shared JWT validate + tier resolve path used by every entry-point
+    dependency (get_current_user, get_current_user_including_deleted,
+    get_optional_user). Centralising it means the JWT options + the
+    error-mapping policy live in ONE place — previous duplication
+    (audit backend MEDIUM "JWT decode logic is fully duplicated
+    between get_current_user and get_current_user_including_deleted")
+    let the two paths drift on subtle behaviour (audience claim,
+    algorithm allowlist, error wording).
+
+    Throws HTTPException(401) on any auth failure. Callers layer on
+    additional gates (soft-delete check, disposable-email check) AFTER
+    this returns successfully.
     """
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header required")
@@ -43,73 +51,77 @@ async def get_current_user(
             algorithms=["HS256"],
             audience="authenticated",
         )
-
-        user_id = payload.get("sub")
-        email = payload.get("email")
-
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-        # Resolve tier from DB (cached in Redis)
-        tier = await _resolve_user_tier(user_id)
-
-        # ── Soft-delete gate ──
-        # Privacy Policy §9: account-deleted users must lose access
-        # during the 30-day grace window. Without this check, a user
-        # who clicked "Delete account" would still be charged + still
-        # use the API throughout grace. The flag is set in
-        # api/routers/user.py::delete_account via Redis SETEX (TTL =
-        # grace window) and cleared by /user/account/restore.
-        # Two endpoints opt out via `get_current_user_including_deleted`
-        # so the user can still restore + export their data while
-        # locked out of everything else.
-        try:
-            from api.services.cache import get_redis
-
-            r = await get_redis()
-            if await r.get(f"deleted:{user_id}"):
-                raise HTTPException(
-                    status_code=410,
-                    detail={
-                        "error": "Account is scheduled for deletion.",
-                        "restore_url": "/api/v1/user/account/restore",
-                    },
-                )
-        except HTTPException:
-            raise
-        except Exception:
-            # Redis blip → fail-open. Better one user briefly past the
-            # gate than the whole API down on a Redis hiccup.
-            pass
-
-        # Attach context to Sentry's request-scoped scope so any
-        # subsequent error within this request is pre-tagged with
-        # the authenticated user_id + tier. Triage in Sentry without
-        # this would require correlating by request_id manually.
-        # We deliberately DO NOT pass `email` — privacy invariant +
-        # our own data-scrubbing config already strips it.
-        try:
-            import sentry_sdk
-
-            sentry_sdk.set_user(
-                {"id": user_id, "tier": tier.value if hasattr(tier, "value") else str(tier)}
-            )
-        except Exception:
-            # Sentry isn't configured in dev / tests — silent.
-            pass
-
-        return AuthUser(
-            id=user_id,
-            email=email,
-            tier=tier,
-        )
-
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError as e:
-        # Log the real error server-side, return generic message to client
+        # Log the real error server-side, return generic message to client.
         logger.warning("jwt_invalid", extra={"error": str(e)})
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user_id = payload.get("sub")
+    email = payload.get("email")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    tier = await _resolve_user_tier(user_id)
+    return AuthUser(id=user_id, email=email, tier=tier)
+
+
+async def get_current_user(
+    authorization: Optional[str] = Header(None),
+) -> AuthUser:
+    """
+    Validate Supabase JWT and return authenticated user.
+    Tier is resolved from Supabase DB (cached in Redis).
+    """
+    user = await _decode_jwt_and_resolve(authorization)
+
+    # ── Soft-delete gate ──
+    # Privacy Policy §9: account-deleted users must lose access during
+    # the 30-day grace window. Without this check, a user who clicked
+    # "Delete account" would still be charged + still use the API
+    # throughout grace. The flag is set in
+    # api/routers/user.py::delete_account via Redis SETEX (TTL = grace
+    # window) and cleared by /user/account/restore. Two endpoints opt
+    # out via `get_current_user_including_deleted` so the user can
+    # still restore + export their data while locked out of everything
+    # else.
+    try:
+        from api.services.cache import get_redis
+
+        r = await get_redis()
+        if await r.get(f"deleted:{user.id}"):
+            raise HTTPException(
+                status_code=410,
+                detail={
+                    "error": "Account is scheduled for deletion.",
+                    "restore_url": "/api/v1/user/account/restore",
+                },
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        # Redis blip → fail-open. Better one user briefly past the
+        # gate than the whole API down on a Redis hiccup.
+        pass
+
+    # Attach context to Sentry's request-scoped scope so any subsequent
+    # error within this request is pre-tagged with the authenticated
+    # user_id + tier. Triage in Sentry without this would require
+    # correlating by request_id manually. We deliberately DO NOT pass
+    # `email` — privacy invariant + our own data-scrubbing config
+    # already strips it.
+    try:
+        import sentry_sdk
+
+        sentry_sdk.set_user(
+            {"id": user.id, "tier": user.tier.value if hasattr(user.tier, "value") else str(user.tier)}
+        )
+    except Exception:
+        # Sentry isn't configured in dev / tests — silent.
+        pass
+
+    return user
 
 
 async def get_current_user_including_deleted(
@@ -122,35 +134,14 @@ async def get_current_user_including_deleted(
       - POST /api/v1/user/account/restore  (the way out of the lock)
       - GET  /api/v1/user/export           (GDPR Art. 15 — they still
                                             have the right to access)
+
+    Identical JWT path to get_current_user (shared via
+    _decode_jwt_and_resolve) — only the soft-delete + Sentry-context
+    layering is skipped. (Audit backend MEDIUM "JWT decode logic is
+    fully duplicated between get_current_user and
+    get_current_user_including_deleted".)
     """
-    # Skip the deletion check by temporarily marking a flag that the
-    # real get_current_user can see. Simpler approach: re-implement
-    # the JWT verify path inline, mirroring get_current_user minus
-    # the deletion check, so the two functions don't entangle via
-    # context-vars or env tricks.
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Authorization header required")
-    token = authorization.replace("Bearer ", "").strip()
-    if not token:
-        raise HTTPException(status_code=401, detail="Token required")
-    settings = get_settings()
-    try:
-        payload = jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-        user_id = payload.get("sub")
-        email = payload.get("email")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid or expired token")
-        tier = await _resolve_user_tier(user_id)
-        return AuthUser(id=user_id, email=email, tier=tier)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return await _decode_jwt_and_resolve(authorization)
 
 
 async def get_optional_user(

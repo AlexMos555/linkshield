@@ -39,6 +39,23 @@ from api.services.domain_validator import validate_domain, normalize_domain, Dom
 router = APIRouter(prefix="/api/v1", tags=["check"])
 
 
+# Hosting platforms whose subdomains can belong to anyone — never
+# eligible for the fast safe-path even if the apex domain is in Tranco
+# Top 100K. Module-level frozenset so we don't reconstruct the set on
+# every /check call (audit backend MEDIUM "_HOSTING platform set is
+# reconstructed on every call to _quick_allowlist_check"). frozenset
+# guarantees no caller can mutate it accidentally.
+_HOSTING_PLATFORMS: frozenset[str] = frozenset({
+    "pages.dev", "workers.dev", "r2.dev", "netlify.app", "vercel.app",
+    "herokuapp.com", "github.io", "gitlab.io", "web.app", "firebaseapp.com",
+    "appspot.com", "azurewebsites.net", "cloudfront.net", "onrender.com",
+    "fly.dev", "railway.app", "blogspot.com", "wordpress.com", "wixsite.com",
+    "wixstudio.com", "weebly.com", "webflow.io", "framer.app", "framer.website",
+    "carrd.co", "notion.site", "myshopify.com", "lovable.app", "replit.app",
+    "webcindario.com", "contaboserver.net", "s3.amazonaws.com",
+})
+
+
 def _quick_allowlist_check(domain: str) -> DomainResult | None:
     """
     Fast path: check if domain is in Tranco Top 100K.
@@ -48,19 +65,7 @@ def _quick_allowlist_check(domain: str) -> DomainResult | None:
     from api.services.scoring import TOP_DOMAINS, _extract_base_domain, _is_url_shortener, _TRANCO_TOP_10K
 
     base = _extract_base_domain(domain)
-
-    # Hosting platforms: subdomains can be anyone's — need full analysis
-    _HOSTING = {
-        "pages.dev", "workers.dev", "r2.dev", "netlify.app", "vercel.app",
-        "herokuapp.com", "github.io", "gitlab.io", "web.app", "firebaseapp.com",
-        "appspot.com", "azurewebsites.net", "cloudfront.net", "onrender.com",
-        "fly.dev", "railway.app", "blogspot.com", "wordpress.com", "wixsite.com",
-        "wixstudio.com", "weebly.com", "webflow.io", "framer.app", "framer.website",
-        "carrd.co", "notion.site", "myshopify.com", "lovable.app", "replit.app",
-        "webcindario.com", "contaboserver.net", "s3.amazonaws.com",
-    }
-
-    is_hosting = base in _HOSTING and domain != base
+    is_hosting = base in _HOSTING_PLATFORMS and domain != base
     is_shortener = _is_url_shortener(base)
 
     if is_hosting or is_shortener:
