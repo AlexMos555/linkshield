@@ -177,6 +177,24 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
 
     // MARK: - Upstream DNS
 
+    /// How long we wait for Cloudflare to answer a single UDP DNS query
+    /// before we give up, cancel the connection, and resume the caller.
+    /// Without this, a dropped response packet (or upstream blackhole)
+    /// stalls `receiveMessage` forever and the continuation is never
+    /// resumed — leaking coroutines, dispatch queues, and connections
+    /// until the Network Extension hits its ~50 MB memory cap and gets
+    /// silently killed by iOS. (Audit mobile-native HIGH iOS-NWConnection-deadlock.)
+    ///
+    /// 5 s is generous: Cloudflare's p99 DNS RTT from US-East is < 50 ms,
+    /// from EU/Asia < 200 ms. Anything slower than 5 s is functionally a
+    /// failure from the user's perspective anyway.
+    ///
+    /// CHANGED-BUT-UNTESTED-ON-DEVICE: this fix has only been read-and-
+    /// reasoned-through, not yet verified on a real iPhone. Smoke-test
+    /// against airplane-mode toggle + captive portal + Cloudflare null-route
+    /// before promoting to TestFlight.
+    private static let forwardTimeoutSeconds: Double = 5.0
+
     /// Forward a raw DNS query to Cloudflare 1.1.1.1 over UDP and inject the
     /// response back into the tunnel. Uses `NWConnection` (Network.framework)
     /// for proper cancellation + Sendable safety.
@@ -188,6 +206,18 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             let resumeOnce: @Sendable () -> Void = {
                 if !resumed { resumed = true; cont.resume() }
             }
+
+            // Single cancellable timer that fires on `queue` after the
+            // upstream has had 5 s to respond. Bound to `queue` so the
+            // cancel inside the receive completion serialises correctly
+            // with the firing path — DispatchWorkItem.cancel is a no-op
+            // if already executed and idempotent if called twice.
+            let timeoutItem = DispatchWorkItem {
+                log.error("dns_forward_timeout: upstream silent for \(Self.forwardTimeoutSeconds)s")
+                connection.cancel()
+                resumeOnce()
+            }
+
             connection.stateUpdateHandler = { [weak self] state in
                 switch state {
                 case .ready:
@@ -196,11 +226,19 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                     connection.send(content: dnsPayload, completion: .contentProcessed { error in
                         if let error = error {
                             log.error("dns_forward_send_failed: \(error.localizedDescription, privacy: .public)")
+                            timeoutItem.cancel()
                             connection.cancel()
                             resumeOnce()
                             return
                         }
+                        // Arm the deadline AFTER send succeeded — only the
+                        // receive path can deadlock, send already returned
+                        // by this point.
+                        queue.asyncAfter(deadline: .now() + Self.forwardTimeoutSeconds, execute: timeoutItem)
                         connection.receiveMessage { [weak self] data, _, _, _ in
+                            // Cancel timer FIRST so the timeout handler can't
+                            // race the success path and double-cancel things.
+                            timeoutItem.cancel()
                             defer {
                                 connection.cancel()
                                 resumeOnce()
@@ -217,9 +255,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                     })
                 case .failed(let error), .waiting(let error):
                     log.error("dns_upstream_state: \(error.localizedDescription, privacy: .public)")
+                    timeoutItem.cancel()
                     connection.cancel()
                     resumeOnce()
                 case .cancelled:
+                    timeoutItem.cancel()
                     resumeOnce()
                 default:
                     break
