@@ -8,6 +8,7 @@ submits domains like "169.254.169.254" to probe cloud metadata endpoints.
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import logging
 import re
@@ -137,8 +138,16 @@ async def validate_domain_resolution(domain: str) -> None:
     # Skip DNS check for known-good domains (top sites)
     # This is handled upstream by scoring.py TOP_DOMAINS check
 
+    # `socket.getaddrinfo` is stdlib-blocking. The OS resolver round-trip
+    # takes 50–500 ms on a healthy network and several seconds on a flaky
+    # one. Calling it directly from this coroutine pins the entire
+    # uvicorn event loop for the duration, starving every other request.
+    # `asyncio.to_thread` offloads to the default executor so the loop
+    # stays responsive. (Audit finding backend-async-1.)
     try:
-        infos = socket.getaddrinfo(domain, 443, proto=socket.IPPROTO_TCP)
+        infos = await asyncio.to_thread(
+            socket.getaddrinfo, domain, 443, 0, socket.SOCK_STREAM, socket.IPPROTO_TCP
+        )
     except socket.gaierror:
         # Domain doesn't resolve — might be dead/parked
         # Allow analysis to continue (WHOIS check will still work)

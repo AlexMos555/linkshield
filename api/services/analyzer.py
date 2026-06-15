@@ -302,7 +302,12 @@ async def check_whois_age(domain: str) -> dict:
 
 async def check_ssl(domain: str) -> dict:
     try:
-        result = await asyncio.get_event_loop().run_in_executor(None, _check_ssl_sync, domain)
+        # asyncio.to_thread is the right call inside a running coroutine
+        # (Python 3.9+). The previous `asyncio.get_event_loop()` is
+        # discouraged in this context and emits DeprecationWarning in
+        # 3.10+. Behaviour is equivalent here — both offload to the
+        # default executor. (Audit finding backend-async-3.)
+        result = await asyncio.to_thread(_check_ssl_sync, domain)
         return result
     except Exception:
         return {"has_ssl": False}
@@ -388,11 +393,11 @@ async def check_dns(domain: str) -> dict:
     resolver.timeout = 3
     resolver.lifetime = 3
 
-    # A records + TTL
+    # A records + TTL — to_thread instead of get_event_loop().run_in_executor
+    # (audit finding backend-async-3). Pre-bound lambdas avoid late-binding
+    # `domain` in case the surrounding loop ever fans out.
     try:
-        answers = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: resolver.resolve(domain, "A")
-        )
+        answers = await asyncio.to_thread(resolver.resolve, domain, "A")
         result["a_count"] = len(answers)
         result["ttl"] = answers.rrset.ttl if answers.rrset else None
     except Exception:
@@ -401,9 +406,7 @@ async def check_dns(domain: str) -> dict:
 
     # NS records
     try:
-        ns_answers = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: resolver.resolve(domain, "NS")
-        )
+        ns_answers = await asyncio.to_thread(resolver.resolve, domain, "NS")
         result["ns_count"] = len(ns_answers)
         result["nameservers"] = [str(ns) for ns in ns_answers]
     except Exception:
@@ -411,9 +414,7 @@ async def check_dns(domain: str) -> dict:
 
     # MX records
     try:
-        mx_answers = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: resolver.resolve(domain, "MX")
-        )
+        mx_answers = await asyncio.to_thread(resolver.resolve, domain, "MX")
         result["has_mx"] = len(mx_answers) > 0
     except Exception:
         result["has_mx"] = False
@@ -526,9 +527,7 @@ async def check_spamhaus_dbl(domain: str) -> bool:
 
     query = f"{domain}.dbl.spamhaus.org"
     try:
-        answers = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: resolver.resolve(query, "A")
-        )
+        answers = await asyncio.to_thread(resolver.resolve, query, "A")
         for answer in answers:
             ip = str(answer)
             # 127.0.1.2 = spam domain
@@ -566,9 +565,7 @@ async def check_surbl(domain: str) -> bool:
 
     query = f"{base}.multi.surbl.org"
     try:
-        answers = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: resolver.resolve(query, "A")
-        )
+        answers = await asyncio.to_thread(resolver.resolve, query, "A")
         for answer in answers:
             ip = str(answer)
             # Any 127.0.0.x response = listed
