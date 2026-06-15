@@ -2504,7 +2504,7 @@
           "family"
         ],
         "summary": "Submit Alerts",
-        "description": "Submit per-recipient ciphertexts. Server stores raw bytes; never\ndecrypts. Each envelope is an independent row.\n\nSender (caller) MUST be a family member; recipients MUST also be\nfamily members (we don't validate every individual recipient row\nhere — that's enforced by the FK + the membership index doesn't\nallow strangers to receive). For now we enforce the sender check\nand trust the FK.",
+        "description": "Submit per-recipient ciphertexts. Server stores raw bytes; never\ndecrypts. Each envelope is an independent row.\n\nSender (caller) MUST be a family member, and each recipient_user_id\nin the payload MUST also be a member of the same family — without\nthis check a malicious caller could plant alert rows into another\nuser's queue by guessing their UUID. The FK on recipient_user_id\nonly ensures the user EXISTS, not that they belong to this family.\n(Audit finding backend MEDIUM \"Family alert submission does not\nvalidate recipient_user_id is a member of the family\".)",
         "operationId": "submit_alerts_api_v1_family__family_id__alerts_post",
         "parameters": [
           {

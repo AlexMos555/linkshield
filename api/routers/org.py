@@ -27,6 +27,70 @@ logger = logging.getLogger("cleanway.org")
 router = APIRouter(prefix="/api/v1/org", tags=["organization"])
 
 
+async def _require_org_admin(user: AuthUser, org_id: str) -> None:
+    """
+    Authorize the caller as the admin of `org_id`.
+
+    Raises 403 if the JWT-bound user isn't the org's admin_user_id, or
+    404 if the org doesn't exist (we keep the response shape identical
+    to "not your org" so an attacker can't probe for existing org IDs
+    by enumerating).
+
+    Audit finding backend-security MEDIUM "Org router endpoints accept
+    any org_id with no membership or admin authorization check": every
+    /org/{org_id}/... endpoint must call this before reading or writing.
+
+    Fails open (allows the request) in dev when Supabase isn't wired —
+    local development flows that use the stub create_org path return a
+    fake org_id, and we don't want to block them. Production env-guard
+    in validate_settings forces real Supabase, so this fail-open path
+    is unreachable there.
+    """
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_key:
+        if settings.environment == "production":
+            raise HTTPException(503, "Database not configured")
+        return  # dev / staging stub flow
+
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{settings.supabase_url}/rest/v1/orgs",
+                params={
+                    "id": f"eq.{org_id}",
+                    "select": "id,admin_user_id",
+                    "limit": "1",
+                },
+                headers={
+                    "apikey": settings.supabase_service_key,
+                    "Authorization": f"Bearer {settings.supabase_service_key}",
+                },
+            )
+    except Exception as e:
+        logger.error("org_admin_check_lookup_failed", extra={"error": str(e)})
+        # Database flake — refuse the request rather than allow a
+        # write through unauthenticated. The user retries.
+        raise HTTPException(503, "Organization lookup failed")
+
+    if resp.status_code != 200:
+        raise HTTPException(404, "Organization not found")
+    rows = resp.json() if resp.text else []
+    if not rows or not isinstance(rows, list):
+        raise HTTPException(404, "Organization not found")
+    row = rows[0]
+    admin_user_id = row.get("admin_user_id")
+    if admin_user_id != user.id:
+        # Same 404 to avoid enumeration. Log so a real admin who
+        # mistypes an org_id can be debugged.
+        logger.warning(
+            "org_admin_check_failed",
+            extra={"caller": user.id, "org_id": org_id, "admin_user_id": admin_user_id},
+        )
+        raise HTTPException(404, "Organization not found")
+
+
 class CreateOrgRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
 
@@ -140,6 +204,7 @@ async def org_dashboard(
     Organization threat dashboard.
     Shows aggregate stats — individual user data is NOT visible to admins.
     """
+    await _require_org_admin(user, org_id)
     return {
         "org_id": org_id,
         "period": "last_30_days",
@@ -168,7 +233,15 @@ async def add_member(
     user: AuthUser = Depends(get_current_user),
 ):
     """Add member to organization."""
-    logger.info("org_member_added", extra={"org": org_id, "email": request.email, "role": request.role})
+    await _require_org_admin(user, org_id)
+    # Email is PII — don't pin it in structured logs (audit finding
+    # backend MEDIUM "Org add_member endpoint logs invitee email"). The
+    # role + org are sufficient for "did the operator do the action"
+    # debugging; the actual invitee identity lives in audit_log.
+    logger.info(
+        "org_member_invite_sent",
+        extra={"org": org_id, "role": request.role},
+    )
     return {
         "status": "ok",
         "org_id": org_id,
@@ -199,6 +272,7 @@ async def launch_simulation(
     Privacy: simulations only target verified org member emails.
     Results track who clicked/reported — for training, not punishment.
     """
+    await _require_org_admin(user, org_id)
     sim_id = hashlib.sha256(
         f"{org_id}-{datetime.now().isoformat()}".encode()
     ).hexdigest()[:12]
@@ -229,6 +303,7 @@ async def list_simulations(
     user: AuthUser = Depends(get_current_user),
 ):
     """List all phishing simulation campaigns for this org."""
+    await _require_org_admin(user, org_id)
     return {
         "org_id": org_id,
         "simulations": [],

@@ -697,7 +697,79 @@ async def accept_invite(
     if invite["inviter_id"] == user.id:
         raise HTTPException(400, "You can't accept your own invite")
 
-    # Add to family_members (idempotent merge)
+    # Atomically claim the invite BEFORE the member insert. The PATCH
+    # is filtered with redeemed_at=is.null so PostgREST only writes
+    # rows that haven't been redeemed yet. If the response carries no
+    # rows, another concurrent caller got there first — return 409 so
+    # the second user retries with a fresh invite (audit finding
+    # backend MEDIUM "accept_invite has a check-then-act race that
+    # allows the same invite to be redeemed by two different users").
+    redeem_resp = await _supabase_request(
+        "PATCH",
+        "family_invites",
+        params={
+            "id": f"eq.{invite['id']}",
+            "redeemed_at": "is.null",
+        },
+        json={
+            "redeemed_at": datetime.now(timezone.utc).isoformat(),
+            "redeemed_by_user_id": user.id,
+        },
+        extra_headers={"Prefer": "return=representation"},
+    )
+    if redeem_resp.status_code != 200:
+        logger.warning(
+            "family.invite_redeem_failed",
+            extra={"status": redeem_resp.status_code, "invite_id": invite["id"]},
+        )
+        raise HTTPException(500, "Failed to claim invite")
+    # PostgREST with `Prefer: return=representation` always returns a
+    # JSON array, possibly empty. Be defensive against test mocks that
+    # may not implement `.text` — try the body parse and treat any
+    # exception as "no rows returned".
+    try:
+        redeemed_rows = redeem_resp.json() or []
+    except Exception:
+        redeemed_rows = []
+    if not redeemed_rows:
+        # Another caller already redeemed — race lost.
+        raise HTTPException(409, "Invite already redeemed")
+
+    # Enforce the 5-member cap BEFORE inserting (audit finding backend
+    # MEDIUM "Family max-member limit (5) documented in comment but
+    # not enforced"). Count is cheap — PostgREST count=exact in
+    # response header — but easier to read here via a separate GET.
+    members_resp = await _supabase_request(
+        "GET",
+        "family_members",
+        params={
+            "family_id": f"eq.{invite['family_id']}",
+            "select": "user_id",
+        },
+    )
+    if members_resp.status_code == 200:
+        existing_member_count = len(members_resp.json() or [])
+        if existing_member_count >= 5:
+            # We already burned the invite via the atomic PATCH above —
+            # roll it back so the inviter can try again. Best-effort.
+            try:
+                await _supabase_request(
+                    "PATCH",
+                    "family_invites",
+                    params={"id": f"eq.{invite['id']}"},
+                    json={"redeemed_at": None, "redeemed_by_user_id": None},
+                    extra_headers={"Prefer": "return=minimal"},
+                )
+            except Exception:
+                logger.warning(
+                    "family.invite_rollback_failed",
+                    extra={"invite_id": invite["id"]},
+                )
+            raise HTTPException(409, "Family is at the 5-member limit")
+
+    # Add to family_members (idempotent merge — covers the case where
+    # the user was already a member of this family; the invite redeem
+    # was wasted but the operation is still a no-op).
     add_resp = await _supabase_request(
         "POST",
         "family_members",
@@ -706,20 +778,6 @@ async def accept_invite(
     )
     if add_resp.status_code not in (200, 201, 204):
         raise HTTPException(500, "Failed to join family")
-
-    # Mark invite as redeemed
-    redeem_resp = await _supabase_request(
-        "PATCH",
-        "family_invites",
-        params={"id": f"eq.{invite['id']}"},
-        json={
-            "redeemed_at": datetime.now(timezone.utc).isoformat(),
-            "redeemed_by_user_id": user.id,
-        },
-        extra_headers={"Prefer": "return=minimal"},
-    )
-    if redeem_resp.status_code not in (200, 204):
-        logger.warning("family.invite_redeem_mark_failed", extra={"status": redeem_resp.status_code})
 
     # Audit trail: who joined which family + via which invite. Useful
     # for "I never joined this family — please remove me" support cases
@@ -752,15 +810,41 @@ async def submit_alerts(
     """Submit per-recipient ciphertexts. Server stores raw bytes; never
     decrypts. Each envelope is an independent row.
 
-    Sender (caller) MUST be a family member; recipients MUST also be
-    family members (we don't validate every individual recipient row
-    here — that's enforced by the FK + the membership index doesn't
-    allow strangers to receive). For now we enforce the sender check
-    and trust the FK.
+    Sender (caller) MUST be a family member, and each recipient_user_id
+    in the payload MUST also be a member of the same family — without
+    this check a malicious caller could plant alert rows into another
+    user's queue by guessing their UUID. The FK on recipient_user_id
+    only ensures the user EXISTS, not that they belong to this family.
+    (Audit finding backend MEDIUM "Family alert submission does not
+    validate recipient_user_id is a member of the family".)
     """
     role = await _is_family_member(family_id, user.id)
     if role is None:
         raise HTTPException(403, "Not a member of this family")
+
+    # Validate every recipient belongs to this family. Fetch the full
+    # member list once and reject in-memory — cheaper than N membership
+    # round-trips when an alert fans out to 4 family members.
+    members_resp = await _supabase_request(
+        "GET",
+        "family_members",
+        params={
+            "family_id": f"eq.{family_id}",
+            "select": "user_id",
+        },
+    )
+    if members_resp.status_code != 200:
+        raise HTTPException(503, "Family membership lookup failed")
+    member_ids = {
+        row["user_id"] for row in (members_resp.json() or [])
+        if isinstance(row, dict) and row.get("user_id")
+    }
+    for env in body.envelopes:
+        if env.recipient_user_id not in member_ids:
+            # Same 403 we'd return for a non-member sender, no detail
+            # about which recipient_user_id was the offender so we don't
+            # confirm membership status to an attacker probing UUIDs.
+            raise HTTPException(403, "Recipient is not a member of this family")
 
     rows = []
     expires = (

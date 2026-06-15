@@ -188,8 +188,25 @@ class FakeSupabase:
                         return _Resp(200, _filter(rows, params))
                     if method == "PATCH":
                         target_id = (params or {}).get("id", "").removeprefix("eq.")
+                        # Audit fix backend MEDIUM: accept_invite now does
+                        # an atomic claim with Prefer:return=representation
+                        # and a redeemed_at=is.null filter. Mirror that
+                        # behaviour: if the row was already redeemed,
+                        # return an empty array (matched 0 rows). Honour
+                        # the return=representation Prefer by returning
+                        # 200 + JSON body.
+                        wants_representation = (
+                            headers and "representation" in (headers.get("Prefer") or "")
+                        )
+                        is_null_filter = (params or {}).get("redeemed_at") == "is.null"
                         if target_id in fake.invites:
-                            fake.invites[target_id].update(json or {})
+                            row = fake.invites[target_id]
+                            if is_null_filter and row.get("redeemed_at") is not None:
+                                # Already-redeemed: PostgREST returns 200 + []
+                                return _Resp(200, []) if wants_representation else _Resp(204, "")
+                            row.update(json or {})
+                            if wants_representation:
+                                return _Resp(200, [row])
                         return _Resp(204, "")
                 if url.endswith("/family_alerts"):
                     if method == "POST":

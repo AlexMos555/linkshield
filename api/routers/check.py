@@ -137,14 +137,23 @@ async def check_domains(
             uncached.append(domain)
 
     # ── Step 1.5: Check user's personal whitelist ──
-    user_whitelist = set()
+    # Fail-open on Redis blip — the whitelist is an opt-in convenience,
+    # not a security primitive. Log so a real outage is visible in
+    # Sentry breadcrumb context instead of silently treating every
+    # request as "no whitelist". (Audit backend MEDIUM "Silent bare
+    # except on user whitelist Redis lookup swallows errors with no
+    # logging".)
+    user_whitelist: set[str] = set()
     try:
         from api.services.cache import get_redis
         r = await get_redis()
         wl = await r.smembers(f"whitelist:{user.id}")
         user_whitelist = set(wl) if wl else set()
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger("cleanway.check").debug(
+            "user_whitelist_lookup_failed", extra={"error": str(e)}
+        )
 
     for domain in list(uncached):
         if domain in user_whitelist:

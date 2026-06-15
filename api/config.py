@@ -285,6 +285,29 @@ def validate_settings(settings: "Settings") -> None:
             "egress CIDR (or your fronting proxy's range) and redeploy."
         )
 
+    # 5d) Stripe webhook secret in prod (audit backend MEDIUM).
+    #
+    # The /payments/webhook endpoint verifies the Stripe signature using
+    # stripe_webhook_secret. If the secret is empty, every webhook event
+    # we receive will fail signature verification and we silently drop
+    # legitimate subscription / charge events — revenue + access state
+    # quietly diverge from Stripe. Worse: an attacker who finds the
+    # endpoint can fire fake events without ever needing the secret.
+    if env == "production" and _is_safe_nonempty(settings.stripe_secret_key):
+        if not _is_safe_nonempty(settings.stripe_webhook_secret):
+            raise ConfigError(
+                "Production requires STRIPE_WEBHOOK_SECRET when "
+                "STRIPE_SECRET_KEY is set. Without it every webhook "
+                "event will fail signature verification and silently "
+                "drop, breaking subscription state sync."
+            )
+        if not settings.stripe_webhook_secret.startswith("whsec_"):
+            raise ConfigError(
+                "STRIPE_WEBHOOK_SECRET must start with 'whsec_' (Stripe "
+                "webhook signing secret format). Got something that "
+                "doesn't — likely confused with the publishable key."
+            )
+
     # 6) Soft warnings (not fatal)
     if env != "development" and not _is_safe_nonempty(settings.google_safe_browsing_key):
         logger.warning(

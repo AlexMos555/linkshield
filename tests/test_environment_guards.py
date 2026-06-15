@@ -119,6 +119,10 @@ class TestProduction:
             # explicitly; the happy-path fixture provides them.
             "rate_limit_fail_closed": True,
             "trusted_proxy_cidrs": "10.0.0.0/8",
+            # When stripe_secret_key is set, prod also requires the
+            # webhook signing secret — without it, webhooks signature-
+            # fail silently and subscription state drifts from Stripe.
+            "stripe_webhook_secret": "whsec_FAKEFIXTUREprodwebhooksecret",
         }
         defaults.update(overrides)
         return _make(**defaults)
@@ -185,6 +189,7 @@ class TestProductionFailClosedGuard:
             sentry_dsn="https://abc@sentry.io/prod",
             rate_limit_fail_closed=True,
             trusted_proxy_cidrs="10.0.0.0/8",
+            stripe_webhook_secret="whsec_FAKEFIXTUREprodwebhooksecret",
         )
         defaults.update(overrides)
         return _make(**defaults)
@@ -196,3 +201,25 @@ class TestProductionFailClosedGuard:
     def test_empty_trusted_proxy_cidrs_rejected_in_prod(self):
         with pytest.raises(ConfigError, match="TRUSTED_PROXY_CIDRS"):
             validate_settings(self._prod(trusted_proxy_cidrs=""))
+
+    def test_empty_stripe_webhook_secret_rejected_in_prod_with_stripe(self):
+        """When stripe_secret_key is set, the webhook secret is also
+        required — silent-fail on every webhook would break revenue
+        state in production."""
+        with pytest.raises(ConfigError, match="STRIPE_WEBHOOK_SECRET"):
+            validate_settings(self._prod(stripe_webhook_secret=""))
+
+    def test_stripe_webhook_secret_wrong_format_rejected(self):
+        """whsec_ prefix is Stripe's documented signing-secret format —
+        a value missing the prefix is almost certainly the publishable
+        or restricted key confused for the webhook secret. Catch it
+        at startup."""
+        with pytest.raises(ConfigError, match="whsec_"):
+            validate_settings(self._prod(stripe_webhook_secret="not_a_whsec_value"))
+
+    def test_no_stripe_secret_skips_webhook_secret_check(self):
+        """If we're not running Stripe at all, the webhook secret is
+        irrelevant — don't fail boot."""
+        validate_settings(
+            self._prod(stripe_secret_key="", stripe_webhook_secret="")
+        )
