@@ -89,13 +89,6 @@ async def check_domains(
     request: CheckRequest,
     user: AuthUser = Depends(get_current_user),
 ):
-    # Burst rate limit BEFORE we touch the cache, so a user firing
-    # 1000 requests/sec at known-cached domains still gets throttled.
-    # Daily quota is still keyed off `needs_analysis` further down —
-    # cached lookups are free in API-spend terms (correctly), they
-    # just can't be a free DDoS path. (Audit backend-security HIGH
-    # "/check has no route-level rate limit".)
-    await check_burst_only(user)
     """
     Check one or more domains for phishing/safety.
 
@@ -106,6 +99,18 @@ async def check_domains(
 
     Privacy: only domain names processed. Full URLs never logged.
     """
+    # Burst rate limit BEFORE we touch the cache, so a user firing
+    # 1000 requests/sec at known-cached domains still gets throttled.
+    # Daily quota is still keyed off `needs_analysis` further down —
+    # cached lookups are free in API-spend terms (correctly), they
+    # just can't be a free DDoS path. (Audit backend-security HIGH
+    # "/check has no route-level rate limit".)
+    #
+    # NOTE: this MUST come after the docstring, otherwise the docstring
+    # is no longer the first statement of the function and FastAPI can't
+    # pick it up for OpenAPI generation (causing the openapi-drift CI
+    # job to fail with a stale committed schema).
+    await check_burst_only(user)
     # Rate limit (counts only domains that need full analysis)
     # Pre-count how many will actually hit the API
     unique_domains = list(set(normalize_domain(d) for d in request.domains if d.strip()))

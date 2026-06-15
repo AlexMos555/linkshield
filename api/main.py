@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from api.services.security_headers import SecurityHeadersMiddleware
 
+from api import __version__, __service_name__
 from api.config import get_settings, validate_settings
 from api.routers.check import router as check_router
 from api.routers.payments import router as payments_router
@@ -74,8 +75,6 @@ async def lifespan(app: FastAPI):
     await close_redis()
     logger.info("Cleanway API shutdown complete")
 
-
-from api import __version__, __service_name__
 
 app = FastAPI(
     title=__service_name__,
