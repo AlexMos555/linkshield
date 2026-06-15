@@ -61,6 +61,23 @@ jobs:
         # all rely on. Uses node's built-in TS stripper — no test runner needed.
         run: npm run test:api-client
 
+      - name: Extension build drift guard
+        # `packages/extension-core/` is the single source of truth.
+        # `scripts/build-extensions.sh` fans the files out to
+        # extension/, extension-firefox/, extension-safari/ with the
+        # browser-specific shims layered on top. If a developer edits
+        # the source but forgets to rebuild, the three browser ZIPs
+        # ship stale and the bug-fix only lands in Chrome (or vice
+        # versa). Run the build inside CI and fail if any tracked
+        # file changed — that's our signal to rebuild locally.
+        # (Audit extension-build HIGH.)
+        run: |
+          bash scripts/build-extensions.sh > /dev/null 2>&1
+          if ! git diff --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/'; then
+            echo "::error::Extension build artifacts are out of sync with packages/extension-core/. Run 'bash scripts/build-extensions.sh' locally and commit the result."
+            exit 1
+          fi
+
   lint:
     runs-on: ubuntu-latest
 

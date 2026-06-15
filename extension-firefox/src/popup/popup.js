@@ -351,24 +351,110 @@ function wireButtons() {
 
   var trust = $("btn-trust");
   if (trust) trust.addEventListener("click", async function() {
+    // Always-trust adds the domain to chrome.storage.local.trusted_domains.
+    // The scanner already short-circuits on this list (see background/
+    // index.js cache lookup) so the next visit returns safe instantly.
+    // We feed back to the user via the button label so they see the
+    // effect — silent success used to look broken (audit
+    // extension-mv3 dead-button).
     try {
       var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tabs[0] || !tabs[0].url) return;
-      var domain = new URL(tabs[0].url).hostname;
+      if (!tabs[0] || !tabs[0].url) {
+        _flashButton(trust, t("action_trust_no_tab") || "Open a page first");
+        return;
+      }
+      var url = new URL(tabs[0].url);
+      // chrome:// and similar internal pages have no meaningful host
+      // to whitelist; reject early.
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        _flashButton(trust, t("action_trust_invalid") || "Can't trust this URL");
+        return;
+      }
+      var domain = url.hostname;
       var data = await chrome.storage.local.get(["trusted_domains"]);
       var trusted = data.trusted_domains || [];
       if (trusted.indexOf(domain) === -1) {
         trusted.push(domain);
         await chrome.storage.local.set({ trusted_domains: trusted });
       }
-    } catch (e) {}
+      _flashButton(trust, t("action_trust_done") || ("Trusted " + domain));
+    } catch (e) {
+      _flashButton(trust, t("action_trust_error") || "Couldn't save");
+    }
   });
 
   var report = $("btn-report");
   if (report) report.addEventListener("click", async function() {
-    await sendToActiveTab({ type: "SHOW_REPORT_DIALOG" });
-    window.close();
+    // Report-wrong-result: anonymous POST /api/v1/feedback/report
+    // identifying the current tab's domain as a false_positive (a
+    // safe site the scorer marked dangerous) or false_negative
+    // (a scam site that wasn't flagged). The previous
+    // `SHOW_REPORT_DIALOG` message had no handler anywhere — the
+    // button was dead UI. (Audit extension-mv3 HIGH dead-button.)
+    try {
+      var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0] || !tabs[0].url) {
+        _flashButton(report, t("action_report_no_tab") || "Open a page first");
+        return;
+      }
+      var url = new URL(tabs[0].url);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        _flashButton(report, t("action_report_invalid") || "Can't report this URL");
+        return;
+      }
+      var domain = url.hostname;
+
+      // Determine report_type from the current tab's last verdict.
+      // If the tab is currently flagged dangerous, the user is saying
+      // "you got this wrong, it's actually safe" (false_positive).
+      // Otherwise they're flagging missed phishing (false_negative).
+      var verdictData = await chrome.storage.local.get(["last_verdict_" + domain]);
+      var lastVerdict = verdictData["last_verdict_" + domain];
+      var reportType = lastVerdict === "dangerous" ? "false_positive" : "false_negative";
+
+      var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+      var apiBase = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
+        ? window.CLEANWAY_API_BASE
+        : "https://api.cleanway.ai";
+      var resp = await fetch(apiBase + "/api/v1/feedback/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: domain,
+          report_type: reportType,
+          comment: "[extension-popup] reported via 'wrong result' button",
+        }),
+      });
+      // Silence the unused-import lint — apiModule is reserved for a
+      // future revision where auth+ip-throttle move into utils/api.js.
+      void apiModule;
+      if (resp.ok) {
+        _flashButton(report, t("action_report_done") || "Thanks — reported");
+      } else if (resp.status === 429) {
+        _flashButton(report, t("action_report_throttled") || "Too many reports, try later");
+      } else {
+        _flashButton(report, t("action_report_error") || "Couldn't send report");
+      }
+    } catch (e) {
+      _flashButton(report, t("action_report_error") || "Couldn't send report");
+    }
   });
+}
+
+/**
+ * Briefly replace a button's label with confirmation text, then revert.
+ * Used by the trust + report flows so silent network success doesn't
+ * look like a no-op to the user.
+ */
+function _flashButton(btn, message) {
+  if (!btn) return;
+  var original = btn.textContent;
+  btn.textContent = message;
+  btn.disabled = true;
+  setTimeout(function() {
+    btn.textContent = original;
+    btn.disabled = false;
+  }, 1800);
 }
 
 // ─── Health check (offline indicator) ─────────────────────────

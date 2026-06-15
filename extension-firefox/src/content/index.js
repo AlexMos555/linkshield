@@ -9,10 +9,31 @@
 var BADGE_CLASS = "ls-badge";
 var SCANNED_ATTR = "data-ls-scanned";
 var _scanTimeout = null;
-var _debugMode = true; // Set false in production
+var _debugMode = false; // Audit extension-mv3 medium: ship quiet in prod
 
 function _log() {
   if (_debugMode) console.log.apply(console, ["[Cleanway]"].concat(Array.from(arguments)));
+}
+
+/**
+ * HTML-escape an untrusted string before it lands inside an innerHTML
+ * template. Used for any value that originates from the API response
+ * (r.detail, result.domain) or the page (host) — both are reachable
+ * by an attacker if a malicious domain is checked or a malicious
+ * /check response is injected by a network MITM on a misconfigured
+ * box. Audit finding extension-mv3 HIGH (XSS via r.detail innerHTML).
+ *
+ * Always returns a string. Null/undefined becomes "" so the template
+ * still renders sensibly when an optional field is missing.
+ */
+function _esc(s) {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ═══════════════════════════════════════════════════
@@ -137,7 +158,7 @@ function addBadge(linkEl, result) {
   var tooltip = document.createElement("div");
   tooltip.className = "ls-tooltip";
   var reasons = (result.reasons || []).slice(0, 3).map(function(r) {
-    return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + r.detail + '</div>';
+    return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + _esc(r.detail) + '</div>';
   }).join("");
   var colors = { safe: "#22c55e", caution: "#f59e0b", dangerous: "#ef4444" };
   var labels = { safe: "Safe", caution: "Caution", dangerous: "Dangerous" };
@@ -145,8 +166,8 @@ function addBadge(linkEl, result) {
     '<div class="ls-tooltip-header">' +
     '<span class="ls-dot" style="background:' + (colors[result.level] || "#666") + '"></span>' +
     '<strong>' + (labels[result.level] || "Unknown") + '</strong>' +
-    '<span class="ls-score">Score: ' + result.score + '/100</span></div>' +
-    '<div class="ls-domain">' + result.domain + '</div>' +
+    '<span class="ls-score">Score: ' + (parseInt(result.score, 10) || 0) + '/100</span></div>' +
+    '<div class="ls-domain">' + _esc(result.domain) + '</div>' +
     reasons +
     '<div class="ls-footer">Cleanway</div></div>';
   badge.appendChild(tooltip);
@@ -179,12 +200,16 @@ function addBadge(linkEl, result) {
 function showBlockPage(result) {
   if (document.getElementById("ls-block-overlay")) return;
   var reasons = (result.reasons || []).slice(0, 4).map(function(r) {
-    return '<div style="display:flex;align-items:flex-start;gap:8px;margin:8px 0;"><span style="color:#ef4444;">\u26A0</span><span>' + r.detail + '</span></div>';
+    return '<div style="display:flex;align-items:flex-start;gap:8px;margin:8px 0;"><span style="color:#ef4444;">\u26A0</span><span>' + _esc(r.detail) + '</span></div>';
   }).join("");
 
+  // result.domain comes from the URL the user navigated to \u2014 attacker-
+  // controlled. result.score is a number from the scorer; coerce to
+  // int defensively. Both go through _esc as defense-in-depth even
+  // though they're rendered inside attribute-free text contexts.
   var overlay = document.createElement("div");
   overlay.id = "ls-block-overlay";
-  overlay.innerHTML = '<div style="position:fixed;inset:0;z-index:2147483647;background:#0f172aee;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#e2e8f0;"><div style="max-width:480px;text-align:center;padding:40px 24px;"><div style="font-size:64px;margin-bottom:20px;">\u{1F6E1}</div><h1 style="font-size:28px;font-weight:800;color:#f8fafc;margin:0 0 8px;">Dangerous Site</h1><p style="font-size:16px;color:#94a3b8;margin:0 0 24px;">Cleanway blocked <strong style="color:#ef4444;">' + result.domain + '</strong> (score: ' + result.score + '/100)</p><div style="background:#1e293b;border-radius:12px;padding:16px;text-align:left;margin-bottom:24px;font-size:14px;border:1px solid #ef444440;">' + (reasons || 'Multiple risk signals detected') + '</div><button id="ls-go-back" style="background:#22c55e;color:#052e16;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">\u2190 Go Back</button><button id="ls-proceed" style="background:transparent;color:#64748b;border:1px solid #334155;border-radius:10px;padding:12px 32px;font-size:14px;cursor:pointer;width:100%;opacity:0.5;" disabled>Proceed anyway (3s)</button></div></div>';
+  overlay.innerHTML = '<div style="position:fixed;inset:0;z-index:2147483647;background:#0f172aee;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#e2e8f0;"><div style="max-width:480px;text-align:center;padding:40px 24px;"><div style="font-size:64px;margin-bottom:20px;">\u{1F6E1}</div><h1 style="font-size:28px;font-weight:800;color:#f8fafc;margin:0 0 8px;">Dangerous Site</h1><p style="font-size:16px;color:#94a3b8;margin:0 0 24px;">Cleanway blocked <strong style="color:#ef4444;">' + _esc(result.domain) + '</strong> (score: ' + (parseInt(result.score, 10) || 0) + '/100)</p><div style="background:#1e293b;border-radius:12px;padding:16px;text-align:left;margin-bottom:24px;font-size:14px;border:1px solid #ef444440;">' + (reasons || 'Multiple risk signals detected') + '</div><button id="ls-go-back" style="background:#22c55e;color:#052e16;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">\u2190 Go Back</button><button id="ls-proceed" style="background:transparent;color:#64748b;border:1px solid #334155;border-radius:10px;padding:12px 32px;font-size:14px;cursor:pointer;width:100%;opacity:0.5;" disabled>Proceed anyway (3s)</button></div></div>';
 
   document.body.appendChild(overlay);
   document.body.style.overflow = "hidden";
@@ -218,12 +243,12 @@ function showFloatingResult(result) {
   var icons = { safe: "\u2713", caution: "\u26A0", dangerous: "\u2717" };
   var labels = { safe: "Safe", caution: "Caution", dangerous: "Dangerous" };
   var reasons = (result.reasons || []).slice(0, 3).map(function(r) {
-    return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + r.detail + '</div>';
+    return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + _esc(r.detail) + '</div>';
   }).join("");
 
   var div = document.createElement("div");
   div.id = "ls-floating-result";
-  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;max-width:320px;border:1px solid ' + (c[result.level] || "#333") + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:28px;height:28px;border-radius:50%;background:' + (c[result.level] || "#333") + '20;color:' + (c[result.level] || "#999") + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + (icons[result.level] || "?") + '</span><strong style="font-size:14px;">' + (labels[result.level] || "?") + '</strong><span style="color:#9ca3af;font-size:12px;margin-left:auto;">Score: ' + result.score + '</span><span id="ls-float-close" style="cursor:pointer;color:#6b7280;font-size:18px;margin-left:8px;">\u00D7</span></div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + result.domain + '</div>' + reasons + '</div>';
+  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;max-width:320px;border:1px solid ' + (c[result.level] || "#333") + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:28px;height:28px;border-radius:50%;background:' + (c[result.level] || "#333") + '20;color:' + (c[result.level] || "#999") + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + (icons[result.level] || "?") + '</span><strong style="font-size:14px;">' + (labels[result.level] || "?") + '</strong><span style="color:#9ca3af;font-size:12px;margin-left:auto;">Score: ' + (parseInt(result.score, 10) || 0) + '</span><span id="ls-float-close" style="cursor:pointer;color:#6b7280;font-size:18px;margin-left:8px;">\u00D7</span></div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + _esc(result.domain) + '</div>' + reasons + '</div>';
 
   document.body.appendChild(div);
   document.getElementById("ls-float-close").onclick = function() { div.remove(); };
@@ -279,7 +304,10 @@ function runPrivacyAudit() {
 
   var div = document.createElement("div");
   div.id = "ls-audit-result";
-  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;width:300px;border:1px solid ' + color + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:32px;font-weight:bold;color:' + color + ';">' + grade + '</span><div><div style="font-size:14px;font-weight:600;">Privacy Audit</div><div style="font-size:11px;color:#94a3b8;">' + host + '</div></div></div><span id="ls-audit-close" style="cursor:pointer;color:#6b7280;font-size:18px;">\u00D7</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + trackers.length + '</div><div style="color:#94a3b8;font-size:10px;">Trackers</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + cookies + '</div><div style="color:#94a3b8;font-size:10px;">Cookies</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + sensitive + '</div><div style="color:#94a3b8;font-size:10px;">Data fields</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (fp ? "Yes" : "No") + '</div><div style="color:#94a3b8;font-size:10px;">Fingerprint</div></div></div><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;"><button id="ls-audit-share" style="margin-top:12px;width:100%;background:' + color + ';color:#0a0e15;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">Share grade</button><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;">\uD83D\uDD12 Ran on your device</div></div>';
+  // `host` is window.location.hostname \u2014 attacker can craft a hostile
+  // domain to inject HTML through it. Same defense-in-depth as the
+  // block page and floating result above. (Audit extension-mv3 HIGH.)
+  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;width:300px;border:1px solid ' + color + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:32px;font-weight:bold;color:' + color + ';">' + _esc(grade) + '</span><div><div style="font-size:14px;font-weight:600;">Privacy Audit</div><div style="font-size:11px;color:#94a3b8;">' + _esc(host) + '</div></div></div><span id="ls-audit-close" style="cursor:pointer;color:#6b7280;font-size:18px;">\u00D7</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(trackers.length, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">Trackers</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(cookies, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">Cookies</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(sensitive, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">Data fields</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (fp ? "Yes" : "No") + '</div><div style="color:#94a3b8;font-size:10px;">Fingerprint</div></div></div><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;"><button id="ls-audit-share" style="margin-top:12px;width:100%;background:' + color + ';color:#0a0e15;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">Share grade</button><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;">\uD83D\uDD12 Ran on your device</div></div>';
 
   document.body.appendChild(div);
   document.getElementById("ls-audit-close").onclick = function() { div.remove(); };
