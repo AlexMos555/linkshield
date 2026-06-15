@@ -245,6 +245,35 @@
   "family_join_paste_hint": {
     "message": "Dica: cole um link de convite Cleanway no primeiro campo — o PIN será preenchido automaticamente."
   },
+  "locked_title": {
+    "message": "Conta em espera"
+  },
+  "locked_body": {
+    "message": "Você pediu para excluir sua conta Cleanway. Nós a mantemos por 30 dias antes de apagar tudo. Restaure agora para manter sua assinatura, histórico e família."
+  },
+  "locked_restore_cta": {
+    "message": "Restaurar minha conta"
+  },
+  "locked_restoring": {
+    "message": "Restaurando…"
+  },
+  "locked_meta": {
+    "message": "Exclusão solicitada em $DATE$. Exclusão definitiva em 30 dias.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Sua sessão expirou. Faça login novamente em cleanway.ai."
+  },
+  "locked_error_generic": {
+    "message": "Não foi possível restaurar sua conta. Tente novamente ou contate o suporte."
+  },
+  "locked_error_network": {
+    "message": "Não foi possível conectar aos servidores. Verifique sua conexão."
+  },
   "trust_footer": {
     "message": "Seus dados nunca saem deste dispositivo"
   },

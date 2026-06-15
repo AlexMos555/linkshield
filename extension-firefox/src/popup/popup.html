@@ -19,6 +19,25 @@
       </button>
     </header>
 
+    <!-- Account locked overlay (soft-delete 30-day grace).
+         Hidden by default; popup.js unhides it when chrome.storage.local
+         has `account_locked` set, which happens when any authed API call
+         hit a 410 (utils/api.js::_handleAuthedResponse). All other UI
+         below is also hidden in that case so the user sees a clean
+         "restore-or-let-it-expire" screen.
+
+         An identical-feeling section lives at landing /account/restore.
+         The two flows converge: locked extension → click restore →
+         backend cleared → popup reloads to the regular state. -->
+    <section class="account-locked-overlay" id="account-locked-overlay" hidden>
+      <div class="locked-icon" aria-hidden="true">⏳</div>
+      <h2 class="locked-title" data-i18n="locked_title">Account on hold</h2>
+      <p class="locked-body" data-i18n="locked_body">You asked to delete your Cleanway account. We&apos;re holding it for 30 days before erasing everything. Restore it now to keep your subscription, history, and family.</p>
+      <button class="btn btn-primary" id="btn-restore-account" data-i18n="locked_restore_cta" type="button">Restore my account</button>
+      <p class="locked-meta" id="locked-meta"></p>
+      <div class="locked-error" id="locked-error" hidden></div>
+    </section>
+
     <!-- Main status card -->
     <section class="status-card" id="status-card" data-state="scanning">
       <div class="status-icon" id="status-icon" aria-hidden="true">

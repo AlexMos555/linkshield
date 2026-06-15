@@ -273,5 +273,24 @@
         "a": "Le plan Business inclut des e-mails de phishing simulés envoyés à votre équipe. Choisissez un modèle, nous envoyons les e-mails de test et suivons qui clique vs. qui signale. Pour la formation, pas pour la punition."
       }
     ]
+  },
+  "AccountRestore": {
+    "page_title": "Restaurez votre compte Cleanway",
+    "page_meta_description": "Votre compte est programmé pour suppression. Restaurez-le pendant la période de grâce de 30 jours pour conserver votre abonnement et votre historique.",
+    "heading_locked": "Votre compte est en attente",
+    "heading_default": "Restaurez votre compte",
+    "body": "Vous nous avez demandé de supprimer votre compte Cleanway. Nous le conservons pendant 30 jours avant de tout effacer définitivement — votre abonnement, votre historique et vos liens familiaux sont toujours là. Cliquez ci-dessous pour le récupérer.",
+    "cta": "Restaurer mon compte",
+    "restoring": "Restauration…",
+    "restored_title": "Compte restauré ✓",
+    "restored_body": "Bon retour parmi nous. Redirection vers l'accueil…",
+    "no_session_title": "Connectez-vous pour restaurer votre compte",
+    "no_session_body": "Votre session a expiré. Utilisez la même adresse e-mail que lors de votre inscription — nous enverrons un nouveau lien magique.",
+    "no_session_cta": "Se connecter",
+    "error_auth": "Impossible de joindre le service d'authentification. Veuillez actualiser et réessayer.",
+    "error_network": "Impossible de joindre nos serveurs. Vérifiez votre connexion et réessayez.",
+    "error_generic": "Une erreur est survenue. Veuillez contacter l'assistance.",
+    "footer_note": "Vous avez changé d'avis ? Fermez simplement cet onglet. 30 jours après la demande de suppression initiale, vos données sont définitivement effacées automatiquement.",
+    "brand": "Cleanway"
   }
 }

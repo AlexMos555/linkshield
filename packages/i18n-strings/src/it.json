@@ -248,6 +248,35 @@
       },
       "family_join_paste_hint": {
         "text": "Suggerimento: incolla un link di invito Cleanway nel primo campo — il PIN verrà compilato per te."
+      },
+      "locked_title": {
+        "text": "Account in attesa"
+      },
+      "locked_body": {
+        "text": "Hai chiesto di eliminare il tuo account Cleanway. Lo conserviamo per 30 giorni prima di cancellare tutto. Ripristinalo ora per mantenere abbonamento, cronologia e famiglia."
+      },
+      "locked_restore_cta": {
+        "text": "Ripristina il mio account"
+      },
+      "locked_restoring": {
+        "text": "Ripristino in corso…"
+      },
+      "locked_meta": {
+        "text": "Eliminazione richiesta il $DATE$. Eliminazione definitiva tra 30 giorni.",
+        "placeholders": {
+          "date": {
+            "content": "$1"
+          }
+        }
+      },
+      "locked_error_session": {
+        "text": "La tua sessione è scaduta. Accedi di nuovo su cleanway.ai."
+      },
+      "locked_error_generic": {
+        "text": "Impossibile ripristinare l'account. Riprova o contatta l'assistenza."
+      },
+      "locked_error_network": {
+        "text": "Impossibile contattare i nostri server. Controlla la connessione."
       }
     },
     "common": {
@@ -625,6 +654,25 @@
           "a": "Il piano Business include email di phishing simulate inviate al tuo team. Scegli un modello, inviamo le email di test e tracciamo chi clicca vs chi segnala. Per la formazione, non per punire."
         }
       ]
+    },
+    "account_restore": {
+      "page_title": "Ripristina il tuo account Cleanway",
+      "page_meta_description": "Il tuo account è programmato per l'eliminazione. Ripristinalo durante il periodo di grazia di 30 giorni per mantenere abbonamento e cronologia.",
+      "heading_locked": "Il tuo account è in attesa",
+      "heading_default": "Ripristina il tuo account",
+      "body": "Ci hai chiesto di eliminare il tuo account Cleanway. Lo conserviamo per 30 giorni prima di cancellare tutto definitivamente — questo significa che abbonamento, cronologia e iscrizioni familiari sono ancora qui. Clicca qui sotto per riportarlo indietro.",
+      "cta": "Ripristina il mio account",
+      "restoring": "Ripristino in corso…",
+      "restored_title": "Account ripristinato ✓",
+      "restored_body": "Bentornato. Reindirizzamento alla home…",
+      "no_session_title": "Accedi per ripristinare il tuo account",
+      "no_session_body": "La tua sessione è scaduta. Usa la stessa email con cui ti sei registrato — ti invieremo un nuovo magic link.",
+      "no_session_cta": "Accedi",
+      "error_auth": "Impossibile raggiungere il servizio di autenticazione. Aggiorna la pagina e riprova.",
+      "error_network": "Impossibile raggiungere i nostri server. Controlla la connessione e riprova.",
+      "error_generic": "Qualcosa è andato storto. Contatta l'assistenza.",
+      "footer_note": "Hai cambiato idea sul ripristino? Chiudi semplicemente questa scheda. Dopo 30 giorni dalla richiesta di eliminazione originale, i tuoi dati vengono cancellati definitivamente in automatico.",
+      "brand": "Cleanway"
     }
   },
   "email": {

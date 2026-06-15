@@ -22,6 +22,89 @@ try {
 } catch (e) { /* storage not available (tests, edge cases) */ }
 
 /**
+ * Soft-delete (410) detection.
+ *
+ * When the backend returns 410 Gone to any authed call, the user's
+ * account is in the 30-day grace window. We flag this in
+ * chrome.storage.local so the popup can render a lock screen with a
+ * restore CTA on next open. Every authed helper below calls
+ * `_handleAuthedResponse(resp)` which sets this flag on 410.
+ *
+ * The popup clears the flag when /restore succeeds.
+ */
+const ACCOUNT_LOCKED_KEY = "account_locked";
+
+async function _markAccountLocked(restoreUrl) {
+  try {
+    await chrome.storage.local.set({
+      [ACCOUNT_LOCKED_KEY]: {
+        locked_at: new Date().toISOString(),
+        restore_url: restoreUrl || "/api/v1/user/account/restore",
+      },
+    });
+  } catch (e) { /* storage unavailable — non-fatal */ }
+}
+
+export async function clearAccountLocked() {
+  try {
+    await chrome.storage.local.remove(ACCOUNT_LOCKED_KEY);
+  } catch (e) { /* storage unavailable — non-fatal */ }
+}
+
+export async function isAccountLocked() {
+  try {
+    const d = await chrome.storage.local.get(ACCOUNT_LOCKED_KEY);
+    return d && d[ACCOUNT_LOCKED_KEY] ? d[ACCOUNT_LOCKED_KEY] : null;
+  } catch (e) { return null; }
+}
+
+/**
+ * Inspect an authed-fetch response. On 410, mark the local lock flag
+ * (extracting restore_url from the JSON detail if present) and return
+ * true so callers can short-circuit. Otherwise returns false.
+ */
+async function _handleAuthedResponse(resp) {
+  if (resp.status !== 410) return false;
+  // Parse without throwing — if body isn't JSON or restore_url isn't in
+  // it, we still set the lock with the default route.
+  let restoreUrl = null;
+  try {
+    const body = await resp.clone().json();
+    if (body && body.detail && typeof body.detail === "object" && typeof body.detail.restore_url === "string") {
+      restoreUrl = body.detail.restore_url;
+    } else if (body && typeof body.restore_url === "string") {
+      restoreUrl = body.restore_url;
+    }
+  } catch (e) { /* not JSON or already consumed */ }
+  await _markAccountLocked(restoreUrl);
+  return true;
+}
+
+/**
+ * Call POST /api/v1/user/account/restore. Used by the popup's lock
+ * screen "Restore" button. On success clears the lock flag.
+ *
+ * @param {string} token JWT
+ * @returns {Promise<{ok: boolean, status?: number, error?: string}>}
+ */
+export async function restoreAccount(token) {
+  if (!token) return { ok: false, error: "no_token" };
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/user/account/restore`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (resp.ok) {
+      await clearAccountLocked();
+      return { ok: true };
+    }
+    return { ok: false, status: resp.status };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
  * Check domains against Cleanway API
  * @param {string[]} domains - List of domain names to check
  * @param {string} [token] - Optional JWT auth token
@@ -43,6 +126,10 @@ export async function checkDomains(domains, token = null) {
     if (resp.status === 429) {
       const data = await resp.json();
       return { error: "rate_limit", detail: data.detail };
+    }
+
+    if (await _handleAuthedResponse(resp)) {
+      return { error: "account_locked", status: 410 };
     }
 
     if (!resp.ok) {
@@ -116,6 +203,7 @@ export async function fetchEffectiveSkill(token, deviceHash) {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (await _handleAuthedResponse(resp)) return null;
     if (!resp.ok) return null;
     return await resp.json();
   } catch {
@@ -149,6 +237,7 @@ export async function patchDeviceOverrides(token, deviceHash, payload) {
       },
       body: JSON.stringify(payload || {}),
     });
+    if (await _handleAuthedResponse(resp)) return null;
     if (!resp.ok) return null;
     return await resp.json();
   } catch {
@@ -176,6 +265,7 @@ export async function fetchThreatStatus(token) {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (await _handleAuthedResponse(resp)) return null;
     if (!resp.ok) return null;
     return await resp.json();
   } catch {
@@ -205,6 +295,7 @@ export async function incrementThreatCounter(token, count = 1) {
       },
       body: JSON.stringify({ count }),
     });
+    if (await _handleAuthedResponse(resp)) return null;
     if (!resp.ok) return null;
     return await resp.json();
   } catch {

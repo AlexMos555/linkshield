@@ -245,6 +245,35 @@
   "family_join_paste_hint": {
     "message": "نصيحة: ألصق رابط دعوة Cleanway في الحقل الأول — سيُملأ رمز PIN تلقائيًا."
   },
+  "locked_title": {
+    "message": "الحساب قيد الإيقاف"
+  },
+  "locked_body": {
+    "message": "لقد طلبت حذف حسابك في Cleanway. نحتفظ به لمدة 30 يومًا قبل مسح كل شيء. استعده الآن للاحتفاظ بالاشتراك والسجل والعائلة."
+  },
+  "locked_restore_cta": {
+    "message": "استعادة حسابي"
+  },
+  "locked_restoring": {
+    "message": "جارٍ الاستعادة…"
+  },
+  "locked_meta": {
+    "message": "تم طلب الحذف في $DATE$. الحذف النهائي خلال 30 يومًا.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "انتهت جلستك. يرجى تسجيل الدخول مجددًا على cleanway.ai."
+  },
+  "locked_error_generic": {
+    "message": "تعذرت استعادة حسابك. حاول مرة أخرى أو تواصل مع الدعم."
+  },
+  "locked_error_network": {
+    "message": "تعذر الوصول إلى خوادمنا. تحقق من اتصالك."
+  },
   "trust_footer": {
     "message": "بياناتك لا تغادر هذا الجهاز أبدًا"
   },

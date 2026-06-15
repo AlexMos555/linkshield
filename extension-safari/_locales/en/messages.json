@@ -142,6 +142,35 @@
   "nudge_threshold_cta": {
     "message": "See details"
   },
+  "locked_title": {
+    "message": "Account on hold"
+  },
+  "locked_body": {
+    "message": "You asked to delete your Cleanway account. We're holding it for 30 days before erasing everything. Restore it now to keep your subscription, history, and family."
+  },
+  "locked_restore_cta": {
+    "message": "Restore my account"
+  },
+  "locked_restoring": {
+    "message": "Restoring…"
+  },
+  "locked_meta": {
+    "message": "Deletion requested on $DATE$. Hard delete in 30 days.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Your session has expired. Please sign in again on cleanway.ai."
+  },
+  "locked_error_generic": {
+    "message": "Couldn't restore your account. Please try again or contact support."
+  },
+  "locked_error_network": {
+    "message": "Couldn't reach our servers. Please check your connection."
+  },
   "device_override_heading": {
     "message": "This device"
   },

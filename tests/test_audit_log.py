@@ -193,7 +193,42 @@ def authed_user():
 
 
 @pytest.fixture
-def client(authed_user):
+def fake_redis(monkeypatch):
+    """restore_account hard-fails (503) when Redis is unreachable so
+    that a partial-success state can never be reported as full success
+    to the client. The audit_log integration test needs a working fake
+    so the success path is reachable and the audit row gets written."""
+    class _Fake:
+        def __init__(self) -> None:
+            self._kv: dict[str, str] = {}
+
+        async def get(self, key: str):
+            return self._kv.get(key)
+
+        async def setex(self, key: str, _ttl: int, val: str):
+            self._kv[key] = val
+            return True
+
+        async def delete(self, *keys: str):
+            for k in keys:
+                self._kv.pop(k, None)
+            return len(keys)
+
+        async def set(self, key: str, val: str, **_kw):
+            self._kv[key] = val
+            return True
+
+    fake = _Fake()
+
+    async def _get():
+        return fake
+
+    monkeypatch.setattr("api.services.cache.get_redis", _get)
+    return fake
+
+
+@pytest.fixture
+def client(authed_user, fake_redis):
     from api.main import app
     from api.services.auth import get_current_user, get_current_user_including_deleted
 

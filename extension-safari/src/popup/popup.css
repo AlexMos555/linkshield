@@ -155,6 +155,12 @@ body { width: 380px; min-height: 300px; }
 .btn:hover { transform: translateY(-1px); }
 .btn-danger { background: var(--red); color: #fff; }
 .btn-danger:hover { background: #dc2626; }
+/* Primary CTA — used by the soft-delete-restore button. Green to
+   match landing's restore page (#22c55e) so the two flows feel like
+   one product. Darker hover for affordance. */
+.btn-primary { background: #22c55e; color: #052e16; }
+.btn-primary:hover { background: #16a34a; }
+.btn-primary:disabled { background: #16a34a; cursor: wait; opacity: 0.85; }
 
 /* ── Secondary actions ── */
 .secondary-actions {
@@ -345,6 +351,47 @@ body { width: 380px; min-height: 300px; }
   color: var(--text-dim);
   border-top: 1px solid var(--border-subtle);
   background: var(--bg);
+}
+
+/* ── Account-locked overlay (soft-delete grace) ── */
+.account-locked-overlay {
+  padding: 28px 20px 24px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--yellow-bg), transparent);
+}
+.locked-icon {
+  font-size: 44px;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+.locked-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--yellow-text);
+  margin: 0 0 8px;
+}
+.locked-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 18px;
+  text-align: left;
+}
+.locked-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 12px 0 0;
+  line-height: 1.4;
+}
+.locked-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--red-bg);
+  border: 1px solid var(--red-border);
+  border-radius: 6px;
+  color: var(--red-text);
+  font-size: 12px;
+  text-align: left;
 }
 
 /* ── Hidden utility ── */

@@ -273,5 +273,24 @@
         "a": "Il piano Business include email di phishing simulate inviate al tuo team. Scegli un modello, inviamo le email di test e tracciamo chi clicca vs chi segnala. Per la formazione, non per punire."
       }
     ]
+  },
+  "AccountRestore": {
+    "page_title": "Ripristina il tuo account Cleanway",
+    "page_meta_description": "Il tuo account è programmato per l'eliminazione. Ripristinalo durante il periodo di grazia di 30 giorni per mantenere abbonamento e cronologia.",
+    "heading_locked": "Il tuo account è in attesa",
+    "heading_default": "Ripristina il tuo account",
+    "body": "Ci hai chiesto di eliminare il tuo account Cleanway. Lo conserviamo per 30 giorni prima di cancellare tutto definitivamente — questo significa che abbonamento, cronologia e iscrizioni familiari sono ancora qui. Clicca qui sotto per riportarlo indietro.",
+    "cta": "Ripristina il mio account",
+    "restoring": "Ripristino in corso…",
+    "restored_title": "Account ripristinato ✓",
+    "restored_body": "Bentornato. Reindirizzamento alla home…",
+    "no_session_title": "Accedi per ripristinare il tuo account",
+    "no_session_body": "La tua sessione è scaduta. Usa la stessa email con cui ti sei registrato — ti invieremo un nuovo magic link.",
+    "no_session_cta": "Accedi",
+    "error_auth": "Impossibile raggiungere il servizio di autenticazione. Aggiorna la pagina e riprova.",
+    "error_network": "Impossibile raggiungere i nostri server. Controlla la connessione e riprova.",
+    "error_generic": "Qualcosa è andato storto. Contatta l'assistenza.",
+    "footer_note": "Hai cambiato idea sul ripristino? Chiudi semplicemente questa scheda. Dopo 30 giorni dalla richiesta di eliminazione originale, i tuoi dati vengono cancellati definitivamente in automatico.",
+    "brand": "Cleanway"
   }
 }

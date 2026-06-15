@@ -245,6 +245,35 @@
   "family_join_paste_hint": {
     "message": "Astuce : collez un lien d'invitation Cleanway dans le premier champ — le PIN se remplira tout seul."
   },
+  "locked_title": {
+    "message": "Compte en attente"
+  },
+  "locked_body": {
+    "message": "Vous avez demandé la suppression de votre compte Cleanway. Nous le conservons pendant 30 jours avant de tout effacer. Restaurez-le maintenant pour conserver votre abonnement, votre historique et votre famille."
+  },
+  "locked_restore_cta": {
+    "message": "Restaurer mon compte"
+  },
+  "locked_restoring": {
+    "message": "Restauration…"
+  },
+  "locked_meta": {
+    "message": "Suppression demandée le $DATE$. Suppression définitive dans 30 jours.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Votre session a expiré. Veuillez vous reconnecter sur cleanway.ai."
+  },
+  "locked_error_generic": {
+    "message": "Impossible de restaurer votre compte. Veuillez réessayer ou contacter le support."
+  },
+  "locked_error_network": {
+    "message": "Impossible de joindre nos serveurs. Vérifiez votre connexion."
+  },
   "trust_footer": {
     "message": "Vos données ne quittent jamais cet appareil"
   },

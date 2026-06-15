@@ -248,6 +248,35 @@
       },
       "family_join_paste_hint": {
         "text": "Consejo: pega un enlace de invitación de Cleanway en el primer campo y el PIN se rellenará solo."
+      },
+      "locked_title": {
+        "text": "Cuenta en espera"
+      },
+      "locked_body": {
+        "text": "Solicitaste eliminar tu cuenta de Cleanway. La conservamos durante 30 días antes de borrarla por completo. Restáurala ahora para mantener tu suscripción, historial y familia."
+      },
+      "locked_restore_cta": {
+        "text": "Restaurar mi cuenta"
+      },
+      "locked_restoring": {
+        "text": "Restaurando…"
+      },
+      "locked_meta": {
+        "text": "Eliminación solicitada el $DATE$. Borrado definitivo en 30 días.",
+        "placeholders": {
+          "date": {
+            "content": "$1"
+          }
+        }
+      },
+      "locked_error_session": {
+        "text": "Tu sesión ha expirado. Inicia sesión de nuevo en cleanway.ai."
+      },
+      "locked_error_generic": {
+        "text": "No se pudo restaurar tu cuenta. Inténtalo de nuevo o contacta con soporte."
+      },
+      "locked_error_network": {
+        "text": "No se pudo conectar con nuestros servidores. Comprueba tu conexión."
       }
     },
     "common": {
@@ -625,6 +654,25 @@
           "a": "El plan Business incluye correos de phishing simulados enviados a tu equipo. Elige una plantilla, enviamos correos de prueba y rastreamos quién hace clic y quién reporta. Para capacitar, no para castigar."
         }
       ]
+    },
+    "account_restore": {
+      "page_title": "Restaura tu cuenta de Cleanway",
+      "page_meta_description": "Tu cuenta está programada para eliminarse. Restáurala durante el período de gracia de 30 días para conservar tu suscripción e historial.",
+      "heading_locked": "Tu cuenta está en espera",
+      "heading_default": "Restaura tu cuenta",
+      "body": "Nos pediste que elimináramos tu cuenta de Cleanway. La conservamos durante 30 días antes de borrar todo definitivamente — eso significa que tu suscripción, historial y membresías familiares siguen aquí. Haz clic abajo para recuperarla.",
+      "cta": "Restaurar mi cuenta",
+      "restoring": "Restaurando…",
+      "restored_title": "Cuenta restaurada ✓",
+      "restored_body": "Bienvenido de vuelta. Te redirigimos al inicio…",
+      "no_session_title": "Inicia sesión para restaurar tu cuenta",
+      "no_session_body": "Tu sesión ha expirado. Usa el mismo correo con el que te registraste — te enviaremos un nuevo enlace mágico.",
+      "no_session_cta": "Iniciar sesión",
+      "error_auth": "No se pudo conectar con el servicio de autenticación. Actualiza la página e inténtalo de nuevo.",
+      "error_network": "No se pudo conectar con nuestros servidores. Comprueba tu conexión e inténtalo de nuevo.",
+      "error_generic": "Algo salió mal. Por favor contacta con soporte.",
+      "footer_note": "¿Cambiaste de opinión sobre restaurar? Solo cierra esta pestaña. Después de 30 días desde la solicitud original de eliminación, tus datos se borran permanentemente de forma automática.",
+      "brand": "Cleanway"
     }
   },
   "email": {

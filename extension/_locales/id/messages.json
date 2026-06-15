@@ -245,6 +245,35 @@
   "family_join_paste_hint": {
     "message": "Tips: tempel tautan undangan Cleanway di kolom pertama — PIN akan terisi otomatis."
   },
+  "locked_title": {
+    "message": "Akun ditahan"
+  },
+  "locked_body": {
+    "message": "Anda meminta untuk menghapus akun Cleanway. Kami menyimpannya selama 30 hari sebelum menghapus semuanya. Pulihkan sekarang untuk mempertahankan langganan, riwayat, dan keluarga Anda."
+  },
+  "locked_restore_cta": {
+    "message": "Pulihkan akun saya"
+  },
+  "locked_restoring": {
+    "message": "Memulihkan…"
+  },
+  "locked_meta": {
+    "message": "Penghapusan diminta pada $DATE$. Penghapusan permanen dalam 30 hari.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Sesi Anda telah berakhir. Silakan masuk lagi di cleanway.ai."
+  },
+  "locked_error_generic": {
+    "message": "Tidak dapat memulihkan akun Anda. Coba lagi atau hubungi dukungan."
+  },
+  "locked_error_network": {
+    "message": "Tidak dapat terhubung ke server kami. Periksa koneksi Anda."
+  },
   "trust_footer": {
     "message": "Data Anda tidak pernah meninggalkan perangkat ini"
   },

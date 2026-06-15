@@ -146,6 +146,35 @@
       "nudge_threshold_cta": {
         "text": "See details"
       },
+      "locked_title": {
+        "text": "Account on hold"
+      },
+      "locked_body": {
+        "text": "You asked to delete your Cleanway account. We're holding it for 30 days before erasing everything. Restore it now to keep your subscription, history, and family."
+      },
+      "locked_restore_cta": {
+        "text": "Restore my account"
+      },
+      "locked_restoring": {
+        "text": "Restoring…"
+      },
+      "locked_meta": {
+        "text": "Deletion requested on $DATE$. Hard delete in 30 days.",
+        "placeholders": {
+          "date": {
+            "content": "$1"
+          }
+        }
+      },
+      "locked_error_session": {
+        "text": "Your session has expired. Please sign in again on cleanway.ai."
+      },
+      "locked_error_generic": {
+        "text": "Couldn't restore your account. Please try again or contact support."
+      },
+      "locked_error_network": {
+        "text": "Couldn't reach our servers. Please check your connection."
+      },
       "device_override_heading": {
         "text": "This device"
       },
@@ -627,6 +656,25 @@
           "a": "Business plan includes simulated phishing emails sent to your team. Pick a template, we send test emails, track who clicks vs. who reports. For training, not punishment."
         }
       ]
+    },
+    "account_restore": {
+      "page_title": "Restore your Cleanway account",
+      "page_meta_description": "Your account is scheduled for deletion. Restore it during the 30-day grace period to keep your subscription and history.",
+      "heading_locked": "Your account is on hold",
+      "heading_default": "Restore your account",
+      "body": "You asked us to delete your Cleanway account. We're holding it for 30 days before erasing everything for good — that means your subscription, history, and family memberships are all still here. Click below to bring it back.",
+      "cta": "Restore my account",
+      "restoring": "Restoring…",
+      "restored_title": "Account restored ✓",
+      "restored_body": "Welcome back. Redirecting you home…",
+      "no_session_title": "Sign in to restore your account",
+      "no_session_body": "Your session has expired. Use the same email you signed up with — we'll send a fresh magic link.",
+      "no_session_cta": "Sign in",
+      "error_auth": "Couldn't reach the auth service. Please refresh and try again.",
+      "error_network": "Couldn't reach our servers. Please check your connection and retry.",
+      "error_generic": "Something went wrong. Please contact support.",
+      "footer_note": "Changed your mind about restoring? Just close this tab. After 30 days from the original deletion request, your data is permanently wiped automatically.",
+      "brand": "Cleanway"
     }
   },
   "email": {

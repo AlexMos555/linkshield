@@ -1376,14 +1376,47 @@ async def restore_account(
     # through `get_current_user` without the 410. Also invalidate the
     # tier cache so a stale 'free' value from during-grace doesn't
     # linger after restore.
-    try:
-        from api.services.cache import get_redis
+    #
+    # If Redis is unreachable here we have a split-brain: Supabase says
+    # the user is restored but the lock flag persists, and every authed
+    # call keeps 410-ing until the flag's TTL (up to 30 days) expires.
+    # That looks identical to "restore didn't work" from the client's
+    # perspective. Two-shot retry handles transient blips; if both fail
+    # we surface a 503 so the client retries (the Supabase clear is
+    # idempotent — re-running this endpoint is safe).
+    from api.services.cache import get_redis
 
-        r = await get_redis()
-        await r.delete(f"deleted:{user.id}")
-        await r.delete(f"tier:{user.id}")
-    except Exception:
-        pass
+    redis_error: str | None = None
+    for attempt in (1, 2):
+        try:
+            r = await get_redis()
+            await r.delete(f"deleted:{user.id}")
+            await r.delete(f"tier:{user.id}")
+            redis_error = None
+            break
+        except Exception as e:
+            redis_error = str(e)
+            if attempt == 1:
+                # Brief backoff before the retry — Redis blips usually
+                # resolve in well under a second.
+                import asyncio
+                await asyncio.sleep(0.1)
+
+    if redis_error is not None:
+        logger.error(
+            "account_restore_redis_failed",
+            extra={"user_id": user.id, "error": redis_error},
+        )
+        # Don't write account.restored to the audit log — we haven't
+        # fully restored. The Supabase column is already cleared so
+        # the next retry will short-circuit through quickly.
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "Restore is partially complete — please retry in a moment.",
+                "retry_after_seconds": 5,
+            },
+        )
 
     from api.services import audit_log
     await audit_log.write(

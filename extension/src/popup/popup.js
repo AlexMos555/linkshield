@@ -441,8 +441,109 @@ function applySkillLevelStyles() {
   }
 }
 
+// ─── Soft-delete account-lock screen ───────────────────────────
+//
+// When any authed API call in utils/api.js hits a 410, it writes
+// `account_locked` into chrome.storage.local. On next popup open we
+// detect that flag and hide the regular UI, surfacing a restore CTA
+// instead. The restore button calls POST /api/v1/user/account/restore;
+// on success the flag clears and we reload the popup to its normal state.
+//
+// This is the only screen that should be visible while locked — every
+// other call would return 410 and create noise.
+async function checkAndRenderLockState() {
+  try {
+    var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+    var lock = await apiModule.isAccountLocked();
+    if (!lock) return false;
+
+    var overlay = $("account-locked-overlay");
+    if (!overlay) return false;
+
+    // Hide everything else so the user gets a focused screen.
+    var idsToHide = [
+      "status-card", "primary-action",
+      "aha-banner", "offline-banner", "upgrade-banner", "threshold-nudge",
+      "onboarding-tip",
+    ];
+    for (var i = 0; i < idsToHide.length; i++) {
+      var el = $(idsToHide[i]);
+      if (el) el.hidden = true;
+    }
+    // Also hide stats + tools sections — they're inside .content
+    var sections = document.querySelectorAll(".popup .content > section.stats, .popup .content > section.tools, .popup .content > section.actions");
+    for (var j = 0; j < sections.length; j++) sections[j].hidden = true;
+
+    overlay.hidden = false;
+
+    // Render locked-at timestamp if available
+    var metaEl = $("locked-meta");
+    if (metaEl && lock.locked_at) {
+      try {
+        var when = new Date(lock.locked_at);
+        if (!isNaN(when.getTime())) {
+          metaEl.textContent = t("locked_meta", [when.toLocaleDateString()])
+            || ("Deletion requested on " + when.toLocaleDateString() + ". Hard delete in 30 days.");
+        }
+      } catch (e) { /* timestamp parse — non-fatal */ }
+    }
+
+    var btn = $("btn-restore-account");
+    if (btn) {
+      btn.addEventListener("click", function() { handleRestoreClick(apiModule); });
+    }
+    return true;
+  } catch (e) {
+    // Can't read lock state — fail open (let the regular UI render).
+    return false;
+  }
+}
+
+async function handleRestoreClick(apiModule) {
+  var btn = $("btn-restore-account");
+  var errBox = $("locked-error");
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = t("locked_restoring") || "Restoring…";
+  if (errBox) errBox.hidden = true;
+
+  try {
+    var stored = await chrome.storage.local.get(["auth_token"]);
+    var token = stored && stored.auth_token;
+    if (!token) {
+      // Without a JWT we can't call /restore. Open the landing
+      // restore page where the user will be prompted to sign in.
+      window.open("https://cleanway.ai/account/restore?reason=locked", "_blank");
+      btn.disabled = false;
+      btn.textContent = t("locked_restore_cta") || "Restore my account";
+      return;
+    }
+
+    var result = await apiModule.restoreAccount(token);
+    if (result && result.ok) {
+      // Flag cleared by restoreAccount(). Reload popup to land on the
+      // normal UI.
+      window.location.reload();
+      return;
+    }
+    if (errBox) {
+      errBox.textContent = (result && result.status === 401)
+        ? (t("locked_error_session") || "Your session has expired. Please sign in again on cleanway.ai.")
+        : (t("locked_error_generic") || "Couldn't restore your account. Please try again or contact support.");
+      errBox.hidden = false;
+    }
+  } catch (e) {
+    if (errBox) {
+      errBox.textContent = t("locked_error_network") || "Couldn't reach our servers. Please check your connection.";
+      errBox.hidden = false;
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = t("locked_restore_cta") || "Restore my account";
+}
+
 // ─── Init ─────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", async function() {
   applySkillLevelStyles();
   applyI18n();
   wireButtons();
@@ -451,6 +552,12 @@ document.addEventListener("DOMContentLoaded", function() {
     runPreviewDemo();
     return;
   }
+
+  // Locked accounts get a focused restore screen — everything else
+  // is hidden. Bail before kicking off regular loads (they'd all 410
+  // anyway and just spam the network tab).
+  var locked = await checkAndRenderLockState();
+  if (locked) return;
 
   // Real extension mode — kick off loads in parallel
   loadPageStatus();

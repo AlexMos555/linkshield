@@ -245,6 +245,35 @@
   "family_join_paste_hint": {
     "message": "Tipp: Cleanway-Einladungslink ins erste Feld einfügen — die PIN wird automatisch ausgefüllt."
   },
+  "locked_title": {
+    "message": "Konto auf Halten"
+  },
+  "locked_body": {
+    "message": "Sie haben das Löschen Ihres Cleanway-Kontos angefordert. Wir bewahren es 30 Tage lang auf, bevor alles gelöscht wird. Stellen Sie es jetzt wieder her, um Abonnement, Verlauf und Familie zu behalten."
+  },
+  "locked_restore_cta": {
+    "message": "Konto wiederherstellen"
+  },
+  "locked_restoring": {
+    "message": "Wird wiederhergestellt…"
+  },
+  "locked_meta": {
+    "message": "Löschung am $DATE$ angefordert. Endgültige Löschung in 30 Tagen.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut auf cleanway.ai an."
+  },
+  "locked_error_generic": {
+    "message": "Konto konnte nicht wiederhergestellt werden. Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+  },
+  "locked_error_network": {
+    "message": "Verbindung zu unseren Servern fehlgeschlagen. Bitte überprüfen Sie Ihre Verbindung."
+  },
   "trust_footer": {
     "message": "Ihre Daten verlassen dieses Gerät nie"
   },

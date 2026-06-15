@@ -273,5 +273,24 @@
         "a": "Paket Business mencakup email phishing simulasi yang dikirim ke tim Anda. Pilih template, kami kirim email uji, dan melacak siapa yang mengeklik vs siapa yang melaporkan. Untuk pelatihan, bukan hukuman."
       }
     ]
+  },
+  "AccountRestore": {
+    "page_title": "Pulihkan akun Cleanway Anda",
+    "page_meta_description": "Akun Anda dijadwalkan untuk dihapus. Pulihkan selama masa tenggang 30 hari untuk mempertahankan langganan dan riwayat Anda.",
+    "heading_locked": "Akun Anda ditahan",
+    "heading_default": "Pulihkan akun Anda",
+    "body": "Anda meminta kami menghapus akun Cleanway Anda. Kami menyimpannya selama 30 hari sebelum menghapus semuanya secara permanen — itu berarti langganan, riwayat, dan keanggotaan keluarga Anda masih ada. Klik di bawah untuk mengembalikannya.",
+    "cta": "Pulihkan akun saya",
+    "restoring": "Memulihkan…",
+    "restored_title": "Akun dipulihkan ✓",
+    "restored_body": "Selamat datang kembali. Mengarahkan ke beranda…",
+    "no_session_title": "Masuk untuk memulihkan akun Anda",
+    "no_session_body": "Sesi Anda telah berakhir. Gunakan email yang sama saat Anda mendaftar — kami akan mengirim tautan ajaib baru.",
+    "no_session_cta": "Masuk",
+    "error_auth": "Tidak dapat menjangkau layanan autentikasi. Mohon segarkan dan coba lagi.",
+    "error_network": "Tidak dapat menjangkau server kami. Mohon periksa koneksi Anda dan coba lagi.",
+    "error_generic": "Terjadi kesalahan. Mohon hubungi dukungan.",
+    "footer_note": "Berubah pikiran tentang pemulihan? Cukup tutup tab ini. Setelah 30 hari sejak permintaan penghapusan asli, data Anda dihapus secara permanen secara otomatis.",
+    "brand": "Cleanway"
   }
 }

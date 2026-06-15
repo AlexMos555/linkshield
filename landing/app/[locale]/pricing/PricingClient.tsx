@@ -1,4 +1,5 @@
 "use client";
+import { useLocale } from "next-intl";
 import { useState } from "react";
 import type { PricingFor } from "@cleanway/api-client";
 
@@ -28,7 +29,14 @@ const API_BASE =
  *          and resume the checkout flow
  *   - other: show a friendly error and stay on the page
  */
-async function startCheckout(plan: PaidPlan, interval: Interval): Promise<void> {
+const DEFAULT_LOCALE = "en";
+
+/** Build a locale-prefixed path matching `localePrefix: "as-needed"`. */
+function localePath(locale: string, path: string): string {
+  return locale === DEFAULT_LOCALE ? path : `/${locale}${path}`;
+}
+
+async function startCheckout(plan: PaidPlan, interval: Interval, locale: string): Promise<void> {
   const planKey = `${plan}_${interval}`; // matches backend CheckoutRequest.plan
   const success_url = "https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}";
   const cancel_url = "https://cleanway.ai/pricing";
@@ -64,7 +72,16 @@ async function startCheckout(plan: PaidPlan, interval: Interval): Promise<void> 
   }
 
   if (resp.status === 401) {
-    window.location.href = `/signup?plan=${plan}&interval=${interval}`;
+    window.location.href = localePath(locale, `/signup?plan=${plan}&interval=${interval}`);
+    return;
+  }
+
+  if (resp.status === 410) {
+    // Soft-deleted account in 30-day grace window. Supabase session is
+    // alive but the API is refusing every authed call. Route them to the
+    // restore page (preserving their locale prefix) instead of letting
+    // them bounce through generic error UX.
+    window.location.href = localePath(locale, "/account/restore?reason=locked");
     return;
   }
 
@@ -83,6 +100,11 @@ async function startCheckout(plan: PaidPlan, interval: Interval): Promise<void> 
 
 export default function PricingClient({ data }: PricingClientProps) {
   const [interval, setInterval] = useState<Interval>("monthly");
+  // Needed for locale-aware redirects on auth failure (401 → /signup)
+  // and soft-delete lock (410 → /account/restore). With
+  // `localePrefix: "as-needed"`, a non-EN user MUST keep their prefix
+  // or they'd be silently moved to English mid-flow.
+  const locale = useLocale();
 
   return (
     <section className="pb-16 px-6">
@@ -221,6 +243,7 @@ interface PlanCardProps {
 }
 
 function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuffix, features, cta, ctaHref = "#", emphasis, badge, paidPlan }: PlanCardProps) {
+  const locale = useLocale();
   const displayPrice = price === 0 ? "$0" : `$${price.toFixed(2)}`;
   const intervalLabel = price === 0 ? "" : interval === "monthly" ? "/mo" : "/yr";
 
@@ -263,7 +286,7 @@ function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuf
         <button
           type="button"
           onClick={() => {
-            void startCheckout(paidPlan, interval);
+            void startCheckout(paidPlan, interval, locale);
           }}
           className={`block w-full text-center px-4 py-3 rounded-xl font-semibold transition ${
             emphasis

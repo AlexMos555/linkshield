@@ -248,6 +248,35 @@
       },
       "family_join_paste_hint": {
         "text": "Tipp: Cleanway-Einladungslink ins erste Feld einfügen — die PIN wird automatisch ausgefüllt."
+      },
+      "locked_title": {
+        "text": "Konto auf Halten"
+      },
+      "locked_body": {
+        "text": "Sie haben das Löschen Ihres Cleanway-Kontos angefordert. Wir bewahren es 30 Tage lang auf, bevor alles gelöscht wird. Stellen Sie es jetzt wieder her, um Abonnement, Verlauf und Familie zu behalten."
+      },
+      "locked_restore_cta": {
+        "text": "Konto wiederherstellen"
+      },
+      "locked_restoring": {
+        "text": "Wird wiederhergestellt…"
+      },
+      "locked_meta": {
+        "text": "Löschung am $DATE$ angefordert. Endgültige Löschung in 30 Tagen.",
+        "placeholders": {
+          "date": {
+            "content": "$1"
+          }
+        }
+      },
+      "locked_error_session": {
+        "text": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut auf cleanway.ai an."
+      },
+      "locked_error_generic": {
+        "text": "Konto konnte nicht wiederhergestellt werden. Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+      },
+      "locked_error_network": {
+        "text": "Verbindung zu unseren Servern fehlgeschlagen. Bitte überprüfen Sie Ihre Verbindung."
       }
     },
     "common": {
@@ -625,6 +654,25 @@
           "a": "Der Business-Tarif beinhaltet simulierte Phishing-E-Mails, die an Ihr Team gesendet werden. Wählen Sie eine Vorlage, wir versenden Test-E-Mails und verfolgen, wer klickt und wer meldet. Für Schulung, nicht zur Bestrafung."
         }
       ]
+    },
+    "account_restore": {
+      "page_title": "Stellen Sie Ihr Cleanway-Konto wieder her",
+      "page_meta_description": "Ihr Konto ist zur Löschung vorgemerkt. Stellen Sie es während der 30-tägigen Schonfrist wieder her, um Ihr Abonnement und Ihren Verlauf zu behalten.",
+      "heading_locked": "Ihr Konto ist auf Halten",
+      "heading_default": "Konto wiederherstellen",
+      "body": "Sie haben uns gebeten, Ihr Cleanway-Konto zu löschen. Wir bewahren es 30 Tage lang auf, bevor alles endgültig gelöscht wird — das heißt, Ihr Abonnement, Ihr Verlauf und Ihre Familienmitgliedschaften sind alle noch da. Klicken Sie unten, um es zurückzuholen.",
+      "cta": "Konto wiederherstellen",
+      "restoring": "Wird wiederhergestellt…",
+      "restored_title": "Konto wiederhergestellt ✓",
+      "restored_body": "Willkommen zurück. Sie werden zur Startseite weitergeleitet…",
+      "no_session_title": "Melden Sie sich an, um Ihr Konto wiederherzustellen",
+      "no_session_body": "Ihre Sitzung ist abgelaufen. Verwenden Sie dieselbe E-Mail-Adresse, mit der Sie sich registriert haben — wir senden Ihnen einen neuen Magic Link.",
+      "no_session_cta": "Anmelden",
+      "error_auth": "Authentifizierungsdienst konnte nicht erreicht werden. Bitte aktualisieren Sie die Seite und versuchen Sie es erneut.",
+      "error_network": "Verbindung zu unseren Servern fehlgeschlagen. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "error_generic": "Etwas ist schiefgelaufen. Bitte kontaktieren Sie den Support.",
+      "footer_note": "Doch nicht wiederherstellen? Schließen Sie einfach diesen Tab. 30 Tage nach der ursprünglichen Löschanfrage werden Ihre Daten automatisch endgültig gelöscht.",
+      "brand": "Cleanway"
     }
   },
   "email": {
