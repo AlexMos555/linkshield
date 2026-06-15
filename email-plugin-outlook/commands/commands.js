@@ -23,7 +23,7 @@ Office.onReady(() => {
  */
 function reportPhishing(event) {
   const item = Office.context.mailbox.item;
-  if (!item || !item.from) {
+  if (!item || !item.from || !item.from.emailAddress) {
     finishWithNotification(
       event,
       "error",
@@ -32,11 +32,34 @@ function reportPhishing(event) {
     return;
   }
 
+  // Backend contract: api/routers/feedback.py::ReportRequest expects
+  //   { domain: str, report_type: "false_positive" | "false_negative",
+  //     current_score?: int, comment?: str }
+  // The previous payload ({source, reason, sender, subject}) caused
+  // every ribbon click to 422. For an Outlook user marking an email
+  // as phishing, this is a false-negative report (Cleanway did not
+  // already flag it). The "domain" is the sender's email domain —
+  // that's what the ML retraining pipeline keys off. Full sender +
+  // subject go in `comment` for triage, both length-capped to stay
+  // under the 500-char backend limit.
+  const senderEmail = item.from.emailAddress;
+  const atIdx = senderEmail.lastIndexOf("@");
+  const senderDomain = atIdx >= 0 ? senderEmail.slice(atIdx + 1).toLowerCase() : "";
+  if (!senderDomain) {
+    finishWithNotification(
+      event,
+      "error",
+      "Cleanway couldn't read the sender's domain for this message.",
+    );
+    return;
+  }
+
+  const sender = senderEmail.slice(0, 200);
+  const subject = (item.subject || "").slice(0, 200);
   const payload = {
-    source: "outlook",
-    reason: "phishing",
-    sender: item.from.emailAddress || "",
-    subject: item.subject || "",
+    domain: senderDomain,
+    report_type: "false_negative",
+    comment: `[outlook] sender=${sender}; subject=${subject}`.slice(0, 500),
   };
 
   fetch(`${API_BASE}/api/v1/feedback/report`, {

@@ -9,7 +9,12 @@
        script; Office will invoke functions exposed via Office.actions.
        See https://learn.microsoft.com/office/dev/add-ins/develop/create-addin-commands  -->
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <script src="commands.js" defer></script>
+  <!-- No `defer` here. Office.onReady can fire as soon as office.js
+       finishes parsing; if we defer commands.js, Office.actions.associate()
+       runs AFTER onReady has already dispatched and the ribbon click
+       never finds the handler. Inline parse-and-execute ordering keeps
+       the registration before onReady's first tick. -->
+  <script src="commands.js"></script>
 </head>
 <body></body>
 </html>

@@ -19,7 +19,7 @@
   xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
   xsi:type="MailApp">
 
-  <Id>f8b5a4c3-2e6d-4e7a-8b19-cleanway-outlook</Id>
+  <Id>12f6ba81-1d2a-424a-8915-8407b5355f4c</Id>
   <Version>0.1.0</Version>
   <ProviderName>Cleanway</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
