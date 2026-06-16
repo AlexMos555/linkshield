@@ -335,6 +335,14 @@
       },
       "trust_footer": {
         "text": "محمي بواسطة Cleanway. بياناتك تبقى على جهازك."
+      },
+      "voice_alert": {
+        "text": "توقف. الموقع $DOMAIN$ خطير. لا تكتب كلمة المرور.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "welcome": {

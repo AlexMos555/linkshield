@@ -328,6 +328,14 @@
   "block_trust_footer": {
     "message": "Geschützt durch Cleanway. Ihre Daten bleiben auf diesem Gerät."
   },
+  "block_voice_alert": {
+    "message": "Stopp. Die Seite $DOMAIN$ ist gefährlich. Geben Sie Ihr Passwort nicht ein.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "welcome_hero_title": {
     "message": "Sie sind jetzt geschützt"
   },

@@ -328,6 +328,14 @@
   "block_trust_footer": {
     "message": "Защищает Cleanway. Ваши данные остаются на этом устройстве."
   },
+  "block_voice_alert": {
+    "message": "Стой. Сайт $DOMAIN$ опасен. Не вводи пароль.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "welcome_hero_title": {
     "message": "Вы под защитой"
   },

@@ -335,6 +335,14 @@
       },
       "trust_footer": {
         "text": "Dilindungi Cleanway. Data Anda tetap di perangkat ini."
+      },
+      "voice_alert": {
+        "text": "Berhenti. Situs $DOMAIN$ berbahaya. Jangan masukkan kata sandi Anda.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "welcome": {

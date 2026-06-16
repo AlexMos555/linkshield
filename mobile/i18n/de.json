@@ -91,6 +91,7 @@
   "extension.block_page.proceed_button": "Risiko verstanden — trotzdem öffnen",
   "extension.block_page.proceed_countdown": "Noch {{n}} Sekunden warten…",
   "extension.block_page.trust_footer": "Geschützt durch Cleanway. Ihre Daten bleiben auf diesem Gerät.",
+  "extension.block_page.voice_alert": "Stopp. Die Seite {{domain}} ist gefährlich. Geben Sie Ihr Passwort nicht ein.",
   "extension.welcome.hero_title": "Sie sind jetzt geschützt",
   "extension.welcome.hero_subtitle": "Jeder Link wird geprüft. Gefährliche werden automatisch blockiert.",
   "extension.welcome.step1_title": "Automatische Prüfung",

@@ -23,6 +23,7 @@ const BLOCK_EN = {
   block_proceed_button: "I understand the risk — open anyway",
   block_proceed_countdown: "Wait $N$ seconds…",
   block_trust_footer: "Protected by Cleanway. Your data stays on your device.",
+  block_voice_alert: "Stop. The site $DOMAIN$ is dangerous. Do not type your password.",
 };
 
 function bt(key, subs) {
@@ -51,6 +52,61 @@ function isRTL() {
     }
   } catch (_) {}
   return document.documentElement.dir === "rtl";
+}
+
+// ── Grandma Mode (Strategy Top-20 #3) ────────────────────────────
+//
+// Calibrated for users 65+: oversized text, voice-narrated warnings,
+// simplified copy. We don't change the verdict, just the way the
+// verdict is delivered. The skill_level read is synchronous from
+// chrome.storage; we cache it so a slow storage round-trip on a
+// busy page doesn't delay the block overlay paint.
+let _cachedSkillLevel = null;
+
+function _readSkillLevel(cb) {
+  if (_cachedSkillLevel !== null) {
+    cb(_cachedSkillLevel);
+    return;
+  }
+  try {
+    chrome.storage.local.get(["skill_level"], function (data) {
+      _cachedSkillLevel = (data && data.skill_level) || "regular";
+      cb(_cachedSkillLevel);
+    });
+  } catch (_) {
+    cb("regular");
+  }
+}
+
+/**
+ * Speak a phrase via the Web Speech API, in the user's UI language
+ * when available. Picks a voice from the platform's installed set;
+ * if none match the locale we fall back to whatever the browser
+ * picks by default. Voice picks vary widely across OS/browser so we
+ * keep the phrase short and don't depend on any particular SSML
+ * features — plain text works everywhere.
+ */
+function _speakAlert(text) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  try {
+    var utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95; // slightly slower for clarity
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    // Locale hint — Web Speech picks the closest match.
+    if (chrome && chrome.i18n && chrome.i18n.getUILanguage) {
+      utterance.lang = chrome.i18n.getUILanguage();
+    }
+    // Cancel any in-flight utterance from a previous block so we don't
+    // queue up multiple warnings if the user clicks through several
+    // dangerous links quickly.
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  } catch (_) {
+    /* Some browsers (Brave with shields up, Firefox with TTS disabled)
+       throw on the synthesis call. Non-fatal — the visual warning
+       still appears. */
+  }
 }
 
 // Detect impersonated brand from scoring reasons
@@ -239,6 +295,66 @@ export function showBlockPage(result) {
   document.body.appendChild(overlay);
   const prevOverflow = document.body.style.overflow;
   document.body.style.overflow = "hidden";
+
+  // Strategy #3 — Grandma Mode behaviour.
+  //
+  // Apply once the overlay is in the DOM so the CSS variable cascade
+  // takes effect on the painted node. We:
+  //   - set an attribute on the overlay so the stylesheet can up-size
+  //     fonts via attribute selectors,
+  //   - inject inline overrides (CSS variables) to guarantee the
+  //     overrides land regardless of the platform's default font
+  //     size, and
+  //   - kick off a voice alert in the user's UI locale.
+  _readSkillLevel(function (lvl) {
+    if (lvl === "granny") {
+      overlay.setAttribute("data-skill", "granny");
+      // Inline overrides — these out-scale the base values defined in
+      // the embedded <style> above. We intentionally bump fonts by
+      // ~45% (16→24, 22→32, 56→80) and increase line-height for
+      // readability. Buttons go from 17 → 22 to make taps easier with
+      // tremor / poor vision.
+      var card = overlay.querySelector(".ls-block-card");
+      if (card) card.style.padding = "56px 36px";
+      var title = overlay.querySelector(".ls-block-title");
+      if (title) {
+        title.style.fontSize = "80px";
+        title.style.letterSpacing = "0.18em";
+      }
+      var subtitle = overlay.querySelector(".ls-block-subtitle");
+      if (subtitle) subtitle.style.fontSize = "32px";
+      var explanation = overlay.querySelector(".ls-block-explanation");
+      if (explanation) {
+        explanation.style.fontSize = "24px";
+        explanation.style.lineHeight = "1.6";
+      }
+      var domEl = overlay.querySelector(".ls-block-domain");
+      if (domEl) domEl.style.fontSize = "20px";
+      var stepsBtns = overlay.querySelectorAll(".ls-block-scheme-step, .ls-block-btn-back");
+      stepsBtns.forEach(function (el) {
+        if (el.classList.contains("ls-block-btn-back")) {
+          el.style.fontSize = "22px";
+          el.style.padding = "22px 28px";
+        } else {
+          el.style.fontSize = "20px";
+        }
+      });
+
+      // Voice alert.
+      try {
+        var voiceMsg = bt("block_voice_alert", [domain]);
+        if (!voiceMsg || voiceMsg.indexOf("Cleanway blocked") !== -1
+            || /^block_voice_alert/.test(voiceMsg)) {
+          // Fallback to a hardcoded short phrase if the locale key
+          // isn't there yet — we'll add it in i18n-strings shortly.
+          voiceMsg = "Stop. This site is dangerous. Do not type your password.";
+        }
+        _speakAlert(voiceMsg);
+      } catch (_) {
+        /* speech failure non-fatal — visual block stays. */
+      }
+    }
+  });
 
   // "Go back" — navigate to previous page (safest) or close tab
   const backBtn = overlay.querySelector("#ls-block-back");

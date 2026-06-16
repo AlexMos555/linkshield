@@ -91,6 +91,7 @@
   "extension.block_page.proceed_button": "Saya paham risikonya — tetap buka",
   "extension.block_page.proceed_countdown": "Tunggu {{n}} detik…",
   "extension.block_page.trust_footer": "Dilindungi Cleanway. Data Anda tetap di perangkat ini.",
+  "extension.block_page.voice_alert": "Berhenti. Situs {{domain}} berbahaya. Jangan masukkan kata sandi Anda.",
   "extension.welcome.hero_title": "Anda sekarang terlindungi",
   "extension.welcome.hero_subtitle": "Setiap tautan yang Anda lihat diperiksa. Yang berbahaya diblokir otomatis.",
   "extension.welcome.step1_title": "Pemeriksaan otomatis",
