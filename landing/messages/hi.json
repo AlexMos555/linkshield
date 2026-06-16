@@ -307,5 +307,19 @@
     "step3_body": "परिवार के सदस्य के फ़ोन पर साइन इन करें और Settings → Family Hub से उन्हें आमंत्रण भेजें।",
     "support_question": "सब्सक्रिप्शन के बारे में प्रश्न? ईमेल करें",
     "reference_label": "संदर्भ"
+  },
+  "Signup": {
+    "check_inbox": "अपना इनबॉक्स देखें",
+    "magic_link_sent": "हमने $EMAIL$ पर magic link साइन-इन भेजा है।",
+    "magic_link_followup": "साइन-इन पूरा करने के लिए लिंक पर क्लिक करें। पेज स्वचालित रूप से जारी रहेगा।",
+    "email_label": "ईमेल",
+    "email_placeholder": "aap@example.com",
+    "submitting": "Magic link भेज रहे हैं…",
+    "submit_with_plan": "मुझे साइन-इन लिंक भेजें",
+    "submit_no_plan": "जारी रखें",
+    "footer_lead": "हम आपको एक बार उपयोग होने वाला साइन-इन लिंक भेजेंगे। याद रखने के लिए कोई पासवर्ड नहीं।",
+    "footer_or": "या",
+    "footer_install_cta": "एक्सटेंशन मुफ्त इंस्टॉल करें",
+    "footer_install_tail": "— ब्लॉकिंग बिना अकाउंट के भी हमेशा काम करती है।"
   }
 }

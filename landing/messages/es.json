@@ -307,5 +307,19 @@
     "step3_body": "Inicia sesión en el teléfono de un familiar y envíale una invitación desde Settings → Family Hub.",
     "support_question": "¿Preguntas sobre tu suscripción? Escribe a",
     "reference_label": "Referencia"
+  },
+  "Signup": {
+    "check_inbox": "Revisa tu bandeja",
+    "magic_link_sent": "Te enviamos un enlace mágico a $EMAIL$.",
+    "magic_link_followup": "Haz clic en el enlace para terminar de iniciar sesión. La página continuará automáticamente.",
+    "email_label": "Correo electrónico",
+    "email_placeholder": "tu@ejemplo.com",
+    "submitting": "Enviando enlace mágico…",
+    "submit_with_plan": "Enviarme el enlace",
+    "submit_no_plan": "Continuar",
+    "footer_lead": "Te enviaremos un enlace de un solo uso. Sin contraseñas que recordar.",
+    "footer_or": "O",
+    "footer_install_cta": "instala la extensión gratis",
+    "footer_install_tail": "— el bloqueo siempre funciona sin cuenta."
   }
 }

@@ -307,5 +307,19 @@
     "step3_body": "Melden Sie sich auf dem Telefon eines Familienmitglieds an und senden Sie eine Einladung über Settings → Family Hub.",
     "support_question": "Fragen zu Ihrem Abonnement? Schreiben Sie an",
     "reference_label": "Referenz"
+  },
+  "Signup": {
+    "check_inbox": "Prüfen Sie Ihr Postfach",
+    "magic_link_sent": "Wir haben einen Magic Link an $EMAIL$ gesendet.",
+    "magic_link_followup": "Klicken Sie auf den Link, um sich anzumelden. Die Seite wird automatisch fortgesetzt.",
+    "email_label": "E-Mail",
+    "email_placeholder": "sie@beispiel.de",
+    "submitting": "Magic Link wird gesendet…",
+    "submit_with_plan": "Anmelde-Link senden",
+    "submit_no_plan": "Weiter",
+    "footer_lead": "Wir senden Ihnen einen einmaligen Anmelde-Link. Kein Passwort zu merken.",
+    "footer_or": "Oder",
+    "footer_install_cta": "installieren Sie die Erweiterung kostenlos",
+    "footer_install_tail": "— das Blockieren funktioniert immer ohne Konto."
   }
 }

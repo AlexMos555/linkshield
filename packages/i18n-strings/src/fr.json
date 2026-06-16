@@ -699,6 +699,20 @@
       "step3_body": "Connectez-vous sur le téléphone d'un proche et envoyez une invitation depuis Settings → Family Hub.",
       "support_question": "Des questions sur votre abonnement ? Écrivez à",
       "reference_label": "Référence"
+    },
+    "signup": {
+      "check_inbox": "Vérifiez votre boîte mail",
+      "magic_link_sent": "Nous avons envoyé un lien magique de connexion à $EMAIL$.",
+      "magic_link_followup": "Cliquez sur le lien pour terminer la connexion. La page continuera automatiquement.",
+      "email_label": "E-mail",
+      "email_placeholder": "vous@exemple.com",
+      "submitting": "Envoi du lien magique…",
+      "submit_with_plan": "Envoyer mon lien de connexion",
+      "submit_no_plan": "Continuer",
+      "footer_lead": "Nous vous enverrons un lien de connexion à usage unique. Aucun mot de passe à retenir.",
+      "footer_or": "Ou",
+      "footer_install_cta": "installez l'extension gratuite",
+      "footer_install_tail": "— le blocage fonctionne toujours sans compte."
     }
   },
   "email": {

@@ -699,6 +699,20 @@
       "step3_body": "Войдите на телефоне члена семьи и отправьте приглашение из Settings → Family Hub.",
       "support_question": "Вопросы по подписке? Напишите на",
       "reference_label": "Идентификатор"
+    },
+    "signup": {
+      "check_inbox": "Проверьте почту",
+      "magic_link_sent": "Мы отправили magic-ссылку для входа на $EMAIL$.",
+      "magic_link_followup": "Нажмите на ссылку, чтобы завершить вход. Страница продолжится автоматически.",
+      "email_label": "Почта",
+      "email_placeholder": "you@example.com",
+      "submitting": "Отправляем magic-ссылку…",
+      "submit_with_plan": "Отправить ссылку для входа",
+      "submit_no_plan": "Продолжить",
+      "footer_lead": "Мы отправим одноразовую ссылку для входа. Пароль помнить не нужно.",
+      "footer_or": "Или",
+      "footer_install_cta": "установите расширение бесплатно",
+      "footer_install_tail": "— блокировка работает без аккаунта."
     }
   },
   "email": {

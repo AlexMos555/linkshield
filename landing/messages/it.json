@@ -307,5 +307,19 @@
     "step3_body": "Accedi sul telefono di un familiare e invia un invito da Settings → Family Hub.",
     "support_question": "Domande sull'abbonamento? Scrivi a",
     "reference_label": "Riferimento"
+  },
+  "Signup": {
+    "check_inbox": "Controlla la tua casella di posta",
+    "magic_link_sent": "Abbiamo inviato un magic link a $EMAIL$.",
+    "magic_link_followup": "Clicca sul link per completare l'accesso. La pagina continuerà automaticamente.",
+    "email_label": "E-mail",
+    "email_placeholder": "tu@esempio.com",
+    "submitting": "Invio del magic link…",
+    "submit_with_plan": "Inviami il link di accesso",
+    "submit_no_plan": "Continua",
+    "footer_lead": "Ti invieremo un link di accesso monouso. Nessuna password da ricordare.",
+    "footer_or": "Oppure",
+    "footer_install_cta": "installa l'estensione gratis",
+    "footer_install_tail": "— il blocco funziona sempre senza account."
   }
 }

@@ -307,5 +307,19 @@
     "step3_body": "Masuk di telepon anggota keluarga dan kirim undangan dari Settings → Family Hub.",
     "support_question": "Pertanyaan tentang langganan Anda? Kirim email ke",
     "reference_label": "Referensi"
+  },
+  "Signup": {
+    "check_inbox": "Periksa kotak masuk Anda",
+    "magic_link_sent": "Kami mengirim magic link masuk ke $EMAIL$.",
+    "magic_link_followup": "Klik tautan untuk menyelesaikan masuk. Halaman akan dilanjutkan secara otomatis.",
+    "email_label": "Email",
+    "email_placeholder": "kamu@contoh.com",
+    "submitting": "Mengirim magic link…",
+    "submit_with_plan": "Kirim tautan masuk",
+    "submit_no_plan": "Lanjutkan",
+    "footer_lead": "Kami akan mengirimkan tautan masuk sekali pakai. Tidak ada kata sandi untuk diingat.",
+    "footer_or": "Atau",
+    "footer_install_cta": "pasang ekstensi gratis",
+    "footer_install_tail": "— pemblokiran selalu bekerja tanpa akun."
   }
 }

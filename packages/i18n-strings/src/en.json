@@ -701,6 +701,20 @@
       "step3_body": "Sign in on a family member's phone, send them an invite from Settings → Family Hub.",
       "support_question": "Questions about your subscription? Email",
       "reference_label": "Reference"
+    },
+    "signup": {
+      "check_inbox": "Check your inbox",
+      "magic_link_sent": "We sent a magic-link sign-in to $EMAIL$.",
+      "magic_link_followup": "Click the link to finish signing in. The page will continue automatically.",
+      "email_label": "Email",
+      "email_placeholder": "you@example.com",
+      "submitting": "Sending magic link…",
+      "submit_with_plan": "Email me a sign-in link",
+      "submit_no_plan": "Continue",
+      "footer_lead": "We'll email you a one-time sign-in link. No password to remember.",
+      "footer_or": "Or",
+      "footer_install_cta": "install the extension free",
+      "footer_install_tail": "— blocking always works without an account."
     }
   },
   "email": {

@@ -307,5 +307,19 @@
     "step3_body": "سجّل الدخول على هاتف أحد أفراد العائلة وأرسل دعوة من Settings → Family Hub.",
     "support_question": "أسئلة حول اشتراكك؟ راسلنا على",
     "reference_label": "المرجع"
+  },
+  "Signup": {
+    "check_inbox": "تحقق من بريدك الإلكتروني",
+    "magic_link_sent": "أرسلنا رابطًا سحريًا لتسجيل الدخول إلى $EMAIL$.",
+    "magic_link_followup": "انقر على الرابط لإكمال تسجيل الدخول. ستستمر الصفحة تلقائيًا.",
+    "email_label": "البريد الإلكتروني",
+    "email_placeholder": "anta@example.com",
+    "submitting": "جارٍ إرسال الرابط السحري…",
+    "submit_with_plan": "أرسل لي رابط تسجيل الدخول",
+    "submit_no_plan": "متابعة",
+    "footer_lead": "سنرسل لك رابط تسجيل دخول لمرة واحدة. لا توجد كلمة مرور للتذكر.",
+    "footer_or": "أو",
+    "footer_install_cta": "ثبّت الإضافة مجانًا",
+    "footer_install_tail": "— الحظر يعمل دائمًا بدون حساب."
   }
 }

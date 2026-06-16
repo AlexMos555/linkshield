@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
@@ -31,6 +32,7 @@ interface SignupFormProps {
  * Supabase Auth is being wired in Vercel/Railway.
  */
 export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupFormProps) {
+  const t = useTranslations("Signup");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,13 +134,24 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
       >
         <div style={{ fontSize: 40, marginBottom: 12 }}>📩</div>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px" }}>
-          Check your inbox
+          {t("check_inbox")}
         </h2>
         <p style={{ fontSize: 14, color: "#94a3b8", margin: "0 0 6px", lineHeight: 1.6 }}>
-          We sent a magic-link sign-in to <strong style={{ color: "#f8fafc" }}>{email}</strong>.
+          {/* magic_link_sent contains a literal $EMAIL$ placeholder we
+              substitute client-side. Using inline interpolation keeps
+              the localized text formed as a single paragraph (the
+              <strong> wrapping the email is preserved). */}
+          {t("magic_link_sent").split("$EMAIL$").map((part, i, arr) => (
+            <span key={i}>
+              {part}
+              {i < arr.length - 1 && (
+                <strong style={{ color: "#f8fafc" }}>{email}</strong>
+              )}
+            </span>
+          ))}
         </p>
-        <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>
-          Click the link to finish signing in. The page will continue automatically.
+        <p style={{ fontSize: 13, color: "#94a3b8", margin: 0 }}>
+          {t("magic_link_followup")}
         </p>
       </div>
     );
@@ -147,14 +160,14 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ fontSize: 13, color: "#94a3b8", fontWeight: 500 }}>Email</span>
+        <span style={{ fontSize: 13, color: "#94a3b8", fontWeight: 500 }}>{t("email_label")}</span>
         <input
           type="email"
           autoComplete="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          placeholder={t("email_placeholder")}
           style={{
             background: "#0f172a",
             color: "#e2e8f0",
@@ -188,13 +201,19 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
           marginTop: 4,
         }}
       >
-        {submitting ? "Sending magic link…" : planFromQuery ? "Email me a sign-in link" : "Continue"}
+        {submitting
+          ? t("submitting")
+          : planFromQuery
+          ? t("submit_with_plan")
+          : t("submit_no_plan")}
       </button>
 
-      <p style={{ fontSize: 12, color: "#64748b", marginTop: 8, lineHeight: 1.5 }}>
-        We&apos;ll email you a one-time sign-in link. No password to remember. Or{" "}
-        <a href="https://chrome.google.com/webstore" style={{ color: "#60a5fa" }}>install the extension free</a>{" "}
-        — blocking always works without an account.
+      <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 8, lineHeight: 1.5 }}>
+        {t("footer_lead")} {t("footer_or")}{" "}
+        <a href="https://chrome.google.com/webstore" style={{ color: "#60a5fa" }}>
+          {t("footer_install_cta")}
+        </a>{" "}
+        {t("footer_install_tail")}
       </p>
     </form>
   );

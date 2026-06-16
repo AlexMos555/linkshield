@@ -699,6 +699,20 @@
       "step3_body": "Entre no celular de um familiar e envie um convite em Settings → Family Hub.",
       "support_question": "Dúvidas sobre sua assinatura? Escreva para",
       "reference_label": "Referência"
+    },
+    "signup": {
+      "check_inbox": "Verifique sua caixa de entrada",
+      "magic_link_sent": "Enviamos um link mágico de login para $EMAIL$.",
+      "magic_link_followup": "Clique no link para finalizar o login. A página continuará automaticamente.",
+      "email_label": "E-mail",
+      "email_placeholder": "voce@exemplo.com",
+      "submitting": "Enviando link mágico…",
+      "submit_with_plan": "Me envie o link de login",
+      "submit_no_plan": "Continuar",
+      "footer_lead": "Enviaremos um link único de login. Sem senhas para lembrar.",
+      "footer_or": "Ou",
+      "footer_install_cta": "instale a extensão grátis",
+      "footer_install_tail": "— o bloqueio sempre funciona sem conta."
     }
   },
   "email": {
