@@ -9,7 +9,9 @@
       "www.paypal.com",
       "paypal.me"
     ],
-    "known_favicon_hashes": []
+    "known_favicon_hashes": [
+      "1690c4e20869c3763b7fc111"
+    ]
   },
   "apple": {
     "verified_hosts": [
@@ -104,7 +106,9 @@
       "www.wellsfargo.com",
       "connect.secure.wellsfargo.com"
     ],
-    "known_favicon_hashes": []
+    "known_favicon_hashes": [
+      "2420e2dd77fbe0494070da2c"
+    ]
   },
   "bankofamerica": {
     "verified_hosts": [
@@ -132,7 +136,9 @@
       "hsbc.co.uk",
       "www.hsbc.co.uk"
     ],
-    "known_favicon_hashes": []
+    "known_favicon_hashes": [
+      "e326fc1e0be7ac7178e594a4"
+    ]
   },
   "barclays": {
     "verified_hosts": [
@@ -140,7 +146,9 @@
       "www.barclays.co.uk",
       "barclays.com"
     ],
-    "known_favicon_hashes": []
+    "known_favicon_hashes": [
+      "293b048dea708fbeb92dee78"
+    ]
   },
   "santander": {
     "verified_hosts": [
@@ -157,14 +165,18 @@
       "dhl.com",
       "www.dhl.com"
     ],
-    "known_favicon_hashes": []
+    "known_favicon_hashes": [
+      "9ada5709e264c31b04a05bd8"
+    ]
   },
   "ups": {
     "verified_hosts": [
       "ups.com",
       "www.ups.com"
     ],
-    "known_favicon_hashes": []
+    "known_favicon_hashes": [
+      "9ca2236bb4ec1714e173cecb"
+    ]
   },
   "fedex": {
     "verified_hosts": [
@@ -227,6 +239,8 @@
       "www.stripe.com",
       "dashboard.stripe.com"
     ],
-    "known_favicon_hashes": []
+    "known_favicon_hashes": [
+      "50630726cbd85299c64dbb51"
+    ]
   }
 }
