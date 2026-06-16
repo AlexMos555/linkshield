@@ -810,7 +810,7 @@
           "user"
         ],
         "summary": "Update Device Overrides",
-        "description": "Set or clear device-level overrides for this user's device.\n\nValidates font_scale 0.8..2.5 (matches DB CHECK constraint). Authorization\nis implicit: we filter on (user_id=user.id, device_hash) so a user can\nonly change their own devices' overrides. Family Hub admin operations\non a family member's device go through the family router (TODO).",
+        "description": "Set or clear device-level overrides for this user's device.\n\nValidates font_scale 0.8..2.5 (matches DB CHECK constraint). Authorization\nis implicit: we filter on (user_id=user.id, device_hash) so a user can\nonly change their own devices' overrides.\n\nNOTE: Family-admin \"set overrides on a family member's device\"\ndeliberately lives at /api/v1/family/{family_id}/members/{user_id}/devices/...\nso that route can do its own audit-log + per-family permission check.\nThis endpoint is single-user only; do NOT add admin-of-other-user\nsemantics here. (Audit MEDIUM \"user.py:923 docstring TODO for\nfamily-router device overrides has no corresponding code or ticket\"\n— closed by clarifying the intent.)",
         "operationId": "update_device_overrides_api_v1_user_device__device_hash__overrides_patch",
         "parameters": [
           {

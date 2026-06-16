@@ -39,6 +39,7 @@ from api.services.circuit_breaker import (
     alienvault_breaker, ipqs_breaker,
     whois_breaker, ssl_breaker, headers_breaker,
     dns_breaker, redirect_breaker,
+    malware_bazaar_breaker, feodo_breaker,
 )
 from api.models.schemas import DomainResult, DomainReason, RiskLevel, ConfidenceLevel
 
@@ -76,9 +77,12 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
             reasons=[DomainReason(signal="ssrf_blocked", detail="Domain resolves to a blocked network", weight=100)],
         )
 
-    # ── Run ALL 14 checks in parallel via circuit breakers ──
+    # ── Run ALL 16 checks in parallel via circuit breakers ──
+    # Strategy doc Top-20 #5: full abuse.ch bundle adds MalwareBazaar
+    # (malware-distribution domains) + Feodo Tracker (active C2 hosts)
+    # to the existing URLhaus + ThreatFox coverage.
     results = await asyncio.gather(
-        # Blocklist sources (9)
+        # Blocklist sources (11)
         safe_browsing_breaker.call(check_safe_browsing, domain),   # 0
         phishtank_breaker.call(check_phishtank, domain),           # 1
         urlhaus_breaker.call(check_urlhaus, domain),               # 2
@@ -88,15 +92,17 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         surbl_breaker.call(check_surbl, domain),                   # 6
         alienvault_breaker.call(check_alienvault_otx, domain),     # 7
         ipqs_breaker.call(check_ipqualityscore, domain),           # 8
+        malware_bazaar_breaker.call(check_malware_bazaar, domain), # 9
+        feodo_breaker.call(check_feodo_tracker, domain),           # 10
         # Enrichment sources (5)
-        whois_breaker.call(check_whois_age, domain),               # 9
-        ssl_breaker.call(check_ssl, domain),                       # 10
-        headers_breaker.call(check_security_headers, domain),      # 11
-        dns_breaker.call(check_dns, domain),                       # 12
-        redirect_breaker.call(check_redirect_chain, domain),       # 13
+        whois_breaker.call(check_whois_age, domain),               # 11
+        ssl_breaker.call(check_ssl, domain),                       # 12
+        headers_breaker.call(check_security_headers, domain),      # 13
+        dns_breaker.call(check_dns, domain),                       # 14
+        redirect_breaker.call(check_redirect_chain, domain),       # 15
     )
 
-    total_checks = 14
+    total_checks = 16
     checks_succeeded = sum(1 for _, ok in results if ok)
 
     # ── Unpack blocklist results ──
@@ -112,13 +118,15 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
     surbl_hit = _val(6)
     alienvault_data = _val(7, default={})
     ipqs_data = _val(8, default={})
+    malware_bazaar_hit = _val(9)
+    feodo_hit = _val(10)
 
     # ── Unpack enrichment results ──
-    whois_data = _val(9, default={})
-    ssl_data = _val(10, default={})
-    headers_data = _val(11, default={})
-    dns_data = _val(12, default={})
-    redirect_data = _val(13, default={})
+    whois_data = _val(11, default={})
+    ssl_data = _val(12, default={})
+    headers_data = _val(13, default={})
+    dns_data = _val(14, default={})
+    redirect_data = _val(15, default={})
 
     # Aggregate blocklist hits
     blocklist_hits = sum([
@@ -126,6 +134,7 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         phishstats_hit, threatfox_hit, spamhaus_hit, surbl_hit,
         bool(alienvault_data.get("hit")),
         bool(ipqs_data.get("hit")),
+        malware_bazaar_hit, feodo_hit,
     ])
 
     # Build signals dict — all 42+ signals for scoring engine
@@ -143,6 +152,8 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         "alienvault_pulse_count": alienvault_data.get("pulse_count", 0),
         "ipqs_risk_score": ipqs_data.get("risk_score", 0),
         "ipqs_phishing": ipqs_data.get("phishing", False),
+        "malware_bazaar_hit": malware_bazaar_hit,
+        "feodo_hit": feodo_hit,
         "blocklist_hits": blocklist_hits,
         # WHOIS
         "domain_age_days": whois_data.get("age_days"),
@@ -507,6 +518,113 @@ async def check_threatfox(domain: str) -> bool:
         if hit:
             logger.info("threatfox_hit", extra={"domain": domain})
         return hit
+
+
+# ═══════════════════════════════════════════════════════════════
+# CHECK 10b: abuse.ch MalwareBazaar — malware-distribution hosts
+# ═══════════════════════════════════════════════════════════════
+
+async def check_malware_bazaar(domain: str) -> bool:
+    """
+    Check domain against MalwareBazaar's host index.
+
+    Strategy doc Top-20 #5 — complete the abuse.ch bundle. Free, no
+    key required; same 5-minute freshness as URLhaus. Returns True
+    when MalwareBazaar has at least one malware sample tied to this
+    host (delivery URL, payload download, or C2 callback).
+    """
+    async with httpx.AsyncClient(timeout=3.0) as client:
+        resp = await client.post(
+            "https://mb-api.abuse.ch/api/v1/",
+            data={"query": "get_taginfo", "tag": domain, "limit": "1"},
+        )
+        try:
+            data = resp.json()
+        except ValueError:
+            return False
+        # Documented response: query_status="ok" + data array with
+        # samples means hits. "no_results" / "illegal_tag" → clean.
+        hit = (
+            data.get("query_status") == "ok"
+            and isinstance(data.get("data"), list)
+            and len(data["data"]) > 0
+        )
+        if hit:
+            logger.info(
+                "malware_bazaar_hit",
+                extra={"domain": domain, "samples": len(data["data"])},
+            )
+        return hit
+
+
+# ═══════════════════════════════════════════════════════════════
+# CHECK 10c: abuse.ch Feodo Tracker — active botnet C2 servers
+# ═══════════════════════════════════════════════════════════════
+
+# Cached blocklist + last-fetch timestamp. Feodo Tracker publishes a
+# small JSON blob (~100 KB) of active botnet C2 IPs/hosts, refreshed
+# every 5 min. Polling on every /check would burn bandwidth + add
+# 100-300ms latency; instead we cache the full set in-process and
+# refresh on demand. Cheap, accurate, no rate limit risk.
+_FEODO_CACHE: dict[str, object] = {
+    "hosts": set(),
+    "fetched_at": 0.0,
+}
+_FEODO_TTL_SECONDS = 300  # match upstream 5-min refresh cadence
+_FEODO_URL = "https://feodotracker.abuse.ch/downloads/ipblocklist.json"
+
+
+async def _refresh_feodo_cache() -> None:
+    import time as _time
+
+    now = _time.time()
+    if now - _FEODO_CACHE["fetched_at"] < _FEODO_TTL_SECONDS:
+        return
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(_FEODO_URL)
+        if resp.status_code != 200:
+            return
+        try:
+            data = resp.json()
+        except ValueError:
+            return
+    # The blocklist is a flat list of dicts with `ip_address` and
+    # sometimes `hostname`. We index both — caller normalises to
+    # lowercase host before lookup.
+    hosts: set = set()
+    if isinstance(data, list):
+        for row in data:
+            if not isinstance(row, dict):
+                continue
+            ip = row.get("ip_address")
+            host = row.get("hostname")
+            if ip:
+                hosts.add(str(ip).lower())
+            if host:
+                hosts.add(str(host).lower())
+    _FEODO_CACHE["hosts"] = hosts
+    _FEODO_CACHE["fetched_at"] = now
+    logger.info("feodo_cache_refreshed", extra={"size": len(hosts)})
+
+
+async def check_feodo_tracker(domain: str) -> bool:
+    """
+    Check domain against Feodo Tracker's active botnet C2 blocklist.
+
+    Strategy doc Top-20 #5 — third leg of the abuse.ch bundle (with
+    URLhaus + ThreatFox + MalwareBazaar). Catches the long tail of
+    URL-flow-aware malware that doesn't reach end-user phishing
+    blocklists but DOES talk to a known C2 from this host.
+    """
+    await _refresh_feodo_cache()
+    hosts = _FEODO_CACHE["hosts"]
+    if not isinstance(hosts, set) or not hosts:
+        return False
+    key = domain.strip().lower()
+    hit = key in hosts
+    if hit:
+        logger.info("feodo_hit", extra={"domain": domain})
+    return hit
 
 
 # ═══════════════════════════════════════════════════════════════

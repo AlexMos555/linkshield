@@ -197,6 +197,13 @@ surbl_breaker = CircuitBreaker(name="surbl", failure_threshold=5, cooldown_secon
 alienvault_breaker = CircuitBreaker(name="alienvault_otx", failure_threshold=3, cooldown_seconds=60, fallback={})
 ipqs_breaker = CircuitBreaker(name="ipqualityscore", failure_threshold=3, cooldown_seconds=120, fallback={})
 
+# Strategy doc Top-20 #5 — extend abuse.ch coverage. URLhaus + ThreatFox
+# already in place; MalwareBazaar (malware-distribution domains) and
+# Feodo Tracker (C2 server tracker) close the bundle. Both free / no
+# key required and refresh at the same 5-min cadence as URLhaus.
+malware_bazaar_breaker = CircuitBreaker(name="malware_bazaar", failure_threshold=3, cooldown_seconds=60, fallback=False)
+feodo_breaker = CircuitBreaker(name="feodo_tracker", failure_threshold=3, cooldown_seconds=60, fallback=False)
+
 
 def get_all_breaker_statuses() -> list[dict]:
     """Return status of all circuit breakers (for health endpoint)."""
@@ -210,6 +217,8 @@ def get_all_breaker_statuses() -> list[dict]:
         surbl_breaker.get_status(),
         alienvault_breaker.get_status(),
         ipqs_breaker.get_status(),
+        malware_bazaar_breaker.get_status(),
+        feodo_breaker.get_status(),
         whois_breaker.get_status(),
         ssl_breaker.get_status(),
         headers_breaker.get_status(),

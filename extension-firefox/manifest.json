@@ -30,6 +30,7 @@
       "js": [
         "src/content/weekly-report.js",
         "src/content/security-score.js",
+        "src/content/credential-guardian.js",
         "src/content/index.js"
       ],
       "css": [

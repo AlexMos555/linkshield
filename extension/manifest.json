@@ -36,6 +36,7 @@
         "src/content/weekly-report.js",
         "src/content/security-score.js",
         "src/content/breach-check.js",
+        "src/content/credential-guardian.js",
         "src/content/index.js"
       ],
       "css": ["styles/badges.css"],
