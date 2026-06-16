@@ -350,6 +350,22 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
       });
     return true;
   }
+  if (msg.type === "MODERN_PHISH_SIGNAL") {
+    // Strategy #11. Modern-phish-guard reports a BitB / overlay /
+    // tab-napping detection on the sender's tab. We persist a small
+    // counter so the popup can show "X protections triggered today"
+    // and the weekly report can credit the right surface. We do NOT
+    // forward the host to the backend — privacy invariant holds
+    // (server-blind by design).
+    try {
+      chrome.storage.local.get(["modernPhishCount"]).then((d) => {
+        const next = (d.modernPhishCount || 0) + 1;
+        chrome.storage.local.set({ modernPhishCount: next }).catch(() => {});
+      }).catch(() => {});
+    } catch (e) { /* ignore */ }
+    // Fire-and-forget — no respond() needed.
+    return false;
+  }
   if (msg.type === "GET_STATS") {
     chrome.storage.local.get(["stats"])
       .then((d) => respond(d.stats || {}))
