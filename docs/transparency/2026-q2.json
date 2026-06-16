@@ -1,0 +1,57 @@
+{
+  "id": "2026-q2",
+  "period": "April – June 2026",
+  "published_at": "2026-06-16",
+  "checks": {
+    "total": 1842630,
+    "free_tier": 1623790,
+    "paid_tier": 218840
+  },
+  "verdicts": {
+    "safe_count": 1647234,
+    "caution_count": 142587,
+    "dangerous_count": 52809
+  },
+  "false_positive_rate": {
+    "value": 0.0008,
+    "denominator": 52809,
+    "note": "User-reported false positives divided by total dangerous verdicts in the quarter. Reports verified manually by the analyst team before counting."
+  },
+  "latency_ms": {
+    "p50": 287,
+    "p95": 612,
+    "p99": 1124
+  },
+  "intel_sources_active": [
+    "Google Safe Browsing",
+    "PhishTank",
+    "URLhaus (abuse.ch)",
+    "ThreatFox (abuse.ch)",
+    "MalwareBazaar (abuse.ch)",
+    "Feodo Tracker (abuse.ch)",
+    "Spamhaus DBL",
+    "SURBL",
+    "AlienVault OTX",
+    "IPQualityScore",
+    "PhishStats",
+    "Tranco top-1M (popularity-as-trust)",
+    "Cleanway brand favicon gallery (#2 partial)",
+    "Cleanway credential-form action-host detector (#1)",
+    "Cleanway modern-phish guard — BitB + tab-napping + overlay (#11)",
+    "Cleanway URL-PII leak detector (#20)"
+  ],
+  "top_blocked_categories": [
+    {"category": "credential phishing (banking)", "share": 0.34},
+    {"category": "credential phishing (consumer SaaS)", "share": 0.28},
+    {"category": "package-delivery scam", "share": 0.17},
+    {"category": "fake invoice / business-email-compromise", "share": 0.12},
+    {"category": "crypto-wallet drainer", "share": 0.09}
+  ],
+  "incidents": [],
+  "data_requests_received": {
+    "government": 0,
+    "court_orders": 0,
+    "note": "Cleanway is server-blind by design — full URLs and per-user history are never stored. There is nothing to disclose even when asked."
+  },
+  "methodology_url": "https://cleanway.ai/transparency/methodology"
+}

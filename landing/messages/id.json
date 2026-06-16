@@ -331,5 +331,22 @@
     "interval_yearly": "Tahunan",
     "badge_save_2_months": "Hemat 2 bulan",
     "tier_badge": "Tingkat $TIER$ — $COUNTRY$"
+  },
+  "Transparency": {
+    "page_title": "Laporan transparansi",
+    "page_description": "Angka yang dipublikasikan Cleanway: total pemeriksaan, tingkat false positive, waktu respons, sumber intelijen, dan permintaan data pemerintah — diperbarui setiap kuartal.",
+    "hero_subtitle": "Apa yang Cleanway deteksi dan blokir selama $PERIOD$.",
+    "published_at": "Dipublikasikan pada $DATE$.",
+    "section_volume": "Volume",
+    "section_latency": "Waktu respons",
+    "section_sources": "Sumber intelijen aktif",
+    "section_categories": "Kategori yang paling sering diblokir",
+    "section_government": "Permintaan data pemerintah",
+    "metric_total_checks": "Total pemeriksaan",
+    "metric_dangerous": "Ancaman terkonfirmasi",
+    "metric_fp_rate": "Tingkat false positive",
+    "gov_requests": "$COUNT$ permintaan data pemerintah",
+    "court_orders": "$COUNT$ perintah pengadilan",
+    "error_unavailable": "Laporan transparansi untuk sementara tidak tersedia. Silakan muat ulang halaman beberapa menit lagi."
   }
 }

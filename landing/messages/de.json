@@ -331,5 +331,22 @@
     "interval_yearly": "Jährlich",
     "badge_save_2_months": "2 Monate sparen",
     "tier_badge": "Stufe $TIER$ — $COUNTRY$"
+  },
+  "Transparency": {
+    "page_title": "Transparenzbericht",
+    "page_description": "Die veröffentlichten Zahlen von Cleanway: Gesamtprüfungen, Rate falsch positiver Ergebnisse, Reaktionszeit, Intelligenzquellen und behördliche Datenanfragen — vierteljährlich aktualisiert.",
+    "hero_subtitle": "Was Cleanway im Zeitraum $PERIOD$ erkannt und blockiert hat.",
+    "published_at": "Veröffentlicht am $DATE$.",
+    "section_volume": "Volumen",
+    "section_latency": "Reaktionszeit",
+    "section_sources": "Aktive Intelligenzquellen",
+    "section_categories": "Häufigste blockierte Kategorien",
+    "section_government": "Behördliche Datenanfragen",
+    "metric_total_checks": "Prüfungen insgesamt",
+    "metric_dangerous": "Bestätigte Bedrohungen",
+    "metric_fp_rate": "Rate falsch positiver Ergebnisse",
+    "gov_requests": "$COUNT$ behördliche Datenanfragen",
+    "court_orders": "$COUNT$ Gerichtsbeschlüsse",
+    "error_unavailable": "Der Transparenzbericht ist vorübergehend nicht verfügbar. Bitte aktualisieren Sie die Seite in wenigen Minuten."
   }
 }

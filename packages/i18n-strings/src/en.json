@@ -725,6 +725,23 @@
       "interval_yearly": "Yearly",
       "badge_save_2_months": "Save 2 months",
       "tier_badge": "Tier $TIER$ — $COUNTRY$"
+    },
+    "transparency": {
+      "page_title": "Transparency report",
+      "page_description": "Cleanway's published numbers: total checks, false-positive rate, response time, intel sources, and government data requests — updated every quarter.",
+      "hero_subtitle": "What Cleanway saw and blocked during $PERIOD$.",
+      "published_at": "Published $DATE$.",
+      "section_volume": "Volume",
+      "section_latency": "Response time",
+      "section_sources": "Active intel sources",
+      "section_categories": "Top blocked categories",
+      "section_government": "Government data requests",
+      "metric_total_checks": "Total checks",
+      "metric_dangerous": "Confirmed dangerous",
+      "metric_fp_rate": "False-positive rate",
+      "gov_requests": "$COUNT$ government data requests",
+      "court_orders": "$COUNT$ court orders",
+      "error_unavailable": "The transparency report is temporarily unavailable. Please refresh in a few minutes."
     }
   },
   "email": {

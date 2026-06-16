@@ -331,5 +331,22 @@
     "interval_yearly": "वार्षिक",
     "badge_save_2_months": "2 महीने बचाएं",
     "tier_badge": "स्तर $TIER$ — $COUNTRY$"
+  },
+  "Transparency": {
+    "page_title": "पारदर्शिता रिपोर्ट",
+    "page_description": "Cleanway के प्रकाशित आँकड़े: कुल जाँचें, गलत-सकारात्मक दर, प्रतिक्रिया समय, इंटेल स्रोत और सरकारी डेटा अनुरोध — हर तिमाही अद्यतन।",
+    "hero_subtitle": "$PERIOD$ के दौरान Cleanway ने क्या देखा और रोका।",
+    "published_at": "$DATE$ को प्रकाशित।",
+    "section_volume": "मात्रा",
+    "section_latency": "प्रतिक्रिया समय",
+    "section_sources": "सक्रिय इंटेल स्रोत",
+    "section_categories": "सबसे अधिक अवरुद्ध श्रेणियाँ",
+    "section_government": "सरकारी डेटा अनुरोध",
+    "metric_total_checks": "कुल जाँचें",
+    "metric_dangerous": "पुष्ट खतरे",
+    "metric_fp_rate": "गलत-सकारात्मक दर",
+    "gov_requests": "$COUNT$ सरकारी डेटा अनुरोध",
+    "court_orders": "$COUNT$ न्यायालय आदेश",
+    "error_unavailable": "पारदर्शिता रिपोर्ट अस्थायी रूप से उपलब्ध नहीं है। कृपया कुछ मिनटों में पुनः ताज़ा करें।"
   }
 }

@@ -723,6 +723,23 @@
       "interval_yearly": "Год",
       "badge_save_2_months": "−2 месяца",
       "tier_badge": "Уровень $TIER$ — $COUNTRY$"
+    },
+    "transparency": {
+      "page_title": "Отчёт о прозрачности",
+      "page_description": "Открытые показатели Cleanway: количество проверок, доля ложных срабатываний, время отклика, источники данных и запросы от государственных органов — обновляется ежеквартально.",
+      "hero_subtitle": "Что Cleanway увидел и заблокировал за $PERIOD$.",
+      "published_at": "Опубликовано $DATE$.",
+      "section_volume": "Объём",
+      "section_latency": "Время отклика",
+      "section_sources": "Активные источники данных",
+      "section_categories": "Основные категории блокировок",
+      "section_government": "Запросы от государственных органов",
+      "metric_total_checks": "Всего проверок",
+      "metric_dangerous": "Подтверждённые угрозы",
+      "metric_fp_rate": "Доля ложных срабатываний",
+      "gov_requests": "Запросов от государственных органов: $COUNT$",
+      "court_orders": "Судебных решений: $COUNT$",
+      "error_unavailable": "Отчёт о прозрачности временно недоступен. Пожалуйста, обновите страницу через несколько минут."
     }
   },
   "email": {

@@ -331,5 +331,22 @@
     "interval_yearly": "Annuale",
     "badge_save_2_months": "Risparmia 2 mesi",
     "tier_badge": "Livello $TIER$ — $COUNTRY$"
+  },
+  "Transparency": {
+    "page_title": "Rapporto sulla trasparenza",
+    "page_description": "I numeri pubblicati da Cleanway: controlli totali, tasso di falsi positivi, tempo di risposta, fonti di intelligence e richieste di dati governativi — aggiornati ogni trimestre.",
+    "hero_subtitle": "Ciò che Cleanway ha rilevato e bloccato durante $PERIOD$.",
+    "published_at": "Pubblicato il $DATE$.",
+    "section_volume": "Volume",
+    "section_latency": "Tempo di risposta",
+    "section_sources": "Fonti di intelligence attive",
+    "section_categories": "Principali categorie bloccate",
+    "section_government": "Richieste di dati governativi",
+    "metric_total_checks": "Controlli totali",
+    "metric_dangerous": "Minacce confermate",
+    "metric_fp_rate": "Tasso di falsi positivi",
+    "gov_requests": "$COUNT$ richieste di dati governativi",
+    "court_orders": "$COUNT$ ordini del tribunale",
+    "error_unavailable": "Il rapporto sulla trasparenza è temporaneamente non disponibile. Aggiorna la pagina tra qualche minuto."
   }
 }

@@ -331,5 +331,22 @@
     "interval_yearly": "سنوي",
     "badge_save_2_months": "وفّر شهرين",
     "tier_badge": "المستوى $TIER$ — $COUNTRY$"
+  },
+  "Transparency": {
+    "page_title": "تقرير الشفافية",
+    "page_description": "الأرقام التي تنشرها Cleanway: إجمالي عمليات الفحص، ونسبة النتائج الإيجابية الخاطئة، وزمن الاستجابة، ومصادر المعلومات، وطلبات البيانات الحكومية — يتم تحديثها كل ربع سنة.",
+    "hero_subtitle": "ما رصدته Cleanway وحجبته خلال $PERIOD$.",
+    "published_at": "نُشر في $DATE$.",
+    "section_volume": "الحجم",
+    "section_latency": "زمن الاستجابة",
+    "section_sources": "مصادر المعلومات النشطة",
+    "section_categories": "أبرز الفئات المحجوبة",
+    "section_government": "طلبات البيانات الحكومية",
+    "metric_total_checks": "إجمالي عمليات الفحص",
+    "metric_dangerous": "تهديدات مؤكدة",
+    "metric_fp_rate": "نسبة النتائج الإيجابية الخاطئة",
+    "gov_requests": "$COUNT$ طلب بيانات حكومي",
+    "court_orders": "$COUNT$ أمر قضائي",
+    "error_unavailable": "تقرير الشفافية غير متاح مؤقتًا. يُرجى تحديث الصفحة بعد بضع دقائق."
   }
 }
