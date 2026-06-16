@@ -13,7 +13,10 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from api.services.scoring import calculate_score, _extract_base_domain, TOP_DOMAINS
+from api.services.scoring import (
+    calculate_score, _extract_base_domain, TOP_DOMAINS,
+    calculate_confidence_pct,
+)
 from api.services.domain_validator import validate_domain, DomainValidationError
 from api.services.cache import get_cached_result, cache_result
 from api.services.rate_limiter import rate_limit
@@ -100,17 +103,31 @@ def _format_public_result(result: DomainResult) -> dict:
         "dangerous": f"{result.domain} shows strong indicators of being a phishing or malicious site. Do not enter personal information.",
     }
 
+    # Public endpoint is rule-based only (no external API calls) so
+    # coverage is 0; confidence_pct floors at 50. When the result
+    # came from the cache of a full analyze_domain run, the cached
+    # value already carries the real confidence_pct — prefer that.
+    confidence_pct = (
+        getattr(result, "confidence_pct", None)
+        or calculate_confidence_pct(result.score, 0, 1)
+    )
+
     return {
         "domain": result.domain,
         "safe": result.level == RiskLevel.safe,
         "score": result.score,
         "level": result.level.value,
         "confidence": result.confidence.value if hasattr(result, 'confidence') else "medium",
+        "confidence_pct": confidence_pct,
         "verdict": verdicts.get(result.level.value, ""),
         "signals": [r.detail for r in (result.reasons or [])[:5]],
         "checked_at": datetime.now(timezone.utc).isoformat(),
-        "cta": "Install Cleanway for real-time protection with 9 threat intelligence sources.",
+        "cta": "Install Cleanway for real-time protection backed by 16 independent threat-intel sources and our public transparency report.",
         "install_url": "https://chrome.google.com/webstore/detail/cleanway",
+        # Strategy doc #10 — link the per-domain scorecard back to
+        # the platform-wide transparency report so the per-verdict
+        # confidence sits inside a population-level FP rate.
+        "transparency_url": "https://cleanway.ai/transparency",
     }
 
 
@@ -119,13 +136,26 @@ def _format_public_result(result: DomainResult) -> dict:
     dependencies=[Depends(rate_limit(mode="ip", category="public_stats"))],
 )
 async def platform_stats():
-    """Global platform statistics for landing page and social proof."""
+    """Global platform statistics for landing page and social proof.
+
+    Numbers MUST stay consistent with docs/transparency/<latest>.json —
+    that file is the source of truth, but reading it here would
+    couple this fast hot-path endpoint to disk I/O. Mirror by hand
+    until we have a build step that injects the values at deploy.
+    """
     return {
         "total_domains_protected": 100000,
-        "threat_sources": 9,
+        # 16 active sources as of Q2 2026 transparency report:
+        # 11 external blocklists + 2 reputation/visual identity
+        # (Tranco, favicon) + 3 Cleanway-original (credential-form,
+        # modern-phish guard, URL-PII).
+        "threat_sources": 16,
         "detection_signals": 42,
         "ml_model_auc": 0.9988,
         "detection_rate": 91.1,
-        "false_positive_rate": 0.0,
+        # Mirrors docs/transparency/2026-q2.json. 0.0 was wishful;
+        # 0.0008 (0.08%) is what the latest period actually measured.
+        "false_positive_rate": 0.0008,
         "brand_targets_monitored": 125,
+        "transparency_url": "https://cleanway.ai/transparency",
     }

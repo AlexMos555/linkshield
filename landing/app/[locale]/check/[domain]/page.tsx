@@ -13,6 +13,11 @@ type ScanResult = {
   verdict?: string;
   signals?: string[];
   confidence?: string;
+  // Strategy doc #12 — numeric confidence band 50..99.
+  confidence_pct?: number;
+  // Strategy doc #16 — link the per-domain card back to the
+  // platform-wide transparency report.
+  transparency_url?: string;
 };
 
 /**
@@ -45,7 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   languages["x-default"] = urlFor(routing.defaultLocale as Locale, domain);
 
   const title = `Is ${decoded} safe? — Cleanway Safety Check`;
-  const description = `Check if ${decoded} is a phishing or scam website. Free safety analysis with 42+ detection signals and 9 threat intelligence sources.`;
+  const description = `Check if ${decoded} is a phishing or scam website. Free safety analysis with 42+ detection signals and 16 threat intelligence sources — false-positive rate published every quarter.`;
 
   return {
     title,
@@ -240,6 +245,28 @@ export default async function CheckPage({ params }: Props) {
               <p style={{ fontSize: 18, color, fontWeight: 600, margin: "4px 0 0" }}>
                 {levelLabels[level]} &mdash; Score: {score}/100
               </p>
+              {/* Strategy doc #12: numeric confidence band chip. The
+                  number is sourced from the API's calculate_confidence_pct
+                  output, which blends data coverage × signal margin. */}
+              {typeof result?.confidence_pct === "number" && (
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "#94a3b8",
+                    margin: "4px 0 0",
+                    fontWeight: 500,
+                  }}
+                  title="Confidence is derived from how many checks ran and how far the score sits from the next-tier boundary. Never 100% — the conformal point."
+                >
+                  Confidence: {result.confidence_pct}% &middot;{" "}
+                  <a
+                    href="/transparency"
+                    style={{ color: "#60a5fa", textDecoration: "underline" }}
+                  >
+                    How we measure
+                  </a>
+                </p>
+              )}
             </div>
           </div>
 
@@ -274,7 +301,8 @@ export default async function CheckPage({ params }: Props) {
         <div style={{ background: "#1e293b", borderRadius: 16, padding: 24, textAlign: "center" }}>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", marginBottom: 8 }}>Get real-time protection</h2>
           <p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>
-            Cleanway checks every link automatically. 9 threat sources, ML-powered, zero data stored.
+            Cleanway checks every link automatically. 16 threat sources, ML-powered, server-blind by design.
+            See the <a href="/transparency" style={{ color: "#60a5fa" }}>quarterly transparency report</a>.
           </p>
           <a
             href="https://chrome.google.com/webstore"
@@ -338,7 +366,10 @@ export default async function CheckPage({ params }: Props) {
         </div>
 
         <p style={{ textAlign: "center", fontSize: 12, color: "#475569", marginTop: 32 }}>
-          Data from 9 threat intelligence sources. Updated in real-time.{" "}
+          Data from 16 threat intelligence sources. Updated in real-time. Quarterly{" "}
+          <a href="/transparency" style={{ color: "#60a5fa" }}>
+            transparency report
+          </a>{" "}&middot;{" "}
           <a href="/privacy-policy" style={{ color: "#60a5fa" }}>
             Privacy Policy
           </a>

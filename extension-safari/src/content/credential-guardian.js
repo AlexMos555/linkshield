@@ -326,23 +326,166 @@
       });
     }
 
-    // Strict mode: also intercept the form submit.
-    if (_strictMode && form && !form._lsGuardWired) {
+    // Strategy doc Top-20 #7 — active credential guardian.
+    // The passive banner above is "early warning". This block adds
+    // SUBMIT-TIME interception with a confirmation modal so the user
+    // can't blow past the warning by hitting Enter. We wire on ANY
+    // credential warning (mismatch / typosquat / TLD) — not just
+    // strict-mode-from-SW — because by the time a user typed their
+    // password into a flagged form, the cost of one extra click is
+    // cheap relative to credential theft.
+    if (form && !form._lsGuardWired) {
       form._lsGuardWired = true;
       form.addEventListener(
         "submit",
         function (e) {
+          if (form._lsGuardOverridden) {
+            // User chose "submit anyway" in this tab — let it through.
+            return;
+          }
           e.preventDefault();
           e.stopPropagation();
-          // Re-render or reuse the banner; bring it back if dismissed.
-          if (!document.getElementById("ls-credguard-banner")) {
-            _warned = false;
-            _renderWarning(form, evidence);
-          }
+          _renderConfirmModal(form, evidence);
         },
         true,
       );
     }
+  }
+
+  // ── Strategy doc #7: confirmation modal at submit time ──
+  // Modal blocks the form submit until the user makes an explicit
+  // choice. Keyboard-trapped to the two buttons, ESC = cancel,
+  // first focus on Cancel (the safer default). No transparent
+  // overlay-tap-to-dismiss — phishing pages would close it instantly.
+  function _renderConfirmModal(form, evidence) {
+    if (document.getElementById("ls-credguard-modal")) return;
+
+    var reasons = [];
+    if (evidence.mismatch) {
+      reasons.push(
+        "The form posts your password to " +
+          _esc(evidence.actionHost || "another host") +
+          " — not " +
+          _esc(window.location.host) +
+          ".",
+      );
+    }
+    if (evidence.typosquat) {
+      reasons.push(
+        "This domain (" +
+          _esc(evidence.host || window.location.host) +
+          ") looks like a misspelling of " +
+          _esc(evidence.brand || "a known brand") +
+          ".",
+      );
+    }
+    if (evidence.tldSuspicious) {
+      reasons.push(
+        "Login pages on " +
+          _esc(evidence.tld || "this TLD") +
+          " are very rarely legitimate.",
+      );
+    }
+
+    var dialog = document.createElement("div");
+    dialog.id = "ls-credguard-modal";
+    dialog.setAttribute("role", "alertdialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "ls-credguard-modal-title");
+    dialog.setAttribute("aria-describedby", "ls-credguard-modal-body");
+    dialog.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:2147483647",
+      "background:rgba(2,6,23,0.78)",
+      "display:flex",
+      "align-items:center",
+      "justify-content:center",
+      "font:14px/1.55 -apple-system,system-ui,sans-serif",
+    ].join(";");
+
+    var card = document.createElement("div");
+    card.style.cssText = [
+      "background:#0f172a",
+      "color:#f8fafc",
+      "max-width:480px",
+      "width:90%",
+      "border-radius:14px",
+      "padding:24px 24px 20px",
+      "box-shadow:0 24px 80px rgba(0,0,0,0.6)",
+      "border:1px solid #ef4444",
+    ].join(";");
+
+    var reasonsHtml = reasons
+      .map(function (r) { return "<li style=\"margin-bottom:6px\">" + r + "</li>"; })
+      .join("");
+
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+      '<span style="font-size:24px">⚠️</span>' +
+      '<h2 id="ls-credguard-modal-title" style="margin:0;font-size:18px;font-weight:700;color:#fecaca">' +
+      "Cleanway thinks this is a phishing form" +
+      "</h2></div>" +
+      '<div id="ls-credguard-modal-body" style="margin-bottom:14px;color:#cbd5e1">' +
+      '<p style="margin:0 0 10px">Submitting will send your credentials. Here\'s why this looks unsafe:</p>' +
+      (reasons.length ? '<ul style="padding-left:18px;margin:0;color:#e2e8f0">' + reasonsHtml + "</ul>" : "") +
+      "</div>" +
+      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">' +
+      '<button id="ls-credguard-cancel" style="background:#22c55e;color:#052e16;border:0;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer">Don\'t submit — take me back</button>' +
+      '<button id="ls-credguard-override" style="background:transparent;color:#fca5a5;border:1px solid #7f1d1d;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer">Submit anyway</button>' +
+      "</div>";
+
+    dialog.appendChild(card);
+    document.documentElement.appendChild(dialog);
+
+    var cancelBtn = card.querySelector("#ls-credguard-cancel");
+    var overrideBtn = card.querySelector("#ls-credguard-override");
+
+    function _close() {
+      if (dialog.parentNode) dialog.parentNode.removeChild(dialog);
+      document.removeEventListener("keydown", _onKey, true);
+    }
+    function _onKey(e) {
+      if (e.key === "Escape") { e.preventDefault(); _close(); }
+      if (e.key === "Tab") {
+        var focusable = [cancelBtn, overrideBtn];
+        var idx = focusable.indexOf(document.activeElement);
+        if (idx === -1) {
+          e.preventDefault();
+          focusable[0].focus();
+          return;
+        }
+        var next = e.shiftKey
+          ? focusable[(idx - 1 + focusable.length) % focusable.length]
+          : focusable[(idx + 1) % focusable.length];
+        e.preventDefault();
+        next.focus();
+      }
+    }
+    document.addEventListener("keydown", _onKey, true);
+
+    cancelBtn.addEventListener("click", function () { _close(); });
+    overrideBtn.addEventListener("click", function () {
+      _close();
+      form._lsGuardOverridden = true;
+      // Bump local-only counter so the popup can show "blocked X
+      // credentials this week" — host never leaves the device.
+      try {
+        chrome.storage.local.get(["credguard_override_count"]).then(function (d) {
+          var next = (d.credguard_override_count || 0) + 1;
+          chrome.storage.local.set({ credguard_override_count: next }).catch(function () {});
+        }).catch(function () {});
+      } catch (_e) { /* ignore */ }
+      // Re-submit. requestSubmit() preserves the form's submitter
+      // button semantics; if unavailable (older browsers), fall back.
+      if (typeof form.requestSubmit === "function") {
+        try { form.requestSubmit(); return; } catch (_e) {}
+      }
+      try { form.submit(); } catch (_e) {}
+    });
+
+    // Default focus on Cancel — safer default.
+    setTimeout(function () { cancelBtn.focus(); }, 0);
   }
 
   // ── Evaluate one password input ──
