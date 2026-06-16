@@ -106,17 +106,25 @@ echo "Step 5: Update extension for production"
 echo "────────────────────────────────────────"
 cd "$ROOT"
 
-# Update API_BASE in background.js
-sed -i '' "s|http://localhost:8000|$API_URL|g" extension/src/background/index.js
-sed -i '' "s|http://localhost:8000|$API_URL|g" extension/src/popup/popup.js
+# NOTE: We deliberately do NOT sed-rewrite the source files for the
+# API URL anymore. (Audit extension-build LOW "setup-production.sh
+# modifies source files via sed; breaks git history".)
+#
+# The extension reads API_BASE from chrome.storage.local.api_url with
+# a fallback to https://api.cleanway.ai — see packages/extension-core/
+# src/background/index.js and src/utils/api.js. To override, ship a
+# small startup script in the build that sets chrome.storage.local
+# OR rely on the production default. Sed-rewriting source would put
+# "modified background.js" into the working tree on every prod run
+# and risk an accidental commit of the production URL into the
+# vendor-default path.
+echo "Skipping sed-rewrite of source (handled at runtime via storage)."
 
-echo "Updated API_BASE to $API_URL"
-
-# Rebuild zip
-cd extension
-rm -f ../cleanway-extension.zip
-zip -rq ../cleanway-extension.zip . -x "*.md"
-cd ..
+# Rebuild zip via the canonical build script so all three browsers
+# stay in sync.
+bash scripts/build-extensions.sh
+cd "$ROOT"
+zip -rq cleanway-extension.zip extension -x "*.md"
 echo "Extension rebuilt: cleanway-extension.zip"
 
 # ── Step 6: Update CORS ──

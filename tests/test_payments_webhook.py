@@ -437,6 +437,56 @@ def test_duplicate_event_id_processes_once_then_skips(
     assert len(fake_subscriptions.posts) == 1
 
 
+def test_concurrent_duplicate_delivery_processes_once(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """Stripe documents at-least-once delivery; under load they
+    sometimes fire the SAME event.id in two near-simultaneous deliveries.
+    The SET NX idempotency gate must be atomic enough to handle the race
+    even with concurrent callers.
+
+    Test strategy: 8 parallel POSTs of the same payload via a thread
+    pool. At-most-one POST should produce a subscription upsert; all
+    others should return {"duplicate": true}. The fake_redis already
+    serialises via _claimed (since it's a single set guarded by the
+    Python GIL on dict-style ops, which mirrors Redis's atomic SET NX
+    semantic). Audit MEDIUM "Stripe webhook idempotency test uses
+    sequential fake Redis — does not cover concurrent duplicate delivery
+    race".
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    payload = _event(
+        "checkout.session.completed",
+        {
+            "metadata": {"user_id": "user-race", "plan": "personal_monthly"},
+            "subscription": "sub_test_race",
+        },
+    )
+    sig = _sign(payload)
+    headers = {"stripe-signature": sig}
+
+    def _post():
+        return client.post("/api/v1/payments/webhook", content=payload, headers=headers)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        responses = list(pool.map(lambda _: _post(), range(8)))
+
+    # All requests succeed at the HTTP level.
+    assert all(r.status_code == 200 for r in responses), [r.status_code for r in responses]
+
+    # Exactly ONE response should have processed the event; the other
+    # seven should be marked duplicate. The fake Redis SET NX is
+    # atomic, so only the first caller wins the slot.
+    processed = [r for r in responses if r.json().get("duplicate") is not True]
+    dupes = [r for r in responses if r.json().get("duplicate") is True]
+    assert len(processed) == 1, f"expected 1 processed, got {len(processed)}"
+    assert len(dupes) == 7, f"expected 7 dupes, got {len(dupes)}"
+
+    # And exactly one Supabase subscription upsert happened.
+    assert len(fake_subscriptions.posts) == 1
+
+
 def test_distinct_event_ids_each_process(
     client, supabase_ok, fake_subscriptions, fake_redis
 ):

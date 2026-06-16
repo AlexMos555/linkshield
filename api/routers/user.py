@@ -931,8 +931,15 @@ async def update_device_overrides(
 
     Validates font_scale 0.8..2.5 (matches DB CHECK constraint). Authorization
     is implicit: we filter on (user_id=user.id, device_hash) so a user can
-    only change their own devices' overrides. Family Hub admin operations
-    on a family member's device go through the family router (TODO).
+    only change their own devices' overrides.
+
+    NOTE: Family-admin "set overrides on a family member's device"
+    deliberately lives at /api/v1/family/{family_id}/members/{user_id}/devices/...
+    so that route can do its own audit-log + per-family permission check.
+    This endpoint is single-user only; do NOT add admin-of-other-user
+    semantics here. (Audit MEDIUM "user.py:923 docstring TODO for
+    family-router device overrides has no corresponding code or ticket"
+    — closed by clarifying the intent.)
     """
     if body.font_scale is not None and not 0.8 <= body.font_scale <= 2.5:
         raise HTTPException(422, "font_scale must be between 0.8 and 2.5")

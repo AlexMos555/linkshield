@@ -26,6 +26,15 @@ addopts = [
     "--strict-markers",
     "--tb=short",
 ]
+# pytest-asyncio defaults are deprecated in 1.0+ and will become a
+# hard error in 2.0. Pin both loop + fixture loop scopes explicitly
+# so the warning doesn't turn into a CI failure later.
+# (Audit backend-tests LOW "asyncio_default_fixture_loop_scope not
+# configured — pytest-asyncio deprecation warning will become a hard
+# fail".)
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",

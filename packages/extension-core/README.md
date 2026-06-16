@@ -32,10 +32,15 @@ src/
 │   ├── options.html
 │   └── options.js
 └── utils/              ← Shared helpers
-    ├── api.js             (API_BASE resolution + chrome.storage.local override)
-    ├── bloom.js
-    ├── local-scorer.js
-    └── storage.js
+    ├── api.js              (API_BASE resolution + 410 lock detection + chrome.storage.local override)
+    ├── family-api.js       (Family Hub REST client)
+    ├── family-crypto.js    (curve25519 + xchacha20-poly1305 alert envelope)
+    ├── family-fanout.js    (per-recipient alert dispatch)
+    ├── family-invite-url.js (invite-link parsing)
+    ├── family-notifier.js  (chrome.notifications for incoming family alerts)
+    ├── local-scorer.js     (offline rule-based scorer)
+    ├── storage.js          (chrome.storage.local wrappers)
+    └── vendor/             (TweetNaCl + util — vendored to avoid CDN dependency)
 
 public/icons/            ← Extension icons (16/32/48/128 px)
 styles/badges.css        ← Link-badge CSS injected via content_scripts
