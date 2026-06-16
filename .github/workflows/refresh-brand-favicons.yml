@@ -1,0 +1,76 @@
+name: Refresh brand favicon hashes (Strategy #2)
+
+# Weekly re-fetch of every gallery brand's favicon. Brands change
+# favicons rarely (~once a year for the big ones) but when they
+# do, an unpatched gallery starts flagging the brand's own page
+# as a clone because the hash drifts. Weekly cadence catches
+# that within 7 days.
+#
+# This workflow modifies api/data/brand_favicons.json and opens
+# a PR with the new hashes — humans review before merging.
+# We deliberately do NOT auto-merge: a successful fetch from a
+# malicious mirror would otherwise insert attacker-chosen hashes
+# into the gallery, breaking detection.
+
+on:
+  schedule:
+    # Sunday 04:42 UTC — off-peak everywhere, separate from the
+    # daily Tranco cron at 03:17.
+    - cron: '42 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install httpx
+
+      - name: Run favicon refresh
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python scripts/refresh_brand_favicons.py
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet api/data/brand_favicons.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR with new hashes
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: cleanway/refresh-brand-favicons
+          delete-branch: true
+          commit-message: 'chore: refresh brand favicon hashes (#2)'
+          title: 'chore: refresh brand favicon hashes (#2)'
+          body: |
+            Weekly automated refresh of the favicon brand-clone gallery
+            (Strategy doc Top-20 #2). The diff shows the brand favicons
+            whose hash changed since last week.
+
+            **Review before merge.** A successful fetch from a malicious
+            mirror would otherwise insert attacker-chosen hashes. Spot-
+            check a brand or two against `curl https://<brand>/favicon.ico
+            | sha256sum` before approving.
+          add-paths: |
+            api/data/brand_favicons.json

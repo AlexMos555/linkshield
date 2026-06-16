@@ -1,0 +1,71 @@
+name: Refresh Tranco top-1M (Strategy #14)
+
+# Daily refresh of the Tranco popularity cache against the prod
+# Redis instance. Without this the tranco:ranks Redis hash stays
+# empty and Strategy #14 contributes no signal in production.
+#
+# Failure modes (and what we do about them):
+#  * Network: GitHub-runner egress to tranco-list.eu is reliable
+#    (it's been up for the past 5 years). If a single run fails,
+#    yesterday's cache stays live thanks to the two-rename swap.
+#  * Concurrent runs: refresh_tranco.py holds a 30-min SETNX lock
+#    in Redis. The second runner exits 3 and we treat that as a
+#    non-failure in this workflow (workflow_dispatch + cron may
+#    overlap when an operator runs the manual lane).
+#
+# Secret requirement: REDIS_URL_PRODUCTION (same key Railway uses).
+
+on:
+  schedule:
+    # Run once a day at 03:17 UTC. Off-hours for both EU and US
+    # peak — minimizes the Redis-event-loop blip that the
+    # adversarial review flagged even though we now use UNLINK.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Parse the list but do not write Redis'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25  # well above the worst-case 5-min load
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install httpx redis
+
+      - name: Run refresh
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL_PRODUCTION }}
+          TRANCO_REFRESH_VERSION: ${{ github.run_id }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python scripts/refresh_tranco.py --dry-run
+          else
+            set +e
+            python scripts/refresh_tranco.py
+            code=$?
+            # Exit code 3 = lock already held (overlap). Don't fail
+            # the workflow on overlap — the other lane is doing the
+            # work.
+            if [ "$code" = "3" ]; then
+              echo "::warning::Another refresh is in progress (lock held). Skipping."
+              exit 0
+            fi
+            exit $code
+          fi
