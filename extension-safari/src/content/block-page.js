@@ -144,6 +144,11 @@ const EVIDENCE_BOOK = {
     title: "Suspicious redirect chain",
     body: "Multiple hops before landing here — often used to hide the real destination.",
   },
+  url_pii_leak: {
+    icon: "🕵️",
+    title: "Leaks private data in URL",
+    body: "The address itself carries your email or auth token — anyone who can see the link can grab them.",
+  },
   invalid: {
     icon: "❌",
     title: "Invalid address",

@@ -266,6 +266,110 @@ def _url_path_depth(url_or_domain: str) -> int:
     return 0
 
 
+# ── PII / token leak detection in URL parameters ─────────────────
+#
+# Strategy doc Top-20 #20 (impact 6, diff 7) — "Detect URLs that
+# exfiltrate the user's email or session token in plain query
+# parameters — a common phishing-and-tracking hybrid". Matches
+# nothing in the consumer category; differentiator for a privacy-
+# first product.
+#
+# Three patterns we look for, in descending order of suspicion:
+#
+#   1. JWT / bearer-token-shaped value in any query parameter. Real
+#      sites never put auth tokens in the URL (the URL is logged in
+#      browser history, Referer headers, web-server access logs,
+#      CDN logs, and analytics-pixel destinations — every one of
+#      which becomes a token exfiltration vector). When we see it,
+#      it's almost certainly a phishing redirector or a poorly
+#      designed tracker stealing a session.
+#
+#   2. Email address in any query parameter. Legitimate sites
+#      occasionally use this for one-click sign-in ("magic link"),
+#      but always behind a one-time token — never as the plain
+#      identifier. Plain-email parameters are the canonical
+#      footprint of a tracker that fingerprints the user across
+#      sites OR a phishing page that prefills its own form.
+#
+#   3. Long high-entropy random-looking strings (≥ 28 chars, mix of
+#      digits + letters). Often session IDs, sometimes UUIDs.
+#      Lower confidence than the first two — many legitimate
+#      systems use them too — so we score it lower.
+#
+# All three together cap the contribution at +25 so a URL with all
+# of them at once doesn't push score over the dangerous threshold
+# by themselves; they're a multiplier, not a verdict.
+
+_JWT_RE = re.compile(r"eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+")
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,24}")
+_LONG_ENTROPY_RE = re.compile(r"[A-Za-z0-9_\-]{28,}")
+
+
+def _detect_url_pii_leak(url_or_domain: str) -> dict:
+    """
+    Return a dict with the per-pattern hits + a max-weight score.
+
+    Shape: {
+        jwt: bool,        # JWT-shaped token in the URL
+        email: bool,      # Email address in the URL
+        long_random: bool,# Long high-entropy string in the URL
+        weight: int,      # 0–25 score contribution
+    }
+
+    URL-decoded once before matching so a `%40` doesn't hide an
+    email — but we deliberately do NOT recurse into doubly-encoded
+    cases (that's its own phishing pattern, _has_hex_encoding picks
+    it up separately).
+    """
+    if "?" not in url_or_domain:
+        return {"jwt": False, "email": False, "long_random": False, "weight": 0}
+    try:
+        from urllib.parse import unquote
+
+        query = url_or_domain.split("?", 1)[1]
+        decoded = unquote(query)
+    except Exception:
+        return {"jwt": False, "email": False, "long_random": False, "weight": 0}
+
+    has_jwt = bool(_JWT_RE.search(decoded))
+    has_email = bool(_EMAIL_RE.search(decoded))
+    # Long random matches are noisy — only flag when the URL doesn't
+    # already have JWT/email and the random part is in a value position
+    # (after =). This avoids triple-counting on `?session=eyJ...`.
+    has_long_random = False
+    if not has_jwt and not has_email:
+        for token in decoded.split("&"):
+            if "=" not in token:
+                continue
+            value = token.split("=", 1)[1]
+            if _LONG_ENTROPY_RE.search(value):
+                # Require both letters AND digits to dodge pure base64
+                # decorative hashes (e.g. version tokens that have only
+                # letters or only hex).
+                if any(c.isdigit() for c in value) and any(c.isalpha() for c in value):
+                    has_long_random = True
+                    break
+
+    weight = 0
+    if has_jwt:
+        weight += 25
+    if has_email:
+        weight += 15
+    if has_long_random:
+        weight += 5
+    # Cap at 25 — the signals stack but we don't want one URL to
+    # single-handedly dominate the verdict; the rest of the analyzer
+    # (blocklists, brand impersonation, etc.) still has to corroborate.
+    if weight > 25:
+        weight = 25
+    return {
+        "jwt": has_jwt,
+        "email": has_email,
+        "long_random": has_long_random,
+        "weight": weight,
+    }
+
+
 def _has_fake_tld_in_subdomain(domain: str) -> bool:
     """Detect paypal.com.evil.xyz pattern — real TLD used as subdomain."""
     parts = domain.split(".")
@@ -648,6 +752,28 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         reasons.append(DomainReason(
             signal="non_standard_port", weight=15,
             detail="Uses non-standard port number",
+        ))
+
+    # ── 3.19b PII / token leak in URL query parameters ──
+    # Strategy doc Top-20 #20. Flags URLs that exfiltrate the user's
+    # email, JWT, or session token through plain query params — a
+    # common phishing-and-tracking hybrid that no consumer product
+    # currently detects.
+    pii_hit = _detect_url_pii_leak(raw_input)
+    if pii_hit["weight"] > 0:
+        bits = []
+        if pii_hit["jwt"]:
+            bits.append("auth token")
+        if pii_hit["email"]:
+            bits.append("email address")
+        if pii_hit["long_random"]:
+            bits.append("session-id-like value")
+        detail = "URL leaks " + " + ".join(bits) + " in the address"
+        score += pii_hit["weight"]
+        reasons.append(DomainReason(
+            signal="url_pii_leak",
+            weight=pii_hit["weight"],
+            detail=detail,
         ))
 
     # ── 3.20 URL length (long URLs are suspicious) ──
