@@ -12,6 +12,7 @@
   "dependencies": {
     "@cleanway/api-client": "*",
     "@cleanway/api-types": "*",
+    "@sentry/react-native": "~6.3.0",
     "@supabase/supabase-js": "^2.45.0",
     "expo": "~52.0.0",
     "expo-asset": "~11.0.5",

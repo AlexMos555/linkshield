@@ -9,6 +9,11 @@ import { setAuthToken } from "../src/services/api";
 // device, and every string fell back to the en hard-coded literal.
 // (Audit mobile-ts HIGH mobile-i18n-dead-code.)
 import "../src/i18n";
+// Side-effecting import: initialises @sentry/react-native with the
+// PII scrubber + privacy-conservative defaults. No-op when
+// EXPO_PUBLIC_SENTRY_DSN is unset (dev / Expo Go) so this stays a
+// zero-cost import in those environments.
+import "../src/lib/sentry";
 import { AccountLockedModal } from "../src/components/AccountLockedModal";
 
 export default function RootLayout() {
