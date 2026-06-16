@@ -561,7 +561,67 @@ export function showBlockPage(result) {
   //     size, and
   //   - kick off a voice alert in the user's UI locale.
   _readSkillLevel(function (lvl) {
-    if (lvl === "granny") {
+    // Strategy doc Top-20 #9 — skill personas. Granny up-sizes
+    // everything for low vision and reads aloud. Kids strips
+    // away every escape hatch and shows only a giant STOP.
+    // Pro switches the page into evidence-table mode for a
+    // power user who wants to see the raw numbers.
+    if (lvl === "kids") {
+      overlay.setAttribute("data-skill", "kids");
+      // Hide the small "Go back" link and any future "continue
+      // anyway" controls. A child should NOT be able to override
+      // a verdict from the block page.
+      var continueBtn = overlay.querySelector("#ls-block-continue");
+      if (continueBtn) continueBtn.style.display = "none";
+      var backBtnEl = overlay.querySelector(".ls-block-btn-back");
+      if (backBtnEl) {
+        // Keep "Go back" — it's the safe action — but make it the
+        // only obvious choice.
+        backBtnEl.style.fontSize = "24px";
+        backBtnEl.style.padding = "22px 32px";
+      }
+      // Bigger icon, no scheme/scam-explainer text — children
+      // can't be expected to parse phishing semantics, just the
+      // visual STOP cue.
+      var stopIcon = overlay.querySelector(".ls-block-stop-icon");
+      if (stopIcon) stopIcon.style.fontSize = "140px";
+      var titleEl = overlay.querySelector(".ls-block-title");
+      if (titleEl) titleEl.style.fontSize = "64px";
+      var scheme = overlay.querySelector(".ls-block-scheme");
+      if (scheme) scheme.style.display = "none";
+      var evidence = overlay.querySelector(".ls-block-evidence");
+      if (evidence) evidence.style.display = "none";
+    } else if (lvl === "pro") {
+      overlay.setAttribute("data-skill", "pro");
+      // Pro mode: shrink the alarmist hero, expand the evidence
+      // section. Show the confidence chip more prominently so the
+      // operator can decide whether to overrule.
+      var heroIcon = overlay.querySelector(".ls-block-stop-icon");
+      if (heroIcon) {
+        heroIcon.style.fontSize = "48px";
+        heroIcon.style.opacity = "0.7";
+      }
+      var heroTitle = overlay.querySelector(".ls-block-title");
+      if (heroTitle) {
+        heroTitle.style.fontSize = "28px";
+        heroTitle.style.letterSpacing = "0.06em";
+      }
+      var heroSub = overlay.querySelector(".ls-block-subtitle");
+      if (heroSub) heroSub.style.display = "none";
+      var explanation = overlay.querySelector(".ls-block-explanation");
+      if (explanation) explanation.style.display = "none";
+      // Promote the confidence chip — it's the field a pro reads first.
+      var chip = overlay.querySelector(".ls-block-confidence");
+      if (chip) {
+        chip.style.fontSize = "13px";
+        chip.style.background = "rgba(15, 23, 42, 0.7)";
+        chip.style.borderColor = "rgba(148, 163, 184, 0.5)";
+        chip.style.padding = "6px 14px";
+      }
+      // Open the evidence section by default, larger headings.
+      var evHeading = overlay.querySelector(".ls-block-evidence-heading");
+      if (evHeading) evHeading.style.fontSize = "16px";
+    } else if (lvl === "granny") {
       overlay.setAttribute("data-skill", "granny");
       // Inline overrides — these out-scale the base values defined in
       // the embedded <style> above. We intentionally bump fonts by
