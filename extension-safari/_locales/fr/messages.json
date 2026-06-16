@@ -336,6 +336,9 @@
       }
     }
   },
+  "block_evidence_heading": {
+    "message": "Pourquoi nous avons bloqué ce site"
+  },
   "welcome_hero_title": {
     "message": "Vous êtes protégé maintenant"
   },

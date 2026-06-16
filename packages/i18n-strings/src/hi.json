@@ -343,6 +343,9 @@
             "content": "$1"
           }
         }
+      },
+      "evidence_heading": {
+        "text": "हमने इस साइट को क्यों ब्लॉक किया"
       }
     },
     "welcome": {

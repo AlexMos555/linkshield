@@ -24,7 +24,147 @@ const BLOCK_EN = {
   block_proceed_countdown: "Wait $N$ seconds…",
   block_trust_footer: "Protected by Cleanway. Your data stays on your device.",
   block_voice_alert: "Stop. The site $DOMAIN$ is dangerous. Do not type your password.",
+  // Strategy Top-20 #4 — Annotated Evidence cards
+  block_evidence_heading: "Why we blocked this site",
 };
+
+// Per-signal evidence cards. The block page renders the top 4 of
+// these matching the verdict's reasons array — the user sees the
+// concrete signals that fired with plain-language explanations they
+// can act on. Anything not in this map falls back to the raw
+// `reason.detail` string from the backend.
+//
+// Each row: {
+//   icon: emoji or unicode glyph (rendered aria-hidden),
+//   title: short headline (≤ 3 words),
+//   body:  one-sentence explanation calibrated for non-technical
+//          users — describe WHAT it means, not WHY the algorithm
+//          fired.
+// }
+// All English; locale extension happens via the i18n keys above. The
+// signal keys here mirror the analyzer's reason.signal field.
+const EVIDENCE_BOOK = {
+  blocklist: {
+    icon: "⛔",
+    title: "Reported to global blocklists",
+    body: "Security researchers have already flagged this site for phishing or malware.",
+  },
+  safe_browsing: {
+    icon: "🔎",
+    title: "Google flagged it",
+    body: "Google Safe Browsing — used by Chrome/Firefox/Safari — marks this site as unsafe.",
+  },
+  phishtank: {
+    icon: "🎣",
+    title: "PhishTank reported it",
+    body: "The community-run PhishTank database has matching phishing reports.",
+  },
+  urlhaus: {
+    icon: "💀",
+    title: "URLhaus malware host",
+    body: "abuse.ch URLhaus has this host on its malware-distribution list.",
+  },
+  threatfox: {
+    icon: "🦊",
+    title: "ThreatFox IOC match",
+    body: "abuse.ch ThreatFox links this host to an active threat indicator.",
+  },
+  malware_bazaar: {
+    icon: "🦠",
+    title: "MalwareBazaar samples",
+    body: "MalwareBazaar has malware samples tied to this host.",
+  },
+  feodo: {
+    icon: "📡",
+    title: "Active botnet C2",
+    body: "Feodo Tracker lists this host as an active botnet command-and-control server.",
+  },
+  spamhaus_dbl: {
+    icon: "📧",
+    title: "Spamhaus DBL listed",
+    body: "Spamhaus' domain blocklist — used by email providers worldwide — has this host.",
+  },
+  surbl: {
+    icon: "🔗",
+    title: "SURBL URI blocklist",
+    body: "SURBL flags this host as appearing in unsolicited mail.",
+  },
+  alienvault: {
+    icon: "👽",
+    title: "OTX threat pulse",
+    body: "AlienVault OTX has open threat pulses referencing this host.",
+  },
+  ipqs: {
+    icon: "📊",
+    title: "IPQS risk score high",
+    body: "IPQualityScore rates this host as high-risk for phishing.",
+  },
+  typosquatting: {
+    icon: "✏️",
+    title: "Imitates a real brand",
+    body: "The address looks like a well-known brand — but it isn't owned by them.",
+  },
+  brand_impersonation: {
+    icon: "🎭",
+    title: "Brand impersonation",
+    body: "Page content imitates a known brand's login or checkout flow.",
+  },
+  suspicious_tld: {
+    icon: "🌐",
+    title: "Disposable domain",
+    body: "This TLD (.tk, .xyz, etc.) is often abused for one-off phishing pages.",
+  },
+  homograph: {
+    icon: "🔠",
+    title: "Look-alike letters",
+    body: "Some characters are visual swaps (1→l, 0→o) hiding the real address.",
+  },
+  no_https: {
+    icon: "🔓",
+    title: "No HTTPS",
+    body: "The site uses plain HTTP — anything you type is sent unencrypted.",
+  },
+  free_ssl: {
+    icon: "🪪",
+    title: "Throwaway certificate",
+    body: "The SSL certificate is from a free issuer often used by short-lived sites.",
+  },
+  young_domain: {
+    icon: "🐣",
+    title: "Brand-new domain",
+    body: "The site was registered very recently — a strong phishing signal.",
+  },
+  fast_flux: {
+    icon: "🌀",
+    title: "Fast-flux hosting",
+    body: "DNS records change rapidly — characteristic of bulletproof hosting.",
+  },
+  redirect_chain: {
+    icon: "↪️",
+    title: "Suspicious redirect chain",
+    body: "Multiple hops before landing here — often used to hide the real destination.",
+  },
+  invalid: {
+    icon: "❌",
+    title: "Invalid address",
+    body: "The address itself is malformed; it might be a copy-paste trap.",
+  },
+};
+
+function _evidenceCardFor(reason) {
+  if (!reason) return null;
+  var key = reason.signal || "";
+  var card = EVIDENCE_BOOK[key];
+  if (card) {
+    return { icon: card.icon, title: card.title, body: card.body };
+  }
+  // Unknown signal: use raw detail as body, generic icon.
+  return {
+    icon: "⚠️",
+    title: "Risk signal",
+    body: String(reason.detail || "Detected by Cleanway's scoring engine."),
+  };
+}
 
 function bt(key, subs) {
   try {
@@ -142,6 +282,39 @@ export function showBlockPage(result) {
     ? `<p class="ls-block-brand">${e(bt("block_brand_impersonation", [brand]))}</p>`
     : "";
 
+  // Strategy Top-20 #4 — Annotated Evidence Cards.
+  //
+  // Pick the top 4 distinct signals from the verdict's reasons array
+  // (the scorer already ranks them by weight). De-duplicate by signal
+  // so we don't show two "typosquatting" cards if the scorer flagged
+  // it twice (e.g. local + remote). Less is more — 4 cards keep the
+  // block page readable without scrolling on a phone-sized viewport.
+  const _seenSig = new Set();
+  const evidenceCards = (reasons || [])
+    .filter((r) => r && r.signal && !_seenSig.has(r.signal) && _seenSig.add(r.signal))
+    .slice(0, 4)
+    .map((r) => _evidenceCardFor(r))
+    .filter(Boolean);
+  const evidenceHTML = evidenceCards.length
+    ? `<div class="ls-block-evidence" aria-label="${e(bt("block_evidence_heading"))}">
+         <h2 class="ls-block-evidence-heading">${e(bt("block_evidence_heading"))}</h2>
+         <div class="ls-block-evidence-grid">
+           ${evidenceCards
+             .map(
+               (c) => `
+                 <div class="ls-block-evidence-card">
+                   <span class="ls-block-evidence-icon" aria-hidden="true">${e(c.icon)}</span>
+                   <div class="ls-block-evidence-text">
+                     <div class="ls-block-evidence-title">${e(c.title)}</div>
+                     <div class="ls-block-evidence-body">${e(c.body)}</div>
+                   </div>
+                 </div>`,
+             )
+             .join("")}
+         </div>
+       </div>`
+    : "";
+
   overlay.innerHTML = `
     <style id="ls-block-styles">
       #ls-block-overlay {
@@ -195,6 +368,38 @@ export function showBlockPage(result) {
       }
       .ls-block-brand {
         font-size: 14px; color: #fca5a5; font-style: italic; margin: 0 0 24px;
+      }
+      .ls-block-evidence {
+        background: rgba(0, 0, 0, 0.32);
+        border-radius: 14px; padding: 20px;
+        margin-bottom: 20px; text-align: start;
+        border: 1px solid rgba(239, 68, 68, 0.18);
+      }
+      .ls-block-evidence-heading {
+        font-size: 13px; font-weight: 700; color: #fecaca; margin: 0 0 14px;
+        text-transform: uppercase; letter-spacing: 0.05em;
+      }
+      .ls-block-evidence-grid {
+        display: grid; grid-template-columns: 1fr; gap: 10px;
+      }
+      @media (min-width: 480px) {
+        .ls-block-evidence-grid { grid-template-columns: 1fr 1fr; }
+      }
+      .ls-block-evidence-card {
+        display: flex; gap: 12px; align-items: flex-start;
+        background: rgba(127, 29, 29, 0.25);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 10px; padding: 10px 12px;
+      }
+      .ls-block-evidence-icon {
+        flex-shrink: 0; font-size: 22px; line-height: 1.1;
+      }
+      .ls-block-evidence-title {
+        font-size: 14px; font-weight: 700; color: #fff;
+        margin-bottom: 3px; line-height: 1.25;
+      }
+      .ls-block-evidence-body {
+        font-size: 12.5px; color: #fee2e2; line-height: 1.4;
       }
       .ls-block-scheme {
         background: rgba(0, 0, 0, 0.3);
@@ -259,6 +464,8 @@ export function showBlockPage(result) {
       <div class="ls-block-domain" dir="ltr">${e(domain)}</div>
       <p class="ls-block-explanation">${e(bt("block_explanation", [domain]))}</p>
       ${brandLine}
+
+      ${evidenceHTML}
 
       <div class="ls-block-scheme">
         <h2 class="ls-block-scheme-heading">${e(bt("block_scheme_heading"))}</h2>
@@ -339,6 +546,14 @@ export function showBlockPage(result) {
           el.style.fontSize = "20px";
         }
       });
+      // Evidence card text up-sizing — keeps cards readable for users
+      // with vision impairments without overflowing the column.
+      var evTitles = overlay.querySelectorAll(".ls-block-evidence-title");
+      evTitles.forEach(function (el) { el.style.fontSize = "18px"; });
+      var evBodies = overlay.querySelectorAll(".ls-block-evidence-body");
+      evBodies.forEach(function (el) { el.style.fontSize = "16px"; el.style.lineHeight = "1.5"; });
+      var evIcons = overlay.querySelectorAll(".ls-block-evidence-icon");
+      evIcons.forEach(function (el) { el.style.fontSize = "28px"; });
 
       // Voice alert.
       try {

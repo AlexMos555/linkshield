@@ -336,6 +336,9 @@
       }
     }
   },
+  "block_evidence_heading": {
+    "message": "Почему мы заблокировали этот сайт"
+  },
   "welcome_hero_title": {
     "message": "Вы под защитой"
   },

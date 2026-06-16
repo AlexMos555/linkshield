@@ -343,6 +343,9 @@
             "content": "$1"
           }
         }
+      },
+      "evidence_heading": {
+        "text": "Mengapa kami memblokir situs ini"
       }
     },
     "welcome": {

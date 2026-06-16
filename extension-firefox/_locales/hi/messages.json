@@ -336,6 +336,9 @@
       }
     }
   },
+  "block_evidence_heading": {
+    "message": "हमने इस साइट को क्यों ब्लॉक किया"
+  },
   "welcome_hero_title": {
     "message": "अब आप सुरक्षित हैं"
   },

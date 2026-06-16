@@ -336,6 +336,9 @@
       }
     }
   },
+  "block_evidence_heading": {
+    "message": "Mengapa kami memblokir situs ini"
+  },
   "welcome_hero_title": {
     "message": "Anda sekarang terlindungi"
   },

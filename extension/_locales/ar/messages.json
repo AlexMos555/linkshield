@@ -336,6 +336,9 @@
       }
     }
   },
+  "block_evidence_heading": {
+    "message": "لماذا حظرنا هذا الموقع"
+  },
   "welcome_hero_title": {
     "message": "أنت محمي الآن"
   },

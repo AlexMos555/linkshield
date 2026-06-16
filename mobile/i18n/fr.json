@@ -92,6 +92,7 @@
   "extension.block_page.proceed_countdown": "Patientez {{n}} secondes…",
   "extension.block_page.trust_footer": "Protégé par Cleanway. Vos données restent sur votre appareil.",
   "extension.block_page.voice_alert": "Arrêtez. Le site {{domain}} est dangereux. Ne tapez pas votre mot de passe.",
+  "extension.block_page.evidence_heading": "Pourquoi nous avons bloqué ce site",
   "extension.welcome.hero_title": "Vous êtes protégé maintenant",
   "extension.welcome.hero_subtitle": "Chaque lien que vous voyez est vérifié. Les dangereux sont bloqués automatiquement.",
   "extension.welcome.step1_title": "Vérification automatique",

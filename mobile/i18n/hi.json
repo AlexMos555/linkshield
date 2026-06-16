@@ -92,6 +92,7 @@
   "extension.block_page.proceed_countdown": "{{n}} सेकंड रुकें…",
   "extension.block_page.trust_footer": "Cleanway से सुरक्षित। आपका डेटा इसी डिवाइस पर रहता है।",
   "extension.block_page.voice_alert": "रुको। साइट {{domain}} खतरनाक है। अपना पासवर्ड न डालो।",
+  "extension.block_page.evidence_heading": "हमने इस साइट को क्यों ब्लॉक किया",
   "extension.welcome.hero_title": "अब आप सुरक्षित हैं",
   "extension.welcome.hero_subtitle": "आप जो भी लिंक देखते हैं, उसकी जाँच होती है। ख़तरनाक लिंक अपने आप रोक दिए जाते हैं।",
   "extension.welcome.step1_title": "स्वचालित जाँच",

@@ -345,6 +345,9 @@
             "content": "$1"
           }
         }
+      },
+      "evidence_heading": {
+        "text": "Why we blocked this site"
       }
     },
     "welcome": {

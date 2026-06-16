@@ -92,6 +92,7 @@
   "extension.block_page.proceed_countdown": "انتظر {{n}} ثوانٍ…",
   "extension.block_page.trust_footer": "محمي بواسطة Cleanway. بياناتك تبقى على جهازك.",
   "extension.block_page.voice_alert": "توقف. الموقع {{domain}} خطير. لا تكتب كلمة المرور.",
+  "extension.block_page.evidence_heading": "لماذا حظرنا هذا الموقع",
   "extension.welcome.hero_title": "أنت محمي الآن",
   "extension.welcome.hero_subtitle": "يتم فحص كل رابط تراه. الروابط الخطرة تُحظر تلقائيًا.",
   "extension.welcome.step1_title": "فحص تلقائي",
