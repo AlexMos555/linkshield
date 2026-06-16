@@ -1,0 +1,102 @@
+{
+  "_meta": {
+    "doc": "Brand favicon gallery for Strategy #2 brand-clone detection. Each brand entry has verified_hosts (the domains that legitimately serve this brand's favicon) and known_favicon_hashes (12-char SHA-256 prefixes). Populate hashes via scripts/refresh_brand_favicons.py. Empty hash arrays mean the brand is tracked but no detection happens yet — safe default.",
+    "schema_version": 1
+  },
+  "paypal": {
+    "verified_hosts": ["paypal.com", "www.paypal.com", "paypal.me"],
+    "known_favicon_hashes": []
+  },
+  "apple": {
+    "verified_hosts": ["apple.com", "www.apple.com", "icloud.com", "appleid.apple.com"],
+    "known_favicon_hashes": []
+  },
+  "google": {
+    "verified_hosts": ["google.com", "www.google.com", "accounts.google.com", "myaccount.google.com"],
+    "known_favicon_hashes": []
+  },
+  "microsoft": {
+    "verified_hosts": ["microsoft.com", "www.microsoft.com", "login.microsoftonline.com", "outlook.com", "office.com", "live.com"],
+    "known_favicon_hashes": []
+  },
+  "amazon": {
+    "verified_hosts": ["amazon.com", "www.amazon.com", "amazon.co.uk", "amazon.de", "amazon.fr", "amazon.in", "amazon.jp"],
+    "known_favicon_hashes": []
+  },
+  "facebook": {
+    "verified_hosts": ["facebook.com", "www.facebook.com", "m.facebook.com"],
+    "known_favicon_hashes": []
+  },
+  "instagram": {
+    "verified_hosts": ["instagram.com", "www.instagram.com"],
+    "known_favicon_hashes": []
+  },
+  "netflix": {
+    "verified_hosts": ["netflix.com", "www.netflix.com"],
+    "known_favicon_hashes": []
+  },
+  "chase": {
+    "verified_hosts": ["chase.com", "www.chase.com", "secure.chase.com"],
+    "known_favicon_hashes": []
+  },
+  "wellsfargo": {
+    "verified_hosts": ["wellsfargo.com", "www.wellsfargo.com", "connect.secure.wellsfargo.com"],
+    "known_favicon_hashes": []
+  },
+  "bankofamerica": {
+    "verified_hosts": ["bankofamerica.com", "www.bankofamerica.com", "secure.bankofamerica.com"],
+    "known_favicon_hashes": []
+  },
+  "capitalone": {
+    "verified_hosts": ["capitalone.com", "www.capitalone.com"],
+    "known_favicon_hashes": []
+  },
+  "hsbc": {
+    "verified_hosts": ["hsbc.com", "www.hsbc.com", "hsbc.co.uk", "www.hsbc.co.uk"],
+    "known_favicon_hashes": []
+  },
+  "barclays": {
+    "verified_hosts": ["barclays.co.uk", "www.barclays.co.uk", "barclays.com"],
+    "known_favicon_hashes": []
+  },
+  "santander": {
+    "verified_hosts": ["santander.com", "santander.co.uk", "santanderbank.com"],
+    "known_favicon_hashes": []
+  },
+  "dhl": {
+    "verified_hosts": ["dhl.com", "www.dhl.com"],
+    "known_favicon_hashes": []
+  },
+  "ups": {
+    "verified_hosts": ["ups.com", "www.ups.com"],
+    "known_favicon_hashes": []
+  },
+  "fedex": {
+    "verified_hosts": ["fedex.com", "www.fedex.com"],
+    "known_favicon_hashes": []
+  },
+  "linkedin": {
+    "verified_hosts": ["linkedin.com", "www.linkedin.com"],
+    "known_favicon_hashes": []
+  },
+  "twitter": {
+    "verified_hosts": ["twitter.com", "www.twitter.com", "x.com", "www.x.com"],
+    "known_favicon_hashes": []
+  },
+  "github": {
+    "verified_hosts": ["github.com", "www.github.com"],
+    "known_favicon_hashes": []
+  },
+  "binance": {
+    "verified_hosts": ["binance.com", "www.binance.com"],
+    "known_favicon_hashes": []
+  },
+  "coinbase": {
+    "verified_hosts": ["coinbase.com", "www.coinbase.com", "pro.coinbase.com"],
+    "known_favicon_hashes": []
+  },
+  "stripe": {
+    "verified_hosts": ["stripe.com", "www.stripe.com", "dashboard.stripe.com"],
+    "known_favicon_hashes": []
+  }
+}

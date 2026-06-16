@@ -149,6 +149,26 @@ const EVIDENCE_BOOK = {
     title: "Leaks private data in URL",
     body: "The address itself carries your email or auth token — anyone who can see the link can grab them.",
   },
+  malware_bazaar: {
+    icon: "🦠",
+    title: "Distributes malware",
+    body: "abuse.ch MalwareBazaar has seen this host shipping known malware samples.",
+  },
+  feodo: {
+    icon: "📡",
+    title: "Active botnet C2 server",
+    body: "abuse.ch Feodo Tracker confirms this host is currently controlling a botnet.",
+  },
+  favicon_brand_clone: {
+    icon: "🎭",
+    title: "Brand-clone phishing",
+    body: "This page serves a real brand's favicon but is hosted on an unrelated domain — a classic credential-theft signature.",
+  },
+  tranco_popularity: {
+    icon: "✅",
+    title: "Among the most-visited sites",
+    body: "This domain is in the worldwide top sites — counted as a trust signal here, but other risks above still apply.",
+  },
   invalid: {
     icon: "❌",
     title: "Invalid address",
