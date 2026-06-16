@@ -713,6 +713,16 @@
       "footer_or": "أو",
       "footer_install_cta": "ثبّت الإضافة مجانًا",
       "footer_install_tail": "— الحظر يعمل دائمًا بدون حساب."
+    },
+    "pricing": {
+      "page_title": "الأسعار",
+      "hero_title_left": "أسعار عادلة لـ",
+      "hero_title_right": "كل دولة",
+      "hero_subtitle": "الحماية من عمليات الاحتيال عبر الإنترنت حق أساسي. حظر مواقع التصيد مجاني للأبد. ادفع فقط مقابل التفاصيل وحماية العائلة وأوضاع إمكانية الوصول.",
+      "interval_monthly": "شهري",
+      "interval_yearly": "سنوي",
+      "badge_save_2_months": "وفّر شهرين",
+      "tier_badge": "المستوى $TIER$ — $COUNTRY$"
     }
   },
   "email": {

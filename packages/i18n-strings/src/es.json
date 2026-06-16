@@ -713,6 +713,16 @@
       "footer_or": "O",
       "footer_install_cta": "instala la extensión gratis",
       "footer_install_tail": "— el bloqueo siempre funciona sin cuenta."
+    },
+    "pricing": {
+      "page_title": "Precios",
+      "hero_title_left": "Precios justos para",
+      "hero_title_right": "cada país",
+      "hero_subtitle": "La protección contra estafas en línea es un derecho. Bloqueamos sitios de phishing siempre gratis. Pagas solo por detalles, protección familiar y modos de accesibilidad.",
+      "interval_monthly": "Mensual",
+      "interval_yearly": "Anual",
+      "badge_save_2_months": "Ahorra 2 meses",
+      "tier_badge": "Nivel $TIER$ — $COUNTRY$"
     }
   },
   "email": {

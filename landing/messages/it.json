@@ -321,5 +321,15 @@
     "footer_or": "Oppure",
     "footer_install_cta": "installa l'estensione gratis",
     "footer_install_tail": "— il blocco funziona sempre senza account."
+  },
+  "Pricing": {
+    "page_title": "Prezzi",
+    "hero_title_left": "Prezzi equi per",
+    "hero_title_right": "ogni paese",
+    "hero_subtitle": "La protezione dalle truffe online è un diritto. Blocchiamo i siti di phishing gratis per sempre. Paghi solo per dettagli, protezione famiglia e modalità di accessibilità.",
+    "interval_monthly": "Mensile",
+    "interval_yearly": "Annuale",
+    "badge_save_2_months": "Risparmia 2 mesi",
+    "tier_badge": "Livello $TIER$ — $COUNTRY$"
   }
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PricingFor } from "@cleanway/api-client";
 
@@ -152,6 +152,7 @@ export default function PricingClient({ data }: PricingClientProps) {
   // `localePrefix: "as-needed"`, a non-EN user MUST keep their prefix
   // or they'd be silently moved to English mid-flow.
   const locale = useLocale();
+  const t = useTranslations("Pricing");
 
   return (
     <section className="pb-16 px-6">
@@ -168,7 +169,9 @@ export default function PricingClient({ data }: PricingClientProps) {
                   interval === opt ? "bg-green-500 text-green-950" : "text-slate-400 hover:text-white"
                 }`}
               >
-                {opt === "monthly" ? "Monthly" : "Yearly · save 17%"}
+                {opt === "monthly"
+                  ? t("interval_monthly")
+                  : `${t("interval_yearly")} · ${t("badge_save_2_months")}`}
               </button>
             ))}
           </div>

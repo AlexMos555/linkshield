@@ -321,5 +321,15 @@
     "footer_or": "Or",
     "footer_install_cta": "install the extension free",
     "footer_install_tail": "— blocking always works without an account."
+  },
+  "Pricing": {
+    "page_title": "Pricing",
+    "hero_title_left": "Fair pricing for",
+    "hero_title_right": "every country",
+    "hero_subtitle": "We believe safety from online scams is a basic right. Block phishing sites — always free. Pay only for details, family protection, and accessibility modes.",
+    "interval_monthly": "Monthly",
+    "interval_yearly": "Yearly",
+    "badge_save_2_months": "Save 2 months",
+    "tier_badge": "Tier $TIER$ — $COUNTRY$"
   }
 }

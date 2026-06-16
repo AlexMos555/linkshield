@@ -713,6 +713,16 @@
       "footer_or": "Atau",
       "footer_install_cta": "pasang ekstensi gratis",
       "footer_install_tail": "— pemblokiran selalu bekerja tanpa akun."
+    },
+    "pricing": {
+      "page_title": "Harga",
+      "hero_title_left": "Harga adil untuk",
+      "hero_title_right": "setiap negara",
+      "hero_subtitle": "Perlindungan dari penipuan online adalah hak dasar. Pemblokiran situs phishing — gratis selamanya. Bayar hanya untuk detail, perlindungan keluarga, dan mode aksesibilitas.",
+      "interval_monthly": "Bulanan",
+      "interval_yearly": "Tahunan",
+      "badge_save_2_months": "Hemat 2 bulan",
+      "tier_badge": "Tingkat $TIER$ — $COUNTRY$"
     }
   },
   "email": {

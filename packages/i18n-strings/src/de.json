@@ -713,6 +713,16 @@
       "footer_or": "Oder",
       "footer_install_cta": "installieren Sie die Erweiterung kostenlos",
       "footer_install_tail": "— das Blockieren funktioniert immer ohne Konto."
+    },
+    "pricing": {
+      "page_title": "Preise",
+      "hero_title_left": "Faire Preise für",
+      "hero_title_right": "jedes Land",
+      "hero_subtitle": "Schutz vor Online-Betrug ist ein Grundrecht. Phishing-Seiten werden immer kostenlos blockiert. Sie zahlen nur für Details, Familienschutz und Barrierefreiheitsmodi.",
+      "interval_monthly": "Monatlich",
+      "interval_yearly": "Jährlich",
+      "badge_save_2_months": "2 Monate sparen",
+      "tier_badge": "Stufe $TIER$ — $COUNTRY$"
     }
   },
   "email": {

@@ -713,6 +713,16 @@
       "footer_or": "Ou",
       "footer_install_cta": "installez l'extension gratuite",
       "footer_install_tail": "— le blocage fonctionne toujours sans compte."
+    },
+    "pricing": {
+      "page_title": "Tarifs",
+      "hero_title_left": "Des tarifs équitables pour",
+      "hero_title_right": "chaque pays",
+      "hero_subtitle": "Se protéger des arnaques en ligne est un droit. Le blocage des sites de phishing est gratuit, à vie. Vous ne payez que pour les détails, la protection familiale et les modes d'accessibilité.",
+      "interval_monthly": "Mensuel",
+      "interval_yearly": "Annuel",
+      "badge_save_2_months": "Économisez 2 mois",
+      "tier_badge": "Niveau $TIER$ — $COUNTRY$"
     }
   },
   "email": {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { createClient, type PricingFor } from "@cleanway/api-client";
 import PricingClient from "./PricingClient";
 import { routing, type Locale } from "@/i18n/routing";
@@ -23,9 +24,11 @@ export async function generateMetadata({
   for (const loc of routing.locales) languages[loc] = pricingUrlFor(loc as Locale);
   languages["x-default"] = pricingUrlFor(routing.defaultLocale);
 
-  const title = "Pricing — Cleanway";
-  const description =
-    "Fair, regional pricing. Free forever for blocking phishing. Pay only for details, family protection, and accessibility modes.";
+  const t = await getTranslations({ locale: safeLocale, namespace: "Pricing" });
+  const title = `${t("page_title")} — Cleanway`;
+  // The hero subtitle does double duty as the meta description — same
+  // promise, same cultural register. Saves a second translation pass.
+  const description = t("hero_subtitle");
 
   return {
     title,
@@ -104,10 +107,16 @@ async function fetchPricing(cc?: string): Promise<PricingData | null> {
 
 export default async function PricingPage({
   searchParams,
+  params,
 }: {
   searchParams: Promise<{ cc?: string }>;
+  params: Promise<{ locale: string }>;
 }) {
   const { cc } = await searchParams;
+  const { locale } = await params;
+  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
+  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const t = await getTranslations({ locale: safeLocale, namespace: "Pricing" });
   const initial = await fetchPricing(cc);
 
   // Fallback if API is down — base tier 2 defaults.
@@ -167,12 +176,13 @@ export default async function PricingPage({
             Blocking is free forever
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-6">
-            Fair pricing for{" "}
-            <span className="bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">every country</span>
+            {t("hero_title_left")}{" "}
+            <span className="bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
+              {t("hero_title_right")}
+            </span>
           </h1>
           <p className="text-lg md:text-xl text-slate-400 leading-relaxed max-w-2xl mx-auto mb-6">
-            We believe safety from online scams is a basic right. Block phishing sites — always free.
-            Pay only for details, family protection, and accessibility modes.
+            {t("hero_subtitle")}
           </p>
           <TierBadge tier={data.tier} country={data.country ?? null} />
         </div>

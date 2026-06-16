@@ -321,5 +321,15 @@
     "footer_or": "Ou",
     "footer_install_cta": "instale a extensão grátis",
     "footer_install_tail": "— o bloqueio sempre funciona sem conta."
+  },
+  "Pricing": {
+    "page_title": "Preços",
+    "hero_title_left": "Preços justos para",
+    "hero_title_right": "cada país",
+    "hero_subtitle": "Proteção contra golpes online é um direito. Bloqueamos sites de phishing sempre grátis. Você paga só por detalhes, proteção familiar e modos de acessibilidade.",
+    "interval_monthly": "Mensal",
+    "interval_yearly": "Anual",
+    "badge_save_2_months": "Economize 2 meses",
+    "tier_badge": "Nível $TIER$ — $COUNTRY$"
   }
 }
