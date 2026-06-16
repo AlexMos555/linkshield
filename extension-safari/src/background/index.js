@@ -319,7 +319,29 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
     // (Audit extension-mv3 MEDIUM "handleCheck(...).then(respond) has
     // no .catch() — rejection closes the message channel silently".)
     handleCheck(msg.domains)
-      .then(respond)
+      .then((results) => {
+        // Strategy #1 expansion: promote credential-guardian to
+        // strict mode in the tab that asked for the check if ANY of
+        // the returned results is dangerous. Strict mode intercepts
+        // form submit instead of just warning above it — the right
+        // posture when we already know the page is hostile.
+        try {
+          if (sender && sender.tab && sender.tab.id != null) {
+            const dangerous = Array.isArray(results)
+              ? results.some((r) => r && r.level === "dangerous")
+              : false;
+            if (dangerous) {
+              chrome.tabs
+                .sendMessage(sender.tab.id, { type: "CREDGUARD_STRICT" })
+                .catch(() => {
+                  // Content script may not be present (block-page
+                  // overlay races the SW response). Non-fatal.
+                });
+            }
+          }
+        } catch (e) { /* ignore */ }
+        respond(results);
+      })
       .catch((err) => {
         try { respond({ error: "background_failure", message: String(err && err.message ? err.message : err) }); }
         catch (e) { /* port closed before respond fired — nothing we can do */ }

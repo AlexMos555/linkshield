@@ -147,6 +147,45 @@
       .replace(/'/g, "&#39;");
   }
 
+  // ── Backend verified-host allowlist lookup ──
+  //
+  // The local LEGIT_AUTH_HOSTS covers federated SSO providers but
+  // can't know every brand's own login hosts (paypal uses paypal.com,
+  // chase uses secure01a.chase.com, etc.). The backend
+  // /api/v1/credentials/verified endpoint returns that list per
+  // brand. We cache results in chrome.storage.session for the
+  // current session — same brand checked twice doesn't hit the
+  // network twice.
+  var _brandHostCache = Object.create(null);
+
+  async function _fetchVerifiedHosts(brand) {
+    if (_brandHostCache[brand]) return _brandHostCache[brand];
+    try {
+      var apiBase = "https://api.cleanway.ai";
+      try {
+        var stored = await chrome.storage.local.get("api_url");
+        if (stored && typeof stored.api_url === "string" && stored.api_url.startsWith("http")) {
+          apiBase = stored.api_url.replace(/\/+$/, "");
+        }
+      } catch (e) { /* storage unavailable */ }
+      var resp = await fetch(
+        apiBase + "/api/v1/credentials/verified?brand=" + encodeURIComponent(brand),
+        { method: "GET" },
+      );
+      if (!resp.ok) {
+        _brandHostCache[brand] = [];
+        return [];
+      }
+      var data = await resp.json();
+      var hosts = Array.isArray(data && data.hosts) ? data.hosts.map(function (h) { return String(h).toLowerCase(); }) : [];
+      _brandHostCache[brand] = hosts;
+      return hosts;
+    } catch (e) {
+      _brandHostCache[brand] = [];
+      return [];
+    }
+  }
+
   // ── Signal A: form action host vs visible host ──
   function _classifyFormAction(form) {
     if (!form || !form.action) return { mismatch: false };
@@ -239,7 +278,13 @@
       "position:fixed",
       "top:16px",
       "left:50%",
-      "transform:translateX(-50%)",
+      // Start hidden+offset; CSS transition fades it down into view.
+      // Combined transform deliberately overrides the X centering so
+      // the initial state is also translated up; we restore in the
+      // requestAnimationFrame callback below.
+      "transform:translate(-50%,-12px)",
+      "opacity:0",
+      "transition:opacity 280ms ease-out,transform 280ms ease-out",
       "z-index:2147483646",
       "max-width:520px",
       "background:#0f172a",
@@ -267,9 +312,18 @@
       + '</div>';
 
     (document.body || document.documentElement).appendChild(box);
+    // rAF after append → next paint runs the transition.
+    requestAnimationFrame(function () {
+      box.style.opacity = "1";
+      box.style.transform = "translate(-50%,0)";
+    });
     var dismiss = box.querySelector("#ls-credguard-dismiss");
     if (dismiss) {
-      dismiss.addEventListener("click", function () { box.remove(); });
+      dismiss.addEventListener("click", function () {
+        box.style.opacity = "0";
+        box.style.transform = "translate(-50%,-12px)";
+        setTimeout(function () { if (box.parentNode) box.remove(); }, 280);
+      });
     }
 
     // Strict mode: also intercept the form submit.
@@ -304,6 +358,7 @@
     var evidence = {
       mismatch: actionCheck.mismatch,
       actionHost: actionCheck.actionHost,
+      scheme: actionCheck.scheme,
       typosquat: brandCheck.typosquat,
       brand: brandCheck.brand,
       legit: brandCheck.legit,
@@ -321,7 +376,24 @@
 
     _log("evaluate", { triggers: triggers, evidence: evidence });
 
-    if (triggers >= 1) {
+    if (triggers < 1) return;
+
+    // If the typosquat brand is known, defer the render so we can
+    // double-check the backend allowlist. The local LEGIT_AUTH_HOSTS
+    // covers federated SSO; the backend list covers brand-specific
+    // verified login hosts (paypal → paypal.com, chase → secure01a.
+    // chase.com). If the FORM ACTION hits the brand's verified list,
+    // the form is plausibly legitimate even though the host looks
+    // like a typosquat — skip the warning for those cases.
+    if (evidence.typosquat && evidence.brand && actionCheck.actionHost) {
+      _fetchVerifiedHosts(evidence.brand).then(function (hosts) {
+        if (hosts && hosts.indexOf(actionCheck.actionHost) >= 0) {
+          _log("brand verified host match — skipping warning", evidence.brand);
+          return;
+        }
+        _renderWarning(form, evidence);
+      });
+    } else {
       _renderWarning(form, evidence);
     }
   }

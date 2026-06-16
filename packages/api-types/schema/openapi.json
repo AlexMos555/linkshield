@@ -2976,6 +2976,54 @@
         }
       }
     },
+    "/api/v1/credentials/verified": {
+      "get": {
+        "tags": [
+          "credentials"
+        ],
+        "summary": "Verified Hosts",
+        "description": "Resolve a brand identifier to the list of hostnames that are\nactually used as that brand's verified login surfaces.\n\nThe credential-guardian content script uses this to decide whether\na same-brand-looking form action is plausibly legitimate. If\n`is_known` is False the brand isn't in our allowlist — the\nextension should fall back to its inline LEGIT_AUTH_HOSTS check\nplus its three-signal heuristic.\n\nResponse is anonymous + IP-rate-limited. The brand identifier\nleaks NO information about the user's current page or browsing\nbehaviour — it's just a brand name like \"paypal\", same kind of\nrequest a price comparison page might make.",
+        "operationId": "verified_hosts_api_v1_credentials_verified_get",
+        "parameters": [
+          {
+            "name": "brand",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "description": "Brand identifier (e.g. paypal, apple, chase). Case-insensitive — server lowercases.",
+              "title": "Brand"
+            },
+            "description": "Brand identifier (e.g. paypal, apple, chase). Case-insensitive — server lowercases."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifiedHostsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health Check",
@@ -4895,6 +4943,32 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VerifiedHostsResponse": {
+        "properties": {
+          "brand": {
+            "type": "string",
+            "title": "Brand"
+          },
+          "hosts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hosts"
+          },
+          "is_known": {
+            "type": "boolean",
+            "title": "Is Known"
+          }
+        },
+        "type": "object",
+        "required": [
+          "brand",
+          "hosts",
+          "is_known"
+        ],
+        "title": "VerifiedHostsResponse"
       },
       "WeeklyAggregateSubmit": {
         "properties": {
