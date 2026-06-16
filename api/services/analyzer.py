@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 import httpx
 
 from api.config import get_settings
-from api.services.scoring import calculate_score, calculate_confidence
+from api.services.scoring import calculate_score, calculate_confidence, calculate_confidence_pct
 from api.services.domain_validator import (
     validate_domain,
     validate_domain_resolution,
@@ -222,13 +222,18 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
     except Exception:
         pass  # Feature logging is non-critical
 
+    # Strategy doc #12 — numeric confidence band per verdict.
+    confidence_pct = calculate_confidence_pct(score, checks_succeeded, total_checks)
+
     logger.info("analysis_complete", extra={
         "domain": domain, "score": score, "level": level.value,
-        "confidence": confidence.value, "checks": checks_succeeded,
+        "confidence": confidence.value, "confidence_pct": confidence_pct,
+        "checks": checks_succeeded,
     })
 
     return DomainResult(
         domain=domain, score=score, level=level, confidence=confidence,
+        confidence_pct=confidence_pct,
         reasons=reasons,
         domain_age_days=whois_data.get("age_days"),
         has_ssl=ssl_data.get("has_ssl"),

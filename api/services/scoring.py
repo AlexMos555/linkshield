@@ -1025,6 +1025,53 @@ def calculate_confidence(
         return ConfidenceLevel.low
 
 
+def calculate_confidence_pct(
+    score: int, checks_succeeded: int, total_checks: int
+) -> int:
+    """Strategy doc Top-20 #12 — numeric confidence band per verdict.
+
+    The headline transparency claim ("FP rate 0.08%") is a marginal
+    average. A specific verdict's confidence depends on two
+    measurable factors:
+
+      coverage  — fraction of analyzer checks that returned a real
+                  answer (not the breaker fallback). A verdict
+                  built on 4/18 checks is less trustworthy than
+                  one built on 18/18.
+      margin    — how far the final score sits from the nearest
+                  decision boundary (30 = safe/caution, 70 =
+                  caution/dangerous). A score of 75 is more
+                  confidently 'dangerous' than a score of 71.
+
+    The blend is weighted toward coverage (0.7) because no amount
+    of margin can rescue a verdict that ran on no data. Output is
+    clamped to [50, 99]; we never claim 100% — that's the conformal
+    point. The categorical ConfidenceLevel is derived downstream
+    from this number for backwards-compatible callers.
+    """
+    if total_checks <= 0:
+        return 50
+    coverage = max(0.0, min(checks_succeeded / total_checks, 1.0))
+
+    score_clamped = max(0, min(score, 100))
+    if score_clamped < 30:
+        margin_pts = 30 - score_clamped
+    elif score_clamped < 70:
+        margin_pts = min(score_clamped - 30, 70 - score_clamped)
+    else:
+        margin_pts = score_clamped - 70
+    # Normalize: a 30-point cushion = full margin = 1.0.
+    margin = min(margin_pts / 30.0, 1.0)
+
+    # Coverage is a hard gate, not a weighted term: with zero data,
+    # we never claim more than the floor regardless of margin (we
+    # can't see the threshold to know the margin is real). The
+    # margin then refines the answer once at least some data is in.
+    blended = coverage * (0.7 + 0.3 * margin)   # in [0, 1]
+    pct = 50 + round(49 * blended)              # in [50, 99]
+    return max(50, min(pct, 99))
+
+
 # ═══════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════

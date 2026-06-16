@@ -198,6 +198,18 @@ async function loadPageStatus() {
       subtitle = t("status_unknown_subtitle");
     }
     setStatus(state, title, subtitle);
+    // Strategy doc #12 — surface the confidence band beneath the
+    // verdict. Backend always populates confidence_pct (50-99) on
+    // every result; falling back to nothing if the field is
+    // missing keeps us forward-compatible with stale extensions
+    // hitting older API builds.
+    if (typeof r.confidence_pct === "number") {
+      var chip = $("confidence-chip");
+      if (chip) {
+        chip.textContent = "Confidence: " + r.confidence_pct + "%";
+        chip.hidden = false;
+      }
+    }
   } catch (e) {
     setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
     $("offline-banner").hidden = false;

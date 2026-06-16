@@ -45,6 +45,11 @@
       </div>
       <h2 class="status-title" id="status-title" data-i18n="status_scanning">Checking this page…</h2>
       <p class="status-subtitle" id="status-subtitle"></p>
+      <!-- Strategy doc #12 — conformal confidence band. Hidden
+           until the verdict response actually carries a
+           confidence_pct field, so the chip never shows a stale
+           value while the status is "scanning". -->
+      <span class="confidence-chip" id="confidence-chip" hidden></span>
     </section>
 
     <!-- Primary action (only shown on danger state) -->

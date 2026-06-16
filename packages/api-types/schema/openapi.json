@@ -3024,6 +3024,57 @@
         }
       }
     },
+    "/api/v1/transparency/latest": {
+      "get": {
+        "tags": [
+          "transparency"
+        ],
+        "summary": "Get Latest Report",
+        "description": "Return the most recent quarterly transparency report.\n\nLoads the highest-named JSON file from docs/transparency/\n(lexicographic order — \"2026-q3\" > \"2026-q2\"). Returns 404\nonly if the directory or its files are missing entirely (a\ndeployment misconfiguration), never because no report has\nbeen issued yet.",
+        "operationId": "get_latest_report_api_v1_transparency_latest_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Latest Report Api V1 Transparency Latest Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transparency/history": {
+      "get": {
+        "tags": [
+          "transparency"
+        ],
+        "summary": "Get History",
+        "description": "List metadata for every published report (id + period).\n\nUseful for the landing page so it can render a dropdown of\nevery past quarter without fetching each full file.",
+        "operationId": "get_history_api_v1_transparency_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Get History Api V1 Transparency History Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health Check",
@@ -3721,6 +3772,13 @@
           "confidence": {
             "$ref": "#/components/schemas/ConfidenceLevel",
             "default": "medium"
+          },
+          "confidence_pct": {
+            "type": "integer",
+            "maximum": 99.0,
+            "minimum": 50.0,
+            "title": "Confidence Pct",
+            "default": 75
           },
           "reasons": {
             "items": {

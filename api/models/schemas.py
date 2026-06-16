@@ -47,6 +47,12 @@ class DomainResult(BaseModel):
     score: int = Field(..., ge=0, le=100)
     level: RiskLevel
     confidence: ConfidenceLevel = ConfidenceLevel.medium
+    # Strategy doc Top-20 #12 — conformal-style confidence band.
+    # 50-99 integer; never 100 (we never claim absolute certainty)
+    # and never below 50 (any verdict we return has at least basic
+    # signal). Display verbatim in UI ("Confidence: 92%"). The
+    # categorical `confidence` field above is derived from this.
+    confidence_pct: int = Field(75, ge=50, le=99)
     reasons: list[DomainReason]
     domain_age_days: Optional[int] = None
     has_ssl: Optional[bool] = None

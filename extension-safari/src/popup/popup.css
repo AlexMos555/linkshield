@@ -126,6 +126,23 @@ body { width: 380px; min-height: 300px; }
   word-break: break-word;
 }
 
+/* Strategy doc #12 — conformal confidence band. Quiet by design:
+   the verdict is the headline, the chip lets pros/reviewers
+   verify we're not over-claiming. */
+.confidence-chip {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+.confidence-chip[hidden] { display: none; }
+
 /* Spinner (scanning state) */
 .spinner {
   width: 36px;

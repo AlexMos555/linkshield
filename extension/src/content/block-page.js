@@ -292,8 +292,17 @@ function extractBrand(reasons) {
 export function showBlockPage(result) {
   if (document.getElementById("ls-block-overlay")) return;
 
-  const { domain = "", reasons = [] } = result || {};
+  const { domain = "", reasons = [], confidence_pct } = result || {};
   const brand = extractBrand(reasons);
+  // Strategy doc #12 — render a small confidence chip near the
+  // headline. We trust the server-side value (50-99) verbatim.
+  // Missing field → no chip; we never invent a number.
+  const confidenceChipHTML = (typeof confidence_pct === "number"
+    && confidence_pct >= 50 && confidence_pct <= 99)
+    ? `<div class="ls-block-confidence" aria-label="Confidence">
+         Confidence: ${confidence_pct}%
+       </div>`
+    : "";
   const rtl = isRTL();
 
   const overlay = document.createElement("div");
@@ -394,6 +403,18 @@ export function showBlockPage(result) {
       .ls-block-brand {
         font-size: 14px; color: #fca5a5; font-style: italic; margin: 0 0 24px;
       }
+      .ls-block-confidence {
+        display: inline-block;
+        padding: 4px 10px;
+        margin: 0 0 18px;
+        font-size: 11px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.02em;
+        color: #cbd5e1;
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        border-radius: 999px;
+      }
       .ls-block-evidence {
         background: rgba(0, 0, 0, 0.32);
         border-radius: 14px; padding: 20px;
@@ -489,6 +510,7 @@ export function showBlockPage(result) {
       <div class="ls-block-domain" dir="ltr">${e(domain)}</div>
       <p class="ls-block-explanation">${e(bt("block_explanation", [domain]))}</p>
       ${brandLine}
+      ${confidenceChipHTML}
 
       ${evidenceHTML}
 
