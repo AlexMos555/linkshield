@@ -71,6 +71,18 @@ def _iter_ranks(zip_bytes: bytes):
 
 
 async def refresh(redis_url: str, source_url: str, dry_run: bool) -> int:
+    """Refresh tranco:ranks. Safe under concurrent invocation:
+
+    * A SETNX lock with a 30-min TTL prevents two refreshers from
+      stomping on each other. If a lock is already held we bail out
+      with exit code 3 — operator can investigate without losing data.
+    * The staging key includes a per-run version stamp (timestamp +
+      PID) so even if the lock is bypassed (manual ops via redis-cli)
+      we don't delete an in-progress sibling's hash.
+    * Final swap is two atomic renames + UNLINK on the tombstone so
+      Redis' single-threaded event loop isn't blocked by a synchronous
+      DEL of a ~25 MB hash (UNLINK frees memory asynchronously).
+    """
     logger.info("Downloading Tranco list from %s …", source_url)
     payload = await _download(source_url)
     logger.info("Downloaded %.1f MB", len(payload) / 1024 / 1024)
@@ -85,25 +97,69 @@ async def refresh(redis_url: str, source_url: str, dry_run: bool) -> int:
         logger.info("Dry run — first 5 entries: %s", pairs[:5])
         return 0
 
+    # Version stamp passed in via env so the script itself stays
+    # Date-free (and so tests can pin it). Falls back to time().
+    import os, time
+    version = os.environ.get("TRANCO_REFRESH_VERSION") or str(int(time.time()))
+    staging = f"tranco:ranks:loading:{version}:{os.getpid()}"
+    tombstone = f"tranco:ranks:old:{version}"
+    LOCK_KEY = "tranco:refresh:lock"
+    LOCK_TTL_SECONDS = 30 * 60  # 30 minutes — well above the worst-case load time
+
     r = redis.from_url(redis_url, decode_responses=True)
     try:
-        # Use a versioned staging key so concurrent readers see a
-        # consistent snapshot. RENAME is atomic in Redis.
-        staging = "tranco:ranks:loading"
-        await r.delete(staging)
-        loaded = 0
-        async with r.pipeline(transaction=False) as pipe:
-            for i, (domain, rank) in enumerate(pairs):
-                pipe.hset(staging, domain, str(rank))
-                if (i + 1) % BATCH_SIZE == 0:
-                    await pipe.execute()
-                    loaded = i + 1
-                    if loaded % (BATCH_SIZE * 10) == 0:
-                        logger.info("  loaded %d/%d", loaded, len(pairs))
-            await pipe.execute()
-        await r.rename(staging, "tranco:ranks")
-        logger.info("Atomically swapped — cache now serving %d ranks", len(pairs))
-        return 0
+        # SETNX-style lock: only one refresher runs at a time. The TTL
+        # ensures a crashed run releases the lock automatically.
+        acquired = await r.set(LOCK_KEY, version, nx=True, ex=LOCK_TTL_SECONDS)
+        if not acquired:
+            holder = await r.get(LOCK_KEY)
+            logger.error(
+                "Another refresh is in progress (lock held by %s). "
+                "Wait for it or delete the lock manually if you're sure it's stale.",
+                holder,
+            )
+            return 3
+
+        try:
+            loaded = 0
+            async with r.pipeline(transaction=False) as pipe:
+                for i, (domain, rank) in enumerate(pairs):
+                    pipe.hset(staging, domain, str(rank))
+                    if (i + 1) % BATCH_SIZE == 0:
+                        await pipe.execute()
+                        loaded = i + 1
+                        if loaded % (BATCH_SIZE * 10) == 0:
+                            logger.info("  loaded %d/%d", loaded, len(pairs))
+                await pipe.execute()
+
+            # Two-step swap. First move the live key aside (atomic, no
+            # DEL of destination because tombstone doesn't exist yet),
+            # then rename the staging onto the canonical name (atomic,
+            # destination just freed). Finally UNLINK the tombstone so
+            # the ~25 MB hash is freed asynchronously.
+            exists = await r.exists("tranco:ranks")
+            if exists:
+                await r.rename("tranco:ranks", tombstone)
+            await r.rename(staging, "tranco:ranks")
+            if exists:
+                await r.unlink(tombstone)
+
+            logger.info("Atomically swapped — cache now serving %d ranks", len(pairs))
+            return 0
+        finally:
+            # Best-effort cleanup of orphans if anything threw before swap.
+            try:
+                await r.unlink(staging)
+            except Exception:
+                pass
+            # Release the lock only if WE still hold it (the version
+            # stamp prevents accidentally releasing another run's lock).
+            try:
+                held = await r.get(LOCK_KEY)
+                if held == version:
+                    await r.delete(LOCK_KEY)
+            except Exception:
+                pass
     finally:
         await r.close()
 

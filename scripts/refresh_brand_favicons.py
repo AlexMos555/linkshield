@@ -31,8 +31,12 @@ GALLERY_PATH = pathlib.Path(__file__).resolve().parent.parent / "api" / "data" /
 
 
 def _hash_bytes(b: bytes) -> str:
+    """Mirror api.services.favicon_hash._hash_bytes — must match
+    HASH_HEX_LEN there or the ops script populates hashes the
+    runtime cannot recognise."""
     import hashlib
-    return hashlib.sha256(b).hexdigest()[:12]
+    from api.services.favicon_hash import HASH_HEX_LEN
+    return hashlib.sha256(b).hexdigest()[:HASH_HEX_LEN]
 
 
 async def _fetch(client: httpx.AsyncClient, host: str) -> bytes | None:

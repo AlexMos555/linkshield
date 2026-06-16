@@ -1,6 +1,7 @@
 {
   "id": "2026-q2",
-  "period": "April – June 2026",
+  "period": "April 1 – June 15, 2026 (interim — quarter closes June 30)",
+  "is_interim": true,
   "published_at": "2026-06-16",
   "checks": {
     "total": 1842630,
@@ -51,7 +52,7 @@
   "data_requests_received": {
     "government": 0,
     "court_orders": 0,
-    "note": "Cleanway is server-blind by design — full URLs and per-user history are never stored. There is nothing to disclose even when asked."
+    "note": "URL scanning is server-blind: full URLs and per-page browsing history are never stored — only domain-level signals derived at query time. Account billing data (email, Stripe customer id, subscription tier), family-group membership, and the audit_log for account/security actions ARE stored to operate the service; that data is in scope for a future government request. None received this period."
   },
   "methodology_url": "https://cleanway.ai/transparency/methodology"
 }

@@ -1,5 +1,9 @@
 """Favicon brand-clone detection — Strategy doc Top-20 #2 (partial).
 
+Security hardening (2026-06-16 review): redirects DISABLED,
+body STREAMED with a hard cap, SSRF re-checked inside the
+fetch path, hash widened to 96 bits.
+
 Phishing kits copy a brand's homepage WHOLESALE, including the
 exact favicon. The favicon is fetched from
 `/favicon.ico` (or the link rel="icon" hint, but ~95% of brand
@@ -51,6 +55,8 @@ logger = logging.getLogger(__name__)
 FAVICON_CACHE_TTL = 24 * 60 * 60  # 24 hours
 FAVICON_FETCH_TIMEOUT = 2.0  # seconds — block-on-first-fetch budget
 FAVICON_MAX_BYTES = 256 * 1024  # 256 KB — bigger than any sane favicon
+HASH_HEX_LEN = 24  # 24 hex chars = 96 bits — comfortably past consumer
+                   # GPU second-preimage horizon (~2^96 vs ~2^48 prior)
 
 GALLERY_PATH = pathlib.Path(__file__).resolve().parent.parent / "data" / "brand_favicons.json"
 
@@ -82,29 +88,63 @@ def _load_gallery() -> dict:
 
 
 def _hash_bytes(b: bytes) -> str:
-    """12-hex-char prefix of SHA-256. Collision risk at 1M brands
-    is negligible (birthday bound ~10^9 hashes for 1% collision)."""
-    return hashlib.sha256(b).hexdigest()[:12]
+    """SHA-256 truncated to HASH_HEX_LEN hex chars (96 bits at 24).
+
+    96-bit second-preimage takes ~2^96 trial hashes — well past
+    any consumer-GPU horizon, while still 64 bits shorter than a
+    full SHA-256 hex string for Redis-key efficiency.
+    """
+    return hashlib.sha256(b).hexdigest()[:HASH_HEX_LEN]
 
 
 async def _fetch_favicon(domain: str) -> Optional[bytes]:
     """Fetch /favicon.ico over HTTPS; return None on any failure.
 
-    Hard timeout, hard byte cap, hard 4xx/5xx → None. NO retries
-    (the parallel-check budget can't afford them).
+    Hardened against:
+
+      * SSRF — re-validates the domain's DNS just before connect,
+        rejecting any answer that points at private/link-local space.
+        analyzer.py validates at the top of analyze_domain too;
+        this is defense-in-depth against DNS rebinding between
+        the analyzer's gate and our connect (TOCTOU narrowing).
+      * Redirect-based bypass — `follow_redirects=False` because a
+        302 to a new host has NOT been gated by validate_domain_resolution.
+      * Body-size DoS — streams the response, aborting once we've
+        accumulated FAVICON_MAX_BYTES instead of trusting the whole
+        Content-Length / unmetered download.
     """
+    # Local import — avoids a cycle in module-load order.
+    from api.services.domain_validator import (
+        DomainValidationError, validate_domain_resolution,
+    )
+    try:
+        await validate_domain_resolution(domain)
+    except DomainValidationError as exc:
+        # The analyzer already filtered this, but a re-check here
+        # closes the rebinding window between that gate and our
+        # TCP connect. A failure here is silent — no upstream signal.
+        logger.warning("favicon fetch SSRF re-check rejected %s: %s", domain, exc)
+        return None
+
     url = f"https://{domain}/favicon.ico"
     try:
         async with httpx.AsyncClient(
-            timeout=FAVICON_FETCH_TIMEOUT, follow_redirects=True
+            timeout=FAVICON_FETCH_TIMEOUT,
+            follow_redirects=False,  # see docstring — redirects bypass SSRF gate
         ) as client:
-            resp = await client.get(url)
-            if resp.status_code != 200:
-                return None
-            content = resp.content
-            if not content or len(content) > FAVICON_MAX_BYTES:
-                return None
-            return content
+            async with client.stream("GET", url) as resp:
+                if resp.status_code != 200:
+                    return None
+                buf = bytearray()
+                async for chunk in resp.aiter_bytes():
+                    buf.extend(chunk)
+                    if len(buf) > FAVICON_MAX_BYTES:
+                        # Don't drain the stream — closing the
+                        # context exits the connection.
+                        return None
+                if not buf:
+                    return None
+                return bytes(buf)
     except Exception as exc:
         logger.debug("favicon fetch failed for %s: %s", domain, exc)
         return None
@@ -181,6 +221,11 @@ async def check_favicon_brand_clone(domain: str) -> dict:
 
     domain_key = (domain or "").strip().lower()
     for brand_slug, brand in gallery.items():
+        # Skip pseudo-brands like the `_meta` schema marker. We use
+        # the underscore-prefix convention everywhere else (refresh
+        # script, transparency router) — match it here.
+        if brand_slug.startswith("_"):
+            continue
         known = brand.get("known_favicon_hashes") or []
         if digest not in known:
             continue

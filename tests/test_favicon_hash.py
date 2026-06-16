@@ -50,7 +50,7 @@ def isolated_gallery(monkeypatch, tmp_path):
     gallery = {
         "paypal": {
             "verified_hosts": ["paypal.com", "www.paypal.com"],
-            "known_favicon_hashes": ["abcdef012345"],
+            "known_favicon_hashes": ["abcdef012345fedcba987654"],
         },
     }
     p = tmp_path / "gal.json"
@@ -82,10 +82,22 @@ def test_hash_bytes_is_deterministic():
     assert _hash_bytes(b"hello") == _hash_bytes(b"hello")
 
 
-def test_hash_bytes_is_12_chars():
+def test_hash_bytes_is_96_bits():
+    """24 hex chars = 96 bits. Wider than the original 48-bit prefix
+    so a motivated attacker can't brute-force a second-preimage on
+    consumer GPUs in operational timeframes."""
     h = _hash_bytes(b"any-payload")
-    assert len(h) == 12
+    assert len(h) == 24
     assert all(c in "0123456789abcdef" for c in h)
+
+
+def test_hash_bytes_matches_refresh_script_width():
+    """The ops refresh script populates the gallery using the same
+    HASH_HEX_LEN constant. Mismatched widths would make every
+    runtime lookup miss against ops-populated hashes."""
+    from api.services.favicon_hash import HASH_HEX_LEN
+    assert HASH_HEX_LEN == 24
+    assert len(_hash_bytes(b"x")) == HASH_HEX_LEN
 
 
 def test_hash_bytes_differs_on_one_byte_change():
@@ -106,7 +118,7 @@ async def test_clone_detected_when_hash_matches_off_brand(
     fingerprint on a non-PayPal domain → cloned=True."""
     import api.services.favicon_hash as mod
     # Forge bytes that hash to the known PayPal fingerprint.
-    monkeypatch.setattr(mod, "_hash_bytes", lambda b: "abcdef012345")
+    monkeypatch.setattr(mod, "_hash_bytes", lambda b: "abcdef012345fedcba987654")
     stub_favicon["payload"] = b"fake-payload"
 
     out = await check_favicon_brand_clone("paypal-secure-login.example")
@@ -122,7 +134,7 @@ async def test_no_clone_when_brands_own_host(
 ):
     """Same hash, BUT the host IS in verified_hosts → not a clone."""
     import api.services.favicon_hash as mod
-    monkeypatch.setattr(mod, "_hash_bytes", lambda b: "abcdef012345")
+    monkeypatch.setattr(mod, "_hash_bytes", lambda b: "abcdef012345fedcba987654")
     stub_favicon["payload"] = b"fake"
 
     out = await check_favicon_brand_clone("paypal.com")
@@ -183,7 +195,7 @@ async def test_case_insensitive_host_match(
     """User submits PayPal.com (mixed case) — must still match the
     lowercase verified_hosts entry."""
     import api.services.favicon_hash as mod
-    monkeypatch.setattr(mod, "_hash_bytes", lambda b: "abcdef012345")
+    monkeypatch.setattr(mod, "_hash_bytes", lambda b: "abcdef012345fedcba987654")
     stub_favicon["payload"] = b"x"
 
     out = await check_favicon_brand_clone("PayPal.COM")

@@ -70,7 +70,11 @@ async def get_tranco_rank(domain: str) -> Optional[int]:
 
     The lookup never raises — Redis errors return None so the
     caller treats the domain as un-ranked and the scoring engine
-    simply skips this signal.
+    simply skips this signal. However, Redis OUTAGES log at
+    WARNING (not DEBUG) so a sustained outage is visible in
+    production logs and Sentry catches the breadcrumb — silent
+    DEBUG-only logging hid Redis-down behind a "0% popularity
+    coverage" symptom that looked like benign cache miss.
     """
     domain_key = (domain or "").strip().lower()
     if not domain_key:
@@ -81,8 +85,13 @@ async def get_tranco_rank(domain: str) -> Optional[int]:
         if raw is None:
             return None
         return int(raw)
-    except Exception as exc:  # pragma: no cover — defensive
-        logger.debug("tranco rank lookup failed for %s: %s", domain_key, exc)
+    except Exception as exc:
+        # WARNING — Redis errors here are operational signals, not
+        # routine misses. The circuit breaker also bails out via the
+        # check_tranco_popularity path, but only when the exception
+        # PROPAGATES; this swallow happens before then, hence the
+        # log promotion.
+        logger.warning("tranco rank lookup failed for %s: %s", domain_key, exc)
         return None
 
 
