@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "doc": "Brand favicon gallery for Strategy #2 brand-clone detection. Each brand entry has verified_hosts (the domains that legitimately serve this brand's favicon) and known_favicon_hashes (12-char SHA-256 prefixes). Populate hashes via scripts/refresh_brand_favicons.py. Empty hash arrays mean the brand is tracked but no detection happens yet \u2014 safe default.",
+    "doc": "Brand favicon gallery for Strategy #2 brand-clone detection. Each brand entry has verified_hosts (the domains that legitimately serve this brand's favicon) and known_favicon_hashes (24-char SHA-256 hex prefixes = 96 bits, see api/services/favicon_hash.py HASH_HEX_LEN). Populate hashes via scripts/refresh_brand_favicons.py. Empty hash arrays mean the brand is tracked but no detection happens yet \u2014 safe default.",
     "schema_version": 1
   },
   "paypal": {
