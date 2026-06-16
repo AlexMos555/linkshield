@@ -40,7 +40,10 @@ from api.services.circuit_breaker import (
     whois_breaker, ssl_breaker, headers_breaker,
     dns_breaker, redirect_breaker,
     malware_bazaar_breaker, feodo_breaker,
+    tranco_breaker, favicon_breaker,
 )
+from api.services.tranco import check_tranco_popularity
+from api.services.favicon_hash import check_favicon_brand_clone
 from api.models.schemas import DomainResult, DomainReason, RiskLevel, ConfidenceLevel
 
 logger = logging.getLogger("cleanway.analyzer")
@@ -77,10 +80,12 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
             reasons=[DomainReason(signal="ssrf_blocked", detail="Domain resolves to a blocked network", weight=100)],
         )
 
-    # ── Run ALL 16 checks in parallel via circuit breakers ──
+    # ── Run ALL 18 checks in parallel via circuit breakers ──
     # Strategy doc Top-20 #5: full abuse.ch bundle adds MalwareBazaar
     # (malware-distribution domains) + Feodo Tracker (active C2 hosts)
     # to the existing URLhaus + ThreatFox coverage.
+    # Strategy doc Top-20 #14: Tranco rank — popularity-as-trust signal.
+    # Strategy doc Top-20 #2 (partial): favicon brand-clone detection.
     results = await asyncio.gather(
         # Blocklist sources (11)
         safe_browsing_breaker.call(check_safe_browsing, domain),   # 0
@@ -94,15 +99,18 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         ipqs_breaker.call(check_ipqualityscore, domain),           # 8
         malware_bazaar_breaker.call(check_malware_bazaar, domain), # 9
         feodo_breaker.call(check_feodo_tracker, domain),           # 10
+        # Reputation + visual identity (2)
+        tranco_breaker.call(check_tranco_popularity, domain),      # 11
+        favicon_breaker.call(check_favicon_brand_clone, domain),   # 12
         # Enrichment sources (5)
-        whois_breaker.call(check_whois_age, domain),               # 11
-        ssl_breaker.call(check_ssl, domain),                       # 12
-        headers_breaker.call(check_security_headers, domain),      # 13
-        dns_breaker.call(check_dns, domain),                       # 14
-        redirect_breaker.call(check_redirect_chain, domain),       # 15
+        whois_breaker.call(check_whois_age, domain),               # 13
+        ssl_breaker.call(check_ssl, domain),                       # 14
+        headers_breaker.call(check_security_headers, domain),      # 15
+        dns_breaker.call(check_dns, domain),                       # 16
+        redirect_breaker.call(check_redirect_chain, domain),       # 17
     )
 
-    total_checks = 16
+    total_checks = 18
     checks_succeeded = sum(1 for _, ok in results if ok)
 
     # ── Unpack blocklist results ──
@@ -120,13 +128,15 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
     ipqs_data = _val(8, default={})
     malware_bazaar_hit = _val(9)
     feodo_hit = _val(10)
+    tranco_result = _val(11, default={"ranked": False, "rank": None, "weight": 0, "label": ""})
+    favicon_result = _val(12, default={"cloned": False, "brand": None, "matched_hash": None, "weight": 0, "detail": ""})
 
     # ── Unpack enrichment results ──
-    whois_data = _val(11, default={})
-    ssl_data = _val(12, default={})
-    headers_data = _val(13, default={})
-    dns_data = _val(14, default={})
-    redirect_data = _val(15, default={})
+    whois_data = _val(13, default={})
+    ssl_data = _val(14, default={})
+    headers_data = _val(15, default={})
+    dns_data = _val(16, default={})
+    redirect_data = _val(17, default={})
 
     # Aggregate blocklist hits
     blocklist_hits = sum([
@@ -155,6 +165,15 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         "malware_bazaar_hit": malware_bazaar_hit,
         "feodo_hit": feodo_hit,
         "blocklist_hits": blocklist_hits,
+        # Strategy #14 — Tranco popularity (negative weight = trust)
+        "tranco_ranked": bool(tranco_result.get("ranked")),
+        "tranco_rank": tranco_result.get("rank"),
+        "tranco_weight": tranco_result.get("weight", 0),
+        "tranco_label": tranco_result.get("label", ""),
+        # Strategy #2 — favicon brand-clone
+        "favicon_cloned": bool(favicon_result.get("cloned")),
+        "favicon_brand": favicon_result.get("brand"),
+        "favicon_detail": favicon_result.get("detail", ""),
         # WHOIS
         "domain_age_days": whois_data.get("age_days"),
         "registrar": whois_data.get("registrar"),

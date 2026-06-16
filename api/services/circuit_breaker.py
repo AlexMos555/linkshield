@@ -204,6 +204,27 @@ ipqs_breaker = CircuitBreaker(name="ipqualityscore", failure_threshold=3, cooldo
 malware_bazaar_breaker = CircuitBreaker(name="malware_bazaar", failure_threshold=3, cooldown_seconds=60, fallback=False)
 feodo_breaker = CircuitBreaker(name="feodo_tracker", failure_threshold=3, cooldown_seconds=60, fallback=False)
 
+# Strategy doc Top-20 #14 — Tranco popularity signal. Local-only
+# Redis HGET, but wrapped in a breaker for resilience: if Redis is
+# down the lookup returns the breaker fallback (un-ranked dict)
+# and scoring simply omits the popularity bonus.
+tranco_breaker = CircuitBreaker(
+    name="tranco",
+    failure_threshold=5,
+    cooldown_seconds=30,
+    fallback={"ranked": False, "rank": None, "weight": 0, "label": ""},
+)
+
+# Strategy doc Top-20 #2 — favicon brand-clone detection. Outbound
+# HTTPS fetch with a 2-second budget; breaker keeps a flapping
+# domain from holding up the analyzer loop.
+favicon_breaker = CircuitBreaker(
+    name="favicon",
+    failure_threshold=3,
+    cooldown_seconds=60,
+    fallback={"cloned": False, "brand": None, "matched_hash": None, "weight": 0, "detail": ""},
+)
+
 
 def get_all_breaker_statuses() -> list[dict]:
     """Return status of all circuit breakers (for health endpoint)."""
@@ -219,6 +240,8 @@ def get_all_breaker_statuses() -> list[dict]:
         ipqs_breaker.get_status(),
         malware_bazaar_breaker.get_status(),
         feodo_breaker.get_status(),
+        tranco_breaker.get_status(),
+        favicon_breaker.get_status(),
         whois_breaker.get_status(),
         ssl_breaker.get_status(),
         headers_breaker.get_status(),

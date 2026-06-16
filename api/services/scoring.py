@@ -461,6 +461,32 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             detail="Listed in SURBL URI blocklist",
         ))
 
+    # Strategy doc #5 — explicit cards for the abuse.ch full bundle.
+    # blocklist_hits aggregate already counts them; this adds the
+    # per-source DomainReason so EVIDENCE_BOOK can render specifically.
+    if signals.get("malware_bazaar_hit"):
+        score += 75
+        reasons.append(DomainReason(
+            signal="malware_bazaar", weight=75,
+            detail="Distributing known malware samples (MalwareBazaar / abuse.ch)",
+        ))
+
+    if signals.get("feodo_hit"):
+        score += 80
+        reasons.append(DomainReason(
+            signal="feodo", weight=80,
+            detail="Active C2 server for a known botnet (Feodo Tracker / abuse.ch)",
+        ))
+
+    # Strategy doc #2 — favicon brand-clone match. Very high-confidence
+    # signal: page serves a known brand's favicon but is hosted off-brand.
+    if signals.get("favicon_cloned"):
+        score += 35
+        reasons.append(DomainReason(
+            signal="favicon_brand_clone", weight=35,
+            detail=signals.get("favicon_detail") or "Brand-clone favicon detected",
+        ))
+
     # AlienVault OTX community reports
     alienvault_pulses = signals.get("alienvault_pulse_count", 0)
     if alienvault_pulses > 5:
@@ -563,6 +589,24 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # ════════════════════════════════════════════
     # LAYER 3: FEATURE SCORING (30+ signals)
     # ════════════════════════════════════════════
+
+    # ── 3.0 Tranco popularity (Strategy doc #14) ──
+    # Negative weight = trust. A domain that's been in the worldwide
+    # top-1M for the rolling 30 days is statistically unlikely to be a
+    # phishing landing page (kits churn through fresh domains). The
+    # tier system (top-1k / 10k / 100k / 1M) tapers the bonus — never
+    # large enough to single-handedly flip a high-risk verdict, but
+    # enough to dampen false positives on legitimate-but-unfamiliar
+    # sites. NB: NOT a free safe-pass — subdomain takeover and
+    # compromised popular sites still get scored by other rules.
+    if signals.get("tranco_ranked"):
+        tranco_weight = signals.get("tranco_weight", 0)
+        if tranco_weight < 0:
+            score += tranco_weight  # negative — pulls score down
+            reasons.append(DomainReason(
+                signal="tranco_popularity", weight=tranco_weight,
+                detail=signals.get("tranco_label") or "In the public top-1M domains",
+            ))
 
     # ── 3.1 Homograph / IDN attack ──
     homograph_target = _check_homograph(domain)
