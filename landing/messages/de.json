@@ -8,10 +8,10 @@
     "install_short": "Installieren"
   },
   "Hero": {
-    "badge": "91% Betrugserkennung",
+    "badge": "93,5% frischer Phishing-URLs erkannt (gemessen)",
     "title_part1": "Betrugsschutz, der",
     "title_part2": "Ihre Privatsphäre respektiert",
-    "subtitle": "Automatische Linkprüfung auf jeder Seite. 9 Bedrohungsquellen. KI-basierte Erkennung. Ihre Browsing-Daten verlassen Ihr Gerät nie.",
+    "subtitle": "Automatische Linkprüfung auf jeder Seite. 16 Bedrohungsquellen. Schlägt Cloudflare 1.1.1.1 for Families um 38 Prozentpunkte bei frischen URLs aus URLhaus und PhishTank. KI-basierte Erkennung. Ihre Browsing-Daten verlassen Ihr Gerät nie.",
     "cta_primary": "Zu Chrome hinzufügen — kostenlos",
     "cta_secondary": "So funktioniert's",
     "cta_footer": "Grundschutz für immer kostenlos. Keine Kreditkarte."
@@ -39,7 +39,7 @@
       {
         "icon": "🔍",
         "title": "Automatische Link-Prüfung",
-        "desc": "Jeder Link auf jeder Seite wird gegen 9 Bedrohungsdatenbanken geprüft. Rote, gelbe und grüne Symbole zeigen die Sicherheit auf einen Blick."
+        "desc": "Jeder Link auf jeder Seite wird gegen 16 Bedrohungsdatenbanken geprüft. Rote, gelbe und grüne Symbole zeigen die Sicherheit auf einen Blick."
       },
       {
         "icon": "🔒",
@@ -49,7 +49,7 @@
       {
         "icon": "🧠",
         "title": "KI-basierte Erkennung",
-        "desc": "CatBoost-Modell trainiert auf über 18 000 Domains. AUC 0,9988. Erkennt neuartiges Phishing, das regelbasierte Systeme übersehen."
+        "desc": "CatBoost-Modell trainiert auf 14 400 verifizierten Domains. AUC 0,9983. Erkennt neuartiges Phishing, das regelbasierte Systeme übersehen."
       },
       {
         "icon": "⚡",

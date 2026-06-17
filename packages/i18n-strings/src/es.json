@@ -400,10 +400,10 @@
       "install_short": "Instalar"
     },
     "hero": {
-      "badge": "91% de detección de fraudes",
+      "badge": "93,5% de URL de phishing recientes detectadas (medido)",
       "title_part1": "Protección contra fraudes que",
       "title_part2": "respeta tu privacidad",
-      "subtitle": "Revisión automática de enlaces en cada página. 9 fuentes de amenazas. Detección con ML. Tus datos de navegación nunca salen del dispositivo.",
+      "subtitle": "Revisión automática de enlaces en cada página. 16 fuentes de amenazas. Supera a Cloudflare 1.1.1.1 for Families en 38 puntos porcentuales sobre URL recientes de URLhaus y PhishTank. Detección con ML. Tus datos de navegación nunca salen del dispositivo.",
       "cta_primary": "Añadir a Chrome — gratis",
       "cta_secondary": "Cómo funciona",
       "cta_footer": "Protección básica gratis para siempre. Sin tarjeta."
@@ -431,7 +431,7 @@
         {
           "icon": "🔍",
           "title": "Escaneo automático de enlaces",
-          "desc": "Cada enlace en cada página se verifica con 9 bases de amenazas. Insignias rojas, amarillas y verdes muestran la seguridad de un vistazo."
+          "desc": "Cada enlace en cada página se verifica con 16 bases de amenazas. Insignias rojas, amarillas y verdes muestran la seguridad de un vistazo."
         },
         {
           "icon": "🔒",
@@ -441,7 +441,7 @@
         {
           "icon": "🧠",
           "title": "Detección con IA",
-          "desc": "Modelo CatBoost entrenado con más de 18.000 dominios. AUC 0,9988. Detecta phishing nuevo que los sistemas basados en reglas pasan por alto."
+          "desc": "Modelo CatBoost entrenado con 14.400 dominios verificados. AUC 0,9983. Detecta phishing nuevo que los sistemas basados en reglas pasan por alto."
         },
         {
           "icon": "⚡",

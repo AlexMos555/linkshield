@@ -88,7 +88,12 @@ CONCURRENCY = {
 # ─────────────────────────────────────────────────────────────────
 
 def domain_of(url: str) -> str:
-    """Extract bare hostname from a URL or domain string."""
+    """Extract bare hostname from a URL or domain string.
+
+    NB: do NOT use str.lstrip('www.') — it strips any CHARACTERS
+    from {w, ., space}, so 'wsj.com' becomes 'sj.com'. Use
+    removeprefix() which is exact-prefix matching.
+    """
     s = url.strip()
     if "://" not in s:
         s = "http://" + s
@@ -96,7 +101,10 @@ def domain_of(url: str) -> str:
         host = urlparse(s).hostname or ""
     except Exception:
         host = ""
-    return host.lower().strip().lstrip("www.")
+    host = host.lower().strip()
+    if host.startswith("www."):
+        host = host[4:]
+    return host
 
 
 def dedup_urls(urls: list[str]) -> list[str]:
@@ -226,8 +234,10 @@ class Verdict:
 
 
 async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
-    """POST /api/v1/check on api.cleanway.ai. We send the domain
-    only (server-blind by design). Returns the verdict + score."""
+    """GET /api/v1/public/check/{domain} on api.cleanway.ai.
+    Lightweight public endpoint — rule + ML scoring, NO threat-
+    intel API fan-out (intentional per api/routers/public.py:80).
+    """
     d = domain_of(url)
     if not d:
         return Verdict("cleanway", "unknown", detail="bad_domain")
@@ -247,15 +257,67 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
         v = "dangerous" if level == "dangerous" else (
             "safe" if level == "safe" else "unknown"
         )
-        # We treat 'caution' as 'unknown' for the binary comparison;
-        # the per-resolver caution-bucket can be inspected in the
-        # raw JSON dump later.
         return Verdict("cleanway", v, score=score,
                        latency_ms=elapsed, detail=level)
     except Exception as exc:
         return Verdict("cleanway", "unknown",
                        latency_ms=(time.monotonic() - t0) * 1000,
                        detail=f"err:{exc}")
+
+
+# Lazy-imported analyzer entry-point so the script can run without
+# the full repo dependencies installed when only public-mode is used.
+_analyze_domain = None
+
+
+def _load_analyzer():
+    global _analyze_domain
+    if _analyze_domain is not None:
+        return _analyze_domain
+    # Ensure repo root is on sys.path so 'api.*' imports resolve.
+    repo_root = str(ROOT)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    from api.services.analyzer import analyze_domain  # noqa: E402
+    _analyze_domain = analyze_domain
+    return _analyze_domain
+
+
+async def check_cleanway_local(client: httpx.AsyncClient, url: str) -> Verdict:
+    """Run the FULL analyzer in-process — what authed
+    /api/v1/check would return. Calls all 18 parallel checks
+    including 16 threat-intel sources.
+
+    Free sources (URLhaus / ThreatFox / MalwareBazaar / Feodo /
+    Cloudflare DoH / crt.sh) work without keys. Paid sources
+    (Safe Browsing / PhishTank API / IPQS / AlienVault) fail
+    silently through the circuit breakers and return False —
+    so this is a LOWER-BOUND on the full authed-endpoint
+    performance (in production those keys are set).
+
+    No Redis needed — cache is opt-in and falls through cleanly
+    on connection failure.
+    """
+    d = domain_of(url)
+    if not d:
+        return Verdict("cleanway_local", "unknown", detail="bad_domain")
+    t0 = time.monotonic()
+    try:
+        analyze = _load_analyzer()
+        result = await analyze(d, raw_url=url)
+        elapsed = (time.monotonic() - t0) * 1000
+        level = (result.level.value if hasattr(result.level, "value")
+                 else str(result.level)).lower()
+        score = result.score
+        v = "dangerous" if level == "dangerous" else (
+            "safe" if level == "safe" else "unknown"
+        )
+        return Verdict("cleanway_local", v, score=score,
+                       latency_ms=elapsed, detail=level)
+    except Exception as exc:
+        return Verdict("cleanway_local", "unknown",
+                       latency_ms=(time.monotonic() - t0) * 1000,
+                       detail=f"err:{type(exc).__name__}:{str(exc)[:80]}")
 
 
 async def check_gsb(client: httpx.AsyncClient, url: str) -> Verdict:
@@ -428,11 +490,14 @@ async def check_virustotal(client: httpx.AsyncClient, url: str) -> Verdict:
 
 ADAPTERS = {
     "cleanway": check_cleanway,
+    "cleanway_local": check_cleanway_local,
     "gsb": check_gsb,
     "phishtank": check_phishtank,
     "cloudflare_families": check_cloudflare_families,
     "virustotal": check_virustotal,
 }
+
+CONCURRENCY["cleanway_local"] = 4  # 18 parallel checks per URL, easy on the analyzer
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -573,6 +638,10 @@ async def main() -> int:
                    help="Tag appended to output filename. Default: timestamp.")
     p.add_argument("--no-virustotal", action="store_true",
                    help="Skip VT even if VT_API_KEY is set.")
+    p.add_argument("--local-analyzer", action="store_true",
+                   help="ALSO run full in-process analyzer (16 sources). "
+                        "Requires repo dependencies + free intel sources. "
+                        "Doubles wall-clock but gives authed-endpoint baseline.")
     args = p.parse_args()
 
     DOCS.mkdir(parents=True, exist_ok=True)
@@ -601,6 +670,8 @@ async def main() -> int:
 
     # ── Run each resolver against both batches ───────────────────
     resolvers = ["cleanway", "gsb", "phishtank", "cloudflare_families"]
+    if args.local_analyzer:
+        resolvers.insert(1, "cleanway_local")
     if VT_KEY and not args.no_virustotal:
         resolvers.append("virustotal")
 
