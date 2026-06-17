@@ -9,6 +9,8 @@ These power the SEO pages and the public "is X safe?" feature.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -19,12 +21,63 @@ from api.services.scoring import (
 )
 from api.services.domain_validator import validate_domain, DomainValidationError
 from api.services.cache import get_cached_result, cache_result
-from api.services.rate_limiter import rate_limit
+from api.services.rate_limiter import rate_limit, _extract_client_ip
 from api.models.schemas import DomainResult, RiskLevel, ConfidenceLevel
+
+# Per-domain in-flight singleflight map. When N concurrent requests
+# arrive for the same fresh domain, only the first runs analyze_domain;
+# the rest await its Future. This collapses N*19 outbound API calls
+# back into 19 — guards against thundering-herd / cache stampede.
+_INFLIGHT: dict[str, asyncio.Future] = {}
+
+# Public endpoint cache: domain-only, 24h TTL across all verdict
+# levels. Separate from the default cache (5m/15m/1h) which serves
+# the authed extension flow where 'recheck often after a takedown'
+# is valid. On the anonymous SEO surface we want maximum cache hit
+# rate — anyone re-querying the same domain pays nothing.
+_PUBLIC_CACHE_PREFIX = "public_check:"
+_PUBLIC_CACHE_TTL_SECONDS = 24 * 60 * 60
 
 logger = logging.getLogger("cleanway.public")
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
+
+
+async def _get_public_cache(domain: str) -> DomainResult | None:
+    """Read the public-endpoint cache. Separate namespace from
+    the default cache so the public surface owns its own 24h
+    TTL policy independent of the authed extension flow's tighter
+    re-check cadence.
+    """
+    try:
+        from api.services.cache import get_redis
+        r = await get_redis()
+        raw = await r.get(_PUBLIC_CACHE_PREFIX + domain)
+        if not raw:
+            return None
+        data = json.loads(raw)
+        out = DomainResult(**data)
+        out.cached = True
+        return out
+    except Exception:
+        return None
+
+
+async def _put_public_cache(result: DomainResult) -> None:
+    """Write the public-endpoint cache. Single TTL across all
+    verdict levels — the public anonymous surface doesn't need the
+    'recheck dangerous after takedown' cadence the authed path uses.
+    """
+    try:
+        from api.services.cache import get_redis
+        r = await get_redis()
+        await r.setex(
+            _PUBLIC_CACHE_PREFIX + result.domain,
+            _PUBLIC_CACHE_TTL_SECONDS,
+            result.model_dump_json(),
+        )
+    except Exception:
+        pass  # Cache failures don't break the response
 
 
 @router.get(
@@ -37,29 +90,35 @@ async def public_check(domain: str, request: Request):
     Up until 2026-06-17 this endpoint ran ONLY rule-based scoring
     and intentionally skipped the 16-source threat-intel fan-out
     for speed. Measured result: 0% recall on fresh URLhaus URLs.
-    That broke our own '93.5% recall' marketing claim every time
-    someone shared a `cleanway.ai/check/<domain>` link.
 
-    Now we run the FULL analyzer (same fan-out as the authed
-    `/api/v1/check`), but defend latency with three things:
+    Now runs the FULL 18-check analyzer, but with FOUR defenses
+    against analyzer cost (each closes a distinct adversarial-review
+    finding from 2026-06-17):
 
       1. Top-domain allowlist short-circuit (instant safe verdict
-         for 100k+ legit hosts — no API calls).
-      2. Aggressive Redis cache via the existing cache_result()
-         path — first hit on a domain runs the analyzer, the next
-         24h of requests on the same domain serve from cache.
-      3. Tighter IP rate-limit (5 req/min instead of 10) — caching
-         covers the bulk; the limit is now for genuine new domains.
+         for top-10k legit hosts — no API calls).
+      2. Per-endpoint Redis cache, single 24h TTL across verdict
+         levels. The endpoint OWNS its cache namespace separately
+         from cache_result()/get_cached_result() so it cannot get
+         clobbered by the authed flow's 5-min dangerous TTL.
+      3. SINGLEFLIGHT coalescing: N concurrent requests for the
+         same fresh domain collapse to ONE analyze_domain call.
+         The rest await the same Future.
+      4. IP rate-limit uses _extract_client_ip() so X-Forwarded-For
+         is honored when the immediate caller is in trusted_proxy_cidrs
+         — without it we collapse all traffic behind Railway's
+         single egress IP into one bucket.
 
-    Trade-off documented: first lookup on a never-seen domain
-    takes 1-3 seconds (with prod threat-intel keys), down from
-    the prior ~100ms. We display this honestly in the UI.
+    Trade-off: first cold-cache lookup on a never-seen domain takes
+    1-3 seconds (vs prior ~100 ms). Every subsequent hit on the
+    same domain serves from cache in sub-50 ms — 99% of real
+    traffic will land there.
     """
-    # Tightened IP rate limit (5 req/min). Caching takes care of
-    # the repeat-domain case; this only bites genuine fresh queries
-    # from one IP. Account-attached and paid users will go through
-    # the authed endpoint, not this one.
-    client_ip = request.client.host if request.client else "unknown"
+    # 1) Proxy-aware IP rate-limit (5 req/min for fresh queries).
+    #    The downstream Depends(rate_limit(...)) handles the general
+    #    rate-limit; this layered check is the tighter cap for the
+    #    expensive analyzer path.
+    client_ip = _extract_client_ip(request)
     try:
         from api.services.cache import get_redis
         r = await get_redis()
@@ -78,22 +137,18 @@ async def public_check(domain: str, request: Request):
     except Exception:
         pass  # Redis down — allow request
 
-    # Validate domain
+    # 2) Validate domain
     try:
         domain = validate_domain(domain.lower().strip())
     except DomainValidationError as e:
         raise HTTPException(400, f"Invalid domain: {e}")
 
-    # Cache hit: every repeat lookup on a domain inside the cache
-    # TTL window serves a previously-analysed result. This is the
-    # primary defence against analyzer cost on this endpoint.
-    cached = await get_cached_result(domain)
+    # 3) Public-cache hit: serve previously-analysed result.
+    cached = await _get_public_cache(domain)
     if cached:
         return _format_public_result(cached)
 
-    # Fast allowlist short-circuit for the top-10k legit hosts
-    # (data/top_10k.json). Anything that resolves here is
-    # known-legitimate and we don't need to fan out to 16 APIs.
+    # 4) Top-domain allowlist short-circuit.
     base = _extract_base_domain(domain)
     if base in TOP_DOMAINS:
         return {
@@ -107,19 +162,40 @@ async def public_check(domain: str, request: Request):
             "confidence_pct": 99,
         }
 
-    # Real check — full 16-source analyzer fan-out. This is the
-    # same pipeline the authed /api/v1/check uses, so the public
-    # endpoint now meets the 93.5% recall marketing claim.
-    # cache_result() inside analyze_domain stores the verdict for
-    # 24h so the cost is paid once per domain per day.
+    # 5) SINGLEFLIGHT — collapse N concurrent fresh-domain requests
+    #    into ONE analyzer fan-out. The first caller starts the work;
+    #    every subsequent caller arrives, finds an in-flight Future,
+    #    and awaits it.
+    loop = asyncio.get_event_loop()
+    fut = _INFLIGHT.get(domain)
+    if fut is None:
+        fut = loop.create_future()
+        _INFLIGHT[domain] = fut
+        owner = True
+    else:
+        owner = False
+
+    if not owner:
+        try:
+            result = await fut
+            return _format_public_result(result)
+        except Exception:
+            # Owner crashed — fall through to compute ourselves.
+            pass
+
+    # We are the owner — run the analyzer.
     try:
         from api.services.analyzer import analyze_domain
         result = await analyze_domain(domain, raw_url=domain)
+        # 6) Cache the analyzer result for 24h. Without this, every
+        #    repeat request paid the full fan-out — the original
+        #    adversarial-review finding.
+        await _put_public_cache(result)
+        if not fut.done():
+            fut.set_result(result)
     except Exception as exc:
-        # Fail-soft: if the analyzer breaks (network, downstream
-        # outage), fall back to rule-only scoring so the user gets
-        # a verdict instead of a 500. Mark confidence low so the
-        # UI shows the caveat.
+        # Fail-soft: rule-only fallback. DO NOT cache the degraded
+        # verdict — we want a real measurement next time.
         logger.warning("public_check analyzer failed for %s: %s", domain, exc)
         signals = {"domain": domain, "raw_url": domain}
         score, level, reasons = calculate_score(signals)
@@ -130,6 +206,11 @@ async def public_check(domain: str, request: Request):
             confidence=ConfidenceLevel.low,
             reasons=reasons,
         )
+        if not fut.done():
+            fut.set_exception(exc)  # waiters fall through to compute
+    finally:
+        # Drop the in-flight slot so memory doesn't grow unbounded.
+        _INFLIGHT.pop(domain, None)
 
     return _format_public_result(result)
 

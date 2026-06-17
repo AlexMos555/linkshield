@@ -1,9 +1,9 @@
 # Cleanway fresh-URL benchmark
 
-**Run**: 2026-06-17T13:18:50Z  •  **Sample**: 100 phishing + 100 legit
+**Run**: 2026-06-17T13:42:23Z  •  **Sample**: 50 phishing + 50 legit
 
 ## Sources
-- **phishing**: URLhaus daily feed (100 URLs) + PhishTank online-valid (100 URLs), deduplicated by registrable domain.
+- **phishing**: URLhaus daily feed (50 URLs) + PhishTank online-valid (50 URLs), deduplicated by registrable domain.
 - **legit**: Tranco top-1M rank 100-100000, random sample (seed=42).
 - **cleanway_api**: https://api.cleanway.ai
 
@@ -11,21 +11,19 @@
 
 | Resolver | Recall | Precision | F1 | FP | TP | FN | Unknown | p50 ms |
 |---|---|---|---|---|---|---|---|---|
-| cleanway | — | — | — | 0 | 0 | 0 | 100 | 275 |
-| cleanway_local | 93.5% | 100.0% | 96.7% | 0 | 87 | 6 | 7 | 5304 |
-| gsb | — | — | — | 0 | 0 | 0 | 100 | — |
-| phishtank | — | — | — | 0 | 0 | 0 | 100 | 89 |
-| cloudflare_families | 55.0% | 100.0% | 71.0% | 0 | 55 | 45 | 0 | 104 |
+| cleanway | — | — | — | 0 | 0 | 0 | 50 | 273 |
+| gsb | — | — | — | 0 | 0 | 0 | 50 | — |
+| phishtank | — | — | — | 0 | 0 | 0 | 50 | 93 |
+| cloudflare_families | 60.0% | 100.0% | 75.0% | 0 | 30 | 20 | 0 | 148 |
 
 ## Safe batch (expected: safe → measure FPR)
 
 | Resolver | FPR | FP | TN | Unknown | p50 ms |
 |---|---|---|---|---|---|
-| cleanway | — | 0 | 0 | 100 | 267 |
-| cleanway_local | 3.03% | 3 | 96 | 1 | 5143 |
-| gsb | — | 0 | 0 | 100 | — |
-| phishtank | — | 0 | 0 | 100 | 94 |
-| cloudflare_families | 0.00% | 0 | 74 | 26 | 101 |
+| cleanway | — | 0 | 0 | 50 | 321 |
+| gsb | — | 0 | 0 | 50 | — |
+| phishtank | — | 0 | 0 | 50 | 100 |
+| cloudflare_families | 0.00% | 0 | 35 | 15 | 165 |
 
 ## Methodology
 
