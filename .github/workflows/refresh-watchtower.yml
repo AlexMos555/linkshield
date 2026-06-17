@@ -1,0 +1,57 @@
+name: Refresh Watchtower (Strategy #17)
+
+# Daily scan of every brand in any user's watchlist against the
+# crt.sh CT-log mirror. Newly-issued certs whose name matches a
+# typosquat / TLD-switch / homograph / subdomain variant get
+# UPSERT'd into typosquat_alerts. Users see the alerts via
+# /api/v1/watchtower/alerts; the analyzer flags visits to a
+# suspect domain with the watchtower_typosquat signal.
+#
+# Secret requirements:
+#   SUPABASE_URL              same as Railway
+#   SUPABASE_SERVICE_KEY      service_role (bypasses RLS — required for the scan job)
+#   REDIS_URL_PRODUCTION      optional but recommended (global single-flight lock)
+
+on:
+  schedule:
+    # 03:33 UTC daily — off-peak, distinct from the Tranco cron
+    # at 03:17 so they don't fight for crt.sh / network egress.
+    - cron: '33 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install httpx redis
+
+      - name: Run watchtower scan
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          REDIS_URL: ${{ secrets.REDIS_URL_PRODUCTION }}
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          set +e
+          python scripts/refresh_watchtower.py
+          code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::Another watchtower scan is in progress (lock held). Skipping."
+            exit 0
+          fi
+          exit $code

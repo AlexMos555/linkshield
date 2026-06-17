@@ -225,6 +225,17 @@ favicon_breaker = CircuitBreaker(
     fallback={"cloned": False, "brand": None, "matched_hash": None, "weight": 0, "detail": ""},
 )
 
+# Strategy doc Top-20 #17 — typosquat watchtower lookup. Hits
+# Supabase REST on the typosquat_alerts table. Wrapped in a
+# breaker so a Supabase outage degrades to "no watchtower
+# contribution" rather than 502'ing the whole /check.
+watchtower_breaker = CircuitBreaker(
+    name="watchtower",
+    failure_threshold=5,
+    cooldown_seconds=30,
+    fallback={"matched": False, "brand": None, "variant_kind": None, "edit_distance": None, "weight": 0},
+)
+
 
 def get_all_breaker_statuses() -> list[dict]:
     """Return status of all circuit breakers (for health endpoint)."""
@@ -242,6 +253,7 @@ def get_all_breaker_statuses() -> list[dict]:
         feodo_breaker.get_status(),
         tranco_breaker.get_status(),
         favicon_breaker.get_status(),
+        watchtower_breaker.get_status(),
         whois_breaker.get_status(),
         ssl_breaker.get_status(),
         headers_breaker.get_status(),

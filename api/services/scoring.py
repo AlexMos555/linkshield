@@ -487,6 +487,25 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             detail=signals.get("favicon_detail") or "Brand-clone favicon detected",
         ))
 
+    # Strategy doc #17 — typosquat watchtower hit. The user (or
+    # another user watching the same brand) added this brand to the
+    # watchlist; the daily scan caught a cousin-domain CT entry.
+    if signals.get("watchtower_matched"):
+        wt_weight = signals.get("watchtower_weight", 25)
+        variant = signals.get("watchtower_variant") or "typo"
+        brand = signals.get("watchtower_brand") or "a watched brand"
+        explanations = {
+            "typo": f"Looks like a misspelling of {brand} (Levenshtein {signals.get('watchtower_distance', '?')}).",
+            "tld": f"Same name as {brand}, different top-level domain — common phishing pattern.",
+            "homograph": f"Uses look-alike Unicode characters mimicking {brand}.",
+            "subdomain": f"Uses {brand}'s name as a subdomain on an unrelated host.",
+        }
+        score += wt_weight
+        reasons.append(DomainReason(
+            signal="watchtower_typosquat", weight=wt_weight,
+            detail=explanations.get(variant, f"Flagged by Cleanway Watchtower as a cousin of {brand}."),
+        ))
+
     # AlienVault OTX community reports
     alienvault_pulses = signals.get("alienvault_pulse_count", 0)
     if alienvault_pulses > 5:

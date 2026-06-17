@@ -169,6 +169,11 @@ const EVIDENCE_BOOK = {
     title: "Among the most-visited sites",
     body: "This domain is in the worldwide top sites — counted as a trust signal here, but other risks above still apply.",
   },
+  watchtower_typosquat: {
+    icon: "🕵️‍♂️",
+    title: "Cousin-domain of a brand you watch",
+    body: "Cleanway Watchtower spotted this newly-registered domain in Certificate Transparency logs — it looks dangerously close to a brand on your watchlist.",
+  },
   invalid: {
     icon: "❌",
     title: "Invalid address",

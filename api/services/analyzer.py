@@ -40,10 +40,11 @@ from api.services.circuit_breaker import (
     whois_breaker, ssl_breaker, headers_breaker,
     dns_breaker, redirect_breaker,
     malware_bazaar_breaker, feodo_breaker,
-    tranco_breaker, favicon_breaker,
+    tranco_breaker, favicon_breaker, watchtower_breaker,
 )
 from api.services.tranco import check_tranco_popularity
 from api.services.favicon_hash import check_favicon_brand_clone
+from api.services.watchtower_lookup import check_typosquat_alert
 from api.models.schemas import DomainResult, DomainReason, RiskLevel, ConfidenceLevel
 
 logger = logging.getLogger("cleanway.analyzer")
@@ -102,15 +103,16 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         # Reputation + visual identity (2)
         tranco_breaker.call(check_tranco_popularity, domain),      # 11
         favicon_breaker.call(check_favicon_brand_clone, domain),   # 12
+        watchtower_breaker.call(check_typosquat_alert, domain),    # 13
         # Enrichment sources (5)
-        whois_breaker.call(check_whois_age, domain),               # 13
-        ssl_breaker.call(check_ssl, domain),                       # 14
-        headers_breaker.call(check_security_headers, domain),      # 15
-        dns_breaker.call(check_dns, domain),                       # 16
-        redirect_breaker.call(check_redirect_chain, domain),       # 17
+        whois_breaker.call(check_whois_age, domain),               # 14
+        ssl_breaker.call(check_ssl, domain),                       # 15
+        headers_breaker.call(check_security_headers, domain),      # 16
+        dns_breaker.call(check_dns, domain),                       # 17
+        redirect_breaker.call(check_redirect_chain, domain),       # 18
     )
 
-    total_checks = 18
+    total_checks = 19
     checks_succeeded = sum(1 for _, ok in results if ok)
 
     # ── Unpack blocklist results ──
@@ -130,13 +132,14 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
     feodo_hit = _val(10)
     tranco_result = _val(11, default={"ranked": False, "rank": None, "weight": 0, "label": ""})
     favicon_result = _val(12, default={"cloned": False, "brand": None, "matched_hash": None, "weight": 0, "detail": ""})
+    watchtower_result = _val(13, default={"matched": False, "brand": None, "variant_kind": None, "edit_distance": None, "weight": 0})
 
     # ── Unpack enrichment results ──
-    whois_data = _val(13, default={})
-    ssl_data = _val(14, default={})
-    headers_data = _val(15, default={})
-    dns_data = _val(16, default={})
-    redirect_data = _val(17, default={})
+    whois_data = _val(14, default={})
+    ssl_data = _val(15, default={})
+    headers_data = _val(16, default={})
+    dns_data = _val(17, default={})
+    redirect_data = _val(18, default={})
 
     # Aggregate blocklist hits
     blocklist_hits = sum([
@@ -174,6 +177,12 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         "favicon_cloned": bool(favicon_result.get("cloned")),
         "favicon_brand": favicon_result.get("brand"),
         "favicon_detail": favicon_result.get("detail", ""),
+        # Strategy #17 — typosquat watchtower lookup
+        "watchtower_matched": bool(watchtower_result.get("matched")),
+        "watchtower_brand": watchtower_result.get("brand"),
+        "watchtower_variant": watchtower_result.get("variant_kind"),
+        "watchtower_distance": watchtower_result.get("edit_distance"),
+        "watchtower_weight": watchtower_result.get("weight", 0),
         # WHOIS
         "domain_age_days": whois_data.get("age_days"),
         "registrar": whois_data.get("registrar"),
