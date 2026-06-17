@@ -430,8 +430,14 @@
       '<p style="margin:0 0 10px">Submitting will send your credentials. Here\'s why this looks unsafe:</p>' +
       (reasons.length ? '<ul style="padding-left:18px;margin:0;color:#e2e8f0">' + reasonsHtml + "</ul>" : "") +
       "</div>" +
-      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">' +
+      // Strategy #8 — three buttons: cancel (safest, default focus),
+      // honeypot shield (real password stays on device, attacker
+      // gets a random throwaway), full override (user explicitly
+      // accepts the risk). The honeypot is the headline new option
+      // — closes the "guaranteed no-leak" marketing promise.
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap">' +
       '<button id="ls-credguard-cancel" style="background:#22c55e;color:#052e16;border:0;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer">Don\'t submit — take me back</button>' +
+      '<button id="ls-credguard-honeypot" style="background:#0ea5e9;color:#082f49;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer" title="Submit with a randomly-generated honeypot password. Your real password never leaves your device.">Send fake password (recommended)</button>' +
       '<button id="ls-credguard-override" style="background:transparent;color:#fca5a5;border:1px solid #7f1d1d;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer">Submit anyway</button>' +
       "</div>";
 
@@ -439,6 +445,7 @@
     document.documentElement.appendChild(dialog);
 
     var cancelBtn = card.querySelector("#ls-credguard-cancel");
+    var honeypotBtn = card.querySelector("#ls-credguard-honeypot");
     var overrideBtn = card.querySelector("#ls-credguard-override");
 
     function _close() {
@@ -448,7 +455,7 @@
     function _onKey(e) {
       if (e.key === "Escape") { e.preventDefault(); _close(); }
       if (e.key === "Tab") {
-        var focusable = [cancelBtn, overrideBtn];
+        var focusable = [cancelBtn, honeypotBtn, overrideBtn];
         var idx = focusable.indexOf(document.activeElement);
         if (idx === -1) {
           e.preventDefault();
@@ -465,6 +472,12 @@
     document.addEventListener("keydown", _onKey, true);
 
     cancelBtn.addEventListener("click", function () { _close(); });
+
+    honeypotBtn.addEventListener("click", function () {
+      _close();
+      _submitWithHoneypot(form);
+    });
+
     overrideBtn.addEventListener("click", function () {
       _close();
       form._lsGuardOverridden = true;
@@ -486,6 +499,157 @@
 
     // Default focus on Cancel — safer default.
     setTimeout(function () { cancelBtn.focus(); }, 0);
+  }
+
+  // ── Strategy doc #8 — Honeypot Shield ──
+  // Replace every password input in the form with a fresh
+  // cryptographically-random throwaway value, force-submit so the
+  // attacker gets the honeypot, and show a non-blocking toast so
+  // the user knows what happened. The real password value never
+  // leaves the device.
+  //
+  // The honeypot value is prefixed with a fixed watermark so a
+  // future "have-i-been-pwned for honeypot dumps" service could
+  // recognize it in paste dumps and confirm the page was hostile —
+  // a data-source for tightening EVIDENCE_BOOK later.
+  function _submitWithHoneypot(form) {
+    if (!form) return;
+    var honeypot = _generateHoneypotValue();
+
+    // Stash the original values so we can restore them AFTER the
+    // submit completes. Most legit-but-flagged forms have no
+    // attacker on the other end — restoring keeps the input state
+    // sane if the user accidentally hits the honeypot button.
+    var pwInputs = form.querySelectorAll('input[type="password"]');
+    var originals = [];
+    for (var i = 0; i < pwInputs.length; i++) {
+      originals.push({ input: pwInputs[i], value: pwInputs[i].value });
+      // Use the native setter so frameworks that mirror state
+      // (React, Vue, Lit) actually pick up the change instead of
+      // re-rendering the input back to the original value.
+      _setInputValueWithFrameworkSync(pwInputs[i], honeypot);
+    }
+
+    form._lsGuardOverridden = true;
+    // Counter for the popup + Q3 transparency report.
+    try {
+      chrome.storage.local.get(["honeypot_used_count"]).then(function (d) {
+        var next = (d.honeypot_used_count || 0) + 1;
+        chrome.storage.local.set({ honeypot_used_count: next }).catch(function () {});
+      }).catch(function () {});
+    } catch (_e) { /* ignore */ }
+
+    // Fire-and-forget anonymous report (domain only). Keeps the
+    // server-blind invariant — no path, no value, no user id.
+    try {
+      var apiBase = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
+        ? window.CLEANWAY_API_BASE
+        : "https://api.cleanway.ai";
+      fetch(apiBase + "/api/v1/credentials/report-honeypot", {
+        method: "POST",
+        mode: "cors",
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: window.location.host }),
+      }).catch(function () {});
+    } catch (_e) { /* ignore — non-critical telemetry */ }
+
+    _showHoneypotToast();
+
+    // Restore the original value AFTER a tick — gives the network
+    // request time to fly with the honeypot, then puts the input
+    // back the way the user typed it (in case they were testing
+    // on a legit but mis-flagged site).
+    setTimeout(function () {
+      for (var j = 0; j < originals.length; j++) {
+        try { _setInputValueWithFrameworkSync(originals[j].input, originals[j].value); }
+        catch (_e) {}
+      }
+    }, 1500);
+
+    if (typeof form.requestSubmit === "function") {
+      try { form.requestSubmit(); return; } catch (_e) {}
+    }
+    try { form.submit(); } catch (_e) {}
+  }
+
+  function _generateHoneypotValue() {
+    // 16 random bytes → 32 hex chars + a fixed watermark prefix.
+    // Watermark length is intentionally fixed so the total length
+    // is constant — a phishing kit can't infer "the user installed
+    // Cleanway" from variable-length passwords.
+    var prefix = "Cwx9p_";
+    if (window.crypto && window.crypto.getRandomValues) {
+      var bytes = new Uint8Array(16);
+      window.crypto.getRandomValues(bytes);
+      var hex = "";
+      for (var i = 0; i < bytes.length; i++) {
+        var h = bytes[i].toString(16);
+        hex += h.length === 1 ? "0" + h : h;
+      }
+      return prefix + hex;
+    }
+    // Fallback that's still uniform but lower-entropy. Should
+    // never run on any browser shipped this decade.
+    var s = "";
+    for (var k = 0; k < 32; k++) {
+      s += Math.floor(Math.random() * 16).toString(16);
+    }
+    return prefix + s;
+  }
+
+  function _setInputValueWithFrameworkSync(input, value) {
+    if (!input) return;
+    // React (and Preact, and most React-shaped form libraries) own
+    // the input value via a synthetic setter that bypasses the
+    // native setter. We have to call the prototype setter directly
+    // and then dispatch an 'input' event so the framework's
+    // controlled-component state syncs.
+    var proto = window.HTMLInputElement && window.HTMLInputElement.prototype;
+    var desc = proto && Object.getOwnPropertyDescriptor(proto, "value");
+    if (desc && typeof desc.set === "function") {
+      desc.set.call(input, value);
+    } else {
+      input.value = value;
+    }
+    try {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch (_e) { /* ignore */ }
+  }
+
+  function _showHoneypotToast() {
+    if (document.getElementById("ls-honeypot-toast")) return;
+    var toast = document.createElement("div");
+    toast.id = "ls-honeypot-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.style.cssText = [
+      "position:fixed",
+      "top:16px",
+      "right:16px",
+      "z-index:2147483646",
+      "background:#082f49",
+      "color:#e0f2fe",
+      "padding:14px 18px",
+      "border-radius:10px",
+      "box-shadow:0 12px 32px rgba(0,0,0,0.45)",
+      "border:1px solid #0ea5e9",
+      "font:13px/1.5 -apple-system,system-ui,sans-serif",
+      "max-width:340px",
+    ].join(";");
+    toast.innerHTML =
+      '<strong>🛡️ Honeypot shield activated</strong>' +
+      '<div style="margin-top:6px;color:#bae6fd">' +
+      "We sent a randomly-generated password to that form. Your real " +
+      "password never left this device. If you need to log in here for " +
+      "real, double-check the URL first." +
+      "</div>";
+    document.documentElement.appendChild(toast);
+    setTimeout(function () {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 8000);
   }
 
   // ── Evaluate one password input ──

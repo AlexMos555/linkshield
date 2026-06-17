@@ -145,3 +145,61 @@ async def verified_hosts(
         # the allowlist", "this isn't"). Return an empty list + flag.
         return VerifiedHostsResponse(brand=key, hosts=[], is_known=False)
     return VerifiedHostsResponse(brand=key, hosts=hosts, is_known=True)
+
+
+# ── Strategy doc Top-20 #8 — Honeypot Shield ──
+# The extension's credential-guardian modal offers a "Send fake
+# password" button. When the user takes it, the content script
+# pings this endpoint so the quarterly transparency report can
+# show "Cleanway intercepted N credential-theft attempts last
+# quarter" — a hard-evidence number competitors cannot publish.
+#
+# Privacy invariants:
+#   * No user_id, no IP-derived identity. Anonymous POST.
+#   * Domain ONLY in the request body. No URL, no path, no value.
+#   * We INCR daily + quarterly Redis counters. The raw domains
+#     are NEVER stored — they exit the request scope unrecorded.
+#   * No write to Postgres. Pure counter.
+
+class HoneypotReportRequest(BaseModel):
+    domain: str
+
+
+class HoneypotReportResponse(BaseModel):
+    ok: bool
+
+
+@router.post(
+    "/report-honeypot",
+    response_model=HoneypotReportResponse,
+    dependencies=[Depends(rate_limit(mode="ip", category="creds_honeypot_report"))],
+)
+async def report_honeypot(body: HoneypotReportRequest) -> HoneypotReportResponse:
+    """Record one honeypot-shield activation.
+
+    The endpoint always returns ok=True so a misbehaving content
+    script never breaks the user's submit flow. Validation failures
+    silently no-op — there's nothing the client could do to recover.
+    """
+    import re
+    from datetime import datetime, timezone
+
+    domain = (body.domain or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9.\-]{1,253}", domain) or "." not in domain:
+        # Drop silently — never tell an attacker which patterns we
+        # filter so they can't probe the validator.
+        return HoneypotReportResponse(ok=True)
+
+    try:
+        from api.services.cache import get_redis
+        r = await get_redis()
+        now = datetime.now(timezone.utc)
+        day_key = now.strftime("honeypot:day:%Y-%m-%d")
+        await r.incr(day_key)
+        await r.expire(day_key, 90 * 24 * 60 * 60)  # 90-day retention
+        quarter = (now.month - 1) // 3 + 1
+        q_key = f"honeypot:q:{now.year}-q{quarter}"
+        await r.incr(q_key)
+    except Exception:
+        logger.debug("honeypot counter increment failed", exc_info=True)
+    return HoneypotReportResponse(ok=True)
