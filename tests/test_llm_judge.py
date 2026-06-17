@@ -366,3 +366,166 @@ def test_llm_available_reflects_env(monkeypatch):
     assert _llm_available() is False
     monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
     assert _llm_available() is True
+
+
+# ─────────────────────────────────────────────────────────────────
+# Tiered model routing — Opus primary, Haiku fallback
+# ─────────────────────────────────────────────────────────────────
+
+def test_default_primary_model_is_opus(monkeypatch):
+    """The judge defaults to Opus 4.8 (the strongest reasoner).
+    Haiku is the fallback, not the primary."""
+    # Re-import to get the env-derived value with a clean env.
+    import importlib
+    import api.services.llm_judge as mod
+    importlib.reload(mod)
+    assert mod.LLM_JUDGE_MODEL_PRIMARY == "claude-opus-4-8"
+    assert "haiku" in mod.LLM_JUDGE_MODEL_FALLBACK.lower()
+
+
+def test_model_choice_overridable_via_env(monkeypatch):
+    monkeypatch.setenv("LLM_JUDGE_MODEL_PRIMARY", "claude-sonnet-4-6")
+    import importlib
+    import api.services.llm_judge as mod
+    importlib.reload(mod)
+    assert mod.LLM_JUDGE_MODEL_PRIMARY == "claude-sonnet-4-6"
+
+
+@pytest.mark.asyncio
+async def test_call_claude_uses_primary_first(monkeypatch):
+    """The orchestrator MUST hit the primary model first; only
+    falls back to Haiku if primary returns None."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    import importlib
+    import api.services.llm_judge as mod
+    importlib.reload(mod)
+
+    calls: list[str] = []
+
+    async def _fake_call(model, features, max_tokens=280):
+        calls.append(model)
+        if "opus" in model:
+            return {
+                "verdict": "dangerous", "confidence": 0.9,
+                "one_line_reason": "from primary", "model": model,
+            }
+        return None
+
+    monkeypatch.setattr(mod, "_call_one_model", _fake_call)
+    out = await mod._call_claude({"x": 1})
+    assert out is not None
+    assert "opus" in calls[0]
+    assert len(calls) == 1  # fallback NOT triggered on primary success
+    assert out["one_line_reason"] == "from primary"
+
+
+@pytest.mark.asyncio
+async def test_call_claude_falls_back_on_primary_failure(monkeypatch):
+    """When Opus is unavailable / times out, Haiku takes over."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    import importlib
+    import api.services.llm_judge as mod
+    importlib.reload(mod)
+
+    calls: list[str] = []
+
+    async def _fake_call(model, features, max_tokens=280):
+        calls.append(model)
+        if "opus" in model:
+            return None  # primary fails
+        return {
+            "verdict": "safe", "confidence": 0.8,
+            "one_line_reason": "from fallback", "model": model,
+        }
+
+    monkeypatch.setattr(mod, "_call_one_model", _fake_call)
+    out = await mod._call_claude({"x": 1})
+    assert out is not None
+    assert out["one_line_reason"] == "from fallback"
+    assert len(calls) == 2
+    assert "opus" in calls[0]
+    assert "haiku" in calls[1]
+
+
+@pytest.mark.asyncio
+async def test_call_claude_no_double_call_when_primary_equals_fallback(
+    monkeypatch,
+):
+    """If ops set both env vars to the same model, we MUST NOT call
+    the same model twice on failure."""
+    monkeypatch.setenv("LLM_JUDGE_MODEL_PRIMARY", "claude-haiku-4-5-20251001")
+    monkeypatch.setenv("LLM_JUDGE_MODEL_FALLBACK", "claude-haiku-4-5-20251001")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    import importlib
+    import api.services.llm_judge as mod
+    importlib.reload(mod)
+
+    calls: list[str] = []
+
+    async def _fake_call(model, features, max_tokens=280):
+        calls.append(model)
+        return None
+
+    monkeypatch.setattr(mod, "_call_one_model", _fake_call)
+    await mod._call_claude({"x": 1})
+    assert len(calls) == 1
+
+
+# ─────────────────────────────────────────────────────────────────
+# Prompt engineering integrity — chain-of-thought / few-shot / categories
+# ─────────────────────────────────────────────────────────────────
+
+def test_system_prompt_has_category_breakdown():
+    """The system prompt must walk Claude through the 6 signal
+    categories — that's the chain-of-thought scaffold."""
+    import api.services.llm_judge as mod
+    prompt = mod._SYSTEM_PROMPT.lower()
+    for category in (
+        "threat intel", "popularity", "brand identity",
+        "domain age", "content", "structure",
+    ):
+        assert category in prompt, f"category {category!r} missing from prompt"
+
+
+def test_system_prompt_has_few_shot_examples():
+    """Three examples (safe / dangerous / ambiguous) anchor the
+    model's calibration."""
+    import api.services.llm_judge as mod
+    # We count INPUT: blocks (which precede each example).
+    assert mod._SYSTEM_PROMPT.count("INPUT:") >= 3
+
+
+def test_system_prompt_demands_self_critique():
+    """The model must consider the strongest counter-argument
+    before committing — guards against motivated-reasoning bias."""
+    import api.services.llm_judge as mod
+    assert "counter-argument" in mod._SYSTEM_PROMPT.lower()
+
+
+def test_system_prompt_locks_output_to_strict_json():
+    import api.services.llm_judge as mod
+    p = mod._SYSTEM_PROMPT
+    assert "STRICT JSON" in p
+    assert '"verdict"' in p
+    assert '"confidence"' in p
+    assert '"one_line_reason"' in p
+
+
+def test_system_prompt_forbids_inventing_features():
+    """Anti-hallucination guard: the model must never claim signals
+    we didn't send."""
+    import api.services.llm_judge as mod
+    p = mod._SYSTEM_PROMPT.lower()
+    assert "never" in p
+    # The 'INPUT' / 'OUTPUT' contract makes this explicit.
+    assert "you never see the actual url" in p
+
+
+def test_system_prompt_calibrated_confidence_rubric():
+    """The 0.6 floor is baked into the prompt so the model
+    explicitly outputs lower confidence when uncertain instead
+    of pretending."""
+    import api.services.llm_judge as mod
+    p = mod._SYSTEM_PROMPT
+    assert "0.60" in p or "0.6" in p
+    assert "rubric" in p.lower() or "CONFIDENCE RUBRIC" in p
