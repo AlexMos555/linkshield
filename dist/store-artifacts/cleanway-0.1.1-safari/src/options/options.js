@@ -1,0 +1,783 @@
+// Cleanway Options Page Script
+
+// ══════════════════════════════════════════════════════════════════════
+// Skill Level (Kids / Regular / Granny / Pro)
+// ══════════════════════════════════════════════════════════════════════
+// Defaults per-mode (applied only when the user hasn't customized them)
+const SKILL_DEFAULTS = {
+  kids:    { fontScale: 1.0, voiceAlerts: false, showPinSection: true  },
+  regular: { fontScale: 1.0, voiceAlerts: false, showPinSection: false },
+  granny:  { fontScale: 1.3, voiceAlerts: true,  showPinSection: false },
+  pro:     { fontScale: 1.0, voiceAlerts: false, showPinSection: false },
+};
+
+const VALID_SKILLS = new Set(["kids", "regular", "granny", "pro"]);
+
+function normalizeSkill(s) {
+  return VALID_SKILLS.has(s) ? s : "regular";
+}
+
+function applySkillUI(skill) {
+  // Highlight active card
+  document.querySelectorAll(".skill-card").forEach((card) => {
+    card.classList.toggle("active", card.getAttribute("data-skill") === skill);
+  });
+  // Show/hide mode-specific sub-options
+  const opts = SKILL_DEFAULTS[skill] || SKILL_DEFAULTS.regular;
+  const fontBlock = document.getElementById("skill-opt-font");
+  const voiceBlock = document.getElementById("skill-opt-voice");
+  const pinBlock = document.getElementById("skill-opt-pin");
+  // Font scale: visible in Granny + Pro
+  fontBlock.hidden = !(skill === "granny" || skill === "pro");
+  // Voice alerts: visible in Granny only
+  voiceBlock.hidden = skill !== "granny";
+  // Parental PIN: visible in Kids only
+  pinBlock.hidden = skill !== "kids";
+}
+
+async function loadSkillSettings() {
+  const data = await chrome.storage.local.get([
+    "skill_level",
+    "font_scale",
+    "voice_alerts",
+    "parental_pin_set",
+  ]);
+  const skill = normalizeSkill(data.skill_level || "regular");
+  document.querySelector(`input[name="skill-level"][value="${skill}"]`).checked = true;
+  applySkillUI(skill);
+
+  const fontScale = typeof data.font_scale === "number"
+    ? data.font_scale
+    : SKILL_DEFAULTS[skill].fontScale;
+  document.getElementById("font-scale").value = String(fontScale);
+  document.getElementById("font-scale-val").textContent = fontScale.toFixed(1) + "×";
+
+  document.getElementById("voice-alerts").checked =
+    data.voice_alerts === undefined ? SKILL_DEFAULTS[skill].voiceAlerts : !!data.voice_alerts;
+
+  const pinSet = !!data.parental_pin_set;
+  updatePinControls(pinSet);
+}
+
+function updatePinControls(pinSet) {
+  const status = document.getElementById("pin-status");
+  const saveBtn = document.getElementById("save-pin");
+  const clearBtn = document.getElementById("clear-pin");
+  status.textContent = pinSet
+    ? "✓ PIN is set — required to switch out of Kids Mode"
+    : "";
+  saveBtn.textContent = pinSet ? "Update" : "Set PIN";
+  clearBtn.hidden = !pinSet;
+}
+
+async function pushSkillToApi(patch) {
+  // Non-blocking best-effort: if signed in (JWT in storage), sync to API.
+  try {
+    const stored = await chrome.storage.local.get(["auth_token", "api_url"]);
+    if (!stored.auth_token) return;
+    const apiBase =
+      stored.api_url || "https://api.cleanway.ai";
+    await fetch(apiBase + "/api/v1/user/settings", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + stored.auth_token,
+      },
+      body: JSON.stringify(patch),
+    });
+  } catch (e) {
+    // Offline or unauthenticated — local storage still authoritative
+    console.warn("[Cleanway] skill sync failed:", e && e.message);
+  }
+}
+
+document.querySelectorAll('input[name="skill-level"]').forEach((radio) => {
+  radio.addEventListener("change", async (e) => {
+    const skill = e.target.value;
+    applySkillUI(skill);
+    // When switching TO a mode, apply its default font/voice unless explicitly set
+    const existing = await chrome.storage.local.get(["font_scale", "voice_alerts"]);
+    const next = {
+      skill_level: skill,
+      font_scale: existing.font_scale ?? SKILL_DEFAULTS[skill].fontScale,
+      voice_alerts: existing.voice_alerts ?? SKILL_DEFAULTS[skill].voiceAlerts,
+    };
+    document.getElementById("font-scale").value = String(next.font_scale);
+    document.getElementById("font-scale-val").textContent =
+      next.font_scale.toFixed(1) + "×";
+    document.getElementById("voice-alerts").checked = next.voice_alerts;
+    await chrome.storage.local.set(next);
+    await pushSkillToApi({
+      skill_level: skill,
+      font_scale: next.font_scale,
+      voice_alerts_enabled: next.voice_alerts,
+    });
+  });
+});
+
+document.getElementById("font-scale").addEventListener("input", async (e) => {
+  const v = parseFloat(e.target.value);
+  document.getElementById("font-scale-val").textContent = v.toFixed(1) + "×";
+  await chrome.storage.local.set({ font_scale: v });
+  await pushSkillToApi({ font_scale: v });
+});
+
+document.getElementById("voice-alerts").addEventListener("change", async (e) => {
+  const v = !!e.target.checked;
+  await chrome.storage.local.set({ voice_alerts: v });
+  await pushSkillToApi({ voice_alerts_enabled: v });
+});
+
+document.getElementById("save-pin").addEventListener("click", async () => {
+  const input = document.getElementById("parental-pin");
+  const pin = (input.value || "").trim();
+  if (!/^\d{4}$/.test(pin)) {
+    document.getElementById("pin-status").textContent =
+      "PIN must be exactly 4 digits";
+    return;
+  }
+  await chrome.storage.local.set({ parental_pin_set: true });
+  await pushSkillToApi({ parental_pin: pin });
+  input.value = "";
+  updatePinControls(true);
+});
+
+document.getElementById("clear-pin").addEventListener("click", async () => {
+  if (!confirm("Clear the parental PIN?")) return;
+  await chrome.storage.local.set({ parental_pin_set: false });
+  await pushSkillToApi({ parental_pin: "" });
+  updatePinControls(false);
+});
+
+loadSkillSettings();
+
+// ══════════════════════════════════════════════════════════════════════
+// Existing Options logic below
+// ══════════════════════════════════════════════════════════════════════
+
+// Load settings
+chrome.storage.local.get(["settings", "stats"], (data) => {
+  const s = data.settings || {};
+  document.getElementById("auto-scan").checked = s.autoScan !== false;
+  document.getElementById("show-badges").checked = s.showBadges !== false;
+  document.getElementById("block-dangerous").checked = s.blockDangerous !== false;
+  document.getElementById("auto-audit").checked = s.autoAudit === true;
+  document.getElementById("anon-stats").checked = s.anonStats === true;
+
+  const stats = data.stats || {};
+  document.getElementById("s-total").textContent = stats.total_checks || 0;
+  document.getElementById("s-blocked").textContent = stats.threats_blocked || 0;
+  document.getElementById("s-warned").textContent = stats.threats_warned || 0;
+});
+
+// Save on toggle
+document.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+  cb.addEventListener("change", () => {
+    const settings = {
+      autoScan: document.getElementById("auto-scan").checked,
+      showBadges: document.getElementById("show-badges").checked,
+      blockDangerous: document.getElementById("block-dangerous").checked,
+      autoAudit: document.getElementById("auto-audit").checked,
+      anonStats: document.getElementById("anon-stats").checked,
+    };
+    chrome.storage.local.set({ settings });
+    const msg = document.getElementById("saved-msg");
+    msg.style.display = "block";
+    setTimeout(() => msg.style.display = "none", 2000);
+  });
+});
+
+// Clear data
+document.getElementById("clear-data").addEventListener("click", () => {
+  if (confirm("Delete all local check history? This cannot be undone.")) {
+    chrome.storage.local.remove(["recent_threats", "stats", "audits"], () => {
+      location.reload();
+    });
+  }
+});
+
+// Load custom lists
+chrome.storage.local.get(["custom_blocklist", "custom_whitelist"], (data) => {
+  if (data.custom_blocklist) document.getElementById("custom-blocklist").value = data.custom_blocklist;
+  if (data.custom_whitelist) document.getElementById("custom-whitelist").value = data.custom_whitelist;
+});
+
+// Save custom lists
+document.getElementById("save-lists").addEventListener("click", () => {
+  chrome.storage.local.set({
+    custom_blocklist: document.getElementById("custom-blocklist").value,
+    custom_whitelist: document.getElementById("custom-whitelist").value,
+  });
+  document.getElementById("save-lists").textContent = "Saved!";
+  setTimeout(() => document.getElementById("save-lists").textContent = "Save Lists", 2000);
+});
+
+// Load privacy settings
+chrome.storage.local.get(["settings"], (data) => {
+  const s2 = data.settings || {};
+  document.getElementById("clean-tracking").checked = s2.cleanTracking !== false;
+  document.getElementById("block-miners").checked = s2.blockMiners !== false;
+});
+
+// Load API URL
+chrome.storage.local.get(["api_url"], (data) => {
+  if (data.api_url) document.getElementById("api-url-input").value = data.api_url;
+});
+
+// Save API URL
+document.getElementById("save-api-url").addEventListener("click", () => {
+  const url = document.getElementById("api-url-input").value.trim();
+  if (url) {
+    chrome.storage.local.set({ api_url: url });
+    document.getElementById("save-api-url").textContent = "Saved!";
+    setTimeout(() => document.getElementById("save-api-url").textContent = "Save", 2000);
+  }
+});
+
+// Copy referral link
+document.getElementById("copy-referral").addEventListener("click", async () => {
+  const data = await chrome.storage.local.get(["referral_code"]);
+  let code = data.referral_code;
+  if (!code) {
+    code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    await chrome.storage.local.set({ referral_code: code });
+  }
+  const url = "https://cleanway.ai/ref/" + code;
+  await navigator.clipboard.writeText(url);
+  document.getElementById("copy-referral").textContent = "Copied!";
+  setTimeout(() => document.getElementById("copy-referral").textContent = "Copy link", 2000);
+});
+
+// Redeem referral code
+document.getElementById("redeem-code").addEventListener("click", async () => {
+  const code = document.getElementById("referral-input").value.trim().toUpperCase();
+  if (!code) return;
+  await chrome.storage.local.set({ redeemed_code: code });
+  alert("Code " + code + " saved!");
+});
+
+// ─── Device-level override (Family Hub) ─────────────────────────
+//
+// Reads /api/v1/user/device/{hash}/effective on load to populate the
+// resolved state + provenance badges. PATCH /overrides on change.
+// Section stays hidden when there's no auth_token — this whole feature
+// only makes sense for signed-in users with a server-side account.
+
+async function lazyApi() {
+  return import(chrome.runtime.getURL("utils/api.js"));
+}
+
+const SKILL_LABELS = {
+  kids: "Kids",
+  regular: "Regular",
+  granny: "Granny",
+  pro: "Pro",
+};
+
+function setSkillCardActive(name, value) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach((radio) => {
+    const card = radio.closest(".skill-card");
+    if (!card) return;
+    card.classList.toggle("active", radio.value === value);
+    radio.checked = radio.value === value;
+  });
+}
+
+async function refreshDeviceOverridePanel() {
+  const section = document.getElementById("device-override-section");
+  if (!section) return;
+  let stored;
+  try {
+    stored = await chrome.storage.local.get(["auth_token"]);
+  } catch {
+    return;
+  }
+  if (!stored || !stored.auth_token) {
+    // Anonymous user — feature only applies to signed-in accounts.
+    section.hidden = true;
+    return;
+  }
+  let api;
+  try {
+    api = await lazyApi();
+  } catch {
+    section.hidden = true;
+    return;
+  }
+
+  const hash = await api.getDeviceHash();
+  const effective = await api.fetchEffectiveSkill(stored.auth_token, hash);
+  if (!effective) {
+    // API down → keep panel hidden so the user doesn't see broken UI
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+
+  const summary = document.getElementById("device-effective-summary");
+  if (summary) {
+    const label = SKILL_LABELS[effective.skill_level] || effective.skill_level;
+    summary.textContent = `${label} · ${effective.font_scale.toFixed(1)}× · ${
+      effective.voice_alerts_enabled ? "voice on" : "voice off"
+    }`;
+  }
+  const badge = document.getElementById("device-skill-source");
+  if (badge) {
+    badge.hidden = false;
+    badge.setAttribute("data-source", effective.skill_source);
+    badge.textContent =
+      effective.skill_source === "device_override"
+        ? "Set on this device"
+        : "From your account";
+  }
+
+  // Reflect controls if any field already has a device-level override
+  const anyOverride =
+    effective.skill_source === "device_override" ||
+    effective.voice_source === "device_override" ||
+    effective.font_source === "device_override";
+  document.getElementById("device-override-on").checked = anyOverride;
+  document.getElementById("device-override-controls").hidden = !anyOverride;
+
+  setSkillCardActive("device-skill-level", effective.skill_level);
+  document.getElementById("device-voice-alerts").checked = !!effective.voice_alerts_enabled;
+  const fontEl = document.getElementById("device-font-scale");
+  fontEl.value = String(effective.font_scale);
+  document.getElementById("device-font-scale-val").textContent = effective.font_scale.toFixed(1) + "×";
+}
+
+async function pushDeviceOverride(payload) {
+  let stored;
+  try {
+    stored = await chrome.storage.local.get(["auth_token"]);
+  } catch {
+    return;
+  }
+  if (!stored || !stored.auth_token) return;
+  const api = await lazyApi();
+  const hash = await api.getDeviceHash();
+  const updated = await api.patchDeviceOverrides(stored.auth_token, hash, payload);
+  if (updated) {
+    // Re-render so badges + summary reflect the new resolved state
+    await refreshDeviceOverridePanel();
+  }
+}
+
+// Toggle override on/off
+const overrideToggle = document.getElementById("device-override-on");
+if (overrideToggle) {
+  overrideToggle.addEventListener("change", async (e) => {
+    const on = !!e.target.checked;
+    document.getElementById("device-override-controls").hidden = !on;
+    if (!on) {
+      // Switching OFF wipes all device overrides → revert to user defaults
+      await pushDeviceOverride({ clear_overrides: true });
+    }
+  });
+}
+
+// Per-device skill level
+document.querySelectorAll('input[name="device-skill-level"]').forEach((radio) => {
+  radio.addEventListener("change", async (e) => {
+    setSkillCardActive("device-skill-level", e.target.value);
+    await pushDeviceOverride({ skill_level_override: e.target.value });
+  });
+});
+
+// Per-device voice
+const dvVoice = document.getElementById("device-voice-alerts");
+if (dvVoice) {
+  dvVoice.addEventListener("change", async (e) => {
+    await pushDeviceOverride({ voice_alerts_enabled: !!e.target.checked });
+  });
+}
+
+// Per-device font
+const dvFont = document.getElementById("device-font-scale");
+if (dvFont) {
+  dvFont.addEventListener("input", (e) => {
+    document.getElementById("device-font-scale-val").textContent =
+      parseFloat(e.target.value).toFixed(1) + "×";
+  });
+  dvFont.addEventListener("change", async (e) => {
+    const v = parseFloat(e.target.value);
+    if (!Number.isNaN(v) && v >= 0.8 && v <= 2.5) {
+      await pushDeviceOverride({ font_scale: v });
+    }
+  });
+}
+
+// Clear all device overrides
+const dvClear = document.getElementById("device-clear-overrides");
+if (dvClear) {
+  dvClear.addEventListener("click", async () => {
+    await pushDeviceOverride({ clear_overrides: true });
+    document.getElementById("device-override-on").checked = false;
+    document.getElementById("device-override-controls").hidden = true;
+  });
+}
+
+// Initial load
+refreshDeviceOverridePanel().catch(() => {});
+
+// Export
+document.getElementById("export-data").addEventListener("click", () => {
+  chrome.storage.local.get(null, (data) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cleanway-export.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+});
+
+// ─── Family Hub ───────────────────────────────────────────────────
+//
+// State machine:
+//   loading  → fetch /family/mine
+//   none     → "Create" + "Join" CTAs
+//   active   → list members + recent alerts (+ owner-only invite)
+//
+// Auth: requires chrome.storage.local.auth_token (Supabase access
+// token from a successful sign-in). Without it the section stays
+// hidden — sign-in flow lives in /signup on the landing page.
+//
+// Crypto: family-crypto.js + tweetnacl globals already loaded by
+// options.html. We import family-api.js + family-crypto.js as ES
+// modules so the existing chrome.runtime.getURL pattern works.
+
+async function lazyFamilyApi() {
+  return import(chrome.runtime.getURL("utils/family-api.js"));
+}
+
+async function lazyFamilyCrypto() {
+  return import(chrome.runtime.getURL("utils/family-crypto.js"));
+}
+
+function showFamilyState(name) {
+  const states = ["loading", "none", "active"];
+  for (const s of states) {
+    const el = document.getElementById(`family-state-${s}`);
+    if (el) el.hidden = s !== name;
+  }
+}
+
+let _familyState = { token: null, currentFamilyId: null, members: [] };
+
+async function loadFamilyHub() {
+  const section = document.getElementById("family-hub-section");
+  if (!section) return;
+
+  let stored;
+  try {
+    stored = await chrome.storage.local.get(["auth_token"]);
+  } catch {
+    return;
+  }
+  if (!stored || !stored.auth_token) {
+    // Anonymous — Family Hub only makes sense for signed-in users.
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+  showFamilyState("loading");
+  _familyState.token = stored.auth_token;
+
+  const api = await lazyFamilyApi();
+  const mine = await api.listMyFamilies(stored.auth_token);
+  if (!mine || !Array.isArray(mine.families) || mine.families.length === 0) {
+    showFamilyState("none");
+    return;
+  }
+
+  // Single-family UX for v1 — pick the first. Multi-family is a future
+  // iteration (rare case: user belongs to two families).
+  const fam = mine.families[0];
+  _familyState.currentFamilyId = fam.family_id;
+
+  // Make sure my keypair is registered server-side so siblings can
+  // encrypt to me. Idempotent (server-side ON CONFLICT, client-side
+  // chrome.storage cache).
+  try {
+    const crypto = await lazyFamilyCrypto();
+    const kp = await crypto.getOrCreateKeypair();
+    await api.registerMyKey(stored.auth_token, fam.family_id, kp.publicKeyB64);
+  } catch (e) {
+    console.warn("[Cleanway] family key register failed:", e && e.message);
+  }
+
+  const members = await api.listMembers(stored.auth_token, fam.family_id);
+  _familyState.members = (members && members.members) || [];
+
+  document.getElementById("family-active-name").textContent = fam.name;
+  document.getElementById("family-active-count").textContent = String(fam.member_count);
+  const roleBadge = document.getElementById("family-active-role");
+  roleBadge.textContent = fam.role;
+  roleBadge.setAttribute("data-source", fam.role === "owner" ? "device_override" : "user_default");
+
+  document.getElementById("family-owner-controls").hidden = fam.role !== "owner";
+
+  renderFamilyMembers(_familyState.members, stored.auth_token);
+  renderFamilyAlerts(stored.auth_token, fam.family_id);
+
+  // Cache pubkeys for the background-script auto-fan-out path.
+  // Without this, background.js can't encrypt new alerts (it has no
+  // access to /family/{id}/members on every block). Re-cached on every
+  // Family Hub render so adding a new sibling propagates within minutes.
+  try {
+    const fanout = await import(chrome.runtime.getURL("utils/family-fanout.js"));
+    // Resolve my own user_id by JWT decode — sub claim is the user id.
+    let myUid = null;
+    try {
+      const parts = stored.auth_token.split(".");
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      myUid = payload.sub || null;
+    } catch { /* malformed token — leave myUid null, all members will be siblings */ }
+    await fanout.setFamilyCache(fam.family_id, myUid, _familyState.members);
+  } catch (e) {
+    console.warn("[Cleanway] family cache update failed:", e && e.message);
+  }
+
+  showFamilyState("active");
+}
+
+function renderFamilyMembers(members) {
+  const container = document.getElementById("family-members-list");
+  if (!container) return;
+  container.innerHTML = "";
+  for (const m of members) {
+    const row = document.createElement("div");
+    row.className = "family-member-row";
+    const dot = document.createElement("span");
+    dot.style.cssText = `width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: ${m.public_key_b64 ? "#22c55e" : "#64748b"};`;
+    const label = document.createElement("span");
+    label.style.flex = "1";
+    label.style.color = "#e2e8f0";
+    // We don't have email/name here — backend returns user_id only.
+    // Show shortened ID + role for now; future iteration can join with
+    // public.users to surface display_name.
+    label.textContent = `${m.user_id.slice(0, 8)}… (${m.role})`;
+    if (!m.public_key_b64) {
+      const note = document.createElement("span");
+      note.style.cssText = "font-size: 11px; color: #f59e0b;";
+      note.textContent = "no key yet";
+      row.appendChild(dot);
+      row.appendChild(label);
+      row.appendChild(note);
+    } else {
+      row.appendChild(dot);
+      row.appendChild(label);
+    }
+    container.appendChild(row);
+  }
+}
+
+async function renderFamilyAlerts(token, familyId) {
+  const container = document.getElementById("family-alerts-list");
+  if (!container) return;
+
+  const api = await lazyFamilyApi();
+  const list = await api.listAlerts(token, familyId);
+  if (!list || !Array.isArray(list.alerts) || list.alerts.length === 0) {
+    // Keep the i18n empty-state default
+    return;
+  }
+
+  const crypto = await lazyFamilyCrypto();
+  const kp = await crypto.getOrCreateKeypair();
+
+  const decrypted = [];
+  for (const env of list.alerts) {
+    const opened = crypto.decryptForMe(
+      {
+        ciphertext_b64: env.ciphertext_b64,
+        nonce_b64: env.nonce_b64,
+        sender_pubkey_b64: env.sender_pubkey_b64,
+      },
+      kp.secretKeyB64
+    );
+    if (opened) {
+      decrypted.push({ ...opened, _server_id: env.id, _at: env.created_at });
+    }
+  }
+
+  if (!decrypted.length) {
+    return; // All envelopes failed to decrypt — show empty state
+  }
+
+  container.innerHTML = "";
+  for (const a of decrypted) {
+    const row = document.createElement("div");
+    row.className = "family-alert-row";
+    const domain = document.createElement("div");
+    domain.className = "domain";
+    domain.textContent = a.domain || "(unknown domain)";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const when = a._at ? new Date(a._at).toLocaleString() : "";
+    meta.textContent = `${a.level || "blocked"} · ${when}`;
+    row.appendChild(domain);
+    row.appendChild(meta);
+    container.appendChild(row);
+  }
+}
+
+// ─── Event handlers ───────────────────────────────────────────────
+
+document.getElementById("family-create-btn")?.addEventListener("click", async () => {
+  const stored = await chrome.storage.local.get(["auth_token"]);
+  if (!stored.auth_token) return;
+  const api = await lazyFamilyApi();
+  const created = await api.createFamily(stored.auth_token, "My Family");
+  if (created) {
+    // Re-render — the keypair register + member fetch happens in loadFamilyHub.
+    await loadFamilyHub();
+  } else {
+    alert("Couldn't create family. Try again in a moment.");
+  }
+});
+
+document.getElementById("family-join-toggle-btn")?.addEventListener("click", () => {
+  const form = document.getElementById("family-join-form");
+  if (form) form.hidden = !form.hidden;
+});
+
+// Pasting a Cleanway invite URL into the code field auto-populates both
+// fields. The shared parser lives in utils/family-invite-url.js so it can be
+// covered by Node smoke tests; here we just consume the global it exports.
+const _inviteHelpers = (typeof self !== "undefined" && self.familyInviteUrl) || null;
+
+document.getElementById("family-join-code")?.addEventListener("input", (e) => {
+  if (!_inviteHelpers) return;
+  const parsed = _inviteHelpers.parseInviteUrl(e.target.value);
+  if (parsed) {
+    e.target.value = parsed.code;
+    const pinInput = document.getElementById("family-join-pin");
+    if (pinInput) pinInput.value = parsed.pin;
+  }
+});
+
+document.getElementById("family-accept-btn")?.addEventListener("click", async () => {
+  let code = (document.getElementById("family-join-code")?.value || "").trim();
+  let pin = (document.getElementById("family-join-pin")?.value || "").trim();
+  // Belt-and-suspenders: if the user clicks Join before the input handler fires,
+  // unpack the URL here too.
+  const parsed = _inviteHelpers ? _inviteHelpers.parseInviteUrl(code) : null;
+  if (parsed) {
+    code = parsed.code;
+    pin = parsed.pin;
+  }
+  const errBox = document.getElementById("family-join-error");
+  if (!code || !/^\d{4}$/.test(pin)) {
+    errBox.textContent = "Please enter a code and 4-digit PIN.";
+    errBox.hidden = false;
+    return;
+  }
+  errBox.hidden = true;
+  const stored = await chrome.storage.local.get(["auth_token"]);
+  if (!stored.auth_token) return;
+  const api = await lazyFamilyApi();
+  const joined = await api.acceptInvite(stored.auth_token, code, pin);
+  if (joined) {
+    await loadFamilyHub();
+  } else {
+    errBox.textContent = "Invalid or expired invite.";
+    errBox.hidden = false;
+  }
+});
+
+document.getElementById("family-invite-btn")?.addEventListener("click", async () => {
+  if (!_familyState.currentFamilyId || !_familyState.token) return;
+  const api = await lazyFamilyApi();
+  const invite = await api.createInvite(_familyState.token, _familyState.currentFamilyId);
+  if (!invite) {
+    alert("Couldn't create invite. Try again in a moment.");
+    return;
+  }
+  // Show modal with code+PIN — appears ONCE, server keeps only hashes.
+  const modal = document.getElementById("family-invite-modal");
+  document.getElementById("family-invite-code-display").textContent = invite.code;
+  document.getElementById("family-invite-pin-display").textContent = invite.pin;
+
+  // Build a shareable URL via the shared helper (same encoding rules as the
+  // landing /family/join route + the smoke tests).
+  const inviteUrl = _inviteHelpers
+    ? _inviteHelpers.buildInviteUrl(invite.code, invite.pin)
+    : "https://cleanway.ai/family/join#code=" +
+      encodeURIComponent(invite.code) +
+      "&pin=" +
+      encodeURIComponent(invite.pin);
+
+  // Render the QR if the vendored generator is loaded. Wrapped in a try/
+  // catch so a broken QR never blocks the modal — the manual code+PIN are
+  // still visible above.
+  const qrWrap = document.getElementById("family-invite-qr-wrap");
+  const qrEl = document.getElementById("family-invite-qr");
+  if (qrEl) qrEl.innerHTML = "";
+  try {
+    if (typeof qrcode !== "undefined" && qrEl) {
+      // Type 0 = auto-pick smallest version that fits; M = 15% redundancy
+      // (good middle ground for screens-photographed-by-phone).
+      const q = qrcode(0, "M");
+      q.addData(inviteUrl);
+      q.make();
+      // 4-pixel module, 4-module quiet zone — scans cleanly from a phone.
+      qrEl.innerHTML = q.createImgTag(4, 4, "Cleanway family invite QR");
+      if (qrWrap) qrWrap.hidden = false;
+    }
+  } catch (e) {
+    if (qrWrap) qrWrap.hidden = true;
+    console.warn("QR render failed", e);
+  }
+
+  // Shareable link block.
+  const linkWrap = document.getElementById("family-invite-link-wrap");
+  const linkDisplay = document.getElementById("family-invite-link-display");
+  if (linkDisplay) linkDisplay.textContent = inviteUrl;
+  if (linkWrap) linkWrap.hidden = false;
+
+  modal.hidden = false;
+
+  document.getElementById("family-invite-copy-btn").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(`Cleanway Family invite\nCode: ${invite.code}\nPIN: ${invite.pin}`);
+      document.getElementById("family-invite-copy-btn").textContent = "Copied ✓";
+      setTimeout(() => {
+        const btn = document.getElementById("family-invite-copy-btn");
+        if (btn) btn.textContent = "Copy both";
+      }, 2000);
+    } catch {
+      // Clipboard blocked
+    }
+  };
+
+  const linkCopyBtn = document.getElementById("family-invite-link-copy-btn");
+  if (linkCopyBtn) {
+    linkCopyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        linkCopyBtn.textContent = "Copied ✓";
+        setTimeout(() => {
+          const btn = document.getElementById("family-invite-link-copy-btn");
+          if (btn) btn.textContent = "Copy link";
+        }, 2000);
+      } catch {
+        // Clipboard blocked
+      }
+    };
+  }
+
+  document.getElementById("family-invite-close-btn").onclick = () => {
+    modal.hidden = true;
+    // Hide the link/QR sections so the next open of an empty modal looks clean.
+    if (qrWrap) qrWrap.hidden = true;
+    if (linkWrap) linkWrap.hidden = true;
+  };
+});
+
+// Initial load
+loadFamilyHub().catch(() => {});

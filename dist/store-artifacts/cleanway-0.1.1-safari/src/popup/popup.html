@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cleanway</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup" id="popup">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">&#x1F6E1;</span>
+        <span class="brand-name" data-i18n="popup_brand">Cleanway</span>
+      </div>
+      <button class="icon-btn" id="btn-settings" aria-label="Settings" data-i18n-title="popup_settings_title" title="Settings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </header>
+
+    <!-- Account locked overlay (soft-delete 30-day grace).
+         Hidden by default; popup.js unhides it when chrome.storage.local
+         has `account_locked` set, which happens when any authed API call
+         hit a 410 (utils/api.js::_handleAuthedResponse). All other UI
+         below is also hidden in that case so the user sees a clean
+         "restore-or-let-it-expire" screen.
+
+         An identical-feeling section lives at landing /account/restore.
+         The two flows converge: locked extension → click restore →
+         backend cleared → popup reloads to the regular state. -->
+    <section class="account-locked-overlay" id="account-locked-overlay" hidden>
+      <div class="locked-icon" aria-hidden="true">⏳</div>
+      <h2 class="locked-title" data-i18n="locked_title">Account on hold</h2>
+      <p class="locked-body" data-i18n="locked_body">You asked to delete your Cleanway account. We&apos;re holding it for 30 days before erasing everything. Restore it now to keep your subscription, history, and family.</p>
+      <button class="btn btn-primary" id="btn-restore-account" data-i18n="locked_restore_cta" type="button">Restore my account</button>
+      <p class="locked-meta" id="locked-meta"></p>
+      <div class="locked-error" id="locked-error" hidden></div>
+    </section>
+
+    <!-- Main status card -->
+    <section class="status-card" id="status-card" data-state="scanning">
+      <div class="status-icon" id="status-icon" aria-hidden="true">
+        <div class="spinner"></div>
+      </div>
+      <h2 class="status-title" id="status-title" data-i18n="status_scanning">Checking this page…</h2>
+      <p class="status-subtitle" id="status-subtitle"></p>
+      <!-- Strategy doc #12 — conformal confidence band. Hidden
+           until the verdict response actually carries a
+           confidence_pct field, so the chip never shows a stale
+           value while the status is "scanning". -->
+      <span class="confidence-chip" id="confidence-chip" hidden></span>
+    </section>
+
+    <!-- Primary action (only shown on danger state) -->
+    <div class="primary-action" id="primary-action" hidden>
+      <button class="btn btn-danger" id="btn-close-tab" data-i18n="action_close_tab">Close this page</button>
+    </div>
+
+    <!-- Secondary actions (always visible) -->
+    <section class="secondary-actions">
+      <button class="action-tile" id="btn-audit" type="button">
+        <span class="action-icon" aria-hidden="true">&#x1F50D;</span>
+        <span class="action-label" data-i18n="action_audit">What this site collects</span>
+      </button>
+      <button class="action-tile" id="btn-week" type="button">
+        <span class="action-icon" aria-hidden="true">&#x1F4CA;</span>
+        <span class="action-label" data-i18n="action_week">My week</span>
+      </button>
+    </section>
+
+    <!-- Aha-moment banner (first time discovering scams via inbox scan) -->
+    <section class="banner banner-success" id="aha-banner" hidden>
+      <span class="banner-icon" aria-hidden="true">&#x1F50D;</span>
+      <span class="banner-text" id="aha-text">I found links your browser missed</span>
+    </section>
+
+    <!-- Offline warning -->
+    <section class="banner banner-warning" id="offline-banner" hidden>
+      <span class="banner-icon" aria-hidden="true">&#x26A0;</span>
+      <span class="banner-text" data-i18n="offline_warning">Offline — using basic protection</span>
+    </section>
+
+    <!-- Upgrade nudge (when free daily-quota threshold near) -->
+    <section class="banner banner-upgrade" id="upgrade-banner" hidden>
+      <span class="banner-text" id="upgrade-text"></span>
+      <a class="banner-link" id="upgrade-cta" href="https://cleanway.ai/pricing" target="_blank" data-i18n="upgrade_cta">Upgrade</a>
+    </section>
+
+    <!-- Pricing v2 threshold nudge — celebratory framing for free users
+         past 50 blocked threats. Block always works; this gates DETAILS. -->
+    <section class="banner banner-threshold" id="threshold-nudge" hidden>
+      <div class="banner-block">
+        <strong class="banner-text" id="threshold-title" data-i18n="nudge_threshold_title">You've blocked 50+ scam sites!</strong>
+        <span class="banner-sub" id="threshold-subtitle" data-i18n="nudge_threshold_subtitle">Blocking stays free forever. Unlock the full "why dangerous" details on Personal.</span>
+      </div>
+      <a class="banner-link" id="threshold-cta" href="https://cleanway.ai/pricing" target="_blank" data-i18n="nudge_threshold_cta">See details</a>
+    </section>
+
+    <!-- Expandable "More" section -->
+    <details class="more">
+      <summary class="more-summary">
+        <span data-i18n="action_more">More</span>
+        <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </summary>
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-num stat-danger" id="threats-blocked">0</div>
+          <div class="stat-label" data-i18n="stats_label_blocked">Scams blocked</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num stat-warn" id="threats-warned">0</div>
+          <div class="stat-label" data-i18n="stats_label_warned">Warnings</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="total-checks">0</div>
+          <div class="stat-label" data-i18n="stats_label_checked">Links checked</div>
+        </div>
+      </div>
+
+      <!-- Recent threats list -->
+      <div class="recent-threats" id="recent-threats"></div>
+
+      <!-- Extra tools -->
+      <div class="tool-grid">
+        <button class="tool-btn" id="btn-breach" type="button" data-i18n="action_breach">Check email leak</button>
+        <button class="tool-btn" id="btn-score" type="button" data-i18n="action_score">My safety level</button>
+        <button class="tool-btn" id="btn-trust" type="button" data-i18n="action_trust">Always trust this site</button>
+        <button class="tool-btn" id="btn-report" type="button" data-i18n="action_report">Report wrong result</button>
+      </div>
+    </details>
+
+    <!-- Onboarding tip (first install only) -->
+    <section class="tip" id="onboarding-tip" hidden>
+      <div class="tip-wave" aria-hidden="true">&#x1F44B;</div>
+      <div class="tip-body">
+        <strong class="tip-title" data-i18n="onboarding_welcome">Welcome to Cleanway!</strong>
+        <p class="tip-text" data-i18n="onboarding_tip">I'll check every link you see.</p>
+      </div>
+      <button class="icon-btn tip-dismiss" id="dismiss-tip" aria-label="Dismiss">&times;</button>
+    </section>
+
+    <!-- Trust footer -->
+    <footer class="trust-footer">
+      <span aria-hidden="true">&#x1F512;</span>
+      <span data-i18n="trust_footer">Your data never leaves this device</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

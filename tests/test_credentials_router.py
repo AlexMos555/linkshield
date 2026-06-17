@@ -12,103 +12,19 @@ def _client():
     return TestClient(app)
 
 
-# ── Strategy #8 — Honeypot report endpoint ──
+# ── Strategy #8 — Honeypot endpoint removed per adversarial review ──
+# The /report-honeypot POST was a fingerprint signal via the
+# Performance Resource Timing API. The endpoint is GONE.
 
-@pytest.fixture
-def mock_redis(monkeypatch):
-    fake = AsyncMock()
-    fake.incr = AsyncMock(return_value=1)
-    fake.expire = AsyncMock(return_value=True)
-
-    async def _get():
-        return fake
-
-    import api.services.cache as cache
-    monkeypatch.setattr(cache, "get_redis", _get)
-    return fake
-
-
-def test_honeypot_report_returns_ok(mock_redis):
-    """Happy path: valid domain → ok=True + day + quarter counters bumped."""
+def test_honeypot_report_endpoint_does_not_exist():
+    """Adversarial-review regression: the report-honeypot endpoint
+    was removed. A 404 here proves the removal is honest and we
+    haven't accidentally re-added it."""
     resp = _client().post(
         "/api/v1/credentials/report-honeypot",
         json={"domain": "phisher.example"},
     )
-    assert resp.status_code == 200, resp.text
-    assert resp.json() == {"ok": True}
-    # Day + quarter increments fire.
-    assert mock_redis.incr.await_count == 2
-
-
-def test_honeypot_report_silently_ignores_invalid_domain(mock_redis):
-    """Invalid domain → ok=True (no signal to attacker probing
-    validation) and NO redis increment."""
-    resp = _client().post(
-        "/api/v1/credentials/report-honeypot",
-        json={"domain": "javascript:alert(1)"},
-    )
-    assert resp.status_code == 200
-    assert resp.json() == {"ok": True}
-    assert mock_redis.incr.await_count == 0
-
-
-def test_honeypot_report_silently_ignores_missing_dot(mock_redis):
-    """A bare label like 'localhost' has no TLD — drop it. Real
-    domains must include at least one dot."""
-    resp = _client().post(
-        "/api/v1/credentials/report-honeypot",
-        json={"domain": "localhost"},
-    )
-    assert resp.status_code == 200
-    assert mock_redis.incr.await_count == 0
-
-
-def test_honeypot_report_redis_outage_still_returns_ok(monkeypatch):
-    """If Redis is down the endpoint MUST NOT break the user's
-    submit flow. ok=True, no exception."""
-    async def _broken():
-        raise RuntimeError("redis is down")
-    import api.services.cache as cache
-    monkeypatch.setattr(cache, "get_redis", _broken)
-
-    resp = _client().post(
-        "/api/v1/credentials/report-honeypot",
-        json={"domain": "phisher.example"},
-    )
-    assert resp.status_code == 200
-    assert resp.json() == {"ok": True}
-
-
-def test_honeypot_report_normalises_case_and_strips_whitespace(mock_redis):
-    resp = _client().post(
-        "/api/v1/credentials/report-honeypot",
-        json={"domain": "  Phisher.EXAMPLE  "},
-    )
-    assert resp.status_code == 200
-    # Counter bumped (validation passed after normalisation).
-    assert mock_redis.incr.await_count == 2
-
-
-def test_honeypot_report_rejects_overlong_domain(mock_redis):
-    """RFC-1035 caps a full DNS name at 253 chars. Anything longer
-    should be dropped silently."""
-    long_domain = ("a" * 250) + ".com"  # 254 chars total
-    resp = _client().post(
-        "/api/v1/credentials/report-honeypot",
-        json={"domain": long_domain},
-    )
-    assert resp.status_code == 200
-    assert mock_redis.incr.await_count == 0
-
-
-def test_honeypot_report_missing_body_field():
-    """Pydantic should 422 when `domain` is missing — that's a
-    contract failure, not an attacker probe."""
-    resp = _client().post(
-        "/api/v1/credentials/report-honeypot",
-        json={},
-    )
-    assert resp.status_code == 422
+    assert resp.status_code == 404
 
 
 def test_known_brand_returns_hosts():

@@ -1,0 +1,381 @@
+{
+  "extension_name": {
+    "message": "Cleanway — धोखाधड़ी वाले लिंक से सुरक्षा"
+  },
+  "extension_description": {
+    "message": "धोखाधड़ी और फ़िशिंग साइटों का स्वचालित पता लगाना। सरल भाषा में, सबके लिए।"
+  },
+  "popup_brand": {
+    "message": "Cleanway"
+  },
+  "popup_settings_title": {
+    "message": "सेटिंग्स"
+  },
+  "status_scanning": {
+    "message": "इस पेज की जाँच हो रही है…"
+  },
+  "status_safe_title": {
+    "message": "यह पेज सुरक्षित है"
+  },
+  "status_safe_subtitle": {
+    "message": "$DOMAIN$ पर कोई धोखाधड़ी वाला लिंक नहीं मिला",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "कुछ लिंक संदिग्ध लग रहे हैं"
+  },
+  "status_warning_subtitle": {
+    "message": "इस पेज पर $N$ लिंक को ध्यान से जाँचने की ज़रूरत है",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "यह धोखाधड़ी वाली साइट है"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ आपकी जानकारी चुराने के लिए दूसरी साइट होने का नाटक कर रही है",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "इस पेज की जाँच नहीं हो सकी"
+  },
+  "status_unknown_subtitle": {
+    "message": "थोड़ी देर में फिर से कोशिश करें"
+  },
+  "action_close_tab": {
+    "message": "इस पेज को बंद करें"
+  },
+  "action_audit": {
+    "message": "यह साइट क्या जानकारी इकट्ठा करती है"
+  },
+  "action_week": {
+    "message": "मेरा हफ़्ता"
+  },
+  "action_more": {
+    "message": "और"
+  },
+  "action_less": {
+    "message": "कम"
+  },
+  "more_section_label": {
+    "message": "और टूल"
+  },
+  "action_breach": {
+    "message": "ईमेल लीक जाँचें"
+  },
+  "action_score": {
+    "message": "मेरा सुरक्षा स्तर"
+  },
+  "action_trust": {
+    "message": "हमेशा इस साइट पर भरोसा करें"
+  },
+  "action_report": {
+    "message": "ग़लत नतीजे की रिपोर्ट"
+  },
+  "stats_label_blocked": {
+    "message": "धोखे रोके गए"
+  },
+  "stats_label_warned": {
+    "message": "चेतावनियाँ"
+  },
+  "stats_label_checked": {
+    "message": "लिंक जाँचे गए"
+  },
+  "upgrade_free_count": {
+    "message": "फ़्री: आज $USED$/$LIMIT$ जाँच",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "अपग्रेड"
+  },
+  "onboarding_welcome": {
+    "message": "नमस्ते! मैं Cleanway हूँ।"
+  },
+  "onboarding_tip": {
+    "message": "मैं हर पेज पर हर लिंक की जाँच करता हूँ। ख़तरनाक लिंक लाल रंग में दिखेंगे। शक है? दायाँ क्लिक → «Cleanway से जाँचें»।"
+  },
+  "aha_found_scams": {
+    "message": "आपके ब्राउज़र ने $N$ धोखाधड़ी वाले लिंक नहीं पकड़े — मैंने पकड़े",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "ऑफ़लाइन — बुनियादी सुरक्षा चालू है"
+  },
+  "recent_empty": {
+    "message": "अभी कुछ नहीं मिला — सामान्य रूप से सर्फ़ करें, मैं नज़र रख रहा हूँ।"
+  },
+  "nudge_threshold_title": {
+    "message": "आपने $COUNT$+ धोखाधड़ी साइटें ब्लॉक की हैं!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "ब्लॉकिंग हमेशा मुफ़्त रहती है। Personal प्लान पर \"क्यों ख़तरनाक है\" का पूरा विवरण देखें।"
+  },
+  "nudge_threshold_cta": {
+    "message": "विवरण देखें"
+  },
+  "device_override_heading": {
+    "message": "यह डिवाइस"
+  },
+  "device_override_subtitle": {
+    "message": "केवल इस ब्राउज़र इंस्टॉलेशन पर स्किल लेवल और सुगमता लागू करें। इस अकाउंट के अन्य डिवाइस आपके डिफ़ॉल्ट पर रहेंगे।"
+  },
+  "device_effective_label": {
+    "message": "अभी सक्रिय"
+  },
+  "device_override_toggle_label": {
+    "message": "केवल इस डिवाइस पर ओवरराइड करें"
+  },
+  "device_override_toggle_desc": {
+    "message": "चालू होने पर, नीचे के नियंत्रण केवल इस डिवाइस पर सहेजे जाते हैं — आपकी अकाउंट डिफ़ॉल्ट नहीं बदलती।"
+  },
+  "device_voice_label": {
+    "message": "इस डिवाइस पर वॉइस अलर्ट"
+  },
+  "device_font_label": {
+    "message": "इस डिवाइस पर टेक्स्ट का आकार"
+  },
+  "device_clear_overrides_label": {
+    "message": "सभी डिवाइस ओवरराइड साफ़ करें"
+  },
+  "device_clear_overrides_desc": {
+    "message": "इस डिवाइस को आपकी अकाउंट डिफ़ॉल्ट पर वापस लाता है।"
+  },
+  "device_clear_overrides_btn": {
+    "message": "साफ़ करें"
+  },
+  "family_hub_heading": {
+    "message": "परिवार हब"
+  },
+  "family_hub_subtitle": {
+    "message": "जब आपके प्रियजनों के डिवाइस पर धोखाधड़ी ब्लॉक हो, तो आपको सूचित किया जाएगा। एंड-टू-एंड एन्क्रिप्शन — Cleanway भी अलर्ट नहीं पढ़ता।"
+  },
+  "family_loading": {
+    "message": "लोड हो रहा है…"
+  },
+  "family_none_label": {
+    "message": "आप अभी किसी परिवार में नहीं हैं"
+  },
+  "family_none_desc": {
+    "message": "एक बनाएँ और 5 लोगों तक को आमंत्रित करें। या कोड के साथ मौजूदा परिवार में शामिल हों।"
+  },
+  "family_create_btn": {
+    "message": "परिवार बनाएँ"
+  },
+  "family_join_btn": {
+    "message": "कोड से शामिल हों"
+  },
+  "family_accept_btn": {
+    "message": "शामिल हों"
+  },
+  "family_members_label": {
+    "message": "सदस्य"
+  },
+  "family_invite_label": {
+    "message": "सदस्य को आमंत्रित करें"
+  },
+  "family_invite_desc": {
+    "message": "एक बार उपयोग का कोड + PIN बनाता है। SMS से या व्यक्तिगत रूप से भेजें।"
+  },
+  "family_invite_btn": {
+    "message": "आमंत्रण बनाएँ"
+  },
+  "family_alerts_label": {
+    "message": "हाल के अलर्ट"
+  },
+  "family_alerts_empty": {
+    "message": "अभी कोई अलर्ट नहीं — परिवार के ब्लॉक यहाँ दिखेंगे।"
+  },
+  "family_invite_modal_title": {
+    "message": "इसे अपने परिवार के सदस्य से साझा करें"
+  },
+  "family_invite_modal_desc": {
+    "message": "दोनों मान एक बार दिखते हैं। डायलॉग बंद होने के बाद आप उन्हें फिर नहीं देख पाएँगे — ज़रूरत पड़ने पर नया आमंत्रण बनाएँ।"
+  },
+  "family_invite_code_label": {
+    "message": "कोड"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "दोनों कॉपी करें"
+  },
+  "family_invite_close_btn": {
+    "message": "हो गया"
+  },
+  "family_invite_qr_label": {
+    "message": "या फ़ोन से स्कैन करें"
+  },
+  "family_invite_link_label": {
+    "message": "या यह लिंक शेयर करें"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "लिंक कॉपी करें"
+  },
+  "family_join_code_placeholder": {
+    "message": "कोड या आमंत्रण लिंक चिपकाएँ"
+  },
+  "family_join_paste_hint": {
+    "message": "सुझाव: पहले फ़ील्ड में Cleanway आमंत्रण लिंक चिपकाएँ — PIN अपने आप भर जाएगा।"
+  },
+  "locked_title": {
+    "message": "अकाउंट होल्ड पर है"
+  },
+  "locked_body": {
+    "message": "आपने अपने Cleanway अकाउंट को डिलीट करने का अनुरोध किया था। हम इसे 30 दिनों तक रखते हैं, फिर सब कुछ मिटा देते हैं। अभी पुनर्स्थापित करें ताकि आपकी सब्सक्रिप्शन, इतिहास और परिवार बना रहे।"
+  },
+  "locked_restore_cta": {
+    "message": "मेरा अकाउंट पुनर्स्थापित करें"
+  },
+  "locked_restoring": {
+    "message": "पुनर्स्थापित किया जा रहा है…"
+  },
+  "locked_meta": {
+    "message": "$DATE$ को डिलीट का अनुरोध किया गया। 30 दिनों में स्थायी डिलीट।",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "आपका सेशन समाप्त हो गया है। कृपया cleanway.ai पर दोबारा साइन इन करें।"
+  },
+  "locked_error_generic": {
+    "message": "आपका अकाउंट पुनर्स्थापित नहीं हो सका। कृपया पुनः प्रयास करें या सपोर्ट से संपर्क करें।"
+  },
+  "locked_error_network": {
+    "message": "हम अपने सर्वर तक नहीं पहुँच सके। कृपया अपना कनेक्शन जाँचें।"
+  },
+  "trust_footer": {
+    "message": "आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता"
+  },
+  "block_title": {
+    "message": "रुकें"
+  },
+  "block_subtitle_scam": {
+    "message": "यह धोखाधड़ी वाली साइट है"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ आपकी जानकारी चुराने के लिए दूसरी साइट होने का नाटक कर रही है।",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "यह साइट $BRAND$ होने का नाटक कर रही है",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "ठग ऐसी साइटों का उपयोग कैसे करते हैं:"
+  },
+  "block_scheme_step1": {
+    "message": "आपसे पासवर्ड या बैंक जानकारी माँगी जाएगी"
+  },
+  "block_scheme_step2": {
+    "message": "ठग आपकी लिखी हर चीज़ चुरा लेगा"
+  },
+  "block_scheme_step3": {
+    "message": "वे आपका खाता ख़ाली कर देंगे या पहचान चुरा लेंगे"
+  },
+  "block_back_button": {
+    "message": "सुरक्षा की ओर वापस जाएँ"
+  },
+  "block_proceed_button": {
+    "message": "मैं जोख़िम समझता हूँ — फिर भी खोलें"
+  },
+  "block_proceed_countdown": {
+    "message": "$N$ सेकंड रुकें…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Cleanway से सुरक्षित। आपका डेटा इसी डिवाइस पर रहता है।"
+  },
+  "block_voice_alert": {
+    "message": "रुको। साइट $DOMAIN$ खतरनाक है। अपना पासवर्ड न डालो।",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_evidence_heading": {
+    "message": "हमने इस साइट को क्यों ब्लॉक किया"
+  },
+  "welcome_hero_title": {
+    "message": "अब आप सुरक्षित हैं"
+  },
+  "welcome_hero_subtitle": {
+    "message": "आप जो भी लिंक देखते हैं, उसकी जाँच होती है। ख़तरनाक लिंक अपने आप रोक दिए जाते हैं।"
+  },
+  "welcome_step1_title": {
+    "message": "स्वचालित जाँच"
+  },
+  "welcome_step1_desc": {
+    "message": "हर पेज, हर लिंक। हरा चिह्न मतलब सुरक्षित। लाल मतलब धोखाधड़ी।"
+  },
+  "welcome_step2_title": {
+    "message": "आपका डेटा आपके पास रहता है"
+  },
+  "welcome_step2_desc": {
+    "message": "हम केवल साइटों के नाम जाँचते हैं। आपका ब्राउज़िंग इतिहास कभी भी इस डिवाइस से बाहर नहीं जाता।"
+  },
+  "welcome_step3_title": {
+    "message": "बिना धीमा किए"
+  },
+  "welcome_step3_desc": {
+    "message": "ज़्यादातर जाँच आपके डिवाइस पर एक सेकंड से कम में हो जाती है।"
+  },
+  "welcome_step4_title": {
+    "message": "पूरे परिवार के लिए"
+  },
+  "welcome_step4_desc": {
+    "message": "माता-पिता, बच्चों, दादा-दादी को एक प्लान से सुरक्षित करें। सबके लिए अलग मोड।"
+  },
+  "welcome_cta_scan": {
+    "message": "मेरे इनबॉक्स में छिपी धोखाधड़ी जाँचें"
+  },
+  "welcome_cta_skip": {
+    "message": "छोड़ें — ब्राउज़ करना शुरू करें"
+  },
+  "welcome_trust_footer": {
+    "message": "ब्लॉकिंग हमेशा मुफ़्त। आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता।"
+  }
+}

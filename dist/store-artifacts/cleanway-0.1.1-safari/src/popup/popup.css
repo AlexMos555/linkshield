@@ -1,0 +1,415 @@
+/* Cleanway Popup — Regular Mode (default) v2
+ * Design: один главный статус, никакого жаргона, минимум кнопок.
+ * Цвета: темный фон, яркий зелёный/жёлтый/красный статус.
+ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f172a;
+  --bg-elevated: #1e293b;
+  --bg-subtle: rgba(30, 41, 59, 0.6);
+  --border: #334155;
+  --border-subtle: rgba(51, 65, 85, 0.6);
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --green: #22c55e;
+  --green-bg: rgba(34, 197, 94, 0.12);
+  --green-border: rgba(34, 197, 94, 0.35);
+  --green-text: #4ade80;
+
+  --yellow: #eab308;
+  --yellow-bg: rgba(234, 179, 8, 0.12);
+  --yellow-border: rgba(234, 179, 8, 0.35);
+  --yellow-text: #facc15;
+
+  --red: #ef4444;
+  --red-bg: rgba(239, 68, 68, 0.14);
+  --red-border: rgba(239, 68, 68, 0.4);
+  --red-text: #f87171;
+
+  --blue: #3b82f6;
+  --blue-bg: rgba(59, 130, 246, 0.12);
+  --blue-text: #60a5fa;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body { width: 380px; min-height: 300px; }
+
+.popup { padding: 0; }
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-logo { font-size: 22px; }
+.brand-name { font-size: 16px; font-weight: 700; color: var(--text); }
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: var(--bg-subtle); color: var(--text); }
+
+/* ── Status Card (БОЛЬШОЙ главный блок) ── */
+.status-card {
+  padding: 26px 20px 22px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.3s;
+}
+.status-card[data-state="safe"]     { background: linear-gradient(180deg, var(--green-bg), transparent); }
+.status-card[data-state="warning"]  { background: linear-gradient(180deg, var(--yellow-bg), transparent); }
+.status-card[data-state="danger"]   { background: linear-gradient(180deg, var(--red-bg), transparent); }
+.status-card[data-state="unknown"]  { background: linear-gradient(180deg, var(--bg-subtle), transparent); }
+.status-card[data-state="scanning"] { background: linear-gradient(180deg, var(--blue-bg), transparent); }
+
+.status-icon {
+  font-size: 56px;
+  line-height: 1;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  background: var(--bg-subtle);
+  transition: all 0.3s;
+}
+.status-card[data-state="safe"] .status-icon    { background: var(--green-bg); color: var(--green-text); border: 2px solid var(--green-border); }
+.status-card[data-state="warning"] .status-icon { background: var(--yellow-bg); color: var(--yellow-text); border: 2px solid var(--yellow-border); }
+.status-card[data-state="danger"] .status-icon  { background: var(--red-bg); color: var(--red-text); border: 2px solid var(--red-border); }
+
+.status-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+.status-card[data-state="safe"] .status-title    { color: var(--green-text); }
+.status-card[data-state="warning"] .status-title { color: var(--yellow-text); }
+.status-card[data-state="danger"] .status-title  { color: var(--red-text); }
+
+.status-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 300px;
+  margin: 0 auto;
+  word-break: break-word;
+}
+
+/* Strategy doc #12 — conformal confidence band. Quiet by design:
+   the verdict is the headline, the chip lets pros/reviewers
+   verify we're not over-claiming. */
+.confidence-chip {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+.confidence-chip[hidden] { display: none; }
+
+/* Spinner (scanning state) */
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--blue-text);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Primary action (only danger state) ── */
+.primary-action { padding: 14px 18px 0; }
+.btn {
+  display: block;
+  width: 100%;
+  padding: 13px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s;
+  text-align: center;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+/* Primary CTA — used by the soft-delete-restore button. Green to
+   match landing's restore page (#22c55e) so the two flows feel like
+   one product. Darker hover for affordance. */
+.btn-primary { background: #22c55e; color: #052e16; }
+.btn-primary:hover { background: #16a34a; }
+.btn-primary:disabled { background: #16a34a; cursor: wait; opacity: 0.85; }
+
+/* ── Secondary actions ── */
+.secondary-actions {
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.action-tile {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 14px 10px;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  color: var(--text);
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.action-tile:hover { background: var(--border); border-color: var(--border); transform: translateY(-1px); }
+.action-icon { font-size: 22px; }
+.action-label { font-size: 12px; font-weight: 600; color: var(--text-muted); line-height: 1.3; }
+.action-tile:hover .action-label { color: var(--text); }
+
+/* ── Banners ── */
+.banner {
+  margin: 0 18px 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.banner-icon { font-size: 16px; flex-shrink: 0; }
+.banner-text { flex-grow: 1; }
+.banner-success { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
+.banner-warning { background: var(--yellow-bg); color: var(--yellow-text); border: 1px solid var(--yellow-border); }
+.banner-upgrade {
+  background: linear-gradient(90deg, var(--blue-bg), var(--green-bg));
+  color: var(--text);
+  border: 1px solid var(--blue);
+}
+.banner-link {
+  background: var(--green);
+  color: #052e16;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.banner-link:hover { background: var(--green-text); }
+
+/* Pricing v2 threshold nudge — celebratory: green-tinted, two-line copy.
+   Distinct from .banner-upgrade (daily quota) so the user can tell them
+   apart at a glance. */
+.banner-threshold {
+  background: linear-gradient(90deg, var(--green-bg), var(--blue-bg));
+  color: var(--text);
+  border: 1px solid var(--green);
+  padding: 12px 14px;
+  align-items: flex-start;
+}
+.banner-threshold .banner-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-grow: 1;
+}
+.banner-threshold .banner-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-text);
+}
+.banner-threshold .banner-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+/* ── More (expandable) ── */
+.more {
+  margin: 0 18px 14px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 14px;
+}
+.more-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  user-select: none;
+}
+.more-summary::-webkit-details-marker { display: none; }
+.more-summary:hover { color: var(--text); }
+.chevron { transition: transform 0.2s; }
+.more[open] .chevron { transform: rotate(180deg); }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+.stat {
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  text-align: center;
+}
+.stat-num { font-size: 18px; font-weight: 800; color: var(--text); }
+.stat-num.stat-danger { color: var(--red-text); }
+.stat-num.stat-warn { color: var(--yellow-text); }
+.stat-label { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+.recent-threats { margin-bottom: 12px; }
+.threat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.threat-domain { color: var(--text); font-weight: 600; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.threat-time { color: var(--text-dim); font-size: 11px; flex-shrink: 0; }
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.tool-btn {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.tool-btn:hover { background: var(--border); color: var(--text); border-color: var(--border); }
+
+/* ── Onboarding tip ── */
+.tip {
+  margin: 0 18px 14px;
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--green);
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.tip-wave { font-size: 20px; flex-shrink: 0; }
+.tip-body { flex-grow: 1; }
+.tip-title { display: block; color: var(--text); font-size: 13px; margin-bottom: 4px; }
+.tip-text { color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+.tip-dismiss { color: var(--text-dim); font-size: 18px; line-height: 1; }
+
+/* ── Trust footer ── */
+.trust-footer {
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg);
+}
+
+/* ── Account-locked overlay (soft-delete grace) ── */
+.account-locked-overlay {
+  padding: 28px 20px 24px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--yellow-bg), transparent);
+}
+.locked-icon {
+  font-size: 44px;
+  margin-bottom: 10px;
+  line-height: 1;
+}
+.locked-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--yellow-text);
+  margin: 0 0 8px;
+}
+.locked-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 18px;
+  text-align: left;
+}
+.locked-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 12px 0 0;
+  line-height: 1.4;
+}
+.locked-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--red-bg);
+  border: 1px solid var(--red-border);
+  border-radius: 6px;
+  color: var(--red-text);
+  font-size: 12px;
+  text-align: left;
+}
+
+/* ── Hidden utility ── */
+[hidden] { display: none !important; }

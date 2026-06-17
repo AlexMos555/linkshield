@@ -1,0 +1,381 @@
+{
+  "extension_name": {
+    "message": "Cleanway — Защита от мошеннических ссылок"
+  },
+  "extension_description": {
+    "message": "Автоматическая защита от мошеннических сайтов и фишинга. Простым языком, понятно всем."
+  },
+  "popup_brand": {
+    "message": "Cleanway"
+  },
+  "popup_settings_title": {
+    "message": "Настройки"
+  },
+  "status_scanning": {
+    "message": "Проверяю страницу…"
+  },
+  "status_safe_title": {
+    "message": "Эта страница безопасна"
+  },
+  "status_safe_subtitle": {
+    "message": "На $DOMAIN$ не найдено мошеннических ссылок",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Некоторые ссылки подозрительные"
+  },
+  "status_warning_subtitle": {
+    "message": "На странице $N$ ссылок, которые стоит проверить внимательнее",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "Это мошеннический сайт"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ притворяется другим сайтом, чтобы украсть ваши данные",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "Не удалось проверить страницу"
+  },
+  "status_unknown_subtitle": {
+    "message": "Попробуйте через секунду"
+  },
+  "action_close_tab": {
+    "message": "Закрыть эту страницу"
+  },
+  "action_audit": {
+    "message": "Что собирает этот сайт"
+  },
+  "action_week": {
+    "message": "Моя неделя"
+  },
+  "action_more": {
+    "message": "Ещё"
+  },
+  "action_less": {
+    "message": "Свернуть"
+  },
+  "more_section_label": {
+    "message": "Дополнительно"
+  },
+  "action_breach": {
+    "message": "Проверить утечку email"
+  },
+  "action_score": {
+    "message": "Мой уровень защиты"
+  },
+  "action_trust": {
+    "message": "Всегда доверять этому сайту"
+  },
+  "action_report": {
+    "message": "Сообщить об ошибке"
+  },
+  "stats_label_blocked": {
+    "message": "Мошенников заблокировано"
+  },
+  "stats_label_warned": {
+    "message": "Предупреждений"
+  },
+  "stats_label_checked": {
+    "message": "Ссылок проверено"
+  },
+  "upgrade_free_count": {
+    "message": "Бесплатно: $USED$ из $LIMIT$ проверок сегодня",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Подписка"
+  },
+  "onboarding_welcome": {
+    "message": "Привет! Я Cleanway."
+  },
+  "onboarding_tip": {
+    "message": "Я проверяю каждую ссылку на странице. Опасные подсвечиваю красным. Если сомневаешься — правый клик → \"Проверить через Cleanway\"."
+  },
+  "aha_found_scams": {
+    "message": "Нашёл $N$ мошеннических ссылок, которые пропустил браузер",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Нет связи — работает базовая защита"
+  },
+  "recent_empty": {
+    "message": "Пока ничего не найдено — я слежу, пока вы пользуетесь интернетом."
+  },
+  "nudge_threshold_title": {
+    "message": "Вы заблокировали $COUNT$+ мошеннических сайтов!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Блокировка остаётся бесплатной навсегда. Откройте полные детали «почему опасно» на тарифе Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "Открыть детали"
+  },
+  "device_override_heading": {
+    "message": "Это устройство"
+  },
+  "device_override_subtitle": {
+    "message": "Применить уровень навыка и настройки доступности только для этой установки браузера. Другие устройства аккаунта останутся со значениями по умолчанию."
+  },
+  "device_effective_label": {
+    "message": "Сейчас активно"
+  },
+  "device_override_toggle_label": {
+    "message": "Изменить только на этом устройстве"
+  },
+  "device_override_toggle_desc": {
+    "message": "Когда включено, настройки ниже сохранятся только на этом устройстве — настройки аккаунта не изменятся."
+  },
+  "device_voice_label": {
+    "message": "Голосовые оповещения на этом устройстве"
+  },
+  "device_font_label": {
+    "message": "Размер текста на этом устройстве"
+  },
+  "device_clear_overrides_label": {
+    "message": "Сбросить все локальные переопределения"
+  },
+  "device_clear_overrides_desc": {
+    "message": "Вернёт это устройство к настройкам аккаунта."
+  },
+  "device_clear_overrides_btn": {
+    "message": "Сбросить"
+  },
+  "family_hub_heading": {
+    "message": "Семейный центр"
+  },
+  "family_hub_subtitle": {
+    "message": "Получайте уведомления, когда на устройствах близких блокируются мошеннические сайты. Сквозное шифрование — даже Cleanway не читает оповещения."
+  },
+  "family_loading": {
+    "message": "Загружаем…"
+  },
+  "family_none_label": {
+    "message": "Вы ещё не в семье"
+  },
+  "family_none_desc": {
+    "message": "Создайте свою и пригласите до 5 человек. Или вступите в существующую по коду."
+  },
+  "family_create_btn": {
+    "message": "Создать семью"
+  },
+  "family_join_btn": {
+    "message": "Присоединиться по коду"
+  },
+  "family_accept_btn": {
+    "message": "Присоединиться"
+  },
+  "family_members_label": {
+    "message": "участников"
+  },
+  "family_invite_label": {
+    "message": "Пригласить члена семьи"
+  },
+  "family_invite_desc": {
+    "message": "Сгенерирует одноразовый код + PIN. Отправьте по SMS или передайте лично."
+  },
+  "family_invite_btn": {
+    "message": "Создать приглашение"
+  },
+  "family_alerts_label": {
+    "message": "Недавние оповещения"
+  },
+  "family_alerts_empty": {
+    "message": "Пока пусто — здесь появятся блокировки семьи."
+  },
+  "family_invite_modal_title": {
+    "message": "Передайте это члену семьи"
+  },
+  "family_invite_modal_desc": {
+    "message": "Оба значения показываются один раз. После закрытия окна вы их не увидите — создайте новое приглашение, если нужно."
+  },
+  "family_invite_code_label": {
+    "message": "Код"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "Скопировать оба"
+  },
+  "family_invite_close_btn": {
+    "message": "Готово"
+  },
+  "family_invite_qr_label": {
+    "message": "Или отсканируйте с телефона"
+  },
+  "family_invite_link_label": {
+    "message": "Или поделитесь этой ссылкой"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "Копировать ссылку"
+  },
+  "family_join_code_placeholder": {
+    "message": "Код или ссылка-приглашение"
+  },
+  "family_join_paste_hint": {
+    "message": "Подсказка: вставьте ссылку-приглашение Cleanway в первое поле — PIN подставится автоматически."
+  },
+  "locked_title": {
+    "message": "Аккаунт на удержании"
+  },
+  "locked_body": {
+    "message": "Вы попросили удалить аккаунт Cleanway. Мы храним его 30 дней, прежде чем удалить навсегда. Восстановите сейчас, чтобы сохранить подписку, историю и семью."
+  },
+  "locked_restore_cta": {
+    "message": "Восстановить аккаунт"
+  },
+  "locked_restoring": {
+    "message": "Восстанавливаем…"
+  },
+  "locked_meta": {
+    "message": "Удаление запрошено $DATE$. Полное удаление через 30 дней.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Сессия истекла. Войдите снова на cleanway.ai."
+  },
+  "locked_error_generic": {
+    "message": "Не удалось восстановить аккаунт. Попробуйте снова или свяжитесь с поддержкой."
+  },
+  "locked_error_network": {
+    "message": "Не удалось связаться с серверами. Проверьте подключение."
+  },
+  "trust_footer": {
+    "message": "Ваши данные не покидают это устройство"
+  },
+  "block_title": {
+    "message": "СТОП"
+  },
+  "block_subtitle_scam": {
+    "message": "Это мошеннический сайт"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ притворяется другим сайтом, чтобы украсть ваши данные.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "Этот сайт притворяется $BRAND$",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "Как работают мошенники на таких сайтах:"
+  },
+  "block_scheme_step1": {
+    "message": "Вас попросят ввести пароль или данные банковской карты"
+  },
+  "block_scheme_step2": {
+    "message": "Мошенник украдёт всё, что вы введёте"
+  },
+  "block_scheme_step3": {
+    "message": "С вашего счёта снимут деньги или украдут личность"
+  },
+  "block_back_button": {
+    "message": "Вернуться в безопасность"
+  },
+  "block_proceed_button": {
+    "message": "Я понимаю риск — открыть всё равно"
+  },
+  "block_proceed_countdown": {
+    "message": "Подождите $N$ секунд…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Защищает Cleanway. Ваши данные остаются на этом устройстве."
+  },
+  "block_voice_alert": {
+    "message": "Стой. Сайт $DOMAIN$ опасен. Не вводи пароль.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_evidence_heading": {
+    "message": "Почему мы заблокировали этот сайт"
+  },
+  "welcome_hero_title": {
+    "message": "Вы под защитой"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Каждая ссылка, которую вы видите, проверяется. Опасные блокируются автоматически."
+  },
+  "welcome_step1_title": {
+    "message": "Автоматическая проверка"
+  },
+  "welcome_step1_desc": {
+    "message": "Каждая страница, каждая ссылка. Зелёная отметка — безопасно. Красная — мошенники."
+  },
+  "welcome_step2_title": {
+    "message": "Ваши данные остаются с вами"
+  },
+  "welcome_step2_desc": {
+    "message": "Мы проверяем только названия сайтов. История посещений никогда не покидает это устройство."
+  },
+  "welcome_step3_title": {
+    "message": "Без тормозов"
+  },
+  "welcome_step3_desc": {
+    "message": "Большинство проверок происходит прямо на вашем устройстве за долю секунды."
+  },
+  "welcome_step4_title": {
+    "message": "Для всей семьи"
+  },
+  "welcome_step4_desc": {
+    "message": "Защитите родителей, детей, бабушек одной подпиской. Разные режимы для каждого."
+  },
+  "welcome_cta_scan": {
+    "message": "Проверить мою почту на мошенников"
+  },
+  "welcome_cta_skip": {
+    "message": "Пропустить — начать пользоваться"
+  },
+  "welcome_trust_footer": {
+    "message": "Блокировка бесплатна навсегда. Ваши данные не покидают это устройство."
+  }
+}

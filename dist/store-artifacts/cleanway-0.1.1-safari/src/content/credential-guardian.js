@@ -437,11 +437,7 @@
       // — closes the "guaranteed no-leak" marketing promise.
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap">' +
       '<button id="ls-credguard-cancel" style="background:#22c55e;color:#052e16;border:0;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer">Don\'t submit — take me back</button>' +
-      // Grandma-test copy: "Send fake password" reads as "lie / cheat".
-      // "Keep my password safe" reads as the user's intent.
-      // The blue background was failing WCAG AA contrast on grey text;
-      // we now use a deeper navy with light text (verified 7.4:1).
-      '<button id="ls-credguard-honeypot" aria-label="Keep my real password safe — submit a randomly generated placeholder instead" style="background:#0c4a6e;color:#f0f9ff;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer" title="Cleanway will submit a random placeholder password. Your real password stays on this device.">🛡️ Keep my password safe</button>' +
+      '<button id="ls-credguard-honeypot" style="background:#0ea5e9;color:#082f49;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer" title="Submit with a randomly-generated honeypot password. Your real password never leaves your device.">Send fake password (recommended)</button>' +
       '<button id="ls-credguard-override" style="background:transparent;color:#fca5a5;border:1px solid #7f1d1d;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer">Submit anyway</button>' +
       "</div>";
 
@@ -505,51 +501,37 @@
     setTimeout(function () { cancelBtn.focus(); }, 0);
   }
 
-  // ── Strategy doc #8 — Honeypot Shield (hardened 2026-06-17) ──
+  // ── Strategy doc #8 — Honeypot Shield ──
   // Replace every password input in the form with a fresh
-  // cryptographically-random throwaway, force-submit, and show a
-  // non-blocking toast inside a CLOSED shadow root so a hostile
-  // page can't read it.
+  // cryptographically-random throwaway value, force-submit so the
+  // attacker gets the honeypot, and show a non-blocking toast so
+  // the user knows what happened. The real password value never
+  // leaves the device.
   //
-  // Adversarial-review fixes applied here:
-  //   * NO restore. The 1.5s restore was a vector — phishing kits
-  //     fail-and-retry, which re-read the framework state at t=2s
-  //     and got the original password. The honest contract is:
-  //     once you press the shield button, the real password never
-  //     touches the page again. If you're on a legit site you
-  //     mis-flagged, retype it.
-  //   * Per-input UNIQUE honeypot. Multi-password forms (signup,
-  //     confirm-password, change-password) used to receive the
-  //     SAME value across inputs, which both broke the form for
-  //     legit cases and made detection trivial.
-  //   * No fixed watermark prefix. A constant 'Cwx9p_' was a
-  //     perfect Cleanway-installed fingerprint and a kit-side
-  //     regex filter. We now ship pure random ASCII that's
-  //     indistinguishable from a real password the user typed.
-  //   * Shadow DOM for the toast — page MutationObservers no
-  //     longer see the "shield activated" text in the live tree.
-  //   * No HTTP report — the previous fetch surfaced in the page's
-  //     PerformanceObserver as a Cleanway-installed signal. The
-  //     counter lives in chrome.storage.local only; the
-  //     transparency report uses opt-in aggregated extension
-  //     telemetry instead.
+  // The honeypot value is prefixed with a fixed watermark so a
+  // future "have-i-been-pwned for honeypot dumps" service could
+  // recognize it in paste dumps and confirm the page was hostile —
+  // a data-source for tightening EVIDENCE_BOOK later.
   function _submitWithHoneypot(form) {
     if (!form) return;
+    var honeypot = _generateHoneypotValue();
 
-    // querySelectorAll on `form` already pierces nested elements
-    // including most webcomponent slots. For closed shadow roots
-    // we walk the composed tree (best-effort — closed roots
-    // remain inaccessible by design; we accept the gap).
-    var pwInputs = _collectPasswordInputs(form);
+    // Stash the original values so we can restore them AFTER the
+    // submit completes. Most legit-but-flagged forms have no
+    // attacker on the other end — restoring keeps the input state
+    // sane if the user accidentally hits the honeypot button.
+    var pwInputs = form.querySelectorAll('input[type="password"]');
+    var originals = [];
     for (var i = 0; i < pwInputs.length; i++) {
-      // EACH input gets its own value. A signup form's password
-      // and confirm-password get distinct strings; the form's
-      // "passwords don't match" client-side check will fail
-      // gracefully on legit-but-flagged pages.
-      _setInputValueWithFrameworkSync(pwInputs[i], _generateHoneypotValue());
+      originals.push({ input: pwInputs[i], value: pwInputs[i].value });
+      // Use the native setter so frameworks that mirror state
+      // (React, Vue, Lit) actually pick up the change instead of
+      // re-rendering the input back to the original value.
+      _setInputValueWithFrameworkSync(pwInputs[i], honeypot);
     }
 
     form._lsGuardOverridden = true;
+    // Counter for the popup + Q3 transparency report.
     try {
       chrome.storage.local.get(["honeypot_used_count"]).then(function (d) {
         var next = (d.honeypot_used_count || 0) + 1;
@@ -557,7 +539,34 @@
       }).catch(function () {});
     } catch (_e) { /* ignore */ }
 
+    // Fire-and-forget anonymous report (domain only). Keeps the
+    // server-blind invariant — no path, no value, no user id.
+    try {
+      var apiBase = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
+        ? window.CLEANWAY_API_BASE
+        : "https://api.cleanway.ai";
+      fetch(apiBase + "/api/v1/credentials/report-honeypot", {
+        method: "POST",
+        mode: "cors",
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: window.location.host }),
+      }).catch(function () {});
+    } catch (_e) { /* ignore — non-critical telemetry */ }
+
     _showHoneypotToast();
+
+    // Restore the original value AFTER a tick — gives the network
+    // request time to fly with the honeypot, then puts the input
+    // back the way the user typed it (in case they were testing
+    // on a legit but mis-flagged site).
+    setTimeout(function () {
+      for (var j = 0; j < originals.length; j++) {
+        try { _setInputValueWithFrameworkSync(originals[j].input, originals[j].value); }
+        catch (_e) {}
+      }
+    }, 1500);
 
     if (typeof form.requestSubmit === "function") {
       try { form.requestSubmit(); return; } catch (_e) {}
@@ -565,47 +574,29 @@
     try { form.submit(); } catch (_e) {}
   }
 
-  function _collectPasswordInputs(root) {
-    // Pierce open shadow roots we can see. Closed roots stay
-    // inaccessible — kits using a closed root to hide a password
-    // field also can't read it from page-world JS, so the threat
-    // model there is narrower.
-    var out = [];
-    function walk(node) {
-      if (!node) return;
-      var inputs = node.querySelectorAll
-        ? node.querySelectorAll('input[type="password"]')
-        : [];
-      for (var i = 0; i < inputs.length; i++) out.push(inputs[i]);
-      var all = node.querySelectorAll ? node.querySelectorAll("*") : [];
-      for (var j = 0; j < all.length; j++) {
-        if (all[j].shadowRoot) walk(all[j].shadowRoot);
-      }
-    }
-    walk(root);
-    return out;
-  }
-
   function _generateHoneypotValue() {
-    // 24 random bytes → 32-char base64-ish output that looks like
-    // a real high-entropy password the user typed. No fixed
-    // prefix — would be a Cleanway-installed fingerprint. Mixed
-    // case + digits keeps complexity rules happy on most forms.
-    var CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-    var out = "";
-    var len = 18 + Math.floor(Math.random() * 4); // 18..21 chars
+    // 16 random bytes → 32 hex chars + a fixed watermark prefix.
+    // Watermark length is intentionally fixed so the total length
+    // is constant — a phishing kit can't infer "the user installed
+    // Cleanway" from variable-length passwords.
+    var prefix = "Cwx9p_";
     if (window.crypto && window.crypto.getRandomValues) {
-      var bytes = new Uint8Array(len);
+      var bytes = new Uint8Array(16);
       window.crypto.getRandomValues(bytes);
+      var hex = "";
       for (var i = 0; i < bytes.length; i++) {
-        out += CHARS[bytes[i] % CHARS.length];
+        var h = bytes[i].toString(16);
+        hex += h.length === 1 ? "0" + h : h;
       }
-      return out;
+      return prefix + hex;
     }
-    for (var k = 0; k < len; k++) {
-      out += CHARS[Math.floor(Math.random() * CHARS.length)];
+    // Fallback that's still uniform but lower-entropy. Should
+    // never run on any browser shipped this decade.
+    var s = "";
+    for (var k = 0; k < 32; k++) {
+      s += Math.floor(Math.random() * 16).toString(16);
     }
-    return out;
+    return prefix + s;
   }
 
   function _setInputValueWithFrameworkSync(input, value) {
@@ -629,27 +620,16 @@
   }
 
   function _showHoneypotToast() {
-    if (document.getElementById("ls-honeypot-host")) return;
-    // Render INSIDE a closed shadow root so the page can't read
-    // the toast contents via MutationObserver on documentElement.
-    // The host element is generic-named and contains no text —
-    // observers see only an empty <div id="ls-honeypot-host">.
-    var host = document.createElement("div");
-    host.id = "ls-honeypot-host";
-    host.style.cssText = "all:initial;position:fixed;top:16px;right:16px;z-index:2147483646;";
-    var shadow;
-    try {
-      shadow = host.attachShadow({ mode: "closed" });
-    } catch (_e) {
-      // Browsers that pre-date attachShadow shouldn't be in scope
-      // for this product. Fall back to plain DOM — the page can
-      // observe it, but the shield itself still worked.
-      shadow = host;
-    }
+    if (document.getElementById("ls-honeypot-toast")) return;
     var toast = document.createElement("div");
+    toast.id = "ls-honeypot-toast";
     toast.setAttribute("role", "status");
     toast.setAttribute("aria-live", "polite");
     toast.style.cssText = [
+      "position:fixed",
+      "top:16px",
+      "right:16px",
+      "z-index:2147483646",
       "background:#082f49",
       "color:#e0f2fe",
       "padding:14px 18px",
@@ -660,15 +640,15 @@
       "max-width:340px",
     ].join(";");
     toast.innerHTML =
-      '<strong>🛡️ Cleanway sent a safe placeholder</strong>' +
+      '<strong>🛡️ Honeypot shield activated</strong>' +
       '<div style="margin-top:6px;color:#bae6fd">' +
-      "Your real password stayed on this device. If this page turns out " +
-      "to be legit, just retype your password — it was never sent." +
+      "We sent a randomly-generated password to that form. Your real " +
+      "password never left this device. If you need to log in here for " +
+      "real, double-check the URL first." +
       "</div>";
-    shadow.appendChild(toast);
-    document.documentElement.appendChild(host);
+    document.documentElement.appendChild(toast);
     setTimeout(function () {
-      if (host.parentNode) host.parentNode.removeChild(host);
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
     }, 8000);
   }
 

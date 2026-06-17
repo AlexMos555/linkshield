@@ -1,0 +1,669 @@
+/**
+ * Cleanway Popup — Regular Mode (default) v2
+ * Логика: 1 главный статус + 2 secondary + expandable more.
+ * Никакого жаргона. i18n через chrome.i18n.getMessage с fallback.
+ */
+
+// ─── i18n helpers ─────────────────────────────────────────────
+// chrome.i18n.getMessage читает из _locales/<lang>/messages.json
+// Fallback: inline English для preview panel и dev.
+
+var FALLBACK_EN = {
+  status_scanning: "Checking this page…",
+  status_safe_title: "This page is safe",
+  status_safe_subtitle: "No scam links found on $1",
+  status_warning_title: "Some links look suspicious",
+  status_warning_subtitle: "$1 links on this page need a closer look",
+  status_danger_title: "This is a scam site",
+  status_danger_subtitle: "$1 is pretending to be someone else to steal your information",
+  status_unknown_title: "Couldn't check this page",
+  status_unknown_subtitle: "Try again in a moment",
+  aha_found_scams: "I found $1 scam links your browser missed",
+  upgrade_free_count: "Free: $1 of $2 checks today",
+  // Pricing v2 — celebratory framing, NOT a paywall threat.
+  // Block always works; this nudges details upgrade only.
+  nudge_threshold_title: "You've blocked $1+ scam sites!",
+  nudge_threshold_subtitle: "Blocking stays free forever. Unlock the full \"why dangerous\" details on Personal.",
+  nudge_threshold_cta: "See details",
+  recent_empty: "Nothing found yet — browse normally, I'm watching.",
+  // static i18n keys (for applyI18n fallback when chrome.i18n isn't available)
+  popup_brand: "Cleanway",
+  popup_settings_title: "Settings",
+  action_close_tab: "Close this page",
+  action_audit: "What this site collects",
+  action_week: "My week",
+  action_more: "More",
+  action_breach: "Check email leak",
+  action_score: "My safety level",
+  action_trust: "Always trust this site",
+  action_report: "Report wrong result",
+  stats_label_blocked: "Scams blocked",
+  stats_label_warned: "Warnings",
+  stats_label_checked: "Links checked",
+  upgrade_cta: "Upgrade",
+  onboarding_welcome: "Welcome to Cleanway!",
+  onboarding_tip: "I'll check every link you see. Dangerous ones get a red mark. Try right-clicking a link → \"Check with Cleanway\".",
+  offline_warning: "Offline — using basic protection",
+  trust_footer: "Your data never leaves this device",
+};
+
+function interpolate(str, subs) {
+  if (!subs || !subs.length) return str;
+  var out = str;
+  for (var i = 0; i < subs.length; i++) {
+    out = out.replace("$" + (i + 1), subs[i]);
+  }
+  return out;
+}
+
+function t(key, substitutions) {
+  // Try chrome.i18n first (runs in real extension context)
+  try {
+    if (typeof chrome !== "undefined" && chrome.i18n && chrome.i18n.getMessage) {
+      var msg = chrome.i18n.getMessage(key, substitutions || []);
+      if (msg) return msg;
+    }
+  } catch (e) { /* preview panel / no chrome API */ }
+  // Fallback: inline English with $1/$2 interpolation
+  return interpolate(FALLBACK_EN[key] || key, substitutions);
+}
+
+// Apply data-i18n attributes on static elements
+function applyI18n() {
+  var nodes = document.querySelectorAll("[data-i18n]");
+  for (var i = 0; i < nodes.length; i++) {
+    var key = nodes[i].getAttribute("data-i18n");
+    var msg = t(key);
+    if (msg && msg !== key) nodes[i].textContent = msg;
+  }
+  var titled = document.querySelectorAll("[data-i18n-title]");
+  for (var j = 0; j < titled.length; j++) {
+    var tkey = titled[j].getAttribute("data-i18n-title");
+    var tmsg = t(tkey);
+    if (tmsg && tmsg !== tkey) titled[j].setAttribute("title", tmsg);
+  }
+}
+
+// ─── Icons for status states ──────────────────────────────────
+var STATUS_ICONS = {
+  safe: "\u2713",      // ✓
+  warning: "\u26A0",   // ⚠
+  danger: "\u2717",    // ✗
+  unknown: "?",
+};
+
+// ─── Small DOM helpers ────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function fmt(n) { return (n || 0).toLocaleString(); }
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+function fmtRelative(ts) {
+  if (!ts) return "";
+  var diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return Math.floor(diff / 60) + "m";
+  if (diff < 86400) return Math.floor(diff / 3600) + "h";
+  return Math.floor(diff / 86400) + "d";
+}
+
+// ─── State machine: set main status card ──────────────────────
+function setStatus(state, title, subtitle) {
+  var card = $("status-card");
+  var icon = $("status-icon");
+  var titleEl = $("status-title");
+  var subEl = $("status-subtitle");
+  var primary = $("primary-action");
+
+  card.setAttribute("data-state", state);
+
+  if (state === "scanning") {
+    icon.innerHTML = '<div class="spinner"></div>';
+  } else {
+    icon.textContent = STATUS_ICONS[state] || "?";
+  }
+  titleEl.textContent = title;
+  subEl.textContent = subtitle || "";
+
+  // "Close this page" only on danger
+  primary.hidden = state !== "danger";
+}
+
+function levelToState(level) {
+  if (level === "safe") return "safe";
+  if (level === "caution" || level === "suspicious") return "warning";
+  if (level === "dangerous" || level === "phishing") return "danger";
+  return "unknown";
+}
+
+// ─── Stats ────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    var stats = await chrome.runtime.sendMessage({ type: "GET_STATS" });
+    if (!stats) return;
+    $("total-checks").textContent = fmt(stats.total_checks);
+    $("threats-blocked").textContent = fmt(stats.threats_blocked);
+    $("threats-warned").textContent = fmt(stats.threats_warned);
+  } catch (e) { /* background not ready */ }
+}
+
+// ─── Check current tab ────────────────────────────────────────
+async function loadPageStatus() {
+  var tabs = [];
+  try { tabs = await chrome.tabs.query({ active: true, currentWindow: true }); } catch (e) {}
+  var tab = tabs[0];
+  if (!tab || !tab.url) {
+    setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
+    return;
+  }
+
+  var url;
+  try { url = new URL(tab.url); } catch (e) {
+    setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
+    return;
+  }
+
+  // chrome:// and about: aren't checkable
+  if (!/^https?:$/.test(url.protocol)) {
+    setStatus("safe", t("status_safe_title"), "");
+    return;
+  }
+
+  var domain = url.hostname;
+
+  try {
+    var resp = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: [domain] });
+    var r = resp && resp.results && resp.results[0];
+    if (!r) {
+      setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
+      return;
+    }
+    var state = levelToState(r.level);
+    var title, subtitle;
+    if (state === "safe") {
+      title = t("status_safe_title");
+      subtitle = t("status_safe_subtitle", [domain]);
+    } else if (state === "warning") {
+      title = t("status_warning_title");
+      subtitle = t("status_warning_subtitle", [String((r.suspicious_links_count || 0) || 1)]);
+    } else if (state === "danger") {
+      title = t("status_danger_title");
+      subtitle = t("status_danger_subtitle", [domain]);
+    } else {
+      title = t("status_unknown_title");
+      subtitle = t("status_unknown_subtitle");
+    }
+    setStatus(state, title, subtitle);
+    // Strategy doc #12 — surface the confidence band beneath the
+    // verdict. Backend always populates confidence_pct (50-99) on
+    // every result; falling back to nothing if the field is
+    // missing keeps us forward-compatible with stale extensions
+    // hitting older API builds.
+    if (typeof r.confidence_pct === "number") {
+      var chip = $("confidence-chip");
+      if (chip) {
+        chip.textContent = "Confidence: " + r.confidence_pct + "%";
+        chip.hidden = false;
+      }
+    }
+  } catch (e) {
+    setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
+    $("offline-banner").hidden = false;
+  }
+}
+
+// ─── Recent threats (last 5) ──────────────────────────────────
+async function loadRecentThreats() {
+  var container = $("recent-threats");
+  try {
+    var data = await chrome.storage.local.get(["recent_threats"]);
+    var threats = (data.recent_threats || []).slice(0, 5);
+    if (!threats.length) {
+      container.innerHTML = '<div class="threat-item" style="color:var(--text-dim);justify-content:center;font-size:11px;">' +
+        escapeHtml(t("recent_empty")) + '</div>';
+      return;
+    }
+    container.innerHTML = threats.map(function(th) {
+      return '<div class="threat-item">' +
+        '<span style="color:var(--red-text)" aria-hidden="true">&#x26A0;</span>' +
+        '<span class="threat-domain">' + escapeHtml(th.domain) + '</span>' +
+        '<span class="threat-time">' + fmtRelative(th.ts) + '</span>' +
+        '</div>';
+    }).join("");
+  } catch (e) { /* storage not available */ }
+}
+
+// ─── Aha-moment banner ────────────────────────────────────────
+async function loadAhaBanner() {
+  try {
+    var data = await chrome.storage.local.get(["aha_count", "aha_dismissed"]);
+    if (data.aha_dismissed) return;
+    var count = data.aha_count || 0;
+    if (count > 0) {
+      $("aha-banner").hidden = false;
+      $("aha-text").textContent = t("aha_found_scams", [String(count)]);
+    }
+  } catch (e) {}
+}
+
+// ─── Upgrade banner for free users near threshold ─────────────
+async function loadUpgradeBanner() {
+  try {
+    var data = await chrome.storage.local.get(["checks_today", "tier"]);
+    if (data.tier && data.tier !== "free") return;
+    var used = data.checks_today || 0;
+    var limit = 10;
+    if (used >= limit - 3) {
+      $("upgrade-banner").hidden = false;
+      $("upgrade-text").textContent = t("upgrade_free_count", [String(used), String(limit)]);
+    }
+  } catch (e) {}
+}
+
+// ─── Pricing v2 threshold nudge — server-tracked freemium ──────
+//
+// Calls GET /api/v1/user/threats/status. When the server says
+// gated === true (free user past 50 lifetime blocks), we surface a
+// celebratory nudge: "You've blocked 50+ scam sites!" — block keeps
+// working, only the WHY-detail panel is gated. Skips silently when:
+//   - no auth token (anonymous user — server-side counter not tracked)
+//   - API down / non-200
+//   - paid tier (gated is false from server side regardless of count)
+//   - threshold not yet reached
+//
+// Server is source of truth; client never duplicates the gating logic.
+async function loadThresholdNudge() {
+  var nudge = $("threshold-nudge");
+  if (!nudge) return;
+  try {
+    var stored = await chrome.storage.local.get(["auth_token"]);
+    var token = stored && stored.auth_token;
+    if (!token) return;
+
+    // Lazy-import the helper so the popup still works in preview mode
+    // where ESM imports may not resolve.
+    var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+    var status = await apiModule.fetchThreatStatus(token);
+    if (!status || !status.gated) return;
+
+    var count = Number(status.threats_blocked_lifetime) || 0;
+    var titleEl = $("threshold-title");
+    if (titleEl) {
+      titleEl.textContent = t("nudge_threshold_title", [String(count)]);
+    }
+    nudge.hidden = false;
+  } catch (e) {
+    // Failure → render no nudge. The user sees the regular UI.
+  }
+}
+
+// ─── Onboarding tip (first open only) ─────────────────────────
+async function loadOnboardingTip() {
+  try {
+    var data = await chrome.storage.local.get(["onboarding_done"]);
+    if (!data.onboarding_done) $("onboarding-tip").hidden = false;
+  } catch (e) {}
+  var dismissBtn = $("dismiss-tip");
+  if (!dismissBtn) return;
+  dismissBtn.addEventListener("click", async function() {
+    $("onboarding-tip").hidden = true;
+    try { await chrome.storage.local.set({ onboarding_done: true }); } catch (e) {}
+  });
+}
+
+// ─── Button wiring ────────────────────────────────────────────
+async function sendToActiveTab(message) {
+  try {
+    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]) await chrome.tabs.sendMessage(tabs[0].id, message);
+  } catch (e) { /* tab unreachable */ }
+}
+
+function wireButtons() {
+  var settings = $("btn-settings");
+  if (settings) settings.addEventListener("click", function() {
+    try { chrome.runtime.openOptionsPage(); } catch (e) {}
+  });
+
+  var closeBtn = $("btn-close-tab");
+  if (closeBtn) closeBtn.addEventListener("click", async function() {
+    try {
+      var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]) await chrome.tabs.remove(tabs[0].id);
+    } catch (e) {}
+  });
+
+  var audit = $("btn-audit");
+  if (audit) audit.addEventListener("click", async function() {
+    await sendToActiveTab({ type: "SHOW_AUDIT" });
+    window.close();
+  });
+
+  var week = $("btn-week");
+  if (week) week.addEventListener("click", async function() {
+    await sendToActiveTab({ type: "SHOW_WEEKLY_REPORT" });
+    window.close();
+  });
+
+  var breach = $("btn-breach");
+  if (breach) breach.addEventListener("click", async function() {
+    await sendToActiveTab({ type: "SHOW_BREACH_CHECK" });
+    window.close();
+  });
+
+  var score = $("btn-score");
+  if (score) score.addEventListener("click", async function() {
+    await sendToActiveTab({ type: "SHOW_SECURITY_SCORE" });
+    window.close();
+  });
+
+  var trust = $("btn-trust");
+  if (trust) trust.addEventListener("click", async function() {
+    // Always-trust adds the domain to chrome.storage.local.trusted_domains.
+    // The scanner already short-circuits on this list (see background/
+    // index.js cache lookup) so the next visit returns safe instantly.
+    // We feed back to the user via the button label so they see the
+    // effect — silent success used to look broken (audit
+    // extension-mv3 dead-button).
+    try {
+      var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0] || !tabs[0].url) {
+        _flashButton(trust, t("action_trust_no_tab") || "Open a page first");
+        return;
+      }
+      var url = new URL(tabs[0].url);
+      // chrome:// and similar internal pages have no meaningful host
+      // to whitelist; reject early.
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        _flashButton(trust, t("action_trust_invalid") || "Can't trust this URL");
+        return;
+      }
+      var domain = url.hostname;
+      var data = await chrome.storage.local.get(["trusted_domains"]);
+      var trusted = data.trusted_domains || [];
+      if (trusted.indexOf(domain) === -1) {
+        trusted.push(domain);
+        await chrome.storage.local.set({ trusted_domains: trusted });
+      }
+      _flashButton(trust, t("action_trust_done") || ("Trusted " + domain));
+    } catch (e) {
+      _flashButton(trust, t("action_trust_error") || "Couldn't save");
+    }
+  });
+
+  var report = $("btn-report");
+  if (report) report.addEventListener("click", async function() {
+    // Report-wrong-result: anonymous POST /api/v1/feedback/report
+    // identifying the current tab's domain as a false_positive (a
+    // safe site the scorer marked dangerous) or false_negative
+    // (a scam site that wasn't flagged). The previous
+    // `SHOW_REPORT_DIALOG` message had no handler anywhere — the
+    // button was dead UI. (Audit extension-mv3 HIGH dead-button.)
+    try {
+      var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs[0] || !tabs[0].url) {
+        _flashButton(report, t("action_report_no_tab") || "Open a page first");
+        return;
+      }
+      var url = new URL(tabs[0].url);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        _flashButton(report, t("action_report_invalid") || "Can't report this URL");
+        return;
+      }
+      var domain = url.hostname;
+
+      // Determine report_type from the current tab's last verdict.
+      // If the tab is currently flagged dangerous, the user is saying
+      // "you got this wrong, it's actually safe" (false_positive).
+      // Otherwise they're flagging missed phishing (false_negative).
+      var verdictData = await chrome.storage.local.get(["last_verdict_" + domain]);
+      var lastVerdict = verdictData["last_verdict_" + domain];
+      var reportType = lastVerdict === "dangerous" ? "false_positive" : "false_negative";
+
+      var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+      var apiBase = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
+        ? window.CLEANWAY_API_BASE
+        : "https://api.cleanway.ai";
+      var resp = await fetch(apiBase + "/api/v1/feedback/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: domain,
+          report_type: reportType,
+          comment: "[extension-popup] reported via 'wrong result' button",
+        }),
+      });
+      // Silence the unused-import lint — apiModule is reserved for a
+      // future revision where auth+ip-throttle move into utils/api.js.
+      void apiModule;
+      if (resp.ok) {
+        _flashButton(report, t("action_report_done") || "Thanks — reported");
+      } else if (resp.status === 429) {
+        _flashButton(report, t("action_report_throttled") || "Too many reports, try later");
+      } else {
+        _flashButton(report, t("action_report_error") || "Couldn't send report");
+      }
+    } catch (e) {
+      _flashButton(report, t("action_report_error") || "Couldn't send report");
+    }
+  });
+}
+
+/**
+ * Briefly replace a button's label with confirmation text, then revert.
+ * Used by the trust + report flows so silent network success doesn't
+ * look like a no-op to the user.
+ */
+function _flashButton(btn, message) {
+  if (!btn) return;
+  var original = btn.textContent;
+  btn.textContent = message;
+  btn.disabled = true;
+  setTimeout(function() {
+    btn.textContent = original;
+    btn.disabled = false;
+  }, 1800);
+}
+
+// ─── Health check (offline indicator) ─────────────────────────
+async function checkApiHealth() {
+  var base = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
+    ? window.CLEANWAY_API_BASE
+    : "https://api.cleanway.ai";
+  try {
+    var r = await fetch(base + "/health", { method: "GET" });
+    if (!r.ok) $("offline-banner").hidden = false;
+  } catch (e) {
+    $("offline-banner").hidden = false;
+  }
+}
+
+// ─── Preview mode: simulate states for Launch preview panel ───
+// When running standalone (not loaded as real extension), show a demo state
+// so reviewer can see the design без real chrome.* APIs.
+function isPreviewMode() {
+  return typeof chrome === "undefined" || !chrome.tabs;
+}
+
+function runPreviewDemo() {
+  // Default to "safe" state for preview; add ?state=safe|warning|danger|scanning in URL to switch
+  var params = new URLSearchParams(window.location.search);
+  var state = params.get("state") || "safe";
+  var demos = {
+    scanning: { title: t("status_scanning"), subtitle: "" },
+    safe: { title: t("status_safe_title"), subtitle: t("status_safe_subtitle", ["example.com"]) },
+    warning: { title: t("status_warning_title"), subtitle: t("status_warning_subtitle", ["3"]) },
+    danger: { title: t("status_danger_title"), subtitle: t("status_danger_subtitle", ["fake-bank.com"]) },
+  };
+  var d = demos[state] || demos.safe;
+  setStatus(state, d.title, d.subtitle);
+  $("total-checks").textContent = "247";
+  $("threats-blocked").textContent = "12";
+  $("threats-warned").textContent = "34";
+  var recent = $("recent-threats");
+  if (recent) recent.innerHTML =
+    '<div class="threat-item"><span style="color:var(--red-text)">&#x26A0;</span>' +
+    '<span class="threat-domain">fake-paypal.co</span><span class="threat-time">5m</span></div>' +
+    '<div class="threat-item"><span style="color:var(--red-text)">&#x26A0;</span>' +
+    '<span class="threat-domain">sberbank-ru.io</span><span class="threat-time">2h</span></div>';
+  if (state === "danger") {
+    $("aha-banner").hidden = false;
+    $("aha-text").textContent = t("aha_found_scams", ["3"]);
+  }
+}
+
+// ─── Skill Level — font scale + mode-aware CSS class ─────────
+function applySkillLevelStyles() {
+  try {
+    chrome.storage.local.get(["skill_level", "font_scale"], function(data) {
+      var skill = (data && data.skill_level) || "regular";
+      var scale = (data && typeof data.font_scale === "number") ? data.font_scale : 1.0;
+      // Clamp defensively — reject corrupted storage values
+      if (scale < 0.8 || scale > 2.5) { scale = 1.0; }
+      // Mode-aware hook for CSS (e.g. body.skill-granny { … })
+      document.body.classList.remove(
+        "skill-kids", "skill-regular", "skill-granny", "skill-pro"
+      );
+      document.body.classList.add("skill-" + skill);
+      // Font scaling via CSS custom property
+      document.documentElement.style.setProperty("--cleanway-font-scale", scale);
+      document.documentElement.style.fontSize = (16 * scale) + "px";
+    });
+  } catch (e) {
+    // Preview mode (no chrome.storage) — just apply default
+    document.documentElement.style.setProperty("--cleanway-font-scale", 1.0);
+  }
+}
+
+// ─── Soft-delete account-lock screen ───────────────────────────
+//
+// When any authed API call in utils/api.js hits a 410, it writes
+// `account_locked` into chrome.storage.local. On next popup open we
+// detect that flag and hide the regular UI, surfacing a restore CTA
+// instead. The restore button calls POST /api/v1/user/account/restore;
+// on success the flag clears and we reload the popup to its normal state.
+//
+// This is the only screen that should be visible while locked — every
+// other call would return 410 and create noise.
+async function checkAndRenderLockState() {
+  try {
+    var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+    var lock = await apiModule.isAccountLocked();
+    if (!lock) return false;
+
+    var overlay = $("account-locked-overlay");
+    if (!overlay) return false;
+
+    // Hide everything else so the user gets a focused screen.
+    var idsToHide = [
+      "status-card", "primary-action",
+      "aha-banner", "offline-banner", "upgrade-banner", "threshold-nudge",
+      "onboarding-tip",
+    ];
+    for (var i = 0; i < idsToHide.length; i++) {
+      var el = $(idsToHide[i]);
+      if (el) el.hidden = true;
+    }
+    // Also hide stats + tools sections — they're inside .content
+    var sections = document.querySelectorAll(".popup .content > section.stats, .popup .content > section.tools, .popup .content > section.actions");
+    for (var j = 0; j < sections.length; j++) sections[j].hidden = true;
+
+    overlay.hidden = false;
+
+    // Render locked-at timestamp if available
+    var metaEl = $("locked-meta");
+    if (metaEl && lock.locked_at) {
+      try {
+        var when = new Date(lock.locked_at);
+        if (!isNaN(when.getTime())) {
+          metaEl.textContent = t("locked_meta", [when.toLocaleDateString()])
+            || ("Deletion requested on " + when.toLocaleDateString() + ". Hard delete in 30 days.");
+        }
+      } catch (e) { /* timestamp parse — non-fatal */ }
+    }
+
+    var btn = $("btn-restore-account");
+    if (btn) {
+      btn.addEventListener("click", function() { handleRestoreClick(apiModule); });
+    }
+    return true;
+  } catch (e) {
+    // Can't read lock state — fail open (let the regular UI render).
+    return false;
+  }
+}
+
+async function handleRestoreClick(apiModule) {
+  var btn = $("btn-restore-account");
+  var errBox = $("locked-error");
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = t("locked_restoring") || "Restoring…";
+  if (errBox) errBox.hidden = true;
+
+  try {
+    var stored = await chrome.storage.local.get(["auth_token"]);
+    var token = stored && stored.auth_token;
+    if (!token) {
+      // Without a JWT we can't call /restore. Open the landing
+      // restore page where the user will be prompted to sign in.
+      window.open("https://cleanway.ai/account/restore?reason=locked", "_blank");
+      btn.disabled = false;
+      btn.textContent = t("locked_restore_cta") || "Restore my account";
+      return;
+    }
+
+    var result = await apiModule.restoreAccount(token);
+    if (result && result.ok) {
+      // Flag cleared by restoreAccount(). Reload popup to land on the
+      // normal UI.
+      window.location.reload();
+      return;
+    }
+    if (errBox) {
+      errBox.textContent = (result && result.status === 401)
+        ? (t("locked_error_session") || "Your session has expired. Please sign in again on cleanway.ai.")
+        : (t("locked_error_generic") || "Couldn't restore your account. Please try again or contact support.");
+      errBox.hidden = false;
+    }
+  } catch (e) {
+    if (errBox) {
+      errBox.textContent = t("locked_error_network") || "Couldn't reach our servers. Please check your connection.";
+      errBox.hidden = false;
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = t("locked_restore_cta") || "Restore my account";
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", async function() {
+  applySkillLevelStyles();
+  applyI18n();
+  wireButtons();
+
+  if (isPreviewMode()) {
+    runPreviewDemo();
+    return;
+  }
+
+  // Locked accounts get a focused restore screen — everything else
+  // is hidden. Bail before kicking off regular loads (they'd all 410
+  // anyway and just spam the network tab).
+  var locked = await checkAndRenderLockState();
+  if (locked) return;
+
+  // Real extension mode — kick off loads in parallel
+  loadPageStatus();
+  loadStats();
+  loadRecentThreats();
+  loadAhaBanner();
+  loadUpgradeBanner();
+  loadThresholdNudge();
+  loadOnboardingTip();
+  checkApiHealth();
+});

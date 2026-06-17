@@ -1,0 +1,381 @@
+{
+  "extension_name": {
+    "message": "Cleanway — Schutz vor betrügerischen Links"
+  },
+  "extension_description": {
+    "message": "Automatische Erkennung von Betrugs- und Phishing-Seiten. In einfacher Sprache, für alle."
+  },
+  "popup_brand": {
+    "message": "Cleanway"
+  },
+  "popup_settings_title": {
+    "message": "Einstellungen"
+  },
+  "status_scanning": {
+    "message": "Diese Seite wird überprüft…"
+  },
+  "status_safe_title": {
+    "message": "Diese Seite ist sicher"
+  },
+  "status_safe_subtitle": {
+    "message": "Keine Betrugslinks auf $DOMAIN$ gefunden",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Einige Links wirken verdächtig"
+  },
+  "status_warning_subtitle": {
+    "message": "$N$ Links auf dieser Seite sollten genauer geprüft werden",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "Das ist eine Betrugsseite"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ gibt sich als andere Seite aus, um Ihre Daten zu stehlen",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "Seite konnte nicht geprüft werden"
+  },
+  "status_unknown_subtitle": {
+    "message": "Bitte versuchen Sie es gleich noch einmal"
+  },
+  "action_close_tab": {
+    "message": "Diese Seite schließen"
+  },
+  "action_audit": {
+    "message": "Was diese Seite sammelt"
+  },
+  "action_week": {
+    "message": "Meine Woche"
+  },
+  "action_more": {
+    "message": "Mehr"
+  },
+  "action_less": {
+    "message": "Weniger"
+  },
+  "more_section_label": {
+    "message": "Weitere Werkzeuge"
+  },
+  "action_breach": {
+    "message": "E-Mail-Leck prüfen"
+  },
+  "action_score": {
+    "message": "Mein Sicherheitslevel"
+  },
+  "action_trust": {
+    "message": "Dieser Seite immer vertrauen"
+  },
+  "action_report": {
+    "message": "Falsches Ergebnis melden"
+  },
+  "stats_label_blocked": {
+    "message": "Betrug blockiert"
+  },
+  "stats_label_warned": {
+    "message": "Warnungen"
+  },
+  "stats_label_checked": {
+    "message": "Links geprüft"
+  },
+  "upgrade_free_count": {
+    "message": "Kostenlos: $USED$ von $LIMIT$ Prüfungen heute",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Upgrade"
+  },
+  "onboarding_welcome": {
+    "message": "Hallo! Ich bin Cleanway."
+  },
+  "onboarding_tip": {
+    "message": "Ich prüfe jeden Link auf jeder Seite. Gefährliche markiere ich rot. Unsicher? Rechtsklick → „Mit Cleanway prüfen\"."
+  },
+  "aha_found_scams": {
+    "message": "Ich habe $N$ Betrugslinks gefunden, die Ihr Browser übersehen hat",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Offline — Basisschutz aktiv"
+  },
+  "recent_empty": {
+    "message": "Noch nichts gefunden — surfen Sie normal weiter, ich passe auf."
+  },
+  "nudge_threshold_title": {
+    "message": "Sie haben $COUNT$+ Betrugsseiten blockiert!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Blockieren bleibt für immer kostenlos. Schalten Sie die vollständigen \"Warum gefährlich\"-Details auf Personal frei."
+  },
+  "nudge_threshold_cta": {
+    "message": "Details ansehen"
+  },
+  "device_override_heading": {
+    "message": "Dieses Gerät"
+  },
+  "device_override_subtitle": {
+    "message": "Skill-Level und Barrierefreiheit nur für diese Browser-Installation anwenden. Andere Geräte des Kontos behalten den Standard."
+  },
+  "device_effective_label": {
+    "message": "Aktuell aktiv"
+  },
+  "device_override_toggle_label": {
+    "message": "Nur auf diesem Gerät überschreiben"
+  },
+  "device_override_toggle_desc": {
+    "message": "Wenn aktiviert, werden die Einstellungen unten nur auf diesem Gerät gespeichert — Ihr Konto-Standard ändert sich nicht."
+  },
+  "device_voice_label": {
+    "message": "Sprachhinweise auf diesem Gerät"
+  },
+  "device_font_label": {
+    "message": "Textgröße auf diesem Gerät"
+  },
+  "device_clear_overrides_label": {
+    "message": "Alle Gerätüberschreibungen löschen"
+  },
+  "device_clear_overrides_desc": {
+    "message": "Setzt dieses Gerät auf Ihren Konto-Standard zurück."
+  },
+  "device_clear_overrides_btn": {
+    "message": "Löschen"
+  },
+  "family_hub_heading": {
+    "message": "Familien-Hub"
+  },
+  "family_hub_subtitle": {
+    "message": "Werden Sie benachrichtigt, wenn auf den Geräten Ihrer Liebsten Betrug blockiert wird. Ende-zu-Ende verschlüsselt — selbst Cleanway liest die Hinweise nicht."
+  },
+  "family_loading": {
+    "message": "Lädt…"
+  },
+  "family_none_label": {
+    "message": "Sie sind noch nicht in einer Familie"
+  },
+  "family_none_desc": {
+    "message": "Erstellen Sie eine und laden Sie bis zu 5 Personen ein. Oder treten Sie einer bestehenden mit einem Code bei."
+  },
+  "family_create_btn": {
+    "message": "Familie erstellen"
+  },
+  "family_join_btn": {
+    "message": "Mit Code beitreten"
+  },
+  "family_accept_btn": {
+    "message": "Beitreten"
+  },
+  "family_members_label": {
+    "message": "Mitglieder"
+  },
+  "family_invite_label": {
+    "message": "Mitglied einladen"
+  },
+  "family_invite_desc": {
+    "message": "Erzeugt einen Einmal-Code + PIN. Per SMS oder persönlich weitergeben."
+  },
+  "family_invite_btn": {
+    "message": "Einladung erzeugen"
+  },
+  "family_alerts_label": {
+    "message": "Neueste Hinweise"
+  },
+  "family_alerts_empty": {
+    "message": "Noch keine Hinweise — Familien-Blockaden erscheinen hier."
+  },
+  "family_invite_modal_title": {
+    "message": "Teilen Sie das mit Ihrem Familienmitglied"
+  },
+  "family_invite_modal_desc": {
+    "message": "Beide Werte erscheinen einmal. Nach dem Schließen können Sie sie nicht mehr sehen — generieren Sie bei Bedarf eine neue Einladung."
+  },
+  "family_invite_code_label": {
+    "message": "Code"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "Beides kopieren"
+  },
+  "family_invite_close_btn": {
+    "message": "Fertig"
+  },
+  "family_invite_qr_label": {
+    "message": "Oder mit dem Handy scannen"
+  },
+  "family_invite_link_label": {
+    "message": "Oder diesen Link teilen"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "Link kopieren"
+  },
+  "family_join_code_placeholder": {
+    "message": "Code oder Einladungslink"
+  },
+  "family_join_paste_hint": {
+    "message": "Tipp: Cleanway-Einladungslink ins erste Feld einfügen — die PIN wird automatisch ausgefüllt."
+  },
+  "locked_title": {
+    "message": "Konto auf Halten"
+  },
+  "locked_body": {
+    "message": "Sie haben das Löschen Ihres Cleanway-Kontos angefordert. Wir bewahren es 30 Tage lang auf, bevor alles gelöscht wird. Stellen Sie es jetzt wieder her, um Abonnement, Verlauf und Familie zu behalten."
+  },
+  "locked_restore_cta": {
+    "message": "Konto wiederherstellen"
+  },
+  "locked_restoring": {
+    "message": "Wird wiederhergestellt…"
+  },
+  "locked_meta": {
+    "message": "Löschung am $DATE$ angefordert. Endgültige Löschung in 30 Tagen.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut auf cleanway.ai an."
+  },
+  "locked_error_generic": {
+    "message": "Konto konnte nicht wiederhergestellt werden. Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+  },
+  "locked_error_network": {
+    "message": "Verbindung zu unseren Servern fehlgeschlagen. Bitte überprüfen Sie Ihre Verbindung."
+  },
+  "trust_footer": {
+    "message": "Ihre Daten verlassen dieses Gerät nie"
+  },
+  "block_title": {
+    "message": "STOPP"
+  },
+  "block_subtitle_scam": {
+    "message": "Das ist eine Betrugsseite"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ gibt sich als andere Seite aus, um Ihre Daten zu stehlen.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "Diese Seite gibt sich als $BRAND$ aus",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "So nutzen Betrüger solche Seiten:"
+  },
+  "block_scheme_step1": {
+    "message": "Sie werden nach Ihrem Passwort oder Bankdaten gefragt"
+  },
+  "block_scheme_step2": {
+    "message": "Der Betrüger stiehlt alles, was Sie eingeben"
+  },
+  "block_scheme_step3": {
+    "message": "Er plündert Ihr Konto oder stiehlt Ihre Identität"
+  },
+  "block_back_button": {
+    "message": "Zurück zur Sicherheit"
+  },
+  "block_proceed_button": {
+    "message": "Risiko verstanden — trotzdem öffnen"
+  },
+  "block_proceed_countdown": {
+    "message": "Noch $N$ Sekunden warten…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Geschützt durch Cleanway. Ihre Daten bleiben auf diesem Gerät."
+  },
+  "block_voice_alert": {
+    "message": "Stopp. Die Seite $DOMAIN$ ist gefährlich. Geben Sie Ihr Passwort nicht ein.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_evidence_heading": {
+    "message": "Warum wir diese Seite blockiert haben"
+  },
+  "welcome_hero_title": {
+    "message": "Sie sind jetzt geschützt"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Jeder Link wird geprüft. Gefährliche werden automatisch blockiert."
+  },
+  "welcome_step1_title": {
+    "message": "Automatische Prüfung"
+  },
+  "welcome_step1_desc": {
+    "message": "Jede Seite, jeder Link. Grünes Zeichen: sicher. Rotes: Betrug."
+  },
+  "welcome_step2_title": {
+    "message": "Ihre Daten bleiben bei Ihnen"
+  },
+  "welcome_step2_desc": {
+    "message": "Wir prüfen nur Seitennamen. Ihr Verlauf verlässt dieses Gerät nie."
+  },
+  "welcome_step3_title": {
+    "message": "Keine Verzögerung"
+  },
+  "welcome_step3_desc": {
+    "message": "Die meisten Prüfungen laufen auf Ihrem Gerät in unter einer Sekunde."
+  },
+  "welcome_step4_title": {
+    "message": "Für die ganze Familie"
+  },
+  "welcome_step4_desc": {
+    "message": "Schützen Sie Eltern, Kinder, Großeltern mit einem Plan. Für jeden der passende Modus."
+  },
+  "welcome_cta_scan": {
+    "message": "Mein Postfach auf versteckten Betrug prüfen"
+  },
+  "welcome_cta_skip": {
+    "message": "Überspringen — jetzt browsen"
+  },
+  "welcome_trust_footer": {
+    "message": "Blockieren ist für immer kostenlos. Ihre Daten verlassen dieses Gerät nie."
+  }
+}

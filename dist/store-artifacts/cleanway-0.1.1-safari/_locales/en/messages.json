@@ -1,0 +1,383 @@
+{
+  "extension_name": {
+    "message": "Cleanway — Protection from scam links",
+    "description": "Extension name shown in Chrome Web Store"
+  },
+  "extension_description": {
+    "message": "Automatic detection of scam and phishing sites. Plain language, for everyone.",
+    "description": "Short description for Chrome Web Store"
+  },
+  "popup_brand": {
+    "message": "Cleanway"
+  },
+  "popup_settings_title": {
+    "message": "Settings"
+  },
+  "status_scanning": {
+    "message": "Checking this page…"
+  },
+  "status_safe_title": {
+    "message": "This page is safe"
+  },
+  "status_safe_subtitle": {
+    "message": "No scam links found on $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Some links look suspicious"
+  },
+  "status_warning_subtitle": {
+    "message": "$N$ links on this page need a closer look",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "This is a scam site"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ is pretending to be someone else to steal your information",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "Couldn't check this page"
+  },
+  "status_unknown_subtitle": {
+    "message": "Try again in a moment"
+  },
+  "action_close_tab": {
+    "message": "Close this page"
+  },
+  "action_audit": {
+    "message": "What this site collects"
+  },
+  "action_week": {
+    "message": "My week"
+  },
+  "action_more": {
+    "message": "More"
+  },
+  "action_less": {
+    "message": "Less"
+  },
+  "more_section_label": {
+    "message": "Extra tools"
+  },
+  "action_breach": {
+    "message": "Check email leak"
+  },
+  "action_score": {
+    "message": "My safety level"
+  },
+  "action_trust": {
+    "message": "Always trust this site"
+  },
+  "action_report": {
+    "message": "Report wrong result"
+  },
+  "stats_label_blocked": {
+    "message": "Scams blocked"
+  },
+  "stats_label_warned": {
+    "message": "Warnings"
+  },
+  "stats_label_checked": {
+    "message": "Links checked"
+  },
+  "upgrade_free_count": {
+    "message": "Free: $USED$ of $LIMIT$ checks today",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Upgrade"
+  },
+  "onboarding_welcome": {
+    "message": "Welcome to Cleanway!"
+  },
+  "onboarding_tip": {
+    "message": "I'll check every link you see. Dangerous ones get a red mark. Try right-clicking a link → \"Check with Cleanway\"."
+  },
+  "aha_found_scams": {
+    "message": "I found $N$ scam links your browser missed",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Offline — using basic protection"
+  },
+  "recent_empty": {
+    "message": "Nothing found yet — browse normally, I'm watching."
+  },
+  "nudge_threshold_title": {
+    "message": "You've blocked $COUNT$+ scam sites!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Blocking stays free forever. Unlock the full \"why dangerous\" details on Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "See details"
+  },
+  "locked_title": {
+    "message": "Account on hold"
+  },
+  "locked_body": {
+    "message": "You asked to delete your Cleanway account. We're holding it for 30 days before erasing everything. Restore it now to keep your subscription, history, and family."
+  },
+  "locked_restore_cta": {
+    "message": "Restore my account"
+  },
+  "locked_restoring": {
+    "message": "Restoring…"
+  },
+  "locked_meta": {
+    "message": "Deletion requested on $DATE$. Hard delete in 30 days.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Your session has expired. Please sign in again on cleanway.ai."
+  },
+  "locked_error_generic": {
+    "message": "Couldn't restore your account. Please try again or contact support."
+  },
+  "locked_error_network": {
+    "message": "Couldn't reach our servers. Please check your connection."
+  },
+  "device_override_heading": {
+    "message": "This device"
+  },
+  "device_override_subtitle": {
+    "message": "Apply skill level + accessibility to just this browser install. Other devices on this account stay on your default."
+  },
+  "device_effective_label": {
+    "message": "Currently active"
+  },
+  "device_override_toggle_label": {
+    "message": "Override on this device only"
+  },
+  "device_override_toggle_desc": {
+    "message": "When on, the controls below write only to this device — your account default is unchanged."
+  },
+  "device_voice_label": {
+    "message": "Voice alerts on this device"
+  },
+  "device_font_label": {
+    "message": "Text size on this device"
+  },
+  "device_clear_overrides_label": {
+    "message": "Clear all device overrides"
+  },
+  "device_clear_overrides_desc": {
+    "message": "Reverts this device to your account default."
+  },
+  "device_clear_overrides_btn": {
+    "message": "Clear"
+  },
+  "family_hub_heading": {
+    "message": "Family Hub"
+  },
+  "family_hub_subtitle": {
+    "message": "Get notified when scams are blocked on your loved ones' devices. End-to-end encrypted — even Cleanway can't read the alerts."
+  },
+  "family_loading": {
+    "message": "Loading…"
+  },
+  "family_none_label": {
+    "message": "You're not in a family yet"
+  },
+  "family_none_desc": {
+    "message": "Create one and invite up to 5 others. Or join an existing family using a code."
+  },
+  "family_create_btn": {
+    "message": "Create family"
+  },
+  "family_join_btn": {
+    "message": "Join with code"
+  },
+  "family_accept_btn": {
+    "message": "Join"
+  },
+  "family_members_label": {
+    "message": "members"
+  },
+  "family_invite_label": {
+    "message": "Invite a family member"
+  },
+  "family_invite_desc": {
+    "message": "Generates a one-time code + PIN. Send them by SMS or in person."
+  },
+  "family_invite_btn": {
+    "message": "Generate invite"
+  },
+  "family_alerts_label": {
+    "message": "Recent alerts"
+  },
+  "family_alerts_empty": {
+    "message": "No alerts yet — you'll see family blocks here as they happen."
+  },
+  "family_invite_modal_title": {
+    "message": "Share this with your family member"
+  },
+  "family_invite_modal_desc": {
+    "message": "Both values appear once. After this dialog closes, you can't see them again — generate another invite if needed."
+  },
+  "family_invite_code_label": {
+    "message": "Code"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "Copy both"
+  },
+  "family_invite_close_btn": {
+    "message": "Done"
+  },
+  "family_invite_qr_label": {
+    "message": "Or scan with phone"
+  },
+  "family_invite_link_label": {
+    "message": "Or share this link"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "Copy link"
+  },
+  "family_join_code_placeholder": {
+    "message": "Code or paste invite link"
+  },
+  "family_join_paste_hint": {
+    "message": "Tip: paste a Cleanway invite link in the first field — it'll fill in the PIN for you."
+  },
+  "trust_footer": {
+    "message": "Your data never leaves this device"
+  },
+  "block_title": {
+    "message": "STOP"
+  },
+  "block_subtitle_scam": {
+    "message": "This is a scam site"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ is pretending to be someone else so it can steal your information.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "This site pretends to be $BRAND$",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "How scammers use sites like this:"
+  },
+  "block_scheme_step1": {
+    "message": "You will be asked for your password or bank details"
+  },
+  "block_scheme_step2": {
+    "message": "The scammer steals what you type"
+  },
+  "block_scheme_step3": {
+    "message": "They drain your account or steal your identity"
+  },
+  "block_back_button": {
+    "message": "Go back to safety"
+  },
+  "block_proceed_button": {
+    "message": "I understand the risk — open anyway"
+  },
+  "block_proceed_countdown": {
+    "message": "Wait $N$ seconds…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Protected by Cleanway. Your data stays on your device."
+  },
+  "block_voice_alert": {
+    "message": "Stop. The site $DOMAIN$ is dangerous. Do not type your password.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_evidence_heading": {
+    "message": "Why we blocked this site"
+  },
+  "welcome_hero_title": {
+    "message": "You're protected now"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Every link you see is being checked. Dangerous ones will be blocked automatically."
+  },
+  "welcome_step1_title": {
+    "message": "Automatic scanning"
+  },
+  "welcome_step1_desc": {
+    "message": "Every page, every link. Green badge means safe. Red means scam."
+  },
+  "welcome_step2_title": {
+    "message": "Your data stays with you"
+  },
+  "welcome_step2_desc": {
+    "message": "We only check domain names. Your browsing history never leaves this device."
+  },
+  "welcome_step3_title": {
+    "message": "No slowdown"
+  },
+  "welcome_step3_desc": {
+    "message": "Most checks happen on your device in under a second. Just browse normally."
+  },
+  "welcome_step4_title": {
+    "message": "For the whole family"
+  },
+  "welcome_step4_desc": {
+    "message": "Protect parents, kids, grandparents with one plan. Different modes for each."
+  },
+  "welcome_cta_scan": {
+    "message": "Scan my inbox for hidden scams"
+  },
+  "welcome_cta_skip": {
+    "message": "Skip — start browsing"
+  },
+  "welcome_trust_footer": {
+    "message": "Free forever for blocking. Your data never leaves this device."
+  }
+}
