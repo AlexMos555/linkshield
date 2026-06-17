@@ -223,6 +223,35 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
     if checks_succeeded < total_checks and score < 20:
         confidence = min(confidence, ConfidenceLevel.medium, key=lambda c: c.value)
 
+    # ── Strategy #21 — LLM judge for ambiguous verdicts ──
+    # When the rule-based scorer landed in the caution band (no
+    # blocklist hit, no allowlist short-circuit), let Claude weigh
+    # in. The judge sees a domain-FREE feature vector and proposes
+    # a verdict + signed score shift capped at ±20. We apply the
+    # shift, then re-derive level/confidence so the rest of the
+    # function continues unaware that an LLM ran.
+    try:
+        from api.services.llm_judge import judge_ambiguous_verdict
+        judge = await judge_ambiguous_verdict(signals, score, level.value)
+        if judge is not None:
+            shift = int(judge.get("score_shift", 0))
+            if shift != 0:
+                score = max(0, min(score + shift, 100))
+                if score >= 70:
+                    level = RiskLevel.dangerous
+                elif score >= 30:
+                    level = RiskLevel.caution
+                else:
+                    level = RiskLevel.safe
+            reasons.append(DomainReason(
+                signal="llm_judge",
+                weight=shift,
+                detail=judge["one_line_reason"],
+            ))
+    except Exception:
+        # Judge MUST NEVER take down the analyzer hot path.
+        logger.debug("LLM judge wrapper failed", exc_info=True)
+
     # ── Log ML feature vector (for future model training) ──
     try:
         from api.services.url_features import extract_features, log_features
