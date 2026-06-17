@@ -43,58 +43,45 @@ async def check_breach(
     hash_prefix: str,
     user: Optional[AuthUser] = Depends(get_optional_user),
 ):
-    """
-    k-anonymity breach check.
+    """k-anonymity breach lookup.
 
-    Send first 5 characters of SHA-1(email) hash.
-    Returns list of matching hash suffixes with breach counts.
-    Client compares locally — we never see your full hash.
+    The client SHA-1s either a password (Strategy doc #13) or an
+    email and sends only the first 5 hex chars of the hash. We
+    proxy to HIBP's free /range API, cache the response in Redis
+    24h, and return the full suffix list so the client matches on
+    device. The server NEVER sees the suffix the user typed.
+
+    We return EVERY row HIBP gives us — including the padding rows
+    with count=0. Stripping those rows would defeat the response-
+    padding privacy feature (a network observer could count "real
+    matches" by comparing response sizes between an unpadded and a
+    padded view).
     """
-    # Validate prefix format
-    prefix = hash_prefix.upper().strip()
-    if len(prefix) != 5 or not all(c in "0123456789ABCDEF" for c in prefix):
+    from api.services.pwned_passwords import (
+        _is_valid_prefix, fetch_hibp_range, parse_range_body,
+    )
+
+    prefix = (hash_prefix or "").upper().strip()
+    if not _is_valid_prefix(prefix):
         raise HTTPException(400, "Hash prefix must be exactly 5 hex characters")
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(
-                f"https://api.pwnedpasswords.com/range/{prefix}",
-                headers={
-                    "User-Agent": "Cleanway-BreachCheck",
-                    "Add-Padding": "true",  # Adds padding to prevent response size analysis
-                },
-            )
+    body = await fetch_hibp_range(prefix)
+    if body is None:
+        raise HTTPException(503, "Breach check temporarily unavailable")
 
-            if resp.status_code != 200:
-                raise HTTPException(502, "Breach check service unavailable")
+    suffixes_map = parse_range_body(body)
+    # Backwards-compat shape: a list of {suffix, count} so the
+    # existing breach-check.js content script doesn't have to
+    # change. Real-matches stat omits the padding rows.
+    results = [{"suffix": s, "count": c} for s, c in suffixes_map.items()]
+    real_matches = sum(1 for c in suffixes_map.values() if c > 0)
 
-            # Parse response: each line is "SUFFIX:COUNT"
-            results = []
-            for line in resp.text.strip().split("\n"):
-                parts = line.strip().split(":")
-                if len(parts) == 2:
-                    suffix = parts[0]
-                    count = int(parts[1])
-                    if count > 0:  # Skip padded entries
-                        results.append({
-                            "suffix": suffix,
-                            "count": count,
-                        })
-
-            logger.info("breach_check", extra={"prefix": prefix, "matches": len(results)})
-
-            return {
-                "prefix": prefix,
-                "matches": len(results),
-                "suffixes": results,
-                "note": "Compare your full SHA-1 hash suffix against these results on-device.",
-            }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.warning("breach_check_error", extra={"error": str(e)})
-        raise HTTPException(502, "Breach check temporarily unavailable")
+    return {
+        "prefix": prefix,
+        "matches": real_matches,
+        "suffixes": results,
+        "note": "Compare your full SHA-1 hash suffix against these results on-device.",
+    }
 
 
 @router.get(
