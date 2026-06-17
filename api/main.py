@@ -26,6 +26,8 @@ from api.routers.auth import router as auth_router
 from api.routers.credentials import router as credentials_router
 from api.routers.transparency import router as transparency_router
 from api.routers.explainer import router as explainer_router
+from api.routers.doh import router as doh_router
+from api.routers.mobileconfig import router as mobileconfig_router
 from api.routers.watchtower import router as watchtower_router
 from api.services.cache import close_redis, get_redis
 from api.services.logger import setup_logging
@@ -191,6 +193,8 @@ app.include_router(auth_router)
 app.include_router(credentials_router)
 app.include_router(transparency_router)
 app.include_router(explainer_router)
+app.include_router(doh_router)
+app.include_router(mobileconfig_router)
 app.include_router(watchtower_router)
 
 
