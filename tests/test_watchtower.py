@@ -125,10 +125,62 @@ def test_tld_switch_flagged():
 
 def test_subdomain_use_of_brand_flagged():
     """paypal.attacker.tld — brand name lives in the subdomain chain
-    of an unrelated registrable domain."""
-    out = is_likely_typosquat("paypal.com", "paypal.evil-host.tld")
+    of an unrelated registrable domain.
+
+    Caller MUST pass `raw_suspect` because the eTLD+1 form
+    ('attacker.tld') strips the brand label out otherwise.
+    """
+    out = is_likely_typosquat(
+        "paypal.com", "evil-host.tld",
+        raw_suspect="paypal.evil-host.tld",
+    )
     assert out is not None
     assert out[1] == "subdomain"
+
+
+def test_subdomain_alert_actually_fires_end_to_end():
+    """Regression for the dead-code subdomain branch
+    (adversarial-review #1): scan_brand must surface variant_kind='subdomain'
+    when crt.sh returns a SAN of the form 'paypal.attacker.tld'."""
+    import asyncio
+    from unittest.mock import AsyncMock, patch as _patch
+
+    rows = [
+        {
+            "name_value": "paypal.attacker.tld",
+            "issuer_name": "Let's Encrypt",
+            "not_before": "2026-06-15T00:00:00",
+        }
+    ]
+    with _patch(
+        "api.services.watchtower.fetch_crtsh_candidates",
+        new=AsyncMock(return_value=rows),
+    ):
+        out = asyncio.get_event_loop().run_until_complete(
+            __import__("api.services.watchtower", fromlist=["scan_brand"]).scan_brand("paypal.com")
+        ) if False else None
+    # The async test runner above is wonky here; rerun via asyncio.run.
+    async def _go():
+        from api.services.watchtower import scan_brand as _scan
+        return await _scan("paypal.com")
+    with _patch(
+        "api.services.watchtower.fetch_crtsh_candidates",
+        new=AsyncMock(return_value=rows),
+    ):
+        cands = asyncio.run(_go())
+    assert any(c.variant_kind == "subdomain" for c in cands)
+
+
+def test_punycode_homograph_decoded():
+    """Regression for the ACE-form blind spot (adversarial-review #2).
+
+    'xn--pypal-4ve' decodes to 'pаypal' with Cyrillic 'а'. The
+    raw ACE form is all ASCII so the naive isascii() check missed
+    it; we now idna-decode first.
+    """
+    out = is_likely_typosquat("paypal.com", "xn--pypal-4ve.com")
+    assert out is not None
+    assert out[1] == "homograph"
 
 
 def test_random_unrelated_domain_not_flagged():
@@ -146,6 +198,13 @@ def test_empty_inputs_return_none():
     assert is_likely_typosquat("", "paypal.com") is None
     assert is_likely_typosquat("paypal.com", "") is None
     assert is_likely_typosquat(None, "paypal.com") is None
+
+
+def test_malformed_suspect_without_suffix_not_flagged():
+    """Regression for adversarial-review medium: a SAN like 'paypal.'
+    (trailing-dot only) used to fire the TLD branch as (0,'tld').
+    We now require both sides to have a non-empty suffix."""
+    assert is_likely_typosquat("paypal.com", "paypal") is None
 
 
 # ─────────────────────────────────────────────────────────────────

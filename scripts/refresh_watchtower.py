@@ -35,6 +35,18 @@ LOCK_KEY = "watchtower:refresh:lock"
 LOCK_TTL_SECONDS = 60 * 60  # one hour — well above worst-case scan duration
 
 
+def _hash_brand(root: str) -> str:
+    """Stable, non-reversible label for log lines so a public GH
+    Actions log doesn't leak the brands users watch.
+
+    Truncated SHA-256; 16 hex chars is enough to disambiguate while
+    keeping logs readable. The actual scan still works on the raw
+    domain in memory — only the LOG SURFACE is hashed.
+    """
+    import hashlib
+    return hashlib.sha256((root or "").encode("utf-8")).hexdigest()[:16]
+
+
 async def _acquire_lock(redis_url: str | None) -> tuple[object | None, bool, str | None]:
     """Try to acquire the global single-flight lock. Returns
     (client, acquired, our_token). client may be None when no
@@ -87,30 +99,49 @@ async def _supabase(http: httpx.AsyncClient, method: str, path: str, **kwargs):
 
 
 async def _distinct_brands(http: httpx.AsyncClient, cap: int) -> list[dict]:
-    """Return up to `cap` distinct brand_root_domain rows, ordered
-    by oldest last_scanned_at first (NULL first = brand-new entries)."""
-    resp = await _supabase(
-        http, "GET", "brand_watchlist",
-        params={
-            "select": "brand_root_domain,last_scanned_at",
-            "order": "last_scanned_at.asc.nullsfirst",
-            "limit": str(cap),
-        },
-    )
-    if resp.status_code != 200:
-        logger.error("brand_watchlist read failed %s %s", resp.status_code, resp.text[:200])
-        return []
-    rows = resp.json()
-    # Dedup on brand_root_domain — multiple users may watch the
-    # same brand, but the scan only needs to happen once.
+    """Return up to `cap` DISTINCT brand_root_domain values, ordered
+    by oldest last_scanned_at first (NULL first = brand-new entries).
+
+    The previous version applied `limit=200` to the raw rows and
+    THEN deduplicated in Python — meaning a single brand watched
+    by 200 users could fill the entire window and silently squeeze
+    every other brand out (adversarial-review #3). PostgREST 11+
+    supports `?select=distinct(col)`; we paginate by 1000-row
+    batches and dedup until we have `cap` unique brands.
+    """
     seen: set[str] = set()
     unique: list[dict] = []
-    for r in rows:
-        root = r.get("brand_root_domain")
-        if not root or root in seen:
-            continue
-        seen.add(root)
-        unique.append(r)
+    page_size = 1000
+    offset = 0
+    while len(unique) < cap:
+        resp = await _supabase(
+            http, "GET", "brand_watchlist",
+            params={
+                "select": "brand_root_domain,last_scanned_at",
+                "order": "last_scanned_at.asc.nullsfirst",
+                "limit": str(page_size),
+                "offset": str(offset),
+            },
+        )
+        if resp.status_code != 200:
+            logger.error("brand_watchlist read failed %s %s", resp.status_code, resp.text[:200])
+            return unique
+        rows = resp.json()
+        if not rows:
+            break
+        for r in rows:
+            root = r.get("brand_root_domain")
+            if not root or root in seen:
+                continue
+            seen.add(root)
+            unique.append(r)
+            if len(unique) >= cap:
+                break
+        offset += page_size
+        # Guard: bail out if the rows count drops below page_size
+        # (we've reached the end of the table).
+        if len(rows) < page_size:
+            break
     return unique
 
 
@@ -135,12 +166,24 @@ async def _upsert_alerts(http: httpx.AsyncClient, payload: list[dict]) -> int:
 
 
 async def _stamp_scanned(http: httpx.AsyncClient, brand_root: str) -> None:
+    """Stamp last_scanned_at on every row matching this brand_root.
+
+    A silent failure here used to leave the brand at the head of the
+    NULLS-FIRST queue forever — next run would re-scan it, every run
+    after that too, while other brands starved (adversarial-review #7).
+    Now we log non-2xx with the brand and let the watchdog notice.
+    """
     now = datetime.now(timezone.utc).isoformat()
-    await _supabase(
+    resp = await _supabase(
         http, "PATCH", "brand_watchlist",
         params={"brand_root_domain": f"eq.{brand_root}"},
         json={"last_scanned_at": now},
     )
+    if resp.status_code not in (200, 204):
+        logger.warning(
+            "stamp_scanned failed for brand_root_hash=%s status=%s body=%s",
+            _hash_brand(brand_root), resp.status_code, resp.text[:200],
+        )
 
 
 async def run_once(cap: int) -> int:
@@ -156,16 +199,18 @@ async def run_once(cap: int) -> int:
         total_new = 0
         for b in brands:
             root = b["brand_root_domain"]
+            tag = _hash_brand(root)  # log-safe label
             try:
                 candidates = await scan_brand(root)
             except Exception as exc:
-                logger.exception("scan_brand crashed for %s: %s", root, exc)
+                logger.exception("scan_brand crashed for brand_hash=%s: %s", tag, exc)
                 continue
             n = await _upsert_alerts(http, [c.as_dict() for c in candidates])
             await _stamp_scanned(http, root)
             total_new += n
-            logger.info("  %s → %d candidates → %d new alerts", root, len(candidates), n)
-        logger.info("Done. %d new alerts created across %d brands.", total_new, len(brands))
+            logger.info("  brand_hash=%s → %d candidates → %d new alerts",
+                        tag, len(candidates), n)
+        logger.info("Done. %d new alerts across %d brands.", total_new, len(brands))
         return 0
 
 

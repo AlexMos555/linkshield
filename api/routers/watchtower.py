@@ -170,7 +170,10 @@ async def add_brand(
     body: BrandCreate,
     user: AuthUser = Depends(get_current_user),
 ):
-    # Quota
+    # Quota — fail closed. A previous version defaulted current=0 on
+    # any count error, which meant a transient Supabase 502 or a
+    # PostgREST timeout silently bypassed every user's quota
+    # (adversarial-review #4).
     quota = BRAND_QUOTA_BY_TIER.get(user.tier, 1)
     count_resp = await _supabase(
         "GET",
@@ -178,14 +181,18 @@ async def add_brand(
         params={"user_id": f"eq.{user.id}", "select": "id"},
         extra_headers={"Prefer": "count=exact", "Range": "0-0"},
     )
-    current = 0
-    if count_resp.status_code == 200:
-        cr = count_resp.headers.get("Content-Range") or ""
-        # Format: 0-0/<count>
-        try:
-            current = int(cr.split("/")[-1])
-        except (ValueError, IndexError):
-            current = 0
+    if count_resp.status_code != 200:
+        logger.warning(
+            "watchtower quota check failed status=%s — failing closed",
+            count_resp.status_code,
+        )
+        raise HTTPException(503, "Watchtower temporarily unavailable, please retry")
+    cr = count_resp.headers.get("Content-Range") or ""
+    try:
+        current = int(cr.split("/")[-1])
+    except (ValueError, IndexError):
+        logger.warning("watchtower count header malformed: %r — failing closed", cr)
+        raise HTTPException(503, "Watchtower temporarily unavailable, please retry")
     if current >= quota:
         raise HTTPException(
             403,
@@ -282,49 +289,26 @@ async def list_alerts(user: AuthUser = Depends(get_current_user)):
     "/alerts/{alert_id}",
     response_model=AlertResponse,
     dependencies=[Depends(rate_limit(mode="user", category="watchtower_patch"))],
+    deprecated=True,
 )
 async def toggle_alert(
     alert_id: str,
     body: AlertPatch,
     user: AuthUser = Depends(get_current_user),
 ):
-    # The RLS UPDATE policy enforces that the alert's brand_root
-    # must match a brand in the user's watchlist; we still send the
-    # update via service_role and let RLS-equivalent app-level
-    # check stay in the policy. service_role bypasses RLS, so we
-    # double-check in app: re-read the brand_root from the alert,
-    # verify the user watches it.
-    alert_resp = await _supabase(
-        "GET", "typosquat_alerts",
-        params={"id": f"eq.{alert_id}", "select": "brand_root_domain"},
-    )
-    if alert_resp.status_code != 200 or not alert_resp.json():
-        raise HTTPException(404, "Alert not found")
-    brand_root = alert_resp.json()[0]["brand_root_domain"]
-    own_resp = await _supabase(
-        "GET", "brand_watchlist",
-        params={
-            "user_id": f"eq.{user.id}",
-            "brand_root_domain": f"eq.{brand_root}",
-            "select": "id",
-        },
-    )
-    if own_resp.status_code != 200 or not own_resp.json():
-        raise HTTPException(403, "Alert is not for a brand you watch")
+    """DEPRECATED — toggling auto_block is currently disabled while
+    we move from shared-row alerts to per-user dismissals.
 
-    upd_resp = await _supabase(
-        "PATCH",
-        "typosquat_alerts",
-        params={"id": f"eq.{alert_id}"},
-        json={"auto_block": body.auto_block},
-        extra_headers={"Prefer": "return=representation"},
+    Migration 020 dropped the RLS UPDATE policy because the original
+    model let any user watching a brand demote a threat for ALL
+    other watchers of the same brand (adversarial-review #5). The
+    feature returns once we ship a dismissed_alerts table.
+    """
+    raise HTTPException(
+        410,
+        "Per-alert auto_block toggling is temporarily disabled; "
+        "remove the brand from your watchlist to mute alerts.",
     )
-    if upd_resp.status_code not in (200, 204):
-        raise HTTPException(502, "Failed to update alert")
-    rows = upd_resp.json()
-    if not rows:
-        raise HTTPException(502, "Empty response")
-    return rows[0]
 
 
 @router.post(

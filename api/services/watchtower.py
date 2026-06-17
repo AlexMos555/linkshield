@@ -179,21 +179,40 @@ def eTLD1(domain: str) -> str:
 # Variant detection
 # ─────────────────────────────────────────────────────────────────
 
-def is_likely_typosquat(brand_root: str, suspect: str) -> Optional[tuple[int, str]]:
+def _decode_idna_label(label: str) -> str:
+    """Best-effort Punycode → Unicode decoding for the homograph check.
+
+    crt.sh returns SAN entries in their ACE form ('xn--pypal-4ve'),
+    which is all-ASCII at the byte level — isascii() would never
+    flag it without this decoding step. We don't depend on the
+    `idna` package because it's strict about codepoint validity;
+    Python's stdlib `encode('ascii').decode('idna')` is permissive
+    enough for the lookalikes phishers actually use.
+    """
+    if not label or "xn--" not in label:
+        return label
+    try:
+        return label.encode("ascii").decode("idna")
+    except Exception:
+        return label
+
+
+def is_likely_typosquat(
+    brand_root: str, suspect: str, *, raw_suspect: Optional[str] = None,
+) -> Optional[tuple[int, str]]:
     """Classify `suspect` against `brand_root`. Returns
     (edit_distance, variant_kind) if it qualifies, None otherwise.
 
-    Both inputs must be eTLD+1-shaped. brand_root is the canonical
-    target (e.g., "paypal.com"); suspect is the candidate that
-    just appeared in CT logs.
+    `suspect` is the eTLD+1 form (e.g. 'attacker.tld'). `raw_suspect`
+    is the original CT name BEFORE eTLD+1 truncation — required for
+    the 'subdomain' branch to detect e.g. 'paypal.attacker.tld'
+    where the brand label only appears in the subdomain chain.
     """
     if not brand_root or not suspect:
         return None
     brand_root = brand_root.lower()
     suspect = suspect.lower()
 
-    # Trivial: identical = legitimate (the watched brand is in CT
-    # every day; we never alert on it).
     if brand_root == suspect:
         return None
 
@@ -202,29 +221,48 @@ def is_likely_typosquat(brand_root: str, suspect: str) -> Optional[tuple[int, st
     if not b_label or not s_label:
         return None
 
+    # Defensive: a malformed SAN like "paypal." would parse to
+    # b_label='paypal' b_suffix='com', s_label='paypal' s_suffix=''.
+    # Without this guard the TLD branch fires with a bogus alert.
+    if not s_suffix or not b_suffix:
+        return None
+
     # 1) Same label, different suffix — TLD switch. paypal.com vs paypal.tk.
     if b_label == s_label and b_suffix != s_suffix:
         return (0, "tld")
 
-    # 2) Brand label appears as a subdomain. paypal.attacker.tld.
-    suspect_parts = suspect.split(".")
-    # Drop the eTLD+1 suffix part; what's left is the subdomain chain.
-    sub_chain = suspect_parts[:-1] if s_suffix and "." not in s_suffix else suspect_parts[:-2]
-    if b_label in sub_chain:
-        return (0, "subdomain")
+    # 2) Brand label as a subdomain. Use the RAW suspect (pre-eTLD+1)
+    #    so 'paypal.attacker.tld' still surfaces — eTLD+1 strips the
+    #    'paypal' label out otherwise (adversarial-review #1).
+    raw = (raw_suspect or suspect).lower().strip(".")
+    raw_parts = raw.split(".") if raw else []
+    if raw_parts and len(raw_parts) > 2:
+        # Everything except the registrable domain is the sub-chain.
+        sub_chain = raw_parts[:-2]
+        # Account for multi-segment TLDs (e.g., .co.uk).
+        last_two = ".".join(raw_parts[-2:])
+        if last_two in COMMON_MULTI_TLDS and len(raw_parts) > 3:
+            sub_chain = raw_parts[:-3]
+        if b_label in sub_chain:
+            return (0, "subdomain")
 
-    # 3) Levenshtein on the label only (suffix difference is noise).
+    # 3) Levenshtein on the label (suffix difference is noise).
     dist = levenshtein(b_label, s_label)
     if 1 <= dist <= MAX_LEVENSHTEIN_DISTANCE:
         return (dist, "typo")
 
-    # 4) Homograph: if the suspect's punycode-decoded label contains
-    #    confusable characters (Cyrillic а/о/е, Greek alpha) it's
-    #    a possible homograph attack on the brand.
-    if b_label.isascii() and not s_label.isascii():
-        # The suspect went through IDNA decoding (httpx already does
-        # this for us when we strip "xn--" — but we re-check here so
-        # raw inputs from CT logs are handled regardless).
+    # 4) Homograph: decode 'xn--' ACE form before testing isascii so
+    #    Cyrillic/Greek lookalikes register (adversarial-review #2).
+    decoded_s_label = _decode_idna_label(s_label)
+    decoded_b_label = _decode_idna_label(b_label)
+    if decoded_b_label.isascii() and not decoded_s_label.isascii():
+        return (0, "homograph")
+    # Cross-script Levenshtein after decoding catches lookalikes that
+    # still spell the brand in mixed-script form.
+    if (
+        decoded_s_label != s_label
+        and 1 <= levenshtein(decoded_b_label, decoded_s_label) <= MAX_LEVENSHTEIN_DISTANCE
+    ):
         return (0, "homograph")
 
     return None
@@ -360,9 +398,13 @@ async def scan_brand(brand_root: str) -> list[TyposquatCandidate]:
     if not rows:
         return []
 
-    # Map suspect → earliest not_before + issuer (some candidates
-    # appear in multiple rows; we keep the earliest).
-    earliest: dict[str, tuple[str, Optional[str]]] = {}
+    # Map suspect (eTLD+1) → (earliest_not_before, issuer, raw_cand).
+    # Keeping the RAW candidate is required so the subdomain variant
+    # branch in is_likely_typosquat can inspect the original sub-chain
+    # (eTLD+1 strips the brand label that lives there). When multiple
+    # raw candidates resolve to the same eTLD+1 we keep the EARLIEST
+    # cert's raw form — first appearance is most representative.
+    earliest: dict[str, tuple[str, Optional[str], str]] = {}
     for row in rows:
         nb = row.get("not_before") or ""
         issuer = row.get("issuer_name")
@@ -372,17 +414,21 @@ async def scan_brand(brand_root: str) -> list[TyposquatCandidate]:
                 continue
             existing = earliest.get(cand_root)
             if existing is None or nb < existing[0]:
-                earliest[cand_root] = (nb, issuer)
+                earliest[cand_root] = (nb, issuer, cand)
 
     out: list[TyposquatCandidate] = []
-    for suspect, (first_seen, issuer) in earliest.items():
-        verdict = is_likely_typosquat(brand_root, suspect)
+    for suspect, (first_seen, issuer, raw_cand) in earliest.items():
+        verdict = is_likely_typosquat(brand_root, suspect, raw_suspect=raw_cand)
         if verdict is None:
             continue
         edit_d, kind = verdict
+        # For subdomain alerts, persist the RAW suspect so the alert
+        # actually points the user at the suspicious URL — pointing
+        # them at the registrable domain alone would be useless.
+        persisted_suspect = raw_cand if kind == "subdomain" else suspect
         out.append(TyposquatCandidate(
             brand_root=brand_root,
-            suspect=suspect,
+            suspect=persisted_suspect,
             edit_distance=edit_d,
             variant_kind=kind,
             first_seen_at=first_seen,
