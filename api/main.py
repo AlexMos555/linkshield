@@ -133,17 +133,42 @@ async def request_logging_middleware(request: Request, call_next):
     response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
     response.headers["X-Powered-By"] = "Cleanway"
 
+    # Scrub sensitive path parameters that should never appear in
+    # access logs. Strategy #13: the 5-char SHA-1 prefix in
+    # /api/v1/breach/check/{prefix} is documented as never leaving
+    # Redis — but logged path params would leak it into Sentry
+    # breadcrumbs + structured-logging downstreams. Same surgical
+    # treatment for any other path-segment-of-secret endpoints we
+    # add in the future.
+    logged_path = _scrub_path_for_logs(request.url.path)
     logger.info(
         "request",
         extra={
             "method": request.method,
-            "path": request.url.path,
+            "path": logged_path,
             "status": response.status_code,
             "elapsed_ms": elapsed_ms,
             "request_id": request_id,
         },
     )
     return response
+
+
+def _scrub_path_for_logs(path: str) -> str:
+    """Replace privacy-sensitive path parameters with their placeholder
+    name. Keeps the route-shape visible to ops while preventing the
+    actual parameter value from reaching the structured log sink
+    (Sentry / Datadog).
+    """
+    if not path:
+        return path
+    # /api/v1/breach/check/{prefix} → /api/v1/breach/check/{prefix}
+    if path.startswith("/api/v1/breach/check/"):
+        return "/api/v1/breach/check/{prefix}"
+    # /api/v1/breach/passwords/{prefix} (future shape) — same treatment
+    if path.startswith("/api/v1/breach/passwords/"):
+        return "/api/v1/breach/passwords/{prefix}"
+    return path
 
 
 # Routers

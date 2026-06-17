@@ -98,14 +98,18 @@ async def fetch_hibp_range(prefix: str) -> Optional[str]:
         ) as client:
             resp = await client.get(HIBP_BASE + prefix_upper)
             if resp.status_code != 200:
+                # NB: deliberately do NOT log the prefix — it would
+                # surface in Sentry breadcrumbs and external log
+                # sinks, violating the privacy invariant documented
+                # at the top of this module.
                 logger.warning(
-                    "pwnedpasswords returned %d for prefix=%s",
-                    resp.status_code, prefix_upper,
+                    "pwnedpasswords HIBP returned non-200: %d",
+                    resp.status_code,
                 )
                 return None
             body = resp.text
     except Exception as exc:
-        logger.warning("pwnedpasswords fetch failed for %s: %s", prefix_upper, exc)
+        logger.warning("pwnedpasswords HIBP fetch failed: %s", exc)
         return None
 
     if r is not None:

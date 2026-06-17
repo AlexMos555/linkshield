@@ -64,10 +64,18 @@
 
   // ── Lookup. Returns breach count (>0) or 0.
   async function _checkPrefix(prefix, fullHash) {
+    // referrerPolicy='no-referrer' is essential: by default the
+    // page's hostname leaks to Cleanway in the Referer header.
+    // That defeats the privacy story of k-anonymity ("server
+    // never sees what you typed") because it tells us
+    // "user-on-bank.com queried prefix X" — combined with rate-
+    // limit per-IP buckets this is a real fingerprint. The
+    // server NEVER needs the page origin for this call.
     var resp = await fetch(_apiBase() + API_PATH + prefix, {
       method: "GET",
       credentials: "omit",
       mode: "cors",
+      referrerPolicy: "no-referrer",
     });
     if (!resp.ok) return 0;
     var data = await resp.json();
@@ -144,15 +152,22 @@
     if (value.length < MIN_LENGTH) return;
     if (_scanInFlight) return;
 
-    // Throttle: skip if we've already checked this exact value.
-    if (_lastValueByInput.get(input) === value) return;
-    _lastValueByInput.set(input, value);
-
     _scanInFlight = true;
     try {
       var hash = await _sha1Hex(value);
-      // Discard the password value from memory ASAP. Subsequent
-      // reads of `value` would just go back to the DOM input anyway.
+      // Throttle now keys on the HASH, not the plaintext value.
+      // _lastValueByInput was previously storing the cleartext
+      // password as the map value — even though WeakMap drops
+      // its entries when the input is GC'd, the input often
+      // lives the whole pageload, so the password sat in memory
+      // until then. Hash is fine to keep: it's already in the
+      // outgoing request prefix anyway.
+      if (_lastValueByInput.get(input) === hash) {
+        return;
+      }
+      _lastValueByInput.set(input, hash);
+      // Discard the cleartext from memory ASAP. Subsequent reads
+      // of `value` would just go back to the DOM input anyway.
       value = null;
       var prefix = hash.slice(0, 5);
       var count = await _checkPrefix(prefix, hash);

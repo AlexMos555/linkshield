@@ -167,6 +167,20 @@ async def test_fetch_returns_none_on_5xx(monkeypatch):
         assert await fetch_hibp_range("21BD1") is None
 
 
+def test_request_log_scrubs_breach_prefix():
+    """Strategy #13 adversarial review: the 5-char SHA-1 prefix in
+    the URL path must NOT reach structured access logs / Sentry."""
+    from api.main import _scrub_path_for_logs
+
+    assert _scrub_path_for_logs("/api/v1/breach/check/21BD1") == "/api/v1/breach/check/{prefix}"
+    assert _scrub_path_for_logs("/api/v1/breach/check/abcde") == "/api/v1/breach/check/{prefix}"
+    assert _scrub_path_for_logs("/api/v1/breach/passwords/abcde") == "/api/v1/breach/passwords/{prefix}"
+    # Unrelated paths pass through untouched.
+    assert _scrub_path_for_logs("/api/v1/public/check/example.com") == "/api/v1/public/check/example.com"
+    assert _scrub_path_for_logs("/health") == "/health"
+    assert _scrub_path_for_logs("") == ""
+
+
 @pytest.mark.asyncio
 async def test_fetch_uppercases_prefix_before_query():
     """Both HIBP and our cache are case-insensitive; we normalize

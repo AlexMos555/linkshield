@@ -18,6 +18,27 @@ async function sha1(message) {
 }
 
 async function checkEmailBreach(email) {
+  // NOTE (Strategy #13 adversarial review, 2026-06-17):
+  //   /api/v1/breach/check/{prefix} proxies HIBP's Pwned PASSWORDS
+  //   k-anonymity API. Sending an email-SHA1 prefix returns the
+  //   random collision of PASSWORD-hash suffixes that happen to
+  //   share those 5 hex chars — NOT a meaningful email-breach
+  //   answer. The honest fix is HIBP's /breachedaccount endpoint,
+  //   which is paid-tier only. Until we wire that key we surface
+  //   "coming soon" rather than a false negative or terrifying
+  //   false positive. Password-pwned (password-pwned.js) is
+  //   correct and live — that's the user-facing #13 story today.
+  return {
+    breached: false,
+    count: 0,
+    message:
+      "Email breach monitoring requires our paid tier (coming soon). " +
+      "Password-pwned protection is live now — typing any password " +
+      "into a form will warn you if it has appeared in a known leak.",
+    coming_soon: true,
+  };
+  // ─────────── DISABLED ORIGINAL PATH (kept for diff clarity) ───────
+  /* eslint-disable */
   var hash = await sha1(email.toLowerCase().trim());
   var prefix = hash.substring(0, 5);
   var suffix = hash.substring(5);
