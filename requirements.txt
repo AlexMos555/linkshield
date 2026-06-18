@@ -9,6 +9,15 @@ dnspython==2.8.0
 stripe==11.0.0
 sentry-sdk[fastapi]==2.19.0
 bcrypt==4.2.1
+
+# Anthropic SDK for LLM Judge (#21) + Cultural Explainer (#15).
+# Late-imported in api/services/llm_judge.py + scam_explainer.py, so
+# missing package = graceful fallback to template-only verdict.
+# Pinned for reproducibility — bump only after re-verifying:
+#   * llm_judge prompt still returns the documented JSON schema
+#   * scam_explainer fallback path still works without the package
+anthropic==0.39.0
+
 # NOTE: ML scoring (catboost + numpy) is NOT installed here.
 # Reason: catboost resident footprint is ~400MB — OOM-kills pods on Railway's
 # 512 MB starter plan. Without it, ml_scorer._load_model() gracefully fails
