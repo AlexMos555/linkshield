@@ -65,7 +65,7 @@ async def check_cloudflare_families(domain: str) -> CompetitorVerdict:
             data = resp.json()
             status = int(data.get("Status", 0))
             answers = data.get("Answer", []) or []
-            sinkhole = {"0.0.0.0", "::"}
+            sinkhole = {"0.0.0.0", "::"}  # nosec B104 — sinkhole-IP set, not a bind address
             ip_blocked = any(
                 (a.get("data") or "").strip() in sinkhole
                 for a in answers if a.get("type") in (1, 28)
