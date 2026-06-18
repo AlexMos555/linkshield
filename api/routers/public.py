@@ -20,7 +20,6 @@ from api.services.scoring import (
     calculate_confidence_pct,
 )
 from api.services.domain_validator import validate_domain, DomainValidationError
-from api.services.cache import get_cached_result, cache_result
 from api.services.rate_limiter import rate_limit, _extract_client_ip
 from api.models.schemas import DomainResult, RiskLevel, ConfidenceLevel
 

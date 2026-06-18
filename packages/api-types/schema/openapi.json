@@ -1299,7 +1299,7 @@
           "public"
         ],
         "summary": "Public Check",
-        "description": "Public domain safety check. No auth required.\nRate limited by IP (10/min). Used for SEO pages and embeds.\nReturns simplified result without full analysis (fast, no external API calls).",
+        "description": "Public domain safety check. No auth required.\n\nUp until 2026-06-17 this endpoint ran ONLY rule-based scoring\nand intentionally skipped the 16-source threat-intel fan-out\nfor speed. Measured result: 0% recall on fresh URLhaus URLs.\n\nNow runs the FULL 18-check analyzer, but with FOUR defenses\nagainst analyzer cost (each closes a distinct adversarial-review\nfinding from 2026-06-17):\n\n  1. Top-domain allowlist short-circuit (instant safe verdict\n     for top-10k legit hosts — no API calls).\n  2. Per-endpoint Redis cache, single 24h TTL across verdict\n     levels. The endpoint OWNS its cache namespace separately\n     from cache_result()/get_cached_result() so it cannot get\n     clobbered by the authed flow's 5-min dangerous TTL.\n  3. SINGLEFLIGHT coalescing: N concurrent requests for the\n     same fresh domain collapse to ONE analyze_domain call.\n     The rest await the same Future.\n  4. IP rate-limit uses _extract_client_ip() so X-Forwarded-For\n     is honored when the immediate caller is in trusted_proxy_cidrs\n     — without it we collapse all traffic behind Railway's\n     single egress IP into one bucket.\n\nTrade-off: first cold-cache lookup on a never-seen domain takes\n1-3 seconds (vs prior ~100 ms). Every subsequent hit on the\nsame domain serves from cache in sub-50 ms — 99% of real\ntraffic will land there.",
         "operationId": "public_check_api_v1_public_check__domain__get",
         "parameters": [
           {
@@ -1340,7 +1340,7 @@
           "public"
         ],
         "summary": "Platform Stats",
-        "description": "Global platform statistics for landing page and social proof.",
+        "description": "Global platform statistics for landing page and social proof.\n\nNumbers MUST stay consistent with docs/transparency/<latest>.json —\nthat file is the source of truth, but reading it here would\ncouple this fast hot-path endpoint to disk I/O. Mirror by hand\nuntil we have a build step that injects the values at deploy.",
         "operationId": "platform_stats_api_v1_public_stats_get",
         "responses": {
           "200": {
@@ -1360,7 +1360,7 @@
           "breach"
         ],
         "summary": "Check Breach",
-        "description": "k-anonymity breach check.\n\nSend first 5 characters of SHA-1(email) hash.\nReturns list of matching hash suffixes with breach counts.\nClient compares locally — we never see your full hash.",
+        "description": "k-anonymity breach lookup.\n\nThe client SHA-1s either a password (Strategy doc #13) or an\nemail and sends only the first 5 hex chars of the hash. We\nproxy to HIBP's free /range API, cache the response in Redis\n24h, and return the full suffix list so the client matches on\ndevice. The server NEVER sees the suffix the user typed.\n\nWe return EVERY row HIBP gives us — including the padding rows\nwith count=0. Stripping those rows would defeat the response-\npadding privacy feature (a network observer could count \"real\nmatches\" by comparing response sizes between an unpadded and a\npadded view).",
         "operationId": "check_breach_api_v1_breach_check__hash_prefix__get",
         "parameters": [
           {
@@ -3075,6 +3075,491 @@
         }
       }
     },
+    "/api/v1/explain": {
+      "post": {
+        "tags": [
+          "explainer"
+        ],
+        "summary": "Explain Endpoint",
+        "operationId": "explain_endpoint_api_v1_explain_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dns-query": {
+      "post": {
+        "tags": [
+          "doh"
+        ],
+        "summary": "Doh Post",
+        "description": "RFC 8484 §4.1.1 — wire-format DNS message in request body.\n\nApple's Private Relay configuration profile uses this form.",
+        "operationId": "doh_post_dns_query_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "doh"
+        ],
+        "summary": "Doh Get",
+        "description": "RFC 8484 §4.1.1 — base64url-encoded wire in `dns` parameter.\n\nAndroid's Private DNS uses GET form. Cloudflare 1.1.1.1's\nDoH endpoint also accepts GET; we mirror that.",
+        "operationId": "doh_get_dns_query_get",
+        "parameters": [
+          {
+            "name": "dns",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dns"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mobileconfig": {
+      "get": {
+        "tags": [
+          "mobileconfig"
+        ],
+        "summary": "Download Mobileconfig",
+        "operationId": "download_mobileconfig_api_v1_mobileconfig_get",
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 5,
+              "default": "en",
+              "title": "Locale"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchtower/brands": {
+      "get": {
+        "tags": [
+          "watchtower"
+        ],
+        "summary": "List Brands",
+        "operationId": "list_brands_api_v1_watchtower_brands_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BrandResponse"
+                  },
+                  "title": "Response List Brands Api V1 Watchtower Brands Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "watchtower"
+        ],
+        "summary": "Add Brand",
+        "operationId": "add_brand_api_v1_watchtower_brands_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchtower/brands/{brand_id}": {
+      "delete": {
+        "tags": [
+          "watchtower"
+        ],
+        "summary": "Remove Brand",
+        "operationId": "remove_brand_api_v1_watchtower_brands__brand_id__delete",
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Brand Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchtower/alerts": {
+      "get": {
+        "tags": [
+          "watchtower"
+        ],
+        "summary": "List Alerts",
+        "operationId": "list_alerts_api_v1_watchtower_alerts_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertResponse"
+                  },
+                  "title": "Response List Alerts Api V1 Watchtower Alerts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchtower/alerts/{alert_id}": {
+      "patch": {
+        "tags": [
+          "watchtower"
+        ],
+        "summary": "Toggle Alert",
+        "description": "DEPRECATED — toggling auto_block is currently disabled while\nwe move from shared-row alerts to per-user dismissals.\n\nMigration 020 dropped the RLS UPDATE policy because the original\nmodel let any user watching a brand demote a threat for ALL\nother watchers of the same brand (adversarial-review #5). The\nfeature returns once we ship a dismissed_alerts table.",
+        "operationId": "toggle_alert_api_v1_watchtower_alerts__alert_id__patch",
+        "deprecated": true,
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchtower/scan": {
+      "post": {
+        "tags": [
+          "watchtower"
+        ],
+        "summary": "Scan Now",
+        "description": "On-demand scan of EVERY brand in the caller's watchlist.\n\nRate-limit category 'watchtower_scan' caps this per user (the\ncron does the heavy lifting on a daily schedule; this is for\nimpatient users who just added a brand and want their first\nbatch of alerts immediately).",
+        "operationId": "scan_now_api_v1_watchtower_scan_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health Check",
@@ -3228,6 +3713,78 @@
         ],
         "title": "AlertEnvelope",
         "description": "One per recipient. The same source alert produces N envelopes."
+      },
+      "AlertPatch": {
+        "properties": {
+          "auto_block": {
+            "type": "boolean",
+            "title": "Auto Block"
+          }
+        },
+        "type": "object",
+        "required": [
+          "auto_block"
+        ],
+        "title": "AlertPatch"
+      },
+      "AlertResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "brand_root_domain": {
+            "type": "string",
+            "title": "Brand Root Domain"
+          },
+          "suspect_domain": {
+            "type": "string",
+            "title": "Suspect Domain"
+          },
+          "edit_distance": {
+            "type": "integer",
+            "title": "Edit Distance"
+          },
+          "variant_kind": {
+            "type": "string",
+            "title": "Variant Kind"
+          },
+          "first_seen_at": {
+            "type": "string",
+            "title": "First Seen At"
+          },
+          "issuer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuer"
+          },
+          "auto_block": {
+            "type": "boolean",
+            "title": "Auto Block"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "brand_root_domain",
+          "suspect_domain",
+          "edit_distance",
+          "variant_kind",
+          "first_seen_at",
+          "auto_block",
+          "created_at"
+        ],
+        "title": "AlertResponse"
       },
       "AnalyzeEmailRequest": {
         "properties": {
@@ -3458,6 +4015,67 @@
         },
         "type": "object",
         "title": "Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post"
+      },
+      "BrandCreate": {
+        "properties": {
+          "brand_name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Brand Name"
+          },
+          "brand_root_domain": {
+            "type": "string",
+            "maxLength": 253,
+            "minLength": 3,
+            "title": "Brand Root Domain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "brand_name",
+          "brand_root_domain"
+        ],
+        "title": "BrandCreate"
+      },
+      "BrandResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "brand_name": {
+            "type": "string",
+            "title": "Brand Name"
+          },
+          "brand_root_domain": {
+            "type": "string",
+            "title": "Brand Root Domain"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "last_scanned_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scanned At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "brand_name",
+          "brand_root_domain",
+          "created_at"
+        ],
+        "title": "BrandResponse"
       },
       "CheckEmailRequest": {
         "properties": {
@@ -3889,6 +4507,55 @@
         ],
         "title": "EffectiveSkillResponse",
         "description": "Resolved skill + accessibility for a specific device.\n\nResolution rule: device override (if set) wins over user default.\nReturned to extension/mobile so the UI can render with the right\ndensity, fonts, voice alerts, etc."
+      },
+      "ExplainRequest": {
+        "properties": {
+          "signals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Signals"
+          },
+          "locale": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 2,
+            "title": "Locale",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "title": "ExplainRequest"
+      },
+      "ExplainResponse": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "locale": {
+            "type": "string",
+            "title": "Locale"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "locale",
+          "explanation",
+          "source"
+        ],
+        "title": "ExplainResponse"
       },
       "FamilyMember": {
         "properties": {
@@ -4620,6 +5287,29 @@
           "reason_codes"
         ],
         "title": "ScamVerdict"
+      },
+      "ScanResponse": {
+        "properties": {
+          "scanned_brands": {
+            "type": "integer",
+            "title": "Scanned Brands"
+          },
+          "new_alerts": {
+            "type": "integer",
+            "title": "New Alerts"
+          },
+          "candidates_found": {
+            "type": "integer",
+            "title": "Candidates Found"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scanned_brands",
+          "new_alerts",
+          "candidates_found"
+        ],
+        "title": "ScanResponse"
       },
       "ScoreSync": {
         "properties": {

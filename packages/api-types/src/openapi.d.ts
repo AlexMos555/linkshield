@@ -344,8 +344,15 @@ export interface paths {
          *
          *     Validates font_scale 0.8..2.5 (matches DB CHECK constraint). Authorization
          *     is implicit: we filter on (user_id=user.id, device_hash) so a user can
-         *     only change their own devices' overrides. Family Hub admin operations
-         *     on a family member's device go through the family router (TODO).
+         *     only change their own devices' overrides.
+         *
+         *     NOTE: Family-admin "set overrides on a family member's device"
+         *     deliberately lives at /api/v1/family/{family_id}/members/{user_id}/devices/...
+         *     so that route can do its own audit-log + per-family permission check.
+         *     This endpoint is single-user only; do NOT add admin-of-other-user
+         *     semantics here. (Audit MEDIUM "user.py:923 docstring TODO for
+         *     family-router device overrides has no corresponding code or ticket"
+         *     — closed by clarifying the intent.)
          */
         patch: operations["update_device_overrides_api_v1_user_device__device_hash__overrides_patch"];
         trace?: never;
@@ -489,8 +496,33 @@ export interface paths {
         /**
          * Public Check
          * @description Public domain safety check. No auth required.
-         *     Rate limited by IP (10/min). Used for SEO pages and embeds.
-         *     Returns simplified result without full analysis (fast, no external API calls).
+         *
+         *     Up until 2026-06-17 this endpoint ran ONLY rule-based scoring
+         *     and intentionally skipped the 16-source threat-intel fan-out
+         *     for speed. Measured result: 0% recall on fresh URLhaus URLs.
+         *
+         *     Now runs the FULL 18-check analyzer, but with FOUR defenses
+         *     against analyzer cost (each closes a distinct adversarial-review
+         *     finding from 2026-06-17):
+         *
+         *       1. Top-domain allowlist short-circuit (instant safe verdict
+         *          for top-10k legit hosts — no API calls).
+         *       2. Per-endpoint Redis cache, single 24h TTL across verdict
+         *          levels. The endpoint OWNS its cache namespace separately
+         *          from cache_result()/get_cached_result() so it cannot get
+         *          clobbered by the authed flow's 5-min dangerous TTL.
+         *       3. SINGLEFLIGHT coalescing: N concurrent requests for the
+         *          same fresh domain collapse to ONE analyze_domain call.
+         *          The rest await the same Future.
+         *       4. IP rate-limit uses _extract_client_ip() so X-Forwarded-For
+         *          is honored when the immediate caller is in trusted_proxy_cidrs
+         *          — without it we collapse all traffic behind Railway's
+         *          single egress IP into one bucket.
+         *
+         *     Trade-off: first cold-cache lookup on a never-seen domain takes
+         *     1-3 seconds (vs prior ~100 ms). Every subsequent hit on the
+         *     same domain serves from cache in sub-50 ms — 99% of real
+         *     traffic will land there.
          */
         get: operations["public_check_api_v1_public_check__domain__get"];
         put?: never;
@@ -511,6 +543,11 @@ export interface paths {
         /**
          * Platform Stats
          * @description Global platform statistics for landing page and social proof.
+         *
+         *     Numbers MUST stay consistent with docs/transparency/<latest>.json —
+         *     that file is the source of truth, but reading it here would
+         *     couple this fast hot-path endpoint to disk I/O. Mirror by hand
+         *     until we have a build step that injects the values at deploy.
          */
         get: operations["platform_stats_api_v1_public_stats_get"];
         put?: never;
@@ -530,11 +567,19 @@ export interface paths {
         };
         /**
          * Check Breach
-         * @description k-anonymity breach check.
+         * @description k-anonymity breach lookup.
          *
-         *     Send first 5 characters of SHA-1(email) hash.
-         *     Returns list of matching hash suffixes with breach counts.
-         *     Client compares locally — we never see your full hash.
+         *     The client SHA-1s either a password (Strategy doc #13) or an
+         *     email and sends only the first 5 hex chars of the hash. We
+         *     proxy to HIBP's free /range API, cache the response in Redis
+         *     24h, and return the full suffix list so the client matches on
+         *     device. The server NEVER sees the suffix the user typed.
+         *
+         *     We return EVERY row HIBP gives us — including the padding rows
+         *     with count=0. Stripping those rows would defeat the response-
+         *     padding privacy feature (a network observer could count "real
+         *     matches" by comparing response sizes between an unpadded and a
+         *     padded view).
          */
         get: operations["check_breach_api_v1_breach_check__hash_prefix__get"];
         put?: never;
@@ -970,11 +1015,13 @@ export interface paths {
          * @description Submit per-recipient ciphertexts. Server stores raw bytes; never
          *     decrypts. Each envelope is an independent row.
          *
-         *     Sender (caller) MUST be a family member; recipients MUST also be
-         *     family members (we don't validate every individual recipient row
-         *     here — that's enforced by the FK + the membership index doesn't
-         *     allow strangers to receive). For now we enforce the sender check
-         *     and trust the FK.
+         *     Sender (caller) MUST be a family member, and each recipient_user_id
+         *     in the payload MUST also be a member of the same family — without
+         *     this check a malicious caller could plant alert rows into another
+         *     user's queue by guessing their UUID. The FK on recipient_user_id
+         *     only ensures the user EXISTS, not that they belong to this family.
+         *     (Audit finding backend MEDIUM "Family alert submission does not
+         *     validate recipient_user_id is a member of the family".)
          */
         post: operations["submit_alerts_api_v1_family__family_id__alerts_post"];
         delete?: never;
@@ -1128,6 +1175,254 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/credentials/verified": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Verified Hosts
+         * @description Resolve a brand identifier to the list of hostnames that are
+         *     actually used as that brand's verified login surfaces.
+         *
+         *     The credential-guardian content script uses this to decide whether
+         *     a same-brand-looking form action is plausibly legitimate. If
+         *     `is_known` is False the brand isn't in our allowlist — the
+         *     extension should fall back to its inline LEGIT_AUTH_HOSTS check
+         *     plus its three-signal heuristic.
+         *
+         *     Response is anonymous + IP-rate-limited. The brand identifier
+         *     leaks NO information about the user's current page or browsing
+         *     behaviour — it's just a brand name like "paypal", same kind of
+         *     request a price comparison page might make.
+         */
+        get: operations["verified_hosts_api_v1_credentials_verified_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transparency/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Report
+         * @description Return the most recent quarterly transparency report.
+         *
+         *     Loads the highest-named JSON file from docs/transparency/
+         *     (lexicographic order — "2026-q3" > "2026-q2"). Returns 404
+         *     only if the directory or its files are missing entirely (a
+         *     deployment misconfiguration), never because no report has
+         *     been issued yet.
+         */
+        get: operations["get_latest_report_api_v1_transparency_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transparency/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get History
+         * @description List metadata for every published report (id + period).
+         *
+         *     Useful for the landing page so it can render a dropdown of
+         *     every past quarter without fetching each full file.
+         */
+        get: operations["get_history_api_v1_transparency_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Explain Endpoint */
+        post: operations["explain_endpoint_api_v1_explain_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dns-query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Doh Get
+         * @description RFC 8484 §4.1.1 — base64url-encoded wire in `dns` parameter.
+         *
+         *     Android's Private DNS uses GET form. Cloudflare 1.1.1.1's
+         *     DoH endpoint also accepts GET; we mirror that.
+         */
+        get: operations["doh_get_dns_query_get"];
+        put?: never;
+        /**
+         * Doh Post
+         * @description RFC 8484 §4.1.1 — wire-format DNS message in request body.
+         *
+         *     Apple's Private Relay configuration profile uses this form.
+         */
+        post: operations["doh_post_dns_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobileconfig": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Mobileconfig */
+        get: operations["download_mobileconfig_api_v1_mobileconfig_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/watchtower/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Brands */
+        get: operations["list_brands_api_v1_watchtower_brands_get"];
+        put?: never;
+        /** Add Brand */
+        post: operations["add_brand_api_v1_watchtower_brands_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/watchtower/brands/{brand_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Brand */
+        delete: operations["remove_brand_api_v1_watchtower_brands__brand_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/watchtower/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Alerts */
+        get: operations["list_alerts_api_v1_watchtower_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/watchtower/alerts/{alert_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Toggle Alert
+         * @deprecated
+         * @description DEPRECATED — toggling auto_block is currently disabled while
+         *     we move from shared-row alerts to per-user dismissals.
+         *
+         *     Migration 020 dropped the RLS UPDATE policy because the original
+         *     model let any user watching a brand demote a threat for ALL
+         *     other watchers of the same brand (adversarial-review #5). The
+         *     feature returns once we ship a dismissed_alerts table.
+         */
+        patch: operations["toggle_alert_api_v1_watchtower_alerts__alert_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/watchtower/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scan Now
+         * @description On-demand scan of EVERY brand in the caller's watchlist.
+         *
+         *     Rate-limit category 'watchtower_scan' caps this per user (the
+         *     cron does the heavy lifting on a daily schedule; this is for
+         *     impatient users who just added a brand and want their first
+         *     batch of alerts immediately).
+         */
+        post: operations["scan_now_api_v1_watchtower_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1264,6 +1559,32 @@ export interface components {
              */
             alert_type: string;
         };
+        /** AlertPatch */
+        AlertPatch: {
+            /** Auto Block */
+            auto_block: boolean;
+        };
+        /** AlertResponse */
+        AlertResponse: {
+            /** Id */
+            id: string;
+            /** Brand Root Domain */
+            brand_root_domain: string;
+            /** Suspect Domain */
+            suspect_domain: string;
+            /** Edit Distance */
+            edit_distance: number;
+            /** Variant Kind */
+            variant_kind: string;
+            /** First Seen At */
+            first_seen_at: string;
+            /** Issuer */
+            issuer?: string | null;
+            /** Auto Block */
+            auto_block: boolean;
+            /** Created At */
+            created_at: string;
+        };
         /** AnalyzeEmailRequest */
         AnalyzeEmailRequest: {
             /**
@@ -1371,6 +1692,26 @@ export interface components {
         Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post: {
             /** List Unsubscribe */
             List_Unsubscribe: string | null;
+        };
+        /** BrandCreate */
+        BrandCreate: {
+            /** Brand Name */
+            brand_name: string;
+            /** Brand Root Domain */
+            brand_root_domain: string;
+        };
+        /** BrandResponse */
+        BrandResponse: {
+            /** Id */
+            id: string;
+            /** Brand Name */
+            brand_name: string;
+            /** Brand Root Domain */
+            brand_root_domain: string;
+            /** Created At */
+            created_at: string;
+            /** Last Scanned At */
+            last_scanned_at?: string | null;
         };
         /** CheckEmailRequest */
         CheckEmailRequest: {
@@ -1513,6 +1854,11 @@ export interface components {
             level: components["schemas"]["RiskLevel"];
             /** @default medium */
             confidence: components["schemas"]["ConfidenceLevel"];
+            /**
+             * Confidence Pct
+             * @default 75
+             */
+            confidence_pct: number;
             /** Reasons */
             reasons: components["schemas"]["DomainReason"][];
             /** Domain Age Days */
@@ -1558,6 +1904,27 @@ export interface components {
              * @enum {string}
              */
             font_source: "device_override" | "user_default";
+        };
+        /** ExplainRequest */
+        ExplainRequest: {
+            /** Signals */
+            signals: string[];
+            /**
+             * Locale
+             * @default en
+             */
+            locale: string;
+        };
+        /** ExplainResponse */
+        ExplainResponse: {
+            /** Category */
+            category: string;
+            /** Locale */
+            locale: string;
+            /** Explanation */
+            explanation: string;
+            /** Source */
+            source: string;
         };
         /** FamilyMember */
         FamilyMember: {
@@ -1861,6 +2228,15 @@ export interface components {
              */
             summary: string;
         };
+        /** ScanResponse */
+        ScanResponse: {
+            /** Scanned Brands */
+            scanned_brands: number;
+            /** New Alerts */
+            new_alerts: number;
+            /** Candidates Found */
+            candidates_found: number;
+        };
         /** ScoreSync */
         ScoreSync: {
             /** Score */
@@ -2029,6 +2405,15 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VerifiedHostsResponse */
+        VerifiedHostsResponse: {
+            /** Brand */
+            brand: string;
+            /** Hosts */
+            hosts: string[];
+            /** Is Known */
+            is_known: boolean;
         };
         /** WeeklyAggregateSubmit */
         WeeklyAggregateSubmit: {
@@ -3866,6 +4251,393 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckEmailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verified_hosts_api_v1_credentials_verified_get: {
+        parameters: {
+            query: {
+                /** @description Brand identifier (e.g. paypal, apple, chase). Case-insensitive — server lowercases. */
+                brand: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedHostsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_report_api_v1_transparency_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_history_api_v1_transparency_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    explain_endpoint_api_v1_explain_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplainResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    doh_get_dns_query_get: {
+        parameters: {
+            query?: {
+                dns?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    doh_post_dns_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    download_mobileconfig_api_v1_mobileconfig_get: {
+        parameters: {
+            query?: {
+                locale?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_brands_api_v1_watchtower_brands_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_brand_api_v1_watchtower_brands_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BrandCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_brand_api_v1_watchtower_brands__brand_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                brand_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_alerts_api_v1_watchtower_alerts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toggle_alert_api_v1_watchtower_alerts__alert_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scan_now_api_v1_watchtower_scan_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanResponse"];
                 };
             };
             /** @description Validation Error */

@@ -19,7 +19,6 @@ user dismissed it.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import httpx
 

@@ -152,14 +152,6 @@ def test_subdomain_alert_actually_fires_end_to_end():
             "not_before": "2026-06-15T00:00:00",
         }
     ]
-    with _patch(
-        "api.services.watchtower.fetch_crtsh_candidates",
-        new=AsyncMock(return_value=rows),
-    ):
-        out = asyncio.get_event_loop().run_until_complete(
-            __import__("api.services.watchtower", fromlist=["scan_brand"]).scan_brand("paypal.com")
-        ) if False else None
-    # The async test runner above is wonky here; rerun via asyncio.run.
     async def _go():
         from api.services.watchtower import scan_brand as _scan
         return await _scan("paypal.com")

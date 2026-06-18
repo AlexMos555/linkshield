@@ -1,9 +1,7 @@
 """Credential-guardian verified-host allowlist router contract tests."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 
