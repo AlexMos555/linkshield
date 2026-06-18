@@ -16,7 +16,7 @@ bcrypt==4.2.1
 # Pinned for reproducibility — bump only after re-verifying:
 #   * llm_judge prompt still returns the documented JSON schema
 #   * scam_explainer fallback path still works without the package
-anthropic==0.39.0
+anthropic==0.109.2
 
 # NOTE: ML scoring (catboost + numpy) is NOT installed here.
 # Reason: catboost resident footprint is ~400MB — OOM-kills pods on Railway's
