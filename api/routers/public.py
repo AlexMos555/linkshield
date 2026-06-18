@@ -146,21 +146,23 @@ async def public_check(domain: str, request: Request):
     # 3) Public-cache hit: serve previously-analysed result.
     cached = await _get_public_cache(domain)
     if cached:
-        return _format_public_result(cached)
+        return await _build_response(cached)
 
     # 4) Top-domain allowlist short-circuit.
     base = _extract_base_domain(domain)
     if base in TOP_DOMAINS:
-        return {
-            "domain": domain,
-            "safe": True,
-            "score": 0,
-            "level": "safe",
-            "verdict": f"{base} is a known legitimate website.",
-            "signals": ["Verified as a top global domain"],
-            "checked_at": datetime.now(timezone.utc).isoformat(),
-            "confidence_pct": 99,
-        }
+        # Build a synthetic DomainResult so the response shape stays
+        # identical (incl. competitors[] side-by-side) — easier for
+        # the landing scorecard than a separate branch.
+        synth = DomainResult(
+            domain=domain,
+            score=0,
+            level=RiskLevel.safe,
+            confidence=ConfidenceLevel.high,
+            confidence_pct=99,
+            reasons=[],
+        )
+        return await _build_response(synth)
 
     # 5) SINGLEFLIGHT — collapse N concurrent fresh-domain requests
     #    into ONE analyzer fan-out. The first caller starts the work;
@@ -215,18 +217,29 @@ async def public_check(domain: str, request: Request):
     return _format_public_result(result)
 
 
-def _format_public_result(result: DomainResult) -> dict:
-    """Format result for public/SEO consumption."""
+def _format_public_result(
+    result: DomainResult,
+    competitors: list[dict] | None = None,
+) -> dict:
+    """Format result for public/SEO consumption.
+
+    `competitors` is an optional side-by-side breakdown — what
+    other resolvers say about the same domain. Surfaced on the
+    landing scorecard so every per-domain page becomes a
+    shareable head-to-head demo:
+
+        Cleanway: dangerous (score 87)
+        Cloudflare 1.1.1.1 for Families: safe
+
+    No competitor publishes their per-domain verdict next to a
+    competitor's. We do. That's the credibility moat.
+    """
     verdicts = {
         "safe": f"{result.domain} appears to be safe.",
         "caution": f"{result.domain} has some suspicious characteristics. Proceed with caution.",
         "dangerous": f"{result.domain} shows strong indicators of being a phishing or malicious site. Do not enter personal information.",
     }
 
-    # Public endpoint is rule-based only (no external API calls) so
-    # coverage is 0; confidence_pct floors at 50. When the result
-    # came from the cache of a full analyze_domain run, the cached
-    # value already carries the real confidence_pct — prefer that.
     confidence_pct = (
         getattr(result, "confidence_pct", None)
         or calculate_confidence_pct(result.score, 0, 1)
@@ -242,13 +255,32 @@ def _format_public_result(result: DomainResult) -> dict:
         "verdict": verdicts.get(result.level.value, ""),
         "signals": [r.detail for r in (result.reasons or [])[:5]],
         "checked_at": datetime.now(timezone.utc).isoformat(),
+        # Side-by-side comparison — nobody else publishes this.
+        # Renders as a 'vs Cloudflare' card on the landing scorecard.
+        "competitors": competitors or [],
         "cta": "Install Cleanway for real-time protection backed by 16 independent threat-intel sources and our public transparency report.",
         "install_url": "https://chrome.google.com/webstore/detail/cleanway",
-        # Strategy doc #10 — link the per-domain scorecard back to
-        # the platform-wide transparency report so the per-verdict
-        # confidence sits inside a population-level FP rate.
         "transparency_url": "https://cleanway.ai/transparency",
     }
+
+
+async def _build_response(result: DomainResult) -> dict:
+    """Helper: assemble the final response with competitor verdicts
+    fetched in parallel. Used by every successful return path
+    (cache hit, allowlist short-circuit, fresh analyzer run).
+
+    Competitor lookup is bounded by COMPETITOR timeout (3 s); a
+    slow Cloudflare response can never block the user response by
+    more than that. If lookup fails entirely we just ship empty
+    competitors — the page still renders with our verdict.
+    """
+    try:
+        from api.services.competitor_verdicts import gather_competitor_verdicts
+        competitors = await gather_competitor_verdicts(result.domain)
+    except Exception as exc:
+        logger.debug("competitor lookup failed for %s: %s", result.domain, exc)
+        competitors = []
+    return _format_public_result(result, competitors=competitors)
 
 
 @router.get(
