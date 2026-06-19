@@ -19,7 +19,7 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
     "@tailwindcss/postcss": "^4.2.2",
-    "next": "15.1.11",
+    "next": "^15.5.19",
     "next-intl": "^4.9.1",
     "postcss": "^8.5.9",
     "react": "^19.0.0",

@@ -52,11 +52,69 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install pip-audit
-        run: pip install pip-audit==2.7.3
+        run: pip install pip-audit==2.9.0
       - name: Audit deps
-        # --strict fails on any advisory; some CVEs have no upstream fix yet, so
-        # we downgrade to warn-only and track severe ones in security.md
-        run: pip-audit --requirement requirements.txt --vulnerability-service osv || true
+        # Hard-fail on any advisory. If an advisory has no upstream fix yet,
+        # add an explicit `--ignore-vuln GHSA-xxx-xxx-xxx` flag here with an
+        # inline comment citing the advisory and a sunset date — never `|| true`.
+        # (`|| true` previously masked 19 Python CVEs incl. PyJWT C:H/I:H bypass
+        # and python-multipart CVSS 8.6 file-write — caught in the 2026-06-19
+        # readiness audit. We do not regress to that posture.)
+        run: pip-audit --requirement requirements.txt --vulnerability-service osv
+
+  # ─── npm dependency vulnerabilities (root + landing) ──────────
+  # Added 2026-06-19 after the readiness audit caught 4 npm CVEs that had
+  # been invisible because security.yml only covered Python deps.
+  # `--omit=dev` excludes dev-only tooling (jest, prettier, etc.) — but
+  # transitive deps inside runtime packages still count. We allowlist
+  # advisories that we have deliberately accepted; everything else hard-fails.
+  npm-audit:
+    name: npm-audit (root + landing CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+      - name: Install workspace deps
+        run: npm install --no-audit --no-fund
+      - name: Audit root (mobile + extension + shared)
+        env:
+          # Format: one GHSA per line, "#" comments allowed. Each entry
+          # MUST cite path-of-trust + sunset rationale. Don't add silently.
+          # GHSA-w7jw-789q-3m8p (shell-quote 1.x): transitive via
+          #   react-native 0.76.9 → react-devtools-core (dev-only debug tool),
+          #   not shipped in production Hermes bundle and not in the 3 store
+          #   extension ZIPs. Pinned by Expo SDK 52; fix requires Expo SDK
+          #   53/54 migration tracked separately.
+          ALLOWLIST: |
+            GHSA-w7jw-789q-3m8p
+        run: |
+          set -e
+          npm audit --json --omit=dev > /tmp/audit-root.json || true
+          ALLOW="$(echo "$ALLOWLIST" | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' | tr '\n' '|' | sed 's/|$//')"
+          REMAINING=$(jq -r --arg allow "$ALLOW" '
+            .vulnerabilities // {} | to_entries[]
+            | select(.value.severity == "high" or .value.severity == "critical")
+            | .value.via | map(if type == "object" then .url else empty end)[]
+            | capture("GHSA-[a-z0-9-]+") .captures[0].string // ""
+            | select(test("^(" + $allow + ")$") | not)
+          ' /tmp/audit-root.json | sort -u)
+          if [ -n "$REMAINING" ]; then
+            echo "::error::Unhandled HIGH+ advisories in root npm tree:"
+            echo "$REMAINING"
+            echo ""
+            echo "Either bump the offending dep, or add the GHSA to ALLOWLIST"
+            echo "above with path-of-trust + sunset rationale."
+            exit 1
+          fi
+          echo "Root npm audit: clean (allowlist applied: $ALLOW)"
+      - name: Audit landing (runtime-reachable)
+        # Landing is server-rendered and ships to end-users. NO allowlist —
+        # every HIGH+ CVE here must be fixed or the deploy doesn't go.
+        run: |
+          cd landing
+          npm audit --omit=dev --audit-level=high
 
   # ─── Container image scan (Trivy) ─────────────────────────────
   trivy-image:
