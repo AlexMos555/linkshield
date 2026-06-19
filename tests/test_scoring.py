@@ -429,7 +429,9 @@ def test_circuit_breaker():
         _, ok = await breaker.call(success)
         assert ok is True and breaker.state == CircuitState.CLOSED
 
-    asyncio.get_event_loop().run_until_complete(run())
+    # Python ≥3.10: get_event_loop() raises when no running loop. asyncio.run()
+    # creates+closes its own loop, which is what we want for a self-contained test.
+    asyncio.run(run())
     print("  circuit breaker transitions: OK")
 
 

@@ -1621,17 +1621,17 @@ export interface components {
              * Spf
              * @description SPF result from Authentication-Results
              */
-            spf: string | null;
+            spf?: string | null;
             /**
              * Dkim
              * @description DKIM result from Authentication-Results
              */
-            dkim: string | null;
+            dkim?: string | null;
             /**
              * Dmarc
              * @description DMARC result from Authentication-Results
              */
-            dmarc: string | null;
+            dmarc?: string | null;
             /**
              * Body Text
              * @description Plain-text body (cap 100 KB)
@@ -1679,7 +1679,6 @@ export interface components {
         Body_analyze_voice_api_v1_scam_analyze_voice_post: {
             /**
              * File
-             * Format: binary
              * @description Audio file, ≤25MB, ≤10min
              */
             file: string;
@@ -1691,7 +1690,7 @@ export interface components {
         /** Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post */
         Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post: {
             /** List Unsubscribe */
-            List_Unsubscribe: string | null;
+            List_Unsubscribe?: string | null;
         };
         /** BrandCreate */
         BrandCreate: {
@@ -1813,11 +1812,11 @@ export interface components {
          *     explicitly clears the override and falls back to the user-level value.
          */
         DeviceOverrideUpdate: {
-            skill_level_override: components["schemas"]["SkillLevel"] | null;
+            skill_level_override?: components["schemas"]["SkillLevel"] | null;
             /** Voice Alerts Enabled */
-            voice_alerts_enabled: boolean | null;
+            voice_alerts_enabled?: boolean | null;
             /** Font Scale */
-            font_scale: number | null;
+            font_scale?: number | null;
             /**
              * Clear Overrides
              * @default false
@@ -1908,7 +1907,7 @@ export interface components {
         /** ExplainRequest */
         ExplainRequest: {
             /** Signals */
-            signals: string[];
+            signals?: string[];
             /**
              * Locale
              * @default en
@@ -1949,7 +1948,7 @@ export interface components {
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
-            detail: components["schemas"]["ValidationError"][];
+            detail?: components["schemas"]["ValidationError"][];
         };
         /**
          * IncrementThreatsRequest
@@ -2326,7 +2325,7 @@ export interface components {
              */
             tier: string;
             /** Nudge Shown At */
-            nudge_shown_at: string | null;
+            nudge_shown_at?: string | null;
             /**
              * Nudge Count
              * @default 0
@@ -2387,15 +2386,15 @@ export interface components {
          * @description Partial update — all fields optional so clients can PATCH individually.
          */
         UserSettingsUpdate: {
-            skill_level: components["schemas"]["SkillLevel"] | null;
+            skill_level?: components["schemas"]["SkillLevel"] | null;
             /** Preferred Locale */
-            preferred_locale: string | null;
+            preferred_locale?: string | null;
             /** Voice Alerts Enabled */
-            voice_alerts_enabled: boolean | null;
+            voice_alerts_enabled?: boolean | null;
             /** Font Scale */
-            font_scale: number | null;
+            font_scale?: number | null;
             /** Parental Pin */
-            parental_pin: string | null;
+            parental_pin?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2405,6 +2404,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /** VerifiedHostsResponse */
         VerifiedHostsResponse: {

@@ -26,9 +26,13 @@ TEST_TOKEN = jwt.encode(
 def test_app_imports():
     """App imports without errors."""
     from api.main import app
-    routes = [r.path for r in app.routes if hasattr(r, "path")]
-    assert len(routes) >= 15
-    print(f"  App loaded: {len(routes)} routes")
+
+    # FastAPI ≥0.129 wraps include_router() output in _IncludedRouter — the
+    # paths live one level down, not on app.routes directly. openapi() reports
+    # actual exposed paths regardless of router-nesting model.
+    paths = list(app.openapi().get("paths", {}).keys())
+    assert len(paths) >= 15
+    print(f"  App loaded: {len(paths)} paths")
 
 
 def test_scoring_pipeline():
