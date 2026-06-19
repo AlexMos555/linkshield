@@ -1,6 +1,7 @@
 name: E2E — Landing (Playwright)
 
 on:
+  workflow_dispatch:  # allow manual re-runs after backend-only fixes
   pull_request:
     paths:
       - "landing/**"
