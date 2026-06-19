@@ -30,14 +30,16 @@ jobs:
           node-version: "20"
           cache: npm
 
-      # Monorepo uses npm workspaces — install from root
+      # Monorepo uses npm workspaces — install from root.
+      # We use `npm install` (not `npm ci`) because the lockfile was generated
+      # on macOS and only records the darwin-arm64 variants of platform-specific
+      # native bindings (@tailwindcss/oxide, @parcel/watcher, lightningcss).
+      # `npm ci` will not re-resolve and fails on Linux with "Failed to load
+      # native binding". `npm install --include=optional` re-resolves the
+      # optional deps for the current platform.
       - name: Install dependencies
         working-directory: .
-        # --include=optional ensures platform-specific native bindings
-        # (e.g. @parcel/watcher-linux-x64-glibc used by next-intl + tailwind
-        # devServer) are installed. Without it, `next build` fails on CI
-        # Linux runners with "No prebuild of @parcel/watcher found".
-        run: npm ci --include=optional
+        run: npm install --include=optional --no-audit --no-fund
 
       - name: Build landing
         run: npm run build
