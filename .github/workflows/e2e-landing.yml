@@ -31,15 +31,19 @@ jobs:
           cache: npm
 
       # Monorepo uses npm workspaces — install from root.
-      # We use `npm install` (not `npm ci`) because the lockfile was generated
-      # on macOS and only records the darwin-arm64 variants of platform-specific
-      # native bindings (@tailwindcss/oxide, @parcel/watcher, lightningcss).
-      # `npm ci` will not re-resolve and fails on Linux with "Failed to load
-      # native binding". `npm install --include=optional` re-resolves the
-      # optional deps for the current platform.
+      # The lockfile was generated on macOS and even `npm install` won't
+      # re-fetch the linux variants of platform-native deps (@tailwindcss/oxide,
+      # @parcel/watcher, lightningcss) when their lockfile entries pin
+      # platform-specific tarballs that don't match the runner OS. We delete
+      # the lockfile so npm re-resolves from package.json on Linux from scratch,
+      # then `npm install` picks the correct native bindings for x64-linux-gnu.
+      # Reproducibility cost is small here — this job only builds + runs Playwright,
+      # not a release artifact.
       - name: Install dependencies
         working-directory: .
-        run: npm install --include=optional --no-audit --no-fund
+        run: |
+          rm -f package-lock.json
+          npm install --include=optional --no-audit --no-fund
 
       - name: Build landing
         run: npm run build
