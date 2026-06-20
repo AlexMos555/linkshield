@@ -41,9 +41,13 @@ jobs:
       # not a release artifact.
       - name: Install dependencies
         working-directory: .
+        # --legacy-peer-deps: mobile/ workspace has react-native-get-random-values@2
+        # which declares peer react-native>=0.81 but we're pinned to 0.76.9 by
+        # Expo SDK 52 (deferred until SDK 53/54 migration). Conflict is unrelated
+        # to landing build and was previously masked by `npm ci`.
         run: |
           rm -f package-lock.json
-          npm install --include=optional --no-audit --no-fund
+          npm install --include=optional --legacy-peer-deps --no-audit --no-fund
 
       - name: Build landing
         run: npm run build
