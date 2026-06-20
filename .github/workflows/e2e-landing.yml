@@ -52,21 +52,16 @@ jobs:
       - name: Build landing
         run: npm run build
 
-      # Playwright browsers — cache per version + OS
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('landing/package-lock.json') }}
-
+      # Playwright browsers — always install. The previous cache key was based
+      # on landing/package-lock.json which doesn't exist (workspace lockfile is
+      # at root, and we delete-then-regenerate it above). That gave an empty
+      # hash key, which led to cache hits on STALE entries — playwright system
+      # deps were installed but the browser binaries were missing, so tests
+      # failed with "Executable doesn't exist". Unconditional install is ~30s
+      # slower but reliable.
       - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: landing
         run: npx playwright install --with-deps chromium webkit
-
-      - name: Install Playwright system deps (cached hit path)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium webkit
 
       - name: Run Playwright tests
         run: npm run e2e
