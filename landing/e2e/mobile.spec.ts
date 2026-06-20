@@ -18,19 +18,15 @@ test("mobile nav shows compact install button", async ({ page }) => {
 
 test("mobile viewport does not horizontally scroll", async ({ page }) => {
   await page.goto("/en");
-  // Check actual scrollability rather than intrinsic content width:
-  // globals.css uses overflow-x: clip so users cannot scroll horizontally
-  // even when a child element (e.g. a wide hero headline) intrinsically
-  // reports scrollWidth > innerWidth. The user-facing guarantee is what
-  // the test should assert.
-  const canScrollHoriz = await page.evaluate(() => {
-    const before = window.scrollX;
-    window.scrollTo(2000, 0);
-    const after = window.scrollX;
-    window.scrollTo(0, 0);
-    return after > before;
+  // Catches real multi-hundred-px layout regressions on mobile widths while
+  // tolerating sub-pixel rendering jitter that webkit's mobile-safari
+  // emulation reports (globals.css uses overflow-x: clip, so users can't
+  // visibly scroll either way — but scrollWidth still reports a few pixels
+  // of intrinsic overflow from text rendering).
+  const overflowPx = await page.evaluate(() => {
+    return document.documentElement.scrollWidth - window.innerWidth;
   });
-  expect(canScrollHoriz).toBe(false);
+  expect(overflowPx).toBeLessThan(30);
 });
 
 test("mobile hero still renders", async ({ page }) => {
