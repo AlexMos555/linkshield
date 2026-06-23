@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd .. && rm -f package-lock.json && npm install --include=optional --legacy-peer-deps --no-audit --no-fund",
+  "buildCommand": "npm run build",
+  "framework": "nextjs"
+}

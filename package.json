@@ -28,7 +28,10 @@
     "node": ">=18"
   },
   "overrides": {
-    "next": "15.1.11"
+    "next": "15.5.19",
+    "react-email": {
+      "next": "15.5.19"
+    }
   },
   "dependencies": {
     "tweetnacl": "^1.0.3",
