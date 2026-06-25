@@ -9,5 +9,5 @@ export const config = {
   //  - /_next/* (Next.js internals)
   //  - /_vercel/* (Vercel internals)
   //  - static files (anything with a dot like .png, .ico, .svg)
-  matcher: "/((?!api|_next|_vercel|.*\\..*).*)",
+  matcher: ["/((?!api|_next|_vercel|.*\\..*).*)", "/check/(.*)"],
 };

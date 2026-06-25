@@ -24,11 +24,25 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
+  /* Belt-and-suspenders against intrinsic overflow: physically bound the
+     body to viewport width so `documentElement.scrollWidth` cannot exceed
+     `window.innerWidth`. `overflow-x: clip` above hides user-visible
+     scrollbars but doesn't always shrink scrollWidth in headless WebKit. */
+  width: 100%;
+  max-width: 100vw;
 }
 
 html {
   scroll-behavior: smooth;
   overflow-x: clip;
+  max-width: 100vw;
+}
+
+/* Defensive wrapping for headings and long-word content (URLs, brand names,
+   long compound words in DE/RU/HI) so they never push horizontal layout. */
+h1, h2, h3 {
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 /* Gradient text */

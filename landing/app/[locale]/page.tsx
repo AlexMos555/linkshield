@@ -126,7 +126,7 @@ export default async function Home({ params }: HomeProps) {
   const faqItems = faq.raw("items") as FaqItem[];
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-200">
+    <div className="min-h-screen bg-[#0f172a] text-slate-200 overflow-x-clip">
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -154,10 +154,10 @@ export default async function Home({ params }: HomeProps) {
       {/* Hero */}
       <section className="pt-24 pb-16 px-6 text-center">
         <div className="max-w-3xl mx-auto animate-in">
-          <span className="inline-block bg-green-500/10 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-full text-sm font-semibold mb-8">
+          <span className="inline-block max-w-full bg-green-500/10 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-full text-sm font-semibold mb-8">
             {hero("badge")}
           </span>
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-6">
+          <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-6 break-words max-w-full">
             {hero("title_part1")}<br />
             <span className="gradient-text">{hero("title_part2")}</span>
           </h1>

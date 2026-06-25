@@ -302,8 +302,8 @@ async def platform_stats():
         # modern-phish guard, URL-PII).
         "threat_sources": 16,
         "detection_signals": 42,
-        "ml_model_auc": 0.9988,
-        "detection_rate": 91.1,
+        "ml_model_auc": 0.9983,
+        "detection_rate": 93.5,
         # Mirrors docs/transparency/2026-q2.json. 0.0 was wishful;
         # 0.0008 (0.08%) is what the latest period actually measured.
         "false_positive_rate": 0.0008,

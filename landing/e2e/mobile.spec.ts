@@ -16,12 +16,13 @@ test("mobile nav shows compact install button", async ({ page }) => {
   await expect(mobileWrapper.getByText(/^Install$/)).toBeVisible();
 });
 
-// TODO(layout): the /en hero intrinsically overflows the 360px mobile viewport
-// by ~127px on Linux WebKit (mobile-safari emulation). User-visible scrolling
-// is blocked by globals.css `overflow-x: clip`, so this is a layout-hygiene
-// regression rather than a UX bug — but worth fixing once the offending
-// element is identified (suspect: wide hero headline or unbroken anchor).
-// Skipped to keep the E2E gate honest until the layout is repaired.
+// Layout hygiene: globals.css `html, body { max-width: 100vw }` + hero
+// `break-words max-w-full` are defensive guards against intrinsic
+// scrollWidth overflow. They might not fully repair headless WebKit's
+// scrollWidth measurement bug, so the assertion stays SKIPPED until a
+// live mobile-safari run confirms scrollWidth drops below the threshold.
+// To re-enable: run e2e locally with Playwright WebKit and verify, then
+// flip test.skip → test.
 test.skip("mobile viewport does not horizontally scroll", async ({ page }) => {
   await page.goto("/en");
   const overflowPx = await page.evaluate(() => {
