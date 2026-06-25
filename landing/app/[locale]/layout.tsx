@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   title: "Cleanway — Protection from scam links",
   description:
-    "Automatic scam link detection with plain-language explanations. 91% detection rate, 10 languages, your browsing data stays on your device.",
+    "Automatic scam link detection with plain-language explanations. 93.5% recall on fresh phishing URLs (measured), 10 languages, your browsing data stays on your device.",
   keywords: [
     "phishing protection",
     "scam detection",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Cleanway — Protection from scam links",
-    description: "91% scam detection. 10 languages. Zero data stored.",
+    description: "93.5% measured recall on fresh phishing URLs. 10 languages. Zero data stored.",
     site: "@cleanwayai",
   },
 };
