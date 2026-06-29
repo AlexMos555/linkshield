@@ -6,7 +6,7 @@
 
 ## 🔴 TODAY (~1 час, выполнять В ПОРЯДКЕ)
 
-- [ ] **1. DNS CNAME `dns.cleanway.ai` → `api.cleanway.ai` (proxy OFF)** · Cloudflare → cleanway.ai zone → DNS → Add record · 5 мин · check: `curl -v --doh-url https://dns.cleanway.ai/dns-query https://example.com` returns DNS answer
+- [x] **1. DNS CNAME `dns.cleanway.ai` → `api.cleanway.ai` (proxy OFF)** · Cloudflare → cleanway.ai zone → DNS → Add record · 5 мин · check: `curl -v --doh-url https://dns.cleanway.ai/dns-query https://example.com` returns DNS answer
 - [ ] **2. Calendar event: Fri 2026-07-03 14:00-18:00 "Chrome Web Store submit"** · Calendar app · 1 мин · block все другие звонки
 - [ ] **3. Calendar event: All-day 2026-09-27 "Cleanway 90-day go/no-go decision"** · Calendar app · 1 мин · threshold table в [USER_PLAYBOOK.md](USER_PLAYBOOK.md) пункт 90-DAY GATE
 - [ ] **4. Rotate Anthropic API key + update Railway env** · console.anthropic.com/settings/keys → Railway dashboard → Variables → ANTHROPIC_API_KEY · 5 мин · check: POST `/api/v1/explain` returns `"source": "llm"`
@@ -96,4 +96,4 @@
 
 ---
 
-**Прогресс: 0/31 done**
+**Прогресс: 1/31 done** ✓ 1
