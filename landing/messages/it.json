@@ -69,64 +69,65 @@
     ]
   },
   "HowItWorks": {
-    "heading": "How Cleanway protects you",
+    "heading": "Come Cleanway ti protegge",
     "steps": [
       {
         "step": "1",
-        "title": "Install",
-        "desc": "Add the Chrome extension. Takes 10 seconds."
+        "title": "Installa",
+        "desc": "Aggiungi l'estensione a Chrome. Bastano 10 secondi."
       },
       {
         "step": "2",
-        "title": "Browse",
-        "desc": "Cleanway checks every link automatically. No action needed."
+        "title": "Naviga",
+        "desc": "Cleanway controlla ogni link in automatico. Non devi fare nulla."
       },
       {
         "step": "3",
-        "title": "Stay Safe",
-        "desc": "Dangerous links get red badges. Click for details."
+        "title": "Stai al sicuro",
+        "desc": "I link pericolosi ottengono un badge rosso. Clicca per i dettagli."
       }
     ]
   },
   "PricingTeaser": {
-    "heading": "Simple, transparent pricing",
-    "unit_forever": "/forever",
-    "unit_month": "/month",
-    "most_popular": "Most Popular",
-    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
+    "heading": "Prezzi semplici e trasparenti",
+    "unit_forever": "/per sempre",
+    "unit_month": "/mese",
+    "most_popular": "Il più scelto",
+    "trial_note": "Tutti i piani includono 14 giorni di prova gratuita. Disdici quando vuoi.",
     "free": {
       "name": "Free",
       "price": "$0",
+      "cta": "Inizia gratis",
       "features": [
-        "10 API checks/day",
-        "Unlimited local checks",
-        "Privacy Audit (grade only)",
-        "Link badges on all pages"
-      ],
-      "cta": "Get Started"
+        "50 scansioni di link al mese",
+        "Rilevamento minacce in tempo reale",
+        "Avvisi in parole semplici",
+        "10 lingue"
+      ]
     },
     "personal": {
       "name": "Personal",
-      "price": "$4.99",
+      "price": "$1.49",
+      "cta": "Prova gratis per 14 giorni",
       "features": [
-        "Unlimited checks",
-        "Full Privacy Audit breakdown",
-        "Weekly Security Report",
-        "Security Score + tips",
-        "Priority support"
-      ],
-      "cta": "Start Free Trial"
+        "Scansioni link illimitate",
+        "Aggiornamenti minacce prioritari",
+        "Rilevamento phishing avanzato",
+        "Spiegazioni delle truffe per ogni Paese",
+        "Email + estensione"
+      ]
     },
     "family": {
-      "name": "Family",
-      "price": "$9.99",
+      "name": "Family (fino a 5)",
+      "price": "$5.99",
+      "cta": "Proteggi la tua famiglia",
       "features": [
-        "Everything in Personal",
-        "Up to 6 devices",
-        "Family Hub with E2E alerts",
-        "Parental mode"
-      ],
-      "cta": "Start Free Trial"
+        "Tutto del piano Personal",
+        "Fino a 5 membri della famiglia",
+        "Registro delle attività familiari cifrato",
+        "Modalità Bambini + Modalità Nonna",
+        "Dashboard per i genitori"
+      ]
     }
   },
   "Comparison": {
@@ -207,23 +208,22 @@
     ]
   },
   "Privacy": {
-    "heading": "Privacy is not a feature. It's the architecture.",
-    "server_heading": "What our server knows",
+    "heading": "Privacy by design",
+    "intro": "La maggior parte degli strumenti di sicurezza ti spia per proteggerti. Noi ci siamo rifiutati. Ecco cosa resta sul tuo dispositivo — e cosa no.",
+    "server_heading": "Cosa vede il nostro server",
     "server_items": [
-      "Your email address",
-      "Subscription status",
-      "Weekly aggregate numbers"
+      "Solo il nome del dominio (cleanway.ai, non l'URL completo)",
+      "Verdetto anonimo sulla minaccia (sicuro / sospetto / pericoloso)",
+      "Lingua per le spiegazioni tradotte"
     ],
-    "server_note": "If breached: attacker gets emails + subscription. Boring.",
-    "device_heading": "What stays on your device",
+    "device_heading": "Cosa resta sul tuo dispositivo",
     "device_items": [
-      "Full URL check history",
-      "Privacy Audit results",
-      "Security Score breakdown",
-      "Weekly Report details",
-      "Family alert content (E2E encrypted)"
+      "URL completo (mai inviato)",
+      "Contenuto della pagina (mai letto)",
+      "Cronologia di navigazione (mai memorizzata)",
+      "Email dell'account (mai collegata alle scansioni)"
     ],
-    "device_note": "If device is lost: protected by OS encryption."
+    "footer_note": "Verificabile: il nostro motore di scansione è open source. Controllalo tu stesso su github.com/cleanway-ai/engine."
   },
   "Testimonials": {
     "heading": "Cosa dicono gli utenti",

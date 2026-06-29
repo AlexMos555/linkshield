@@ -69,64 +69,65 @@
     ]
   },
   "HowItWorks": {
-    "heading": "How Cleanway protects you",
+    "heading": "Cleanway आपकी सुरक्षा कैसे करता है",
     "steps": [
       {
         "step": "1",
-        "title": "Install",
-        "desc": "Add the Chrome extension. Takes 10 seconds."
+        "title": "इंस्टॉल करें",
+        "desc": "Chrome एक्सटेंशन जोड़ें। बस 10 सेकंड लगते हैं।"
       },
       {
         "step": "2",
-        "title": "Browse",
-        "desc": "Cleanway checks every link automatically. No action needed."
+        "title": "ब्राउज़ करें",
+        "desc": "Cleanway हर लिंक अपने आप जाँचता है। आपको कुछ नहीं करना।"
       },
       {
         "step": "3",
-        "title": "Stay Safe",
-        "desc": "Dangerous links get red badges. Click for details."
+        "title": "सुरक्षित रहें",
+        "desc": "खतरनाक लिंक पर लाल बैज दिखते हैं। विवरण के लिए क्लिक करें।"
       }
     ]
   },
   "PricingTeaser": {
-    "heading": "Simple, transparent pricing",
-    "unit_forever": "/forever",
-    "unit_month": "/month",
-    "most_popular": "Most Popular",
-    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
+    "heading": "सीधी और पारदर्शी कीमतें",
+    "unit_forever": "/हमेशा के लिए",
+    "unit_month": "/महीना",
+    "most_popular": "सबसे लोकप्रिय",
+    "trial_note": "हर प्लान में 14 दिन का मुफ़्त ट्रायल। कभी भी रद्द करें।",
     "free": {
       "name": "Free",
       "price": "$0",
+      "cta": "शुरू करें",
       "features": [
-        "10 API checks/day",
-        "Unlimited local checks",
-        "Privacy Audit (grade only)",
-        "Link badges on all pages"
-      ],
-      "cta": "Get Started"
+        "महीने में 50 लिंक स्कैन",
+        "रियल-टाइम ख़तरे की पहचान",
+        "आसान भाषा में चेतावनियाँ",
+        "10 भाषाएँ"
+      ]
     },
     "personal": {
       "name": "Personal",
-      "price": "$4.99",
+      "price": "$1.49",
+      "cta": "14 दिन मुफ़्त आज़माएँ",
       "features": [
-        "Unlimited checks",
-        "Full Privacy Audit breakdown",
-        "Weekly Security Report",
-        "Security Score + tips",
-        "Priority support"
-      ],
-      "cta": "Start Free Trial"
+        "असीमित लिंक स्कैन",
+        "प्राथमिकता पर ख़तरे के अपडेट",
+        "बेहतर फ़िशिंग पहचान",
+        "स्थानीय स्कैम की व्याख्या",
+        "ईमेल + एक्सटेंशन"
+      ]
     },
     "family": {
-      "name": "Family",
-      "price": "$9.99",
+      "name": "Family (5 लोगों तक)",
+      "price": "$5.99",
+      "cta": "अपने परिवार की रक्षा करें",
       "features": [
-        "Everything in Personal",
-        "Up to 6 devices",
-        "Family Hub with E2E alerts",
-        "Parental mode"
-      ],
-      "cta": "Start Free Trial"
+        "Personal में सब कुछ",
+        "5 परिवार के सदस्यों तक",
+        "एन्क्रिप्टेड पारिवारिक गतिविधि लॉग",
+        "Kids मोड + Granny मोड",
+        "पैरेंटल डैशबोर्ड"
+      ]
     }
   },
   "Comparison": {
@@ -207,23 +208,22 @@
     ]
   },
   "Privacy": {
-    "heading": "Privacy is not a feature. It's the architecture.",
-    "server_heading": "What our server knows",
+    "heading": "डिज़ाइन से ही प्राइवेसी",
+    "intro": "ज़्यादातर सिक्योरिटी टूल आपकी रक्षा के बहाने आप पर नज़र रखते हैं। हमने ऐसा करने से मना कर दिया। नीचे साफ़-साफ़ बताया है — क्या आपके डिवाइस पर ही रहता है, और क्या नहीं।",
+    "server_heading": "हमारा सर्वर क्या देखता है",
     "server_items": [
-      "Your email address",
-      "Subscription status",
-      "Weekly aggregate numbers"
+      "सिर्फ़ डोमेन नाम (cleanway.ai, पूरा URL नहीं)",
+      "अनाम ख़तरा फ़ैसला (सुरक्षित / संदिग्ध / ख़तरनाक)",
+      "अनुवादित व्याख्याओं के लिए भाषा"
     ],
-    "server_note": "If breached: attacker gets emails + subscription. Boring.",
-    "device_heading": "What stays on your device",
+    "device_heading": "आपके डिवाइस पर क्या रहता है",
     "device_items": [
-      "Full URL check history",
-      "Privacy Audit results",
-      "Security Score breakdown",
-      "Weekly Report details",
-      "Family alert content (E2E encrypted)"
+      "पूरा URL (कभी नहीं भेजा जाता)",
+      "पेज का कंटेंट (कभी नहीं पढ़ा जाता)",
+      "ब्राउज़िंग हिस्ट्री (कभी सेव नहीं होती)",
+      "अकाउंट ईमेल (स्कैन से कभी नहीं जुड़ता)"
     ],
-    "device_note": "If device is lost: protected by OS encryption."
+    "footer_note": "जाँच करने योग्य: हमारा स्कैनिंग इंजन ओपन सोर्स है। ख़ुद देख लें — github.com/cleanway-ai/engine पर।"
   },
   "Testimonials": {
     "heading": "उपयोगकर्ता क्या कहते हैं",

@@ -69,64 +69,65 @@
     ]
   },
   "HowItWorks": {
-    "heading": "How Cleanway protects you",
+    "heading": "Cara Cleanway melindungi kamu",
     "steps": [
       {
         "step": "1",
-        "title": "Install",
-        "desc": "Add the Chrome extension. Takes 10 seconds."
+        "title": "Pasang",
+        "desc": "Tambahkan ekstensi Chrome. Cuma butuh 10 detik."
       },
       {
         "step": "2",
-        "title": "Browse",
-        "desc": "Cleanway checks every link automatically. No action needed."
+        "title": "Jelajah",
+        "desc": "Cleanway memeriksa setiap tautan otomatis. Kamu tidak perlu melakukan apa-apa."
       },
       {
         "step": "3",
-        "title": "Stay Safe",
-        "desc": "Dangerous links get red badges. Click for details."
+        "title": "Tetap Aman",
+        "desc": "Tautan berbahaya ditandai merah. Klik untuk lihat detailnya."
       }
     ]
   },
   "PricingTeaser": {
-    "heading": "Simple, transparent pricing",
-    "unit_forever": "/forever",
-    "unit_month": "/month",
-    "most_popular": "Most Popular",
-    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
+    "heading": "Harga sederhana dan transparan",
+    "unit_forever": "/selamanya",
+    "unit_month": "/bulan",
+    "most_popular": "Paling Populer",
+    "trial_note": "Semua paket termasuk uji coba gratis 14 hari. Batalkan kapan saja.",
     "free": {
-      "name": "Free",
+      "name": "Gratis",
       "price": "$0",
+      "cta": "Mulai sekarang",
       "features": [
-        "10 API checks/day",
-        "Unlimited local checks",
-        "Privacy Audit (grade only)",
-        "Link badges on all pages"
-      ],
-      "cta": "Get Started"
+        "50 pemindaian tautan per bulan",
+        "Deteksi ancaman real-time",
+        "Peringatan dalam bahasa sehari-hari",
+        "10 bahasa"
+      ]
     },
     "personal": {
       "name": "Personal",
-      "price": "$4.99",
+      "price": "$1.49",
+      "cta": "Coba gratis 14 hari",
       "features": [
-        "Unlimited checks",
-        "Full Privacy Audit breakdown",
-        "Weekly Security Report",
-        "Security Score + tips",
-        "Priority support"
-      ],
-      "cta": "Start Free Trial"
+        "Pemindaian tautan tanpa batas",
+        "Pembaruan ancaman prioritas",
+        "Deteksi phishing tingkat lanjut",
+        "Penjelasan penipuan sesuai budaya",
+        "Email + ekstensi"
+      ]
     },
     "family": {
-      "name": "Family",
-      "price": "$9.99",
+      "name": "Keluarga (hingga 5 orang)",
+      "price": "$5.99",
+      "cta": "Lindungi keluargamu",
       "features": [
-        "Everything in Personal",
-        "Up to 6 devices",
-        "Family Hub with E2E alerts",
-        "Parental mode"
-      ],
-      "cta": "Start Free Trial"
+        "Semua fitur paket Personal",
+        "Hingga 5 anggota keluarga",
+        "Log aktivitas keluarga terenkripsi",
+        "Mode Anak + Mode Nenek",
+        "Dasbor orang tua"
+      ]
     }
   },
   "Comparison": {
@@ -207,23 +208,22 @@
     ]
   },
   "Privacy": {
-    "heading": "Privacy is not a feature. It's the architecture.",
-    "server_heading": "What our server knows",
+    "heading": "Privasi sejak desain",
+    "intro": "Kebanyakan alat keamanan memata-matai kamu demi melindungi kamu. Kami menolak. Berikut apa saja yang tetap di perangkatmu — dan apa yang tidak.",
+    "server_heading": "Apa yang dilihat server kami",
     "server_items": [
-      "Your email address",
-      "Subscription status",
-      "Weekly aggregate numbers"
+      "Hanya nama domain (cleanway.ai, bukan URL lengkap)",
+      "Verdikt ancaman anonim (aman / mencurigakan / berbahaya)",
+      "Bahasa untuk penjelasan yang diterjemahkan"
     ],
-    "server_note": "If breached: attacker gets emails + subscription. Boring.",
-    "device_heading": "What stays on your device",
+    "device_heading": "Apa yang tetap di perangkatmu",
     "device_items": [
-      "Full URL check history",
-      "Privacy Audit results",
-      "Security Score breakdown",
-      "Weekly Report details",
-      "Family alert content (E2E encrypted)"
+      "URL lengkap (tidak pernah dikirim)",
+      "Isi halaman (tidak pernah dibaca)",
+      "Riwayat penjelajahan (tidak pernah disimpan)",
+      "Email akun (tidak pernah dikaitkan dengan pemindaian)"
     ],
-    "device_note": "If device is lost: protected by OS encryption."
+    "footer_note": "Bisa diaudit: mesin pemindaian kami open source. Verifikasi sendiri di github.com/cleanway-ai/engine."
   },
   "Testimonials": {
     "heading": "Apa kata pengguna",

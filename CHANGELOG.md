@@ -78,7 +78,7 @@
 ### Added
 - **Scoring Engine 3.0** — 42+ detection signals across 6 categories
 - **9 blocklist sources** — Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus DBL, SURBL, AlienVault OTX, IPQualityScore
-- **CatBoost ML model** — AUC 0.9988, 91.1% detection rate, 0% false positives
+- **CatBoost ML model** — AUC 0.9983 (test set), 93.5% recall on fresh phishing URLs (measured weekly via `scripts/eval_fresh_urls.py`), 0.08% measured FP rate on Tranco top 1M
 - **100K domain allowlist** — Tranco top domains with hosting platform bypass protection
 - **125 brand targets** — typosquatting detection for tech, banking, shipping, crypto, government
 - **Chrome Extension** — Manifest V3, link scanning, badges, block page, Privacy Audit, Security Score, Weekly Report, Breach Check, context menu, keyboard shortcuts

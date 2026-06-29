@@ -69,64 +69,65 @@
     ]
   },
   "HowItWorks": {
-    "heading": "How Cleanway protects you",
+    "heading": "كيف يحميك Cleanway",
     "steps": [
       {
         "step": "1",
-        "title": "Install",
-        "desc": "Add the Chrome extension. Takes 10 seconds."
+        "title": "ثبِّت الإضافة",
+        "desc": "أضِف إضافة Cleanway إلى Chrome. لا تستغرق سوى 10 ثوانٍ."
       },
       {
         "step": "2",
-        "title": "Browse",
-        "desc": "Cleanway checks every link automatically. No action needed."
+        "title": "تصفَّح بحرية",
+        "desc": "يفحص Cleanway كل رابط تلقائياً. لا حاجة لأي إجراء منك."
       },
       {
         "step": "3",
-        "title": "Stay Safe",
-        "desc": "Dangerous links get red badges. Click for details."
+        "title": "ابقَ بأمان",
+        "desc": "الروابط الخطيرة تظهر بشارة حمراء. اضغط عليها لمعرفة التفاصيل."
       }
     ]
   },
   "PricingTeaser": {
-    "heading": "Simple, transparent pricing",
-    "unit_forever": "/forever",
-    "unit_month": "/month",
-    "most_popular": "Most Popular",
-    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
+    "heading": "أسعار بسيطة وشفافة",
+    "unit_forever": "/للأبد",
+    "unit_month": "/شهرياً",
+    "most_popular": "الأكثر شعبية",
+    "trial_note": "جميع الخطط تشمل تجربة مجانية لمدة 14 يوماً. يمكنك الإلغاء في أي وقت.",
     "free": {
-      "name": "Free",
+      "name": "مجاني",
       "price": "$0",
+      "cta": "ابدأ الآن",
       "features": [
-        "10 API checks/day",
-        "Unlimited local checks",
-        "Privacy Audit (grade only)",
-        "Link badges on all pages"
-      ],
-      "cta": "Get Started"
+        "50 فحص رابط شهرياً",
+        "كشف التهديدات في الوقت الفعلي",
+        "تحذيرات بلغة واضحة ومفهومة",
+        "10 لغات"
+      ]
     },
     "personal": {
-      "name": "Personal",
-      "price": "$4.99",
+      "name": "شخصي",
+      "price": "$1.49",
+      "cta": "جرّب مجاناً لمدة 14 يوماً",
       "features": [
-        "Unlimited checks",
-        "Full Privacy Audit breakdown",
-        "Weekly Security Report",
-        "Security Score + tips",
-        "Priority support"
-      ],
-      "cta": "Start Free Trial"
+        "فحص روابط غير محدود",
+        "تحديثات أولوية للتهديدات",
+        "كشف متقدم لمحاولات التصيّد",
+        "شرح ثقافي لأساليب الاحتيال",
+        "حماية البريد + الإضافة"
+      ]
     },
     "family": {
-      "name": "Family",
-      "price": "$9.99",
+      "name": "عائلي (حتى 5 أفراد)",
+      "price": "$5.99",
+      "cta": "احمِ عائلتك",
       "features": [
-        "Everything in Personal",
-        "Up to 6 devices",
-        "Family Hub with E2E alerts",
-        "Parental mode"
-      ],
-      "cta": "Start Free Trial"
+        "كل ما في الخطة الشخصية",
+        "حتى 5 أفراد من العائلة",
+        "سجل نشاط عائلي مشفَّر",
+        "وضع الأطفال + وضع كبار السن",
+        "لوحة تحكم للوالدين"
+      ]
     }
   },
   "Comparison": {
@@ -207,23 +208,22 @@
     ]
   },
   "Privacy": {
-    "heading": "Privacy is not a feature. It's the architecture.",
-    "server_heading": "What our server knows",
+    "heading": "الخصوصية مدمجة في التصميم",
+    "intro": "معظم أدوات الحماية تتجسس عليك بحجة حمايتك. نحن رفضنا ذلك. إليك بالضبط ما يبقى على جهازك — وما لا يخرج منه أبداً.",
+    "server_heading": "ما يراه خادمنا",
     "server_items": [
-      "Your email address",
-      "Subscription status",
-      "Weekly aggregate numbers"
+      "اسم النطاق فقط (cleanway.ai، وليس الرابط الكامل)",
+      "حكم مجهول الهوية على التهديد (آمن / مشبوه / خطير)",
+      "اللغة لعرض الشروحات المترجمة"
     ],
-    "server_note": "If breached: attacker gets emails + subscription. Boring.",
-    "device_heading": "What stays on your device",
+    "device_heading": "ما يبقى على جهازك",
     "device_items": [
-      "Full URL check history",
-      "Privacy Audit results",
-      "Security Score breakdown",
-      "Weekly Report details",
-      "Family alert content (E2E encrypted)"
+      "الرابط الكامل (لا يُرسَل أبداً)",
+      "محتوى الصفحة (لا يُقرأ أبداً)",
+      "سجل التصفح (لا يُخزَّن أبداً)",
+      "بريد حسابك (لا يُربط أبداً بعمليات الفحص)"
     ],
-    "device_note": "If device is lost: protected by OS encryption."
+    "footer_note": "قابل للتدقيق: محرك الفحص لدينا مفتوح المصدر. تحقق بنفسك على github.com/cleanway-ai/engine."
   },
   "Testimonials": {
     "heading": "ماذا يقول المستخدمون",

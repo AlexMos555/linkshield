@@ -95,6 +95,13 @@ jobs:
       - name: Lint
         run: ruff check api/ tests/ ml/
 
+      - name: i18n parity (non-EN locales must ship every en.json namespace)
+        # Catches the silent-fallback failure mode that bit /transparency/methodology
+        # in commit 04c08a0: a new namespace landed in en.json only; 9 non-EN
+        # locales rendered raw keys (e.g. `Methodology.page_title`) for ~10 days
+        # before anyone noticed.
+        run: python3 scripts/check-i18n-parity.py
+
   openapi-drift:
     # Pin packages/api-types/schema/openapi.json to the live FastAPI app.
     # If a PR adds a route or schema but forgets to run `npm run build:api-types`,
