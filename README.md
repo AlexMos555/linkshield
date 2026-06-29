@@ -1,5 +1,11 @@
 # Cleanway
 
+[![CI](https://github.com/AlexMos555/linkshield/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AlexMos555/linkshield/actions/workflows/ci.yml)
+[![Security](https://github.com/AlexMos555/linkshield/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/AlexMos555/linkshield/actions/workflows/security.yml)
+[![E2E — Landing](https://github.com/AlexMos555/linkshield/actions/workflows/e2e-landing.yml/badge.svg?branch=main)](https://github.com/AlexMos555/linkshield/actions/workflows/e2e-landing.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-22c55e.svg)](LICENSE)
+[![Methodology](https://img.shields.io/badge/methodology-93.5%25%20recall%2C%20measured%20weekly-22c55e)](https://cleanway.ai/transparency/methodology)
+
 Privacy-first phishing protection platform. Your browsing data lives only on your device.
 
 ## What is Cleanway?

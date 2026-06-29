@@ -102,6 +102,13 @@ jobs:
         # before anyone noticed.
         run: python3 scripts/check-i18n-parity.py
 
+      - name: Stale-claim regression guard
+        # Fails CI if forbidden marketing numbers (AUC 0.9988, "91% detection",
+        # "18K samples") sneak back in. The 2026-06-17 validation pass committed
+        # us to AUC 0.9983, 93.5% recall, 14,400 training samples. A future PR
+        # can't accidentally re-introduce inflated copy.
+        run: python3 scripts/check-stale-claims.py
+
   openapi-drift:
     # Pin packages/api-types/schema/openapi.json to the live FastAPI app.
     # If a PR adds a route or schema but forgets to run `npm run build:api-types`,
