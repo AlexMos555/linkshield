@@ -18,6 +18,32 @@ Cleanway protects people from scammers. If we get breached or backdoored, we bec
 - Credit you in changelog and `SECURITY.md` honor roll (opt-in)
 - For high/critical: bug bounty up to $2k (paid via Stripe / wire / crypto)
 
+## Coordinated Disclosure Timeline
+
+We follow a **90-day coordinated disclosure** policy modelled on Google Project Zero:
+
+- **Day 0:** Vulnerability reported via `security@cleanway.ai`.
+- **Day 0–2:** Acknowledgement, reproducer verification, initial CVSS triage.
+- **Day 2–7:** Fix developed, internal review, regression test added.
+- **Day 7–14:** Patch deployed to production. Reporter notified.
+- **Day 14–90:** Embargo period. We don't disclose details publicly; reporter agrees not to disclose either.
+- **Day 90:** Public CVE / advisory published with reporter credited (opt-in).
+
+Exceptions:
+- **Actively exploited in the wild:** we cut the embargo and ship an advisory within 24h of confirmation, even if the patch isn't fully rolled out. User safety overrides embargo.
+- **No fix feasible:** if a finding can't be fixed (e.g. requires upstream change), we document the workaround in the advisory at Day 90 and credit the reporter regardless.
+- **Reporter requests delay:** if you're disclosing related findings at a conference, we'll align our advisory date with your talk. Tell us in the initial report.
+
+## LLM Judge / third-party AI scope
+
+Strategy #21 (LLM Judge) and #15 (Cultural Explainer) call Anthropic's Claude API. Specifically:
+
+- **What we send:** a feature signal list (`credential_form_mismatch`, `favicon_cloned`, ...) and the locale code. **Never** the domain, full URL, page content, or user identity.
+- **What Anthropic logs:** per their policy (https://privacy.anthropic.com), API requests are retained for abuse monitoring. Cleanway's privacy contract with users does not depend on Anthropic's retention — even if Anthropic logged every request verbatim, the payload doesn't identify a user or a domain.
+- **Caching:** results are deterministic-cached by `sha256(features + locale)` for 7 days. The cache key is domain-free.
+- **Failure mode:** if Anthropic API is down or rate-limited, the request falls back to a deterministic template explanation locally. No user-facing outage.
+- **In scope for disclosure:** any finding showing user-identifying data leaking into the Anthropic payload. Email `security@cleanway.ai` immediately.
+
 ## Scope
 
 In scope:

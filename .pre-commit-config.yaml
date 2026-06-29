@@ -53,3 +53,17 @@ repos:
         additional_dependencies: ["bandit[toml]"]
         # Skip tests — they intentionally use weak crypto / dummy secrets
         exclude: '^tests/'
+
+  # ─── i18n parity ─────────────────────────────────────────────
+  # Catches the failure mode that bit /transparency/methodology in
+  # commit 04c08a0: namespace landed in en.json only, 9 non-EN locales
+  # rendered raw next-intl keys for ~10 days before anyone noticed.
+  - repo: local
+    hooks:
+      - id: i18n-parity
+        name: "🌐 i18n parity — non-EN locales must match en.json namespaces"
+        entry: python3 scripts/check-i18n-parity.py
+        language: system
+        pass_filenames: false
+        # Only triggers when landing message files change
+        files: ^landing/messages/.*\.json$
