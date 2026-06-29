@@ -75,11 +75,23 @@ PHISHTANK_FEED_URL = "https://data.phishtank.com/data/online-valid.csv.gz"
 # Cloudflare 1.1.1.1 for Families is generous; VirusTotal free
 # tier is 4 req/min.
 CONCURRENCY = {
-    "cleanway": 16,
+    "cleanway": 1,
     "gsb": 4,
     "phishtank": 4,
     "cloudflare_families": 8,
     "virustotal": 1,
+}
+
+# Minimum interval between consecutive requests for a resolver (seconds).
+# Cleanway's public endpoint caps fresh-domain checks at 5/min/IP — without
+# this throttle, a benchmark with N>5 fresh URLs gets HTTP 429 on most
+# requests and shows 0% recall as an artifact of rate-limiting, not
+# detection. (Caught by the 2026-06-29 audit: published benchmark file
+# showed 0 TP because the benchmark itself rate-limited the cleanway
+# adapter.)
+MIN_INTERVAL_S = {
+    "cleanway": 12.5,    # 5 fresh checks/min cap → 12s spacing + 0.5s headroom
+    "virustotal": 16.0,  # VT free tier 4 req/min
 }
 
 
@@ -506,15 +518,27 @@ CONCURRENCY["cleanway_local"] = 4  # 18 parallel checks per URL, easy on the ana
 
 async def run_resolver(name: str, urls: list[str]) -> list[Verdict]:
     """Run a resolver across all URLs, respecting its concurrency
-    limit. Returns a Verdict per URL, same order as the input list."""
+    limit AND the per-resolver MIN_INTERVAL_S throttle. Returns a
+    Verdict per URL, same order as the input list."""
     adapter = ADAPTERS[name]
     sem = asyncio.Semaphore(CONCURRENCY[name])
+    min_interval = MIN_INTERVAL_S.get(name, 0.0)
+    last_call_at = [0.0]  # mutable closure cell
+    lock = asyncio.Lock()
     async with httpx.AsyncClient() as client:
         async def _one(u):
             async with sem:
+                if min_interval > 0:
+                    async with lock:
+                        wait = min_interval - (time.monotonic() - last_call_at[0])
+                        if wait > 0:
+                            await asyncio.sleep(wait)
+                        last_call_at[0] = time.monotonic()
                 return await adapter(client, u)
-        log.info("running %s on %d URLs (concurrency=%d) …",
-                 name, len(urls), CONCURRENCY[name])
+        log.info(
+            "running %s on %d URLs (concurrency=%d, min_interval=%.1fs) …",
+            name, len(urls), CONCURRENCY[name], min_interval,
+        )
         results = await asyncio.gather(*[_one(u) for u in urls])
     return results
 

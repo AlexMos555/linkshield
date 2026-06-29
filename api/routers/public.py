@@ -113,10 +113,46 @@ async def public_check(domain: str, request: Request):
     same domain serves from cache in sub-50 ms — 99% of real
     traffic will land there.
     """
-    # 1) Proxy-aware IP rate-limit (5 req/min for fresh queries).
-    #    The downstream Depends(rate_limit(...)) handles the general
-    #    rate-limit; this layered check is the tighter cap for the
-    #    expensive analyzer path.
+    # 1) Validate domain (cheap, in-process).
+    try:
+        domain = validate_domain(domain.lower().strip())
+    except DomainValidationError as e:
+        raise HTTPException(400, f"Invalid domain: {e}")
+
+    # 2) Public-cache hit: serve previously-analysed result.
+    #    Cache hits are essentially free — Redis GET, no fan-out, no LLM.
+    #    Rate-limiting these would punish landing-page repeat visitors AND
+    #    prevent the credibility-page side-by-side from rendering multiple
+    #    comparison rows. The 2026-06-29 audit caught the prior ordering:
+    #    incrementing before the cache check made warm domains 429 on the
+    #    6th visitor inside a minute. Cache + top-domain paths now run
+    #    FREE; only the expensive fan-out below increments the IP cap.
+    cached = await _get_public_cache(domain)
+    if cached:
+        return await _build_response(cached)
+
+    # 3) Top-domain allowlist short-circuit (also free — in-memory set
+    #    lookup, no network, no analyzer).
+    base = _extract_base_domain(domain)
+    if base in TOP_DOMAINS:
+        # Build a synthetic DomainResult so the response shape stays
+        # identical (incl. competitors[] side-by-side) — easier for
+        # the landing scorecard than a separate branch.
+        synth = DomainResult(
+            domain=domain,
+            score=0,
+            level=RiskLevel.safe,
+            confidence=ConfidenceLevel.high,
+            confidence_pct=99,
+            reasons=[],
+        )
+        return await _build_response(synth)
+
+    # 4) NOW rate-limit the expensive fan-out path.
+    #    Moved here from the top of the function (audit 2026-06-29) so
+    #    cache hits + top-domain hits stay free. The 5-req/min cap only
+    #    protects the analyzer (16-source fan-out + ML + LLM), which is
+    #    what the cap was designed for in the first place.
     client_ip = _extract_client_ip(request)
     try:
         from api.services.cache import get_redis
@@ -135,33 +171,6 @@ async def public_check(domain: str, request: Request):
         raise
     except Exception:
         pass  # Redis down — allow request
-
-    # 2) Validate domain
-    try:
-        domain = validate_domain(domain.lower().strip())
-    except DomainValidationError as e:
-        raise HTTPException(400, f"Invalid domain: {e}")
-
-    # 3) Public-cache hit: serve previously-analysed result.
-    cached = await _get_public_cache(domain)
-    if cached:
-        return await _build_response(cached)
-
-    # 4) Top-domain allowlist short-circuit.
-    base = _extract_base_domain(domain)
-    if base in TOP_DOMAINS:
-        # Build a synthetic DomainResult so the response shape stays
-        # identical (incl. competitors[] side-by-side) — easier for
-        # the landing scorecard than a separate branch.
-        synth = DomainResult(
-            domain=domain,
-            score=0,
-            level=RiskLevel.safe,
-            confidence=ConfidenceLevel.high,
-            confidence_pct=99,
-            reasons=[],
-        )
-        return await _build_response(synth)
 
     # 5) SINGLEFLIGHT — collapse N concurrent fresh-domain requests
     #    into ONE analyzer fan-out. The first caller starts the work;
