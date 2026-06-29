@@ -147,7 +147,7 @@ Upsell **на ценность** (семья, детали, режимы), не 
 - **Sync:** Supabase Realtime (settings, aggregates, skill level — NEVER browsing data)
 - **i18n libraries:** next-intl (landing), i18next (extension), expo-localization (mobile)
 - **Data Sources:** Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore
-- **ML:** CatBoost (27 features, AUC 0.9988), hosted bloom filter
+- **ML:** CatBoost (27 features, AUC 0.9983 — calibrated baseline from data/model_meta.json), hosted bloom filter
 
 ## Privacy Positioning
 

@@ -119,7 +119,10 @@ app.add_middleware(
 # Security headers — HSTS, CSP, X-Frame-Options, etc. Defense in depth.
 # Order matters: SecurityHeaders runs LAST in request flow → FIRST in response flow,
 # so it's the last middleware added (Starlette wraps in reverse order).
-app.add_middleware(SecurityHeadersMiddleware)
+# hsts_preload=True so api.cleanway.ai matches landing (cleanway.ai already
+# ships `preload`). Required for hstspreload.org submission of the whole
+# cleanway.ai zone. Railway TLS-terminates; HTTPS-only by construction.
+app.add_middleware(SecurityHeadersMiddleware, hsts_preload=True)
 
 
 @app.middleware("http")
@@ -134,7 +137,9 @@ async def request_logging_middleware(request: Request, call_next):
     # Add tracing headers
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
-    response.headers["X-Powered-By"] = "Cleanway"
+    # X-Powered-By intentionally omitted: Mozilla Observatory + general
+    # security hygiene deduct for software fingerprinting. Branding lives
+    # in the response body, not in headers.
 
     # Scrub sensitive path parameters that should never appear in
     # access logs. Strategy #13: the 5-char SHA-1 prefix in

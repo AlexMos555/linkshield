@@ -42,8 +42,9 @@ This starts:
 - http://localhost:3000/terms — Terms of service
 
 ### API docs
-- http://localhost:8000/docs — Swagger UI (try all 25 endpoints)
-- http://localhost:8000/health — Health check + circuit breaker status
+- http://localhost:8000/docs — Swagger UI (all endpoints; check, public/check, payments, user, breach, feedback, referral, org, family-hub, transparency, dns-query)
+- http://localhost:8000/health — Health check + 20+ named circuit breaker states
+- http://localhost:8000/api/v1/transparency/latest — Latest published transparency JSON
 
 ### Stop everything
 ```bash

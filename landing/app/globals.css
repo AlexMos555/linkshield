@@ -53,6 +53,26 @@ h1, h2, h3 {
   background-clip: text;
 }
 
+/* Skip-link — invisible until keyboard focus pulls it into view.
+   WCAG 2.4.1 (Bypass Blocks). */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  background: var(--safe);
+  color: var(--safe-bg);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  z-index: 100;
+  text-decoration: none;
+  transition: top 0.2s;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 8px;
+}
+
 /* Animate on scroll */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }

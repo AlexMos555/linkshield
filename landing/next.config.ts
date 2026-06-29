@@ -34,7 +34,10 @@ const CSP_DIRECTIVES = [
   // bootstrap + next-intl runtime; 'unsafe-eval' kept off. When we
   // wire a CSP nonce middleware in a follow-up, the unsafe-inline
   // for scripts can be dropped.
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.ingest.sentry.io https://browser.sentry-cdn.com",
+  // Sentry JS is bundled via @sentry/nextjs (not loaded from browser.sentry-cdn.com),
+  // so script-src does NOT need the Sentry CDN origin. *.ingest.sentry.io stays in
+  // connect-src only (it's an XHR endpoint, never a <script src>).
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com",
   // 'unsafe-inline' on style-src is needed for the inline `style={...}`
   // attributes used throughout the App Router pages (success, restore,
   // pricing). Tailwind output is fine without it.
@@ -44,6 +47,7 @@ const CSP_DIRECTIVES = [
   // API base (configurable per environment) + Supabase auth/realtime +
   // Stripe checkout + Sentry ingest. Wildcarding subdomains so the
   // staging slug works too.
+  // Sentry ingest is fetch-only (no <script>), kept in connect-src.
   "connect-src 'self' https://api.cleanway.ai https://*.supabase.co https://*.supabase.in https://api.stripe.com https://*.ingest.sentry.io",
   // Stripe Checkout + the Outlook add-in iframe surface (addin domain
   // sits on the same Vercel deploy).

@@ -132,8 +132,10 @@ export default async function Home({ params }: HomeProps) {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 overflow-x-clip">
+      {/* Skip-link — keyboard users bypass the sticky nav. WCAG 2.4.1. */}
+      <a href="#main" className="skip-link">Skip to main content</a>
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800">
+      <nav aria-label="Primary" className="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <span className="text-xl font-extrabold text-white">Cleanway</span>
           <div className="hidden md:flex items-center gap-5">
@@ -156,7 +158,8 @@ export default async function Home({ params }: HomeProps) {
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* Hero — also serves as the skip-link target / main landmark anchor. */}
+      <main id="main">
       <section className="pt-24 pb-16 px-6 text-center">
         <div className="max-w-3xl mx-auto animate-in">
           <span className="inline-block max-w-full bg-green-500/10 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-full text-sm font-semibold mb-8">
@@ -175,7 +178,7 @@ export default async function Home({ params }: HomeProps) {
               {hero("cta_secondary")}
             </a>
           </div>
-          <p className="text-xs text-slate-500 mt-6">{hero("cta_footer")}</p>
+          <p className="text-xs text-slate-400 mt-6">{hero("cta_footer")}</p>
         </div>
       </section>
 
@@ -186,7 +189,7 @@ export default async function Home({ params }: HomeProps) {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 stagger">
             {featureItems.map((item) => (
               <div key={item.title} className="bg-slate-800/50 rounded-2xl p-6 hover:bg-slate-800 transition">
-                <span className="text-3xl mb-3 block">{item.icon}</span>
+                <span aria-hidden="true" className="text-3xl mb-3 block">{item.icon}</span>
                 <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
                 <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
               </div>
@@ -201,7 +204,7 @@ export default async function Home({ params }: HomeProps) {
         <div className="flex flex-col md:flex-row justify-center gap-12 max-w-3xl mx-auto stagger">
           {howSteps.map((s) => (
             <div key={s.step} className="text-center flex-1">
-              <div className="w-14 h-14 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center text-xl font-extrabold mx-auto mb-4">{s.step}</div>
+              <div aria-hidden="true" className="w-14 h-14 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center text-xl font-extrabold mx-auto mb-4">{s.step}</div>
               <h3 className="text-lg font-bold text-white mb-2">{s.title}</h3>
               <p className="text-sm text-slate-400">{s.desc}</p>
             </div>
@@ -243,7 +246,7 @@ export default async function Home({ params }: HomeProps) {
               <a href="/signup?plan=family" className="block text-center py-3 rounded-xl border border-slate-600 text-slate-300 font-semibold hover:border-slate-400 transition">{pricingFamily.cta}</a>
             </div>
           </div>
-          <p className="text-sm text-slate-500 text-center mt-6">{pricing("trial_note")}</p>
+          <p className="text-sm text-slate-400 text-center mt-6">{pricing("trial_note")}</p>
         </div>
       </section>
 
@@ -338,6 +341,7 @@ export default async function Home({ params }: HomeProps) {
         </div>
       </section>
 
+      </main>
       {/* Rich snippets — Organization + SoftwareApplication + FAQPage */}
       <script
         type="application/ld+json"
@@ -385,15 +389,8 @@ export default async function Home({ params }: HomeProps) {
                   priceCurrency: "USD",
                   availability: "https://schema.org/InStock",
                 },
-                aggregateRating: {
-                  "@type": "AggregateRating",
-                  ratingValue: "4.8",
-                  reviewCount: "127",
-                  bestRating: "5",
-                  worstRating: "1",
-                },
                 description:
-                  "Anti-phishing browser extension and mobile app. 91% detection rate, 10 languages, on-device privacy audit.",
+                  "Anti-phishing browser extension and mobile app. 93.5% measured recall on fresh phishing URLs, 10 languages, on-device privacy audit.",
                 url: SITE_URL,
               },
               {
@@ -414,10 +411,10 @@ export default async function Home({ params }: HomeProps) {
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-lg font-extrabold text-white mb-4">{footer("brand")}</p>
           <div className="flex justify-center gap-6 mb-4">
-            <a href="/privacy-policy" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("privacy")}</a>
-            <a href="/terms" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("terms")}</a>
-            <a href="mailto:support@cleanway.ai" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("contact")}</a>
-            <a href="https://github.com/AlexMos555/cleanway" className="text-sm text-slate-500 hover:text-slate-300 transition">{footer("github")}</a>
+            <a href="/privacy-policy" className="text-sm text-slate-400 hover:text-white transition">{footer("privacy")}</a>
+            <a href="/terms" className="text-sm text-slate-400 hover:text-white transition">{footer("terms")}</a>
+            <a href="mailto:support@cleanway.ai" className="text-sm text-slate-400 hover:text-white transition">{footer("contact")}</a>
+            <a href="https://github.com/AlexMos555/cleanway" className="text-sm text-slate-400 hover:text-white transition">{footer("github")}</a>
           </div>
           <p className="text-xs text-slate-600">&copy; 2026 Cleanway. {footer("tagline")}</p>
         </div>

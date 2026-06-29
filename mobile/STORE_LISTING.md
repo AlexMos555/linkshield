@@ -61,7 +61,7 @@ https://cleanway.ai/support
 ## What's New (v0.1.0)
 Initial release:
 - Link safety checking (42+ signals, 9 threat sources)
-- ML-powered phishing detection (AUC 0.9988)
+- ML-powered phishing detection (AUC 0.9983, 93.5% recall on fresh phishing URLs — measured)
 - Breach monitoring with k-anonymity
 - Security Score
 - QR code scanner

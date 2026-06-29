@@ -12,7 +12,7 @@ Cleanway automatically checks every link you encounter against 9 threat intellig
 
 - **42+ detection signals** across 6 categories
 - **9 blocklist sources** (Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore)
-- **CatBoost ML model** (AUC 0.9988, 91% detection rate)
+- **CatBoost ML model** (AUC 0.9983, 93.5% recall on fresh phishing URLs — measured, see [docs/benchmarks](./docs/benchmarks/))
 - **Privacy Audit** — see what trackers, cookies, and data collection any site uses (A-F grade, on-device)
 - **Breach Check** — k-anonymity email leak detection (your email never leaves your device)
 - **Security Score** — on-device calculation with factor breakdown
@@ -48,7 +48,7 @@ cd landing && npm run dev  # Landing on localhost:3000
 ## Tech Stack
 
 - **Backend:** FastAPI (Python), Redis, Supabase (PostgreSQL)
-- **ML:** CatBoost, 27 features, trained on 18K+ domains
+- **ML:** CatBoost, 27 features, trained on 14,400 verified domains
 - **Extension:** Manifest V3, vanilla JS, MurmurHash3 bloom filter
 - **Mobile:** React Native (Expo), SQLite, native VPN (Swift/Kotlin)
 - **Landing:** Next.js 15
@@ -82,10 +82,11 @@ See full docs at `/docs` (Swagger UI) when running locally.
 ## Tests
 
 ```bash
-make test           # 75 unit tests
-python3 -m tests.test_api_integration  # 10 integration tests
-python3 -m tests.test_features         # 9 feature tests
+pytest                                 # 619 test functions across 46 files (~95% backend coverage)
+python3 scripts/eval_fresh_urls.py     # Reproducible head-to-head benchmark
 ```
+
+See [docs/benchmarks/latest.json](docs/benchmarks/latest.json) for the latest published metrics.
 
 ## License
 

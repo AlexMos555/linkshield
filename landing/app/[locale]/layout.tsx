@@ -26,7 +26,9 @@ export const metadata: Metadata = {
     description: "Your browsing data lives only on your device.",
     siteName: "Cleanway",
     type: "website",
-    url: "https://cleanway.ai",
+    // Per-page generateMetadata overrides url with the locale-correct canonical.
+    // Omit url here so a non-default-locale page that forgets to override
+    // doesn't inherit the apex URL and leak a wrong canonical to OG consumers.
   },
   twitter: {
     card: "summary_large_image",
