@@ -16,8 +16,8 @@
 - [x] **5. GitHub secret: SUPABASE_URL** · github.com/AlexMos555/linkshield/settings/secrets/actions → New repo secret · 3 мин · value из Supabase → Project Settings → API → Project URL
 - [x] **6. GitHub secret: SUPABASE_SERVICE_KEY** · Same page · 3 мин · value из Supabase → API → `service_role` (НЕ anon)
 - [x] **7. GitHub secret: GOOGLE_SAFE_BROWSING_KEY** · Same page · 5 мин · Google Cloud Console → APIs & Services → Credentials → restrict to "Safe Browsing API v4"
-- [ ] **8. GitHub secret: VT_API_KEY** · Same page · 2 мин · https://www.virustotal.com/gui/my-apikey (free, 500 req/day)
-- [ ] **9. GitHub secret: PHISHTANK_API_KEY** · Same page · 2 мин · https://www.phishtank.com/api_info.php
+- [x] **8. GitHub secret: VT_API_KEY** · Same page · 2 мин · https://www.virustotal.com/gui/my-apikey (free, 500 req/day)
+- [~] **9. GitHub secret: PHISHTANK_API_KEY** · Same page · 2 мин · https://www.phishtank.com/api_info.php
 - [ ] **10. Railway tokens: RAILWAY_TOKEN_PRODUCTION + RAILWAY_TOKEN_STAGING** · Railway → Account Settings → Tokens → Create New Token · 5 мин · paste в GH secrets с теми же именами
 - [ ] **11. Railway service IDs + health URLs (4 secrets)** · Same Railway settings · 5 мин · `RAILWAY_SERVICE_PRODUCTION`, `RAILWAY_SERVICE_STAGING`, `PROD_HEALTH_URL=https://api.cleanway.ai/health`, `STAGING_HEALTH_URL=https://<staging>/health`
 - [ ] **12. Test DNS на real iPhone** · Safari → cleanway.ai/dns → download .mobileconfig → install · 15 мин · phishing URL из urlhaus.abuse.ch/browse/ blocked, google.com работает
@@ -99,4 +99,4 @@
 
 ---
 
-**Прогресс: 4/31 done** ✓ 1, 5, 6, 7
+**Прогресс: 5/31 done** ✓ 1, 5, 6, 7, 8 &middot; #9 отложен (PhishTank registration disabled, optional)
