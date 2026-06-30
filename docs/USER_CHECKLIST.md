@@ -14,7 +14,7 @@
 - [~] **3. Calendar event: All-day 2026-09-27 "Cleanway 90-day go/no-go decision"** · Calendar app · 1 мин · threshold table в [USER_PLAYBOOK.md](USER_PLAYBOOK.md) пункт 90-DAY GATE
 - [~] **4. Rotate Anthropic API key + update Railway env** · console.anthropic.com/settings/keys → Railway dashboard → Variables → ANTHROPIC_API_KEY · 5 мин · check: POST `/api/v1/explain` returns `"source": "llm"`
 - [x] **5. GitHub secret: SUPABASE_URL** · github.com/AlexMos555/linkshield/settings/secrets/actions → New repo secret · 3 мин · value из Supabase → Project Settings → API → Project URL
-- [ ] **6. GitHub secret: SUPABASE_SERVICE_KEY** · Same page · 3 мин · value из Supabase → API → `service_role` (НЕ anon)
+- [x] **6. GitHub secret: SUPABASE_SERVICE_KEY** · Same page · 3 мин · value из Supabase → API → `service_role` (НЕ anon)
 - [ ] **7. GitHub secret: GOOGLE_SAFE_BROWSING_KEY** · Same page · 5 мин · Google Cloud Console → APIs & Services → Credentials → restrict to "Safe Browsing API v4"
 - [ ] **8. GitHub secret: VT_API_KEY** · Same page · 2 мин · https://www.virustotal.com/gui/my-apikey (free, 500 req/day)
 - [ ] **9. GitHub secret: PHISHTANK_API_KEY** · Same page · 2 мин · https://www.phishtank.com/api_info.php
@@ -99,4 +99,4 @@
 
 ---
 
-**Прогресс: 2/31 done** ✓ 1, 5
+**Прогресс: 3/31 done** ✓ 1, 5, 6
