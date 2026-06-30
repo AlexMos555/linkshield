@@ -440,6 +440,7 @@ export default async function Home({ params }: HomeProps) {
           <div className="flex justify-center gap-6 mb-4">
             <a href="/privacy-policy" className="text-sm text-slate-400 hover:text-white transition">{footer("privacy")}</a>
             <a href="/terms" className="text-sm text-slate-400 hover:text-white transition">{footer("terms")}</a>
+            <a href="/transparency/methodology" className="text-sm text-slate-400 hover:text-white transition">Methodology</a>
             <a href="mailto:support@cleanway.ai" className="text-sm text-slate-400 hover:text-white transition">{footer("contact")}</a>
             <a href="https://github.com/AlexMos555/cleanway" className="text-sm text-slate-400 hover:text-white transition">{footer("github")}</a>
           </div>

@@ -30,7 +30,7 @@ So I built it differently:
 
 **How we measure ourselves:** weekly benchmark cron pulls fresh URLs from URLhaus + PhishTank (~500 phishing + 1000 Tranco-legit), feeds them through the public `/api/v1/check` endpoint, AND through Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. Same script for all five resolvers. Raw output commits to `docs/benchmarks/`. Latest numbers:
 
-- Cleanway recall: 93.5% on fresh phishing URLs
+- Cleanway recall: 61.5% on fresh phishing URLs (2026-06-30, sample = 24; latest is always at cleanway.ai/transparency/methodology — pull from latest.json before posting)
 - Cloudflare 1.1.1.1 for Families recall: 55.5% on the same URLs
 - CatBoost ML model AUC: 0.9983 on a held-out test set of 14,400 verified domains
 - Measured FPR on Tranco top 1M: 0.08%
@@ -62,7 +62,7 @@ HN top comments on a Show HN are predictable. Have these ready as paste-able res
 **A:** Right — that's exactly why the script is in the repo, the dataset is two public feeds (URLhaus + PhishTank), and the cron runs every Monday on a fresh sample. Anyone can clone and reproduce. The four competitor adapters are open too. If my numbers were juiced, you'd see it in your own run.
 
 ### Q: "What about Google Safe Browsing? Isn't it free + built into Chrome?"
-**A:** Yes, and it catches a lot. But Safe Browsing only checks against its hash database — no per-page heuristics (BitB, credential form mismatch, tab-napping), no per-link warnings inside Gmail/Outlook, no honeypot password injection. We layer 17 other checks on top. On fresh URLs we measured Cleanway at 93.5% recall vs GSB at [TODO: rerun the weekly benchmark with GOOGLE_SAFE_BROWSING_KEY set and update before posting].
+**A:** Yes, and it catches a lot. But Safe Browsing only checks against its hash database — no per-page heuristics (BitB, credential form mismatch, tab-napping), no per-link warnings inside Gmail/Outlook, no honeypot password injection. We layer 17 other checks on top. On the 2026-06-30 sample (24 fresh URLhaus + PhishTank URLs) Cleanway hit 61.5% recall vs Cloudflare 1.1.1.1 for Families at 54.2% on the same sample, both at 100% precision. GSB number pending: rerun the weekly benchmark with GOOGLE_SAFE_BROWSING_KEY set and pull the comparison row from the next latest.json snapshot before posting.
 
 ### Q: "Why MIT and not AGPL? You'll get forked."
 **A:** The intel sources + curated brand data + trained ML weights stay closed (`docs/OPEN-SOURCE.md`). The detection algorithm is reverse-engineerable from extension traffic anyway. Forks won't have the operational moat. MIT maximises adoption + acquihire-friendly.

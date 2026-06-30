@@ -98,7 +98,7 @@ enforceable beyond MIT but socially compounds the credibility moat.
 ### Sprint 3: Marketing launch (1 day)
 
 1. Show HN post: "I open-sourced my anti-phishing engine after
-   building it to 93.5% recall on fresh URLs". Link the benchmark.
+   measuring its recall weekly with the script in this repo". Link the benchmark.
 2. Blog post on cleanway.ai/blog covering the why + the split.
 3. Cross-post to /r/netsec, lobste.rs, Twitter security crowd.
 4. Email 3 journalists who cover security:

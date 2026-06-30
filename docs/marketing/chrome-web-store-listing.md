@@ -17,7 +17,7 @@ Backup if rejected for trademark concerns: `Cleanway: Scam Link Protection`
 ## Short description (132 chars max — appears in search results)
 
 ```
-Real-time scam link protection. 93.5% recall on fresh phishing. Your browsing data never leaves your device.
+Real-time scam link protection. Phishing recall published weekly. Your browsing data never leaves your device.
 ```
 
 Alternative shorter (if 132 too tight):
@@ -43,7 +43,7 @@ Cleanway checks every link you see, in real time, against 16 threat intelligence
 
 **Privacy by design.** Most security extensions ship your full URL to their server so they can check it. Cleanway extracts the domain client-side and sends only the domain — never the full URL, never the page content, never your account email linked to the check. Even our server can't reconstruct your browsing history.
 
-**Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, the per-vendor comparison vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. As of the latest snapshot, Cleanway hit 93.5% recall on fresh URLhaus + PhishTank URLs vs 55.5% for Cloudflare on the same sample. AUC 0.9983 on a held-out test set of 14,400 verified domains.
+**Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, the per-vendor comparison vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. The current snapshot (2026-06-30, sample = 24 fresh URLhaus + PhishTank phishing URLs) measures Cleanway recall at 61.5% vs Cloudflare 1.1.1.1 for Families at 54.2% on the same sample, with both at 100% precision. AUC 0.9983 on a held-out test set of 14,400 verified domains. Numbers update weekly — see /transparency/methodology for the latest run.
 
 **Smart explanations, not just warnings.** Cleanway shows *why* a link looks dangerous — credential form mismatch, brand impersonation, fresh certificate from a high-risk registrar, unusual entropy in the domain name. Six skill levels (Grandma, Regular, Kids, Pro) tune the explanation to your reader.
 
@@ -100,7 +100,7 @@ Word count: ~470. Within sweet spot.
 ## Single bullet for the "Highlights" box (5 max)
 
 ```
-✓ 93.5% recall on fresh phishing URLs (measured weekly)
+✓ Phishing recall measured weekly + published (cleanway.ai/transparency/methodology)
 ✓ Server only sees domain — never your full URL or page content
 ✓ 16 threat sources + CatBoost ML + LLM-judged ambiguous cases
 ✓ Honest benchmark: cleanway.ai/transparency/methodology

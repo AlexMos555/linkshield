@@ -90,7 +90,7 @@ CONCURRENCY = {
 # showed 0 TP because the benchmark itself rate-limited the cleanway
 # adapter.)
 MIN_INTERVAL_S = {
-    "cleanway": 12.5,    # 5 fresh checks/min cap → 12s spacing + 0.5s headroom
+    "cleanway": 13.0,    # 5 fresh checks/min cap → 12s spacing + 1.0s headroom
     "virustotal": 16.0,  # VT free tier 4 req/min
 }
 
@@ -260,20 +260,41 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
     """GET /api/v1/public/check/{domain} on api.cleanway.ai.
     Lightweight public endpoint — rule + ML scoring, NO threat-
     intel API fan-out (intentional per api/routers/public.py:80).
+
+    On HTTP 429 (rate-limited): wait 25s (one full rate-limit
+    window + 5s slack) and retry once. Without this retry, a
+    benchmark batch that drifts past the 5/min IP cap records the
+    affected URLs as 'unknown', which artificially deflates recall.
+    A single retry per URL caps the worst-case batch time at
+    2 × (N × MIN_INTERVAL_S + N × 25s).
     """
     d = domain_of(url)
     if not d:
         return Verdict("cleanway", "unknown", detail="bad_domain")
     t0 = time.monotonic()
+    last_status: int | None = None
     try:
-        r = await client.get(
-            f"{CLEANWAY_API}/api/v1/public/check/{d}",
-            timeout=8.0,
-        )
+        for attempt in (1, 2):
+            r = await client.get(
+                f"{CLEANWAY_API}/api/v1/public/check/{d}",
+                timeout=8.0,
+            )
+            last_status = r.status_code
+            if r.status_code == 429 and attempt == 1:
+                # Honour Retry-After if the server sent one, else
+                # default to a full 5/min window plus headroom.
+                ra = r.headers.get("retry-after")
+                try:
+                    wait_s = max(1.0, float(ra)) if ra else 25.0
+                except ValueError:
+                    wait_s = 25.0
+                await asyncio.sleep(min(wait_s, 60.0))
+                continue
+            break
         elapsed = (time.monotonic() - t0) * 1000
         if r.status_code != 200:
-            return Verdict("cleanway", "unknown", latency_ms=elapsed,
-                           detail=f"status={r.status_code}")
+            tag = "rate_limited" if r.status_code == 429 else f"status={r.status_code}"
+            return Verdict("cleanway", "unknown", latency_ms=elapsed, detail=tag)
         data = r.json()
         level = (data.get("level") or "").lower()
         score = data.get("score")

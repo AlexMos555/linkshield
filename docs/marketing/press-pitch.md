@@ -10,7 +10,7 @@ Pick one. Order shows roughly best-to-okay:
 
 1. `Anti-phishing extension publishes own benchmark — open source`
 2. `Solo dev open-sources anti-phishing engine + reproducible per-vendor benchmark`
-3. `Privacy-first anti-phishing with 93.5% recall on fresh URLs — measured, not marketed`
+3. `Privacy-first anti-phishing with a recall number that updates weekly — measured, not marketed`
 4. `Show: per-domain anti-phishing comparison vs Cloudflare 1.1.1.1 for Families`
 
 Avoid hype words: "revolutionary", "game-changing", "unbeatable", "AI-powered". Journalists' spam filters trip on them.
@@ -26,7 +26,7 @@ Hi {{First name}},
 
 I read your piece on {{recent specific article, e.g. "the Snowflake credentials leak post-mortem"}} last week and thought you might be interested in a small launch.
 
-Short version: I'm a solo dev who built an anti-phishing browser extension and open-sourced the detection engine after benchmarking it. The thing that might be unusual: I publish the weekly per-vendor comparison openly. Same script runs against Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, VirusTotal, and us, on fresh URLhaus + PhishTank URLs. Latest snapshot: Cleanway 93.5% recall, Cloudflare 55.5%, on the same sample of {{N}} URLs. AUC 0.9983 on a held-out 14,400-domain test set.
+Short version: I'm a solo dev who built an anti-phishing browser extension and open-sourced the detection engine after benchmarking it. The thing that might be unusual: I publish the weekly per-vendor comparison openly. Same script runs against Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, VirusTotal, and us, on fresh URLhaus + PhishTank URLs. Latest snapshot (2026-06-30, sample = 24 phishing URLs): Cleanway recall 61.5% vs Cloudflare 1.1.1.1 for Families 54.2%, both at 100% precision. Numbers refresh every Monday at cleanway.ai/transparency/methodology — pull the live snapshot before publishing. AUC 0.9983 on a held-out 14,400-domain test set.
 
 Why I think this might be a story:
 - No other anti-phishing vendor (Norton, McAfee, Bitdefender) publishes recall numbers, and the few that publish anything publish AUC without a reproducible benchmark.
