@@ -8,13 +8,14 @@
     "install_short": "Installieren"
   },
   "Hero": {
-    "badge": "93,5% frischer Phishing-URLs erkannt (gemessen)",
+    "badge": "{recall}% frischer Phishing-URLs erkannt (gemessen)",
     "title_part1": "Betrugsschutz, der",
     "title_part2": "Ihre Privatsphäre respektiert",
     "subtitle": "Automatische Linkprüfung auf jeder Seite. 16 Bedrohungsquellen. Schlägt Cloudflare 1.1.1.1 for Families um 38 Prozentpunkte bei frischen URLs aus URLhaus und PhishTank. KI-basierte Erkennung. Ihre Browsing-Daten verlassen Ihr Gerät nie.",
     "cta_primary": "Zu Chrome hinzufügen — kostenlos",
     "cta_secondary": "So funktioniert's",
-    "cta_footer": "Grundschutz für immer kostenlos. Keine Kreditkarte."
+    "cta_footer": "Grundschutz für immer kostenlos. Keine Kreditkarte.",
+    "badge_fallback": "Privatsphäre-erste Phishing-Abwehr — Recall wöchentlich veröffentlicht"
   },
   "FinalCta": {
     "title": "Bereit für sicheres Surfen?",

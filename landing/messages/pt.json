@@ -8,13 +8,14 @@
     "install_short": "Instalar"
   },
   "Hero": {
-    "badge": "93,5% de URLs de phishing recentes detectadas (medido)",
+    "badge": "{recall}% de URLs de phishing recentes detectadas (medido)",
     "title_part1": "Proteção contra fraudes que",
     "title_part2": "respeita sua privacidade",
     "subtitle": "Verificação automática de links em cada página. 16 fontes de ameaças. Supera o Cloudflare 1.1.1.1 for Families em 38 pontos percentuais em URLs recentes do URLhaus e PhishTank. Detecção por ML. Seus dados de navegação nunca saem do dispositivo.",
     "cta_primary": "Adicionar ao Chrome — grátis",
     "cta_secondary": "Como funciona",
-    "cta_footer": "Proteção básica grátis para sempre. Sem cartão."
+    "cta_footer": "Proteção básica grátis para sempre. Sem cartão.",
+    "badge_fallback": "Proteção anti-phishing privada — recall publicado semanalmente"
   },
   "FinalCta": {
     "title": "Pronto para navegar seguro?",

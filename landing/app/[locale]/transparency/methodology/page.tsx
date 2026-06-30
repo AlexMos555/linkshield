@@ -6,9 +6,11 @@
  * head-to-head table: Cleanway vs Cloudflare 1.1.1.1 for Families
  * vs Google Safe Browsing vs PhishTank vs VirusTotal aggregate.
  *
- * Every claim on the landing page ('93.5% recall on fresh phishing
- * URLs') resolves here with the exact dataset, the exact script,
- * and a link to GitHub so anyone can reproduce the number.
+ * Every recall claim on the landing page resolves here with the exact
+ * dataset, the exact script, and a link to GitHub so anyone can reproduce
+ * the number. The hero badge reads the same `latest.json` via
+ * `lib/live-recall.ts` — when this page shows an updated benchmark, the
+ * badge updates too on the next deploy.
  *
  * No competitor publishes this. It's the single biggest credibility
  * signal we can ship for go-to-market.

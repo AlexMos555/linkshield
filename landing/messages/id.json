@@ -8,13 +8,14 @@
     "install_short": "Pasang"
   },
   "Hero": {
-    "badge": "93,5% URL phishing baru terdeteksi (terukur)",
+    "badge": "{recall}% URL phishing baru terdeteksi (terukur)",
     "title_part1": "Perlindungan dari penipuan yang",
     "title_part2": "menghormati privasi Anda",
     "subtitle": "Pemindaian tautan otomatis di setiap halaman. 16 sumber ancaman. Mengungguli Cloudflare 1.1.1.1 for Families sebesar 38 poin persentase pada URL terbaru dari URLhaus dan PhishTank. Deteksi dengan ML. Data jelajah Anda tidak pernah meninggalkan perangkat.",
     "cta_primary": "Tambahkan ke Chrome — gratis",
     "cta_secondary": "Cara kerjanya",
-    "cta_footer": "Perlindungan dasar gratis selamanya. Tanpa kartu."
+    "cta_footer": "Perlindungan dasar gratis selamanya. Tanpa kartu.",
+    "badge_fallback": "Proteksi phishing privasi-pertama — recall dipublikasikan mingguan"
   },
   "FinalCta": {
     "title": "Siap berselancar dengan aman?",

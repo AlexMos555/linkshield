@@ -204,7 +204,18 @@ def fetch_tranco_legit(limit: int) -> list[str]:
     if not src.exists():
         log.warning("data/top-1m.csv missing — using top_100k.json fallback")
         with open(DATA / "top_100k.json", "r") as f:
-            domains = list(json.load(f).keys())
+            raw = json.load(f)
+        # top_100k.json schema has drifted historically — accept both shapes:
+        #   - bare list of domains: ["google.com", "facebook.com", ...]
+        #   - dict keyed by domain: {"google.com": <rank>, ...}
+        if isinstance(raw, list):
+            domains = list(raw)
+        elif isinstance(raw, dict):
+            domains = list(raw.keys())
+        else:
+            raise ValueError(
+                f"top_100k.json: expected list or dict, got {type(raw).__name__}"
+            )
         random.seed(42)
         random.shuffle(domains)
         out = [f"https://{d}" for d in domains[:limit]]

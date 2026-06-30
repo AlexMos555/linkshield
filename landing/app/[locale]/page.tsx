@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { InstallButtons } from "@/components/InstallButtons";
 import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
+import { loadLiveRecall } from "@/lib/live-recall";
 import { routing, type Locale } from "@/i18n/routing";
 
 const SITE_URL = "https://cleanway.ai";
@@ -32,8 +33,12 @@ export async function generateMetadata({ params }: HomeProps): Promise<Metadata>
   // Hero carries the localized headline + tagline. Read defensively so a
   // missing key in a locale doesn't crash metadata generation.
   let title = "Cleanway — Protection from scam links";
-  let description =
-    "Automatic scam link detection with plain-language explanations. 93.5% recall on fresh phishing URLs (measured), 10 languages, your browsing data stays on your device.";
+  // Description starts from the localized subtitle (loaded below). The hero
+  // badge is honest: we only quote a recall number when latest.json has one.
+  const live = await loadLiveRecall();
+  let description = live
+    ? `Automatic scam link detection with plain-language explanations. ${live.pct}% recall on fresh phishing URLs (measured ${live.ts.slice(0, 10)}), 10 languages, your browsing data stays on your device.`
+    : "Automatic scam link detection with plain-language explanations. Phishing recall published weekly under /transparency/methodology. 10 languages, your browsing data stays on your device.";
   try {
     const part1 = hero("title_part1");
     const part2 = hero("title_part2");
@@ -119,6 +124,10 @@ export default async function Home({ params }: HomeProps) {
   const faq = await getTranslations("FAQ");
   const cta = await getTranslations("FinalCta");
   const footer = await getTranslations("Footer");
+  // Live phishing-recall number from the most recent weekly benchmark.
+  // When null (latest.json missing or cleanway returned all-unknown), we
+  // render the soft fallback badge instead of a hard "X%" claim.
+  const liveRecall = await loadLiveRecall();
 
   const featureItems = features.raw("items") as FeatureItem[];
   const howSteps = how.raw("steps") as HowItWorksStep[];
@@ -164,9 +173,15 @@ export default async function Home({ params }: HomeProps) {
       <main id="main">
       <section className="pt-24 pb-16 px-6 text-center">
         <div className="max-w-3xl mx-auto animate-in">
-          <span className="inline-block max-w-full bg-green-500/10 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-full text-sm font-semibold mb-8">
-            {hero("badge")}
-          </span>
+          <a
+            href="/transparency/methodology"
+            className="inline-block max-w-full bg-green-500/10 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-full text-sm font-semibold mb-8 hover:bg-green-500/20 transition"
+            title="See the weekly fresh-URL benchmark methodology"
+          >
+            {liveRecall
+              ? hero("badge", { recall: liveRecall.pct })
+              : hero("badge_fallback")}
+          </a>
           <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-6 break-words max-w-full">
             {hero("title_part1")}<br />
             <span className="gradient-text">{hero("title_part2")}</span>
@@ -400,8 +415,9 @@ export default async function Home({ params }: HomeProps) {
                   priceCurrency: "USD",
                   availability: "https://schema.org/InStock",
                 },
-                description:
-                  "Anti-phishing browser extension and mobile app. 93.5% measured recall on fresh phishing URLs, 10 languages, on-device privacy audit.",
+                description: liveRecall
+                  ? `Anti-phishing browser extension and mobile app. ${liveRecall.pct}% measured recall on fresh phishing URLs (${liveRecall.ts.slice(0, 10)}), 10 languages, on-device privacy audit.`
+                  : "Anti-phishing browser extension and mobile app. Phishing recall published weekly. 10 languages, on-device privacy audit.",
                 url: SITE_URL,
               },
               {
