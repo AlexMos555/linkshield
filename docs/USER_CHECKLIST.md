@@ -15,7 +15,7 @@
 - [~] **4. Rotate Anthropic API key + update Railway env** · console.anthropic.com/settings/keys → Railway dashboard → Variables → ANTHROPIC_API_KEY · 5 мин · check: POST `/api/v1/explain` returns `"source": "llm"`
 - [x] **5. GitHub secret: SUPABASE_URL** · github.com/AlexMos555/linkshield/settings/secrets/actions → New repo secret · 3 мин · value из Supabase → Project Settings → API → Project URL
 - [x] **6. GitHub secret: SUPABASE_SERVICE_KEY** · Same page · 3 мин · value из Supabase → API → `service_role` (НЕ anon)
-- [ ] **7. GitHub secret: GOOGLE_SAFE_BROWSING_KEY** · Same page · 5 мин · Google Cloud Console → APIs & Services → Credentials → restrict to "Safe Browsing API v4"
+- [x] **7. GitHub secret: GOOGLE_SAFE_BROWSING_KEY** · Same page · 5 мин · Google Cloud Console → APIs & Services → Credentials → restrict to "Safe Browsing API v4"
 - [ ] **8. GitHub secret: VT_API_KEY** · Same page · 2 мин · https://www.virustotal.com/gui/my-apikey (free, 500 req/day)
 - [ ] **9. GitHub secret: PHISHTANK_API_KEY** · Same page · 2 мин · https://www.phishtank.com/api_info.php
 - [ ] **10. Railway tokens: RAILWAY_TOKEN_PRODUCTION + RAILWAY_TOKEN_STAGING** · Railway → Account Settings → Tokens → Create New Token · 5 мин · paste в GH secrets с теми же именами
@@ -99,4 +99,4 @@
 
 ---
 
-**Прогресс: 3/31 done** ✓ 1, 5, 6
+**Прогресс: 4/31 done** ✓ 1, 5, 6, 7
