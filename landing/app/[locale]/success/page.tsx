@@ -104,9 +104,12 @@ export default async function SuccessPage({ searchParams, params }: Props) {
               <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>{t("step1_title")}</div>
               <div style={{ fontSize: 13, color: "#94a3b8" }}>{t("step1_body")}</div>
               <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <a href="https://chrome.google.com/webstore" style={{ background: "#22c55e", color: "#052e16", padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Chrome</a>
-                <a href="https://addons.mozilla.org" style={{ background: "#0f172a", color: "#f8fafc", padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none", border: "1px solid #334155" }}>Firefox</a>
-                <a href="https://apps.apple.com/app/cleanway" style={{ background: "#0f172a", color: "#f8fafc", padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none", border: "1px solid #334155" }}>Safari</a>
+                <a href="/dns#install" style={{ background: "#22c55e", color: "#052e16", padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
+                  Browser extensions &amp; DNS profile →
+                </a>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 12, color: "#94a3b8" }}>
+                Chrome, Firefox, Edge and Safari extensions are in store review. The DNS profile blocks scam sites system-wide today — no app required.
               </div>
             </div>
           </div>
