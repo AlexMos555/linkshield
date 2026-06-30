@@ -13,7 +13,7 @@
 - [~] **2. Calendar event: Fri 2026-07-03 14:00-18:00 "Chrome Web Store submit"** · Calendar app · 1 мин · block все другие звонки
 - [~] **3. Calendar event: All-day 2026-09-27 "Cleanway 90-day go/no-go decision"** · Calendar app · 1 мин · threshold table в [USER_PLAYBOOK.md](USER_PLAYBOOK.md) пункт 90-DAY GATE
 - [~] **4. Rotate Anthropic API key + update Railway env** · console.anthropic.com/settings/keys → Railway dashboard → Variables → ANTHROPIC_API_KEY · 5 мин · check: POST `/api/v1/explain` returns `"source": "llm"`
-- [ ] **5. GitHub secret: SUPABASE_URL** · github.com/AlexMos555/linkshield/settings/secrets/actions → New repo secret · 3 мин · value из Supabase → Project Settings → API → Project URL
+- [x] **5. GitHub secret: SUPABASE_URL** · github.com/AlexMos555/linkshield/settings/secrets/actions → New repo secret · 3 мин · value из Supabase → Project Settings → API → Project URL
 - [ ] **6. GitHub secret: SUPABASE_SERVICE_KEY** · Same page · 3 мин · value из Supabase → API → `service_role` (НЕ anon)
 - [ ] **7. GitHub secret: GOOGLE_SAFE_BROWSING_KEY** · Same page · 5 мин · Google Cloud Console → APIs & Services → Credentials → restrict to "Safe Browsing API v4"
 - [ ] **8. GitHub secret: VT_API_KEY** · Same page · 2 мин · https://www.virustotal.com/gui/my-apikey (free, 500 req/day)
@@ -99,4 +99,4 @@
 
 ---
 
-**Прогресс: 1/31 done** ✓ 1
+**Прогресс: 2/31 done** ✓ 1, 5
