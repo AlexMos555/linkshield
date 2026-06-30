@@ -88,6 +88,14 @@
       }
     ]
   },
+  "Install": {
+    "browser_label": "Extensions de navigateur",
+    "mobile_label": "Mobile",
+    "status_in_review": "En cours d'examen",
+    "status_coming_this_week": "Cette semaine",
+    "status_native_after_launch": "App native bientôt",
+    "status_appsource_pending": "AppSource en attente"
+  },
   "PricingTeaser": {
     "heading": "Une tarification simple et transparente",
     "unit_forever": "/à vie",

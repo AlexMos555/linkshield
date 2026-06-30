@@ -30,6 +30,14 @@
     "github": "GitHub",
     "tagline": "Data Anda, perangkat Anda."
   },
+  "Install": {
+    "browser_label": "Ekstensi peramban",
+    "mobile_label": "Seluler",
+    "status_in_review": "Sedang ditinjau",
+    "status_coming_this_week": "Hadir pekan ini",
+    "status_native_after_launch": "Aplikasi pasca-rilis",
+    "status_appsource_pending": "AppSource tertunda"
+  },
   "LanguageSwitcher": {
     "label": "Bahasa"
   },

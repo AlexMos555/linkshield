@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
+import { InstallButtons } from "@/components/InstallButtons";
 import ShareScanButton from "@/components/ShareScanButton";
 import { routing, type Locale } from "@/i18n/routing";
+import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -198,7 +200,7 @@ export default async function CheckPage({ params }: Props) {
             Cleanway
           </a>
           <a
-            href="https://chrome.google.com/webstore"
+            href={PRIMARY_INSTALL_HREF}
             style={{
               background: "#22c55e",
               color: "#052e16",
@@ -305,7 +307,7 @@ export default async function CheckPage({ params }: Props) {
             See the <a href="/transparency" style={{ color: "#60a5fa" }}>quarterly transparency report</a>.
           </p>
           <a
-            href="https://chrome.google.com/webstore"
+            href={PRIMARY_INSTALL_HREF}
             style={{
               display: "inline-block",
               background: "#22c55e",
@@ -319,6 +321,12 @@ export default async function CheckPage({ params }: Props) {
           >
             Add to Chrome &mdash; Free
           </a>
+          <div style={{ marginTop: 20 }}>
+            <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <InstallButtons platforms={["ios", "android"]} size="sm" />
+          </div>
         </div>
 
         {/* SEO: Structured Data */}

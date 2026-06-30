@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
+import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
 
 interface SignupFormProps {
   planFromQuery: string | null;
@@ -210,7 +211,7 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
 
       <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 8, lineHeight: 1.5 }}>
         {t("footer_lead")} {t("footer_or")}{" "}
-        <a href="https://chrome.google.com/webstore" style={{ color: "#60a5fa" }}>
+        <a href={PRIMARY_INSTALL_HREF} style={{ color: "#60a5fa" }}>
           {t("footer_install_cta")}
         </a>{" "}
         {t("footer_install_tail")}

@@ -30,6 +30,14 @@
     "github": "GitHub",
     "tagline": "Ihre Daten, Ihr Gerät."
   },
+  "Install": {
+    "browser_label": "Browser-Erweiterungen",
+    "mobile_label": "Mobil",
+    "status_in_review": "In Prüfung",
+    "status_coming_this_week": "Diese Woche verfügbar",
+    "status_native_after_launch": "Nativ nach Launch",
+    "status_appsource_pending": "AppSource ausstehend"
+  },
   "LanguageSwitcher": {
     "label": "Sprache"
   },

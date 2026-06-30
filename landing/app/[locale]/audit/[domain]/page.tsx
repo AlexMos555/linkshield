@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
+import { InstallButtons } from "@/components/InstallButtons";
 import { routing, type Locale } from "@/i18n/routing";
+import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -100,7 +102,7 @@ export default async function AuditPage({ params }: Props) {
             Cleanway
           </a>
           <a
-            href="https://chrome.google.com/webstore"
+            href={PRIMARY_INSTALL_HREF}
             style={{
               background: "#22c55e",
               color: "#052e16",
@@ -149,7 +151,7 @@ export default async function AuditPage({ params }: Props) {
         </div>
 
         <a
-          href="https://chrome.google.com/webstore"
+          href={PRIMARY_INSTALL_HREF}
           style={{
             display: "inline-block",
             background: "#22c55e",
@@ -163,6 +165,13 @@ export default async function AuditPage({ params }: Props) {
         >
           Install Cleanway to See Full Report
         </a>
+
+        <div style={{ marginTop: 24 }}>
+          <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <InstallButtons platforms={["ios", "android"]} size="sm" />
+        </div>
 
         <p style={{ fontSize: 12, color: "#475569", marginTop: 20 }}>
           Privacy Audit runs 100% on your device. No data sent to our servers.

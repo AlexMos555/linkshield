@@ -40,7 +40,6 @@ export function InstallButtons({
         return (
           <span
             key={p}
-            aria-disabled="true"
             title={info.status}
             className={`${sizeClass} bg-slate-800 text-slate-400 font-semibold rounded-lg border border-slate-700 cursor-not-allowed flex items-center gap-1.5`}
           >

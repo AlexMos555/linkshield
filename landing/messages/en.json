@@ -88,6 +88,14 @@
       }
     ]
   },
+  "Install": {
+    "browser_label": "Browser extensions",
+    "mobile_label": "Mobile",
+    "status_in_review": "In review",
+    "status_coming_this_week": "Coming this week",
+    "status_native_after_launch": "Native app after launch",
+    "status_appsource_pending": "AppSource pending"
+  },
   "PricingTeaser": {
     "heading": "Simple, transparent pricing",
     "unit_forever": "/forever",

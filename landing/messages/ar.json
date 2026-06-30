@@ -88,6 +88,14 @@
       }
     ]
   },
+  "Install": {
+    "browser_label": "إضافات المتصفح",
+    "mobile_label": "الجوال",
+    "status_in_review": "قيد المراجعة",
+    "status_coming_this_week": "هذا الأسبوع",
+    "status_native_after_launch": "تطبيق أصلي بعد الإطلاق",
+    "status_appsource_pending": "AppSource قيد الانتظار"
+  },
   "PricingTeaser": {
     "heading": "أسعار بسيطة وشفافة",
     "unit_forever": "/للأبد",

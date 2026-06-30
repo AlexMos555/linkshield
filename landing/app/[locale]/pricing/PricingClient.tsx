@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { PricingFor } from "@cleanway/api-client";
 
 import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
+import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
 
 // All shapes come from the generated contract — no hand-rolled types here.
 // If the API changes, `npm run build:api-types` regenerates the types and this
@@ -194,7 +195,7 @@ export default function PricingClient({ data }: PricingClientProps) {
               "1 device · 10 languages",
             ]}
             cta="Add to Chrome"
-            ctaHref="https://chrome.google.com/webstore"
+            ctaHref={PRIMARY_INSTALL_HREF}
             emphasis={false}
           />
 

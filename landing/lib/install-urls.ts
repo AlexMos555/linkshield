@@ -30,30 +30,32 @@ export interface PlatformInfo {
 }
 
 export const PLATFORMS: Record<Platform, PlatformInfo> = {
-  // Submitted Friday 2026-07-03; listing pending review.
+  // Chrome Web Store submission scheduled 2026-07-03; honest status until
+  // store listing is actually live. Don't promise approval windows we can't
+  // control.
   chrome: {
     label: "Chrome",
-    href: "/dns#install",          // safe fallback while CWS review pending
+    href: "/dns",          // fallback while CWS review pending
     available: false,
-    status: "In review",
+    status: "Submitting soon",
   },
   firefox: {
     label: "Firefox",
-    href: "/dns#install",
+    href: "/dns",
     available: false,
-    status: "Coming this week",
+    status: "Coming soon",
   },
   edge: {
     label: "Edge",
-    href: "/dns#install",
+    href: "/dns",
     available: false,
-    status: "Coming this week",
+    status: "Coming soon",
   },
   safari: {
     label: "Safari",
-    href: "/dns#install",
+    href: "/dns",
     available: false,
-    status: "In review",
+    status: "Coming soon",
   },
   ios: {
     label: "iOS",
@@ -69,7 +71,7 @@ export const PLATFORMS: Record<Platform, PlatformInfo> = {
   },
   outlook: {
     label: "Outlook",
-    href: "/dns#install",
+    href: "/dns",
     available: false,
     status: "AppSource pending",
   },

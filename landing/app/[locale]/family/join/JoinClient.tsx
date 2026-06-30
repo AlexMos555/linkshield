@@ -16,6 +16,7 @@
 // no auth required.
 
 import { useEffect, useState } from "react";
+import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
 
 type ParsedInvite = {
   code: string;
@@ -200,14 +201,14 @@ export default function JoinClient() {
             <li>
               Install the Cleanway browser extension (
               <a
-                href="https://chrome.google.com/webstore/detail/cleanway"
+                href={PRIMARY_INSTALL_HREF}
                 style={{ color: "#60a5fa" }}
               >
                 Chrome
               </a>{" "}
               /{" "}
               <a
-                href="https://addons.mozilla.org/firefox/addon/cleanway"
+                href={PRIMARY_INSTALL_HREF}
                 style={{ color: "#60a5fa" }}
               >
                 Firefox

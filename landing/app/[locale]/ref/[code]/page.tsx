@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
+import { InstallButtons } from "@/components/InstallButtons";
 
 type Props = { params: Promise<{ code: string }> };
 
@@ -30,13 +32,21 @@ export default async function ReferralPage({ params }: Props) {
           <div style={{ fontSize: 24, fontWeight: 800, color: "#22c55e", letterSpacing: 2 }}>{code}</div>
         </div>
 
-        <a href="https://chrome.google.com/webstore" style={{
+        <a href={PRIMARY_INSTALL_HREF} style={{
           display: "inline-block", background: "#22c55e", color: "#052e16",
           padding: "14px 32px", borderRadius: 10, fontWeight: 700, fontSize: 16, textDecoration: "none",
           marginBottom: 12,
         }}>
           Install Cleanway
         </a>
+
+        <div style={{ marginTop: 16, marginBottom: 16 }}>
+          <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <InstallButtons platforms={["ios", "android"]} size="sm" />
+        </div>
 
         <p style={{ fontSize: 13, color: "#64748b" }}>
           After installing, enter code <strong>{code}</strong> in extension settings to activate your trial.
