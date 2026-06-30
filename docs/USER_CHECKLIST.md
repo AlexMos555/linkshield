@@ -18,8 +18,8 @@
 - [x] **7. GitHub secret: GOOGLE_SAFE_BROWSING_KEY** · Same page · 5 мин · Google Cloud Console → APIs & Services → Credentials → restrict to "Safe Browsing API v4"
 - [x] **8. GitHub secret: VT_API_KEY** · Same page · 2 мин · https://www.virustotal.com/gui/my-apikey (free, 500 req/day)
 - [~] **9. GitHub secret: PHISHTANK_API_KEY** · Same page · 2 мин · https://www.phishtank.com/api_info.php
-- [ ] **10. Railway tokens: RAILWAY_TOKEN_PRODUCTION + RAILWAY_TOKEN_STAGING** · Railway → Account Settings → Tokens → Create New Token · 5 мин · paste в GH secrets с теми же именами
-- [ ] **11. Railway service IDs + health URLs (4 secrets)** · Same Railway settings · 5 мин · `RAILWAY_SERVICE_PRODUCTION`, `RAILWAY_SERVICE_STAGING`, `PROD_HEALTH_URL=https://api.cleanway.ai/health`, `STAGING_HEALTH_URL=https://<staging>/health`
+- [~] **10. Railway tokens: RAILWAY_TOKEN_PRODUCTION + RAILWAY_TOKEN_STAGING** · Railway → Account Settings → Tokens → Create New Token · 5 мин · paste в GH secrets с теми же именами
+- [~] **11. Railway service IDs + health URLs (4 secrets)** · Same Railway settings · 5 мин · `RAILWAY_SERVICE_PRODUCTION`, `RAILWAY_SERVICE_STAGING`, `PROD_HEALTH_URL=https://api.cleanway.ai/health`, `STAGING_HEALTH_URL=https://<staging>/health`
 - [ ] **12. Test DNS на real iPhone** · Safari → cleanway.ai/dns → download .mobileconfig → install · 15 мин · phishing URL из urlhaus.abuse.ch/browse/ blocked, google.com работает
 - [ ] **13. Twitter handle `@cleanwayai` — claim ИЛИ remove refs** · twitter.com/cleanwayai · 10 мин · если занят — grep "cleanwayai" landing/ + удалить из layout/page.tsx files
 
