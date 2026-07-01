@@ -73,8 +73,16 @@ jobs:
         # (Audit extension-build HIGH.)
         run: |
           bash scripts/build-extensions.sh > /dev/null 2>&1
-          if ! git diff --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/'; then
-            echo "::error::Extension build artifacts are out of sync with packages/extension-core/. Run 'bash scripts/build-extensions.sh' locally and commit the result."
+          # build-extensions.sh also runs scripts/build-i18n.py, which
+          # regenerates landing/messages/ + mobile/i18n/ from the
+          # packages/i18n-strings/ source of truth. Include those in the
+          # drift check — the original guard only diffed the extension
+          # trees, so a hand-edit to landing/messages/*.json (e.g. the
+          # Methodology namespace, or a badge-copy change) that wasn't
+          # mirrored back into the source would silently regress on the
+          # next build. (2026-07-01: exactly this happened three times.)
+          if ! git diff --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/'; then
+            echo "::error::Generated i18n/extension artifacts are out of sync with their source (packages/extension-core/ + packages/i18n-strings/). Edit the SOURCE, then run 'bash scripts/build-extensions.sh' locally and commit the regenerated files."
             exit 1
           fi
 

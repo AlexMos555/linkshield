@@ -8,13 +8,14 @@
     "install_short": "Installieren"
   },
   "Hero": {
-    "badge": "93,5% frischer Phishing-URLs erkannt (gemessen)",
+    "badge": "{recall}% frischer Phishing-URLs erkannt (gemessen)",
     "title_part1": "Betrugsschutz, der",
     "title_part2": "Ihre Privatsphäre respektiert",
     "subtitle": "Automatische Linkprüfung auf jeder Seite. 16 Bedrohungsquellen. Schlägt Cloudflare 1.1.1.1 for Families um 38 Prozentpunkte bei frischen URLs aus URLhaus und PhishTank. KI-basierte Erkennung. Ihre Browsing-Daten verlassen Ihr Gerät nie.",
     "cta_primary": "Zu Chrome hinzufügen — kostenlos",
     "cta_secondary": "So funktioniert's",
-    "cta_footer": "Grundschutz für immer kostenlos. Keine Kreditkarte."
+    "cta_footer": "Grundschutz für immer kostenlos. Keine Kreditkarte.",
+    "badge_fallback": "Privatsphäre-erste Phishing-Abwehr — Recall wöchentlich veröffentlicht"
   },
   "FinalCta": {
     "title": "Bereit für sicheres Surfen?",
@@ -382,5 +383,44 @@
     "privacy_more": "Vollständige Architektur und Methodik:",
     "transparency_link": "Transparenzbericht",
     "privacy_policy_link": "Datenschutzerklärung"
+  },
+  "Install": {
+    "browser_label": "Browser-Erweiterungen",
+    "mobile_label": "Mobil",
+    "status_in_review": "In Prüfung",
+    "status_coming_this_week": "Diese Woche verfügbar",
+    "status_native_after_launch": "Nativ nach Launch",
+    "status_appsource_pending": "AppSource ausstehend"
+  },
+  "Methodology": {
+    "page_title": "Benchmark methodology",
+    "page_description": "Cleanway's per-domain detection results vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal — measured weekly on fresh URLhaus + PhishTank URLs. Reproducible benchmark script linked.",
+    "back_to_transparency": "Back to transparency report",
+    "hero_title": "How we measure our own detection rate",
+    "hero_subtitle": "Every recall number we publish points here. The dataset, the script, and a button to clone it on GitHub.",
+    "why_heading": "Why this page exists",
+    "why_p1": "Every other anti-phishing vendor publishes glossy quarterly threat reports without their false-positive rate or per-vendor recall comparison. The numbers exist only in their internal dashboards.",
+    "why_p2": "We do the opposite: this page runs the same Python script anyone can clone, every Monday, against fresh URLhaus + PhishTank phishing URLs, and publishes the raw results. The script's output IS the marketing claim.",
+    "results_heading": "Latest results",
+    "results_unavailable": "Latest benchmark snapshot not available — re-running cron now.",
+    "results_meta": "Snapshot: $DATE$. Sample: $PHISHING$ phishing URLs, $LEGIT$ Tranco legit URLs.",
+    "phishing_table_heading": "Phishing batch (expected verdict: dangerous)",
+    "safe_table_heading": "Legit batch (FPR — false-positive rate, expected verdict: safe)",
+    "datasets_heading": "Datasets",
+    "dataset_phishing": "Phishing samples",
+    "dataset_safe": "Legit samples",
+    "verdict_mapping_heading": "How we map each resolver's response",
+    "verdict_mapping_p1": "Different vendors return different verdict shapes. We normalise to three: dangerous / safe / unknown. Unknown verdicts (rate-limited, not indexed, error) are reported separately — not counted as right or wrong.",
+    "reproduce_heading": "Reproduce these numbers",
+    "reproduce_p1": "Two commands and a Python 3 install. The script fetches the same feeds, runs the same comparisons, writes the same JSON output:",
+    "reproduce_note": "Source:",
+    "cadence_heading": "Cadence + automation",
+    "cadence_p1": "The benchmark runs every Monday at 05:15 UTC via a GitHub Actions cron. Results commit to docs/benchmarks/ in this repo. A regression-detection step opens a PR if recall drops more than 5 percentage points week-over-week.",
+    "cadence_p2": "Workflow file:",
+    "caveats_heading": "Honest caveats",
+    "caveat_1": "Cleanway uses the public /api/v1/check endpoint — same anonymous surface a regular user would see. We deliberately do NOT use a privileged path for benchmarking ourselves.",
+    "caveat_2": "PhishTank's free check API returns 'not indexed' for most fresh URLhaus URLs because their database lags by a few hours — that's why PhishTank's Recall column often shows '—' (unknown), not because it's broken.",
+    "caveat_3": "Google Safe Browsing requires an API key (GOOGLE_SAFE_BROWSING_KEY). If unset, that column shows '—' and is excluded from the comparison.",
+    "caveat_4": "Latency p50 measured from this script's host (US/EU CI runner); your latency from Asia or LATAM will differ. The relative comparison stays the same."
   }
 }
