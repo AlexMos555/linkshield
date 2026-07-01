@@ -310,5 +310,13 @@
   "email.granny_mode_invite.body_p1_to_grandchild": "{{name}} настроил(а) на ваших устройствах защиту Cleanway с крупным шрифтом и голосовыми уведомлениями. Вам не нужно ничего делать — всё уже работает.",
   "email.granny_mode_invite.body_p2_what_it_does": "Когда мошенник попытается обмануть вас через поддельный сайт банка или уведомление о посылке, Cleanway остановит это до того, как вы что-то введёте. Большими буквами появится предупреждение: «СТОП — это сайт мошенников».",
   "email.granny_mode_invite.cta_setup": "Открыть приложение",
-  "email.granny_mode_invite.reassurance": "Если не уверены, что делать, нажмите в приложении кнопку «Позвать семью» — {{name}} получит сообщение и поможет."
+  "email.granny_mode_invite.reassurance": "Если не уверены, что делать, нажмите в приложении кнопку «Позвать семью» — {{name}} получит сообщение и поможет.",
+  "Hero.badge": "{recall}% свежих фишинг-URL заблокированы (замерено)",
+  "Hero.badge_fallback": "Приватная защита от фишинга — recall публикуется еженедельно",
+  "Install.browser_label": "Расширения для браузера",
+  "Install.mobile_label": "Мобильные",
+  "Install.status_in_review": "На модерации",
+  "Install.status_coming_this_week": "Скоро на этой неделе",
+  "Install.status_native_after_launch": "Нативно после запуска",
+  "Install.status_appsource_pending": "AppSource на ревью"
 }

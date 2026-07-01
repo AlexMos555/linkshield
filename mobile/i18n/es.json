@@ -310,5 +310,13 @@
   "email.granny_mode_invite.body_p1_to_grandchild": "{{name}} configuró la protección de Cleanway en tus dispositivos con letra más grande y alertas por voz. No necesitas hacer nada — ya está funcionando.",
   "email.granny_mode_invite.body_p2_what_it_does": "Cuando un estafador intente engañarte con un sitio falso de banco o un aviso de entrega, Cleanway lo detiene antes de que escribas algo. Aparece un aviso claro en letras grandes: «ALTO — este es un sitio fraudulento».",
   "email.granny_mode_invite.cta_setup": "Abrir la aplicación",
-  "email.granny_mode_invite.reassurance": "Si no estás seguro de qué hacer, toca el botón «Pedir a la familia» en la aplicación — {{name}} recibirá un mensaje y podrá ayudarte."
+  "email.granny_mode_invite.reassurance": "Si no estás seguro de qué hacer, toca el botón «Pedir a la familia» en la aplicación — {{name}} recibirá un mensaje y podrá ayudarte.",
+  "Hero.badge": "{recall}% de URL de phishing recientes detectadas (medido)",
+  "Hero.badge_fallback": "Protección anti-phishing privada — recall publicado semanalmente",
+  "Install.browser_label": "Extensiones de navegador",
+  "Install.mobile_label": "Móvil",
+  "Install.status_in_review": "En revisión",
+  "Install.status_coming_this_week": "Esta semana",
+  "Install.status_native_after_launch": "App nativa tras lanzar",
+  "Install.status_appsource_pending": "AppSource pendiente"
 }

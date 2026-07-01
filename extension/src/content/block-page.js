@@ -26,6 +26,8 @@ const BLOCK_EN = {
   block_voice_alert: "Stop. The site $DOMAIN$ is dangerous. Do not type your password.",
   // Strategy Top-20 #4 — Annotated Evidence cards
   block_evidence_heading: "Why we blocked this site",
+  // Strategy Top-20 #15 — Cultural scam explainer heading
+  block_explainer_heading: "What kind of scam is this?",
 };
 
 // Per-signal evidence cards. The block page renders the top 4 of
@@ -279,6 +281,51 @@ function _speakAlert(text) {
   }
 }
 
+// Strategy #15 — Cultural scam explainer.
+//
+// Fire-and-forget POST to /api/v1/explain. The block page renders
+// instantly with the raw evidence cards; the explainer arrives ≤4s
+// later and injects a locale-aware paragraph ("Мошенник косит под
+// СберБанк" / "This looks like a PIX transfer scam" / etc). If the
+// backend times out, is unreachable, or returns an error, the block
+// page stays exactly as it was — no user-visible degradation.
+//
+// Privacy: only the signal LIST is sent, never the domain, never the
+// URL, never any user identifier. See api/routers/explainer.py:1-11
+// for the server-side contract.
+async function _fetchScamExplainer(signals, locale) {
+  if (!Array.isArray(signals) || signals.length === 0) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    // The extension's manifest whitelists https://api.cleanway.ai/* in
+    // host_permissions, so content scripts may fetch it cross-origin
+    // directly without a background-message hop.
+    const r = await fetch("https://api.cleanway.ai/api/v1/explain", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        // Cap at 20 signals — matches backend max_length=30 with
+        // slack; scoring engine rarely produces more than 4-6 anyway.
+        signals: signals.slice(0, 20),
+        locale: String(locale || "en").slice(0, 5),
+      }),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (!data || typeof data.explanation !== "string" || !data.explanation.trim()) {
+      return null;
+    }
+    return data;
+  } catch {
+    // AbortError, network drop, JSON parse — all silent.
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Detect impersonated brand from scoring reasons
 function extractBrand(reasons) {
   if (!reasons || !Array.isArray(reasons)) return null;
@@ -426,6 +473,23 @@ export function showBlockPage(result) {
         margin-bottom: 20px; text-align: start;
         border: 1px solid rgba(239, 68, 68, 0.18);
       }
+      /* Strategy #15 — Cultural scam explainer.
+         Sits above the evidence grid. Softer border + lighter tint so
+         the evidence cards still get the strongest visual weight. */
+      .ls-block-explainer {
+        background: rgba(15, 23, 42, 0.55);
+        border-radius: 14px; padding: 18px 20px;
+        margin-bottom: 16px; text-align: start;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        animation: ls-fade-in 0.35s ease-out;
+      }
+      .ls-block-explainer-heading {
+        font-size: 12px; font-weight: 700; color: #cbd5f5; margin: 0 0 8px;
+        text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .ls-block-explainer-body {
+        font-size: 15px; color: #e2e8f0; margin: 0; line-height: 1.5;
+      }
       .ls-block-evidence-heading {
         font-size: 13px; font-weight: 700; color: #fecaca; margin: 0 0 14px;
         text-transform: uppercase; letter-spacing: 0.05em;
@@ -554,6 +618,55 @@ export function showBlockPage(result) {
   document.body.appendChild(overlay);
   const prevOverflow = document.body.style.overflow;
   document.body.style.overflow = "hidden";
+
+  // Strategy #15 — kick off the cultural explainer AFTER the overlay is
+  // painted so the block page never blocks on network. When the
+  // explainer resolves, inject a small "why this looks like a scam"
+  // paragraph above the evidence grid. Null response = silent skip.
+  (function _wireExplainer() {
+    var signalsForExplainer = (reasons || [])
+      .map(function (r) { return r && r.signal ? String(r.signal) : ""; })
+      .filter(Boolean);
+    var localeForExplainer = "en";
+    try {
+      if (typeof chrome !== "undefined" && chrome.i18n && chrome.i18n.getUILanguage) {
+        localeForExplainer = String(chrome.i18n.getUILanguage()).slice(0, 2);
+      } else if (typeof navigator !== "undefined" && navigator.language) {
+        localeForExplainer = String(navigator.language).slice(0, 2);
+      }
+    } catch (_) { /* leave as "en" */ }
+    _fetchScamExplainer(signalsForExplainer, localeForExplainer).then(function (data) {
+      if (!data || !data.explanation) return;
+      // Overlay may have been dismissed by the user before we resolved
+      // — no-op if the overlay is gone.
+      var live = document.getElementById("ls-block-overlay");
+      if (!live) return;
+      var host = live.querySelector(".ls-block-evidence");
+      var card = live.querySelector(".ls-block-card");
+      if (!card) return;
+      var block = document.createElement("div");
+      block.className = "ls-block-explainer";
+      block.setAttribute("data-source", String(data.source || ""));
+      block.setAttribute("data-category", String(data.category || ""));
+      // Content: an h3 for screen readers + the explanation text.
+      // We keep it plain text — the backend already localizes per
+      // Cleanway's SAFE_KEYS whitelist so nothing user-controlled
+      // ever reaches innerHTML here.
+      var heading = document.createElement("h3");
+      heading.className = "ls-block-explainer-heading";
+      heading.textContent = bt("block_explainer_heading");
+      var body = document.createElement("p");
+      body.className = "ls-block-explainer-body";
+      body.textContent = String(data.explanation);
+      block.appendChild(heading);
+      block.appendChild(body);
+      if (host && host.parentNode === card) {
+        card.insertBefore(block, host);
+      } else {
+        card.appendChild(block);
+      }
+    }).catch(function () { /* swallow — fire-and-forget */ });
+  })();
 
   // Strategy #3 — Grandma Mode behaviour.
   //

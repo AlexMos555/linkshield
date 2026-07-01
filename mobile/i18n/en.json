@@ -339,5 +339,13 @@
   "email.granny_mode_invite.body_p1_to_grandchild": "{{name}} set up Cleanway protection on your devices with extra-large text and voice alerts. You don't need to do anything — it's already working.",
   "email.granny_mode_invite.body_p2_what_it_does": "When a scammer tries to trick you with a fake bank website or delivery notice, Cleanway stops it before you enter anything. A clear warning shows in big letters: 'STOP — this is a scam site'.",
   "email.granny_mode_invite.cta_setup": "Open the app",
-  "email.granny_mode_invite.reassurance": "If you're not sure what to do, tap the 'Ask family' button in the app — {{name}} gets a message and can help."
+  "email.granny_mode_invite.reassurance": "If you're not sure what to do, tap the 'Ask family' button in the app — {{name}} gets a message and can help.",
+  "Hero.badge": "{recall}% recall on fresh phishing URLs (measured)",
+  "Hero.badge_fallback": "Privacy-first phishing protection — recall published weekly",
+  "Install.browser_label": "Browser extensions",
+  "Install.mobile_label": "Mobile",
+  "Install.status_in_review": "In review",
+  "Install.status_coming_this_week": "Coming this week",
+  "Install.status_native_after_launch": "Native app after launch",
+  "Install.status_appsource_pending": "AppSource pending"
 }
