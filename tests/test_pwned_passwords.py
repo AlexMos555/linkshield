@@ -169,14 +169,21 @@ async def test_fetch_returns_none_on_5xx(monkeypatch):
 
 def test_request_log_scrubs_breach_prefix():
     """Strategy #13 adversarial review: the 5-char SHA-1 prefix in
-    the URL path must NOT reach structured access logs / Sentry."""
+    the URL path must NOT reach structured access logs / Sentry.
+
+    2026-07-01 audit BE-4 extended this to the domain a user is
+    checking — that URL fragment is browsing context that should not
+    leak into Sentry breadcrumbs either. Public + authenticated check
+    routes are now scrubbed too."""
     from api.main import _scrub_path_for_logs
 
     assert _scrub_path_for_logs("/api/v1/breach/check/21BD1") == "/api/v1/breach/check/{prefix}"
     assert _scrub_path_for_logs("/api/v1/breach/check/abcde") == "/api/v1/breach/check/{prefix}"
     assert _scrub_path_for_logs("/api/v1/breach/passwords/abcde") == "/api/v1/breach/passwords/{prefix}"
+    # Domain the user is checking is browsing context — scrub it.
+    assert _scrub_path_for_logs("/api/v1/public/check/example.com") == "/api/v1/public/check/{domain}"
+    assert _scrub_path_for_logs("/api/v1/check/example.com") == "/api/v1/check/{domain}"
     # Unrelated paths pass through untouched.
-    assert _scrub_path_for_logs("/api/v1/public/check/example.com") == "/api/v1/public/check/example.com"
     assert _scrub_path_for_logs("/health") == "/health"
     assert _scrub_path_for_logs("") == ""
 

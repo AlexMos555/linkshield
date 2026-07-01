@@ -176,6 +176,14 @@ def _scrub_path_for_logs(path: str) -> str:
     # /api/v1/breach/passwords/{prefix} (future shape) — same treatment
     if path.startswith("/api/v1/breach/passwords/"):
         return "/api/v1/breach/passwords/{prefix}"
+    # /api/v1/public/check/{domain} — the domain the user is checking is
+    # itself sensitive URL context; strip it from the logged path so Sentry
+    # / Datadog only sees the route shape.
+    if path.startswith("/api/v1/public/check/"):
+        return "/api/v1/public/check/{domain}"
+    # /api/v1/check/{domain} — same treatment for the authenticated variant.
+    if path.startswith("/api/v1/check/"):
+        return "/api/v1/check/{domain}"
     return path
 
 
