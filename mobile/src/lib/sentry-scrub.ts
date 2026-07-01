@@ -88,6 +88,13 @@ const ALWAYS_REDACT_KEYS: ReadonlySet<string> = new Set([
   "credit_card",
   "card_number",
   "cvv",
+  // Browsing context — mirrors the backend + landing scrubbers. The
+  // domain a user checks must not reach Sentry. (2026-07-01 audit BE-4
+  // follow-up: backend was patched first, the TS twins were missed.)
+  "domain",
+  "raw_url",
+  "url",
+  "hostname",
 ]);
 
 function scrubString(s: string): string {

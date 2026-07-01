@@ -81,6 +81,16 @@ const ALWAYS_REDACT_KEYS: ReadonlySet<string> = new Set([
   "credit_card",
   "card_number",
   "cvv",
+  // Browsing context — the domain / URL a user is checking. Mirrors the
+  // backend scrubber (api/services/sentry_scrubber.py) added in the 2026-07-01
+  // audit BE-4 pass; the TypeScript twins were missed then. Cleanway's
+  // privacy invariant is "even on breach, attackers learn nothing about
+  // your online activity" — so a domain must never reach Sentry (a
+  // third-party sink with 90-day retention + employee read access).
+  "domain",
+  "raw_url",
+  "url",
+  "hostname",
 ]);
 
 function scrubString(s: string): string {
