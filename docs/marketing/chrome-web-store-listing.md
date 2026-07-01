@@ -43,7 +43,7 @@ Cleanway checks every link you see, in real time, against 16 threat intelligence
 
 **Privacy by design.** Most security extensions ship your full URL to their server so they can check it. Cleanway extracts the domain client-side and sends only the domain — never the full URL, never the page content, never your account email linked to the check. Even our server can't reconstruct your browsing history.
 
-**Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, the per-vendor comparison vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. The current snapshot (2026-06-30, sample = 24 fresh URLhaus + PhishTank phishing URLs) measures Cleanway recall at 61.5% vs Cloudflare 1.1.1.1 for Families at 54.2% on the same sample, with both at 100% precision. AUC 0.9983 on a held-out test set of 14,400 verified domains. Numbers update weekly — see /transparency/methodology for the latest run.
+**Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, and the per-vendor comparison vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. Per-vendor recall, precision, and denominators (including our own unknown/rate-limited bucket) are shown side-by-side on that page and refresh every Monday. Static baseline: AUC 0.9983 on a held-out test set of 14,400 verified domains.
 
 **Smart explanations, not just warnings.** Cleanway shows *why* a link looks dangerous — credential form mismatch, brand impersonation, fresh certificate from a high-risk registrar, unusual entropy in the domain name. Six skill levels (Grandma, Regular, Kids, Pro) tune the explanation to your reader.
 
@@ -68,7 +68,7 @@ Cleanway checks every link you see, in real time, against 16 threat intelligence
 • Browsing history: never stored
 • Account email: never linked to scans
 • Server logs: rotated, no IP retention past request lifetime
-• Open-source detection engine: https://github.com/cleanway-ai/engine (MIT)
+• Open-source detection engine: https://github.com/AlexMos555/linkshield (MIT)
 • Privacy policy: cleanway.ai/privacy-policy
 
 ## Pricing
@@ -90,7 +90,7 @@ We do NOT request: history, cookies, browsing data, screen capture, microphone, 
 
 Support: hello@cleanway.ai
 Security issues: security@cleanway.ai (90-day coordinated disclosure)
-Source code: github.com/cleanway-ai/engine
+Source code: github.com/AlexMos555/linkshield
 ```
 
 Word count: ~470. Within sweet spot.
@@ -153,4 +153,4 @@ Suggested image size: 1280×800. Show real UI, no mockups.
 - [ ] Detailed description ≤ 16000 chars
 - [ ] No competitor names in detailed description
 - [ ] Single category picked (probably "Productivity" or "Tools" — not "Security" if Google has tightened category restrictions; verify)
-- [ ] Reviewer note: "This is an open-source engine. Source available at github.com/cleanway-ai/engine. Privacy architecture documented at cleanway.ai/privacy-policy. Independent benchmark at cleanway.ai/transparency/methodology."
+- [ ] Reviewer note: "This is an open-source engine. Source available at github.com/AlexMos555/linkshield. Privacy architecture documented at cleanway.ai/privacy-policy. Independent benchmark at cleanway.ai/transparency/methodology."

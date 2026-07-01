@@ -70,73 +70,64 @@
     ]
   },
   "HowItWorks": {
-    "heading": "كيف يحميك Cleanway",
+    "heading": "How Cleanway protects you",
     "steps": [
       {
         "step": "1",
-        "title": "ثبِّت الإضافة",
-        "desc": "أضِف إضافة Cleanway إلى Chrome. لا تستغرق سوى 10 ثوانٍ."
+        "title": "Install",
+        "desc": "Add the Chrome extension. Takes 10 seconds."
       },
       {
         "step": "2",
-        "title": "تصفَّح بحرية",
-        "desc": "يفحص Cleanway كل رابط تلقائياً. لا حاجة لأي إجراء منك."
+        "title": "Browse",
+        "desc": "Cleanway checks every link automatically. No action needed."
       },
       {
         "step": "3",
-        "title": "ابقَ بأمان",
-        "desc": "الروابط الخطيرة تظهر بشارة حمراء. اضغط عليها لمعرفة التفاصيل."
+        "title": "Stay Safe",
+        "desc": "Dangerous links get red badges. Click for details."
       }
     ]
   },
-  "Install": {
-    "browser_label": "إضافات المتصفح",
-    "mobile_label": "الجوال",
-    "status_in_review": "قيد المراجعة",
-    "status_coming_this_week": "هذا الأسبوع",
-    "status_native_after_launch": "تطبيق أصلي بعد الإطلاق",
-    "status_appsource_pending": "AppSource قيد الانتظار"
-  },
   "PricingTeaser": {
-    "heading": "أسعار بسيطة وشفافة",
-    "unit_forever": "/للأبد",
-    "unit_month": "/شهرياً",
-    "most_popular": "الأكثر شعبية",
-    "trial_note": "جميع الخطط تشمل تجربة مجانية لمدة 14 يوماً. يمكنك الإلغاء في أي وقت.",
+    "heading": "Simple, transparent pricing",
+    "unit_forever": "/forever",
+    "unit_month": "/month",
+    "most_popular": "Most Popular",
+    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
     "free": {
-      "name": "مجاني",
+      "name": "Free",
       "price": "$0",
-      "cta": "ابدأ الآن",
       "features": [
-        "50 فحص رابط شهرياً",
-        "كشف التهديدات في الوقت الفعلي",
-        "تحذيرات بلغة واضحة ومفهومة",
-        "10 لغات"
-      ]
+        "10 API checks/day",
+        "Unlimited local checks",
+        "Privacy Audit (grade only)",
+        "Link badges on all pages"
+      ],
+      "cta": "Get Started"
     },
     "personal": {
-      "name": "شخصي",
-      "price": "$1.49",
-      "cta": "جرّب مجاناً لمدة 14 يوماً",
+      "name": "Personal",
+      "price": "$4.99",
       "features": [
-        "فحص روابط غير محدود",
-        "تحديثات أولوية للتهديدات",
-        "كشف متقدم لمحاولات التصيّد",
-        "شرح ثقافي لأساليب الاحتيال",
-        "حماية البريد + الإضافة"
-      ]
+        "Unlimited checks",
+        "Full Privacy Audit breakdown",
+        "Weekly Security Report",
+        "Security Score + tips",
+        "Priority support"
+      ],
+      "cta": "Start Free Trial"
     },
     "family": {
-      "name": "عائلي (حتى 5 أفراد)",
-      "price": "$5.99",
-      "cta": "احمِ عائلتك",
+      "name": "Family",
+      "price": "$9.99",
       "features": [
-        "كل ما في الخطة الشخصية",
-        "حتى 5 أفراد من العائلة",
-        "سجل نشاط عائلي مشفَّر",
-        "وضع الأطفال + وضع كبار السن",
-        "لوحة تحكم للوالدين"
-      ]
+        "Everything in Personal",
+        "Up to 6 devices",
+        "Family Hub with E2E alerts",
+        "Parental mode"
+      ],
+      "cta": "Start Free Trial"
     }
   },
   "Comparison": {
@@ -217,22 +208,23 @@
     ]
   },
   "Privacy": {
-    "heading": "الخصوصية مدمجة في التصميم",
-    "intro": "معظم أدوات الحماية تتجسس عليك بحجة حمايتك. نحن رفضنا ذلك. إليك بالضبط ما يبقى على جهازك — وما لا يخرج منه أبداً.",
-    "server_heading": "ما يراه خادمنا",
+    "heading": "Privacy is not a feature. It's the architecture.",
+    "server_heading": "What our server knows",
     "server_items": [
-      "اسم النطاق فقط (cleanway.ai، وليس الرابط الكامل)",
-      "حكم مجهول الهوية على التهديد (آمن / مشبوه / خطير)",
-      "اللغة لعرض الشروحات المترجمة"
+      "Your email address",
+      "Subscription status",
+      "Weekly aggregate numbers"
     ],
-    "device_heading": "ما يبقى على جهازك",
+    "server_note": "If breached: attacker gets emails + subscription. Boring.",
+    "device_heading": "What stays on your device",
     "device_items": [
-      "الرابط الكامل (لا يُرسَل أبداً)",
-      "محتوى الصفحة (لا يُقرأ أبداً)",
-      "سجل التصفح (لا يُخزَّن أبداً)",
-      "بريد حسابك (لا يُربط أبداً بعمليات الفحص)"
+      "Full URL check history",
+      "Privacy Audit results",
+      "Security Score breakdown",
+      "Weekly Report details",
+      "Family alert content (E2E encrypted)"
     ],
-    "footer_note": "قابل للتدقيق: محرك الفحص لدينا مفتوح المصدر. تحقق بنفسك على github.com/cleanway-ai/engine."
+    "device_note": "If device is lost: protected by OS encryption."
   },
   "Testimonials": {
     "heading": "ماذا يقول المستخدمون",
@@ -392,35 +384,12 @@
     "transparency_link": "تقرير الشفافية",
     "privacy_policy_link": "سياسة الخصوصية"
   },
-  "Methodology": {
-    "page_title": "منهجية القياس المرجعي",
-    "page_description": "نتائج كشف Cleanway لكل نطاق مقارنةً بـ Cloudflare 1.1.1.1 for Families وGoogle Safe Browsing وPhishTank وVirusTotal — تُقاس أسبوعياً على روابط جديدة من URLhaus وPhishTank. سكربت قياس مرجعي قابل لإعادة الإنتاج مُرفق برابط.",
-    "back_to_transparency": "العودة إلى تقرير الشفافية",
-    "hero_title": "كيف نقيس معدل الاكتشاف الخاص بنا",
-    "hero_subtitle": "كل رقم لمعدل الاكتشاف ننشره يشير إلى هذه الصفحة. مجموعة البيانات، السكربت، وزر لاستنساخه من GitHub.",
-    "why_heading": "لماذا توجد هذه الصفحة",
-    "why_p1": "كل مزوّد آخر لمكافحة التصيّد ينشر تقارير تهديدات ربع سنوية مصقولة دون ذكر معدل النتائج الإيجابية الكاذبة لديه أو مقارنة معدل الاكتشاف لكل مزوّد. هذه الأرقام موجودة فقط في لوحات تحكمهم الداخلية.",
-    "why_p2": "نحن نفعل العكس: هذه الصفحة تشغّل نفس سكربت Python الذي يستطيع أي شخص استنساخه، كل يوم اثنين، على روابط تصيّد جديدة من URLhaus وPhishTank، وتنشر النتائج الخام. مُخرَجات السكربت هي ادعاؤنا التسويقي بحدّ ذاتها.",
-    "results_heading": "أحدث النتائج",
-    "results_unavailable": "أحدث لقطة للقياس المرجعي غير متاحة — يُعاد تشغيل cron الآن.",
-    "results_meta": "اللقطة: $DATE$. العينة: $PHISHING$ رابط تصيّد، $LEGIT$ رابط شرعي من Tranco.",
-    "phishing_table_heading": "دفعة التصيّد (الحكم المتوقع: خطير)",
-    "safe_table_heading": "الدفعة الشرعية (FPR — معدل النتائج الإيجابية الكاذبة، الحكم المتوقع: آمن)",
-    "datasets_heading": "مجموعات البيانات",
-    "dataset_phishing": "عيّنات التصيّد",
-    "dataset_safe": "العيّنات الشرعية",
-    "verdict_mapping_heading": "كيف نُطابق استجابة كل مُحلِّل",
-    "verdict_mapping_p1": "يُعيد كل مزوّد أشكالاً مختلفة من الأحكام. نقوم بتوحيدها إلى ثلاثة: خطير / آمن / غير معروف. تُذكر الأحكام غير المعروفة (محدود المعدل، غير مفهرس، خطأ) بشكل منفصل — ولا تُحسب صحيحة أو خاطئة.",
-    "reproduce_heading": "أعِد إنتاج هذه الأرقام",
-    "reproduce_p1": "أمران اثنان وتثبيت Python 3. يجلب السكربت نفس الموجزات، ويُجري نفس المقارنات، ويكتب نفس مُخرَجات JSON:",
-    "reproduce_note": "المصدر:",
-    "cadence_heading": "التواتر + الأتمتة",
-    "cadence_p1": "يعمل القياس المرجعي كل يوم اثنين الساعة 05:15 UTC عبر cron في GitHub Actions. تُلتزم النتائج إلى docs/benchmarks/ في هذا الـ repo. تفتح خطوة كشف الانحدار PR إذا انخفض معدل الاكتشاف أكثر من 5 نقاط مئوية أسبوعياً.",
-    "cadence_p2": "ملف سير العمل:",
-    "caveats_heading": "تحفظات صادقة",
-    "caveat_1": "يستخدم Cleanway نقطة النهاية العامة /api/v1/check — نفس السطح المجهول الذي يراه المستخدم العادي. نحن نتعمّد عدم استخدام مسار ذي امتيازات لقياس أدائنا.",
-    "caveat_2": "تُعيد واجهة الفحص المجانية لـ PhishTank 'غير مفهرس' لمعظم روابط URLhaus الجديدة لأن قاعدة بياناتهم تتأخر بضع ساعات — لهذا السبب يُظهر عمود معدل الاكتشاف لـ PhishTank في الغالب '—' (غير معروف)، وليس لأنه معطّل.",
-    "caveat_3": "يتطلّب Google Safe Browsing مفتاح API (GOOGLE_SAFE_BROWSING_KEY). إذا لم يُضبط، يُظهر هذا العمود '—' ويُستبعد من المقارنة.",
-    "caveat_4": "زمن الاستجابة p50 مُقاس من مضيف هذا السكربت (مُشغّل CI في الولايات المتحدة/أوروبا)؛ زمن الاستجابة لديك من آسيا أو أمريكا اللاتينية سيختلف. تبقى المقارنة النسبية كما هي."
+  "Install": {
+    "browser_label": "إضافات المتصفح",
+    "mobile_label": "الجوال",
+    "status_in_review": "قيد المراجعة",
+    "status_coming_this_week": "هذا الأسبوع",
+    "status_native_after_launch": "تطبيق أصلي بعد الإطلاق",
+    "status_appsource_pending": "AppSource قيد الانتظار"
   }
 }

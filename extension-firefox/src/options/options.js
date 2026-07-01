@@ -264,7 +264,7 @@ document.getElementById("redeem-code").addEventListener("click", async () => {
 // only makes sense for signed-in users with a server-side account.
 
 async function lazyApi() {
-  return import(chrome.runtime.getURL("utils/api.js"));
+  return import(chrome.runtime.getURL("src/utils/api.js"));
 }
 
 const SKILL_LABELS = {
@@ -450,11 +450,11 @@ document.getElementById("export-data").addEventListener("click", () => {
 // modules so the existing chrome.runtime.getURL pattern works.
 
 async function lazyFamilyApi() {
-  return import(chrome.runtime.getURL("utils/family-api.js"));
+  return import(chrome.runtime.getURL("src/utils/family-api.js"));
 }
 
 async function lazyFamilyCrypto() {
-  return import(chrome.runtime.getURL("utils/family-crypto.js"));
+  return import(chrome.runtime.getURL("src/utils/family-crypto.js"));
 }
 
 function showFamilyState(name) {
@@ -529,7 +529,7 @@ async function loadFamilyHub() {
   // access to /family/{id}/members on every block). Re-cached on every
   // Family Hub render so adding a new sibling propagates within minutes.
   try {
-    const fanout = await import(chrome.runtime.getURL("utils/family-fanout.js"));
+    const fanout = await import(chrome.runtime.getURL("src/utils/family-fanout.js"));
     // Resolve my own user_id by JWT decode — sub claim is the user id.
     let myUid = null;
     try {

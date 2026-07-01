@@ -4,21 +4,21 @@
 [![Security](https://github.com/AlexMos555/linkshield/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/AlexMos555/linkshield/actions/workflows/security.yml)
 [![E2E — Landing](https://github.com/AlexMos555/linkshield/actions/workflows/e2e-landing.yml/badge.svg?branch=main)](https://github.com/AlexMos555/linkshield/actions/workflows/e2e-landing.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e.svg)](LICENSE)
-[![Methodology](https://img.shields.io/badge/methodology-93.5%25%20recall%2C%20measured%20weekly-22c55e)](https://cleanway.ai/transparency/methodology)
+[![Methodology](https://img.shields.io/badge/methodology-recall%20published%20weekly-22c55e)](https://cleanway.ai/transparency/methodology)
 
 Privacy-first phishing protection platform. Your browsing data lives only on your device.
 
 ## What is Cleanway?
 
-Cleanway automatically checks every link you encounter against 9 threat intelligence sources and a machine learning model. Dangerous sites are blocked before they can harm you.
+Cleanway automatically checks every link you encounter against 16 threat intelligence signals (11 named blocklist feeds + reputation, visual identity, ML model, and heuristics). Dangerous sites are blocked before they can harm you.
 
 **Key difference:** Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if breached, attackers learn nothing about your online activity.
 
 ## Features
 
 - **42+ detection signals** across 6 categories
-- **9 blocklist sources** (Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore)
-- **CatBoost ML model** (AUC 0.9983, 93.5% recall on fresh phishing URLs — measured, see [docs/benchmarks](./docs/benchmarks/))
+- **11 named blocklist feeds** (Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (Tranco), visual identity (favicon brand hashes, typosquat watchtower), ML model, LLM judge, and heuristics = **16 threat-intelligence signals** total
+- **CatBoost ML model** — phishing recall published weekly at [cleanway.ai/transparency/methodology](https://cleanway.ai/transparency/methodology); reproducible via [`scripts/eval_fresh_urls.py`](./scripts/eval_fresh_urls.py) and [`docs/benchmarks/latest.json`](./docs/benchmarks/latest.json)
 - **Privacy Audit** — see what trackers, cookies, and data collection any site uses (A-F grade, on-device)
 - **Breach Check** — k-anonymity email leak detection (your email never leaves your device)
 - **Security Score** — on-device calculation with factor breakdown

@@ -69,74 +69,65 @@
       }
     ]
   },
-  "Install": {
-    "browser_label": "Extensões de navegador",
-    "mobile_label": "Celular",
-    "status_in_review": "Em análise",
-    "status_coming_this_week": "Em breve esta semana",
-    "status_native_after_launch": "App nativo em breve",
-    "status_appsource_pending": "AppSource em análise"
-  },
   "HowItWorks": {
-    "heading": "Como o Cleanway te protege",
+    "heading": "How Cleanway protects you",
     "steps": [
       {
         "step": "1",
-        "title": "Instale",
-        "desc": "Adicione a extensão do Chrome. Leva 10 segundos."
+        "title": "Install",
+        "desc": "Add the Chrome extension. Takes 10 seconds."
       },
       {
         "step": "2",
-        "title": "Navegue",
-        "desc": "O Cleanway verifica cada link automaticamente. Você não precisa fazer nada."
+        "title": "Browse",
+        "desc": "Cleanway checks every link automatically. No action needed."
       },
       {
         "step": "3",
-        "title": "Fique seguro",
-        "desc": "Links perigosos ganham um selo vermelho. Clique para ver os detalhes."
+        "title": "Stay Safe",
+        "desc": "Dangerous links get red badges. Click for details."
       }
     ]
   },
   "PricingTeaser": {
-    "heading": "Preços simples e transparentes",
-    "unit_forever": "/para sempre",
-    "unit_month": "/mês",
-    "most_popular": "Mais popular",
-    "trial_note": "Todos os planos incluem 14 dias de teste grátis. Cancele quando quiser.",
+    "heading": "Simple, transparent pricing",
+    "unit_forever": "/forever",
+    "unit_month": "/month",
+    "most_popular": "Most Popular",
+    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
     "free": {
-      "name": "Grátis",
+      "name": "Free",
       "price": "$0",
-      "cta": "Começar agora",
       "features": [
-        "50 verificações de link por mês",
-        "Detecção de ameaças em tempo real",
-        "Avisos em linguagem simples",
-        "10 idiomas"
-      ]
+        "10 API checks/day",
+        "Unlimited local checks",
+        "Privacy Audit (grade only)",
+        "Link badges on all pages"
+      ],
+      "cta": "Get Started"
     },
     "personal": {
-      "name": "Pessoal",
-      "price": "$1.49",
-      "cta": "Teste grátis por 14 dias",
+      "name": "Personal",
+      "price": "$4.99",
       "features": [
-        "Verificações de link ilimitadas",
-        "Atualizações de ameaças com prioridade",
-        "Detecção avançada de phishing",
-        "Explicações culturais de golpes",
-        "E-mail + extensão"
-      ]
+        "Unlimited checks",
+        "Full Privacy Audit breakdown",
+        "Weekly Security Report",
+        "Security Score + tips",
+        "Priority support"
+      ],
+      "cta": "Start Free Trial"
     },
     "family": {
-      "name": "Família (até 5)",
-      "price": "$5.99",
-      "cta": "Proteja sua família",
+      "name": "Family",
+      "price": "$9.99",
       "features": [
-        "Tudo do plano Pessoal",
-        "Até 5 membros da família",
-        "Registro criptografado de atividade da família",
-        "Modo Crianças + Modo Vovó",
-        "Painel para os pais"
-      ]
+        "Everything in Personal",
+        "Up to 6 devices",
+        "Family Hub with E2E alerts",
+        "Parental mode"
+      ],
+      "cta": "Start Free Trial"
     }
   },
   "Comparison": {
@@ -217,22 +208,23 @@
     ]
   },
   "Privacy": {
-    "heading": "Privacidade por princípio",
-    "intro": "A maioria das ferramentas de segurança te espiona para te proteger. A gente se recusou a fazer isso. Veja exatamente o que fica no seu dispositivo — e o que não fica.",
-    "server_heading": "O que o nosso servidor vê",
+    "heading": "Privacy is not a feature. It's the architecture.",
+    "server_heading": "What our server knows",
     "server_items": [
-      "Apenas o nome do domínio (cleanway.ai, não a URL completa)",
-      "Veredito de ameaça anônimo (seguro / suspeito / perigoso)",
-      "Idioma para as explicações traduzidas"
+      "Your email address",
+      "Subscription status",
+      "Weekly aggregate numbers"
     ],
-    "device_heading": "O que fica no seu dispositivo",
+    "server_note": "If breached: attacker gets emails + subscription. Boring.",
+    "device_heading": "What stays on your device",
     "device_items": [
-      "URL completa (nunca enviada)",
-      "Conteúdo da página (nunca lido)",
-      "Histórico de navegação (nunca armazenado)",
-      "E-mail da conta (nunca vinculado às verificações)"
+      "Full URL check history",
+      "Privacy Audit results",
+      "Security Score breakdown",
+      "Weekly Report details",
+      "Family alert content (E2E encrypted)"
     ],
-    "footer_note": "Auditável: nosso mecanismo de verificação é open source. Confira você mesmo em github.com/cleanway-ai/engine."
+    "device_note": "If device is lost: protected by OS encryption."
   },
   "Testimonials": {
     "heading": "O que dizem os usuários",
@@ -392,35 +384,12 @@
     "transparency_link": "relatório de transparência",
     "privacy_policy_link": "Política de privacidade"
   },
-  "Methodology": {
-    "page_title": "Metodologia do benchmark",
-    "page_description": "Resultados de detecção por domínio da Cleanway vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank e VirusTotal — medidos semanalmente em URLs recentes do URLhaus + PhishTank. Script de benchmark reprodutível disponível.",
-    "back_to_transparency": "Voltar ao relatório de transparência",
-    "hero_title": "Como medimos nossa própria taxa de detecção",
-    "hero_subtitle": "Cada número de cobertura de detecção que publicamos aponta para cá. O dataset, o script e um botão para cloná-lo no GitHub.",
-    "why_heading": "Por que esta página existe",
-    "why_p1": "Todos os outros fornecedores de antiphishing publicam relatórios trimestrais de ameaças bonitos sem a taxa de falsos positivos ou comparação de cobertura de detecção por fornecedor. Os números existem apenas em seus dashboards internos.",
-    "why_p2": "Nós fazemos o oposto: esta página executa o mesmo script Python que qualquer um pode clonar, toda segunda-feira, contra URLs de phishing recentes do URLhaus + PhishTank, e publica os resultados brutos. A saída do script É a alegação de marketing.",
-    "results_heading": "Últimos resultados",
-    "results_unavailable": "Snapshot mais recente do benchmark indisponível — reexecutando o cron agora.",
-    "results_meta": "Snapshot: $DATE$. Amostra: $PHISHING$ URLs de phishing, $LEGIT$ URLs legítimas do Tranco.",
-    "phishing_table_heading": "Lote de phishing (veredito esperado: perigoso)",
-    "safe_table_heading": "Lote legítimo (FPR — taxa de falsos positivos, veredito esperado: seguro)",
-    "datasets_heading": "Datasets",
-    "dataset_phishing": "Amostras de phishing",
-    "dataset_safe": "Amostras legítimas",
-    "verdict_mapping_heading": "Como mapeamos a resposta de cada resolver",
-    "verdict_mapping_p1": "Diferentes fornecedores retornam diferentes formatos de veredito. Normalizamos para três: perigoso / seguro / desconhecido. Vereditos desconhecidos (rate-limited, não indexado, erro) são reportados separadamente — não contam como acerto ou erro.",
-    "reproduce_heading": "Reproduza esses números",
-    "reproduce_p1": "Dois comandos e uma instalação do Python 3. O script busca os mesmos feeds, executa as mesmas comparações e grava a mesma saída JSON:",
-    "reproduce_note": "Fonte:",
-    "cadence_heading": "Cadência + automação",
-    "cadence_p1": "O benchmark roda toda segunda-feira às 05:15 UTC via um cron do GitHub Actions. Os resultados são commitados em docs/benchmarks/ neste repositório. Uma etapa de detecção de regressão abre um PR se a cobertura de detecção cair mais de 5 pontos percentuais semana a semana.",
-    "cadence_p2": "Arquivo do workflow:",
-    "caveats_heading": "Ressalvas honestas",
-    "caveat_1": "A Cleanway usa o endpoint público /api/v1/check — a mesma superfície anônima que um usuário comum veria. Deliberadamente NÃO usamos um caminho privilegiado para fazer benchmark de nós mesmos.",
-    "caveat_2": "A API gratuita do PhishTank retorna 'not indexed' para a maioria das URLs recentes do URLhaus porque o banco de dados deles tem algumas horas de atraso — é por isso que a coluna Recall do PhishTank frequentemente mostra '—' (desconhecido), não porque está quebrado.",
-    "caveat_3": "O Google Safe Browsing exige uma chave de API (GOOGLE_SAFE_BROWSING_KEY). Se não estiver definida, essa coluna mostra '—' e é excluída da comparação.",
-    "caveat_4": "Latência p50 medida a partir do host deste script (runner de CI US/EU); sua latência da Ásia ou da América Latina vai diferir. A comparação relativa permanece a mesma."
+  "Install": {
+    "browser_label": "Extensões de navegador",
+    "mobile_label": "Celular",
+    "status_in_review": "Em análise",
+    "status_coming_this_week": "Em breve esta semana",
+    "status_native_after_launch": "App nativo em breve",
+    "status_appsource_pending": "AppSource em análise"
   }
 }

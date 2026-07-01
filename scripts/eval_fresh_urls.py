@@ -90,9 +90,19 @@ CONCURRENCY = {
 # showed 0 TP because the benchmark itself rate-limited the cleanway
 # adapter.)
 MIN_INTERVAL_S = {
-    "cleanway": 13.0,    # 5 fresh checks/min cap → 12s spacing + 1.0s headroom
+    # 5 fresh checks/min cap → 12s spacing + 4.0s headroom. Bumped from 13.0s
+    # to 16.0s on 2026-07-01: the 1s cushion wasn't enough under real network
+    # jitter and the safe batch was drifting into the phishing batch's
+    # rate-limit window, poisoning latest.json with `unknown` verdicts.
+    "cleanway": 16.0,
     "virustotal": 16.0,  # VT free tier 4 req/min
 }
+
+# Cooldown between resolver batches (phishing → safe). The Cleanway public
+# endpoint enforces a 5/min/IP window; if we start the safe batch before the
+# window drains, we get HTTP 429 on the first ~5 URLs and record them as
+# `unknown`. 60s drains the window; +5s gives clock-skew headroom.
+CLEANWAY_BATCH_COOLDOWN_S = 65.0
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -686,6 +696,155 @@ def render_md(report: dict) -> str:
     return "\n".join(lines)
 
 
+# ─────────────────────────────────────────────────────────────────
+# Observability + quality gate
+# ─────────────────────────────────────────────────────────────────
+
+def _log_unknown_rate(resolver: str, batch: str, verdicts: list[Verdict]) -> None:
+    """Emit a one-line summary of classified vs unknown for a batch.
+
+    A high unknown rate on the `cleanway` batch is the fingerprint of
+    rate-limit trouble (HTTP 429 → adapter records `unknown`), so
+    reading a cron log at 3am should let you eyeball the failure fast.
+    """
+    total = len(verdicts)
+    if total == 0:
+        return
+    unknown = sum(1 for v in verdicts if v.verdict == "unknown")
+    classified = total - unknown
+    pct = 100.0 * unknown / total
+    log.info(
+        "%s %s classified=%d/%d (unknown=%.1f%%)",
+        resolver, batch, classified, total, pct,
+    )
+
+
+# Minimum sample sizes / maximum unknown rate for a benchmark run to be
+# considered publishable (i.e. worth flipping latest.json to). These are
+# calibrated so a healthy weekly cron always passes but a rate-limit blown
+# run — like 2026-06-30's 30/50 unknown, FPR=null — is caught and dropped.
+_QG_MIN_PHISHING = 100
+_QG_MIN_CLASSIFIED_PHISHING = 50
+_QG_MAX_UNKNOWN_RATE = 0.30
+
+
+@dataclass(frozen=True)
+class QualityGateResult:
+    """Outcome of the pre-publish quality gate for a benchmark report."""
+
+    passed: bool
+    failed_gate: str | None
+    detail: str | None
+
+
+def check_quality_gate(report: dict) -> QualityGateResult:
+    """Decide whether a benchmark report is healthy enough to overwrite
+    docs/benchmarks/latest.json.
+
+    A single failing check aborts the publish and returns the gate name
+    for logging. Runs that fail the gate are still written to their
+    dated file — we lose no history, we just don't poison the public
+    pointer with junk.
+    """
+    n_phishing = report.get("n_phishing", 0)
+    if n_phishing < _QG_MIN_PHISHING:
+        return QualityGateResult(
+            passed=False,
+            failed_gate="n_phishing_below_min",
+            detail=f"n_phishing={n_phishing} < {_QG_MIN_PHISHING}",
+        )
+
+    cleanway_phish = (report.get("phishing") or {}).get("cleanway") or {}
+    tp = cleanway_phish.get("tp", 0) or 0
+    fn = cleanway_phish.get("fn", 0) or 0
+    unknown_phish = cleanway_phish.get("unknown", 0) or 0
+    classified_phish = tp + fn
+    if classified_phish < _QG_MIN_CLASSIFIED_PHISHING:
+        return QualityGateResult(
+            passed=False,
+            failed_gate="phishing_classified_below_min",
+            detail=(
+                f"cleanway phishing classified={classified_phish} "
+                f"< {_QG_MIN_CLASSIFIED_PHISHING} (unknown={unknown_phish})"
+            ),
+        )
+
+    denom_phish = classified_phish + unknown_phish
+    if denom_phish > 0:
+        rate_phish = unknown_phish / denom_phish
+        if rate_phish > _QG_MAX_UNKNOWN_RATE:
+            return QualityGateResult(
+                passed=False,
+                failed_gate="phishing_unknown_rate_too_high",
+                detail=(
+                    f"cleanway phishing unknown_rate={rate_phish:.1%} "
+                    f"> {_QG_MAX_UNKNOWN_RATE:.0%}"
+                ),
+            )
+
+    if cleanway_phish.get("recall") is None:
+        return QualityGateResult(
+            passed=False,
+            failed_gate="phishing_recall_null",
+            detail="cleanway phishing recall is null (no classified samples)",
+        )
+
+    # Safe batch: allow either a real FPR or a low unknown rate. If we got
+    # rate-limited on the safe batch (unknown-heavy) but the FPR came out
+    # non-null anyway, that's fine — we just can't trust an all-unknown
+    # safe batch with no FPR to represent our false-positive rate.
+    cleanway_safe = (report.get("safe") or {}).get("cleanway") or {}
+    fpr = cleanway_safe.get("fpr")
+    n_safe = report.get("n_safe", 0) or 0
+    unknown_safe = cleanway_safe.get("unknown", 0) or 0
+    if fpr is None:
+        if n_safe <= 0:
+            return QualityGateResult(
+                passed=False,
+                failed_gate="safe_fpr_null_no_samples",
+                detail="cleanway safe fpr is null and no safe samples were fetched",
+            )
+        rate_safe = unknown_safe / n_safe
+        if rate_safe > _QG_MAX_UNKNOWN_RATE:
+            return QualityGateResult(
+                passed=False,
+                failed_gate="safe_unknown_rate_too_high",
+                detail=(
+                    f"cleanway safe fpr=None and unknown_rate={rate_safe:.1%} "
+                    f"> {_QG_MAX_UNKNOWN_RATE:.0%}"
+                ),
+            )
+
+    return QualityGateResult(passed=True, failed_gate=None, detail=None)
+
+
+def _update_latest_pointer(json_out: Path) -> None:
+    """Point docs/benchmarks/latest.json at the just-written report.
+
+    Uses os.replace() for atomicity — the pointer never observably
+    references a nonexistent file, even mid-refresh. A symlink is
+    preferred (matches historical shell behaviour) but plain file copy
+    is the fallback on systems where symlinks aren't available.
+    """
+    latest = json_out.parent / "latest.json"
+    tmp = json_out.parent / "latest.json.tmp"
+    try:
+        if tmp.exists() or tmp.is_symlink():
+            tmp.unlink()
+        try:
+            tmp.symlink_to(json_out.name)
+        except (OSError, NotImplementedError):
+            # Fall back to a plain copy on FSes that don't allow symlinks.
+            tmp.write_text(json_out.read_text(encoding="utf-8"), encoding="utf-8")
+        os.replace(tmp, latest)
+    finally:
+        if tmp.exists() or tmp.is_symlink():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+
+
 async def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--sample", type=int, default=500,
@@ -698,6 +857,16 @@ async def main() -> int:
                    help="ALSO run full in-process analyzer (16 sources). "
                         "Requires repo dependencies + free intel sources. "
                         "Doubles wall-clock but gives authed-endpoint baseline.")
+    p.add_argument("--enforce-quality-gate", dest="enforce_quality_gate",
+                   action="store_true", default=True,
+                   help="Only update docs/benchmarks/latest.json if the run "
+                        "passes the pre-publish quality gate (default: on). "
+                        "The dated JSON+MD are always written, regardless.")
+    p.add_argument("--no-enforce-quality-gate", dest="enforce_quality_gate",
+                   action="store_false",
+                   help="Skip the pre-publish quality gate — always flip "
+                        "latest.json to today's run. Useful for local smoke "
+                        "runs where you don't care about the pointer.")
     args = p.parse_args()
 
     DOCS.mkdir(parents=True, exist_ok=True)
@@ -735,7 +904,17 @@ async def main() -> int:
     safe_results: dict[str, list[Verdict]] = {}
     for r in resolvers:
         phishing_results[r] = await run_resolver(r, phishing_urls)
+        _log_unknown_rate(r, "phishing", phishing_results[r])
+        # Drain the Cleanway 5/min/IP window before the safe batch. Without
+        # this cooldown the first ~5 safe URLs get HTTP 429 and are recorded
+        # as `unknown`, which nulls FPR and poisons latest.json. See
+        # 2026-06-30 audit: safe batch had 30/50 unknown, FPR=null.
+        if r == "cleanway":
+            log.info("draining cleanway rate-limit window (%.0fs) before safe batch",
+                     CLEANWAY_BATCH_COOLDOWN_S)
+            await asyncio.sleep(CLEANWAY_BATCH_COOLDOWN_S)
         safe_results[r] = await run_resolver(r, legit_urls)
+        _log_unknown_rate(r, "safe", safe_results[r])
 
     # ── Classify + build report ──────────────────────────────────
     report: dict = {
@@ -778,6 +957,39 @@ async def main() -> int:
 
     log.info("wrote %s", json_out)
     log.info("wrote %s", md_out)
+
+    # ── Pre-publish quality gate ─────────────────────────────────
+    # The dated files above are always written — history is cheap and
+    # nothing external reads dated files by mistake. `latest.json` is
+    # what the landing page + methodology page render, so we only flip
+    # it when the run is trustworthy. A rate-limit blowout that shows
+    # 30/50 unknown and FPR=null must NOT become the public number.
+    gate = check_quality_gate(report)
+    if not args.enforce_quality_gate:
+        log.warning(
+            "quality gate DISABLED via --no-enforce-quality-gate — "
+            "flipping latest.json regardless of result (passed=%s)",
+            gate.passed,
+        )
+        _update_latest_pointer(json_out)
+        log.info("updated %s → %s", DOCS / "latest.json", json_out.name)
+    elif gate.passed:
+        _update_latest_pointer(json_out)
+        log.info(
+            "quality gate PASSED — updated %s → %s",
+            DOCS / "latest.json", json_out.name,
+        )
+        print(f"QUALITY_GATE=pass json={json_out.name}")
+    else:
+        log.warning(
+            "QUALITY GATE FAILED gate=%s detail=%s — "
+            "keeping existing latest.json (dated file %s was still written)",
+            gate.failed_gate, gate.detail, json_out.name,
+        )
+        print(
+            f"QUALITY_GATE=fail gate={gate.failed_gate} "
+            f"detail={gate.detail} json={json_out.name}"
+        )
 
     # ── Console summary ──────────────────────────────────────────
     print()

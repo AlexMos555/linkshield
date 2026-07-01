@@ -31,14 +31,6 @@
     "github": "GitHub",
     "tagline": "आपका डेटा, आपका डिवाइस।"
   },
-  "Install": {
-    "browser_label": "ब्राउज़र एक्सटेंशन",
-    "mobile_label": "मोबाइल",
-    "status_in_review": "समीक्षाधीन",
-    "status_coming_this_week": "इस हफ़्ते आ रहा है",
-    "status_native_after_launch": "लॉन्च के बाद नेटिव ऐप",
-    "status_appsource_pending": "AppSource में लंबित"
-  },
   "LanguageSwitcher": {
     "label": "भाषा"
   },
@@ -78,65 +70,64 @@
     ]
   },
   "HowItWorks": {
-    "heading": "Cleanway आपकी सुरक्षा कैसे करता है",
+    "heading": "How Cleanway protects you",
     "steps": [
       {
         "step": "1",
-        "title": "इंस्टॉल करें",
-        "desc": "Chrome एक्सटेंशन जोड़ें। बस 10 सेकंड लगते हैं।"
+        "title": "Install",
+        "desc": "Add the Chrome extension. Takes 10 seconds."
       },
       {
         "step": "2",
-        "title": "ब्राउज़ करें",
-        "desc": "Cleanway हर लिंक अपने आप जाँचता है। आपको कुछ नहीं करना।"
+        "title": "Browse",
+        "desc": "Cleanway checks every link automatically. No action needed."
       },
       {
         "step": "3",
-        "title": "सुरक्षित रहें",
-        "desc": "खतरनाक लिंक पर लाल बैज दिखते हैं। विवरण के लिए क्लिक करें।"
+        "title": "Stay Safe",
+        "desc": "Dangerous links get red badges. Click for details."
       }
     ]
   },
   "PricingTeaser": {
-    "heading": "सीधी और पारदर्शी कीमतें",
-    "unit_forever": "/हमेशा के लिए",
-    "unit_month": "/महीना",
-    "most_popular": "सबसे लोकप्रिय",
-    "trial_note": "हर प्लान में 14 दिन का मुफ़्त ट्रायल। कभी भी रद्द करें।",
+    "heading": "Simple, transparent pricing",
+    "unit_forever": "/forever",
+    "unit_month": "/month",
+    "most_popular": "Most Popular",
+    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
     "free": {
       "name": "Free",
       "price": "$0",
-      "cta": "शुरू करें",
       "features": [
-        "महीने में 50 लिंक स्कैन",
-        "रियल-टाइम ख़तरे की पहचान",
-        "आसान भाषा में चेतावनियाँ",
-        "10 भाषाएँ"
-      ]
+        "10 API checks/day",
+        "Unlimited local checks",
+        "Privacy Audit (grade only)",
+        "Link badges on all pages"
+      ],
+      "cta": "Get Started"
     },
     "personal": {
       "name": "Personal",
-      "price": "$1.49",
-      "cta": "14 दिन मुफ़्त आज़माएँ",
+      "price": "$4.99",
       "features": [
-        "असीमित लिंक स्कैन",
-        "प्राथमिकता पर ख़तरे के अपडेट",
-        "बेहतर फ़िशिंग पहचान",
-        "स्थानीय स्कैम की व्याख्या",
-        "ईमेल + एक्सटेंशन"
-      ]
+        "Unlimited checks",
+        "Full Privacy Audit breakdown",
+        "Weekly Security Report",
+        "Security Score + tips",
+        "Priority support"
+      ],
+      "cta": "Start Free Trial"
     },
     "family": {
-      "name": "Family (5 लोगों तक)",
-      "price": "$5.99",
-      "cta": "अपने परिवार की रक्षा करें",
+      "name": "Family",
+      "price": "$9.99",
       "features": [
-        "Personal में सब कुछ",
-        "5 परिवार के सदस्यों तक",
-        "एन्क्रिप्टेड पारिवारिक गतिविधि लॉग",
-        "Kids मोड + Granny मोड",
-        "पैरेंटल डैशबोर्ड"
-      ]
+        "Everything in Personal",
+        "Up to 6 devices",
+        "Family Hub with E2E alerts",
+        "Parental mode"
+      ],
+      "cta": "Start Free Trial"
     }
   },
   "Comparison": {
@@ -217,22 +208,23 @@
     ]
   },
   "Privacy": {
-    "heading": "डिज़ाइन से ही प्राइवेसी",
-    "intro": "ज़्यादातर सिक्योरिटी टूल आपकी रक्षा के बहाने आप पर नज़र रखते हैं। हमने ऐसा करने से मना कर दिया। नीचे साफ़-साफ़ बताया है — क्या आपके डिवाइस पर ही रहता है, और क्या नहीं।",
-    "server_heading": "हमारा सर्वर क्या देखता है",
+    "heading": "Privacy is not a feature. It's the architecture.",
+    "server_heading": "What our server knows",
     "server_items": [
-      "सिर्फ़ डोमेन नाम (cleanway.ai, पूरा URL नहीं)",
-      "अनाम ख़तरा फ़ैसला (सुरक्षित / संदिग्ध / ख़तरनाक)",
-      "अनुवादित व्याख्याओं के लिए भाषा"
+      "Your email address",
+      "Subscription status",
+      "Weekly aggregate numbers"
     ],
-    "device_heading": "आपके डिवाइस पर क्या रहता है",
+    "server_note": "If breached: attacker gets emails + subscription. Boring.",
+    "device_heading": "What stays on your device",
     "device_items": [
-      "पूरा URL (कभी नहीं भेजा जाता)",
-      "पेज का कंटेंट (कभी नहीं पढ़ा जाता)",
-      "ब्राउज़िंग हिस्ट्री (कभी सेव नहीं होती)",
-      "अकाउंट ईमेल (स्कैन से कभी नहीं जुड़ता)"
+      "Full URL check history",
+      "Privacy Audit results",
+      "Security Score breakdown",
+      "Weekly Report details",
+      "Family alert content (E2E encrypted)"
     ],
-    "footer_note": "जाँच करने योग्य: हमारा स्कैनिंग इंजन ओपन सोर्स है। ख़ुद देख लें — github.com/cleanway-ai/engine पर।"
+    "device_note": "If device is lost: protected by OS encryption."
   },
   "Testimonials": {
     "heading": "उपयोगकर्ता क्या कहते हैं",
@@ -392,35 +384,12 @@
     "transparency_link": "पारदर्शिता रिपोर्ट",
     "privacy_policy_link": "गोपनीयता नीति"
   },
-  "Methodology": {
-    "page_title": "बेंचमार्क पद्धति",
-    "page_description": "Cleanway के प्रति-डोमेन डिटेक्शन परिणाम बनाम Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank और VirusTotal — हर हफ़्ते ताज़ा URLhaus + PhishTank URLs पर मापे जाते हैं। पुनः चलाने योग्य बेंचमार्क स्क्रिप्ट का लिंक दिया गया है।",
-    "back_to_transparency": "पारदर्शिता रिपोर्ट पर वापस जाएँ",
-    "hero_title": "हम अपनी डिटेक्शन दर कैसे मापते हैं",
-    "hero_subtitle": "हम जो भी पहचान दर का आँकड़ा प्रकाशित करते हैं, वह यहीं की ओर इशारा करता है। डेटासेट, स्क्रिप्ट, और GitHub पर इसे क्लोन करने का बटन।",
-    "why_heading": "यह पेज क्यों मौजूद है",
-    "why_p1": "बाक़ी सारे एंटी-फ़िशिंग वेंडर हर तिमाही चमकदार थ्रेट रिपोर्ट छापते हैं, लेकिन उसमें न तो उनकी झूठी पॉज़िटिव दर होती है और न ही प्रति-वेंडर पहचान दर की तुलना। ये आँकड़े सिर्फ़ उनके अंदरूनी डैशबोर्ड में दिखते हैं।",
-    "why_p2": "हम इसका उलटा करते हैं: यह पेज वही Python स्क्रिप्ट चलाता है जिसे कोई भी क्लोन कर सकता है, हर सोमवार, ताज़ा URLhaus + PhishTank फ़िशिंग URLs के ख़िलाफ़, और कच्चे परिणाम प्रकाशित करता है। स्क्रिप्ट का आउटपुट ही हमारा मार्केटिंग क्लेम है।",
-    "results_heading": "नवीनतम परिणाम",
-    "results_unavailable": "नवीनतम बेंचमार्क स्नैपशॉट उपलब्ध नहीं है — cron अभी दोबारा चल रहा है।",
-    "results_meta": "स्नैपशॉट: $DATE$. नमूना: $PHISHING$ फ़िशिंग URLs, $LEGIT$ Tranco वैध URLs।",
-    "phishing_table_heading": "फ़िशिंग बैच (अपेक्षित वर्डिक्ट: ख़तरनाक)",
-    "safe_table_heading": "वैध बैच (FPR — झूठी पॉज़िटिव दर, अपेक्षित वर्डिक्ट: सुरक्षित)",
-    "datasets_heading": "डेटासेट",
-    "dataset_phishing": "फ़िशिंग नमूने",
-    "dataset_safe": "वैध नमूने",
-    "verdict_mapping_heading": "हम हर रिज़ॉल्वर के जवाब को कैसे मैप करते हैं",
-    "verdict_mapping_p1": "अलग-अलग वेंडर अलग-अलग आकार के वर्डिक्ट लौटाते हैं। हम तीन में सामान्यीकृत करते हैं: ख़तरनाक / सुरक्षित / अज्ञात। अज्ञात वर्डिक्ट (रेट-लिमिटेड, इंडेक्स्ड नहीं, त्रुटि) अलग से रिपोर्ट किए जाते हैं — इन्हें सही या ग़लत नहीं गिना जाता।",
-    "reproduce_heading": "इन आँकड़ों को दोबारा निकालें",
-    "reproduce_p1": "दो कमांड और एक Python 3 इंस्टॉल। स्क्रिप्ट वही फ़ीड लेती है, वही तुलनाएँ चलाती है, वही JSON आउटपुट लिखती है:",
-    "reproduce_note": "स्रोत:",
-    "cadence_heading": "आवृत्ति + ऑटोमेशन",
-    "cadence_p1": "बेंचमार्क हर सोमवार 05:15 UTC पर GitHub Actions cron के ज़रिए चलता है। परिणाम इसी रिपो की docs/benchmarks/ में कमिट होते हैं। एक रिग्रेशन-डिटेक्शन स्टेप तब PR खोलता है जब पहचान दर हफ़्ते-दर-हफ़्ते 5 पर्सेंटेज पॉइंट से ज़्यादा गिरती है।",
-    "cadence_p2": "वर्कफ़्लो फ़ाइल:",
-    "caveats_heading": "ईमानदार चेतावनियाँ",
-    "caveat_1": "Cleanway सार्वजनिक /api/v1/check endpoint इस्तेमाल करता है — वही अनाम सतह जो एक आम यूज़र को दिखेगी। हम जान-बूझकर बेंचमार्किंग के लिए कोई विशेषाधिकार-प्राप्त रास्ता नहीं अपनाते।",
-    "caveat_2": "PhishTank का मुफ़्त चेक API ज़्यादातर ताज़ा URLhaus URLs के लिए 'इंडेक्स्ड नहीं' लौटाता है क्योंकि उनका डेटाबेस कुछ घंटों की देरी से चलता है — इसीलिए PhishTank की Recall कॉलम अक्सर '—' (अज्ञात) दिखाती है, इसलिए नहीं कि वह ख़राब है।",
-    "caveat_3": "Google Safe Browsing के लिए API key (GOOGLE_SAFE_BROWSING_KEY) चाहिए। अगर सेट नहीं है, तो वह कॉलम '—' दिखाती है और तुलना से बाहर रहती है।",
-    "caveat_4": "Latency p50 इस स्क्रिप्ट के होस्ट से मापा गया है (US/EU CI रनर); एशिया या LATAM से आपकी latency अलग होगी। सापेक्ष तुलना वही रहती है।"
+  "Install": {
+    "browser_label": "ब्राउज़र एक्सटेंशन",
+    "mobile_label": "मोबाइल",
+    "status_in_review": "समीक्षाधीन",
+    "status_coming_this_week": "इस हफ़्ते आ रहा है",
+    "status_native_after_launch": "लॉन्च के बाद नेटिव ऐप",
+    "status_appsource_pending": "AppSource में लंबित"
   }
 }

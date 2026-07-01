@@ -31,14 +31,6 @@
     "github": "GitHub",
     "tagline": "Data Anda, perangkat Anda."
   },
-  "Install": {
-    "browser_label": "Ekstensi peramban",
-    "mobile_label": "Seluler",
-    "status_in_review": "Sedang ditinjau",
-    "status_coming_this_week": "Hadir pekan ini",
-    "status_native_after_launch": "Aplikasi pasca-rilis",
-    "status_appsource_pending": "AppSource tertunda"
-  },
   "LanguageSwitcher": {
     "label": "Bahasa"
   },
@@ -78,65 +70,64 @@
     ]
   },
   "HowItWorks": {
-    "heading": "Cara Cleanway melindungi kamu",
+    "heading": "How Cleanway protects you",
     "steps": [
       {
         "step": "1",
-        "title": "Pasang",
-        "desc": "Tambahkan ekstensi Chrome. Cuma butuh 10 detik."
+        "title": "Install",
+        "desc": "Add the Chrome extension. Takes 10 seconds."
       },
       {
         "step": "2",
-        "title": "Jelajah",
-        "desc": "Cleanway memeriksa setiap tautan otomatis. Kamu tidak perlu melakukan apa-apa."
+        "title": "Browse",
+        "desc": "Cleanway checks every link automatically. No action needed."
       },
       {
         "step": "3",
-        "title": "Tetap Aman",
-        "desc": "Tautan berbahaya ditandai merah. Klik untuk lihat detailnya."
+        "title": "Stay Safe",
+        "desc": "Dangerous links get red badges. Click for details."
       }
     ]
   },
   "PricingTeaser": {
-    "heading": "Harga sederhana dan transparan",
-    "unit_forever": "/selamanya",
-    "unit_month": "/bulan",
-    "most_popular": "Paling Populer",
-    "trial_note": "Semua paket termasuk uji coba gratis 14 hari. Batalkan kapan saja.",
+    "heading": "Simple, transparent pricing",
+    "unit_forever": "/forever",
+    "unit_month": "/month",
+    "most_popular": "Most Popular",
+    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
     "free": {
-      "name": "Gratis",
+      "name": "Free",
       "price": "$0",
-      "cta": "Mulai sekarang",
       "features": [
-        "50 pemindaian tautan per bulan",
-        "Deteksi ancaman real-time",
-        "Peringatan dalam bahasa sehari-hari",
-        "10 bahasa"
-      ]
+        "10 API checks/day",
+        "Unlimited local checks",
+        "Privacy Audit (grade only)",
+        "Link badges on all pages"
+      ],
+      "cta": "Get Started"
     },
     "personal": {
       "name": "Personal",
-      "price": "$1.49",
-      "cta": "Coba gratis 14 hari",
+      "price": "$4.99",
       "features": [
-        "Pemindaian tautan tanpa batas",
-        "Pembaruan ancaman prioritas",
-        "Deteksi phishing tingkat lanjut",
-        "Penjelasan penipuan sesuai budaya",
-        "Email + ekstensi"
-      ]
+        "Unlimited checks",
+        "Full Privacy Audit breakdown",
+        "Weekly Security Report",
+        "Security Score + tips",
+        "Priority support"
+      ],
+      "cta": "Start Free Trial"
     },
     "family": {
-      "name": "Keluarga (hingga 5 orang)",
-      "price": "$5.99",
-      "cta": "Lindungi keluargamu",
+      "name": "Family",
+      "price": "$9.99",
       "features": [
-        "Semua fitur paket Personal",
-        "Hingga 5 anggota keluarga",
-        "Log aktivitas keluarga terenkripsi",
-        "Mode Anak + Mode Nenek",
-        "Dasbor orang tua"
-      ]
+        "Everything in Personal",
+        "Up to 6 devices",
+        "Family Hub with E2E alerts",
+        "Parental mode"
+      ],
+      "cta": "Start Free Trial"
     }
   },
   "Comparison": {
@@ -217,22 +208,23 @@
     ]
   },
   "Privacy": {
-    "heading": "Privasi sejak desain",
-    "intro": "Kebanyakan alat keamanan memata-matai kamu demi melindungi kamu. Kami menolak. Berikut apa saja yang tetap di perangkatmu — dan apa yang tidak.",
-    "server_heading": "Apa yang dilihat server kami",
+    "heading": "Privacy is not a feature. It's the architecture.",
+    "server_heading": "What our server knows",
     "server_items": [
-      "Hanya nama domain (cleanway.ai, bukan URL lengkap)",
-      "Verdikt ancaman anonim (aman / mencurigakan / berbahaya)",
-      "Bahasa untuk penjelasan yang diterjemahkan"
+      "Your email address",
+      "Subscription status",
+      "Weekly aggregate numbers"
     ],
-    "device_heading": "Apa yang tetap di perangkatmu",
+    "server_note": "If breached: attacker gets emails + subscription. Boring.",
+    "device_heading": "What stays on your device",
     "device_items": [
-      "URL lengkap (tidak pernah dikirim)",
-      "Isi halaman (tidak pernah dibaca)",
-      "Riwayat penjelajahan (tidak pernah disimpan)",
-      "Email akun (tidak pernah dikaitkan dengan pemindaian)"
+      "Full URL check history",
+      "Privacy Audit results",
+      "Security Score breakdown",
+      "Weekly Report details",
+      "Family alert content (E2E encrypted)"
     ],
-    "footer_note": "Bisa diaudit: mesin pemindaian kami open source. Verifikasi sendiri di github.com/cleanway-ai/engine."
+    "device_note": "If device is lost: protected by OS encryption."
   },
   "Testimonials": {
     "heading": "Apa kata pengguna",
@@ -392,35 +384,12 @@
     "transparency_link": "laporan transparansi",
     "privacy_policy_link": "Kebijakan privasi"
   },
-  "Methodology": {
-    "page_title": "Metodologi benchmark",
-    "page_description": "Hasil deteksi per-domain Cleanway vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, dan VirusTotal — diukur mingguan terhadap URL phishing terbaru dari URLhaus + PhishTank. Skrip benchmark yang dapat direproduksi tersedia di tautan.",
-    "back_to_transparency": "Kembali ke laporan transparansi",
-    "hero_title": "Bagaimana kami mengukur tingkat deteksi kami sendiri",
-    "hero_subtitle": "Setiap angka tingkat deteksi yang kami publikasikan mengarah ke halaman ini. Dataset, skrip, dan tombol untuk mengkloningnya di GitHub.",
-    "why_heading": "Mengapa halaman ini ada",
-    "why_p1": "Vendor anti-phishing lain mempublikasikan laporan ancaman triwulanan yang mengilap tanpa menyertakan tingkat positif palsu atau perbandingan tingkat deteksi antar-vendor. Angka-angka itu hanya ada di dashboard internal mereka.",
-    "why_p2": "Kami melakukan kebalikannya: halaman ini menjalankan skrip Python yang sama — yang bisa dikloning siapa saja — setiap Senin, terhadap URL phishing terbaru dari URLhaus + PhishTank, lalu mempublikasikan hasil mentahnya. Output skrip ITULAH klaim pemasaran kami.",
-    "results_heading": "Hasil terbaru",
-    "results_unavailable": "Snapshot benchmark terbaru belum tersedia — cron sedang dijalankan ulang.",
-    "results_meta": "Snapshot: $DATE$. Sampel: $PHISHING$ URL phishing, $LEGIT$ URL sah dari Tranco.",
-    "phishing_table_heading": "Batch phishing (vonis yang diharapkan: berbahaya)",
-    "safe_table_heading": "Batch sah (FPR — tingkat positif palsu, vonis yang diharapkan: aman)",
-    "datasets_heading": "Dataset",
-    "dataset_phishing": "Sampel phishing",
-    "dataset_safe": "Sampel sah",
-    "verdict_mapping_heading": "Cara kami memetakan respons setiap resolver",
-    "verdict_mapping_p1": "Vendor yang berbeda mengembalikan bentuk vonis yang berbeda. Kami menormalisasi menjadi tiga: berbahaya / aman / tidak diketahui. Vonis tidak diketahui (kena rate-limit, tidak terindeks, error) dilaporkan secara terpisah — tidak dihitung sebagai benar maupun salah.",
-    "reproduce_heading": "Reproduksi angka-angka ini",
-    "reproduce_p1": "Dua perintah dan instalasi Python 3. Skrip mengambil feed yang sama, menjalankan perbandingan yang sama, dan menulis output JSON yang sama:",
-    "reproduce_note": "Sumber:",
-    "cadence_heading": "Frekuensi + otomatisasi",
-    "cadence_p1": "Benchmark berjalan setiap Senin pukul 05.15 UTC melalui cron GitHub Actions. Hasilnya di-commit ke docs/benchmarks/ di repo ini. Sebuah langkah deteksi regresi akan membuka PR jika tingkat deteksi turun lebih dari 5 poin persentase dibandingkan minggu sebelumnya.",
-    "cadence_p2": "Berkas workflow:",
-    "caveats_heading": "Catatan yang jujur",
-    "caveat_1": "Cleanway menggunakan endpoint publik /api/v1/check — permukaan anonim yang sama yang dilihat pengguna biasa. Kami sengaja TIDAK menggunakan jalur istimewa untuk benchmarking diri kami sendiri.",
-    "caveat_2": "API check gratis PhishTank mengembalikan 'tidak terindeks' untuk sebagian besar URL terbaru dari URLhaus karena database mereka terlambat beberapa jam — itulah sebabnya kolom Recall PhishTank sering menampilkan '—' (tidak diketahui), bukan karena rusak.",
-    "caveat_3": "Google Safe Browsing membutuhkan API key (GOOGLE_SAFE_BROWSING_KEY). Jika tidak diset, kolom tersebut menampilkan '—' dan dikecualikan dari perbandingan.",
-    "caveat_4": "Latensi p50 diukur dari host skrip ini (CI runner di AS/Eropa); latensi Anda dari Asia atau Amerika Latin akan berbeda. Perbandingan relatifnya tetap sama."
+  "Install": {
+    "browser_label": "Ekstensi peramban",
+    "mobile_label": "Seluler",
+    "status_in_review": "Sedang ditinjau",
+    "status_coming_this_week": "Hadir pekan ini",
+    "status_native_after_launch": "Aplikasi pasca-rilis",
+    "status_appsource_pending": "AppSource tertunda"
   }
 }

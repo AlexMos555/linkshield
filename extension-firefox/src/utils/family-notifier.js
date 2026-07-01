@@ -67,9 +67,9 @@ export async function pollAndNotify() {
   // Need the cached family — without it we have nothing to poll.
   let fanoutMod, cryptoMod, apiMod;
   try {
-    fanoutMod = await import(chrome.runtime.getURL("utils/family-fanout.js"));
-    cryptoMod = await import(chrome.runtime.getURL("utils/family-crypto.js"));
-    apiMod = await import(chrome.runtime.getURL("utils/family-api.js"));
+    fanoutMod = await import(chrome.runtime.getURL("src/utils/family-fanout.js"));
+    cryptoMod = await import(chrome.runtime.getURL("src/utils/family-crypto.js"));
+    apiMod = await import(chrome.runtime.getURL("src/utils/family-api.js"));
   } catch {
     return 0;
   }

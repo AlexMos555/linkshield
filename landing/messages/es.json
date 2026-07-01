@@ -31,14 +31,6 @@
     "github": "GitHub",
     "tagline": "Tus datos, tu dispositivo."
   },
-  "Install": {
-    "browser_label": "Extensiones de navegador",
-    "mobile_label": "Móvil",
-    "status_in_review": "En revisión",
-    "status_coming_this_week": "Esta semana",
-    "status_native_after_launch": "App nativa tras lanzar",
-    "status_appsource_pending": "AppSource pendiente"
-  },
   "LanguageSwitcher": {
     "label": "Idioma"
   },
@@ -392,35 +384,12 @@
     "transparency_link": "informe de transparencia",
     "privacy_policy_link": "Política de privacidad"
   },
-  "Methodology": {
-    "page_title": "Metodología del benchmark",
-    "page_description": "Resultados de detección por dominio de Cleanway frente a Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank y VirusTotal — medidos semanalmente sobre URLs recientes de URLhaus + PhishTank. Incluye el script de benchmark reproducible.",
-    "back_to_transparency": "Volver al informe de transparencia",
-    "hero_title": "Cómo medimos nuestra propia tasa de detección",
-    "hero_subtitle": "Cada número de recall que publicamos apunta a esta página. El dataset, el script y un botón para clonarlo en GitHub.",
-    "why_heading": "Por qué existe esta página",
-    "why_p1": "El resto de proveedores antiphishing publica informes trimestrales de amenazas muy vistosos, pero sin su tasa de falsos positivos ni una comparativa de recall entre proveedores. Esos números solo existen en sus dashboards internos.",
-    "why_p2": "Nosotros hacemos lo contrario: esta página ejecuta el mismo script de Python que cualquiera puede clonar, todos los lunes, contra URLs de phishing recientes de URLhaus + PhishTank, y publica los resultados en bruto. La salida del script ES la afirmación de marketing.",
-    "results_heading": "Últimos resultados",
-    "results_unavailable": "El último snapshot del benchmark no está disponible — el cron se está reejecutando ahora.",
-    "results_meta": "Snapshot: $DATE$. Muestra: $PHISHING$ URLs de phishing, $LEGIT$ URLs legítimas de Tranco.",
-    "phishing_table_heading": "Lote de phishing (veredicto esperado: peligroso)",
-    "safe_table_heading": "Lote legítimo (FPR — tasa de falsos positivos, veredicto esperado: seguro)",
-    "datasets_heading": "Datasets",
-    "dataset_phishing": "Muestras de phishing",
-    "dataset_safe": "Muestras legítimas",
-    "verdict_mapping_heading": "Cómo mapeamos la respuesta de cada resolver",
-    "verdict_mapping_p1": "Cada proveedor devuelve veredictos con forma distinta. Los normalizamos a tres: peligroso / seguro / desconocido. Los veredictos desconocidos (rate-limited, no indexado, error) se reportan aparte — no cuentan como acierto ni como error.",
-    "reproduce_heading": "Reproduce estos números",
-    "reproduce_p1": "Dos comandos y una instalación de Python 3. El script descarga los mismos feeds, ejecuta las mismas comparaciones y escribe la misma salida JSON:",
-    "reproduce_note": "Código fuente:",
-    "cadence_heading": "Cadencia + automatización",
-    "cadence_p1": "El benchmark se ejecuta todos los lunes a las 05:15 UTC mediante un cron de GitHub Actions. Los resultados se commitean a docs/benchmarks/ en este repo. Un paso de detección de regresiones abre un PR si el recall cae más de 5 puntos porcentuales semana a semana.",
-    "cadence_p2": "Archivo del workflow:",
-    "caveats_heading": "Advertencias honestas",
-    "caveat_1": "Cleanway usa el endpoint público /api/v1/check — la misma superficie anónima que vería un usuario normal. Deliberadamente NO usamos una ruta privilegiada para medirnos a nosotros mismos.",
-    "caveat_2": "La API gratuita de PhishTank devuelve 'not indexed' para la mayoría de URLs recientes de URLhaus porque su base de datos lleva unas horas de retraso — por eso la columna Recall de PhishTank a menudo muestra '—' (desconocido), no porque esté rota.",
-    "caveat_3": "Google Safe Browsing requiere una API key (GOOGLE_SAFE_BROWSING_KEY). Si no está configurada, esa columna muestra '—' y queda excluida de la comparación.",
-    "caveat_4": "La latencia p50 se mide desde el host de este script (runner de CI en US/EU); tu latencia desde Asia o LATAM será distinta. La comparación relativa se mantiene igual."
+  "Install": {
+    "browser_label": "Extensiones de navegador",
+    "mobile_label": "Móvil",
+    "status_in_review": "En revisión",
+    "status_coming_this_week": "Esta semana",
+    "status_native_after_launch": "App nativa tras lanzar",
+    "status_appsource_pending": "AppSource pendiente"
   }
 }

@@ -23,7 +23,7 @@ on:
       sample:
         description: 'URLs per side (phishing + legit)'
         type: number
-        default: 100
+        default: 200
 
 permissions:
   contents: write       # commit benchmark results
@@ -64,17 +64,23 @@ jobs:
           # link. Public-only run keeps the benchmark anonymous,
           # exactly like a curious developer would.
           python scripts/eval_fresh_urls.py \
-            --sample ${{ github.event.inputs.sample || 100 }} \
+            --sample ${{ github.event.inputs.sample || 200 }} \
             --out-tag "$(date -u +%Y-%m-%d)"
 
-      - name: Update latest pointer
+      - name: Show latest pointer state
         run: |
+          # The Python script owns the latest.json update now, guarded by
+          # its --enforce-quality-gate flag (default on). If the run was
+          # junk (rate-limit blowout, empty samples, null recall) the
+          # pointer is deliberately left untouched. Print state so cron
+          # log makes it obvious which run is currently public.
           cd docs/benchmarks
-          # 'latest.json' is what the landing page reads — symlink
-          # to today's run.
-          LATEST=$(ls -t *.json | head -1)
-          ln -sf "$LATEST" latest.json
           ls -la
+          if [ -L latest.json ] || [ -f latest.json ]; then
+            echo "latest.json -> $(readlink latest.json 2>/dev/null || echo '(file)')"
+          else
+            echo "WARNING: docs/benchmarks/latest.json missing"
+          fi
 
       - name: Detect recall regression
         id: regression

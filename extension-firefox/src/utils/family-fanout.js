@@ -153,7 +153,7 @@ export async function fanOutAlerts(token, blockedResults) {
   // service worker populated via importScripts() at startup.
   let crypto;
   try {
-    crypto = await import(chrome.runtime.getURL("utils/family-crypto.js"));
+    crypto = await import(chrome.runtime.getURL("src/utils/family-crypto.js"));
   } catch {
     return 0;
   }
@@ -180,7 +180,7 @@ export async function fanOutAlerts(token, blockedResults) {
   // Build envelopes per dangerous result × per sibling
   let api;
   try {
-    api = await import(chrome.runtime.getURL("utils/family-api.js"));
+    api = await import(chrome.runtime.getURL("src/utils/family-api.js"));
   } catch {
     return 0;
   }

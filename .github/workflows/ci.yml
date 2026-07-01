@@ -103,10 +103,12 @@ jobs:
         run: python3 scripts/check-i18n-parity.py
 
       - name: Stale-claim regression guard
-        # Fails CI if forbidden marketing numbers (AUC 0.9988, "91% detection",
-        # "18K samples") sneak back in. The 2026-06-17 validation pass committed
-        # us to AUC 0.9983, 93.5% recall, 14,400 training samples. A future PR
-        # can't accidentally re-introduce inflated copy.
+        # Fails CI if any of the pre-recalibration marketing anchors sneak
+        # back in (the inflated AUC, the older detection-rate percentage, the
+        # rounded training-sample count). See scripts/check-stale-claims.py
+        # for the exact forbidden patterns and the validated replacements
+        # committed after the 2026-06-17 validation pass. A future PR can't
+        # accidentally re-introduce the older, inflated copy.
         run: python3 scripts/check-stale-claims.py
 
   openapi-drift:

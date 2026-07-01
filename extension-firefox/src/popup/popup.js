@@ -286,7 +286,7 @@ async function loadThresholdNudge() {
 
     // Lazy-import the helper so the popup still works in preview mode
     // where ESM imports may not resolve.
-    var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+    var apiModule = await import(chrome.runtime.getURL("src/utils/api.js"));
     var status = await apiModule.fetchThreatStatus(token);
     if (!status || !status.gated) return;
 
@@ -424,7 +424,7 @@ function wireButtons() {
       var lastVerdict = verdictData["last_verdict_" + domain];
       var reportType = lastVerdict === "dangerous" ? "false_positive" : "false_negative";
 
-      var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+      var apiModule = await import(chrome.runtime.getURL("src/utils/api.js"));
       var apiBase = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
         ? window.CLEANWAY_API_BASE
         : "https://api.cleanway.ai";
@@ -551,7 +551,7 @@ function applySkillLevelStyles() {
 // other call would return 410 and create noise.
 async function checkAndRenderLockState() {
   try {
-    var apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+    var apiModule = await import(chrome.runtime.getURL("src/utils/api.js"));
     var lock = await apiModule.isAccountLocked();
     if (!lock) return false;
 

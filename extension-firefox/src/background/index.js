@@ -275,7 +275,7 @@ async function handleCheck(domains) {
     try {
       const stored = await chrome.storage.local.get(["auth_token"]);
       if (stored && stored.auth_token) {
-        const apiModule = await import(chrome.runtime.getURL("utils/api.js"));
+        const apiModule = await import(chrome.runtime.getURL("src/utils/api.js"));
         await apiModule.incrementThreatCounter(stored.auth_token, dangerousBlocksThisBatch);
 
         // Family Hub auto-fan-out: encrypt this batch of dangerous
@@ -285,7 +285,7 @@ async function handleCheck(domains) {
         // happens here. Dedup window inside fanOutAlerts prevents
         // spam from page reloads.
         try {
-          const fanout = await import(chrome.runtime.getURL("utils/family-fanout.js"));
+          const fanout = await import(chrome.runtime.getURL("src/utils/family-fanout.js"));
           const dangerous = results.filter(r => r.level === "dangerous");
           await fanout.fanOutAlerts(stored.auth_token, dangerous);
         } catch (e) {
@@ -397,7 +397,7 @@ chrome.runtime.onInstalled.addListener(() => {
   // alerts as OS notifications.
   void (async () => {
     try {
-      const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
+      const notifier = await import(chrome.runtime.getURL("src/utils/family-notifier.js"));
       notifier.ensureFamilyPollAlarm(1);
     } catch (e) { /* alarms permission missing — silent */ }
   })();
@@ -417,7 +417,7 @@ chrome.runtime.onInstalled.addListener(() => {
 // survive eviction, but installing on startup is idempotent insurance).
 void (async () => {
   try {
-    const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
+    const notifier = await import(chrome.runtime.getURL("src/utils/family-notifier.js"));
     notifier.ensureFamilyPollAlarm(1);
   } catch (e) { /* silent */ }
 })();
@@ -425,7 +425,7 @@ void (async () => {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   // Family Hub minute poller
   try {
-    const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
+    const notifier = await import(chrome.runtime.getURL("src/utils/family-notifier.js"));
     if (notifier.isFamilyPollAlarm(alarm.name)) {
       await notifier.pollAndNotify();
       return;
@@ -437,7 +437,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   // Daily local-history prune (30-day rolling retention per Privacy Policy)
   if (alarm.name === "cleanway_history_prune") {
     try {
-      const storage = await import(chrome.runtime.getURL("utils/storage.js"));
+      const storage = await import(chrome.runtime.getURL("src/utils/storage.js"));
       await storage.pruneOldChecks();
     } catch (e) {
       // Silent — IndexedDB transient failure isn't user-facing. Worst
@@ -448,7 +448,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 chrome.notifications.onClicked.addListener(async (notificationId) => {
   try {
-    const notifier = await import(chrome.runtime.getURL("utils/family-notifier.js"));
+    const notifier = await import(chrome.runtime.getURL("src/utils/family-notifier.js"));
     if (!notifier.isFamilyNotificationId(notificationId)) return;
     // Open the Options page Family Hub section. chrome.runtime.
     // openOptionsPage() is the canonical way; some MV3 builds need a

@@ -4,11 +4,11 @@
 Cleanway — Phishing Protection
 
 ## Short Description (132 chars max)
-Automatic phishing link detection with privacy audit. 9 threat sources, ML-powered. Your browsing data never leaves your device.
+Automatic phishing link detection with privacy audit. 16 threat-intel signals, ML-powered. Your browsing data never leaves your device.
 
 ## Detailed Description
 
-Cleanway automatically checks every link you encounter against 9 threat intelligence sources and a machine learning model trained to catch phishing.
+Cleanway automatically checks every link you encounter against 16 threat-intelligence signals — 10 named blocklist feeds plus reputation, visual identity, ML model, and heuristics — trained to catch phishing.
 
 WHAT IT DOES:
 - Scans every link on every page — red, yellow, green badges show safety at a glance
@@ -19,8 +19,8 @@ WHAT IT DOES:
 PRIVACY FIRST:
 Your browsing data NEVER leaves your device. We only see domain names for safety checks — never full URLs, never page content, never your browsing history. Even if our servers are breached, attackers learn nothing about your online life.
 
-9 THREAT SOURCES:
-Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus DBL, SURBL, AlienVault OTX, and IPQualityScore.
+16 THREAT-INTELLIGENCE SIGNALS:
+10 named blocklist feeds (Google Safe Browsing, URLhaus, PhishStats, abuse.ch ThreatFox, Spamhaus DBL, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (Tranco popularity rank) + visual identity (brand favicon hashes, typosquat watchtower) + CatBoost ML model + LLM judge on ambiguous verdicts + heuristics.
 
 PRIVACY AUDIT:
 Right-click any page to see what data it collects: trackers, cookies, data collection forms, fingerprinting attempts. Grade A through F. Runs 100% on your device.

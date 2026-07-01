@@ -28,12 +28,7 @@ So I built it differently:
 
 **What runs on your machine:** everything else. Full URL inspection, page-DOM heuristics (BitB detection, credential-form mismatch, tab-napping guards), the warning UI.
 
-**How we measure ourselves:** weekly benchmark cron pulls fresh URLs from URLhaus + PhishTank (~500 phishing + 1000 Tranco-legit), feeds them through the public `/api/v1/check` endpoint, AND through Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. Same script for all five resolvers. Raw output commits to `docs/benchmarks/`. Latest numbers:
-
-- Cleanway recall: 61.5% on fresh phishing URLs (2026-06-30, sample = 24; latest is always at cleanway.ai/transparency/methodology — pull from latest.json before posting)
-- Cloudflare 1.1.1.1 for Families recall: 55.5% on the same URLs
-- CatBoost ML model AUC: 0.9983 on a held-out test set of 14,400 verified domains
-- Measured FPR on Tranco top 1M: 0.08%
+**How we measure ourselves:** weekly benchmark cron pulls fresh URLs from URLhaus + PhishTank (~500 phishing + 1000 Tranco-legit), feeds them through the public `/api/v1/check` endpoint, AND through Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. Same script for all five resolvers. Raw output commits to `docs/benchmarks/`. Per-vendor recall, precision, and denominators (including our own "unknown" bucket when we rate-limit ourselves during a run) live at cleanway.ai/transparency/methodology — pull the current snapshot before posting rather than pasting a number from this draft. Static baseline: CatBoost ML model AUC 0.9983 on a held-out test set of 14,400 verified domains; measured FPR on Tranco top 1M: 0.08%.
 
 The script is at `scripts/eval_fresh_urls.py`. Two commands to clone and verify. You can run it against your own domains.
 
@@ -48,7 +43,7 @@ Stack: FastAPI (Python 3.11) on Railway, Next.js 15 + next-intl (10 locales) on 
 
 Two links:
 - The site (with live methodology page): https://cleanway.ai/transparency/methodology
-- The engine: https://github.com/cleanway-ai/engine
+- The engine: https://github.com/AlexMos555/linkshield
 
 Happy to answer questions, especially about the privacy architecture, the benchmark methodology, or why I picked open source over freemium-with-secret-sauce.
 
@@ -62,7 +57,7 @@ HN top comments on a Show HN are predictable. Have these ready as paste-able res
 **A:** Right — that's exactly why the script is in the repo, the dataset is two public feeds (URLhaus + PhishTank), and the cron runs every Monday on a fresh sample. Anyone can clone and reproduce. The four competitor adapters are open too. If my numbers were juiced, you'd see it in your own run.
 
 ### Q: "What about Google Safe Browsing? Isn't it free + built into Chrome?"
-**A:** Yes, and it catches a lot. But Safe Browsing only checks against its hash database — no per-page heuristics (BitB, credential form mismatch, tab-napping), no per-link warnings inside Gmail/Outlook, no honeypot password injection. We layer 17 other checks on top. On the 2026-06-30 sample (24 fresh URLhaus + PhishTank URLs) Cleanway hit 61.5% recall vs Cloudflare 1.1.1.1 for Families at 54.2% on the same sample, both at 100% precision. GSB number pending: rerun the weekly benchmark with GOOGLE_SAFE_BROWSING_KEY set and pull the comparison row from the next latest.json snapshot before posting.
+**A:** Yes, and it catches a lot. But Safe Browsing only checks against its hash database — no per-page heuristics (BitB, credential form mismatch, tab-napping), no per-link warnings inside Gmail/Outlook, no honeypot password injection. We layer 15 other threat-intel signals on top of Safe Browsing (11 named blocklist feeds + Tranco popularity, favicon brand-clone, typosquat watchtower, ML model, LLM judge). Per-vendor recall — with per-vendor denominators, unknown-rates included — is at cleanway.ai/transparency/methodology; refresh the number from the current `latest.json` before posting. GSB comparison row: rerun the benchmark with `GOOGLE_SAFE_BROWSING_KEY` set first.
 
 ### Q: "Why MIT and not AGPL? You'll get forked."
 **A:** The intel sources + curated brand data + trained ML weights stay closed (`docs/OPEN-SOURCE.md`). The detection algorithm is reverse-engineerable from extension traffic anyway. Forks won't have the operational moat. MIT maximises adoption + acquihire-friendly.
@@ -77,7 +72,7 @@ HN top comments on a Show HN are predictable. Have these ready as paste-able res
 **A:** Pre-launch as of post-time. Today's goal is users + feedback. Revenue conversation is for Q3.
 
 ### Q: "What's the latency?"
-**A:** First check on a domain: 1–3 seconds (cold cache, parallel fan-out across 9 threat feeds + ML scoring + brand favicon hash + Tranco rank). Repeat checks: <50ms (Redis cache, 24h TTL). Methodology page reports p50 measured from the CI runner.
+**A:** First check on a domain: 1–3 seconds (cold cache, parallel fan-out across 11 blocklist feeds + ML scoring + brand favicon hash + Tranco rank + typosquat watchtower + LLM judge on caution-band verdicts). Repeat checks: <50ms (Redis cache, 24h TTL). Methodology page reports p50 measured from the CI runner.
 
 ### Q: "Wait, you're collecting domains. Isn't that PII-adjacent?"
 **A:** Domains alone are not PII under GDPR — they don't identify a person. We don't link domain queries to your account or IP past the request lifetime. Sentry has PII redaction enabled. Server logs rotate. The methodology page has the full data-flow diagram if you want to verify.
