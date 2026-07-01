@@ -1123,17 +1123,5 @@
         "_needs_native_review": true
       }
     }
-  },
-  "Hero": {
-    "badge": "{recall}% des URL de phishing récentes détectées (mesuré)",
-    "badge_fallback": "Protection anti-phishing privée — recall publié chaque semaine"
-  },
-  "Install": {
-    "browser_label": "Extensions de navigateur",
-    "mobile_label": "Mobile",
-    "status_in_review": "En cours d'examen",
-    "status_coming_this_week": "Cette semaine",
-    "status_native_after_launch": "App native bientôt",
-    "status_appsource_pending": "AppSource en attente"
   }
 }

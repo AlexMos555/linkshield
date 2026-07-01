@@ -1123,17 +1123,5 @@
         "_needs_native_review": true
       }
     }
-  },
-  "Hero": {
-    "badge": "{recall}% नए फ़िशिंग URL पकड़े गए (मापा गया)",
-    "badge_fallback": "गोपनीयता-प्रथम फ़िशिंग सुरक्षा — recall हर हफ़्ते प्रकाशित"
-  },
-  "Install": {
-    "browser_label": "ब्राउज़र एक्सटेंशन",
-    "mobile_label": "मोबाइल",
-    "status_in_review": "समीक्षाधीन",
-    "status_coming_this_week": "इस हफ़्ते आ रहा है",
-    "status_native_after_launch": "लॉन्च के बाद नेटिव ऐप",
-    "status_appsource_pending": "AppSource में लंबित"
   }
 }

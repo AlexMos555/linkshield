@@ -346,13 +346,5 @@
   "email.granny_mode_invite.body_p1_to_grandchild": "{{name}} set up Cleanway protection on your devices with extra-large text and voice alerts. You don't need to do anything — it's already working.",
   "email.granny_mode_invite.body_p2_what_it_does": "When a scammer tries to trick you with a fake bank website or delivery notice, Cleanway stops it before you enter anything. A clear warning shows in big letters: 'STOP — this is a scam site'.",
   "email.granny_mode_invite.cta_setup": "Open the app",
-  "email.granny_mode_invite.reassurance": "If you're not sure what to do, tap the 'Ask family' button in the app — {{name}} gets a message and can help.",
-  "Hero.badge": "{recall}% नए फ़िशिंग URL पकड़े गए (मापा गया)",
-  "Hero.badge_fallback": "गोपनीयता-प्रथम फ़िशिंग सुरक्षा — recall हर हफ़्ते प्रकाशित",
-  "Install.browser_label": "ब्राउज़र एक्सटेंशन",
-  "Install.mobile_label": "मोबाइल",
-  "Install.status_in_review": "समीक्षाधीन",
-  "Install.status_coming_this_week": "इस हफ़्ते आ रहा है",
-  "Install.status_native_after_launch": "लॉन्च के बाद नेटिव ऐप",
-  "Install.status_appsource_pending": "AppSource में लंबित"
+  "email.granny_mode_invite.reassurance": "If you're not sure what to do, tap the 'Ask family' button in the app — {{name}} gets a message and can help."
 }

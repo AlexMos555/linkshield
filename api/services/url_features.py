@@ -243,7 +243,16 @@ def _max_brand_similarity(name: str) -> float:
 # turned on for a training run. Set FEATURE_LOG_ENABLED=true (and optionally
 # FEATURE_LOG_MAX_BYTES) to collect. In production the default is no
 # domain-to-disk persistence at all. (2026-07-01 privacy-doc follow-up.)
-_FEATURE_LOG_MAX_BYTES = int(os.environ.get("FEATURE_LOG_MAX_BYTES", str(50 * 1024 * 1024)))
+def _feature_log_max_bytes() -> int:
+    """Parse the size cap defensively — a malformed env value must NOT crash
+    module import (this module is on the analyzer hot path). Falls back to
+    50 MB on any parse error."""
+    raw = os.environ.get("FEATURE_LOG_MAX_BYTES", "")
+    try:
+        val = int(raw)
+        return val if val > 0 else 50 * 1024 * 1024
+    except (TypeError, ValueError):
+        return 50 * 1024 * 1024
 
 
 def _feature_log_enabled() -> bool:
@@ -278,7 +287,7 @@ def log_features(domain: str, features: dict[str, float], score: int) -> None:
         # recent half. Checked before append so the file can briefly exceed the
         # cap by one line, which is fine.
         try:
-            if os.path.getsize(log_path) >= _FEATURE_LOG_MAX_BYTES:
+            if os.path.getsize(log_path) >= _feature_log_max_bytes():
                 with open(log_path, "r") as f:
                     lines = f.readlines()
                 keep = lines[len(lines) // 2:]

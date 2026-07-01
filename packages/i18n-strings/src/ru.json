@@ -1063,17 +1063,5 @@
         }
       }
     }
-  },
-  "Hero": {
-    "badge": "{recall}% свежих фишинг-URL заблокированы (замерено)",
-    "badge_fallback": "Приватная защита от фишинга — recall публикуется еженедельно"
-  },
-  "Install": {
-    "browser_label": "Расширения для браузера",
-    "mobile_label": "Мобильные",
-    "status_in_review": "На модерации",
-    "status_coming_this_week": "Скоро на этой неделе",
-    "status_native_after_launch": "Нативно после запуска",
-    "status_appsource_pending": "AppSource на ревью"
   }
 }

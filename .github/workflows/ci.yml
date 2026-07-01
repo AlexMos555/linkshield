@@ -81,7 +81,13 @@ jobs:
           # Methodology namespace, or a badge-copy change) that wasn't
           # mirrored back into the source would silently regress on the
           # next build. (2026-07-01: exactly this happened three times.)
-          if ! git diff --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/'; then
+          # Stage first so `git diff --cached` also sees NEW untracked
+          # generated files (a fresh locale or _locales entry the build
+          # produces but the committer forgot to add) — a plain
+          # `git diff --exit-code` on the working tree ignores untracked
+          # files and would pass a build that emitted a new uncommitted file.
+          git add -A -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/'
+          if ! git diff --cached --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/'; then
             echo "::error::Generated i18n/extension artifacts are out of sync with their source (packages/extension-core/ + packages/i18n-strings/). Edit the SOURCE, then run 'bash scripts/build-extensions.sh' locally and commit the regenerated files."
             exit 1
           fi

@@ -10,14 +10,14 @@ Privacy-first phishing protection platform. Your browsing data lives only on you
 
 ## What is Cleanway?
 
-Cleanway automatically checks every link you encounter against 16 threat intelligence signals (11 named blocklist feeds + reputation, visual identity, ML model, and heuristics). Dangerous sites are blocked before they can harm you.
+Cleanway automatically checks every link you encounter against 16 threat intelligence signals (10 active named blocklist feeds + reputation, visual identity, ML model, and heuristics). Dangerous sites are blocked before they can harm you.
 
 **Key difference:** Your browsing history never leaves your device. Our servers store only your email and subscription status. Even if breached, attackers learn nothing about your online activity.
 
 ## Features
 
 - **42+ detection signals** across 6 categories
-- **11 named blocklist feeds** (Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (Tranco), visual identity (favicon brand hashes, typosquat watchtower), ML model, LLM judge, and heuristics = **16 threat-intelligence signals** total
+- **10 active named blocklist feeds** (Google Safe Browsing, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (Tranco), visual identity (favicon brand hashes, typosquat watchtower), ML model, LLM judge, and heuristics = **16 threat-intelligence signals** total. _(PhishTank integration is present in code but dormant while Cisco keeps new-account registration closed.)_
 - **CatBoost ML model** — phishing recall published weekly at [cleanway.ai/transparency/methodology](https://cleanway.ai/transparency/methodology); reproducible via [`scripts/eval_fresh_urls.py`](./scripts/eval_fresh_urls.py) and [`docs/benchmarks/latest.json`](./docs/benchmarks/latest.json)
 - **Privacy Audit** — see what trackers, cookies, and data collection any site uses (A-F grade, on-device)
 - **Breach Check** — k-anonymity email leak detection (your email never leaves your device)

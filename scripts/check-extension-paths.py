@@ -102,6 +102,19 @@ def main() -> int:
         trees_checked += 1
         total_missing.extend(audit_tree(root))
 
+    # A guard that finds nothing to check is worse than useless — it reports
+    # a green "OK" while silently covering zero files. If the canonical
+    # source tree (packages/extension-core) is missing, the layout changed
+    # and this check needs updating, so fail loudly.
+    if trees_checked == 0 or not (REPO_ROOT / "packages" / "extension-core").exists():
+        print(
+            "check-extension-paths: FAILED — no extension tree found to audit "
+            "(expected packages/extension-core + at least one browser tree). "
+            "The extension layout may have changed; update EXTENSION_ROOTS.",
+            file=sys.stderr,
+        )
+        return 1
+
     if total_missing:
         print(
             f"check-extension-paths: FAILED — {len(total_missing)} broken path(s) "

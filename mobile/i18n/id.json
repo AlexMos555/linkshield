@@ -346,13 +346,5 @@
   "email.granny_mode_invite.body_p1_to_grandchild": "{{name}} set up Cleanway protection on your devices with extra-large text and voice alerts. You don't need to do anything — it's already working.",
   "email.granny_mode_invite.body_p2_what_it_does": "When a scammer tries to trick you with a fake bank website or delivery notice, Cleanway stops it before you enter anything. A clear warning shows in big letters: 'STOP — this is a scam site'.",
   "email.granny_mode_invite.cta_setup": "Open the app",
-  "email.granny_mode_invite.reassurance": "If you're not sure what to do, tap the 'Ask family' button in the app — {{name}} gets a message and can help.",
-  "Hero.badge": "{recall}% URL phishing baru terdeteksi (terukur)",
-  "Hero.badge_fallback": "Proteksi phishing privasi-pertama — recall dipublikasikan mingguan",
-  "Install.browser_label": "Ekstensi peramban",
-  "Install.mobile_label": "Seluler",
-  "Install.status_in_review": "Sedang ditinjau",
-  "Install.status_coming_this_week": "Hadir pekan ini",
-  "Install.status_native_after_launch": "Aplikasi pasca-rilis",
-  "Install.status_appsource_pending": "AppSource tertunda"
+  "email.granny_mode_invite.reassurance": "If you're not sure what to do, tap the 'Ask family' button in the app — {{name}} gets a message and can help."
 }
