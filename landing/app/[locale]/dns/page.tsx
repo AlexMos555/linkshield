@@ -177,6 +177,32 @@ export default async function DnsPage({
         </ul>
       </section>
 
+      {/* Where DNS fits — honest layering + extension cross-sell.
+          Sets accurate expectations (wide but shallow) and differentiates
+          from generic DNS filters. Roadmap: position DNS as one layer, not
+          a head-to-head NextDNS/ControlD competitor. */}
+      <section
+        style={{
+          marginBottom: 40,
+          background: "rgba(30, 41, 59, 0.5)",
+          border: "1px solid #334155",
+          borderRadius: 14,
+          padding: "22px 24px",
+        }}
+      >
+        <h2 style={{ color: "#f8fafc", fontSize: 22, marginBottom: 14 }}>
+          {t("layer_heading")}
+        </h2>
+        <p style={{ marginBottom: 10 }}>{t("layer_body")}</p>
+        <p style={{ marginBottom: 10 }}>{t("layer_extension")}</p>
+        <p style={{ marginBottom: 10 }}>
+          <a href="/#features" style={{ color: "#60a5fa", fontWeight: 600 }}>
+            {t("layer_extension_cta")}
+          </a>
+        </p>
+        <p style={{ color: "#94a3b8", fontSize: 14 }}>{t("layer_generic")}</p>
+      </section>
+
       {/* Privacy — preempt the "are you logging?" question */}
       <section style={{ marginBottom: 40 }}>
         <h2 style={{ color: "#f8fafc", fontSize: 22, marginBottom: 14 }}>
