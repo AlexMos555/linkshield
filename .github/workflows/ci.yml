@@ -102,6 +102,16 @@ jobs:
         # before anyone noticed.
         run: python3 scripts/check-i18n-parity.py
 
+      - name: Extension asset-path guard
+        # Fails CI if any chrome.runtime.getURL(...) call or <script src=...>
+        # in any of the 4 extension trees points at a file that isn't on
+        # disk. Caught by the 2026-07-01 pre-launch audit as a class of bug
+        # that had shipped 3 times: the utils/ vs src/utils/ ext-01 sweep,
+        # the options.html vendor-script ext-02 sweep, and the family
+        # notifier's dangling icon-192.png path. See
+        # scripts/check-extension-paths.py.
+        run: python3 scripts/check-extension-paths.py
+
       - name: Stale-claim regression guard
         # Fails CI if any of the pre-recalibration marketing anchors sneak
         # back in (the inflated AUC, the older detection-rate percentage, the
