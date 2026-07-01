@@ -21,9 +21,9 @@ on:
   workflow_dispatch:
     inputs:
       sample:
-        description: 'URLs per side (phishing + legit)'
+        description: 'URLs per side (phishing + legit). Wall-time ≈ 2 * sample * MIN_INTERVAL_S + cooldown. sample=100 → ~55min, sample=200 → ~110min. Match to timeout-minutes below.'
         type: number
-        default: 200
+        default: 100
 
 permissions:
   contents: write       # commit benchmark results
@@ -32,7 +32,10 @@ permissions:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 90 minutes covers sample=100 comfortably (est ~55 min with 16s
+    # min-interval + 65s inter-batch cooldown). Bumped from 20 on
+    # 2026-07-01 after a dispatched sample=200 run hit the ceiling at 20m14s.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
