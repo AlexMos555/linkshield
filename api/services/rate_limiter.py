@@ -18,6 +18,7 @@ The dependency factory is the preferred surface for routers. Attach with
 boundary, uniformly across the codebase.
 """
 
+import hmac
 import logging
 from datetime import datetime, timezone
 from typing import Callable, Literal
@@ -443,6 +444,15 @@ def rate_limit(
     # "ip" / "public"
     async def ip_dep(request: Request) -> None:
         settings = get_settings()
+        # Benchmark bypass: a request carrying the correct X-Cleanway-Benchmark
+        # header skips the IP limit. Only active when the token is configured
+        # (non-empty) — production requests without the header are unaffected.
+        # Constant-time compare so the token can't be recovered by timing.
+        bypass = settings.benchmark_bypass_token
+        if bypass:
+            presented = request.headers.get("X-Cleanway-Benchmark", "")
+            if presented and hmac.compare_digest(presented, bypass):
+                return
         ip = _extract_client_ip(request)
         await check_ip_rate_limit(
             ip,

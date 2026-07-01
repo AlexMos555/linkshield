@@ -64,6 +64,11 @@ logging.basicConfig(
 log = logging.getLogger("eval_fresh_urls")
 
 CLEANWAY_API = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
+# When set, sent as X-Cleanway-Benchmark on every cleanway request so the
+# server skips the 5/min IP rate-limit for this benchmark run. This lets the
+# weekly CI job measure a large sample fast (no 16s throttle / 65s cooldown)
+# instead of overrunning the CI timeout. Must match api/config benchmark_bypass_token.
+BENCHMARK_BYPASS_TOKEN = os.environ.get("BENCHMARK_BYPASS_TOKEN", "").strip()
 GSB_KEY = os.environ.get("GOOGLE_SAFE_BROWSING_KEY")
 PHISHTANK_KEY = os.environ.get("PHISHTANK_API_KEY")  # optional
 VT_KEY = os.environ.get("VT_API_KEY")
@@ -94,7 +99,12 @@ MIN_INTERVAL_S = {
     # to 16.0s on 2026-07-01: the 1s cushion wasn't enough under real network
     # jitter and the safe batch was drifting into the phishing batch's
     # rate-limit window, poisoning latest.json with `unknown` verdicts.
-    "cleanway": 16.0,
+    #
+    # When BENCHMARK_BYPASS_TOKEN is set the server skips the IP limit for us,
+    # so the 16s throttle + 65s cooldown are unnecessary — drop to a light
+    # 0.3s spacing (still polite, avoids hammering) so a 200-sample run fits
+    # comfortably inside the CI timeout.
+    "cleanway": 0.3 if BENCHMARK_BYPASS_TOKEN else 16.0,
     "virustotal": 16.0,  # VT free tier 4 req/min
 }
 
@@ -284,9 +294,15 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
     t0 = time.monotonic()
     last_status: int | None = None
     try:
+        headers = (
+            {"X-Cleanway-Benchmark": BENCHMARK_BYPASS_TOKEN}
+            if BENCHMARK_BYPASS_TOKEN
+            else None
+        )
         for attempt in (1, 2):
             r = await client.get(
                 f"{CLEANWAY_API}/api/v1/public/check/{d}",
+                headers=headers,
                 timeout=8.0,
             )
             last_status = r.status_code
@@ -909,7 +925,10 @@ async def main() -> int:
         # this cooldown the first ~5 safe URLs get HTTP 429 and are recorded
         # as `unknown`, which nulls FPR and poisons latest.json. See
         # 2026-06-30 audit: safe batch had 30/50 unknown, FPR=null.
-        if r == "cleanway":
+        # The cooldown only matters when we're being rate-limited. With the
+        # benchmark bypass token the server skips the IP cap entirely, so
+        # there is no window to drain — skip the 65s wait.
+        if r == "cleanway" and not BENCHMARK_BYPASS_TOKEN:
             log.info("draining cleanway rate-limit window (%.0fs) before safe batch",
                      CLEANWAY_BATCH_COOLDOWN_S)
             await asyncio.sleep(CLEANWAY_BATCH_COOLDOWN_S)

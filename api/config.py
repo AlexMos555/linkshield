@@ -98,6 +98,16 @@ class Settings(BaseSettings):
     public_rate_limit_per_window: int = 60        # 60 requests per hour per IP
     public_rate_limit_window_seconds: int = 3600  # 1 hour window
 
+    # Benchmark bypass token. When set (non-empty), a request carrying the
+    # matching `X-Cleanway-Benchmark` header skips IP rate limiting on the
+    # public endpoints. This exists solely so the weekly fresh-URL benchmark
+    # (scripts/eval_fresh_urls.py, run from CI) can measure real recall on a
+    # large sample without being throttled by its own 5/min IP cap — which
+    # would otherwise force a 65s-cooldown + 16s-interval crawl that overruns
+    # the CI timeout. Default empty = no bypass (production behaviour). Rotate
+    # by changing the value in both the Railway env and the GH Actions secret.
+    benchmark_bypass_token: str = ""
+
     # Rate limits — sensitive actions (per user, stricter)
     # Applied to /payments/checkout, /payments/portal, /org/create
     sensitive_action_limit: int = 10               # 10 per hour per user

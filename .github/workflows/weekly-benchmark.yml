@@ -60,14 +60,35 @@ jobs:
           GOOGLE_SAFE_BROWSING_KEY: ${{ secrets.GOOGLE_SAFE_BROWSING_KEY }}
           PHISHTANK_API_KEY: ${{ secrets.PHISHTANK_API_KEY }}
           VT_API_KEY: ${{ secrets.VT_API_KEY }}
+          # When set, eval_fresh_urls.py sends this as X-Cleanway-Benchmark so
+          # the server skips the 5/min IP rate-limit for the run — turning a
+          # ~110-min throttled crawl into a few minutes, which lets the weekly
+          # cron actually finish inside the timeout AND clear the quality gate.
+          BENCHMARK_BYPASS_TOKEN: ${{ secrets.BENCHMARK_BYPASS_TOKEN }}
         run: |
           # We deliberately use the live PUBLIC endpoint here, not
           # --local-analyzer. The point is to measure what a real
           # user would see when they share a `cleanway.ai/check/<X>`
           # link. Public-only run keeps the benchmark anonymous,
           # exactly like a curious developer would.
+          #
+          # Sample sizing:
+          #   - dispatch: honour the input.
+          #   - schedule with bypass token: 200 (fast, clears the >=100 gate).
+          #   - schedule without token: 60 — the throttled crawl still fits the
+          #     90-min timeout; the quality gate will (correctly) decline to
+          #     publish a sub-100 sample, leaving the last good latest.json in
+          #     place. So a token-less cron runs green + honest, just no refresh.
+          if [ -n "${{ github.event.inputs.sample }}" ]; then
+            SAMPLE="${{ github.event.inputs.sample }}"
+          elif [ -n "${BENCHMARK_BYPASS_TOKEN}" ]; then
+            SAMPLE=200
+          else
+            SAMPLE=60
+          fi
+          echo "Running benchmark with sample=$SAMPLE (bypass token $([ -n "${BENCHMARK_BYPASS_TOKEN}" ] && echo present || echo absent))"
           python scripts/eval_fresh_urls.py \
-            --sample ${{ github.event.inputs.sample || 200 }} \
+            --sample "$SAMPLE" \
             --out-tag "$(date -u +%Y-%m-%d)"
 
       - name: Show latest pointer state

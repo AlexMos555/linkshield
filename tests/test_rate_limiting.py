@@ -550,3 +550,89 @@ def test_all_router_modules_declare_rate_limit_at_decoration():
     assert violations == [], (
         f"Endpoints without a rate-limit dependency: {violations}"
     )
+
+
+# ─────────────────────────────────────────────────────────────────
+# Benchmark bypass token — the weekly CI benchmark can skip the IP
+# rate-limit with a matching X-Cleanway-Benchmark header. (2026-07-01)
+# ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_benchmark_bypass_skips_ip_limit_with_correct_header(monkeypatch):
+    """A request carrying the correct token header must NOT be rate-limited."""
+    from api import config
+    from api.services import rate_limiter
+
+    settings = config.get_settings()
+    monkeypatch.setattr(settings, "benchmark_bypass_token", "s3cret-bench-token", raising=False)
+
+    # If the limiter were reached it would raise — make that loud.
+    async def _boom(*a, **k):
+        raise AssertionError("check_ip_rate_limit should not be called on bypass")
+
+    monkeypatch.setattr(rate_limiter, "check_ip_rate_limit", _boom)
+
+    dep = rate_limiter.rate_limit(mode="ip", category="public_check")
+
+    class _Req:
+        headers = {"X-Cleanway-Benchmark": "s3cret-bench-token"}
+        client = type("C", (), {"host": "203.0.113.9"})()
+
+    # Should return cleanly (bypass), NOT raise.
+    await dep(_Req())
+
+
+@pytest.mark.asyncio
+async def test_benchmark_bypass_enforces_without_or_with_wrong_header(monkeypatch):
+    """No header, or a wrong token, must still hit the limiter."""
+    from api import config
+    from api.services import rate_limiter
+
+    settings = config.get_settings()
+    monkeypatch.setattr(settings, "benchmark_bypass_token", "s3cret-bench-token", raising=False)
+
+    calls = {"n": 0}
+
+    async def _count(*a, **k):
+        calls["n"] += 1
+
+    monkeypatch.setattr(rate_limiter, "check_ip_rate_limit", _count)
+    dep = rate_limiter.rate_limit(mode="ip", category="public_check")
+
+    class _NoHeader:
+        headers: dict = {}
+        client = type("C", (), {"host": "203.0.113.9"})()
+
+    class _WrongToken:
+        headers = {"X-Cleanway-Benchmark": "nope"}
+        client = type("C", (), {"host": "203.0.113.9"})()
+
+    await dep(_NoHeader())
+    await dep(_WrongToken())
+    assert calls["n"] == 2  # both fell through to the real limiter
+
+
+@pytest.mark.asyncio
+async def test_benchmark_bypass_inert_when_token_unset(monkeypatch):
+    """With no token configured (production default), the header is ignored
+    and the limiter always runs — the bypass cannot be triggered."""
+    from api import config
+    from api.services import rate_limiter
+
+    settings = config.get_settings()
+    monkeypatch.setattr(settings, "benchmark_bypass_token", "", raising=False)
+
+    calls = {"n": 0}
+
+    async def _count(*a, **k):
+        calls["n"] += 1
+
+    monkeypatch.setattr(rate_limiter, "check_ip_rate_limit", _count)
+    dep = rate_limiter.rate_limit(mode="ip", category="public_check")
+
+    class _Req:
+        headers = {"X-Cleanway-Benchmark": "anything"}
+        client = type("C", (), {"host": "203.0.113.9"})()
+
+    await dep(_Req())
+    assert calls["n"] == 1  # limiter still enforced
