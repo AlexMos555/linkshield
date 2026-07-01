@@ -39,7 +39,7 @@ If you enable the webmail scanner, the extension sends the email's **subject, se
 | Data | Where | Retention |
 |---|---|---|
 | Domain + verdict + score (cache) | Redis (server) | 5 min (dangerous) / 15 min (suspicious) / 1 hr (safe); public endpoint 24 hr |
-| Domain + ML feature vector + timestamp | Local `feature_log.jsonl` file (server) | **No retention policy in code** — see caveat below |
+| Domain + ML feature vector + timestamp | Local `feature_log.jsonl` file (server) | **Off by default in production**; only written when `FEATURE_LOG_ENABLED=true` for an offline training run, then size-capped (default 50 MB, auto-rotated) |
 | User ID + action + target + hashed IP + metadata | Supabase `audit_log` | 2 years (730 days), purged by `purge_old_audit_log` |
 | User ID + email | Supabase `users` | Until account deletion |
 | User ID + subscription tier + Stripe customer ID | Supabase `subscriptions` | Until account deletion |
@@ -52,7 +52,7 @@ If you enable the webmail scanner, the extension sends the email's **subject, se
 | Deletion flag (soft-delete) | Redis | 30-day grace period before hard delete |
 | Extension check history | Device (IndexedDB) | 30 days, auto-pruned |
 
-**Feature-log caveat (honest disclosure):** The training feature log (`feature_log.jsonl`) records the domain name, the analysis score, and the ML feature vector to disk. The code contains **no TTL or purge mechanism** for this file — unlike the audit log, which has a 2-year purge. How long it lives depends on deployment/ops configuration, not on the application code. We disclose this because it is a real gap between "domain-only, transient" and what the code guarantees.
+**Feature-log note:** Cleanway can optionally collect a machine-learning training log (`feature_log.jsonl`) recording the domain name, the analysis score, and the feature vector. It is **off by default** — in production no domain is written to disk at all unless an operator explicitly sets `FEATURE_LOG_ENABLED=true` for a training run. When enabled, the file is size-capped (default 50 MB via `FEATURE_LOG_MAX_BYTES`) and auto-rotated to its most recent half, so it never grows without bound. It never records user identity — only the domain, score, and features.
 
 **Family-alert retention caveat:** The code sets a **30-day** expiry on family alerts (`expires_at = now() + 30 days`). An earlier version of our published policy referenced 7 days; the code implements 30. A database migration includes a commented-out 7-day cleanup job, but the code does not show an active cron enforcing it, so alerts should be assumed to persist for up to 30 days server-side (as ciphertext the server cannot read — see Family Hub encryption).
 
@@ -100,7 +100,7 @@ The core invariant is: **the server sees the domain, not your browsing.** The ex
 
 We are precise about one thing that is easy to overstate: "server-blind" does **not** mean the domain stays on your device. To check whether a domain is malicious, the server sends that **domain name** to external threat-intelligence services (Google Safe Browsing and the others listed above). What is *not* sent to them is your identity, your full URL, or any page context — only the bare domain, the same way a DNS resolver sees it. So the honest framing is: the domain of a site you visit is checked against third-party blocklists; who you are and what you did on that site are not part of that check.
 
-Two operational logs do record domain names for legitimate reasons, and we disclose them rather than hide them: the ML **feature log** (see retention caveat above) and the **DoH gateway**, which logs only the last 32 characters of a blocked query name to structured logs. Neither is linked to user identity. Redis cache keys are also plaintext domain names, readable by anyone with direct Redis access — which is why that access is restricted.
+Two operational logs can record domain names for legitimate reasons, and we disclose them rather than hide them: the ML **feature log** (off by default; see note above) and the **DoH gateway**, which logs only the last 32 characters of a blocked query name to structured logs. Neither is linked to user identity. Redis cache keys are also plaintext domain names, readable by anyone with direct Redis access — which is why that access is restricted.
 
 ## Your rights (GDPR)
 

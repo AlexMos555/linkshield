@@ -237,12 +237,32 @@ def _max_brand_similarity(name: str) -> float:
     return round(max_sim, 3)
 
 
+# Feature-logging is OFF by default. It persists the checked domain + its ML
+# feature vector to disk for offline training-data collection, which is at
+# odds with the "domain-only, transient" privacy stance unless explicitly
+# turned on for a training run. Set FEATURE_LOG_ENABLED=true (and optionally
+# FEATURE_LOG_MAX_BYTES) to collect. In production the default is no
+# domain-to-disk persistence at all. (2026-07-01 privacy-doc follow-up.)
+_FEATURE_LOG_MAX_BYTES = int(os.environ.get("FEATURE_LOG_MAX_BYTES", str(50 * 1024 * 1024)))
+
+
+def _feature_log_enabled() -> bool:
+    return os.environ.get("FEATURE_LOG_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def log_features(domain: str, features: dict[str, float], score: int) -> None:
     """
-    Log feature vector for future ML training data collection.
-    Append to JSONL file (one line per domain check).
-    Privacy: only domain name, no user data.
+    Log feature vector for offline ML training-data collection.
+
+    Privacy: OFF by default — no domain is written to disk unless
+    FEATURE_LOG_ENABLED is truthy. When enabled, the JSONL file is capped at
+    FEATURE_LOG_MAX_BYTES (default 50 MB); when the cap is exceeded the file
+    is rotated to its most recent half so it never grows unbounded. Only the
+    domain name, score, and feature vector are recorded — never user data.
     """
+    if not _feature_log_enabled():
+        return
+
     import time
 
     log_entry = {
@@ -254,6 +274,19 @@ def log_features(domain: str, features: dict[str, float], score: int) -> None:
 
     log_path = os.path.join(_DATA_DIR, "feature_log.jsonl")
     try:
+        # Size-cap rotation: when the file exceeds the cap, keep only the most
+        # recent half. Checked before append so the file can briefly exceed the
+        # cap by one line, which is fine.
+        try:
+            if os.path.getsize(log_path) >= _FEATURE_LOG_MAX_BYTES:
+                with open(log_path, "r") as f:
+                    lines = f.readlines()
+                keep = lines[len(lines) // 2:]
+                with open(log_path, "w") as f:
+                    f.writelines(keep)
+        except FileNotFoundError:
+            pass  # first write
+
         with open(log_path, "a") as f:
             f.write(json.dumps(log_entry, default=str) + "\n")
     except Exception as e:
