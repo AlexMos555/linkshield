@@ -101,6 +101,18 @@ _ALWAYS_REDACT_KEYS = frozenset(
         "credit_card",
         "card_number",
         "cvv",
+        # Browsing context — the domain / URL a user is checking. Cleanway's
+        # privacy invariant is "even on breach, attackers learn nothing
+        # about the user's online activity". The analyzer + safe_browsing
+        # threat-intel paths log `extra={"domain": domain}` at ~15 sites;
+        # those go to Sentry (a third-party sink with long retention) unless
+        # scrubbed here. The domain still appears in stdout / Railway logs
+        # (access-controlled, ephemeral) for ops — we only strip it from the
+        # external observability sink. (2026-07-01 audit BE-4 follow-up.)
+        "domain",
+        "raw_url",
+        "url",
+        "hostname",
     }
 )
 

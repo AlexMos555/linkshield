@@ -140,6 +140,36 @@ def test_parental_pin_redacted():
     assert out["extra"]["parental_pin"] == "[redacted]"
 
 
+def test_domain_key_redacted_in_extra():
+    """Audit BE-4: the domain a user is checking leaks into Sentry via
+    logger extras (analyzer + safe_browsing log extra={'domain': domain}
+    at ~15 sites). The scrubber must strip it from the external sink even
+    though it stays in stdout logs for ops."""
+    event = {
+        "extra": {"domain": "victim-bank-login.example.com", "url_count": 3},
+        "message": "urlhaus_hit",
+    }
+    out = before_send(event)
+    assert out["extra"]["domain"] == "[redacted]"
+    # Non-sensitive sibling fields survive.
+    assert out["extra"]["url_count"] == 3
+
+
+def test_url_and_hostname_keys_redacted():
+    """raw_url / url / hostname carry the same browsing context."""
+    event = {
+        "extra": {
+            "raw_url": "https://phish.example.com/login?token=abc",
+            "url": "https://phish.example.com",
+            "hostname": "phish.example.com",
+        }
+    }
+    out = before_send(event)
+    assert out["extra"]["raw_url"] == "[redacted]"
+    assert out["extra"]["url"] == "[redacted]"
+    assert out["extra"]["hostname"] == "[redacted]"
+
+
 def test_safe_strings_untouched():
     event = {
         "exception": {
