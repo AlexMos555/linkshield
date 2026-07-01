@@ -51,7 +51,7 @@ If an attacker got our Vercel **account** credentials, they could:
      are all fine.
 
 4. **Vercel → Integrations → GitHub App**
-   - Confirm only `AlexMos555/cleanway` is installed (not "All repos").
+   - Confirm only `AlexMos555/linkshield` is installed (not "All repos").
    - If anything else is listed, remove it.
 
 5. **GitHub → Settings → Security log**

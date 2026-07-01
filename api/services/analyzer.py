@@ -154,7 +154,9 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
     signals = {
         "domain": domain,
         "raw_url": raw_url or domain,
-        # Blocklist hits (9 sources)
+        # Blocklist hits — 11 named source adapters wired below. phishtank_hit
+        # always resolves False until Cisco reopens PhishTank registration but
+        # is kept for backward compatibility with older scoring rules.
         "safe_browsing_hit": safe_browsing_hit,
         "phishtank_hit": phishtank_hit,
         "urlhaus_hit": urlhaus_hit,

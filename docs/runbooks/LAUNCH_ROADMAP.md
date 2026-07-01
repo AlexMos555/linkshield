@@ -13,7 +13,7 @@
 | **Railway** | Backend API (FastAPI) | `api.cleanway.ai` | 🔴 502 |
 | **Supabase** | DB + Auth (EU Frankfurt) | `bpyqgzzclsbfvxthyfsf.supabase.co` | 🟢 migrations 001–005 applied |
 | **Vercel** | Landing (Next.js) | `cleanway-landing` project | 🟡 Security incident pending response |
-| **GitHub** | Repo + CI | `AlexMos555/cleanway` | 🟡 3 workflows red (docker + sbom + deploy-staging) |
+| **GitHub** | Repo + CI | `AlexMos555/linkshield` | 🟡 3 workflows red (docker + sbom + deploy-staging) |
 | **Redis** | Rate limit + cache | **НЕТ** | 🔴 Не provisioned |
 | **Stripe** | Платежи | Keys в `.env-examples` | 🟠 Нет live account |
 | **Google Safe Browsing** | Threat DB | `GOOGLE_SAFE_BROWSING_KEY` empty | 🟠 Нет ключа |

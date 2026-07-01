@@ -8,13 +8,14 @@
     "install_short": "Install"
   },
   "Hero": {
-    "badge": "Phishing recall published weekly — see /transparency/methodology",
+    "badge": "{recall}% recall on fresh phishing URLs (measured)",
     "title_part1": "Phishing protection that",
     "title_part2": "respects your privacy",
     "subtitle": "Automatic link scanning across every page. 16 threat-intelligence signals. Per-vendor recall vs Cloudflare 1.1.1.1 for Families published weekly at /transparency/methodology. ML-powered detection. Your browsing data never leaves your device.",
     "cta_primary": "Add to Chrome — Free",
     "cta_secondary": "How it works",
-    "cta_footer": "Free forever for basic protection. No credit card required."
+    "cta_footer": "Free forever for basic protection. No credit card required.",
+    "badge_fallback": "Privacy-first phishing protection — recall published weekly"
   },
   "FinalCta": {
     "title": "Ready to browse safely?",
@@ -413,5 +414,13 @@
     "caveat_2": "PhishTank's free check API returns 'not indexed' for most fresh URLhaus URLs because their database lags by a few hours — that's why PhishTank's Recall column often shows '—' (unknown), not because it's broken.",
     "caveat_3": "Google Safe Browsing requires an API key (GOOGLE_SAFE_BROWSING_KEY). If unset, that column shows '—' and is excluded from the comparison.",
     "caveat_4": "Latency p50 measured from this script's host (US/EU CI runner); your latency from Asia or LATAM will differ. The relative comparison stays the same."
+  },
+  "Install": {
+    "browser_label": "Browser extensions",
+    "mobile_label": "Mobile",
+    "status_in_review": "In review",
+    "status_coming_this_week": "Coming this week",
+    "status_native_after_launch": "Native app after launch",
+    "status_appsource_pending": "AppSource pending"
   }
 }

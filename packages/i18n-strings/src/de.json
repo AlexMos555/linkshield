@@ -1083,5 +1083,17 @@
         "_needs_native_review": true
       }
     }
+  },
+  "Hero": {
+    "badge": "{recall}% frischer Phishing-URLs erkannt (gemessen)",
+    "badge_fallback": "Privatsphäre-erste Phishing-Abwehr — Recall wöchentlich veröffentlicht"
+  },
+  "Install": {
+    "browser_label": "Browser-Erweiterungen",
+    "mobile_label": "Mobil",
+    "status_in_review": "In Prüfung",
+    "status_coming_this_week": "Diese Woche verfügbar",
+    "status_native_after_launch": "Nativ nach Launch",
+    "status_appsource_pending": "AppSource ausstehend"
   }
 }

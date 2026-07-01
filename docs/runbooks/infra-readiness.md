@@ -8,7 +8,7 @@ here.
 
 ```
 developer push                      │
-  └→ github.com/AlexMos555/cleanway
+  └→ github.com/AlexMos555/linkshield
         ├→ GitHub Actions: CI      (pytest + ruff + coverage)
         ├→ GitHub Actions: Security (gitleaks, bandit, pip-audit, trivy, hadolint)
         ├→ GitHub Actions: E2E      (Playwright landing suite)
@@ -139,7 +139,7 @@ Pending (operator actions — I cannot do these without credentials):
 
 ## If /health returns 5xx or the pod crash-loops
 
-1. `gh api repos/AlexMos555/cleanway/commits/<sha>/status` — look at
+1. `gh api repos/AlexMos555/linkshield/commits/<sha>/status` — look at
    `honest-playfulness - web` for the Railway deploy URL.
 2. Open the URL → Deployments → click the failed deploy → Build logs.
    Common failures:
