@@ -121,8 +121,14 @@ async def test_write_hashes_ip_with_sha256_prefix(supabase_ok, supabase_recorder
         actor_ip="203.0.113.7",
     )
     row = supabase_recorder.audit_posts[0]
-    # 16-hex-char prefix of sha256 hex — predictable so we can pin it.
-    expected = hashlib.sha256(b"203.0.113.7").hexdigest()[:16]
+    # 16-hex-char prefix of HMAC-SHA256(secret, ip) — predictable so we
+    # can pin it. HMAC replaced plain SHA-256 on 2026-07-01 because
+    # IPv4 space (2^32) is small enough to precompute a rainbow table
+    # against any plain-hash length.
+    from api.config import get_settings
+    import hmac as _hmac
+    secret = get_settings().supabase_jwt_secret.encode("utf-8")
+    expected = _hmac.new(secret, b"203.0.113.7", hashlib.sha256).hexdigest()[:16]
     assert row["actor_ip_hash"] == expected
 
 

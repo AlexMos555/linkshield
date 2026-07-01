@@ -21,6 +21,7 @@ endpoint queries it server-side filtered by actor_user_id.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
 from typing import Any, Optional
 
@@ -30,13 +31,37 @@ logger = logging.getLogger("cleanway.audit_log")
 
 
 def _hash_ip(ip: Optional[str]) -> Optional[str]:
-    """SHA-256 the raw IP so a leaked audit table can't be used to
-    deanonymise users. Truncated to 16 hex chars (64 bits) — enough
-    for correlating events from the same source IP within a small
-    user base, not enough to brute-force back to the address."""
+    """HMAC-SHA-256 the raw IP with our JWT secret so a leaked audit
+    table alone (without the secret) cannot be used to deanonymise
+    users. Truncated to 16 hex chars (64 bits) — enough for
+    correlating events from the same source IP within a single
+    application.
+
+    Why HMAC and not plain SHA-256: the IPv4 space is only 2^32
+    values, so a plain SHA-256 truncated to any length is a 1:1
+    lookup table an attacker can precompute in seconds. HMAC with a
+    server-side secret defeats the precomputation — a DB-only leak
+    now needs a second breach (of the JWT secret) to reverse.
+    """
     if not ip:
         return None
-    return hashlib.sha256(ip.encode("utf-8")).hexdigest()[:16]
+    # Deferred import — get_settings() triggers env validation and we
+    # don't want to import that transitively at module load time.
+    try:
+        secret = get_settings().supabase_jwt_secret
+    except Exception:
+        secret = ""
+    if not secret:
+        # Belt-and-suspenders: if the secret is somehow empty, fall
+        # back to the plain-hash behaviour so we never emit an empty
+        # actor_ip_hash. Emit a warning so the leak-through is loud.
+        logger.warning("_hash_ip: JWT secret unavailable, falling back to plain SHA-256 (still HMAC-preferred).")
+        return hashlib.sha256(ip.encode("utf-8")).hexdigest()[:16]
+    return hmac.new(
+        secret.encode("utf-8"),
+        ip.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()[:16]
 
 
 async def write(
