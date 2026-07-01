@@ -132,7 +132,7 @@ export async function pollAndNotify() {
           NOTIFICATION_PREFIX + item.id,
           {
             type: "basic",
-            iconUrl: chrome.runtime.getURL("public/icon-192.png"),
+            iconUrl: chrome.runtime.getURL("public/icons/icon128.png"),
             title,
             message,
             priority: 1,
