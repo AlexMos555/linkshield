@@ -363,8 +363,14 @@ async def _call_one_model(model: str, features: dict, *, max_tokens: int = 280) 
         return None
 
     try:
-        client = anthropic.Anthropic(timeout=LLM_TIMEOUT_S)
-        resp = client.messages.create(
+        # ASYNC client + await — a synchronous anthropic.Anthropic().messages
+        # .create() is a blocking network call, and calling it inside this
+        # async function (no await / no to_thread) froze the single uvicorn
+        # event loop for up to LLM_TIMEOUT_S, stalling EVERY concurrent
+        # request while one caution-band verdict waited on Opus. AsyncAnthropic
+        # yields to the loop for the duration. (2026-07-04 audit CRITICAL.)
+        client = anthropic.AsyncAnthropic(timeout=LLM_TIMEOUT_S)
+        resp = await client.messages.create(
             model=model,
             max_tokens=max_tokens,
             system=_SYSTEM_PROMPT,

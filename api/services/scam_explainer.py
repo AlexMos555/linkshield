@@ -461,10 +461,13 @@ async def _llm_explanation(
     }, ensure_ascii=False)
 
     try:
-        client = anthropic.Anthropic()
+        # AsyncAnthropic + await — the sync client's .create() is a blocking
+        # network call and would freeze the single event loop for every
+        # concurrent request while one explanation waited. (2026-07-04 audit.)
+        client = anthropic.AsyncAnthropic()
         # Model is deliberately small/cheap — explanations don't
         # need a flagship model.
-        resp = client.messages.create(
+        resp = await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=400,
             system=sys_prompt,
