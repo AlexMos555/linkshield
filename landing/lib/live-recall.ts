@@ -51,13 +51,28 @@ export async function loadLiveRecall(): Promise<LiveRecall | null> {
         };
       };
       const cw = data?.phishing?.cleanway;
+      const nPhishing = data.n_phishing ?? 0;
+      const classified =
+        (typeof cw?.tp === "number" ? cw.tp : 0) +
+        (typeof cw?.fn === "number" ? cw.fn : 0);
+      // Self-consistency with the benchmark quality gate
+      // (scripts/eval_fresh_urls.check_quality_gate): never surface a hard
+      // recall % from a sample the project's own tooling would reject. The
+      // gate requires n_phishing >= 100 and >= 50 classified. Below that the
+      // number is statistically meaningless (e.g. the n=24 / 13-classified
+      // snapshot), so we return null and the caller renders the soft
+      // "recall published weekly" fallback instead of a misleading X%.
+      const MIN_N_PHISHING = 100;
+      const MIN_CLASSIFIED = 50;
       if (
         cw &&
         typeof cw.recall === "number" &&
         cw.recall > 0 &&
         typeof cw.tp === "number" &&
         typeof cw.fn === "number" &&
-        typeof cw.unknown === "number"
+        typeof cw.unknown === "number" &&
+        nPhishing >= MIN_N_PHISHING &&
+        classified >= MIN_CLASSIFIED
       ) {
         return {
           fraction: cw.recall,
