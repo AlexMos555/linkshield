@@ -403,7 +403,7 @@
       "badge": "{recall}% frischer Phishing-URLs erkannt (gemessen)",
       "title_part1": "Betrugsschutz, der",
       "title_part2": "Ihre Privatsphäre respektiert",
-      "subtitle": "Automatische Linkprüfung auf jeder Seite. 16 Bedrohungsquellen. Schlägt Cloudflare 1.1.1.1 for Families um 38 Prozentpunkte bei frischen URLs aus URLhaus und PhishTank. KI-basierte Erkennung. Ihre Browsing-Daten verlassen Ihr Gerät nie.",
+      "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
       "cta_primary": "Zu Chrome hinzufügen — kostenlos",
       "cta_secondary": "So funktioniert's",
       "cta_footer": "Grundschutz für immer kostenlos. Keine Kreditkarte.",
@@ -411,7 +411,7 @@
     },
     "final_cta": {
       "title": "Bereit für sicheres Surfen?",
-      "subtitle": "Tausende surfen bereits sorgenfrei.",
+      "subtitle": "Free to start. No account needed. Your browsing stays on your device.",
       "cta_primary": "Zu Chrome hinzufügen — kostenlos",
       "cta_business": "Für Unternehmen"
     },
@@ -619,22 +619,22 @@
       "device_note": "If device is lost: protected by OS encryption."
     },
     "testimonials": {
-      "heading": "Was Nutzer sagen",
+      "heading": "Built on principles, not promises",
       "items": [
         {
-          "q": "Endlich ein Sicherheitstool, das mich nicht ausspioniert. Das Datenschutz-Audit öffnet die Augen.",
-          "n": "Alex K.",
-          "r": "Softwareentwickler"
+          "q": "Your browsing data never leaves your device — our server only ever sees a domain, never a full URL or page content. Privacy is the architecture, not a marketing checkbox.",
+          "n": "Server-blind by design",
+          "r": ""
         },
         {
-          "q": "Hat 3 Phishing-Links in meinem Gmail abgefangen, die Chrome übersehen hat. Jeden Cent wert.",
-          "n": "Maria S.",
-          "r": "Marketingmanagerin"
+          "q": "We publish our phishing-detection rate every week — the exact script, the exact dataset, side by side with Cloudflare and Google. Measured, not marketed.",
+          "n": "Open, reproducible benchmark",
+          "r": ""
         },
         {
-          "q": "Wir haben KnowBe4 durch Cleanway Business ersetzt. Gleicher Schutz, ein Viertel des Preises.",
-          "n": "James T.",
-          "r": "IT-Leiter"
+          "q": "Core link-blocking is free forever. We only charge for extras like family protection and detailed explanations — never for the protection itself.",
+          "n": "Free protection, always",
+          "r": ""
         }
       ]
     },
