@@ -14,6 +14,29 @@ from api.services.doh_gateway import (
 )
 
 
+def _fake_blocklist_redis(blocked: set[str]) -> MagicMock:
+    """Fake Redis whose pipeline().sismember(...)/execute() answers
+    membership against `blocked` — matches the is_blocked_redis hot
+    path (SISMEMBER, not SMEMBERS)."""
+    class _Pipe:
+        def __init__(self, blk):
+            self._blk = blk
+            self._queued: list[str] = []
+
+        def sismember(self, _key, member):
+            self._queued.append(member)
+            return self
+
+        async def execute(self):
+            out = [m in self._blk for m in self._queued]
+            self._queued = []
+            return out
+
+    r = MagicMock()
+    r.pipeline = lambda: _Pipe(blocked)
+    return r
+
+
 # ─────────────────────────────────────────────────────────────────
 # Wire-format helpers
 # ─────────────────────────────────────────────────────────────────
@@ -199,8 +222,7 @@ async def test_router_blocks_dangerous_domain(monkeypatch):
     from api.main import app
 
     # Danger set contains the registrable domain.
-    fake_redis = MagicMock()
-    fake_redis.smembers = AsyncMock(return_value={"phisher.example"})
+    fake_redis = _fake_blocklist_redis({"phisher.example"})
 
     async def _get_redis():
         return fake_redis
@@ -231,8 +253,7 @@ async def test_router_proxies_clean_domain(monkeypatch):
     from fastapi.testclient import TestClient
     from api.main import app
 
-    fake_redis = MagicMock()
-    fake_redis.smembers = AsyncMock(return_value=set())
+    fake_redis = _fake_blocklist_redis(set())
 
     async def _get_redis():
         return fake_redis
@@ -264,8 +285,7 @@ def test_router_get_base64url(monkeypatch):
     wire = _make_query("wikipedia.org")
     encoded = base64.urlsafe_b64encode(wire).decode("ascii").rstrip("=")
 
-    fake_redis = MagicMock()
-    fake_redis.smembers = AsyncMock(return_value=set())
+    fake_redis = _fake_blocklist_redis(set())
 
     async def _get_redis():
         return fake_redis
@@ -286,8 +306,7 @@ def test_router_get_invalid_base64_returns_400(monkeypatch):
     from fastapi.testclient import TestClient
     from api.main import app
 
-    fake_redis = MagicMock()
-    fake_redis.smembers = AsyncMock(return_value=set())
+    fake_redis = _fake_blocklist_redis(set())
 
     async def _get_redis():
         return fake_redis
@@ -297,3 +316,35 @@ def test_router_get_invalid_base64_returns_400(monkeypatch):
     client = TestClient(app)
     resp = client.get("/dns-query?dns=not!valid!base64")
     assert resp.status_code == 400
+
+
+# ─────────────────────────────────────────────────────────────────
+# is_blocked_redis — SISMEMBER hot path (not SMEMBERS)
+# ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_is_blocked_redis_direct_match():
+    from api.services.doh_gateway import is_blocked_redis
+    r = _fake_blocklist_redis({"phisher.example"})
+    assert await is_blocked_redis("phisher.example", r) is True
+
+
+@pytest.mark.asyncio
+async def test_is_blocked_redis_via_registrable():
+    from api.services.doh_gateway import is_blocked_redis
+    r = _fake_blocklist_redis({"evil.tk"})
+    assert await is_blocked_redis("malicious.subdomain.evil.tk", r) is True
+
+
+@pytest.mark.asyncio
+async def test_is_blocked_redis_unknown_passes():
+    from api.services.doh_gateway import is_blocked_redis
+    r = _fake_blocklist_redis({"evil.tk"})
+    assert await is_blocked_redis("google.com", r) is False
+
+
+@pytest.mark.asyncio
+async def test_is_blocked_redis_fail_open_on_none():
+    """No redis handle → proxy clean (fail-open)."""
+    from api.services.doh_gateway import is_blocked_redis
+    assert await is_blocked_redis("phisher.example", None) is False

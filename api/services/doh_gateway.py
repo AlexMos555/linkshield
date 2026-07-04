@@ -183,6 +183,36 @@ async def is_blocked(qname: str, dangerous_domains: Iterable[str]) -> bool:
     return domain_l in blocked or base in blocked
 
 
+async def is_blocked_redis(qname: str, redis) -> bool:
+    """Redis-backed membership check for the DoH hot path.
+
+    This is the per-query fast path. It does at most two O(1)
+    SISMEMBER lookups (the exact QNAME and its registrable base)
+    against `dangerous_domains` — instead of SMEMBERS, which pulls
+    the ENTIRE blocklist (thousands of domains) over the wire on
+    every single DNS query and melts Redis under real resolver
+    load. Same block policy as is_blocked(), O(1) instead of O(N).
+
+    Fail-open on any Redis error (returns False → proxy clean):
+    blocking a legit domain is worse than missing a malicious one.
+    """
+    if not qname or redis is None:
+        return False
+    domain_l = qname.lower()
+    base = _registrable_domain(domain_l)
+    try:
+        # One round-trip for both membership checks.
+        pipe = redis.pipeline()
+        pipe.sismember("dangerous_domains", domain_l)
+        if base and base != domain_l:
+            pipe.sismember("dangerous_domains", base)
+        results = await pipe.execute()
+        return any(bool(x) for x in results)
+    except Exception:
+        logger.debug("DoH is_blocked_redis failed", exc_info=True)
+        return False
+
+
 async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
     """Forward the wire-format query to Cloudflare's DoH endpoint
     and return the response body. None on any error so the caller

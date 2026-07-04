@@ -454,12 +454,17 @@ def rate_limit(
             if presented and hmac.compare_digest(presented, bypass):
                 return
         ip = _extract_client_ip(request)
-        await check_ip_rate_limit(
-            ip,
-            category,
-            settings.public_rate_limit_per_window,
-            settings.public_rate_limit_window_seconds,
-        )
+        # DoH is a DNS resolver: a single page load fires dozens of queries,
+        # so the 60/hour public limit would break real resolution. Give it a
+        # realistic device-level budget instead. Other public categories keep
+        # the standard public limit.
+        if category == "doh":
+            limit = settings.doh_rate_limit_per_window
+            window = settings.doh_rate_limit_window_seconds
+        else:
+            limit = settings.public_rate_limit_per_window
+            window = settings.public_rate_limit_window_seconds
+        await check_ip_rate_limit(ip, category, limit, window)
 
     return ip_dep
 

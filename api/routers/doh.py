@@ -22,7 +22,7 @@ from fastapi.responses import Response as FastAPIResponse
 
 from api.services.doh_gateway import (
     DOH_CONTENT_TYPE,
-    is_blocked,
+    is_blocked_redis,
     make_nxdomain_response,
     parse_qname,
     proxy_to_upstream,
@@ -36,37 +36,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["doh"])
 
 
-async def _danger_set() -> set[str]:
-    """Pull the current dangerous-domain set from Redis.
-
-    The analyzer warms `dangerous_domains` whenever a /check call
-    returns dangerous; the threat-intel cron also pre-warms top
-    PhishTank / URLhaus entries. Cache outage → empty set, which
-    means we proxy clean — fail-open is correct here because
-    blocking a clean domain is worse than missing a malicious one.
-    """
-    try:
-        from api.services.cache import get_redis
-        r = await get_redis()
-        members = await r.smembers("dangerous_domains")
-        # Redis client returns bytes or str depending on
-        # decode_responses; normalise to lowercase strings.
-        return {
-            (m.decode("utf-8") if isinstance(m, bytes) else m).lower()
-            for m in (members or set())
-        }
-    except Exception:
-        logger.debug("DoH danger-set fetch failed", exc_info=True)
-        return set()
-
-
 async def _handle_query(wire: bytes) -> tuple[bytes, int]:
-    """Core decision: block or proxy. Returns (response_wire, http_status)."""
+    """Core decision: block or proxy. Returns (response_wire, http_status).
+
+    The blocklist check is a Redis SISMEMBER (O(1)) on the hot path —
+    NOT SMEMBERS, which would pull the entire `dangerous_domains` set
+    per query. Redis outage → is_blocked_redis returns False → proxy
+    clean (fail-open: blocking a legit domain is worse than a miss).
+    """
     if not wire:
         return b"", 400
     qname = parse_qname(wire)
-    danger = await _danger_set()
-    if qname and await is_blocked(qname, danger):
+    r = None
+    try:
+        from api.services.cache import get_redis
+        r = await get_redis()
+    except Exception:
+        logger.debug("DoH redis unavailable, proxying clean", exc_info=True)
+    if qname and await is_blocked_redis(qname, r):
         logger.info(
             "DoH blocked qname",
             extra={"qname_suffix": qname[-32:] if qname else None},

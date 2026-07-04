@@ -108,6 +108,13 @@ class Settings(BaseSettings):
     # by changing the value in both the Railway env and the GH Actions secret.
     benchmark_bypass_token: str = ""
 
+    # DoH resolver rate limit (per IP). A DNS resolver serves dozens of
+    # queries per page load, so the 60/hour public limit would break real
+    # resolution. 5000/hour ≈ ~1.4/sec sustained per IP — generous enough
+    # for a household behind one NAT while still bounding abuse/amplification.
+    doh_rate_limit_per_window: int = 5000
+    doh_rate_limit_window_seconds: int = 3600
+
     # Rate limits — sensitive actions (per user, stricter)
     # Applied to /payments/checkout, /payments/portal, /org/create
     sensitive_action_limit: int = 10               # 10 per hour per user
