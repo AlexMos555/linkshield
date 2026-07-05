@@ -42,25 +42,6 @@
        the way the extension does (a plain <script src>, not an ESM import),
        then drive it from the preview controls below. -->
   <script src="../content/block-page.js"></script>
-  <script>
-    const domainInput = document.getElementById('domain-input');
-    const brandInput = document.getElementById('brand-input');
-    const showBtn = document.getElementById('show-block');
-
-    function render() {
-      const existing = document.getElementById('ls-block-overlay');
-      if (existing) existing.remove();
-      document.body.style.overflow = '';
-
-      const domain = domainInput.value.trim() || 'scam-example.com';
-      const brand = brandInput.value.trim();
-      const reasons = brand ? [{ detail: `Typosquat of ${brand}` }] : [];
-      window.__cleanwayShowBlockPage({ domain, score: 95, reasons });
-    }
-
-    showBtn.addEventListener('click', render);
-    // Auto-render on page load
-    render();
-  </script>
+  <script src="block-preview.js"></script>
 </body>
 </html>
