@@ -7,7 +7,16 @@
  *
  * Localized via chrome.i18n.getMessage (_locales/<lang>/messages.json).
  * Falls back to English if chrome.i18n is unavailable (preview mode).
+ *
+ * Loaded as a CLASSIC content script (manifest content_scripts, before
+ * index.js) — NOT an ES module. The whole file is wrapped in an IIFE so
+ * its helpers stay private and the only thing published to the shared
+ * isolated-world scope is `window.__cleanwayShowBlockPage`. See the
+ * bottom of the file for the export/preview mechanics.
  */
+
+(function () {
+  "use strict";
 
 // ─── i18n helper with English fallback ────────────────────────
 const BLOCK_EN = {
@@ -341,7 +350,7 @@ function extractBrand(reasons) {
  * Show full-screen block page overlay.
  * @param {{domain: string, score?: number, reasons?: Array<{detail: string}>}} result
  */
-export function showBlockPage(result) {
+function showBlockPage(result) {
   if (document.getElementById("ls-block-overlay")) return;
 
   const { domain = "", reasons = [], confidence_pct } = result || {};
@@ -845,8 +854,21 @@ export function showBlockPage(result) {
   });
 }
 
-// Preview hook — call from standalone preview HTML without chrome.* APIs
+// ── Publish the entry point ─────────────────────────────────────────
+//
+// MV3 content scripts listed in manifest `content_scripts[].js` execute
+// as CLASSIC scripts sharing one isolated-world global — they cannot use
+// ESM `import`, and this file is not a web_accessible_resource, so a
+// dynamic import() of it would 404 from a content script anyway. The
+// working mechanism is exactly what local-scorer.js uses: assign to a
+// global that the later-loaded index.js reads. The IIFE wrapper (top of
+// file) keeps every internal helper (e, bt, EVIDENCE_BOOK, extractBrand,
+// …) private so they can't collide with the other content scripts'
+// top-level declarations — only this one namespaced entry point leaks.
 if (typeof window !== "undefined") {
+  window.__cleanwayShowBlockPage = showBlockPage;
+
+  // Preview hook — call from standalone preview HTML without chrome.* APIs.
   window.__LS_BLOCK_PREVIEW__ = function (opts) {
     showBlockPage({
       domain: (opts && opts.domain) || "sberbank-secure-login.ru",
@@ -858,3 +880,5 @@ if (typeof window !== "undefined") {
     });
   };
 }
+
+})();

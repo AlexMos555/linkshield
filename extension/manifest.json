@@ -39,6 +39,7 @@
         "src/content/credential-guardian.js",
         "src/content/modern-phish-guard.js",
         "src/content/password-pwned.js",
+        "src/content/block-page.js",
         "src/content/index.js"
       ],
       "css": ["styles/badges.css"],

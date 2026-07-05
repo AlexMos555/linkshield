@@ -383,6 +383,21 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
     } catch (e) {}
     return false;
   }
+
+  // Close the tab that asked us to. The block page's "Go back to safety"
+  // button (block-page.js) falls back to this message when there is no
+  // history entry to return to — e.g. the scam link was opened in a fresh
+  // tab straight from an email. Scope is deliberately narrow: we only ever
+  // close the SENDER's own tab, never an arbitrary id from the message
+  // body, so a compromised content script can't close other tabs.
+  if (msg.type === "CLOSE_TAB") {
+    try {
+      if (sender && sender.tab && sender.tab.id != null) {
+        chrome.tabs.remove(sender.tab.id);
+      }
+    } catch (e) { /* tab already gone / no id — non-fatal */ }
+    return false;
+  }
 });
 
 // ── Context menu + recurring alarms ──

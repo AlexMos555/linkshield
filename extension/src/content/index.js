@@ -193,43 +193,17 @@ function addBadge(linkEl, result) {
   _log("Badge added:", result.domain, result.level, result.score);
 }
 
-// ═══════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 // 3. BLOCK PAGE
-// ═══════════════════════════════════════════════════
-
-function showBlockPage(result) {
-  if (document.getElementById("ls-block-overlay")) return;
-  var reasons = (result.reasons || []).slice(0, 4).map(function(r) {
-    return '<div style="display:flex;align-items:flex-start;gap:8px;margin:8px 0;"><span style="color:#ef4444;">\u26A0</span><span>' + _esc(r.detail) + '</span></div>';
-  }).join("");
-
-  // result.domain comes from the URL the user navigated to \u2014 attacker-
-  // controlled. result.score is a number from the scorer; coerce to
-  // int defensively. Both go through _esc as defense-in-depth even
-  // though they're rendered inside attribute-free text contexts.
-  var overlay = document.createElement("div");
-  overlay.id = "ls-block-overlay";
-  overlay.innerHTML = '<div style="position:fixed;inset:0;z-index:2147483647;background:#0f172aee;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#e2e8f0;"><div style="max-width:480px;text-align:center;padding:40px 24px;"><div style="font-size:64px;margin-bottom:20px;">\u{1F6E1}</div><h1 style="font-size:28px;font-weight:800;color:#f8fafc;margin:0 0 8px;">Dangerous Site</h1><p style="font-size:16px;color:#94a3b8;margin:0 0 24px;">Cleanway blocked <strong style="color:#ef4444;">' + _esc(result.domain) + '</strong> (score: ' + (parseInt(result.score, 10) || 0) + '/100)</p><div style="background:#1e293b;border-radius:12px;padding:16px;text-align:left;margin-bottom:24px;font-size:14px;border:1px solid #ef444440;">' + (reasons || 'Multiple risk signals detected') + '</div><button id="ls-go-back" style="background:#22c55e;color:#052e16;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">\u2190 Go Back</button><button id="ls-proceed" style="background:transparent;color:#64748b;border:1px solid #334155;border-radius:10px;padding:12px 32px;font-size:14px;cursor:pointer;width:100%;opacity:0.5;" disabled>Proceed anyway (3s)</button></div></div>';
-
-  document.body.appendChild(overlay);
-  document.body.style.overflow = "hidden";
-  document.getElementById("ls-go-back").onclick = function() { history.back(); };
-
-  var cd = 3;
-  var btn = document.getElementById("ls-proceed");
-  var iv = setInterval(function() {
-    cd--;
-    if (cd <= 0) {
-      clearInterval(iv);
-      btn.textContent = "I understand \u2014 proceed";
-      btn.disabled = false;
-      btn.style.opacity = "1";
-      btn.onclick = function() { overlay.remove(); document.body.style.overflow = ""; };
-    } else {
-      btn.textContent = "Proceed anyway (" + cd + "s)";
-    }
-  }, 1000);
-}
+// ════════════════════════════════════════════════════
+//
+// The full-screen block overlay is rendered by block-page.js (annotated
+// evidence cards, cultural scam explainer, confidence chip, and the
+// granny / kids / pro skill personas). It loads as a classic content
+// script immediately BEFORE this one and publishes the entry point on
+// the shared isolated-world global as window.__cleanwayShowBlockPage.
+// The page-check in section 7 calls it. This file no longer ships its
+// own stripped-down duplicate overlay.
 
 // ═══════════════════════════════════════════════════
 // 4. FLOATING RESULT (for context menu)
@@ -370,7 +344,16 @@ _log("Content script loaded on", window.location.hostname);
 
     var results = await checkDomains([domain]);
     if (results && results[0] && results[0].level === "dangerous") {
-      showBlockPage(results[0]);
+      // Rich overlay lives in block-page.js, which loads as a classic
+      // content script before this one and publishes the renderer on the
+      // shared isolated-world global. Guard defensively: if it somehow
+      // failed to load we skip the overlay rather than throw (which would
+      // also kill the link-scanning below).
+      if (typeof window.__cleanwayShowBlockPage === "function") {
+        window.__cleanwayShowBlockPage(results[0]);
+      } else {
+        _log("block-page.js not loaded — block overlay unavailable for", domain);
+      }
     }
   } catch(e) {
     _log("Page check error:", e);
