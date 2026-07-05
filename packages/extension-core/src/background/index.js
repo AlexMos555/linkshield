@@ -412,8 +412,14 @@ chrome.runtime.onInstalled.addListener((details) => {
       chrome.tabs.create({ url: chrome.runtime.getURL("src/popup/welcome.html") });
     } catch (e) { /* tabs unavailable — non-fatal */ }
   }
-  chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
-  chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
+  // removeAll() first so re-running onInstalled (fires on update/reload, and
+  // the SW can replay it) doesn't hit "Cannot create item with duplicate id".
+  chrome.contextMenus.removeAll(() => {
+    // Read lastError to clear it (removeAll on an empty menu set is fine).
+    void chrome.runtime.lastError;
+    chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
+    chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
+  });
   // Family Hub poller — fires every minute while the user is signed
   // in + has a family cached. Fan-out (background side) ensures the
   // server has the alert; this poller surfaces incoming siblings'
