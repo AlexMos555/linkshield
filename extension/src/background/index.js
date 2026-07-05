@@ -401,7 +401,17 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
 });
 
 // ── Context menu + recurring alarms ──
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
+  // First-run onboarding: open the welcome tab ONLY on a fresh install
+  // (not on updates/reloads). welcome.html shipped since launch but nothing
+  // ever opened it, so new users landed on a bare toolbar icon with no
+  // first-value moment. Extension-own pages open in a tab via getURL without
+  // needing web_accessible_resources. (2026-07-04 audit: dead onboarding.)
+  if (details && details.reason === "install") {
+    try {
+      chrome.tabs.create({ url: chrome.runtime.getURL("src/popup/welcome.html") });
+    } catch (e) { /* tabs unavailable — non-fatal */ }
+  }
   chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
   chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
   // Family Hub poller — fires every minute while the user is signed
