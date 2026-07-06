@@ -383,12 +383,43 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
     } catch (e) {}
     return false;
   }
+
+  // Close the tab that asked us to. The block page's "Go back to safety"
+  // button (block-page.js) falls back to this message when there is no
+  // history entry to return to — e.g. the scam link was opened in a fresh
+  // tab straight from an email. Scope is deliberately narrow: we only ever
+  // close the SENDER's own tab, never an arbitrary id from the message
+  // body, so a compromised content script can't close other tabs.
+  if (msg.type === "CLOSE_TAB") {
+    try {
+      if (sender && sender.tab && sender.tab.id != null) {
+        chrome.tabs.remove(sender.tab.id);
+      }
+    } catch (e) { /* tab already gone / no id — non-fatal */ }
+    return false;
+  }
 });
 
 // ── Context menu + recurring alarms ──
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
-  chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
+chrome.runtime.onInstalled.addListener((details) => {
+  // First-run onboarding: open the welcome tab ONLY on a fresh install
+  // (not on updates/reloads). welcome.html shipped since launch but nothing
+  // ever opened it, so new users landed on a bare toolbar icon with no
+  // first-value moment. Extension-own pages open in a tab via getURL without
+  // needing web_accessible_resources. (2026-07-04 audit: dead onboarding.)
+  if (details && details.reason === "install") {
+    try {
+      chrome.tabs.create({ url: chrome.runtime.getURL("src/popup/welcome.html") });
+    } catch (e) { /* tabs unavailable — non-fatal */ }
+  }
+  // removeAll() first so re-running onInstalled (fires on update/reload, and
+  // the SW can replay it) doesn't hit "Cannot create item with duplicate id".
+  chrome.contextMenus.removeAll(() => {
+    // Read lastError to clear it (removeAll on an empty menu set is fine).
+    void chrome.runtime.lastError;
+    chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
+    chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
+  });
   // Family Hub poller — fires every minute while the user is signed
   // in + has a family cached. Fan-out (background side) ensures the
   // server has the alert; this poller surfaces incoming siblings'

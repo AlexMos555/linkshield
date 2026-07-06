@@ -37,27 +37,11 @@
     <p>Click "Show block page" to render the Cleanway warning over this page.</p>
   </div>
 
-  <script type="module">
-    import { showBlockPage } from '../content/block-page.js';
-
-    const domainInput = document.getElementById('domain-input');
-    const brandInput = document.getElementById('brand-input');
-    const showBtn = document.getElementById('show-block');
-
-    function render() {
-      const existing = document.getElementById('ls-block-overlay');
-      if (existing) existing.remove();
-      document.body.style.overflow = '';
-
-      const domain = domainInput.value.trim() || 'scam-example.com';
-      const brand = brandInput.value.trim();
-      const reasons = brand ? [{ detail: `Typosquat of ${brand}` }] : [];
-      showBlockPage({ domain, score: 95, reasons });
-    }
-
-    showBtn.addEventListener('click', render);
-    // Auto-render on page load
-    render();
-  </script>
+  <!-- block-page.js is a CLASSIC (non-module) script: it wraps itself in
+       an IIFE and publishes window.__cleanwayShowBlockPage. Load it exactly
+       the way the extension does (a plain <script src>, not an ESM import),
+       then drive it from the preview controls below. -->
+  <script src="../content/block-page.js"></script>
+  <script src="block-preview.js"></script>
 </body>
 </html>

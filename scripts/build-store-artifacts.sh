@@ -75,7 +75,7 @@ zip_dir() {
     # `zip -r -X` strips macOS extended attributes that the Edge
     # validator otherwise rejects with "extra data not allowed".
     zip -r -X "$out" . \
-      -x '*.DS_Store' '*.map' 'overrides/*' '*.git*' \
+      -x '*.DS_Store' '*.map' 'overrides/*' '*.git*' '*.md' \
       >/dev/null
   )
   local size

@@ -1,10 +1,11 @@
 # Chrome Web Store Listing
 
 ## Name
-Cleanway — Phishing Protection
+Cleanway — Protection from scam links
+<!-- AUTHORITATIVE: this equals the manifest _locales extension_name — the string Chrome actually renders. To change it, edit extension/src/_locales/*/messages.json + rebuild. -->
 
 ## Short Description (132 chars max)
-Automatic phishing link detection with privacy audit. 16 threat-intel signals, ML-powered. Your browsing data never leaves your device.
+Automatic phishing detection + privacy audit. 16 signals + ML. Your browsing data never leaves your device.
 
 ## Detailed Description
 
@@ -14,7 +15,7 @@ WHAT IT DOES:
 - Scans every link on every page — red, yellow, green badges show safety at a glance
 - Right-click any link to check it, or any page for a Privacy Audit
 - Finds phishing links in your Gmail and Outlook that your browser missed
-- 95% of checks happen locally in under 1 millisecond
+- Most checks resolve instantly on-device against a local blocklist; only unknown domains query the server
 
 PRIVACY FIRST:
 Your browsing data NEVER leaves your device. We only see domain names for safety checks — never full URLs, never page content, never your browsing history. Even if our servers are breached, attackers learn nothing about your online life.
@@ -43,7 +44,7 @@ FAMILY PLAN ($9.99/mo):
 - Family Hub with E2E encrypted alerts
 
 PERMISSIONS EXPLAINED:
-- "Read and change all your data on all websites" — Required to scan links on pages. We only read link URLs (never page content).
+- "Access to the page you're actively using + Gmail / Outlook / Yahoo Mail" — Required to badge links inline. Domain is extracted on-device; only the domain is checked, never page content. (activeTab + host access scoped to api.cleanway.ai and the 3 webmail hosts — NOT all websites.)
 - "Storage" — Stores your settings and check history ON YOUR DEVICE only.
 
 Open source clients. Privacy policy: https://cleanway.ai/privacy-policy

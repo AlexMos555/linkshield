@@ -10,6 +10,8 @@
 Cleanway — Privacy-first Anti-Phishing
 ```
 
+> AUTHORITATIVE published title = the manifest `_locales` `extension_name`, currently **"Cleanway — Protection from scam links"** (that is the string Chrome actually renders). To use a different title, change `extension/src/_locales/*/messages.json` `extension_name` and rebuild — do NOT just paste a different title here.
+
 Backup if rejected for trademark concerns: `Cleanway: Scam Link Protection`
 
 ---
@@ -45,7 +47,7 @@ Cleanway checks every link you see, in real time, against 16 threat intelligence
 
 **Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, and the per-vendor comparison vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. Per-vendor recall, precision, and denominators (including our own unknown/rate-limited bucket) are shown side-by-side on that page and refresh every Monday. Static baseline: AUC 0.95 on a held-out test set of 24,000 verified domains.
 
-**Smart explanations, not just warnings.** Cleanway shows *why* a link looks dangerous — credential form mismatch, brand impersonation, fresh certificate from a high-risk registrar, unusual entropy in the domain name. Six skill levels (Grandma, Regular, Kids, Pro) tune the explanation to your reader.
+**Smart explanations, not just warnings.** Cleanway shows *why* a link looks dangerous — credential form mismatch, brand impersonation, fresh certificate from a high-risk registrar, unusual entropy in the domain name. Four skill levels (Grandma, Regular, Kids, Pro) tune the explanation to your reader.
 
 **Cultural scam awareness.** Russian users see references to СберБанк / Госуслуги / Авито. Spanish users see Mercado Libre / Banco Santander. The cultural explainer is locale-aware — not just machine-translated.
 
@@ -73,14 +75,14 @@ Cleanway checks every link you see, in real time, against 16 threat intelligence
 
 ## Pricing
 
-• Free forever: 50 scans per month, all detection signals
-• Personal ($1.49/month PPP-adjusted): unlimited scans, cultural explanations, email guard
-• Family ($5.99/month, up to 5 members): encrypted family alerts, Kids mode, parental dashboard
+• Free forever: 10 server checks/day (plus unlimited instant on-device blocklist checks), all detection signals
+• Personal ($4.99/month; lower in many regions via PPP): unlimited server checks, cultural explanations, email guard
+• Family ($9.99/month, up to 6 devices): encrypted family alerts, Kids mode, parental dashboard
 
 ## Permissions explained
 
 Cleanway requests minimum permissions:
-• "Read and change all your data on websites you visit" — required to scan links inline. Reads URLs only, never page content.
+• "Access to the page you're actively using + Gmail/Outlook/Yahoo Mail" — required to badge links inline. The domain is extracted on-device; only the domain is checked, never page content.
 • "Storage" — saves your scan history locally on your device (never synced to a server).
 • "Notifications" — optional, only for paid Family Hub alerts.
 
@@ -123,11 +125,20 @@ Suggested image size: 1280×800. Show real UI, no mockups.
 
 ## Permissions justification (required text box for each permission)
 
-**"Host permissions: https://*/*"**
-> Cleanway extracts the domain name from each URL you visit to check it against 16 threat intelligence sources and a CatBoost ML model. The full URL never leaves your device — only the domain. We do not read page content, cookies, or form values.
+**"activeTab"**
+> Scans the links on the page you're actively looking at. No access to your other tabs or background browsing.
+
+**"Host access: api.cleanway.ai + Gmail / Outlook / Yahoo Mail"**
+> Sends only the domain of a link (never the full URL, page content, cookies, or form values) to api.cleanway.ai for checking. Access to the four webmail hosts is what lets Cleanway badge links inline inside your inbox. It does NOT request access to all websites.
 
 **"Storage"**
-> Your last 1000 scan results are cached locally so repeat visits don't re-query the server. Cache is per-device, never synced to a cloud, expires after 24 hours per entry. Disable cache in the extension settings if you prefer.
+> Recent scan results are cached locally so repeat visits don't re-query the server — per-device, never synced to a cloud, expires per entry.
+
+**"Alarms"**
+> Schedules periodic background refreshes of the on-device blocklist so local checks stay current.
+
+**"contextMenus"**
+> Adds a right-click "Check this link with Cleanway" option.
 
 **"Notifications" (optional)**
 > Used only for the Family Hub paid feature to alert you when a family member sees a dangerous link. Disabled by default. Free users never see this permission requested.
@@ -145,12 +156,12 @@ Suggested image size: 1280×800. Show real UI, no mockups.
 ## Submission checklist
 
 - [ ] $5 dev account purchased
-- [ ] ZIP from `dist/store-artifacts/cleanway-extension.zip` builds clean (re-run `npm run build:extensions`)
+- [ ] ZIP is `dist/store-artifacts/cleanway-0.1.1-chrome.zip`, rebuilt clean via `bash scripts/build-extensions.sh && bash scripts/build-store-artifacts.sh`
 - [ ] Privacy policy URL works: https://cleanway.ai/privacy-policy
 - [ ] Permissions justifications match what manifest.json actually requests
 - [ ] 5 screenshots uploaded at 1280×800
 - [ ] Promo tile uploaded (440×280)
 - [ ] Detailed description ≤ 16000 chars
 - [ ] No competitor names in detailed description
-- [ ] Single category picked (probably "Productivity" or "Tools" — not "Security" if Google has tightened category restrictions; verify)
+- [x] Category = **Productivity** (decided; matches extension/STORE_LISTING.md)
 - [ ] Reviewer note: "This is an open-source engine. Source available at github.com/AlexMos555/linkshield. Privacy architecture documented at cleanway.ai/privacy-policy. Independent benchmark at cleanway.ai/transparency/methodology."
