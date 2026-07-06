@@ -54,15 +54,24 @@ jobs:
               sys.exit(1)
           PY
 
-      - name: Verify ONNX parity + serves
+      - name: Regression gate (FP + recall must not regress)
         run: |
           PYTHONPATH=. python - <<'PY'
           from api.services.ml_scorer import ml_predict, backend_status
           assert backend_status() in ("onnx", "catboost"), "model did not load"
-          # sanity: obvious phish high, obvious legit low
-          assert ml_predict("paypal.account-verify.tk")["phishing_probability"] > 0.6
-          assert ml_predict("google.com")["phishing_probability"] < 0.2
-          print("ONNX serve + sanity OK")
+          # FP-regression guard: legit long-tail domains that a retrain must keep
+          # low (the whole point of the 2026-07-06 retrain fix — never re-ship a
+          # model that flags klar.mx / gob.mx / mercadolibre as phishing).
+          legit = ["klar.mx", "konfio.mx", "gob.mx", "mercadolibre.com.mx",
+                   "leadgid.com", "banorte.com", "google.com", "wikipedia.org"]
+          bad = {d: ml_predict(d)["phishing_probability"] for d in legit
+                 if ml_predict(d)["phishing_probability"] >= 0.5}
+          assert not bad, f"::error::FP REGRESSION — retrained model over-flags legit: {bad}"
+          # Recall guard: obvious brand-subdomain / structural phishing must fire.
+          for d in ("paypal.account-verify.tk", "apple-id-locked-verify.xyz"):
+              p = ml_predict(d)["phishing_probability"]
+              assert p > 0.6, f"::error::RECALL REGRESSION — {d}={p} (obvious phishing missed)"
+          print("regression gate OK — FP clean + obvious phishing caught")
           PY
 
       - name: Commit new model if changed

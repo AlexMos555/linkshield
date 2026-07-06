@@ -297,6 +297,20 @@ async def _build_response(result: DomainResult) -> dict:
 _LATEST_BENCHMARK = os.path.join(
     os.path.dirname(__file__), "..", "..", "docs", "benchmarks", "latest.json"
 )
+_MODEL_META = os.path.join(
+    os.path.dirname(__file__), "..", "..", "data", "model_meta.json"
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _model_auc() -> "float | None":
+    """Live ML model AUC read from data/model_meta.json — never hardcoded, so it
+    stays honest as the weekly retrain changes it. Returns None if unreadable."""
+    try:
+        with open(_MODEL_META, "r") as f:
+            return float(json.load(f).get("test_auc"))
+    except Exception:
+        return None
 
 
 @functools.lru_cache(maxsize=1)
@@ -344,7 +358,7 @@ async def platform_stats():
         # modern-phish guard, URL-PII).
         "threat_sources": 16,
         "detection_signals": 42,
-        "ml_model_auc": 0.9506,
+        "ml_model_auc": _model_auc(),  # read live from model_meta (drifts on retrain)
         # Which ML backend is actually live: 'onnx' | 'catboost' | 'disabled'.
         # Lets us verify from prod that ML is firing, not silently degraded.
         "ml_backend": ml_scorer.backend_status(),

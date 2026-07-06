@@ -170,8 +170,12 @@ def test_tranco_domain_safe():
 
 def test_domain_age_very_new():
     signals = {"domain": "new-site.com", "domain_age_days": 3}
-    score, level, _ = calculate_score(signals)
-    assert score >= 50
+    score, level, reasons = calculate_score(signals)
+    # domain_very_new (+50) is the signal under test. The ML may apply
+    # ml_safe_override (-10) when it reads the (benign-looking) domain as safe,
+    # so assert the signal fires + a threshold that accounts for that nudge.
+    assert any(r.signal == "domain_very_new" for r in reasons)
+    assert score >= 40
     print(f"  3-day domain: score={score}")
 
 
@@ -243,8 +247,10 @@ def test_fake_tld_in_scoring():
 
 def test_no_https():
     signals = {"domain": "unsafe.com", "no_https": True}
-    score, _, _ = calculate_score(signals)
-    assert score >= 40
+    score, _, reasons = calculate_score(signals)
+    # no_https (+40) is the signal under test; ML may apply ml_safe_override (-10).
+    assert any(r.signal == "no_https" for r in reasons)
+    assert score >= 30
     print(f"  no HTTPS: score={score}")
 
 
