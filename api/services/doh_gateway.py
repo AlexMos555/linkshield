@@ -112,6 +112,16 @@ def parse_qname(wire: bytes) -> Optional[str]:
     return qname or None
 
 
+# Generic second-level labels used under 2-letter ccTLDs (com.cn, co.nz, com.tr,
+# co.il, com.ar, ...). Enough to treat the common compound suffixes as one eTLD
+# without shipping a full public-suffix list.
+_CCTLD_SECOND_LEVELS = frozenset({
+    "com", "co", "org", "net", "gov", "edu", "ac", "mil", "gob", "gouv",
+    "or", "ne", "go", "in", "nom", "gen", "ltd", "plc", "sch", "asn",
+    "id", "biz", "info", "web", "gv", "govt",
+})
+
+
 def _registrable_domain(qname: str) -> str:
     """Best-effort registrable domain for the threat-intel lookup.
 
@@ -122,16 +132,23 @@ def _registrable_domain(qname: str) -> str:
     """
     if not qname:
         return ""
-    parts = qname.split(".")
+    parts = qname.strip(".").lower().split(".")
     if len(parts) <= 2:
-        return qname
-    # Handle a small slice of common multi-segment TLDs without
-    # pulling in the publicsuffix package.
+        return ".".join(parts)
     last_two = ".".join(parts[-2:])
+    # Explicit compound suffixes (belt-and-suspenders for the common ones).
     if last_two in {
         "co.uk", "ac.uk", "gov.uk", "org.uk", "co.jp", "co.in",
         "com.au", "com.br", "com.mx", "co.kr", "co.za", "com.sg",
-    } and len(parts) >= 3:
+    }:
+        return ".".join(parts[-3:])
+    # Heuristic for the long tail of compound ccTLDs without pulling in a full
+    # PSL: a 2-letter ccTLD preceded by a generic second-level label
+    # (com.cn, co.nz, com.tr, co.il, com.ar, co.th, ...) means the registrable
+    # domain is the last THREE labels, so a brand apex like apple.com.cn is not
+    # mistaken for a spoof subdomain.
+    tld, sld = parts[-1], parts[-2]
+    if len(tld) == 2 and sld in _CCTLD_SECOND_LEVELS:
         return ".".join(parts[-3:])
     return last_two
 

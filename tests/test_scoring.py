@@ -239,7 +239,10 @@ def test_typosquat_glyph_homoglyph():
 def test_brand_subdomain_cctld_apex_safe():
     # A brand's own apex on a multi-part suffix must NOT be flagged as a spoof
     # subdomain (regression: barclays.co.uk was caution before the PSL-aware fix).
-    for apex in ["barclays.co.uk", "halifax.co.uk", "google.co.jp", "itau.com.br"]:
+    for apex in ["barclays.co.uk", "halifax.co.uk", "google.co.jp", "itau.com.br",
+                 # out-of-hardcoded-list compound ccTLDs (PSL heuristic must cover):
+                 "apple.com.cn", "barclays.co.nz", "hsbc.com.tr", "paypal.co.il",
+                 "santander.com.ar", "hsbc.co.th"]:
         assert _check_brand_in_subdomain(apex) is None, f"{apex} wrongly flagged"
         score, level, _ = calculate_score({"domain": apex})
         assert level.value == "safe", f"{apex} → {level.value} ({score})"
@@ -251,6 +254,41 @@ def test_brand_subdomain_cctld_spoof_still_fires():
     assert _check_brand_in_subdomain("barclays.account-verify.com") == "barclays"
     assert _check_brand_in_subdomain("paypal.com.attacker.xyz") == "paypal"
     print("  attacker brand-subdomain spoofs → still detected")
+
+
+def test_combosquat_generic_word_not_dangerous():
+    # Regression (workflow finding 1): crypto/generic keywords must NOT expand
+    # combosquat. Legit brand-partner names (Shopify Connect, Chase Rewards) must
+    # not flip to DANGEROUS the way they did when combosquat reused the full
+    # keyword list.
+    for dom in ["shopify-connect.com", "google-sync.com", "chase-rewards.com",
+                "salesforce-connect.com", "microsoft-connect.com", "amex-rewards.com"]:
+        score, level, _ = calculate_score({"domain": dom})
+        assert level.value != "dangerous", f"{dom} → {level.value} ({score})"
+    print("  brand+generic-word → not dangerous (combosquat decoupled)")
+
+
+def test_combosquat_classic_word_still_fires():
+    # The classic phishing-action words must still drive combosquat detection.
+    for dom, brand in [("paypal-login.com", "paypal.com"), ("apple-account.com", "apple.com"),
+                       ("amazon-billing.com", "amazon.com"), ("microsoft-verify.net", "microsoft.com")]:
+        res = _check_typosquatting_v2(dom)
+        assert res and res[0] == brand, f"{dom} not caught: {res}"
+    print("  brand+classic-action-word → still combosquat-detected")
+
+
+def test_glyph_homoglyph_with_keyword():
+    # Regression (workflow findings 2/3): a glyph lookalike of a listed brand PLUS
+    # an extra label / second typo must still flag — the glyph corruption itself is
+    # the intent signal, so exact-match-only was too strict.
+    for dom, brand in [("rnicrosoft-login.com", "microsoft.com"),
+                       ("vvhatsapp-web.com", "whatsapp.com"),
+                       ("vvellsfargo-secure.com", "wellsfargo.com"),
+                       ("grnail-verify.com", "gmail.com"),
+                       ("rnicrosofts.com", "microsoft.com")]:
+        res = _check_typosquatting_v2(dom)
+        assert res and res[0] == brand, f"{dom} not caught: {res}"
+    print("  glyph homoglyph + keyword/typo → detected")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -818,6 +856,8 @@ if __name__ == "__main__":
             test_brand_subdomain_abuse, test_brand_subdomain_legit,
             test_typosquat_glyph_homoglyph, test_brand_subdomain_cctld_apex_safe,
             test_brand_subdomain_cctld_spoof_still_fires,
+            test_combosquat_generic_word_not_dangerous, test_combosquat_classic_word_still_fires,
+            test_glyph_homoglyph_with_keyword,
         ]),
         ("\n[Layer 3.6-3.12: Structural]", [
             test_fake_tld_in_subdomain, test_fake_tld_in_scoring,

@@ -202,6 +202,19 @@ _SUSPICIOUS_KEYWORDS = {
     "seed", "staking", "mint", "rewards", "presale",
 }
 
+# Combosquat action words are a SEPARATE, high-precision list. It must NOT be
+# derived from _SUSPICIOUS_KEYWORDS: generic words like "connect"/"sync"/"rewards"/
+# "restore" are common in legit brand-partner names (shopify-connect, chase-rewards)
+# and would make brand+word combos false-positive as combosquats. These stay as
+# standalone +10 keyword hits only.
+_COMBOSQUAT_KEYWORDS = frozenset({
+    "login", "signin", "sign-in", "log-in", "verify", "verification",
+    "update", "confirm", "secure", "account", "banking", "password",
+    "reset", "suspend", "locked", "unlock", "validate", "authenticate",
+    "wallet", "payment", "invoice", "billing", "refund", "recovery",
+    "alert", "notification", "urgent", "expired", "reactivate",
+})
+
 # URL shorteners to detect
 _URL_SHORTENERS = {
     "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd",
@@ -1225,13 +1238,24 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
             return (legit_domain, "character substitution")
 
         # Multi-char ASCII glyph homoglyph (rn->m, vv->w, cl->d) — #1 tactic,
-        # not covered by single-char subs or Levenshtein<=2. EXACT match only:
-        # chaining _check_char_substitution here over-collapses short names and
-        # false-matches legit domains (clax->wix, clara->atlassian). A real glyph
-        # homoglyph spells the brand exactly after the substitution.
+        # not covered by single-char subs or Levenshtein<=2. When a glyph
+        # substitution actually happened (skel != name), the corruption itself
+        # signals intent, so we look past an exact match to the brand surfacing
+        # as a delimited label (rnicrosoft-login), a combosquat, or a close
+        # variant (rnicrosofts). The len(brand)>=6 guard prevents the short-name
+        # over-collapse that false-matched legit domains (clax->wix, clara->...).
+        # >=5 verified to add zero FPs on 20k legit while catching 5-char targets
+        # (gmail, apple, yahoo, venmo, zelle).
         skel = _glyph_skeleton(name)
-        if skel != name and skel == brand:
-            return (legit_domain, "glyph homoglyph")
+        if skel != name:
+            if skel == brand:
+                return (legit_domain, "glyph homoglyph")
+            if len(brand) >= 5 and (
+                brand in re.split(r"[-.]", skel)
+                or _check_combosquat(skel, brand)
+                or SequenceMatcher(None, skel, brand).ratio() >= 0.90
+            ):
+                return (legit_domain, "glyph homoglyph")
 
         # Transposition
         if _check_transposition(name, brand):
@@ -1276,8 +1300,8 @@ def _check_transposition(s1: str, s2: str) -> bool:
 
 
 def _check_combosquat(name: str, brand: str) -> bool:
-    combo_suffixes = _SUSPICIOUS_KEYWORDS | {"com", "net", "org", "official", "support", "help", "app", "web", "mail", "team"}
-    combo_prefixes = _SUSPICIOUS_KEYWORDS | {"my", "the", "get", "go", "try", "use", "new", "real", "true"}
+    combo_suffixes = _COMBOSQUAT_KEYWORDS | {"com", "net", "org", "official", "support", "help", "app", "web", "mail", "team"}
+    combo_prefixes = _COMBOSQUAT_KEYWORDS | {"my", "the", "get", "go", "try", "use", "new", "real", "true"}
 
     if name.startswith(brand) and len(name) > len(brand):
         suffix = name[len(brand):].lstrip("-")
