@@ -50,7 +50,7 @@
       {
         "icon": "🧠",
         "title": "Détection par IA",
-        "desc": "Modèle CatBoost entraîné sur 14 400 domaines vérifiés. AUC 0,9983. Détecte le phishing inédit que les systèmes par règles manquent."
+        "desc": "Modèle CatBoost entraîné sur 24 000 domaines vérifiés. AUC 0,95. Détecte le phishing inédit que les systèmes par règles manquent."
       },
       {
         "icon": "⚡",

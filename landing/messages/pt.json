@@ -50,7 +50,7 @@
       {
         "icon": "🧠",
         "title": "Detecção com IA",
-        "desc": "Modelo CatBoost treinado em 14.400 domínios verificados. AUC 0,9983. Detecta phishing novo que sistemas baseados em regras não pegam."
+        "desc": "Modelo CatBoost treinado em 24.000 domínios verificados. AUC 0,95. Detecta phishing novo que sistemas baseados em regras não pegam."
       },
       {
         "icon": "⚡",

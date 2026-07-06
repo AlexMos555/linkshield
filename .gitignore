@@ -32,8 +32,11 @@ data/top-1m.csv
 data/phishtank.csv
 data/feature_log.jsonl
 data/bloom_top100k.json
-# data/phishing_model.cbm — TRACKED (238 KB). Required for scoring tests +
-# production inference. Retrain via `ml/train_model.py`; commit the .cbm.
+# data/phishing_model.cbm — TRACKED (238 KB). Authoritative model for retraining
+# + scoring tests. Retrain via `ml/train_model.py`; commit the .cbm.
+# data/phishing_model.onnx — TRACKED (520 KB). What PROD actually runs
+# (onnxruntime, ~40 MB RSS vs catboost ~400 MB). Regenerated alongside the .cbm
+# by ml/train_model.py; commit both together so they never drift.
 
 # CatBoost training artifacts
 catboost_info/

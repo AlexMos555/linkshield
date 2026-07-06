@@ -467,10 +467,20 @@ def test_ssrf_blocked_ips():
 # ═══════════════════════════════════════════════════════════════
 
 def test_low_dns_ttl():
-    signals = {"domain": "suspicious.xyz", "dns_ttl": 60}
+    # Threshold tightened to < 60s (2026-07-06): 60-300s is ordinary CDN/tracker
+    # TTL (Cloudflare defaults to 300), so only genuinely low TTLs fire now.
+    signals = {"domain": "suspicious.xyz", "dns_ttl": 30}
     score, _, reasons = calculate_score(signals)
     assert any(r.signal == "low_dns_ttl" for r in reasons)
-    print(f"  low TTL (60s): score={score}")
+    print(f"  low TTL (30s): score={score}")
+
+
+def test_moderate_dns_ttl_no_longer_fires():
+    # 120s used to be flagged "fast-flux" (old < 300 threshold) — a false
+    # positive on normal CDN infra. It must NOT fire the signal now.
+    signals = {"domain": "cdn-hosted.com", "dns_ttl": 120}
+    _, _, reasons = calculate_score(signals)
+    assert not any(r.signal == "low_dns_ttl" for r in reasons)
 
 
 def test_normal_dns_ttl():
@@ -485,6 +495,23 @@ def test_no_mx_record():
     score, _, reasons = calculate_score(signals)
     assert any(r.signal == "no_mx_record" for r in reasons)
     print(f"  no MX record: score={score}")
+
+
+def test_no_mx_apex_gate():
+    """no_mx only fires on the registrable apex — never a subdomain (MX lives on
+    the apex). Uses the PSL-aware helper so compound ccTLDs work: foo.co.uk is an
+    apex and MUST fire; track.foo.com is a subdomain and MUST NOT."""
+    def fires(domain):
+        _, _, reasons = calculate_score({"domain": domain, "dns_has_mx": False})
+        return any(r.signal == "no_mx_record" for r in reasons)
+
+    # Apex — fire
+    assert fires("nomx.com")
+    assert fires("phishy-bank.co.uk"), "compound-ccTLD apex must fire (was silently dropped)"
+    assert fires("loja-falsa.com.br")
+    # Subdomain — suppress
+    assert not fires("track.safeinflow.com")
+    assert not fires("login.phishy-bank.co.uk")
 
 
 def test_many_a_records():

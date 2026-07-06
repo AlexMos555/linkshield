@@ -238,7 +238,7 @@ export default async function OpenGraphImage({
           }}
         >
           <div style={{ display: "flex" }}>
-            9 threat databases · CatBoost ML · 0.9983 AUC
+            9 threat databases · CatBoost ML · 0.95 AUC
           </div>
           <div
             style={{

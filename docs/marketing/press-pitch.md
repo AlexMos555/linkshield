@@ -26,7 +26,7 @@ Hi {{First name}},
 
 I read your piece on {{recent specific article, e.g. "the Snowflake credentials leak post-mortem"}} last week and thought you might be interested in a small launch.
 
-Short version: I'm a solo dev who built an anti-phishing browser extension and open-sourced the detection engine after benchmarking it. The thing that might be unusual: I publish the weekly per-vendor comparison openly. Same script runs against Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, VirusTotal, and us, on fresh URLhaus + PhishTank URLs. Per-vendor recall, denominators, and unknown-rates are broken out at cleanway.ai/transparency/methodology and update every Monday — please pull the live snapshot before publishing rather than quoting a number from this email. AUC 0.9983 on a held-out 14,400-domain test set.
+Short version: I'm a solo dev who built an anti-phishing browser extension and open-sourced the detection engine after benchmarking it. The thing that might be unusual: I publish the weekly per-vendor comparison openly. Same script runs against Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, VirusTotal, and us, on fresh URLhaus + PhishTank URLs. Per-vendor recall, denominators, and unknown-rates are broken out at cleanway.ai/transparency/methodology and update every Monday — please pull the live snapshot before publishing rather than quoting a number from this email. AUC 0.95 on a held-out 24,000-domain test set.
 
 Why I think this might be a story:
 - No other anti-phishing vendor (Norton, McAfee, Bitdefender) publishes recall numbers, and the few that publish anything publish AUC without a reproducible benchmark.

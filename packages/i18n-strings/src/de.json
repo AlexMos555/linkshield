@@ -442,7 +442,7 @@
         {
           "icon": "🧠",
           "title": "KI-basierte Erkennung",
-          "desc": "CatBoost-Modell trainiert auf 14 400 verifizierten Domains. AUC 0,9983. Erkennt neuartiges Phishing, das regelbasierte Systeme übersehen."
+          "desc": "CatBoost-Modell trainiert auf 24 000 verifizierten Domains. AUC 0,95. Erkennt neuartiges Phishing, das regelbasierte Systeme übersehen."
         },
         {
           "icon": "⚡",

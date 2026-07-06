@@ -50,7 +50,7 @@
       {
         "icon": "🧠",
         "title": "ML-Powered Detection",
-        "desc": "CatBoost model trained on 14,400 verified domains. 0.9983 AUC. Catches novel phishing that rule-based systems miss."
+        "desc": "CatBoost model trained on 24,000 verified domains. 0.95 AUC. Catches novel phishing that rule-based systems miss."
       },
       {
         "icon": "⚡",

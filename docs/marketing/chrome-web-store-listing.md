@@ -43,7 +43,7 @@ Cleanway checks every link you see, in real time, against 16 threat intelligence
 
 **Privacy by design.** Most security extensions ship your full URL to their server so they can check it. Cleanway extracts the domain client-side and sends only the domain — never the full URL, never the page content, never your account email linked to the check. Even our server can't reconstruct your browsing history.
 
-**Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, and the per-vendor comparison vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. Per-vendor recall, precision, and denominators (including our own unknown/rate-limited bucket) are shown side-by-side on that page and refresh every Monday. Static baseline: AUC 0.9983 on a held-out test set of 14,400 verified domains.
+**Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, and the per-vendor comparison vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. Per-vendor recall, precision, and denominators (including our own unknown/rate-limited bucket) are shown side-by-side on that page and refresh every Monday. Static baseline: AUC 0.95 on a held-out test set of 24,000 verified domains.
 
 **Smart explanations, not just warnings.** Cleanway shows *why* a link looks dangerous — credential form mismatch, brand impersonation, fresh certificate from a high-risk registrar, unusual entropy in the domain name. Six skill levels (Grandma, Regular, Kids, Pro) tune the explanation to your reader.
 

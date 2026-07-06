@@ -54,7 +54,7 @@ cd landing && npm run dev  # Landing on localhost:3000
 ## Tech Stack
 
 - **Backend:** FastAPI (Python), Redis, Supabase (PostgreSQL)
-- **ML:** CatBoost, 27 features, trained on 14,400 verified domains
+- **ML:** CatBoost, 27 features, trained on 24,000 verified domains
 - **Extension:** Manifest V3, vanilla JS, MurmurHash3 bloom filter
 - **Mobile:** React Native (Expo), SQLite, native VPN (Swift/Kotlin)
 - **Landing:** Next.js 15

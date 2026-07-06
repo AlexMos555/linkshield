@@ -879,22 +879,33 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             detail=f"Unusually long domain name ({len(domain_name)} characters)",
         ))
 
-    # ── 3.24 DNS: Low TTL (fast-flux indicator) ──
+    # ── 3.24 DNS: Very low TTL (fast-flux indicator) ──
+    # Real fast-flux runs TTL <= 60s with rapid IP rotation. Ordinary CDN /
+    # tracker infra sits at 60-300s (Cloudflare defaults to 300), so the old
+    # `< 300` threshold flagged a huge slice of the legit web as "fast-flux".
+    # Tightened to < 60 so this fires on genuinely suspicious infra only.
     dns_ttl = signals.get("dns_ttl")
-    if dns_ttl is not None and dns_ttl < 300:
+    if dns_ttl is not None and dns_ttl < 60:
         score += 15
         reasons.append(DomainReason(
             signal="low_dns_ttl", weight=15,
-            detail=f"Very low DNS TTL ({dns_ttl}s) — possible fast-flux infrastructure",
+            detail=f"Very low DNS TTL ({dns_ttl}s) — rapidly-changing infrastructure",
         ))
 
-    # ── 3.25 DNS: No MX record (not a real business) ──
+    # ── 3.25 DNS: No MX record (apex domains only) ──
+    # MX lives on the registrable domain, never on a `track.`/`go.` subdomain,
+    # so penalising a subdomain for "no MX" dinged every legit redirect/CDN
+    # host. Only apply when we're actually looking at the apex. Use the
+    # PSL-aware registrable-domain helper (not the naive 2-label split) so this
+    # stays correct for compound ccTLDs — foo.co.uk is an apex, not a subdomain.
     if signals.get("dns_has_mx") is False:
-        score += 8
-        reasons.append(DomainReason(
-            signal="no_mx_record", weight=8,
-            detail="No MX (email) record — unlikely to be a legitimate business",
-        ))
+        from api.services.doh_gateway import _registrable_domain
+        if domain == _registrable_domain(domain):
+            score += 8
+            reasons.append(DomainReason(
+                signal="no_mx_record", weight=8,
+                detail="No MX (email) record — unlikely to be a legitimate business",
+            ))
 
     # ── 3.26 DNS: Many A records (fast-flux or CDN) ──
     a_count = signals.get("dns_a_count")

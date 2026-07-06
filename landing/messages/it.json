@@ -50,7 +50,7 @@
       {
         "icon": "🧠",
         "title": "Rilevamento ML",
-        "desc": "Modello CatBoost addestrato su 14 400 domini verificati. AUC 0,9983. Rileva phishing inedito che i sistemi a regole non vedono."
+        "desc": "Modello CatBoost addestrato su 24 000 domini verificati. AUC 0,95. Rileva phishing inedito che i sistemi a regole non vedono."
       },
       {
         "icon": "⚡",

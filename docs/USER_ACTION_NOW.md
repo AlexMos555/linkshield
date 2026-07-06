@@ -129,7 +129,7 @@ Railway env `BENCHMARK_BYPASS_TOKEN` + GitHub Actions secret `BENCHMARK_BYPASS_T
 ---
 
 ## ❌ Что НЕ делать сейчас (сознательно)
-- Не ретренить ML-модель (AUC 0.9983 отличный; риск регрессии перед launch; модель не bottleneck).
+- Не ретренить ML-модель (AUC 0.95 отличный; риск регрессии перед launch; модель не bottleneck).
 - Не строить новые фичи (top-20 + #21 закрыты; distribution — вот bottleneck).
 - Не лезть в B2B/SOC2 (wrong audience для exit-трека).
 - Не жечь paid ads до аналитики.

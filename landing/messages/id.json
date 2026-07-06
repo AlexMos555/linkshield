@@ -50,7 +50,7 @@
       {
         "icon": "🧠",
         "title": "Deteksi bertenaga ML",
-        "desc": "Model CatBoost dilatih pada 14.400 domain terverifikasi. AUC 0,9983. Mendeteksi phishing baru yang dilewatkan sistem berbasis aturan."
+        "desc": "Model CatBoost dilatih pada 24.000 domain terverifikasi. AUC 0,95. Mendeteksi phishing baru yang dilewatkan sistem berbasis aturan."
       },
       {
         "icon": "⚡",

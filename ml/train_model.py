@@ -59,11 +59,44 @@ def load_phishing_domains(max_n: int = 10000) -> list[str]:
     return list(domains)
 
 
-def load_benign_domains(max_n: int = 10000) -> list[str]:
-    json_path = os.path.join(DATA_DIR, "top_10k.json")
-    with open(json_path, "r") as f:
-        data = json.load(f)
-    return list(data.keys())[:max_n]
+def load_benign_domains(max_n: int = 12000) -> list[str]:
+    """Benign negatives sampled from the Tranco top-1M — LONG TAIL included.
+
+    CRITICAL (2026-07-06 fix): the previous version sampled benign ONLY from
+    top_10k.json. Training benign purely on famous domains taught the model
+    "not-famous => phishing", which flagged ~58% of real legit long-tail domains
+    (klar.mx, konfio.mx, gob.mx, ...) as phishing at serving time. AUC on the
+    balanced test set looked great (0.9983) only because the test's legit half
+    was ALSO top-10k — a distribution the model never has to face in production.
+
+    Fix: stratified sample — a slice of top-10k (famous domains stay negatives so
+    `in_top_domains` remains a valid signal) + a large uniform sample of rank
+    10k-1M so the model learns legitimate domains exist across the whole
+    popularity spectrum and must use real lexical/structural signals to separate
+    them from phishing.
+    """
+    import random
+
+    rng = random.Random(42)
+    csv_path = os.path.join(DATA_DIR, "top-1m.csv")
+    head: list[str] = []  # rank <= 10k (famous)
+    tail: list[str] = []  # rank 10k-1M (long tail)
+    with open(csv_path, "r", encoding="utf-8", errors="ignore") as f:
+        for line in f:
+            parts = line.strip().split(",", 1)
+            if len(parts) != 2:
+                continue
+            try:
+                rank = int(parts[0])
+            except ValueError:
+                continue
+            (head if rank <= 10000 else tail).append(parts[1].lower())
+
+    n_head = min(len(head), max_n // 4)  # ~25% famous
+    n_tail = min(len(tail), max_n - n_head)  # ~75% long tail
+    benign = rng.sample(head, n_head) + rng.sample(tail, n_tail)
+    rng.shuffle(benign)
+    return benign
 
 
 def train():
@@ -73,8 +106,11 @@ def train():
 
     # ── Load data ──
     print("\nLoading data...")
-    phishing = load_phishing_domains(10000)
-    benign = load_benign_domains(8000)
+    phishing = load_phishing_domains(12000)
+    phish_set = set(phishing)
+    # Exclude any benign that also appears in the phishing feed (compromised-legit
+    # domains show up in both) so labels stay clean.
+    benign = [d for d in load_benign_domains(15000) if d not in phish_set][:12000]
     print(f"  Phishing domains: {len(phishing)}")
     print(f"  Benign domains:   {len(benign)}")
 
@@ -171,13 +207,23 @@ def train():
     model.save_model(model_path)
     print(f"\nModel saved to: {model_path}")
 
+    # ── Export ONNX for lean production inference ──
+    # Prod runs onnxruntime (~40 MB RSS) instead of catboost (~400 MB deps) so
+    # the model fits Railway's 512 MB plan. Keep BOTH artifacts in sync: the
+    # .cbm is authoritative for retraining, the .onnx is what ships. See
+    # api/services/ml_scorer.py (onnxruntime-first, catboost fallback).
+    onnx_path = os.path.join(MODEL_DIR, "phishing_model.onnx")
+    model.save_model(onnx_path, format="onnx")
+    print(f"ONNX model saved to: {onnx_path}")
+
     # Save feature names
     meta_path = os.path.join(MODEL_DIR, "model_meta.json")
     with open(meta_path, "w") as f:
         json.dump({
             "feature_names": FEATURE_NAMES,
             "n_features": len(FEATURE_NAMES),
-            "train_samples": len(X_train),
+            "train_samples": len(X_train),   # 80% split actually fit
+            "total_samples": len(X),         # full labeled corpus (what copy cites)
             "test_auc": round(auc, 4),
             "hosting_platforms": list(HOSTING_PLATFORMS),
         }, f, indent=2)
