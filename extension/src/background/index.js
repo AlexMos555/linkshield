@@ -139,7 +139,7 @@ function fetchWithTimeout(url, ms) {
 }
 
 // ── Local scoring (instant, no network) ──
-const _HR = [".tk",".ml",".ga",".cf",".gq",".xyz",".top",".click",".buzz",".icu",".cam",".live",".online",".site",".loan",".download",".zip",".mov",".sbs",".cfd",".shop"];
+const _HR = [".tk",".ml",".ga",".cf",".gq",".xyz",".top",".click",".buzz",".icu",".cam",".live",".online",".site",".loan",".download",".zip",".mov",".sbs",".cfd"];
 const _SW = ["login","signin","verify","update","confirm","secure","account","password","wallet","payment","invoice","banking","reset","suspend","locked","unlock"];
 const _CS = {"1":"l","0":"o","3":"e","@":"a","5":"s"};
 const _BR = {"paypal":"paypal.com","apple":"apple.com","google":"google.com","amazon":"amazon.com","microsoft":"microsoft.com","netflix":"netflix.com","facebook":"facebook.com","instagram":"instagram.com","whatsapp":"whatsapp.com","chase":"chase.com","coinbase":"coinbase.com","binance":"binance.com","dhl":"dhl.com","fedex":"fedex.com","ups":"ups.com","ebay":"ebay.com","steam":"store.steampowered.com","discord":"discord.com","telegram":"telegram.org","linkedin":"linkedin.com"};

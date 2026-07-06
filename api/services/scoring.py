@@ -145,13 +145,13 @@ HIGH_RISK_TLDS = {
     ".cam", ".live", ".online", ".site",      # Common phishing
     ".loan", ".racing", ".win", ".download",  # Almost exclusively spam
     ".zip", ".mov",                            # Google file-ext TLDs — 18% malicious (Netskope 2025)
-    ".sbs", ".cfd", ".shop",                   # Newly heavily-abused (cybercrimeinfocenter 2026)
+    ".sbs", ".cfd",                            # Newly heavily-abused junk TLDs (cybercrimeinfocenter 2026)
 }
 
 MEDIUM_RISK_TLDS = {
     ".info", ".biz", ".cc", ".pw", ".ws",
     ".club", ".space", ".fun", ".monster",
-    ".store", ".stream", ".gdn", ".bid",
+    ".store", ".shop", ".stream", ".gdn", ".bid",  # .shop: abused but mainstream e-commerce, sits with .store
 }
 
 
@@ -1225,9 +1225,12 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
             return (legit_domain, "character substitution")
 
         # Multi-char ASCII glyph homoglyph (rn->m, vv->w, cl->d) — #1 tactic,
-        # not covered by single-char subs or Levenshtein<=2.
+        # not covered by single-char subs or Levenshtein<=2. EXACT match only:
+        # chaining _check_char_substitution here over-collapses short names and
+        # false-matches legit domains (clax->wix, clara->atlassian). A real glyph
+        # homoglyph spells the brand exactly after the substitution.
         skel = _glyph_skeleton(name)
-        if skel != name and (skel == brand or _check_char_substitution(skel, brand)):
+        if skel != name and skel == brand:
             return (legit_domain, "glyph homoglyph")
 
         # Transposition

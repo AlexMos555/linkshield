@@ -32,7 +32,7 @@ var BRANDS = {
   outlook:"outlook.com",gmail:"gmail.com",roblox:"roblox.com",
 };
 
-var HIGH_RISK_TLDS = [".tk",".ml",".ga",".cf",".gq",".xyz",".top",".click",".buzz",".icu",".cam",".live",".online",".site",".loan",".racing",".win",".download",".rest",".surf",".zip",".mov",".sbs",".cfd",".shop"];
+var HIGH_RISK_TLDS = [".tk",".ml",".ga",".cf",".gq",".xyz",".top",".click",".buzz",".icu",".cam",".live",".online",".site",".loan",".racing",".win",".download",".rest",".surf",".zip",".mov",".sbs",".cfd"];
 var MEDIUM_RISK_TLDS = [".info",".biz",".cc",".pw",".ws",".club",".space",".fun",".monster",".store",".stream"];
 
 var SUSPICIOUS_WORDS = ["login","signin","sign-in","verify","verification","update","confirm","secure","account","banking","password","reset","suspend","locked","unlock","validate","wallet","payment","invoice","billing","refund","recovery","alert","urgent","expired","reactivate"];
