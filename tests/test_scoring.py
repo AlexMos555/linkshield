@@ -400,6 +400,16 @@ def test_homograph_pure_ascii():
     print("  Pure ASCII → no homograph")
 
 
+def test_homograph_punycode():
+    # IDN homograph attacks appear in DNS/URLs as ASCII xn-- punycode; the
+    # detector must decode them, not treat them as harmless ASCII (2026-07-06 gap:
+    # punycode homographs were 70% missed until we decoded xn-- first).
+    result = _check_homograph("xn--pypal-4ve.com")  # punycode of pаypal (Cyrillic а)
+    assert result is not None, "punycode homograph must be decoded + flagged"
+    # a legit internationalized domain (no confusables) must NOT false-positive
+    assert _check_homograph("xn--caf-dma.com") is None  # café.com — legit é, not a lookalike
+
+
 def test_homograph_scoring():
     signals = {"domain": "p\u0430ypal.com"}
     score, _, reasons = calculate_score(signals)

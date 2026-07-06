@@ -1138,15 +1138,31 @@ def _extract_tld(domain: str) -> str:
 # ── Homograph detection ──
 
 def _check_homograph(domain: str) -> Optional[str]:
+    # IDN homograph attacks appear in DNS/URLs as ASCII punycode (xn--…), so a
+    # raw ascii check misses them entirely. Decode any xn-- label back to Unicode
+    # FIRST, then look for confusable characters on the decoded form.
+    decoded = domain
+    if "xn--" in domain.lower():
+        labels = []
+        for label in domain.split("."):
+            if label.lower().startswith("xn--"):
+                try:
+                    labels.append(label[4:].encode("ascii").decode("punycode"))
+                except Exception:
+                    labels.append(label)
+            else:
+                labels.append(label)
+        decoded = ".".join(labels)
+
     try:
-        domain.encode("ascii")
-        return None
+        decoded.encode("ascii")
+        return None  # pure ASCII after decoding — no confusables possible
     except UnicodeEncodeError:
         pass
 
     ascii_version = ""
     has_confusable = False
-    for char in domain:
+    for char in decoded:
         if char in _CONFUSABLES:
             ascii_version += _CONFUSABLES[char]
             has_confusable = True
