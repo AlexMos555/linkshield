@@ -30,7 +30,10 @@ jobs:
       - name: Install training deps
         run: |
           pip install --upgrade pip
-          pip install httpx catboost==1.2.10 numpy==1.26.4 scikit-learn onnxruntime
+          # Backend deps (pydantic, etc.) — train_model.py imports api.services.*
+          pip install -r requirements.txt
+          # Training-only deps not shipped to prod
+          pip install catboost==1.2.10 scikit-learn
 
       - name: Refresh training feeds (fresh phishing + Tranco)
         run: python scripts/refresh_training_feeds.py
