@@ -144,6 +144,8 @@ HIGH_RISK_TLDS = {
     ".buzz", ".rest", ".surf", ".icu",        # New gTLDs — high abuse
     ".cam", ".live", ".online", ".site",      # Common phishing
     ".loan", ".racing", ".win", ".download",  # Almost exclusively spam
+    ".zip", ".mov",                            # Google file-ext TLDs — 18% malicious (Netskope 2025)
+    ".sbs", ".cfd", ".shop",                   # Newly heavily-abused (cybercrimeinfocenter 2026)
 }
 
 MEDIUM_RISK_TLDS = {
@@ -176,12 +178,28 @@ _CHAR_SUBS: dict[str, str] = {
     "1": "l", "0": "o", "3": "e", "@": "a", "5": "s", "!": "i",
 }
 
+# Multi-char ASCII glyph homoglyphs — the #1 lookalike tactic (Unit42 2025):
+# "rn"->m, "vv"->w, "cl"->d survive IDN/punycode defenses AND change the label
+# length, so they slip past single-char _CHAR_SUBS and Levenshtein<=2 checks.
+_GLYPH_SUBS: list[tuple[str, str]] = [("rn", "m"), ("vv", "w"), ("cl", "d")]
+
+
+def _glyph_skeleton(name: str) -> str:
+    """Collapse multi-char glyph look-alikes so rnicrosoft->microsoft etc."""
+    out = name
+    for a, b in _GLYPH_SUBS:
+        out = out.replace(a, b)
+    return out
+
 _SUSPICIOUS_KEYWORDS = {
     "login", "signin", "sign-in", "log-in", "verify", "verification",
     "update", "confirm", "secure", "account", "banking", "password",
     "reset", "suspend", "locked", "unlock", "validate", "authenticate",
     "wallet", "payment", "invoice", "billing", "refund", "recovery",
     "alert", "notification", "urgent", "expired", "reactivate",
+    # Crypto-drainer lexicon (2025-2026: ledger-restore, metamask-claim, etc.)
+    "connect", "restore", "sync", "migrate", "airdrop", "claim",
+    "seed", "staking", "mint", "rewards", "presale",
 }
 
 # URL shorteners to detect
@@ -1206,6 +1224,12 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
         if _check_char_substitution(name, brand):
             return (legit_domain, "character substitution")
 
+        # Multi-char ASCII glyph homoglyph (rn->m, vv->w, cl->d) — #1 tactic,
+        # not covered by single-char subs or Levenshtein<=2.
+        skel = _glyph_skeleton(name)
+        if skel != name and (skel == brand or _check_char_substitution(skel, brand)):
+            return (legit_domain, "glyph homoglyph")
+
         # Transposition
         if _check_transposition(name, brand):
             return (legit_domain, "character swap")
@@ -1268,15 +1292,20 @@ def _check_combosquat(name: str, brand: str) -> bool:
 # ── Brand subdomain abuse ──
 
 def _check_brand_in_subdomain(domain: str) -> Optional[str]:
-    parts = domain.lower().strip(".").split(".")
-    if len(parts) <= 2:
+    from api.services.doh_gateway import _registrable_domain
+
+    dom = domain.lower().strip(".")
+    reg = _registrable_domain(dom)
+    # Only labels strictly BEFORE the registrable domain are real subdomains.
+    # Naive parts[:-2] misfires on multi-part suffixes (barclays.co.uk would
+    # treat "barclays" as a spoof subdomain) — use the PSL-aware registrable.
+    if not reg or dom == reg:
         return None
-    base = _extract_base_domain(domain)
-    for part in parts[:-2]:
+    sub = dom[: -(len(reg) + 1)]
+    for part in sub.split("."):
         part_clean = part.replace("-", "")
-        if part_clean in TYPOSQUAT_TARGETS:
-            if base != TYPOSQUAT_TARGETS[part_clean]:
-                return part_clean
+        if part_clean in TYPOSQUAT_TARGETS and reg != TYPOSQUAT_TARGETS[part_clean]:
+            return part_clean
     return None
 
 

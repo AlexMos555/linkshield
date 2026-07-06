@@ -227,6 +227,32 @@ def test_brand_subdomain_legit():
     print("  paypal.com → not abuse")
 
 
+def test_typosquat_glyph_homoglyph():
+    # Multi-char ASCII glyph look-alikes (rn->m, vv->w) — a top real-world tactic,
+    # missed by single-char substitution and Levenshtein<=2.
+    for dom, brand in [("rnicrosoft.com", "microsoft.com"), ("vvhatsapp.com", "whatsapp.com")]:
+        result = _check_typosquatting_v2(dom)
+        assert result and result[0] == brand, f"{dom} not caught: {result}"
+        print(f"  {dom} → {result[0]} ({result[1]})")
+
+
+def test_brand_subdomain_cctld_apex_safe():
+    # A brand's own apex on a multi-part suffix must NOT be flagged as a spoof
+    # subdomain (regression: barclays.co.uk was caution before the PSL-aware fix).
+    for apex in ["barclays.co.uk", "halifax.co.uk", "google.co.jp", "itau.com.br"]:
+        assert _check_brand_in_subdomain(apex) is None, f"{apex} wrongly flagged"
+        score, level, _ = calculate_score({"domain": apex})
+        assert level.value == "safe", f"{apex} → {level.value} ({score})"
+    print("  ccTLD brand apexes → all safe (no brand_subdomain_abuse)")
+
+
+def test_brand_subdomain_cctld_spoof_still_fires():
+    # But a brand label as a real subdomain of an attacker domain must still fire.
+    assert _check_brand_in_subdomain("barclays.account-verify.com") == "barclays"
+    assert _check_brand_in_subdomain("paypal.com.attacker.xyz") == "paypal"
+    print("  attacker brand-subdomain spoofs → still detected")
+
+
 # ═══════════════════════════════════════════════════════════════
 # LAYER 3.6-3.12: STRUCTURAL SIGNALS
 # ═══════════════════════════════════════════════════════════════
@@ -268,6 +294,14 @@ def test_risky_tld_medium():
     print(f"  .info: score={score}")
 
 
+def test_risky_tld_zip_mov():
+    # Google's 2023 file-extension gTLDs (.zip/.mov) + 2026 abused TLDs are high-risk.
+    for tld_dom in ["invoice.zip", "brand.mov", "login.sbs", "promo.cfd"]:
+        _, _, reasons = calculate_score({"domain": tld_dom})
+        assert any(r.signal.startswith("risky_tld") for r in reasons), f"{tld_dom} not flagged"
+    print("  .zip/.mov/.sbs/.cfd → risky_tld fires")
+
+
 def test_excessive_subdomains():
     signals = {"domain": "a.b.c.d.evil.com"}
     score, _, reasons = calculate_score(signals)
@@ -281,6 +315,15 @@ def test_suspicious_keyword():
     assert score > 0
     sigs = [r.signal for r in reasons]
     print(f"  suspicious keyword: score={score}, signals={sigs}")
+
+
+def test_suspicious_keyword_crypto_drainer():
+    # Wallet-drainer lexicon (connect/claim/airdrop/restore/seed) is the 2025-2026
+    # crypto-phishing signature.
+    for kw_dom in ["ledger-restore.com", "metamask-claim.xyz", "wallet-airdrop.io"]:
+        _, _, reasons = calculate_score({"domain": kw_dom})
+        assert any(r.signal == "suspicious_keyword" for r in reasons), f"{kw_dom} missed"
+    print("  crypto-drainer keywords → suspicious_keyword fires")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -773,11 +816,14 @@ if __name__ == "__main__":
             test_typosquat_char_sub, test_typosquat_hyphen, test_typosquat_combo,
             test_typosquat_tld_confusion, test_typosquat_exact_not_flagged,
             test_brand_subdomain_abuse, test_brand_subdomain_legit,
+            test_typosquat_glyph_homoglyph, test_brand_subdomain_cctld_apex_safe,
+            test_brand_subdomain_cctld_spoof_still_fires,
         ]),
         ("\n[Layer 3.6-3.12: Structural]", [
             test_fake_tld_in_subdomain, test_fake_tld_in_scoring,
             test_no_https, test_risky_tld_high, test_risky_tld_medium,
-            test_excessive_subdomains, test_suspicious_keyword,
+            test_risky_tld_zip_mov, test_excessive_subdomains,
+            test_suspicious_keyword, test_suspicious_keyword_crypto_drainer,
         ]),
         ("\n[Layer 3.13-3.17: URL Lexical]", [
             test_shannon_entropy, test_entropy_in_scoring,
