@@ -92,6 +92,24 @@ def test_alienvault_otx_low():
     print(f"  AlienVault OTX (2 pulses) → score={score}")
 
 
+def test_otx_popularity_gate():
+    """OTX pulses MENTION a domain; legit popular sites appear as impersonation
+    TARGETS, so gate by popularity. Regression guard for the 2026-07-06 FP where
+    elfinanciero.com.mx (national newspaper, top-10k) landed 'dangerous' on 8
+    victim-reference pulses. Top-10k → suppressed (incl. compound ccTLD); obscure
+    domains keep full weight so recall on genuinely-flagged domains holds."""
+    def otx_weight(domain, pulses):
+        _, _, reasons = calculate_score({"domain": domain, "alienvault_pulse_count": pulses})
+        return sum(r.weight for r in reasons if r.signal.startswith("alienvault"))
+
+    # top-10k legit → suppressed regardless of pulse count (compound ccTLD works)
+    assert otx_weight("elfinanciero.com.mx", 8) == 0
+    assert otx_weight("mercadolibre.com.mx", 2) == 0
+    # obscure domain → kept at full weight (recall preserved)
+    assert otx_weight("solar-sanat.net", 50) == 60
+    assert otx_weight("hdbkell.com", 1) == 30
+
+
 def test_ipqs_phishing():
     signals = {"domain": "phish.xyz", "ipqs_phishing": True}
     score, level, _ = calculate_score(signals)

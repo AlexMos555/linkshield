@@ -506,20 +506,37 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             detail=explanations.get(variant, f"Flagged by Cleanway Watchtower as a cousin of {brand}."),
         ))
 
-    # AlienVault OTX community reports
+    # AlienVault OTX community reports — popularity-gated.
+    # OTX "pulses" are community threat reports that MENTION a domain. Legit
+    # popular sites appear in them constantly as impersonation TARGETS / campaign
+    # victims, so a mention is NOT proof of malice. A raw +30/+60 (ungated by
+    # popularity) flagged major legit sites — e.g. elfinanciero.com.mx (a national
+    # newspaper, top-10k) landed at "dangerous" on 8 victim-reference pulses.
+    #   - top-10k domain  → skip (an OTX mention is ~always a victim reference).
+    #   - top-100k domain → discount by half.
+    #   - otherwise (obscure domain in threat reports) → full weight.
+    # Uses the PSL-aware registrable domain so compound ccTLDs (.com.mx/.co.uk)
+    # resolve correctly, not the naive 2-label split.
     alienvault_pulses = signals.get("alienvault_pulse_count", 0)
-    if alienvault_pulses > 5:
-        score += 60
-        reasons.append(DomainReason(
-            signal="alienvault_otx_high", weight=60,
-            detail=f"Flagged in {alienvault_pulses} AlienVault OTX threat reports",
-        ))
-    elif alienvault_pulses > 0:
-        score += 30
-        reasons.append(DomainReason(
-            signal="alienvault_otx", weight=30,
-            detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s)",
-        ))
+    if alienvault_pulses > 0:
+        from api.services.doh_gateway import _registrable_domain
+        _reg = _registrable_domain(domain)
+        if _reg not in _TRANCO_TOP_10K:
+            _discount = _reg in _TRANCO_TOP_100K
+            if alienvault_pulses > 5:
+                _wt = 30 if _discount else 60
+                score += _wt
+                reasons.append(DomainReason(
+                    signal="alienvault_otx_high", weight=_wt,
+                    detail=f"Flagged in {alienvault_pulses} AlienVault OTX threat reports",
+                ))
+            else:
+                _wt = 15 if _discount else 30
+                score += _wt
+                reasons.append(DomainReason(
+                    signal="alienvault_otx", weight=_wt,
+                    detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s)",
+                ))
 
     # IPQualityScore
     if signals.get("ipqs_phishing"):
