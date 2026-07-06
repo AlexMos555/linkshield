@@ -10,8 +10,10 @@ These power the SEO pages and the public "is X safe?" feature.
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import logging
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -291,6 +293,36 @@ async def _build_response(result: DomainResult) -> dict:
     return _format_public_result(result, competitors=competitors)
 
 
+_LATEST_BENCHMARK = os.path.join(
+    os.path.dirname(__file__), "..", "..", "docs", "benchmarks", "latest.json"
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _measured_detection_rate() -> "float | None":
+    """Honest fresh-URL recall from the latest weekly benchmark.
+
+    Gated exactly like the landing's live-recall.ts: only return a number when
+    the sample is statistically meaningful (n_phishing >= 100 AND classified
+    (tp+fn) >= 50). Otherwise return None so the endpoint publishes no rate
+    rather than a hand-authored one — the old hardcoded 93.5% was never re-run
+    against the live endpoint (see docs/AUDIT_2026-06-29.md) and is not
+    defensible. Cached: latest.json only changes on redeploy / the weekly cron.
+    """
+    try:
+        with open(_LATEST_BENCHMARK, "r") as f:
+            d = json.load(f)
+        cw = d.get("phishing", {}).get("cleanway", {})
+        recall = cw.get("recall")
+        n_phishing = d.get("n_phishing", 0)
+        classified = (cw.get("tp") or 0) + (cw.get("fn") or 0)
+        if recall is None or n_phishing < 100 or classified < 50:
+            return None
+        return round(recall * 100, 1)
+    except Exception:
+        return None
+
+
 @router.get(
     "/stats",
     dependencies=[Depends(rate_limit(mode="ip", category="public_stats"))],
@@ -298,10 +330,10 @@ async def _build_response(result: DomainResult) -> dict:
 async def platform_stats():
     """Global platform statistics for landing page and social proof.
 
-    Numbers MUST stay consistent with docs/transparency/<latest>.json —
-    that file is the source of truth, but reading it here would
-    couple this fast hot-path endpoint to disk I/O. Mirror by hand
-    until we have a build step that injects the values at deploy.
+    detection_rate is read (and gated) from docs/benchmarks/latest.json — the
+    weekly-measured source of truth — NOT a hand-authored number. It is null
+    until a large-enough sample has been benchmarked, matching how the landing
+    presents recall. Other counts mirror docs/transparency/<latest>.json.
     """
     return {
         "total_domains_protected": 100000,
@@ -312,7 +344,8 @@ async def platform_stats():
         "threat_sources": 16,
         "detection_signals": 42,
         "ml_model_auc": 0.9506,
-        "detection_rate": 93.5,
+        # Measured fresh-URL recall, gated (null until n>=100). Never hardcoded.
+        "detection_rate": _measured_detection_rate(),
         # Mirrors docs/transparency/2026-q2.json. 0.0 was wishful;
         # 0.0008 (0.08%) is what the latest period actually measured.
         "false_positive_rate": 0.0008,

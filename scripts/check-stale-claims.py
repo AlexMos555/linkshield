@@ -3,7 +3,7 @@
 
 After the 2026-06-17 validation pass, the project committed to these values:
   - AUC                    0.95 (not 0.9988)
-  - Fresh-URL recall       93.5%  (not 91% or 91.1%)
+  - Fresh-URL recall       measured in docs/benchmarks/latest.json (gated); never a hardcoded 93.5%
   - Training samples       24,000 (not 18K, not 18,000)
   - Measured FPR           0.08%  (not 0.0%)
 
@@ -28,8 +28,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # (pattern, human-readable description)
 FORBIDDEN = [
     (r"\b0\.9988\b", "stale AUC 0.9988 — use 0.95"),
-    (r"\b91\.1%", "stale detection_rate 91.1% — use 93.5% (recall on fresh URLs)"),
-    (r"\b91% detection", "stale '91% detection' — use '93.5% recall on fresh phishing URLs'"),
+    (r"\b91\.1%", "stale detection_rate 91.1% — recall is measured in latest.json, not hardcoded"),
+    (r"\b91% detection", "stale '91% detection' — recall comes from latest.json (gated), not a fixed number"),
     (r"\b18K\+? domains", "stale '18K domains' — use '24,000 verified domains'"),
     (r"\b18,?000 (samples|domains)", "stale '18000 samples' — use '24,000'"),
 ]
@@ -109,7 +109,7 @@ def main() -> int:
     print(
         "\nFix: replace these strings with the validated values from "
         "data/model_meta.json (AUC 0.95) and the weekly benchmark "
-        "(93.5% recall, 24,000 training samples). If a hit is legitimate "
+        "(recall read from latest.json, 24,000 training samples). If a hit is legitimate "
         "(e.g. quoting historical text), add the path to EXCLUDE_FILES "
         "in this script.",
         file=sys.stderr,
