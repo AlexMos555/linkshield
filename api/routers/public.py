@@ -24,6 +24,7 @@ from api.services.scoring import (
 from api.services.domain_validator import validate_domain, DomainValidationError
 from api.services.rate_limiter import rate_limit, _extract_client_ip
 from api.models.schemas import DomainResult, RiskLevel, ConfidenceLevel
+from api.services import ml_scorer
 
 # Per-domain in-flight singleflight map. When N concurrent requests
 # arrive for the same fresh domain, only the first runs analyze_domain;
@@ -344,6 +345,9 @@ async def platform_stats():
         "threat_sources": 16,
         "detection_signals": 42,
         "ml_model_auc": 0.9506,
+        # Which ML backend is actually live: 'onnx' | 'catboost' | 'disabled'.
+        # Lets us verify from prod that ML is firing, not silently degraded.
+        "ml_backend": ml_scorer.backend_status(),
         # Measured fresh-URL recall, gated (null until n>=100). Never hardcoded.
         "detection_rate": _measured_detection_rate(),
         # Mirrors docs/transparency/2026-q2.json. 0.0 was wishful;

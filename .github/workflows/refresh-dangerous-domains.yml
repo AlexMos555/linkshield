@@ -1,0 +1,55 @@
+name: Refresh DNS blocklist (dangerous_domains)
+
+# Populates the DoH gateway's `dangerous_domains` Redis set from live phishing
+# feeds. Until 2026-07-06 this set had ZERO writers — the DNS resolver checked an
+# empty set and blocked nothing. This job makes DNS-level blocking actually work.
+#
+# Runs every 6 hours (phishing is time-sensitive; the set carries a 3-day TTL so
+# a stalled cron degrades gracefully rather than serving stale blocks forever).
+#
+# Secret requirement: REDIS_URL_PRODUCTION (same key Railway + the Tranco cron use).
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'   # every 6h at :23 (offset from the Tranco 03:17 job)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Fetch + report but do not write Redis'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install --upgrade pip httpx redis
+
+      - name: Populate dangerous_domains
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL_PRODUCTION }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python scripts/refresh_dangerous_domains.py --dry-run
+          else
+            set +e
+            python scripts/refresh_dangerous_domains.py
+            code=$?
+            # Exit 3 = another run holds the lock (overlap) — not a failure.
+            if [ "$code" = "3" ]; then
+              echo "::warning::Another refresh holds the lock. Skipping."
+              exit 0
+            fi
+            exit $code
+          fi

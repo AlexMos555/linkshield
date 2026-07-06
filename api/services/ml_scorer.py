@@ -190,3 +190,14 @@ def ml_predict(domain: str) -> Optional[dict]:
     except Exception as e:
         logger.warning("ML prediction failed for %s: %s", domain, e)
         return None
+
+
+def backend_status() -> str:
+    """Which ML backend is actually live right now: 'onnx' | 'catboost' | 'disabled'.
+
+    Loads lazily and is cheap to call repeatedly — used by the /stats endpoint so
+    we can VERIFY from prod whether ML is firing, instead of silently degrading to
+    rule-based scoring with no visibility (the fail-soft path returns None quietly).
+    """
+    _load_model()
+    return _backend or "disabled"

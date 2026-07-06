@@ -1,0 +1,76 @@
+name: Retrain phishing ML model (weekly)
+
+# Turns the frozen ML artifact into a living, self-updating model.
+# Before 2026-07-06 nothing retrained it and the training feed was a frozen
+# April snapshot — a retrain just re-learned April's phish. This job pulls FRESH
+# phishing (URLhaus full + OpenPhish) + Tranco benign, retrains, health-gates on
+# AUC, exports ONNX, and commits the new model so prod picks it up on next deploy.
+#
+# Weekly (Mon 05:00 UTC). Manual runs via workflow_dispatch.
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # commits the retrained model artifacts
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install training deps
+        run: |
+          pip install --upgrade pip
+          pip install httpx catboost==1.2.10 numpy==1.26.4 scikit-learn onnxruntime
+
+      - name: Refresh training feeds (fresh phishing + Tranco)
+        run: python scripts/refresh_training_feeds.py
+
+      - name: Retrain (exports .cbm + .onnx + meta)
+        run: PYTHONPATH=. python ml/train_model.py
+
+      - name: Health-gate on AUC (refuse to ship a broken model)
+        run: |
+          python - <<'PY'
+          import json, sys
+          m = json.load(open("data/model_meta.json"))
+          auc = float(m.get("test_auc", 0))
+          n = int(m.get("total_samples", 0))
+          print(f"retrained: AUC={auc} total_samples={n}")
+          if auc < 0.85 or n < 10000:
+              print("::error::retrain failed health gate (AUC<0.85 or n<10000) — NOT committing")
+              sys.exit(1)
+          PY
+
+      - name: Verify ONNX parity + serves
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          from api.services.ml_scorer import ml_predict, backend_status
+          assert backend_status() in ("onnx", "catboost"), "model did not load"
+          # sanity: obvious phish high, obvious legit low
+          assert ml_predict("paypal.account-verify.tk")["phishing_probability"] > 0.6
+          assert ml_predict("google.com")["phishing_probability"] < 0.2
+          print("ONNX serve + sanity OK")
+          PY
+
+      - name: Commit new model if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/phishing_model.cbm data/phishing_model.onnx data/model_meta.json
+          if git diff --cached --quiet; then
+            echo "Model unchanged — nothing to commit."
+          else
+            AUC=$(python -c "import json;print(json.load(open('data/model_meta.json'))['test_auc'])")
+            git commit -m "chore(ml): weekly retrain on fresh feeds (AUC ${AUC})"
+            git push
+          fi

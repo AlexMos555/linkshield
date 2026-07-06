@@ -765,15 +765,15 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # ── 3.13 Shannon entropy (DGA detection) ──
     entropy = _shannon_entropy(domain_name)
     if entropy > 4.0 and len(domain_name) > 8:
-        score += 20
+        score += 12
         reasons.append(DomainReason(
-            signal="high_entropy", weight=20,
+            signal="high_entropy", weight=12,
             detail=f"Domain name has unusually high randomness (entropy={entropy}) — possible auto-generated domain",
         ))
     elif entropy > 3.5 and len(domain_name) > 10:
-        score += 10
+        score += 6
         reasons.append(DomainReason(
-            signal="medium_entropy", weight=10,
+            signal="medium_entropy", weight=6,
             detail=f"Domain name appears somewhat random (entropy={entropy})",
         ))
 
@@ -970,33 +970,33 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
 
     bg_score = bigram_score(domain_name)
     if bg_score < 0.15 and len(domain_name) > 7:
-        score += 18
+        score += 10
         reasons.append(DomainReason(
-            signal="unnatural_ngram", weight=18,
+            signal="unnatural_ngram", weight=10,
             detail=f"Domain name has unnatural character patterns (bigram score={bg_score})",
         ))
     elif bg_score < 0.25 and len(domain_name) > 10:
-        score += 8
+        score += 5
         reasons.append(DomainReason(
-            signal="suspicious_ngram", weight=8,
+            signal="suspicious_ngram", weight=5,
             detail=f"Domain name has unusual character patterns (bigram score={bg_score})",
         ))
 
     # ── 3.31 Vowel/consonant ratio anomaly ──
     vc_ratio = vowel_consonant_ratio(domain_name)
     if len(domain_name) > 6 and (vc_ratio < 0.2 or vc_ratio > 1.5):
-        score += 12
+        score += 6
         reasons.append(DomainReason(
-            signal="abnormal_vowel_ratio", weight=12,
+            signal="abnormal_vowel_ratio", weight=6,
             detail=f"Abnormal vowel/consonant ratio ({vc_ratio}) — likely auto-generated",
         ))
 
     # ── 3.32 Consecutive consonants (>5 = very unnatural) ──
     max_cons = consecutive_consonants_max(domain_name)
     if max_cons >= 5 and len(domain_name) > 6:
-        score += 12
+        score += 6
         reasons.append(DomainReason(
-            signal="consonant_cluster", weight=12,
+            signal="consonant_cluster", weight=6,
             detail=f"Unnatural consonant cluster ({max_cons} consecutive) — possible DGA",
         ))
 
