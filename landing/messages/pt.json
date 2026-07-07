@@ -11,7 +11,7 @@
     "badge": "{recall}% de URLs de phishing recentes detectadas (medido)",
     "title_part1": "Proteção contra fraudes que",
     "title_part2": "respeita sua privacidade",
-    "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
+    "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
     "cta_primary": "Adicionar ao Chrome — grátis",
     "cta_secondary": "Como funciona",
     "cta_footer": "Proteção básica grátis para sempre. Sem cartão.",
@@ -40,7 +40,7 @@
       {
         "icon": "🔍",
         "title": "Verificação automática de links",
-        "desc": "Cada link em cada página verificado contra 16 bancos de dados de ameaças. Selos vermelho, amarelo e verde mostram a segurança num relance."
+        "desc": "Cada link em cada página verificado contra 16 fontes de inteligência de ameaças. Selos vermelho, amarelo e verde mostram a segurança num relance."
       },
       {
         "icon": "🔒",
@@ -50,7 +50,7 @@
       {
         "icon": "🧠",
         "title": "Detecção com IA",
-        "desc": "Modelo CatBoost treinado em 24.000 domínios verificados. AUC 0,95. Detecta phishing novo que sistemas baseados em regras não pegam."
+        "desc": "Modelo CatBoost treinado em ~24.000 domínios (phishing e legítimos). Detecta phishing novo que sistemas baseados em regras não pegam — veja nossa metodologia publicada."
       },
       {
         "icon": "⚡",
@@ -230,7 +230,7 @@
     "heading": "Built on principles, not promises",
     "items": [
       {
-        "q": "Your browsing data never leaves your device — our server only ever sees a domain, never a full URL or page content. Privacy is the architecture, not a marketing checkbox.",
+        "q": "We send only a domain to check it — never your full URLs or page content. Privacy is the architecture, not a marketing checkbox.",
         "n": "Server-blind by design",
         "r": ""
       },
@@ -263,7 +263,7 @@
       },
       {
         "q": "Qual a diferença em relação ao Google Safe Browsing?",
-        "a": "O Google Safe Browsing é reativo — pega ameaças conhecidas, mas perde phishing novo. O Cleanway adiciona detecção por ML, 8 fontes adicionais de ameaça, Auditoria de privacidade e não envia seus dados de navegação para o Google."
+        "a": "O Google Safe Browsing é reativo — pega ameaças conhecidas, mas perde phishing novo. O Cleanway adiciona um sinal de detecção por ML, mais ~15 fontes de inteligência de ameaças, Auditoria de privacidade e não envia seus dados de navegação para o Google."
       },
       {
         "q": "Existe um plano gratuito?",

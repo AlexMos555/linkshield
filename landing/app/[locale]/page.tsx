@@ -328,7 +328,7 @@ export default async function Home({ params }: HomeProps) {
         <h2 className="text-3xl font-extrabold text-white text-center mb-14">{testimonials("heading")}</h2>
         <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto stagger">
           {testimonialItems.map((t, i) => (
-            <div key={i} className="bg-slate-800/50 rounded-2xl p-6">
+            <div key={i} data-testid="testimonial-card" className="bg-slate-800/50 rounded-2xl p-6">
               <p className="text-slate-200 text-[15px] leading-relaxed mb-4">{t.q}</p>
               <p className="text-sm font-semibold text-green-400">{t.n}</p>
               {t.r ? <p className="text-xs text-slate-500">{t.r}</p> : null}

@@ -11,7 +11,7 @@
     "badge": "{recall}% URL phishing baru terdeteksi (terukur)",
     "title_part1": "Perlindungan dari penipuan yang",
     "title_part2": "menghormati privasi Anda",
-    "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
+    "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
     "cta_primary": "Tambahkan ke Chrome — gratis",
     "cta_secondary": "Cara kerjanya",
     "cta_footer": "Perlindungan dasar gratis selamanya. Tanpa kartu.",
@@ -40,7 +40,7 @@
       {
         "icon": "🔍",
         "title": "Pemindaian tautan otomatis",
-        "desc": "Setiap tautan di setiap halaman diperiksa terhadap 16 basis data ancaman. Lencana merah, kuning, hijau menunjukkan keamanan secara sekilas."
+        "desc": "Setiap tautan di setiap halaman diperiksa terhadap 16 sumber intelijen ancaman. Lencana merah, kuning, hijau menunjukkan keamanan secara sekilas."
       },
       {
         "icon": "🔒",
@@ -50,7 +50,7 @@
       {
         "icon": "🧠",
         "title": "Deteksi bertenaga ML",
-        "desc": "Model CatBoost dilatih pada 24.000 domain terverifikasi. AUC 0,95. Mendeteksi phishing baru yang dilewatkan sistem berbasis aturan."
+        "desc": "Model CatBoost dilatih pada ~24.000 domain (phishing dan tepercaya). Mendeteksi phishing baru yang dilewatkan sistem berbasis aturan — lihat metodologi yang kami publikasikan."
       },
       {
         "icon": "⚡",
@@ -230,7 +230,7 @@
     "heading": "Built on principles, not promises",
     "items": [
       {
-        "q": "Your browsing data never leaves your device — our server only ever sees a domain, never a full URL or page content. Privacy is the architecture, not a marketing checkbox.",
+        "q": "We send only a domain to check it — never your full URLs or page content. Privacy is the architecture, not a marketing checkbox.",
         "n": "Server-blind by design",
         "r": ""
       },
@@ -263,7 +263,7 @@
       },
       {
         "q": "Apa bedanya dengan Google Safe Browsing?",
-        "a": "Google Safe Browsing bersifat reaktif — menangkap ancaman yang diketahui tetapi melewatkan phishing baru. Cleanway menambahkan deteksi ML, 8 sumber ancaman tambahan, Audit privasi, dan tidak mengirimkan data penjelajahan Anda ke Google."
+        "a": "Google Safe Browsing bersifat reaktif — menangkap ancaman yang diketahui tetapi melewatkan phishing baru. Cleanway menambahkan sinyal deteksi ML, ~15 sumber intelijen ancaman lainnya, Audit Privasi, dan tidak mengirimkan data penjelajahan Anda ke Google."
       },
       {
         "q": "Apakah ada paket gratis?",

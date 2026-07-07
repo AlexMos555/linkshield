@@ -115,7 +115,7 @@
   "landing.hero.badge": "{recall}% नए फ़िशिंग URL पकड़े गए (मापा गया)",
   "landing.hero.title_part1": "धोखाधड़ी से सुरक्षा जो",
   "landing.hero.title_part2": "आपकी गोपनीयता का सम्मान करती है",
-  "landing.hero.subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
+  "landing.hero.subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
   "landing.hero.cta_primary": "Chrome में जोड़ें — मुफ़्त",
   "landing.hero.cta_secondary": "यह कैसे काम करता है",
   "landing.hero.cta_footer": "बुनियादी सुरक्षा हमेशा के लिए मुफ़्त। कोई कार्ड नहीं।",

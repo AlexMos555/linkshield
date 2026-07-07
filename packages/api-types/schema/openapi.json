@@ -1340,7 +1340,7 @@
           "public"
         ],
         "summary": "Platform Stats",
-        "description": "Global platform statistics for landing page and social proof.\n\nNumbers MUST stay consistent with docs/transparency/<latest>.json —\nthat file is the source of truth, but reading it here would\ncouple this fast hot-path endpoint to disk I/O. Mirror by hand\nuntil we have a build step that injects the values at deploy.",
+        "description": "Global platform statistics for landing page and social proof.\n\ndetection_rate is read (and gated) from docs/benchmarks/latest.json — the\nweekly-measured source of truth — NOT a hand-authored number. It is null\nuntil a large-enough sample has been benchmarked, matching how the landing\npresents recall. Other counts mirror docs/transparency/<latest>.json.",
         "operationId": "platform_stats_api_v1_public_stats_get",
         "responses": {
           "200": {
@@ -3966,7 +3966,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "contentMediaType": "application/octet-stream",
+            "format": "binary",
             "title": "File",
             "description": "Audio file, ≤25MB, ≤10min"
           },

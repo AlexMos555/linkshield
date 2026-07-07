@@ -115,7 +115,7 @@
   "landing.hero.badge": "{recall}% من روابط التصيد الحديثة مكتشَفة (مقيس)",
   "landing.hero.title_part1": "حماية من الاحتيال",
   "landing.hero.title_part2": "تحترم خصوصيتك",
-  "landing.hero.subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
+  "landing.hero.subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
   "landing.hero.cta_primary": "إضافة إلى Chrome — مجاني",
   "landing.hero.cta_secondary": "كيف يعمل",
   "landing.hero.cta_footer": "حماية أساسية مجانية للأبد. بدون بطاقة.",

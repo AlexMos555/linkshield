@@ -115,7 +115,7 @@
   "landing.hero.badge": "{recall}% des URL de phishing récentes détectées (mesuré)",
   "landing.hero.title_part1": "Protection contre les arnaques qui",
   "landing.hero.title_part2": "respecte votre vie privée",
-  "landing.hero.subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
+  "landing.hero.subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
   "landing.hero.cta_primary": "Ajouter à Chrome — gratuit",
   "landing.hero.cta_secondary": "Comment ça marche",
   "landing.hero.cta_footer": "Protection de base gratuite à vie. Sans carte.",

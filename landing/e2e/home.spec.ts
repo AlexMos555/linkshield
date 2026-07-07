@@ -106,7 +106,8 @@ test("FAQ section has expandable items", async ({ page }) => {
 
 test("testimonials render three cards", async ({ page }) => {
   await page.goto("/en");
-  // Quote marks are injected by the template around each testimonial
-  const quotes = page.getByText(/“/);
-  await expect(quotes).toHaveCount(3);
+  // Cards are tagged data-testid="testimonial-card" (they render as principle
+  // statements, not quoted customer testimonials — no injected quote glyphs).
+  const cards = page.getByTestId("testimonial-card");
+  await expect(cards).toHaveCount(3);
 });

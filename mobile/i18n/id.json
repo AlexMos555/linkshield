@@ -115,7 +115,7 @@
   "landing.hero.badge": "{recall}% URL phishing baru terdeteksi (terukur)",
   "landing.hero.title_part1": "Perlindungan dari penipuan yang",
   "landing.hero.title_part2": "menghormati privasi Anda",
-  "landing.hero.subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
+  "landing.hero.subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
   "landing.hero.cta_primary": "Tambahkan ke Chrome — gratis",
   "landing.hero.cta_secondary": "Cara kerjanya",
   "landing.hero.cta_footer": "Perlindungan dasar gratis selamanya. Tanpa kartu.",

@@ -403,7 +403,7 @@
       "badge": "{recall}% свежих фишинг-URL заблокированы (замерено)",
       "title_part1": "Защита от мошенников, которая",
       "title_part2": "уважает вашу приватность",
-      "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
+      "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
       "cta_primary": "Добавить в Chrome — бесплатно",
       "cta_secondary": "Как это работает",
       "cta_footer": "Базовая защита бесплатна навсегда. Без банковской карты.",
@@ -432,7 +432,7 @@
         {
           "icon": "🔍",
           "title": "Автоматическая проверка ссылок",
-          "desc": "Каждая ссылка на каждой странице проверяется в 16 базах угроз. Красный, жёлтый и зелёный значки сразу показывают, можно ли кликать."
+          "desc": "Каждая ссылка на каждой странице проверяется по 16 источникам данных об угрозах. Красный, жёлтый и зелёный значки сразу показывают, безопасно ли кликать."
         },
         {
           "icon": "🔒",
@@ -442,7 +442,7 @@
         {
           "icon": "🧠",
           "title": "Детекция на основе ML",
-          "desc": "Модель CatBoost обучена на 24 000 проверенных доменах. AUC 0,95. Ловит новый фишинг, который пропускают правила."
+          "desc": "Модель CatBoost обучена примерно на 24 000 доменов — фишинговых и легитимных. Ловит новый фишинг, который пропускают правила, — подробности в нашей опубликованной методологии."
         },
         {
           "icon": "⚡",
@@ -622,7 +622,7 @@
       "heading": "Built on principles, not promises",
       "items": [
         {
-          "q": "Your browsing data never leaves your device — our server only ever sees a domain, never a full URL or page content. Privacy is the architecture, not a marketing checkbox.",
+          "q": "We send only a domain to check it — never your full URLs or page content. Privacy is the architecture, not a marketing checkbox.",
           "n": "Server-blind by design",
           "r": ""
         },
@@ -655,7 +655,7 @@
         },
         {
           "q": "Чем отличается от Google Safe Browsing?",
-          "a": "Google Safe Browsing — реактивный: ловит известные угрозы, но пропускает новый фишинг. Cleanway добавляет ML-детекцию, 8 дополнительных источников угроз, аудит приватности — и не отправляет данные о просмотрах в Google."
+          "a": "Google Safe Browsing работает реактивно: ловит известные угрозы, но пропускает новый фишинг. Cleanway добавляет ML-детекцию, ещё около 15 источников данных об угрозах, аудит приватности — и не отправляет историю ваших просмотров в Google."
         },
         {
           "q": "Есть ли бесплатный план?",

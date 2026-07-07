@@ -230,7 +230,7 @@
     "heading": "Built on principles, not promises",
     "items": [
       {
-        "q": "Your browsing data never leaves your device — our server only ever sees a domain, never a full URL or page content. Privacy is the architecture, not a marketing checkbox.",
+        "q": "We send only a domain to check it — never your full URLs or page content. Privacy is the architecture, not a marketing checkbox.",
         "n": "Server-blind by design",
         "r": ""
       },

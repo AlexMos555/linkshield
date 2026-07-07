@@ -403,7 +403,7 @@
       "badge": "{recall}% नए फ़िशिंग URL पकड़े गए (मापा गया)",
       "title_part1": "धोखाधड़ी से सुरक्षा जो",
       "title_part2": "आपकी गोपनीयता का सम्मान करती है",
-      "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. Your browsing data never leaves your device.",
+      "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
       "cta_primary": "Chrome में जोड़ें — मुफ़्त",
       "cta_secondary": "यह कैसे काम करता है",
       "cta_footer": "बुनियादी सुरक्षा हमेशा के लिए मुफ़्त। कोई कार्ड नहीं।",
@@ -432,7 +432,7 @@
         {
           "icon": "🔍",
           "title": "स्वचालित लिंक स्कैनिंग",
-          "desc": "हर पेज पर हर लिंक की 16 खतरा डेटाबेस के विरुद्ध जाँच। लाल, पीले और हरे बैज एक नज़र में सुरक्षा दिखाते हैं।"
+          "desc": "हर पेज पर हर लिंक की 16 खतरा-खुफिया स्रोतों के विरुद्ध जाँच। लाल, पीले और हरे बैज एक नज़र में सुरक्षा दिखाते हैं।"
         },
         {
           "icon": "🔒",
@@ -442,7 +442,7 @@
         {
           "icon": "🧠",
           "title": "ML-संचालित पहचान",
-          "desc": "24,000 सत्यापित डोमेन पर प्रशिक्षित CatBoost मॉडल। AUC 0.95. नए फ़िशिंग को पकड़ता है जो नियम-आधारित सिस्टम चूक जाते हैं।"
+          "desc": "लगभग 24,000 डोमेन (फ़िशिंग और वैध दोनों) पर प्रशिक्षित CatBoost मॉडल। नए फ़िशिंग को पकड़ता है जो नियम-आधारित सिस्टम चूक जाते हैं — हमारी प्रकाशित कार्यप्रणाली देखें।"
         },
         {
           "icon": "⚡",
@@ -622,7 +622,7 @@
       "heading": "Built on principles, not promises",
       "items": [
         {
-          "q": "Your browsing data never leaves your device — our server only ever sees a domain, never a full URL or page content. Privacy is the architecture, not a marketing checkbox.",
+          "q": "We send only a domain to check it — never your full URLs or page content. Privacy is the architecture, not a marketing checkbox.",
           "n": "Server-blind by design",
           "r": ""
         },
@@ -655,7 +655,7 @@
         },
         {
           "q": "Google Safe Browsing से क्या अलग है?",
-          "a": "Google Safe Browsing प्रतिक्रियात्मक है — यह ज्ञात खतरों को पकड़ता है लेकिन नए फ़िशिंग को चूक जाता है। Cleanway ML पहचान, 8 अतिरिक्त खतरा स्रोत, गोपनीयता ऑडिट जोड़ता है, और आपका ब्राउज़िंग डेटा Google को नहीं भेजता।"
+          "a": "Google Safe Browsing प्रतिक्रियात्मक है — यह ज्ञात खतरों को पकड़ता है लेकिन नए फ़िशिंग को चूक जाता है। Cleanway एक ML पहचान संकेत, लगभग 15 और खतरा-खुफिया स्रोत और गोपनीयता ऑडिट जोड़ता है, और आपका ब्राउज़िंग इतिहास Google को नहीं भेजता।"
         },
         {
           "q": "क्या कोई मुफ़्त प्लान है?",
