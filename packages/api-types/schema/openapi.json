@@ -3966,7 +3966,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File",
             "description": "Audio file, ≤25MB, ≤10min"
           },
