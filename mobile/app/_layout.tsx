@@ -1,6 +1,7 @@
 import { useEffect } from "react";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { restoreSession } from "../src/services/auth";
 import { setAuthToken } from "../src/services/api";
 // Side-effecting import: initialises i18next at boot so every screen
@@ -15,6 +16,31 @@ import "../src/i18n";
 // zero-cost import in those environments.
 import "../src/lib/sentry";
 import { AccountLockedModal } from "../src/components/AccountLockedModal";
+
+/**
+ * Bridges an inbound "Share -> Cleanway" (iOS Share Extension / Android ACTION_SEND,
+ * both created by the expo-share-intent config plugin) into the existing /shared
+ * screen, which runs the full domain check and shows the verdict + haptics.
+ *
+ * !! UNVERIFIED: the Expo SDK 52 toolchain can't run in the authoring env (Node 25).
+ * Requires `npx expo prebuild` + a dev-client build + on-device test.
+ * See mobile/SHARE_FLOW.md.
+ */
+function ShareIntentRouter() {
+  const router = useRouter();
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
+
+  useEffect(() => {
+    if (!hasShareIntent) return;
+    const shared = shareIntent?.webUrl ?? shareIntent?.text ?? "";
+    if (shared) {
+      router.push({ pathname: "/shared", params: { url: shared } });
+    }
+    resetShareIntent();
+  }, [hasShareIntent, shareIntent]);
+
+  return null;
+}
 
 export default function RootLayout() {
   // Restore previously-persisted Supabase session on cold boot. Runs once.
@@ -39,7 +65,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+    <ShareIntentProvider options={{ resetOnBackground: true }}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -62,7 +88,8 @@ export default function RootLayout() {
       </Stack>
       {/* Global overlay — subscribes to accountLockedEvents and renders
           the restore CTA whenever any authed call returns 410 Gone. */}
+      <ShareIntentRouter />
       <AccountLockedModal />
-    </>
+    </ShareIntentProvider>
   );
 }
