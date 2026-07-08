@@ -6,10 +6,22 @@ was ~80% built already — `app/shared.tsx` runs the full domain check and shows
 verdict + haptics — but the shared link never reached it. This branch adds the
 missing bridge (`expo-share-intent`: iOS Share Extension + Android `ACTION_SEND`).
 
-> ⚠️ **UNVERIFIED by the author.** The Expo SDK 52 toolchain cannot run in the
-> environment this was written in (Node 25 vs required Node 18/20 → `expo` CLI
-> crashes). Nothing here was prebuilt, typechecked, or device-tested. Treat it as a
-> ready-to-build draft. It is on a branch, not `main`, for exactly this reason.
+> ✅ **Typecheck-verified · ⚠️ not yet prebuilt/device-tested.** `npx tsc --noEmit`
+> passes with **0 new type errors** — the `expo-share-intent@3.2.3` API usage in
+> `_layout.tsx` (`useShareIntentContext()` → `{ hasShareIntent, shareIntent,
+> resetShareIntent }`, `shareIntent.webUrl`/`.text`) is correct for SDK 52. (The 4
+> pre-existing `tsc` errors are all in `app/(tabs)/_layout.tsx`, unrelated, present on
+> `main` too.)
+>
+> **Correction to an earlier note:** the mobile toolchain blocker was NOT the Node
+> version — it was a stale `mobile/node_modules` missing `@expo/cli`. A plain
+> `npm install` (Node 20) repaired it and installed `expo-share-intent`.
+>
+> **`npx expo prebuild` is still blocked** by a pre-existing monorepo node_modules
+> hoisting issue: `@expo/cli` resolves from the **repo-root** `node_modules`, whose
+> `expo-router` plugin then fails to resolve `schema-utils`. Fix on your build machine
+> with a clean isolated install before prebuild (below). This is unrelated to the
+> share-flow code. It is on a branch, not `main`, until you prebuild + device-test.
 
 ## What changed
 - `package.json` — added `expo-share-intent` (pinned `^3.2.1`; **reconcile the exact
@@ -25,8 +37,10 @@ missing bridge (`expo-share-intent`: iOS Share Extension + Android `ACTION_SEND`
 
 ```bash
 cd mobile
-nvm use 20                      # or fnm/volta — NOT Node 25
-npx expo install expo-share-intent   # reconciles the exact version for SDK 52
+nvm use 20                      # or fnm/volta
+# clean, isolated install fixes the monorepo hoist (schema-utils) that blocks prebuild:
+rm -rf node_modules && npm install
+npx expo install expo-share-intent   # confirms the SDK-52 version (3.2.3)
 npx expo prebuild --clean            # regenerates ios/ + android/ WITH the extension
 # iOS (device required — Share Extension can't run in Simulator reliably):
 npx expo run:ios --device
