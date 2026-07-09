@@ -6,7 +6,18 @@ was ~80% built already — `app/shared.tsx` runs the full domain check and shows
 verdict + haptics — but the shared link never reached it. This branch adds the
 missing bridge (`expo-share-intent`: iOS Share Extension + Android `ACTION_SEND`).
 
-> ✅ **Typecheck-verified · ⚠️ not yet prebuilt/device-tested.** `npx tsc --noEmit`
+> ✅ **Typecheck-verified + Android-prebuild-validated · ⚠️ iOS + device test pending.**
+> On a real Mac (Node 20): `npx tsc --noEmit` passes with 0 new errors, and
+> `npx expo prebuild -p android` runs the `expo-share-intent` plugin cleanly and
+> emits a correct `AndroidManifest.xml` (SEND `text/*` filter + `cleanway` scheme).
+> **Prebuild also caught + fixed a pre-existing bug:** the old `app.json`
+> `android.intentFilters` used FULL action strings (`android.intent.action.SEND`),
+> but Expo prepends the prefix → doubled/dead filters
+> (`android.intent.action.android.intent.action.SEND`). Removed that array entirely —
+> expo-share-intent owns SEND, and `scheme: "cleanway"` auto-generates the deep-link
+> filter. Still needs iOS prebuild (full Xcode) + on-device test before merge.
+>
+> _(Superseded note kept for history:)_ Typecheck-verified · not yet prebuilt/device-tested. `npx tsc --noEmit`
 > passes with **0 new type errors** — the `expo-share-intent@3.2.3` API usage in
 > `_layout.tsx` (`useShareIntentContext()` → `{ hasShareIntent, shareIntent,
 > resetShareIntent }`, `shareIntent.webUrl`/`.text`) is correct for SDK 52. (The 4

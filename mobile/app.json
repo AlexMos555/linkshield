@@ -34,31 +34,6 @@
         "android.permission.BIND_VPN_SERVICE",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS"
-      ],
-      "intentFilters": [
-        {
-          "action": "android.intent.action.SEND",
-          "category": [
-            "android.intent.category.DEFAULT"
-          ],
-          "data": [
-            {
-              "mimeType": "text/plain"
-            }
-          ]
-        },
-        {
-          "action": "android.intent.action.VIEW",
-          "category": [
-            "android.intent.category.DEFAULT",
-            "android.intent.category.BROWSABLE"
-          ],
-          "data": [
-            {
-              "scheme": "cleanway"
-            }
-          ]
-        }
       ]
     },
     "plugins": [
