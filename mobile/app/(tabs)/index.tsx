@@ -9,11 +9,13 @@ import * as Clipboard from "expo-clipboard";
 import { colors, spacing, fontSize } from "../../src/utils/theme";
 import { getStats, saveCheck } from "../../src/services/database";
 import { checkSingleDomain } from "../../src/services/api";
+import { useVpn } from "../../modules/cleanway-vpn";
 
 export default function HomeScreen() {
   const router = useRouter();
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
-  const [isProtected, setIsProtected] = useState(true);
+  // System-wide DNS-filter VPN (Android). iOS module is a no-op for now (org-account gated).
+  const { running: isProtected, lastBlocked, start: startProtection, stop: stopProtection } = useVpn();
   const [clipboardUrl, setClipboardUrl] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<any>(null);
   const [checking, setChecking] = useState(false);
@@ -107,7 +109,27 @@ export default function HomeScreen() {
       {/* Shield */}
       <TouchableOpacity
         style={s.shieldWrap}
-        onPress={() => { setIsProtected(!isProtected); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+        onPress={async () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          if (Platform.OS !== "android") {
+            Alert.alert(
+              "Coming soon on iOS",
+              "System-wide protection is on the way for iOS. For now, share a link to Cleanway to check it.",
+            );
+            return;
+          }
+          if (isProtected) {
+            await stopProtection();
+          } else {
+            const ok = await startProtection();
+            if (!ok) {
+              Alert.alert(
+                "Permission needed",
+                "Cleanway needs VPN permission to block phishing across every app. You can turn it off anytime.",
+              );
+            }
+          }
+        }}
         activeOpacity={0.7}
       >
         <View style={[s.shield, isProtected ? s.shieldOn : s.shieldOff]}>
@@ -117,7 +139,11 @@ export default function HomeScreen() {
           {isProtected ? "Protected" : "Protection Off"}
         </Text>
         <Text style={s.shieldSub}>
-          {isProtected ? "Monitoring links from clipboard & shared URLs" : "Tap to enable"}
+          {isProtected
+            ? lastBlocked
+              ? `Blocked ${lastBlocked.domain}`
+              : "Blocking phishing across every app"
+            : "Tap to turn on system-wide protection"}
         </Text>
       </TouchableOpacity>
 

@@ -49,6 +49,14 @@ import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
+import androidx.core.app.NotificationCompat
 
 class CleanwayVpnService : VpnService() {
 
@@ -77,6 +85,9 @@ class CleanwayVpnService : VpnService() {
     }
 
     private fun startVpn() {
+        // A VPN must run as a foreground service, or Android kills it when the app
+        // backgrounds (and startForegroundService crashes without a prompt startForeground).
+        startInForeground()
         val builder = Builder()
             .setSession("Cleanway")
             .addAddress(VPN_CLIENT_IP, 32)
@@ -97,6 +108,7 @@ class CleanwayVpnService : VpnService() {
             return
         }
         running = true
+        isRunning = true
         Log.i(TAG, "tunnel_started")
 
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
@@ -104,6 +116,8 @@ class CleanwayVpnService : VpnService() {
 
     private fun stopVpn() {
         running = false
+        isRunning = false
+        stopForegroundCompat()
         try {
             vpnInterface?.close()
         } catch (e: Exception) {
@@ -288,6 +302,48 @@ class CleanwayVpnService : VpnService() {
         )
     }
 
+    private fun startInForeground() {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            nm.getNotificationChannel(CHANNEL_ID) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "Cleanway protection", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "Shown while phishing protection is active"
+                    setShowBadge(false)
+                }
+            )
+        }
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        val pending = launch?.let {
+            PendingIntent.getActivity(
+                this, 0, it,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }
+        val notif: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Cleanway protection is on")
+            .setContentText("Checking links for phishing")
+            .setSmallIcon(applicationInfo.icon)
+            .setOngoing(true)
+            .setContentIntent(pending)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIF_ID, notif)
+        }
+    }
+
+    private fun stopForegroundCompat() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+    }
+
     override fun onDestroy() {
         stopVpn()
         blockedDomains.clear()
@@ -305,6 +361,13 @@ class CleanwayVpnService : VpnService() {
     }
 
     companion object {
+        /** Read by CleanwayVpnModule.isRunning() so the UI can reflect real service state. */
+        @JvmStatic
+        @Volatile
+        var isRunning = false
+
+        private const val CHANNEL_ID = "cleanway_vpn"
+        private const val NOTIF_ID = 4711
         private const val TAG = "CleanwayVPN"
         const val ACTION_STOP = "ai.cleanway.VPN_STOP"
         const val ACTION_DOMAIN_BLOCKED = "ai.cleanway.DOMAIN_BLOCKED"
