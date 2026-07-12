@@ -30,12 +30,16 @@ logger = logging.getLogger("brand-favicons")
 GALLERY_PATH = pathlib.Path(__file__).resolve().parent.parent / "api" / "data" / "brand_favicons.json"
 
 
+# Must match api.services.favicon_hash.HASH_HEX_LEN. Hardcoded (not imported) so this
+# ops script stays dependency-free: importing favicon_hash drags in the redis/pydantic
+# api chain, which the CI cron (httpx-only, no requirements.txt) cannot load — that
+# crashed this job for 4 weeks. tests/test_favicon_refresh_drift.py guards the match.
+HASH_HEX_LEN = 24
+
+
 def _hash_bytes(b: bytes) -> str:
-    """Mirror api.services.favicon_hash._hash_bytes — must match
-    HASH_HEX_LEN there or the ops script populates hashes the
-    runtime cannot recognise."""
+    """SHA-256 truncated to HASH_HEX_LEN hex chars, matching the runtime hasher."""
     import hashlib
-    from api.services.favicon_hash import HASH_HEX_LEN
     return hashlib.sha256(b).hexdigest()[:HASH_HEX_LEN]
 
 
