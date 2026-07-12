@@ -36,6 +36,11 @@ class CleanwayVpnModule : Module() {
     Events("onDomainBlocked")
 
     AsyncFunction("startVpn") { promise: Promise ->
+      if (pendingStart != null) {
+        // A consent dialog from a previous startVpn() is still up; don't stack a second one.
+        promise.reject("E_CONSENT_IN_PROGRESS", "A VPN consent request is already in progress", null)
+        return@AsyncFunction
+      }
       // prepare() returns a consent Intent the first time (or after revoke); null = allowed.
       val consent = VpnService.prepare(context)
       if (consent != null) {
@@ -57,6 +62,10 @@ class CleanwayVpnModule : Module() {
         action = CleanwayVpnService.ACTION_STOP
       }
       context.startService(intent)
+      // startService returns ComponentName?; a non-Promise AsyncFunction resolves with the
+      // lambda's last value, and ComponentName has no JS converter → the promise would REJECT.
+      // Return Unit so stopVpn() resolves void (matches TS Promise<void> + iOS/web stubs).
+      Unit
     }
 
     Function("isRunning") {
@@ -78,7 +87,11 @@ class CleanwayVpnModule : Module() {
 
     OnStartObserving { registerBlockReceiver() }
     OnStopObserving { unregisterBlockReceiver() }
-    OnDestroy { unregisterBlockReceiver() }
+    OnDestroy {
+      unregisterBlockReceiver()
+      pendingStart?.reject("E_MODULE_DESTROYED", "VPN module destroyed before consent completed", null)
+      pendingStart = null
+    }
   }
 
   private fun startService() {

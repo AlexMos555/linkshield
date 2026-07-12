@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 
 import CleanwayVpn from './src/CleanwayVpnModule';
 import type { DomainBlockedPayload } from './src/CleanwayVpn.types';
@@ -34,9 +35,20 @@ export function useVpn() {
     return () => sub.remove();
   }, []);
 
+  // Re-sync on foreground so the toggle reflects an external teardown (user revoked the
+  // VPN in Settings, always-on takeover, or the OS killed the service).
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') setRunning(isVpnRunning());
+    });
+    return () => sub.remove();
+  }, []);
+
   const start = useCallback(async () => {
     const ok = await CleanwayVpn.startVpn();
-    setRunning(ok && isVpnRunning());
+    // Trust the resolved boolean: the native service's isRunning flag is set asynchronously
+    // and is not yet true at the moment startVpn() resolves.
+    setRunning(ok);
     return ok;
   }, []);
 

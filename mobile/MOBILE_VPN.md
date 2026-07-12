@@ -84,3 +84,23 @@ iOS system-wide VPN (`PacketTunnelProvider.swift`, already written) is the next 
 it needs `@bacons/apple-targets` to add the NE target AND an **Organization** Apple
 Developer account (App Review 5.4). The iOS module here is a deliberate no-op until
 then. See `memory/project_mobile_protection_state.md`.
+
+## Adversarial review fixes (2026-07-12)
+A multi-agent review against the installed Expo SDK 52 APIs (node_modules) caught 7
+bugs in the uncompiled Kotlin/TS BEFORE any device build — fixed on this branch:
+- **compile-break**: `DnsUtil.kt` (used by the service, same-package, no import) was
+  left in `mobile/native/android/` — outside the module's Gradle source set → the
+  library wouldn't compile (`unresolved reference: DnsUtil`). Moved DnsUtil.kt into the
+  module main source + DnsUtilTest.kt into the module test source (+ kotlin-test dep).
+- **runtime**: `stopVpn()` returned `ComponentName` (from startService) → expo-modules
+  tried to convert it → the JS promise REJECTED, leaving the toggle stuck "Protected".
+  Now returns `Unit` (resolves void).
+- **runtime**: `useVpn().start` read `isVpnRunning()` synchronously right after
+  `startVpn()` resolved, but the native flag isn't set yet → toggle didn't flip on.
+  Now trusts the resolved boolean (`setRunning(ok)`).
+- **runtime**: no re-sync if the VPN is torn down externally (Settings revoke / OS kill)
+  → added an AppState "active" re-sync in `useVpn`.
+- **polish**: `startVpn` re-entry could stack a 2nd consent dialog + leak the 1st
+  promise → added a re-entry guard + reject the pending promise on module destroy.
+Re-validated: `tsc --noEmit` clean (0 new errors), `expo prebuild -p android` clean.
+Kotlin compile + device test still on your machine.

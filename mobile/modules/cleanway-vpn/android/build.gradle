@@ -16,3 +16,8 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  // DnsUtilTest.kt uses kotlin.test (JUnit backend). Test-only — does not affect the app build.
+  testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
+}
