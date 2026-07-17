@@ -524,11 +524,17 @@ async def check_redirect_chain(domain: str) -> dict:
                     if parsed.hostname:
                         domains_seen.add(parsed.hostname.lower())
 
-            # Check if we ended up on a different domain
+            # Check if we ended up on a different REGISTRABLE domain.
+            # Comparing raw hostnames flagged the ubiquitous apex->www redirect
+            # (barclays.co.uk -> www.barclays.co.uk) as a "possible phishing
+            # redirect" — a false positive on most of the web. Compare eTLD+1 so
+            # only a genuine cross-site landing (evil.tk -> phish.ru) counts.
             final_host = resp.url.host
-            if final_host and final_host.lower() != domain.lower():
-                cross_domain = True
-                domains_seen.add(final_host.lower())
+            if final_host:
+                from api.services.doh_gateway import _registrable_domain
+                if _registrable_domain(final_host.lower()) != _registrable_domain(domain.lower()):
+                    cross_domain = True
+                    domains_seen.add(final_host.lower())
 
             return {
                 "count": count,
