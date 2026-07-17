@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Cleanway — QA тест-страница расширения</title>
+<style>
+  body { font: 15px/1.6 -apple-system, system-ui, sans-serif; max-width: 820px; margin: 40px auto; padding: 0 20px; color: #0f172a; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: #64748b; margin-bottom: 28px; }
+  section { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; }
+  h2 { font-size: 15px; margin: 0 0 4px; }
+  .exp { color: #64748b; font-size: 13px; margin-bottom: 12px; }
+  li { margin: 7px 0; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .ok { color: #16a34a; } .warn { color: #ca8a04; } .bad { color: #dc2626; }
+  .note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Cleanway — QA тест-страница расширения</h1>
+<div class="sub">Открой этот файл в Chrome с загруженным расширением. Каждая ссылка должна получить бейдж.
+Ожидаемые вердикты — <b>реальные</b>, я прогнал их через прод сегодня.</div>
+
+<div class="note">
+  <b>Важно:</b> сначала обнови расширение — твоя загруженная копия старая.
+  <code>chrome://extensions</code> → Cleanway → кнопка <b>⟳ (Reload)</b>. Иначе тестируешь вчерашний код.
+  <br>Ссылки ниже <b>не надо кликать</b> — проверяем только бейджи. (Опасные домены могут не резолвиться — это нормально.)
+  <br><b>Про barclays.co.uk:</b> если увидишь жёлтый — это <b>кэш на 24ч</b> с вердиктом до сегодняшнего фикса
+  (я нашёл и починил ложный сигнал «редирект apex→www»). Свежие банки (hsbc/lloyds) уже зелёные.
+</div>
+
+<section>
+  <h2 class="bad">1. Должно быть КРАСНОЕ (danger)</h2>
+  <div class="exp">Это проверяет детект glyph-homoglyph и crypto-drainer — фиксы, которые я делал в эту сессию.</div>
+  <ul>
+    <li><a href="https://vvellsfargo-login.com">vvellsfargo-login.com</a> — «vv» вместо «w» → подделка wellsfargo. Прод: <b>dangerous / 100</b></li>
+    <li><a href="https://rnicrosoft-login.com">rnicrosoft-login.com</a> — «rn» вместо «m» → подделка microsoft. Прод: <b>dangerous / 70</b></li>
+    <li><a href="https://metamask-claim.xyz">metamask-claim.xyz</a> — крипто-дрейнер. Прод: <b>dangerous / 100</b></li>
+  </ul>
+</section>
+
+<section>
+  <h2 class="warn">2. Должно быть ЖЁЛТОЕ (caution)</h2>
+  <div class="exp">Проверяет, что мы НЕ орём «опасно» на легитимный бренд+слово. Раньше это было DANGEROUS — я починил.
+  <b>Оцени сам:</b> устраивает ли тебя «жёлтый» здесь, или это всё ещё перебор для легитимного имени?</div>
+  <ul>
+    <li><a href="https://shopify-connect.com">shopify-connect.com</a> — легитимный паттерн интеграции. Прод: <b>caution / 49</b></li>
+  </ul>
+</section>
+
+<section>
+  <h2 class="ok">3. Должно быть ЗЕЛЁНОЕ (safe) — проверка на ложные срабатывания</h2>
+  <div class="exp">Самое важное: мы НЕ должны пугать на нормальных сайтах. Первые два — реальные бренды на ccTLD,
+  которые мы раньше ошибочно флагали (я это чинил).</div>
+  <ul>
+    <li><a href="https://apple.com.cn">apple.com.cn</a> — Apple Китай. Прод: <b>safe / 13</b> (был ложный флаг)</li>
+    <li><a href="https://hsbc.co.uk">hsbc.co.uk</a> — реальный банк. Прод: <b>safe / 0</b> (проверено после фикса редиректа)</li>
+    <li><a href="https://lloydsbank.com">lloydsbank.com</a> — реальный банк. Прод: <b>safe / 0</b></li>
+    <li><a href="https://google.com">google.com</a></li>
+    <li><a href="https://github.com">github.com</a></li>
+    <li><a href="https://wikipedia.org">wikipedia.org</a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>4. Что оценить лично (это не тестируется автоматом)</h2>
+  <ul>
+    <li>Бейджи <b>вообще появляются</b>? Быстро? Не прыгает ли вёрстка?</li>
+    <li>Не <b>раздражает</b> ли? Не слишком ли шумно на обычном сайте (открой HN, свою почту)?</li>
+    <li>Понятно ли <b>бабушке</b>, что значит цвет? (твой же критерий)</li>
+    <li>Попап (клик по иконке) — вердикт понятен? Не тормозит?</li>
+    <li>Не ломает ли обычные сайты? Открой 5–10 своих привычных — всё работает?</li>
+  </ul>
+</section>
+
+</body>
+</html>
