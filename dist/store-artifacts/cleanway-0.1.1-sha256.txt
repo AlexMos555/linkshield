@@ -1,4 +1,4 @@
-d1dddc599d33d57b134921307d07c964eba7b0efdfdd9d5e552a36d27f817cd3  cleanway-0.1.1-chrome.zip
-d1dddc599d33d57b134921307d07c964eba7b0efdfdd9d5e552a36d27f817cd3  cleanway-0.1.1-edge.zip
-1556e649409f55f26e2bb821c0fba3c91a403eb90bb5d3b0b19dad1eca7ad167  cleanway-0.1.1-firefox.zip
-d1dddc599d33d57b134921307d07c964eba7b0efdfdd9d5e552a36d27f817cd3  cleanway-0.1.1-opera.zip
+512e06f19b7b546eedec633cf08e28de0a95b1a0e3929393a22efac31064d3d4  cleanway-0.1.1-chrome.zip
+512e06f19b7b546eedec633cf08e28de0a95b1a0e3929393a22efac31064d3d4  cleanway-0.1.1-edge.zip
+445982f8179c11d22532c4a8beb2b9eac290d716fc18abce2c327af4364b6c8b  cleanway-0.1.1-firefox.zip
+512e06f19b7b546eedec633cf08e28de0a95b1a0e3929393a22efac31064d3d4  cleanway-0.1.1-opera.zip

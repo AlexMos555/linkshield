@@ -416,11 +416,25 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
   // removeAll() first so re-running onInstalled (fires on update/reload, and
   // the SW can replay it) doesn't hit "Cannot create item with duplicate id".
+  //
+  // removeAll()'s callback is ASYNC, so removeAll+create alone is NOT race-safe:
+  // if onInstalled runs twice (SW restart replay, or a dev reload), both
+  // removeAll calls can complete before either callback runs, and then both
+  // callbacks create the same ids -> "Cannot create item with duplicate id
+  // audit-page" surfaced in chrome://extensions. Pass a callback to each
+  // create() so the benign duplicate is READ (and thus cleared) instead of
+  // bubbling up as an unchecked runtime.lastError.
   chrome.contextMenus.removeAll(() => {
     // Read lastError to clear it (removeAll on an empty menu set is fine).
     void chrome.runtime.lastError;
-    chrome.contextMenus.create({ id: "check-link", title: "Check with Cleanway", contexts: ["link"] });
-    chrome.contextMenus.create({ id: "audit-page", title: "Privacy Audit", contexts: ["page"] });
+    chrome.contextMenus.create(
+      { id: "check-link", title: "Check with Cleanway", contexts: ["link"] },
+      () => void chrome.runtime.lastError,
+    );
+    chrome.contextMenus.create(
+      { id: "audit-page", title: "Privacy Audit", contexts: ["page"] },
+      () => void chrome.runtime.lastError,
+    );
   });
   // Family Hub poller — fires every minute while the user is signed
   // in + has a family cached. Fan-out (background side) ensures the
