@@ -41,6 +41,18 @@ var HOSTING_PLATFORMS = ["pages.dev","workers.dev","r2.dev","netlify.app","verce
 
 var CHAR_SUBS = {"1":"l","0":"o","3":"e","@":"a","5":"s","!":"i"};
 
+// PSL-aware registrable domain (mirrors backend doh_gateway._registrable_domain):
+// a 2-letter ccTLD preceded by a generic second-level label (com.cn/co.uk/com.mx...)
+// means the eTLD+1 is the last THREE labels, so a brand's own apex is not a subdomain.
+var CCTLD_SLD = ["com","co","org","net","gov","edu","ac","gob","or","ne","go","in","id","biz","info"];
+function registrableDomain(d) {
+  var p = String(d).toLowerCase().replace(/^\.+|\.+$/g, "").split(".");
+  if (p.length <= 2) return p.join(".");
+  var tld = p[p.length - 1], sld = p[p.length - 2];
+  if (tld.length === 2 && CCTLD_SLD.indexOf(sld) !== -1) return p.slice(-3).join(".");
+  return p.slice(-2).join(".");
+}
+
 // ── Main scoring function ──
 function localScore(domain) {
   var score = 0;
@@ -60,11 +72,14 @@ function localScore(domain) {
     reasons.push({signal:"typosquatting", detail:"Impersonates " + typo.brand + " (" + typo.method + ")", weight:30});
   }
 
-  // 3. Brand in subdomain (paypal.evil.com)
-  if (parts.length > 2) {
-    for (var i = 0; i < parts.length - 2; i++) {
-      var clean = parts[i].replace(/-/g, "");
-      if (BRANDS[clean] && base !== BRANDS[clean]) {
+  // 3. Brand in subdomain (paypal.evil.com) — PSL-aware so a brand's own apex on a
+  //    compound ccTLD (apple.com.cn, hsbc.co.uk) is NOT mistaken for a spoof subdomain.
+  var reg = registrableDomain(domain);
+  if (domain !== reg) {
+    var subLabels = domain.slice(0, domain.length - reg.length - 1).split(".");
+    for (var i = 0; i < subLabels.length; i++) {
+      var clean = subLabels[i].replace(/-/g, "");
+      if (BRANDS[clean] && reg !== BRANDS[clean]) {
         score += 30;
         reasons.push({signal:"brand_subdomain", detail:"Uses '" + clean + "' brand as subdomain", weight:30});
         break;
@@ -183,6 +198,12 @@ function checkTyposquat(name, domain, base, tld) {
     var normFull = name;
     for (var c in CHAR_SUBS) normFull = normFull.split(c).join(CHAR_SUBS[c]);
     if (normFull === brand) return {brand: legit, method: "character substitution"};
+
+    // Multi-char ASCII glyph homoglyph (rn->m, vv->w, cl->d) — mirrors backend.
+    if (brand.length >= 5) {
+      var skel = nameClean.split("rn").join("m").split("vv").join("w").split("cl").join("d");
+      if (skel !== nameClean && skel === brand) return {brand: legit, method: "glyph homoglyph"};
+    }
 
     // Hyphen injection
     if (name.replace(/-/g, "") === brand && name.indexOf("-") !== -1) {

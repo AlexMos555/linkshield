@@ -109,7 +109,12 @@ async function checkDomains(domains) {
       for (var j = 0; j < response.results.length; j++) {
         var bgr = response.results[j];
         for (var k = 0; k < results.length; k++) {
-          if (results[k].domain === bgr.domain && bgr.score >= results[k].score) {
+          // The backend verdict (source:"api") is authoritative — it must win in BOTH
+          // directions, so it can also CORRECT a local false-positive downward
+          // (e.g. local flags a legit ccTLD bank; the API says safe). Only a real API
+          // result replaces local; the background's own local fallback (same weak
+          // scorer) is not treated as an upgrade.
+          if (results[k].domain === bgr.domain && bgr.source === "api") {
             results[k] = bgr;
             _log("Upgraded from background:", bgr.domain, "→ score=" + bgr.score, bgr.level);
           }
