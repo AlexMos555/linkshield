@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Share } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { colors, spacing, fontSize, levelColors, levelLabels } from "../src/utils/theme";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  colors, type as t, space, radius,
+  levelColors, levelWashes, levelStrokes, levelLabels,
+} from "../src/utils/theme";
 import { checkSingleDomain, DomainResult } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
 
@@ -11,6 +15,14 @@ export default function ResultScreen() {
   const [result, setResult] = useState<DomainResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const retry = useCallback(() => {
+    setError(null);
+    setResult(null);
+    setLoading(true);
+    setAttempt(a => a + 1);
+  }, []);
 
   useEffect(() => {
     if (!domain) return;
@@ -47,86 +59,83 @@ export default function ResultScreen() {
     return () => {
       cancelled = true;
     };
-  }, [domain]);
+  }, [domain, attempt]);
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Analyzing {domain}...</Text>
-        <Text style={styles.loadingSub}>Checking 9 threat sources + ML model</Text>
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={colors.blue} />
+        <Text style={s.loadingText}>Checking {domain}…</Text>
+        <Text style={s.loadingSub}>Running 18 safety checks</Text>
       </View>
     );
   }
 
   if (error || !result) {
     return (
-      <View style={styles.center}>
-        <Text style={{ fontSize: 48, marginBottom: spacing.md }}>{"\u26A0"}</Text>
-        <Text style={styles.errorText}>{error || "Failed to check domain"}</Text>
+      <View style={s.center}>
+        <Ionicons name="alert-circle" size={44} color={colors.amber} />
+        <Text style={s.errorTitle}>Couldn't finish the check</Text>
+        <Text style={s.errorBody}>The server didn't answer. Check your connection and try again.</Text>
+        <TouchableOpacity style={s.retryBtn} onPress={retry} activeOpacity={0.85}>
+          <Text style={s.retryLabel}>Try again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  const color = levelColors[result.level] || colors.textMuted;
-  const label = levelLabels[result.level] || "Unknown";
-  const icon = result.level === "safe" ? "\u2705" : result.level === "caution" ? "\u26A0\uFE0F" : "\u274C";
+  const level = (result.level in levelColors ? result.level : "caution") as keyof typeof levelColors;
+  const color = levelColors[level];
+  const wash = levelWashes[level];
+  const stroke = levelStrokes[level];
+  const label = levelLabels[level];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Result Header */}
-      <View style={[styles.header, { borderColor: color + "40" }]}>
-        <Text style={styles.icon}>{icon}</Text>
-        <Text style={[styles.level, { color }]}>{label}</Text>
-        <Text style={styles.domain}>{result.domain}</Text>
-        <Text style={[styles.score, { color }]}>Score: {result.score}/100</Text>
+    <ScrollView style={s.container} contentContainerStyle={s.content}>
+      {/* Verdict card with score ring */}
+      <View style={[s.verdictCard, { borderColor: stroke }]}>
+        <View style={[s.ring, { borderColor: color + "66" }]}>
+          <Text style={[s.ringScore, { color }]}>{result.score}</Text>
+          <Text style={s.ringMax}>/100</Text>
+        </View>
+        <Text style={[s.verdictLabel, { color }]}>{label}</Text>
+        <Text style={s.domain}>{result.domain}</Text>
         {result.confidence === "low" && (
-          <Text style={styles.lowConf}>Limited analysis — some checks unavailable</Text>
+          <Text style={s.lowConf}>Limited analysis — some checks couldn't run</Text>
         )}
       </View>
 
-      {/* Reasons */}
+      {/* Signals */}
       {result.reasons && result.reasons.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Detection Signals</Text>
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Why we say this</Text>
           {result.reasons.map((r, i) => (
-            <View key={i} style={styles.reasonRow}>
-              <Text style={[styles.reasonDot, { color }]}>{"\u2022"}</Text>
-              <Text style={styles.reasonText}>{r.detail}</Text>
-              <Text style={[styles.reasonWeight, { color }]}>+{r.weight}</Text>
+            <View key={i} style={[s.signalRow, i > 0 && s.signalBorder]}>
+              <View style={[s.signalDot, { backgroundColor: color }]} />
+              <Text style={s.signalText}>{r.detail}</Text>
+              <View style={[s.weightChip, { backgroundColor: wash }]}>
+                <Text style={[s.weightLabel, { color }]}>+{r.weight}</Text>
+              </View>
             </View>
           ))}
         </View>
       )}
 
       {/* Details */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Details</Text>
+      <View style={s.card}>
+        <Text style={s.cardTitle}>Details</Text>
         {result.domain_age_days != null && (
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Domain Age</Text>
-            <Text style={styles.detailValue}>{result.domain_age_days} days</Text>
-          </View>
+          <DetailRow label="Domain age" value={`${result.domain_age_days} days`} />
         )}
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>HTTPS</Text>
-          <Text style={styles.detailValue}>{result.has_ssl ? "Yes" : "No"}</Text>
-        </View>
-        {result.ssl_issuer && (
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Certificate</Text>
-            <Text style={styles.detailValue}>{result.ssl_issuer}</Text>
-          </View>
-        )}
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Confidence</Text>
-          <Text style={styles.detailValue}>{result.confidence || "medium"}</Text>
-        </View>
+        <DetailRow label="HTTPS" value={result.has_ssl ? "Yes" : "No"} />
+        {result.ssl_issuer && <DetailRow label="Certificate" value={result.ssl_issuer} />}
+        <DetailRow label="Confidence" value={result.confidence || "medium"} last />
       </View>
 
-      {/* Share Result */}
+      {/* Share */}
       <TouchableOpacity
-        style={styles.shareBtn}
+        style={s.shareBtn}
+        activeOpacity={0.85}
         onPress={() => {
           // Audit mobile-ts LOW: previously fired without await/catch —
           // a user dismissing the share sheet rejected the promise and
@@ -139,47 +148,91 @@ export default function ResultScreen() {
           });
         }}
       >
-        <Text style={styles.shareBtnText}>Share Result</Text>
+        <Ionicons name="share-outline" size={18} color={colors.blue} />
+        <Text style={s.shareLabel}>Share result</Text>
       </TouchableOpacity>
 
-      <Text style={styles.note}>{"\u{1F512}"} Analysis ran on our servers. Only domain name was sent.</Text>
+      <View style={s.privacyRow}>
+        <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
+        <Text style={s.privacy}>Checked on our servers. Only the website name was sent — nothing else.</Text>
+      </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+function DetailRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <View style={[s.detailRow, !last && s.detailBorder]}>
+      <Text style={s.detailLabel}>{label}</Text>
+      <Text style={s.detailValue}>{value}</Text>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: 100 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
-  loadingText: { color: colors.text, fontSize: fontSize.lg, fontWeight: "600", marginTop: spacing.lg },
-  loadingSub: { color: colors.textMuted, fontSize: fontSize.sm, marginTop: spacing.xs },
-  errorText: { color: colors.dangerous, fontSize: fontSize.lg, textAlign: "center", padding: spacing.xl },
-  header: {
-    backgroundColor: colors.bgCard, borderRadius: 16, padding: spacing.xl,
-    alignItems: "center", marginBottom: spacing.lg, borderWidth: 1,
+  content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: 100 },
+  center: {
+    flex: 1, alignItems: "center", justifyContent: "center",
+    backgroundColor: colors.bg, padding: space.xxxl,
   },
-  icon: { fontSize: 48, marginBottom: spacing.sm },
-  level: { fontSize: fontSize.xxl, fontWeight: "800" },
-  domain: { color: colors.textSecondary, fontSize: fontSize.md, marginTop: 4 },
-  score: { fontSize: fontSize.lg, fontWeight: "700", marginTop: spacing.sm },
-  lowConf: { color: colors.caution, fontSize: fontSize.sm, marginTop: spacing.sm, fontStyle: "italic" },
-  card: { backgroundColor: colors.bgCard, borderRadius: 14, padding: spacing.lg, marginBottom: spacing.lg },
-  cardTitle: { color: colors.white, fontSize: fontSize.lg, fontWeight: "700", marginBottom: spacing.md },
-  reasonRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, paddingVertical: 6 },
-  reasonDot: { fontSize: 18, lineHeight: 20 },
-  reasonText: { flex: 1, color: colors.textSecondary, fontSize: fontSize.md, lineHeight: 20 },
-  reasonWeight: { fontSize: fontSize.sm, fontWeight: "700" },
-  detailRow: {
-    flexDirection: "row", justifyContent: "space-between",
-    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
+  loadingText: { ...t.headline, color: colors.textPrimary, marginTop: space.lg },
+  loadingSub: { ...t.caption, color: colors.textMuted, marginTop: space.xs },
+  errorTitle: { ...t.headline, color: colors.textPrimary, marginTop: space.md },
+  errorBody: { ...t.body, color: colors.textSecondary, textAlign: "center", marginTop: space.sm },
+  retryBtn: {
+    height: 50, paddingHorizontal: space.xxxl,
+    backgroundColor: colors.blue, borderRadius: radius.control,
+    alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
-  detailLabel: { color: colors.textMuted, fontSize: fontSize.md },
-  detailValue: { color: colors.text, fontSize: fontSize.md, fontWeight: "600" },
+  retryLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
+
+  verdictCard: {
+    backgroundColor: colors.surface, borderWidth: 1,
+    borderRadius: radius.card, padding: space.xxl,
+    alignItems: "center", marginBottom: space.md,
+  },
+  ring: {
+    width: 120, height: 120, borderRadius: 60, borderWidth: 8,
+    alignItems: "center", justifyContent: "center",
+  },
+  ringScore: { ...t.display },
+  ringMax: { ...t.caption, color: colors.textMuted, marginTop: -2 },
+  verdictLabel: { ...t.title2, marginTop: space.lg },
+  domain: { ...t.body, color: colors.textSecondary, marginTop: 4 },
+  lowConf: { ...t.caption, color: colors.amber, marginTop: space.md },
+
+  card: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.card, padding: space.lg, marginBottom: space.md,
+  },
+  cardTitle: { ...t.headline, color: colors.textPrimary, marginBottom: space.sm },
+  signalRow: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 8 },
+  signalBorder: { borderTopWidth: 1, borderTopColor: colors.hairline },
+  signalDot: { width: 6, height: 6, borderRadius: 3 },
+  signalText: { ...t.body, color: colors.textSecondary, flex: 1 },
+  weightChip: {
+    height: 24, paddingHorizontal: 8, borderRadius: 8,
+    alignItems: "center", justifyContent: "center",
+  },
+  weightLabel: { fontSize: 13, fontWeight: "600" },
+
+  detailRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10 },
+  detailBorder: { borderBottomWidth: 1, borderBottomColor: colors.hairline },
+  detailLabel: { fontSize: 15, color: colors.textMuted },
+  detailValue: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
+
   shareBtn: {
-    backgroundColor: colors.bgCard, borderRadius: 12, padding: 16,
-    alignItems: "center", marginBottom: spacing.lg,
-    borderWidth: 1, borderColor: colors.border,
+    height: 50, flexDirection: "row", gap: space.sm,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.control,
+    alignItems: "center", justifyContent: "center", marginBottom: space.lg,
   },
-  shareBtnText: { color: colors.primary, fontWeight: "700", fontSize: fontSize.md },
-  note: { textAlign: "center", color: colors.textMuted, fontSize: fontSize.sm, marginTop: spacing.md },
+  shareLabel: { fontSize: 15, fontWeight: "600", color: colors.blue },
+
+  privacyRow: {
+    flexDirection: "row", alignItems: "flex-start", justifyContent: "center",
+    gap: 6, paddingHorizontal: space.md,
+  },
+  privacy: { ...t.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
 });

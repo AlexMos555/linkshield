@@ -1,0 +1,143 @@
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, type as t, space, radius } from "../../utils/theme";
+
+export type ShieldState =
+  | "setup"
+  | "on"
+  | "paused"
+  | "conflict"
+  | "network-blocked"
+  | "unverified";
+
+interface ShieldCardProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: string;
+  honesty: string;
+  state: ShieldState;
+  stateCopy?: string;
+  onAction?: () => void;
+}
+
+const AMBER_STATES: ReadonlySet<ShieldState> = new Set(["conflict", "network-blocked"]);
+
+/**
+ * One shield, one honest state. The status control on the right is the only
+ * interactive element for non-default states; ON is a pill, never a toggle.
+ * Every card carries an ⓘ honesty line — non-negotiable (spec §2.4).
+ */
+export function ShieldCard(props: ShieldCardProps) {
+  const { icon, title, description, honesty, state, stateCopy, onAction } = props;
+  const amber = AMBER_STATES.has(state);
+  const iconColor = state === "on" ? colors.green : amber ? colors.amber : colors.textSecondary;
+  const desc = stateCopy ?? description;
+
+  return (
+    <View style={s.card}>
+      <View style={s.titleRow}>
+        <View style={s.iconBox}>
+          <Ionicons name={icon} size={22} color={iconColor} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.title}>{title}</Text>
+          <Text style={[s.desc, amber && { color: colors.amber }]} numberOfLines={2}>
+            {desc}
+          </Text>
+        </View>
+        <StatusControl state={state} onAction={onAction} />
+      </View>
+      <View style={s.honestyRow}>
+        <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
+        <Text style={s.honesty}>{honesty}</Text>
+      </View>
+    </View>
+  );
+}
+
+function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () => void }) {
+  if (state === "setup") {
+    return (
+      <TouchableOpacity
+        style={s.setupBtn}
+        onPress={onAction}
+        activeOpacity={0.85}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        accessibilityRole="button"
+        accessibilityLabel="Set up"
+      >
+        <Text style={s.setupLabel}>Set up</Text>
+      </TouchableOpacity>
+    );
+  }
+  if (state === "on") {
+    return (
+      <View style={[s.pill, { backgroundColor: colors.greenWash, borderColor: colors.greenStroke }]}>
+        <Ionicons name="checkmark-circle" size={16} color={colors.green} />
+        <Text style={[s.pillLabel, { color: colors.green }]}>On</Text>
+      </View>
+    );
+  }
+  if (state === "paused") {
+    return (
+      <TouchableOpacity
+        style={[s.pill, { backgroundColor: colors.surface, borderColor: colors.stroke }]}
+        onPress={onAction}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+      >
+        <Ionicons name="pause-circle-outline" size={16} color={colors.textSecondary} />
+        <Text style={[s.pillLabel, { color: colors.textSecondary }]}>Paused</Text>
+      </TouchableOpacity>
+    );
+  }
+  if (state === "unverified") {
+    return (
+      <View style={[s.pill, { backgroundColor: colors.surface, borderColor: colors.stroke }]}>
+        <Text style={[s.pillLabel, { color: colors.textSecondary }]}>Set up (unverified)</Text>
+      </View>
+    );
+  }
+  // conflict / network-blocked
+  return (
+    <TouchableOpacity
+      style={[s.pill, { backgroundColor: colors.amberWash, borderColor: colors.amberStroke }]}
+      onPress={onAction}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+    >
+      <Ionicons name="alert-circle" size={16} color={colors.amber} />
+      <Text style={[s.pillLabel, { color: colors.amber }]}>Attention</Text>
+    </TouchableOpacity>
+  );
+}
+
+const s = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.card, padding: space.lg,
+  },
+  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: space.md },
+  iconBox: {
+    width: 40, height: 40, borderRadius: radius.icon,
+    backgroundColor: "#FFFFFF0A",
+    alignItems: "center", justifyContent: "center",
+  },
+  title: { ...t.headline, color: colors.textPrimary },
+  desc: { ...t.body, color: colors.textSecondary, marginTop: 2 },
+  honestyRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 10 },
+  honesty: { ...t.caption, color: colors.textSecondary, flex: 1 },
+  setupBtn: {
+    height: 36, paddingHorizontal: 14,
+    backgroundColor: colors.blue, borderRadius: radius.pill,
+    alignItems: "center", justifyContent: "center",
+  },
+  setupLabel: { fontSize: 15, fontWeight: "700", color: "#FFFFFF" },
+  pill: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderWidth: 1, borderRadius: radius.pill,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  pillLabel: { fontSize: 13, fontWeight: "600" },
+});

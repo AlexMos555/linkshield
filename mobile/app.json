@@ -33,32 +33,8 @@
       "permissions": [
         "android.permission.BIND_VPN_SERVICE",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.POST_NOTIFICATIONS"
-      ],
-      "intentFilters": [
-        {
-          "action": "android.intent.action.SEND",
-          "category": [
-            "android.intent.category.DEFAULT"
-          ],
-          "data": [
-            {
-              "mimeType": "text/plain"
-            }
-          ]
-        },
-        {
-          "action": "android.intent.action.VIEW",
-          "category": [
-            "android.intent.category.DEFAULT",
-            "android.intent.category.BROWSABLE"
-          ],
-          "data": [
-            {
-              "scheme": "cleanway"
-            }
-          ]
-        }
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
       ]
     },
     "plugins": [
@@ -73,7 +49,22 @@
         }
       ],
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
+            "NSExtensionActivationSupportsText": true
+          },
+          "iosShareExtensionName": "Cleanway — Check Link",
+          "androidIntentFilters": [
+            "text/*"
+          ]
+        }
+      ],
+      "./plugins/withXcode26Patches"
     ]
   }
 }

@@ -1,32 +1,68 @@
 /**
- * Cleanway Dark Theme
+ * Cleanway Dark Theme — 2026 refresh (docs/design/shield-checklist-design.md)
+ *
+ * Old keys stay exported as aliases so untouched screens keep working; their
+ * values shift to the new palette so the whole app moves together.
  */
 
 export const colors = {
-  bg: "#0f172a",
-  bgCard: "#1e293b",
-  bgInput: "#111827",
-  border: "#334155",
+  // Core surfaces
+  bg: "#0B1220",
+  surface: "#FFFFFF0A",
+  surfaceRaised: "#FFFFFF12",
+  stroke: "#FFFFFF14",
+  hairline: "#FFFFFF0F",
 
-  text: "#e2e8f0",
-  textSecondary: "#94a3b8",
-  textMuted: "#64748b",
+  // Text
+  textPrimary: "#F1F5F9",
+  textSecondary: "#94A3B8",
+  textMuted: "#6B7A93",
+  textDisabled: "#475569",
+
+  // Semantic — the only three hues in the app
+  green: "#34D399",
+  greenWash: "#34D3991F",
+  greenStroke: "#34D39940",
+  blue: "#4C8DFF",
+  bluePressed: "#3A75E8",
+  blueWash: "#4C8DFF1F",
+  amber: "#FBBF24",
+  amberWash: "#FBBF241F",
+  amberStroke: "#FBBF2440",
+  danger: "#F87171",
+  dangerWash: "#F871711F",
+  dangerStroke: "#F8717140",
+
+  // Legacy aliases (do not use in new code)
+  bgCard: "#141A28",
+  bgInput: "#1A2233",
+  border: "#1E2536",
+  text: "#F1F5F9",
   textDark: "#475569",
-
-  safe: "#22c55e",
-  safeBg: "#052e16",
-  caution: "#f59e0b",
-  cautionBg: "#451a03",
-  dangerous: "#ef4444",
-  dangerousBg: "#450a0a",
-
-  primary: "#3b82f6",
-  primaryBg: "#1e3a5f",
-  accent: "#22c55e",
-
-  white: "#f8fafc",
+  safe: "#34D399",
+  safeBg: "#34D3991F",
+  caution: "#FBBF24",
+  cautionBg: "#FBBF241F",
+  dangerous: "#F87171",
+  dangerousBg: "#F871711F",
+  primary: "#4C8DFF",
+  primaryBg: "#4C8DFF1F",
+  accent: "#34D399",
+  white: "#F8FAFC",
 };
 
+export const space = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+  huge: 48,
+};
+
+// Legacy alias (old screens use spacing.md=16 semantics)
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -36,6 +72,34 @@ export const spacing = {
   xxl: 48,
 };
 
+export const radius = {
+  card: 20,
+  control: 14,
+  pill: 10,
+  chip: 10,
+  icon: 12,
+  full: 999,
+};
+
+export const type = {
+  display: { fontSize: 34, lineHeight: 40, fontWeight: "700" as const },
+  title1: { fontSize: 28, lineHeight: 34, fontWeight: "600" as const },
+  title2: { fontSize: 20, lineHeight: 25, fontWeight: "600" as const },
+  headline: { fontSize: 17, lineHeight: 22, fontWeight: "600" as const },
+  body: { fontSize: 15, lineHeight: 20, fontWeight: "400" as const },
+  caption: { fontSize: 13, lineHeight: 18, fontWeight: "400" as const },
+};
+
+export const sectionHeader = {
+  fontSize: 13,
+  lineHeight: 18,
+  fontWeight: "600" as const,
+  textTransform: "uppercase" as const,
+  letterSpacing: 0.6,
+  color: colors.textMuted,
+};
+
+// Legacy alias
 export const fontSize = {
   xs: 10,
   sm: 12,
@@ -47,19 +111,32 @@ export const fontSize = {
 };
 
 export const levelColors = {
-  safe: colors.safe,
-  caution: colors.caution,
-  dangerous: colors.dangerous,
+  safe: colors.green,
+  caution: colors.amber,
+  dangerous: colors.danger,
 } as const;
 
-export const levelIcons = {
-  safe: "\u2713",
-  caution: "\u26A0",
-  dangerous: "\u2717",
+export const levelWashes = {
+  safe: colors.greenWash,
+  caution: colors.amberWash,
+  dangerous: colors.dangerWash,
+} as const;
+
+export const levelStrokes = {
+  safe: colors.greenStroke,
+  caution: colors.amberStroke,
+  dangerous: colors.dangerStroke,
 } as const;
 
 export const levelLabels = {
-  safe: "Safe",
-  caution: "Caution",
+  safe: "Looks safe",
+  caution: "Be careful",
   dangerous: "Dangerous",
+} as const;
+
+// Legacy (emoji glyph icons are removed from the UI; kept only for old imports)
+export const levelIcons = {
+  safe: "✓",
+  caution: "⚠",
+  dangerous: "✗",
 } as const;

@@ -31,7 +31,8 @@
     "next": "15.5.19",
     "react-email": {
       "next": "15.5.19"
-    }
+    },
+    "expo": "~52.0.0"
   },
   "dependencies": {
     "tweetnacl": "^1.0.3",
