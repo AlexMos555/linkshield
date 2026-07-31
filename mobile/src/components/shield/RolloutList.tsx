@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, type as t, space, radius, sectionHeader } from "../../utils/theme";
+import { useTranslation } from "react-i18next";
+import { colors, type as typo, space, radius, sectionHeader } from "../../utils/theme";
 
 export interface RolloutItem {
   icon: keyof typeof Ionicons.glyphMap;
@@ -13,10 +14,11 @@ export interface RolloutItem {
  * no chevrons, not tappable. Visibly quieter than active cards by design.
  */
 export function RolloutList({ items }: { items: RolloutItem[] }) {
+  const { t } = useTranslation();
   if (items.length === 0) return null;
   return (
     <View>
-      <Text style={s.header}>Rolling out</Text>
+      <Text style={s.header}>{t("mobile.home.rollout_header")}</Text>
       <View style={s.container}>
         {items.map((item, i) => (
           <View
@@ -30,7 +32,7 @@ export function RolloutList({ items }: { items: RolloutItem[] }) {
               <Text style={s.line} numberOfLines={3}>{item.line}</Text>
             </View>
             <View style={s.pill}>
-              <Text style={s.pillLabel}>Rolling out</Text>
+              <Text style={s.pillLabel}>{t("mobile.shield.status.rollout_pill")}</Text>
             </View>
           </View>
         ))}
@@ -52,7 +54,7 @@ const s = StyleSheet.create({
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: colors.hairline },
   title: { fontSize: 15, fontWeight: "600", color: colors.textDisabled },
-  line: { ...t.caption, color: colors.textMuted, marginTop: 2 },
+  line: { ...typo.caption, color: colors.textMuted, marginTop: 2 },
   pill: {
     backgroundColor: "#FFFFFF0A",
     borderWidth: 1, borderColor: colors.stroke,

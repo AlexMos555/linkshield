@@ -4,11 +4,13 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, type as t, space, radius, sectionHeader } from "../src/utils/theme";
+import { useTranslation } from "react-i18next";
+import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { getRecentChecks } from "../src/services/database";
 
 export default function CheckScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   // paste=1: user tapped "Paste link" on the home card — an explicit action,
   // so reading the clipboard here is intentional (passive monitoring is killed).
   const { paste } = useLocalSearchParams<{ paste?: string }>();
@@ -31,10 +33,7 @@ export default function CheckScreen() {
   function handleCheck() {
     const domain = url.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
     if (!domain || !domain.includes(".")) {
-      Alert.alert(
-        "That doesn't look like a link",
-        "Type a website name like example.com, or paste the whole link."
-      );
+      Alert.alert(t("mobile.check.invalid_title"), t("mobile.check.invalid_body"));
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -56,12 +55,12 @@ export default function CheckScreen() {
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-      <Text style={s.title}>Check a link</Text>
-      <Text style={s.subtitle}>Paste any link or type a website name</Text>
+      <Text style={s.title}>{t("mobile.check.title")}</Text>
+      <Text style={s.subtitle}>{t("mobile.check.subtitle")}</Text>
 
       <TextInput
         style={[s.input, focused && s.inputFocused]}
-        placeholder="example.com or paste a full link"
+        placeholder={t("mobile.check.placeholder")}
         placeholderTextColor={colors.textMuted}
         value={url}
         onChangeText={setUrl}
@@ -78,14 +77,14 @@ export default function CheckScreen() {
       <View style={s.buttons}>
         <TouchableOpacity style={s.pasteBtn} onPress={handlePaste} activeOpacity={0.85}>
           <Ionicons name="clipboard-outline" size={18} color={colors.textSecondary} />
-          <Text style={s.pasteBtnText}>Paste from clipboard</Text>
+          <Text style={s.pasteBtnText}>{t("mobile.check.paste_btn")}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.checkBtn} onPress={handleCheck} activeOpacity={0.85}>
-          <Text style={s.checkBtnText}>Check it</Text>
+          <Text style={s.checkBtnText}>{t("mobile.check.submit")}</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={s.sectionTitle}>Try these</Text>
+      <Text style={s.sectionTitle}>{t("mobile.check.try")}</Text>
       <View style={s.chipGrid}>
         {["google.com", "paypa1-verify.tk", "pay-pal.com", "evil.netlify.app"].map(d => (
           <TouchableOpacity key={d} style={s.tryChip} onPress={() => quickCheck(d)} activeOpacity={0.85}>
@@ -96,7 +95,7 @@ export default function CheckScreen() {
 
       {recent.length > 0 && (
         <>
-          <Text style={s.sectionTitle}>Recent</Text>
+          <Text style={s.sectionTitle}>{t("mobile.check.recent")}</Text>
           <View style={s.chipGrid}>
             {recent.map(d => (
               <TouchableOpacity key={d} style={s.recentChip} onPress={() => quickCheck(d)} activeOpacity={0.85}>
@@ -113,8 +112,8 @@ export default function CheckScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: space.xl, paddingBottom: 100 },
-  title: { ...t.title1, color: colors.textPrimary, marginTop: space.sm },
-  subtitle: { ...t.body, color: colors.textSecondary, marginTop: 4, marginBottom: space.xxl },
+  title: { ...typo.title1, color: colors.textPrimary, marginTop: space.sm },
+  subtitle: { ...typo.body, color: colors.textSecondary, marginTop: 4, marginBottom: space.xxl },
   input: {
     height: 56,
     backgroundColor: colors.surfaceRaised,

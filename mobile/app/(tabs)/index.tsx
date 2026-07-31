@@ -4,7 +4,9 @@ import {
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, type as t, space, radius } from "../../src/utils/theme";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { colors, type as typo, space, radius } from "../../src/utils/theme";
 import { getStats } from "../../src/services/database";
 import { HeroShield } from "../../src/components/shield/HeroShield";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
@@ -22,42 +24,35 @@ import { useNetworkShield } from "../../src/hooks/useNetworkShield";
  * clipboard monitoring (killed by design, not restyled).
  */
 
-const ROLLOUT_IOS: RolloutItem[] = [
-  {
-    icon: "globe-outline",
-    title: "Every app",
-    line: "Blocks scam sites in almost every app. In final testing — not on iPhone yet.",
-  },
-  {
+function rolloutItems(t: TFunction, platform: string): RolloutItem[] {
+  const browser: RolloutItem = {
     icon: "compass-outline",
-    title: "Your browser",
-    line: "Warns you right on the page in Safari. Coming next.",
-  },
-  {
+    title: t("mobile.shield.browser.title"),
+    line: t(platform === "android" ? "mobile.rollout.browser_android" : "mobile.rollout.browser_ios"),
+  };
+  const messages: RolloutItem = {
     icon: "chatbubble-outline",
-    title: "Text messages",
-    line: "Filters scam texts (SMS). Planned — it will never be able to see iMessage.",
-  },
-];
-
-const ROLLOUT_ANDROID: RolloutItem[] = [
-  {
-    icon: "compass-outline",
-    title: "Your browser",
-    line: "Checks links you tap in any app, before they open. Coming next.",
-  },
-  {
-    icon: "chatbubble-outline",
-    title: "Text messages",
-    line: "Not possible for us on Android yet — sharing a text to Cleanway is the way to check one.",
-  },
-];
+    title: t("mobile.shield.messages.title"),
+    line: t(platform === "android" ? "mobile.rollout.messages_android" : "mobile.rollout.messages_ios"),
+  };
+  if (platform === "android") return [browser, messages];
+  return [
+    {
+      icon: "globe-outline",
+      title: t("mobile.shield.network.title"),
+      line: t("mobile.rollout.network_ios"),
+    },
+    browser,
+    messages,
+  ];
+}
 
 export default function HomeScreen() {
   const router = useRouter();
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const network = useNetworkShield();
+  const { t } = useTranslation();
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -73,7 +68,7 @@ export default function HomeScreen() {
     : "none";
   const needsSetup = network.available && network.state === "setup";
 
-  const rollout = Platform.OS === "android" ? ROLLOUT_ANDROID : ROLLOUT_IOS;
+  const rollout = rolloutItems(t, Platform.OS);
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -91,7 +86,7 @@ export default function HomeScreen() {
           activeOpacity={0.85}
           accessibilityRole="button"
         >
-          <Text style={s.ctaLabel}>Turn on protection</Text>
+          <Text style={s.ctaLabel}>{t("mobile.home.cta_turn_on")}</Text>
         </TouchableOpacity>
       )}
 
@@ -99,15 +94,14 @@ export default function HomeScreen() {
         <View style={s.section}>
           <ShieldCard
             icon="globe-outline"
-            title="Every app"
-            description="Blocks known scam sites in almost every app — even inside WhatsApp"
-            honesty="Can't catch brand-new scam sites, or apps that bring their own private DNS"
+            title={t("mobile.shield.network.title")}
+            description={t("mobile.shield.network.desc")}
+            honesty={t("mobile.shield.network.honesty")}
             state={network.state}
             stateCopy={
-              network.state === "on" ? "On. Working right now."
-              : network.state === "conflict"
-                ? "Your VPN is in charge right now. Cleanway steps aside so nothing breaks."
-                : "One-time setup, about a minute."
+              network.state === "on" ? t("mobile.shield.network.state_on")
+              : network.state === "conflict" ? t("mobile.shield.network.state_conflict")
+              : t("mobile.shield.network.state_setup")
             }
             onAction={() => void (network.state === "setup" ? network.turnOn() : network.turnOff())}
           />
@@ -129,17 +123,15 @@ export default function HomeScreen() {
 
       {(stats.total_checks > 0 || stats.threats_blocked > 0) && (
         <View style={[s.section, s.activityCard]}>
-          <ActivityColumn value={stats.total_checks} label="Checked" />
-          <ActivityColumn value={stats.threats_blocked} label="Blocked" />
-          <ActivityColumn value={stats.threats_warned} label="Warned" />
+          <ActivityColumn value={stats.total_checks} label={t("mobile.home.activity.checked")} />
+          <ActivityColumn value={stats.threats_blocked} label={t("mobile.home.activity.blocked")} />
+          <ActivityColumn value={stats.threats_warned} label={t("mobile.home.activity.warned")} />
         </View>
       )}
 
       <View style={s.privacyRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
-        <Text style={s.privacy}>
-          We check website names on our servers — never your passwords, messages, or browsing history.
-        </Text>
+<Text style={s.privacy}>{t("mobile.home.privacy")}</Text>
       </View>
 
       <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
@@ -157,17 +149,15 @@ function ActivityColumn({ value, label }: { value: number; label: string }) {
 }
 
 function ShareHowToSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={s.scrim} activeOpacity={1} onPress={onClose}>
         <View style={s.sheet}>
-          <Text style={s.sheetTitle}>How to share</Text>
-          <Text style={s.sheetBody}>
-            From any app, tap Share, then choose Cleanway. We'll check the link and tell you if
-            it's safe.
-          </Text>
+          <Text style={s.sheetTitle}>{t("mobile.home.check.share_sheet_title")}</Text>
+<Text style={s.sheetBody}>{t("mobile.home.check.share_sheet_body")}</Text>
           <TouchableOpacity style={s.sheetBtn} onPress={onClose} activeOpacity={0.85}>
-            <Text style={s.sheetBtnLabel}>Got it</Text>
+            <Text style={s.sheetBtnLabel}>{t("mobile.home.check.share_sheet_ok")}</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -194,13 +184,13 @@ const s = StyleSheet.create({
   },
   activityCol: { flex: 1, alignItems: "center" },
   activityNum: { fontSize: 20, lineHeight: 25, fontWeight: "600", color: colors.textPrimary },
-  activityLabel: { ...t.caption, color: colors.textMuted, marginTop: 2 },
+  activityLabel: { ...typo.caption, color: colors.textMuted, marginTop: 2 },
 
   privacyRow: {
     flexDirection: "row", alignItems: "flex-start", justifyContent: "center",
     gap: 6, marginTop: space.xxl, paddingHorizontal: space.md,
   },
-  privacy: { ...t.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
+  privacy: { ...typo.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
 
   scrim: { flex: 1, backgroundColor: "#0B1220E6", justifyContent: "flex-end" },
   sheet: {
@@ -208,8 +198,8 @@ const s = StyleSheet.create({
     borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card,
     padding: space.xxl, paddingBottom: space.huge,
   },
-  sheetTitle: { ...t.headline, color: colors.textPrimary },
-  sheetBody: { ...t.body, color: colors.textSecondary, marginTop: space.sm },
+  sheetTitle: { ...typo.headline, color: colors.textPrimary },
+  sheetBody: { ...typo.body, color: colors.textSecondary, marginTop: space.sm },
   sheetBtn: {
     height: 50, borderRadius: radius.control, backgroundColor: colors.blue,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,

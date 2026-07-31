@@ -1070,5 +1070,115 @@
         }
       }
     }
+  },
+  "mobile": {
+    "home": {
+      "hero": {
+        "title_none": "Let's set up your protection",
+        "sub_none": "{{count}} shields active",
+        "title_partial": "{{count}} of {{total}} shields on",
+        "sub_partial": "Tap a card below to finish setup",
+        "title_all": "You're protected",
+        "sub_all": "All shields on and verified",
+        "attention": "One shield needs attention",
+        "a11y": "Protection status: {{status}}"
+      },
+      "cta_turn_on": "Turn on protection",
+      "check": {
+        "title": "Check anything",
+        "desc": "Paste a link, scan a QR code, or share anything suspicious straight to Cleanway",
+        "paste": "Paste link",
+        "qr": "Scan QR",
+        "share": "How to share",
+        "share_sheet_title": "How to share",
+        "share_sheet_body": "From any app, tap Share, then choose Cleanway. We'll check the link and tell you if it's safe.",
+        "share_sheet_ok": "Got it",
+        "note": "Works with anything you can copy or share — including iMessage."
+      },
+      "rollout_header": "Rolling out",
+      "activity": {
+        "checked": "Checked",
+        "blocked": "Blocked",
+        "warned": "Warned"
+      },
+      "privacy": "We check website names on our servers — never your passwords, messages, or browsing history."
+    },
+    "shield": {
+      "network": {
+        "title": "Every app",
+        "desc": "Blocks known scam sites in almost every app — even inside WhatsApp",
+        "honesty": "Can't catch brand-new scam sites, or apps that bring their own private DNS",
+        "state_on": "On. Working right now.",
+        "state_setup": "One-time setup, about a minute.",
+        "state_paused": "Paused. Tap to turn back on.",
+        "state_conflict": "Your VPN is in charge right now. Cleanway steps aside so nothing breaks.",
+        "state_blocked": "This Wi-Fi needs a sign-in page. Cleanway paused itself and will come back on automatically."
+      },
+      "browser": {
+        "title": "Your browser",
+        "desc": "Checks every page you open and warns you right on the page",
+        "honesty": "Can't see inside other apps — the Every-app shield covers those"
+      },
+      "messages": {
+        "title": "Text messages",
+        "desc": "Moves scam texts (SMS) to Junk before you tap them",
+        "honesty": "Can't see iMessage — Apple's rule, not ours. It also can't count what it catches, by design."
+      },
+      "status": {
+        "setup_btn": "Set up",
+        "on_pill": "On",
+        "paused_pill": "Paused",
+        "attention_pill": "Attention",
+        "unverified_pill": "Set up (unverified)",
+        "rollout_pill": "Rolling out"
+      }
+    },
+    "rollout": {
+      "network_ios": "Blocks scam sites in almost every app. In final testing — not on iPhone yet.",
+      "browser_ios": "Warns you right on the page in Safari. Coming next.",
+      "messages_ios": "Filters scam texts (SMS). Planned — it will never be able to see iMessage.",
+      "browser_android": "Checks links you tap in any app, before they open. Coming next.",
+      "messages_android": "Not possible for us on Android yet — sharing a text to Cleanway is the way to check one."
+    },
+    "tabs": {
+      "shield": "Shield",
+      "history": "History",
+      "score": "Score",
+      "settings": "Settings"
+    },
+    "check": {
+      "title": "Check a link",
+      "subtitle": "Paste any link or type a website name",
+      "placeholder": "example.com or paste a full link",
+      "paste_btn": "Paste from clipboard",
+      "submit": "Check it",
+      "try": "Try these",
+      "recent": "Recent",
+      "invalid_title": "That doesn't look like a link",
+      "invalid_body": "Type a website name like example.com, or paste the whole link."
+    },
+    "result": {
+      "loading": "Checking {{domain}}…",
+      "loading_sub": "Running 18 safety checks",
+      "verdict_safe": "Looks safe",
+      "verdict_caution": "Be careful",
+      "verdict_dangerous": "Dangerous",
+      "low_confidence": "Limited analysis — some checks couldn't run",
+      "signals": "Why we say this",
+      "details": "Details",
+      "age": "Domain age",
+      "age_value": "{{days}} days",
+      "https": "HTTPS",
+      "cert": "Certificate",
+      "confidence": "Confidence",
+      "yes": "Yes",
+      "no": "No",
+      "share": "Share result",
+      "share_message": "{{domain}} is {{verdict}} (score: {{score}}/100). Checked with Cleanway — https://cleanway.ai/check/{{domain}}",
+      "privacy": "Checked on our servers. Only the website name was sent — nothing else.",
+      "error_title": "Couldn't finish the check",
+      "error_body": "The server didn't answer. Check your connection and try again.",
+      "error_retry": "Try again"
+    }
   }
 }

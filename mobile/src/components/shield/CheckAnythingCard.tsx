@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, type as t, space, radius } from "../../utils/theme";
+import { useTranslation } from "react-i18next";
+import { colors, type as typo, space, radius } from "../../utils/theme";
 
 interface CheckAnythingCardProps {
   onOpen: () => void;
@@ -15,6 +16,7 @@ interface CheckAnythingCardProps {
  * no honesty line; the footnote states the iMessage-capable scope.
  */
 export function CheckAnythingCard({ onOpen, onPaste, onScanQr, onHowToShare }: CheckAnythingCardProps) {
+  const { t } = useTranslation();
   return (
     <TouchableOpacity style={s.card} onPress={onOpen} activeOpacity={0.85} accessibilityRole="button">
       <View style={s.titleRow}>
@@ -22,21 +24,19 @@ export function CheckAnythingCard({ onOpen, onPaste, onScanQr, onHowToShare }: C
           <Ionicons name="search-outline" size={22} color={colors.textSecondary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>Check anything</Text>
-          <Text style={s.desc}>
-            Paste a link, scan a QR code, or share anything suspicious straight to Cleanway
-          </Text>
+          <Text style={s.title}>{t("mobile.home.check.title")}</Text>
+<Text style={s.desc}>{t("mobile.home.check.desc")}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
 
       <View style={s.chipRow}>
-        <Chip icon="clipboard-outline" label="Paste link" onPress={onPaste} />
-        <Chip icon="qr-code-outline" label="Scan QR" onPress={onScanQr} />
-        <Chip icon="share-outline" label="How to share" onPress={onHowToShare} />
+        <Chip icon="clipboard-outline" label={t("mobile.home.check.paste")} onPress={onPaste} />
+        <Chip icon="qr-code-outline" label={t("mobile.home.check.qr")} onPress={onScanQr} />
+        <Chip icon="share-outline" label={t("mobile.home.check.share")} onPress={onHowToShare} />
       </View>
 
-      <Text style={s.note}>Works with anything you can copy or share — including iMessage.</Text>
+      <Text style={s.note}>{t("mobile.home.check.note")}</Text>
     </TouchableOpacity>
   );
 }
@@ -68,8 +68,8 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF0A",
     alignItems: "center", justifyContent: "center",
   },
-  title: { ...t.headline, color: colors.textPrimary },
-  desc: { ...t.body, color: colors.textSecondary, marginTop: 2 },
+  title: { ...typo.headline, color: colors.textPrimary },
+  desc: { ...typo.body, color: colors.textSecondary, marginTop: 2 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: 14 },
   chip: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
@@ -80,5 +80,5 @@ const s = StyleSheet.create({
     flexGrow: 1,
   },
   chipLabel: { fontSize: 13, fontWeight: "600", color: colors.textPrimary },
-  note: { ...t.caption, color: colors.textSecondary, marginTop: space.md },
+  note: { ...typo.caption, color: colors.textSecondary, marginTop: space.md },
 });

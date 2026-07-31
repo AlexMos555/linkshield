@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, type as t, space, radius } from "../../utils/theme";
+import { useTranslation } from "react-i18next";
+import { colors, type as typo, space, radius } from "../../utils/theme";
 
 export type ShieldState =
   | "setup"
@@ -56,6 +57,7 @@ export function ShieldCard(props: ShieldCardProps) {
 }
 
 function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () => void }) {
+  const { t } = useTranslation();
   if (state === "setup") {
     return (
       <TouchableOpacity
@@ -64,9 +66,9 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
         activeOpacity={0.85}
         hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         accessibilityRole="button"
-        accessibilityLabel="Set up"
+        accessibilityLabel={t("mobile.shield.status.setup_btn")}
       >
-        <Text style={s.setupLabel}>Set up</Text>
+        <Text style={s.setupLabel}>{t("mobile.shield.status.setup_btn")}</Text>
       </TouchableOpacity>
     );
   }
@@ -74,7 +76,7 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
     return (
       <View style={[s.pill, { backgroundColor: colors.greenWash, borderColor: colors.greenStroke }]}>
         <Ionicons name="checkmark-circle" size={16} color={colors.green} />
-        <Text style={[s.pillLabel, { color: colors.green }]}>On</Text>
+        <Text style={[s.pillLabel, { color: colors.green }]}>{t("mobile.shield.status.on_pill")}</Text>
       </View>
     );
   }
@@ -87,14 +89,14 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
         accessibilityRole="button"
       >
         <Ionicons name="pause-circle-outline" size={16} color={colors.textSecondary} />
-        <Text style={[s.pillLabel, { color: colors.textSecondary }]}>Paused</Text>
+        <Text style={[s.pillLabel, { color: colors.textSecondary }]}>{t("mobile.shield.status.paused_pill")}</Text>
       </TouchableOpacity>
     );
   }
   if (state === "unverified") {
     return (
       <View style={[s.pill, { backgroundColor: colors.surface, borderColor: colors.stroke }]}>
-        <Text style={[s.pillLabel, { color: colors.textSecondary }]}>Set up (unverified)</Text>
+        <Text style={[s.pillLabel, { color: colors.textSecondary }]}>{t("mobile.shield.status.unverified_pill")}</Text>
       </View>
     );
   }
@@ -107,7 +109,7 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
       accessibilityRole="button"
     >
       <Ionicons name="alert-circle" size={16} color={colors.amber} />
-      <Text style={[s.pillLabel, { color: colors.amber }]}>Attention</Text>
+      <Text style={[s.pillLabel, { color: colors.amber }]}>{t("mobile.shield.status.attention_pill")}</Text>
     </TouchableOpacity>
   );
 }
@@ -124,10 +126,10 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF0A",
     alignItems: "center", justifyContent: "center",
   },
-  title: { ...t.headline, color: colors.textPrimary },
-  desc: { ...t.body, color: colors.textSecondary, marginTop: 2 },
+  title: { ...typo.headline, color: colors.textPrimary },
+  desc: { ...typo.body, color: colors.textSecondary, marginTop: 2 },
   honestyRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 10 },
-  honesty: { ...t.caption, color: colors.textSecondary, flex: 1 },
+  honesty: { ...typo.caption, color: colors.textSecondary, flex: 1 },
   setupBtn: {
     height: 36, paddingHorizontal: 14,
     backgroundColor: colors.blue, borderRadius: radius.pill,

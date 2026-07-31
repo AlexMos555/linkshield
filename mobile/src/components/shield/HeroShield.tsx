@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, type as t, space } from "../../utils/theme";
+import { useTranslation } from "react-i18next";
+import { colors, type as typo, space } from "../../utils/theme";
 
 export type HeroState = "none" | "partial" | "all";
 
@@ -18,18 +19,19 @@ interface HeroShieldProps {
  * platform shields are verified-on.
  */
 export function HeroShield({ state, verifiedCount, totalCount, attention }: HeroShieldProps) {
+  const { t } = useTranslation();
   const active = state !== "none";
   const title =
-    state === "all" ? "You're protected"
-    : state === "partial" ? `${verifiedCount} of ${totalCount} shields on`
-    : "Let's set up your protection";
+    state === "all" ? t("mobile.home.hero.title_all")
+    : state === "partial" ? t("mobile.home.hero.title_partial", { count: verifiedCount, total: totalCount })
+    : t("mobile.home.hero.title_none");
   const sub =
-    state === "all" ? "All shields on and verified"
-    : state === "partial" ? "Tap a card below to finish setup"
-    : `${verifiedCount} shields active`;
+    state === "all" ? t("mobile.home.hero.sub_all")
+    : state === "partial" ? t("mobile.home.hero.sub_partial")
+    : t("mobile.home.hero.sub_none", { count: verifiedCount });
 
   return (
-    <View style={s.wrap} accessibilityRole="text" accessibilityLabel={`Protection status: ${title}`}>
+    <View style={s.wrap} accessibilityRole="text" accessibilityLabel={t("mobile.home.hero.a11y", { status: title })}>
       <View style={[s.ring, active ? s.ringActive : s.ringNeutral]}>
         <View style={s.disc}>
           <Ionicons
@@ -41,7 +43,7 @@ export function HeroShield({ state, verifiedCount, totalCount, attention }: Hero
       </View>
       <Text style={[s.title, active && { color: colors.green }]}>{title}</Text>
       <Text style={s.sub}>{sub}</Text>
-      {attention && <Text style={s.attention}>One shield needs attention</Text>}
+      {attention && <Text style={s.attention}>{t("mobile.home.hero.attention")}</Text>}
     </View>
   );
 }
@@ -60,7 +62,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: "center", justifyContent: "center",
   },
-  title: { ...t.title2, color: colors.textPrimary, marginTop: space.md },
-  sub: { ...t.body, color: colors.textSecondary, marginTop: 4 },
-  attention: { ...t.caption, color: colors.amber, marginTop: space.sm },
+  title: { ...typo.title2, color: colors.textPrimary, marginTop: space.md },
+  sub: { ...typo.body, color: colors.textSecondary, marginTop: 4 },
+  attention: { ...typo.caption, color: colors.amber, marginTop: space.sm },
 });

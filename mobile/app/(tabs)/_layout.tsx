@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { colors } from "../../src/utils/theme";
 
 interface TabIconProps {
@@ -15,6 +16,7 @@ function icon(outline: keyof typeof Ionicons.glyphMap, filled: keyof typeof Ioni
 }
 
 export default function TabLayout() {
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -37,7 +39,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Shield",
+          title: t("mobile.tabs.shield"),
           headerTitle: "Cleanway",
           tabBarIcon: icon("shield-outline", "shield"),
         }}
@@ -45,21 +47,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
+          title: t("mobile.tabs.history"),
           tabBarIcon: icon("time-outline", "time"),
         }}
       />
       <Tabs.Screen
         name="score"
         options={{
-          title: "Score",
+          title: t("mobile.tabs.score"),
           tabBarIcon: icon("speedometer-outline", "speedometer"),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: t("mobile.tabs.settings"),
           tabBarIcon: icon("settings-outline", "settings"),
         }}
       />

@@ -3,15 +3,17 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import {
-  colors, type as t, space, radius,
-  levelColors, levelWashes, levelStrokes, levelLabels,
+  colors, type as typo, space, radius,
+  levelColors, levelWashes, levelStrokes,
 } from "../src/utils/theme";
 import { checkSingleDomain, DomainResult } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
 
 export default function ResultScreen() {
   const { domain } = useLocalSearchParams<{ domain: string }>();
+  const { t } = useTranslation();
   const [result, setResult] = useState<DomainResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +67,8 @@ export default function ResultScreen() {
     return (
       <View style={s.center}>
         <ActivityIndicator size="large" color={colors.blue} />
-        <Text style={s.loadingText}>Checking {domain}…</Text>
-        <Text style={s.loadingSub}>Running 18 safety checks</Text>
+        <Text style={s.loadingText}>{t("mobile.result.loading", { domain })}</Text>
+        <Text style={s.loadingSub}>{t("mobile.result.loading_sub")}</Text>
       </View>
     );
   }
@@ -75,10 +77,10 @@ export default function ResultScreen() {
     return (
       <View style={s.center}>
         <Ionicons name="alert-circle" size={44} color={colors.amber} />
-        <Text style={s.errorTitle}>Couldn't finish the check</Text>
-        <Text style={s.errorBody}>The server didn't answer. Check your connection and try again.</Text>
+        <Text style={s.errorTitle}>{t("mobile.result.error_title")}</Text>
+        <Text style={s.errorBody}>{t("mobile.result.error_body")}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={retry} activeOpacity={0.85}>
-          <Text style={s.retryLabel}>Try again</Text>
+          <Text style={s.retryLabel}>{t("mobile.result.error_retry")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -88,7 +90,7 @@ export default function ResultScreen() {
   const color = levelColors[level];
   const wash = levelWashes[level];
   const stroke = levelStrokes[level];
-  const label = levelLabels[level];
+  const label = t(`mobile.result.verdict_${level === "safe" ? "safe" : level === "caution" ? "caution" : "dangerous"}`);
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -101,14 +103,14 @@ export default function ResultScreen() {
         <Text style={[s.verdictLabel, { color }]}>{label}</Text>
         <Text style={s.domain}>{result.domain}</Text>
         {result.confidence === "low" && (
-          <Text style={s.lowConf}>Limited analysis — some checks couldn't run</Text>
+          <Text style={s.lowConf}>{t("mobile.result.low_confidence")}</Text>
         )}
       </View>
 
       {/* Signals */}
       {result.reasons && result.reasons.length > 0 && (
         <View style={s.card}>
-          <Text style={s.cardTitle}>Why we say this</Text>
+          <Text style={s.cardTitle}>{t("mobile.result.signals")}</Text>
           {result.reasons.map((r, i) => (
             <View key={i} style={[s.signalRow, i > 0 && s.signalBorder]}>
               <View style={[s.signalDot, { backgroundColor: color }]} />
@@ -123,13 +125,13 @@ export default function ResultScreen() {
 
       {/* Details */}
       <View style={s.card}>
-        <Text style={s.cardTitle}>Details</Text>
+        <Text style={s.cardTitle}>{t("mobile.result.details")}</Text>
         {result.domain_age_days != null && (
-          <DetailRow label="Domain age" value={`${result.domain_age_days} days`} />
+          <DetailRow label={t("mobile.result.age")} value={t("mobile.result.age_value", { days: result.domain_age_days })} />
         )}
-        <DetailRow label="HTTPS" value={result.has_ssl ? "Yes" : "No"} />
-        {result.ssl_issuer && <DetailRow label="Certificate" value={result.ssl_issuer} />}
-        <DetailRow label="Confidence" value={result.confidence || "medium"} last />
+        <DetailRow label={t("mobile.result.https")} value={result.has_ssl ? t("mobile.result.yes") : t("mobile.result.no")} />
+        {result.ssl_issuer && <DetailRow label={t("mobile.result.cert")} value={result.ssl_issuer} />}
+        <DetailRow label={t("mobile.result.confidence")} value={result.confidence || "medium"} last />
       </View>
 
       {/* Share */}
@@ -142,19 +144,21 @@ export default function ResultScreen() {
           // we lost the error silently. Now we await + ignore Cancel
           // (it's not really an error) and let the result fall through.
           void Share.share({
-            message: `${result.domain} is ${label} (score: ${result.score}/100). Checked with Cleanway — https://cleanway.ai/check/${result.domain}`,
+            message: t("mobile.result.share_message", {
+              domain: result.domain, verdict: label, score: result.score,
+            }),
           }).catch(() => {
             /* User dismissed share sheet — not an error worth surfacing. */
           });
         }}
       >
         <Ionicons name="share-outline" size={18} color={colors.blue} />
-        <Text style={s.shareLabel}>Share result</Text>
+        <Text style={s.shareLabel}>{t("mobile.result.share")}</Text>
       </TouchableOpacity>
 
       <View style={s.privacyRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
-        <Text style={s.privacy}>Checked on our servers. Only the website name was sent — nothing else.</Text>
+        <Text style={s.privacy}>{t("mobile.result.privacy")}</Text>
       </View>
     </ScrollView>
   );
@@ -176,10 +180,10 @@ const s = StyleSheet.create({
     flex: 1, alignItems: "center", justifyContent: "center",
     backgroundColor: colors.bg, padding: space.xxxl,
   },
-  loadingText: { ...t.headline, color: colors.textPrimary, marginTop: space.lg },
-  loadingSub: { ...t.caption, color: colors.textMuted, marginTop: space.xs },
-  errorTitle: { ...t.headline, color: colors.textPrimary, marginTop: space.md },
-  errorBody: { ...t.body, color: colors.textSecondary, textAlign: "center", marginTop: space.sm },
+  loadingText: { ...typo.headline, color: colors.textPrimary, marginTop: space.lg },
+  loadingSub: { ...typo.caption, color: colors.textMuted, marginTop: space.xs },
+  errorTitle: { ...typo.headline, color: colors.textPrimary, marginTop: space.md },
+  errorBody: { ...typo.body, color: colors.textSecondary, textAlign: "center", marginTop: space.sm },
   retryBtn: {
     height: 50, paddingHorizontal: space.xxxl,
     backgroundColor: colors.blue, borderRadius: radius.control,
@@ -196,21 +200,21 @@ const s = StyleSheet.create({
     width: 120, height: 120, borderRadius: 60, borderWidth: 8,
     alignItems: "center", justifyContent: "center",
   },
-  ringScore: { ...t.display },
-  ringMax: { ...t.caption, color: colors.textMuted, marginTop: -2 },
-  verdictLabel: { ...t.title2, marginTop: space.lg },
-  domain: { ...t.body, color: colors.textSecondary, marginTop: 4 },
-  lowConf: { ...t.caption, color: colors.amber, marginTop: space.md },
+  ringScore: { ...typo.display },
+  ringMax: { ...typo.caption, color: colors.textMuted, marginTop: -2 },
+  verdictLabel: { ...typo.title2, marginTop: space.lg },
+  domain: { ...typo.body, color: colors.textSecondary, marginTop: 4 },
+  lowConf: { ...typo.caption, color: colors.amber, marginTop: space.md },
 
   card: {
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
     borderRadius: radius.card, padding: space.lg, marginBottom: space.md,
   },
-  cardTitle: { ...t.headline, color: colors.textPrimary, marginBottom: space.sm },
+  cardTitle: { ...typo.headline, color: colors.textPrimary, marginBottom: space.sm },
   signalRow: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 8 },
   signalBorder: { borderTopWidth: 1, borderTopColor: colors.hairline },
   signalDot: { width: 6, height: 6, borderRadius: 3 },
-  signalText: { ...t.body, color: colors.textSecondary, flex: 1 },
+  signalText: { ...typo.body, color: colors.textSecondary, flex: 1 },
   weightChip: {
     height: 24, paddingHorizontal: 8, borderRadius: 8,
     alignItems: "center", justifyContent: "center",
@@ -234,5 +238,5 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "flex-start", justifyContent: "center",
     gap: 6, paddingHorizontal: space.md,
   },
-  privacy: { ...t.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
+  privacy: { ...typo.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
 });
