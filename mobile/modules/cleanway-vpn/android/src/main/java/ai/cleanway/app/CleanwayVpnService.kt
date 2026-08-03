@@ -2,8 +2,9 @@
  * Cleanway Android VPN Service
  *
  * DNS-only local VPN. Intercepts DNS queries, decides locally whether a
- * domain is blocked, otherwise forwards the query to Cloudflare's 1.1.1.1
- * resolver and relays the response back into the tunnel.
+ * domain is blocked, otherwise forwards the query upstream — DNS-over-HTTPS
+ * to our own RFC 8484 gateway, falling back to plain UDP/53 — and relays the
+ * response back into the tunnel.
  *
  * Hardening over the v0.1 skeleton:
  * - Fixed the critical bug where `forwardToUpstream` wrote the query back
@@ -195,7 +196,64 @@ class CleanwayVpnService : VpnService() {
      * we strip the headers on the way out and re-wrap on the way back using
      * `DnsUtil.wrapResponse`.
      */
+    /**
+     * Forward a DNS query upstream and write the answer back into the tunnel.
+     *
+     * Tries DNS-over-HTTPS first (our own RFC 8484 gateway, port 443) and falls
+     * back to plain UDP/53. DoH is the better default for a protection app:
+     * the query is encrypted, it resolves through our own gateway rather than
+     * whatever the network hands out, and it still works on networks that block
+     * or hijack port 53 — captive portals, restrictive corporate Wi-Fi, some
+     * mobile carriers. UDP stays as the fallback for when DoH is unreachable.
+     */
     private fun forwardToUpstream(packet: ByteArray, length: Int, output: FileOutputStream) {
+        if (length <= DnsUtil.IP_UDP_HEADER) return
+        if (forwardOverDoh(packet, length, output)) return
+        forwardOverUdp(packet, length, output)
+    }
+
+    /** Returns true when the DoH round-trip produced an answer. */
+    private fun forwardOverDoh(packet: ByteArray, length: Int, output: FileOutputStream): Boolean {
+        val dnsStart = DnsUtil.IP_UDP_HEADER
+        val dnsLen = length - dnsStart
+        return try {
+            val conn = (URL(DOH_URL).openConnection() as java.net.HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = 4_000
+                readTimeout = 4_000
+                setRequestProperty("Content-Type", "application/dns-message")
+                setRequestProperty("Accept", "application/dns-message")
+            }
+            conn.outputStream.use { it.write(packet, dnsStart, dnsLen) }
+            if (conn.responseCode != 200) {
+                conn.disconnect()
+                return false
+            }
+            val payload = conn.inputStream.use { it.readBytes() }
+            conn.disconnect()
+            if (payload.isEmpty()) return false
+
+            val response = DnsUtil.wrapResponse(
+                query = packet,
+                queryLength = length,
+                payload = payload,
+                payloadOffset = 0,
+                payloadLength = payload.size,
+            )
+            if (response != null) {
+                output.write(response)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.v(TAG, "doh_error: ${e.message}")
+            false
+        }
+    }
+
+    private fun forwardOverUdp(packet: ByteArray, length: Int, output: FileOutputStream) {
         if (length <= DnsUtil.IP_UDP_HEADER) return
         val dnsStart = DnsUtil.IP_UDP_HEADER
         val dnsLen = length - dnsStart
@@ -395,6 +453,10 @@ class CleanwayVpnService : VpnService() {
         // Must also exist in public DNS (ops: A/CNAME block-canary.cleanway.ai)
         // so a dead tunnel can't fake a "blocked" result.
         const val CANARY_DOMAIN = "block-canary.cleanway.ai"
+
+        // Our RFC 8484 DNS-over-HTTPS gateway. Encrypted, resolves through our
+        // own infrastructure, and survives networks that block plain port 53.
+        private const val DOH_URL = "https://api.cleanway.ai/dns-query"
     }
 }
 
