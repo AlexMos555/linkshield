@@ -33,7 +33,7 @@ class CleanwayVpnModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("CleanwayVpn")
 
-    Events("onDomainBlocked")
+    Events("onDomainBlocked", "onVpnStopped")
 
     AsyncFunction("startVpn") { promise: Promise ->
       if (pendingStart != null) {
@@ -102,12 +102,24 @@ class CleanwayVpnModule : Module() {
     if (blockReceiver != null) return
     val receiver = object : BroadcastReceiver() {
       override fun onReceive(ctx: Context?, intent: Intent?) {
-        val domain = intent?.getStringExtra(CleanwayVpnService.EXTRA_DOMAIN) ?: return
-        val ts = intent.getLongExtra(CleanwayVpnService.EXTRA_TIMESTAMP, 0L)
-        sendEvent("onDomainBlocked", mapOf("domain" to domain, "ts" to ts))
+        when (intent?.action) {
+          CleanwayVpnService.ACTION_VPN_STOPPED -> {
+            // The tunnel went away without the user asking. The UI must stop
+            // claiming protection immediately, not on the next foreground.
+            val reason = intent.getStringExtra(CleanwayVpnService.EXTRA_REASON) ?: "unknown"
+            sendEvent("onVpnStopped", mapOf("reason" to reason))
+          }
+          CleanwayVpnService.ACTION_DOMAIN_BLOCKED -> {
+            val domain = intent.getStringExtra(CleanwayVpnService.EXTRA_DOMAIN) ?: return
+            val ts = intent.getLongExtra(CleanwayVpnService.EXTRA_TIMESTAMP, 0L)
+            sendEvent("onDomainBlocked", mapOf("domain" to domain, "ts" to ts))
+          }
+        }
       }
     }
-    val filter = IntentFilter(CleanwayVpnService.ACTION_DOMAIN_BLOCKED)
+    val filter = IntentFilter(CleanwayVpnService.ACTION_DOMAIN_BLOCKED).apply {
+      addAction(CleanwayVpnService.ACTION_VPN_STOPPED)
+    }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
       context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
     } else {

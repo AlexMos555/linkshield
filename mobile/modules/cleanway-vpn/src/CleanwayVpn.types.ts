@@ -5,6 +5,13 @@ export type DomainBlockedPayload = {
   ts: number;
 };
 
+/** Emitted when the tunnel is torn down without the user asking for it. */
+export type VpnStoppedPayload = {
+  /** "revoked" — the system or another VPN app took the tunnel away. */
+  reason: string;
+};
+
 export type CleanwayVpnModuleEvents = {
   onDomainBlocked: (params: DomainBlockedPayload) => void;
+  onVpnStopped: (params: VpnStoppedPayload) => void;
 };

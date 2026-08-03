@@ -12,9 +12,9 @@ export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
  * from "this device has no working DNS at all".
  */
 export const CONTROL_URL = 'https://api.cleanway.ai/api/v1/health';
-import type { DomainBlockedPayload } from './src/CleanwayVpn.types';
+import type { DomainBlockedPayload, VpnStoppedPayload } from './src/CleanwayVpn.types';
 
-export type { DomainBlockedPayload };
+export type { DomainBlockedPayload, VpnStoppedPayload };
 
 export async function startVpn(): Promise<boolean> {
   return CleanwayVpn.startVpn();
@@ -53,6 +53,15 @@ export async function verifyFiltering(): Promise<boolean> {
     // Control worked but the canary did not: the filter is live.
     return true;
   }
+}
+
+/**
+ * Subscribe to the tunnel being torn down without the user asking (revoked in
+ * Settings, or another VPN app took over). Lets the UI drop its protected
+ * state at the moment it stops being true.
+ */
+export function addVpnStoppedListener(cb: (p: VpnStoppedPayload) => void) {
+  return CleanwayVpn.addListener('onVpnStopped', cb);
 }
 
 export function isVpnRunning(): boolean {

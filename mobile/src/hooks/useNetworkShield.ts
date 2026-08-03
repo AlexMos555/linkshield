@@ -15,11 +15,16 @@ import type { ShieldState } from "../components/shield/ShieldCard";
  * live. `isRunning` alone is not verification.
  */
 
+interface VpnSubscription {
+  remove(): void;
+}
+
 interface VpnModule {
   startVpn(): Promise<boolean>;
   stopVpn(): Promise<void>;
   isVpnRunning(): boolean;
   verifyFiltering(): Promise<boolean>;
+  addVpnStoppedListener?(cb: () => void): VpnSubscription;
 }
 
 function loadVpn(): VpnModule | null {
@@ -56,13 +61,24 @@ export function useNetworkShield(): NetworkShield {
 
   useEffect(() => {
     void sync();
-    const sub = AppState.addEventListener("change", (s) => {
+    const appSub = AppState.addEventListener("change", (s) => {
       // The OS or another VPN can tear our tunnel down while backgrounded —
       // re-verify on every foreground rather than trusting stale state.
       if (s === "active") void sync();
     });
-    return () => sub.remove();
-  }, [sync]);
+    // A foreground transition is not enough: another VPN app can displace our
+    // tunnel while the user is looking at this screen, and without this the
+    // shield would keep showing green over a dead tunnel until they navigate
+    // away and back.
+    const stopSub = vpn?.addVpnStoppedListener?.(() => {
+      setRunning(false);
+      setVerified(false);
+    });
+    return () => {
+      appSub.remove();
+      stopSub?.remove();
+    };
+  }, [sync, vpn]);
 
   const turnOn = useCallback(async () => {
     if (!vpn) return;

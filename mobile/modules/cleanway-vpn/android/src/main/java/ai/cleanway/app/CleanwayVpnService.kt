@@ -2,9 +2,10 @@
  * Cleanway Android VPN Service
  *
  * DNS-only local VPN. Intercepts DNS queries, decides locally whether a
- * domain is blocked, otherwise forwards the query upstream — DNS-over-HTTPS
- * to our own RFC 8484 gateway, falling back to plain UDP/53 — and relays the
- * response back into the tunnel.
+ * domain is blocked, otherwise forwards the query upstream — plain UDP/53 for
+ * speed, falling back to DNS-over-HTTPS against our own RFC 8484 gateway when
+ * the network blocks or hijacks port 53 — and relays the response back into
+ * the tunnel.
  *
  * Hardening over the v0.1 skeleton:
  * - Fixed the critical bug where `forwardToUpstream` wrote the query back
@@ -48,7 +49,10 @@ import java.net.InetAddress
 import java.net.URL
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import android.app.Notification
 import android.app.NotificationChannel
@@ -75,6 +79,29 @@ class CleanwayVpnService : VpnService() {
     // cap parallelism so a flood of unknown queries doesn't spawn thousands
     // of threads.
     private val checkExecutor = Executors.newFixedThreadPool(4)
+
+    // Upstream round-trips run here so the read loop stays responsive. Bounded
+    // queue: under a flood we drop rather than grow memory, and DNS clients
+    // retry on their own.
+    private val forwardExecutor = ThreadPoolExecutor(
+        4, 8, 30L, TimeUnit.SECONDS, ArrayBlockingQueue(256),
+    )
+
+    private val tunnelWriteLock = Any()
+
+    // Transport health. A transport that fails repeatedly is skipped for a
+    // while so the other one is tried first instead of paying both timeouts.
+    @Volatile
+    private var dohSuppressedUntil = 0L
+
+    @Volatile
+    private var udpSuppressedUntil = 0L
+
+    @Volatile
+    private var udpFailures = 0
+
+    @Volatile
+    private var dohFailures = 0
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -115,6 +142,31 @@ class CleanwayVpnService : VpnService() {
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
     }
 
+    /**
+     * Android calls this when our tunnel is taken away — the user revoked VPN
+     * access in Settings, or another VPN app (corporate, Google One, a free
+     * VPN) established and displaced us. The default implementation stops the
+     * service silently, which would leave the UI showing a green "protected"
+     * shield over a dead tunnel. Announce it so the app can tell the truth.
+     */
+    override fun onRevoke() {
+        Log.i(TAG, "tunnel_revoked")
+        broadcastStopped(REASON_REVOKED)
+        super.onRevoke()
+    }
+
+    private fun broadcastStopped(reason: String) {
+        try {
+            sendBroadcast(
+                Intent(ACTION_VPN_STOPPED)
+                    .setPackage(packageName)
+                    .putExtra(EXTRA_REASON, reason)
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "stopped_broadcast_error: ${e.message}")
+        }
+    }
+
     private fun stopVpn() {
         running = false
         isRunning = false
@@ -152,7 +204,7 @@ class CleanwayVpnService : VpnService() {
                 val normalized = domain.lowercase().trimEnd('.')
 
                 if (DomainPolicy.isSystemDomain(normalized)) {
-                    forwardToUpstream(packet, length, output)
+                    submitForward(packet, length, output)
                     continue
                 }
 
@@ -161,24 +213,24 @@ class CleanwayVpnService : VpnService() {
                     // after start and expects NXDOMAIN. No notifyBlocked — the
                     // probe must not spam block events or the notification.
                     val nx = DnsUtil.makeNxDomain(packet, length)
-                    if (nx != null) output.write(nx)
+                    if (nx != null) writeToTunnel(output, nx)
                     continue
                 }
 
                 if (blockedDomains.contains(normalized)) {
                     val nx = DnsUtil.makeNxDomain(packet, length)
-                    if (nx != null) output.write(nx)
+                    if (nx != null) writeToTunnel(output, nx)
                     notifyBlocked(normalized)
                     continue
                 }
 
                 if (safeDomains.contains(normalized)) {
-                    forwardToUpstream(packet, length, output)
+                    submitForward(packet, length, output)
                     continue
                 }
 
                 // Unknown — forward immediately (fail-open), check in background
-                forwardToUpstream(packet, length, output)
+                submitForward(packet, length, output)
                 checkExecutor.submit { checkDomainAsync(normalized) }
             } catch (e: Exception) {
                 if (!running) break
@@ -187,15 +239,6 @@ class CleanwayVpnService : VpnService() {
         }
     }
 
-    /**
-     * Round-trip a DNS query to 1.1.1.1 via UDP and write the response back
-     * to the VPN tunnel.
-     *
-     * The packet on `input` is a complete IPv4+UDP+DNS datagram as observed
-     * by the tunnel. Upstream only wants the DNS payload (bytes 28..N), so
-     * we strip the headers on the way out and re-wrap on the way back using
-     * `DnsUtil.wrapResponse`.
-     */
     /**
      * Forward a DNS query upstream and write the answer back into the tunnel.
      *
@@ -206,10 +249,74 @@ class CleanwayVpnService : VpnService() {
      * or hijack port 53 — captive portals, restrictive corporate Wi-Fi, some
      * mobile carriers. UDP stays as the fallback for when DoH is unreachable.
      */
+    /**
+     * Hand the upstream round-trip to the pool so the read loop never blocks.
+     *
+     * This loop carries DNS for the entire device: doing the round-trip inline
+     * means one stalled lookup (flaky network, Doze, slow gateway) queues every
+     * other app's lookups behind it, and the whole phone appears to lose the
+     * internet for seconds at a time. Queue overflow drops the query — the
+     * client retries, which is the correct failure for DNS.
+     */
+    private fun submitForward(packet: ByteArray, length: Int, output: FileOutputStream) {
+        try {
+            forwardExecutor.execute { forwardToUpstream(packet, length, output) }
+        } catch (e: RejectedExecutionException) {
+            Log.v(TAG, "forward_queue_full")
+        }
+    }
+
+    /** Writes to the tun fd are serialized: concurrent writes can interleave. */
+    private fun writeToTunnel(output: FileOutputStream, data: ByteArray) {
+        synchronized(tunnelWriteLock) {
+            try {
+                output.write(data)
+            } catch (e: Exception) {
+                Log.v(TAG, "tunnel_write_error: ${e.message}")
+            }
+        }
+    }
+
     private fun forwardToUpstream(packet: ByteArray, length: Int, output: FileOutputStream) {
         if (length <= DnsUtil.IP_UDP_HEADER) return
-        if (forwardOverDoh(packet, length, output)) return
-        forwardOverUdp(packet, length, output)
+        val now = System.currentTimeMillis()
+
+        // Blocking is decided locally before we get here, so upstream is only a
+        // transport — and its latency is the whole user experience: one page
+        // pulls tens of lookups. Plain UDP/53 is the fast path (milliseconds),
+        // DoH is the fallback for networks that block or hijack port 53.
+        //
+        // Whichever one is currently failing gets suppressed for a while.
+        // Without that, a network with 53 blocked makes every single lookup pay
+        // the UDP timeout before falling back — measured at ~5s per domain,
+        // which reads as "the internet is broken" even though we resolve fine.
+        val udpUsable = now >= udpSuppressedUntil
+        val dohUsable = now >= dohSuppressedUntil
+
+        if (udpUsable) {
+            if (forwardOverUdp(packet, length, output)) {
+                udpFailures = 0
+                return
+            }
+            if (++udpFailures >= TRANSPORT_FAILURE_THRESHOLD) {
+                udpSuppressedUntil = now + TRANSPORT_BACKOFF_MS
+                Log.i(TAG, "udp_suppressed: falling back to DoH")
+            }
+        }
+
+        if (!dohUsable) return
+        if (forwardOverDoh(packet, length, output)) {
+            dohFailures = 0
+            return
+        }
+        if (++dohFailures >= TRANSPORT_FAILURE_THRESHOLD) {
+            dohSuppressedUntil = now + TRANSPORT_BACKOFF_MS
+            Log.i(TAG, "doh_suppressed")
+        }
+
+        // Both transports are down: the query is dropped and the client
+        // retries. We never answer with a forged result — a wrong answer is
+        // worse than a slow one for a security product.
     }
 
     /** Returns true when the DoH round-trip produced an answer. */
@@ -220,8 +327,10 @@ class CleanwayVpnService : VpnService() {
             val conn = (URL(DOH_URL).openConnection() as java.net.HttpURLConnection).apply {
                 requestMethod = "POST"
                 doOutput = true
-                connectTimeout = 4_000
-                readTimeout = 4_000
+                // DNS is on the critical path of every page load — a slow
+                // answer is nearly as bad as none.
+                connectTimeout = 1_500
+                readTimeout = 1_500
                 setRequestProperty("Content-Type", "application/dns-message")
                 setRequestProperty("Accept", "application/dns-message")
             }
@@ -242,7 +351,7 @@ class CleanwayVpnService : VpnService() {
                 payloadLength = payload.size,
             )
             if (response != null) {
-                output.write(response)
+                writeToTunnel(output, response)
                 true
             } else {
                 false
@@ -253,12 +362,19 @@ class CleanwayVpnService : VpnService() {
         }
     }
 
-    private fun forwardOverUdp(packet: ByteArray, length: Int, output: FileOutputStream) {
-        if (length <= DnsUtil.IP_UDP_HEADER) return
+    /**
+     * Round-trip a DNS query to the upstream resolver over UDP and write the
+     * answer back into the tunnel. Returns true when an answer was written.
+     *
+     * The packet is a complete IPv4+UDP+DNS datagram as observed by the tunnel;
+     * upstream only wants the DNS payload, so the headers are stripped on the
+     * way out and rebuilt on the way back by `DnsUtil.wrapResponse`.
+     */
+    private fun forwardOverUdp(packet: ByteArray, length: Int, output: FileOutputStream): Boolean {
         val dnsStart = DnsUtil.IP_UDP_HEADER
         val dnsLen = length - dnsStart
 
-        try {
+        return try {
             DatagramSocket().use { socket ->
                 protect(socket) // Prevent loopback through our own VPN
                 socket.soTimeout = 3_000
@@ -287,12 +403,15 @@ class CleanwayVpnService : VpnService() {
                     payloadLength = reply.length,
                 )
                 if (response != null) {
-                    output.write(response)
+                    writeToTunnel(output, response)
+                    return true
                 }
             }
+            false
         } catch (e: Exception) {
             Log.v(TAG, "upstream_dns_error: ${e.message}")
-            // Fail-open: drop this query. Client will retry.
+            // Fall through to DoH; the client also retries on its own.
+            false
         }
     }
 
@@ -419,6 +538,7 @@ class CleanwayVpnService : VpnService() {
         try {
             if (!checkExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
                 checkExecutor.shutdownNow()
+        forwardExecutor.shutdownNow()
             }
         } catch (e: InterruptedException) {
             checkExecutor.shutdownNow()
@@ -437,6 +557,14 @@ class CleanwayVpnService : VpnService() {
         private const val NOTIF_ID = 4711
         private const val TAG = "CleanwayVPN"
         const val ACTION_STOP = "ai.cleanway.VPN_STOP"
+
+        /** Broadcast when the tunnel goes away without the user asking. */
+        const val ACTION_VPN_STOPPED = "ai.cleanway.VPN_STOPPED"
+
+        const val EXTRA_REASON = "reason"
+
+        /** Taken away by the system or displaced by another VPN app. */
+        const val REASON_REVOKED = "revoked"
         const val ACTION_DOMAIN_BLOCKED = "ai.cleanway.DOMAIN_BLOCKED"
         const val EXTRA_DOMAIN = "domain"
         const val EXTRA_TIMESTAMP = "ts_ms"
@@ -457,6 +585,10 @@ class CleanwayVpnService : VpnService() {
         // Our RFC 8484 DNS-over-HTTPS gateway. Encrypted, resolves through our
         // own infrastructure, and survives networks that block plain port 53.
         private const val DOH_URL = "https://api.cleanway.ai/dns-query"
+
+        private const val TRANSPORT_BACKOFF_MS = 60_000L
+
+        private const val TRANSPORT_FAILURE_THRESHOLD = 3
     }
 }
 
