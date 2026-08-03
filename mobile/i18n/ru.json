@@ -395,6 +395,7 @@
   "mobile.shield.status.attention_pill": "Attention",
   "mobile.shield.status.unverified_pill": "Set up (unverified)",
   "mobile.shield.status.rollout_pill": "Rolling out",
+  "mobile.shield.always_on_hint": "Keep it on after restart — turn on Always-on VPN",
   "mobile.rollout.network_ios": "Blocks scam sites in almost every app. In final testing — not on iPhone yet.",
   "mobile.rollout.browser_ios": "Warns you right on the page in Safari. Coming next.",
   "mobile.rollout.messages_ios": "Filters scam texts (SMS). Planned — it will never be able to see iMessage.",

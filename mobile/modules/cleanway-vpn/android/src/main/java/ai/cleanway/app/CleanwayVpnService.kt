@@ -105,6 +105,9 @@ class CleanwayVpnService : VpnService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            // Explicit user request: forget the intent so we do not come back
+            // on the next boot.
+            ShieldPreference.setUserEnabled(this, false)
             stopVpn()
             return START_NOT_STICKY
         }
@@ -137,6 +140,9 @@ class CleanwayVpnService : VpnService() {
         }
         running = true
         isRunning = true
+        // Remember that protection should be on, so BootReceiver can re-arm it
+        // after a reboot or an OEM force-stop.
+        ShieldPreference.setUserEnabled(this, true)
         Log.i(TAG, "tunnel_started")
 
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()

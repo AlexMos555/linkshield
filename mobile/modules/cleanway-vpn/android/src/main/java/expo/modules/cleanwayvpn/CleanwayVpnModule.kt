@@ -57,6 +57,34 @@ class CleanwayVpnModule : Module() {
       }
     }
 
+    /**
+     * Open Settings → VPN, where the user can switch on "Always-on VPN".
+     *
+     * Android does not carry a plain VpnService consent across a reboot:
+     * establish() then returns null and we stop rather than pretend. Always-on
+     * is the only supported way to have the tunnel come back by itself, and it
+     * also survives the OEM battery managers that force-stop background apps.
+     */
+    Function("openVpnSettings") {
+      val intent = Intent("android.net.vpn.SETTINGS").apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      try {
+        context.startActivity(intent)
+        true
+      } catch (e: Exception) {
+        try {
+          context.startActivity(
+            Intent(android.provider.Settings.ACTION_VPN_SETTINGS)
+              .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          )
+          true
+        } catch (e2: Exception) {
+          false
+        }
+      }
+    }
+
     AsyncFunction("stopVpn") {
       val intent = Intent(context, CleanwayVpnService::class.java).apply {
         action = CleanwayVpnService.ACTION_STOP

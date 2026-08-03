@@ -25,6 +25,7 @@ interface VpnModule {
   isVpnRunning(): boolean;
   verifyFiltering(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
+  openVpnSettings?(): boolean;
 }
 
 function loadVpn(): VpnModule | null {
@@ -45,6 +46,13 @@ export interface NetworkShield {
   verified: boolean;
   turnOn: () => Promise<void>;
   turnOff: () => Promise<void>;
+  /**
+   * Opens Settings → VPN for "Always-on VPN". Android drops a plain VpnService
+   * consent on reboot, so without always-on the shield does not come back by
+   * itself — verified on a real reboot: the service restarts, establish()
+   * returns null, and we stop instead of pretending.
+   */
+  openVpnSettings: () => void;
 }
 
 export function useNetworkShield(): NetworkShield {
@@ -101,5 +109,9 @@ export function useNetworkShield(): NetworkShield {
     // private DNS) is answering. Say so instead of claiming protection.
     : "conflict";
 
-  return { available: vpn !== null, state, verified, turnOn, turnOff };
+  const openVpnSettings = useCallback(() => {
+    vpn?.openVpnSettings?.();
+  }, [vpn]);
+
+  return { available: vpn !== null, state, verified, turnOn, turnOff, openVpnSettings };
 }

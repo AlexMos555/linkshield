@@ -7,6 +7,7 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   startVpn(): Promise<boolean>;
   /** Tears the VPN tunnel down. */
   stopVpn(): Promise<void>;
+  openVpnSettings(): boolean;
   /** True while the tunnel is active (reflects real service state). */
   isRunning(): boolean;
 }

@@ -64,6 +64,18 @@ export function addVpnStoppedListener(cb: (p: VpnStoppedPayload) => void) {
   return CleanwayVpn.addListener('onVpnStopped', cb);
 }
 
+/**
+ * Open the system VPN settings so the user can enable "Always-on VPN".
+ * Returns false when no such screen exists on this device.
+ */
+export function openVpnSettings(): boolean {
+  try {
+    return CleanwayVpn.openVpnSettings();
+  } catch {
+    return false;
+  }
+}
+
 export function isVpnRunning(): boolean {
   try {
     return CleanwayVpn.isRunning();

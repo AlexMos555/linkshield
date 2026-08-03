@@ -105,6 +105,21 @@ export default function HomeScreen() {
             }
             onAction={() => void (network.state === "setup" ? network.turnOn() : network.turnOff())}
           />
+          {network.verified && (
+            // Android drops the VPN consent on reboot, so protection does not
+            // come back by itself. Say so plainly and point at the one setting
+            // that fixes it, rather than letting the user find out the hard way.
+            <TouchableOpacity
+              style={s.hintRow}
+              onPress={network.openVpnSettings}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
+              <Text style={s.hintText}>{t("mobile.shield.always_on_hint")}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -175,6 +190,12 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   ctaLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
+
+  hintRow: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    marginTop: space.sm, paddingHorizontal: space.xs,
+  },
+  hintText: { ...typo.caption, color: colors.textSecondary, flex: 1 },
 
   activityCard: {
     flexDirection: "row",

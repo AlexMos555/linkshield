@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <application>
     <service
       android:name="ai.cleanway.app.CleanwayVpnService"
@@ -13,5 +14,24 @@
         android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
         android:value="vpn" />
     </service>
+    <!--
+      Runs in its own lightweight process. The main process is a React Native
+      app whose Application.onCreate takes ~15s on a cold boot (Firebase,
+      Sentry, SoLoader, the JS runtime) — far past the ~10s a broadcast
+      receiver is given, so the receiver was being killed before its code ran.
+      ":boot" starts a bare process that only reads a flag and starts the
+      service.
+    -->
+    <receiver
+      android:name="ai.cleanway.app.BootReceiver"
+      android:process=":boot"
+      android:enabled="true"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

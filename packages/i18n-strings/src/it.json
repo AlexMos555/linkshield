@@ -1189,7 +1189,8 @@
         "attention_pill": "Attention",
         "unverified_pill": "Set up (unverified)",
         "rollout_pill": "Rolling out"
-      }
+      },
+      "always_on_hint": "Keep it on after restart — turn on Always-on VPN"
     },
     "rollout": {
       "network_ios": "Blocks scam sites in almost every app. In final testing — not on iPhone yet.",
