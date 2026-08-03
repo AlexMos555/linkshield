@@ -5,6 +5,13 @@ import CleanwayVpn from './src/CleanwayVpnModule';
 
 /** Must match CleanwayVpnService.CANARY_DOMAIN. */
 export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
+
+/**
+ * Control domain for the canary probe. Must resolve on any working network and
+ * must NOT be in the blocklist — it separates "the filter blocked the canary"
+ * from "this device has no working DNS at all".
+ */
+export const CONTROL_URL = 'https://api.cleanway.ai/api/v1/health';
 import type { DomainBlockedPayload } from './src/CleanwayVpn.types';
 
 export type { DomainBlockedPayload };
@@ -26,12 +33,24 @@ export async function stopVpn(): Promise<void> {
  * network. Never claim protected on `isRunning` alone (spec §2.2).
  */
 export async function verifyFiltering(): Promise<boolean> {
+  // Two conditions, both required. A canary failure ALONE proves nothing: on a
+  // device with no working DNS (airplane mode, captive portal, a broken
+  // resolver) every lookup fails and a one-sided probe would report the shield
+  // as ON while nothing is being filtered. That is the exact placebo this
+  // project exists to avoid, so the control request must succeed first.
   try {
-    const res = await fetch(`https://${CANARY_DOMAIN}/`, { method: "HEAD" });
-    // Reachable => our NXDOMAIN never happened => filtering is not live.
-    return !res.ok ? true : false;
+    const control = await fetch(CONTROL_URL, { method: 'GET' });
+    if (!control.ok) return false; // network unusable — cannot conclude anything
   } catch {
-    // DNS failure is the expected, healthy outcome.
+    return false;
+  }
+
+  try {
+    await fetch(`https://${CANARY_DOMAIN}/`, { method: 'HEAD' });
+    // Resolved and reachable => our NXDOMAIN never happened => not filtering.
+    return false;
+  } catch {
+    // Control worked but the canary did not: the filter is live.
     return true;
   }
 }
