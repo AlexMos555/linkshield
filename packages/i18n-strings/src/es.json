@@ -1145,6 +1145,12 @@
       "score": "Score",
       "settings": "Settings"
     },
+    "nav": {
+      "result": "Result",
+      "scanner": "Scan a QR code",
+      "shared": "Link check",
+      "upgrade": "Upgrade"
+    },
     "check": {
       "title": "Check a link",
       "subtitle": "Paste any link or type a website name",

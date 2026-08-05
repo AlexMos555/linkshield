@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { restoreSession } from "../src/services/auth";
@@ -45,6 +46,8 @@ function ShareIntentRouter() {
 }
 
 export default function RootLayout() {
+  const { t } = useTranslation();
+
   // Preload the icon font, and shout if it fails.
   //
   // On 2026-08-05 every icon in the app — tab bar, shield hero, every card and
@@ -103,16 +106,20 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: "#0f172a" },
         }}
       >
+        {/* Titles go through i18n. They were hardcoded English literals, so the
+            navigation bar stayed in English in all 10 locales — on a product
+            whose whole point is being readable by someone's grandmother in her
+            own language. */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="check" options={{ title: "Check Link" }} />
-        <Stack.Screen name="result" options={{ title: "Result" }} />
-        <Stack.Screen name="breach" options={{ title: "Breach Check" }} />
-        <Stack.Screen name="scanner" options={{ title: "QR Scanner" }} />
+        <Stack.Screen name="check" options={{ title: t("mobile.check.title") }} />
+        <Stack.Screen name="result" options={{ title: t("mobile.nav.result") }} />
+        <Stack.Screen name="breach" options={{ title: t("mobile.breach.title") }} />
+        <Stack.Screen name="scanner" options={{ title: t("mobile.nav.scanner") }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="shared" options={{ title: "Link Check", presentation: "modal" }} />
+        <Stack.Screen name="shared" options={{ title: t("mobile.nav.shared"), presentation: "modal" }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen name="upgrade" options={{ title: "Upgrade" }} />
-        <Stack.Screen name="report" options={{ title: "Weekly Report" }} />
+        <Stack.Screen name="upgrade" options={{ title: t("mobile.nav.upgrade") }} />
+        <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
       </Stack>
       {/* Global overlay — subscribes to accountLockedEvents and renders
           the restore CTA whenever any authed call returns 410 Gone. */}
