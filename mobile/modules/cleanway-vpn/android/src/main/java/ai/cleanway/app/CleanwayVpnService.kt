@@ -3,21 +3,24 @@
  *
  * DNS-only local VPN. Intercepts DNS queries, decides locally whether a
  * domain is blocked, otherwise forwards the query upstream — plain UDP/53 for
- * speed, falling back to DNS-over-HTTPS against our own RFC 8484 gateway when
- * the network blocks or hijacks port 53 — and relays the response back into
- * the tunnel.
+ * speed, falling back to DNS-over-HTTPS (addressed by IP literal, so it needs
+ * no bootstrap lookup) when the network blocks or hijacks port 53 — and relays
+ * the response back into the tunnel.
  *
- * Hardening over the v0.1 skeleton:
- * - Fixed the critical bug where `forwardToUpstream` wrote the query back
- *   as its own response — no domain would ever resolve. Now uses a
- *   DatagramSocket to actually round-trip against upstream.
- * - Thread-safe cache via `ConcurrentHashMap`-backed sets.
- * - Structured logging with `android.util.Log` (levels + tag) instead of
- *   swallowed exceptions.
- * - DNS parsing + NXDOMAIN construction extracted to `DnsUtil` for unit
- *   testing in JVM tests (no Android dependencies).
- * - Background checks use a bounded `ExecutorService` — the original
- *   `Thread{}` fire-and-forget could spawn unbounded threads under load.
+ * Design notes:
+ * - Blocking is decided locally from an in-memory verdict cache; upstream is
+ *   only a transport, which is why speed is chosen over routing through our
+ *   own resolver.
+ * - Upstream round-trips run on a bounded pool, never on the read loop: that
+ *   loop carries DNS for the whole device, so a single stalled lookup would
+ *   queue every other app's behind it.
+ * - Writes back into the tun fd are serialized; concurrent replies would
+ *   otherwise interleave.
+ * - The IPv4 header checksum is recomputed on every reply we synthesise. A
+ *   zeroed one is silently dropped by the kernel, which presents to the user
+ *   as a broken internet connection while the shield claims to be on.
+ * - DNS parsing and NXDOMAIN construction live in `DnsUtil` so they can be
+ *   unit-tested on the JVM without Android.
  *
  * Privacy invariants:
  * - Traffic content is never read. Only DNS queries are parsed (QNAME only).
@@ -588,9 +591,22 @@ class CleanwayVpnService : VpnService() {
         // so a dead tunnel can't fake a "blocked" result.
         const val CANARY_DOMAIN = "block-canary.cleanway.ai"
 
-        // Our RFC 8484 DNS-over-HTTPS gateway. Encrypted, resolves through our
-        // own infrastructure, and survives networks that block plain port 53.
-        private const val DOH_URL = "https://api.cleanway.ai/dns-query"
+        // DoH fallback, addressed by IP literal on purpose.
+        //
+        // Reaching a DoH endpoint by hostname is a bootstrap trap: resolving it
+        // needs DNS, which is exactly what is unavailable on the networks where
+        // we need the fallback. Cloudflare's certificate carries 1.1.1.1 in its
+        // SAN list, so TLS verifies against the literal and no lookup is
+        // required to make the first query.
+        //
+        // We deliberately do NOT route this through our own gateway. Blocking
+        // is decided locally before anything is forwarded, so upstream is only
+        // a transport — and measured against the live gateway it was ~3.4s per
+        // query versus ~0.04s here, on a path where every page load costs tens
+        // of lookups. Sending device DNS through a public resolver also means
+        // we never see it, which is a stronger privacy story than promising not
+        // to look.
+        private const val DOH_URL = "https://1.1.1.1/dns-query"
 
         private const val TRANSPORT_BACKOFF_MS = 60_000L
 
