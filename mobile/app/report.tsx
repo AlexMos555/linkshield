@@ -1,12 +1,27 @@
 import { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share } from "react-native";
-import { colors, spacing, fontSize } from "../src/utils/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { getWeeklyStats, getRecentChecks } from "../src/services/database";
 
+/**
+ * Weekly report.
+ *
+ * Honesty contract: every number here comes from the check history stored in
+ * SQLite on this phone (getWeeklyStats / getRecentChecks). There is no
+ * server-side aggregation and no comparison against other users, so the copy
+ * says "links you checked in this app" and nothing more. The old
+ * "Safer than N% of users" hero was a locally invented number with no
+ * population behind it — removed rather than restyled.
+ */
+
+type FlaggedDomain = { domain: string; count: number };
+
 export default function ReportScreen() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0 });
-  const [topThreats, setTopThreats] = useState<{ domain: string; count: number }[]>([]);
-  const [percentile, setPercentile] = useState(75);
+  const [flagged, setFlagged] = useState<FlaggedDomain[]>([]);
 
   useEffect(() => {
     loadReport();
@@ -31,101 +46,176 @@ export default function ReportScreen() {
       .slice(0, 5)
       .map(([domain, count]) => ({ domain, count }));
 
-    setTopThreats(sorted);
-
-    // Estimate percentile based on blocks (simplified)
-    const blocked = s.threats_blocked;
-    const p = blocked === 0 ? 90 : blocked <= 2 ? 80 : blocked <= 5 ? 65 : 50;
-    setPercentile(p);
+    setFlagged(sorted);
   }
 
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
-  const period = `${weekAgo.toLocaleDateString()} — ${now.toLocaleDateString()}`;
+  const period = t("mobile.report.period", {
+    from: weekAgo.toLocaleDateString(),
+    to: now.toLocaleDateString(),
+  });
 
   async function shareReport() {
     await Share.share({
-      message: `My Cleanway Weekly Report:\n${stats.total_checks} links checked, ${stats.threats_blocked} threats blocked.\nI'm safer than ${percentile}% of users.\n\nhttps://cleanway.ai`,
+      message: t("mobile.report.share_message", {
+        checked: stats.total_checks,
+        flagged: stats.threats_blocked,
+      }),
     });
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Weekly Report</Text>
-      <Text style={styles.period}>{period}</Text>
+    <ScrollView style={s.container} contentContainerStyle={s.content}>
+      <Text style={s.title}>{t("mobile.report.title")}</Text>
+      <Text style={s.period}>{period}</Text>
 
-      {/* Percentile */}
-      <View style={styles.percentileCard}>
-        <Text style={styles.percentileNum}>{percentile}%</Text>
-        <Text style={styles.percentileLabel}>Safer than {percentile}% of users</Text>
+      <Text style={[s.sectionHeader, s.firstSection]}>{t("mobile.report.summary_header")}</Text>
+      <View style={s.statsRow}>
+        <StatCard
+          icon="link-outline"
+          tint={colors.blue}
+          value={stats.total_checks}
+          label={t("mobile.report.checked_label")}
+        />
+        <StatCard
+          icon="alert-circle-outline"
+          tint={colors.danger}
+          value={stats.threats_blocked}
+          label={t("mobile.report.flagged_label")}
+        />
       </View>
+      <Text style={s.note}>{t("mobile.report.summary_note")}</Text>
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNum}>{stats.total_checks}</Text>
-          <Text style={styles.statLabel}>Checked</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={[styles.statNum, { color: colors.dangerous }]}>{stats.threats_blocked}</Text>
-          <Text style={styles.statLabel}>Blocked</Text>
-        </View>
-      </View>
-
-      {/* Top Threats */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Top Threats This Week</Text>
-        {topThreats.length === 0 ? (
-          <Text style={styles.emptyText}>{"\u2705"} No threats this week!</Text>
+      <Text style={s.sectionHeader}>{t("mobile.report.flagged_header")}</Text>
+      <View style={s.card}>
+        {stats.total_checks === 0 ? (
+          <EmptyState
+            icon="document-text-outline"
+            tint={colors.textMuted}
+            title={t("mobile.report.empty_title")}
+            body={t("mobile.report.empty_body")}
+          />
+        ) : flagged.length === 0 ? (
+          <EmptyState
+            icon="shield-checkmark-outline"
+            tint={colors.green}
+            title={t("mobile.report.clean_title")}
+            body={t("mobile.report.clean_body")}
+          />
         ) : (
-          topThreats.map((t, i) => (
-            <View key={i} style={styles.threatRow}>
-              <Text style={styles.threatDomain}>{t.domain}</Text>
-              <Text style={styles.threatCount}>{t.count}x</Text>
+          flagged.map((f, i) => (
+            <View key={f.domain} style={[s.row, i > 0 && s.rowBorder]}>
+              <Ionicons name="alert-circle-outline" size={16} color={colors.amber} />
+              <Text style={s.rowDomain} numberOfLines={1}>{f.domain}</Text>
+              <Text style={s.rowCount}>{t("mobile.report.times", { count: f.count })}</Text>
             </View>
           ))
         )}
       </View>
+      {flagged.length > 0 && <Text style={s.note}>{t("mobile.report.flagged_note")}</Text>}
 
-      {/* Share */}
-      <TouchableOpacity style={styles.shareBtn} onPress={shareReport}>
-        <Text style={styles.shareBtnText}>Share Report</Text>
+      <TouchableOpacity
+        style={s.shareBtn}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        onPress={() => {
+          void shareReport().catch(() => {
+            /* User dismissed the share sheet — not an error worth surfacing. */
+          });
+        }}
+      >
+        <Ionicons name="share-outline" size={18} color={colors.blue} />
+        <Text style={s.shareLabel}>{t("mobile.report.share")}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.note}>{"\u{1F512}"} Generated 100% on your device</Text>
+      <View style={s.privacyRow}>
+        <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
+        <Text style={s.privacy}>{t("mobile.report.privacy")}</Text>
+      </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+function StatCard({
+  icon, tint, value, label,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
+  value: number;
+  label: string;
+}) {
+  return (
+    <View style={s.statCard}>
+      <Ionicons name={icon} size={18} color={tint} />
+      <Text style={s.statValue}>{value}</Text>
+      <Text style={s.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function EmptyState({
+  icon, tint, title, body,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <View style={s.empty}>
+      <Ionicons name={icon} size={22} color={tint} />
+      <Text style={s.emptyTitle}>{title}</Text>
+      <Text style={s.emptyBody}>{body}</Text>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: 100 },
-  title: { fontSize: fontSize.xxl, fontWeight: "800", color: colors.white, textAlign: "center" },
-  period: { fontSize: fontSize.sm, color: colors.textMuted, textAlign: "center", marginBottom: spacing.xl },
-  percentileCard: {
-    backgroundColor: colors.safeBg, borderRadius: 16, padding: spacing.xl,
-    alignItems: "center", marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.safe + "40",
+  content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: 100 },
+
+  title: { ...typo.title1, color: colors.textPrimary },
+  period: { ...typo.caption, color: colors.textMuted, marginTop: 2 },
+
+  sectionHeader: { ...sectionHeader, marginTop: space.xxl, marginBottom: space.sm },
+  firstSection: { marginTop: space.xl + space.sm },
+
+  statsRow: { flexDirection: "row", gap: space.md },
+  statCard: {
+    flex: 1, alignItems: "flex-start",
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.card, padding: space.lg,
   },
-  percentileNum: { fontSize: 64, fontWeight: "800", color: colors.safe },
-  percentileLabel: { fontSize: fontSize.lg, color: colors.safe, fontWeight: "600", marginTop: spacing.xs },
-  statsRow: { flexDirection: "row", gap: spacing.md, marginBottom: spacing.lg },
-  statCard: { flex: 1, backgroundColor: colors.bgCard, borderRadius: 14, padding: spacing.lg, alignItems: "center" },
-  statNum: { fontSize: 32, fontWeight: "800", color: colors.white },
-  statLabel: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: spacing.xs },
-  card: { backgroundColor: colors.bgCard, borderRadius: 14, padding: spacing.lg, marginBottom: spacing.lg },
-  cardTitle: { fontSize: fontSize.lg, fontWeight: "700", color: colors.white, marginBottom: spacing.md },
-  emptyText: { color: colors.safe, fontSize: fontSize.md, textAlign: "center", padding: spacing.md },
-  threatRow: {
-    flexDirection: "row", justifyContent: "space-between",
-    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
+  statValue: { ...typo.title1, color: colors.textPrimary, marginTop: space.sm },
+  statLabel: { ...typo.caption, color: colors.textSecondary, marginTop: 2 },
+
+  note: { ...typo.caption, color: colors.textSecondary, marginTop: space.sm },
+
+  card: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.card, padding: space.lg,
   },
-  threatDomain: { color: colors.textSecondary, fontSize: fontSize.md },
-  threatCount: { color: colors.dangerous, fontWeight: "700", fontSize: fontSize.md },
+  row: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 10 },
+  rowBorder: { borderTopWidth: 1, borderTopColor: colors.hairline },
+  rowDomain: { ...typo.body, color: colors.textPrimary, flex: 1 },
+  rowCount: { ...typo.caption, color: colors.textMuted },
+
+  empty: { alignItems: "center", paddingVertical: space.sm },
+  emptyTitle: { ...typo.headline, color: colors.textPrimary, marginTop: space.sm, textAlign: "center" },
+  emptyBody: { ...typo.body, color: colors.textSecondary, marginTop: space.xs, textAlign: "center" },
+
   shareBtn: {
-    backgroundColor: colors.bgCard, borderRadius: 12, padding: 16,
-    alignItems: "center", borderWidth: 1, borderColor: colors.border,
-    marginBottom: spacing.md,
+    height: 50, flexDirection: "row", gap: space.sm,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.control,
+    alignItems: "center", justifyContent: "center", marginTop: space.xxl,
   },
-  shareBtnText: { color: colors.primary, fontWeight: "700", fontSize: fontSize.md },
-  note: { textAlign: "center", color: colors.textMuted, fontSize: fontSize.sm },
+  shareLabel: { fontSize: 15, fontWeight: "600", color: colors.blue },
+
+  privacyRow: {
+    flexDirection: "row", alignItems: "flex-start", justifyContent: "center",
+    gap: 6, marginTop: space.xl, paddingHorizontal: space.md,
+  },
+  privacy: { ...typo.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
 });

@@ -94,7 +94,10 @@ export function useVpn() {
   const [lastBlocked, setLastBlocked] = useState<DomainBlockedPayload | null>(null);
 
   useEffect(() => {
-    const sub = CleanwayVpn.addListener('onDomainBlocked', (p) => setLastBlocked(p));
+    const sub = CleanwayVpn.addListener(
+      'onDomainBlocked',
+      (p: DomainBlockedPayload) => setLastBlocked(p),
+    );
     return () => sub.remove();
   }, []);
 
