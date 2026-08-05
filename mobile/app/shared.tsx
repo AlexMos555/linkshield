@@ -19,7 +19,7 @@ import {
   colors, type as typo, space, radius, sectionHeader,
   levelColors, levelStrokes,
 } from "../src/utils/theme";
-import { checkSingleDomain, DomainResult } from "../src/services/api";
+import { checkSingleDomain, PublicCheckResult } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
 
 type ErrorKind = "no_url" | "check_failed";
@@ -37,7 +37,7 @@ export default function SharedScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { url } = useLocalSearchParams<{ url: string }>();
-  const [result, setResult] = useState<DomainResult | null>(null);
+  const [result, setResult] = useState<PublicCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorKind | null>(null);
 

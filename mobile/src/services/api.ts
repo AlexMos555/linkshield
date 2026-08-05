@@ -12,6 +12,7 @@ import Constants from "expo-constants";
 import {
   createClient,
   type DomainResult,
+  type PublicCheckResult,
   type PricingFor,
   type ApiError,
   type CleanwayClient,
@@ -80,7 +81,7 @@ const _client: CleanwayClient = createClient({
 // ─── Public API (consumers of this file) ─────────────────────────
 // Keep the surface small — mobile UI should depend on these, not the client directly.
 
-export async function checkDomain(domain: string): Promise<Result<DomainResult>> {
+export async function checkDomain(domain: string): Promise<Result<PublicCheckResult>> {
   const r = await _client.check.publicDomain(domain);
   _maybeEmitAccountLocked(r.error);
   return r;
@@ -126,13 +127,17 @@ export async function restoreAccount(): Promise<boolean> {
   }
 }
 
-// Re-export types so call sites don't need 3 imports
-export type { DomainResult, PricingFor, ApiError, Result } from "@cleanway/api-client";
+// Re-export types so call sites don't need 3 imports.
+//
+// PublicCheckResult is what the screens actually receive from checkSingleDomain.
+// It is NOT DomainResult: the public endpoint returns plain-language `signals`
+// (mapped to `reasons`) and carries no TLS or domain-age facts at all.
+export type { DomainResult, PublicCheckResult, PricingFor, ApiError, Result } from "@cleanway/api-client";
 
 // Legacy shim: some older screens call `checkDomains([...])`. Keep for now —
 // delete once all call sites migrate to singular checkDomain().
 export interface CheckResponse {
-  results: DomainResult[];
+  results: PublicCheckResult[];
   checked_at: string;
 }
 
@@ -142,15 +147,18 @@ export async function checkDomains(domains: string[]): Promise<CheckResponse> {
     domains.map(async (d) => {
       const { data, error } = await _client.check.publicDomain(d);
       if (data) return data;
-      // Fallback: synthesize a safe-default result on error so UI doesn't crash.
+      // Fallback so the UI doesn't crash on a failed lookup. Note the level is
+      // "unknown", NOT "safe": a check we could not perform must never be
+      // rendered as a clean bill of health.
       // Callers that need error info should migrate to checkDomain() which returns Result<T>.
       return {
         domain: d,
         score: 0,
-        level: "safe",
+        level: "unknown",
+        safe: false,
         confidence: "low",
-        reasons: error ? [{ signal: "api_error", detail: error.message, weight: 0 }] : [],
-      } as DomainResult;
+        reasons: error ? [{ detail: error.message }] : [],
+      } as PublicCheckResult;
     }),
   );
   return { results, checked_at: checkedAt };
@@ -166,7 +174,7 @@ export async function checkDomains(domains: string[]): Promise<CheckResponse> {
  *   - mobile/app/result.tsx
  * All three should migrate to `checkDomain` + explicit error rendering.
  */
-export async function checkSingleDomain(domain: string): Promise<DomainResult> {
+export async function checkSingleDomain(domain: string): Promise<PublicCheckResult> {
   const { data, error } = await _client.check.publicDomain(domain);
   if (data) return data;
   // Throwing preserves the old behavior so call sites work without changes.

@@ -89,6 +89,14 @@ i18n
     // Flat keys with dots: t("extension.popup.status_safe_title")
     keySeparator: ".",
     nsSeparator: false,
+    // Pin plural handling to the v3 scheme (base key + _plural) instead of
+    // i18next 23's default, which resolves plurals through Intl.PluralRules.
+    // Hermes on Android does not ship Intl.PluralRules — verified on device,
+    // where i18next logged an ERROR at startup and fell back to v3 anyway.
+    // Pinning it makes iOS and Android behave identically instead of depending
+    // on whether the engine happens to have Intl, and stops an error-level log
+    // reaching Sentry on every launch.
+    compatibilityJSON: "v3",
     interpolation: {
       escapeValue: false, // React Native already escapes
     },

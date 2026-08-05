@@ -1184,6 +1184,7 @@
       "https": "HTTPS",
       "cert": "Certificate",
       "confidence": "Confidence",
+      "confidence_pct": "{{pct}}% sure",
       "yes": "Yes",
       "no": "No",
       "share": "Share result",

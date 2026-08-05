@@ -439,6 +439,7 @@
   "mobile.result.https": "HTTPS",
   "mobile.result.cert": "Certificate",
   "mobile.result.confidence": "Confidence",
+  "mobile.result.confidence_pct": "{{pct}}% sure",
   "mobile.result.yes": "Yes",
   "mobile.result.no": "No",
   "mobile.result.share": "Share result",

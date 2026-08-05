@@ -8,13 +8,13 @@ import {
   colors, type as typo, space, radius,
   levelColors, levelWashes, levelStrokes,
 } from "../src/utils/theme";
-import { checkSingleDomain, DomainResult } from "../src/services/api";
+import { checkSingleDomain, PublicCheckResult } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
 
 export default function ResultScreen() {
   const { domain } = useLocalSearchParams<{ domain: string }>();
   const { t } = useTranslation();
-  const [result, setResult] = useState<DomainResult | null>(null);
+  const [result, setResult] = useState<PublicCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -107,32 +107,54 @@ export default function ResultScreen() {
         )}
       </View>
 
+      {/* Plain-language summary. The API writes this sentence for a lay reader;
+          the app used to drop it on the floor and show only a number. */}
+      {result.verdict && (
+        <View style={s.card}>
+          <Text style={s.summary}>{result.verdict}</Text>
+        </View>
+      )}
+
       {/* Signals */}
-      {result.reasons && result.reasons.length > 0 && (
+      {result.reasons.length > 0 && (
         <View style={s.card}>
           <Text style={s.cardTitle}>{t("mobile.result.signals")}</Text>
           {result.reasons.map((r, i) => (
             <View key={i} style={[s.signalRow, i > 0 && s.signalBorder]}>
               <View style={[s.signalDot, { backgroundColor: color }]} />
               <Text style={s.signalText}>{r.detail}</Text>
-              <View style={[s.weightChip, { backgroundColor: wash }]}>
-                <Text style={[s.weightLabel, { color }]}>+{r.weight}</Text>
-              </View>
+              {/* The public endpoint scores the domain, not each signal, so a
+                  weight is usually absent. Rendering it unconditionally printed
+                  a "+undefined" chip. */}
+              {typeof r.weight === "number" && (
+                <View style={[s.weightChip, { backgroundColor: wash }]}>
+                  <Text style={[s.weightLabel, { color }]}>+{r.weight}</Text>
+                </View>
+              )}
             </View>
           ))}
         </View>
       )}
 
-      {/* Details */}
-      <View style={s.card}>
-        <Text style={s.cardTitle}>{t("mobile.result.details")}</Text>
-        {result.domain_age_days != null && (
-          <DetailRow label={t("mobile.result.age")} value={t("mobile.result.age_value", { days: result.domain_age_days })} />
-        )}
-        <DetailRow label={t("mobile.result.https")} value={result.has_ssl ? t("mobile.result.yes") : t("mobile.result.no")} />
-        {result.ssl_issuer && <DetailRow label={t("mobile.result.cert")} value={result.ssl_issuer} />}
-        <DetailRow label={t("mobile.result.confidence")} value={result.confidence || "medium"} last />
-      </View>
+      {/* Details.
+          Only facts the response actually carried. `has_ssl` was previously
+          read straight off a response that never contains it, so every site —
+          google.com included — was labelled "HTTPS: No". A missing fact is now
+          a missing row, never a confident wrong answer. */}
+      {(result.confidence_pct != null || result.confidence) && (
+        <View style={s.card}>
+          <Text style={s.cardTitle}>{t("mobile.result.details")}</Text>
+          <DetailRow
+            label={t("mobile.result.confidence")}
+            value={
+              result.confidence_pct != null
+                ? t("mobile.result.confidence_pct", { pct: result.confidence_pct })
+                : String(result.confidence)
+            }
+            last
+          />
+        </View>
+      )}
 
       {/* Share */}
       <TouchableOpacity
@@ -211,6 +233,7 @@ const s = StyleSheet.create({
     borderRadius: radius.card, padding: space.lg, marginBottom: space.md,
   },
   cardTitle: { ...typo.headline, color: colors.textPrimary, marginBottom: space.sm },
+  summary: { ...typo.body, color: colors.textPrimary },
   signalRow: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 8 },
   signalBorder: { borderTopWidth: 1, borderTopColor: colors.hairline },
   signalDot: { width: 6, height: 6, borderRadius: 3 },

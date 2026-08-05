@@ -21,6 +21,73 @@ import type {
   HealthResponse,
 } from "@cleanway/api-types";
 
+// ── Public check ──────────────────────────────────────────────────
+//
+// GET /api/v1/public/check/{domain} is NOT the same shape as the authenticated
+// /api/v1/check, and it carries no schema in the OpenAPI document (its 200
+// response is literally `{}`), so nothing stopped this client from declaring it
+// returned a `DomainResult`. It does not. It returns `signals: string[]` where
+// DomainResult has `reasons`, and it has no has_ssl / domain_age_days /
+// ssl_issuer at all.
+//
+// The lie was invisible to the compiler and cost real user-facing behaviour on
+// mobile, where the result screen reads exactly those fields: the evidence card
+// never rendered for any domain, and `has_ssl` being permanently undefined made
+// the app print "HTTPS: No" for every site checked — google.com included.
+//
+// So: describe what the endpoint actually sends, and normalise it into one
+// predictable object. Absent facts stay absent — they are never defaulted into
+// a confident-looking "No".
+
+/** Raw body of GET /api/v1/public/check/{domain}. */
+export interface PublicCheckResponse {
+  domain: string;
+  score: number;
+  level: string;
+  safe: boolean;
+  /** Plain-language signal descriptions. Empty array for a clean domain. */
+  signals?: string[] | null;
+  /** One-sentence plain-language summary, already written for a lay reader. */
+  verdict?: string | null;
+  confidence?: string | null;
+  /** Conformal confidence, 50-99. Only present when coverage is established. */
+  confidence_pct?: number | null;
+  checked_at?: string | null;
+  cta?: string | null;
+  install_url?: string | null;
+  transparency_url?: string | null;
+  competitors?: unknown;
+}
+
+/** What consumers get back: the public body, mapped onto the shared vocabulary. */
+export interface PublicCheckResult {
+  domain: string;
+  score: number;
+  level: string;
+  safe: boolean;
+  /** Mapped from `signals`. `weight` is absent — the public endpoint does not score per signal. */
+  reasons: Array<{ detail: string; weight?: number }>;
+  verdict?: string;
+  confidence?: string;
+  confidence_pct?: number;
+  checked_at?: string;
+}
+
+export function normalizePublicCheck(raw: PublicCheckResponse): PublicCheckResult {
+  const signals = Array.isArray(raw.signals) ? raw.signals : [];
+  return {
+    domain: raw.domain,
+    score: raw.score,
+    level: raw.level,
+    safe: raw.safe,
+    reasons: signals.filter((s) => typeof s === "string" && s.length > 0).map((detail) => ({ detail })),
+    verdict: raw.verdict ?? undefined,
+    confidence: raw.confidence ?? undefined,
+    confidence_pct: typeof raw.confidence_pct === "number" ? raw.confidence_pct : undefined,
+    checked_at: raw.checked_at ?? undefined,
+  };
+}
+
 // ── Error shapes ──────────────────────────────────────────────────
 
 export type ApiErrorKind =
@@ -290,8 +357,15 @@ export interface CleanwayClient {
   readonly baseUrl: string;
   health(): Promise<Result<HealthResponse>>;
   check: {
-    /** Public domain check (no auth required). Rate limited by IP. */
-    publicDomain(domain: string): Promise<Result<DomainResult>>;
+    /**
+     * Public domain check (no auth required). Rate limited by IP.
+     *
+     * Returns PublicCheckResult, NOT DomainResult — the public endpoint sends a
+     * different body and knows nothing about TLS or domain age. See the
+     * PublicCheckResponse comment above for what went wrong when this was
+     * mistyped.
+     */
+    publicDomain(domain: string): Promise<Result<PublicCheckResult>>;
   };
   pricing: {
     /** Regional pricing for a detected/selected country (ISO 3166-1 alpha-2). */
@@ -374,7 +448,7 @@ export function createClient(opts: ClientOptions): CleanwayClient {
     },
 
     check: {
-      publicDomain(domain: string) {
+      async publicDomain(domain: string) {
         // Domain normalization: strip protocol + trailing slash so consumers can't
         // accidentally send a full URL (which would break privacy invariant).
         const clean = domain
@@ -382,11 +456,13 @@ export function createClient(opts: ClientOptions): CleanwayClient {
           .toLowerCase()
           .replace(/^https?:\/\//, "")
           .replace(/\/.*$/, "");
-        return request<DomainResult>(
+        const res = await request<PublicCheckResponse>(
           opts,
           "GET",
           `/api/v1/public/check/${encodeURIComponent(clean)}`,
         );
+        if (res.error || !res.data) return { data: null, error: res.error } as Result<PublicCheckResult>;
+        return { data: normalizePublicCheck(res.data), error: null } as Result<PublicCheckResult>;
       },
     },
 
