@@ -63,9 +63,11 @@ function updatePinControls(pinSet) {
   const status = document.getElementById("pin-status");
   const saveBtn = document.getElementById("save-pin");
   const clearBtn = document.getElementById("clear-pin");
-  status.textContent = pinSet
-    ? "✓ PIN is set — required to switch out of Kids Mode"
-    : "";
+  // Was "✓ PIN is set — required to switch out of Kids Mode". Nothing verifies
+  // it: the skill radios above switch mode without a prompt, and the backend
+  // has no parental_pin field. Saying nothing beats confirming a lock that
+  // isn't there; the row description carries the honest explanation.
+  status.textContent = "";
   saveBtn.textContent = pinSet ? "Update" : "Set PIN";
   clearBtn.hidden = !pinSet;
 }
