@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,12 +18,16 @@ export default function CheckScreen() {
   const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
 
-  useEffect(() => {
+  // On focus, not on mount. This screen stays mounted while the user goes off
+  // to /result and comes back, so a mount-only load meant the link they just
+  // checked never appeared under "Recent" — the list silently lagged one check
+  // behind for the whole session.
+  useFocusEffect(useCallback(() => {
     getRecentChecks(10).then(checks => {
       const domains = [...new Set(checks.map((c: any) => c.domain))].slice(0, 5);
       setRecent(domains);
     }).catch(() => {});
-  }, []);
+  }, []));
 
   useEffect(() => {
     if (paste === "1") void handlePaste();
