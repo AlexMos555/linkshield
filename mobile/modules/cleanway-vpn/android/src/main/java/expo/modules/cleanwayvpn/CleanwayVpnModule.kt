@@ -100,6 +100,17 @@ class CleanwayVpnModule : Module() {
       CleanwayVpnService.isRunning
     }
 
+    /**
+     * Epoch millis of the last canary query the service answered, 0 if never.
+     *
+     * The app compares this against a timestamp it took before triggering a
+     * lookup: a value newer than that instant is proof the query reached THIS
+     * tunnel and was filtered. Double because JS has no 64-bit integer.
+     */
+    Function("lastCanaryAnswerAtMs") {
+      CleanwayVpnService.lastCanaryAnswerAtMs.toDouble()
+    }
+
     OnActivityResult { _, payload ->
       if (payload.requestCode == VPN_CONSENT_REQUEST) {
         val promise = pendingStart

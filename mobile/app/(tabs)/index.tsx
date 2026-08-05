@@ -76,7 +76,10 @@ export default function HomeScreen() {
         state={heroState}
         verifiedCount={verifiedCount}
         totalCount={totalCount}
-        attention={network.state === "conflict"}
+        // No alarm state exists any more: nothing in the code detects a
+        // competing VPN, so nothing may claim one. Unproven is shown as
+        // unproven, not as a warning.
+        attention={false}
       />
 
       {needsSetup && (
@@ -100,10 +103,13 @@ export default function HomeScreen() {
             state={network.state}
             stateCopy={
               network.state === "on" ? t("mobile.shield.network.state_on")
-              : network.state === "conflict" ? t("mobile.shield.network.state_conflict")
+              : network.state === "unverified" ? t("mobile.shield.network.state_unverified")
               : t("mobile.shield.network.state_setup")
             }
             onAction={() => void (network.state === "setup" ? network.turnOn() : network.turnOff())}
+            // Only "setup" renders a tappable control now; "on" and
+            // "unverified" are plain pills, so this never fires as an
+            // accidental "switch my protection off".
           />
           {network.verified && (
             // Android drops the VPN consent on reboot, so protection does not

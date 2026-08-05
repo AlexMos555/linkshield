@@ -6,12 +6,8 @@ import CleanwayVpn from './src/CleanwayVpnModule';
 /** Must match CleanwayVpnService.CANARY_DOMAIN. */
 export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
 
-/**
- * Control domain for the canary probe. Must resolve on any working network and
- * must NOT be in the blocklist — it separates "the filter blocked the canary"
- * from "this device has no working DNS at all".
- */
-export const CONTROL_URL = 'https://api.cleanway.ai/api/v1/health';
+/** Give the lookup a moment to reach the service and be answered. */
+const CANARY_SETTLE_MS = 1200;
 import type { DomainBlockedPayload, VpnStoppedPayload } from './src/CleanwayVpn.types';
 
 export type { DomainBlockedPayload, VpnStoppedPayload };
@@ -27,31 +23,50 @@ export async function stopVpn(): Promise<void> {
 /**
  * Canary probe — the truth source for the shield's ON state.
  *
- * The service answers NXDOMAIN for this domain, so a successful resolution
- * means the tunnel is NOT filtering (or another VPN took over). The domain
- * also exists in public DNS, so "does not resolve" cannot be faked by a dead
- * network. Never claim protected on `isRunning` alone (spec §2.2).
+ * Ask the service for PROOF, don't infer it from a failure. We note the time,
+ * trigger a lookup of CANARY_DOMAIN, then ask the native side whether it
+ * answered a canary query after that instant. Only a query that actually
+ * reached our tunnel can move that number.
+ *
+ * The previous version inferred "filtering is live" from an HTTPS request to
+ * the canary throwing, gated behind a control request to the API. Both halves
+ * were broken, in opposite directions:
+ *
+ *   - the control URL was https://api.cleanway.ai/api/v1/health, which is a
+ *     404 (the route is /health, unprefixed). So the gate never opened, this
+ *     function returned false forever, and a genuinely filtering tunnel was
+ *     displayed as "needs attention" with a button that turns it off.
+ *
+ *   - had only that been fixed, the canary fetch would throw anyway, because
+ *     block-canary.cleanway.ai does not exist in public DNS. `catch => true`
+ *     would then report protected on any networked device, including when
+ *     another VPN app had displaced our tunnel. A permanent false green — the
+ *     exact placebo this project exists to avoid.
+ *
+ * Positive proof has neither failure mode, and it needs no public DNS record:
+ * a dead tunnel, a device with no DNS at all, and a competing VPN all fail to
+ * produce a fresh stamp, and none of them can fabricate one.
  */
 export async function verifyFiltering(): Promise<boolean> {
-  // Two conditions, both required. A canary failure ALONE proves nothing: on a
-  // device with no working DNS (airplane mode, captive portal, a broken
-  // resolver) every lookup fails and a one-sided probe would report the shield
-  // as ON while nothing is being filtered. That is the exact placebo this
-  // project exists to avoid, so the control request must succeed first.
+  // Older native builds do not expose the counter. Report unverified rather
+  // than falling back to a guess — never claim protection we cannot prove.
+  if (typeof CleanwayVpn.lastCanaryAnswerAtMs !== 'function') return false;
+
+  const startedAt = Date.now();
   try {
-    const control = await fetch(CONTROL_URL, { method: 'GET' });
-    if (!control.ok) return false; // network unusable — cannot conclude anything
+    // We do not care whether this resolves or connects — it exists purely to
+    // put a canary query on the wire. Its outcome proves nothing on its own.
+    await fetch(`https://${CANARY_DOMAIN}/`, { method: 'HEAD' });
   } catch {
-    return false;
+    // Expected: the service answers NXDOMAIN, so this normally throws.
   }
 
+  await new Promise((resolve) => setTimeout(resolve, CANARY_SETTLE_MS));
+
   try {
-    await fetch(`https://${CANARY_DOMAIN}/`, { method: 'HEAD' });
-    // Resolved and reachable => our NXDOMAIN never happened => not filtering.
-    return false;
+    return CleanwayVpn.lastCanaryAnswerAtMs() >= startedAt;
   } catch {
-    // Control worked but the canary did not: the filter is live.
-    return true;
+    return false;
   }
 }
 

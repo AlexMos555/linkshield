@@ -10,6 +10,13 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   openVpnSettings(): boolean;
   /** True while the tunnel is active (reflects real service state). */
   isRunning(): boolean;
+  /**
+   * Epoch millis of the last canary query the service answered with NXDOMAIN,
+   * 0 if it never has. The shield's proof of life — see verifyFiltering().
+   * Optional so an app running against an older native build degrades to
+   * "unverified" instead of crashing.
+   */
+  lastCanaryAnswerAtMs?(): number;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

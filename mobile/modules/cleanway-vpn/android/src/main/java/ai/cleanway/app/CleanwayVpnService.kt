@@ -179,6 +179,9 @@ class CleanwayVpnService : VpnService() {
     private fun stopVpn() {
         running = false
         isRunning = false
+        // Clear the proof of life with the tunnel it belonged to, so a stamp
+        // from a previous run can never be read as "filtering right now".
+        lastCanaryAnswerAtMs = 0L
         stopForegroundCompat()
         try {
             vpnInterface?.close()
@@ -222,7 +225,13 @@ class CleanwayVpnService : VpnService() {
                     // after start and expects NXDOMAIN. No notifyBlocked — the
                     // probe must not spam block events or the notification.
                     val nx = DnsUtil.makeNxDomain(packet, length)
-                    if (nx != null) writeToTunnel(output, nx)
+                    if (nx != null) {
+                        writeToTunnel(output, nx)
+                        // Stamp only on a query we actually answered. This is
+                        // what the app reads back as proof that filtering is
+                        // live right now, through THIS tunnel.
+                        lastCanaryAnswerAtMs = System.currentTimeMillis()
+                    }
                     continue
                 }
 
@@ -561,6 +570,27 @@ class CleanwayVpnService : VpnService() {
         @JvmStatic
         @Volatile
         var isRunning = false
+
+        /**
+         * Epoch millis of the last canary query THIS service answered with
+         * NXDOMAIN, or 0 if it never has.
+         *
+         * This is the shield's proof of life, and it is positive evidence: the
+         * app notes the time, triggers a lookup of CANARY_DOMAIN, and asks
+         * whether we answered it after that instant. Only a query that actually
+         * reached this service can move the number, so a dead tunnel, a network
+         * with no DNS at all, or another VPN app holding the interface all fail
+         * to produce it — none of them can fake a green shield.
+         *
+         * The previous design inferred filtering from an HTTPS request to the
+         * canary FAILING, which is true of far too many things: the domain not
+         * existing in public DNS (it does not), no listener on 443, a cert
+         * mismatch, a refused connection, a timeout. That inference would have
+         * reported "protected" on essentially any device with a network.
+         */
+        @JvmStatic
+        @Volatile
+        var lastCanaryAnswerAtMs = 0L
 
         private const val CHANNEL_ID = "cleanway_vpn"
         private const val NOTIF_ID = 4711

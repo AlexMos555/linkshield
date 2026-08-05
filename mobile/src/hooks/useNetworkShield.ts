@@ -59,12 +59,26 @@ export function useNetworkShield(): NetworkShield {
   const [vpn] = useState<VpnModule | null>(loadVpn);
   const [running, setRunning] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [probing, setProbing] = useState(false);
 
   const sync = useCallback(async () => {
     if (!vpn) return;
     const isUp = vpn.isVpnRunning();
     setRunning(isUp);
-    setVerified(isUp ? await vpn.verifyFiltering() : false);
+    if (!isUp) {
+      setVerified(false);
+      setProbing(false);
+      return;
+    }
+    // The probe takes a second or so. Without this flag the card sat in its
+    // negative state for the whole window, so every single foreground flashed
+    // an alarm at a user whose protection was fine.
+    setProbing(true);
+    try {
+      setVerified(await vpn.verifyFiltering());
+    } finally {
+      setProbing(false);
+    }
   }, [vpn]);
 
   useEffect(() => {
@@ -105,9 +119,14 @@ export function useNetworkShield(): NetworkShield {
   const state: ShieldState =
     !running ? "setup"
     : verified ? "on"
-    // Running but the canary still resolves: something else (another VPN,
-    // private DNS) is answering. Say so instead of claiming protection.
-    : "conflict";
+    // Running, but we could not PROVE filtering — either the probe is still in
+    // flight or no canary answer came back. This used to render "conflict",
+    // whose copy says "Your VPN is in charge right now": a specific accusation
+    // nothing in the code actually detects. "unverified" says only what we
+    // know — the tunnel is up and we have not confirmed it is filtering — and
+    // its pill is deliberately not tappable, so an unproven state can no
+    // longer offer "turn it off" as the one obvious action.
+    : "unverified";
 
   const openVpnSettings = useCallback(() => {
     vpn?.openVpnSettings?.();

@@ -1111,7 +1111,7 @@
         "state_on": "On. Working right now.",
         "state_setup": "One-time setup, about a minute.",
         "state_paused": "Paused. Tap to turn back on.",
-        "state_conflict": "Your VPN is in charge right now. Cleanway steps aside so nothing breaks.",
+        "state_unverified": "Running, but we could not confirm it is filtering right now.",
         "state_blocked": "This Wi-Fi needs a sign-in page. Cleanway paused itself and will come back on automatically."
       },
       "browser": {
@@ -1129,7 +1129,7 @@
         "on_pill": "On",
         "paused_pill": "Paused",
         "attention_pill": "Attention",
-        "unverified_pill": "Set up (unverified)",
+        "unverified_pill": "Not confirmed",
         "rollout_pill": "Rolling out"
       },
       "always_on_hint": "Keep it on after restart — turn on Always-on VPN"
