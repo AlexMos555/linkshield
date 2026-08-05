@@ -21,6 +21,7 @@ import {
 } from "../src/utils/theme";
 import { checkSingleDomain, PublicCheckResult } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
+import { toCheckableHost } from "../src/utils/host";
 
 type ErrorKind = "no_url" | "check_failed";
 type Level = keyof typeof levelColors;
@@ -41,7 +42,11 @@ export default function SharedScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorKind | null>(null);
 
-  const domain = extractDomain(url || "");
+  // One shared parser — see src/utils/host.ts for why the old split("/")
+  // version leaked query strings and never punycoded IDN hosts. It returns
+  // null for junk, which is what finally makes the "No link found" screen
+  // below reachable.
+  const domain = toCheckableHost(url || "");
 
   useEffect(() => {
     if (!domain) {
@@ -174,12 +179,6 @@ export default function SharedScreen() {
   );
 }
 
-function extractDomain(url: string): string {
-  try {
-    if (url.startsWith("http")) return new URL(url).hostname.toLowerCase();
-  } catch {}
-  return url.trim().split("/")[0].toLowerCase();
-}
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },

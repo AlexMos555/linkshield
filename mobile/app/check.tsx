@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { getRecentChecks } from "../src/services/database";
+import { toCheckableHost } from "../src/utils/host";
 
 export default function CheckScreen() {
   const router = useRouter();
@@ -35,8 +36,8 @@ export default function CheckScreen() {
   }, [paste]);
 
   function handleCheck() {
-    const domain = url.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
-    if (!domain || !domain.includes(".")) {
+    const domain = toCheckableHost(url);
+    if (!domain) {
       Alert.alert(t("mobile.check.invalid_title"), t("mobile.check.invalid_body"));
       return;
     }
