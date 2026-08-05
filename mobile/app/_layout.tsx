@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
+import { Ionicons } from "@expo/vector-icons";
 import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { restoreSession } from "../src/services/auth";
 import { setAuthToken } from "../src/services/api";
@@ -43,6 +45,25 @@ function ShareIntentRouter() {
 }
 
 export default function RootLayout() {
+  // Preload the icon font, and shout if it fails.
+  //
+  // On 2026-08-05 every icon in the app — tab bar, shield hero, every card and
+  // chevron — was drawing as blank space on Android while the surrounding text
+  // rendered fine. @expo/vector-icons loads its font lazily and swallows the
+  // failure, so nothing was logged and several passes of "design" work were in
+  // fact invisible on device. Loading it here surfaced the real cause:
+  //
+  //   ExpoAsset.downloadAsync rejected
+  //   → Module 'expo.modules.interfaces.filesystem.AppDirectories' not found
+  //
+  // expo-asset was declared but its native peer expo-file-system was not, so
+  // no asset could ever be fetched. Adding that dependency is the actual fix;
+  // this preload stays as the tripwire that would have caught it on day one.
+  const [fontsLoaded, fontError] = useFonts(Ionicons.font);
+  useEffect(() => {
+    if (fontError) console.warn("[cleanway] icon font failed to load:", fontError);
+  }, [fontError]);
+
   // Restore previously-persisted Supabase session on cold boot. Runs once.
   // - Valid token > 2 min from expiry: use as-is.
   // - Near/past expiry: transparent refresh via refresh_token.
@@ -63,6 +84,13 @@ export default function RootLayout() {
       cancelled = true;
     };
   }, []);
+
+  // Deliberately NOT gated on fontsLoaded. Blocking the tree until the font
+  // resolves was tried and left the app on an empty screen indefinitely — the
+  // promise never settled and never rejected — so a missing glyph became a
+  // dead app. Icons are cosmetic; the app is not. Render immediately and let
+  // the glyphs appear when (if) the font arrives.
+  void fontsLoaded;
 
   return (
     <ShareIntentProvider options={{ resetOnBackground: true }}>
