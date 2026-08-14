@@ -8,7 +8,7 @@ import {
   colors, type as typo, space, radius,
   levelColors, levelWashes, levelStrokes,
 } from "../src/utils/theme";
-import { checkSingleDomain, PublicCheckResult } from "../src/services/api";
+import { checkDomain, PublicCheckResult, ApiError } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
 
 export default function ResultScreen() {
@@ -16,7 +16,7 @@ export default function ResultScreen() {
   const { t } = useTranslation();
   const [result, setResult] = useState<PublicCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError["kind"] | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   const retry = useCallback(() => {
@@ -31,8 +31,16 @@ export default function ResultScreen() {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await checkSingleDomain(domain);
+        // Result-based call so the error KIND survives. The old throwing
+        // wrapper flattened everything to a message this screen then ignored,
+        // and every failure — rate limit, server error, offline — rendered
+        // the same "check your connection" with a Retry that could not help.
+        const { data: r, error: apiError } = await checkDomain(domain);
         if (cancelled) return;
+        if (!r) {
+          setError(apiError?.kind ?? "network");
+          return;
+        }
         setResult(r);
         // Persist before kicking off the haptic so that if the user
         // immediately navigates away the SQLite write has at least
@@ -51,9 +59,9 @@ export default function ResultScreen() {
         } else {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-      } catch (e: unknown) {
+      } catch {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Check failed");
+        setError("network");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -74,11 +82,18 @@ export default function ResultScreen() {
   }
 
   if (error || !result) {
+    // Say what actually went wrong. A rate limit and a dead server are not
+    // "check your connection", and telling someone to retry into a rate
+    // limit only digs the hole deeper.
+    const bodyKey =
+      error === "rate_limited" ? "mobile.result.error_rate_limited"
+      : error === "http_5xx" ? "mobile.result.error_server"
+      : "mobile.result.error_body";
     return (
       <View style={s.center}>
         <Ionicons name="alert-circle" size={44} color={colors.amber} />
         <Text style={s.errorTitle}>{t("mobile.result.error_title")}</Text>
-        <Text style={s.errorBody}>{t("mobile.result.error_body")}</Text>
+        <Text style={s.errorBody}>{t(bodyKey)}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={retry} activeOpacity={0.85}>
           <Text style={s.retryLabel}>{t("mobile.result.error_retry")}</Text>
         </TouchableOpacity>

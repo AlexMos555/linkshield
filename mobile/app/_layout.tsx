@@ -120,6 +120,8 @@ export default function RootLayout() {
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="upgrade" options={{ title: t("mobile.nav.upgrade") }} />
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
+        {/* Without an entry the header renders the raw route slug "family". */}
+        <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />
       </Stack>
       {/* Global overlay — subscribes to accountLockedEvents and renders
           the restore CTA whenever any authed call returns 410 Gone. */}

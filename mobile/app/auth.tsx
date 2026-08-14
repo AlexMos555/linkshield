@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { colors, spacing, fontSize } from "../src/utils/theme";
 import { setAuthToken } from "../src/services/api";
@@ -20,6 +21,7 @@ type Mode = "login" | "register" | "reset";
 
 export default function AuthScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,9 +32,7 @@ export default function AuthScreen() {
     setError(null);
 
     if (!isSupabaseConfigured()) {
-      setError(
-        "Authentication is not configured. Contact support@cleanway.ai.",
-      );
+      setError(t("mobile.auth.not_configured"));
       return;
     }
 
@@ -64,8 +64,8 @@ export default function AuthScreen() {
           router.replace("/(tabs)");
         } else {
           Alert.alert(
-            "Check your email",
-            "We sent a confirmation link. Click it to activate your account.",
+            t("mobile.auth.confirm_title"),
+            t("mobile.auth.confirm_body"),
           );
           setMode("login");
           setPassword("");
@@ -73,8 +73,8 @@ export default function AuthScreen() {
       } else {
         await sendPasswordResetEmail(email);
         Alert.alert(
-          "Check your email",
-          "If an account exists for this address, we've sent a link to reset your password.",
+          t("mobile.auth.confirm_title"),
+          t("mobile.auth.reset_sent_body"),
         );
         setMode("login");
       }
@@ -83,7 +83,7 @@ export default function AuthScreen() {
       if (e instanceof AuthError) {
         setError(e.message);
       } else {
-        setError("Something went wrong. Please try again.");
+        setError(t("mobile.auth.generic_error"));
       }
     } finally {
       setLoading(false);
@@ -91,19 +91,19 @@ export default function AuthScreen() {
   }
 
   const titleFor: Record<Mode, string> = {
-    login: "Welcome Back",
-    register: "Create Account",
-    reset: "Reset Password",
+    login: t("mobile.auth.title_login"),
+    register: t("mobile.auth.title_register"),
+    reset: t("mobile.auth.title_reset"),
   };
   const subtitleFor: Record<Mode, string> = {
-    login: "Sign in to sync across devices",
-    register: "Start your free protection",
-    reset: "We'll email you a link to set a new password",
+    login: t("mobile.auth.sub_login"),
+    register: t("mobile.auth.sub_register"),
+    reset: t("mobile.auth.sub_reset"),
   };
   const ctaFor: Record<Mode, string> = {
-    login: "Sign In",
-    register: "Create Account",
-    reset: "Send Reset Link",
+    login: t("mobile.auth.cta_login"),
+    register: t("mobile.auth.cta_register"),
+    reset: t("mobile.auth.cta_reset"),
   };
 
   return (
@@ -115,27 +115,27 @@ export default function AuthScreen() {
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={t("mobile.auth.email_ph")}
           placeholderTextColor={colors.textMuted}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
-          accessibilityLabel="Email address"
+          accessibilityLabel={t("mobile.auth.email_ph")}
           editable={!loading}
         />
         {mode !== "reset" && (
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder={t("mobile.auth.password_ph")}
             placeholderTextColor={colors.textMuted}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
-            accessibilityLabel="Password"
+            accessibilityLabel={t("mobile.auth.password_ph")}
             editable={!loading}
           />
         )}
@@ -161,7 +161,7 @@ export default function AuthScreen() {
             style={styles.switchBtn}
             onPress={() => { setError(null); setMode("reset"); }}
           >
-            <Text style={styles.forgotText}>Forgot password?</Text>
+            <Text style={styles.forgotText}>{t("mobile.auth.forgot")}</Text>
           </TouchableOpacity>
         )}
 
@@ -174,8 +174,8 @@ export default function AuthScreen() {
         >
           <Text style={styles.switchText}>
             {mode === "login"
-              ? "Don't have an account? Sign Up"
-              : "Already have an account? Sign In"}
+              ? t("mobile.auth.switch_to_register")
+              : t("mobile.auth.switch_to_login")}
           </Text>
         </TouchableOpacity>
 
@@ -183,13 +183,14 @@ export default function AuthScreen() {
           style={styles.skipBtn}
           onPress={() => router.replace("/(tabs)")}
         >
-          <Text style={styles.skipText}>Continue without account</Text>
+          <Text style={styles.skipText}>{t("mobile.auth.skip")}</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.note}>
-        {"\u{1F512}"} Your browsing data stays on-device regardless
-      </Text>
+      {/* Was "Your browsing data stays on-device regardless" — false: every
+          checked domain goes to the server by design. State the real
+          contract instead, same wording as the home screen. */}
+      <Text style={styles.note}>{t("mobile.auth.privacy")}</Text>
     </View>
   );
 }

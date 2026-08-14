@@ -26,12 +26,20 @@ const SKILL_OPTIONS: Array<{ value: SkillLevel; icon: IconName }> = [
   { value: "pro",     icon: "code-slash-outline" },
 ];
 
+/**
+ * Push a settings patch to the account.
+ *
+ * Returns "ok" | "failed" | "signed_out" instead of void: the response used
+ * to be discarded entirely, so "saved to your account" could be a silent
+ * no-op — a 401 from an expired session, a 500, an offline PUT all looked
+ * identical to success. The caller decides what to tell the user.
+ */
 async function pushSkillToApi(
   patch: Record<string, unknown>,
-): Promise<void> {
+): Promise<"ok" | "failed" | "signed_out"> {
   try {
     const token = await SecureStore.getItemAsync("auth_token");
-    if (!token) return;
+    if (!token) return "signed_out";
     // Audit mobile MEDIUM "settings.tsx reads API base URL from
     // SecureStore at runtime — creates a URL-injection vector":
     // previously we honoured `api_url` in SecureStore as an override.
@@ -43,7 +51,7 @@ async function pushSkillToApi(
     // uses this canonical source via services/api.ts.
     const apiBase =
       process.env.EXPO_PUBLIC_API_URL || "https://api.cleanway.ai";
-    await fetch(`${apiBase}/api/v1/user/settings`, {
+    const resp = await fetch(`${apiBase}/api/v1/user/settings`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -51,8 +59,10 @@ async function pushSkillToApi(
       },
       body: JSON.stringify(patch),
     });
+    return resp.ok ? "ok" : "failed";
   } catch {
-    // Offline or unauthenticated — SecureStore stays authoritative locally
+    // Offline — SecureStore stays authoritative locally.
+    return "failed";
   }
 }
 
@@ -85,17 +95,40 @@ export default function SettingsScreen() {
     } catch {
       // Best-effort: UI state is still updated so the user sees the change
     }
-    await pushSkillToApi({
+    const pushed = await pushSkillToApi({
       skill_level: next,
       font_scale: SKILL_DEFAULTS[next].fontScale,
       voice_alerts_enabled: SKILL_DEFAULTS[next].voiceAlerts,
     });
+    // Only a signed-in user was promised account sync, so only they are told
+    // when it did not happen. "signed_out" is the normal local-only case.
+    if (pushed === "failed") {
+      Alert.alert(
+        t("mobile.settings.sync_failed_title"),
+        t("mobile.settings.sync_failed_body"),
+      );
+    }
   }
 
   function confirmClearHistory(): void {
     Alert.alert(t("mobile.settings.clear_confirm_title"), t("mobile.settings.clear_confirm_body"), [
       { text: t("mobile.settings.clear_cancel"), style: "cancel" },
-      { text: t("mobile.settings.clear_confirm"), style: "destructive", onPress: () => pruneOldChecks(0) },
+      {
+        text: t("mobile.settings.clear_confirm"),
+        style: "destructive",
+        // Was fire-and-forget: no await, errors swallowed, no confirmation.
+        // The user tapped a destructive action and got silence either way.
+        onPress: () => {
+          void (async () => {
+            try {
+              await pruneOldChecks(0);
+              Alert.alert(t("mobile.settings.clear_done_title"), t("mobile.settings.clear_done_body"));
+            } catch {
+              Alert.alert(t("mobile.settings.clear_failed_title"), t("mobile.settings.clear_failed_body"));
+            }
+          })();
+        },
+      },
     ]);
   }
 

@@ -40,8 +40,12 @@ async function getDB(): Promise<SQLiteDB | null> {
     `);
     return _db;
   } catch (e) {
-    console.warn("SQLite unavailable, using in-memory storage:", e);
-    _isNative = false;
+    // Do NOT flip _isNative here. One transient open failure (a locked file
+    // during an OS restore, low disk at the wrong moment) used to latch the
+    // whole app into in-memory storage until the process died — every check
+    // from then on was silently lost on exit while history looked fine.
+    // Fail this call, try again next call.
+    console.warn("SQLite open failed, falling back to memory for this call:", e);
     return null;
   }
 }
@@ -181,17 +185,26 @@ export async function getActiveDaysThisWeek(): Promise<number> {
   if (db) {
     try {
       const cutoff = new Date(weekAgo).toISOString();
+      // 'localtime': checked_at is stored as ISO UTC, and grouping by the UTC
+      // date puts an evening check on "tomorrow" for everyone east of
+      // Greenwich and a morning check on "yesterday" west of it — a user in
+      // the Americas checking at 20:00 two nights running was told they
+      // checked on FOUR days. The user's idea of "a day" is local.
       const row = await db.getFirstAsync<{ days: number }>(
-        `SELECT COUNT(DISTINCT date(checked_at)) as days FROM checks WHERE checked_at >= ?`,
+        `SELECT COUNT(DISTINCT date(checked_at, 'localtime')) as days FROM checks WHERE checked_at >= ?`,
         [cutoff]
       );
       return Math.min(7, row?.days || 0);
     } catch (e) {}
   }
 
-  // Fallback
+  // Fallback — same local-day rule as the SQL path.
   const recent = _memoryChecks.filter(c => new Date(c.checked_at).getTime() >= weekAgo);
-  return Math.min(7, new Set(recent.map(c => c.checked_at.slice(0, 10))).size);
+  const localDay = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  };
+  return Math.min(7, new Set(recent.map(c => localDay(c.checked_at))).size);
 }
 
 // ── Settings ──

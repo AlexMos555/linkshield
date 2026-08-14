@@ -3,32 +3,40 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { colors, spacing, fontSize } from "../src/utils/theme";
 import { setSetting } from "../src/services/database";
 
 const { width } = Dimensions.get("window");
 
+// Every sentence here is checked against what the app actually does. The old
+// slides promised "checks every link you open" (nothing on iOS does), cited
+// "9 threat intelligence sources" (the API itself says 16), and claimed
+// "even if our servers are breached, your data is safe" — an overclaim this
+// product's own privacy doc refuses to make.
 const slides = [
   {
-    icon: "\u{1F6E1}",
-    title: "Automatic Protection",
-    desc: "Cleanway checks every link you open against 9 threat intelligence sources and an ML model. Dangerous sites are blocked before they can harm you.",
+    icon: "search-outline" as const,
+    titleKey: "mobile.onboarding.s1_title",
+    descKey: "mobile.onboarding.s1_desc",
   },
   {
-    icon: "\u{1F512}",
-    title: "Your Data, Your Device",
-    desc: "Your browsing history never leaves this device. We only see domain names for safety checks. Even if our servers are breached, your data is safe.",
+    icon: "lock-closed-outline" as const,
+    titleKey: "mobile.onboarding.s2_title",
+    descKey: "mobile.onboarding.s2_desc",
   },
   {
-    icon: "\u{26A1}",
-    title: "Set & Forget",
-    desc: "Enable protection once — Cleanway works silently in the background. VPN mode checks every domain. No action needed from you.",
+    icon: "shield-outline" as const,
+    titleKey: "mobile.onboarding.s3_title",
+    descKey: "mobile.onboarding.s3_desc",
   },
 ];
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [page, setPage] = useState(0);
 
   async function finish() {
@@ -51,9 +59,9 @@ export default function OnboardingScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.icon}>{slide.icon}</Text>
-        <Text style={styles.title}>{slide.title}</Text>
-        <Text style={styles.desc}>{slide.desc}</Text>
+        <Ionicons name={slide.icon} size={72} color={colors.safe} style={styles.iconGlyph} />
+        <Text style={styles.title}>{t(slide.titleKey)}</Text>
+        <Text style={styles.desc}>{t(slide.descKey)}</Text>
       </View>
 
       {/* Dots */}
@@ -68,15 +76,15 @@ export default function OnboardingScreen() {
         {page < slides.length - 1 ? (
           <>
             <TouchableOpacity onPress={finish}>
-              <Text style={styles.skipText}>Skip</Text>
+              <Text style={styles.skipText}>{t("mobile.onboarding.skip")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.nextBtn} onPress={next}>
-              <Text style={styles.nextBtnText}>Next &rarr;</Text>
+              <Text style={styles.nextBtnText}>{t("mobile.onboarding.next")}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <TouchableOpacity style={[styles.nextBtn, styles.startBtn]} onPress={finish}>
-            <Text style={styles.nextBtnText}>Get Started</Text>
+            <Text style={styles.nextBtnText}>{t("mobile.onboarding.start")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -87,7 +95,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, justifyContent: "space-between", padding: spacing.xl },
   content: { flex: 1, alignItems: "center", justifyContent: "center" },
-  icon: { fontSize: 80, marginBottom: spacing.xl },
+  iconGlyph: { alignSelf: "center", marginBottom: spacing.xl },
   title: { fontSize: 28, fontWeight: "800", color: colors.white, textAlign: "center", marginBottom: spacing.md },
   desc: {
     fontSize: fontSize.lg, color: colors.textSecondary, textAlign: "center",
