@@ -1,13 +1,15 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../../src/utils/theme";
 import { pruneOldChecks } from "../../src/services/database";
+import { restoreSession, signOut } from "../../src/services/auth";
+import { setAuthToken } from "../../src/services/api";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -70,6 +72,39 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+
+  // On focus, not mount: the user goes to /auth, signs in, and comes BACK
+  // to this mounted screen — a mount-only read would keep saying "Sign in".
+  useFocusEffect(useCallback(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const session = await restoreSession();
+        if (!cancelled) setSessionEmail(session?.email ?? null);
+      } catch {
+        if (!cancelled) setSessionEmail(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []));
+
+  function confirmSignOut(): void {
+    Alert.alert(t("mobile.settings.sign_out_confirm_title"), t("mobile.settings.sign_out_confirm_body"), [
+      { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+      {
+        text: t("mobile.settings.sign_out"),
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            await signOut();
+            setAuthToken(null);
+            setSessionEmail(null);
+          })();
+        },
+      },
+    ]);
+  }
 
   // Load persisted skill on mount
   useEffect(() => {
@@ -155,8 +190,18 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
       <Section title={t("mobile.settings.account")}>
-        <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
-             right={chevron} onPress={() => router.push("/auth")} />
+        {/* The app had no signed-in state anywhere: after signing in, this row
+            still said "Sign in", and no screen offered a way out. Now it shows
+            who is signed in and signs them out — with a confirm, because for a
+            security product "am I signed in?" should never be a mystery. */}
+        {sessionEmail ? (
+          <Row first label={sessionEmail} desc={t("mobile.settings.signed_in_desc")}
+               right={<Text style={s.signOut}>{t("mobile.settings.sign_out")}</Text>}
+               onPress={confirmSignOut} />
+        ) : (
+          <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
+               right={chevron} onPress={() => router.push("/auth")} />
+        )}
         <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
              right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
              onPress={() => router.push("/upgrade")} />
@@ -302,4 +347,5 @@ const s = StyleSheet.create({
     gap: 6, marginTop: space.xxl, paddingHorizontal: space.md,
   },
   privacy: { ...typo.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
+  signOut: { ...typo.body, fontWeight: "600", color: colors.danger },
 });
