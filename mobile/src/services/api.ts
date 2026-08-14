@@ -16,6 +16,7 @@ import {
   type PricingFor,
   type ApiError,
   type CleanwayClient,
+  type UserSettings,
   type Result,
 } from "@cleanway/api-client";
 
@@ -83,6 +84,18 @@ const _client: CleanwayClient = createClient({
 
 export async function checkDomain(domain: string): Promise<Result<PublicCheckResult>> {
   const r = await _client.check.publicDomain(domain);
+  _maybeEmitAccountLocked(r.error);
+  return r;
+}
+
+/**
+ * Pull the account's settings. The other half of sync: the app only ever
+ * PUSHED settings, so "keep your settings on all your devices" was a
+ * one-way street — a change made in the browser extension never reached
+ * this phone.
+ */
+export async function getAccountSettings(): Promise<Result<UserSettings>> {
+  const r = await _client.user.settings();
   _maybeEmitAccountLocked(r.error);
   return r;
 }

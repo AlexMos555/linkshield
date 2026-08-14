@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../../src/utils/theme";
 import { pruneOldChecks } from "../../src/services/database";
 import { restoreSession, signOut } from "../../src/services/auth";
-import { setAuthToken } from "../../src/services/api";
+import { setAuthToken, getAccountSettings } from "../../src/services/api";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -81,7 +81,26 @@ export default function SettingsScreen() {
     void (async () => {
       try {
         const session = await restoreSession();
-        if (!cancelled) setSessionEmail(session?.email ?? null);
+        if (cancelled) return;
+        setSessionEmail(session?.email ?? null);
+        if (!session) return;
+        // The other half of sync. The app only ever PUSHED settings, so a
+        // skill level changed in the browser extension never reached this
+        // phone. Signed in → the account is the source of truth.
+        const { data } = await getAccountSettings();
+        const remote = data?.skill_level;
+        if (
+          !cancelled &&
+          typeof remote === "string" &&
+          ["kids", "regular", "granny", "pro"].includes(remote)
+        ) {
+          setSkillLevel(remote as SkillLevel);
+          try {
+            await SecureStore.setItemAsync("skill_level", remote);
+          } catch {
+            // Local persist is best-effort; the UI already shows it.
+          }
+        }
       } catch {
         if (!cancelled) setSessionEmail(null);
       }
