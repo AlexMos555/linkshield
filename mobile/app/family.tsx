@@ -226,7 +226,7 @@ export default function FamilyScreen() {
       <View style={[styles.container, styles.center]}>
         <Text style={styles.h1}>{t("mobile.family.title")}</Text>
         <Text style={styles.sub}>{t("mobile.family.signed_out_body")}</Text>
-        <TouchableOpacity style={styles.btnPrimary} onPress={() => router.push("/auth")}>
+        <TouchableOpacity style={[styles.btnPrimary, styles.btnSolo]} onPress={() => router.push("/auth")}>
           <Text style={styles.btnPrimaryText}>{t("mobile.family.sign_in")}</Text>
         </TouchableOpacity>
       </View>
@@ -239,7 +239,7 @@ export default function FamilyScreen() {
         <Text style={styles.h1}>{t("mobile.family.title")}</Text>
         <Text style={styles.sub}>{t("mobile.family.load_failed_body")}</Text>
         <TouchableOpacity
-          style={styles.btnPrimary}
+          style={[styles.btnPrimary, styles.btnSolo]}
           onPress={() => {
             setScreen({ kind: "loading" });
             void refresh();
@@ -501,6 +501,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnPrimaryText: { color: "#0B1220", fontSize: fontSize.md, fontWeight: "700" },
+  btnSolo: { flex: 0, alignSelf: "stretch" },
   btnGhost: {
     flex: 1,
     backgroundColor: colors.bgCard,
