@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  btnPrimaryText: { color: colors.safeBg, fontSize: fontSize.md, fontWeight: "700" },
+  btnPrimaryText: { color: "#0B1220", fontSize: fontSize.md, fontWeight: "700" },
   btnGhost: {
     flex: 1,
     backgroundColor: colors.bgCard,

@@ -150,7 +150,7 @@ export default function AuthScreen() {
           accessibilityLabel={ctaFor[mode]}
         >
           {loading ? (
-            <ActivityIndicator color={colors.safeBg} />
+            <ActivityIndicator color="#0B1220" />
           ) : (
             <Text style={styles.btnText}>{ctaFor[mode]}</Text>
           )}
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   },
   btn: { backgroundColor: colors.accent, borderRadius: 12, padding: 16, alignItems: "center" },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: colors.safeBg, fontWeight: "700", fontSize: fontSize.lg },
+  btnText: { color: "#0B1220", fontWeight: "700", fontSize: fontSize.lg },
   switchBtn: { alignItems: "center", padding: spacing.md },
   switchText: { color: colors.primary, fontSize: fontSize.md },
   forgotText: { color: colors.textSecondary, fontSize: fontSize.sm },

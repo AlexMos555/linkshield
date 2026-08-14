@@ -114,5 +114,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   startBtn: { flex: 1, alignItems: "center" },
-  nextBtnText: { color: colors.safeBg, fontWeight: "700", fontSize: fontSize.lg },
+  nextBtnText: { color: "#0B1220", fontWeight: "700", fontSize: fontSize.lg },
 });

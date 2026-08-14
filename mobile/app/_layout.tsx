@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { restoreSession } from "../src/services/auth";
+import { getSetting } from "../src/services/database";
 import { setAuthToken } from "../src/services/api";
 // Side-effecting import: initialises i18next at boot so every screen
 // can immediately `useTranslation()`. Previously the module was authored
@@ -29,6 +30,36 @@ import { AccountLockedModal } from "../src/components/AccountLockedModal";
  * Requires `npx expo prebuild` + a dev-client build + on-device test.
  * See mobile/SHARE_FLOW.md.
  */
+/**
+ * First-launch gate. The onboarding screen wrote `onboarding_done` on finish,
+ * but nothing ever read it and nothing ever navigated to /onboarding — three
+ * slides of copy that no user in the app's history had ever seen. A share
+ * intent outranks it: someone who shared a suspicious link wants the verdict,
+ * not a tour.
+ */
+function OnboardingGate() {
+  const router = useRouter();
+  const { hasShareIntent } = useShareIntentContext();
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const done = await getSetting("onboarding_done");
+        if (!cancelled && done !== "true" && !hasShareIntent) {
+          router.replace("/onboarding");
+        }
+      } catch {
+        // Storage unavailable — never block the app on a tour.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 function ShareIntentRouter() {
   const router = useRouter();
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
@@ -126,6 +157,7 @@ export default function RootLayout() {
       {/* Global overlay — subscribes to accountLockedEvents and renders
           the restore CTA whenever any authed call returns 410 Gone. */}
       <ShareIntentRouter />
+      <OnboardingGate />
       <AccountLockedModal />
     </ShareIntentProvider>
   );

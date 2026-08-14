@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   cardPopular: { borderColor: colors.safe, borderWidth: 2 },
   popular: {
     position: "absolute", top: -12, alignSelf: "center",
-    backgroundColor: colors.safe, color: colors.safeBg,
+    backgroundColor: colors.safe, color: "#0B1220",
     paddingHorizontal: 16, paddingVertical: 4, borderRadius: 12,
     fontSize: fontSize.xs, fontWeight: "700", overflow: "hidden",
   },
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   },
   btnPopular: { backgroundColor: colors.safe, borderColor: colors.safe },
   btnText: { color: colors.textSecondary, fontWeight: "700", fontSize: fontSize.md },
-  btnTextPopular: { color: colors.safeBg },
+  btnTextPopular: { color: "#0B1220" },
   currentBadge: {
     marginTop: spacing.lg, borderRadius: 12, padding: 14,
     alignItems: "center", backgroundColor: colors.bgInput,
