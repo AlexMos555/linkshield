@@ -26,6 +26,25 @@ import re
 import time
 from typing import Iterable, Optional
 
+# Names that must never be blocked, by anything, ever. Used by the publisher
+# (post-publish verification, with rollback) and by the 15-minute DNS canary.
+# github.com is on this list because on 2026-08-18 it was NXDOMAIN in
+# production for everyone using our DNS profile.
+NEVER_BLOCK_GUARDS = (
+    "github.com",
+    "www.github.com",
+    "raw.githubusercontent.com",
+    "google.com",
+    "www.google.com",
+    "apple.com",
+    "microsoft.com",
+    "cloudflare.com",
+    "amazonaws.com",
+    "wikipedia.org",
+    "cleanway.ai",
+    "api.cleanway.ai",
+)
+
 REDIS_TEXT_KEY = "dangerous_domains:mobile:v1"
 REDIS_META_KEY = "dangerous_domains:mobile:v1:meta"
 FORMAT_VERSION = "v1"
