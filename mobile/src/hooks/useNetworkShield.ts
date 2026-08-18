@@ -23,9 +23,24 @@ interface VpnModule {
   startVpn(): Promise<boolean>;
   stopVpn(): Promise<void>;
   isVpnRunning(): boolean;
+  wasUserEnabled?(): boolean;
   verifyFiltering(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
   openVpnSettings?(): boolean;
+}
+
+async function hasInternet(): Promise<boolean> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 2500);
+  try {
+    // /health is the unprefixed route (see the 404 that broke the old probe).
+    const r = await fetch("https://api.cleanway.ai/health", { method: "HEAD", signal: abort.signal });
+    return r.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function loadVpn(): VpnModule | null {
@@ -51,6 +66,20 @@ export interface NetworkShield {
    * users whose protection was fine. The screen shows "checking…" instead.
    */
   probing: boolean;
+  /**
+   * True when the last probe failed AND the device could not reach the
+   * internet at all. Filtering genuinely cannot be proven offline (there is
+   * nothing to filter), but "0 shields active" on a plane reads as "broken".
+   * Distinguished so the card can say "no internet right now" instead.
+   */
+  offline: boolean;
+  /**
+   * The user had the shield ON and it is not running now — a reboot without
+   * always-on, an OEM battery manager, a force-stop. Nothing turned it off on
+   * purpose, so it must not read as "never set up": the hero says protection
+   * stopped, and one tap brings it back.
+   */
+  interrupted: boolean;
   turnOn: () => Promise<void>;
   turnOff: () => Promise<void>;
   /**
@@ -67,6 +96,8 @@ export function useNetworkShield(): NetworkShield {
   const [running, setRunning] = useState(false);
   const [verified, setVerified] = useState(false);
   const [probing, setProbing] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [interrupted, setInterrupted] = useState(false);
 
   const sync = useCallback(async () => {
     if (!vpn) return;
@@ -75,14 +106,24 @@ export function useNetworkShield(): NetworkShield {
     if (!isUp) {
       setVerified(false);
       setProbing(false);
+      // Not running — but did the user WANT it running? That is the difference
+      // between "set up" and "it stopped; turn it back on".
+      setInterrupted(vpn.wasUserEnabled?.() === true);
       return;
     }
+    setInterrupted(false);
     // The probe takes a second or so. Without this flag the card sat in its
     // negative state for the whole window, so every single foreground flashed
     // an alarm at a user whose protection was fine.
     setProbing(true);
     try {
-      setVerified(await vpn.verifyFiltering());
+      const ok = await vpn.verifyFiltering();
+      setVerified(ok);
+      // A failed probe has two very different meanings. If our own API is
+      // unreachable too, the device is offline and the honest message is
+      // "no internet", not "we couldn't confirm filtering". Cheap HEAD, short
+      // timeout; only consulted on the failure path.
+      setOffline(ok ? false : !(await hasInternet()));
     } finally {
       setProbing(false);
     }
@@ -135,11 +176,17 @@ export function useNetworkShield(): NetworkShield {
     await vpn.stopVpn();
     setRunning(false);
     setVerified(false);
+    // A deliberate pause is not an interruption.
+    setInterrupted(false);
   }, [vpn]);
 
   const state: ShieldState =
     !running ? "setup"
     : verified ? "on"
+    // Tunnel up, probe failed, and our own API is unreachable too: the phone
+    // is offline. Nothing can be filtered because nothing is flowing — that
+    // is not a shield problem, and it must not be shown as one.
+    : offline ? "offline"
     // Running, but we could not PROVE filtering — either the probe is still in
     // flight or no canary answer came back. This used to render "conflict",
     // whose copy says "Your VPN is in charge right now": a specific accusation
@@ -153,5 +200,5 @@ export function useNetworkShield(): NetworkShield {
     vpn?.openVpnSettings?.();
   }, [vpn]);
 
-  return { available: vpn !== null, state, verified, probing, turnOn, turnOff, openVpnSettings };
+  return { available: vpn !== null, state, verified, probing, offline, interrupted, turnOn, turnOff, openVpnSettings };
 }

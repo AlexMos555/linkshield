@@ -1159,7 +1159,9 @@
         "blocked": "Diblokir",
         "warned": "Diperingatkan"
       },
-      "privacy": "Kami mengecek nama situs di server kami — tidak pernah kata sandi, pesan, atau riwayat browsing Anda."
+      "privacy": "Kami mengecek nama situs di server kami — tidak pernah kata sandi, pesan, atau riwayat browsing Anda.",
+      "interrupted": "Perlindungan berhenti — biasanya setelah ponsel dinyalakan ulang. Pengaturan Anda masih ada.",
+      "cta_turn_back_on": "Nyalakan perlindungan lagi"
     },
     "shield": {
       "network": {
@@ -1171,7 +1173,8 @@
         "state_paused": "Dijeda. Ketuk untuk menyalakan lagi.",
         "state_unverified": "Berjalan, tapi kami belum bisa memastikan penyaringannya sedang bekerja saat ini.",
         "state_blocked": "Wi-Fi ini butuh halaman login. Cleanway menjeda dirinya sendiri dan akan menyala lagi secara otomatis.",
-        "state_checking": "Mengecek perlindungan…"
+        "state_checking": "Mengecek perlindungan…",
+        "state_offline": "Tidak ada internet sekarang. Perisai sudah disiapkan dan akan menyaring begitu Anda online lagi."
       },
       "browser": {
         "title": "Browser Anda",
@@ -1190,7 +1193,8 @@
         "attention_pill": "Perhatian",
         "unverified_pill": "Belum pasti",
         "rollout_pill": "Segera hadir",
-        "pause_action": "Jeda perlindungan"
+        "pause_action": "Jeda perlindungan",
+        "offline_pill": "Offline"
       },
       "always_on_hint": "Agar tetap menyala setelah HP di-restart — aktifkan VPN Selalu Aktif",
       "pause_confirm_title": "Jeda perlindungan?",

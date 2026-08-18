@@ -104,6 +104,18 @@ export function openVpnSettings(): boolean {
   }
 }
 
+/**
+ * Did the user last leave the shield ON? False on older native builds, which
+ * degrades to the ordinary "set up" flow.
+ */
+export function wasUserEnabled(): boolean {
+  try {
+    return typeof CleanwayVpn.wasUserEnabled === 'function' && CleanwayVpn.wasUserEnabled();
+  } catch {
+    return false;
+  }
+}
+
 export function isVpnRunning(): boolean {
   try {
     return CleanwayVpn.isRunning();

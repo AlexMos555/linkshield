@@ -9,7 +9,9 @@ export type ShieldState =
   | "paused"
   | "conflict"
   | "network-blocked"
-  | "unverified";
+  | "unverified"
+  /** Tunnel up but the phone has no internet — nothing to filter, not a fault. */
+  | "offline";
 
 interface ShieldCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -39,7 +41,7 @@ const AMBER_STATES: ReadonlySet<ShieldState> = new Set(["conflict", "network-blo
 export function ShieldCard(props: ShieldCardProps) {
   const { icon, title, description, honesty, state, stateCopy, onAction, onPause } = props;
   const { t } = useTranslation();
-  const running = state === "on" || state === "unverified" || state === "conflict";
+  const running = state === "on" || state === "unverified" || state === "conflict" || state === "offline";
   const amber = AMBER_STATES.has(state);
   const iconColor = state === "on" ? colors.green : amber ? colors.amber : colors.textSecondary;
   const desc = stateCopy ?? description;
@@ -52,7 +54,10 @@ export function ShieldCard(props: ShieldCardProps) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>{title}</Text>
-          <Text style={[s.desc, amber && { color: colors.amber }]} numberOfLines={2}>
+          {/* No line cap. State copy is a full honest sentence or two, and a
+              cap ate the half that mattered ("…and will filter as soon as
+              you're back onl…"). The card grows; that is fine. */}
+          <Text style={[s.desc, amber && { color: colors.amber }]}>
             {desc}
           </Text>
         </View>
@@ -119,6 +124,14 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
     return (
       <View style={[s.pill, { backgroundColor: colors.surface, borderColor: colors.stroke }]}>
         <Text style={[s.pillLabel, { color: colors.textSecondary }]}>{t("mobile.shield.status.unverified_pill")}</Text>
+      </View>
+    );
+  }
+  if (state === "offline") {
+    return (
+      <View style={[s.pill, { backgroundColor: colors.surface, borderColor: colors.stroke }]}>
+        <Ionicons name="cloud-offline-outline" size={16} color={colors.textSecondary} />
+        <Text style={[s.pillLabel, { color: colors.textSecondary }]}>{t("mobile.shield.status.offline_pill")}</Text>
       </View>
     );
   }

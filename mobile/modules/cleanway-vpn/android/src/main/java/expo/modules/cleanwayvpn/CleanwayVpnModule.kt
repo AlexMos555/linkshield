@@ -101,6 +101,17 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Whether the user last chose to have the shield ON. Combined with
+     * isRunning() this lets the app tell "never set up" apart from "was on,
+     * and something turned it off" — a reboot without always-on, an OEM
+     * battery manager, a force-stop. The second case deserves "turn it back
+     * on" in one tap, not the first-run "let's set up your protection".
+     */
+    Function("wasUserEnabled") {
+      ai.cleanway.app.ShieldPreference.isUserEnabled(context)
+    }
+
+    /**
      * Monotonic count of canary queries the service has answered. The app
      * reads it before and after triggering a lookup — a delta is proof the
      * query reached THIS tunnel and was filtered. Double because JS has no

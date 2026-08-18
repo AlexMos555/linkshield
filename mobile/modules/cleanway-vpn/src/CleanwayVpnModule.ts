@@ -23,6 +23,8 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
    * build degrades to "unverified" instead of crashing.
    */
   canaryAnswerCount?(): number;
+  /** True if the user last chose ON. Optional: older native builds lack it. */
+  wasUserEnabled?(): boolean;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

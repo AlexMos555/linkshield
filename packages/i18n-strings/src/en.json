@@ -1101,7 +1101,9 @@
         "blocked": "Blocked",
         "warned": "Warned"
       },
-      "privacy": "We check website names on our servers — never your passwords, messages, or browsing history."
+      "privacy": "We check website names on our servers — never your passwords, messages, or browsing history.",
+      "interrupted": "Protection stopped — usually after a restart. Your setup is still here.",
+      "cta_turn_back_on": "Turn protection back on"
     },
     "shield": {
       "network": {
@@ -1113,7 +1115,8 @@
         "state_paused": "Paused. Tap to turn back on.",
         "state_unverified": "Running, but we could not confirm it is filtering right now.",
         "state_blocked": "This Wi-Fi needs a sign-in page. Cleanway paused itself and will come back on automatically.",
-        "state_checking": "Checking protection…"
+        "state_checking": "Checking protection…",
+        "state_offline": "No internet right now. The shield is set up and will filter as soon as you're back online."
       },
       "browser": {
         "title": "Your browser",
@@ -1132,7 +1135,8 @@
         "attention_pill": "Attention",
         "unverified_pill": "Not confirmed",
         "rollout_pill": "Rolling out",
-        "pause_action": "Pause protection"
+        "pause_action": "Pause protection",
+        "offline_pill": "Offline"
       },
       "always_on_hint": "Keep it on after restart — turn on Always-on VPN",
       "pause_confirm_title": "Pause protection?",

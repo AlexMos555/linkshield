@@ -98,14 +98,27 @@ export default function HomeScreen() {
       />
 
       {needsSetup && (
-        <TouchableOpacity
-          style={s.cta}
-          onPress={() => void network.turnOn()}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-        >
-          <Text style={s.ctaLabel}>{t("mobile.home.cta_turn_on")}</Text>
-        </TouchableOpacity>
+        <>
+          {network.interrupted && (
+            // The user had this on and something else turned it off (reboot
+            // without always-on, a battery manager). Say so — "let's set up"
+            // would tell them their earlier setup never happened.
+            <View style={s.interruptedRow}>
+              <Ionicons name="alert-circle-outline" size={15} color={colors.amber} />
+              <Text style={s.interruptedText}>{t("mobile.home.interrupted")}</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            style={s.cta}
+            onPress={() => void network.turnOn()}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+          >
+            <Text style={s.ctaLabel}>
+              {t(network.interrupted ? "mobile.home.cta_turn_back_on" : "mobile.home.cta_turn_on")}
+            </Text>
+          </TouchableOpacity>
+        </>
       )}
 
       {network.available && (
@@ -121,6 +134,7 @@ export default function HomeScreen() {
               // Probe in flight: say "checking" rather than flashing the
               // negative state at someone whose protection is fine.
               : network.probing ? t("mobile.shield.network.state_checking")
+              : network.state === "offline" ? t("mobile.shield.network.state_offline")
               : network.state === "unverified" ? t("mobile.shield.network.state_unverified")
               : t("mobile.shield.network.state_setup")
             }
@@ -210,6 +224,12 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: 120 },
   section: { marginTop: space.xl + space.sm },
+
+  interruptedRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 6,
+    marginTop: space.lg, paddingHorizontal: space.xs,
+  },
+  interruptedText: { ...typo.caption, color: colors.amber, flex: 1 },
 
   cta: {
     height: 50, borderRadius: radius.control, backgroundColor: colors.blue,

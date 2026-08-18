@@ -1159,7 +1159,9 @@
         "blocked": "Bloqués",
         "warned": "Avertis"
       },
-      "privacy": "Nous vérifions les noms de sites web sur nos serveurs — jamais vos mots de passe, vos messages ni votre historique de navigation."
+      "privacy": "Nous vérifions les noms de sites web sur nos serveurs — jamais vos mots de passe, vos messages ni votre historique de navigation.",
+      "interrupted": "La protection s'est arrêtée — généralement après un redémarrage. Votre configuration est toujours là.",
+      "cta_turn_back_on": "Réactiver la protection"
     },
     "shield": {
       "network": {
@@ -1171,7 +1173,8 @@
         "state_paused": "En pause. Touchez pour le réactiver.",
         "state_unverified": "En marche, mais nous n'avons pas pu confirmer qu'il filtre en ce moment.",
         "state_blocked": "Ce Wi-Fi demande une page de connexion. Cleanway s'est mis en pause et se réactivera automatiquement.",
-        "state_checking": "Vérification de la protection…"
+        "state_checking": "Vérification de la protection…",
+        "state_offline": "Pas d'internet pour le moment. Le bouclier est configuré et filtrera dès que vous serez de nouveau en ligne."
       },
       "browser": {
         "title": "Votre navigateur",
@@ -1190,7 +1193,8 @@
         "attention_pill": "Attention",
         "unverified_pill": "Non confirmé",
         "rollout_pill": "En déploiement",
-        "pause_action": "Mettre la protection en pause"
+        "pause_action": "Mettre la protection en pause",
+        "offline_pill": "Hors ligne"
       },
       "always_on_hint": "Pour qu'il reste activé après un redémarrage, activez « VPN toujours activé »",
       "pause_confirm_title": "Mettre la protection en pause ?",

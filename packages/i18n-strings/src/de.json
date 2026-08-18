@@ -1159,7 +1159,9 @@
         "blocked": "Blockiert",
         "warned": "Gewarnt"
       },
-      "privacy": "Wir prüfen Website-Namen auf unseren Servern – niemals deine Passwörter, Nachrichten oder deinen Browserverlauf."
+      "privacy": "Wir prüfen Website-Namen auf unseren Servern – niemals deine Passwörter, Nachrichten oder deinen Browserverlauf.",
+      "interrupted": "Der Schutz wurde unterbrochen – meist nach einem Neustart. Deine Einrichtung ist noch da.",
+      "cta_turn_back_on": "Schutz wieder einschalten"
     },
     "shield": {
       "network": {
@@ -1171,7 +1173,8 @@
         "state_paused": "Pausiert. Tippe, um wieder einzuschalten.",
         "state_unverified": "Läuft, aber wir konnten gerade nicht bestätigen, dass wirklich gefiltert wird.",
         "state_blocked": "Dieses WLAN braucht eine Anmeldeseite. Cleanway hat sich selbst pausiert und schaltet sich automatisch wieder ein.",
-        "state_checking": "Schutz wird geprüft…"
+        "state_checking": "Schutz wird geprüft…",
+        "state_offline": "Gerade kein Internet. Der Schutz ist eingerichtet und filtert, sobald du wieder online bist."
       },
       "browser": {
         "title": "Dein Browser",
@@ -1190,7 +1193,8 @@
         "attention_pill": "Achtung",
         "unverified_pill": "Nicht bestätigt",
         "rollout_pill": "In Arbeit",
-        "pause_action": "Schutz pausieren"
+        "pause_action": "Schutz pausieren",
+        "offline_pill": "Offline"
       },
       "always_on_hint": "Damit der Schutz nach einem Neustart anbleibt: Schalte „Durchgehend aktives VPN“ ein",
       "pause_confirm_title": "Schutz pausieren?",

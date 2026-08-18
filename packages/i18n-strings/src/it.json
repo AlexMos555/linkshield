@@ -1159,7 +1159,9 @@
         "blocked": "Bloccati",
         "warned": "Avvisi"
       },
-      "privacy": "Controlliamo i nomi dei siti sui nostri server — mai le tue password, i tuoi messaggi o la cronologia di navigazione."
+      "privacy": "Controlliamo i nomi dei siti sui nostri server — mai le tue password, i tuoi messaggi o la cronologia di navigazione.",
+      "interrupted": "La protezione si è fermata — di solito dopo un riavvio. La tua configurazione è ancora qui.",
+      "cta_turn_back_on": "Riattiva la protezione"
     },
     "shield": {
       "network": {
@@ -1171,7 +1173,8 @@
         "state_paused": "In pausa. Tocca per riattivarlo.",
         "state_unverified": "È in funzione, ma al momento non possiamo confermare che stia filtrando.",
         "state_blocked": "Questa rete Wi-Fi richiede una pagina di accesso. Cleanway si è messo in pausa da solo e si riattiverà automaticamente.",
-        "state_checking": "Sto controllando la protezione…"
+        "state_checking": "Sto controllando la protezione…",
+        "state_offline": "Al momento non c'è internet. Lo scudo è configurato e filtrerà appena tornerai online."
       },
       "browser": {
         "title": "Il tuo browser",
@@ -1190,7 +1193,8 @@
         "attention_pill": "Attenzione",
         "unverified_pill": "Non confermato",
         "rollout_pill": "In arrivo",
-        "pause_action": "Metti in pausa la protezione"
+        "pause_action": "Metti in pausa la protezione",
+        "offline_pill": "Offline"
       },
       "always_on_hint": "Per tenerlo attivo anche dopo il riavvio, attiva «VPN sempre attiva»",
       "pause_confirm_title": "Mettere in pausa la protezione?",
