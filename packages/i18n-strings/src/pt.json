@@ -1139,7 +1139,8 @@
         "title_all": "Você está protegido",
         "sub_all": "Todos os escudos ativados e verificados",
         "attention": "Um escudo precisa de atenção",
-        "a11y": "Status da proteção: {{status}}"
+        "a11y": "Status da proteção: {{status}}",
+        "title_interrupted": "A proteção parou"
       },
       "cta_turn_on": "Ativar proteção",
       "check": {
@@ -1160,7 +1161,7 @@
         "warned": "Avisos"
       },
       "privacy": "Verificamos os nomes dos sites em nossos servidores — nunca suas senhas, mensagens ou histórico de navegação.",
-      "interrupted": "A proteção parou — geralmente depois de reiniciar. Sua configuração continua aqui.",
+      "interrupted": "Costuma acontecer após reiniciar. Sua configuração continua aqui — um toque e ela volta.",
       "cta_turn_back_on": "Ligar a proteção de novo"
     },
     "shield": {
@@ -1196,7 +1197,7 @@
         "pause_action": "Pausar a proteção",
         "offline_pill": "Sem conexão"
       },
-      "always_on_hint": "Para continuar protegido depois de reiniciar o celular, ative a VPN sempre ativa",
+      "always_on_hint": "Volta sozinho depois de reiniciar. Para começar junto com o celular, antes de qualquer app: ative a VPN sempre ativa",
       "pause_confirm_title": "Pausar a proteção?",
       "pause_confirm_body": "Sites de golpe não serão bloqueados nos seus apps até você ligar de novo. Suas verificações salvas não mudam."
     },

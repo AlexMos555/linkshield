@@ -122,6 +122,30 @@ class CleanwayVpnService : VpnService() {
         // A VPN must run as a foreground service, or Android kills it when the app
         // backgrounds (and startForegroundService crashes without a prompt startForeground).
         startInForeground()
+
+        // Re-claim the VPN "prepared" slot before establish().
+        //
+        // Android keeps VPN consent in two places. The user's grant lives in
+        // AppOps (OP_ACTIVATE_VPN) and survives reboots. The *currently
+        // prepared package* — the one establish() will accept — is in-memory
+        // state of ConnectivityService and is empty after every boot. The
+        // system consent dialog is shown only when the AppOps grant is
+        // missing; when it is present, prepare() silently marks us prepared
+        // and returns null. Without this call every restart from BootReceiver
+        // died with "establish() returned null" — verified on a rebooted
+        // emulator, where a single tap in the app then turned the shield
+        // green with NO consent dialog. The consent was never lost; only the
+        // in-memory owner was.
+        //
+        // If prepare() does return an Intent, consent is genuinely absent (the
+        // user revoked it in Settings, or never granted it): stop honestly, the
+        // app shows "protection stopped" and the next tap raises the dialog.
+        if (prepare(this) != null) {
+            Log.w(TAG, "consent_missing — not establishing")
+            stopSelf()
+            return
+        }
+
         val builder = Builder()
             .setSession("Cleanway")
             .addAddress(VPN_CLIENT_IP, 32)
@@ -150,7 +174,9 @@ class CleanwayVpnService : VpnService() {
         // path, not a loop.
 
         vpnInterface = builder.establish() ?: run {
-            Log.e(TAG, "establish() returned null — VPN permission likely revoked")
+            // Consent was present a moment ago (prepare() said so), so this is
+            // something else: another VPN in lockdown, or the system refusing.
+            Log.e(TAG, "establish() returned null after successful prepare()")
             stopSelf()
             return
         }

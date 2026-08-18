@@ -1081,7 +1081,8 @@
         "title_all": "You're protected",
         "sub_all": "All shields on and verified",
         "attention": "One shield needs attention",
-        "a11y": "Protection status: {{status}}"
+        "a11y": "Protection status: {{status}}",
+        "title_interrupted": "Protection stopped"
       },
       "cta_turn_on": "Turn on protection",
       "check": {
@@ -1102,7 +1103,7 @@
         "warned": "Warned"
       },
       "privacy": "We check website names on our servers — never your passwords, messages, or browsing history.",
-      "interrupted": "Protection stopped — usually after a restart. Your setup is still here.",
+      "interrupted": "Usually this happens after a restart. Your setup is still here — one tap brings it back.",
       "cta_turn_back_on": "Turn protection back on"
     },
     "shield": {
@@ -1138,7 +1139,7 @@
         "pause_action": "Pause protection",
         "offline_pill": "Offline"
       },
-      "always_on_hint": "Keep it on after restart — turn on Always-on VPN",
+      "always_on_hint": "Comes back by itself after a restart. To start with the phone, before any app: turn on Always-on VPN",
       "pause_confirm_title": "Pause protection?",
       "pause_confirm_body": "Scam sites will not be blocked in your apps until you turn it back on. Your saved checks are unaffected."
     },

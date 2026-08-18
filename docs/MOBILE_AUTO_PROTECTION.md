@@ -112,6 +112,8 @@ Replaces the paste hero AND the current **placebo shield** (`mobile/app/(tabs)/i
 
 **Rule: a shield never claims ON without a verified signal.** The canary check (resolve a known-blocked test domain, expect NXDOMAIN) is the truth source for both DNS mechanics.
 
+> **Android status 2026-08-18 (emulator-verified, see `finding_2026-08-18_*` memories):** the states above are implemented as `setup / on / offline / unverified` plus an `interrupted` flag on `setup` ("Protection stopped — usually after a restart"). CONFLICT was removed: nothing in the code detects a competing VPN, so nothing may claim one. Verified transitions: on → green (canary counter delta, not NXDOMAIN inference); pause → 0 shields + tunnel gone; data off → on: tunnel survives, re-verifies green; offline: neutral "no internet" state, not an alarm; **reboot: BootReceiver → service → `prepare()`-then-`establish()` → tunnel_started → app opens straight to canary-green with no tap and no dialog.** The earlier belief that "Android drops VPN consent on reboot" was wrong — the AppOps grant persists, only ConnectivityService's in-memory prepared-package does not, and `prepare()` from the service restores it. Always-on VPN is now offered as an upgrade (starts with the phone, before BOOT_COMPLETED reaches any app — a gap of minutes on the emulator), not as the only path to survival.
+
 ### First launch
 
 1. No account wall. Straight to the checklist with everything in NEEDS SETUP.

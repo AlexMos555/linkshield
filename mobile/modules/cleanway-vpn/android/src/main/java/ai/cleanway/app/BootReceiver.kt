@@ -13,9 +13,17 @@ import android.util.Log
  * "Turn on" again — which is precisely what the target user will not do.
  *
  * We only restart when the user had it on (see [ShieldPreference]); we never
- * turn protection on by ourselves. VpnService.prepare() consent survives
- * reboots, so no dialog is needed — but if it was revoked, establish() returns
- * null and the service stops itself rather than pretending.
+ * turn protection on by ourselves. The user's VPN consent (AppOps) survives
+ * reboots; what does not is ConnectivityService's in-memory "prepared package",
+ * which is why the service calls VpnService.prepare() itself before
+ * establish() — see CleanwayVpnService.startVpn(). If consent was actually
+ * revoked, prepare() returns an Intent and the service stops itself rather
+ * than pretending.
+ *
+ * Verified 2026-08-18 on a rebooted emulator: BOOT_COMPLETED → service →
+ * tunnel_started → app opens straight to a canary-verified green shield, no
+ * tap, no dialog. Note BOOT_COMPLETED is an ordered broadcast and can arrive
+ * minutes after boot on a slow device; Always-on VPN closes that gap.
  */
 class BootReceiver : BroadcastReceiver() {
 

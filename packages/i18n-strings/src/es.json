@@ -1079,7 +1079,8 @@
         "title_all": "Tu protección está activa",
         "sub_all": "Todos los escudos activados y verificados",
         "attention": "Un escudo necesita atención",
-        "a11y": "Estado de la protección: {{status}}"
+        "a11y": "Estado de la protección: {{status}}",
+        "title_interrupted": "La protección se detuvo"
       },
       "cta_turn_on": "Activar la protección",
       "check": {
@@ -1100,7 +1101,7 @@
         "warned": "Con aviso"
       },
       "privacy": "Revisamos los nombres de los sitios web en nuestros servidores; nunca tus contraseñas, tus mensajes ni tu historial de navegación.",
-      "interrupted": "La protección se detuvo, normalmente tras un reinicio. Tu configuración sigue aquí.",
+      "interrupted": "Suele pasar tras un reinicio. Tu configuración sigue aquí: un toque y vuelve.",
       "cta_turn_back_on": "Volver a activar la protección"
     },
     "shield": {
@@ -1136,7 +1137,7 @@
         "pause_action": "Pausar la protección",
         "offline_pill": "Sin conexión"
       },
-      "always_on_hint": "Para que siga encendido después de reiniciar, activa la opción VPN siempre activada",
+      "always_on_hint": "Se reactiva solo tras un reinicio. Para que arranque con el teléfono, antes que cualquier app: activa VPN siempre activada",
       "pause_confirm_title": "¿Pausar la protección?",
       "pause_confirm_body": "Los sitios de estafa no se bloquearán en tus apps hasta que la vuelvas a activar. Tus verificaciones guardadas no cambian."
     },

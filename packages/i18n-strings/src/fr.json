@@ -1139,7 +1139,8 @@
         "title_all": "Vous êtes protégé(e)",
         "sub_all": "Tous les boucliers sont activés et vérifiés",
         "attention": "Un bouclier demande votre attention",
-        "a11y": "État de la protection : {{status}}"
+        "a11y": "État de la protection : {{status}}",
+        "title_interrupted": "La protection s'est arrêtée"
       },
       "cta_turn_on": "Activer la protection",
       "check": {
@@ -1160,7 +1161,7 @@
         "warned": "Avertis"
       },
       "privacy": "Nous vérifions les noms de sites web sur nos serveurs — jamais vos mots de passe, vos messages ni votre historique de navigation.",
-      "interrupted": "La protection s'est arrêtée — généralement après un redémarrage. Votre configuration est toujours là.",
+      "interrupted": "Cela arrive généralement après un redémarrage. Votre configuration est toujours là : un appui suffit.",
       "cta_turn_back_on": "Réactiver la protection"
     },
     "shield": {
@@ -1196,7 +1197,7 @@
         "pause_action": "Mettre la protection en pause",
         "offline_pill": "Hors ligne"
       },
-      "always_on_hint": "Pour qu'il reste activé après un redémarrage, activez « VPN toujours activé »",
+      "always_on_hint": "Revient tout seul après un redémarrage. Pour qu'il démarre avec le téléphone, avant toute appli : activez « VPN toujours activé »",
       "pause_confirm_title": "Mettre la protection en pause ?",
       "pause_confirm_body": "Les sites d'arnaque ne seront plus bloqués dans vos applications tant que vous ne la réactivez pas. Vos vérifications enregistrées ne changent pas."
     },

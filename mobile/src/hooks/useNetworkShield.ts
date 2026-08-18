@@ -83,10 +83,10 @@ export interface NetworkShield {
   turnOn: () => Promise<void>;
   turnOff: () => Promise<void>;
   /**
-   * Opens Settings → VPN for "Always-on VPN". Android drops a plain VpnService
-   * consent on reboot, so without always-on the shield does not come back by
-   * itself — verified on a real reboot: the service restarts, establish()
-   * returns null, and we stop instead of pretending.
+   * Opens Settings → VPN for "Always-on VPN". The shield already returns by
+   * itself after a reboot (verified 2026-08-18: BootReceiver → tunnel →
+   * canary-green with no tap). Always-on closes the remaining gap: the system
+   * starts it with the phone, before BOOT_COMPLETED reaches any app.
    */
   openVpnSettings: () => void;
 }

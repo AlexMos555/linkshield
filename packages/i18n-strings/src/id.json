@@ -1139,7 +1139,8 @@
         "title_all": "Anda terlindungi",
         "sub_all": "Semua perisai aktif dan sudah dipastikan bekerja",
         "attention": "Satu perisai butuh perhatian",
-        "a11y": "Status perlindungan: {{status}}"
+        "a11y": "Status perlindungan: {{status}}",
+        "title_interrupted": "Perlindungan berhenti"
       },
       "cta_turn_on": "Nyalakan perlindungan",
       "check": {
@@ -1160,7 +1161,7 @@
         "warned": "Diperingatkan"
       },
       "privacy": "Kami mengecek nama situs di server kami — tidak pernah kata sandi, pesan, atau riwayat browsing Anda.",
-      "interrupted": "Perlindungan berhenti — biasanya setelah ponsel dinyalakan ulang. Pengaturan Anda masih ada.",
+      "interrupted": "Biasanya terjadi setelah restart. Pengaturanmu masih ada — satu ketukan dan kembali.",
       "cta_turn_back_on": "Nyalakan perlindungan lagi"
     },
     "shield": {
@@ -1196,7 +1197,7 @@
         "pause_action": "Jeda perlindungan",
         "offline_pill": "Offline"
       },
-      "always_on_hint": "Agar tetap menyala setelah HP di-restart — aktifkan VPN Selalu Aktif",
+      "always_on_hint": "Menyala sendiri setelah HP di-restart. Agar mulai bersama HP, sebelum aplikasi apa pun: aktifkan VPN Selalu Aktif",
       "pause_confirm_title": "Jeda perlindungan?",
       "pause_confirm_body": "Situs penipuan tidak akan diblokir di aplikasi Anda sampai Anda menyalakannya lagi. Pemeriksaan tersimpan Anda tidak berubah."
     },

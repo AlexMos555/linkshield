@@ -95,6 +95,7 @@ export default function HomeScreen() {
         // competing VPN, so nothing may claim one. Unproven is shown as
         // unproven, not as a warning.
         attention={false}
+        interrupted={needsSetup && network.interrupted}
       />
 
       {needsSetup && (
@@ -146,9 +147,9 @@ export default function HomeScreen() {
             onPause={confirmPause}
           />
           {network.verified && (
-            // Android drops the VPN consent on reboot, so protection does not
-            // come back by itself. Say so plainly and point at the one setting
-            // that fixes it, rather than letting the user find out the hard way.
+            // Protection returns on its own after a reboot; Always-on VPN
+            // additionally starts it with the phone, before any app receives
+            // BOOT_COMPLETED. Offer it as an upgrade, not as a requirement.
             <TouchableOpacity
               style={s.hintRow}
               onPress={network.openVpnSettings}

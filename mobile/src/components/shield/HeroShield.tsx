@@ -10,6 +10,13 @@ interface HeroShieldProps {
   verifiedCount: number;
   totalCount: number;
   attention?: boolean;
+  /**
+   * The user had protection ON and it is not running now (reboot without
+   * always-on, battery manager, force-stop). Same neutral visuals as "none",
+   * but the title must not say "let's set up" — that tells someone their
+   * earlier setup never happened.
+   */
+  interrupted?: boolean;
 }
 
 /**
@@ -18,12 +25,13 @@ interface HeroShieldProps {
  * 0 verified shields; the absolute "You're protected" only when ALL
  * platform shields are verified-on.
  */
-export function HeroShield({ state, verifiedCount, totalCount, attention }: HeroShieldProps) {
+export function HeroShield({ state, verifiedCount, totalCount, attention, interrupted }: HeroShieldProps) {
   const { t } = useTranslation();
   const active = state !== "none";
   const title =
     state === "all" ? t("mobile.home.hero.title_all")
     : state === "partial" ? t("mobile.home.hero.title_partial", { count: verifiedCount, total: totalCount })
+    : interrupted ? t("mobile.home.hero.title_interrupted")
     : t("mobile.home.hero.title_none");
   const sub =
     state === "all" ? t("mobile.home.hero.sub_all")

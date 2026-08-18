@@ -1139,7 +1139,8 @@
         "title_all": "Sei protetto",
         "sub_all": "Tutti gli scudi attivi e verificati",
         "attention": "Uno scudo ha bisogno di attenzione",
-        "a11y": "Stato della protezione: {{status}}"
+        "a11y": "Stato della protezione: {{status}}",
+        "title_interrupted": "La protezione si è fermata"
       },
       "cta_turn_on": "Attiva la protezione",
       "check": {
@@ -1160,7 +1161,7 @@
         "warned": "Avvisi"
       },
       "privacy": "Controlliamo i nomi dei siti sui nostri server — mai le tue password, i tuoi messaggi o la cronologia di navigazione.",
-      "interrupted": "La protezione si è fermata — di solito dopo un riavvio. La tua configurazione è ancora qui.",
+      "interrupted": "Di solito succede dopo un riavvio. La configurazione è ancora qui: basta un tocco.",
       "cta_turn_back_on": "Riattiva la protezione"
     },
     "shield": {
@@ -1196,7 +1197,7 @@
         "pause_action": "Metti in pausa la protezione",
         "offline_pill": "Offline"
       },
-      "always_on_hint": "Per tenerlo attivo anche dopo il riavvio, attiva «VPN sempre attiva»",
+      "always_on_hint": "Si riattiva da solo dopo un riavvio. Per partire insieme al telefono, prima di ogni app: attiva «VPN sempre attiva»",
       "pause_confirm_title": "Mettere in pausa la protezione?",
       "pause_confirm_body": "I siti truffa non verranno bloccati nelle tue app finché non la riattivi. I tuoi controlli salvati restano invariati."
     },

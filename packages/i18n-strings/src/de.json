@@ -1139,7 +1139,8 @@
         "title_all": "Du bist geschützt",
         "sub_all": "Alle Schutzschilde aktiv und bestätigt",
         "attention": "Ein Schutzschild braucht Aufmerksamkeit",
-        "a11y": "Schutzstatus: {{status}}"
+        "a11y": "Schutzstatus: {{status}}",
+        "title_interrupted": "Schutz wurde unterbrochen"
       },
       "cta_turn_on": "Schutz einschalten",
       "check": {
@@ -1160,7 +1161,7 @@
         "warned": "Gewarnt"
       },
       "privacy": "Wir prüfen Website-Namen auf unseren Servern – niemals deine Passwörter, Nachrichten oder deinen Browserverlauf.",
-      "interrupted": "Der Schutz wurde unterbrochen – meist nach einem Neustart. Deine Einrichtung ist noch da.",
+      "interrupted": "Passiert meist nach einem Neustart. Deine Einrichtung ist noch da – ein Tipp genügt.",
       "cta_turn_back_on": "Schutz wieder einschalten"
     },
     "shield": {
@@ -1196,7 +1197,7 @@
         "pause_action": "Schutz pausieren",
         "offline_pill": "Offline"
       },
-      "always_on_hint": "Damit der Schutz nach einem Neustart anbleibt: Schalte „Durchgehend aktives VPN“ ein",
+      "always_on_hint": "Kommt nach einem Neustart von selbst zurück. Damit er mit dem Telefon startet, vor jeder App: „Durchgehend aktives VPN“ einschalten",
       "pause_confirm_title": "Schutz pausieren?",
       "pause_confirm_body": "Betrugsseiten werden in deinen Apps nicht mehr blockiert, bis du den Schutz wieder einschaltest. Deine gespeicherten Prüfungen bleiben unverändert."
     },
