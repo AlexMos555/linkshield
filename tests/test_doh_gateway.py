@@ -187,20 +187,23 @@ def test_nxdomain_response_qr_bit_set():
     assert (resp[2] & 0x80) == 0x80
 
 
-def test_nxdomain_response_qdcount_1_ancount_0():
+def test_nxdomain_response_qdcount_1_ancount_0_nscount_1():
+    # NSCOUNT=1: the SOA that lets clients negatively cache (RFC 2308).
+    # It used to be 0, so netd re-asked on every retry.
     resp = make_nxdomain_response(_make_query("phisher.example"))
     qdcount, ancount, nscount, arcount = struct.unpack("!HHHH", resp[4:12])
     assert qdcount == 1
     assert ancount == 0
-    assert nscount == 0
+    assert nscount == 1
     assert arcount == 0
 
 
 def test_nxdomain_response_echoes_question():
     wire = _make_query("phisher.example")
     resp = make_nxdomain_response(wire)
-    # Question starts at byte 12 in both query and response.
-    assert resp[12:] == wire[12:]
+    # Question starts at byte 12 in both query and response; the SOA follows.
+    qlen = len(wire) - 12
+    assert resp[12:12 + qlen] == wire[12:]
 
 
 def test_nxdomain_response_handles_truncated_query():
@@ -408,3 +411,106 @@ async def test_proxy_to_upstream_fail_open_returns_none(monkeypatch):
 
     assert await g.proxy_to_upstream(b"\x12\x34" + b"\x00" * 10) is None
     _CountingClient.fail = False
+
+
+# ─────────────────────────────────────────────────────────────────
+# Truth fixes (2026-08-18): SERVFAIL on upstream failure, SOA on NXDOMAIN,
+# DNS never 503s on Redis trouble
+# ─────────────────────────────────────────────────────────────────
+
+def _q(name: str) -> bytes:
+    labels = b"".join(bytes([len(l)]) + l.encode() for l in name.split("."))
+    return b"\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + labels + b"\x00" + b"\x00\x01\x00\x01"
+
+
+def test_make_servfail_response_has_rcode_2_and_echoes_question():
+    from api.services.doh_gateway import make_servfail_response
+    q = _q("example.com")
+    r = make_servfail_response(q)
+    assert r[:2] == b"\x12\x34"
+    assert r[3] & 0x0F == 2, "RCODE must be SERVFAIL"
+    assert r[2] & 0x80, "QR must be set"
+    assert struct.unpack("!H", r[4:6])[0] == 1  # QDCOUNT echoed
+    assert r[12:] == q[12:]
+
+
+def test_nxdomain_response_carries_soa_for_negative_caching():
+    """RFC 2308: a client only caches an NXDOMAIN if an SOA is in the
+    authority section. Without it netd re-asks on every retry, and a
+    blocked page turns into a burst of identical queries."""
+    from api.services.doh_gateway import make_nxdomain_response, NEGATIVE_TTL_S
+    q = _q("evil.example.com")
+    r = make_nxdomain_response(q)
+    assert r[3] & 0x0F == 3
+    qd, an, ns, ar = struct.unpack("!HHHH", r[4:12])
+    assert (qd, an, ns, ar) == (1, 0, 1, 0)
+    # The SOA RR follows the question: TYPE=6, CLASS=1, TTL=NEGATIVE_TTL_S.
+    qlen = len(q) - 12
+    rr = r[12 + qlen:]
+    # owner is a compression pointer or labels — find TYPE/CLASS/TTL after it
+    assert b"\x00\x06\x00\x01" in rr, "no SOA TYPE/CLASS in authority"
+    i = rr.index(b"\x00\x06\x00\x01")
+    ttl = struct.unpack("!I", rr[i + 4:i + 8])[0]
+    assert ttl == NEGATIVE_TTL_S
+
+
+@pytest.mark.asyncio
+async def test_router_upstream_failure_is_servfail_not_nxdomain(monkeypatch):
+    """A Cloudflare outage must not tell every phone that every site does
+    not exist (negatively cached!). SERVFAIL makes stubs retry elsewhere."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    from api.routers import doh as doh_router
+    from api.services import cache as cache_mod
+    from api.services import rate_limiter
+
+    async def _no_upstream(wire):
+        return None
+
+    monkeypatch.setattr(doh_router, "proxy_to_upstream", _no_upstream)
+    fake = _fake_blocklist_redis(set())
+
+    async def _r():
+        return fake
+
+    monkeypatch.setattr(cache_mod, "get_redis", _r)
+    monkeypatch.setattr(rate_limiter, "get_redis", _r)
+    fake.pipeline  # exists
+    client = TestClient(app)
+    resp = client.post("/dns-query", content=_q("example.com"),
+                       headers={"content-type": "application/dns-message"})
+    assert resp.status_code == 200
+    assert resp.content[3] & 0x0F == 2, "expected SERVFAIL rcode 2"
+
+
+@pytest.mark.asyncio
+async def test_router_redis_down_never_503s_dns(monkeypatch):
+    """The rate limiter runs before the handler and, in production
+    (rate_limit_fail_closed=True), turned a Redis blip into HTTP 503 on every
+    DNS query = total DNS failure for anyone pointed at the gateway. DNS must
+    fail OPEN: proxy the query."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    from api.routers import doh as doh_router
+    from api.services import cache as cache_mod
+    from api.services import rate_limiter
+    from api import config
+
+    settings = config.get_settings()
+    monkeypatch.setattr(settings, "rate_limit_fail_closed", True, raising=False)
+
+    async def _boom():
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr(cache_mod, "get_redis", _boom)
+    monkeypatch.setattr(rate_limiter, "get_redis", _boom)
+
+    async def _upstream(wire):
+        return wire[:2] + b"\x81\x80" + b"\x00\x01\x00\x01\x00\x00\x00\x00" + wire[12:]
+
+    monkeypatch.setattr(doh_router, "proxy_to_upstream", _upstream)
+    client = TestClient(app)
+    resp = client.post("/dns-query", content=_q("example.com"),
+                       headers={"content-type": "application/dns-message"})
+    assert resp.status_code == 200, resp.text
+    assert resp.content[3] & 0x0F == 0

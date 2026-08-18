@@ -112,7 +112,9 @@ class Settings(BaseSettings):
     # queries per page load, so the 60/hour public limit would break real
     # resolution. 5000/hour ≈ ~1.4/sec sustained per IP — generous enough
     # for a household behind one NAT while still bounding abuse/amplification.
-    doh_rate_limit_per_window: int = 5000
+    # Per public IP. Mobile carriers put hundreds of handsets behind one
+    # CGNAT IPv4; 5000/h (~1.4 qps) was exhausted by a handful of phones.
+    doh_rate_limit_per_window: int = 20000
     doh_rate_limit_window_seconds: int = 3600
 
     # Rate limits — sensitive actions (per user, stricter)

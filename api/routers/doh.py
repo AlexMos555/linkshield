@@ -24,6 +24,7 @@ from api.services.doh_gateway import (
     DOH_CONTENT_TYPE,
     is_blocked_redis,
     make_nxdomain_response,
+    make_servfail_response,
     parse_qname,
     proxy_to_upstream,
 )
@@ -62,10 +63,10 @@ async def _handle_query(wire: bytes) -> tuple[bytes, int]:
 
     upstream = await proxy_to_upstream(wire)
     if upstream is None:
-        # Upstream outage — fall back to a SERVFAIL response so
-        # the client retries with its other resolvers cleanly
-        # instead of timing out.
-        return make_nxdomain_response(wire), 200
+        # Upstream outage — SERVFAIL, so the client retries with its
+        # other resolvers instead of believing (and negatively caching)
+        # that every site on the internet does not exist.
+        return make_servfail_response(wire), 200
     return upstream, 200
 
 
