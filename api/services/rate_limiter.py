@@ -205,7 +205,7 @@ async def check_burst_only(user: AuthUser) -> None:
 
 
 # Categories whose availability outranks limiter strictness (see below).
-FAIL_OPEN_CATEGORIES: frozenset[str] = frozenset({"doh"})
+FAIL_OPEN_CATEGORIES: frozenset[str] = frozenset({"doh", "blocklist"})
 
 
 async def check_ip_rate_limit(
@@ -471,6 +471,11 @@ def rate_limit(
         if category == "doh":
             limit = settings.doh_rate_limit_per_window
             window = settings.doh_rate_limit_window_seconds
+        elif category == "blocklist":
+            # Phones sync every ~2h with If-None-Match; CGNAT shares an IP
+            # across hundreds of them. Cheap bytes — be generous.
+            limit = settings.blocklist_rate_limit_per_window
+            window = settings.blocklist_rate_limit_window_seconds
         else:
             limit = settings.public_rate_limit_per_window
             window = settings.public_rate_limit_window_seconds

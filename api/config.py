@@ -117,6 +117,11 @@ class Settings(BaseSettings):
     doh_rate_limit_per_window: int = 20000
     doh_rate_limit_window_seconds: int = 3600
 
+    # Blocklist artifact for phones (GET /api/v1/blocklist/dns). Conditional
+    # requests every ~2h per phone, many phones per CGNAT IP.
+    blocklist_rate_limit_per_window: int = 3000
+    blocklist_rate_limit_window_seconds: int = 3600
+
     # Rate limits — sensitive actions (per user, stricter)
     # Applied to /payments/checkout, /payments/portal, /org/create
     sensitive_action_limit: int = 10               # 10 per hour per user
