@@ -16,7 +16,13 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
    * Optional so an app running against an older native build degrades to
    * "unverified" instead of crashing.
    */
-  lastCanaryAnswerAtMs?(): number;
+  /**
+   * Monotonic count of canary queries the service has answered. Compared by
+   * delta in verifyFiltering() — see that function for why it is a counter
+   * and not a timestamp. Optional so an app running against an older native
+   * build degrades to "unverified" instead of crashing.
+   */
+  canaryAnswerCount?(): number;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

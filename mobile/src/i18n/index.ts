@@ -7,8 +7,9 @@
  * Runtime:
  *   1. expo-localization detects device language
  *   2. Falls back to English if user's language not in SUPPORTED_LOCALES
- *   3. User can override manually via Settings (persisted in SecureStore)
- *   4. RTL (Arabic) forces I18nManager.forceRTL + app reload
+ *   3. RTL (Arabic) forces I18nManager.forceRTL + app reload
+ *      (an in-app language override is NOT built yet — changeLocale exists
+ *      for it, but no screen calls it; the device locale decides)
  */
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";

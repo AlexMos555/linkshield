@@ -44,6 +44,13 @@ export interface NetworkShield {
   state: ShieldState;
   /** Counts toward the hero only when the canary confirmed filtering. */
   verified: boolean;
+  /**
+   * True while a canary probe is in flight. The probe takes up to ~2.5s, and
+   * without this flag the card showed its negative state for that whole
+   * window — every foreground and every turn-on flashed "not confirmed" at
+   * users whose protection was fine. The screen shows "checking…" instead.
+   */
+  probing: boolean;
   turnOn: () => Promise<void>;
   turnOff: () => Promise<void>;
   /**
@@ -106,7 +113,21 @@ export function useNetworkShield(): NetworkShield {
     if (!vpn) return;
     const ok = await vpn.startVpn();
     setRunning(ok);
-    setVerified(ok ? await vpn.verifyFiltering() : false);
+    if (!ok) {
+      setVerified(false);
+      return;
+    }
+    // startVpn resolves when consent lands, not when the tunnel is up —
+    // establish() and the proxy-loop start happen asynchronously in the
+    // service. Give the tunnel a beat before probing so a healthy turn-on
+    // does not begin with a doomed probe, and show "checking…" meanwhile.
+    setProbing(true);
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+      setVerified(await vpn.verifyFiltering());
+    } finally {
+      setProbing(false);
+    }
   }, [vpn]);
 
   const turnOff = useCallback(async () => {
@@ -132,5 +153,5 @@ export function useNetworkShield(): NetworkShield {
     vpn?.openVpnSettings?.();
   }, [vpn]);
 
-  return { available: vpn !== null, state, verified, turnOn, turnOff, openVpnSettings };
+  return { available: vpn !== null, state, verified, probing, turnOn, turnOff, openVpnSettings };
 }

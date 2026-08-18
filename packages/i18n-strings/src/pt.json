@@ -1170,7 +1170,8 @@
         "state_setup": "Configuração única, leva cerca de um minuto.",
         "state_paused": "Pausado. Toque para reativar.",
         "state_unverified": "Em funcionamento, mas não conseguimos confirmar que está filtrando neste momento.",
-        "state_blocked": "Esta rede Wi-Fi pede uma página de login. O Cleanway se pausou sozinho e volta a ligar automaticamente."
+        "state_blocked": "Esta rede Wi-Fi pede uma página de login. O Cleanway se pausou sozinho e volta a ligar automaticamente.",
+        "state_checking": "Verificando a proteção…"
       },
       "browser": {
         "title": "Seu navegador",
@@ -1188,9 +1189,12 @@
         "paused_pill": "Pausado",
         "attention_pill": "Atenção",
         "unverified_pill": "Não confirmado",
-        "rollout_pill": "A caminho"
+        "rollout_pill": "A caminho",
+        "pause_action": "Pausar a proteção"
       },
-      "always_on_hint": "Para continuar protegido depois de reiniciar o celular, ative a VPN sempre ativa"
+      "always_on_hint": "Para continuar protegido depois de reiniciar o celular, ative a VPN sempre ativa",
+      "pause_confirm_title": "Pausar a proteção?",
+      "pause_confirm_body": "Sites de golpe não serão bloqueados nos seus apps até você ligar de novo. Suas verificações salvas não mudam."
     },
     "rollout": {
       "network_ios": "Bloqueia sites de golpe em quase todos os aplicativos. Em testes finais — ainda não chegou ao iPhone.",
@@ -1430,7 +1434,7 @@
       "try_again": "Tente de novo daqui a pouco.",
       "members_title": "Membros",
       "members_count": "Membros: {{n}}",
-      "members_load_failed": "Não foi possível carregar a lista de membros agora. Puxe a tela para baixo ou volte mais tarde.",
+      "members_load_failed": "Não foi possível carregar a lista de membros agora. Ela costuma voltar sozinha — confira de novo daqui a pouco.",
       "role_owner": "responsável",
       "role_member": "membro",
       "no_key_yet": "ainda sem chave",
@@ -1450,7 +1454,9 @@
       "done": "Pronto",
       "copied_title": "Copiado",
       "copied_body": "Convite copiado para a área de transferência.",
-      "invite_copy_header": "Convite da família Cleanway"
+      "invite_copy_header": "Convite da família Cleanway",
+      "load_failed_title": "Não conseguimos falar com nossos servidores",
+      "join_network_failed": "Não conseguimos falar com nossos servidores, então o código não foi verificado. Seu convite continua válido — tente de novo daqui a pouco."
     },
     "auth": {
       "title_login": "Que bom ter você de volta",

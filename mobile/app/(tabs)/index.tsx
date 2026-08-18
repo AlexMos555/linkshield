@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform,
+  View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Alert,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -70,6 +70,21 @@ export default function HomeScreen() {
 
   const rollout = rolloutItems(t, Platform.OS);
 
+  function confirmPause() {
+    Alert.alert(
+      t("mobile.shield.pause_confirm_title"),
+      t("mobile.shield.pause_confirm_body"),
+      [
+        { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+        {
+          text: t("mobile.shield.status.pause_action"),
+          style: "destructive",
+          onPress: () => void network.turnOff(),
+        },
+      ],
+    );
+  }
+
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
       <HeroShield
@@ -103,13 +118,18 @@ export default function HomeScreen() {
             state={network.state}
             stateCopy={
               network.state === "on" ? t("mobile.shield.network.state_on")
+              // Probe in flight: say "checking" rather than flashing the
+              // negative state at someone whose protection is fine.
+              : network.probing ? t("mobile.shield.network.state_checking")
               : network.state === "unverified" ? t("mobile.shield.network.state_unverified")
               : t("mobile.shield.network.state_setup")
             }
-            onAction={() => void (network.state === "setup" ? network.turnOn() : network.turnOff())}
-            // Only "setup" renders a tappable control now; "on" and
-            // "unverified" are plain pills, so this never fires as an
-            // accidental "switch my protection off".
+            onAction={() => void (network.state === "setup" ? network.turnOn() : undefined)}
+            // The status pill only acts in "setup". Switching a running shield
+            // OFF goes through the explicit pause row below, behind a confirm —
+            // for a while there was no way out of a running shield at all
+            // except the system VPN settings, which is its own kind of lie.
+            onPause={confirmPause}
           />
           {network.verified && (
             // Android drops the VPN consent on reboot, so protection does not

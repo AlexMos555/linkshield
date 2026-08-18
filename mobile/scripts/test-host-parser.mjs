@@ -48,6 +48,15 @@ try {
     ["google.com.", "google.com"],
     ["localhost", null],
     ["   spaced.example.org  ", "spaced.example.org"],
+    // Scheme-priority: the explicit link outranks an earlier dot-token.
+    ["check file.pdf from https://evil.tld/x", "evil.tld"],
+    // Trailing/wrapping punctuation must not turn a link into "not a link".
+    ["look: evil.com,", "evil.com"],
+    ["(see https://bad.example.org/x).", "bad.example.org"],
+    // Non-web payloads answer the wrong question — refuse, never extract.
+    ["mailto:granny@example.com", null],
+    ["BEGIN:VCARD\nEMAIL:a@corp.example\nEND:VCARD", null],
+    ["tel:+1-555-0100", null],
   ];
 
   let failed = 0;

@@ -19,6 +19,14 @@ interface ShieldCardProps {
   state: ShieldState;
   stateCopy?: string;
   onAction?: () => void;
+  /**
+   * Explicit, secondary way OUT of a running shield. The status pill on the
+   * right is deliberately not a toggle — an accidental tap must never switch
+   * protection off — but a running shield with no exit at all sends the user
+   * hunting through system VPN settings. Rendered only when provided and only
+   * for running states; the caller confirms before acting.
+   */
+  onPause?: () => void;
 }
 
 const AMBER_STATES: ReadonlySet<ShieldState> = new Set(["conflict", "network-blocked"]);
@@ -29,7 +37,9 @@ const AMBER_STATES: ReadonlySet<ShieldState> = new Set(["conflict", "network-blo
  * Every card carries an ⓘ honesty line — non-negotiable (spec §2.4).
  */
 export function ShieldCard(props: ShieldCardProps) {
-  const { icon, title, description, honesty, state, stateCopy, onAction } = props;
+  const { icon, title, description, honesty, state, stateCopy, onAction, onPause } = props;
+  const { t } = useTranslation();
+  const running = state === "on" || state === "unverified" || state === "conflict";
   const amber = AMBER_STATES.has(state);
   const iconColor = state === "on" ? colors.green : amber ? colors.amber : colors.textSecondary;
   const desc = stateCopy ?? description;
@@ -52,6 +62,18 @@ export function ShieldCard(props: ShieldCardProps) {
         <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
         <Text style={s.honesty}>{honesty}</Text>
       </View>
+      {running && onPause && (
+        <TouchableOpacity
+          style={s.pauseRow}
+          onPress={onPause}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t("mobile.shield.status.pause_action")}
+        >
+          <Ionicons name="pause-circle-outline" size={15} color={colors.textMuted} />
+          <Text style={s.pauseLabel}>{t("mobile.shield.status.pause_action")}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -115,6 +137,11 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
 }
 
 const s = StyleSheet.create({
+  pauseRow: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    alignSelf: "flex-start", marginTop: space.sm, paddingVertical: 6, paddingHorizontal: 2,
+  },
+  pauseLabel: { ...typo.caption, color: colors.textMuted },
   card: {
     backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.stroke,

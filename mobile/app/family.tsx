@@ -4,24 +4,25 @@
  * no-family / active (with owner-only invite controls).
  *
  * Crypto + REST live in mobile/src/lib/family-{crypto,api}.ts.
- * Auth resolves via mobile/src/lib/supabase-client.ts (Expo SecureStore-
- * backed Supabase SDK session).
+ * Auth resolves via src/services/auth.ts — the same SecureStore-backed
+ * session the sign-in screen writes.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   Modal, Pressable, ActivityIndicator, Alert,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { colors, spacing, fontSize } from "../src/utils/theme";
 // Session comes from services/auth — the store the sign-in screen actually
-// writes to. This screen used to ask the Supabase SDK (lib/supabase-client),
-// a parallel store that never saw the sign-in: the user signed in, came here,
-// was told to sign in, signed in again... forever. One session store now.
-import { restoreSession } from "../src/services/auth";
+// writes to (the old Supabase-SDK parallel store made this screen loop on
+// "Sign in" forever). getSessionState keeps "offline" apart from "signed
+// out": telling an offline-but-signed-in user to re-enter her password was
+// the same class of lie in the other direction.
+import { getSessionState } from "../src/services/auth";
 import {
   getOrCreateKeypair,
   decryptForMe,
@@ -33,7 +34,7 @@ import {
   registerMyKey,
   listMembers,
   createInvite,
-  acceptInvite,
+  acceptInviteDetailed,
   listAlerts,
   type MyFamily,
   type FamilyMemberRow,
@@ -73,12 +74,20 @@ export default function FamilyScreen() {
   const [invite, setInvite] = useState<InviteCreateResponse | null>(null);
 
   const refresh = useCallback(async () => {
-    const session = await restoreSession();
-    if (!session) {
+    try {
+    const st = await getSessionState();
+    if (st.kind === "none") {
       setScreen({ kind: "signedOut" });
       return;
     }
-    const token = session.accessToken;
+    if (st.kind === "offline") {
+      // Signed in, can't refresh right now. NOT signed out — showing the
+      // password prompt here sent people hunting for a password they had
+      // not lost.
+      setScreen({ kind: "error" });
+      return;
+    }
+    const token = st.session.accessToken;
 
     const mine = await listMyFamilies(token);
     // null means the request FAILED — offline, 5xx, timeout. Only a successful
@@ -137,14 +146,29 @@ export default function FamilyScreen() {
     }
 
     setScreen({ kind: "active", family, members, alerts, undecryptable });
+    } catch {
+      // Anything unexpected (keypair generation, decrypt internals) must
+      // still land in a recoverable state, never an eternal spinner.
+      setScreen({ kind: "error" });
+    }
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh]));
 
-  const token = async (): Promise<string | null> =>
-    (await restoreSession())?.accessToken ?? null;
+  // Resolves the token or tells the user why it couldn't — the old helper
+  // returned null and the handlers bare-returned: a tap that did nothing.
+  const token = async (): Promise<string | null> => {
+    const st = await getSessionState();
+    if (st.kind === "ok") return st.session.accessToken;
+    if (st.kind === "none") {
+      setScreen({ kind: "signedOut" });
+      return null;
+    }
+    Alert.alert(t("mobile.family.load_failed_title"), t("mobile.family.try_again"));
+    return null;
+  };
 
   const handleCreate = async () => {
     setBusy(true);
@@ -172,9 +196,17 @@ export default function FamilyScreen() {
     try {
       const tk = await token();
       if (!tk) return;
-      const joined = await acceptInvite(tk, joinCode.trim(), joinPin.trim());
+      const { data: joined, failure } = await acceptInviteDetailed(
+        tk, joinCode.trim(), joinPin.trim(),
+      );
       if (!joined) {
-        setJoinError(t("mobile.family.join_invalid"));
+        // "Your invite is bad" and "your wifi is bad" need different words:
+        // the first sends you to regenerate a code, the second to try again.
+        setJoinError(t(
+          failure === "network"
+            ? "mobile.family.join_network_failed"
+            : "mobile.family.join_invalid",
+        ));
         return;
       }
       setJoinOpen(false);

@@ -1170,7 +1170,8 @@
         "state_setup": "Si configura una volta sola, in circa un minuto.",
         "state_paused": "In pausa. Tocca per riattivarlo.",
         "state_unverified": "È in funzione, ma al momento non possiamo confermare che stia filtrando.",
-        "state_blocked": "Questa rete Wi-Fi richiede una pagina di accesso. Cleanway si è messo in pausa da solo e si riattiverà automaticamente."
+        "state_blocked": "Questa rete Wi-Fi richiede una pagina di accesso. Cleanway si è messo in pausa da solo e si riattiverà automaticamente.",
+        "state_checking": "Sto controllando la protezione…"
       },
       "browser": {
         "title": "Il tuo browser",
@@ -1188,9 +1189,12 @@
         "paused_pill": "In pausa",
         "attention_pill": "Attenzione",
         "unverified_pill": "Non confermato",
-        "rollout_pill": "In arrivo"
+        "rollout_pill": "In arrivo",
+        "pause_action": "Metti in pausa la protezione"
       },
-      "always_on_hint": "Per tenerlo attivo anche dopo il riavvio, attiva «VPN sempre attiva»"
+      "always_on_hint": "Per tenerlo attivo anche dopo il riavvio, attiva «VPN sempre attiva»",
+      "pause_confirm_title": "Mettere in pausa la protezione?",
+      "pause_confirm_body": "I siti truffa non verranno bloccati nelle tue app finché non la riattivi. I tuoi controlli salvati restano invariati."
     },
     "rollout": {
       "network_ios": "Blocca i siti truffa in quasi tutte le app. In fase di test finale — non ancora disponibile su iPhone.",
@@ -1430,7 +1434,7 @@
       "try_again": "Riprova tra un momento.",
       "members_title": "Membri",
       "members_count": "Membri: {{n}}",
-      "members_load_failed": "Impossibile caricare l'elenco dei membri in questo momento. Trascina verso il basso per aggiornare o torna più tardi.",
+      "members_load_failed": "Impossibile caricare l'elenco dei membri in questo momento. Di solito torna da solo — ricontrolla tra un momento.",
       "role_owner": "proprietario",
       "role_member": "membro",
       "no_key_yet": "ancora nessuna chiave",
@@ -1450,7 +1454,9 @@
       "done": "Fine",
       "copied_title": "Copiato",
       "copied_body": "Invito copiato negli appunti.",
-      "invite_copy_header": "Invito alla famiglia Cleanway"
+      "invite_copy_header": "Invito alla famiglia Cleanway",
+      "load_failed_title": "Non siamo riusciti a raggiungere i nostri server",
+      "join_network_failed": "Non siamo riusciti a raggiungere i nostri server, quindi il codice non è stato controllato. Il tuo invito è ancora valido — riprova tra un momento."
     },
     "auth": {
       "title_login": "Bentornato",

@@ -6,8 +6,9 @@ import CleanwayVpn from './src/CleanwayVpnModule';
 /** Must match CleanwayVpnService.CANARY_DOMAIN. */
 export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
 
-/** Give the lookup a moment to reach the service and be answered. */
-const CANARY_SETTLE_MS = 1200;
+/** Overall probe deadline and the poll cadence within it. */
+const CANARY_DEADLINE_MS = 2500;
+const CANARY_POLL_MS = 150;
 import type { DomainBlockedPayload, VpnStoppedPayload } from './src/CleanwayVpn.types';
 
 export type { DomainBlockedPayload, VpnStoppedPayload };
@@ -23,50 +24,62 @@ export async function stopVpn(): Promise<void> {
 /**
  * Canary probe — the truth source for the shield's ON state.
  *
- * Ask the service for PROOF, don't infer it from a failure. We note the time,
- * trigger a lookup of CANARY_DOMAIN, then ask the native side whether it
- * answered a canary query after that instant. Only a query that actually
- * reached our tunnel can move that number.
+ * Ask the service for PROOF, don't infer it from a failure: read the
+ * service's canary-answer counter, trigger a DNS lookup of a RANDOM subdomain
+ * of the canary, and poll until the counter moves. Only a query that actually
+ * transited our tunnel can move it, so a dead tunnel, a device with no DNS at
+ * all, and a competing VPN all fail to produce proof — and none of them can
+ * fabricate it.
  *
- * The previous version inferred "filtering is live" from an HTTPS request to
- * the canary throwing, gated behind a control request to the API. Both halves
- * were broken, in opposite directions:
- *
- *   - the control URL was https://api.cleanway.ai/api/v1/health, which is a
- *     404 (the route is /health, unprefixed). So the gate never opened, this
- *     function returned false forever, and a genuinely filtering tunnel was
- *     displayed as "needs attention" with a button that turns it off.
- *
- *   - had only that been fixed, the canary fetch would throw anyway, because
- *     block-canary.cleanway.ai does not exist in public DNS. `catch => true`
- *     would then report protected on any networked device, including when
- *     another VPN app had displaced our tunnel. A permanent false green — the
- *     exact placebo this project exists to avoid.
- *
- * Positive proof has neither failure mode, and it needs no public DNS record:
- * a dead tunnel, a device with no DNS at all, and a competing VPN all fail to
- * produce a fresh stamp, and none of them can fabricate one.
+ * Three hardenings over the first stamp-based version, each from a confirmed
+ * finding:
+ *  - RANDOM LABEL: the OS resolver caches answers; a repeat lookup of the
+ *    same name can be satisfied from cache without any packet reaching the
+ *    tunnel, and the probe would fail on a healthy shield. A fresh label per
+ *    probe cannot be cached.
+ *  - COUNTER DELTA, not timestamps: the stamp compared Date.now() (JS) with
+ *    System.currentTimeMillis() (Kotlin) — two steppable wall clocks. A
+ *    monotonic counter delta has no clock semantics.
+ *  - DEADLINE + POLL instead of a fixed sleep: the fetch itself gets an
+ *    abort, the probe resolves as soon as proof arrives (usually well under
+ *    a second) and gives up at CANARY_DEADLINE_MS instead of hanging on a
+ *    network where the request never completes.
  */
 export async function verifyFiltering(): Promise<boolean> {
   // Older native builds do not expose the counter. Report unverified rather
   // than falling back to a guess — never claim protection we cannot prove.
-  if (typeof CleanwayVpn.lastCanaryAnswerAtMs !== 'function') return false;
+  if (typeof CleanwayVpn.canaryAnswerCount !== 'function') return false;
 
-  const startedAt = Date.now();
+  let before: number;
   try {
-    // We do not care whether this resolves or connects — it exists purely to
-    // put a canary query on the wire. Its outcome proves nothing on its own.
-    await fetch(`https://${CANARY_DOMAIN}/`, { method: 'HEAD' });
-  } catch {
-    // Expected: the service answers NXDOMAIN, so this normally throws.
-  }
-
-  await new Promise((resolve) => setTimeout(resolve, CANARY_SETTLE_MS));
-
-  try {
-    return CleanwayVpn.lastCanaryAnswerAtMs() >= startedAt;
+    before = CleanwayVpn.canaryAnswerCount();
   } catch {
     return false;
+  }
+
+  // Fire the lookup and deliberately do not await it: its HTTP outcome proves
+  // nothing (the name never resolves), it exists only to put a DNS query on
+  // the wire. The abort keeps it from lingering past the probe.
+  const abort = new AbortController();
+  const abortTimer = setTimeout(() => abort.abort(), CANARY_DEADLINE_MS);
+  const label = Math.random().toString(36).slice(2, 10);
+  fetch(`https://${label}.${CANARY_DOMAIN}/`, { method: 'HEAD', signal: abort.signal })
+    .catch(() => { /* expected — the whole point is that this cannot resolve */ });
+
+  try {
+    const deadline = Date.now() + CANARY_DEADLINE_MS;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, CANARY_POLL_MS));
+      try {
+        if (CleanwayVpn.canaryAnswerCount() > before) return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  } finally {
+    clearTimeout(abortTimer);
+    abort.abort();
   }
 }
 

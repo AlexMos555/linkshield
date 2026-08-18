@@ -101,14 +101,13 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
-     * Epoch millis of the last canary query the service answered, 0 if never.
-     *
-     * The app compares this against a timestamp it took before triggering a
-     * lookup: a value newer than that instant is proof the query reached THIS
-     * tunnel and was filtered. Double because JS has no 64-bit integer.
+     * Monotonic count of canary queries the service has answered. The app
+     * reads it before and after triggering a lookup — a delta is proof the
+     * query reached THIS tunnel and was filtered. Double because JS has no
+     * 64-bit integer; probe counts stay far below 2^53.
      */
-    Function("lastCanaryAnswerAtMs") {
-      CleanwayVpnService.lastCanaryAnswerAtMs.toDouble()
+    Function("canaryAnswerCount") {
+      CleanwayVpnService.canaryAnswerCount.toDouble()
     }
 
     OnActivityResult { _, payload ->

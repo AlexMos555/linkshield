@@ -26,18 +26,42 @@ export function toCheckableHost(input: string): string | null {
   let s = (input || "").trim();
   if (!s) return null;
 
-  // A shared message is often "look at this scam https://evil.tld/x" — take the
-  // first token that looks like a link rather than the whole sentence.
+  // Payload formats that are not links at all. A QR business card or wifi
+  // config contains dots and even email addresses; parsing a hostname out of
+  // one and rendering a verdict for it answered a question nobody asked —
+  // and shipped a stranger's mail domain to the server under the scanner's
+  // "only the website name is sent" promise.
+  if (/^(BEGIN:VCARD|MECARD:|WIFI:|MATMSG:|SMSTO:|geo:|tel:|mailto:)/i.test(s)) {
+    return null;
+  }
+
+  // Token selection, in order of confidence:
+  //  1. the first token carrying an explicit web scheme — in "check file.pdf
+  //     from https://evil.tld/x" the link is the thing to check, but plain
+  //     first-dot-token-wins picked "file.pdf" and the real scam was never
+  //     looked at;
+  //  2. otherwise the first dot-containing token ("evil.com might be fake").
   //
-  // Deliberately split on whitespace instead of matching with a \b anchor: in a
-  // non-unicode regex, \b treats every non-ASCII letter as a non-word
-  // character, so "пaypal.com" matched starting AFTER the Cyrillic п and the
-  // function happily returned "aypal.com" — a different, real domain. Silently
-  // rewriting a homograph into the thing it imitates is worse than not
-  // handling it at all. Caught by the table in host.test.ts.
-  const token = s.split(/\s+/).find((part) => part.includes("."));
+  // Split on whitespace, never \b: in a non-unicode regex \b treats every
+  // non-ASCII letter as a non-word character, so "пaypal.com" matched from
+  // AFTER the Cyrillic п and this function returned "aypal.com" — a
+  // different, real domain. Caught by the table in test-host-parser.mjs.
+  const tokens = s.split(/\s+/);
+  const token =
+    tokens.find((part) => /^https?:\/\//i.test(part)) ??
+    tokens.find((part) => part.includes("."));
   if (token) s = token;
 
+  // A link pasted mid-sentence drags its punctuation along: "evil.com," or
+  // "(see evil.com)". Strip wrapping/trailing punctuation before parsing —
+  // it used to fail the hostname character check and the app answered
+  // "that doesn't look like a link" to a message that plainly contained one.
+  s = s.replace(/^[(<\["'«»]+/, "").replace(/[)>\]"'«».,;:!?…]+$/, "");
+
+  // A non-web scheme that survived the guards above (odd casing, new
+  // formats): a hostname extracted from it would answer the wrong question.
+  const scheme = s.match(/^([a-z][a-z0-9+.-]*):\/\//i);
+  if (scheme && !/^https?$/i.test(scheme[1])) return null;
   s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
 
   // Authority ends at the first delimiter. Cutting on all three is the whole

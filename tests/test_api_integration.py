@@ -88,8 +88,16 @@ def test_domain_validator():
     assert validate_domain("example.com") == "example.com"
     assert validate_domain("sub.example.com") == "sub.example.com"
 
+    # Punycode zones must pass: пример.рф arrives as xn--e1afmkfd.xn--p1ai,
+    # and rejecting IDN TLDs made every .рф/.中国/.भारत domain unanalyzable —
+    # exactly the zones homograph phishing leans on.
+    assert validate_domain("xn--e1afmkfd.xn--p1ai") == "xn--e1afmkfd.xn--p1ai"
+    assert validate_domain("xn--aypal-oye.com") == "xn--aypal-oye.com"
+    assert validate_domain("example.xn--fiqs8s") == "example.xn--fiqs8s"
+
     # Should reject
-    for bad in ["localhost", "", "127.0.0.1", "10.0.0.1", "169.254.169.254"]:
+    for bad in ["localhost", "", "127.0.0.1", "10.0.0.1", "169.254.169.254",
+                "evil.xn--", "evil.xn---"]:
         try:
             validate_domain(bad)
             assert False, f"Should reject: {bad}"

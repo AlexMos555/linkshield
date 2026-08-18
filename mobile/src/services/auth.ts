@@ -26,6 +26,7 @@
  */
 
 import * as SecureStore from "expo-secure-store";
+import { setAuthToken } from "./api";
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -146,6 +147,12 @@ async function persistSession(
     SecureStore.setItemAsync(KEY_EXPIRES, String(expiresAt)),
   ]);
 
+  // Keep the api-client's module-level token in lockstep. Before this, a
+  // refresh updated only SecureStore: the client kept sending the original
+  // sign-in token, and after its ~1h expiry every pull through services/api
+  // silently 401'd while pushes (which read SecureStore) kept working.
+  setAuthToken(tokens.access_token);
+
   return {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
@@ -161,6 +168,7 @@ async function clearSession(): Promise<void> {
     SecureStore.deleteItemAsync(KEY_EMAIL),
     SecureStore.deleteItemAsync(KEY_EXPIRES),
   ]);
+  setAuthToken(null);
 }
 
 async function readStoredSession(): Promise<AuthSession | null> {
@@ -223,7 +231,14 @@ export async function signOut(): Promise<void> {
   await clearSession();
 }
 
-export async function refreshAccessToken(): Promise<AuthSession | null> {
+/**
+ * Internal refresh that keeps the failure kinds apart. Only a definitive 401
+ * means the session is gone; a network failure (status 0, timeout, 5xx) means
+ * WE DON'T KNOW — the refresh token is untouched in SecureStore and the next
+ * online attempt will likely succeed. Collapsing both into null is what made
+ * the app tell an offline-but-signed-in user to go type her password again.
+ */
+async function _refresh(): Promise<AuthSession | "offline" | null> {
   const stored = await readStoredSession();
   if (!stored?.refreshToken) return null;
   try {
@@ -232,12 +247,40 @@ export async function refreshAccessToken(): Promise<AuthSession | null> {
     });
     return await persistSession(data, stored.email);
   } catch (err) {
-    // Refresh tokens don't come back — treat as logout
+    // Refresh tokens don't come back — a 401 is a real logout.
     if (err instanceof AuthError && err.status === 401) {
       await clearSession();
+      return null;
     }
-    return null;
+    return "offline";
   }
+}
+
+export async function refreshAccessToken(): Promise<AuthSession | null> {
+  const r = await _refresh();
+  return r === "offline" ? null : r;
+}
+
+/** What a screen may honestly say about the session right now. */
+export type SessionState =
+  | { kind: "ok"; session: AuthSession }
+  | { kind: "none" }
+  /** A session exists but could not be refreshed — offline, not signed out. */
+  | { kind: "offline"; email: string | null };
+
+export async function getSessionState(): Promise<SessionState> {
+  const stored = await readStoredSession();
+  if (!stored) return { kind: "none" };
+
+  const now = Math.floor(Date.now() / 1000);
+  if (stored.expiresAt - now > REFRESH_WINDOW_SECONDS) {
+    setAuthToken(stored.accessToken);
+    return { kind: "ok", session: stored };
+  }
+  const refreshed = await _refresh();
+  if (refreshed === "offline") return { kind: "offline", email: stored.email };
+  if (refreshed === null) return { kind: "none" };
+  return { kind: "ok", session: refreshed };
 }
 
 export async function sendPasswordResetEmail(email: string): Promise<void> {
@@ -257,6 +300,7 @@ export async function restoreSession(): Promise<AuthSession | null> {
 
   const now = Math.floor(Date.now() / 1000);
   if (stored.expiresAt - now > REFRESH_WINDOW_SECONDS) {
+    setAuthToken(stored.accessToken);
     return stored;
   }
   // Near or past expiry — try to refresh

@@ -178,6 +178,39 @@ export function acceptInvite(
   });
 }
 
+/**
+ * Like acceptInvite, but keeps "the request never made it" apart from "the
+ * server said no". _fetch collapses both to null, and the join form then told
+ * a user on dead wifi that her invite was invalid — she regenerated a
+ * perfectly good invite and burned the quota.
+ */
+export async function acceptInviteDetailed(
+  token: string,
+  code: string,
+  pin: string,
+): Promise<{ data: AcceptInviteResponse | null; failure: "network" | "rejected" | null }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FAMILY_FETCH_TIMEOUT_MS);
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/family/accept`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ code, pin }),
+      signal: controller.signal,
+    });
+    if (!resp.ok) return { data: null, failure: "rejected" };
+    const text = await resp.text();
+    return { data: text ? (JSON.parse(text) as AcceptInviteResponse) : null, failure: null };
+  } catch {
+    return { data: null, failure: "network" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function submitAlerts(
   token: string,
   familyId: string,

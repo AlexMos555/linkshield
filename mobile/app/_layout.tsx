@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import { useTranslation } from "react-i18next";
@@ -37,17 +37,31 @@ import { AccountLockedModal } from "../src/components/AccountLockedModal";
  * intent outranks it: someone who shared a suspicious link wants the verdict,
  * not a tour.
  */
+let _gateRanThisLaunch = false;
+
 function OnboardingGate() {
   const router = useRouter();
+  const pathname = usePathname();
   const { hasShareIntent } = useShareIntentContext();
   useEffect(() => {
+    // Once per process. Also the backstop for broken storage: if setSetting
+    // can't persist onboarding_done, the tour shows at most once per launch
+    // instead of ambushing every navigation.
+    if (_gateRanThisLaunch) return;
     let cancelled = false;
     (async () => {
       try {
         const done = await getSetting("onboarding_done");
-        if (!cancelled && done !== "true" && !hasShareIntent) {
-          router.replace("/onboarding");
-        }
+        if (cancelled || done === "true") return;
+        // A share intent outranks the tour — and it can arrive AFTER this
+        // effect started (cold-start share: the intent parses while we read
+        // storage). Re-check at decision time, and never replace a screen
+        // the user is already looking at: if navigation moved off the tabs
+        // root, someone is mid-flow and yanking them to a tour is hostile.
+        if (hasShareIntent) return;
+        if (pathname && pathname !== "/" && !pathname.startsWith("/(tabs)") && pathname !== "/index") return;
+        _gateRanThisLaunch = true;
+        router.replace("/onboarding");
       } catch {
         // Storage unavailable — never block the app on a tour.
       }
@@ -55,8 +69,9 @@ function OnboardingGate() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Re-evaluate when a share intent lands or the route settles; the
+    // _gateRanThisLaunch latch keeps this from ever firing twice.
+  }, [hasShareIntent, pathname, router]);
   return null;
 }
 

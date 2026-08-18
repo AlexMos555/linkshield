@@ -1170,7 +1170,8 @@
         "state_setup": "Einmalige Einrichtung, dauert etwa eine Minute.",
         "state_paused": "Pausiert. Tippe, um wieder einzuschalten.",
         "state_unverified": "Läuft, aber wir konnten gerade nicht bestätigen, dass wirklich gefiltert wird.",
-        "state_blocked": "Dieses WLAN braucht eine Anmeldeseite. Cleanway hat sich selbst pausiert und schaltet sich automatisch wieder ein."
+        "state_blocked": "Dieses WLAN braucht eine Anmeldeseite. Cleanway hat sich selbst pausiert und schaltet sich automatisch wieder ein.",
+        "state_checking": "Schutz wird geprüft…"
       },
       "browser": {
         "title": "Dein Browser",
@@ -1188,9 +1189,12 @@
         "paused_pill": "Pausiert",
         "attention_pill": "Achtung",
         "unverified_pill": "Nicht bestätigt",
-        "rollout_pill": "In Arbeit"
+        "rollout_pill": "In Arbeit",
+        "pause_action": "Schutz pausieren"
       },
-      "always_on_hint": "Damit der Schutz nach einem Neustart anbleibt: Schalte „Durchgehend aktives VPN“ ein"
+      "always_on_hint": "Damit der Schutz nach einem Neustart anbleibt: Schalte „Durchgehend aktives VPN“ ein",
+      "pause_confirm_title": "Schutz pausieren?",
+      "pause_confirm_body": "Betrugsseiten werden in deinen Apps nicht mehr blockiert, bis du den Schutz wieder einschaltest. Deine gespeicherten Prüfungen bleiben unverändert."
     },
     "rollout": {
       "network_ios": "Blockiert Betrugsseiten in fast jeder App. Gerade in der letzten Testphase – auf dem iPhone noch nicht verfügbar.",
@@ -1430,7 +1434,7 @@
       "try_again": "Versuch es gleich noch mal.",
       "members_title": "Mitglieder",
       "members_count": "Mitglieder: {{n}}",
-      "members_load_failed": "Die Mitgliederliste konnte gerade nicht geladen werden. Zieh nach unten oder komm später wieder.",
+      "members_load_failed": "Die Mitgliederliste konnte gerade nicht geladen werden. Meistens kommt sie von selbst wieder – schau gleich noch mal nach.",
       "role_owner": "Inhaber",
       "role_member": "Mitglied",
       "no_key_yet": "noch kein Schlüssel",
@@ -1450,7 +1454,9 @@
       "done": "Fertig",
       "copied_title": "Kopiert",
       "copied_body": "Einladung in die Zwischenablage kopiert.",
-      "invite_copy_header": "Cleanway-Familieneinladung"
+      "invite_copy_header": "Cleanway-Familieneinladung",
+      "load_failed_title": "Wir konnten unsere Server nicht erreichen",
+      "join_network_failed": "Wir konnten unsere Server nicht erreichen, deshalb wurde der Code nicht geprüft. Deine Einladung ist weiterhin gültig – versuch es gleich noch mal."
     },
     "auth": {
       "title_login": "Willkommen zurück",

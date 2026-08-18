@@ -1170,7 +1170,8 @@
         "state_setup": "Réglage à faire une seule fois, environ une minute.",
         "state_paused": "En pause. Touchez pour le réactiver.",
         "state_unverified": "En marche, mais nous n'avons pas pu confirmer qu'il filtre en ce moment.",
-        "state_blocked": "Ce Wi-Fi demande une page de connexion. Cleanway s'est mis en pause et se réactivera automatiquement."
+        "state_blocked": "Ce Wi-Fi demande une page de connexion. Cleanway s'est mis en pause et se réactivera automatiquement.",
+        "state_checking": "Vérification de la protection…"
       },
       "browser": {
         "title": "Votre navigateur",
@@ -1188,9 +1189,12 @@
         "paused_pill": "En pause",
         "attention_pill": "Attention",
         "unverified_pill": "Non confirmé",
-        "rollout_pill": "En déploiement"
+        "rollout_pill": "En déploiement",
+        "pause_action": "Mettre la protection en pause"
       },
-      "always_on_hint": "Pour qu'il reste activé après un redémarrage, activez « VPN toujours activé »"
+      "always_on_hint": "Pour qu'il reste activé après un redémarrage, activez « VPN toujours activé »",
+      "pause_confirm_title": "Mettre la protection en pause ?",
+      "pause_confirm_body": "Les sites d'arnaque ne seront plus bloqués dans vos applications tant que vous ne la réactivez pas. Vos vérifications enregistrées ne changent pas."
     },
     "rollout": {
       "network_ios": "Bloque les sites d'arnaque dans presque toutes les applis. En phase finale de test — pas encore sur iPhone.",
@@ -1430,7 +1434,7 @@
       "try_again": "Réessayez dans un instant.",
       "members_title": "Membres",
       "members_count": "Membres : {{n}}",
-      "members_load_failed": "Impossible de charger la liste des membres pour le moment. Tirez vers le bas pour actualiser, ou revenez plus tard.",
+      "members_load_failed": "Impossible de charger la liste des membres pour le moment. Elle revient généralement toute seule — revenez voir dans un instant.",
       "role_owner": "propriétaire",
       "role_member": "membre",
       "no_key_yet": "pas encore de clé",
@@ -1450,7 +1454,9 @@
       "done": "Terminé",
       "copied_title": "Copié",
       "copied_body": "Invitation copiée dans le presse-papiers.",
-      "invite_copy_header": "Invitation famille Cleanway"
+      "invite_copy_header": "Invitation famille Cleanway",
+      "load_failed_title": "Impossible de joindre nos serveurs",
+      "join_network_failed": "Nous n'avons pas pu joindre nos serveurs, donc le code n'a pas été vérifié. Votre invitation est toujours valable — réessayez dans un instant."
     },
     "auth": {
       "title_login": "Ravi de vous revoir",

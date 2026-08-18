@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking,
+  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking, I18nManager,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -8,7 +8,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../../src/utils/theme";
 import { pruneOldChecks } from "../../src/services/database";
-import { restoreSession, signOut } from "../../src/services/auth";
+import { getSessionState, signOut } from "../../src/services/auth";
+import { clearKeypair } from "../../src/lib/family-crypto";
 import { setAuthToken, getAccountSettings } from "../../src/services/api";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
@@ -73,17 +74,25 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  // Set the moment the user taps a skill this focus; the in-flight remote
+  // pull then may NOT adopt its (older) value over the fresh choice — the
+  // pull raced the tap and snapped the selection back before this guard.
+  const userPickedSkillRef = useRef(false);
 
   // On focus, not mount: the user goes to /auth, signs in, and comes BACK
   // to this mounted screen — a mount-only read would keep saying "Sign in".
   useFocusEffect(useCallback(() => {
     let cancelled = false;
+    userPickedSkillRef.current = false;
     void (async () => {
       try {
-        const session = await restoreSession();
+        const st = await getSessionState();
         if (cancelled) return;
-        setSessionEmail(session?.email ?? null);
-        if (!session) return;
+        // "offline" keeps showing who is signed in — a failed refresh is not
+        // a sign-out, and flipping this row to "Sign in" told people to go
+        // find a password they had not lost.
+        setSessionEmail(st.kind === "ok" ? st.session.email : st.kind === "offline" ? st.email : null);
+        if (st.kind !== "ok") return;
         // The other half of sync. The app only ever PUSHED settings, so a
         // skill level changed in the browser extension never reached this
         // phone. Signed in → the account is the source of truth.
@@ -91,6 +100,7 @@ export default function SettingsScreen() {
         const remote = data?.skill_level;
         if (
           !cancelled &&
+          !userPickedSkillRef.current &&
           typeof remote === "string" &&
           ["kids", "regular", "granny", "pro"].includes(remote)
         ) {
@@ -117,6 +127,14 @@ export default function SettingsScreen() {
         onPress: () => {
           void (async () => {
             await signOut();
+            // The Family E2E secret key must leave with the account. It sat
+            // in SecureStore after sign-out, so the next user of a shared
+            // phone could decrypt the previous family's alerts.
+            try {
+              await clearKeypair();
+            } catch {
+              // Best-effort: the key is device-scoped; the account is gone.
+            }
             setAuthToken(null);
             setSessionEmail(null);
           })();
@@ -140,6 +158,7 @@ export default function SettingsScreen() {
   }, []);
 
   async function handleSkillChange(next: SkillLevel): Promise<void> {
+    userPickedSkillRef.current = true;
     setSkillLevel(next);
     try {
       await SecureStore.setItemAsync("skill_level", next);
@@ -186,7 +205,15 @@ export default function SettingsScreen() {
     ]);
   }
 
-  const chevron = <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />;
+  // Disclosure chevrons must point INTO the row's reading direction — a
+  // forward-chevron in Arabic points out of the screen.
+  const chevron = (
+    <Ionicons
+      name={I18nManager.isRTL ? "chevron-back" : "chevron-forward"}
+      size={18}
+      color={colors.textMuted}
+    />
+  );
   /**
    * The Alerts switches are for features that do not exist yet — the section
    * footnote says so in words. They used to default to `true` and paint green,

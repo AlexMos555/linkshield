@@ -1110,7 +1110,8 @@
         "state_setup": "Se configura una sola vez, en más o menos un minuto.",
         "state_paused": "En pausa. Toca para volver a activarlo.",
         "state_unverified": "Está en marcha, pero no pudimos confirmar que esté filtrando en este momento.",
-        "state_blocked": "Esta red Wi-Fi necesita una página de inicio de sesión. Cleanway se puso en pausa y volverá a activarse automáticamente."
+        "state_blocked": "Esta red Wi-Fi necesita una página de inicio de sesión. Cleanway se puso en pausa y volverá a activarse automáticamente.",
+        "state_checking": "Revisando la protección…"
       },
       "browser": {
         "title": "Tu navegador",
@@ -1128,9 +1129,12 @@
         "paused_pill": "En pausa",
         "attention_pill": "Atención",
         "unverified_pill": "Sin confirmar",
-        "rollout_pill": "En camino"
+        "rollout_pill": "En camino",
+        "pause_action": "Pausar la protección"
       },
-      "always_on_hint": "Para que siga encendido después de reiniciar, activa la opción VPN siempre activada"
+      "always_on_hint": "Para que siga encendido después de reiniciar, activa la opción VPN siempre activada",
+      "pause_confirm_title": "¿Pausar la protección?",
+      "pause_confirm_body": "Los sitios de estafa no se bloquearán en tus apps hasta que la vuelvas a activar. Tus verificaciones guardadas no cambian."
     },
     "rollout": {
       "network_ios": "Bloquea sitios de estafa en casi todas las apps. Está en pruebas finales; todavía no llega al iPhone.",
@@ -1370,7 +1374,7 @@
       "try_again": "Inténtalo de nuevo en un momento.",
       "members_title": "Miembros",
       "members_count": "Miembros: {{n}}",
-      "members_load_failed": "No se pudo cargar la lista de miembros en este momento. Desliza hacia abajo para actualizar o vuelve más tarde.",
+      "members_load_failed": "No se pudo cargar la lista de miembros en este momento. Suele volver sola; revisa de nuevo en un momento.",
       "role_owner": "propietario",
       "role_member": "miembro",
       "no_key_yet": "aún sin clave",
@@ -1390,7 +1394,9 @@
       "done": "Listo",
       "copied_title": "Copiado",
       "copied_body": "Invitación copiada al portapapeles.",
-      "invite_copy_header": "Invitación al Espacio Familiar de Cleanway"
+      "invite_copy_header": "Invitación al Espacio Familiar de Cleanway",
+      "load_failed_title": "No pudimos conectar con nuestros servidores",
+      "join_network_failed": "No pudimos conectar con nuestros servidores, así que el código no se revisó. Tu invitación está bien; inténtalo de nuevo en un momento."
     },
     "auth": {
       "title_login": "Hola de nuevo",

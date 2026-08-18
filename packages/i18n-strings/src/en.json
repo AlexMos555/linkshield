@@ -1112,7 +1112,8 @@
         "state_setup": "One-time setup, about a minute.",
         "state_paused": "Paused. Tap to turn back on.",
         "state_unverified": "Running, but we could not confirm it is filtering right now.",
-        "state_blocked": "This Wi-Fi needs a sign-in page. Cleanway paused itself and will come back on automatically."
+        "state_blocked": "This Wi-Fi needs a sign-in page. Cleanway paused itself and will come back on automatically.",
+        "state_checking": "Checking protection…"
       },
       "browser": {
         "title": "Your browser",
@@ -1130,9 +1131,12 @@
         "paused_pill": "Paused",
         "attention_pill": "Attention",
         "unverified_pill": "Not confirmed",
-        "rollout_pill": "Rolling out"
+        "rollout_pill": "Rolling out",
+        "pause_action": "Pause protection"
       },
-      "always_on_hint": "Keep it on after restart — turn on Always-on VPN"
+      "always_on_hint": "Keep it on after restart — turn on Always-on VPN",
+      "pause_confirm_title": "Pause protection?",
+      "pause_confirm_body": "Scam sites will not be blocked in your apps until you turn it back on. Your saved checks are unaffected."
     },
     "rollout": {
       "network_ios": "Blocks scam sites in almost every app. In final testing — not on iPhone yet.",
@@ -1372,7 +1376,7 @@
       "try_again": "Try again in a moment.",
       "members_title": "Members",
       "members_count": "Members: {{n}}",
-      "members_load_failed": "Couldn't load the member list right now. Pull down or come back later.",
+      "members_load_failed": "Couldn't load the member list right now. It usually comes back on its own — check again in a moment.",
       "role_owner": "owner",
       "role_member": "member",
       "no_key_yet": "no key yet",
@@ -1392,7 +1396,9 @@
       "done": "Done",
       "copied_title": "Copied",
       "copied_body": "Invite copied to clipboard.",
-      "invite_copy_header": "Cleanway Family invite"
+      "invite_copy_header": "Cleanway Family invite",
+      "load_failed_title": "Couldn't reach our servers",
+      "join_network_failed": "We couldn't reach our servers, so the code wasn't checked. Your invite is fine — try again in a moment."
     },
     "auth": {
       "title_login": "Welcome back",

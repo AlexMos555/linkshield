@@ -130,11 +130,24 @@ class CleanwayVpnService : VpnService() {
             .setMtu(1500)
             .setBlocking(true)
 
-        try {
-            builder.addDisallowedApplication(packageName)
-        } catch (e: Exception) {
-            Log.w(TAG, "addDisallowedApplication(self) failed: ${e.message}")
-        }
+        // Deliberately NOT excluding our own app from the tunnel.
+        //
+        // addDisallowedApplication(packageName) used to sit here "to prevent
+        // loops", and it silently broke the shield's proof of life: the app's
+        // own canary DNS query bypassed the tunnel, so the service never saw
+        // it, the stamp never moved, and verifyFiltering() could not return
+        // true on any device — the green state was unreachable code.
+        //
+        // The loop it feared cannot happen with this routing:
+        //   - the tunnel captures ONLY traffic to VPN_GATEWAY_IP/32 (DNS);
+        //     every TCP connection to public IPs goes out the real interface
+        //   - the upstream UDP DNS socket is protect()ed (forwardOverUdp)
+        //   - the DoH fallback dials 1.1.1.1 by IP literal over TCP — no DNS
+        //     needed, and 1.1.1.1/32 is not routed into the tunnel
+        // The service's own hostname lookups (api.cleanway.ai in
+        // checkDomainAsync) now transit the tunnel like any other app's and
+        // are forwarded upstream on a different thread — that is the normal
+        // path, not a loop.
 
         vpnInterface = builder.establish() ?: run {
             Log.e(TAG, "establish() returned null — VPN permission likely revoked")
@@ -179,9 +192,8 @@ class CleanwayVpnService : VpnService() {
     private fun stopVpn() {
         running = false
         isRunning = false
-        // Clear the proof of life with the tunnel it belonged to, so a stamp
-        // from a previous run can never be read as "filtering right now".
-        lastCanaryAnswerAtMs = 0L
+        // The counter is monotonic and compared by delta in JS, so a value
+        // from a previous tunnel cannot satisfy a new probe — no reset needed.
         stopForegroundCompat()
         try {
             vpnInterface?.close()
@@ -215,41 +227,37 @@ class CleanwayVpnService : VpnService() {
 
                 val normalized = domain.lowercase().trimEnd('.')
 
-                if (DomainPolicy.isSystemDomain(normalized)) {
-                    submitForward(packet, length, output)
-                    continue
-                }
-
-                if (normalized == CANARY_DOMAIN) {
-                    // Silent verification probe: the app resolves this domain
-                    // after start and expects NXDOMAIN. No notifyBlocked — the
-                    // probe must not spam block events or the notification.
-                    val nx = DnsUtil.makeNxDomain(packet, length)
-                    if (nx != null) {
-                        writeToTunnel(output, nx)
-                        // Stamp only on a query we actually answered. This is
-                        // what the app reads back as proof that filtering is
-                        // live right now, through THIS tunnel.
-                        lastCanaryAnswerAtMs = System.currentTimeMillis()
+                when (DnsDecision.classify(normalized, blockedDomains, safeDomains)) {
+                    DnsDecision.CANARY -> {
+                        // Silent verification probe: the app resolves a RANDOM
+                        // subdomain of the canary and expects NXDOMAIN. The
+                        // random label defeats every resolver cache between
+                        // the app and us — a cached answer would satisfy the
+                        // fetch without any query reaching this loop, and the
+                        // counter would honestly refuse to move. No
+                        // notifyBlocked — the probe must not spam block events
+                        // or the notification.
+                        val nx = DnsUtil.makeNxDomain(packet, length)
+                        if (nx != null) {
+                            writeToTunnel(output, nx)
+                            // Count only queries we actually answered. This is
+                            // what the app reads back as proof that filtering
+                            // is live right now, through THIS tunnel.
+                            canaryAnswerCount += 1
+                        }
                     }
-                    continue
+                    DnsDecision.BLOCK -> {
+                        val nx = DnsUtil.makeNxDomain(packet, length)
+                        if (nx != null) writeToTunnel(output, nx)
+                        notifyBlocked(normalized)
+                    }
+                    DnsDecision.FORWARD -> submitForward(packet, length, output)
+                    DnsDecision.FORWARD_AND_CHECK -> {
+                        // Unknown — forward immediately (fail-open), check in background
+                        submitForward(packet, length, output)
+                        checkExecutor.submit { checkDomainAsync(normalized) }
+                    }
                 }
-
-                if (blockedDomains.contains(normalized)) {
-                    val nx = DnsUtil.makeNxDomain(packet, length)
-                    if (nx != null) writeToTunnel(output, nx)
-                    notifyBlocked(normalized)
-                    continue
-                }
-
-                if (safeDomains.contains(normalized)) {
-                    submitForward(packet, length, output)
-                    continue
-                }
-
-                // Unknown — forward immediately (fail-open), check in background
-                submitForward(packet, length, output)
-                checkExecutor.submit { checkDomainAsync(normalized) }
             } catch (e: Exception) {
                 if (!running) break
                 Log.w(TAG, "dns_loop_error: ${e.message}")
@@ -572,25 +580,25 @@ class CleanwayVpnService : VpnService() {
         var isRunning = false
 
         /**
-         * Epoch millis of the last canary query THIS service answered with
-         * NXDOMAIN, or 0 if it never has.
+         * Number of canary queries THIS service has answered with NXDOMAIN
+         * since the process started.
          *
          * This is the shield's proof of life, and it is positive evidence: the
-         * app notes the time, triggers a lookup of CANARY_DOMAIN, and asks
-         * whether we answered it after that instant. Only a query that actually
-         * reached this service can move the number, so a dead tunnel, a network
-         * with no DNS at all, or another VPN app holding the interface all fail
-         * to produce it — none of them can fake a green shield.
+         * app reads the counter, triggers a lookup of a random subdomain of
+         * CANARY_DOMAIN, and asks whether the counter moved. Only a query that
+         * actually reached this service can move it, so a dead tunnel, a
+         * network with no DNS at all, and a competing VPN all fail to produce
+         * proof — and none of them can fabricate it.
          *
-         * The previous design inferred filtering from an HTTPS request to the
-         * canary FAILING, which is true of far too many things: the domain not
-         * existing in public DNS (it does not), no listener on 443, a cert
-         * mismatch, a refused connection, a timeout. That inference would have
-         * reported "protected" on essentially any device with a network.
+         * A COUNTER, not a timestamp: the first version stamped
+         * System.currentTimeMillis() and compared it against Date.now() in JS
+         * — two independently steppable wall clocks. An NTP correction inside
+         * the probe window could validate a stale stamp or fail a fresh one.
+         * A delta on a monotonic counter has no clock semantics at all.
          */
         @JvmStatic
         @Volatile
-        var lastCanaryAnswerAtMs = 0L
+        var canaryAnswerCount = 0L
 
         private const val CHANNEL_ID = "cleanway_vpn"
         private const val NOTIF_ID = 4711
@@ -656,6 +664,36 @@ class CleanwayVpnService : VpnService() {
  * mobile-native LOW "DomainPolicy 'keep in sync' comment contradicts
  * intentionally divergent platform suffix lists".)
  */
+/**
+ * What the proxy loop does with one DNS query. Pulled out of the loop as a
+ * pure function so the ORDER of the checks — the whole bug — is unit-testable
+ * on the JVM without a tunnel.
+ *
+ * Order matters and is not obvious from the allowlist alone: the canary lives
+ * under cleanway.ai, which is a system suffix. Tested after the allowlist, it
+ * was classified "system → forward upstream" on every device, the canary
+ * branch was unreachable, and the shield could never turn green. Tested first,
+ * it works. DomainPolicyTest pins this.
+ */
+enum class DnsDecision {
+    CANARY, BLOCK, FORWARD, FORWARD_AND_CHECK;
+
+    companion object {
+        fun classify(
+            normalized: String,
+            blocked: Set<String>,
+            safe: Set<String>,
+        ): DnsDecision = when {
+            normalized == CleanwayVpnService.CANARY_DOMAIN ||
+                normalized.endsWith(".${CleanwayVpnService.CANARY_DOMAIN}") -> CANARY
+            DomainPolicy.isSystemDomain(normalized) -> FORWARD
+            blocked.contains(normalized) -> BLOCK
+            safe.contains(normalized) -> FORWARD
+            else -> FORWARD_AND_CHECK
+        }
+    }
+}
+
 object DomainPolicy {
     private val systemSuffixes = listOf(
         "google.com",

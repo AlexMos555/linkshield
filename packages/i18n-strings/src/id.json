@@ -1170,7 +1170,8 @@
         "state_setup": "Penyiapan sekali saja, sekitar satu menit.",
         "state_paused": "Dijeda. Ketuk untuk menyalakan lagi.",
         "state_unverified": "Berjalan, tapi kami belum bisa memastikan penyaringannya sedang bekerja saat ini.",
-        "state_blocked": "Wi-Fi ini butuh halaman login. Cleanway menjeda dirinya sendiri dan akan menyala lagi secara otomatis."
+        "state_blocked": "Wi-Fi ini butuh halaman login. Cleanway menjeda dirinya sendiri dan akan menyala lagi secara otomatis.",
+        "state_checking": "Mengecek perlindungan…"
       },
       "browser": {
         "title": "Browser Anda",
@@ -1188,9 +1189,12 @@
         "paused_pill": "Dijeda",
         "attention_pill": "Perhatian",
         "unverified_pill": "Belum pasti",
-        "rollout_pill": "Segera hadir"
+        "rollout_pill": "Segera hadir",
+        "pause_action": "Jeda perlindungan"
       },
-      "always_on_hint": "Agar tetap menyala setelah HP di-restart — aktifkan VPN Selalu Aktif"
+      "always_on_hint": "Agar tetap menyala setelah HP di-restart — aktifkan VPN Selalu Aktif",
+      "pause_confirm_title": "Jeda perlindungan?",
+      "pause_confirm_body": "Situs penipuan tidak akan diblokir di aplikasi Anda sampai Anda menyalakannya lagi. Pemeriksaan tersimpan Anda tidak berubah."
     },
     "rollout": {
       "network_ios": "Memblokir situs penipuan di hampir semua aplikasi. Sedang tahap uji akhir — belum tersedia di iPhone.",
@@ -1430,7 +1434,7 @@
       "try_again": "Coba lagi sebentar lagi.",
       "members_title": "Anggota",
       "members_count": "Anggota: {{n}}",
-      "members_load_failed": "Daftar anggota tidak bisa dimuat sekarang. Tarik layar ke bawah atau kembali lagi nanti.",
+      "members_load_failed": "Daftar anggota tidak bisa dimuat sekarang. Biasanya kembali dengan sendirinya — silakan cek lagi sebentar lagi.",
       "role_owner": "pemilik",
       "role_member": "anggota",
       "no_key_yet": "belum ada kunci",
@@ -1450,7 +1454,9 @@
       "done": "Selesai",
       "copied_title": "Tersalin",
       "copied_body": "Undangan disalin ke papan klip.",
-      "invite_copy_header": "Undangan Keluarga Cleanway"
+      "invite_copy_header": "Undangan Keluarga Cleanway",
+      "load_failed_title": "Tidak bisa menghubungi server kami",
+      "join_network_failed": "Kami tidak bisa menghubungi server kami, jadi kodenya belum dicek. Undangan Anda tetap berlaku — silakan coba lagi sebentar lagi."
     },
     "auth": {
       "title_login": "Selamat datang kembali",

@@ -19,11 +19,11 @@ import {
   colors, type as typo, space, radius, sectionHeader,
   levelColors, levelStrokes,
 } from "../src/utils/theme";
-import { checkSingleDomain, PublicCheckResult } from "../src/services/api";
+import { checkDomain, PublicCheckResult, ApiError } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
 import { toCheckableHost } from "../src/utils/host";
 
-type ErrorKind = "no_url" | "check_failed";
+type ErrorKind = "no_url" | ApiError["kind"];
 type Level = keyof typeof levelColors;
 
 // Status is never colour-only (design spec §6): every verdict pairs its hue
@@ -54,15 +54,21 @@ export default function SharedScreen() {
       setLoading(false);
       return;
     }
-    checkSingleDomain(domain)
-      .then(async (r) => {
+    // Result-based call so the error KIND survives — a rate limit told to
+    // "check your connection" retries into the rate limit and digs deeper.
+    checkDomain(domain)
+      .then(async ({ data: r, error: apiError }) => {
+        if (!r) {
+          setError(apiError?.kind ?? "network");
+          return;
+        }
         setResult(r);
         await saveCheck(r);
         if (r.level === "dangerous") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         else if (r.level === "caution") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       })
-      .catch(() => setError("check_failed"))
+      .catch(() => setError("network"))
       .finally(() => setLoading(false));
   }, [domain]);
 
@@ -89,7 +95,12 @@ export default function SharedScreen() {
           {t(noUrl ? "mobile.shared.no_url_title" : "mobile.result.error_title")}
         </Text>
         <Text style={s.centerBody}>
-          {t(noUrl ? "mobile.shared.no_url_body" : "mobile.shared.check_failed_body")}
+          {t(
+            noUrl ? "mobile.shared.no_url_body"
+            : error === "rate_limited" ? "mobile.result.error_rate_limited"
+            : error === "http_5xx" ? "mobile.result.error_server"
+            : "mobile.shared.check_failed_body",
+          )}
         </Text>
         <TouchableOpacity
           style={s.primaryBtn}
