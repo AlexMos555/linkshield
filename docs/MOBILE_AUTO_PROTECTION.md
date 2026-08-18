@@ -128,6 +128,9 @@ Replaces the paste hero AND the current **placebo shield** (`mobile/app/(tabs)/i
 > | Private DNS strict, then turn on | refused, `private_dns_strict` | amber conflict, names provider, "Open network settings" | ok |
 > | Private DNS strict while ON | steps aside ≤1s | green → conflict on its own | ok (was DEAD before fix) |
 > | Competing VPN displaces us | `onRevoke` path exists | untested — no second VPN app on the emulator | — |
+> | **Listed phishing name, first lookup** (2026-08-18 evening) | list loaded from `/api/v1/blocklist/dns` (823 names, 1s after start) → NXDOMAIN on the FIRST query; 1.1.1.1 answers the same names | block log kind=blocked, localized notification, home "Blocked" count, card line "Blocklist: 823 sites · updated 0h ago" | legit names resolve |
+>
+> **Architecture change 2026-08-18 (design panel, unanimous):** the shield no longer forwards unknown names fail-open and asks `/public/check` afterwards (measured first-visit protection: 0/12 live phishing domains — the resolver cached the fail-open answer for the record's TTL). It syncs a server-published blocklist (`scripts/refresh_dangerous_domains.py` → Redis artifact → `GET /api/v1/blocklist/dns`, ETag/304, publish gates) and decides on the phone in microseconds; **no lookup is ever sent to Cleanway**. Honest coverage: listed names ~100% on first visit; a random live phishing tap is on the list only some of the time (feeds ≈1K names vs GSB 1.6M) — the card's "Can't catch brand-new scam sites" stays. No recall number may be claimed until measured against a held-out feed (plan step 11). Remaining plan steps: dns-canary workflow + `list-canary.cleanway.ai` A record (ops), never-silent transport chain (SERVFAIL instead of drop), "Not a scam? Allow" action, held-out coverage measurement, docs/Play copy, real-device sweep.
 
 
 ### First launch
