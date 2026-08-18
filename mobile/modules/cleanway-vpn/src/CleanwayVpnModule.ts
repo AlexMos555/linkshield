@@ -1,6 +1,6 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-import { CleanwayVpnModuleEvents, ShieldBlockEntry } from './CleanwayVpn.types';
+import { BlocklistStatus, CleanwayVpnModuleEvents, ShieldBlockEntry } from './CleanwayVpn.types';
 
 declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   /** Requests VPN consent (once) then starts the local DNS-filter VPN. Resolves false if the user declines. */
@@ -36,6 +36,12 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   recentBlocks?(limit: number): ShieldBlockEntry[];
   /** Number of block-log entries with ts >= sinceMs. */
   blockCountSince?(sinceMs: number): number;
+  /** Loaded blocklist + freshness. Optional: older native builds lack it. */
+  blocklistStatus?(): BlocklistStatus;
+  /** Fetch the list now (background). */
+  refreshBlocklist?(): void;
+  /** Monotonic count of list-canary answers — proof the loaded list is live. */
+  listCanaryAnswerCount?(): number;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

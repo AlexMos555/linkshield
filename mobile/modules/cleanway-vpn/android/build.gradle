@@ -19,6 +19,9 @@ useExpoPublishing()
 
 android {
   namespace "expo.modules.cleanwayvpn"
+  // JVM unit tests: android.util.Log etc. are unmocked stubs; make them no-ops
+  // so BlocklistSync/BlockLog (which log) are testable without Robolectric.
+  testOptions.unitTests.returnDefaultValues = true
   defaultConfig {
     versionCode 1
     versionName "0.1.0"

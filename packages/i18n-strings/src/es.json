@@ -1141,7 +1141,12 @@
       },
       "always_on_hint": "Se reactiva solo tras un reinicio. Para que arranque con el teléfono, antes que cualquier app: activa VPN siempre activada",
       "pause_confirm_title": "¿Pausar la protección?",
-      "pause_confirm_body": "Los sitios de estafa no se bloquearán en tus apps hasta que la vuelvas a activar. Tus verificaciones guardadas no cambian."
+      "pause_confirm_body": "Los sitios de estafa no se bloquearán en tus apps hasta que la vuelvas a activar. Tus verificaciones guardadas no cambian.",
+      "blocklist": {
+        "status": "Lista de bloqueo: {{count}} sitios fraudulentos conocidos · actualizada hace {{hours}} h",
+        "stale": "La lista está desactualizada ({{count}} sitios): toca para actualizar",
+        "missing": "Aún no hay lista: toca para descargarla. Hasta entonces, no se bloquea nada por lista."
+      }
     },
     "rollout": {
       "network_ios": "Bloquea sitios de estafa en casi todas las apps. Está en pruebas finales; todavía no llega al iPhone.",

@@ -161,6 +161,34 @@ export default function HomeScreen() {
             // except the system VPN settings, which is its own kind of lie.
             onPause={confirmPause}
           />
+          {(network.state === "on" || network.state === "unverified" || network.state === "offline") && (
+            // The list is a separate truth from the tunnel: green tunnel +
+            // no/stale list = nothing is being blocked from the list. Say it
+            // in its own line, never fold it into "You're protected".
+            <TouchableOpacity
+              style={s.hintRow}
+              onPress={network.refreshBlocklist}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name={network.blocklist.stale ? "alert-circle-outline" : "list-outline"}
+                size={13}
+                color={network.blocklist.stale ? colors.amber : colors.textSecondary}
+              />
+              <Text style={[s.hintText, network.blocklist.stale && { color: colors.amber }]}>
+                {network.blocklist.count > 0 && !network.blocklist.stale
+                  ? t("mobile.shield.blocklist.status", {
+                      count: network.blocklist.count,
+                      hours: Math.max(0, Math.round((network.blocklist.ageMs ?? 0) / 3_600_000)),
+                    })
+                  : network.blocklist.count > 0
+                    ? t("mobile.shield.blocklist.stale", { count: network.blocklist.count })
+                    : t("mobile.shield.blocklist.missing")}
+              </Text>
+              <Ionicons name="refresh-outline" size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
           {network.state === "conflict" && (
             <TouchableOpacity
               style={s.hintRow}

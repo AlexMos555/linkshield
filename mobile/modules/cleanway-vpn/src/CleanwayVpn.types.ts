@@ -31,3 +31,19 @@ export type CleanwayVpnModuleEvents = {
   onDomainBlocked: (params: DomainBlockedPayload) => void;
   onVpnStopped: (params: VpnStoppedPayload) => void;
 };
+
+/** What blocklist the service has loaded and how fresh it is (BlockList.kt). */
+export type BlocklistStatus = {
+  /** Publisher epoch of the loaded list; 0 when none. */
+  version: number;
+  count: number;
+  revoked: boolean;
+  /** Age since load by the larger of wall/monotonic clocks; null when no list. */
+  ageMs: number | null;
+  /** No list, or older than 24h — the card must not claim list protection. */
+  stale: boolean;
+  /** The list carries the list-canary line (proof it is our artifact). */
+  hasCanary: boolean;
+  lastError: string | null;
+  lastFetchAt: number;
+};

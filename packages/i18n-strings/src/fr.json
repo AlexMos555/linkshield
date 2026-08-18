@@ -1201,7 +1201,12 @@
       },
       "always_on_hint": "Revient tout seul après un redémarrage. Pour qu'il démarre avec le téléphone, avant toute appli : activez « VPN toujours activé »",
       "pause_confirm_title": "Mettre la protection en pause ?",
-      "pause_confirm_body": "Les sites d'arnaque ne seront plus bloqués dans vos applications tant que vous ne la réactivez pas. Vos vérifications enregistrées ne changent pas."
+      "pause_confirm_body": "Les sites d'arnaque ne seront plus bloqués dans vos applications tant que vous ne la réactivez pas. Vos vérifications enregistrées ne changent pas.",
+      "blocklist": {
+        "status": "Liste de blocage : {{count}} sites d'arnaque connus · mise à jour il y a {{hours}} h",
+        "stale": "La liste est périmée ({{count}} sites) — appuyez pour mettre à jour",
+        "missing": "Pas encore de liste — appuyez pour la télécharger. D'ici là, rien n'est bloqué par la liste."
+      }
     },
     "rollout": {
       "network_ios": "Bloque les sites d'arnaque dans presque toutes les applis. En phase finale de test — pas encore sur iPhone.",

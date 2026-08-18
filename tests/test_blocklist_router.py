@@ -81,6 +81,12 @@ def test_if_none_match_returns_304(client):
     assert r.content == b""
 
 
+def test_weak_if_none_match_from_gzipping_edge_returns_304(client):
+    c, _ = client
+    r = c.get("/api/v1/blocklist/dns", headers={"If-None-Match": f'W/"{SHA}"'})
+    assert r.status_code == 304
+
+
 def test_missing_artifact_is_503_with_retry_after(monkeypatch):
     from api.main import app
     from api.services import cache as cache_mod

@@ -49,9 +49,9 @@ import java.io.FileOutputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
-import java.net.URL
-import org.json.JSONObject
-import java.util.concurrent.ConcurrentHashMap
+import java.io.File
+import java.util.concurrent.ScheduledExecutorService
+
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -76,15 +76,14 @@ class CleanwayVpnService : VpnService() {
     @Volatile
     private var running = false
 
-    // Thread-safe domain caches. Both live for the lifetime of the service;
-    // cleared on `onDestroy`.
-    private val blockedDomains = ConcurrentHashMap.newKeySet<String>()
-    private val safeDomains = ConcurrentHashMap.newKeySet<String>()
-
-    // Bounded pool for outbound /check calls. Each call is cheap but we
-    // cap parallelism so a flood of unknown queries doesn't spawn thousands
-    // of threads.
-    private val checkExecutor = Executors.newFixedThreadPool(4)
+    // The on-device blocklist. Decided here, on the FIRST lookup, no network.
+    // Swapped by BlocklistSync on refresh; the DNS loop only reads it.
+    @Volatile
+    private var blockList: BlockList = BlockList.empty()
+    private var blocklistSync: BlocklistSync? = null
+    private val syncExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
+        Thread(r, "Cleanway-Blocklist").apply { isDaemon = true }
+    }
 
     // Upstream round-trips run here so the read loop stays responsive. Bounded
     // queue: under a flood we drop rather than grow memory, and DNS clients
@@ -108,6 +107,11 @@ class CleanwayVpnService : VpnService() {
 
     @Volatile
     private var dohFailures = 0
+
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -200,6 +204,11 @@ class CleanwayVpnService : VpnService() {
         ShieldPreference.setUserEnabled(this, true)
         Log.i(TAG, "tunnel_started")
 
+        // Load the stored blocklist synchronously (≈30 KB, milliseconds) so
+        // the very first query after start is already filtered; then keep it
+        // fresh in the background (every 2h ± jitter, backoff on failure).
+        startBlocklist()
+
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
 
         // The user can switch Private DNS to strict while we run — from that
@@ -281,7 +290,7 @@ class CleanwayVpnService : VpnService() {
 
                 val normalized = domain.lowercase().trimEnd('.')
 
-                when (DnsDecision.classify(normalized, blockedDomains, safeDomains)) {
+                when (DnsDecision.classify(normalized, blockList)) {
                     DnsDecision.CANARY -> {
                         // Silent verification probe: the app resolves a RANDOM
                         // subdomain of the canary and expects NXDOMAIN. The
@@ -300,18 +309,23 @@ class CleanwayVpnService : VpnService() {
                             canaryAnswerCount += 1
                         }
                     }
+                    DnsDecision.LIST_CANARY -> {
+                        // Second proof of life: the loaded LIST is live, not just
+                        // the tunnel. Answered only when the list contains the
+                        // canary line; silent like the tunnel canary.
+                        val nx = DnsUtil.makeNxDomain(packet, length)
+                        if (nx != null) {
+                            writeToTunnel(output, nx)
+                            listCanaryAnswerCount += 1
+                        }
+                    }
                     DnsDecision.BLOCK -> {
                         val nx = DnsUtil.makeNxDomain(packet, length)
                         if (nx != null) writeToTunnel(output, nx)
-                        // A real block: the site never opened.
-                        notifyBlocked(normalized, BlockLog.KIND_BLOCKED)
+                        // A real block, on the first lookup: the site never opened.
+                        notifyBlocked(blockList.match(normalized) ?: normalized, BlockLog.KIND_BLOCKED)
                     }
                     DnsDecision.FORWARD -> submitForward(packet, length, output)
-                    DnsDecision.FORWARD_AND_CHECK -> {
-                        // Unknown — forward immediately (fail-open), check in background
-                        submitForward(packet, length, output)
-                        checkExecutor.submit { checkDomainAsync(normalized) }
-                    }
                 }
             } catch (e: Exception) {
                 if (!running) break
@@ -405,7 +419,7 @@ class CleanwayVpnService : VpnService() {
         val dnsStart = DnsUtil.IP_UDP_HEADER
         val dnsLen = length - dnsStart
         return try {
-            val conn = (URL(DOH_URL).openConnection() as java.net.HttpURLConnection).apply {
+            val conn = (java.net.URL(DOH_URL).openConnection() as java.net.HttpURLConnection).apply {
                 requestMethod = "POST"
                 doOutput = true
                 // DNS is on the critical path of every page load — a slow
@@ -496,74 +510,6 @@ class CleanwayVpnService : VpnService() {
         }
     }
 
-    private fun checkDomainAsync(domain: String) {
-        try {
-            val url = URL("$API_BASE/api/v1/public/check/$domain")
-            val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
-                connectTimeout = 3_000
-                readTimeout = 3_000
-                requestMethod = "GET"
-            }
-
-            try {
-                if (conn.responseCode == 200) {
-                    val body = conn.inputStream.bufferedReader().use { it.readText() }
-                    // Parse the JSON response properly instead of substring-
-                    // matching "\"dangerous\"" anywhere in the body — the
-                    // old check would false-positive on safe sites whose
-                    // domain or one of the `reasons[].detail` strings
-                    // happened to contain the literal word "dangerous"
-                    // (e.g. "potentially dangerous extension" in a CDN
-                    // description). The iOS counterpart already does this
-                    // via Codable; matching it keeps platform behavior
-                    // identical. (Audit mobile-native MEDIUM Android DNS
-                    // substring match.)
-                    val isDangerous = try {
-                        val json = JSONObject(body)
-                        json.optString("level") == "dangerous"
-                    } catch (e: Exception) {
-                        Log.w(TAG, "check_response_parse_failed: ${e.message}")
-                        // Conservative on parse error: don't block a domain
-                        // we couldn't classify; the user's other layers
-                        // (extension, mobile app) will catch it.
-                        false
-                    }
-                    if (isDangerous) {
-                        if (blockedDomains.size >= BLOCKED_CACHE_CAP) {
-                            // Same cap as safeDomains — without it the
-                            // set grows unbounded across the VPN
-                            // session and adds RAM pressure inside the
-                            // Network Extension's tight memory window.
-                            // (Audit mobile-native LOW
-                            // "Blocked-domains cache is unbounded on
-                            // both platforms — memory grows without
-                            // limit for long-running VPN sessions".)
-                            blockedDomains.firstOrNull()?.let(blockedDomains::remove)
-                        }
-                        blockedDomains.add(domain)
-                        // Honest kind: this lookup was already forwarded
-                        // (fail-open) when the verdict arrived. Future
-                        // lookups are blocked; THIS visit may have opened.
-                        // The person gets "looks like a scam — close it",
-                        // not a claim that we stopped it.
-                        notifyBlocked(domain, BlockLog.KIND_WARNED)
-                    } else {
-                        if (safeDomains.size >= SAFE_CACHE_CAP) {
-                            // Cheap eviction — drop an arbitrary entry.
-                            safeDomains.firstOrNull()?.let(safeDomains::remove)
-                        }
-                        safeDomains.add(domain)
-                    }
-                }
-            } finally {
-                conn.disconnect()
-            }
-        } catch (e: Exception) {
-            Log.v(TAG, "check_api_error: ${e.message}")
-            // Fail-open
-        }
-    }
-
     /**
      * Make a block visible: persist it (so the app can count and list it
      * later, JS or no JS), tell the person now (localized notification from
@@ -635,20 +581,77 @@ class CleanwayVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         stopVpn()
-        blockedDomains.clear()
-        safeDomains.clear()
-        checkExecutor.shutdown()
-        try {
-            if (!checkExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
-                checkExecutor.shutdownNow()
+        blocklistSync?.stop()
+        syncExecutor.shutdownNow()
         forwardExecutor.shutdownNow()
-            }
-        } catch (e: InterruptedException) {
-            checkExecutor.shutdownNow()
-            Thread.currentThread().interrupt()
-        }
         super.onDestroy()
+    }
+
+    // ── Blocklist ────────────────────────────────────────────────────────
+
+    private fun startBlocklist() {
+        try {
+            val veto = loadPopularVeto()
+            blockList = BlockList.empty(veto)
+            val store = BlocklistStore(File(filesDir, "cleanway"))
+            val sync = BlocklistSync(
+                store = store,
+                fetcher = HttpBlocklistFetcher("Cleanway-Android"),
+                popularVeto = veto,
+                url = BLOCKLIST_URL,
+                nowMs = { System.currentTimeMillis() },
+                elapsedMs = { android.os.SystemClock.elapsedRealtime() },
+                onSwap = { list -> blockList = list },
+            )
+            blocklistSync = sync
+            val loaded = sync.loadFromDisk()
+            Log.i(TAG, "blocklist_disk: " + (loaded?.let { "version=${it.version} count=${it.count}" } ?: "none"))
+            sync.start(syncExecutor)
+        } catch (e: Exception) {
+            // Never let the list machinery take the tunnel down: no list means
+            // nothing is blocked (and the card says so), not a dead DNS.
+            Log.w(TAG, "blocklist_start_error: ${e.message}")
+        }
+    }
+
+    /**
+     * Popular-domain veto (assets/popular_veto.txt, GENERATED by
+     * scripts/build_mobile_assets.py: Tranco top-10k minus public suffixes).
+     * A listed name whose registrable is here never blocks — the last line of
+     * defence against a bad publish.
+     */
+    private fun loadPopularVeto(): Set<String> = try {
+        assets.open("popular_veto.txt").bufferedReader().useLines { lines ->
+            lines.map { it.trim().lowercase() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toHashSet()
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "popular_veto_missing: ${e.message}")
+        emptySet()
+    }
+
+    /** For the app: what list is loaded and how fresh it is. */
+    fun blocklistStatus(): Map<String, Any?> {
+        val now = System.currentTimeMillis()
+        val elapsed = android.os.SystemClock.elapsedRealtime()
+        val l = blockList
+        return mapOf(
+            "version" to l.version.toDouble(),
+            "count" to l.count,
+            "revoked" to l.revoked,
+            "ageMs" to (if (l.count > 0 || l.revoked) l.ageMs(now, elapsed).toDouble() else null),
+            "stale" to (l.count == 0 || l.isStale(now, elapsed)),
+            "hasCanary" to l.hasListCanary(),
+            "lastError" to blocklistSync?.lastError,
+            "lastFetchAt" to (blocklistSync?.lastFetchAtMs ?: 0L).toDouble(),
+        )
+    }
+
+    /** For the app's pull-to-refresh: fetch now on the sync thread. */
+    fun refreshBlocklistAsync() {
+        val sync = blocklistSync ?: return
+        syncExecutor.execute { runCatching { sync.refreshOnce() } }
     }
 
     companion object {
@@ -656,6 +659,11 @@ class CleanwayVpnService : VpnService() {
         @JvmStatic
         @Volatile
         var isRunning = false
+
+        /** The live service, for the module's blocklist status/refresh calls. */
+        @JvmStatic
+        @Volatile
+        var instance: CleanwayVpnService? = null
 
         /**
          * Number of canary queries THIS service has answered with NXDOMAIN
@@ -705,9 +713,17 @@ class CleanwayVpnService : VpnService() {
         private const val VPN_GATEWAY_IP = "10.0.0.1"
         private const val UPSTREAM_DNS_HOST = "1.1.1.1"
         private const val UPSTREAM_DNS_PORT = 53
-        private const val API_BASE = "https://api.cleanway.ai"
-        private const val SAFE_CACHE_CAP = 10_000
-        private const val BLOCKED_CACHE_CAP = 10_000
+        /** The one thing the shield fetches from Cleanway: the blocklist artifact. */
+        private const val BLOCKLIST_URL = "https://api.cleanway.ai/api/v1/blocklist/dns"
+
+        /**
+         * Count of list-canary queries answered — proof the LOADED LIST is
+         * live (the tunnel canary only proves the tunnel). Monotonic; the app
+         * compares by delta, like canaryAnswerCount.
+         */
+        @JvmStatic
+        @Volatile
+        var listCanaryAnswerCount: Long = 0L
 
         // Resolved by the app's canary probe to verify filtering is live.
         // Must also exist in public DNS (ops: A/CNAME block-canary.cleanway.ai)
@@ -761,20 +777,19 @@ class CleanwayVpnService : VpnService() {
  * it works. DomainPolicyTest pins this.
  */
 enum class DnsDecision {
-    CANARY, BLOCK, FORWARD, FORWARD_AND_CHECK;
+    CANARY, LIST_CANARY, BLOCK, FORWARD;
 
     companion object {
-        fun classify(
-            normalized: String,
-            blocked: Set<String>,
-            safe: Set<String>,
-        ): DnsDecision = when {
+        fun classify(normalized: String, list: BlockList): DnsDecision = when {
             normalized == CleanwayVpnService.CANARY_DOMAIN ||
                 normalized.endsWith(".${CleanwayVpnService.CANARY_DOMAIN}") -> CANARY
+            // Answered only when the loaded list carries the canary line —
+            // that absence is exactly how the app learns "no list loaded".
+            (normalized == BlockList.LIST_CANARY || normalized.endsWith(".${BlockList.LIST_CANARY}")) &&
+                list.hasListCanary() -> LIST_CANARY
             DomainPolicy.isSystemDomain(normalized) -> FORWARD
-            blocked.contains(normalized) -> BLOCK
-            safe.contains(normalized) -> FORWARD
-            else -> FORWARD_AND_CHECK
+            list.match(normalized) != null -> BLOCK
+            else -> FORWARD
         }
     }
 }

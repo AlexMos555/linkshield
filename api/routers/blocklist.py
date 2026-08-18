@@ -84,7 +84,11 @@ async def get_dns_blocklist(request: Request) -> Response:
         "X-Cleanway-Blocklist-Version": str(meta.get("version", "")),
         "X-Cleanway-Blocklist-Count": str(meta.get("count", "")),
     }
+    # Edges that gzip the body rewrite our strong ETag into a weak one
+    # (W/"<sha>") on the way out, and clients echo that back. Compare on the
+    # sha alone so those clients still get their 304.
     inm = request.headers.get("if-none-match", "")
-    if inm and etag in [t.strip() for t in inm.split(",")]:
+    presented = {t.strip().removeprefix("W/").strip('"') for t in inm.split(",") if t.strip()}
+    if meta["sha256"] in presented:
         return Response(status_code=304, headers=headers)
     return Response(content=text, media_type="text/plain; charset=utf-8", headers=headers)

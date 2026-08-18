@@ -9,9 +9,9 @@ export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
 /** Overall probe deadline and the poll cadence within it. */
 const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
-import type { DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind } from './src/CleanwayVpn.types';
+import type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind } from './src/CleanwayVpn.types';
 
-export type { DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind };
+export type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind };
 
 export async function startVpn(): Promise<boolean> {
   return CleanwayVpn.startVpn();
@@ -194,6 +194,30 @@ export async function requestBlockNotificationPermission(): Promise<boolean> {
     return res === PermissionsAndroid.RESULTS.GRANTED;
   } catch {
     return false;
+  }
+}
+
+/**
+ * The blocklist the service is filtering with, and how fresh it is. On an
+ * older native build (no list machinery) this reports "no list, stale" —
+ * which is the truth: nothing is being blocked from a list.
+ */
+export function blocklistStatus(): BlocklistStatus {
+  const none: BlocklistStatus = {
+    version: 0, count: 0, revoked: false, ageMs: null, stale: true, hasCanary: false, lastError: null, lastFetchAt: 0,
+  };
+  try {
+    return typeof CleanwayVpn.blocklistStatus === 'function' ? { ...none, ...CleanwayVpn.blocklistStatus() } : none;
+  } catch {
+    return none;
+  }
+}
+
+export function refreshBlocklist(): void {
+  try {
+    CleanwayVpn.refreshBlocklist?.();
+  } catch {
+    /* older native build */
   }
 }
 

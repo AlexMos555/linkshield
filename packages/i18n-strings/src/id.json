@@ -1201,7 +1201,12 @@
       },
       "always_on_hint": "Menyala sendiri setelah HP di-restart. Agar mulai bersama HP, sebelum aplikasi apa pun: aktifkan VPN Selalu Aktif",
       "pause_confirm_title": "Jeda perlindungan?",
-      "pause_confirm_body": "Situs penipuan tidak akan diblokir di aplikasi Anda sampai Anda menyalakannya lagi. Pemeriksaan tersimpan Anda tidak berubah."
+      "pause_confirm_body": "Situs penipuan tidak akan diblokir di aplikasi Anda sampai Anda menyalakannya lagi. Pemeriksaan tersimpan Anda tidak berubah.",
+      "blocklist": {
+        "status": "Daftar blokir: {{count}} situs penipuan yang diketahui · diperbarui {{hours}} jam lalu",
+        "stale": "Daftar blokir sudah usang ({{count}} situs) — ketuk untuk memperbarui",
+        "missing": "Belum ada daftar — ketuk untuk mengunduh. Sampai saat itu, tidak ada yang diblokir dari daftar."
+      }
     },
     "rollout": {
       "network_ios": "Memblokir situs penipuan di hampir semua aplikasi. Sedang tahap uji akhir — belum tersedia di iPhone.",

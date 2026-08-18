@@ -161,6 +161,29 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * What blocklist the service has loaded and how fresh it is:
+     * {version, count, revoked, ageMs, stale, hasCanary, lastError, lastFetchAt}.
+     * Reads the service's static snapshot; when the service is not running the
+     * list is by definition not filtering, so the app should not show it.
+     */
+    Function("blocklistStatus") {
+      CleanwayVpnService.instance?.blocklistStatus()
+        ?: mapOf("version" to 0.0, "count" to 0, "revoked" to false, "ageMs" to null,
+                 "stale" to true, "hasCanary" to false, "lastError" to null, "lastFetchAt" to 0.0)
+    }
+
+    /** Fetch the blocklist now (background); no-op when the service is not running. */
+    Function("refreshBlocklist") {
+      CleanwayVpnService.instance?.refreshBlocklistAsync()
+      Unit
+    }
+
+    /** Monotonic count of list-canary answers — proof the LOADED LIST is live. */
+    Function("listCanaryAnswerCount") {
+      CleanwayVpnService.listCanaryAnswerCount.toDouble()
+    }
+
+    /**
      * Monotonic count of canary queries the service has answered. The app
      * reads it before and after triggering a lookup — a delta is proof the
      * query reached THIS tunnel and was filtered. Double because JS has no

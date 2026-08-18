@@ -1143,7 +1143,12 @@
       },
       "always_on_hint": "Comes back by itself after a restart. To start with the phone, before any app: turn on Always-on VPN",
       "pause_confirm_title": "Pause protection?",
-      "pause_confirm_body": "Scam sites will not be blocked in your apps until you turn it back on. Your saved checks are unaffected."
+      "pause_confirm_body": "Scam sites will not be blocked in your apps until you turn it back on. Your saved checks are unaffected.",
+      "blocklist": {
+        "status": "Blocklist: {{count}} known scam sites · updated {{hours}}h ago",
+        "stale": "Blocklist is out of date ({{count}} sites) — tap to update",
+        "missing": "No blocklist yet — tap to download. Until then, nothing is blocked from the list."
+      }
     },
     "rollout": {
       "network_ios": "Blocks scam sites in almost every app. In final testing — not on iPhone yet.",

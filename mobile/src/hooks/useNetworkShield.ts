@@ -19,6 +19,22 @@ interface VpnSubscription {
   remove(): void;
 }
 
+/** Mirror of the module's BlocklistStatus (kept structural so the hook does not import native types). */
+export interface BlocklistStatusLike {
+  version: number;
+  count: number;
+  revoked: boolean;
+  ageMs: number | null;
+  stale: boolean;
+  hasCanary: boolean;
+  lastError: string | null;
+  lastFetchAt: number;
+}
+
+const NO_LIST: BlocklistStatusLike = {
+  version: 0, count: 0, revoked: false, ageMs: null, stale: true, hasCanary: false, lastError: null, lastFetchAt: 0,
+};
+
 interface VpnModule {
   startVpn(): Promise<boolean>;
   stopVpn(): Promise<void>;
@@ -27,6 +43,8 @@ interface VpnModule {
   privateDnsStrictHost?(): string | null;
   openPrivateDnsSettings?(): boolean;
   requestBlockNotificationPermission?(): Promise<boolean>;
+  blocklistStatus?(): BlocklistStatusLike;
+  refreshBlocklist?(): void;
   verifyFiltering(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
   openVpnSettings?(): boolean;
@@ -93,6 +111,14 @@ export interface NetworkShield {
    */
   privateDnsHost: string | null;
   openPrivateDnsSettings: () => void;
+  /**
+   * The blocklist the tunnel is filtering with. `stale` (no list, or older
+   * than 24h) means listed-site protection is NOT active even while the
+   * tunnel is green — the card shows it as its own honest line, never folded
+   * into "You're protected".
+   */
+  blocklist: BlocklistStatusLike;
+  refreshBlocklist: () => void;
   turnOn: () => Promise<void>;
   turnOff: () => Promise<void>;
   /**
@@ -112,6 +138,16 @@ export function useNetworkShield(): NetworkShield {
   const [offline, setOffline] = useState(false);
   const [interrupted, setInterrupted] = useState(false);
   const [privateDnsHost, setPrivateDnsHost] = useState<string | null>(null);
+  const [blocklist, setBlocklist] = useState<BlocklistStatusLike>(NO_LIST);
+
+  const readBlocklist = useCallback(() => {
+    if (!vpn) return;
+    try {
+      setBlocklist(vpn.blocklistStatus?.() ?? NO_LIST);
+    } catch {
+      setBlocklist(NO_LIST);
+    }
+  }, [vpn]);
 
   const sync = useCallback(async () => {
     if (!vpn) return;
@@ -121,6 +157,7 @@ export function useNetworkShield(): NetworkShield {
     setPrivateDnsHost(vpn.privateDnsStrictHost?.() ?? null);
     const isUp = vpn.isVpnRunning();
     setRunning(isUp);
+    readBlocklist();
     if (!isUp) {
       setVerified(false);
       setProbing(false);
@@ -145,7 +182,7 @@ export function useNetworkShield(): NetworkShield {
     } finally {
       setProbing(false);
     }
-  }, [vpn]);
+  }, [vpn, readBlocklist]);
 
   useEffect(() => {
     void sync();
@@ -196,12 +233,17 @@ export function useNetworkShield(): NetworkShield {
     } finally {
       setProbing(false);
     }
+    // The service loads the stored list at start and fetches if it is old;
+    // read what it has, and read again a few seconds later so a first-ever
+    // sync shows up without a foreground round-trip.
+    readBlocklist();
+    setTimeout(readBlocklist, 6000);
     // Now that protection is on, ask to be allowed to say when it stops a
     // site (Android 13+ drops notifications otherwise). After the probe so
     // the green state is not delayed by a dialog; result deliberately
     // ignored — a refusal is respected and the block log still records.
     void vpn.requestBlockNotificationPermission?.();
-  }, [vpn]);
+  }, [vpn, readBlocklist]);
 
   const turnOff = useCallback(async () => {
     if (!vpn) return;
@@ -239,9 +281,14 @@ export function useNetworkShield(): NetworkShield {
     vpn?.openPrivateDnsSettings?.();
   }, [vpn]);
 
+  const refreshBlocklist = useCallback(() => {
+    vpn?.refreshBlocklist?.();
+    setTimeout(readBlocklist, 4000);
+  }, [vpn, readBlocklist]);
+
   return {
     available: vpn !== null,
-    state, verified, probing, offline, interrupted, privateDnsHost,
-    turnOn, turnOff, openVpnSettings, openPrivateDnsSettings,
+    state, verified, probing, offline, interrupted, privateDnsHost, blocklist,
+    turnOn, turnOff, openVpnSettings, openPrivateDnsSettings, refreshBlocklist,
   };
 }
