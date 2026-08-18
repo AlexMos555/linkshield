@@ -42,8 +42,56 @@ import httpx
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from api.services.blocklist_artifact import (  # noqa: E402
-    REDIS_META_KEY, REDIS_TEXT_KEY, meta_for, render_artifact,
+    NEVER_BLOCK_GUARDS, REDIS_META_KEY, REDIS_TEXT_KEY, meta_for, render_artifact,
 )
+
+API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
+PREV_SET_KEY = "dangerous_domains:prev"
+PREV_TEXT_KEY = REDIS_TEXT_KEY + ":prev"
+
+
+def _wire_query(name: str) -> bytes:
+    labels = b"".join(bytes([len(l)]) + l.encode("ascii") for l in name.split(".")) + b"\x00"
+    # Random transaction id: a fixed one makes the GET URL cacheable at the
+    # edge, and a cached answer proves nothing about what we just published.
+    return os.urandom(2) + b"\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + labels + b"\x00\x01\x00\x01"
+
+
+async def _live_rcode(client: "httpx.AsyncClient", name: str) -> int | None:
+    """RCODE the live gateway returns for `name`, or None if unreachable."""
+    import base64
+    q = base64.urlsafe_b64encode(_wire_query(name)).decode().rstrip("=")
+    try:
+        r = await client.get(f"{API_BASE}/dns-query", params={"dns": q},
+                             headers={"accept": "application/dns-message"})
+        if r.status_code != 200 or len(r.content) < 12:
+            return None
+        return r.content[3] & 0x0F
+    except Exception:  # noqa: BLE001
+        return None
+
+
+async def verify_published(sample_listed: list[str]) -> list[str]:
+    """Ask the LIVE gateway what it now does. Empty list = healthy.
+
+    Publishing is the moment a mistake becomes everyone's problem, so the
+    check happens here rather than only in the 15-minute canary: a bad set is
+    rolled back within seconds instead of hours.
+    """
+    problems: list[str] = []
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        for name in NEVER_BLOCK_GUARDS:
+            rcode = await _live_rcode(client, name)
+            if rcode is None:
+                logger.warning("verify: %s unreachable — skipping (not treated as failure)", name)
+                continue
+            if rcode == 3:
+                problems.append(f"{name} is NXDOMAIN after publish")
+        for name in sample_listed[:3]:
+            rcode = await _live_rcode(client, name)
+            if rcode is not None and rcode != 3:
+                problems.append(f"listed {name} is NOT blocked after publish (rcode {rcode})")
+    return problems
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("dangerous-domains-refresh")
@@ -401,6 +449,18 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
         if not await r.set(lock_key, "1", nx=True, ex=1800):
             logger.warning("Another refresh holds the lock — exiting 3")
             return 3
+        # Snapshot what is live so a bad publish can be undone in one step.
+        await r.delete(PREV_SET_KEY, PREV_TEXT_KEY)
+        try:
+            if await r.exists(SET_KEY):
+                await r.sunionstore(PREV_SET_KEY, [SET_KEY])
+                await r.expire(PREV_SET_KEY, TTL_SECONDS)
+            prev_text = await r.get(REDIS_TEXT_KEY)
+            if prev_text:
+                await r.set(PREV_TEXT_KEY, prev_text, ex=TTL_SECONDS)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("could not snapshot the live set (%s) — rollback unavailable", e)
+
         staging = f"{SET_KEY}:staging:{os.getpid()}"
         await r.delete(staging)
         members = list(blockset)
@@ -419,6 +479,18 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
         await pipe.execute()
         card = await r.scard(SET_KEY)
         logger.info("Rebuilt '%s' atomically — %d members live; artifact version %s", SET_KEY, card, meta["version"])
+
+        # Now ask production what it actually does. If we just darkened
+        # something that must never be dark, put the old set back.
+        sample = sorted(n for n in blockset if n != "list-canary.cleanway.ai")[:3]
+        problems = await verify_published(sample)
+        if problems:
+            logger.error("POST-PUBLISH VERIFICATION FAILED: %s", problems)
+            restored = await rollback(r)
+            logger.error("rolled back: %s", "previous set restored" if restored
+                         else "NO SNAPSHOT — the bad set is still live, revert manually")
+            return 5
+        logger.info("post-publish verification: live gateway healthy")
         return 0
     finally:
         try:
@@ -426,6 +498,29 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
             await r.aclose()
         except Exception:  # noqa: BLE001
             pass
+
+
+async def rollback(r) -> bool:
+    """Put the snapshot back. True if something was restored."""
+    try:
+        if not await r.exists(PREV_SET_KEY):
+            return False
+        pipe = r.pipeline(transaction=True)
+        pipe.rename(PREV_SET_KEY, SET_KEY)
+        pipe.expire(SET_KEY, TTL_SECONDS)
+        await pipe.execute()
+        prev_text = await r.get(PREV_TEXT_KEY)
+        if prev_text:
+            pipe = r.pipeline(transaction=True)
+            pipe.set(REDIS_TEXT_KEY, prev_text, ex=TTL_SECONDS)
+            pipe.delete(REDIS_META_KEY)
+            pipe.hset(REDIS_META_KEY, mapping=meta_for(prev_text))
+            pipe.expire(REDIS_META_KEY, TTL_SECONDS)
+            await pipe.execute()
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.error("rollback failed: %s", e)
+        return False
 
 
 def main() -> int:

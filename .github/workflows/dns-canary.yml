@@ -1,0 +1,45 @@
+name: DNS canary
+
+# Watches the live DNS surface every 15 minutes.
+#
+# On 2026-08-18 production NXDOMAIN'd github.com — and every *.github.com —
+# for everyone using our DNS profile, because the blocklist publisher added an
+# exact feed hostname unconditionally. Nothing noticed until a person went
+# looking. This job asks three questions the incident would have failed:
+#   1. do names that must never be blocked still resolve?
+#   2. does a name that IS on the published list still get NXDOMAIN?
+#      (an empty/dead blocklist is the other failure mode, and it once lasted
+#      months)
+#   3. is the phone artifact fresh, self-consistent, and carrying its canary?
+#
+# A failing run mails the repository owner. No secrets: everything it touches
+# is a public endpoint.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'Base URL to check'
+        required: false
+        default: 'https://api.cleanway.ai'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dns-canary
+  cancel-in-progress: true
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Probe live DNS + blocklist artifact
+        run: python3 scripts/dns_canary.py --base "${{ inputs.base || 'https://api.cleanway.ai' }}"
