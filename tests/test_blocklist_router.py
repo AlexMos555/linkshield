@@ -8,19 +8,28 @@ computation, so it can never be the slow part.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 
 import pytest
 from fastapi.testclient import TestClient
 
-BODY = "# cleanway-dns-blocklist v1 generated=1755530000 count=3 status=ok\nlist-canary.cleanway.ai\nphish.example\nscotiabano.com\n"
-SHA = hashlib.sha256(BODY.encode()).hexdigest()
+from api.services.blocklist_artifact import render_artifact_v2
+
+# The artifact is binary (packed 48-bit hashes) and lives base64 in Redis.
+BLOB = render_artifact_v2({"phish.example", "scotiabano.com"}, generated=1755530000)
+ENCODED = base64.b64encode(BLOB).decode()
+SHA = hashlib.sha256(BLOB).hexdigest()
+COUNT = 3  # two names + the injected list canary
 
 
 class _FakeRedis:
-    def __init__(self, text=BODY, meta=None):
+    def __init__(self, text=ENCODED, meta=None):
         self.text = text
-        self.meta = meta if meta is not None else {"version": "1755530000", "sha256": SHA, "count": "3", "generated_at": "1755530000"}
+        self.meta = meta if meta is not None else {
+            "version": "1755530000", "sha256": SHA, "count": str(COUNT),
+            "generated_at": "1755530000", "format": "v2",
+        }
         self.calls = 0
 
     async def get(self, key):
@@ -61,16 +70,29 @@ def client(monkeypatch):
     return TestClient(app), fake
 
 
-def test_serves_text_with_validators(client):
+def test_serves_binary_with_validators(client):
     c, _ = client
     r = c.get("/api/v1/blocklist/dns")
     assert r.status_code == 200, r.text
-    assert r.headers["content-type"].startswith("text/plain")
-    assert r.text == BODY
+    assert r.headers["content-type"].startswith("application/octet-stream")
+    assert r.content == BLOB
     assert r.headers["etag"] == f'"{SHA}"'
     assert r.headers["x-cleanway-blocklist-version"] == "1755530000"
-    assert r.headers["x-cleanway-blocklist-count"] == "3"
+    assert r.headers["x-cleanway-blocklist-count"] == str(COUNT)
     assert "max-age=1800" in r.headers["cache-control"]
+
+
+def test_served_artifact_parses_and_matches_like_the_phone(client):
+    from api.services.blocklist_artifact import artifact_covers, parse_artifact_v2
+    c, _ = client
+    blob = c.get("/api/v1/blocklist/dns").content
+    header, hashes = parse_artifact_v2(blob)
+    assert header["version"] == "v2" and header["count"] == COUNT
+    hs = set(hashes)
+    assert artifact_covers(hs, "phish.example")
+    assert artifact_covers(hs, "login.phish.example")
+    assert not artifact_covers(hs, "example")
+    assert not artifact_covers(hs, "nothing-here.test")
 
 
 def test_if_none_match_returns_304(client):
@@ -79,6 +101,12 @@ def test_if_none_match_returns_304(client):
     assert r.status_code == 304
     assert r.headers["etag"] == f'"{SHA}"'
     assert r.content == b""
+
+
+def test_weak_if_none_match_from_gzipping_edge_returns_304(client):
+    c, _ = client
+    r = c.get("/api/v1/blocklist/dns", headers={"If-None-Match": f'W/"{SHA}"'})
+    assert r.status_code == 304
 
 
 def test_missing_artifact_is_503_with_retry_after(monkeypatch):
@@ -103,7 +131,7 @@ def test_sha_mismatch_between_meta_and_body_is_503(monkeypatch):
     from api.main import app
     from api.services import cache as cache_mod
     from api.services import rate_limiter
-    fake = _FakeRedis(meta={"version": "1", "sha256": "0" * 64, "count": "3"})
+    fake = _FakeRedis(meta={"version": "1", "sha256": "0" * 64, "count": "3", "format": "v2"})
 
     async def _r():
         return fake
@@ -124,14 +152,35 @@ def test_health_reports_blocklist_age(client):
 
 
 def test_artifact_format_helper():
-    """The publisher's format function — one place that knows the header."""
-    from api.services.blocklist_artifact import render_artifact, parse_header
-    text = render_artifact({"b.example", "a.example"}, generated=1755530000)
-    lines = text.split("\n")
-    assert lines[0] == "# cleanway-dns-blocklist v1 generated=1755530000 count=3 status=ok"
-    # canary always injected, names sorted, trailing newline
-    assert lines[1:4] == ["a.example", "b.example", "list-canary.cleanway.ai"]
-    assert text.endswith("\n")
-    assert parse_header(lines[0]) == {"version": "v1", "generated": 1755530000, "count": 3, "status": "ok"}
-    revoked = render_artifact(set(), generated=5, revoked=True)
-    assert revoked.startswith("# cleanway-dns-blocklist v1 generated=5 count=0 status=revoked")
+    """The publisher's format — one place that knows magic, header and packing."""
+    from api.services.blocklist_artifact import (
+        HASH_BYTES, LIST_CANARY, MAGIC, name_hash, parse_artifact_v2, parse_header, render_artifact_v2,
+    )
+    blob = render_artifact_v2({"b.example", "a.example"}, generated=1755530000)
+    assert blob.startswith(MAGIC)
+    nl = blob.index(b"\n", len(MAGIC))
+    header = blob[len(MAGIC):nl + 1].decode()
+    assert header == "# cleanway-dns-blocklist v2 generated=1755530000 count=3 status=ok\n"
+    assert parse_header(header) == {"version": "v2", "generated": 1755530000, "count": 3, "status": "ok"}
+    body = blob[nl + 1:]
+    assert len(body) == 3 * HASH_BYTES          # canary always injected
+    _, hashes = parse_artifact_v2(blob)
+    assert hashes == sorted(hashes)             # sorted: the phone binary-searches
+    assert name_hash(LIST_CANARY) in hashes
+    revoked = render_artifact_v2(set(), generated=5, revoked=True)
+    assert revoked == MAGIC + b"# cleanway-dns-blocklist v2 generated=5 count=0 status=revoked\n"
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda b: b[1:],                       # bad magic
+    lambda b: b[:-1],                      # truncated body
+    lambda b: b.replace(b"count=3", b"count=9"),
+    lambda b: b[:b.index(b"\n") + 1] + b"\xff" * 18,  # unsorted / wrong bytes
+])
+def test_malformed_artifacts_are_rejected(mutate):
+    """The phone rejects a bad artifact whole; the server-side parser is the
+    same contract, so both ends agree on what "malformed" means."""
+    from api.services.blocklist_artifact import parse_artifact_v2, render_artifact_v2
+    blob = render_artifact_v2({"a.example", "b.example"}, generated=1)
+    with pytest.raises(Exception):
+        parse_artifact_v2(mutate(blob))

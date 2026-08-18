@@ -8,6 +8,7 @@ before loading, so a truncated or tampered artifact is rejected at both ends.
 """
 from __future__ import annotations
 
+import base64
 import logging
 import time
 from typing import Optional
@@ -17,7 +18,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from api.services.blocklist_artifact import (
     REDIS_META_KEY,
     REDIS_TEXT_KEY,
-    sha256_hex,
+    sha256_bytes,
 )
 from api.services.rate_limiter import rate_limit
 
@@ -29,26 +30,40 @@ CACHE_MAX_AGE_S = 1800
 RETRY_AFTER_S = 600
 
 
-async def load_artifact() -> Optional[tuple[str, dict]]:
-    """(text, meta) from Redis, or None when absent/inconsistent."""
+# The artifact is ~2.6 MB of packed hashes, stored base64 in Redis (the client
+# runs with decode_responses=True for everything else). Decoding it per request
+# would be pure waste, so keep the last one in process, keyed by its sha.
+_cached: Optional[tuple[str, bytes]] = None
+
+
+async def load_artifact() -> Optional[tuple[bytes, dict]]:
+    """(blob, meta) from Redis, or None when absent/inconsistent."""
+    global _cached
     try:
         from api.services.cache import get_redis
         r = await get_redis()
-        text = await r.get(REDIS_TEXT_KEY)
+        encoded = await r.get(REDIS_TEXT_KEY)
         meta = await r.hgetall(REDIS_META_KEY) or {}
     except Exception:
         logger.warning("blocklist artifact: redis unavailable", exc_info=True)
         return None
-    if not text or not meta:
+    if not encoded or not meta:
         return None
-    if isinstance(text, bytes):
-        text = text.decode("utf-8", "replace")
     meta = {(k.decode() if isinstance(k, bytes) else k): (v.decode() if isinstance(v, bytes) else v)
             for k, v in meta.items()}
-    if meta.get("sha256") != sha256_hex(text):
+    sha = meta.get("sha256", "")
+    if _cached and _cached[0] == sha:
+        return _cached[1], meta
+    try:
+        blob = base64.b64decode(encoded)
+    except Exception:
+        logger.error("blocklist artifact: not valid base64 — refusing to serve")
+        return None
+    if sha != sha256_bytes(blob):
         logger.error("blocklist artifact: meta sha256 does not match body — refusing to serve")
         return None
-    return text, meta
+    _cached = (sha, blob)
+    return blob, meta
 
 
 async def artifact_age_seconds() -> Optional[int]:
@@ -76,7 +91,7 @@ async def get_dns_blocklist(request: Request) -> Response:
             media_type="text/plain",
             headers={"Retry-After": str(RETRY_AFTER_S), "Cache-Control": "no-store"},
         )
-    text, meta = loaded
+    blob, meta = loaded
     etag = f'"{meta["sha256"]}"'
     headers = {
         "ETag": etag,
@@ -84,7 +99,11 @@ async def get_dns_blocklist(request: Request) -> Response:
         "X-Cleanway-Blocklist-Version": str(meta.get("version", "")),
         "X-Cleanway-Blocklist-Count": str(meta.get("count", "")),
     }
+    # Edges that gzip the body rewrite our strong ETag into a weak one
+    # (W/"<sha>") on the way out, and clients echo that back. Compare on the
+    # sha alone so those clients still get their 304.
     inm = request.headers.get("if-none-match", "")
-    if inm and etag in [t.strip() for t in inm.split(",")]:
+    presented = {t.strip().removeprefix("W/").strip('"') for t in inm.split(",") if t.strip()}
+    if meta["sha256"] in presented:
         return Response(status_code=304, headers=headers)
-    return Response(content=text, media_type="text/plain; charset=utf-8", headers=headers)
+    return Response(content=blob, media_type="application/octet-stream", headers=headers)

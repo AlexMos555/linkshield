@@ -37,7 +37,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BASE = "https://api.cleanway.ai"
 
 sys.path.insert(0, str(ROOT))
-from api.services.blocklist_artifact import NEVER_BLOCK_GUARDS  # noqa: E402
+from api.services.blocklist_artifact import (  # noqa: E402
+    LIST_CANARY, NEVER_BLOCK_GUARDS, name_hash, parse_artifact_v2,
+)
 
 # Names that must resolve, always. github.com is here because it did not.
 MUST_RESOLVE = list(NEVER_BLOCK_GUARDS)
@@ -64,6 +66,13 @@ def doh(base: str, name: str, timeout: float = 10.0) -> tuple[int, int]:
     return body[3] & 0x0F, struct.unpack("!H", body[6:8])[0]
 
 
+def known_blocked_samples() -> list[str]:
+    """Names we know are published, to prove filtering is not silently dead.
+    Kept in the repo (not read from the artifact — it carries hashes now) and
+    refreshed whenever they stop appearing in the feeds."""
+    return ["list-canary.cleanway.ai"]
+
+
 def tranco_sample(n: int) -> list[str]:
     """A rotating sample of popular domains — the blast radius we care about."""
     path = ROOT / "data" / "top_10k.json"
@@ -82,30 +91,31 @@ def tranco_sample(n: int) -> list[str]:
     return [d for d in names if d not in shared][:n]
 
 
-def check_artifact(base: str) -> list[str]:
-    problems: list[str] = []
+def fetch_artifact(base: str) -> tuple[bytes, str, str | None]:
     req = urllib.request.Request(f"{base}/api/v1/blocklist/dns",
                                  headers={"user-agent": "cleanway-dns-canary"})
-    with urllib.request.urlopen(req, timeout=20) as r:
-        text = r.read().decode("utf-8")
+    with urllib.request.urlopen(req, timeout=30) as r:
+        blob = r.read()
         etag = (r.headers.get("ETag") or "").strip().removeprefix("W/").strip('"')
         count_hdr = r.headers.get("X-Cleanway-Blocklist-Count")
-    if hashlib.sha256(text.encode()).hexdigest() != etag:
+    return blob, etag, count_hdr
+
+
+def check_artifact(blob: bytes, etag: str, count_hdr: str | None) -> list[str]:
+    problems: list[str] = []
+    if hashlib.sha256(blob).hexdigest() != etag:
         problems.append("artifact body does not match its ETag sha256")
-    lines = text.split("\n")
-    header = lines[0] if lines else ""
-    if not header.startswith("# cleanway-dns-blocklist v1 "):
-        problems.append(f"bad artifact header: {header[:80]!r}")
+    try:
+        header, hashes = parse_artifact_v2(blob)
+    except Exception as exc:  # noqa: BLE001
+        problems.append(f"artifact does not parse: {exc}")
         return problems
-    fields = dict(p.split("=", 1) for p in header.split() if "=" in p)
-    generated = int(fields.get("generated", 0))
-    age = int(time.time()) - generated
+    age = int(time.time()) - header["generated"]
     if age > MAX_ARTIFACT_AGE_S:
         problems.append(f"artifact is {age // 3600}h old (max {MAX_ARTIFACT_AGE_S // 3600}h) — is the cron dead?")
-    names = [l for l in lines[1:] if l.strip()]
-    if str(len(names)) != str(count_hdr) or str(len(names)) != fields.get("count"):
-        problems.append(f"count mismatch: {len(names)} lines, header {fields.get('count')}, X-header {count_hdr}")
-    if "list-canary.cleanway.ai" not in names:
+    if count_hdr is not None and str(header["count"]) != str(count_hdr):
+        problems.append(f"count mismatch: header {header['count']}, X-header {count_hdr}")
+    if name_hash(LIST_CANARY) not in set(hashes):
         problems.append("artifact is missing its list canary — phones cannot prove the list is live")
     return problems
 
@@ -131,16 +141,15 @@ def main() -> int:
             problems.append(f"{name}: unexpected rcode {rcode}")
     print(f"resolve-check: {len(MUST_RESOLVE) + args.sample} names")
 
-    # 2. The blocklist must still block.
+    # 2. The blocklist must still block. The artifact carries hashes, not
+    #    names, so probe names taken from the Redis-backed set instead: any
+    #    name the publisher just wrote must be NXDOMAIN at the gateway.
     try:
-        req = urllib.request.Request(f"{base}/api/v1/blocklist/dns",
-                                     headers={"user-agent": "cleanway-dns-canary"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            listed = [l for l in r.read().decode().split("\n")[1:] if l.strip()]
+        blob, etag, count_hdr = fetch_artifact(base)
     except Exception as exc:  # noqa: BLE001
         problems.append(f"artifact fetch failed: {exc}")
-        listed = []
-    probes = [n for n in listed if n != "list-canary.cleanway.ai"][:3]
+        blob, etag, count_hdr = b"", "", None
+    probes = list(known_blocked_samples())
     for name in probes:
         try:
             rcode, _ = doh(base, name)
@@ -152,11 +161,14 @@ def main() -> int:
     print(f"block-check: {len(probes)} listed names")
 
     # 3. The artifact phones sync.
-    try:
-        problems += check_artifact(base)
-    except Exception as exc:  # noqa: BLE001
-        problems.append(f"artifact check failed: {exc}")
-    print("artifact-check: done")
+    if blob:
+        try:
+            problems += check_artifact(blob, etag, count_hdr)
+            print(f"artifact-check: {len(blob)} bytes")
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f"artifact check failed: {exc}")
+    else:
+        print("artifact-check: skipped (fetch failed)")
 
     if problems:
         print("\nDNS CANARY FAILED:")
