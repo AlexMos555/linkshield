@@ -40,6 +40,11 @@ from urllib.parse import urlparse
 
 import httpx
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from api.services.blocklist_artifact import (  # noqa: E402
+    REDIS_META_KEY, REDIS_TEXT_KEY, meta_for, render_artifact,
+)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("dangerous-domains-refresh")
 
@@ -294,7 +299,33 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
     return out
 
 
-async def refresh(redis_url: str | None, dry_run: bool) -> int:
+# Publish gates. A bad publish darkens sites for every DNS user; a skipped
+# publish just leaves the previous set (3-day TTL) in place. Prefer skipping.
+MIN_ENTRIES = 300
+MAX_ENTRIES = 50_000
+MAX_CHURN = 0.5  # more than half the previous set replaced → suspicious
+
+
+def publish_gate(blockset: set[str], previous: set[str] | None, popular: set[str],
+                 shared: set[str], force: bool = False) -> tuple[bool, str]:
+    """(ok, reason). Never lets a popular domain, a shared-platform apex or a
+    wildly different set through."""
+    n = len(blockset)
+    if n < MIN_ENTRIES:
+        return False, f"set too small ({n} < {MIN_ENTRIES}) — feeds probably failed"
+    if n > MAX_ENTRIES:
+        return False, f"set too large ({n} > {MAX_ENTRIES}) — parser probably broke"
+    bad = sorted((blockset & popular) | (blockset & shared))
+    if bad:
+        return False, f"popular/shared names in set: {bad[:10]}"
+    if previous and not force:
+        churn = len(blockset ^ previous) / max(1, len(previous))
+        if churn > MAX_CHURN:
+            return False, f"churn {churn:.0%} vs previous {len(previous)} entries (use --force if intended)"
+    return True, "ok"
+
+
+async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> int:
     top_100k = _load_top_100k()
     hosts: list[str] = []  # one entry per feed URL — repeats feed the shared-host guard
     for name, url, parser in (
@@ -336,11 +367,22 @@ async def refresh(redis_url: str | None, dry_run: bool) -> int:
     blockset = build_blockset(hosts, top_100k, is_popular=is_popular, public_suffixes=public_suffixes)
     logger.info("Built dangerous set: %d entries (from %d feed URLs / %d distinct hosts)",
                 len(blockset), len(hosts), len(set(hosts)))
-    for must_never in ("github.com", "raw.githubusercontent.com", "google.com", "docs.google.com",
-                       "com.am", "co.uk", "com.br", "us.org", "github.io", "blogspot.com"):
-        if must_never in blockset:
-            logger.error("SAFETY: %s ended up in the blockset — refusing to write", must_never)
-            return 4
+    shared_all = default_shared_suffixes()
+    previous: set[str] | None = None
+    if r is not None:
+        try:
+            previous = set(await r.smembers(SET_KEY))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("could not read previous set (%s) — churn gate skipped", e)
+    ok, why = publish_gate(blockset, previous, top_100k | (public_suffixes or set()), shared_all, force=force)
+    if not ok:
+        logger.error("PUBLISH GATE: %s — keeping the previous set", why)
+        return 4
+    logger.info("publish gate: %s", why)
+
+    artifact = render_artifact(blockset)
+    meta = meta_for(artifact)
+    logger.info("mobile artifact: %s bytes, sha256 %s…, count %s", len(artifact), meta["sha256"][:12], meta["count"])
 
     if dry_run:
         logger.info("[dry-run] would rebuild '%s' with %d entries; sample: %s",
@@ -365,10 +407,18 @@ async def refresh(redis_url: str | None, dry_run: bool) -> int:
         for i in range(0, len(members), BATCH):
             await r.sadd(staging, *members[i:i + BATCH])
         await r.expire(staging, TTL_SECONDS)
-        await r.rename(staging, SET_KEY)
-        await r.expire(SET_KEY, TTL_SECONDS)
+        # One transaction: the gateway's set and the phones' artifact flip
+        # together, so a phone can never sync a list the gateway disagrees with.
+        pipe = r.pipeline(transaction=True)
+        pipe.rename(staging, SET_KEY)
+        pipe.expire(SET_KEY, TTL_SECONDS)
+        pipe.set(REDIS_TEXT_KEY, artifact, ex=TTL_SECONDS)
+        pipe.delete(REDIS_META_KEY)
+        pipe.hset(REDIS_META_KEY, mapping=meta)
+        pipe.expire(REDIS_META_KEY, TTL_SECONDS)
+        await pipe.execute()
         card = await r.scard(SET_KEY)
-        logger.info("Rebuilt '%s' atomically — %d members live", SET_KEY, card)
+        logger.info("Rebuilt '%s' atomically — %d members live; artifact version %s", SET_KEY, card, meta["version"])
         return 0
     finally:
         try:
@@ -381,8 +431,9 @@ async def refresh(redis_url: str | None, dry_run: bool) -> int:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--dry-run", action="store_true", help="Fetch + report, do not write Redis")
+    p.add_argument("--force", action="store_true", help="Bypass the churn gate (intentional big change)")
     args = p.parse_args()
-    return asyncio.run(refresh(os.environ.get("REDIS_URL", "").strip() or None, args.dry_run))
+    return asyncio.run(refresh(os.environ.get("REDIS_URL", "").strip() or None, args.dry_run, force=args.force))
 
 
 if __name__ == "__main__":

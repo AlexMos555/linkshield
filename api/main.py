@@ -20,6 +20,7 @@ from api.routers.pricing import router as pricing_router
 from api.routers.email_unsubscribe import router as email_unsubscribe_router
 from api.routers.family import router as family_router
 from api.routers.email import router as email_router
+from api.routers.blocklist import router as blocklist_router
 from api.routers.phone import router as phone_router
 from api.routers.scam import router as scam_router
 from api.routers.auth import router as auth_router
@@ -196,6 +197,7 @@ app.include_router(payments_router)
 app.include_router(user_router)
 app.include_router(feedback_router)
 app.include_router(public_router)
+app.include_router(blocklist_router)
 app.include_router(breach_router)
 app.include_router(referral_router)
 app.include_router(org_router)
@@ -250,11 +252,28 @@ async def health_check():
     else:
         status = "ok"
 
+    # The phone's DNS blocklist: version + age, so a dead cron is visible
+    # here (and alertable) instead of only as a stale list on phones.
+    blocklist_version = None
+    blocklist_age_s = None
+    try:
+        from api.routers.blocklist import load_artifact
+        loaded = await load_artifact()
+        if loaded:
+            _, meta = loaded
+            blocklist_version = meta.get("version")
+            import time as _time
+            blocklist_age_s = max(0, int(_time.time()) - int(meta.get("generated_at", 0)))
+    except Exception:
+        pass
+
     return {
         "status": status,
         "version": __version__,
         "redis": "ok" if redis_ok else "down",
         "circuit_breakers": breakers,
+        "blocklist_version": blocklist_version,
+        "blocklist_age_s": blocklist_age_s,
     }
 
 

@@ -126,3 +126,39 @@ def test_optional_popularity_lookup_guards_tranco_1m_hosts():
 
 def test_ip_literals_are_skipped():
     assert _build(["1.2.3.4", "10.0.0.1"]) == set()
+
+
+# ─────────────────────────────────────────────────────────────────
+# Publish gates — abort and keep the previous set rather than publish junk
+# ─────────────────────────────────────────────────────────────────
+
+def test_publish_gate_rejects_too_small_and_too_large():
+    ok, why = rdd.publish_gate(set(f"d{i}.example" for i in range(10)), previous=None, popular=set(), shared=set())
+    assert not ok and "small" in why
+    ok, why = rdd.publish_gate(set(f"d{i}.example" for i in range(60_000)), previous=None, popular=set(), shared=set())
+    assert not ok and "large" in why
+
+
+def test_publish_gate_rejects_popular_or_shared_intersection():
+    names = {f"d{i}.example" for i in range(400)} | {"github.com"}
+    ok, why = rdd.publish_gate(names, previous=None, popular={"github.com"}, shared=set())
+    assert not ok and "github.com" in why
+    names = {f"d{i}.example" for i in range(400)} | {"us.org"}
+    ok, why = rdd.publish_gate(names, previous=None, popular=set(), shared={"us.org"})
+    assert not ok and "us.org" in why
+
+
+def test_publish_gate_rejects_excessive_churn_unless_forced():
+    prev = {f"old{i}.example" for i in range(400)}
+    new = {f"new{i}.example" for i in range(400)}
+    ok, why = rdd.publish_gate(new, previous=prev, popular=set(), shared=set())
+    assert not ok and "churn" in why
+    ok, _ = rdd.publish_gate(new, previous=prev, popular=set(), shared=set(), force=True)
+    assert ok
+
+
+def test_publish_gate_accepts_normal_refresh():
+    prev = {f"d{i}.example" for i in range(400)}
+    new = prev - {"d1.example", "d2.example"} | {"fresh.example"}
+    ok, why = rdd.publish_gate(new, previous=prev, popular={"github.com"}, shared={"us.org"})
+    assert ok, why
