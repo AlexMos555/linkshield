@@ -18,6 +18,10 @@ on:
         description: 'Fetch + report but do not write Redis'
         type: boolean
         default: false
+      force:
+        description: 'Bypass the churn gate (intentional big change, e.g. adding a feed)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -41,10 +45,10 @@ jobs:
           REDIS_URL: ${{ secrets.REDIS_URL_PRODUCTION }}
         run: |
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            python scripts/refresh_dangerous_domains.py --dry-run
+            python scripts/refresh_dangerous_domains.py ${{ inputs.force && '--force' || '' }} --dry-run
           else
             set +e
-            python scripts/refresh_dangerous_domains.py
+            python scripts/refresh_dangerous_domains.py ${{ inputs.force && '--force' || '' }}
             code=$?
             # Exit 3 = another run holds the lock (overlap) — not a failure.
             if [ "$code" = "3" ]; then
