@@ -204,6 +204,10 @@ async def check_burst_only(user: AuthUser) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+# Categories whose availability outranks limiter strictness (see below).
+FAIL_OPEN_CATEGORIES: frozenset[str] = frozenset({"doh"})
+
+
 async def check_ip_rate_limit(
     ip: str,
     category: str,
@@ -251,7 +255,13 @@ async def check_ip_rate_limit(
     except HTTPException:
         raise
     except Exception as e:
-        logger.warning("ip_rate_limiter_redis_unavailable", extra={"error": str(e)})
+        logger.warning("ip_rate_limiter_redis_unavailable", extra={"error": str(e), "category": category})
+        # DNS is the one path that must never 503: for anyone whose phone
+        # points at /dns-query, "rate limiter unavailable" would mean "no
+        # site on the internet resolves" for the length of a Redis blip.
+        # Everything else keeps the production fail-closed posture.
+        if category in FAIL_OPEN_CATEGORIES:
+            return limit
         if get_settings().rate_limit_fail_closed:
             raise HTTPException(
                 status_code=503,

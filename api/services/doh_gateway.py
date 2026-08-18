@@ -153,19 +153,17 @@ def _registrable_domain(qname: str) -> str:
     return last_two
 
 
-def make_nxdomain_response(wire: bytes) -> bytes:
-    """Build a syntactically-valid NXDOMAIN response for the query
-    `wire`. We echo the question section verbatim and set the
-    response flags + RCODE.
-    """
-    if len(wire) < 12:
-        # Can't build a response from a malformed query — return a
-        # synthetic SERVFAIL-shaped frame so the client falls back
-        # to its other resolvers cleanly.
-        return b"\x00\x00\x81\x82" + b"\x00" * 8
+# Negative-cache TTL carried in the SOA of every synthesized NXDOMAIN.
+# RFC 2308 §5: a resolver caches a name error only when the response carries
+# an SOA in the authority section; without one, netd re-asked on every retry
+# and one blocked page became a burst of identical queries.
+NEGATIVE_TTL_S = 60
+_SOA_MNAME = "blocked.cleanway.ai"
+_SOA_RNAME = "hostmaster.cleanway.ai"
 
-    # Find the end of the question section by parsing QNAME +
-    # QTYPE/QCLASS (4 bytes after QNAME's terminator).
+
+def _question_end(wire: bytes) -> int:
+    """Offset just past the question section (QNAME + QTYPE + QCLASS)."""
     pos = 12
     while pos < len(wire):
         length = wire[pos]
@@ -174,17 +172,61 @@ def make_nxdomain_response(wire: bytes) -> bytes:
             break
         pos += length
     pos += 4  # QTYPE + QCLASS
-    if pos > len(wire):
-        pos = len(wire)
+    return min(pos, len(wire))
 
-    # Header: copy the transaction ID + set response/QR=1, AA=1,
-    # RCODE=NXDOMAIN. ANCOUNT/NSCOUNT/ARCOUNT all zero.
+
+def _encode_name(name: str) -> bytes:
+    return b"".join(bytes([len(l)]) + l.encode("ascii", "ignore") for l in name.split(".") if l) + b"\x00"
+
+
+def _soa_rr(qname: str) -> bytes:
+    """One SOA record for the authority section. Owner = the parent of the
+    queried name (an ancestor, which is what a negative-caching stub checks
+    for); MINIMUM = TTL = NEGATIVE_TTL_S."""
+    parts = [p for p in (qname or "").split(".") if p]
+    owner = ".".join(parts[1:]) if len(parts) >= 2 else (parts[0] if parts else "")
+    rdata = (
+        _encode_name(_SOA_MNAME) + _encode_name(_SOA_RNAME)
+        + struct.pack("!IIIII", 1, 3600, 600, 86400, NEGATIVE_TTL_S)
+    )
+    return (
+        _encode_name(owner)
+        + struct.pack("!HHIH", 6, 1, NEGATIVE_TTL_S, len(rdata))  # TYPE SOA, CLASS IN, TTL, RDLENGTH
+        + rdata
+    )
+
+
+def make_nxdomain_response(wire: bytes) -> bytes:
+    """Build a syntactically-valid NXDOMAIN response for the query
+    `wire`: question echoed, RCODE=3, and an SOA in the authority section
+    so the client negatively caches it (NEGATIVE_TTL_S).
+    """
+    if len(wire) < 12:
+        # Can't build a response from a malformed query — return a
+        # synthetic SERVFAIL-shaped frame so the client falls back
+        # to its other resolvers cleanly.
+        return b"\x00\x00\x81\x82" + b"\x00" * 8
+
+    pos = _question_end(wire)
     tx_id = wire[:2]
     flags = struct.pack("!H", 0x8403)  # QR=1, AA=1, RA=1 (advisory), RCODE=3
-    counts = struct.pack("!HHHH", 1, 0, 0, 0)
-    header = tx_id + flags + counts
+    counts = struct.pack("!HHHH", 1, 0, 1, 0)  # QD=1, AN=0, NS=1 (SOA), AR=0
     question = wire[12:pos]
-    return header + question
+    return tx_id + flags + counts + question + _soa_rr(parse_qname(wire) or "")
+
+
+def make_servfail_response(wire: bytes) -> bytes:
+    """SERVFAIL (RCODE 2) for the query `wire`. Used when the upstream is
+    unreachable: a stub resolver treats SERVFAIL as "try your other servers",
+    whereas an NXDOMAIN would be believed — and negatively cached — as "this
+    site does not exist", for every site, for the length of the outage.
+    """
+    if len(wire) < 12:
+        return b"\x00\x00\x81\x82" + b"\x00" * 8
+    pos = _question_end(wire)
+    flags = struct.pack("!H", 0x8182)  # QR=1, RD=1, RA=1, RCODE=2
+    counts = struct.pack("!HHHH", 1, 0, 0, 0)
+    return wire[:2] + flags + counts + wire[12:pos]
 
 
 async def is_blocked(qname: str, dangerous_domains: Iterable[str]) -> bool:
