@@ -1322,7 +1322,9 @@
       "empty_title": "Ancora nessun controllo",
       "empty_body": "Ogni link che controlli compare qui. La lista resta solo su questo telefono.",
       "empty_cta": "Controlla un link",
-      "privacy": "Questa lista resta sul tuo telefono. Quando controlli un link, ai nostri server viene inviato solo il nome del sito."
+      "privacy": "Questa lista resta sul tuo telefono. Quando controlli un link, ai nostri server viene inviato solo il nome del sito.",
+      "shield_blocked": "Fermato dallo scudo",
+      "shield_warned": "Segnalato dallo scudo: se si è aperto, chiudilo"
     },
     "report": {
       "title": "Resoconto settimanale",
@@ -1498,6 +1500,18 @@
       "skip": "Salta",
       "next": "Avanti",
       "start": "Inizia"
+    },
+    "android_native": {
+      "fg_channel": "Protezione Cleanway",
+      "fg_channel_desc": "Mostrata mentre la protezione anti-phishing è attiva",
+      "fg_title": "La protezione Cleanway è attiva",
+      "fg_text": "Controllo dei nomi dei siti contro le truffe",
+      "block_channel": "Siti bloccati",
+      "block_channel_desc": "Ti avvisa quando un sito pericoloso è stato fermato",
+      "blocked_title": "Cleanway ha fermato un sito pericoloso",
+      "blocked_text": "{{domain}} sembrava una truffa: è stato fermato prima di aprirsi.",
+      "warn_title": "Questo sito sembra una truffa",
+      "warn_text": "{{domain}} sembra pericoloso. Se è aperto, chiudilo e non digitare nulla."
     }
   }
 }

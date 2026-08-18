@@ -26,6 +26,7 @@ interface VpnModule {
   wasUserEnabled?(): boolean;
   privateDnsStrictHost?(): string | null;
   openPrivateDnsSettings?(): boolean;
+  requestBlockNotificationPermission?(): Promise<boolean>;
   verifyFiltering(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
   openVpnSettings?(): boolean;
@@ -195,6 +196,11 @@ export function useNetworkShield(): NetworkShield {
     } finally {
       setProbing(false);
     }
+    // Now that protection is on, ask to be allowed to say when it stops a
+    // site (Android 13+ drops notifications otherwise). After the probe so
+    // the green state is not delayed by a dialog; result deliberately
+    // ignored — a refusal is respected and the block log still records.
+    void vpn.requestBlockNotificationPermission?.();
   }, [vpn]);
 
   const turnOff = useCallback(async () => {

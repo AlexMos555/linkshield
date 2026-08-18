@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "Каждая проверенная ссылка появляется здесь. Список хранится только на этом телефоне.",
   "mobile.history.empty_cta": "Проверить ссылку",
   "mobile.history.privacy": "Этот список остаётся на вашем телефоне. Когда вы проверяете ссылку, на наши серверы отправляется только название сайта.",
+  "mobile.history.shield_blocked": "Остановлен щитом",
+  "mobile.history.shield_warned": "Помечен щитом — если открылся, закройте",
   "mobile.report.title": "Отчёт за неделю",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "На этой неделе",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "На Android один шаг настройки — и известные мошеннические сайты блокируются в каждом приложении. Совсем новые мошеннические сайты могут проскочить мимо любого чёрного списка — для этого и нужна кнопка проверки.",
   "mobile.onboarding.skip": "Пропустить",
   "mobile.onboarding.next": "Далее",
-  "mobile.onboarding.start": "Начать"
+  "mobile.onboarding.start": "Начать",
+  "mobile.android_native.fg_channel": "Защита Cleanway",
+  "mobile.android_native.fg_channel_desc": "Показывается, пока работает защита от фишинга",
+  "mobile.android_native.fg_title": "Защита Cleanway включена",
+  "mobile.android_native.fg_text": "Проверяем адреса сайтов на мошенничество",
+  "mobile.android_native.block_channel": "Заблокированные сайты",
+  "mobile.android_native.block_channel_desc": "Сообщает, когда опасный сайт был остановлен",
+  "mobile.android_native.blocked_title": "Cleanway остановил опасный сайт",
+  "mobile.android_native.blocked_text": "{{domain}} похож на мошеннический — остановлен до того, как открылся.",
+  "mobile.android_native.warn_title": "Этот сайт похож на мошеннический",
+  "mobile.android_native.warn_text": "{{domain}} выглядит опасным. Если он открыт — закройте его и ничего не вводите."
 }

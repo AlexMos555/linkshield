@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, PermissionsAndroid, Platform } from 'react-native';
 
 import CleanwayVpn from './src/CleanwayVpnModule';
 
@@ -9,9 +9,9 @@ export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
 /** Overall probe deadline and the poll cadence within it. */
 const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
-import type { DomainBlockedPayload, VpnStoppedPayload } from './src/CleanwayVpn.types';
+import type { DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind } from './src/CleanwayVpn.types';
 
-export type { DomainBlockedPayload, VpnStoppedPayload };
+export type { DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind };
 
 export async function startVpn(): Promise<boolean> {
   return CleanwayVpn.startVpn();
@@ -88,6 +88,11 @@ export async function verifyFiltering(): Promise<boolean> {
  * Settings, or another VPN app took over). Lets the UI drop its protected
  * state at the moment it stops being true.
  */
+/** Fires on every block/warn event from the service while JS is alive. */
+export function addDomainBlockedListener(cb: (p: DomainBlockedPayload) => void) {
+  return CleanwayVpn.addListener('onDomainBlocked', cb);
+}
+
 export function addVpnStoppedListener(cb: (p: VpnStoppedPayload) => void) {
   return CleanwayVpn.addListener('onVpnStopped', cb);
 }
@@ -137,6 +142,56 @@ export function privateDnsStrictHost(): string | null {
 export function openPrivateDnsSettings(): boolean {
   try {
     return typeof CleanwayVpn.openPrivateDnsSettings === 'function' && CleanwayVpn.openPrivateDnsSettings();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The shield's persisted block log (newest first). Written by the service
+ * even while no JS is alive, so "stopped 3 sites today" is true across app
+ * kills and reboots. Empty on older native builds.
+ */
+export function recentShieldBlocks(limit = 50): ShieldBlockEntry[] {
+  try {
+    if (typeof CleanwayVpn.recentBlocks !== 'function') return [];
+    return CleanwayVpn.recentBlocks(limit) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Count of block-log entries since `sinceMs` (epoch millis). */
+export function shieldBlockCountSince(sinceMs: number): number {
+  try {
+    return typeof CleanwayVpn.blockCountSince === 'function' ? CleanwayVpn.blockCountSince(sinceMs) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Blocked vs warned totals from the log (see ShieldBlockKind for the honesty split). */
+export function shieldBlockTotals(sinceMs = 0): { blocked: number; warned: number } {
+  const entries = recentShieldBlocks(200).filter((e) => e.ts >= sinceMs);
+  return {
+    blocked: entries.filter((e) => e.kind === 'blocked').length,
+    warned: entries.filter((e) => e.kind === 'warned').length,
+  };
+}
+
+/**
+ * Android 13+ drops notifications unless POST_NOTIFICATIONS is granted, and
+ * a block the person never hears about looks like a broken internet. Ask
+ * once, right after the shield turns on — the moment the permission makes
+ * sense. Never nags: a refusal is respected; the block log still records.
+ */
+export async function requestBlockNotificationPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android' || Platform.Version < 33) return true;
+  try {
+    const perm = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
+    if (await PermissionsAndroid.check(perm)) return true;
+    const res = await PermissionsAndroid.request(perm);
+    return res === PermissionsAndroid.RESULTS.GRANTED;
   } catch {
     return false;
   }

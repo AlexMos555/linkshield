@@ -1,0 +1,80 @@
+package ai.cleanway.app
+
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+
+/**
+ * Persistent, newest-first log of the shield's block events.
+ *
+ * The service blocks while no JavaScript is alive (screen off, app killed),
+ * and a broadcast nobody is listening to is lost. Without this the app could
+ * never truthfully say "stopped 3 dangerous sites today" — the number is what
+ * turns an invisible DNS filter into something a person can see working.
+ *
+ * Two kinds, kept honest:
+ *  - [KIND_BLOCKED]: the query was answered NXDOMAIN — the site never opened.
+ *  - [KIND_WARNED]:  the first lookup had already been forwarded (fail-open)
+ *    when the verdict arrived; future lookups are blocked, but THIS visit may
+ *    have opened. The app must not call that "blocked".
+ *
+ * Storage is a JSON array in SharedPreferences (cap [DEFAULT_CAP]); the pure
+ * functions are JVM-tested in BlockLogTest.
+ */
+object BlockLog {
+    const val KIND_BLOCKED = "blocked"
+    const val KIND_WARNED = "warned"
+    const val DEFAULT_CAP = 200
+
+    private const val PREFS = "cleanway_block_log"
+    private const val KEY = "entries"
+    private val lock = Any()
+
+    data class Entry(val domain: String, val ts: Long, val kind: String)
+
+    fun parse(json: String?): List<Entry> {
+        if (json.isNullOrBlank()) return emptyList()
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).mapNotNull { i ->
+                val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                val d = o.optString("d")
+                if (d.isBlank()) null else Entry(d, o.optLong("t"), o.optString("k", KIND_BLOCKED))
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Pure: prepend one entry, trim to [cap], return the new JSON. */
+    fun appendJson(json: String?, domain: String, ts: Long, kind: String, cap: Int = DEFAULT_CAP): String {
+        val existing = parse(json)
+        val merged = (listOf(Entry(domain, ts, kind)) + existing).take(cap)
+        val arr = JSONArray()
+        merged.forEach { e ->
+            arr.put(JSONObject().put("d", e.domain).put("t", e.ts).put("k", e.kind))
+        }
+        return arr.toString()
+    }
+
+    /** Pure: how many entries have ts >= sinceMs. */
+    fun countSince(json: String?, sinceMs: Long): Int = parse(json).count { it.ts >= sinceMs }
+
+    fun record(context: Context, domain: String, ts: Long, kind: String) {
+        synchronized(lock) {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val next = appendJson(prefs.getString(KEY, null), domain, ts, kind)
+            prefs.edit().putString(KEY, next).apply()
+        }
+    }
+
+    fun recent(context: Context, limit: Int): List<Entry> {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return parse(prefs.getString(KEY, null)).take(limit.coerceAtLeast(0))
+    }
+
+    fun countSince(context: Context, sinceMs: Long): Int {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return countSince(prefs.getString(KEY, null), sinceMs)
+    }
+}

@@ -1,6 +1,6 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-import { CleanwayVpnModuleEvents } from './CleanwayVpn.types';
+import { CleanwayVpnModuleEvents, ShieldBlockEntry } from './CleanwayVpn.types';
 
 declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   /** Requests VPN consent (once) then starts the local DNS-filter VPN. Resolves false if the user declines. */
@@ -32,6 +32,10 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   privateDnsStrictHost?(): string | null;
   /** Opens the settings screen where Private DNS lives. */
   openPrivateDnsSettings?(): boolean;
+  /** Persisted block log, newest first. Optional: older native builds lack it. */
+  recentBlocks?(limit: number): ShieldBlockEntry[];
+  /** Number of block-log entries with ts >= sinceMs. */
+  blockCountSince?(sinceMs: number): number;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

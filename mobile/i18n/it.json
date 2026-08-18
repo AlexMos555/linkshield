@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "Ogni link che controlli compare qui. La lista resta solo su questo telefono.",
   "mobile.history.empty_cta": "Controlla un link",
   "mobile.history.privacy": "Questa lista resta sul tuo telefono. Quando controlli un link, ai nostri server viene inviato solo il nome del sito.",
+  "mobile.history.shield_blocked": "Fermato dallo scudo",
+  "mobile.history.shield_warned": "Segnalato dallo scudo: se si è aperto, chiudilo",
   "mobile.report.title": "Resoconto settimanale",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Questa settimana",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "Su Android, un solo passaggio di configurazione blocca i siti truffa conosciuti in tutte le app. Le truffe appena nate possono sfuggire a qualsiasi lista di blocco — per questo c'è il pulsante di controllo.",
   "mobile.onboarding.skip": "Salta",
   "mobile.onboarding.next": "Avanti",
-  "mobile.onboarding.start": "Inizia"
+  "mobile.onboarding.start": "Inizia",
+  "mobile.android_native.fg_channel": "Protezione Cleanway",
+  "mobile.android_native.fg_channel_desc": "Mostrata mentre la protezione anti-phishing è attiva",
+  "mobile.android_native.fg_title": "La protezione Cleanway è attiva",
+  "mobile.android_native.fg_text": "Controllo dei nomi dei siti contro le truffe",
+  "mobile.android_native.block_channel": "Siti bloccati",
+  "mobile.android_native.block_channel_desc": "Ti avvisa quando un sito pericoloso è stato fermato",
+  "mobile.android_native.blocked_title": "Cleanway ha fermato un sito pericoloso",
+  "mobile.android_native.blocked_text": "{{domain}} sembrava una truffa: è stato fermato prima di aprirsi.",
+  "mobile.android_native.warn_title": "Questo sito sembra una truffa",
+  "mobile.android_native.warn_text": "{{domain}} sembra pericoloso. Se è aperto, chiudilo e non digitare nulla."
 }

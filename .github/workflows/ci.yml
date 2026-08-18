@@ -86,8 +86,8 @@ jobs:
           # produces but the committer forgot to add) — a plain
           # `git diff --exit-code` on the working tree ignores untracked
           # files and would pass a build that emitted a new uncommitted file.
-          git add -A -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/'
-          if ! git diff --cached --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/'; then
+          git add -A -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/' 'mobile/modules/cleanway-vpn/android/src/main/res/'
+          if ! git diff --cached --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/' 'mobile/modules/cleanway-vpn/android/src/main/res/'; then
             echo "::error::Generated i18n/extension artifacts are out of sync with their source (packages/extension-core/ + packages/i18n-strings/). Edit the SOURCE, then run 'bash scripts/build-extensions.sh' locally and commit the regenerated files."
             exit 1
           fi

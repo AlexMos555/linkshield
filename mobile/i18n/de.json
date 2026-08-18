@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "Jeder Link, den du prüfst, erscheint hier. Die Liste bleibt nur auf diesem Handy.",
   "mobile.history.empty_cta": "Link prüfen",
   "mobile.history.privacy": "Diese Liste bleibt auf deinem Handy. Wenn du einen Link prüfst, wird nur der Website-Name an unsere Server geschickt.",
+  "mobile.history.shield_blocked": "Vom Schutzschild gestoppt",
+  "mobile.history.shield_warned": "Vom Schutzschild markiert – falls geöffnet, schließen",
   "mobile.report.title": "Wochenbericht",
   "mobile.report.period": "{{from}} – {{to}}",
   "mobile.report.summary_header": "Diese Woche",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "Auf Android blockiert ein einziger Einrichtungsschritt bekannte Betrugsseiten in jeder App. Brandneue Betrugsmaschen können an jeder Sperrliste vorbeirutschen – genau dafür gibt es den Prüfen-Knopf.",
   "mobile.onboarding.skip": "Überspringen",
   "mobile.onboarding.next": "Weiter",
-  "mobile.onboarding.start": "Los geht's"
+  "mobile.onboarding.start": "Los geht's",
+  "mobile.android_native.fg_channel": "Cleanway-Schutz",
+  "mobile.android_native.fg_channel_desc": "Wird angezeigt, solange der Phishing-Schutz aktiv ist",
+  "mobile.android_native.fg_title": "Cleanway-Schutz ist an",
+  "mobile.android_native.fg_text": "Website-Namen werden auf Betrug geprüft",
+  "mobile.android_native.block_channel": "Blockierte Seiten",
+  "mobile.android_native.block_channel_desc": "Meldet, wenn eine gefährliche Seite gestoppt wurde",
+  "mobile.android_native.blocked_title": "Cleanway hat eine gefährliche Seite gestoppt",
+  "mobile.android_native.blocked_text": "{{domain}} sah nach Betrug aus und wurde gestoppt, bevor sie sich öffnen konnte.",
+  "mobile.android_native.warn_title": "Diese Seite sieht nach Betrug aus",
+  "mobile.android_native.warn_text": "{{domain}} wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben."
 }

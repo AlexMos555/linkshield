@@ -1322,7 +1322,9 @@
       "empty_title": "Nenhuma verificação ainda",
       "empty_body": "Todo link que você verifica aparece aqui. A lista fica guardada só neste celular.",
       "empty_cta": "Verificar um link",
-      "privacy": "Esta lista fica no seu celular. Quando você verifica um link, apenas o nome do site é enviado aos nossos servidores."
+      "privacy": "Esta lista fica no seu celular. Quando você verifica um link, apenas o nome do site é enviado aos nossos servidores.",
+      "shield_blocked": "Parado pelo escudo",
+      "shield_warned": "Sinalizado pelo escudo — se abriu, feche"
     },
     "report": {
       "title": "Relatório semanal",
@@ -1498,6 +1500,18 @@
       "skip": "Pular",
       "next": "Avançar",
       "start": "Começar"
+    },
+    "android_native": {
+      "fg_channel": "Proteção Cleanway",
+      "fg_channel_desc": "Aparece enquanto a proteção contra phishing está ativa",
+      "fg_title": "A proteção Cleanway está ligada",
+      "fg_text": "Verificando nomes de sites contra golpes",
+      "block_channel": "Sites bloqueados",
+      "block_channel_desc": "Avisa quando um site perigoso foi parado",
+      "blocked_title": "O Cleanway parou um site perigoso",
+      "blocked_text": "{{domain}} parecia golpe, então foi parado antes de abrir.",
+      "warn_title": "Este site parece golpe",
+      "warn_text": "{{domain}} parece perigoso. Se estiver aberto, feche e não digite nada."
     }
   }
 }

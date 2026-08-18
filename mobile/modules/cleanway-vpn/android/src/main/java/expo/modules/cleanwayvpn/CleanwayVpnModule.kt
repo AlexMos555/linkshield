@@ -144,6 +144,23 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * The shield's persisted block log, newest first: [{domain, ts, kind}].
+     * kind is "blocked" (site never opened) or "warned" (verdict arrived after
+     * the first lookup had been forwarded — future lookups blocked). Lets the
+     * app count and list what the service did while no JS was alive.
+     */
+    Function("recentBlocks") { limit: Int ->
+      ai.cleanway.app.BlockLog.recent(context, limit).map {
+        mapOf("domain" to it.domain, "ts" to it.ts.toDouble(), "kind" to it.kind)
+      }
+    }
+
+    /** How many block-log entries since [sinceMs] (epoch millis, Double for JS). */
+    Function("blockCountSince") { sinceMs: Double ->
+      ai.cleanway.app.BlockLog.countSince(context, sinceMs.toLong())
+    }
+
+    /**
      * Monotonic count of canary queries the service has answered. The app
      * reads it before and after triggering a lookup — a delta is proof the
      * query reached THIS tunnel and was filtered. Double because JS has no
@@ -193,7 +210,8 @@ class CleanwayVpnModule : Module() {
           CleanwayVpnService.ACTION_DOMAIN_BLOCKED -> {
             val domain = intent.getStringExtra(CleanwayVpnService.EXTRA_DOMAIN) ?: return
             val ts = intent.getLongExtra(CleanwayVpnService.EXTRA_TIMESTAMP, 0L)
-            sendEvent("onDomainBlocked", mapOf("domain" to domain, "ts" to ts))
+            val kind = intent.getStringExtra(CleanwayVpnService.EXTRA_KIND) ?: ai.cleanway.app.BlockLog.KIND_BLOCKED
+            sendEvent("onDomainBlocked", mapOf("domain" to domain, "ts" to ts, "kind" to kind))
           }
         }
       }

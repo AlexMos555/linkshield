@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "Cada enlace que revisas aparece aquí. La lista se guarda solo en este teléfono.",
   "mobile.history.empty_cta": "Revisar un enlace",
   "mobile.history.privacy": "Esta lista se queda en tu teléfono. Cuando revisas un enlace, solo el nombre del sitio web se envía a nuestros servidores.",
+  "mobile.history.shield_blocked": "Detenido por el escudo",
+  "mobile.history.shield_warned": "Marcado por el escudo: si se abrió, ciérralo",
   "mobile.report.title": "Informe semanal",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Esta semana",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "En Android, un solo paso de configuración bloquea los sitios de estafa conocidos en todas las apps. Las estafas recién creadas pueden escaparse de cualquier lista de bloqueo; para eso está el botón de revisar.",
   "mobile.onboarding.skip": "Omitir",
   "mobile.onboarding.next": "Siguiente",
-  "mobile.onboarding.start": "Comenzar"
+  "mobile.onboarding.start": "Comenzar",
+  "mobile.android_native.fg_channel": "Protección de Cleanway",
+  "mobile.android_native.fg_channel_desc": "Se muestra mientras la protección contra phishing está activa",
+  "mobile.android_native.fg_title": "La protección de Cleanway está activada",
+  "mobile.android_native.fg_text": "Comprobando nombres de sitios en busca de estafas",
+  "mobile.android_native.block_channel": "Sitios bloqueados",
+  "mobile.android_native.block_channel_desc": "Te avisa cuando se detiene un sitio peligroso",
+  "mobile.android_native.blocked_title": "Cleanway detuvo un sitio peligroso",
+  "mobile.android_native.blocked_text": "{{domain}} parecía una estafa, así que se detuvo antes de abrirse.",
+  "mobile.android_native.warn_title": "Este sitio parece una estafa",
+  "mobile.android_native.warn_text": "{{domain}} parece peligroso. Si está abierto, ciérralo y no escribas nada."
 }

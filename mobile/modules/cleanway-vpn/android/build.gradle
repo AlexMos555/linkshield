@@ -34,4 +34,6 @@ dependencies {
   implementation "androidx.core:core-ktx:1.13.1"
   // DnsUtilTest.kt uses kotlin.test (JUnit backend). Test-only — does not affect the app build.
   testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
+  // org.json is an unmocked Android stub on the JVM; BlockLog serialises with it.
+  testImplementation "org.json:json:20240303"
 }

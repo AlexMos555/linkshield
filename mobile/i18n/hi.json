@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "आप जो भी लिंक जाँचते हैं, वह यहाँ दिखता है। यह सूची सिर्फ़ इसी फ़ोन पर रहती है।",
   "mobile.history.empty_cta": "लिंक जाँचें",
   "mobile.history.privacy": "यह सूची आपके फ़ोन पर ही रहती है। जब आप कोई लिंक जाँचते हैं, तो सिर्फ़ वेबसाइट का नाम हमारे सर्वर पर भेजा जाता है।",
+  "mobile.history.shield_blocked": "शील्ड ने रोका",
+  "mobile.history.shield_warned": "शील्ड ने चिह्नित किया — अगर खुला हो तो बंद करें",
   "mobile.report.title": "हफ़्ते की रिपोर्ट",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "इस हफ़्ते",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "Android पर एक बार के सेटअप से हर ऐप में जानी-पहचानी धोखाधड़ी वाली साइटें रुक जाती हैं। एकदम नए धोखे किसी भी रोक-सूची से बच निकल सकते हैं — इसीलिए जाँच का बटन है।",
   "mobile.onboarding.skip": "छोड़ें",
   "mobile.onboarding.next": "आगे",
-  "mobile.onboarding.start": "शुरू करें"
+  "mobile.onboarding.start": "शुरू करें",
+  "mobile.android_native.fg_channel": "Cleanway सुरक्षा",
+  "mobile.android_native.fg_channel_desc": "फ़िशिंग सुरक्षा चालू रहने पर दिखता है",
+  "mobile.android_native.fg_title": "Cleanway सुरक्षा चालू है",
+  "mobile.android_native.fg_text": "वेबसाइट के नाम धोखाधड़ी के लिए जाँचे जा रहे हैं",
+  "mobile.android_native.block_channel": "रोकी गई साइटें",
+  "mobile.android_native.block_channel_desc": "जब कोई खतरनाक साइट रोकी जाती है तो बताता है",
+  "mobile.android_native.blocked_title": "Cleanway ने एक खतरनाक साइट रोकी",
+  "mobile.android_native.blocked_text": "{{domain}} धोखाधड़ी जैसी लगी, इसलिए खुलने से पहले ही रोक दी गई।",
+  "mobile.android_native.warn_title": "यह साइट धोखाधड़ी जैसी लगती है",
+  "mobile.android_native.warn_text": "{{domain}} खतरनाक लगती है। अगर खुली है तो बंद करें और कुछ भी न लिखें।"
 }

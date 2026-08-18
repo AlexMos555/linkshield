@@ -11,6 +11,7 @@ import {
   levelColors, levelWashes, levelStrokes,
 } from "../../src/utils/theme";
 import { getRecentChecks } from "../../src/services/database";
+import { recentShieldBlocks, type ShieldRow } from "../../src/services/shield-log";
 
 type Level = keyof typeof levelColors;
 
@@ -90,6 +91,36 @@ function HistoryRow({ item }: { item: any }) {
   );
 }
 
+/**
+ * A row for something the DNS shield did on its own — no paste, no tap.
+ * Two honest labels: "stopped" (site never opened) vs "flagged" (verdict came
+ * after the first lookup; future ones blocked). No score chip: the shield
+ * has a verdict, not a number.
+ */
+function ShieldHistoryRow({ item }: { item: ShieldRow }) {
+  const { t } = useTranslation();
+  const blocked = item.kind === "blocked";
+  const color = blocked ? levelColors.dangerous : levelColors.caution;
+  const wash = blocked ? levelWashes.dangerous : levelWashes.caution;
+  const stroke = blocked ? levelStrokes.dangerous : levelStrokes.caution;
+  const label = t(blocked ? "mobile.history.shield_blocked" : "mobile.history.shield_warned");
+  const when = relativeTime(new Date(item.ts).toISOString(), t);
+  return (
+    <View style={s.row} accessible accessibilityLabel={[item.domain, label, when].filter(Boolean).join(". ")}>
+      <View style={[s.rowIcon, { backgroundColor: wash, borderColor: stroke }]}>
+        <Ionicons name={blocked ? "shield-checkmark-outline" : "shield-half-outline"} size={22} color={color} />
+      </View>
+      <View style={s.rowText}>
+        <Text style={s.domain} numberOfLines={1}>{item.domain}</Text>
+        <View style={s.metaRow}>
+          <Text style={[s.verdict, { color }]}>{label}</Text>
+          {when !== "" && <Text style={s.when}>{when}</Text>}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function ListHeader() {
   const { t } = useTranslation();
   return (
@@ -130,7 +161,12 @@ export default function HistoryScreen() {
 
   function load() {
     getRecentChecks(100).then((data) => {
-      setChecks(data);
+      // Merge the shield's own log (persisted natively, so it covers blocks
+      // made while the app was closed) with hand-checked links, newest first.
+      const manual = (data as any[]).map((c) => ({ ...c, _kind: "check" as const, _ts: parseCheckedAt(c.checked_at) }));
+      const shield = recentShieldBlocks(100).map((b) => ({ ...b, _kind: "shield" as const, _ts: b.ts }));
+      const merged = [...manual, ...shield].sort((a, b) => (b._ts || 0) - (a._ts || 0));
+      setChecks(merged);
       setLoading(false);
       setRefreshing(false);
     }).catch(() => { setLoading(false); setRefreshing(false); });
@@ -159,8 +195,8 @@ export default function HistoryScreen() {
     <View style={s.container}>
       <FlatList
         data={checks}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => <HistoryRow item={item} />}
+        keyExtractor={(item) => item._kind === "shield" ? `shield:${item.domain}:${item.ts}` : `check:${item.id}`}
+        renderItem={({ item }) => item._kind === "shield" ? <ShieldHistoryRow item={item} /> : <HistoryRow item={item} />}
         ListHeaderComponent={<ListHeader />}
         ListFooterComponent={
           <View style={s.privacyRow}>

@@ -13,6 +13,7 @@ import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { ShieldCard } from "../../src/components/shield/ShieldCard";
 import { useNetworkShield } from "../../src/hooks/useNetworkShield";
+import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
 
 /**
  * Shield Checklist home (docs/MOBILE_AUTO_PROTECTION.md §2,
@@ -52,11 +53,18 @@ export default function HomeScreen() {
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const network = useNetworkShield();
+  // What the DNS shield did — including while the app was closed. Merged
+  // into the activity card so "Blocked" counts real protection, not only
+  // links the person pasted by hand.
+  const shieldTotals = useShieldBlockTotals();
   const { t } = useTranslation();
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
   }, []));
+
+  const blockedTotal = stats.threats_blocked + shieldTotals.blocked;
+  const warnedTotal = stats.threats_warned + shieldTotals.warned;
 
   // Only shields that are shipped AND verifiable on this platform can count.
   // A running-but-unverified tunnel deliberately counts as 0.
@@ -196,11 +204,11 @@ export default function HomeScreen() {
         <RolloutList items={rollout} />
       </View>
 
-      {(stats.total_checks > 0 || stats.threats_blocked > 0) && (
+      {(stats.total_checks > 0 || blockedTotal > 0 || warnedTotal > 0) && (
         <View style={[s.section, s.activityCard]}>
           <ActivityColumn value={stats.total_checks} label={t("mobile.home.activity.checked")} />
-          <ActivityColumn value={stats.threats_blocked} label={t("mobile.home.activity.blocked")} />
-          <ActivityColumn value={stats.threats_warned} label={t("mobile.home.activity.warned")} />
+          <ActivityColumn value={blockedTotal} label={t("mobile.home.activity.blocked")} />
+          <ActivityColumn value={warnedTotal} label={t("mobile.home.activity.warned")} />
         </View>
       )}
 

@@ -1,9 +1,21 @@
+/**
+ * "blocked": the query got NXDOMAIN — the site never opened.
+ * "warned": the verdict arrived after the first lookup had already been
+ * forwarded (fail-open); future lookups are blocked, THIS visit may have
+ * opened. Copy must never call a "warned" entry a block.
+ */
+export type ShieldBlockKind = 'blocked' | 'warned';
+
 export type DomainBlockedPayload = {
   /** The registrable domain that was blocked at DNS resolve time. */
   domain: string;
   /** Epoch millis when it was blocked. */
   ts: number;
+  kind: ShieldBlockKind;
 };
+
+/** One entry of the service's persisted block log (newest first). */
+export type ShieldBlockEntry = DomainBlockedPayload;
 
 /** Emitted when the tunnel is torn down without the user asking for it. */
 export type VpnStoppedPayload = {

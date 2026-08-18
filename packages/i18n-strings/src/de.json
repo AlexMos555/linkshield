@@ -1322,7 +1322,9 @@
       "empty_title": "Noch keine Prüfungen",
       "empty_body": "Jeder Link, den du prüfst, erscheint hier. Die Liste bleibt nur auf diesem Handy.",
       "empty_cta": "Link prüfen",
-      "privacy": "Diese Liste bleibt auf deinem Handy. Wenn du einen Link prüfst, wird nur der Website-Name an unsere Server geschickt."
+      "privacy": "Diese Liste bleibt auf deinem Handy. Wenn du einen Link prüfst, wird nur der Website-Name an unsere Server geschickt.",
+      "shield_blocked": "Vom Schutzschild gestoppt",
+      "shield_warned": "Vom Schutzschild markiert – falls geöffnet, schließen"
     },
     "report": {
       "title": "Wochenbericht",
@@ -1498,6 +1500,18 @@
       "skip": "Überspringen",
       "next": "Weiter",
       "start": "Los geht's"
+    },
+    "android_native": {
+      "fg_channel": "Cleanway-Schutz",
+      "fg_channel_desc": "Wird angezeigt, solange der Phishing-Schutz aktiv ist",
+      "fg_title": "Cleanway-Schutz ist an",
+      "fg_text": "Website-Namen werden auf Betrug geprüft",
+      "block_channel": "Blockierte Seiten",
+      "block_channel_desc": "Meldet, wenn eine gefährliche Seite gestoppt wurde",
+      "blocked_title": "Cleanway hat eine gefährliche Seite gestoppt",
+      "blocked_text": "{{domain}} sah nach Betrug aus und wurde gestoppt, bevor sie sich öffnen konnte.",
+      "warn_title": "Diese Seite sieht nach Betrug aus",
+      "warn_text": "{{domain}} wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben."
     }
   }
 }

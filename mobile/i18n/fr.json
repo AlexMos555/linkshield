@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "Chaque lien que vous vérifiez apparaît ici. La liste est gardée uniquement sur ce téléphone.",
   "mobile.history.empty_cta": "Vérifier un lien",
   "mobile.history.privacy": "Cette liste reste sur votre téléphone. Quand vous vérifiez un lien, seul le nom du site web est envoyé à nos serveurs.",
+  "mobile.history.shield_blocked": "Arrêté par le bouclier",
+  "mobile.history.shield_warned": "Signalé par le bouclier — s'il s'est ouvert, fermez-le",
   "mobile.report.title": "Rapport de la semaine",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Cette semaine",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "Sur Android, une seule étape de réglage bloque les sites d'arnaque connus dans toutes les applis. Les arnaques toutes neuves peuvent passer à travers n'importe quelle liste de blocage — c'est à ça que sert le bouton de vérification.",
   "mobile.onboarding.skip": "Passer",
   "mobile.onboarding.next": "Suivant",
-  "mobile.onboarding.start": "Commencer"
+  "mobile.onboarding.start": "Commencer",
+  "mobile.android_native.fg_channel": "Protection Cleanway",
+  "mobile.android_native.fg_channel_desc": "Affiché tant que la protection anti-phishing est active",
+  "mobile.android_native.fg_title": "La protection Cleanway est activée",
+  "mobile.android_native.fg_text": "Vérification des noms de sites contre les arnaques",
+  "mobile.android_native.block_channel": "Sites bloqués",
+  "mobile.android_native.block_channel_desc": "Vous prévient quand un site dangereux a été arrêté",
+  "mobile.android_native.blocked_title": "Cleanway a arrêté un site dangereux",
+  "mobile.android_native.blocked_text": "{{domain}} ressemblait à une arnaque : il a été arrêté avant de s'ouvrir.",
+  "mobile.android_native.warn_title": "Ce site ressemble à une arnaque",
+  "mobile.android_native.warn_text": "{{domain}} semble dangereux. S'il est ouvert, fermez-le et ne saisissez rien."
 }

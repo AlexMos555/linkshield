@@ -303,7 +303,8 @@ class CleanwayVpnService : VpnService() {
                     DnsDecision.BLOCK -> {
                         val nx = DnsUtil.makeNxDomain(packet, length)
                         if (nx != null) writeToTunnel(output, nx)
-                        notifyBlocked(normalized)
+                        // A real block: the site never opened.
+                        notifyBlocked(normalized, BlockLog.KIND_BLOCKED)
                     }
                     DnsDecision.FORWARD -> submitForward(packet, length, output)
                     DnsDecision.FORWARD_AND_CHECK -> {
@@ -540,7 +541,12 @@ class CleanwayVpnService : VpnService() {
                             blockedDomains.firstOrNull()?.let(blockedDomains::remove)
                         }
                         blockedDomains.add(domain)
-                        notifyBlocked(domain)
+                        // Honest kind: this lookup was already forwarded
+                        // (fail-open) when the verdict arrived. Future
+                        // lookups are blocked; THIS visit may have opened.
+                        // The person gets "looks like a scam — close it",
+                        // not a claim that we stopped it.
+                        notifyBlocked(domain, BlockLog.KIND_WARNED)
                     } else {
                         if (safeDomains.size >= SAFE_CACHE_CAP) {
                             // Cheap eviction — drop an arbitrary entry.
@@ -558,12 +564,26 @@ class CleanwayVpnService : VpnService() {
         }
     }
 
-    private fun notifyBlocked(domain: String) {
+    /**
+     * Make a block visible: persist it (so the app can count and list it
+     * later, JS or no JS), tell the person now (localized notification from
+     * the service), and broadcast for a live UI. [kind] keeps it honest — see
+     * BlockLog for BLOCKED vs WARNED.
+     */
+    private fun notifyBlocked(domain: String, kind: String) {
+        val now = System.currentTimeMillis()
+        try {
+            BlockLog.record(this, domain, now, kind)
+            BlockNotifier.notify(this, domain, kind, now)
+        } catch (e: Exception) {
+            Log.w(TAG, "block_visibility_error: ${e.message}")
+        }
         sendBroadcast(
             Intent(ACTION_DOMAIN_BLOCKED).apply {
                 setPackage(packageName)
                 putExtra(EXTRA_DOMAIN, domain)
-                putExtra(EXTRA_TIMESTAMP, System.currentTimeMillis())
+                putExtra(EXTRA_TIMESTAMP, now)
+                putExtra(EXTRA_KIND, kind)
             }
         )
     }
@@ -573,8 +593,12 @@ class CleanwayVpnService : VpnService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Cleanway protection", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Shown while phishing protection is active"
+                NotificationChannel(
+                    CHANNEL_ID,
+                    getString(expo.modules.cleanwayvpn.R.string.fg_channel),
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = getString(expo.modules.cleanwayvpn.R.string.fg_channel_desc)
                     setShowBadge(false)
                 }
             )
@@ -587,8 +611,8 @@ class CleanwayVpnService : VpnService() {
             )
         }
         val notif: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Cleanway protection is on")
-            .setContentText("Checking links for phishing")
+            .setContentTitle(getString(expo.modules.cleanwayvpn.R.string.fg_title))
+            .setContentText(getString(expo.modules.cleanwayvpn.R.string.fg_text))
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setContentIntent(pending)
@@ -674,6 +698,8 @@ class CleanwayVpnService : VpnService() {
         const val ACTION_DOMAIN_BLOCKED = "ai.cleanway.DOMAIN_BLOCKED"
         const val EXTRA_DOMAIN = "domain"
         const val EXTRA_TIMESTAMP = "ts_ms"
+        /** BlockLog.KIND_BLOCKED or KIND_WARNED. */
+        const val EXTRA_KIND = "kind"
 
         private const val VPN_CLIENT_IP = "10.0.0.2"
         private const val VPN_GATEWAY_IP = "10.0.0.1"

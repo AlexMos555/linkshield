@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "كل رابط تفحصه يظهر هنا. القائمة تبقى على هذا الهاتف فقط.",
   "mobile.history.empty_cta": "افحص رابطًا",
   "mobile.history.privacy": "هذه القائمة تبقى على هاتفك. وعند فحص رابط، لا يُرسَل إلى خوادمنا سوى اسم الموقع.",
+  "mobile.history.shield_blocked": "أوقفه الدرع",
+  "mobile.history.shield_warned": "أشار إليه الدرع — إذا فُتح فأغلقه",
   "mobile.report.title": "التقرير الأسبوعي",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "هذا الأسبوع",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "على Android، خطوة إعداد واحدة تحظر مواقع الاحتيال المعروفة في كل التطبيقات. لكن الاحتيالات الجديدة تمامًا قد تفلت من أي قائمة حظر — ولهذا يوجد زر الفحص.",
   "mobile.onboarding.skip": "تخطّي",
   "mobile.onboarding.next": "التالي",
-  "mobile.onboarding.start": "ابدأ"
+  "mobile.onboarding.start": "ابدأ",
+  "mobile.android_native.fg_channel": "حماية Cleanway",
+  "mobile.android_native.fg_channel_desc": "يظهر أثناء تشغيل الحماية من التصيّد",
+  "mobile.android_native.fg_title": "حماية Cleanway مفعّلة",
+  "mobile.android_native.fg_text": "نتحقق من أسماء المواقع بحثًا عن الاحتيال",
+  "mobile.android_native.block_channel": "المواقع المحظورة",
+  "mobile.android_native.block_channel_desc": "يخبرك عندما يتم إيقاف موقع خطير",
+  "mobile.android_native.blocked_title": "أوقف Cleanway موقعًا خطيرًا",
+  "mobile.android_native.blocked_text": "بدا {{domain}} احتياليًا، لذا تم إيقافه قبل أن يُفتح.",
+  "mobile.android_native.warn_title": "هذا الموقع يبدو احتياليًا",
+  "mobile.android_native.warn_text": "يبدو {{domain}} خطيرًا. إذا كان مفتوحًا فأغلقه ولا تكتب أي شيء."
 }

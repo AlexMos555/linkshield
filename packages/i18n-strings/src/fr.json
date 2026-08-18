@@ -1322,7 +1322,9 @@
       "empty_title": "Aucune vérification pour l'instant",
       "empty_body": "Chaque lien que vous vérifiez apparaît ici. La liste est gardée uniquement sur ce téléphone.",
       "empty_cta": "Vérifier un lien",
-      "privacy": "Cette liste reste sur votre téléphone. Quand vous vérifiez un lien, seul le nom du site web est envoyé à nos serveurs."
+      "privacy": "Cette liste reste sur votre téléphone. Quand vous vérifiez un lien, seul le nom du site web est envoyé à nos serveurs.",
+      "shield_blocked": "Arrêté par le bouclier",
+      "shield_warned": "Signalé par le bouclier — s'il s'est ouvert, fermez-le"
     },
     "report": {
       "title": "Rapport de la semaine",
@@ -1498,6 +1500,18 @@
       "skip": "Passer",
       "next": "Suivant",
       "start": "Commencer"
+    },
+    "android_native": {
+      "fg_channel": "Protection Cleanway",
+      "fg_channel_desc": "Affiché tant que la protection anti-phishing est active",
+      "fg_title": "La protection Cleanway est activée",
+      "fg_text": "Vérification des noms de sites contre les arnaques",
+      "block_channel": "Sites bloqués",
+      "block_channel_desc": "Vous prévient quand un site dangereux a été arrêté",
+      "blocked_title": "Cleanway a arrêté un site dangereux",
+      "blocked_text": "{{domain}} ressemblait à une arnaque : il a été arrêté avant de s'ouvrir.",
+      "warn_title": "Ce site ressemble à une arnaque",
+      "warn_text": "{{domain}} semble dangereux. S'il est ouvert, fermez-le et ne saisissez rien."
     }
   }
 }

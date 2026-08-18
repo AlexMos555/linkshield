@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "Todo link que você verifica aparece aqui. A lista fica guardada só neste celular.",
   "mobile.history.empty_cta": "Verificar um link",
   "mobile.history.privacy": "Esta lista fica no seu celular. Quando você verifica um link, apenas o nome do site é enviado aos nossos servidores.",
+  "mobile.history.shield_blocked": "Parado pelo escudo",
+  "mobile.history.shield_warned": "Sinalizado pelo escudo — se abriu, feche",
   "mobile.report.title": "Relatório semanal",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Esta semana",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "No Android, um único passo de configuração bloqueia sites de golpe conhecidos em todos os aplicativos. Golpes recém-criados podem escapar de qualquer lista de bloqueio — é para isso que serve o botão de verificar.",
   "mobile.onboarding.skip": "Pular",
   "mobile.onboarding.next": "Avançar",
-  "mobile.onboarding.start": "Começar"
+  "mobile.onboarding.start": "Começar",
+  "mobile.android_native.fg_channel": "Proteção Cleanway",
+  "mobile.android_native.fg_channel_desc": "Aparece enquanto a proteção contra phishing está ativa",
+  "mobile.android_native.fg_title": "A proteção Cleanway está ligada",
+  "mobile.android_native.fg_text": "Verificando nomes de sites contra golpes",
+  "mobile.android_native.block_channel": "Sites bloqueados",
+  "mobile.android_native.block_channel_desc": "Avisa quando um site perigoso foi parado",
+  "mobile.android_native.blocked_title": "O Cleanway parou um site perigoso",
+  "mobile.android_native.blocked_text": "{{domain}} parecia golpe, então foi parado antes de abrir.",
+  "mobile.android_native.warn_title": "Este site parece golpe",
+  "mobile.android_native.warn_text": "{{domain}} parece perigoso. Se estiver aberto, feche e não digite nada."
 }

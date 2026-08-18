@@ -1262,7 +1262,9 @@
       "empty_title": "Aún no hay revisiones",
       "empty_body": "Cada enlace que revisas aparece aquí. La lista se guarda solo en este teléfono.",
       "empty_cta": "Revisar un enlace",
-      "privacy": "Esta lista se queda en tu teléfono. Cuando revisas un enlace, solo el nombre del sitio web se envía a nuestros servidores."
+      "privacy": "Esta lista se queda en tu teléfono. Cuando revisas un enlace, solo el nombre del sitio web se envía a nuestros servidores.",
+      "shield_blocked": "Detenido por el escudo",
+      "shield_warned": "Marcado por el escudo: si se abrió, ciérralo"
     },
     "report": {
       "title": "Informe semanal",
@@ -1438,6 +1440,18 @@
       "skip": "Omitir",
       "next": "Siguiente",
       "start": "Comenzar"
+    },
+    "android_native": {
+      "fg_channel": "Protección de Cleanway",
+      "fg_channel_desc": "Se muestra mientras la protección contra phishing está activa",
+      "fg_title": "La protección de Cleanway está activada",
+      "fg_text": "Comprobando nombres de sitios en busca de estafas",
+      "block_channel": "Sitios bloqueados",
+      "block_channel_desc": "Te avisa cuando se detiene un sitio peligroso",
+      "blocked_title": "Cleanway detuvo un sitio peligroso",
+      "blocked_text": "{{domain}} parecía una estafa, así que se detuvo antes de abrirse.",
+      "warn_title": "Este sitio parece una estafa",
+      "warn_text": "{{domain}} parece peligroso. Si está abierto, ciérralo y no escribas nada."
     }
   }
 }

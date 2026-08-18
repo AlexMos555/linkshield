@@ -1322,7 +1322,9 @@
       "empty_title": "Belum ada pengecekan",
       "empty_body": "Setiap link yang Anda cek akan muncul di sini. Daftarnya hanya disimpan di HP ini.",
       "empty_cta": "Cek link",
-      "privacy": "Daftar ini tetap di HP Anda. Saat Anda mengecek link, hanya nama situs yang dikirim ke server kami."
+      "privacy": "Daftar ini tetap di HP Anda. Saat Anda mengecek link, hanya nama situs yang dikirim ke server kami.",
+      "shield_blocked": "Dihentikan oleh perisai",
+      "shield_warned": "Ditandai oleh perisai — kalau terbuka, tutup"
     },
     "report": {
       "title": "Laporan mingguan",
@@ -1498,6 +1500,18 @@
       "skip": "Lewati",
       "next": "Lanjut",
       "start": "Mulai"
+    },
+    "android_native": {
+      "fg_channel": "Perlindungan Cleanway",
+      "fg_channel_desc": "Ditampilkan selama perlindungan phishing aktif",
+      "fg_title": "Perlindungan Cleanway menyala",
+      "fg_text": "Memeriksa nama situs dari penipuan",
+      "block_channel": "Situs yang diblokir",
+      "block_channel_desc": "Memberi tahu saat situs berbahaya dihentikan",
+      "blocked_title": "Cleanway menghentikan situs berbahaya",
+      "blocked_text": "{{domain}} tampak seperti penipuan, jadi dihentikan sebelum terbuka.",
+      "warn_title": "Situs ini tampak seperti penipuan",
+      "warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun."
     }
   }
 }

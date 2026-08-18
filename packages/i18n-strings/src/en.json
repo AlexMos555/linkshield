@@ -1264,7 +1264,9 @@
       "empty_title": "No checks yet",
       "empty_body": "Every link you check shows up here. The list is kept on this phone only.",
       "empty_cta": "Check a link",
-      "privacy": "This list stays on your phone. When you check a link, only the website name is sent to our servers."
+      "privacy": "This list stays on your phone. When you check a link, only the website name is sent to our servers.",
+      "shield_blocked": "Stopped by the shield",
+      "shield_warned": "Flagged by the shield — if it opened, close it"
     },
     "report": {
       "title": "Weekly report",
@@ -1440,6 +1442,18 @@
       "skip": "Skip",
       "next": "Next",
       "start": "Get started"
+    },
+    "android_native": {
+      "fg_channel": "Cleanway protection",
+      "fg_channel_desc": "Shown while phishing protection is active",
+      "fg_title": "Cleanway protection is on",
+      "fg_text": "Checking website names for scams",
+      "block_channel": "Blocked sites",
+      "block_channel_desc": "Tells you when a dangerous site was stopped",
+      "blocked_title": "Cleanway stopped a dangerous site",
+      "blocked_text": "{{domain}} looked like a scam, so it was stopped before it could open.",
+      "warn_title": "This site looks like a scam",
+      "warn_text": "{{domain}} looks dangerous. If it is open, close it and don't type anything."
     }
   }
 }

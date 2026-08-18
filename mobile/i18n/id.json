@@ -510,6 +510,8 @@
   "mobile.history.empty_body": "Setiap link yang Anda cek akan muncul di sini. Daftarnya hanya disimpan di HP ini.",
   "mobile.history.empty_cta": "Cek link",
   "mobile.history.privacy": "Daftar ini tetap di HP Anda. Saat Anda mengecek link, hanya nama situs yang dikirim ke server kami.",
+  "mobile.history.shield_blocked": "Dihentikan oleh perisai",
+  "mobile.history.shield_warned": "Ditandai oleh perisai — kalau terbuka, tutup",
   "mobile.report.title": "Laporan mingguan",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Minggu ini",
@@ -670,5 +672,15 @@
   "mobile.onboarding.s3_desc": "Di Android, satu langkah penyiapan memblokir situs penipuan yang sudah dikenal di semua aplikasi. Penipuan yang benar-benar baru bisa lolos dari daftar blokir mana pun — untuk itulah tombol cek disediakan.",
   "mobile.onboarding.skip": "Lewati",
   "mobile.onboarding.next": "Lanjut",
-  "mobile.onboarding.start": "Mulai"
+  "mobile.onboarding.start": "Mulai",
+  "mobile.android_native.fg_channel": "Perlindungan Cleanway",
+  "mobile.android_native.fg_channel_desc": "Ditampilkan selama perlindungan phishing aktif",
+  "mobile.android_native.fg_title": "Perlindungan Cleanway menyala",
+  "mobile.android_native.fg_text": "Memeriksa nama situs dari penipuan",
+  "mobile.android_native.block_channel": "Situs yang diblokir",
+  "mobile.android_native.block_channel_desc": "Memberi tahu saat situs berbahaya dihentikan",
+  "mobile.android_native.blocked_title": "Cleanway menghentikan situs berbahaya",
+  "mobile.android_native.blocked_text": "{{domain}} tampak seperti penipuan, jadi dihentikan sebelum terbuka.",
+  "mobile.android_native.warn_title": "Situs ini tampak seperti penipuan",
+  "mobile.android_native.warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun."
 }
