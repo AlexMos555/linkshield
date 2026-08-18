@@ -26,11 +26,15 @@ class DnsDecisionTest {
     private val canary = CleanwayVpnService.CANARY_DOMAIN
     private val listCanary = BlockList.LIST_CANARY
 
-    private fun list(vararg names: String): BlockList =
-        BlockList.parse(
-            "# cleanway-dns-blocklist v1 generated=1 count=${names.size} status=ok\n" + names.joinToString("\n") + "\n",
-            popularVeto = emptySet(), nowMs = 0L,
-        )!!
+/** v2 blob, the way the publisher renders it. */
+    private fun list(vararg names: String): BlockList {
+        val hashes = names.map { BlockList.hashOf(it) }.distinct().sorted()
+        val out = java.io.ByteArrayOutputStream()
+        out.write("CWBL2\n".toByteArray())
+        out.write("# cleanway-dns-blocklist v2 generated=1 count=${hashes.size} status=ok\n".toByteArray())
+        for (h in hashes) for (b in BlockList.HASH_BYTES - 1 downTo 0) out.write(((h shr (8 * b)) and 0xFF).toInt())
+        return BlockList.parse(out.toByteArray(), popularVeto = emptySet(), nowMs = 0L)!!
+    }
 
     @Test
     fun `both canaries are system domains by suffix — the trap this file exists for`() {

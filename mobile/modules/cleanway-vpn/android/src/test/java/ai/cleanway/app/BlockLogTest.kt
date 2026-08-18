@@ -72,6 +72,16 @@ class BlockLogTest {
  */
 class UserAllowTest {
 
+    /** v2 blob, the way the publisher renders it. */
+    private fun v2ListOf(vararg names: String): BlockList {
+        val hashes = names.map { BlockList.hashOf(it) }.distinct().sorted()
+        val out = java.io.ByteArrayOutputStream()
+        out.write("CWBL2\n".toByteArray())
+        out.write("# cleanway-dns-blocklist v2 generated=1 count=${hashes.size} status=ok\n".toByteArray())
+        for (h in hashes) for (b in BlockList.HASH_BYTES - 1 downTo 0) out.write(((h shr (8 * b)) and 0xFF).toInt())
+        return BlockList.parse(out.toByteArray(), popularVeto = emptySet(), nowMs = 0L)!!
+    }
+
     @Test
     fun `an allowed name covers itself and its subdomains`() {
         val allowed = setOf("mybank.example", "shop.co.uk")
@@ -97,10 +107,7 @@ class UserAllowTest {
 
     @Test
     fun `an allow decision outranks the blocklist, and only for the allowed name`() {
-        val list = BlockList.parse(
-            "# cleanway-dns-blocklist v1 generated=1 count=2 status=ok\nevil.example\nmybank.example\n",
-            popularVeto = emptySet(), nowMs = 0L,
-        )!!
+        val list = v2ListOf("evil.example", "mybank.example")
         assertEquals(DnsDecision.BLOCK, DnsDecision.classify("mybank.example", list, emptySet()))
         assertEquals(DnsDecision.FORWARD, DnsDecision.classify("mybank.example", list, setOf("mybank.example")))
         assertEquals(DnsDecision.FORWARD, DnsDecision.classify("www.mybank.example", list, setOf("mybank.example")))

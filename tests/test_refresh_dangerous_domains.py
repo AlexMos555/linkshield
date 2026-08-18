@@ -135,7 +135,8 @@ def test_ip_literals_are_skipped():
 def test_publish_gate_rejects_too_small_and_too_large():
     ok, why = rdd.publish_gate(set(f"d{i}.example" for i in range(10)), previous=None, popular=set(), shared=set())
     assert not ok and "small" in why
-    ok, why = rdd.publish_gate(set(f"d{i}.example" for i in range(60_000)), previous=None, popular=set(), shared=set())
+    huge = {f"d{i}.example" for i in range(rdd.MAX_ENTRIES + 1)}
+    ok, why = rdd.publish_gate(huge, previous=None, popular=set(), shared=set())
     assert not ok and "large" in why
 
 

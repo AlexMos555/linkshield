@@ -14,7 +14,7 @@ import org.json.JSONObject
 
 /** What one fetch of the artifact produced. */
 sealed class FetchResult {
-    data class Ok(val text: String, val etag: String?) : FetchResult()
+    data class Ok(val body: ByteArray, val etag: String?) : FetchResult()
     object NotModified : FetchResult()
     data class Failed(val reason: String) : FetchResult()
 }
@@ -31,23 +31,23 @@ fun interface BlocklistFetcher {
  * previous good list should survive regardless.
  */
 class BlocklistStore(private val dir: File) {
-    data class Saved(val text: String, val etag: String?, val fetchedAtMs: Long)
+    data class Saved(val body: ByteArray, val etag: String?, val fetchedAtMs: Long)
 
-    private val textFile get() = File(dir, "dns-blocklist-v1.txt")
-    private val metaFile get() = File(dir, "dns-blocklist-v1.meta.json")
+    private val blobFile get() = File(dir, "dns-blocklist-v2.bin")
+    private val metaFile get() = File(dir, "dns-blocklist-v2.meta.json")
 
     fun load(): Saved? = try {
-        if (!textFile.exists()) null else {
+        if (!blobFile.exists()) null else {
             val meta = if (metaFile.exists()) JSONObject(metaFile.readText()) else JSONObject()
-            Saved(textFile.readText(), meta.optString("etag").ifEmpty { null }, meta.optLong("fetchedAt", 0L))
+            Saved(blobFile.readBytes(), meta.optString("etag").ifEmpty { null }, meta.optLong("fetchedAt", 0L))
         }
     } catch (_: Exception) {
         null
     }
 
-    fun save(text: String, etag: String?, fetchedAtMs: Long) {
+    fun save(body: ByteArray, etag: String?, fetchedAtMs: Long) {
         dir.mkdirs()
-        writeAtomic(textFile, text)
+        writeAtomicBytes(blobFile, body)
         writeAtomic(metaFile, JSONObject().put("etag", etag ?: "").put("fetchedAt", fetchedAtMs).toString())
     }
 
@@ -58,7 +58,16 @@ class BlocklistStore(private val dir: File) {
     }
 
     fun clear() {
-        textFile.delete(); metaFile.delete()
+        blobFile.delete(); metaFile.delete()
+    }
+
+    private fun writeAtomicBytes(target: File, content: ByteArray) {
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        tmp.writeBytes(content)
+        if (!tmp.renameTo(target)) {
+            target.delete()
+            tmp.renameTo(target)
+        }
     }
 
     private fun writeAtomic(target: File, content: String) {
@@ -79,10 +88,29 @@ class BlocklistStore(private val dir: File) {
  *  - failures: 5 → 15 → 60 min, then every 60 min
  */
 object SyncPolicy {
-    const val REFRESH_MS = 2L * 60 * 60 * 1000
+    const val REFRESH_MS = 6L * 60 * 60 * 1000
+
+    /**
+     * On a metered connection the list is only worth ~3 MB of someone's data
+     * plan when it is genuinely old. A person on a small prepaid bundle must
+     * not pay for a refresh every few hours; a person with a day-old list
+     * should still get one.
+     */
+    const val METERED_MIN_AGE_MS = 24L * 60 * 60 * 1000
+
     private val BACKOFF_MS = longArrayOf(5L * 60_000, 15L * 60_000, 60L * 60_000)
 
     fun shouldFetchOnStart(storedAgeMs: Long?): Boolean = storedAgeMs == null || storedAgeMs > REFRESH_MS / 2
+
+    /**
+     * Is this fetch worth the person's data right now? Always yes with no
+     * list at all — an unprotected phone is the worse trade.
+     */
+    fun shouldFetchNow(storedAgeMs: Long?, metered: Boolean): Boolean {
+        if (storedAgeMs == null) return true
+        if (!metered) return true
+        return storedAgeMs >= METERED_MIN_AGE_MS
+    }
 
     fun nextDelayMs(consecutiveFailures: Int, jitterSeed: Long = 0L): Long {
         if (consecutiveFailures > 0) return BACKOFF_MS[minOf(consecutiveFailures, BACKOFF_MS.size) - 1]
@@ -105,6 +133,8 @@ class BlocklistSync(
     private val nowMs: () -> Long,
     private val elapsedMs: () -> Long,
     private val onSwap: (BlockList) -> Unit,
+    /** True when the active network charges for data (ConnectivityManager). */
+    private val isMetered: () -> Boolean = { false },
 ) {
     @Volatile var lastError: String? = null; private set
     @Volatile var consecutiveFailures = 0; private set
@@ -115,7 +145,7 @@ class BlocklistSync(
     /** Load what is on disk (fast, synchronous — call before the DNS loop). */
     fun loadFromDisk(): BlockList? {
         val saved = store.load() ?: return null
-        val list = BlockList.parse(saved.text, popularVeto, nowMs = saved.fetchedAtMs, elapsedMs = elapsedMs() - (nowMs() - saved.fetchedAtMs))
+        val list = BlockList.parse(saved.body, popularVeto, nowMs = saved.fetchedAtMs, elapsedMs = elapsedMs() - (nowMs() - saved.fetchedAtMs))
         if (list == null) {
             Log.w(TAG, "stored blocklist rejected — clearing")
             store.clear()
@@ -128,7 +158,12 @@ class BlocklistSync(
     }
 
     /** One fetch. Returns true if a new list was applied or confirmed fresh. */
-    fun refreshOnce(): Boolean {
+    fun refreshOnce(force: Boolean = false): Boolean {
+        val age = if (lastFetchAtMs > 0) nowMs() - lastFetchAtMs else null
+        if (!force && !SyncPolicy.shouldFetchNow(age, isMetered())) {
+            Log.i(TAG, "blocklist_fetch_skipped: metered network, list is ${(age ?: 0) / 3_600_000}h old")
+            return false
+        }
         return when (val res = fetcher.fetch(url, currentEtag)) {
             is FetchResult.NotModified -> {
                 lastFetchAtMs = nowMs(); consecutiveFailures = 0; lastError = null
@@ -138,14 +173,14 @@ class BlocklistSync(
             }
             is FetchResult.Ok -> {
                 val expected = etagSha(res.etag)
-                if (expected != null && sha256Hex(res.text) != expected) {
+                if (expected != null && sha256Hex(res.body) != expected) {
                     fail("sha256 mismatch"); return false
                 }
-                val list = BlockList.parse(res.text, popularVeto, nowMs = nowMs(), elapsedMs = elapsedMs())
+                val list = BlockList.parse(res.body, popularVeto, nowMs = nowMs(), elapsedMs = elapsedMs())
                 if (list == null) { fail("artifact rejected by parser"); return false }
                 lastFetchAtMs = nowMs(); consecutiveFailures = 0; lastError = null
                 currentEtag = res.etag
-                if (list.revoked) store.clear() else store.save(res.text, res.etag, lastFetchAtMs)
+                if (list.revoked) store.clear() else store.save(res.body, res.etag, lastFetchAtMs)
                 onSwap(list)
                 Log.i(TAG, "blocklist_loaded version=${list.version} count=${list.count} revoked=${list.revoked}")
                 true
@@ -191,8 +226,8 @@ class BlocklistSync(
             return if (Regex("^[0-9a-f]{64}$").matches(t)) t else null
         }
 
-        fun sha256Hex(text: String): String =
-            MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
+        fun sha256Hex(body: ByteArray): String =
+            MessageDigest.getInstance("SHA-256").digest(body)
                 .joinToString("") { "%02x".format(it) }
     }
 }
@@ -211,7 +246,7 @@ class HttpBlocklistFetcher(private val userAgent: String = "Cleanway-Android") :
                 readTimeout = 10_000
                 requestMethod = "GET"
                 instanceFollowRedirects = false
-                setRequestProperty("Accept", "text/plain")
+                setRequestProperty("Accept", "application/octet-stream")
                 setRequestProperty("Accept-Encoding", "gzip")
                 setRequestProperty("User-Agent", userAgent)
                 if (etag != null) setRequestProperty("If-None-Match", etag)
@@ -221,7 +256,7 @@ class HttpBlocklistFetcher(private val userAgent: String = "Cleanway-Android") :
                 200 -> {
                     val stream: InputStream = if (conn.contentEncoding == "gzip") GZIPInputStream(conn.inputStream) else conn.inputStream
                     val bytes = stream.use { readCapped(it, BlockList.MAX_BYTES) } ?: return FetchResult.Failed("body over ${BlockList.MAX_BYTES} bytes")
-                    FetchResult.Ok(String(bytes, Charsets.UTF_8), conn.getHeaderField("ETag"))
+                    FetchResult.Ok(bytes, conn.getHeaderField("ETag"))
                 }
                 else -> FetchResult.Failed("http $code")
             }

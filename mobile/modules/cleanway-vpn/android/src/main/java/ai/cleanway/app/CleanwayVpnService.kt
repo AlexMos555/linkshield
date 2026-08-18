@@ -605,6 +605,17 @@ class CleanwayVpnService : VpnService() {
                 nowMs = { System.currentTimeMillis() },
                 elapsedMs = { android.os.SystemClock.elapsedRealtime() },
                 onSwap = { list -> blockList = list },
+                // ~3 MB per refresh. On a metered plan that is real money for
+                // the person we build this for, so a fresh-enough list is not
+                // re-downloaded there (BlocklistSync.SyncPolicy).
+                isMetered = {
+                    try {
+                        (getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager)
+                            .isActiveNetworkMetered
+                    } catch (e: Exception) {
+                        false
+                    }
+                },
             )
             blocklistSync = sync
             val loaded = sync.loadFromDisk()
@@ -662,7 +673,8 @@ class CleanwayVpnService : VpnService() {
     /** For the app's pull-to-refresh: fetch now on the sync thread. */
     fun refreshBlocklistAsync() {
         val sync = blocklistSync ?: return
-        syncExecutor.execute { runCatching { sync.refreshOnce() } }
+        // The person tapped "update" — honour it even on a metered network.
+        syncExecutor.execute { runCatching { sync.refreshOnce(force = true) } }
     }
 
     companion object {

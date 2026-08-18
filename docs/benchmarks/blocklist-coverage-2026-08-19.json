@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-08-18T23:14:50Z",
+  "artifact_source": "https://api.cleanway.ai/api/v1/blocklist/dns",
+  "artifact_names": 816,
+  "held_out_feed": "phishtank_online_valid",
+  "sample_hostnames": 3000,
+  "coverage_all_pct": 0.4,
+  "coverage_blockable_pct": 0.3,
+  "blockable_hostnames": 2052,
+  "ip_literal_hostnames": 6,
+  "shared_hosting_hostnames": 942,
+  "false_positives_top10k": 0,
+  "false_positive_examples": [],
+  "note": "Coverage is measured against a feed that does not build the list (PhishTank), so it is not circular. 'blockable' excludes IP-literal URLs and phishing on shared hosting, which domain-level DNS blocking cannot cover by design."
+}

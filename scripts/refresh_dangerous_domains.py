@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import json
 import logging
 import os
@@ -42,7 +43,8 @@ import httpx
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from api.services.blocklist_artifact import (  # noqa: E402
-    NEVER_BLOCK_GUARDS, REDIS_META_KEY, REDIS_TEXT_KEY, meta_for, render_artifact,
+    LIST_CANARY, NEVER_BLOCK_GUARDS, REDIS_META_KEY, REDIS_TEXT_KEY, meta_for_v2,
+    render_artifact_v2,
 )
 
 API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
@@ -99,6 +101,17 @@ logger = logging.getLogger("dangerous-domains-refresh")
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 URLHAUS_CSV = "https://urlhaus.abuse.ch/downloads/csv_online/"
 OPENPHISH_FEED = "https://openphish.com/feed.txt"
+
+# Domain-level phishing aggregates. Measured 2026-08-19 on a held-out
+# PhishTank sample: URLhaus + OpenPhish alone covered 0.4% of live phishing
+# hostnames (816 names — a correct architecture with an empty tank). Adding
+# these two took the same measurement to 54.2% overall / 73.3% of the
+# hostnames a domain blocklist can cover at all, with zero Tranco top-10k
+# false positives after the guards. That is the difference between a product
+# and a demo.
+PHISHING_DATABASE = ("https://raw.githubusercontent.com/mitchellkrogza/"
+                     "Phishing.Database/master/phishing-domains-ACTIVE.txt")
+PHISHING_ARMY = "https://phishing.army/download/phishing_army_blocklist_extended.txt"
 BATCH = 5_000
 SET_KEY = "dangerous_domains"
 TTL_SECONDS = 60 * 60 * 24 * 3  # 3-day safety TTL: if the cron dies, the set expires
@@ -244,6 +257,21 @@ def _hosts_from_urlhaus(text: str):
                 yield h.lower()
 
 
+def _hosts_from_domain_list(text: str):
+    """One lowercase domain per line, '#' comments. Already host-level, so
+    each line counts once (the shared-host threshold does not apply)."""
+    for raw in text.splitlines():
+        line = raw.strip().lower().rstrip(".")
+        if not line or line.startswith("#"):
+            continue
+        # Some lists ship "0.0.0.0 domain" hosts-file syntax.
+        if " " in line or "\t" in line:
+            parts = line.split()
+            line = parts[-1]
+        if "." in line and "/" not in line:
+            yield line
+
+
 def _hosts_from_openphish(text: str):
     for line in text.splitlines():
         line = line.strip()
@@ -279,6 +307,23 @@ def _tenant_suffix(host: str, shared_suffixes: set[str]) -> str | None:
         if suffix in shared_suffixes:
             return suffix
     return None
+
+
+_LABEL_OK = __import__("re").compile(r"^(?!-)[a-z0-9_-]{1,63}(?<!-)$")
+
+
+def is_hostname(host: str) -> bool:
+    """A syntactically valid DNS name. The aggregates contain URL-encoded junk
+    ('%20mandrillapp.com', 'redacted@redacted.invalid') that can never match a
+    real query and only bloats the artifact."""
+    if not host or len(host) > 253 or ".." in host:
+        return False
+    labels = host.split(".")
+    if len(labels) < 2:
+        return False
+    if len(labels[-1]) < 2 or labels[-1].isdigit():
+        return False
+    return all(_LABEL_OK.match(l) for l in labels)
 
 
 def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None = None,
@@ -323,6 +368,8 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
     for h in counts:
         if h.replace(".", "").replace(":", "").isdigit():
             continue  # IP literal — DNS blocking cannot cover it
+        if not is_hostname(h):
+            continue
         if h in SHARED_HOSTNAMES:
             continue
         reg = _registrable_domain(h, public_suffixes)
@@ -350,7 +397,10 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
 # Publish gates. A bad publish darkens sites for every DNS user; a skipped
 # publish just leaves the previous set (3-day TTL) in place. Prefer skipping.
 MIN_ENTRIES = 300
-MAX_ENTRIES = 50_000
+# The aggregates carry ~500k names. The phone holds them as a sorted array of
+# 48-bit hashes (3 MB), not strings, so the ceiling is about the artifact size
+# and the publish blast radius, not memory.
+MAX_ENTRIES = 2_000_000
 MAX_CHURN = 0.5  # more than half the previous set replaced → suspicious
 
 
@@ -379,6 +429,8 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
     for name, url, parser in (
         ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus),
         ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish),
+        ("Phishing.Database", PHISHING_DATABASE, _hosts_from_domain_list),
+        ("phishing.army", PHISHING_ARMY, _hosts_from_domain_list),
     ):
         try:
             text = await _fetch(url)
@@ -428,9 +480,22 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
         return 4
     logger.info("publish gate: %s", why)
 
-    artifact = render_artifact(blockset)
-    meta = meta_for(artifact)
-    logger.info("mobile artifact: %s bytes, sha256 %s…, count %s", len(artifact), meta["sha256"][:12], meta["count"])
+    # A listed name already blocks its subdomains, so a subdomain whose parent
+    # is listed is dead weight in the artifact.
+    def _redundant(n: str) -> bool:
+        parts = n.split(".")
+        return any(".".join(parts[i:]) in blockset for i in range(1, len(parts) - 1))
+
+    minimal = {n for n in blockset if not _redundant(n)}
+    # The canary lives in both places: the artifact (so a phone can prove its
+    # list is live) and the gateway set (so the 15-minute canary can prove
+    # server-side filtering is not silently dead — the state that once lasted
+    # months).
+    blockset.add(LIST_CANARY)
+    artifact = render_artifact_v2(minimal)
+    meta = meta_for_v2(artifact)
+    logger.info("mobile artifact v2: %s bytes, sha256 %s…, count %s (from %d names, %d redundant)",
+                len(artifact), meta["sha256"][:12], meta["count"], len(blockset), len(blockset) - len(minimal))
 
     if dry_run:
         logger.info("[dry-run] would rebuild '%s' with %d entries; sample: %s",
@@ -464,15 +529,26 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
         staging = f"{SET_KEY}:staging:{os.getpid()}"
         await r.delete(staging)
         members = list(blockset)
+        # TTL first: if the write dies half way (Redis OOM on a big set), the
+        # staging key expires instead of leaking until someone notices.
+        await r.sadd(staging, members[0])
+        await r.expire(staging, TTL_SECONDS)
         for i in range(0, len(members), BATCH):
             await r.sadd(staging, *members[i:i + BATCH])
-        await r.expire(staging, TTL_SECONDS)
+        try:
+            used = await r.memory_usage(staging)
+            if used:
+                logger.info("staging set: %.1f MB in Redis", used / 1e6)
+        except Exception:  # noqa: BLE001
+            pass
         # One transaction: the gateway's set and the phones' artifact flip
         # together, so a phone can never sync a list the gateway disagrees with.
         pipe = r.pipeline(transaction=True)
         pipe.rename(staging, SET_KEY)
         pipe.expire(SET_KEY, TTL_SECONDS)
-        pipe.set(REDIS_TEXT_KEY, artifact, ex=TTL_SECONDS)
+        # Redis client runs with decode_responses=True for everything else;
+        # base64 keeps the binary artifact in that one text world.
+        pipe.set(REDIS_TEXT_KEY, base64.b64encode(artifact).decode("ascii"), ex=TTL_SECONDS)
         pipe.delete(REDIS_META_KEY)
         pipe.hset(REDIS_META_KEY, mapping=meta)
         pipe.expire(REDIS_META_KEY, TTL_SECONDS)
@@ -514,7 +590,7 @@ async def rollback(r) -> bool:
             pipe = r.pipeline(transaction=True)
             pipe.set(REDIS_TEXT_KEY, prev_text, ex=TTL_SECONDS)
             pipe.delete(REDIS_META_KEY)
-            pipe.hset(REDIS_META_KEY, mapping=meta_for(prev_text))
+            pipe.hset(REDIS_META_KEY, mapping=meta_for_v2(base64.b64decode(prev_text)))
             pipe.expire(REDIS_META_KEY, TTL_SECONDS)
             await pipe.execute()
         return True

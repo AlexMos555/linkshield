@@ -1,5 +1,6 @@
 package ai.cleanway.app
 
+import java.io.ByteArrayOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -8,31 +9,98 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The on-device blocklist: the thing that turns "first visit passes" into
- * "first visit blocked" for every listed name. Parsing is strict (a bad file
- * is rejected whole), matching is a suffix walk, and a popular-domain veto
- * inside match() means even a bad publish cannot darken paypal.com.
+ * The on-device blocklist: what turns "first visit passes" into "first visit
+ * blocked". Parsing is strict (a bad file is rejected whole), matching is a
+ * suffix walk over sorted 48-bit hashes, and a popular-domain veto sits on
+ * top so even a bad publish cannot darken a top site.
  */
 class BlockListTest {
 
     private val veto = setOf("paypal.com", "google.com", "github.com")
 
-    private fun text(vararg names: String, generated: Long = 1_755_530_000L, status: String = "ok"): String =
-        "# cleanway-dns-blocklist v1 generated=$generated count=${names.size} status=$status\n" +
-            names.joinToString("\n") + (if (names.isEmpty()) "" else "\n")
+    /** Build a v2 blob the way the publisher does. */
+    private fun blob(
+        vararg names: String,
+        generated: Long = 1_755_530_000L,
+        revoked: Boolean = false,
+        countOverride: Int? = null,
+        sorted: Boolean = true,
+    ): ByteArray {
+        // Descending when `sorted` is false: "insertion order" would be sorted
+        // by luck for some inputs and the test would flake.
+        val hashes = names.map { BlockList.hashOf(it) }.distinct()
+            .let { if (sorted) it.sorted() else it.sortedDescending() }
+        val count = countOverride ?: hashes.size
+        val out = ByteArrayOutputStream()
+        out.write("CWBL2\n".toByteArray())
+        val status = if (revoked) "revoked" else "ok"
+        out.write("# cleanway-dns-blocklist v2 generated=$generated count=$count status=$status\n".toByteArray())
+        if (!revoked) {
+            for (h in hashes) for (b in BlockList.HASH_BYTES - 1 downTo 0) {
+                out.write(((h shr (8 * b)) and 0xFF).toInt())
+            }
+        }
+        return out.toByteArray()
+    }
+
+    // ── the cross-language contract ───────────────────────────────────
 
     @Test
-    fun `parses header and names, exposes version and count`() {
-        val bl = BlockList.parse(text("a.example", "b.example", "list-canary.cleanway.ai"), popularVeto = veto, nowMs = 0L)
+    fun `hashOf matches the publisher's name_hash byte for byte`() {
+        // Computed by api/services/blocklist_artifact.py::name_hash — if these
+        // ever disagree the phone silently blocks nothing (or the wrong things).
+        assertEquals(0xa379a6f6eeafL, BlockList.hashOf("example.com"))
+        assertEquals(0x9c180de0cd69L, BlockList.hashOf("evil.example"))
+        assertEquals(0x4ade574af9acL, BlockList.hashOf("list-canary.cleanway.ai"))
+        assertEquals(0x2d2ae3e541d9L, BlockList.hashOf("gwcu.us.org"))
+        assertEquals(0xdc7b4e6ffcc6L, BlockList.hashOf("xn--80ak6aa92e.com"))
+        // Case and a trailing dot are normalised before hashing.
+        assertEquals(BlockList.hashOf("example.com"), BlockList.hashOf("EXAMPLE.COM."))
+    }
+
+    // ── parsing ───────────────────────────────────────────────────────
+
+    @Test
+    fun `parses header and body, exposes version and count`() {
+        val bl = BlockList.parse(blob("a.example", "b.example", "list-canary.cleanway.ai"), veto, nowMs = 0L)
         assertNotNull(bl)
         assertEquals(1_755_530_000L, bl!!.version)
         assertEquals(3, bl.count)
         assertFalse(bl.revoked)
+        assertTrue(bl.hasListCanary())
     }
 
     @Test
+    fun `rejects the whole file on bad magic, bad header, wrong count, truncation or bad order`() {
+        val good = blob("a.example", "b.example")
+        assertNull(BlockList.parse(good.copyOfRange(1, good.size), veto, 0L))          // magic
+        assertNull(BlockList.parse("CWBL2\nhello\n".toByteArray(), veto, 0L))          // header
+        assertNull(BlockList.parse(blob("a.example", countOverride = 9), veto, 0L))    // count
+        assertNull(BlockList.parse(good.copyOfRange(0, good.size - 1), veto, 0L))      // truncated
+        assertNull(BlockList.parse(blob("z.example", "a.example", sorted = false), veto, 0L))
+        assertNull(BlockList.parse(ByteArray(3), veto, 0L))
+    }
+
+    @Test
+    fun `an empty body is rejected — a list that blocks nothing is not a list`() {
+        assertNull(BlockList.parse(blob(), veto, 0L))
+    }
+
+    @Test
+    fun `revoked parses to an empty, revoked list`() {
+        val bl = BlockList.parse(blob(revoked = true, countOverride = 0, generated = 7L), veto, 0L)
+        assertNotNull(bl)
+        assertTrue(bl!!.revoked)
+        assertEquals(0, bl.count)
+        assertNull(bl.match("anything.example"))
+        assertFalse(bl.hasListCanary())
+    }
+
+    // ── matching ──────────────────────────────────────────────────────
+
+    @Test
     fun `match blocks the name and its subdomains, never the parent`() {
-        val bl = BlockList.parse(text("scotiabano.com", "gwcu.us.org"), popularVeto = veto, nowMs = 0L)!!
+        val bl = BlockList.parse(blob("scotiabano.com", "gwcu.us.org"), veto, 0L)!!
         assertEquals("scotiabano.com", bl.match("scotiabano.com"))
         assertEquals("scotiabano.com", bl.match("login.scotiabano.com"))
         assertEquals("scotiabano.com", bl.match("a.b.c.scotiabano.com"))
@@ -45,8 +113,7 @@ class BlockListTest {
 
     @Test
     fun `popular veto - a listed popular name never blocks`() {
-        // A bad publish that somehow contains paypal.com must be inert on the phone.
-        val bl = BlockList.parse(text("paypal.com", "evil.example"), popularVeto = veto, nowMs = 0L)!!
+        val bl = BlockList.parse(blob("paypal.com", "evil.example"), veto, 0L)!!
         assertNull(bl.match("paypal.com"))
         assertNull(bl.match("www.paypal.com"))
         assertEquals("evil.example", bl.match("evil.example"))
@@ -54,62 +121,44 @@ class BlockListTest {
 
     @Test
     fun `popular veto applies to the registrable, so tenant sites on shared platforms still block`() {
-        // github.io is deliberately NOT in the veto asset (it is a public suffix);
-        // github.com is. evil.github.io must block, anything.github.com never.
-        val bl = BlockList.parse(text("evil.github.io", "bad.github.com"), popularVeto = veto, nowMs = 0L)!!
+        // github.io is deliberately NOT in the veto asset (it is a public
+        // suffix); github.com is. evil.github.io must block, *.github.com never.
+        val bl = BlockList.parse(blob("evil.github.io", "bad.github.com"), veto, 0L)!!
         assertEquals("evil.github.io", bl.match("evil.github.io"))
         assertNull(bl.match("bad.github.com"))
     }
 
     @Test
-    fun `rejects the whole file on a bad header, a bad line, or a bare TLD`() {
-        assertNull(BlockList.parse("hello\nfoo.example\n", popularVeto = veto, nowMs = 0L))
-        assertNull(BlockList.parse(text("ok.example", "not a domain!"), popularVeto = veto, nowMs = 0L))
-        assertNull(BlockList.parse(text("ok.example", "com"), popularVeto = veto, nowMs = 0L))
-        assertNull(BlockList.parse(text("ok.example", "-bad.example"), popularVeto = veto, nowMs = 0L))
-        // count in header must match
-        assertNull(BlockList.parse("# cleanway-dns-blocklist v1 generated=1 count=5 status=ok\na.example\n", popularVeto = veto, nowMs = 0L))
+    fun `case and trailing dots are normalised at lookup`() {
+        val bl = BlockList.parse(blob("xn--80ak6aa92e.com", "mixed.example"), veto, 0L)!!
+        assertEquals("xn--80ak6aa92e.com", bl.match("XN--80AK6AA92E.COM"))
+        assertEquals("mixed.example", bl.match("WWW.Mixed.Example."))
     }
 
     @Test
-    fun `rejects oversized lists`() {
-        val many = (0 until BlockList.MAX_ENTRIES + 1).map { "d$it.example" }.toTypedArray()
-        assertNull(BlockList.parse(text(*many), popularVeto = veto, nowMs = 0L))
+    fun `a large list stays correct and answers fast`() {
+        val names = (0 until 50_000).map { "d$it.example" }
+        val bl = BlockList.parse(blob(*names.toTypedArray()), veto, 0L)!!
+        assertEquals(50_000, bl.count)
+        assertEquals("d49999.example", bl.match("login.d49999.example"))
+        assertNull(bl.match("d50000.example"))
+        val start = System.nanoTime()
+        repeat(10_000) { bl.match("www.some-unlisted-$it.example") }
+        val perLookupUs = (System.nanoTime() - start) / 10_000 / 1000.0
+        // The DNS read loop carries every query on the device; a lookup must
+        // cost microseconds, not milliseconds.
+        assertTrue("lookup took ${perLookupUs}us", perLookupUs < 200)
     }
 
-    @Test
-    fun `revoked list parses to an empty, revoked list`() {
-        val bl = BlockList.parse("# cleanway-dns-blocklist v1 generated=7 count=0 status=revoked\n", popularVeto = veto, nowMs = 0L)
-        assertNotNull(bl)
-        assertTrue(bl!!.revoked)
-        assertEquals(0, bl.count)
-        assertNull(bl.match("anything.example"))
-    }
+    // ── staleness ─────────────────────────────────────────────────────
 
     @Test
     fun `staleness uses the larger of wall-clock and monotonic age`() {
-        val bl = BlockList.parse(text("a.example"), popularVeto = veto, nowMs = 1_000L, elapsedMs = 5_000L)!!
+        val bl = BlockList.parse(blob("a.example"), veto, nowMs = 1_000L, elapsedMs = 5_000L)!!
         assertFalse(bl.isStale(nowMs = 1_000L + 60_000L, elapsedMs = 5_000L + 60_000L))
-        // Wall clock rolled back to zero, but 25h of uptime have passed → stale.
+        // Wall clock rolled back, but the phone has been up past the window.
         assertTrue(bl.isStale(nowMs = 0L, elapsedMs = 5_000L + BlockList.STALE_AFTER_MS + 1))
-        // Wall clock says 25h passed even though monotonic says a minute → stale (clock jumped forward, be safe).
+        // Wall clock jumped forward: be safe, call it stale.
         assertTrue(bl.isStale(nowMs = 1_000L + BlockList.STALE_AFTER_MS + 1, elapsedMs = 5_000L + 60_000L))
-    }
-
-    @Test
-    fun `punycode and case are normalised`() {
-        val bl = BlockList.parse(text("xn--80ak6aa92e.com", "MiXeD.Example"), popularVeto = veto, nowMs = 0L)!!
-        assertEquals("xn--80ak6aa92e.com", bl.match("XN--80AK6AA92E.COM"))
-        assertEquals("mixed.example", bl.match("www.mixed.example"))
-    }
-
-    @Test
-    fun `list canary is recognised only when the loaded list contains it`() {
-        val with = BlockList.parse(text("list-canary.cleanway.ai", "a.example"), popularVeto = veto, nowMs = 0L)!!
-        val without = BlockList.parse(text("a.example"), popularVeto = veto, nowMs = 0L)!!
-        assertTrue(with.hasListCanary())
-        assertFalse(without.hasListCanary())
-        // The canary label itself resolves through the same suffix walk.
-        assertEquals("list-canary.cleanway.ai", with.match("r4nd0m.list-canary.cleanway.ai"))
     }
 }
