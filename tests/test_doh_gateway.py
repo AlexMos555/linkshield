@@ -348,3 +348,63 @@ async def test_is_blocked_redis_fail_open_on_none():
     """No redis handle → proxy clean (fail-open)."""
     from api.services.doh_gateway import is_blocked_redis
     assert await is_blocked_redis("phisher.example", None) is False
+
+
+# ─────────────────────────────────────────────────────────────────
+# proxy_to_upstream — pooled client (one TLS handshake, not one per query)
+# ─────────────────────────────────────────────────────────────────
+
+class _CountingClient:
+    """Stand-in for httpx.AsyncClient that counts constructions and posts."""
+    constructed = 0
+    posted = 0
+    fail = False
+
+    def __init__(self, *a, **kw):
+        type(self).constructed += 1
+        self.is_closed = False
+
+    async def post(self, *a, **kw):
+        type(self).posted += 1
+        if type(self).fail:
+            raise RuntimeError("upstream down")
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.content = b"\x12\x34" + b"\x00" * 10
+        return resp
+
+    async def aclose(self):
+        self.is_closed = True
+
+
+@pytest.mark.asyncio
+async def test_proxy_to_upstream_reuses_one_client(monkeypatch):
+    """Every DoH query used to open a fresh httpx.AsyncClient — a full TLS
+    handshake to Cloudflare per lookup, on a path where a page load costs
+    tens of lookups. Measured 0.3-0.7s/query vs 0.025s direct. The client
+    must be created once and reused."""
+    import api.services.doh_gateway as g
+    _CountingClient.constructed = 0
+    _CountingClient.posted = 0
+    _CountingClient.fail = False
+    monkeypatch.setattr(g.httpx, "AsyncClient", _CountingClient)
+    g._reset_upstream_client_for_tests()
+
+    for _ in range(5):
+        out = await g.proxy_to_upstream(b"\x12\x34" + b"\x00" * 10)
+        assert out is not None
+
+    assert _CountingClient.posted == 5
+    assert _CountingClient.constructed == 1
+
+
+@pytest.mark.asyncio
+async def test_proxy_to_upstream_fail_open_returns_none(monkeypatch):
+    import api.services.doh_gateway as g
+    _CountingClient.constructed = 0
+    _CountingClient.fail = True
+    monkeypatch.setattr(g.httpx, "AsyncClient", _CountingClient)
+    g._reset_upstream_client_for_tests()
+
+    assert await g.proxy_to_upstream(b"\x12\x34" + b"\x00" * 10) is None
+    _CountingClient.fail = False

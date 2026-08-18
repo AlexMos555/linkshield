@@ -230,25 +230,79 @@ async def is_blocked_redis(qname: str, redis) -> bool:
         return False
 
 
+# One pooled upstream client per event loop.
+#
+# This function used to open a fresh ``httpx.AsyncClient`` for EVERY DNS
+# query — a full TCP+TLS handshake to Cloudflare per lookup, on a path where
+# a single page load costs tens of lookups. Measured from outside: 0.30-0.72s
+# per query through the gateway vs 0.025s to 1.1.1.1 directly. The DNS-only
+# VPN on the phone was pointed at 1.1.1.1 instead of at us for exactly that
+# reason, which is what leaves first-visit blocking to the phone's own
+# after-the-fact check. Keeping one client alive reuses the connection.
+#
+# The client is bound to the running event loop; tests (and any code that
+# spins up a new loop) get a new one instead of a stale, closed transport.
+_UPSTREAM_MAX_CONNECTIONS = 64
+_UPSTREAM_KEEPALIVE = 32
+_upstream_client: Optional[httpx.AsyncClient] = None
+_upstream_client_loop: object = None
+
+
+def _get_upstream_client() -> httpx.AsyncClient:
+    global _upstream_client, _upstream_client_loop
+    import asyncio
+
+    loop = asyncio.get_running_loop()
+    client = _upstream_client
+    if client is None or _upstream_client_loop is not loop or getattr(client, "is_closed", False):
+        client = httpx.AsyncClient(
+            timeout=UPSTREAM_TIMEOUT_S,
+            limits=httpx.Limits(
+                max_connections=_UPSTREAM_MAX_CONNECTIONS,
+                max_keepalive_connections=_UPSTREAM_KEEPALIVE,
+            ),
+        )
+        _upstream_client = client
+        _upstream_client_loop = loop
+    return client
+
+
+def _reset_upstream_client_for_tests() -> None:
+    global _upstream_client, _upstream_client_loop
+    _upstream_client = None
+    _upstream_client_loop = None
+
+
+async def close_upstream_client() -> None:
+    """Release the pooled connections (call from app shutdown)."""
+    global _upstream_client, _upstream_client_loop
+    client, _upstream_client, _upstream_client_loop = _upstream_client, None, None
+    if client is not None:
+        try:
+            await client.aclose()
+        except Exception:
+            logger.debug("DoH upstream client close failed", exc_info=True)
+
+
 async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
     """Forward the wire-format query to Cloudflare's DoH endpoint
     and return the response body. None on any error so the caller
     can decide whether to synthesise a SERVFAIL or 503.
     """
     try:
-        async with httpx.AsyncClient(timeout=UPSTREAM_TIMEOUT_S) as client:
-            resp = await client.post(
-                CLOUDFLARE_DOH_URL,
-                content=wire,
-                headers={
-                    "Content-Type": DOH_CONTENT_TYPE,
-                    "Accept": DOH_CONTENT_TYPE,
-                },
-            )
-            if resp.status_code != 200:
-                logger.warning("DoH upstream returned %d", resp.status_code)
-                return None
-            return resp.content
+        client = _get_upstream_client()
+        resp = await client.post(
+            CLOUDFLARE_DOH_URL,
+            content=wire,
+            headers={
+                "Content-Type": DOH_CONTENT_TYPE,
+                "Accept": DOH_CONTENT_TYPE,
+            },
+        )
+        if resp.status_code != 200:
+            logger.warning("DoH upstream returned %d", resp.status_code)
+            return None
+        return resp.content
     except Exception as exc:
         logger.warning("DoH upstream call failed: %s", exc)
         return None

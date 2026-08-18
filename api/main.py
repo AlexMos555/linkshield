@@ -96,6 +96,9 @@ async def lifespan(app: FastAPI):
     yield
     # ── Shutdown ──
     await close_redis()
+    # DoH gateway keeps one pooled upstream client per loop; release it.
+    from api.services.doh_gateway import close_upstream_client
+    await close_upstream_client()
     logger.info("Cleanway API shutdown complete")
 
 
