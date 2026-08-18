@@ -114,6 +114,22 @@ Replaces the paste hero AND the current **placebo shield** (`mobile/app/(tabs)/i
 
 > **Android status 2026-08-18 (emulator-verified, see `finding_2026-08-18_*` memories):** the states above are implemented as `setup / on / offline / unverified` plus an `interrupted` flag on `setup` ("Protection stopped — usually after a restart"). CONFLICT was removed: nothing in the code detects a competing VPN, so nothing may claim one. Verified transitions: on → green (canary counter delta, not NXDOMAIN inference); pause → 0 shields + tunnel gone; data off → on: tunnel survives, re-verifies green; offline: neutral "no internet" state, not an alarm; **reboot: BootReceiver → service → `prepare()`-then-`establish()` → tunnel_started → app opens straight to canary-green with no tap and no dialog.** The earlier belief that "Android drops VPN consent on reboot" was wrong — the AppOps grant persists, only ConnectivityService's in-memory prepared-package does not, and `prepare()` from the service restores it. Always-on VPN is now offered as an upgrade (starts with the phone, before BOOT_COMPLETED reaches any app — a gap of minutes on the emulator), not as the only path to survival.
 
+> **Android shield — scenario matrix, all emulator-verified 2026-08-18** (real-device OEM sweep still owed):
+>
+> | Scenario | Tunnel | UI | Phone DNS |
+> |---|---|---|---|
+> | Turn on | up, canary counter moves | green "You're protected" | ok |
+> | Pause (confirm) | down, `tunnel_stopped` | "0 shields", Set up | ok |
+> | Data off → on | survives | re-verifies green | ok |
+> | Offline (no internet at all) | up | neutral "No internet right now" | n/a |
+> | Reboot | BootReceiver → `prepare()` → up | opens straight to green, no tap | ok |
+> | Force-stop / killed while ON | down | "Protection stopped" + "Turn back on" (interrupted) | ok |
+> | Settings → VPN → Forget | `tunnel_revoked` → down | interrupted → tap → consent dialog → OK → green | ok |
+> | Private DNS strict, then turn on | refused, `private_dns_strict` | amber conflict, names provider, "Open network settings" | ok |
+> | Private DNS strict while ON | steps aside ≤1s | green → conflict on its own | ok (was DEAD before fix) |
+> | Competing VPN displaces us | `onRevoke` path exists | untested — no second VPN app on the emulator | — |
+
+
 ### First launch
 
 1. No account wall. Straight to the checklist with everything in NEEDS SETUP.
