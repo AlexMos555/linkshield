@@ -515,6 +515,8 @@
   "mobile.history.privacy": "Этот список остаётся на вашем телефоне. Когда вы проверяете ссылку, на наши серверы отправляется только название сайта.",
   "mobile.history.shield_blocked": "Остановлен щитом",
   "mobile.history.shield_warned": "Помечен щитом — если открылся, закройте",
+  "mobile.history.shield_allowed": "Вы разрешили этот сайт",
+  "mobile.history.shield_allow_action": "Разрешить",
   "mobile.report.title": "Отчёт за неделю",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "На этой неделе",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "Все сохранённые проверки удалены с этого телефона.",
   "mobile.settings.clear_failed_title": "Не удалось очистить историю",
   "mobile.settings.clear_failed_body": "Что-то пошло не так — история не изменилась. Попробуйте ещё раз.",
+  "mobile.settings.allowed": "Разрешённые сайты",
+  "mobile.settings.allowed_desc": "Сайты, которые вы отметили как безопасные. Щит их не блокирует.",
+  "mobile.settings.allowed_remove": "Убрать",
+  "mobile.settings.allowed_empty": "Разрешённых сайтов нет",
+  "mobile.settings.allow_confirm_title": "Разрешить этот сайт",
+  "mobile.settings.allow_confirm_body": "{{domain}} не будет блокироваться, пока вы не удалите его здесь. Делайте это, только если знаете сайт.",
   "mobile.family.title": "Семейный центр",
   "mobile.family.default_name": "Моя семья",
   "mobile.family.signed_out_body": "Войдите, чтобы настроить Семейный центр. Когда Cleanway блокирует мошеннический сайт в браузере члена семьи, вы получаете оповещение — со сквозным шифрованием, так что даже Cleanway не может его прочитать.",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "Cleanway остановил опасный сайт",
   "mobile.android_native.blocked_text": "{{domain}} похож на мошеннический — остановлен до того, как открылся.",
   "mobile.android_native.warn_title": "Этот сайт похож на мошеннический",
-  "mobile.android_native.warn_text": "{{domain}} выглядит опасным. Если он открыт — закройте его и ничего не вводите."
+  "mobile.android_native.warn_text": "{{domain}} выглядит опасным. Если он открыт — закройте его и ничего не вводите.",
+  "mobile.android_native.allow_action": "Это не мошенники — разрешить",
+  "mobile.android_native.allowed_title": "Сайт разрешён",
+  "mobile.android_native.allowed_text": "{{domain}} теперь разрешён. Отменить можно в «Настройки → Разрешённые сайты»."
 }

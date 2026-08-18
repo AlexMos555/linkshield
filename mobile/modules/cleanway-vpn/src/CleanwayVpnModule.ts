@@ -42,6 +42,10 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   refreshBlocklist?(): void;
   /** Monotonic count of list-canary answers — proof the loaded list is live. */
   listCanaryAnswerCount?(): number;
+  /** Sites the person marked "not a scam". */
+  allowedDomains?(): string[];
+  allowDomain?(domain: string): boolean;
+  removeAllowedDomain?(domain: string): void;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

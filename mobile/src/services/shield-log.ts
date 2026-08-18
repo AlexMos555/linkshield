@@ -4,11 +4,56 @@ import { Platform } from "react-native";
 export interface ShieldRow {
   domain: string;
   ts: number;
-  kind: "blocked" | "warned";
+  /**
+   * "blocked": the query got NXDOMAIN — the site never opened.
+   * "warned": the verdict arrived after the first lookup had been forwarded.
+   * "allowed": the person said "not a scam" and rescued it.
+   */
+  kind: "blocked" | "warned" | "allowed";
 }
 
 interface ShieldLogModule {
   recentShieldBlocks(limit?: number): ShieldRow[];
+  allowedDomains(): string[];
+  allowDomain(domain: string): boolean;
+  removeAllowedDomain(domain: string): void;
+}
+
+function shieldModule(): ShieldLogModule | null {
+  if (Platform.OS !== "android") return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("../../modules/cleanway-vpn") as ShieldLogModule;
+  } catch {
+    return null;
+  }
+}
+
+/** Sites the person marked "not a scam" — shown and revocable in Settings. */
+export function allowedSites(): string[] {
+  try {
+    return shieldModule()?.allowedDomains() ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Mark a site as not-a-scam (from a block row / the notification action). */
+export function allowSite(domain: string): boolean {
+  try {
+    return shieldModule()?.allowDomain(domain) ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** Undo an allow — the site can be blocked again. */
+export function removeAllowedSite(domain: string): void {
+  try {
+    shieldModule()?.removeAllowedDomain(domain);
+  } catch {
+    /* not available on this platform */
+  }
 }
 
 /**

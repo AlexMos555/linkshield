@@ -6,6 +6,9 @@ import CleanwayVpn from './src/CleanwayVpnModule';
 /** Must match CleanwayVpnService.CANARY_DOMAIN. */
 export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
 
+/** Must match BlockList.LIST_CANARY — the line every published list carries. */
+export const LIST_CANARY_DOMAIN = 'list-canary.cleanway.ai';
+
 /** Overall probe deadline and the poll cadence within it. */
 const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
@@ -46,16 +49,49 @@ export async function stopVpn(): Promise<void> {
  *    network where the request never completes.
  */
 export async function verifyFiltering(): Promise<boolean> {
-  // Older native builds do not expose the counter. Report unverified rather
-  // than falling back to a guess — never claim protection we cannot prove.
-  if (typeof CleanwayVpn.canaryAnswerCount !== 'function') return false;
+  return probeCanary(CANARY_DOMAIN, () => CleanwayVpn.canaryAnswerCount?.());
+}
 
-  let before: number;
+/**
+ * Second, stronger proof: that the LOADED LIST is what the DNS path blocks
+ * from. `blocklistStatus()` is the service describing itself; this puts a
+ * query for a random label under the list canary on the wire and waits for
+ * the service's list-canary counter to move — which can only happen when the
+ * loaded list actually contains the canary line and the decision path
+ * consults it. A shield that shows a list count it cannot demonstrate is the
+ * kind of claim this product does not make.
+ */
+export async function verifyListFiltering(): Promise<boolean> {
+  return probeCanary(LIST_CANARY_DOMAIN, () => CleanwayVpn.listCanaryAnswerCount?.());
+}
+
+/**
+ * Ask the service for PROOF, don't infer it from a failure: read a counter,
+ * trigger a DNS lookup of a RANDOM subdomain, poll until the counter moves.
+ * Only a query that actually transited our tunnel can move it, so a dead
+ * tunnel, a device with no DNS at all, and a competing VPN all fail to
+ * produce proof — and none of them can fabricate it.
+ *
+ * Three hardenings over the first stamp-based version, each from a confirmed
+ * finding:
+ *  - RANDOM LABEL: the OS resolver caches answers; a repeat lookup of the
+ *    same name can be satisfied from cache without any packet reaching the
+ *    tunnel, and the probe would fail on a healthy shield.
+ *  - COUNTER DELTA, not timestamps: the stamp compared Date.now() (JS) with
+ *    System.currentTimeMillis() (Kotlin) — two steppable wall clocks.
+ *  - DEADLINE + POLL instead of a fixed sleep: resolves as soon as proof
+ *    arrives, gives up at CANARY_DEADLINE_MS instead of hanging.
+ */
+async function probeCanary(domain: string, read: () => number | undefined): Promise<boolean> {
+  let before: number | undefined;
   try {
-    before = CleanwayVpn.canaryAnswerCount();
+    before = read();
   } catch {
     return false;
   }
+  // Older native builds do not expose the counter. Report unverified rather
+  // than falling back to a guess — never claim protection we cannot prove.
+  if (typeof before !== 'number') return false;
 
   // Fire the lookup and deliberately do not await it: its HTTP outcome proves
   // nothing (the name never resolves), it exists only to put a DNS query on
@@ -63,7 +99,7 @@ export async function verifyFiltering(): Promise<boolean> {
   const abort = new AbortController();
   const abortTimer = setTimeout(() => abort.abort(), CANARY_DEADLINE_MS);
   const label = Math.random().toString(36).slice(2, 10);
-  fetch(`https://${label}.${CANARY_DOMAIN}/`, { method: 'HEAD', signal: abort.signal })
+  fetch(`https://${label}.${domain}/`, { method: 'HEAD', signal: abort.signal })
     .catch(() => { /* expected — the whole point is that this cannot resolve */ });
 
   try {
@@ -71,7 +107,8 @@ export async function verifyFiltering(): Promise<boolean> {
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, CANARY_POLL_MS));
       try {
-        if (CleanwayVpn.canaryAnswerCount() > before) return true;
+        const now = read();
+        if (typeof now === 'number' && now > before) return true;
       } catch {
         return false;
       }
@@ -216,6 +253,37 @@ export function blocklistStatus(): BlocklistStatus {
 export function refreshBlocklist(): void {
   try {
     CleanwayVpn.refreshBlocklist?.();
+  } catch {
+    /* older native build */
+  }
+}
+
+/** Sites the person marked "not a scam", newest first. */
+export function allowedDomains(): string[] {
+  try {
+    return CleanwayVpn.allowedDomains?.() ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Mark a site as not-a-scam. The shield stops blocking it (and its
+ * subdomains) until the person removes it. False for a name that is not a
+ * domain.
+ */
+export function allowDomain(domain: string): boolean {
+  try {
+    return CleanwayVpn.allowDomain?.(domain) ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** Undo an allow — the site can be blocked again. */
+export function removeAllowedDomain(domain: string): void {
+  try {
+    CleanwayVpn.removeAllowedDomain?.(domain);
   } catch {
     /* older native build */
   }

@@ -24,6 +24,8 @@ import org.json.JSONObject
 object BlockLog {
     const val KIND_BLOCKED = "blocked"
     const val KIND_WARNED = "warned"
+    /** The person said "not a scam" and allowed it — recorded so it is never silent. */
+    const val KIND_ALLOWED = "allowed"
     const val DEFAULT_CAP = 200
 
     private const val PREFS = "cleanway_block_log"

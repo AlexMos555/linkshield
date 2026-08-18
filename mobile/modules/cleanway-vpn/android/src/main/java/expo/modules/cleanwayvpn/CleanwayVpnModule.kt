@@ -160,6 +160,28 @@ class CleanwayVpnModule : Module() {
       ai.cleanway.app.BlockLog.countSince(context, sinceMs.toLong())
     }
 
+    /** Sites the person marked "not a scam", newest first. */
+    Function("allowedDomains") {
+      ai.cleanway.app.UserAllow.list(context)
+    }
+
+    /** Mark a site as not-a-scam (idempotent). Returns false for a bad name. */
+    Function("allowDomain") { domain: String ->
+      val ok = ai.cleanway.app.UserAllow.add(context, domain)
+      if (ok) {
+        ai.cleanway.app.BlockLog.record(context, domain.lowercase(), System.currentTimeMillis(), ai.cleanway.app.BlockLog.KIND_ALLOWED)
+        CleanwayVpnService.instance?.reloadAllowed()
+      }
+      ok
+    }
+
+    /** Undo an allow — the site can be blocked again. */
+    Function("removeAllowedDomain") { domain: String ->
+      ai.cleanway.app.UserAllow.remove(context, domain)
+      CleanwayVpnService.instance?.reloadAllowed()
+      Unit
+    }
+
     /**
      * What blocklist the service has loaded and how fresh it is:
      * {version, count, revoked, ageMs, stale, hasCanary, lastError, lastFetchAt}.

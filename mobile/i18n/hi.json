@@ -515,6 +515,8 @@
   "mobile.history.privacy": "यह सूची आपके फ़ोन पर ही रहती है। जब आप कोई लिंक जाँचते हैं, तो सिर्फ़ वेबसाइट का नाम हमारे सर्वर पर भेजा जाता है।",
   "mobile.history.shield_blocked": "शील्ड ने रोका",
   "mobile.history.shield_warned": "शील्ड ने चिह्नित किया — अगर खुला हो तो बंद करें",
+  "mobile.history.shield_allowed": "आपने इसे अनुमति दी",
+  "mobile.history.shield_allow_action": "अनुमति दें",
   "mobile.report.title": "हफ़्ते की रिपोर्ट",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "इस हफ़्ते",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "इस फ़ोन से सभी सेव की गई जाँचें हटा दी गईं।",
   "mobile.settings.clear_failed_title": "इतिहास नहीं मिट पाया",
   "mobile.settings.clear_failed_body": "कुछ गड़बड़ हो गई — आपका इतिहास जैसा था वैसा ही है। कृपया फिर कोशिश करें।",
+  "mobile.settings.allowed": "अनुमत साइटें",
+  "mobile.settings.allowed_desc": "जिन साइटों को आपने सुरक्षित बताया। शील्ड इन्हें ब्लॉक नहीं करता।",
+  "mobile.settings.allowed_remove": "हटाएँ",
+  "mobile.settings.allowed_empty": "कोई अनुमत साइट नहीं",
+  "mobile.settings.allow_confirm_title": "इस साइट को अनुमति दें",
+  "mobile.settings.allow_confirm_body": "{{domain}} तब तक ब्लॉक नहीं होगी जब तक आप इसे यहाँ से हटा न दें। यह तभी करें जब आप साइट को जानते हों।",
   "mobile.family.title": "फ़ैमिली हब",
   "mobile.family.default_name": "मेरा परिवार",
   "mobile.family.signed_out_body": "फ़ैमिली हब सेट करने के लिए साइन इन करें। जब Cleanway आपके परिवार के किसी सदस्य के ब्राउज़र में कोई धोखाधड़ी रोकता है, तो आपको अलर्ट मिलता है — एंड-टू-एंड एन्क्रिप्टेड, यानी Cleanway भी उसे नहीं पढ़ सकता।",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "Cleanway ने एक खतरनाक साइट रोकी",
   "mobile.android_native.blocked_text": "{{domain}} धोखाधड़ी जैसी लगी, इसलिए खुलने से पहले ही रोक दी गई।",
   "mobile.android_native.warn_title": "यह साइट धोखाधड़ी जैसी लगती है",
-  "mobile.android_native.warn_text": "{{domain}} खतरनाक लगती है। अगर खुली है तो बंद करें और कुछ भी न लिखें।"
+  "mobile.android_native.warn_text": "{{domain}} खतरनाक लगती है। अगर खुली है तो बंद करें और कुछ भी न लिखें।",
+  "mobile.android_native.allow_action": "यह धोखाधड़ी नहीं है — अनुमति दें",
+  "mobile.android_native.allowed_title": "साइट को अनुमति दी गई",
+  "mobile.android_native.allowed_text": "{{domain}} अब अनुमत है। सेटिंग्स → अनुमत साइटें में इसे पूर्ववत करें।"
 }

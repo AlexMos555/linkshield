@@ -11,6 +11,7 @@ import { pruneOldChecks } from "../../src/services/database";
 import { getSessionState, signOut } from "../../src/services/auth";
 import { clearKeypair } from "../../src/lib/family-crypto";
 import { setAuthToken, getAccountSettings } from "../../src/services/api";
+import { allowedSites, removeAllowedSite } from "../../src/services/shield-log";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -81,6 +82,30 @@ export default function SettingsScreen() {
 
   // On focus, not mount: the user goes to /auth, signs in, and comes BACK
   // to this mounted screen — a mount-only read would keep saying "Sign in".
+  const [allowed, setAllowed] = useState<string[]>([]);
+
+  useFocusEffect(useCallback(() => {
+    setAllowed(allowedSites());
+  }, []));
+
+  function confirmRemoveAllowed(domain: string) {
+    Alert.alert(
+      domain,
+      t("mobile.settings.allowed_desc"),
+      [
+        { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+        {
+          text: t("mobile.settings.allowed_remove"),
+          style: "destructive",
+          onPress: () => {
+            removeAllowedSite(domain);
+            setAllowed(allowedSites());
+          },
+        },
+      ],
+    );
+  }
+
   useFocusEffect(useCallback(() => {
     let cancelled = false;
     userPickedSkillRef.current = false;
@@ -282,6 +307,32 @@ export default function SettingsScreen() {
              right={comingSoonToggle(t("mobile.settings.weekly"))} />
       </Section>
 
+      {allowed.length > 0 && (
+        // The escape hatch has to be visible and revocable, or "allow" is a
+        // one-way door: a site the person rescued once would keep resolving
+        // forever with nowhere to say "actually, block it again".
+        <Section title={t("mobile.settings.allowed")} footnote={t("mobile.settings.allowed_desc")}>
+          {allowed.map((domain, i) => (
+            <Row
+              key={domain}
+              first={i === 0}
+              icon="shield-outline"
+              label={domain}
+              right={
+                <TouchableOpacity
+                  onPress={() => confirmRemoveAllowed(domain)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("mobile.settings.allowed_remove")} ${domain}`}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={s.removeLabel}>{t("mobile.settings.allowed_remove")}</Text>
+                </TouchableOpacity>
+              }
+            />
+          ))}
+        </Section>
+      )}
+
       <Section title={t("mobile.settings.data")}>
         <Row first icon="trash-outline" iconColor={colors.danger} tint={colors.danger}
              label={t("mobile.settings.clear")} desc={t("mobile.settings.clear_desc")}
@@ -376,6 +427,7 @@ const s = StyleSheet.create({
   rowLabel: { ...typo.body, fontWeight: "600", color: colors.textPrimary },
   rowDesc: { ...typo.caption, color: colors.textSecondary, marginTop: 2 },
   value: { ...typo.body, color: colors.textMuted },
+  removeLabel: { ...typo.body, color: colors.danger },
   pill: {
     backgroundColor: colors.blue, color: "#FFFFFF", overflow: "hidden",
     borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: 6,

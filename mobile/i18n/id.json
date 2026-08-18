@@ -515,6 +515,8 @@
   "mobile.history.privacy": "Daftar ini tetap di HP Anda. Saat Anda mengecek link, hanya nama situs yang dikirim ke server kami.",
   "mobile.history.shield_blocked": "Dihentikan oleh perisai",
   "mobile.history.shield_warned": "Ditandai oleh perisai — kalau terbuka, tutup",
+  "mobile.history.shield_allowed": "Kamu mengizinkannya",
+  "mobile.history.shield_allow_action": "Izinkan",
   "mobile.report.title": "Laporan mingguan",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Minggu ini",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "Semua catatan cek yang tersimpan sudah dihapus dari HP ini.",
   "mobile.settings.clear_failed_title": "Riwayat gagal dihapus",
   "mobile.settings.clear_failed_body": "Terjadi kesalahan — riwayat Anda tidak berubah. Silakan coba lagi.",
+  "mobile.settings.allowed": "Situs yang diizinkan",
+  "mobile.settings.allowed_desc": "Situs yang kamu tandai aman. Perisai tidak memblokirnya.",
+  "mobile.settings.allowed_remove": "Hapus",
+  "mobile.settings.allowed_empty": "Belum ada situs yang diizinkan",
+  "mobile.settings.allow_confirm_title": "Izinkan situs ini",
+  "mobile.settings.allow_confirm_body": "{{domain}} tidak akan diblokir sampai kamu menghapusnya di sini. Lakukan hanya jika kamu mengenal situsnya.",
   "mobile.family.title": "Family Hub",
   "mobile.family.default_name": "Keluargaku",
   "mobile.family.signed_out_body": "Masuk untuk menyiapkan Family Hub. Saat Cleanway memblokir penipuan di browser anggota keluarga, Anda mendapat peringatan — terenkripsi secara end-to-end, jadi Cleanway pun tidak bisa membacanya.",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "Cleanway menghentikan situs berbahaya",
   "mobile.android_native.blocked_text": "{{domain}} tampak seperti penipuan, jadi dihentikan sebelum terbuka.",
   "mobile.android_native.warn_title": "Situs ini tampak seperti penipuan",
-  "mobile.android_native.warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun."
+  "mobile.android_native.warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun.",
+  "mobile.android_native.allow_action": "Bukan penipuan — izinkan",
+  "mobile.android_native.allowed_title": "Situs diizinkan",
+  "mobile.android_native.allowed_text": "{{domain}} sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan."
 }

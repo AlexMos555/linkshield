@@ -4,7 +4,7 @@
  * forwarded (fail-open); future lookups are blocked, THIS visit may have
  * opened. Copy must never call a "warned" entry a block.
  */
-export type ShieldBlockKind = 'blocked' | 'warned';
+export type ShieldBlockKind = 'blocked' | 'warned' | 'allowed';
 
 export type DomainBlockedPayload = {
   /** The registrable domain that was blocked at DNS resolve time. */

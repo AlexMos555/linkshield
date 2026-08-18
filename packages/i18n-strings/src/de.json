@@ -1329,7 +1329,9 @@
       "empty_cta": "Link prüfen",
       "privacy": "Diese Liste bleibt auf deinem Handy. Wenn du einen Link prüfst, wird nur der Website-Name an unsere Server geschickt.",
       "shield_blocked": "Vom Schutzschild gestoppt",
-      "shield_warned": "Vom Schutzschild markiert – falls geöffnet, schließen"
+      "shield_warned": "Vom Schutzschild markiert – falls geöffnet, schließen",
+      "shield_allowed": "Von dir zugelassen",
+      "shield_allow_action": "Zulassen"
     },
     "report": {
       "title": "Wochenbericht",
@@ -1424,7 +1426,13 @@
       "clear_done_title": "Verlauf gelöscht",
       "clear_done_body": "Alle gespeicherten Prüfungen wurden von diesem Handy entfernt.",
       "clear_failed_title": "Verlauf konnte nicht gelöscht werden",
-      "clear_failed_body": "Etwas ist schiefgelaufen – dein Verlauf ist unverändert. Bitte versuch es noch mal."
+      "clear_failed_body": "Etwas ist schiefgelaufen – dein Verlauf ist unverändert. Bitte versuch es noch mal.",
+      "allowed": "Zugelassene Seiten",
+      "allowed_desc": "Seiten, die du als sicher markiert hast. Der Schutz blockiert sie nicht.",
+      "allowed_remove": "Entfernen",
+      "allowed_empty": "Keine zugelassenen Seiten",
+      "allow_confirm_title": "Diese Seite zulassen",
+      "allow_confirm_body": "{{domain}} wird nicht mehr blockiert, bis du sie hier entfernst. Nur wenn du die Seite kennst."
     },
     "family": {
       "title": "Family Hub",
@@ -1516,7 +1524,10 @@
       "blocked_title": "Cleanway hat eine gefährliche Seite gestoppt",
       "blocked_text": "{{domain}} sah nach Betrug aus und wurde gestoppt, bevor sie sich öffnen konnte.",
       "warn_title": "Diese Seite sieht nach Betrug aus",
-      "warn_text": "{{domain}} wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben."
+      "warn_text": "{{domain}} wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben.",
+      "allow_action": "Kein Betrug – zulassen",
+      "allowed_title": "Seite zugelassen",
+      "allowed_text": "{{domain}} ist jetzt zugelassen. Rückgängig in Einstellungen → Zugelassene Seiten."
     }
   }
 }

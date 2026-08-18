@@ -29,6 +29,12 @@ export interface BlocklistStatusLike {
   hasCanary: boolean;
   lastError: string | null;
   lastFetchAt: number;
+  /**
+   * The list canary answered: the DNS path really does block from THIS list,
+   * proven the same way the tunnel is proven. Self-reported status is not
+   * enough to put a number in front of a person.
+   */
+  proven?: boolean;
 }
 
 const NO_LIST: BlocklistStatusLike = {
@@ -46,6 +52,7 @@ interface VpnModule {
   blocklistStatus?(): BlocklistStatusLike;
   refreshBlocklist?(): void;
   verifyFiltering(): Promise<boolean>;
+  verifyListFiltering?(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
   openVpnSettings?(): boolean;
 }
@@ -143,9 +150,24 @@ export function useNetworkShield(): NetworkShield {
   const readBlocklist = useCallback(() => {
     if (!vpn) return;
     try {
-      setBlocklist(vpn.blocklistStatus?.() ?? NO_LIST);
+      const next = vpn.blocklistStatus?.() ?? NO_LIST;
+      setBlocklist((prev) => ({ ...next, proven: next.version === prev.version ? prev.proven : undefined }));
     } catch {
       setBlocklist(NO_LIST);
+    }
+  }, [vpn]);
+
+  /**
+   * Prove the list is what the DNS path blocks from (list-canary counter),
+   * rather than trusting the service's own description of itself.
+   */
+  const proveList = useCallback(async () => {
+    if (!vpn?.verifyListFiltering) return;
+    try {
+      const ok = await vpn.verifyListFiltering();
+      setBlocklist((prev) => ({ ...prev, proven: ok }));
+    } catch {
+      setBlocklist((prev) => ({ ...prev, proven: false }));
     }
   }, [vpn]);
 
@@ -179,10 +201,12 @@ export function useNetworkShield(): NetworkShield {
       // "no internet", not "we couldn't confirm filtering". Cheap HEAD, short
       // timeout; only consulted on the failure path.
       setOffline(ok ? false : !(await hasInternet()));
+      // Only worth proving the list when the tunnel itself is proven.
+      if (ok) void proveList();
     } finally {
       setProbing(false);
     }
-  }, [vpn, readBlocklist]);
+  }, [vpn, readBlocklist, proveList]);
 
   useEffect(() => {
     void sync();
@@ -237,13 +261,13 @@ export function useNetworkShield(): NetworkShield {
     // read what it has, and read again a few seconds later so a first-ever
     // sync shows up without a foreground round-trip.
     readBlocklist();
-    setTimeout(readBlocklist, 6000);
+    setTimeout(() => { readBlocklist(); void proveList(); }, 6000);
     // Now that protection is on, ask to be allowed to say when it stops a
     // site (Android 13+ drops notifications otherwise). After the probe so
     // the green state is not delayed by a dialog; result deliberately
     // ignored — a refusal is respected and the block log still records.
     void vpn.requestBlockNotificationPermission?.();
-  }, [vpn, readBlocklist]);
+  }, [vpn, readBlocklist, proveList]);
 
   const turnOff = useCallback(async () => {
     if (!vpn) return;
@@ -283,8 +307,8 @@ export function useNetworkShield(): NetworkShield {
 
   const refreshBlocklist = useCallback(() => {
     vpn?.refreshBlocklist?.();
-    setTimeout(readBlocklist, 4000);
-  }, [vpn, readBlocklist]);
+    setTimeout(() => { readBlocklist(); void proveList(); }, 4000);
+  }, [vpn, readBlocklist, proveList]);
 
   return {
     available: vpn !== null,

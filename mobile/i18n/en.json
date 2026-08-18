@@ -515,6 +515,8 @@
   "mobile.history.privacy": "This list stays on your phone. When you check a link, only the website name is sent to our servers.",
   "mobile.history.shield_blocked": "Stopped by the shield",
   "mobile.history.shield_warned": "Flagged by the shield — if it opened, close it",
+  "mobile.history.shield_allowed": "You allowed this",
+  "mobile.history.shield_allow_action": "Allow",
   "mobile.report.title": "Weekly report",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "This week",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "All saved checks were removed from this phone.",
   "mobile.settings.clear_failed_title": "Couldn't clear history",
   "mobile.settings.clear_failed_body": "Something went wrong — your history is unchanged. Please try again.",
+  "mobile.settings.allowed": "Allowed sites",
+  "mobile.settings.allowed_desc": "Sites you marked as safe. The shield does not block these.",
+  "mobile.settings.allowed_remove": "Remove",
+  "mobile.settings.allowed_empty": "No sites allowed",
+  "mobile.settings.allow_confirm_title": "Allow this site",
+  "mobile.settings.allow_confirm_body": "{{domain}} will not be blocked until you remove it here. Only do this if you know the site.",
   "mobile.family.title": "Family Hub",
   "mobile.family.default_name": "My Family",
   "mobile.family.signed_out_body": "Sign in to set up Family Hub. When Cleanway blocks a scam in a family member's browser, you get an alert — end-to-end encrypted, so not even Cleanway can read it.",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "Cleanway stopped a dangerous site",
   "mobile.android_native.blocked_text": "{{domain}} looked like a scam, so it was stopped before it could open.",
   "mobile.android_native.warn_title": "This site looks like a scam",
-  "mobile.android_native.warn_text": "{{domain}} looks dangerous. If it is open, close it and don't type anything."
+  "mobile.android_native.warn_text": "{{domain}} looks dangerous. If it is open, close it and don't type anything.",
+  "mobile.android_native.allow_action": "Not a scam — allow it",
+  "mobile.android_native.allowed_title": "Site allowed",
+  "mobile.android_native.allowed_text": "{{domain}} is allowed now. You can undo this in Settings → Allowed sites."
 }

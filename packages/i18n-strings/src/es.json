@@ -1269,7 +1269,9 @@
       "empty_cta": "Revisar un enlace",
       "privacy": "Esta lista se queda en tu teléfono. Cuando revisas un enlace, solo el nombre del sitio web se envía a nuestros servidores.",
       "shield_blocked": "Detenido por el escudo",
-      "shield_warned": "Marcado por el escudo: si se abrió, ciérralo"
+      "shield_warned": "Marcado por el escudo: si se abrió, ciérralo",
+      "shield_allowed": "Lo permitiste",
+      "shield_allow_action": "Permitir"
     },
     "report": {
       "title": "Informe semanal",
@@ -1364,7 +1366,13 @@
       "clear_done_title": "Historial borrado",
       "clear_done_body": "Se eliminaron de este teléfono todas las revisiones guardadas.",
       "clear_failed_title": "No se pudo borrar el historial",
-      "clear_failed_body": "Algo salió mal; tu historial quedó intacto. Inténtalo de nuevo."
+      "clear_failed_body": "Algo salió mal; tu historial quedó intacto. Inténtalo de nuevo.",
+      "allowed": "Sitios permitidos",
+      "allowed_desc": "Sitios que marcaste como seguros. El escudo no los bloquea.",
+      "allowed_remove": "Quitar",
+      "allowed_empty": "No hay sitios permitidos",
+      "allow_confirm_title": "Permitir este sitio",
+      "allow_confirm_body": "{{domain}} no se bloqueará hasta que lo quites aquí. Hazlo solo si conoces el sitio."
     },
     "family": {
       "title": "Espacio Familiar",
@@ -1456,7 +1464,10 @@
       "blocked_title": "Cleanway detuvo un sitio peligroso",
       "blocked_text": "{{domain}} parecía una estafa, así que se detuvo antes de abrirse.",
       "warn_title": "Este sitio parece una estafa",
-      "warn_text": "{{domain}} parece peligroso. Si está abierto, ciérralo y no escribas nada."
+      "warn_text": "{{domain}} parece peligroso. Si está abierto, ciérralo y no escribas nada.",
+      "allow_action": "No es una estafa: permitir",
+      "allowed_title": "Sitio permitido",
+      "allowed_text": "{{domain}} ahora está permitido. Puedes deshacerlo en Ajustes → Sitios permitidos."
     }
   }
 }

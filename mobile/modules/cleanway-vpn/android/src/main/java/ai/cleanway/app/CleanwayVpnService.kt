@@ -80,6 +80,13 @@ class CleanwayVpnService : VpnService() {
     // Swapped by BlocklistSync on refresh; the DNS loop only reads it.
     @Volatile
     private var blockList: BlockList = BlockList.empty()
+
+    /**
+     * Sites the person marked "not a scam". Read on the DNS thread on every
+     * query, so it is kept as an immutable snapshot and swapped whole.
+     */
+    @Volatile
+    private var allowedDomains: Set<String> = emptySet()
     private var blocklistSync: BlocklistSync? = null
     private val syncExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "Cleanway-Blocklist").apply { isDaemon = true }
@@ -94,19 +101,10 @@ class CleanwayVpnService : VpnService() {
 
     private val tunnelWriteLock = Any()
 
-    // Transport health. A transport that fails repeatedly is skipped for a
-    // while so the other one is tried first instead of paying both timeouts.
-    @Volatile
-    private var dohSuppressedUntil = 0L
-
-    @Volatile
-    private var udpSuppressedUntil = 0L
-
-    @Volatile
-    private var udpFailures = 0
-
-    @Volatile
-    private var dohFailures = 0
+    // Transport health. A transport that fails repeatedly is demoted for a
+    // while so the others are tried first instead of paying its timeout —
+    // but never removed, and the chain is never empty. See TransportBreaker.
+    private val breaker = TransportBreaker()
 
     override fun onCreate() {
         super.onCreate()
@@ -290,7 +288,7 @@ class CleanwayVpnService : VpnService() {
 
                 val normalized = domain.lowercase().trimEnd('.')
 
-                when (DnsDecision.classify(normalized, blockList)) {
+                when (DnsDecision.classify(normalized, blockList, allowedDomains)) {
                     DnsDecision.CANARY -> {
                         // Silent verification probe: the app resolves a RANDOM
                         // subdomain of the canary and expects NXDOMAIN. The
@@ -376,42 +374,39 @@ class CleanwayVpnService : VpnService() {
         if (length <= DnsUtil.IP_UDP_HEADER) return
         val now = System.currentTimeMillis()
 
-        // Blocking is decided locally before we get here, so upstream is only a
-        // transport — and its latency is the whole user experience: one page
-        // pulls tens of lookups. Plain UDP/53 is the fast path (milliseconds),
-        // DoH is the fallback for networks that block or hijack port 53.
-        //
-        // Whichever one is currently failing gets suppressed for a while.
-        // Without that, a network with 53 blocked makes every single lookup pay
-        // the UDP timeout before falling back — measured at ~5s per domain,
-        // which reads as "the internet is broken" even though we resolve fine.
-        val udpUsable = now >= udpSuppressedUntil
-        val dohUsable = now >= dohSuppressedUntil
-
-        if (udpUsable) {
-            if (forwardOverUdp(packet, length, output)) {
-                udpFailures = 0
+        // Blocking is decided locally before we get here, so upstream is only
+        // a transport — and its latency is the whole user experience: one page
+        // pulls tens of lookups. Plain UDP/53 is the fast path (milliseconds);
+        // a second public resolver covers networks that block the first by IP;
+        // DoH covers networks that block or hijack port 53 entirely.
+        for (transport in breaker.order(now)) {
+            val ok = when (transport) {
+                Transport.UDP_PRIMARY -> forwardOverUdp(packet, length, output, UPSTREAM_DNS_HOST)
+                Transport.UDP_SECONDARY -> forwardOverUdp(packet, length, output, UPSTREAM_DNS_HOST_2)
+                Transport.DOH -> forwardOverDoh(packet, length, output)
+            }
+            if (ok) {
+                breaker.onSuccess(transport)
                 return
             }
-            if (++udpFailures >= TRANSPORT_FAILURE_THRESHOLD) {
-                udpSuppressedUntil = now + TRANSPORT_BACKOFF_MS
-                Log.i(TAG, "udp_suppressed: falling back to DoH")
+            breaker.onFailure(transport, now)
+        }
+
+        // Nothing answered. Say so — never leave the query unanswered.
+        //
+        // The old chain returned here, and with both transports suppressed it
+        // dropped EVERY query on the device for a minute: every app sat on its
+        // resolver timeout while the shield showed green. A SERVFAIL forges
+        // nothing (it is not an answer and cannot be mistaken for a block —
+        // that is NXDOMAIN) and lets the stub fail immediately.
+        val servfail = DnsUtil.makeServfail(packet, length)
+        if (servfail != null) {
+            writeToTunnel(output, servfail)
+            servfailCount += 1
+            if (servfailCount % SERVFAIL_LOG_EVERY == 1L) {
+                Log.w(TAG, "servfail_written: no upstream answered (total=$servfailCount)")
             }
         }
-
-        if (!dohUsable) return
-        if (forwardOverDoh(packet, length, output)) {
-            dohFailures = 0
-            return
-        }
-        if (++dohFailures >= TRANSPORT_FAILURE_THRESHOLD) {
-            dohSuppressedUntil = now + TRANSPORT_BACKOFF_MS
-            Log.i(TAG, "doh_suppressed")
-        }
-
-        // Both transports are down: the query is dropped and the client
-        // retries. We never answer with a forged result — a wrong answer is
-        // worse than a slow one for a security product.
     }
 
     /** Returns true when the DoH round-trip produced an answer. */
@@ -465,7 +460,12 @@ class CleanwayVpnService : VpnService() {
      * upstream only wants the DNS payload, so the headers are stripped on the
      * way out and rebuilt on the way back by `DnsUtil.wrapResponse`.
      */
-    private fun forwardOverUdp(packet: ByteArray, length: Int, output: FileOutputStream): Boolean {
+    private fun forwardOverUdp(
+        packet: ByteArray,
+        length: Int,
+        output: FileOutputStream,
+        host: String,
+    ): Boolean {
         val dnsStart = DnsUtil.IP_UDP_HEADER
         val dnsLen = length - dnsStart
 
@@ -474,7 +474,7 @@ class CleanwayVpnService : VpnService() {
                 protect(socket) // Prevent loopback through our own VPN
                 socket.soTimeout = 3_000
 
-                val upstream = InetAddress.getByName(UPSTREAM_DNS_HOST)
+                val upstream = InetAddress.getByName(host)
                 val outgoing = DatagramPacket(packet, dnsStart, dnsLen, upstream, UPSTREAM_DNS_PORT)
                 socket.send(outgoing)
 
@@ -504,8 +504,8 @@ class CleanwayVpnService : VpnService() {
             }
             false
         } catch (e: Exception) {
-            Log.v(TAG, "upstream_dns_error: ${e.message}")
-            // Fall through to DoH; the client also retries on its own.
+            Log.v(TAG, "upstream_dns_error($host): ${e.message}")
+            // Fall through to the next transport in the chain.
             false
         }
     }
@@ -595,6 +595,7 @@ class CleanwayVpnService : VpnService() {
         try {
             val veto = loadPopularVeto()
             blockList = BlockList.empty(veto)
+            reloadAllowed()
             val store = BlocklistStore(File(filesDir, "cleanway"))
             val sync = BlocklistSync(
                 store = store,
@@ -646,6 +647,16 @@ class CleanwayVpnService : VpnService() {
             "lastError" to blocklistSync?.lastError,
             "lastFetchAt" to (blocklistSync?.lastFetchAtMs ?: 0L).toDouble(),
         )
+    }
+
+    /** Re-read the person's allow list into the DNS thread's snapshot. */
+    fun reloadAllowed() {
+        allowedDomains = try {
+            UserAllow.list(this).toHashSet()
+        } catch (e: Exception) {
+            Log.w(TAG, "allow_reload_error: ${e.message}")
+            emptySet()
+        }
     }
 
     /** For the app's pull-to-refresh: fetch now on the sync thread. */
@@ -712,6 +723,15 @@ class CleanwayVpnService : VpnService() {
         private const val VPN_CLIENT_IP = "10.0.0.2"
         private const val VPN_GATEWAY_IP = "10.0.0.1"
         private const val UPSTREAM_DNS_HOST = "1.1.1.1"
+
+        /**
+         * Second public resolver, by IP literal. Some networks (and some
+         * countries) block 1.1.1.1 specifically; without an alternative the
+         * whole chain fell through to DoH on the same blocked address.
+         * Quad9 is a non-logging, malware-filtering resolver — a reasonable
+         * neighbour for a protection app.
+         */
+        private const val UPSTREAM_DNS_HOST_2 = "9.9.9.9"
         private const val UPSTREAM_DNS_PORT = 53
         /** The one thing the shield fetches from Cleanway: the blocklist artifact. */
         private const val BLOCKLIST_URL = "https://api.cleanway.ai/api/v1/blocklist/dns"
@@ -747,9 +767,18 @@ class CleanwayVpnService : VpnService() {
         // to look.
         private const val DOH_URL = "https://1.1.1.1/dns-query"
 
-        private const val TRANSPORT_BACKOFF_MS = 60_000L
 
-        private const val TRANSPORT_FAILURE_THRESHOLD = 3
+        /** How often to log the "nothing answered" condition (it can be hot). */
+        private const val SERVFAIL_LOG_EVERY = 50L
+
+        /**
+         * How many queries we had to answer SERVFAIL because no upstream
+         * replied. Surfaced to the app so "the internet feels broken" has a
+         * number behind it instead of a guess.
+         */
+        @JvmStatic
+        @Volatile
+        var servfailCount: Long = 0L
     }
 }
 
@@ -780,7 +809,11 @@ enum class DnsDecision {
     CANARY, LIST_CANARY, BLOCK, FORWARD;
 
     companion object {
-        fun classify(normalized: String, list: BlockList): DnsDecision = when {
+        fun classify(
+            normalized: String,
+            list: BlockList,
+            allowed: Set<String> = emptySet(),
+        ): DnsDecision = when {
             normalized == CleanwayVpnService.CANARY_DOMAIN ||
                 normalized.endsWith(".${CleanwayVpnService.CANARY_DOMAIN}") -> CANARY
             // Answered only when the loaded list carries the canary line —
@@ -788,6 +821,9 @@ enum class DnsDecision {
             (normalized == BlockList.LIST_CANARY || normalized.endsWith(".${BlockList.LIST_CANARY}")) &&
                 list.hasListCanary() -> LIST_CANARY
             DomainPolicy.isSystemDomain(normalized) -> FORWARD
+            // The person said this one is fine. Their call outranks the list:
+            // a false positive they cannot undo costs us the whole shield.
+            UserAllow.covers(allowed, normalized) != null -> FORWARD
             list.match(normalized) != null -> BLOCK
             else -> FORWARD
         }

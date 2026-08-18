@@ -1329,7 +1329,9 @@
       "empty_cta": "Verificar um link",
       "privacy": "Esta lista fica no seu celular. Quando você verifica um link, apenas o nome do site é enviado aos nossos servidores.",
       "shield_blocked": "Parado pelo escudo",
-      "shield_warned": "Sinalizado pelo escudo — se abriu, feche"
+      "shield_warned": "Sinalizado pelo escudo — se abriu, feche",
+      "shield_allowed": "Você permitiu",
+      "shield_allow_action": "Permitir"
     },
     "report": {
       "title": "Relatório semanal",
@@ -1424,7 +1426,13 @@
       "clear_done_title": "Histórico limpo",
       "clear_done_body": "Todas as verificações salvas foram removidas deste celular.",
       "clear_failed_title": "Não foi possível limpar o histórico",
-      "clear_failed_body": "Algo deu errado — seu histórico continua igual. Tente de novo."
+      "clear_failed_body": "Algo deu errado — seu histórico continua igual. Tente de novo.",
+      "allowed": "Sites permitidos",
+      "allowed_desc": "Sites que você marcou como seguros. O escudo não bloqueia esses.",
+      "allowed_remove": "Remover",
+      "allowed_empty": "Nenhum site permitido",
+      "allow_confirm_title": "Permitir este site",
+      "allow_confirm_body": "{{domain}} não será bloqueado até você removê-lo aqui. Faça isso só se conhecer o site."
     },
     "family": {
       "title": "Central da Família",
@@ -1516,7 +1524,10 @@
       "blocked_title": "O Cleanway parou um site perigoso",
       "blocked_text": "{{domain}} parecia golpe, então foi parado antes de abrir.",
       "warn_title": "Este site parece golpe",
-      "warn_text": "{{domain}} parece perigoso. Se estiver aberto, feche e não digite nada."
+      "warn_text": "{{domain}} parece perigoso. Se estiver aberto, feche e não digite nada.",
+      "allow_action": "Não é golpe — permitir",
+      "allowed_title": "Site permitido",
+      "allowed_text": "{{domain}} agora está permitido. Você pode desfazer em Configurações → Sites permitidos."
     }
   }
 }

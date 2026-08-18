@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,7 +11,7 @@ import {
   levelColors, levelWashes, levelStrokes,
 } from "../../src/utils/theme";
 import { getRecentChecks } from "../../src/services/database";
-import { recentShieldBlocks, type ShieldRow } from "../../src/services/shield-log";
+import { recentShieldBlocks, allowSite, type ShieldRow } from "../../src/services/shield-log";
 
 type Level = keyof typeof levelColors;
 
@@ -97,18 +97,52 @@ function HistoryRow({ item }: { item: any }) {
  * after the first lookup; future ones blocked). No score chip: the shield
  * has a verdict, not a number.
  */
-function ShieldHistoryRow({ item }: { item: ShieldRow }) {
+function ShieldHistoryRow({ item, onAllowed }: { item: ShieldRow; onAllowed: () => void }) {
   const { t } = useTranslation();
+  const allowedKind = item.kind === "allowed";
   const blocked = item.kind === "blocked";
-  const color = blocked ? levelColors.dangerous : levelColors.caution;
-  const wash = blocked ? levelWashes.dangerous : levelWashes.caution;
-  const stroke = blocked ? levelStrokes.dangerous : levelStrokes.caution;
-  const label = t(blocked ? "mobile.history.shield_blocked" : "mobile.history.shield_warned");
+  const color = allowedKind ? colors.textSecondary : blocked ? levelColors.dangerous : levelColors.caution;
+  const wash = allowedKind ? colors.surfaceRaised : blocked ? levelWashes.dangerous : levelWashes.caution;
+  const stroke = allowedKind ? colors.stroke : blocked ? levelStrokes.dangerous : levelStrokes.caution;
+  const label = t(
+    allowedKind ? "mobile.history.shield_allowed"
+    : blocked ? "mobile.history.shield_blocked"
+    : "mobile.history.shield_warned",
+  );
   const when = relativeTime(new Date(item.ts).toISOString(), t);
+  const icon = allowedKind ? "shield-outline" : blocked ? "shield-checkmark-outline" : "shield-half-outline";
+
+  // The second place a wrongly blocked site can be rescued (the first is the
+  // notification, where the person is when it breaks). Without a way back the
+  // only remedy for a false positive is switching protection off.
+  function confirmAllow() {
+    if (allowedKind) return;
+    Alert.alert(
+      t("mobile.settings.allow_confirm_title"),
+      t("mobile.settings.allow_confirm_body", { domain: item.domain }),
+      [
+        { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+        {
+          text: t("mobile.history.shield_allow_action"),
+          onPress: () => { allowSite(item.domain); onAllowed(); },
+        },
+      ],
+    );
+  }
+
   return (
-    <View style={s.row} accessible accessibilityLabel={[item.domain, label, when].filter(Boolean).join(". ")}>
+    <TouchableOpacity
+      style={s.row}
+      accessible
+      accessibilityRole={allowedKind ? "text" : "button"}
+      accessibilityLabel={[item.domain, label, when].filter(Boolean).join(". ")}
+      accessibilityHint={allowedKind ? undefined : t("mobile.history.shield_allow_action")}
+      onPress={confirmAllow}
+      activeOpacity={allowedKind ? 1 : 0.85}
+      disabled={allowedKind}
+    >
       <View style={[s.rowIcon, { backgroundColor: wash, borderColor: stroke }]}>
-        <Ionicons name={blocked ? "shield-checkmark-outline" : "shield-half-outline"} size={22} color={color} />
+        <Ionicons name={icon} size={22} color={color} />
       </View>
       <View style={s.rowText}>
         <Text style={s.domain} numberOfLines={1}>{item.domain}</Text>
@@ -117,7 +151,7 @@ function ShieldHistoryRow({ item }: { item: ShieldRow }) {
           {when !== "" && <Text style={s.when}>{when}</Text>}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -196,7 +230,9 @@ export default function HistoryScreen() {
       <FlatList
         data={checks}
         keyExtractor={(item) => item._kind === "shield" ? `shield:${item.domain}:${item.ts}` : `check:${item.id}`}
-        renderItem={({ item }) => item._kind === "shield" ? <ShieldHistoryRow item={item} /> : <HistoryRow item={item} />}
+        renderItem={({ item }) => item._kind === "shield"
+          ? <ShieldHistoryRow item={item} onAllowed={load} />
+          : <HistoryRow item={item} />}
         ListHeaderComponent={<ListHeader />}
         ListFooterComponent={
           <View style={s.privacyRow}>

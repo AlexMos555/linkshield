@@ -515,6 +515,8 @@
   "mobile.history.privacy": "Questa lista resta sul tuo telefono. Quando controlli un link, ai nostri server viene inviato solo il nome del sito.",
   "mobile.history.shield_blocked": "Fermato dallo scudo",
   "mobile.history.shield_warned": "Segnalato dallo scudo: se si è aperto, chiudilo",
+  "mobile.history.shield_allowed": "L'hai consentito",
+  "mobile.history.shield_allow_action": "Consenti",
   "mobile.report.title": "Resoconto settimanale",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Questa settimana",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "Tutti i controlli salvati sono stati rimossi da questo telefono.",
   "mobile.settings.clear_failed_title": "Impossibile cancellare la cronologia",
   "mobile.settings.clear_failed_body": "Qualcosa è andato storto — la tua cronologia non è cambiata. Riprova.",
+  "mobile.settings.allowed": "Siti consentiti",
+  "mobile.settings.allowed_desc": "Siti che hai contrassegnato come sicuri. Lo scudo non li blocca.",
+  "mobile.settings.allowed_remove": "Rimuovi",
+  "mobile.settings.allowed_empty": "Nessun sito consentito",
+  "mobile.settings.allow_confirm_title": "Consenti questo sito",
+  "mobile.settings.allow_confirm_body": "{{domain}} non verrà bloccato finché non lo rimuovi qui. Fallo solo se conosci il sito.",
   "mobile.family.title": "Family Hub",
   "mobile.family.default_name": "La mia famiglia",
   "mobile.family.signed_out_body": "Accedi per configurare Family Hub. Quando Cleanway blocca una truffa nel browser di un familiare, ricevi un avviso — con crittografia end-to-end, così nemmeno Cleanway può leggerlo.",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "Cleanway ha fermato un sito pericoloso",
   "mobile.android_native.blocked_text": "{{domain}} sembrava una truffa: è stato fermato prima di aprirsi.",
   "mobile.android_native.warn_title": "Questo sito sembra una truffa",
-  "mobile.android_native.warn_text": "{{domain}} sembra pericoloso. Se è aperto, chiudilo e non digitare nulla."
+  "mobile.android_native.warn_text": "{{domain}} sembra pericoloso. Se è aperto, chiudilo e non digitare nulla.",
+  "mobile.android_native.allow_action": "Non è una truffa: consenti",
+  "mobile.android_native.allowed_title": "Sito consentito",
+  "mobile.android_native.allowed_text": "{{domain}} ora è consentito. Puoi annullare in Impostazioni → Siti consentiti."
 }

@@ -86,6 +86,34 @@ object DnsUtil {
         return out
     }
 
+    /**
+     * Flip a query into a SERVFAIL (RCODE 2) reply.
+     *
+     * Used when no upstream transport could answer. A dropped query leaves
+     * every app on the phone waiting out its resolver timeout — the user
+     * experiences "the internet is broken" while the shield shows green.
+     * SERVFAIL says "this server failed" immediately: honest, fast, and
+     * distinct from NXDOMAIN, so a transport failure can never be mistaken
+     * for (or look like) a block.
+     */
+    fun makeServfail(query: ByteArray, length: Int): ByteArray? {
+        if (length < IP_UDP_HEADER + DNS_HEADER) return null
+        val out = query.copyOf(length)
+
+        // Flags: QR=1, RA=1, RCODE=2. Preserve RD.
+        val flagsHigh = IP_UDP_HEADER + 2
+        val flagsLow = IP_UDP_HEADER + 3
+        out[flagsHigh] = ((out[flagsHigh].toInt() and 0x01) or 0x80).toByte()
+        out[flagsLow] = 0x82.toByte()
+
+        swapIpv4Addresses(out)
+        swapUdpPorts(out)
+        out[26] = 0
+        out[27] = 0
+        writeIpv4HeaderChecksum(out)
+        return out
+    }
+
     fun wrapResponse(
         query: ByteArray,
         queryLength: Int,

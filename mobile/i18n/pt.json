@@ -515,6 +515,8 @@
   "mobile.history.privacy": "Esta lista fica no seu celular. Quando você verifica um link, apenas o nome do site é enviado aos nossos servidores.",
   "mobile.history.shield_blocked": "Parado pelo escudo",
   "mobile.history.shield_warned": "Sinalizado pelo escudo — se abriu, feche",
+  "mobile.history.shield_allowed": "Você permitiu",
+  "mobile.history.shield_allow_action": "Permitir",
   "mobile.report.title": "Relatório semanal",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Esta semana",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "Todas as verificações salvas foram removidas deste celular.",
   "mobile.settings.clear_failed_title": "Não foi possível limpar o histórico",
   "mobile.settings.clear_failed_body": "Algo deu errado — seu histórico continua igual. Tente de novo.",
+  "mobile.settings.allowed": "Sites permitidos",
+  "mobile.settings.allowed_desc": "Sites que você marcou como seguros. O escudo não bloqueia esses.",
+  "mobile.settings.allowed_remove": "Remover",
+  "mobile.settings.allowed_empty": "Nenhum site permitido",
+  "mobile.settings.allow_confirm_title": "Permitir este site",
+  "mobile.settings.allow_confirm_body": "{{domain}} não será bloqueado até você removê-lo aqui. Faça isso só se conhecer o site.",
   "mobile.family.title": "Central da Família",
   "mobile.family.default_name": "Minha Família",
   "mobile.family.signed_out_body": "Entre para configurar a Central da Família. Quando o Cleanway bloqueia um golpe no navegador de alguém da família, você recebe um alerta — com criptografia de ponta a ponta, então nem o Cleanway consegue ler.",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "O Cleanway parou um site perigoso",
   "mobile.android_native.blocked_text": "{{domain}} parecia golpe, então foi parado antes de abrir.",
   "mobile.android_native.warn_title": "Este site parece golpe",
-  "mobile.android_native.warn_text": "{{domain}} parece perigoso. Se estiver aberto, feche e não digite nada."
+  "mobile.android_native.warn_text": "{{domain}} parece perigoso. Se estiver aberto, feche e não digite nada.",
+  "mobile.android_native.allow_action": "Não é golpe — permitir",
+  "mobile.android_native.allowed_title": "Site permitido",
+  "mobile.android_native.allowed_text": "{{domain}} agora está permitido. Você pode desfazer em Configurações → Sites permitidos."
 }

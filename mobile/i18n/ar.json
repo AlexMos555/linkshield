@@ -515,6 +515,8 @@
   "mobile.history.privacy": "هذه القائمة تبقى على هاتفك. وعند فحص رابط، لا يُرسَل إلى خوادمنا سوى اسم الموقع.",
   "mobile.history.shield_blocked": "أوقفه الدرع",
   "mobile.history.shield_warned": "أشار إليه الدرع — إذا فُتح فأغلقه",
+  "mobile.history.shield_allowed": "سمحت بهذا",
+  "mobile.history.shield_allow_action": "السماح",
   "mobile.report.title": "التقرير الأسبوعي",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "هذا الأسبوع",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "أُزيلت كل الفحوصات المحفوظة من هذا الهاتف.",
   "mobile.settings.clear_failed_title": "تعذّر مسح السجل",
   "mobile.settings.clear_failed_body": "حدث خطأ ما — سجلّك لم يتغيّر. حاول مرة أخرى.",
+  "mobile.settings.allowed": "المواقع المسموح بها",
+  "mobile.settings.allowed_desc": "المواقع التي وضعت عليها علامة آمن. الدرع لا يحظرها.",
+  "mobile.settings.allowed_remove": "إزالة",
+  "mobile.settings.allowed_empty": "لا توجد مواقع مسموح بها",
+  "mobile.settings.allow_confirm_title": "السماح بهذا الموقع",
+  "mobile.settings.allow_confirm_body": "لن يُحظر {{domain}} حتى تزيله من هنا. لا تفعل ذلك إلا إذا كنت تعرف الموقع.",
   "mobile.family.title": "مركز العائلة",
   "mobile.family.default_name": "عائلتي",
   "mobile.family.signed_out_body": "سجّل الدخول لإعداد مركز العائلة. عندما يحظر Cleanway عملية احتيال في متصفح أحد أفراد العائلة، يصلك تنبيه — مشفّر من طرف إلى طرف، حتى إن Cleanway نفسه لا يستطيع قراءته.",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "أوقف Cleanway موقعًا خطيرًا",
   "mobile.android_native.blocked_text": "بدا {{domain}} احتياليًا، لذا تم إيقافه قبل أن يُفتح.",
   "mobile.android_native.warn_title": "هذا الموقع يبدو احتياليًا",
-  "mobile.android_native.warn_text": "يبدو {{domain}} خطيرًا. إذا كان مفتوحًا فأغلقه ولا تكتب أي شيء."
+  "mobile.android_native.warn_text": "يبدو {{domain}} خطيرًا. إذا كان مفتوحًا فأغلقه ولا تكتب أي شيء.",
+  "mobile.android_native.allow_action": "ليس احتيالًا — اسمح به",
+  "mobile.android_native.allowed_title": "تم السماح بالموقع",
+  "mobile.android_native.allowed_text": "أصبح {{domain}} مسموحًا الآن. يمكنك التراجع من الإعدادات ← المواقع المسموح بها."
 }

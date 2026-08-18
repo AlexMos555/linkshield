@@ -1329,7 +1329,9 @@
       "empty_cta": "Controlla un link",
       "privacy": "Questa lista resta sul tuo telefono. Quando controlli un link, ai nostri server viene inviato solo il nome del sito.",
       "shield_blocked": "Fermato dallo scudo",
-      "shield_warned": "Segnalato dallo scudo: se si è aperto, chiudilo"
+      "shield_warned": "Segnalato dallo scudo: se si è aperto, chiudilo",
+      "shield_allowed": "L'hai consentito",
+      "shield_allow_action": "Consenti"
     },
     "report": {
       "title": "Resoconto settimanale",
@@ -1424,7 +1426,13 @@
       "clear_done_title": "Cronologia cancellata",
       "clear_done_body": "Tutti i controlli salvati sono stati rimossi da questo telefono.",
       "clear_failed_title": "Impossibile cancellare la cronologia",
-      "clear_failed_body": "Qualcosa è andato storto — la tua cronologia non è cambiata. Riprova."
+      "clear_failed_body": "Qualcosa è andato storto — la tua cronologia non è cambiata. Riprova.",
+      "allowed": "Siti consentiti",
+      "allowed_desc": "Siti che hai contrassegnato come sicuri. Lo scudo non li blocca.",
+      "allowed_remove": "Rimuovi",
+      "allowed_empty": "Nessun sito consentito",
+      "allow_confirm_title": "Consenti questo sito",
+      "allow_confirm_body": "{{domain}} non verrà bloccato finché non lo rimuovi qui. Fallo solo se conosci il sito."
     },
     "family": {
       "title": "Family Hub",
@@ -1516,7 +1524,10 @@
       "blocked_title": "Cleanway ha fermato un sito pericoloso",
       "blocked_text": "{{domain}} sembrava una truffa: è stato fermato prima di aprirsi.",
       "warn_title": "Questo sito sembra una truffa",
-      "warn_text": "{{domain}} sembra pericoloso. Se è aperto, chiudilo e non digitare nulla."
+      "warn_text": "{{domain}} sembra pericoloso. Se è aperto, chiudilo e non digitare nulla.",
+      "allow_action": "Non è una truffa: consenti",
+      "allowed_title": "Sito consentito",
+      "allowed_text": "{{domain}} ora è consentito. Puoi annullare in Impostazioni → Siti consentiti."
     }
   }
 }

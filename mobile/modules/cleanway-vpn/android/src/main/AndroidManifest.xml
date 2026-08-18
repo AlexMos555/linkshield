@@ -22,6 +22,12 @@
       ":boot" starts a bare process that only reads a flag and starts the
       service.
     -->
+    <!-- "Not a scam — allow it" from a block notification. Not exported: only
+         our own PendingIntent can fire it. -->
+    <receiver
+      android:name="ai.cleanway.app.AllowReceiver"
+      android:enabled="true"
+      android:exported="false" />
     <receiver
       android:name="ai.cleanway.app.BootReceiver"
       android:process=":boot"

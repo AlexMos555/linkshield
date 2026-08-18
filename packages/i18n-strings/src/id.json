@@ -1329,7 +1329,9 @@
       "empty_cta": "Cek link",
       "privacy": "Daftar ini tetap di HP Anda. Saat Anda mengecek link, hanya nama situs yang dikirim ke server kami.",
       "shield_blocked": "Dihentikan oleh perisai",
-      "shield_warned": "Ditandai oleh perisai — kalau terbuka, tutup"
+      "shield_warned": "Ditandai oleh perisai — kalau terbuka, tutup",
+      "shield_allowed": "Kamu mengizinkannya",
+      "shield_allow_action": "Izinkan"
     },
     "report": {
       "title": "Laporan mingguan",
@@ -1424,7 +1426,13 @@
       "clear_done_title": "Riwayat terhapus",
       "clear_done_body": "Semua catatan cek yang tersimpan sudah dihapus dari HP ini.",
       "clear_failed_title": "Riwayat gagal dihapus",
-      "clear_failed_body": "Terjadi kesalahan — riwayat Anda tidak berubah. Silakan coba lagi."
+      "clear_failed_body": "Terjadi kesalahan — riwayat Anda tidak berubah. Silakan coba lagi.",
+      "allowed": "Situs yang diizinkan",
+      "allowed_desc": "Situs yang kamu tandai aman. Perisai tidak memblokirnya.",
+      "allowed_remove": "Hapus",
+      "allowed_empty": "Belum ada situs yang diizinkan",
+      "allow_confirm_title": "Izinkan situs ini",
+      "allow_confirm_body": "{{domain}} tidak akan diblokir sampai kamu menghapusnya di sini. Lakukan hanya jika kamu mengenal situsnya."
     },
     "family": {
       "title": "Family Hub",
@@ -1516,7 +1524,10 @@
       "blocked_title": "Cleanway menghentikan situs berbahaya",
       "blocked_text": "{{domain}} tampak seperti penipuan, jadi dihentikan sebelum terbuka.",
       "warn_title": "Situs ini tampak seperti penipuan",
-      "warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun."
+      "warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun.",
+      "allow_action": "Bukan penipuan — izinkan",
+      "allowed_title": "Situs diizinkan",
+      "allowed_text": "{{domain}} sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan."
     }
   }
 }

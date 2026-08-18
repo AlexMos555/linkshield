@@ -515,6 +515,8 @@
   "mobile.history.privacy": "Esta lista se queda en tu teléfono. Cuando revisas un enlace, solo el nombre del sitio web se envía a nuestros servidores.",
   "mobile.history.shield_blocked": "Detenido por el escudo",
   "mobile.history.shield_warned": "Marcado por el escudo: si se abrió, ciérralo",
+  "mobile.history.shield_allowed": "Lo permitiste",
+  "mobile.history.shield_allow_action": "Permitir",
   "mobile.report.title": "Informe semanal",
   "mobile.report.period": "{{from}} — {{to}}",
   "mobile.report.summary_header": "Esta semana",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "Se eliminaron de este teléfono todas las revisiones guardadas.",
   "mobile.settings.clear_failed_title": "No se pudo borrar el historial",
   "mobile.settings.clear_failed_body": "Algo salió mal; tu historial quedó intacto. Inténtalo de nuevo.",
+  "mobile.settings.allowed": "Sitios permitidos",
+  "mobile.settings.allowed_desc": "Sitios que marcaste como seguros. El escudo no los bloquea.",
+  "mobile.settings.allowed_remove": "Quitar",
+  "mobile.settings.allowed_empty": "No hay sitios permitidos",
+  "mobile.settings.allow_confirm_title": "Permitir este sitio",
+  "mobile.settings.allow_confirm_body": "{{domain}} no se bloqueará hasta que lo quites aquí. Hazlo solo si conoces el sitio.",
   "mobile.family.title": "Espacio Familiar",
   "mobile.family.default_name": "Mi familia",
   "mobile.family.signed_out_body": "Inicia sesión para configurar el Espacio Familiar. Cuando Cleanway bloquea una estafa en el navegador de un familiar, recibes una alerta cifrada de extremo a extremo: ni siquiera Cleanway puede leerla.",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "Cleanway detuvo un sitio peligroso",
   "mobile.android_native.blocked_text": "{{domain}} parecía una estafa, así que se detuvo antes de abrirse.",
   "mobile.android_native.warn_title": "Este sitio parece una estafa",
-  "mobile.android_native.warn_text": "{{domain}} parece peligroso. Si está abierto, ciérralo y no escribas nada."
+  "mobile.android_native.warn_text": "{{domain}} parece peligroso. Si está abierto, ciérralo y no escribas nada.",
+  "mobile.android_native.allow_action": "No es una estafa: permitir",
+  "mobile.android_native.allowed_title": "Sitio permitido",
+  "mobile.android_native.allowed_text": "{{domain}} ahora está permitido. Puedes deshacerlo en Ajustes → Sitios permitidos."
 }

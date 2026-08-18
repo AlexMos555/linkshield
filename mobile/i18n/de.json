@@ -515,6 +515,8 @@
   "mobile.history.privacy": "Diese Liste bleibt auf deinem Handy. Wenn du einen Link prüfst, wird nur der Website-Name an unsere Server geschickt.",
   "mobile.history.shield_blocked": "Vom Schutzschild gestoppt",
   "mobile.history.shield_warned": "Vom Schutzschild markiert – falls geöffnet, schließen",
+  "mobile.history.shield_allowed": "Von dir zugelassen",
+  "mobile.history.shield_allow_action": "Zulassen",
   "mobile.report.title": "Wochenbericht",
   "mobile.report.period": "{{from}} – {{to}}",
   "mobile.report.summary_header": "Diese Woche",
@@ -602,6 +604,12 @@
   "mobile.settings.clear_done_body": "Alle gespeicherten Prüfungen wurden von diesem Handy entfernt.",
   "mobile.settings.clear_failed_title": "Verlauf konnte nicht gelöscht werden",
   "mobile.settings.clear_failed_body": "Etwas ist schiefgelaufen – dein Verlauf ist unverändert. Bitte versuch es noch mal.",
+  "mobile.settings.allowed": "Zugelassene Seiten",
+  "mobile.settings.allowed_desc": "Seiten, die du als sicher markiert hast. Der Schutz blockiert sie nicht.",
+  "mobile.settings.allowed_remove": "Entfernen",
+  "mobile.settings.allowed_empty": "Keine zugelassenen Seiten",
+  "mobile.settings.allow_confirm_title": "Diese Seite zulassen",
+  "mobile.settings.allow_confirm_body": "{{domain}} wird nicht mehr blockiert, bis du sie hier entfernst. Nur wenn du die Seite kennst.",
   "mobile.family.title": "Family Hub",
   "mobile.family.default_name": "Meine Familie",
   "mobile.family.signed_out_body": "Melde dich an, um den Family Hub einzurichten. Wenn Cleanway im Browser eines Familienmitglieds einen Betrug blockiert, bekommst du eine Warnung – Ende-zu-Ende-verschlüsselt, sodass nicht einmal Cleanway sie lesen kann.",
@@ -685,5 +693,8 @@
   "mobile.android_native.blocked_title": "Cleanway hat eine gefährliche Seite gestoppt",
   "mobile.android_native.blocked_text": "{{domain}} sah nach Betrug aus und wurde gestoppt, bevor sie sich öffnen konnte.",
   "mobile.android_native.warn_title": "Diese Seite sieht nach Betrug aus",
-  "mobile.android_native.warn_text": "{{domain}} wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben."
+  "mobile.android_native.warn_text": "{{domain}} wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben.",
+  "mobile.android_native.allow_action": "Kein Betrug – zulassen",
+  "mobile.android_native.allowed_title": "Seite zugelassen",
+  "mobile.android_native.allowed_text": "{{domain}} ist jetzt zugelassen. Rückgängig in Einstellungen → Zugelassene Seiten."
 }

@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import expo.modules.cleanwayvpn.R
@@ -78,6 +79,34 @@ object BlockNotifier {
         )
     }
 
+    /**
+     * Confirm an allow, and say where to undo it. Never silent: an allowed
+     * site must not be something the person discovers only by noticing the
+     * shield stopped blocking it.
+     */
+    fun notifyAllowed(context: Context, domain: String) {
+        try {
+            ensureChannel(context)
+            val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val pending = launch?.let {
+                PendingIntent.getActivity(context, 2, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            }
+            val text = context.getString(R.string.allowed_text, domain)
+            val notif = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle(context.getString(R.string.allowed_title))
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setSmallIcon(context.applicationInfo.icon)
+                .setContentIntent(pending)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(("allowed:" + domain).hashCode(), notif)
+        } catch (_: Exception) {
+        }
+    }
+
     /** Post the notification if throttling allows. Safe to call from any thread. */
     fun notify(context: Context, domain: String, kind: String, now: Long = System.currentTimeMillis()) {
         if (!throttle.shouldNotify(domain, now)) return
@@ -96,12 +125,26 @@ object BlockNotifier {
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                 )
             }
+            // The escape hatch, where the person actually is when their site
+            // breaks: one tap and it works again, with the shield still on.
+            // Without it the only remedy for a false positive is turning
+            // protection off — the outcome we least want.
+            val allowIntent = PendingIntent.getBroadcast(
+                context,
+                domain.hashCode(),
+                Intent(context, AllowReceiver::class.java)
+                    .setPackage(context.packageName)
+                    .setAction(AllowReceiver.ACTION_ALLOW)
+                    .putExtra(AllowReceiver.EXTRA_DOMAIN, domain),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
             val notif = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setSmallIcon(context.applicationInfo.icon)
                 .setContentIntent(pending)
+                .addAction(0, context.getString(R.string.allow_action), allowIntent)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build()

@@ -1329,7 +1329,9 @@
       "empty_cta": "Vérifier un lien",
       "privacy": "Cette liste reste sur votre téléphone. Quand vous vérifiez un lien, seul le nom du site web est envoyé à nos serveurs.",
       "shield_blocked": "Arrêté par le bouclier",
-      "shield_warned": "Signalé par le bouclier — s'il s'est ouvert, fermez-le"
+      "shield_warned": "Signalé par le bouclier — s'il s'est ouvert, fermez-le",
+      "shield_allowed": "Vous l'avez autorisé",
+      "shield_allow_action": "Autoriser"
     },
     "report": {
       "title": "Rapport de la semaine",
@@ -1424,7 +1426,13 @@
       "clear_done_title": "Historique effacé",
       "clear_done_body": "Toutes les vérifications enregistrées ont été supprimées de ce téléphone.",
       "clear_failed_title": "Impossible d'effacer l'historique",
-      "clear_failed_body": "Quelque chose s'est mal passé — votre historique n'a pas changé. Réessayez."
+      "clear_failed_body": "Quelque chose s'est mal passé — votre historique n'a pas changé. Réessayez.",
+      "allowed": "Sites autorisés",
+      "allowed_desc": "Sites que vous avez marqués comme sûrs. Le bouclier ne les bloque pas.",
+      "allowed_remove": "Retirer",
+      "allowed_empty": "Aucun site autorisé",
+      "allow_confirm_title": "Autoriser ce site",
+      "allow_confirm_body": "{{domain}} ne sera plus bloqué tant que vous ne le retirez pas ici. À faire seulement si vous connaissez le site."
     },
     "family": {
       "title": "Espace famille",
@@ -1516,7 +1524,10 @@
       "blocked_title": "Cleanway a arrêté un site dangereux",
       "blocked_text": "{{domain}} ressemblait à une arnaque : il a été arrêté avant de s'ouvrir.",
       "warn_title": "Ce site ressemble à une arnaque",
-      "warn_text": "{{domain}} semble dangereux. S'il est ouvert, fermez-le et ne saisissez rien."
+      "warn_text": "{{domain}} semble dangereux. S'il est ouvert, fermez-le et ne saisissez rien.",
+      "allow_action": "Ce n'est pas une arnaque — autoriser",
+      "allowed_title": "Site autorisé",
+      "allowed_text": "{{domain}} est maintenant autorisé. Annulez dans Réglages → Sites autorisés."
     }
   }
 }
