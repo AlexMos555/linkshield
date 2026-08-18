@@ -64,20 +64,99 @@ HOSTING_PLATFORMS = frozenset({
     "google.com", "microsoft.com", "amazonaws.com", "cloudflare.com",
 })
 
+# Big orgs whose subdomains are THEIR OWN services, not tenant sites. A
+# subdomain of these is never a block target (the popular-registrable rule
+# already skips them; listed here so they are never treated as tenant suffixes).
+BIG_ORGS = frozenset({"google.com", "microsoft.com", "amazonaws.com", "cloudflare.com"})
+
+# Hostnames shared by everyone through URL *paths* — one hostname carries a
+# million users' files. Blocking any of them = blocking a product for every
+# user. URLhaus is full of malware hosted on them; the hostname is never the
+# right unit to block, so they are skipped no matter what the feed says.
+# (github.com had 869 URLhaus entries on 2026-08-18 and was in production's
+# blocklist — every *.github.com was NXDOMAIN for every DNS user we had.)
+SHARED_HOSTNAMES = frozenset({
+    "github.com", "www.github.com", "gist.github.com", "api.github.com",
+    "raw.githubusercontent.com", "gist.githubusercontent.com",
+    "objects.githubusercontent.com", "user-images.githubusercontent.com",
+    "storage.googleapis.com", "firebasestorage.googleapis.com",
+    "drive.google.com", "drive.usercontent.google.com", "docs.google.com",
+    "sites.google.com", "forms.google.com", "script.google.com",
+    "cdn.discordapp.com", "media.discordapp.net", "discord.com",
+    "dl.dropboxusercontent.com", "www.dropbox.com", "dropbox.com",
+    "onedrive.live.com", "1drv.ms", "pastebin.com", "transfer.sh",
+    "i.imgur.com", "imgur.com", "t.me", "telegra.ph", "mediafire.com",
+    "www.mediafire.com", "s3.amazonaws.com", "s3.us-east-1.amazonaws.com",
+    "s3.eu-west-1.amazonaws.com", "s3.us-west-2.amazonaws.com",
+    "bitbucket.org", "gitlab.com", "sourceforge.net", "archive.org",
+    "web.archive.org", "ipfs.io", "cloudflare-ipfs.com", "dweb.link",
+})
+
+# A single hostname carrying at least this many distinct feed URLs is a
+# shared host (a platform's file store), not one tenant's phishing site —
+# tenant sites carry one to a handful. Backstop for shared hosts we did not
+# list explicitly.
+SHARED_URL_THRESHOLD = 15
+
 _COMPOUND_TLDS = frozenset({
     "co.uk", "ac.uk", "gov.uk", "org.uk", "co.jp", "co.in", "com.au", "com.br",
     "com.mx", "co.kr", "co.za", "com.sg", "com.tr", "co.id", "com.ar", "com.co",
 })
 
 
-def _registrable_domain(host: str) -> str:
+# Generic second-level labels under 2-letter ccTLDs (com.am, co.nz, org.uk,
+# gob.mx …): the registrable is three labels. Fallback when the PSL could not
+# be fetched. Promoting `com.am` to the blocklist would darken every Armenian
+# .com.am site — that exact promotion was live in production on 2026-08-18.
+_CCTLD_SECOND_LEVELS = frozenset({
+    "com", "co", "org", "net", "gov", "gob", "edu", "ac", "ne", "or", "go", "in",
+    "nom", "gen", "ltd", "plc", "sch", "asn", "id", "biz", "info", "web", "gv",
+    "govt", "mil", "nic", "int", "art", "name", "pro", "tv", "mobi", "priv",
+    "perso", "presse", "asso", "firm", "store", "res", "ind", "me", "my", "ltda",
+})
+
+PSL_URL = "https://publicsuffix.org/list/public_suffix_list.dat"
+
+
+def parse_psl(text: str) -> set[str]:
+    """PSL rules, lowercased, wildcards kept as '*.x', exceptions dropped."""
+    out: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("//") or line.startswith("!"):
+            continue
+        out.add(line.lower())
+    return out
+
+
+async def _fetch_psl() -> set[str] | None:
+    try:
+        return parse_psl(await _fetch(PSL_URL))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("PSL fetch failed (%s) — using ccTLD heuristic", e)
+        return None
+
+
+def _registrable_domain(host: str, public_suffixes: set[str] | None = None) -> str:
+    """eTLD+1. With a PSL: longest matching public suffix + one label.
+    Without: last two labels, or three under a compound / generic-SLD ccTLD."""
     if not host:
         return ""
     parts = host.split(".")
     if len(parts) <= 2:
         return host
+    if public_suffixes:
+        for k in range(len(parts) - 1, 0, -1):
+            suffix = ".".join(parts[-k:])
+            wildcard = "*." + ".".join(parts[-(k - 1):]) if k >= 2 else None
+            if suffix in public_suffixes or (wildcard and wildcard in public_suffixes):
+                return ".".join(parts[-(k + 1):])
+        return ".".join(parts[-2:])
     last_two = ".".join(parts[-2:])
-    if last_two in _COMPOUND_TLDS and len(parts) >= 3:
+    if last_two in _COMPOUND_TLDS:
+        return ".".join(parts[-3:])
+    tld, sld = parts[-1], parts[-2]
+    if len(tld) == 2 and sld in _CCTLD_SECOND_LEVELS:
         return ".".join(parts[-3:])
     return last_two
 
@@ -121,24 +200,103 @@ def _hosts_from_openphish(text: str):
                 yield h.lower()
 
 
-def build_blockset(hosts, top_100k: set[str]) -> set[str]:
-    """Full phishing hostnames + guarded registrables (never hosting/popular)."""
-    out: set[str] = set()
+def _load_public_suffixes_in_top() -> set[str]:
+    """PSL rules that are also Tranco top domains (us.org, github.io,
+    blob.core.windows.net …) — built by scripts/build_public_suffixes_in_top.py.
+    Subdomains of these are tenant sites; the apex is the platform."""
+    try:
+        with open(os.path.join(_DATA_DIR, "public_suffixes_in_top.json")) as f:
+            return {d.lower() for d in json.load(f)}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("public_suffixes_in_top.json not loaded (%s) — tenant guard weaker", e)
+        return set()
+
+
+def default_shared_suffixes() -> set[str]:
+    """Suffixes under which a subdomain is ONE tenant's site (safe to block
+    exactly) while the apex is a platform (never blocked)."""
+    return (set(HOSTING_PLATFORMS) - BIG_ORGS) | _load_public_suffixes_in_top()
+
+
+def _tenant_suffix(host: str, shared_suffixes: set[str]) -> str | None:
+    """Longest proper suffix of `host` that is a shared/tenant suffix."""
+    parts = host.split(".")
+    for k in range(len(parts) - 1, 1, -1):  # longest first, at least 2 labels
+        suffix = ".".join(parts[-k:])
+        if suffix in shared_suffixes:
+            return suffix
+    return None
+
+
+def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None = None,
+                   is_popular=None, public_suffixes: set[str] | None = None) -> set[str]:
+    """Decide, per feed hostname, what (if anything) to block.
+
+    Never darken a shared or popular host — a false positive here breaks a
+    product for every DNS user, while a miss costs one phishing page that
+    the other layers may still catch.
+
+      SKIP           host in SHARED_HOSTNAMES (path-shared by everyone);
+                     host is a shared-platform apex (github.io, us.org);
+                     host's registrable is popular (top-100k, or Tranco-1M via
+                     `is_popular`) and host is NOT under a tenant suffix
+                     (github.com, attach.mail.daum.net, adclick.g.doubleclick.net);
+                     host under a tenant suffix but carrying >= SHARED_URL_THRESHOLD
+                     feed URLs (a shared file host, not a tenant).
+      EXACT ONLY     host is one tenant's site under a shared suffix
+                     (evil.github.io, gwcu.us.org, x.blob.core.windows.net).
+      EXACT + REG    dedicated phishing domain: block the host and its
+                     registrable (login.scotiabano.com + scotiabano.com).
+
+    `hosts` may contain repeats (one per feed URL); repeats feed the
+    shared-host threshold. `is_popular(registrable) -> bool` is optional
+    (Tranco-1M lookup when Redis is available).
+    """
+    shared = default_shared_suffixes() if shared_suffixes is None else set(shared_suffixes)
+    counts: dict[str, int] = {}
     for h in hosts:
-        if not h or h.replace(".", "").replace(":", "").isdigit():
-            continue  # skip IPs
-        out.add(h)  # always block the exact phishing host
-        reg = _registrable_domain(h)
-        if reg and reg != h and reg not in HOSTING_PLATFORMS and reg not in top_100k:
-            out.add(reg)  # dedicated phishing domain — block the registrable too
-        elif reg == h and reg not in HOSTING_PLATFORMS and reg not in top_100k:
-            out.add(reg)
+        if h:
+            counts[h] = counts.get(h, 0) + 1
+
+    def popular(reg: str) -> bool:
+        if reg in top_100k:
+            return True
+        try:
+            return bool(is_popular and is_popular(reg))
+        except Exception:  # noqa: BLE001
+            return False
+
+    out: set[str] = set()
+    for h in counts:
+        if h.replace(".", "").replace(":", "").isdigit():
+            continue  # IP literal — DNS blocking cannot cover it
+        if h in SHARED_HOSTNAMES:
+            continue
+        reg = _registrable_domain(h, public_suffixes)
+        suffix = _tenant_suffix(h, shared)
+        if h in shared or (public_suffixes and h in public_suffixes):
+            continue  # platform apex / a public suffix itself — never
+        if public_suffixes and reg in public_suffixes:
+            continue  # cannot even name a registrable — never promote a suffix
+        if suffix is not None:
+            # One tenant's site on a shared platform — unless the feed shows
+            # this single hostname carrying many URLs (then it is a shared
+            # host itself, e.g. files.<platform>).
+            if counts[h] >= SHARED_URL_THRESHOLD:
+                continue
+            out.add(h)
+            continue
+        if popular(reg) or reg in BIG_ORGS:
+            continue  # popular org's own host — never
+        out.add(h)
+        if reg:
+            out.add(reg)  # dedicated phishing domain
     return out
 
 
 async def refresh(redis_url: str | None, dry_run: bool) -> int:
     top_100k = _load_top_100k()
-    hosts: set[str] = set()
+    hosts: list[str] = []  # one entry per feed URL — repeats feed the shared-host guard
     for name, url, parser in (
         ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus),
         ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish),
@@ -146,8 +304,8 @@ async def refresh(redis_url: str | None, dry_run: bool) -> int:
         try:
             text = await _fetch(url)
             n0 = len(hosts)
-            hosts.update(parser(text))
-            logger.info("%s: +%d hosts", name, len(hosts) - n0)
+            hosts.extend(parser(text))
+            logger.info("%s: +%d host entries (%d distinct so far)", name, len(hosts) - n0, len(set(hosts)))
         except Exception as e:  # noqa: BLE001
             logger.warning("%s fetch failed: %s (continuing)", name, e)
 
@@ -155,9 +313,34 @@ async def refresh(redis_url: str | None, dry_run: bool) -> int:
         logger.error("No hosts fetched from any feed — refusing to wipe the set")
         return 2
 
-    blockset = build_blockset(hosts, top_100k)
-    logger.info("Built dangerous set: %d entries (from %d raw hosts, %d popular/hosting guarded)",
-                len(blockset), len(hosts), len(top_100k))
+    public_suffixes = await _fetch_psl()
+    if public_suffixes:
+        logger.info("PSL loaded: %d rules", len(public_suffixes))
+
+    # Tranco-1M popularity from prod Redis (tranco:ranks, refreshed daily) —
+    # a stronger guard than the bundled top-100k, when we can reach it.
+    is_popular = None
+    r = None
+    if redis_url:
+        try:
+            import redis.asyncio as redis
+            r = redis.from_url(redis_url, decode_responses=True)
+            candidates = sorted({_registrable_domain(h, public_suffixes) for h in hosts if h})
+            ranks = await r.hmget("tranco:ranks", candidates) if candidates else []
+            popular_set = {d for d, rank in zip(candidates, ranks) if rank}
+            logger.info("Tranco-1M guard: %d of %d registrables are ranked", len(popular_set), len(candidates))
+            is_popular = popular_set.__contains__
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Tranco rank guard unavailable (%s) — top-100k only", e)
+
+    blockset = build_blockset(hosts, top_100k, is_popular=is_popular, public_suffixes=public_suffixes)
+    logger.info("Built dangerous set: %d entries (from %d feed URLs / %d distinct hosts)",
+                len(blockset), len(hosts), len(set(hosts)))
+    for must_never in ("github.com", "raw.githubusercontent.com", "google.com", "docs.google.com",
+                       "com.am", "co.uk", "com.br", "us.org", "github.io", "blogspot.com"):
+        if must_never in blockset:
+            logger.error("SAFETY: %s ended up in the blockset — refusing to write", must_never)
+            return 4
 
     if dry_run:
         logger.info("[dry-run] would rebuild '%s' with %d entries; sample: %s",
@@ -168,8 +351,9 @@ async def refresh(redis_url: str | None, dry_run: bool) -> int:
         logger.error("REDIS_URL not set — cannot write")
         return 1
 
-    import redis.asyncio as redis
-    r = redis.from_url(redis_url, decode_responses=True)
+    if r is None:
+        import redis.asyncio as redis
+        r = redis.from_url(redis_url, decode_responses=True)
     lock_key = "lock:dangerous_domains_refresh"
     try:
         if not await r.set(lock_key, "1", nx=True, ex=1800):
