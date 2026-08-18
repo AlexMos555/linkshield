@@ -86,6 +86,90 @@ TOP_DOMAINS: set[str] = _TRANCO_TOP_100K if _TRANCO_TOP_100K else _BUILTIN_TOP_D
 _domains_source = "tranco_100k" if _TRANCO_TOP_100K else "builtin_50"
 logger.info("Loaded %d top domains from %s", len(TOP_DOMAINS), _domains_source)
 
+# ── Public suffixes that are ALSO top domains ──
+#
+# Tranco ranks `us.org`, `github.io`, `blogspot.com`, `azurewebsites.net`,
+# `bounceme.net` … in its top 100k — and every one of them is a public suffix
+# (Mozilla PSL): anyone can register a name under it. Trusting "base domain in
+# TOP_DOMAINS" for a SUBDOMAIN of these was an instant-safe hole: the live
+# phishing host gwcu.us.org came back "safe, 99%" from /public/check without
+# ever reaching the analyzer (found 2026-08-18 through the Android shield).
+# Built by scripts/build_public_suffixes_in_top.py = every PSL rule whose
+# last-two-labels base is in top_100k.json (1,539 entries, multi-label ones
+# like s3.amazonaws.com included). See is_trusted_top_domain().
+PUBLIC_SUFFIXES_IN_TOP: set[str] = _load_json_set("public_suffixes_in_top.json")
+if not PUBLIC_SUFFIXES_IN_TOP:
+    logger.warning("public_suffixes_in_top.json missing — falling back to the hand list only")
+
+# ── Shared platforms: subdomains can be anyone's ──
+# Kept in sync with ml_features.HOSTING_PLATFORMS / refresh_dangerous_domains.
+HOSTING_PLATFORMS: frozenset[str] = frozenset({
+    # CDN / Cloud hosting
+    "pages.dev", "workers.dev", "r2.dev",                   # Cloudflare
+    "netlify.app", "vercel.app", "onrender.com",             # Jamstack
+    "herokuapp.com", "fly.dev", "railway.app", "deno.dev",   # PaaS
+    "github.io", "gitlab.io", "bitbucket.io",                # Git hosting
+    "web.app", "firebaseapp.com", "appspot.com",             # Google/Firebase
+    "azurewebsites.net", "blob.core.windows.net",            # Azure
+    "cloudfront.net", "s3.amazonaws.com", "amplifyapp.com",  # AWS
+    # Website builders
+    "blogspot.com", "wordpress.com", "wixsite.com", "wixstudio.com",
+    "weebly.com", "squarespace.com", "webflow.io",
+    "framer.app", "framer.website",                          # Framer
+    "carrd.co", "notion.site", "super.site",
+    "myshopify.com", "square.site", "bigcartel.com",
+    "lovable.app", "replit.app", "glitch.me",
+    # Free hosting
+    "000webhostapp.com", "infinityfreeapp.com",
+    "webcindario.com", "bravenet.com", "tripod.com",
+    "atwebpages.com", "epizy.com", "rf.gd",
+    "contaboserver.net", "hostinger.com",
+    # Google Docs (special case)
+    "docs.google.com", "forms.google.com", "sites.google.com",
+})
+
+# Google subdomains used for phishing: never auto-safe.
+GOOGLE_ABUSED_SUBDOMAINS: frozenset[str] = frozenset({
+    "docs.google.com", "forms.google.com", "sites.google.com",
+    "drive.google.com", "translate.google.com",
+})
+
+
+def _is_under_shared_suffix(domain: str) -> bool:
+    """True when `domain` is a STRICT subdomain of a public suffix / hosting
+    platform, i.e. a name someone else could have registered."""
+    parts = domain.split(".")
+    # Check every proper suffix of length >= 2 labels: evil.s3.amazonaws.com
+    # must match s3.amazonaws.com; a.b.evil.us.org must match us.org.
+    for k in range(2, len(parts)):
+        suffix = ".".join(parts[-k:])
+        if suffix in PUBLIC_SUFFIXES_IN_TOP or suffix in HOSTING_PLATFORMS:
+            return True
+    return False
+
+
+def is_trusted_top_domain(domain: str) -> bool:
+    """The ONE rule for the instant-safe allowlist short-circuit.
+
+    True only when the domain is a top domain (Tranco 100k) or a subdomain of
+    one that is NOT a shared platform / public suffix / URL shortener /
+    abused Google service. Used by the public /check router and by the
+    scorer's Layer 2, so both cannot disagree again.
+    """
+    d = (domain or "").lower().strip(".")
+    if not d:
+        return False
+    base = _extract_base_domain(d)
+    if base not in TOP_DOMAINS:
+        return False
+    if _is_url_shortener(base):
+        return False
+    if d in GOOGLE_ABUSED_SUBDOMAINS or any(d.startswith(g) for g in GOOGLE_ABUSED_SUBDOMAINS):
+        return False
+    if _is_under_shared_suffix(d):
+        return False
+    return True
+
 
 # ═══════════════════════════════════════════════════════════════
 # BRAND TARGETS — loaded from external JSON (100+ brands)
@@ -601,51 +685,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # LAYER 2: ALLOWLIST CHECK (instant safe)
     # ════════════════════════════════════════════
 
-    # ── Hosting platforms: subdomains can be anyone's ──
-    _HOSTING_PLATFORMS = {
-        # CDN / Cloud hosting
-        "pages.dev", "workers.dev", "r2.dev",                   # Cloudflare
-        "netlify.app", "vercel.app", "onrender.com",             # Jamstack
-        "herokuapp.com", "fly.dev", "railway.app", "deno.dev",   # PaaS
-        "github.io", "gitlab.io", "bitbucket.io",                # Git hosting
-        "web.app", "firebaseapp.com", "appspot.com",             # Google/Firebase
-        "azurewebsites.net", "blob.core.windows.net",            # Azure
-        "cloudfront.net", "s3.amazonaws.com", "amplifyapp.com",  # AWS
-        # Website builders
-        "blogspot.com", "wordpress.com", "wixsite.com", "wixstudio.com",
-        "weebly.com", "squarespace.com", "webflow.io",
-        "framer.app", "framer.website",                          # Framer
-        "carrd.co", "notion.site", "super.site",
-        "myshopify.com", "square.site", "bigcartel.com",
-        "lovable.app", "replit.app", "glitch.me",
-        # Free hosting
-        "000webhostapp.com", "infinityfreeapp.com",
-        "webcindario.com", "bravenet.com", "tripod.com",
-        "atwebpages.com", "epizy.com", "rf.gd",
-        "contaboserver.net", "hostinger.com",
-        # URL shorteners already handled separately
-        # Google Docs (special case)
-        "docs.google.com", "forms.google.com", "sites.google.com",
-    }
-
-    # Also treat Google subdomains used for phishing specially
-    _GOOGLE_ABUSED_SUBDOMAINS = {
-        "docs.google.com", "forms.google.com", "sites.google.com",
-        "drive.google.com", "translate.google.com",
-    }
-
-    # Subdomains on hosting platforms = NOT safe (anyone can register)
-    is_hosting_sub = base_domain in _HOSTING_PLATFORMS and domain != base_domain
-
-    # Full domain match for Google abused services
-    is_google_abused = domain in _GOOGLE_ABUSED_SUBDOMAINS or any(
-        domain.startswith(g) for g in _GOOGLE_ABUSED_SUBDOMAINS
-    )
-
-    # URL shorteners hide the real destination
-    if _is_url_shortener(base_domain) or is_hosting_sub or is_google_abused:
-        pass  # Don't auto-safe — continue to scoring
-    elif base_domain in TOP_DOMAINS:
+    # Instant-safe only for real top domains — NOT for subdomains of shared
+    # platforms / public suffixes (github.io, blogspot.com, us.org, s3…),
+    # URL shorteners, or abused Google services. One rule, shared with the
+    # public router: is_trusted_top_domain().
+    if is_trusted_top_domain(domain):
         rank = _TRANCO_TOP_10K.get(base_domain)
         detail = f"Ranked #{rank} globally" if rank else "In global top 100K domains"
         return 0, RiskLevel.safe, [DomainReason(

@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from api.services.scoring import (
-    calculate_score, _extract_base_domain, TOP_DOMAINS,
+    calculate_score, is_trusted_top_domain,
     calculate_confidence_pct,
 )
 from api.services.domain_validator import validate_domain, DomainValidationError
@@ -136,8 +136,12 @@ async def public_check(domain: str, request: Request):
 
     # 3) Top-domain allowlist short-circuit (also free — in-memory set
     #    lookup, no network, no analyzer).
-    base = _extract_base_domain(domain)
-    if base in TOP_DOMAINS:
+    #    NOT for subdomains of shared platforms / public suffixes: `us.org`,
+    #    `github.io`, `blogspot.com`, `s3.amazonaws.com` … are Tranco-ranked
+    #    AND anyone can register under them. `gwcu.us.org` (live phishing,
+    #    2026-08-18) came through here as "safe, 99%" and the DNS shield
+    #    cached that for a day. One rule shared with the scorer.
+    if is_trusted_top_domain(domain):
         # Build a synthetic DomainResult so the response shape stays
         # identical (incl. competitors[] side-by-side) — easier for
         # the landing scorecard than a separate branch.
