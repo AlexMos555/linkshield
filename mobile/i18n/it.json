@@ -388,6 +388,8 @@
   "mobile.shield.network.state_blocked": "Questa rete Wi-Fi richiede una pagina di accesso. Cleanway si è messo in pausa da solo e si riattiverà automaticamente.",
   "mobile.shield.network.state_checking": "Sto controllando la protezione…",
   "mobile.shield.network.state_offline": "Al momento non c'è internet. Lo scudo è configurato e filtrerà appena tornerai online.",
+  "mobile.shield.network.state_private_dns": "Sul telefono è attivo il DNS privato ({{host}}). Android non può usarlo insieme a Cleanway: con entrambi attivi, Internet smette di funzionare. Nelle Impostazioni imposta il DNS privato su Automatico, poi torna qui e attiva Cleanway.",
+  "mobile.shield.network.private_dns_cta": "Apri impostazioni di rete",
   "mobile.shield.browser.title": "Il tuo browser",
   "mobile.shield.browser.desc": "Controlla ogni pagina che apri e ti avvisa direttamente sulla pagina",
   "mobile.shield.browser.honesty": "Non può vedere dentro le altre app — di quelle si occupa lo scudo «Ogni app»",

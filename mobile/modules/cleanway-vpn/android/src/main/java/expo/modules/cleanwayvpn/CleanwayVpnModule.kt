@@ -113,6 +113,37 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Hostname of the device's strict Private DNS provider, or null when the
+     * setting is Off/Automatic. Strict + our tunnel = no DNS for any app, so
+     * the app must not even try to start the shield while this is non-null.
+     * See ai.cleanway.app.PrivateDnsGuard.
+     */
+    Function("privateDnsStrictHost") {
+      ai.cleanway.app.PrivateDnsGuard.strictHostname(context)
+    }
+
+    /**
+     * Open the screen where Private DNS lives. Android has no public intent
+     * for the Private DNS dialog itself; "Network & internet" is the closest
+     * public entry point on every version since 9.
+     */
+    Function("openPrivateDnsSettings") {
+      val candidates = listOf(
+        "android.settings.PRIVATE_DNS_SETTINGS",           // some OEM builds expose it
+        android.provider.Settings.ACTION_WIRELESS_SETTINGS,
+        android.provider.Settings.ACTION_SETTINGS,
+      )
+      candidates.any { action ->
+        try {
+          context.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+          true
+        } catch (e: Exception) {
+          false
+        }
+      }
+    }
+
+    /**
      * Monotonic count of canary queries the service has answered. The app
      * reads it before and after triggering a lookup — a delta is proof the
      * query reached THIS tunnel and was filtered. Double because JS has no

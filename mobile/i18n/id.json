@@ -388,6 +388,8 @@
   "mobile.shield.network.state_blocked": "Wi-Fi ini butuh halaman login. Cleanway menjeda dirinya sendiri dan akan menyala lagi secara otomatis.",
   "mobile.shield.network.state_checking": "Mengecek perlindungan…",
   "mobile.shield.network.state_offline": "Tidak ada internet sekarang. Perisai sudah disiapkan dan akan menyaring begitu Anda online lagi.",
+  "mobile.shield.network.state_private_dns": "HP kamu mengaktifkan DNS Pribadi ({{host}}). Android tidak bisa menjalankannya bersama Cleanway — kalau keduanya aktif, internet berhenti bekerja. Di Setelan, ubah DNS Pribadi ke Otomatis, lalu kembali dan nyalakan Cleanway.",
+  "mobile.shield.network.private_dns_cta": "Buka setelan jaringan",
   "mobile.shield.browser.title": "Browser Anda",
   "mobile.shield.browser.desc": "Mengecek setiap halaman yang Anda buka dan memperingatkan Anda langsung di halaman itu",
   "mobile.shield.browser.honesty": "Tidak bisa melihat ke dalam aplikasi lain — itu tugas perisai Semua aplikasi",

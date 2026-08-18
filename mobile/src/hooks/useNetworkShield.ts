@@ -24,6 +24,8 @@ interface VpnModule {
   stopVpn(): Promise<void>;
   isVpnRunning(): boolean;
   wasUserEnabled?(): boolean;
+  privateDnsStrictHost?(): string | null;
+  openPrivateDnsSettings?(): boolean;
   verifyFiltering(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
   openVpnSettings?(): boolean;
@@ -80,6 +82,16 @@ export interface NetworkShield {
    * stopped, and one tap brings it back.
    */
   interrupted: boolean;
+  /**
+   * Hostname of the phone's strict Private DNS provider, or null. Non-null
+   * means the shield CANNOT run: strict DoT + our tunnel = no DNS for any
+   * app on the phone (verified 2026-08-18 — `ping example.com` → unknown
+   * host while the shield showed "offline"). The service refuses to start
+   * and steps aside if the setting flips while running; the card shows the
+   * setting to change and a button that opens it.
+   */
+  privateDnsHost: string | null;
+  openPrivateDnsSettings: () => void;
   turnOn: () => Promise<void>;
   turnOff: () => Promise<void>;
   /**
@@ -98,9 +110,14 @@ export function useNetworkShield(): NetworkShield {
   const [probing, setProbing] = useState(false);
   const [offline, setOffline] = useState(false);
   const [interrupted, setInterrupted] = useState(false);
+  const [privateDnsHost, setPrivateDnsHost] = useState<string | null>(null);
 
   const sync = useCallback(async () => {
     if (!vpn) return;
+    // Read the setting first: it decides whether anything below can be
+    // trusted. With strict Private DNS on, a running tunnel means a phone
+    // with no DNS, and a failed probe means nothing about our filtering.
+    setPrivateDnsHost(vpn.privateDnsStrictHost?.() ?? null);
     const isUp = vpn.isVpnRunning();
     setRunning(isUp);
     if (!isUp) {
@@ -143,6 +160,9 @@ export function useNetworkShield(): NetworkShield {
     const stopSub = vpn?.addVpnStoppedListener?.(() => {
       setRunning(false);
       setVerified(false);
+      // The service also stops itself when Private DNS flips to strict; a
+      // full sync picks up the reason (the setting) so the card can say why.
+      void sync();
     });
     return () => {
       appSub.remove();
@@ -152,6 +172,12 @@ export function useNetworkShield(): NetworkShield {
 
   const turnOn = useCallback(async () => {
     if (!vpn) return;
+    // Never even ask for consent while strict Private DNS is on: the service
+    // would refuse anyway, and the user would have granted a permission for
+    // nothing. Surface the setting instead.
+    const strictHost = vpn.privateDnsStrictHost?.() ?? null;
+    setPrivateDnsHost(strictHost);
+    if (strictHost) return;
     const ok = await vpn.startVpn();
     setRunning(ok);
     if (!ok) {
@@ -181,7 +207,10 @@ export function useNetworkShield(): NetworkShield {
   }, [vpn]);
 
   const state: ShieldState =
-    !running ? "setup"
+    // Strict Private DNS overrides everything else: the shield cannot run
+    // and the fix is a specific system setting, not anything in this app.
+    privateDnsHost ? "conflict"
+    : !running ? "setup"
     : verified ? "on"
     // Tunnel up, probe failed, and our own API is unreachable too: the phone
     // is offline. Nothing can be filtered because nothing is flowing — that
@@ -200,5 +229,13 @@ export function useNetworkShield(): NetworkShield {
     vpn?.openVpnSettings?.();
   }, [vpn]);
 
-  return { available: vpn !== null, state, verified, probing, offline, interrupted, turnOn, turnOff, openVpnSettings };
+  const openPrivateDnsSettings = useCallback(() => {
+    vpn?.openPrivateDnsSettings?.();
+  }, [vpn]);
+
+  return {
+    available: vpn !== null,
+    state, verified, probing, offline, interrupted, privateDnsHost,
+    turnOn, turnOff, openVpnSettings, openPrivateDnsSettings,
+  };
 }

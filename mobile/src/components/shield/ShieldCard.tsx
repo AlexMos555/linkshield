@@ -41,7 +41,9 @@ const AMBER_STATES: ReadonlySet<ShieldState> = new Set(["conflict", "network-blo
 export function ShieldCard(props: ShieldCardProps) {
   const { icon, title, description, honesty, state, stateCopy, onAction, onPause } = props;
   const { t } = useTranslation();
-  const running = state === "on" || state === "unverified" || state === "conflict" || state === "offline";
+  // "conflict" is deliberately not here: it means the tunnel is DOWN (the
+  // service refused or stepped aside), so "Pause protection" would be a lie.
+  const running = state === "on" || state === "unverified" || state === "offline";
   const amber = AMBER_STATES.has(state);
   const iconColor = state === "on" ? colors.green : amber ? colors.amber : colors.textSecondary;
   const desc = stateCopy ?? description;

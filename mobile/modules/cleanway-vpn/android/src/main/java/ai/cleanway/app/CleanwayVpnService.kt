@@ -70,6 +70,9 @@ class CleanwayVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
 
+    /** Unregisters the Private DNS setting observer; null while not watching. */
+    private var stopPrivateDnsWatch: (() -> Unit)? = null
+
     @Volatile
     private var running = false
 
@@ -146,6 +149,16 @@ class CleanwayVpnService : VpnService() {
             return
         }
 
+        // Strict Private DNS + our tunnel = no DNS for any app on the phone
+        // (see PrivateDnsGuard). Refuse rather than break the internet; the
+        // app explains which setting to change and deep-links there.
+        PrivateDnsGuard.strictHostname(this)?.let { host ->
+            Log.w(TAG, "private_dns_strict host=$host — refusing to establish")
+            broadcastStopped(REASON_PRIVATE_DNS)
+            stopSelf()
+            return
+        }
+
         val builder = Builder()
             .setSession("Cleanway")
             .addAddress(VPN_CLIENT_IP, 32)
@@ -188,6 +201,19 @@ class CleanwayVpnService : VpnService() {
         Log.i(TAG, "tunnel_started")
 
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
+
+        // The user can switch Private DNS to strict while we run — from that
+        // moment every lookup on the phone fails. Step aside immediately and
+        // say why, rather than leaving a green shield over a dead internet.
+        stopPrivateDnsWatch?.invoke()
+        stopPrivateDnsWatch = PrivateDnsGuard.watch(this) {
+            if (!running) return@watch
+            PrivateDnsGuard.strictHostname(this)?.let { host ->
+                Log.w(TAG, "private_dns_strict host=$host — stepping aside")
+                broadcastStopped(REASON_PRIVATE_DNS)
+                stopVpn()
+            }
+        }
     }
 
     /**
@@ -218,6 +244,8 @@ class CleanwayVpnService : VpnService() {
     private fun stopVpn() {
         running = false
         isRunning = false
+        stopPrivateDnsWatch?.invoke()
+        stopPrivateDnsWatch = null
         // The counter is monotonic and compared by delta in JS, so a value
         // from a previous tunnel cannot satisfy a new probe — no reset needed.
         stopForegroundCompat()
@@ -638,6 +666,11 @@ class CleanwayVpnService : VpnService() {
 
         /** Taken away by the system or displaced by another VPN app. */
         const val REASON_REVOKED = "revoked"
+        /**
+         * Strict Private DNS is on; running would kill DNS for every app.
+         * We stepped aside (or refused to start). See PrivateDnsGuard.
+         */
+        const val REASON_PRIVATE_DNS = "private_dns"
         const val ACTION_DOMAIN_BLOCKED = "ai.cleanway.DOMAIN_BLOCKED"
         const val EXTRA_DOMAIN = "domain"
         const val EXTRA_TIMESTAMP = "ts_ms"

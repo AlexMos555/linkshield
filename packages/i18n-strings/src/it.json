@@ -1175,7 +1175,9 @@
         "state_unverified": "È in funzione, ma al momento non possiamo confermare che stia filtrando.",
         "state_blocked": "Questa rete Wi-Fi richiede una pagina di accesso. Cleanway si è messo in pausa da solo e si riattiverà automaticamente.",
         "state_checking": "Sto controllando la protezione…",
-        "state_offline": "Al momento non c'è internet. Lo scudo è configurato e filtrerà appena tornerai online."
+        "state_offline": "Al momento non c'è internet. Lo scudo è configurato e filtrerà appena tornerai online.",
+        "state_private_dns": "Sul telefono è attivo il DNS privato ({{host}}). Android non può usarlo insieme a Cleanway: con entrambi attivi, Internet smette di funzionare. Nelle Impostazioni imposta il DNS privato su Automatico, poi torna qui e attiva Cleanway.",
+        "private_dns_cta": "Apri impostazioni di rete"
       },
       "browser": {
         "title": "Il tuo browser",

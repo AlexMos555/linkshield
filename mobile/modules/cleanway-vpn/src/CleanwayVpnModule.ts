@@ -25,6 +25,13 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   canaryAnswerCount?(): number;
   /** True if the user last chose ON. Optional: older native builds lack it. */
   wasUserEnabled?(): boolean;
+  /**
+   * Hostname of the device's strict Private DNS provider, or null when the
+   * setting is Off/Automatic. Strict + our tunnel = no DNS for any app.
+   */
+  privateDnsStrictHost?(): string | null;
+  /** Opens the settings screen where Private DNS lives. */
+  openPrivateDnsSettings?(): boolean;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

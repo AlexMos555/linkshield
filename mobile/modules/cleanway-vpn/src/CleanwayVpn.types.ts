@@ -7,7 +7,11 @@ export type DomainBlockedPayload = {
 
 /** Emitted when the tunnel is torn down without the user asking for it. */
 export type VpnStoppedPayload = {
-  /** "revoked" — the system or another VPN app took the tunnel away. */
+  /**
+   * "revoked" — the system or another VPN app took the tunnel away.
+   * "private_dns" — strict Private DNS is on; the service stepped aside so
+   * the phone keeps working (see PrivateDnsGuard).
+   */
   reason: string;
 };
 

@@ -131,7 +131,11 @@ export default function HomeScreen() {
             honesty={t("mobile.shield.network.honesty")}
             state={network.state}
             stateCopy={
-              network.state === "on" ? t("mobile.shield.network.state_on")
+              // Strict Private DNS: the one state whose fix is a system
+              // setting. Name the provider so the user recognises it.
+              network.state === "conflict"
+                ? t("mobile.shield.network.state_private_dns", { host: network.privateDnsHost ?? "" })
+              : network.state === "on" ? t("mobile.shield.network.state_on")
               // Probe in flight: say "checking" rather than flashing the
               // negative state at someone whose protection is fine.
               : network.probing ? t("mobile.shield.network.state_checking")
@@ -139,13 +143,28 @@ export default function HomeScreen() {
               : network.state === "unverified" ? t("mobile.shield.network.state_unverified")
               : t("mobile.shield.network.state_setup")
             }
-            onAction={() => void (network.state === "setup" ? network.turnOn() : undefined)}
+            onAction={() => {
+              if (network.state === "setup") void network.turnOn();
+              else if (network.state === "conflict") network.openPrivateDnsSettings();
+            }}
             // The status pill only acts in "setup". Switching a running shield
             // OFF goes through the explicit pause row below, behind a confirm —
             // for a while there was no way out of a running shield at all
             // except the system VPN settings, which is its own kind of lie.
             onPause={confirmPause}
           />
+          {network.state === "conflict" && (
+            <TouchableOpacity
+              style={s.hintRow}
+              onPress={network.openPrivateDnsSettings}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Ionicons name="settings-outline" size={13} color={colors.amber} />
+              <Text style={[s.hintText, { color: colors.amber }]}>{t("mobile.shield.network.private_dns_cta")}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.amber} />
+            </TouchableOpacity>
+          )}
           {network.verified && (
             // Protection returns on its own after a reboot; Always-on VPN
             // additionally starts it with the phone, before any app receives

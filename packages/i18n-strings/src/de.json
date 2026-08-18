@@ -1175,7 +1175,9 @@
         "state_unverified": "Läuft, aber wir konnten gerade nicht bestätigen, dass wirklich gefiltert wird.",
         "state_blocked": "Dieses WLAN braucht eine Anmeldeseite. Cleanway hat sich selbst pausiert und schaltet sich automatisch wieder ein.",
         "state_checking": "Schutz wird geprüft…",
-        "state_offline": "Gerade kein Internet. Der Schutz ist eingerichtet und filtert, sobald du wieder online bist."
+        "state_offline": "Gerade kein Internet. Der Schutz ist eingerichtet und filtert, sobald du wieder online bist.",
+        "state_private_dns": "Auf deinem Handy ist „Privates DNS“ aktiv ({{host}}). Android kann es nicht zusammen mit Cleanway betreiben – sind beide an, funktioniert das Internet nicht mehr. Stelle in den Einstellungen „Privates DNS“ auf „Automatisch“ und schalte Cleanway danach ein.",
+        "private_dns_cta": "Netzwerkeinstellungen öffnen"
       },
       "browser": {
         "title": "Dein Browser",

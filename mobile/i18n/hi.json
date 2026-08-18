@@ -388,6 +388,8 @@
   "mobile.shield.network.state_blocked": "इस Wi-Fi के लिए साइन-इन पेज ज़रूरी है। Cleanway ने खुद को रोक दिया है और अपने आप फिर से चालू हो जाएगा।",
   "mobile.shield.network.state_checking": "सुरक्षा की जाँच हो रही है…",
   "mobile.shield.network.state_offline": "अभी इंटरनेट नहीं है। सुरक्षा सेट है और जैसे ही आप ऑनलाइन होंगे, यह फ़िल्टर करने लगेगी।",
+  "mobile.shield.network.state_private_dns": "आपके फ़ोन में Private DNS चालू है ({{host}})। Android इसे और Cleanway को एक साथ नहीं चला सकता — दोनों चालू हों तो इंटरनेट बंद हो जाता है। सेटिंग्स में Private DNS को Automatic पर रखें, फिर वापस आकर Cleanway चालू करें।",
+  "mobile.shield.network.private_dns_cta": "नेटवर्क सेटिंग्स खोलें",
   "mobile.shield.browser.title": "आपका ब्राउज़र",
   "mobile.shield.browser.desc": "आपके खोले हर पेज को जाँचता है और उसी पेज पर आपको आगाह करता है",
   "mobile.shield.browser.honesty": "दूसरे ऐप्स के अंदर नहीं देख सकता — उनके लिए 'हर ऐप' वाला कवच है",

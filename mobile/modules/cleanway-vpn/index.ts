@@ -116,6 +116,32 @@ export function wasUserEnabled(): boolean {
   }
 }
 
+/**
+ * Hostname of the device's strict Private DNS provider, or null when the
+ * setting is Off/Automatic. Strict + our tunnel = no DNS for any app on the
+ * phone (verified: `PrivateDnsBroken`, strict never falls back to plaintext),
+ * so the app must not start the shield while this is non-null, and must show
+ * the specific setting to change instead. Null on older native builds.
+ */
+export function privateDnsStrictHost(): string | null {
+  try {
+    return typeof CleanwayVpn.privateDnsStrictHost === 'function'
+      ? CleanwayVpn.privateDnsStrictHost()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Opens the settings screen where Private DNS lives. False if none exists. */
+export function openPrivateDnsSettings(): boolean {
+  try {
+    return typeof CleanwayVpn.openPrivateDnsSettings === 'function' && CleanwayVpn.openPrivateDnsSettings();
+  } catch {
+    return false;
+  }
+}
+
 export function isVpnRunning(): boolean {
   try {
     return CleanwayVpn.isRunning();

@@ -1175,7 +1175,9 @@
         "state_unverified": "Berjalan, tapi kami belum bisa memastikan penyaringannya sedang bekerja saat ini.",
         "state_blocked": "Wi-Fi ini butuh halaman login. Cleanway menjeda dirinya sendiri dan akan menyala lagi secara otomatis.",
         "state_checking": "Mengecek perlindungan…",
-        "state_offline": "Tidak ada internet sekarang. Perisai sudah disiapkan dan akan menyaring begitu Anda online lagi."
+        "state_offline": "Tidak ada internet sekarang. Perisai sudah disiapkan dan akan menyaring begitu Anda online lagi.",
+        "state_private_dns": "HP kamu mengaktifkan DNS Pribadi ({{host}}). Android tidak bisa menjalankannya bersama Cleanway — kalau keduanya aktif, internet berhenti bekerja. Di Setelan, ubah DNS Pribadi ke Otomatis, lalu kembali dan nyalakan Cleanway.",
+        "private_dns_cta": "Buka setelan jaringan"
       },
       "browser": {
         "title": "Browser Anda",

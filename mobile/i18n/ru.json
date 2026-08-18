@@ -388,6 +388,8 @@
   "mobile.shield.network.state_blocked": "Этой сети Wi-Fi нужна страница входа. Cleanway приостановился и включится снова автоматически.",
   "mobile.shield.network.state_checking": "Проверяем защиту…",
   "mobile.shield.network.state_offline": "Сейчас нет интернета. Щит настроен и начнёт фильтровать, как только связь появится.",
+  "mobile.shield.network.state_private_dns": "На телефоне включён «Частный DNS-сервер» ({{host}}). Android не может работать с ним и с Cleanway одновременно — если включены оба, интернет перестаёт работать. В настройках выберите «Частный DNS: Автоматически», затем вернитесь и включите Cleanway.",
+  "mobile.shield.network.private_dns_cta": "Открыть настройки сети",
   "mobile.shield.browser.title": "Ваш браузер",
   "mobile.shield.browser.desc": "Проверяет каждую страницу, которую вы открываете, и предупреждает прямо на ней",
   "mobile.shield.browser.honesty": "Не видит, что происходит в других приложениях, — за них отвечает щит «Все приложения»",
