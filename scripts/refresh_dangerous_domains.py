@@ -539,6 +539,23 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
     if dry_run:
         logger.info("[dry-run] would rebuild '%s' with %d entries; sample: %s",
                     SET_KEY, len(blockset), list(sorted(blockset))[:8])
+        if r is not None:
+            # Redis capacity is now a real constraint: the live set is ~40 MB
+            # and the artifact another ~3.5 MB. If the instance evicts, the
+            # artifact disappears and every phone stops updating — which is
+            # exactly what happened on 2026-08-19.
+            try:
+                info = await r.info("memory")
+                logger.info("redis: used %.1f MB / maxmemory %.1f MB (policy %s)",
+                            info.get("used_memory", 0) / 1e6,
+                            info.get("maxmemory", 0) / 1e6,
+                            info.get("maxmemory_policy", "?"))
+                for key in (SET_KEY, REDIS_TEXT_KEY, REDIS_META_KEY, "tranco:ranks"):
+                    exists = await r.exists(key)
+                    size = await r.memory_usage(key) if exists else 0
+                    logger.info("redis key %-34s exists=%s %.1f MB", key, bool(exists), (size or 0) / 1e6)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("redis report failed: %s", e)
         return 0
 
     if not redis_url:
