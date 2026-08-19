@@ -374,7 +374,7 @@
     "win_step3": "Cole este modelo DoH:",
     "benefits_heading": "Contra o que isso me protege?",
     "benefit_1": "Links de phishing em SMS, e-mail e Telegram abrem como “site não encontrado” em vez de uma página que rouba credenciais.",
-    "benefit_2": "Servidores de comando e controle de malware não conseguem alcançar o seu dispositivo — mesmo se um app duvidoso que você instalou tentar “ligar para casa”.",
+    "benefit_2": "Servidores de controle de malware conhecidos são parados antes que seu celular os alcance — desde que estejam na lista.",
     "benefit_3": "Domínios que se passam por marcas (paypal-secure-login.com) são bloqueados no próprio resolvedor — o seu navegador nem chega a carregá-los.",
     "benefit_4": "Funciona em todos os apps, não só no navegador. Links de WhatsApp, apps de banco, navegadores embutidos — tudo protegido.",
     "privacy_heading": "Privacidade — o que vemos e o que não vemos",

@@ -17,7 +17,11 @@ from api.services.doh_gateway import (
 def _fake_blocklist_redis(blocked: set[str]) -> MagicMock:
     """Fake Redis whose pipeline().sismember(...)/execute() answers
     membership against `blocked` — matches the is_blocked_redis hot
-    path (SISMEMBER, not SMEMBERS)."""
+    path (SISMEMBER, not SMEMBERS). Records the number of members asked
+    about per pipeline in `.pipeline_calls`, so a test can pin that the
+    suffix walk stays bounded."""
+    calls: list[int] = []
+
     class _Pipe:
         def __init__(self, blk):
             self._blk = blk
@@ -28,12 +32,14 @@ def _fake_blocklist_redis(blocked: set[str]) -> MagicMock:
             return self
 
         async def execute(self):
+            calls.append(len(self._queued))
             out = [m in self._blk for m in self._queued]
             self._queued = []
             return out
 
     r = MagicMock()
     r.pipeline = lambda: _Pipe(blocked)
+    r.pipeline_calls = calls
     return r
 
 
@@ -514,3 +520,48 @@ async def test_router_redis_down_never_503s_dns(monkeypatch):
                        headers={"content-type": "application/dns-message"})
     assert resp.status_code == 200, resp.text
     assert resp.content[3] & 0x0F == 0
+
+
+# ─────────────────────────────────────────────────────────────────
+# Subdomain semantics: the artifact says "this name and all its
+# subdomains"; the gateway must agree with the phone.
+# ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_is_blocked_redis_covers_subdomains_of_a_multi_label_entry():
+    """A published entry blocks itself AND everything under it — that is what
+    the phone does (BlockList.match walks suffixes). The gateway checked only
+    the exact name and its registrable base, so a subdomain of a tenant entry
+    like `0-amazon.weebly.com` sailed through for DoH / iOS-profile users
+    while the same lookup was blocked on Android."""
+    from api.services.doh_gateway import is_blocked_redis
+    r = _fake_blocklist_redis({"0-amazon.weebly.com", "evil.tk"})
+    assert await is_blocked_redis("0-amazon.weebly.com", r) is True
+    assert await is_blocked_redis("login.0-amazon.weebly.com", r) is True
+    assert await is_blocked_redis("a.b.0-amazon.weebly.com", r) is True
+    assert await is_blocked_redis("sub.evil.tk", r) is True
+    # The platform itself is not blocked by a tenant's entry.
+    assert await is_blocked_redis("weebly.com", r) is False
+    assert await is_blocked_redis("other.weebly.com", r) is False
+
+
+@pytest.mark.asyncio
+async def test_is_blocked_redis_never_consults_a_bare_tld():
+    """A one-label suffix must never be looked up: a stray 'com' in the set
+    would darken the internet."""
+    from api.services.doh_gateway import is_blocked_redis
+    r = _fake_blocklist_redis({"com", "uk"})
+    assert await is_blocked_redis("example.com", r) is False
+    assert await is_blocked_redis("bbc.co.uk", r) is False
+
+
+@pytest.mark.asyncio
+async def test_is_blocked_redis_bounds_the_number_of_lookups():
+    """The suffix walk runs on every DNS query on the device, so it must stay
+    O(1)-ish: a pathological 30-label name may not become 30 SISMEMBERs."""
+    from api.services.doh_gateway import MAX_SUFFIX_LOOKUPS, is_blocked_redis
+    r = _fake_blocklist_redis(set())
+    long_name = ".".join(f"l{i}" for i in range(30)) + ".example"
+    assert await is_blocked_redis(long_name, r) is False
+    assert r.pipeline_calls  # recorded by the fake
+    assert max(r.pipeline_calls) <= MAX_SUFFIX_LOOKUPS

@@ -184,3 +184,91 @@ def test_malformed_artifacts_are_rejected(mutate):
     blob = render_artifact_v2({"a.example", "b.example"}, generated=1)
     with pytest.raises(Exception):
         parse_artifact_v2(mutate(blob))
+
+
+# ─────────────────────────────────────────────────────────────────
+# Deltas: 6 KB instead of 2.5 MB, and provably the same result
+# ─────────────────────────────────────────────────────────────────
+
+def test_delta_round_trip_lands_exactly_on_the_published_artifact():
+    from api.services.blocklist_artifact import (
+        apply_delta, parse_artifact_v2, parse_delta, render_artifact_v2, render_delta, sha256_bytes,
+    )
+    old_blob = render_artifact_v2({"a.example", "b.example", "gone.example"}, generated=100)
+    new_blob = render_artifact_v2({"a.example", "b.example", "fresh.example"}, generated=200)
+    _, old_h = parse_artifact_v2(old_blob)
+    _, new_h = parse_artifact_v2(new_blob)
+
+    delta = render_delta(old_h, new_h, from_gen=100, to_gen=200, target_sha=sha256_bytes(new_blob))
+    header, added, removed = parse_delta(delta)
+    assert header["from"] == 100 and header["to"] == 200
+    assert (header["added"], header["removed"]) == (1, 1)
+    assert apply_delta(old_h, added, removed) == new_h
+    # …and the target sha is the published artifact's, which is what the
+    # phone verifies after merging before it trusts a delta.
+    assert header["sha256"] == sha256_bytes(new_blob)
+
+    # The size claim, at a realistic scale: 5,000 names with 20 changed.
+    big_old = {f"d{i}.example" for i in range(5_000)}
+    big_new = (big_old - {f"d{i}.example" for i in range(10)}) | {f"n{i}.example" for i in range(10)}
+    _, bo = parse_artifact_v2(render_artifact_v2(big_old, generated=1))
+    nb = render_artifact_v2(big_new, generated=2)
+    _, bn = parse_artifact_v2(nb)
+    big_delta = render_delta(bo, bn, from_gen=1, to_gen=2, target_sha=sha256_bytes(nb))
+    assert len(big_delta) * 50 < len(nb)
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda b: b[1:],
+    lambda b: b[:-1],
+    lambda b: b.replace(b"added=1", b"added=5"),
+    lambda b: b.replace(b"sha256=", b"sha256x"),
+])
+def test_malformed_deltas_are_rejected(mutate):
+    from api.services.blocklist_artifact import parse_delta, render_delta
+    d = render_delta([1, 2, 3], [2, 3, 4], from_gen=1, to_gen=2, target_sha="0" * 64)
+    with pytest.raises(Exception):
+        parse_delta(mutate(d))
+
+
+def test_route_serves_a_delta_when_the_client_names_a_version_it_has(monkeypatch):
+    from api.main import app
+    from api.services import cache as cache_mod
+    from api.services import rate_limiter
+    from api.services.blocklist_artifact import (
+        DELTA_MAGIC, delta_key, parse_artifact_v2, render_artifact_v2, render_delta, sha256_bytes,
+    )
+
+    old_blob = render_artifact_v2({"a.example"}, generated=100)
+    _, old_h = parse_artifact_v2(old_blob)
+    _, new_h = parse_artifact_v2(BLOB)
+    delta = render_delta(old_h, new_h, from_gen=100, to_gen=1755530000, target_sha=SHA)
+
+    class _R(_FakeRedis):
+        async def get(self, key):
+            if key == delta_key(100):
+                return base64.b64encode(delta).decode()
+            return await super().get(key)
+
+    fake = _R()
+
+    async def _r():
+        return fake
+
+    monkeypatch.setattr(cache_mod, "get_redis", _r)
+    monkeypatch.setattr(rate_limiter, "get_redis", _r)
+    c = TestClient(app)
+
+    r = c.get("/api/v1/blocklist/dns", params={"from": 100})
+    assert r.status_code == 200
+    assert r.content.startswith(DELTA_MAGIC)
+    assert r.headers["x-cleanway-blocklist-delta"] == "1"
+    # (the size win is asserted at realistic scale in the round-trip test;
+    # at three-hash toy scale the header dominates)
+
+    # No delta for that version → the full artifact, so a phone always has a
+    # way forward instead of being stuck on an old list.
+    r2 = c.get("/api/v1/blocklist/dns", params={"from": 999})
+    assert r2.status_code == 200
+    assert r2.content == BLOB
+    assert "x-cleanway-blocklist-delta" not in r2.headers

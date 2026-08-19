@@ -100,6 +100,67 @@ def render_artifact_v2(names: Iterable[str], generated: Optional[int] = None, re
     return MAGIC + header.encode("ascii") + body
 
 
+# ── deltas ──
+#
+# Measured 2026-08-19 over 13.3 hours of real feed movement: 432,370 → 432,485
+# hashes, 549 added and 434 removed — 0.2% churn, about 6 KB against a 2.47 MB
+# full artifact. A phone can therefore stay current every few hours on a
+# metered plan for the price of a small image, which is the difference between
+# "fresh list on cellular" and "24-hour-old list because 2.5 MB is real money".
+DELTA_MAGIC = b"CWBD1\n"
+_DELTA_HEADER_RE = re.compile(
+    r"^# cleanway-dns-blocklist-delta (?P<version>v\d+) from=(?P<from>\d+) to=(?P<to>\d+) "
+    r"added=(?P<added>\d+) removed=(?P<removed>\d+) sha256=(?P<sha>[0-9a-f]{64})$"
+)
+
+
+def render_delta(previous: list[int], current: list[int], from_gen: int, to_gen: int,
+                 target_sha: str) -> bytes:
+    """Binary delta from one artifact's hashes to another's.
+
+    Carries the TARGET sha so the phone can prove the merge landed exactly on
+    the artifact we published — a delta that silently produced a different set
+    would be a blocklist nobody can audit.
+    """
+    added = sorted(set(current) - set(previous))
+    removed = sorted(set(previous) - set(current))
+    header = (f"# cleanway-dns-blocklist-delta {FORMAT_VERSION} from={from_gen} to={to_gen} "
+              f"added={len(added)} removed={len(removed)} sha256={target_sha}\n")
+    body = b"".join(h.to_bytes(HASH_BYTES, "big") for h in added + removed)
+    return DELTA_MAGIC + header.encode("ascii") + body
+
+
+def parse_delta(blob: bytes) -> tuple[dict, list[int], list[int]]:
+    """(header, added, removed). Raises ValueError on anything malformed."""
+    if not blob.startswith(DELTA_MAGIC):
+        raise ValueError("bad delta magic")
+    nl = blob.index(b"\n", len(DELTA_MAGIC))
+    m = _DELTA_HEADER_RE.match(blob[len(DELTA_MAGIC):nl].decode("ascii", "replace"))
+    if not m:
+        raise ValueError("bad delta header")
+    header = {
+        "version": m.group("version"), "from": int(m.group("from")), "to": int(m.group("to")),
+        "added": int(m.group("added")), "removed": int(m.group("removed")), "sha256": m.group("sha"),
+    }
+    body = blob[nl + 1:]
+    if len(body) != (header["added"] + header["removed"]) * HASH_BYTES:
+        raise ValueError("delta body does not match its counts")
+    values = [int.from_bytes(body[i:i + HASH_BYTES], "big") for i in range(0, len(body), HASH_BYTES)]
+    added, removed = values[:header["added"]], values[header["added"]:]
+    if added != sorted(added) or removed != sorted(removed):
+        raise ValueError("delta hashes not sorted")
+    return header, added, removed
+
+
+def apply_delta(base: list[int], added: list[int], removed: list[int]) -> list[int]:
+    """Merge, exactly as the phone does."""
+    return sorted((set(base) - set(removed)) | set(added))
+
+
+def delta_key(from_generation: int) -> str:
+    return f"{REDIS_TEXT_KEY}:delta:{from_generation}"
+
+
 def parse_artifact_v2(blob: bytes) -> tuple[dict, list[int]]:
     """(header, hashes). Raises ValueError on anything malformed — the phone
     is equally strict, and a half-understood blocklist is not a blocklist."""

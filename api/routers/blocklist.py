@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from api.services.blocklist_artifact import (
     REDIS_META_KEY,
     REDIS_TEXT_KEY,
+    delta_key,
     sha256_bytes,
 )
 from api.services.rate_limiter import rate_limit
@@ -78,11 +79,49 @@ async def artifact_age_seconds() -> Optional[int]:
         return None
 
 
+async def load_delta(from_generation: int) -> Optional[bytes]:
+    """The delta from `from_generation` to the current artifact, if we still
+    have it. Deltas expire with the artifact, so an old phone simply gets the
+    full file instead of being stuck."""
+    try:
+        from api.services.cache import get_redis
+        r = await get_redis()
+        encoded = await r.get(delta_key(from_generation))
+    except Exception:
+        logger.warning("blocklist delta: redis unavailable", exc_info=True)
+        return None
+    if not encoded:
+        return None
+    try:
+        return base64.b64decode(encoded)
+    except Exception:
+        logger.error("blocklist delta: not valid base64")
+        return None
+
+
 @router.get(
     "/dns",
     dependencies=[Depends(rate_limit(mode="ip", category="blocklist"))],
 )
 async def get_dns_blocklist(request: Request) -> Response:
+    # `from=<version>` says "I already have this one". Real feed movement is
+    # ~0.2% per half day, so the answer is usually a few KB instead of 2.5 MB
+    # — the difference between a phone that stays current on a metered plan
+    # and one that does not.
+    raw_from = request.query_params.get("from")
+    if raw_from and raw_from.isdigit():
+        delta = await load_delta(int(raw_from))
+        if delta:
+            return Response(
+                content=delta,
+                media_type="application/octet-stream",
+                headers={
+                    "ETag": f'"{sha256_bytes(delta)}"',
+                    "Cache-Control": f"public, max-age={CACHE_MAX_AGE_S}",
+                    "X-Cleanway-Blocklist-Delta": "1",
+                },
+            )
+
     loaded = await load_artifact()
     if not loaded:
         return Response(
