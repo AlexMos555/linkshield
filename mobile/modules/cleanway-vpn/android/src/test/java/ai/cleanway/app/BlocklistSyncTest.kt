@@ -30,7 +30,10 @@ class BlocklistSyncTest {
     private class FakeFetcher(var next: FetchResult) : BlocklistFetcher {
         var calls = 0
         var lastEtag: String? = null
-        override fun fetch(url: String, etag: String?): FetchResult { calls++; lastEtag = etag; return next }
+        var lastUrl: String? = null
+        override fun fetch(url: String, etag: String?): FetchResult {
+            calls++; lastEtag = etag; lastUrl = url; return next
+        }
     }
 
     private fun sync(fetcher: BlocklistFetcher, store: BlocklistStore = BlocklistStore(tmp.newFolder()), now: () -> Long = { 1_000L },
@@ -123,26 +126,28 @@ class BlocklistSyncTest {
     }
 
     @Test
-    fun `on a metered network a fresh-enough list is not re-downloaded`() {
-        // ~3 MB per refresh: worth it on Wi-Fi, not worth a prepaid bundle
-        // every few hours. An absent list is always worth fetching.
+    fun `metered policy - the full artifact waits, a delta never does`() {
+        // A full artifact is ~2.5 MB: worth it on Wi-Fi, not worth a prepaid
+        // bundle every few hours. A delta is kilobytes, so holding it back
+        // would cost protection and save nothing. An absent list always wins.
         assertTrue(SyncPolicy.shouldFetchNow(null, metered = true))
         assertFalse(SyncPolicy.shouldFetchNow(60_000L, metered = true))
         assertTrue(SyncPolicy.shouldFetchNow(SyncPolicy.METERED_MIN_AGE_MS, metered = true))
         assertTrue(SyncPolicy.shouldFetchNow(60_000L, metered = false))
+        assertTrue(SyncPolicy.shouldFetchNow(60_000L, metered = true, hasBaseVersion = true))
 
-        val text = artifact("evil.example")
+        // End to end: a phone holding a list refreshes on cellular, because
+        // the request carries `from=` and the answer is a delta.
+        val text = artifact("evil.example", generated = 100L)
         val etag = "\"" + BlocklistSync.sha256Hex(text) + "\""
         val store = BlocklistStore(tmp.newFolder())
         store.save(text, etag, 10L)
         val f = FakeFetcher(FetchResult.NotModified)
         val s = sync(f, store, now = { 60_000L }, metered = { true })
-        s.loadFromDisk()
-        assertFalse(s.refreshOnce())
-        assertEquals(0, f.calls)
-        // The person asking for it explicitly still gets it.
-        assertTrue(s.refreshOnce(force = true))
+        assertNotNull(s.loadFromDisk())
+        assertTrue(s.refreshOnce())
         assertEquals(1, f.calls)
+        assertEquals("https://x/list?from=100", f.lastUrl)
     }
 
     @Test
@@ -176,4 +181,97 @@ class BlocklistSyncTest {
         assertNull(s.loadFromDisk())
         assertNull(store.load())
     }
+}
+
+/**
+ * Deltas. Measured on the real feed: 13 hours of movement is 0.2% of the list
+ * — about 6 KB against a 2.5 MB artifact. That is the difference between a
+ * phone staying current on a metered plan and one waiting a day.
+ *
+ * The safety property is the rebuild: a delta is trusted only once the merged
+ * set reproduces the exact bytes the publisher hashed.
+ */
+class BlocklistDeltaTest {
+
+    private val veto = setOf("paypal.com")
+
+    private fun artifact(names: List<String>, generated: Long): ByteArray =
+        BlockList.render(names.map { BlockList.hashOf(it) }.distinct().sorted().toLongArray(), generated)
+
+    private fun sha(b: ByteArray) = BlocklistSync.sha256Hex(b)
+
+    private fun delta(from: Long, to: Long, added: List<String>, removed: List<String>, targetSha: String): ByteArray {
+        val a = added.map { BlockList.hashOf(it) }.sorted()
+        val r = removed.map { BlockList.hashOf(it) }.sorted()
+        val out = java.io.ByteArrayOutputStream()
+        out.write("CWBD1\n".toByteArray())
+        out.write(("# cleanway-dns-blocklist-delta v2 from=$from to=$to added=${a.size} removed=${r.size} sha256=$targetSha\n").toByteArray())
+        for (h in a + r) for (b in BlockList.HASH_BYTES - 1 downTo 0) out.write(((h shr (8 * b)) and 0xFF).toInt())
+        return out.toByteArray()
+    }
+
+    @Test
+    fun `a delta lands exactly on the published artifact`() {
+        val before = listOf("a.example", "b.example", "gone.example")
+        val after = listOf("a.example", "b.example", "fresh.example")
+        val oldBlob = artifact(before, 100L)
+        val newBlob = artifact(after, 200L)
+        val list = BlockList.parse(oldBlob, veto, nowMs = 0L)!!
+        val d = delta(100L, 200L, listOf("fresh.example"), listOf("gone.example"), sha(newBlob))
+
+        assertTrue(BlockList.isDelta(d))
+        val rebuilt = BlockList.applyDelta(list, d)
+        assertNotNull(rebuilt)
+        assertTrue(newBlob.contentEquals(rebuilt!!))
+        val merged = BlockList.parse(rebuilt, veto, nowMs = 0L)!!
+        assertEquals("fresh.example", merged.match("www.fresh.example"))
+        assertNull(merged.match("gone.example"))
+    }
+
+    @Test
+    fun `a delta that does not reproduce the published bytes is refused`() {
+        val list = BlockList.parse(artifact(listOf("a.example"), 100L), veto, nowMs = 0L)!!
+        // Right shape, wrong target hash: the merge is not what was published.
+        assertNull(BlockList.applyDelta(list, delta(100L, 200L, listOf("x.example"), emptyList(), "0".repeat(64))))
+        // Base version mismatch — this delta is for someone else's list.
+        val good = artifact(listOf("a.example", "x.example"), 200L)
+        assertNull(BlockList.applyDelta(list, delta(999L, 200L, listOf("x.example"), emptyList(), sha(good))))
+        // Truncated body.
+        val d = delta(100L, 200L, listOf("x.example"), emptyList(), sha(good))
+        assertNull(BlockList.applyDelta(list, d.copyOfRange(0, d.size - 1)))
+    }
+
+    @Test
+    fun `sync applies a delta and keeps serving from the merged list`() {
+        val before = listOf("a.example", "gone.example")
+        val after = listOf("a.example", "fresh.example")
+        val oldBlob = artifact(before, 100L)
+        val newBlob = artifact(after, 200L)
+        val store = BlocklistStore(tmp.newFolder())
+        store.save(oldBlob, "\"${sha(oldBlob)}\"", 10L)
+
+        val d = delta(100L, 200L, listOf("fresh.example"), listOf("gone.example"), sha(newBlob))
+        val fetcher = object : BlocklistFetcher {
+            var lastUrl: String? = null
+            override fun fetch(url: String, etag: String?): FetchResult {
+                lastUrl = url
+                return FetchResult.Ok(d, "\"${sha(d)}\"")
+            }
+        }
+        var swapped: BlockList? = null
+        val s = BlocklistSync(store, fetcher, veto, emptySet(), "https://x/list",
+                              nowMs = { 50_000L }, elapsedMs = { 5_000L }, onSwap = { swapped = it })
+        assertNotNull(s.loadFromDisk())
+        assertTrue(s.refreshOnce())
+        // It asked for a delta from the version it held…
+        assertEquals("https://x/list?from=100", fetcher.lastUrl)
+        // …and now serves the merged list, with the FULL artifact on disk so
+        // the next start needs no network at all.
+        assertEquals(200L, swapped!!.version)
+        assertEquals("fresh.example", swapped!!.match("fresh.example"))
+        assertTrue(newBlob.contentEquals(store.load()!!.body))
+        assertEquals(d.size, s.lastFetchBytes)
+    }
+
+    @get:Rule val tmp = TemporaryFolder()
 }

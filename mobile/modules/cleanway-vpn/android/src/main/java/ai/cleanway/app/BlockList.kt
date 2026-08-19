@@ -37,7 +37,7 @@ import java.security.MessageDigest
  * Immutable; the service swaps a @Volatile reference on refresh.
  */
 class BlockList private constructor(
-    private val hashes: LongArray,
+    internal val hashes: LongArray,
     val version: Long,
     val count: Int,
     val revoked: Boolean,
@@ -149,6 +149,83 @@ class BlockList private constructor(
             var v = 0L
             for (i in 0 until HASH_BYTES) v = (v shl 8) or (digest[i].toLong() and 0xFF)
             return v
+        }
+
+        private val DELTA_MAGIC = "CWBD1\n".toByteArray(Charsets.US_ASCII)
+        private val DELTA_HEADER = Regex(
+            """^# cleanway-dns-blocklist-delta v2 from=(\d+) to=(\d+) added=(\d+) removed=(\d+) sha256=([0-9a-f]{64})$"""
+        )
+
+        /** Is this blob a delta rather than a full artifact? */
+        fun isDelta(blob: ByteArray): Boolean {
+            if (blob.size < DELTA_MAGIC.size) return false
+            for (i in DELTA_MAGIC.indices) if (blob[i] != DELTA_MAGIC[i]) return false
+            return true
+        }
+
+        /**
+         * Apply a delta to this list and return the FULL artifact bytes the
+         * result corresponds to, or null if anything is off.
+         *
+         * The rebuild is the point: a delta is only trusted once the merged
+         * set reproduces the exact bytes the publisher hashed. A delta that
+         * quietly produced a different set would be a blocklist nobody could
+         * audit — and the phone would be blocking things the server never
+         * published.
+         */
+        fun applyDelta(current: BlockList, blob: ByteArray): ByteArray? {
+            if (!isDelta(blob)) return null
+            var nl = -1
+            for (i in DELTA_MAGIC.size until minOf(blob.size, DELTA_MAGIC.size + 300)) {
+                if (blob[i] == '\n'.code.toByte()) { nl = i; break }
+            }
+            if (nl < 0) return null
+            val m = DELTA_HEADER.matchEntire(
+                String(blob, DELTA_MAGIC.size, nl - DELTA_MAGIC.size, Charsets.US_ASCII)
+            ) ?: return null
+            val from = m.groupValues[1].toLongOrNull() ?: return null
+            val to = m.groupValues[2].toLongOrNull() ?: return null
+            val addedCount = m.groupValues[3].toIntOrNull() ?: return null
+            val removedCount = m.groupValues[4].toIntOrNull() ?: return null
+            val targetSha = m.groupValues[5]
+            // Only applicable to exactly the list we hold.
+            if (from != current.version || current.revoked) return null
+            if (addedCount + removedCount > MAX_ENTRIES) return null
+
+            val body = blob.size - (nl + 1)
+            if (body != (addedCount + removedCount) * HASH_BYTES) return null
+            fun read(index: Int): Long {
+                var v = 0L
+                val p = nl + 1 + index * HASH_BYTES
+                for (b in 0 until HASH_BYTES) v = (v shl 8) or (blob[p + b].toLong() and 0xFF)
+                return v
+            }
+            val added = LongArray(addedCount) { read(it) }
+            val removed = LongArray(removedCount) { read(addedCount + it) }
+
+            val merged = java.util.TreeSet<Long>()
+            for (h in current.hashes) merged.add(h)
+            for (h in removed) merged.remove(h)
+            for (h in added) merged.add(h)
+
+            val rebuilt = render(merged.toLongArray(), to)
+            val sha = MessageDigest.getInstance("SHA-256").digest(rebuilt)
+                .joinToString("") { "%02x".format(it) }
+            return if (sha == targetSha) rebuilt else null
+        }
+
+        /** The publisher's exact byte layout, so a merge can be verified. */
+        fun render(hashes: LongArray, generated: Long): ByteArray {
+            val header = "# cleanway-dns-blocklist v2 generated=$generated count=${hashes.size} status=ok\n"
+                .toByteArray(Charsets.US_ASCII)
+            val out = ByteArray(MAGIC.size + header.size + hashes.size * HASH_BYTES)
+            System.arraycopy(MAGIC, 0, out, 0, MAGIC.size)
+            System.arraycopy(header, 0, out, MAGIC.size, header.size)
+            var p = MAGIC.size + header.size
+            for (h in hashes) {
+                for (b in HASH_BYTES - 1 downTo 0) out[p++] = ((h shr (8 * b)) and 0xFF).toByte()
+            }
+            return out
         }
 
         /** Empty list (nothing blocked) — the state before any sync. */

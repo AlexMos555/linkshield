@@ -43,8 +43,8 @@ import httpx
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from api.services.blocklist_artifact import (  # noqa: E402
-    LIST_CANARY, NEVER_BLOCK_GUARDS, REDIS_META_KEY, REDIS_TEXT_KEY, meta_for_v2,
-    render_artifact_v2,
+    LIST_CANARY, NEVER_BLOCK_GUARDS, REDIS_META_KEY, REDIS_TEXT_KEY, delta_key,
+    meta_for_v2, parse_artifact_v2, render_artifact_v2, render_delta,
 )
 
 API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
@@ -599,6 +599,26 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
             pass
         # One transaction: the gateway's set and the phones' artifact flip
         # together, so a phone can never sync a list the gateway disagrees with.
+        # A delta from whatever we are replacing. Real churn is ~0.2% per half
+        # day, so this is a few KB against a 2.5 MB artifact — which is what
+        # lets a phone on a metered plan stay current instead of waiting a day.
+        delta_blob: bytes | None = None
+        delta_from: int | None = None
+        try:
+            prev_encoded = await r.get(REDIS_TEXT_KEY)
+            if prev_encoded:
+                prev_blob = base64.b64decode(prev_encoded)
+                prev_header, prev_hashes = parse_artifact_v2(prev_blob)
+                _, new_hashes = parse_artifact_v2(artifact)
+                delta_from = prev_header["generated"]
+                delta_blob = render_delta(prev_hashes, new_hashes, from_gen=delta_from,
+                                          to_gen=int(meta["generated_at"]), target_sha=meta["sha256"])
+                logger.info("delta %s -> %s: %d bytes (artifact %d bytes)",
+                            delta_from, meta["generated_at"], len(delta_blob), len(artifact))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("could not build a delta (%s) — phones will fetch the full artifact", e)
+            delta_blob = None
+
         pipe = r.pipeline(transaction=True)
         pipe.rename(staging, SET_KEY)
         pipe.expire(SET_KEY, TTL_SECONDS)
@@ -608,6 +628,8 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
         pipe.delete(REDIS_META_KEY)
         pipe.hset(REDIS_META_KEY, mapping=meta)
         pipe.expire(REDIS_META_KEY, TTL_SECONDS)
+        if delta_blob is not None and delta_from is not None:
+            pipe.set(delta_key(delta_from), base64.b64encode(delta_blob).decode("ascii"), ex=TTL_SECONDS)
         await pipe.execute()
         card = await r.scard(SET_KEY)
         logger.info("Rebuilt '%s' atomically — %d members live; artifact version %s", SET_KEY, card, meta["version"])
