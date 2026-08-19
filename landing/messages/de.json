@@ -374,7 +374,7 @@
     "win_step3": "Fügen Sie diese DoH-Vorlage ein:",
     "benefits_heading": "Wovor schützt mich das?",
     "benefit_1": "Phishing-Links in SMS, E-Mail und Telegram öffnen sich als „Seite nicht gefunden“ statt als zugangsdatenklauende Seite.",
-    "benefit_2": "Command-and-Control-Server von Schadsoftware erreichen Ihr Gerät nicht — selbst wenn eine zwielichtige App, die Sie installiert haben, nach Hause telefonieren will.",
+    "benefit_2": "Bekannte Malware-Steuerserver werden gestoppt, bevor dein Handy sie erreicht – sofern sie auf der Liste stehen.",
     "benefit_3": "Marken-Imitationsdomains (paypal-secure-login.com) werden bereits auf Resolver-Ebene blockiert — Ihr Browser lädt sie gar nicht erst.",
     "benefit_4": "Funktioniert in jeder App, nicht nur im Browser. WhatsApp-Links, Banking-Apps, In-App-Browser — alles geschützt.",
     "privacy_heading": "Datenschutz — was wir sehen und was nicht",

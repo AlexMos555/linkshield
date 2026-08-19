@@ -766,7 +766,7 @@
       "win_step3": "Incolli questo modello DoH:",
       "benefits_heading": "Da cosa mi protegge?",
       "benefit_1": "I link di phishing in SMS, email e Telegram si aprono come «sito non trovato» invece che come pagina che ruba le credenziali.",
-      "benefit_2": "I server di comando e controllo del malware non raggiungono il Suo dispositivo — anche se un’app discutibile che ha installato cerca di «telefonare a casa».",
+      "benefit_2": "I server di controllo dei malware noti vengono fermati prima che il telefono li raggiunga, se sono nella lista.",
       "benefit_3": "I domini che imitano marchi noti (paypal-secure-login.com) vengono bloccati direttamente sul resolver — il browser non li carica nemmeno.",
       "benefit_4": "Funziona in ogni app, non solo nel browser. Link di WhatsApp, app bancarie, browser integrati — tutto protetto.",
       "privacy_heading": "Privacy — cosa vediamo e cosa no",
@@ -1160,7 +1160,7 @@
         "blocked": "Bloccati",
         "warned": "Avvisi"
       },
-      "privacy": "Controlliamo i nomi dei siti sui nostri server — mai le tue password, i tuoi messaggi o la cronologia di navigazione.",
+      "privacy": "Lo scudo confronta i nomi dei siti sul telefono: non ci arriva nulla sulle pagine che visiti. Quando controlli un link tu, esce solo quel nome.",
       "interrupted": "Di solito succede dopo un riavvio. La configurazione è ancora qui: basta un tocco.",
       "cta_turn_back_on": "Riattiva la protezione"
     },
@@ -1207,6 +1207,12 @@
         "stale": "La lista non è aggiornata ({{count}} siti): tocca per aggiornare",
         "missing": "Nessuna lista ancora: tocca per scaricarla. Fino ad allora la lista non blocca nulla.",
         "status_fresh": "Lista di blocco: {{count}} siti truffa noti · appena aggiornata"
+      },
+      "disclosure": {
+        "title": "Come funziona lo scudo",
+        "body": "Cleanway crea una VPN locale sul telefono. È l'unico modo in cui Android permette a un'app di filtrare le richieste dei siti per tutte le altre.\n\n• L'elenco dei siti truffa noti resta sul telefono. I nomi si confrontano qui, non vengono inviati a noi.\n• Le richieste che non blocchiamo vanno a un resolver pubblico (Cloudflare o Quad9), come già fa il telefono.\n• Nessun altro traffico viene letto, registrato o reindirizzato. Non è una VPN per la privacy e non nasconde la navigazione.\n\nOra Android ti chiederà il permesso.",
+        "continue": "Continua",
+        "cancel": "Non ora"
       }
     },
     "rollout": {
@@ -1403,7 +1409,7 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Punteggi grezzi, tipi di minaccia e dettagli tecnici.",
       "alerts": "Avvisi",
-      "alerts_note": "Nessuna di queste opzioni funziona ancora. Oggi Cleanway non invia notifiche, e non guarda mai i tuoi appunti.",
+      "alerts_note": "Lo scudo ti avvisa quando ferma un sito pericoloso. Gli interruttori qui sopra non esistono ancora e Cleanway non guarda mai i tuoi appunti.",
       "push": "Avvisi per link pericolosi",
       "push_desc": "Avvisami quando un link sembra pericoloso",
       "auto_check": "Controlla i link che condivido",

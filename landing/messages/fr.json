@@ -374,7 +374,7 @@
     "win_step3": "Collez ce modèle DoH :",
     "benefits_heading": "Contre quoi cela me protège-t-il ?",
     "benefit_1": "Les liens de phishing reçus par SMS, e-mail ou Telegram s’ouvrent en « site introuvable » plutôt qu’en page qui vole vos identifiants.",
-    "benefit_2": "Les serveurs de commande et de contrôle de logiciels malveillants n’atteignent plus votre appareil — même si une application douteuse que vous avez installée cherche à téléphoner à la maison.",
+    "benefit_2": "Les serveurs de contrôle de logiciels malveillants connus sont arrêtés avant que votre téléphone ne les atteigne — s'ils figurent sur la liste.",
     "benefit_3": "Les domaines qui usurpent des marques (paypal-secure-login.com) sont bloqués au niveau du résolveur — votre navigateur ne tente même pas de les charger.",
     "benefit_4": "Fonctionne dans toutes les applications, pas seulement dans le navigateur. Liens WhatsApp, applis bancaires, navigateurs intégrés — tout est protégé.",
     "privacy_heading": "Confidentialité — ce que nous voyons, et ce que nous ne voyons pas",

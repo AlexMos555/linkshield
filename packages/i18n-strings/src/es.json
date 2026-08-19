@@ -766,7 +766,7 @@
       "win_step3": "Pega esta plantilla DoH:",
       "benefits_heading": "¿De qué te protege esto?",
       "benefit_1": "Los enlaces de phishing en SMS, correo y Telegram se abren como «sitio no encontrado» en lugar de una página que roba credenciales.",
-      "benefit_2": "Los servidores de control de malware no pueden alcanzar tu dispositivo, ni siquiera si una app dudosa que instalaste intenta llamar a casa.",
+      "benefit_2": "Los servidores de control de malware conocidos se detienen antes de que tu teléfono los alcance, siempre que estén en la lista.",
       "benefit_3": "Los dominios que se hacen pasar por marcas (paypal-secure-login.com) se bloquean en el propio resolutor — tu navegador ni siquiera llega a cargarlos.",
       "benefit_4": "Funciona en cualquier app, no solo en el navegador. Enlaces de WhatsApp, apps bancarias, navegadores integrados — todo protegido.",
       "privacy_heading": "Privacidad — lo que vemos y lo que no",
@@ -1100,7 +1100,7 @@
         "blocked": "Bloqueados",
         "warned": "Con aviso"
       },
-      "privacy": "Revisamos los nombres de los sitios web en nuestros servidores; nunca tus contraseñas, tus mensajes ni tu historial de navegación.",
+      "privacy": "El escudo compara nombres de sitios en tu teléfono: no nos llega nada sobre las páginas que visitas. Cuando compruebas un enlace tú mismo, solo sale el nombre del sitio.",
       "interrupted": "Suele pasar tras un reinicio. Tu configuración sigue aquí: un toque y vuelve.",
       "cta_turn_back_on": "Volver a activar la protección"
     },
@@ -1147,6 +1147,12 @@
         "stale": "La lista está desactualizada ({{count}} sitios): toca para actualizar",
         "missing": "Aún no hay lista: toca para descargarla. Hasta entonces, no se bloquea nada por lista.",
         "status_fresh": "Lista de bloqueo: {{count}} sitios fraudulentos conocidos · recién actualizada"
+      },
+      "disclosure": {
+        "title": "Cómo funciona el escudo",
+        "body": "Cleanway crea una VPN local en tu teléfono. Es la única forma en que Android permite a una app filtrar las consultas de sitios para todas las demás.\n\n• La lista de sitios fraudulentos conocidos se guarda en tu teléfono. Los nombres se comparan aquí, no se nos envían.\n• Las consultas que no bloqueamos van a un resolutor público (Cloudflare o Quad9), igual que ya hace tu teléfono.\n• Ningún otro tráfico se lee, se guarda ni se redirige. No es una VPN de privacidad y no oculta tu navegación.\n\nAhora Android te pedirá permitir la conexión.",
+        "continue": "Continuar",
+        "cancel": "Ahora no"
       }
     },
     "rollout": {
@@ -1343,7 +1349,7 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Puntajes sin procesar, tipos de amenaza y detalle técnico.",
       "alerts": "Alertas",
-      "alerts_note": "Ninguna de estas opciones funciona todavía. Hoy Cleanway no envía notificaciones, y nunca vigila tu portapapeles.",
+      "alerts_note": "El escudo te avisa cuando detiene un sitio peligroso. Los interruptores de arriba aún no funcionan, y Cleanway nunca mira tu portapapeles.",
       "push": "Alertas de enlaces peligrosos",
       "push_desc": "Avisarme cuando un enlace parezca peligroso",
       "auto_check": "Revisar los enlaces que comparto",

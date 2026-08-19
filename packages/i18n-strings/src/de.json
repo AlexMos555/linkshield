@@ -766,7 +766,7 @@
       "win_step3": "Fügen Sie diese DoH-Vorlage ein:",
       "benefits_heading": "Wovor schützt mich das?",
       "benefit_1": "Phishing-Links in SMS, E-Mail und Telegram öffnen sich als „Seite nicht gefunden“ statt als zugangsdatenklauende Seite.",
-      "benefit_2": "Command-and-Control-Server von Schadsoftware erreichen Ihr Gerät nicht — selbst wenn eine zwielichtige App, die Sie installiert haben, nach Hause telefonieren will.",
+      "benefit_2": "Bekannte Malware-Steuerserver werden gestoppt, bevor dein Handy sie erreicht – sofern sie auf der Liste stehen.",
       "benefit_3": "Marken-Imitationsdomains (paypal-secure-login.com) werden bereits auf Resolver-Ebene blockiert — Ihr Browser lädt sie gar nicht erst.",
       "benefit_4": "Funktioniert in jeder App, nicht nur im Browser. WhatsApp-Links, Banking-Apps, In-App-Browser — alles geschützt.",
       "privacy_heading": "Datenschutz — was wir sehen und was nicht",
@@ -1160,7 +1160,7 @@
         "blocked": "Blockiert",
         "warned": "Gewarnt"
       },
-      "privacy": "Wir prüfen Website-Namen auf unseren Servern – niemals deine Passwörter, Nachrichten oder deinen Browserverlauf.",
+      "privacy": "Der Schutz gleicht Website-Namen auf deinem Handy ab – zu den Seiten, die du besuchst, erfahren wir nichts. Prüfst du selbst einen Link, verlässt nur dieser Name dein Handy.",
       "interrupted": "Passiert meist nach einem Neustart. Deine Einrichtung ist noch da – ein Tipp genügt.",
       "cta_turn_back_on": "Schutz wieder einschalten"
     },
@@ -1207,6 +1207,12 @@
         "stale": "Sperrliste ist veraltet ({{count}} Seiten) – tippen zum Aktualisieren",
         "missing": "Noch keine Sperrliste – tippen zum Laden. Bis dahin wird per Liste nichts blockiert.",
         "status_fresh": "Sperrliste: {{count}} bekannte Betrugsseiten · gerade aktualisiert"
+      },
+      "disclosure": {
+        "title": "So funktioniert der Schutz",
+        "body": "Cleanway richtet ein lokales VPN auf deinem Handy ein. Nur so erlaubt Android einer App, Website-Abfragen für alle anderen Apps zu filtern.\n\n• Die Liste bekannter Betrugsseiten liegt auf deinem Handy. Namen werden hier abgeglichen, nicht an uns geschickt.\n• Abfragen, die wir nicht blockieren, gehen an einen öffentlichen Resolver (Cloudflare oder Quad9) – so wie dein Handy es ohnehin macht.\n• Kein anderer Datenverkehr wird gelesen, gespeichert oder umgeleitet. Es ist kein Privatsphäre-VPN und verbirgt dein Surfen nicht.\n\nAndroid fragt dich jetzt nach der Erlaubnis.",
+        "continue": "Weiter",
+        "cancel": "Jetzt nicht"
       }
     },
     "rollout": {
@@ -1403,7 +1409,7 @@
       "skill_pro": "Profi",
       "skill_pro_desc": "Rohe Werte, Bedrohungstypen und technische Details.",
       "alerts": "Benachrichtigungen",
-      "alerts_note": "Nichts davon funktioniert bisher. Cleanway verschickt heute noch keine Benachrichtigungen – und es schaut nie in deine Zwischenablage.",
+      "alerts_note": "Der Schutz meldet sich, wenn er eine gefährliche Seite stoppt. Die Schalter oben gibt es noch nicht, und Cleanway liest nie deine Zwischenablage.",
       "push": "Warnungen vor gefährlichen Links",
       "push_desc": "Sag mir, wenn ein Link gefährlich aussieht",
       "auto_check": "Geteilte Links prüfen",

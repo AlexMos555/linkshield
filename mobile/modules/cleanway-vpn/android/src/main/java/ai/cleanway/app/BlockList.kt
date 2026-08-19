@@ -107,15 +107,28 @@ class BlockList private constructor(
     fun hasListCanary(): Boolean = contains(hashOf(LIST_CANARY))
 
     /**
-     * Stale = older than [STALE_AFTER_MS] by EITHER clock. Wall clock alone
-     * can be rolled back to keep a dead list "fresh"; monotonic alone misses a
-     * phone that slept for a day. Take the larger age.
+     * How old the list is, by the most pessimistic honest measure.
+     *
+     * Three candidates, each clamped at zero so a wrong clock can never make
+     * the list look NEWER than it is:
+     *  - wall clock since the fetch (can be rolled back to fake freshness);
+     *  - monotonic since the fetch (can't be faked, but resets on reboot);
+     *  - wall clock since the publisher generated the data — what a person
+     *    actually means by "how old is this list", and the only one that
+     *    survives a reinstall of the same file.
+     *
+     * Clamping matters: after a reboot the stored monotonic base is
+     * back-dated into the negative, and the card read "updated 17h ago" for a
+     * list fetched 40 minutes earlier (seen on a device, 2026-08-19).
      */
-    fun isStale(nowMs: Long, elapsedMs: Long): Boolean =
-        maxOf(nowMs - loadedAtWallMs, elapsedMs - loadedAtElapsedMs) > STALE_AFTER_MS
+    fun ageMs(nowMs: Long, elapsedMs: Long): Long {
+        val wall = (nowMs - loadedAtWallMs).coerceAtLeast(0L)
+        val mono = (elapsedMs - loadedAtElapsedMs).coerceAtLeast(0L)
+        val generated = if (version > 0L) (nowMs - version * 1000L).coerceAtLeast(0L) else 0L
+        return maxOf(wall, mono, generated)
+    }
 
-    fun ageMs(nowMs: Long, elapsedMs: Long): Long =
-        maxOf(nowMs - loadedAtWallMs, elapsedMs - loadedAtElapsedMs)
+    fun isStale(nowMs: Long, elapsedMs: Long): Boolean = ageMs(nowMs, elapsedMs) > STALE_AFTER_MS
 
     companion object {
         const val LIST_CANARY = "list-canary.cleanway.ai"

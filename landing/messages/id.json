@@ -374,7 +374,7 @@
     "win_step3": "Tempel templat DoH ini:",
     "benefits_heading": "Dari apa hal ini melindungi saya?",
     "benefit_1": "Tautan phishing di SMS, email, dan Telegram terbuka sebagai “situs tidak ditemukan”, bukan halaman pencuri kredensial.",
-    "benefit_2": "Server command-and-control milik malware tidak dapat menjangkau perangkat Anda — bahkan jika aplikasi mencurigakan yang Anda pasang mencoba “menelepon pulang”.",
+    "benefit_2": "Server kendali malware yang diketahui dihentikan sebelum HP kamu menjangkaunya — selama ada di daftar.",
     "benefit_3": "Domain peniru merek (paypal-secure-login.com) diblokir di tingkat resolver — peramban Anda bahkan tidak sempat memuatnya.",
     "benefit_4": "Berfungsi di setiap aplikasi, bukan hanya peramban. Tautan WhatsApp, aplikasi perbankan, peramban dalam aplikasi — semuanya terlindungi.",
     "privacy_heading": "Privasi — apa yang kami lihat dan apa yang tidak",

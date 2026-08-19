@@ -766,7 +766,7 @@
       "win_step3": "Collez ce modèle DoH :",
       "benefits_heading": "Contre quoi cela me protège-t-il ?",
       "benefit_1": "Les liens de phishing reçus par SMS, e-mail ou Telegram s’ouvrent en « site introuvable » plutôt qu’en page qui vole vos identifiants.",
-      "benefit_2": "Les serveurs de commande et de contrôle de logiciels malveillants n’atteignent plus votre appareil — même si une application douteuse que vous avez installée cherche à téléphoner à la maison.",
+      "benefit_2": "Les serveurs de contrôle de logiciels malveillants connus sont arrêtés avant que votre téléphone ne les atteigne — s'ils figurent sur la liste.",
       "benefit_3": "Les domaines qui usurpent des marques (paypal-secure-login.com) sont bloqués au niveau du résolveur — votre navigateur ne tente même pas de les charger.",
       "benefit_4": "Fonctionne dans toutes les applications, pas seulement dans le navigateur. Liens WhatsApp, applis bancaires, navigateurs intégrés — tout est protégé.",
       "privacy_heading": "Confidentialité — ce que nous voyons, et ce que nous ne voyons pas",
@@ -1160,7 +1160,7 @@
         "blocked": "Bloqués",
         "warned": "Avertis"
       },
-      "privacy": "Nous vérifions les noms de sites web sur nos serveurs — jamais vos mots de passe, vos messages ni votre historique de navigation.",
+      "privacy": "Le bouclier compare les noms de sites sur votre téléphone : nous ne recevons rien sur les pages que vous visitez. Quand vous vérifiez un lien vous-même, seul ce nom quitte le téléphone.",
       "interrupted": "Cela arrive généralement après un redémarrage. Votre configuration est toujours là : un appui suffit.",
       "cta_turn_back_on": "Réactiver la protection"
     },
@@ -1207,6 +1207,12 @@
         "stale": "La liste est périmée ({{count}} sites) — appuyez pour mettre à jour",
         "missing": "Pas encore de liste — appuyez pour la télécharger. D'ici là, rien n'est bloqué par la liste.",
         "status_fresh": "Liste de blocage : {{count}} sites d'arnaque connus · mise à jour à l'instant"
+      },
+      "disclosure": {
+        "title": "Comment fonctionne le bouclier",
+        "body": "Cleanway installe un VPN local sur votre téléphone. C'est la seule façon dont Android permet à une appli de filtrer les requêtes de sites pour toutes les autres.\n\n• La liste des sites d'arnaque connus reste sur votre téléphone. Les noms sont comparés ici, pas envoyés chez nous.\n• Les requêtes que nous ne bloquons pas vont à un résolveur public (Cloudflare ou Quad9), comme votre téléphone le fait déjà.\n• Aucun autre trafic n'est lu, enregistré ou redirigé. Ce n'est pas un VPN de confidentialité et il ne masque pas votre navigation.\n\nAndroid va maintenant vous demander l'autorisation.",
+        "continue": "Continuer",
+        "cancel": "Pas maintenant"
       }
     },
     "rollout": {
@@ -1403,7 +1409,7 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Scores bruts, types de menaces et détails techniques.",
       "alerts": "Alertes",
-      "alerts_note": "Rien de tout cela ne fonctionne encore. Cleanway n'envoie pas de notifications aujourd'hui, et il ne surveille jamais votre presse-papiers.",
+      "alerts_note": "Le bouclier vous prévient quand il arrête un site dangereux. Les interrupteurs ci-dessus n'existent pas encore, et Cleanway ne regarde jamais votre presse-papiers.",
       "push": "Alertes de liens dangereux",
       "push_desc": "Me prévenir quand un lien semble dangereux",
       "auto_check": "Vérifier les liens que je partage",

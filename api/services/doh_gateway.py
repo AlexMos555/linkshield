@@ -242,29 +242,56 @@ async def is_blocked(qname: str, dangerous_domains: Iterable[str]) -> bool:
     return domain_l in blocked or base in blocked
 
 
+# A published entry means "this name and every subdomain of it", so the
+# lookup is a suffix walk. It is capped because it runs on every DNS query on
+# the device: a pathological 30-label name must not become 30 SISMEMBERs.
+# Seven covers the deepest shape we publish (a tenant host under a 3-label
+# platform suffix, plus a couple of subdomains).
+MAX_SUFFIX_LOOKUPS = 7
+
+
+def block_candidates(qname: str) -> list[str]:
+    """Suffixes to test, longest first, never a bare TLD. Pure, so the phone's
+    rule (BlockList.match) and the gateway's can be compared directly."""
+    parts = (qname or "").lower().strip(".").split(".")
+    if len(parts) < 2 or not all(parts):
+        return []
+    out = [".".join(parts[i:]) for i in range(len(parts) - 1)]
+    if len(out) <= MAX_SUFFIX_LOOKUPS:
+        return out
+    # Keep the longest few (the exact name and its immediate parents) and the
+    # shortest few (the registrable domain and its neighbours) — a match can
+    # only be published at one of those ends in practice.
+    head = MAX_SUFFIX_LOOKUPS // 2
+    return out[:head] + out[-(MAX_SUFFIX_LOOKUPS - head):]
+
+
 async def is_blocked_redis(qname: str, redis) -> bool:
     """Redis-backed membership check for the DoH hot path.
 
-    This is the per-query fast path. It does at most two O(1)
-    SISMEMBER lookups (the exact QNAME and its registrable base)
-    against `dangerous_domains` — instead of SMEMBERS, which pulls
-    the ENTIRE blocklist (thousands of domains) over the wire on
-    every single DNS query and melts Redis under real resolver
-    load. Same block policy as is_blocked(), O(1) instead of O(N).
+    One pipelined round-trip of at most MAX_SUFFIX_LOOKUPS SISMEMBERs against
+    `dangerous_domains` — never SMEMBERS, which would pull the entire
+    half-million-name blocklist over the wire on every single DNS query.
+
+    The walk matters: the published artifact says "this name and all its
+    subdomains", and the phone implements exactly that. Checking only the
+    exact QNAME and its registrable base meant a subdomain of a tenant entry
+    (`login.0-amazon.weebly.com`) was blocked on Android and waved through
+    for anyone on the DoH profile — the two surfaces disagreeing about what
+    is dangerous.
 
     Fail-open on any Redis error (returns False → proxy clean):
     blocking a legit domain is worse than missing a malicious one.
     """
     if not qname or redis is None:
         return False
-    domain_l = qname.lower()
-    base = _registrable_domain(domain_l)
+    candidates = block_candidates(qname)
+    if not candidates:
+        return False
     try:
-        # One round-trip for both membership checks.
         pipe = redis.pipeline()
-        pipe.sismember("dangerous_domains", domain_l)
-        if base and base != domain_l:
-            pipe.sismember("dangerous_domains", base)
+        for name in candidates:
+            pipe.sismember("dangerous_domains", name)
         results = await pipe.execute()
         return any(bool(x) for x in results)
     except Exception:

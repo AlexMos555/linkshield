@@ -766,7 +766,7 @@
       "win_step3": "Cole este modelo DoH:",
       "benefits_heading": "Contra o que isso me protege?",
       "benefit_1": "Links de phishing em SMS, e-mail e Telegram abrem como “site não encontrado” em vez de uma página que rouba credenciais.",
-      "benefit_2": "Servidores de comando e controle de malware não conseguem alcançar o seu dispositivo — mesmo se um app duvidoso que você instalou tentar “ligar para casa”.",
+      "benefit_2": "Servidores de controle de malware conhecidos são parados antes que seu celular os alcance — desde que estejam na lista.",
       "benefit_3": "Domínios que se passam por marcas (paypal-secure-login.com) são bloqueados no próprio resolvedor — o seu navegador nem chega a carregá-los.",
       "benefit_4": "Funciona em todos os apps, não só no navegador. Links de WhatsApp, apps de banco, navegadores embutidos — tudo protegido.",
       "privacy_heading": "Privacidade — o que vemos e o que não vemos",
@@ -1160,7 +1160,7 @@
         "blocked": "Bloqueados",
         "warned": "Avisos"
       },
-      "privacy": "Verificamos os nomes dos sites em nossos servidores — nunca suas senhas, mensagens ou histórico de navegação.",
+      "privacy": "O escudo compara nomes de sites no seu celular — nada sobre as páginas que você visita chega até nós. Quando você mesmo checa um link, só o nome do site sai do aparelho.",
       "interrupted": "Costuma acontecer após reiniciar. Sua configuração continua aqui — um toque e ela volta.",
       "cta_turn_back_on": "Ligar a proteção de novo"
     },
@@ -1207,6 +1207,12 @@
         "stale": "A lista está desatualizada ({{count}} sites) — toque para atualizar",
         "missing": "Ainda sem lista — toque para baixar. Até lá, nada é bloqueado pela lista.",
         "status_fresh": "Lista de bloqueio: {{count}} sites de golpe conhecidos · atualizada agora"
+      },
+      "disclosure": {
+        "title": "Como o escudo funciona",
+        "body": "O Cleanway cria uma VPN local no seu celular. É assim que o Android permite que um app filtre as consultas de sites para todos os outros.\n\n• A lista de sites de golpe conhecidos fica no seu celular. Os nomes são comparados aqui, não enviados para nós.\n• As consultas que não bloqueamos vão para um resolvedor público (Cloudflare ou Quad9), como seu celular já faz.\n• Nenhum outro tráfego é lido, gravado ou redirecionado. Não é uma VPN de privacidade e não esconde sua navegação.\n\nAgora o Android vai pedir sua permissão.",
+        "continue": "Continuar",
+        "cancel": "Agora não"
       }
     },
     "rollout": {
@@ -1403,7 +1409,7 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Pontuações brutas, tipos de ameaça e detalhes técnicos.",
       "alerts": "Alertas",
-      "alerts_note": "Nenhuma destas opções funciona ainda. Hoje o Cleanway não envia notificações, e ele nunca monitora sua área de transferência.",
+      "alerts_note": "O escudo avisa quando para um site perigoso. Os botões acima ainda não funcionam, e o Cleanway nunca olha sua área de transferência.",
       "push": "Alertas de link perigoso",
       "push_desc": "Me avisar quando um link parecer perigoso",
       "auto_check": "Verificar links que eu compartilhar",

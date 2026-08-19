@@ -146,8 +146,14 @@ class BlocklistSync(
     /** Load what is on disk (fast, synchronous — call before the DNS loop). */
     fun loadFromDisk(): BlockList? {
         val saved = store.load() ?: return null
-        val list = BlockList.parse(saved.body, popularVeto, nowMs = saved.fetchedAtMs,
-                    elapsedMs = elapsedMs() - (nowMs() - saved.fetchedAtMs), sharedSuffixes = sharedSuffixes)
+        // Back-date the monotonic clock to the fetch, but never below zero:
+        // after a reboot the phone has been up for less time than the list has
+        // existed, and a negative base inflated the reported age.
+        val sinceFetch = (nowMs() - saved.fetchedAtMs).coerceAtLeast(0L)
+        val list = BlockList.parse(
+            saved.body, popularVeto, nowMs = saved.fetchedAtMs,
+            elapsedMs = (elapsedMs() - sinceFetch).coerceAtLeast(0L), sharedSuffixes = sharedSuffixes,
+        )
         if (list == null) {
             Log.w(TAG, "stored blocklist rejected — clearing")
             store.clear()

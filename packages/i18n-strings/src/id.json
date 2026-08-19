@@ -766,7 +766,7 @@
       "win_step3": "Tempel templat DoH ini:",
       "benefits_heading": "Dari apa hal ini melindungi saya?",
       "benefit_1": "Tautan phishing di SMS, email, dan Telegram terbuka sebagai “situs tidak ditemukan”, bukan halaman pencuri kredensial.",
-      "benefit_2": "Server command-and-control milik malware tidak dapat menjangkau perangkat Anda — bahkan jika aplikasi mencurigakan yang Anda pasang mencoba “menelepon pulang”.",
+      "benefit_2": "Server kendali malware yang diketahui dihentikan sebelum HP kamu menjangkaunya — selama ada di daftar.",
       "benefit_3": "Domain peniru merek (paypal-secure-login.com) diblokir di tingkat resolver — peramban Anda bahkan tidak sempat memuatnya.",
       "benefit_4": "Berfungsi di setiap aplikasi, bukan hanya peramban. Tautan WhatsApp, aplikasi perbankan, peramban dalam aplikasi — semuanya terlindungi.",
       "privacy_heading": "Privasi — apa yang kami lihat dan apa yang tidak",
@@ -1160,7 +1160,7 @@
         "blocked": "Diblokir",
         "warned": "Diperingatkan"
       },
-      "privacy": "Kami mengecek nama situs di server kami — tidak pernah kata sandi, pesan, atau riwayat browsing Anda.",
+      "privacy": "Perisai mencocokkan nama situs di HP kamu — tidak ada yang sampai ke kami soal halaman yang kamu buka. Saat kamu memeriksa tautan sendiri, hanya nama situs itu yang keluar dari HP.",
       "interrupted": "Biasanya terjadi setelah restart. Pengaturanmu masih ada — satu ketukan dan kembali.",
       "cta_turn_back_on": "Nyalakan perlindungan lagi"
     },
@@ -1207,6 +1207,12 @@
         "stale": "Daftar blokir sudah usang ({{count}} situs) — ketuk untuk memperbarui",
         "missing": "Belum ada daftar — ketuk untuk mengunduh. Sampai saat itu, tidak ada yang diblokir dari daftar.",
         "status_fresh": "Daftar blokir: {{count}} situs penipuan yang diketahui · baru diperbarui"
+      },
+      "disclosure": {
+        "title": "Cara kerja perisai",
+        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju resolver publik (Cloudflare atau Quad9), sama seperti cara HP kamu bekerja sekarang.\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nAndroid sekarang akan meminta izin.",
+        "continue": "Lanjutkan",
+        "cancel": "Nanti saja"
       }
     },
     "rollout": {
@@ -1403,7 +1409,7 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Skor mentah, jenis ancaman, dan detail teknis.",
       "alerts": "Notifikasi",
-      "alerts_note": "Semua ini belum berfungsi. Saat ini Cleanway tidak mengirim notifikasi apa pun, dan tidak pernah memantau papan klip Anda.",
+      "alerts_note": "Perisai memberi tahu saat menghentikan situs berbahaya. Sakelar di atas belum ada, dan Cleanway tidak pernah melihat papan klip kamu.",
       "push": "Peringatan link berbahaya",
       "push_desc": "Beri tahu saya saat ada link yang tampak berbahaya",
       "auto_check": "Cek link yang saya bagikan",

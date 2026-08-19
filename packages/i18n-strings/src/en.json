@@ -768,7 +768,7 @@
       "win_step3": "Paste this DoH template:",
       "benefits_heading": "What does this protect me from?",
       "benefit_1": "Phishing links in SMS, email, and Telegram open as a “site not found” instead of a credential-stealing page.",
-      "benefit_2": "Malware command-and-control hosts can’t reach your device — even if a sketchy app you installed tries to phone home.",
+      "benefit_2": "Known malware command-and-control hosts are stopped before your phone can reach them — as long as they are on the list.",
       "benefit_3": "Brand-impersonation domains (paypal-secure-login.com) are blocked at the resolver level — your browser never even loads them.",
       "benefit_4": "Works on every app, not just your browser. WhatsApp links, banking apps, in-app browsers — all protected.",
       "privacy_heading": "Privacy — what we see and what we don’t",
@@ -1102,7 +1102,7 @@
         "blocked": "Blocked",
         "warned": "Warned"
       },
-      "privacy": "We check website names on our servers — never your passwords, messages, or browsing history.",
+      "privacy": "The shield matches website names on your phone — nothing about the sites you visit is sent to us. When you check a link yourself, only that website name leaves your phone.",
       "interrupted": "Usually this happens after a restart. Your setup is still here — one tap brings it back.",
       "cta_turn_back_on": "Turn protection back on"
     },
@@ -1149,6 +1149,12 @@
         "stale": "Blocklist is out of date ({{count}} sites) — tap to update",
         "missing": "No blocklist yet — tap to download. Until then, nothing is blocked from the list.",
         "status_fresh": "Blocklist: {{count}} known scam sites · just updated"
+      },
+      "disclosure": {
+        "title": "How the shield works",
+        "body": "Cleanway sets up a local VPN on your phone. That is how Android lets an app filter website lookups for every other app.\n\n• The list of known scam sites is stored on your phone. Website names are matched here, not sent to us.\n• Lookups we don't block go to a public resolver (Cloudflare or Quad9), the same way your phone already works.\n• No other traffic is read, recorded or redirected. It is not a privacy VPN and does not hide your browsing.\n\nAndroid will now ask you to allow the connection.",
+        "continue": "Continue",
+        "cancel": "Not now"
       }
     },
     "rollout": {
@@ -1345,7 +1351,7 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Raw scores, threat types and technical detail.",
       "alerts": "Alerts",
-      "alerts_note": "None of these work yet. Cleanway does not send notifications today, and it never watches your clipboard.",
+      "alerts_note": "The shield tells you when it stops a dangerous site. The switches above are not built yet, and Cleanway never watches your clipboard.",
       "push": "Dangerous link alerts",
       "push_desc": "Tell me when a link looks dangerous",
       "auto_check": "Check links I share",

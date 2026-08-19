@@ -153,13 +153,34 @@ class BlockListTest {
     // ── staleness ─────────────────────────────────────────────────────
 
     @Test
-    fun `staleness uses the larger of wall-clock and monotonic age`() {
-        val bl = BlockList.parse(blob("a.example"), veto, nowMs = 1_000L, elapsedMs = 5_000L)!!
-        assertFalse(bl.isStale(nowMs = 1_000L + 60_000L, elapsedMs = 5_000L + 60_000L))
+    fun `staleness uses the most pessimistic of wall-clock, monotonic and generation age`() {
+        val generated = 1_755_530_000L                       // header epoch, seconds
+        val fetchedAt = generated * 1000L + 60_000L          // fetched a minute after publish
+        val bl = BlockList.parse(blob("a.example", generated = generated), veto,
+                                 nowMs = fetchedAt, elapsedMs = 5_000L)!!
+        assertFalse(bl.isStale(nowMs = fetchedAt + 60_000L, elapsedMs = 5_000L + 60_000L))
         // Wall clock rolled back, but the phone has been up past the window.
         assertTrue(bl.isStale(nowMs = 0L, elapsedMs = 5_000L + BlockList.STALE_AFTER_MS + 1))
         // Wall clock jumped forward: be safe, call it stale.
-        assertTrue(bl.isStale(nowMs = 1_000L + BlockList.STALE_AFTER_MS + 1, elapsedMs = 5_000L + 60_000L))
+        assertTrue(bl.isStale(nowMs = fetchedAt + BlockList.STALE_AFTER_MS + 1, elapsedMs = 5_000L + 60_000L))
+        // The DATA can be old even if this phone fetched it a second ago.
+        assertTrue(bl.isStale(nowMs = generated * 1000L + BlockList.STALE_AFTER_MS + 1, elapsedMs = 5_100L))
+    }
+
+    @Test
+    fun `age is never inflated by a reboot or a clock that runs backwards`() {
+        // Seen on a device 2026-08-19: a list fetched 40 minutes earlier read
+        // "updated 17h ago", because the monotonic base was back-dated into
+        // the negative after a reboot.
+        val generated = 1_755_530_000L
+        val fetchedAt = generated * 1000L
+        val bl = BlockList.parse(blob("a.example", generated = generated), veto,
+                                 nowMs = fetchedAt, elapsedMs = 0L)!!
+        val fortyMinutes = 40L * 60 * 1000
+        // Phone rebooted: monotonic is small, wall clock says 40 minutes.
+        assertEquals(fortyMinutes, bl.ageMs(nowMs = fetchedAt + fortyMinutes, elapsedMs = 1_000L))
+        // Clock dragged backwards: age never goes negative, never looks newer.
+        assertEquals(0L, bl.ageMs(nowMs = fetchedAt - 99_999L, elapsedMs = 0L))
     }
 }
 

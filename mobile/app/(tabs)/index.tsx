@@ -78,6 +78,28 @@ export default function HomeScreen() {
 
   const rollout = rolloutItems(t, Platform.OS);
 
+  /**
+   * Prominent disclosure, shown BEFORE Android's own consent dialog.
+   *
+   * Play requires a VpnService app to explain, in its own UI, what the VPN is
+   * for and what it does with traffic — and our own bar says a person should
+   * never grant something this large without being told plainly. The system
+   * dialog says "can monitor network traffic", which is frightening and
+   * uninformative; this says what we actually do (match names on the phone,
+   * forward the rest to a public resolver, read nothing else).
+   */
+  function startWithDisclosure() {
+    Alert.alert(
+      t("mobile.shield.disclosure.title"),
+      t("mobile.shield.disclosure.body"),
+      [
+        { text: t("mobile.shield.disclosure.cancel"), style: "cancel" },
+        { text: t("mobile.shield.disclosure.continue"), onPress: () => void network.turnOn() },
+      ],
+      { cancelable: true },
+    );
+  }
+
   function confirmPause() {
     Alert.alert(
       t("mobile.shield.pause_confirm_title"),
@@ -119,7 +141,7 @@ export default function HomeScreen() {
           )}
           <TouchableOpacity
             style={s.cta}
-            onPress={() => void network.turnOn()}
+            onPress={startWithDisclosure}
             activeOpacity={0.85}
             accessibilityRole="button"
           >
@@ -152,7 +174,7 @@ export default function HomeScreen() {
               : t("mobile.shield.network.state_setup")
             }
             onAction={() => {
-              if (network.state === "setup") void network.turnOn();
+              if (network.state === "setup") startWithDisclosure();
               else if (network.state === "conflict") network.openPrivateDnsSettings();
             }}
             // The status pill only acts in "setup". Switching a running shield
