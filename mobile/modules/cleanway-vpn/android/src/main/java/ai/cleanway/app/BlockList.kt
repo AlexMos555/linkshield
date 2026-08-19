@@ -44,6 +44,15 @@ class BlockList private constructor(
     private val loadedAtWallMs: Long,
     private val loadedAtElapsedMs: Long,
     private val popularVeto: Set<String>,
+    /**
+     * Suffixes under which a name is ONE TENANT's site
+     * (assets/shared_suffixes.txt). Without them the veto cancelled real
+     * blocks: `best10cdn.blob.core.windows.net` has registrable
+     * `windows.net`, which is top-10k, so a bucket someone filled with
+     * phishing was silently un-blocked — 783 of the 1,548 tenant suffixes the
+     * publisher targets behaved that way.
+     */
+    private val sharedSuffixes: Set<String> = emptySet(),
 ) {
     /**
      * The listed suffix of [qname] that blocks it, or null. A listed name
@@ -62,8 +71,33 @@ class BlockList private constructor(
         for (i in 0..parts.size - 2) {
             val suffix = parts.subList(i, parts.size).joinToString(".")
             if (contains(hashOf(suffix))) {
-                return if (RegistrableDomain.of(suffix) in popularVeto) null else suffix
+                return if (isVetoed(suffix)) null else suffix
             }
+        }
+        return null
+    }
+
+    /**
+     * Does the popular-domain veto cancel a block on [name]?
+     *
+     * Yes when the name belongs to a popular ORGANISATION (its registrable is
+     * top-10k) — that is the guard against a bad publish darkening
+     * paypal.com. No when the name is a TENANT under a shared platform: a
+     * bucket, a Pages site or a Blob container is not the platform's own
+     * name, and the platform's popularity says nothing about it.
+     */
+    private fun isVetoed(name: String): Boolean {
+        if (tenantSuffixOf(name) != null) return false
+        return RegistrableDomain.of(name) in popularVeto
+    }
+
+    /** The longest shared suffix strictly shorter than [name], or null. */
+    private fun tenantSuffixOf(name: String): String? {
+        if (sharedSuffixes.isEmpty()) return null
+        val parts = name.split('.')
+        for (k in parts.size - 1 downTo 2) {
+            val suffix = parts.takeLast(k).joinToString(".")
+            if (suffix in sharedSuffixes) return suffix
         }
         return null
     }
@@ -105,14 +139,20 @@ class BlockList private constructor(
         }
 
         /** Empty list (nothing blocked) — the state before any sync. */
-        fun empty(popularVeto: Set<String> = emptySet()): BlockList =
-            BlockList(LongArray(0), 0L, 0, false, 0L, 0L, popularVeto)
+        fun empty(popularVeto: Set<String> = emptySet(), sharedSuffixes: Set<String> = emptySet()): BlockList =
+            BlockList(LongArray(0), 0L, 0, false, 0L, 0L, popularVeto, sharedSuffixes)
 
         /**
          * Strict parse. Returns null (reject WHOLE) on any malformed input.
          * [nowMs]/[elapsedMs] stamp when the list was loaded (both clocks).
          */
-        fun parse(blob: ByteArray, popularVeto: Set<String>, nowMs: Long, elapsedMs: Long = 0L): BlockList? {
+        fun parse(
+            blob: ByteArray,
+            popularVeto: Set<String>,
+            nowMs: Long,
+            elapsedMs: Long = 0L,
+            sharedSuffixes: Set<String> = emptySet(),
+        ): BlockList? {
             if (blob.size > MAX_BYTES || blob.size < MAGIC.size) return null
             for (i in MAGIC.indices) if (blob[i] != MAGIC[i]) return null
             var nl = -1
@@ -133,7 +173,7 @@ class BlockList private constructor(
             val entries = bodyLen / HASH_BYTES
             if (revoked) {
                 if (entries != 0 || declared != 0) return null
-                return BlockList(LongArray(0), generated, 0, true, nowMs, elapsedMs, popularVeto)
+                return BlockList(LongArray(0), generated, 0, true, nowMs, elapsedMs, popularVeto, sharedSuffixes)
             }
             if (entries != declared || entries == 0) return null
 
@@ -149,7 +189,7 @@ class BlockList private constructor(
                 prev = v
                 p += HASH_BYTES
             }
-            return BlockList(out, generated, entries, false, nowMs, elapsedMs, popularVeto)
+            return BlockList(out, generated, entries, false, nowMs, elapsedMs, popularVeto, sharedSuffixes)
         }
     }
 }

@@ -162,3 +162,62 @@ class BlockListTest {
         assertTrue(bl.isStale(nowMs = 1_000L + BlockList.STALE_AFTER_MS + 1, elapsedMs = 5_000L + 60_000L))
     }
 }
+
+/**
+ * The popular veto must protect a popular ORGANISATION's own names without
+ * cancelling blocks on TENANT sites hosted on a popular platform. Found
+ * 2026-08-19 by simulating the shipped veto over the live artifact: 783 of
+ * the 1,548 tenant suffixes the publisher targets were silently un-blockable,
+ * because e.g. `best10cdn.blob.core.windows.net` has registrable
+ * `windows.net`, which is top-10k.
+ */
+class BlockListVetoTest {
+    private val veto = setOf("windows.net", "amazonaws.com", "linodeusercontent.com", "paypal.com", "github.com")
+    private val shared = setOf("blob.core.windows.net", "s3.us-east-1.amazonaws.com",
+                               "ip.linodeusercontent.com", "github.io")
+
+    private fun list(vararg names: String): BlockList {
+        val hashes = names.map { BlockList.hashOf(it) }.distinct().sorted()
+        val out = java.io.ByteArrayOutputStream()
+        out.write("CWBL2\n".toByteArray())
+        out.write("# cleanway-dns-blocklist v2 generated=1 count=${hashes.size} status=ok\n".toByteArray())
+        for (h in hashes) for (b in BlockList.HASH_BYTES - 1 downTo 0) out.write(((h shr (8 * b)) and 0xFF).toInt())
+        return BlockList.parse(out.toByteArray(), veto, nowMs = 0L, sharedSuffixes = shared)!!
+    }
+
+    @Test
+    fun `tenant sites on popular platforms still block`() {
+        val bl = list(
+            "best10cdn.blob.core.windows.net",
+            "2fbe3e68.s3.us-east-1.amazonaws.com",
+            "172-104-49-49.ip.linodeusercontent.com",
+            "evil.github.io",
+        )
+        assertEquals("best10cdn.blob.core.windows.net", bl.match("best10cdn.blob.core.windows.net"))
+        assertEquals("2fbe3e68.s3.us-east-1.amazonaws.com", bl.match("2fbe3e68.s3.us-east-1.amazonaws.com"))
+        assertEquals("172-104-49-49.ip.linodeusercontent.com", bl.match("172-104-49-49.ip.linodeusercontent.com"))
+        assertEquals("evil.github.io", bl.match("evil.github.io"))
+    }
+
+    @Test
+    fun `the platform's own names are still protected by the veto`() {
+        val bl = list("windows.net", "paypal.com", "www.github.com", "s3.us-east-1.amazonaws.com")
+        assertNull(bl.match("windows.net"))
+        assertNull(bl.match("login.paypal.com"))
+        assertNull(bl.match("www.github.com"))
+        // The shared suffix itself is the platform's name, not a tenant's.
+        assertNull(bl.match("s3.us-east-1.amazonaws.com"))
+    }
+
+    @Test
+    fun `without the shared-suffix asset the veto stays conservative`() {
+        val hashes = listOf(BlockList.hashOf("x.blob.core.windows.net")).sorted()
+        val out = java.io.ByteArrayOutputStream()
+        out.write("CWBL2\n".toByteArray())
+        out.write("# cleanway-dns-blocklist v2 generated=1 count=1 status=ok\n".toByteArray())
+        for (h in hashes) for (b in BlockList.HASH_BYTES - 1 downTo 0) out.write(((h shr (8 * b)) and 0xFF).toInt())
+        val bl = BlockList.parse(out.toByteArray(), veto, nowMs = 0L)!!   // no sharedSuffixes
+        // Missing asset must never turn into over-blocking: veto still wins.
+        assertNull(bl.match("x.blob.core.windows.net"))
+    }
+}

@@ -129,6 +129,7 @@ class BlocklistSync(
     private val store: BlocklistStore,
     private val fetcher: BlocklistFetcher,
     private val popularVeto: Set<String>,
+    private val sharedSuffixes: Set<String>,
     private val url: String,
     private val nowMs: () -> Long,
     private val elapsedMs: () -> Long,
@@ -145,7 +146,8 @@ class BlocklistSync(
     /** Load what is on disk (fast, synchronous — call before the DNS loop). */
     fun loadFromDisk(): BlockList? {
         val saved = store.load() ?: return null
-        val list = BlockList.parse(saved.body, popularVeto, nowMs = saved.fetchedAtMs, elapsedMs = elapsedMs() - (nowMs() - saved.fetchedAtMs))
+        val list = BlockList.parse(saved.body, popularVeto, nowMs = saved.fetchedAtMs,
+                    elapsedMs = elapsedMs() - (nowMs() - saved.fetchedAtMs), sharedSuffixes = sharedSuffixes)
         if (list == null) {
             Log.w(TAG, "stored blocklist rejected — clearing")
             store.clear()
@@ -176,7 +178,8 @@ class BlocklistSync(
                 if (expected != null && sha256Hex(res.body) != expected) {
                     fail("sha256 mismatch"); return false
                 }
-                val list = BlockList.parse(res.body, popularVeto, nowMs = nowMs(), elapsedMs = elapsedMs())
+                val list = BlockList.parse(res.body, popularVeto, nowMs = nowMs(), elapsedMs = elapsedMs(),
+                                           sharedSuffixes = sharedSuffixes)
                 if (list == null) { fail("artifact rejected by parser"); return false }
                 lastFetchAtMs = nowMs(); consecutiveFailures = 0; lastError = null
                 currentEtag = res.etag

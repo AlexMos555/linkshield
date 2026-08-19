@@ -594,13 +594,15 @@ class CleanwayVpnService : VpnService() {
     private fun startBlocklist() {
         try {
             val veto = loadPopularVeto()
-            blockList = BlockList.empty(veto)
+            val shared = loadAsset("shared_suffixes.txt")
+            blockList = BlockList.empty(veto, shared)
             reloadAllowed()
             val store = BlocklistStore(File(filesDir, "cleanway"))
             val sync = BlocklistSync(
                 store = store,
                 fetcher = HttpBlocklistFetcher("Cleanway-Android"),
                 popularVeto = veto,
+                sharedSuffixes = shared,
                 url = BLOCKLIST_URL,
                 nowMs = { System.currentTimeMillis() },
                 elapsedMs = { android.os.SystemClock.elapsedRealtime() },
@@ -634,12 +636,15 @@ class CleanwayVpnService : VpnService() {
      * A listed name whose registrable is here never blocks — the last line of
      * defence against a bad publish.
      */
-    private fun loadPopularVeto(): Set<String> = try {
-        assets.open("popular_veto.txt").bufferedReader().useLines { lines ->
+    private fun loadPopularVeto(): Set<String> = loadAsset("popular_veto.txt")
+
+    /** One line per name, '#' comments. Empty set (and a loud log) on failure. */
+    private fun loadAsset(name: String): Set<String> = try {
+        assets.open(name).bufferedReader().useLines { lines ->
             lines.map { it.trim().lowercase() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toHashSet()
-        }
+        }.also { Log.i(TAG, "asset_loaded $name entries=${it.size}") }
     } catch (e: Exception) {
-        Log.w(TAG, "popular_veto_missing: ${e.message}")
+        Log.w(TAG, "asset_missing $name: ${e.message}")
         emptySet()
     }
 

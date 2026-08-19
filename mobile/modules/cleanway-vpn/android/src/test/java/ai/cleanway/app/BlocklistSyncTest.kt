@@ -35,7 +35,7 @@ class BlocklistSyncTest {
 
     private fun sync(fetcher: BlocklistFetcher, store: BlocklistStore = BlocklistStore(tmp.newFolder()), now: () -> Long = { 1_000L },
                      onSwap: (BlockList) -> Unit = {}, metered: () -> Boolean = { false }) =
-        BlocklistSync(store, fetcher, veto, "https://x/list", nowMs = now, elapsedMs = { 5_000L },
+        BlocklistSync(store, fetcher, veto, emptySet(), "https://x/list", nowMs = now, elapsedMs = { 5_000L },
                       onSwap = onSwap, isMetered = metered)
 
     @Test
