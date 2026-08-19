@@ -164,6 +164,20 @@ SHARED_HOSTNAMES = frozenset({
 # list explicitly.
 SHARED_URL_THRESHOLD = 15
 
+# Suffixes where EVERY label belongs to the platform operator — there are no
+# tenants under them, only the operator's own infrastructure. The tenant rule
+# must never fire here: on 2026-08-19 it put media.githubusercontent.com
+# (GitHub's own media CDN, one URLhaus entry) into production, so every phone
+# and every DoH user got NXDOMAIN for it.
+OPERATOR_SUFFIXES = frozenset({
+    "githubusercontent.com", "googleusercontent.com", "googleapis.com",
+    "gstatic.com", "ggpht.com", "usercontent.goog", "withgoogle.com",
+    "cloudfront.net", "akamaihd.net", "akamaized.net", "akamai.net",
+    "fbcdn.net", "cdninstagram.com", "licdn.com", "twimg.com",
+    "wp.com", "gravatar.com", "shopifycdn.com", "cloudflarestorage.com",
+    "linodeusercontent.com", "digitaloceanspaces.com", "oaiusercontent.com",
+})
+
 _COMPOUND_TLDS = frozenset({
     "co.uk", "ac.uk", "gov.uk", "org.uk", "co.jp", "co.in", "com.au", "com.br",
     "com.mx", "co.kr", "co.za", "com.sg", "com.tr", "co.id", "com.ar", "com.co",
@@ -295,8 +309,10 @@ def _load_public_suffixes_in_top() -> set[str]:
 
 def default_shared_suffixes() -> set[str]:
     """Suffixes under which a subdomain is ONE tenant's site (safe to block
-    exactly) while the apex is a platform (never blocked)."""
-    return (set(HOSTING_PLATFORMS) - BIG_ORGS) | _load_public_suffixes_in_top()
+    exactly) while the apex is a platform (never blocked). Operator-only
+    suffixes are excluded: a name under those is the operator's, not a
+    tenant's, and blocking it breaks the platform for everyone."""
+    return ((set(HOSTING_PLATFORMS) - BIG_ORGS) | _load_public_suffixes_in_top()) - OPERATOR_SUFFIXES
 
 
 def _tenant_suffix(host: str, shared_suffixes: set[str]) -> str | None:
@@ -351,8 +367,18 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
     (Tranco-1M lookup when Redis is available).
     """
     shared = default_shared_suffixes() if shared_suffixes is None else set(shared_suffixes)
+
+    def norm(h: str) -> str:
+        """One normalisation for every consumer. Without it a trailing-dot
+        host ('example.com.') reached the gate and the Redis set unnormalised
+        while the artifact renderer stripped the dot later — so the gate's
+        set-intersection could be defeated by a dot, and the registrable of
+        'example.com.' was 'com.', a bare TLD."""
+        return h.strip().lower().rstrip(".")
+
     counts: dict[str, int] = {}
-    for h in hosts:
+    for raw_host in hosts:
+        h = norm(raw_host or "")
         if h:
             counts[h] = counts.get(h, 0) + 1
 
@@ -372,6 +398,9 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
             continue
         if h in SHARED_HOSTNAMES:
             continue
+        # Operator infrastructure: never a tenant, never blockable by host.
+        if _tenant_suffix(h, set(OPERATOR_SUFFIXES)) is not None or h in OPERATOR_SUFFIXES:
+            continue
         reg = _registrable_domain(h, public_suffixes)
         suffix = _tenant_suffix(h, shared)
         if h in shared or (public_suffixes and h in public_suffixes):
@@ -381,8 +410,11 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
         if suffix is not None:
             # One tenant's site on a shared platform — unless the feed shows
             # this single hostname carrying many URLs (then it is a shared
-            # host itself, e.g. files.<platform>).
+            # host itself, e.g. files.<platform>), or the host itself is
+            # popular enough to be ranked (a tenant site people actually use).
             if counts[h] >= SHARED_URL_THRESHOLD:
+                continue
+            if popular(h):
                 continue
             out.add(h)
             continue
@@ -445,8 +477,15 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
         return 2
 
     public_suffixes = await _fetch_psl()
-    if public_suffixes:
-        logger.info("PSL loaded: %d rules", len(public_suffixes))
+    if not public_suffixes:
+        # Without the PSL the registrable heuristic knows ~40 generic SLDs and
+        # promotes everything else — a public suffix (pe.kr, blog.br …) would
+        # be published as a blockable domain, darkening a whole zone on every
+        # phone. Keeping the previous set is always the cheaper mistake.
+        logger.error("PSL unavailable — refusing to publish (the fallback heuristic "
+                     "would promote public suffixes). Previous set stays live.")
+        return 4
+    logger.info("PSL loaded: %d rules", len(public_suffixes))
 
     # Tranco-1M popularity from prod Redis (tranco:ranks, refreshed daily) —
     # a stronger guard than the bundled top-100k, when we can reach it.
@@ -500,6 +539,23 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
     if dry_run:
         logger.info("[dry-run] would rebuild '%s' with %d entries; sample: %s",
                     SET_KEY, len(blockset), list(sorted(blockset))[:8])
+        if r is not None:
+            # Redis capacity is now a real constraint: the live set is ~40 MB
+            # and the artifact another ~3.5 MB. If the instance evicts, the
+            # artifact disappears and every phone stops updating — which is
+            # exactly what happened on 2026-08-19.
+            try:
+                info = await r.info("memory")
+                logger.info("redis: used %.1f MB / maxmemory %.1f MB (policy %s)",
+                            info.get("used_memory", 0) / 1e6,
+                            info.get("maxmemory", 0) / 1e6,
+                            info.get("maxmemory_policy", "?"))
+                for key in (SET_KEY, REDIS_TEXT_KEY, REDIS_META_KEY, "tranco:ranks"):
+                    exists = await r.exists(key)
+                    size = await r.memory_usage(key) if exists else 0
+                    logger.info("redis key %-34s exists=%s %.1f MB", key, bool(exists), (size or 0) / 1e6)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("redis report failed: %s", e)
         return 0
 
     if not redis_url:

@@ -163,3 +163,65 @@ def test_publish_gate_accepts_normal_refresh():
     new = prev - {"d1.example", "d2.example"} | {"fresh.example"}
     ok, why = rdd.publish_gate(new, previous=prev, popular={"github.com"}, shared={"us.org"})
     assert ok, why
+
+
+# ─────────────────────────────────────────────────────────────────
+# 2026-08-19: live false positives + gate bypasses found by the
+# adversarial review of the shipped stack
+# ─────────────────────────────────────────────────────────────────
+
+def test_operator_infrastructure_is_never_blocked():
+    """media.githubusercontent.com was NXDOMAIN in production: one URLhaus
+    entry, and the tenant rule treated GitHub's own media CDN as "one
+    tenant's site". There are no tenants under an operator suffix."""
+    out = rdd.build_blockset(
+        ["media.githubusercontent.com", "release-assets.githubusercontent.com",
+         "lh3.googleusercontent.com", "storage.googleapis.com", "x.oaiusercontent.com"],
+        TOP, shared_suffixes=SHARED | {"githubusercontent.com", "googleusercontent.com", "googleapis.com"},
+    )
+    assert out == set()
+    # …and the operator suffixes are not tenant suffixes to begin with.
+    assert rdd.OPERATOR_SUFFIXES & rdd.default_shared_suffixes() == set()
+
+
+def test_a_ranked_tenant_site_is_not_blocked():
+    """A tenant host people actually use (Tranco-ranked) is not one scammer's
+    page; a single feed entry must not darken it."""
+    def popular(d: str) -> bool:
+        return d in {"docs.example.github.io", "github.io"}
+    out = rdd.build_blockset(["docs.example.github.io", "scam.github.io"], TOP,
+                             shared_suffixes=SHARED, is_popular=popular)
+    assert "docs.example.github.io" not in out
+    assert "scam.github.io" in out
+
+
+def test_trailing_dot_hosts_are_normalised_before_every_guard():
+    """'example.com.' kept its dot through build_blockset, the publish gate and
+    the SADD, and only lost it in the renderer: the registrable became 'com.'
+    (a bare TLD) and 'blogspot.com.' slipped past the shared-apex guard."""
+    out = _build(["Evil-Shop.com.", "blogspot.com.", "gwcu.us.org."])
+    assert "evil-shop.com" in out
+    assert "com" not in out and "com." not in out
+    assert "blogspot.com" not in out and "blogspot.com." not in out
+    assert "gwcu.us.org" in out
+    assert all(n == n.strip().lower().rstrip(".") for n in out)
+
+
+@pytest.mark.asyncio
+async def test_publish_is_refused_when_the_public_suffix_list_is_unavailable(monkeypatch):
+    """Without the PSL the fallback heuristic promotes public suffixes
+    (pe.kr, blog.br …) into the blocklist — a whole national zone dark on
+    every phone. Keeping the previous set is the cheaper mistake."""
+    async def _no_psl():
+        return None
+
+    monkeypatch.setattr(rdd, "_fetch_psl", _no_psl)
+
+    async def _fetch(url):
+        if "urlhaus" in url:
+            return "\n".join(f'"{i}","d","https://ojang.pe.kr/x{i}"' for i in range(5))
+        return "https://phish.example/a"
+
+    monkeypatch.setattr(rdd, "_fetch", _fetch)
+    code = await rdd.refresh("redis://unused", dry_run=False)
+    assert code == 4
