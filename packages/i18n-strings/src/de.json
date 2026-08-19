@@ -1205,7 +1205,8 @@
       "blocklist": {
         "status": "Sperrliste: {{count}} bekannte Betrugsseiten · vor {{hours}} Std. aktualisiert",
         "stale": "Sperrliste ist veraltet ({{count}} Seiten) – tippen zum Aktualisieren",
-        "missing": "Noch keine Sperrliste – tippen zum Laden. Bis dahin wird per Liste nichts blockiert."
+        "missing": "Noch keine Sperrliste – tippen zum Laden. Bis dahin wird per Liste nichts blockiert.",
+        "status_fresh": "Sperrliste: {{count}} bekannte Betrugsseiten · gerade aktualisiert"
       }
     },
     "rollout": {

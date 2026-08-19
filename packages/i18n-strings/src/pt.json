@@ -1205,7 +1205,8 @@
       "blocklist": {
         "status": "Lista de bloqueio: {{count}} sites de golpe conhecidos · atualizada há {{hours}} h",
         "stale": "A lista está desatualizada ({{count}} sites) — toque para atualizar",
-        "missing": "Ainda sem lista — toque para baixar. Até lá, nada é bloqueado pela lista."
+        "missing": "Ainda sem lista — toque para baixar. Até lá, nada é bloqueado pela lista.",
+        "status_fresh": "Lista de bloqueio: {{count}} sites de golpe conhecidos · atualizada agora"
       }
     },
     "rollout": {

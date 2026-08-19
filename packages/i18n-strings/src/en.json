@@ -1147,7 +1147,8 @@
       "blocklist": {
         "status": "Blocklist: {{count}} known scam sites · updated {{hours}}h ago",
         "stale": "Blocklist is out of date ({{count}} sites) — tap to update",
-        "missing": "No blocklist yet — tap to download. Until then, nothing is blocked from the list."
+        "missing": "No blocklist yet — tap to download. Until then, nothing is blocked from the list.",
+        "status_fresh": "Blocklist: {{count}} known scam sites · just updated"
       }
     },
     "rollout": {

@@ -1205,7 +1205,8 @@
       "blocklist": {
         "status": "Lista di blocco: {{count}} siti truffa noti · aggiornata {{hours}} h fa",
         "stale": "La lista non è aggiornata ({{count}} siti): tocca per aggiornare",
-        "missing": "Nessuna lista ancora: tocca per scaricarla. Fino ad allora la lista non blocca nulla."
+        "missing": "Nessuna lista ancora: tocca per scaricarla. Fino ad allora la lista non blocca nulla.",
+        "status_fresh": "Lista di blocco: {{count}} siti truffa noti · appena aggiornata"
       }
     },
     "rollout": {

@@ -410,6 +410,7 @@
   "mobile.shield.blocklist.status": "Lista di blocco: {{count}} siti truffa noti · aggiornata {{hours}} h fa",
   "mobile.shield.blocklist.stale": "La lista non è aggiornata ({{count}} siti): tocca per aggiornare",
   "mobile.shield.blocklist.missing": "Nessuna lista ancora: tocca per scaricarla. Fino ad allora la lista non blocca nulla.",
+  "mobile.shield.blocklist.status_fresh": "Lista di blocco: {{count}} siti truffa noti · appena aggiornata",
   "mobile.rollout.network_ios": "Blocca i siti truffa in quasi tutte le app. In fase di test finale — non ancora disponibile su iPhone.",
   "mobile.rollout.browser_ios": "Ti avvisa direttamente sulla pagina in Safari. In arrivo a breve.",
   "mobile.rollout.messages_ios": "Filtra i messaggi truffa (SMS). In programma — non potrà mai vedere iMessage.",

@@ -410,6 +410,7 @@
   "mobile.shield.blocklist.status": "Lista de bloqueio: {{count}} sites de golpe conhecidos · atualizada há {{hours}} h",
   "mobile.shield.blocklist.stale": "A lista está desatualizada ({{count}} sites) — toque para atualizar",
   "mobile.shield.blocklist.missing": "Ainda sem lista — toque para baixar. Até lá, nada é bloqueado pela lista.",
+  "mobile.shield.blocklist.status_fresh": "Lista de bloqueio: {{count}} sites de golpe conhecidos · atualizada agora",
   "mobile.rollout.network_ios": "Bloqueia sites de golpe em quase todos os aplicativos. Em testes finais — ainda não chegou ao iPhone.",
   "mobile.rollout.browser_ios": "Avisa você direto na página, no Safari. É o próximo a chegar.",
   "mobile.rollout.messages_ios": "Filtra mensagens de golpe (SMS). Planejado — ele nunca vai conseguir ver o iMessage.",

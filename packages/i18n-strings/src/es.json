@@ -1145,7 +1145,8 @@
       "blocklist": {
         "status": "Lista de bloqueo: {{count}} sitios fraudulentos conocidos · actualizada hace {{hours}} h",
         "stale": "La lista está desactualizada ({{count}} sitios): toca para actualizar",
-        "missing": "Aún no hay lista: toca para descargarla. Hasta entonces, no se bloquea nada por lista."
+        "missing": "Aún no hay lista: toca para descargarla. Hasta entonces, no se bloquea nada por lista.",
+        "status_fresh": "Lista de bloqueo: {{count}} sitios fraudulentos conocidos · recién actualizada"
       }
     },
     "rollout": {

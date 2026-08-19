@@ -410,6 +410,7 @@
   "mobile.shield.blocklist.status": "Daftar blokir: {{count}} situs penipuan yang diketahui · diperbarui {{hours}} jam lalu",
   "mobile.shield.blocklist.stale": "Daftar blokir sudah usang ({{count}} situs) — ketuk untuk memperbarui",
   "mobile.shield.blocklist.missing": "Belum ada daftar — ketuk untuk mengunduh. Sampai saat itu, tidak ada yang diblokir dari daftar.",
+  "mobile.shield.blocklist.status_fresh": "Daftar blokir: {{count}} situs penipuan yang diketahui · baru diperbarui",
   "mobile.rollout.network_ios": "Memblokir situs penipuan di hampir semua aplikasi. Sedang tahap uji akhir — belum tersedia di iPhone.",
   "mobile.rollout.browser_ios": "Memperingatkan Anda langsung di halaman saat memakai Safari. Segera menyusul.",
   "mobile.rollout.messages_ios": "Menyaring SMS penipuan. Masih direncanakan — dan tidak akan pernah bisa melihat iMessage.",

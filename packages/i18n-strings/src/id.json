@@ -1205,7 +1205,8 @@
       "blocklist": {
         "status": "Daftar blokir: {{count}} situs penipuan yang diketahui · diperbarui {{hours}} jam lalu",
         "stale": "Daftar blokir sudah usang ({{count}} situs) — ketuk untuk memperbarui",
-        "missing": "Belum ada daftar — ketuk untuk mengunduh. Sampai saat itu, tidak ada yang diblokir dari daftar."
+        "missing": "Belum ada daftar — ketuk untuk mengunduh. Sampai saat itu, tidak ada yang diblokir dari daftar.",
+        "status_fresh": "Daftar blokir: {{count}} situs penipuan yang diketahui · baru diperbarui"
       }
     },
     "rollout": {

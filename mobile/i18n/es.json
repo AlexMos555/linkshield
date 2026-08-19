@@ -410,6 +410,7 @@
   "mobile.shield.blocklist.status": "Lista de bloqueo: {{count}} sitios fraudulentos conocidos · actualizada hace {{hours}} h",
   "mobile.shield.blocklist.stale": "La lista está desactualizada ({{count}} sitios): toca para actualizar",
   "mobile.shield.blocklist.missing": "Aún no hay lista: toca para descargarla. Hasta entonces, no se bloquea nada por lista.",
+  "mobile.shield.blocklist.status_fresh": "Lista de bloqueo: {{count}} sitios fraudulentos conocidos · recién actualizada",
   "mobile.rollout.network_ios": "Bloquea sitios de estafa en casi todas las apps. Está en pruebas finales; todavía no llega al iPhone.",
   "mobile.rollout.browser_ios": "Te avisa directamente en la página, en Safari. Es lo próximo que llega.",
   "mobile.rollout.messages_ios": "Filtra mensajes de estafa (SMS). Está en los planes; nunca podrá ver iMessage.",

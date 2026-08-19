@@ -410,6 +410,7 @@
   "mobile.shield.blocklist.status": "Liste de blocage : {{count}} sites d'arnaque connus · mise à jour il y a {{hours}} h",
   "mobile.shield.blocklist.stale": "La liste est périmée ({{count}} sites) — appuyez pour mettre à jour",
   "mobile.shield.blocklist.missing": "Pas encore de liste — appuyez pour la télécharger. D'ici là, rien n'est bloqué par la liste.",
+  "mobile.shield.blocklist.status_fresh": "Liste de blocage : {{count}} sites d'arnaque connus · mise à jour à l'instant",
   "mobile.rollout.network_ios": "Bloque les sites d'arnaque dans presque toutes les applis. En phase finale de test — pas encore sur iPhone.",
   "mobile.rollout.browser_ios": "Vous avertit directement sur la page dans Safari. C'est la prochaine étape.",
   "mobile.rollout.messages_ios": "Filtre les SMS d'arnaque. Prévu — il ne pourra jamais voir iMessage.",

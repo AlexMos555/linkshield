@@ -410,6 +410,7 @@
   "mobile.shield.blocklist.status": "ब्लॉक सूची: {{count}} ज्ञात धोखाधड़ी साइटें · {{hours}} घंटे पहले अपडेट",
   "mobile.shield.blocklist.stale": "सूची पुरानी है ({{count}} साइटें) — अपडेट के लिए टैप करें",
   "mobile.shield.blocklist.missing": "अभी सूची नहीं है — डाउनलोड के लिए टैप करें। तब तक सूची से कुछ भी ब्लॉक नहीं होता।",
+  "mobile.shield.blocklist.status_fresh": "ब्लॉक सूची: {{count}} ज्ञात धोखाधड़ी साइटें · अभी अपडेट हुई",
   "mobile.rollout.network_ios": "लगभग हर ऐप में धोखाधड़ी वाली साइटें रोकता है। आख़िरी परीक्षण चल रहा है — iPhone पर अभी नहीं है।",
   "mobile.rollout.browser_ios": "Safari में उसी पेज पर आपको आगाह करता है। जल्द आ रहा है।",
   "mobile.rollout.messages_ios": "धोखाधड़ी वाले मैसेज (SMS) छाँटता है। योजना में है — यह iMessage कभी नहीं देख पाएगा।",

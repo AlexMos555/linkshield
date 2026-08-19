@@ -410,6 +410,7 @@
   "mobile.shield.blocklist.status": "Sperrliste: {{count}} bekannte Betrugsseiten · vor {{hours}} Std. aktualisiert",
   "mobile.shield.blocklist.stale": "Sperrliste ist veraltet ({{count}} Seiten) – tippen zum Aktualisieren",
   "mobile.shield.blocklist.missing": "Noch keine Sperrliste – tippen zum Laden. Bis dahin wird per Liste nichts blockiert.",
+  "mobile.shield.blocklist.status_fresh": "Sperrliste: {{count}} bekannte Betrugsseiten · gerade aktualisiert",
   "mobile.rollout.network_ios": "Blockiert Betrugsseiten in fast jeder App. Gerade in der letzten Testphase – auf dem iPhone noch nicht verfügbar.",
   "mobile.rollout.browser_ios": "Warnt dich in Safari direkt auf der Seite. Kommt als Nächstes.",
   "mobile.rollout.messages_ios": "Filtert Betrugs-SMS. Geplant – iMessage wird dieser Schutz nie sehen können.",

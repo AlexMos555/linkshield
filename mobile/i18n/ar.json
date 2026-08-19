@@ -410,6 +410,7 @@
   "mobile.shield.blocklist.status": "قائمة الحظر: {{count}} موقعًا احتياليًا معروفًا · حُدّثت قبل {{hours}} س",
   "mobile.shield.blocklist.stale": "قائمة الحظر قديمة ({{count}} موقعًا) — انقر للتحديث",
   "mobile.shield.blocklist.missing": "لا توجد قائمة بعد — انقر لتنزيلها. حتى ذلك الحين لا يُحظر شيء من القائمة.",
+  "mobile.shield.blocklist.status_fresh": "قائمة الحظر: {{count}} موقعًا احتياليًا معروفًا · حُدّثت للتو",
   "mobile.rollout.network_ios": "يحظر مواقع الاحتيال في جميع التطبيقات تقريبًا. في مرحلة الاختبار الأخيرة — غير متاح على iPhone بعد.",
   "mobile.rollout.browser_ios": "يحذّرك على الصفحة نفسها في Safari. قادم قريبًا.",
   "mobile.rollout.messages_ios": "يصفّي رسائل الاحتيال النصية (SMS). مخطط له — ولن يستطيع أبدًا رؤية رسائل iMessage.",

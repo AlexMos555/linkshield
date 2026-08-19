@@ -1205,7 +1205,8 @@
       "blocklist": {
         "status": "Liste de blocage : {{count}} sites d'arnaque connus · mise à jour il y a {{hours}} h",
         "stale": "La liste est périmée ({{count}} sites) — appuyez pour mettre à jour",
-        "missing": "Pas encore de liste — appuyez pour la télécharger. D'ici là, rien n'est bloqué par la liste."
+        "missing": "Pas encore de liste — appuyez pour la télécharger. D'ici là, rien n'est bloqué par la liste.",
+        "status_fresh": "Liste de blocage : {{count}} sites d'arnaque connus · mise à jour à l'instant"
       }
     },
     "rollout": {

@@ -178,10 +178,15 @@ export default function HomeScreen() {
               />
               <Text style={[s.hintText, network.blocklist.stale && { color: colors.amber }]}>
                 {network.blocklist.count > 0 && !network.blocklist.stale
-                  ? t("mobile.shield.blocklist.status", {
-                      count: network.blocklist.count,
-                      hours: Math.max(0, Math.round((network.blocklist.ageMs ?? 0) / 3_600_000)),
-                    })
+                  // "updated 0h ago" is what a freshly synced list said — the
+                  // first thing a new user reads about it, and it sounds like
+                  // a bug. Under an hour it just says "just updated".
+                  ? (network.blocklist.ageMs ?? 0) < 3_600_000
+                    ? t("mobile.shield.blocklist.status_fresh", { count: network.blocklist.count })
+                    : t("mobile.shield.blocklist.status", {
+                        count: network.blocklist.count,
+                        hours: Math.round((network.blocklist.ageMs ?? 0) / 3_600_000),
+                      })
                   : network.blocklist.count > 0
                     ? t("mobile.shield.blocklist.stale", { count: network.blocklist.count })
                     : t("mobile.shield.blocklist.missing")}
