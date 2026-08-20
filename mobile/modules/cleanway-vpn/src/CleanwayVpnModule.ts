@@ -36,6 +36,8 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   recentBlocks?(limit: number): ShieldBlockEntry[];
   /** Number of block-log entries with ts >= sinceMs. */
   blockCountSince?(sinceMs: number): number;
+  /** Lifetime totals per kind — {blocked, warned, allowed}. */
+  blockLifetimeCounts?(): { blocked?: number; warned?: number; allowed?: number };
   /** Loaded blocklist + freshness. Optional: older native builds lack it. */
   blocklistStatus?(): BlocklistStatus;
   /** Fetch the list now (background). */

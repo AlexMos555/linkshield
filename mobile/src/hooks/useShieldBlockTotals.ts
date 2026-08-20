@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 
 interface ShieldLogModule {
-  shieldBlockTotals(sinceMs?: number): { blocked: number; warned: number };
+  shieldBlockTotals(): { blocked: number; warned: number };
   addDomainBlockedListener?(cb: () => void): { remove(): void };
 }
 

@@ -160,6 +160,16 @@ class CleanwayVpnModule : Module() {
       ai.cleanway.app.BlockLog.countSince(context, sinceMs.toLong())
     }
 
+    /**
+     * Lifetime totals per kind: {blocked, warned, allowed}. Counted outside
+     * the trimmed ring buffer, so "Blocked N sites" keeps growing past 200 —
+     * it is the honest number of times the shield acted, not a page of recent
+     * history.
+     */
+    Function("blockLifetimeCounts") {
+      ai.cleanway.app.BlockLog.lifetimeCounts(context).mapValues { it.value.toDouble() }
+    }
+
     /** Sites the person marked "not a scam", newest first. */
     Function("allowedDomains") {
       ai.cleanway.app.UserAllow.list(context)

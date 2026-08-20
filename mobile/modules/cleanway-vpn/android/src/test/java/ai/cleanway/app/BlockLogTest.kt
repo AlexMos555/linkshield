@@ -41,6 +41,29 @@ class BlockLogTest {
     }
 
     @Test
+    fun `lifetime counters survive ring-buffer truncation`() {
+        // The ring buffer holds only the last DEFAULT_CAP entries, but the
+        // "Blocked N sites" number must count every block ever — otherwise a
+        // heavy user's total silently stops growing at 200.
+        var counts = BlockLog.bumpCounts(null, BlockLog.KIND_BLOCKED)
+        for (i in 0 until 500) counts = BlockLog.bumpCounts(counts, BlockLog.KIND_BLOCKED)
+        counts = BlockLog.bumpCounts(counts, BlockLog.KIND_WARNED)
+        counts = BlockLog.bumpCounts(counts, BlockLog.KIND_ALLOWED)
+        val parsed = BlockLog.parseCounts(counts)
+        assertEquals(501, parsed[BlockLog.KIND_BLOCKED])
+        assertEquals(1, parsed[BlockLog.KIND_WARNED])
+        assertEquals(1, parsed[BlockLog.KIND_ALLOWED])
+    }
+
+    @Test
+    fun `counts are never negative and ignore garbage`() {
+        assertEquals(0, BlockLog.parseCounts("not json")[BlockLog.KIND_BLOCKED])
+        assertEquals(0, BlockLog.parseCounts(null)[BlockLog.KIND_WARNED])
+        val one = BlockLog.bumpCounts("{garbage", BlockLog.KIND_BLOCKED)
+        assertEquals(1, BlockLog.parseCounts(one)[BlockLog.KIND_BLOCKED])
+    }
+
+    @Test
     fun `garbage json is treated as empty, never thrown`() {
         assertTrue(BlockLog.parse("not json").isEmpty())
         val json = BlockLog.appendJson("{broken", "x.example", ts = 1L, kind = BlockLog.KIND_BLOCKED, cap = 5)

@@ -207,9 +207,23 @@ export function shieldBlockCountSince(sinceMs: number): number {
   }
 }
 
-/** Blocked vs warned totals from the log (see ShieldBlockKind for the honesty split). */
-export function shieldBlockTotals(sinceMs = 0): { blocked: number; warned: number } {
-  const entries = recentShieldBlocks(200).filter((e) => e.ts >= sinceMs);
+/**
+ * Lifetime blocked/warned totals (see ShieldBlockKind for the honesty split).
+ *
+ * Reads native lifetime counters, which live outside the 200-entry ring
+ * buffer — so the number keeps growing for a heavy user instead of freezing
+ * at 200. Falls back to counting the recent list on older native builds.
+ */
+export function shieldBlockTotals(): { blocked: number; warned: number } {
+  try {
+    if (typeof CleanwayVpn.blockLifetimeCounts === 'function') {
+      const c = CleanwayVpn.blockLifetimeCounts() ?? {};
+      return { blocked: c.blocked ?? 0, warned: c.warned ?? 0 };
+    }
+  } catch {
+    /* fall through to the ring-buffer estimate */
+  }
+  const entries = recentShieldBlocks(200);
   return {
     blocked: entries.filter((e) => e.kind === 'blocked').length,
     warned: entries.filter((e) => e.kind === 'warned').length,
