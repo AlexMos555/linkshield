@@ -125,6 +125,19 @@ jobs:
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
 
+      - name: Mobile blocklist assets in sync with data/
+        # popular_veto.txt / shared_suffixes.txt gate the on-device
+        # false-positive veto. Deterministic from committed data files (no
+        # network): a hand-edit or a data refresh that skipped the rebuild
+        # ships a wrong veto — github.io un-blockable, or a legit brand
+        # blocked. Rebuild: python3 scripts/build_mobile_assets.py
+        run: python3 scripts/build_mobile_assets.py --check
+
+      - name: Public-suffix set still consistent with top_100k
+        # Offline invariant only (no PSL fetch), so an upstream PSL edit does
+        # not redden unrelated PRs; the refresh job runs the full --check.
+        run: python3 scripts/build_public_suffixes_in_top.py --verify-consistency
+
   lint:
     runs-on: ubuntu-latest
 

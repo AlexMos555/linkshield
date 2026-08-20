@@ -53,7 +53,26 @@ def build() -> list[str]:
     return sorted(out)
 
 
+def verify_consistency() -> int:
+    """Offline invariant, safe to run in per-PR CI (no PSL fetch): every rule
+    in the committed file must have its registrable base in top_100k.json.
+    Catches the common drift — top_100k refreshed but the intersection not
+    rebuilt — without going red on unrelated PRs when Mozilla edits the PSL
+    upstream (that direction is caught by the refresh job's full --check)."""
+    top = {d.lower() for d in json.loads(TOP.read_text())}
+    rules = json.loads(OUT.read_text())
+    orphans = [r for r in rules if _base(r) not in top]
+    if orphans:
+        print(f"STALE: {len(orphans)} rules in {OUT.relative_to(ROOT)} whose base left top_100k, e.g. {orphans[:5]}")
+        print("  → rerun: python3 scripts/build_public_suffixes_in_top.py")
+        return 1
+    print(f"OK: all {len(rules)} public-suffix rules still rank in top_100k")
+    return 0
+
+
 def main() -> int:
+    if "--verify-consistency" in sys.argv:
+        return verify_consistency()
     rules = build()
     if "--check" in sys.argv:
         current = json.loads(OUT.read_text()) if OUT.exists() else []
