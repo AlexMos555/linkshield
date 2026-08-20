@@ -124,6 +124,21 @@ def test_optional_popularity_lookup_guards_tranco_1m_hosts():
     assert "www.0zz0.com" not in out
 
 
+def test_verified_legit_shared_tenant_is_never_blocked():
+    """A legit brand page on an org-scoped platform (metamask.github.io — the
+    real MetaMask GitHub Pages, which a phisher cannot create because they do
+    not own the "metamask" GitHub org) is false-flagged by OpenPhish's crypto
+    heuristics. A curated allowlist skips it — the on-device escape hatch is
+    not enough, since a MetaMask user hitting "site can't be reached" won't
+    know to un-block it. Zero miss cost: only exact verified hosts are listed."""
+    out = rdd.build_blockset(["metamask.github.io"] * 3, TOP, shared_suffixes=SHARED)
+    assert "metamask.github.io" not in out
+    # A brand-plus-tokens lookalike on the same platform is STILL blocked —
+    # the allowlist is exact hosts, not brand substrings.
+    out2 = rdd.build_blockset(["metamask-wallet-verify.github.io"], TOP, shared_suffixes=SHARED)
+    assert "metamask-wallet-verify.github.io" in out2
+
+
 def test_ip_literals_are_skipped():
     assert _build(["1.2.3.4", "10.0.0.1"]) == set()
 
