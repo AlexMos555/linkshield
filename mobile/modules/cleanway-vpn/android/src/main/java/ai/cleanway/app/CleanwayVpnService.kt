@@ -112,6 +112,16 @@ class CleanwayVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_REFRESH_BLOCKLIST) {
+            // Woken by the wall-clock alarm: run one fetch off the DNS thread
+            // and arm the next alarm, whether or not this one succeeded.
+            blocklistSync?.let { sync ->
+                syncExecutor.execute { runCatching { sync.refreshOnce() } }
+                BlocklistAlarm.schedule(this, sync.nextDelayMs())
+            }
+            // START_STICKY without touching the tunnel: it is already up.
+            return START_STICKY
+        }
         if (intent?.action == ACTION_STOP) {
             // Explicit user request: forget the intent so we do not come back
             // on the next boot.
@@ -251,6 +261,7 @@ class CleanwayVpnService : VpnService() {
     private fun stopVpn() {
         running = false
         isRunning = false
+        BlocklistAlarm.cancel(this)
         stopPrivateDnsWatch?.invoke()
         stopPrivateDnsWatch = null
         // The counter is monotonic and compared by delta in JS, so a value
@@ -623,6 +634,8 @@ class CleanwayVpnService : VpnService() {
             val loaded = sync.loadFromDisk()
             Log.i(TAG, "blocklist_disk: " + (loaded?.let { "version=${it.version} count=${it.count}" } ?: "none"))
             sync.start(syncExecutor)
+            // Doze-proof recurring cadence (see BlocklistAlarm).
+            BlocklistAlarm.schedule(this, sync.nextDelayMs())
         } catch (e: Exception) {
             // Never let the list machinery take the tunnel down: no list means
             // nothing is blocked (and the card says so), not a dead DNS.
@@ -718,6 +731,8 @@ class CleanwayVpnService : VpnService() {
         private const val NOTIF_ID = 4711
         private const val TAG = "CleanwayVPN"
         const val ACTION_STOP = "ai.cleanway.VPN_STOP"
+        /** Delivered by BlocklistRefreshReceiver on the Doze-safe alarm. */
+        const val ACTION_REFRESH_BLOCKLIST = "ai.cleanway.REFRESH_BLOCKLIST"
 
         /** Broadcast when the tunnel goes away without the user asking. */
         const val ACTION_VPN_STOPPED = "ai.cleanway.VPN_STOPPED"

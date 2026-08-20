@@ -39,5 +39,15 @@
         <action android:name="android.intent.action.QUICKBOOT_POWERON" />
       </intent-filter>
     </receiver>
+    <!-- Woken by AlarmManager to keep the blocklist fresh through Doze. Runs
+         in the main process so it can poke the already-running VPN service. -->
+    <receiver
+      android:name="ai.cleanway.app.BlocklistRefreshReceiver"
+      android:enabled="true"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="ai.cleanway.BLOCKLIST_REFRESH" />
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

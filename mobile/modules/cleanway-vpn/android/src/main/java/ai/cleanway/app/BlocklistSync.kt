@@ -240,20 +240,22 @@ class BlocklistSync(
         Log.w(TAG, "blocklist_fetch_failed: $reason (fail #$consecutiveFailures)")
     }
 
-    /** Schedule: maybe fetch now, then keep going with the policy's delays. */
+    /**
+     * Kick the initial fetch if the stored list is old/absent. The recurring
+     * cadence is driven by AlarmManager (BlocklistAlarm) so it survives Doze;
+     * this only handles "get something fresh now that the shield came up".
+     */
     fun start(executor: ScheduledExecutorService) {
         val age = if (lastFetchAtMs > 0) nowMs() - lastFetchAtMs else null
-        val first = if (SyncPolicy.shouldFetchOnStart(age)) 0L else SyncPolicy.nextDelayMs(0, nowMs())
-        schedule(executor, first)
+        if (SyncPolicy.shouldFetchOnStart(age)) {
+            executor.execute {
+                try { refreshOnce() } catch (e: Exception) { fail("unexpected: ${e.message}") }
+            }
+        }
     }
 
-    private fun schedule(executor: ScheduledExecutorService, delayMs: Long) {
-        future?.cancel(false)
-        future = executor.schedule({
-            try { refreshOnce() } catch (e: Exception) { fail("unexpected: ${e.message}") }
-            schedule(executor, SyncPolicy.nextDelayMs(consecutiveFailures, nowMs()))
-        }, delayMs, TimeUnit.MILLISECONDS)
-    }
+    /** How long until the next scheduled refresh should fire (Doze-safe alarm). */
+    fun nextDelayMs(): Long = SyncPolicy.nextDelayMs(consecutiveFailures, nowMs())
 
     fun stop() { future?.cancel(false); future = null }
 
