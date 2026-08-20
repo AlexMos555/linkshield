@@ -193,10 +193,10 @@ class CleanwayVpnService : VpnService() {
         //   - the upstream UDP DNS socket is protect()ed (forwardOverUdp)
         //   - the DoH fallback dials 1.1.1.1 by IP literal over TCP — no DNS
         //     needed, and 1.1.1.1/32 is not routed into the tunnel
-        // The service's own hostname lookups (api.cleanway.ai in
-        // checkDomainAsync) now transit the tunnel like any other app's and
-        // are forwarded upstream on a different thread — that is the normal
-        // path, not a loop.
+        // The service's own hostname lookups (the blocklist sync's fetch of
+        // api.cleanway.ai) transit the tunnel like any other app's and are
+        // forwarded upstream on a different thread — that is the normal path,
+        // not a loop.
 
         vpnInterface = builder.establish() ?: run {
             // Consent was present a moment ago (prepare() said so), so this is

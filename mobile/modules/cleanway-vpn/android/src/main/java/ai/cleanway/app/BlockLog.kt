@@ -14,9 +14,14 @@ import org.json.JSONObject
  *
  * Two kinds, kept honest:
  *  - [KIND_BLOCKED]: the query was answered NXDOMAIN — the site never opened.
- *  - [KIND_WARNED]:  the first lookup had already been forwarded (fail-open)
- *    when the verdict arrived; future lookups are blocked, but THIS visit may
- *    have opened. The app must not call that "blocked".
+ *  - [KIND_WARNED]:  RESERVED. It marked the honest case where the first
+ *    lookup had already been forwarded (fail-open) when a verdict arrived —
+ *    "future lookups blocked, but THIS visit may have opened". The async
+ *    /public/check path that produced it was removed when blocking moved to
+ *    the on-device list (every match now decides on the FIRST lookup, so
+ *    there is no late verdict). The kind, its notification copy and its
+ *    history row are kept for when a lightweight caution-band check returns;
+ *    nothing records it today.
  *
  * Storage is a JSON array in SharedPreferences (cap [DEFAULT_CAP]); the pure
  * functions are JVM-tested in BlockLogTest.
