@@ -164,6 +164,21 @@ SHARED_HOSTNAMES = frozenset({
 # list explicitly.
 SHARED_URL_THRESHOLD = 15
 
+# Verified-legit pages on org-scoped platforms that noisy feeds false-flag.
+#
+# On github.io / gitlab.io the "<org>" label is owned by whoever owns the
+# GitHub/GitLab org, so `metamask.github.io` is provably MetaMask's own page —
+# a phisher cannot create it. OpenPhish's crypto heuristics flag it anyway
+# (verified 2026-08-20: /sell-crypto/ serves the real MetaMask site, HTTP 200,
+# title "MetaMask"). The on-device escape hatch is not enough here — a MetaMask
+# user who hits "site can't be reached" has no idea to un-block it — so we skip
+# these exact hosts at publish time. EXACT hosts only, hand-verified: this
+# creates zero misses (a lookalike like metamask-wallet-verify.github.io is
+# still blocked), and it is not a brand substring match.
+LEGIT_SHARED_TENANTS = frozenset({
+    "metamask.github.io",
+})
+
 # Suffixes where EVERY label belongs to the platform operator — there are no
 # tenants under them, only the operator's own infrastructure. The tenant rule
 # must never fire here: on 2026-08-19 it put media.githubusercontent.com
@@ -407,6 +422,8 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
             continue  # platform apex / a public suffix itself — never
         if public_suffixes and reg in public_suffixes:
             continue  # cannot even name a registrable — never promote a suffix
+        if h in LEGIT_SHARED_TENANTS:
+            continue  # hand-verified legit page on a shared platform
         if suffix is not None:
             # One tenant's site on a shared platform — unless the feed shows
             # this single hostname carrying many URLs (then it is a shared
