@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { reasonLabel } from "../src/utils/reason-label";
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Share } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -137,7 +138,7 @@ export default function ResultScreen() {
           {result.reasons.map((r, i) => (
             <View key={i} style={[s.signalRow, i > 0 && s.signalBorder]}>
               <View style={[s.signalDot, { backgroundColor: color }]} />
-              <Text style={s.signalText}>{r.detail}</Text>
+              <Text style={s.signalText}>{reasonLabel(r, t)}</Text>
               {/* The public endpoint scores the domain, not each signal, so a
                   weight is usually absent. Rendering it unconditionally printed
                   a "+undefined" chip. */}

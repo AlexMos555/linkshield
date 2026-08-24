@@ -1535,6 +1535,34 @@
       "allow_action": "Ce n'est pas une arnaque — autoriser",
       "allowed_title": "Site autorisé",
       "allowed_text": "{{domain}} est maintenant autorisé. Annulez dans Réglages → Sites autorisés."
+    },
+    "reason": {
+      "flagged_dangerous": "Google signale ce site comme dangereux",
+      "flagged_phishing": "Signalé comme hameçonnage",
+      "on_blocklists": "Sur des listes fiables d'arnaques et de spam",
+      "threat_reports": "Mentionné dans des rapports de menaces",
+      "spreads_malware": "Connu pour diffuser des logiciels malveillants",
+      "imitates_brand": "Le nom imite une marque connue",
+      "lookalike_letters": "Utilise des lettres ressemblantes pour vous tromper",
+      "fake_brand_address": "Un nom de marque de confiance caché dans une fausse adresse",
+      "copies_brand_icon": "Copie l'icône d'une marque connue",
+      "no_https": "La connexion n'est pas sécurisée (pas de HTTPS)",
+      "missing_protections": "Il manque des protections de sécurité de base",
+      "raw_ip_address": "L'adresse est un numéro, pas un vrai nom",
+      "unusual_connection": "Utilise une connexion inhabituelle",
+      "hidden_destination": "Cache où mène vraiment le lien",
+      "very_new_site": "Ce site a été créé très récemment",
+      "scam_words": "L'adresse contient des mots typiques des arnaques",
+      "carries_personal_data": "Le lien transporte vos données personnelles",
+      "long_complex_address": "L'adresse est anormalement longue et compliquée",
+      "many_redirects": "Le lien rebondit par plusieurs sites",
+      "risky_ending": "Utilise une terminaison prisée des arnaques",
+      "risky_registrar": "Enregistré via un service prisé des arnaqueurs",
+      "random_name": "Le nom semble généré au hasard",
+      "detector_suspicious": "Notre détecteur juge ce site suspect",
+      "well_known_site": "Un site web connu et fiable",
+      "popular_site": "Un site très utilisé et populaire",
+      "detector_safe": "Notre détecteur juge ce site sûr"
     }
   }
 }

@@ -269,6 +269,12 @@ def _format_public_result(
         "confidence_pct": confidence_pct,
         "verdict": verdicts.get(result.level.value, ""),
         "signals": [r.detail for r in (result.reasons or [])[:5]],
+        # Machine-readable code per signal, positionally aligned with `signals`.
+        # Clients localize from the code (mobile.reason.<code>) and fall back to
+        # the English `detail` for codes they don't map — so an Arabic or
+        # Russian user stops seeing "Site does not use HTTPS encryption" in
+        # English, which broke the grandma-grade promise on a 10-locale app.
+        "reason_codes": [r.signal for r in (result.reasons or [])[:5]],
         "checked_at": datetime.now(timezone.utc).isoformat(),
         # Side-by-side comparison — nobody else publishes this.
         # Renders as a 'vs Cloudflare' card on the landing scorecard.

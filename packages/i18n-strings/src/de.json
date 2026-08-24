@@ -1535,6 +1535,34 @@
       "allow_action": "Kein Betrug – zulassen",
       "allowed_title": "Seite zugelassen",
       "allowed_text": "{{domain}} ist jetzt zugelassen. Rückgängig in Einstellungen → Zugelassene Seiten."
+    },
+    "reason": {
+      "flagged_dangerous": "Google stuft diese Seite als gefährlich ein",
+      "flagged_phishing": "Als Phishing gemeldet",
+      "on_blocklists": "Auf vertrauenswürdigen Betrugs- und Spam-Listen",
+      "threat_reports": "In Bedrohungsberichten erwähnt",
+      "spreads_malware": "Bekannt für die Verbreitung von Schadsoftware",
+      "imitates_brand": "Der Name ahmt eine bekannte Marke nach",
+      "lookalike_letters": "Nutzt ähnliche Buchstaben, um dich zu täuschen",
+      "fake_brand_address": "Ein bekannter Markenname steckt in einer gefälschten Adresse",
+      "copies_brand_icon": "Kopiert das Symbol einer bekannten Marke",
+      "no_https": "Die Verbindung ist nicht sicher (kein HTTPS)",
+      "missing_protections": "Grundlegende Sicherheitsvorkehrungen fehlen",
+      "raw_ip_address": "Die Adresse ist eine Zahl, kein echter Name",
+      "unusual_connection": "Nutzt eine ungewöhnliche Verbindung",
+      "hidden_destination": "Verbirgt, wohin der Link wirklich führt",
+      "very_new_site": "Diese Seite wurde erst kürzlich erstellt",
+      "scam_words": "Die Adresse enthält typische Betrugswörter",
+      "carries_personal_data": "Der Link trägt deine persönlichen Daten in sich",
+      "long_complex_address": "Die Adresse ist ungewöhnlich lang und verworren",
+      "many_redirects": "Der Link springt über mehrere Seiten",
+      "risky_ending": "Nutzt eine Endung, die Betrüger bevorzugen",
+      "risky_registrar": "Über einen bei Betrügern beliebten Dienst registriert",
+      "random_name": "Der Name wirkt zufällig erzeugt",
+      "detector_suspicious": "Unser Detektor findet diese Seite verdächtig",
+      "well_known_site": "Eine bekannte, vertrauenswürdige Website",
+      "popular_site": "Eine weit verbreitete, beliebte Website",
+      "detector_safe": "Unser Detektor hält diese Seite für sicher"
     }
   }
 }

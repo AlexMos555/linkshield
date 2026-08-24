@@ -1535,6 +1535,34 @@
       "allow_action": "Non è una truffa: consenti",
       "allowed_title": "Sito consentito",
       "allowed_text": "{{domain}} ora è consentito. Puoi annullare in Impostazioni → Siti consentiti."
+    },
+    "reason": {
+      "flagged_dangerous": "Google segnala questo sito come pericoloso",
+      "flagged_phishing": "Segnalato come phishing",
+      "on_blocklists": "In elenchi affidabili di truffe e spam",
+      "threat_reports": "Citato in report sulle minacce",
+      "spreads_malware": "Noto per diffondere malware",
+      "imitates_brand": "Il nome imita un marchio noto",
+      "lookalike_letters": "Usa lettere simili per ingannarti",
+      "fake_brand_address": "Un nome di marca affidabile nascosto in un indirizzo falso",
+      "copies_brand_icon": "Copia l'icona di un marchio noto",
+      "no_https": "La connessione non è sicura (niente HTTPS)",
+      "missing_protections": "Mancano protezioni di sicurezza di base",
+      "raw_ip_address": "L'indirizzo è un numero, non un nome vero",
+      "unusual_connection": "Usa un modo insolito di connettersi",
+      "hidden_destination": "Nasconde dove porta davvero il link",
+      "very_new_site": "Questo sito è stato creato da pochissimo",
+      "scam_words": "L'indirizzo contiene parole tipiche delle truffe",
+      "carries_personal_data": "Il link porta con sé i tuoi dati personali",
+      "long_complex_address": "L'indirizzo è insolitamente lungo e complicato",
+      "many_redirects": "Il link rimbalza tra più siti",
+      "risky_ending": "Usa una terminazione che le truffe preferiscono",
+      "risky_registrar": "Registrato con un servizio usato dai truffatori",
+      "random_name": "Il nome sembra generato a caso",
+      "detector_suspicious": "Il nostro rilevatore lo ritiene sospetto",
+      "well_known_site": "Un sito web noto e affidabile",
+      "popular_site": "Un sito molto usato e popolare",
+      "detector_safe": "Il nostro rilevatore ritiene questo sito sicuro"
     }
   }
 }

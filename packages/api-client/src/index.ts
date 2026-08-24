@@ -45,8 +45,10 @@ export interface PublicCheckResponse {
   score: number;
   level: string;
   safe: boolean;
-  /** Plain-language signal descriptions. Empty array for a clean domain. */
+  /** Plain-language signal descriptions (English). Empty array for a clean domain. */
   signals?: string[] | null;
+  /** Machine-readable code per signal, positionally aligned with `signals`. */
+  reason_codes?: string[] | null;
   /** One-sentence plain-language summary, already written for a lay reader. */
   verdict?: string | null;
   confidence?: string | null;
@@ -65,8 +67,13 @@ export interface PublicCheckResult {
   score: number;
   level: string;
   safe: boolean;
-  /** Mapped from `signals`. `weight` is absent — the public endpoint does not score per signal. */
-  reasons: Array<{ detail: string; weight?: number }>;
+  /**
+   * Mapped from `signals` + `reason_codes`. `detail` is the English text;
+   * `code` (when present) lets a client show a localized label and fall back
+   * to `detail` for codes it doesn't map. `weight` is absent — the public
+   * endpoint does not score per signal.
+   */
+  reasons: Array<{ detail: string; code?: string; weight?: number }>;
   verdict?: string;
   confidence?: string;
   confidence_pct?: number;
@@ -75,12 +82,15 @@ export interface PublicCheckResult {
 
 export function normalizePublicCheck(raw: PublicCheckResponse): PublicCheckResult {
   const signals = Array.isArray(raw.signals) ? raw.signals : [];
+  const codes = Array.isArray(raw.reason_codes) ? raw.reason_codes : [];
   return {
     domain: raw.domain,
     score: raw.score,
     level: raw.level,
     safe: raw.safe,
-    reasons: signals.filter((s) => typeof s === "string" && s.length > 0).map((detail) => ({ detail })),
+    reasons: signals
+      .map((detail, i) => ({ detail, code: typeof codes[i] === "string" ? codes[i] : undefined }))
+      .filter((r) => typeof r.detail === "string" && r.detail.length > 0),
     verdict: raw.verdict ?? undefined,
     confidence: raw.confidence ?? undefined,
     confidence_pct: typeof raw.confidence_pct === "number" ? raw.confidence_pct : undefined,

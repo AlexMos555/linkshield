@@ -1535,6 +1535,34 @@
       "allow_action": "Não é golpe — permitir",
       "allowed_title": "Site permitido",
       "allowed_text": "{{domain}} agora está permitido. Você pode desfazer em Configurações → Sites permitidos."
+    },
+    "reason": {
+      "flagged_dangerous": "O Google marca este site como perigoso",
+      "flagged_phishing": "Denunciado como phishing",
+      "on_blocklists": "Em listas confiáveis de golpes e spam",
+      "threat_reports": "Mencionado em relatórios de ameaças",
+      "spreads_malware": "Conhecido por espalhar malware",
+      "imitates_brand": "O nome imita uma marca conhecida",
+      "lookalike_letters": "Usa letras parecidas para te enganar",
+      "fake_brand_address": "Um nome de marca confiável escondido num endereço falso",
+      "copies_brand_icon": "Copia o ícone de uma marca conhecida",
+      "no_https": "A conexão não é segura (sem HTTPS)",
+      "missing_protections": "Faltam proteções básicas de segurança",
+      "raw_ip_address": "O endereço é um número, não um nome real",
+      "unusual_connection": "Usa uma forma incomum de se conectar",
+      "hidden_destination": "Esconde para onde o link realmente leva",
+      "very_new_site": "Este site foi criado há muito pouco tempo",
+      "scam_words": "O endereço tem palavras típicas de golpes",
+      "carries_personal_data": "O link carrega seus dados pessoais dentro dele",
+      "long_complex_address": "O endereço é longo e confuso demais",
+      "many_redirects": "O link salta por vários sites",
+      "risky_ending": "Usa uma terminação que golpistas preferem",
+      "risky_registrar": "Registrado por um serviço usado por golpistas",
+      "random_name": "O nome parece gerado aleatoriamente",
+      "detector_suspicious": "Nosso detector considera este site suspeito",
+      "well_known_site": "Um site conhecido e confiável",
+      "popular_site": "Um site muito usado e popular",
+      "detector_safe": "Nosso detector considera este site seguro"
     }
   }
 }

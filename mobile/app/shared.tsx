@@ -21,6 +21,7 @@ import {
 } from "../src/utils/theme";
 import { checkDomain, PublicCheckResult, ApiError } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
+import { reasonLabel } from "../src/utils/reason-label";
 import { toCheckableHost } from "../src/utils/host";
 
 type ErrorKind = "no_url" | ApiError["kind"];
@@ -155,7 +156,7 @@ export default function SharedScreen() {
           {shown.map((r, i) => (
             <View key={i} style={[s.signalRow, i > 0 && s.signalBorder]}>
               <View style={[s.signalDot, { backgroundColor: color }]} />
-              <Text style={s.signalText}>{r.detail}</Text>
+              <Text style={s.signalText}>{reasonLabel(r, t)}</Text>
             </View>
           ))}
           {hidden > 0 && (

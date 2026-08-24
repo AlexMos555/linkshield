@@ -1477,6 +1477,34 @@
       "allow_action": "Not a scam — allow it",
       "allowed_title": "Site allowed",
       "allowed_text": "{{domain}} is allowed now. You can undo this in Settings → Allowed sites."
+    },
+    "reason": {
+      "flagged_dangerous": "Google flags this site as dangerous",
+      "flagged_phishing": "Reported as phishing",
+      "on_blocklists": "On trusted scam and spam blocklists",
+      "threat_reports": "Mentioned in threat-intelligence reports",
+      "spreads_malware": "Known to spread malware",
+      "imitates_brand": "The name imitates a well-known brand",
+      "lookalike_letters": "Uses look-alike letters to fool you",
+      "fake_brand_address": "A trusted brand name is hidden inside a fake address",
+      "copies_brand_icon": "Copies a well-known brand's icon",
+      "no_https": "The connection isn't secure (no HTTPS)",
+      "missing_protections": "Missing basic security protections",
+      "raw_ip_address": "The address is a raw number, not a real name",
+      "unusual_connection": "Uses an unusual way to connect",
+      "hidden_destination": "Hides where the link really goes",
+      "very_new_site": "This site was created very recently",
+      "scam_words": "The address contains words scams often use",
+      "carries_personal_data": "The link carries your personal details in it",
+      "long_complex_address": "The address is unusually long and complex",
+      "many_redirects": "The link bounces through several sites",
+      "risky_ending": "Uses an ending that scams favor",
+      "risky_registrar": "Registered through a service scammers often use",
+      "random_name": "The name looks randomly generated",
+      "detector_suspicious": "Our detector finds this site suspicious",
+      "well_known_site": "A well-known, trusted website",
+      "popular_site": "A widely used, popular website",
+      "detector_safe": "Our detector considers this site safe"
     }
   }
 }

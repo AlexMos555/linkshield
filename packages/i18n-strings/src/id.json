@@ -1535,6 +1535,34 @@
       "allow_action": "Bukan penipuan — izinkan",
       "allowed_title": "Situs diizinkan",
       "allowed_text": "{{domain}} sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan."
+    },
+    "reason": {
+      "flagged_dangerous": "Google menandai situs ini berbahaya",
+      "flagged_phishing": "Dilaporkan sebagai phishing",
+      "on_blocklists": "Ada di daftar tepercaya penipuan dan spam",
+      "threat_reports": "Disebut dalam laporan ancaman",
+      "spreads_malware": "Dikenal menyebarkan malware",
+      "imitates_brand": "Namanya meniru merek terkenal",
+      "lookalike_letters": "Memakai huruf mirip untuk menipumu",
+      "fake_brand_address": "Nama merek tepercaya disembunyikan dalam alamat palsu",
+      "copies_brand_icon": "Menyalin ikon merek terkenal",
+      "no_https": "Koneksi tidak aman (tanpa HTTPS)",
+      "missing_protections": "Tidak ada perlindungan keamanan dasar",
+      "raw_ip_address": "Alamatnya angka, bukan nama sungguhan",
+      "unusual_connection": "Memakai cara koneksi yang tidak biasa",
+      "hidden_destination": "Menyembunyikan ke mana tautan sebenarnya menuju",
+      "very_new_site": "Situs ini baru dibuat",
+      "scam_words": "Alamat memuat kata-kata yang sering dipakai penipu",
+      "carries_personal_data": "Tautan membawa data pribadimu di dalamnya",
+      "long_complex_address": "Alamatnya luar biasa panjang dan berbelit",
+      "many_redirects": "Tautan memantul lewat beberapa situs",
+      "risky_ending": "Memakai akhiran yang disukai penipu",
+      "risky_registrar": "Didaftarkan lewat layanan yang sering dipakai penipu",
+      "random_name": "Namanya tampak dibuat acak",
+      "detector_suspicious": "Detektor kami menilainya mencurigakan",
+      "well_known_site": "Situs web terkenal dan tepercaya",
+      "popular_site": "Situs yang banyak dipakai dan populer",
+      "detector_safe": "Detektor kami menilai situs ini aman"
     }
   }
 }
