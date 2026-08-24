@@ -14,7 +14,7 @@
  */
 import assert from "node:assert/strict";
 
-import { createClient } from "../packages/api-client/src/index.ts";
+import { createClient, normalizePublicCheck } from "../packages/api-client/src/index.ts";
 
 /**
  * Build a client whose `fetchImpl` returns whatever the test fixture says.
@@ -158,6 +158,29 @@ await test("200 → success path still works", async () => {
   const { data, error } = await client.health();
   assert.equal(error, null);
   assert.ok(data);
+});
+
+await test("public check: reason_codes map onto reasons[].code, aligned with detail", () => {
+  const norm = normalizePublicCheck({
+    domain: "evil.tk",
+    score: 90,
+    level: "dangerous",
+    safe: false,
+    signals: ["Site does not use HTTPS", "Reported as phishing"],
+    reason_codes: ["no_https", "phishtank"],
+  });
+  assert.equal(norm.reasons.length, 2);
+  assert.deepEqual(norm.reasons[0], { detail: "Site does not use HTTPS", code: "no_https" });
+  assert.deepEqual(norm.reasons[1], { detail: "Reported as phishing", code: "phishtank" });
+});
+
+await test("public check: missing reason_codes leaves code undefined (older API)", () => {
+  const norm = normalizePublicCheck({
+    domain: "evil.tk", score: 90, level: "dangerous", safe: false,
+    signals: ["Something"],
+  });
+  assert.equal(norm.reasons[0].detail, "Something");
+  assert.equal(norm.reasons[0].code, undefined);
 });
 
 if (failed > 0) {
