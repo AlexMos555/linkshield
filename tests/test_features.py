@@ -86,6 +86,10 @@ def test_public_check_format():
     assert formatted["safe"] is False
     assert formatted["score"] == 85
     assert len(formatted["signals"]) > 0
+    # reason_codes must be positionally aligned with signals so a client can
+    # localize by code and fall back to the English detail.
+    assert formatted["reason_codes"] == ["risky_tld"]
+    assert len(formatted["reason_codes"]) == len(formatted["signals"])
     print("  Public format (dangerous): OK")
 
 
