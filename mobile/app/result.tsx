@@ -123,13 +123,14 @@ export default function ResultScreen() {
         )}
       </View>
 
-      {/* Plain-language summary. The API writes this sentence for a lay reader;
-          the app used to drop it on the floor and show only a number. */}
-      {result.verdict && (
-        <View style={s.card}>
-          <Text style={s.summary}>{result.verdict}</Text>
-        </View>
-      )}
+      {/* Plain-language "what to do", in the user's language. The API also
+          writes an English summary sentence (result.verdict), but showing that
+          on a 10-locale app leaked English into every non-English screen — the
+          reasons below had the same bug. Reuse the localized advice copy that
+          the shared screen already uses; one source of truth for the tone. */}
+      <View style={s.card}>
+        <Text style={s.summary}>{t(`mobile.shared.advice_${level}`)}</Text>
+      </View>
 
       {/* Signals */}
       {result.reasons.length > 0 && (
