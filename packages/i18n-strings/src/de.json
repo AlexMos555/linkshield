@@ -1253,6 +1253,13 @@
         "body": "Cleanway richtet ein lokales VPN auf deinem Handy ein. Nur so erlaubt Android einer App, Website-Abfragen für alle anderen Apps zu filtern.\n\n• Die Liste bekannter Betrugsseiten liegt auf deinem Handy. Namen werden hier abgeglichen, nicht an uns geschickt.\n• Abfragen, die wir nicht blockieren, gehen an einen öffentlichen Resolver (Cloudflare oder Quad9) – so wie dein Handy es ohnehin macht.\n• Kein anderer Datenverkehr wird gelesen, gespeichert oder umgeleitet. Es ist kein Privatsphäre-VPN und verbirgt dein Surfen nicht.\n\nAndroid fragt dich jetzt nach der Erlaubnis.",
         "continue": "Weiter",
         "cancel": "Jetzt nicht"
+      },
+      "linkguard": {
+        "title": "Link checking",
+        "desc": "Cleanway opens links first and checks them before you go",
+        "honesty": "Works when Cleanway is set as your link-opening app",
+        "state_on": "Every link is checked first",
+        "state_setup": "Set Cleanway to open your links"
       }
     },
     "rollout": {

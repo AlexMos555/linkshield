@@ -15,6 +15,7 @@ import { ShieldCard } from "../../src/components/shield/ShieldCard";
 import { useNetworkShield } from "../../src/hooks/useNetworkShield";
 import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
 import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
+import { useLinkGuard } from "../../src/hooks/useLinkGuard";
 import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
 
 /**
@@ -38,7 +39,9 @@ function rolloutItems(t: TFunction, platform: string): RolloutItem[] {
     title: t("mobile.shield.messages.title"),
     line: t(platform === "android" ? "mobile.rollout.messages_android" : "mobile.rollout.messages_ios"),
   };
-  if (platform === "android") return [browser, messages];
+  // On Android the browser/link layer is no longer "rolling out" — it ships as
+  // the Link-checking shield card above. Only SMS remains a rollout item here.
+  if (platform === "android") return [messages];
   return [
     {
       icon: "globe-outline",
@@ -55,6 +58,9 @@ export default function HomeScreen() {
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const network = useNetworkShield();
+  // The link guard (Android): when Cleanway is the default link handler, tapped
+  // links are checked before they open — the exact SMS-phishing defense.
+  const linkGuard = useLinkGuard();
   // What the DNS shield did — including while the app was closed. Merged
   // into the activity card so "Blocked" counts real protection, not only
   // links the person pasted by hand.
@@ -250,6 +256,28 @@ export default function HomeScreen() {
               <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
             </TouchableOpacity>
           )}
+        </View>
+      )}
+
+      {linkGuard.available && (
+        <View style={s.section}>
+          <ShieldCard
+            icon="link-outline"
+            title={t("mobile.shield.linkguard.title")}
+            description={t("mobile.shield.linkguard.desc")}
+            honesty={t("mobile.shield.linkguard.honesty")}
+            // Live RoleManager check — green here means Cleanway really is the
+            // default link handler, not a placebo. Setup offers to become one.
+            state={linkGuard.on ? "on" : "setup"}
+            stateCopy={
+              linkGuard.on
+                ? t("mobile.shield.linkguard.state_on")
+                : t("mobile.shield.linkguard.state_setup")
+            }
+            onAction={() => {
+              if (!linkGuard.on) void linkGuard.enable();
+            }}
+          />
         </View>
       )}
 

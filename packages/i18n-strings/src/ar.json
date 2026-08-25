@@ -1253,6 +1253,13 @@
         "body": "ينشئ Cleanway شبكة VPN محلية على هاتفك. هذه هي الطريقة الوحيدة التي يسمح بها Android لتطبيق بتصفية طلبات المواقع لبقية التطبيقات.\n\n• قائمة مواقع الاحتيال المعروفة محفوظة على هاتفك. تُطابق الأسماء هنا ولا تُرسل إلينا.\n• الطلبات التي لا نحظرها تذهب إلى محلّل أسماء عام (Cloudflare أو Quad9)، تمامًا كما يعمل هاتفك الآن.\n• لا تُقرأ أي بيانات أخرى ولا تُسجّل ولا يُعاد توجيهها. هذه ليست VPN للخصوصية ولا تخفي تصفّحك.\n\nسيطلب منك Android الآن السماح بالاتصال.",
         "continue": "متابعة",
         "cancel": "ليس الآن"
+      },
+      "linkguard": {
+        "title": "Link checking",
+        "desc": "Cleanway opens links first and checks them before you go",
+        "honesty": "Works when Cleanway is set as your link-opening app",
+        "state_on": "Every link is checked first",
+        "state_setup": "Set Cleanway to open your links"
       }
     },
     "rollout": {

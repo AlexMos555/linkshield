@@ -1253,6 +1253,13 @@
         "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju resolver publik (Cloudflare atau Quad9), sama seperti cara HP kamu bekerja sekarang.\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nAndroid sekarang akan meminta izin.",
         "continue": "Lanjutkan",
         "cancel": "Nanti saja"
+      },
+      "linkguard": {
+        "title": "Link checking",
+        "desc": "Cleanway opens links first and checks them before you go",
+        "honesty": "Works when Cleanway is set as your link-opening app",
+        "state_on": "Every link is checked first",
+        "state_setup": "Set Cleanway to open your links"
       }
     },
     "rollout": {

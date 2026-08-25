@@ -1195,6 +1195,13 @@
         "body": "Cleanway sets up a local VPN on your phone. That is how Android lets an app filter website lookups for every other app.\n\n• The list of known scam sites is stored on your phone. Website names are matched here, not sent to us.\n• Lookups we don't block go to a public resolver (Cloudflare or Quad9), the same way your phone already works.\n• No other traffic is read, recorded or redirected. It is not a privacy VPN and does not hide your browsing.\n\nAndroid will now ask you to allow the connection.",
         "continue": "Continue",
         "cancel": "Not now"
+      },
+      "linkguard": {
+        "title": "Link checking",
+        "desc": "Cleanway opens links first and checks them before you go",
+        "honesty": "Works when Cleanway is set as your link-opening app",
+        "state_on": "Every link is checked first",
+        "state_setup": "Set Cleanway to open your links"
       }
     },
     "rollout": {
