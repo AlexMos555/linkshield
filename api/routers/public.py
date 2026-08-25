@@ -232,6 +232,22 @@ async def public_check(domain: str, request: Request):
     return _format_public_result(result)
 
 
+def _verdict_reasons(result) -> list:
+    """Top reasons whose direction matches the verdict (see _format_public_result).
+
+    Dangerous/caution → only risk-increasing signals (weight > 0). Safe → the
+    positive ones. If polarity filtering empties the list (e.g. a verdict
+    driven entirely by a hard blocklist hit with odd weights), fall back to the
+    unfiltered top-5 so the card is never reasonless.
+    """
+    reasons = list(result.reasons or [])
+    if not reasons:
+        return []
+    is_safe = result.level == RiskLevel.safe
+    matched = [r for r in reasons if (r.weight <= 0) == is_safe]
+    return (matched or reasons)[:5]
+
+
 def _format_public_result(
     result: DomainResult,
     competitors: list[dict] | None = None,
@@ -268,13 +284,19 @@ def _format_public_result(
         "confidence": result.confidence.value if hasattr(result, 'confidence') else "medium",
         "confidence_pct": confidence_pct,
         "verdict": verdicts.get(result.level.value, ""),
-        "signals": [r.detail for r in (result.reasons or [])[:5]],
+        # Show reasons that match the verdict's direction. A DANGEROUS/CAUTION
+        # result must not list a positive signal like "our detector considers
+        # this site safe" (weight <= 0) as a red "why we say this" bullet — a
+        # real contradiction a user hit on amazont-support.com. A SAFE result
+        # keeps its positive reasons ("known legitimate"). Fall back to the
+        # unfiltered top-5 only if filtering would leave nothing to show.
+        "signals": [r.detail for r in _verdict_reasons(result)],
         # Machine-readable code per signal, positionally aligned with `signals`.
         # Clients localize from the code (mobile.reason.<code>) and fall back to
         # the English `detail` for codes they don't map — so an Arabic or
         # Russian user stops seeing "Site does not use HTTPS encryption" in
         # English, which broke the grandma-grade promise on a 10-locale app.
-        "reason_codes": [r.signal for r in (result.reasons or [])[:5]],
+        "reason_codes": [r.signal for r in _verdict_reasons(result)],
         "checked_at": datetime.now(timezone.utc).isoformat(),
         # Side-by-side comparison — nobody else publishes this.
         # Renders as a 'vs Cloudflare' card on the landing scorecard.
