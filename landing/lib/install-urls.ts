@@ -64,10 +64,13 @@ export const PLATFORMS: Record<Platform, PlatformInfo> = {
     status: "Native app after launch",
   },
   android: {
+    // The Android CTA now leads to the download/install page (/android), the
+    // front door of the Tele2 funnel. The page itself gates on whether the
+    // signed APK is hosted yet (NEXT_PUBLIC_APK_URL) — so this is a real,
+    // clickable destination even before the store listings exist.
     label: "Android",
-    href: "/dns",
-    available: false,
-    status: "Native app after launch",
+    href: "/android",
+    available: true,
   },
   outlook: {
     label: "Outlook",
