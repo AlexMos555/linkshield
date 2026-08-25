@@ -29,7 +29,10 @@ import { isSupabaseConfigured } from "../src/services/supabase";
 
 type Step = "email" | "code";
 
-const RESEND_COOLDOWN_S = 30;
+// Must be >= Supabase's per-address email-OTP rate limit (default 60s), or the
+// "Resend" button would deterministically 429 the moment the countdown ends.
+// 62s gives a small margin over the server window.
+const RESEND_COOLDOWN_S = 62;
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -176,8 +179,10 @@ export default function AuthScreen() {
               value={code}
               onChangeText={(v) => setCode(v.replace(/\D/g, "").slice(0, OTP_CODE_LEN))}
               keyboardType="number-pad"
+              // iOS can surface an email-delivered code from Mail via
+              // oneTimeCode; no Android "sms-otp" hint — the code comes by email,
+              // not SMS, so that autofill channel would never fire.
               textContentType="oneTimeCode"
-              autoComplete="sms-otp"
               maxLength={OTP_CODE_LEN}
               accessibilityLabel={t("mobile.auth.code_title")}
               editable={!loading}
