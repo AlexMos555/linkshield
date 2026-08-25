@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cleanway",
     "slug": "cleanway",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cleanway",
@@ -30,7 +30,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
-      "versionCode": 1,
+      "versionCode": 100,
       "permissions": [
         "android.permission.BIND_VPN_SERVICE",
         "android.permission.FOREGROUND_SERVICE",
