@@ -118,13 +118,20 @@ object BlockNotifier {
                 else -> context.getString(R.string.blocked_title) to
                     context.getString(R.string.blocked_text, domain)
             }
-            val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            val pending = launch?.let {
-                PendingIntent.getActivity(
-                    context, 1, it,
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
+            // Tapping "Cleanway stopped X" opens the branded detail for that
+            // exact site (why it was blocked), not just the app home — the
+            // "details in the app" the block promises. Deep-links into the
+            // link-check screen for the domain.
+            val detail = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(
+                "cleanway:///shared?url=" + android.net.Uri.encode("http://$domain") + "&via=guard"
+            )).apply {
+                component = android.content.ComponentName(context.packageName, "ai.cleanway.app.MainActivity")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
+            val pending = PendingIntent.getActivity(
+                context, domain.hashCode() and 0xffff, detail,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
             // The escape hatch, where the person actually is when their site
             // breaks: one tap and it works again, with the shield still on.
             // Without it the only remedy for a false positive is turning
