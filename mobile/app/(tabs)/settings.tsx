@@ -6,6 +6,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { SUPPORTED_LOCALES, LOCALE_NAMES, changeLocale, localeChangeNeedsReload, type SupportedLocale } from "../../src/i18n";
 import { colors, type as typo, space, radius, sectionHeader } from "../../src/utils/theme";
 import { pruneOldChecks } from "../../src/services/database";
 import { getSessionState, signOut } from "../../src/services/auth";
@@ -72,7 +73,8 @@ async function pushSkillToApi(
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [locale, setLocale] = useState<SupportedLocale>(() => (i18n.language as SupportedLocale));
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   // Set the moment the user taps a skill this focus; the in-flight remote
@@ -142,6 +144,18 @@ export default function SettingsScreen() {
     })();
     return () => { cancelled = true; };
   }, []));
+
+  async function handleLanguageChange(next: SupportedLocale): Promise<void> {
+    if (next === locale) return;
+    // A direction flip (to/from Arabic) only takes full effect after a reload;
+    // warn rather than leave the layout half-mirrored.
+    const needsReload = localeChangeNeedsReload(next);
+    await changeLocale(next);
+    setLocale(next);
+    if (needsReload) {
+      Alert.alert(t("mobile.settings.language_reload_title"), t("mobile.settings.language_reload_body"));
+    }
+  }
 
   function confirmSignOut(): void {
     Alert.alert(t("mobile.settings.sign_out_confirm_title"), t("mobile.settings.sign_out_confirm_body"), [
@@ -292,6 +306,19 @@ export default function SettingsScreen() {
                  iconColor={on ? colors.green : colors.textMuted}
                  role="radio" selected={on} a11yLabel={`${label}. ${desc}`}
                  onPress={() => void handleSkillChange(value)}
+                 right={<Ionicons name={on ? "radio-button-on" : "radio-button-off"} size={22}
+                                  color={on ? colors.green : colors.textDisabled} />} />
+          );
+        })}
+      </Section>
+
+      <Section title={t("mobile.settings.language")} footnote={t("mobile.settings.language_note")}>
+        {SUPPORTED_LOCALES.map((code, i) => {
+          const on = locale === code;
+          return (
+            <Row key={code} first={i === 0} label={LOCALE_NAMES[code]}
+                 role="radio" selected={on} a11yLabel={LOCALE_NAMES[code]}
+                 onPress={() => void handleLanguageChange(code)}
                  right={<Ionicons name={on ? "radio-button-on" : "radio-button-off"} size={22}
                                   color={on ? colors.green : colors.textDisabled} />} />
           );

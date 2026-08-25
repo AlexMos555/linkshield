@@ -1439,7 +1439,11 @@
       "allowed_remove": "Remover",
       "allowed_empty": "Nenhum site permitido",
       "allow_confirm_title": "Permitir este site",
-      "allow_confirm_body": "{{domain}} não será bloqueado até você removê-lo aqui. Faça isso só se conhecer o site."
+      "allow_confirm_body": "{{domain}} não será bloqueado até você removê-lo aqui. Faça isso só se conhecer o site.",
+      "language": "Idioma",
+      "language_note": "Escolha o idioma do app.",
+      "language_reload_title": "Reinício necessário",
+      "language_reload_body": "Feche e abra o app novamente para concluir a mudança de direção do texto."
     },
     "family": {
       "title": "Central da Família",

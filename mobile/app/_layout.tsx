@@ -14,6 +14,7 @@ import { setAuthToken } from "../src/services/api";
 // device, and every string fell back to the en hard-coded literal.
 // (Audit mobile-ts HIGH mobile-i18n-dead-code.)
 import "../src/i18n";
+import { restoreSavedLocale } from "../src/i18n";
 // Side-effecting import: initialises @sentry/react-native with the
 // PII scrubber + privacy-conservative defaults. No-op when
 // EXPO_PUBLIC_SENTRY_DSN is unset (dev / Expo Go) so this stays a
@@ -93,6 +94,9 @@ function ShareIntentRouter() {
 
 export default function RootLayout() {
   const { t } = useTranslation();
+  // Apply the saved language choice (Settings → Language) over the device
+  // locale, once, at start.
+  useEffect(() => { void restoreSavedLocale(); }, []);
 
   // Preload the icon font, and shout if it fails.
   //

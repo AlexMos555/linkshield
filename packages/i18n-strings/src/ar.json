@@ -1439,7 +1439,11 @@
       "allowed_remove": "إزالة",
       "allowed_empty": "لا توجد مواقع مسموح بها",
       "allow_confirm_title": "السماح بهذا الموقع",
-      "allow_confirm_body": "لن يُحظر {{domain}} حتى تزيله من هنا. لا تفعل ذلك إلا إذا كنت تعرف الموقع."
+      "allow_confirm_body": "لن يُحظر {{domain}} حتى تزيله من هنا. لا تفعل ذلك إلا إذا كنت تعرف الموقع.",
+      "language": "اللغة",
+      "language_note": "اختر لغة التطبيق.",
+      "language_reload_title": "يلزم إعادة التشغيل",
+      "language_reload_body": "أغلق التطبيق وافتحه من جديد لإكمال تغيير اتجاه النص."
     },
     "family": {
       "title": "مركز العائلة",

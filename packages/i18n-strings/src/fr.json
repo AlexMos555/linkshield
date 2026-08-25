@@ -1439,7 +1439,11 @@
       "allowed_remove": "Retirer",
       "allowed_empty": "Aucun site autorisé",
       "allow_confirm_title": "Autoriser ce site",
-      "allow_confirm_body": "{{domain}} ne sera plus bloqué tant que vous ne le retirez pas ici. À faire seulement si vous connaissez le site."
+      "allow_confirm_body": "{{domain}} ne sera plus bloqué tant que vous ne le retirez pas ici. À faire seulement si vous connaissez le site.",
+      "language": "Langue",
+      "language_note": "Choisissez la langue de l'application.",
+      "language_reload_title": "Redémarrage nécessaire",
+      "language_reload_body": "Fermez et rouvrez l'application pour terminer le changement de sens du texte."
     },
     "family": {
       "title": "Espace famille",

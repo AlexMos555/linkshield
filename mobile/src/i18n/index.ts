@@ -14,6 +14,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import * as Localization from "expo-localization";
+import * as SecureStore from "expo-secure-store";
 import { I18nManager } from "react-native";
 
 import en from "../../i18n/en.json";
@@ -108,9 +109,46 @@ i18n
 
 applyRTL(initialLocale);
 
+/**
+ * Key for the user's explicit language choice (Settings → Language). It
+ * overrides the device locale — the point of a manual picker on an RU-first
+ * product is that a phone whose system language is not Russian can still run
+ * the app in Russian.
+ */
+const LOCALE_OVERRIDE_KEY = "cleanway.locale";
+
+/** True when switching to `next` flips the layout direction (needs a reload). */
+export function localeChangeNeedsReload(next: SupportedLocale): boolean {
+  return RTL_LOCALES.includes(next) !== I18nManager.isRTL;
+}
+
 export async function changeLocale(locale: SupportedLocale): Promise<void> {
   await i18n.changeLanguage(locale);
   applyRTL(locale);
+  try {
+    await SecureStore.setItemAsync(LOCALE_OVERRIDE_KEY, locale);
+  } catch {
+    // A persisted preference that fails to save is not worth crashing over;
+    // the device locale remains the fallback next launch.
+  }
+}
+
+/**
+ * Apply the saved language override, if any. Called once at app start after
+ * the synchronous device-locale init — a brief device-locale frame is
+ * acceptable, and in the common case (device already in the chosen language)
+ * there is no visible change.
+ */
+export async function restoreSavedLocale(): Promise<void> {
+  try {
+    const saved = await SecureStore.getItemAsync(LOCALE_OVERRIDE_KEY);
+    if (saved && (SUPPORTED_LOCALES as readonly string[]).includes(saved) && saved !== i18n.language) {
+      await i18n.changeLanguage(saved as SupportedLocale);
+      applyRTL(saved as SupportedLocale);
+    }
+  } catch {
+    // No saved preference or storage unavailable: keep the device locale.
+  }
 }
 
 export default i18n;

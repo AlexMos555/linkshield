@@ -1439,7 +1439,11 @@
       "allowed_remove": "Rimuovi",
       "allowed_empty": "Nessun sito consentito",
       "allow_confirm_title": "Consenti questo sito",
-      "allow_confirm_body": "{{domain}} non verrà bloccato finché non lo rimuovi qui. Fallo solo se conosci il sito."
+      "allow_confirm_body": "{{domain}} non verrà bloccato finché non lo rimuovi qui. Fallo solo se conosci il sito.",
+      "language": "Lingua",
+      "language_note": "Scegli la lingua dell'app.",
+      "language_reload_title": "Riavvio necessario",
+      "language_reload_body": "Chiudi e riapri l'app per completare il cambio di direzione del testo."
     },
     "family": {
       "title": "Family Hub",

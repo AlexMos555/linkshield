@@ -1439,7 +1439,11 @@
       "allowed_remove": "Entfernen",
       "allowed_empty": "Keine zugelassenen Seiten",
       "allow_confirm_title": "Diese Seite zulassen",
-      "allow_confirm_body": "{{domain}} wird nicht mehr blockiert, bis du sie hier entfernst. Nur wenn du die Seite kennst."
+      "allow_confirm_body": "{{domain}} wird nicht mehr blockiert, bis du sie hier entfernst. Nur wenn du die Seite kennst.",
+      "language": "Sprache",
+      "language_note": "Wähle die Sprache der App.",
+      "language_reload_title": "Neustart nötig",
+      "language_reload_body": "Schließe die App und öffne sie erneut, um die Textrichtung umzustellen."
     },
     "family": {
       "title": "Family Hub",

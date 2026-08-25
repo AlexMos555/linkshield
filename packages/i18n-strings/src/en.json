@@ -1381,7 +1381,11 @@
       "allowed_remove": "Remove",
       "allowed_empty": "No sites allowed",
       "allow_confirm_title": "Allow this site",
-      "allow_confirm_body": "{{domain}} will not be blocked until you remove it here. Only do this if you know the site."
+      "allow_confirm_body": "{{domain}} will not be blocked until you remove it here. Only do this if you know the site.",
+      "language": "Language",
+      "language_note": "Choose the language for the app.",
+      "language_reload_title": "Restart needed",
+      "language_reload_body": "Please close and reopen the app to finish switching the layout direction."
     },
     "family": {
       "title": "Family Hub",

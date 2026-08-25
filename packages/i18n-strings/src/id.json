@@ -1439,7 +1439,11 @@
       "allowed_remove": "Hapus",
       "allowed_empty": "Belum ada situs yang diizinkan",
       "allow_confirm_title": "Izinkan situs ini",
-      "allow_confirm_body": "{{domain}} tidak akan diblokir sampai kamu menghapusnya di sini. Lakukan hanya jika kamu mengenal situsnya."
+      "allow_confirm_body": "{{domain}} tidak akan diblokir sampai kamu menghapusnya di sini. Lakukan hanya jika kamu mengenal situsnya.",
+      "language": "Bahasa",
+      "language_note": "Pilih bahasa aplikasi.",
+      "language_reload_title": "Perlu mulai ulang",
+      "language_reload_body": "Tutup dan buka lagi aplikasi untuk menyelesaikan perubahan arah teks."
     },
     "family": {
       "title": "Family Hub",

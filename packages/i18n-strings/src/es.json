@@ -1379,7 +1379,11 @@
       "allowed_remove": "Quitar",
       "allowed_empty": "No hay sitios permitidos",
       "allow_confirm_title": "Permitir este sitio",
-      "allow_confirm_body": "{{domain}} no se bloqueará hasta que lo quites aquí. Hazlo solo si conoces el sitio."
+      "allow_confirm_body": "{{domain}} no se bloqueará hasta que lo quites aquí. Hazlo solo si conoces el sitio.",
+      "language": "Idioma",
+      "language_note": "Elige el idioma de la app.",
+      "language_reload_title": "Se necesita reiniciar",
+      "language_reload_body": "Cierra y vuelve a abrir la app para terminar de cambiar la dirección del texto."
     },
     "family": {
       "title": "Espacio Familiar",
