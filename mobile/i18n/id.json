@@ -779,5 +779,11 @@
   "mobile.reason.detector_safe": "Detektor kami menilai situs ini aman",
   "mobile.reason.not_a_real_business": "Tidak disiapkan seperti situs perusahaan asli",
   "mobile.reason.shifty_setup": "Situs terus berpindah lokasi — trik penipuan yang umum",
-  "mobile.reason.padded_address": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
+  "mobile.reason.padded_address": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli",
+  "mobile.update.optional_title": "Update available",
+  "mobile.update.optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
+  "mobile.update.required_title": "Please update the app",
+  "mobile.update.required_body": "This version is out of date. Update Cleanway to keep your protection working.",
+  "mobile.update.action": "Update",
+  "mobile.update.later": "Later"
 }

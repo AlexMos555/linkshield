@@ -14,6 +14,8 @@ import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutLis
 import { ShieldCard } from "../../src/components/shield/ShieldCard";
 import { useNetworkShield } from "../../src/hooks/useNetworkShield";
 import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
+import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
+import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
 
 /**
  * Shield Checklist home (docs/MOBILE_AUTO_PROTECTION.md §2,
@@ -57,7 +59,10 @@ export default function HomeScreen() {
   // into the activity card so "Blocked" counts real protection, not only
   // links the person pasted by hand.
   const shieldTotals = useShieldBlockTotals();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Sideloaded (Tele2 direct-APK) users have no store to push updates; offer a
+  // fresher build here, and insist if the running one is below the security floor.
+  const update = useUpdateCheck(i18n.language);
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -127,6 +132,8 @@ export default function HomeScreen() {
         attention={false}
         interrupted={needsSetup && network.interrupted}
       />
+
+      <UpdateBanner status={update} />
 
       {needsSetup && (
         <>

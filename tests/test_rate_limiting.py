@@ -477,6 +477,12 @@ def test_every_router_imports_rate_limit_helper():
             # See docs/TELE2_LAUNCH_PLAN.md B4 + the router's own comment.
             if path.name == "blocklist.py":
                 continue
+            # mobile.py (GET /mobile/version) is unlimited for the same reason:
+            # a tiny, cacheable public JSON the app polls at launch, hit from
+            # the same Tele2 CGNAT pool. A per-IP 429 there would blind fresh
+            # installs to a required security update. See TELE2_LAUNCH_PLAN.md.
+            if path.name == "mobile.py":
+                continue
             missing.append(path.name)
     assert missing == [], f"Routers without rate limit import: {missing}"
 

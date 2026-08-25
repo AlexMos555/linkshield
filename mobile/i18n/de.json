@@ -779,5 +779,11 @@
   "mobile.reason.detector_safe": "Unser Detektor hält diese Seite für sicher",
   "mobile.reason.not_a_real_business": "Nicht wie die Seite einer echten Firma eingerichtet",
   "mobile.reason.shifty_setup": "Die Seite wechselt ständig ihren Standort – ein typischer Betrugstrick",
-  "mobile.reason.padded_address": "Die Adresse ist mit Zusätzen aufgebläht, um den echten Namen zu verstecken"
+  "mobile.reason.padded_address": "Die Adresse ist mit Zusätzen aufgebläht, um den echten Namen zu verstecken",
+  "mobile.update.optional_title": "Update available",
+  "mobile.update.optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
+  "mobile.update.required_title": "Please update the app",
+  "mobile.update.required_body": "This version is out of date. Update Cleanway to keep your protection working.",
+  "mobile.update.action": "Update",
+  "mobile.update.later": "Later"
 }

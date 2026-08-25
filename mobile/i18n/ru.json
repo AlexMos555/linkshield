@@ -779,5 +779,11 @@
   "mobile.reason.detector_safe": "Наш детектор считает этот сайт безопасным",
   "mobile.reason.not_a_real_business": "Не настроен как сайт настоящей компании",
   "mobile.reason.shifty_setup": "Сайт постоянно меняет адрес — частый приём мошенников",
-  "mobile.reason.padded_address": "В адрес добавлены лишние части, чтобы спрятать настоящее имя"
+  "mobile.reason.padded_address": "В адрес добавлены лишние части, чтобы спрятать настоящее имя",
+  "mobile.update.optional_title": "Доступно обновление",
+  "mobile.update.optional_body": "Вышла новая версия Cleanway. Обновите, чтобы защита была актуальной.",
+  "mobile.update.required_title": "Нужно обновить приложение",
+  "mobile.update.required_body": "Эта версия устарела. Обновите Cleanway, чтобы защита продолжала работать.",
+  "mobile.update.action": "Обновить",
+  "mobile.update.later": "Позже"
 }

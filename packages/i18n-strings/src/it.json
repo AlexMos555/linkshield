@@ -1619,6 +1619,14 @@
       "not_a_real_business": "Non è configurato come il sito di un'azienda vera",
       "shifty_setup": "Il sito cambia continuamente posizione, un trucco tipico delle truffe",
       "padded_address": "L'indirizzo è gonfiato con parti in più per nascondere il nome vero"
+    },
+    "update": {
+      "optional_title": "Update available",
+      "optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
+      "required_title": "Please update the app",
+      "required_body": "This version is out of date. Update Cleanway to keep your protection working.",
+      "action": "Update",
+      "later": "Later"
     }
   }
 }

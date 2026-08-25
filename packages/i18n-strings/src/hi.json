@@ -1619,6 +1619,14 @@
       "not_a_real_business": "असली कंपनी की साइट जैसा सेटअप नहीं है",
       "shifty_setup": "साइट लगातार अपना पता बदलती रहती है — ठगों की आम चाल",
       "padded_address": "असली नाम छिपाने के लिए पते में अतिरिक्त हिस्से जोड़े गए हैं"
+    },
+    "update": {
+      "optional_title": "Update available",
+      "optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
+      "required_title": "Please update the app",
+      "required_body": "This version is out of date. Update Cleanway to keep your protection working.",
+      "action": "Update",
+      "later": "Later"
     }
   }
 }

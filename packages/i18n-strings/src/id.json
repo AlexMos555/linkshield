@@ -1619,6 +1619,14 @@
       "not_a_real_business": "Tidak disiapkan seperti situs perusahaan asli",
       "shifty_setup": "Situs terus berpindah lokasi — trik penipuan yang umum",
       "padded_address": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
+    },
+    "update": {
+      "optional_title": "Update available",
+      "optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
+      "required_title": "Please update the app",
+      "required_body": "This version is out of date. Update Cleanway to keep your protection working.",
+      "action": "Update",
+      "later": "Later"
     }
   }
 }
