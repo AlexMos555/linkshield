@@ -45,9 +45,15 @@ founder actions — they gate the launch.
 
 ## Phase 3 — build + host the APK
 
-8. **[F] Build the signed release** — `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a`
-   (~42 MB direct APK) and `bundleRelease` (AAB for stores). Confirm it's
-   release-signed (not debug) and updates over itself. docs/RUSTORE_SUBMISSION.md §2.
+8. **[F] Build the signed release — from the mirror sandbox, not the monorepo.**
+   `bash ~/Library/Caches/cleanway-dev/bin/sync.sh`, then Node 22 + JDK 17 +
+   `npx expo prebuild -p android --clean`, then
+   `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a` (~42 MB APK)
+   and `bundleRelease` (AAB). *Building from the repo checkout fails* — the
+   default Node is 25 (SDK 52 needs ≤22) and npm hoists `react-native@0.86.2`
+   to the monorepo root over the app's 0.76.9, breaking Metro. Verified
+   2026-08-25: the JS bundles cleanly in the mirror (4.98 MB). Exact commands +
+   the keystore's physical location: docs/RUSTORE_SUBMISSION.md §1–2.
 9. **[F] Host the signed APK** (GitHub Release or R2 + CDN) and set
    `NEXT_PUBLIC_APK_URL` in Vercel → the `/android` download button goes live.
 10. **[F] Confirm `support@cleanway.ai`** receives mail (store listings require a
