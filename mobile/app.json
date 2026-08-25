@@ -30,6 +30,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
+      "versionCode": 1,
       "permissions": [
         "android.permission.BIND_VPN_SERVICE",
         "android.permission.FOREGROUND_SERVICE",
@@ -65,7 +66,8 @@
           ]
         }
       ],
-      "./plugins/withXcode26Patches"
+      "./plugins/withXcode26Patches",
+      "./plugins/withReleaseSigning"
     ]
   }
 }
