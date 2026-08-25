@@ -731,5 +731,8 @@
   "mobile.reason.detector_suspicious": "Unser Detektor findet diese Seite verdächtig",
   "mobile.reason.well_known_site": "Eine bekannte, vertrauenswürdige Website",
   "mobile.reason.popular_site": "Eine weit verbreitete, beliebte Website",
-  "mobile.reason.detector_safe": "Unser Detektor hält diese Seite für sicher"
+  "mobile.reason.detector_safe": "Unser Detektor hält diese Seite für sicher",
+  "mobile.reason.not_a_real_business": "Nicht wie die Seite einer echten Firma eingerichtet",
+  "mobile.reason.shifty_setup": "Die Seite wechselt ständig ihren Standort – ein typischer Betrugstrick",
+  "mobile.reason.padded_address": "Die Adresse ist mit Zusätzen aufgebläht, um den echten Namen zu verstecken"
 }

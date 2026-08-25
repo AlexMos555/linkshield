@@ -731,5 +731,8 @@
   "mobile.reason.detector_suspicious": "Наш детектор считает этот сайт подозрительным",
   "mobile.reason.well_known_site": "Известный, надёжный сайт",
   "mobile.reason.popular_site": "Широко используемый популярный сайт",
-  "mobile.reason.detector_safe": "Наш детектор считает этот сайт безопасным"
+  "mobile.reason.detector_safe": "Наш детектор считает этот сайт безопасным",
+  "mobile.reason.not_a_real_business": "Не настроен как сайт настоящей компании",
+  "mobile.reason.shifty_setup": "Сайт постоянно меняет адрес — частый приём мошенников",
+  "mobile.reason.padded_address": "В адрес добавлены лишние части, чтобы спрятать настоящее имя"
 }

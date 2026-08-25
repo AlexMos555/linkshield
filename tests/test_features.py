@@ -92,6 +92,32 @@ def test_public_check_format():
     assert len(formatted["reason_codes"]) == len(formatted["signals"])
     print("  Public format (dangerous): OK")
 
+    # A dangerous verdict must not surface a POSITIVE signal (weight <= 0) as a
+    # "why we say this" reason — a real contradiction seen on the device
+    # ("our detector considers this site safe" under an "Опасно" verdict).
+    mixed = DomainResult(
+        domain="amazont-support.com", score=58, level=RiskLevel.dangerous,
+        confidence=ConfidenceLevel.medium,
+        reasons=[
+            DomainReason(signal="no_https", detail="No HTTPS", weight=20),
+            DomainReason(signal="ml_safe_override", detail="Our detector considers this site safe", weight=-30),
+            DomainReason(signal="no_mx_record", detail="No MX record", weight=10),
+        ],
+    )
+    fmt = _format_public_result(mixed)
+    assert "ml_safe_override" not in fmt["reason_codes"], fmt["reason_codes"]
+    assert set(fmt["reason_codes"]) == {"no_https", "no_mx_record"}
+    print("  Public format (no positive signal on danger): OK")
+
+    # …and a SAFE verdict keeps its positive reasons.
+    safe_mixed = DomainResult(
+        domain="google.com", score=0, level=RiskLevel.safe,
+        confidence=ConfidenceLevel.high,
+        reasons=[DomainReason(signal="known_legitimate", detail="Known legitimate", weight=-50)],
+    )
+    assert _format_public_result(safe_mixed)["reason_codes"] == ["known_legitimate"]
+    print("  Public format (safe keeps positive): OK")
+
 
 def test_allowlist_fast_path_hosting():
     """Hosting platform subdomains are NOT auto-trusted."""

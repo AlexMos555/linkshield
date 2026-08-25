@@ -731,5 +731,8 @@
   "mobile.reason.detector_suspicious": "हमारा डिटेक्टर इसे संदिग्ध पाता है",
   "mobile.reason.well_known_site": "एक जानी-मानी, भरोसेमंद वेबसाइट",
   "mobile.reason.popular_site": "एक व्यापक रूप से इस्तेमाल होने वाली लोकप्रिय वेबसाइट",
-  "mobile.reason.detector_safe": "हमारा डिटेक्टर इस साइट को सुरक्षित मानता है"
+  "mobile.reason.detector_safe": "हमारा डिटेक्टर इस साइट को सुरक्षित मानता है",
+  "mobile.reason.not_a_real_business": "असली कंपनी की साइट जैसा सेटअप नहीं है",
+  "mobile.reason.shifty_setup": "साइट लगातार अपना पता बदलती रहती है — ठगों की आम चाल",
+  "mobile.reason.padded_address": "असली नाम छिपाने के लिए पते में अतिरिक्त हिस्से जोड़े गए हैं"
 }

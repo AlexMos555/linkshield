@@ -731,5 +731,8 @@
   "mobile.reason.detector_suspicious": "Detektor kami menilainya mencurigakan",
   "mobile.reason.well_known_site": "Situs web terkenal dan tepercaya",
   "mobile.reason.popular_site": "Situs yang banyak dipakai dan populer",
-  "mobile.reason.detector_safe": "Detektor kami menilai situs ini aman"
+  "mobile.reason.detector_safe": "Detektor kami menilai situs ini aman",
+  "mobile.reason.not_a_real_business": "Tidak disiapkan seperti situs perusahaan asli",
+  "mobile.reason.shifty_setup": "Situs terus berpindah lokasi — trik penipuan yang umum",
+  "mobile.reason.padded_address": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
 }

@@ -731,5 +731,8 @@
   "mobile.reason.detector_suspicious": "Il nostro rilevatore lo ritiene sospetto",
   "mobile.reason.well_known_site": "Un sito web noto e affidabile",
   "mobile.reason.popular_site": "Un sito molto usato e popolare",
-  "mobile.reason.detector_safe": "Il nostro rilevatore ritiene questo sito sicuro"
+  "mobile.reason.detector_safe": "Il nostro rilevatore ritiene questo sito sicuro",
+  "mobile.reason.not_a_real_business": "Non è configurato come il sito di un'azienda vera",
+  "mobile.reason.shifty_setup": "Il sito cambia continuamente posizione, un trucco tipico delle truffe",
+  "mobile.reason.padded_address": "L'indirizzo è gonfiato con parti in più per nascondere il nome vero"
 }

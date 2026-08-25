@@ -731,5 +731,8 @@
   "mobile.reason.detector_suspicious": "يعتبره كاشفنا مريبًا",
   "mobile.reason.well_known_site": "موقع معروف وموثوق",
   "mobile.reason.popular_site": "موقع شائع وواسع الاستخدام",
-  "mobile.reason.detector_safe": "يعتبر كاشفنا هذا الموقع آمنًا"
+  "mobile.reason.detector_safe": "يعتبر كاشفنا هذا الموقع آمنًا",
+  "mobile.reason.not_a_real_business": "ليس مُعدًّا كموقع شركة حقيقية",
+  "mobile.reason.shifty_setup": "يغيّر الموقع مكانه باستمرار — حيلة احتيال شائعة",
+  "mobile.reason.padded_address": "العنوان محشوّ بأجزاء زائدة لإخفاء الاسم الحقيقي"
 }

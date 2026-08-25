@@ -1566,7 +1566,10 @@
       "detector_suspicious": "Unser Detektor findet diese Seite verdächtig",
       "well_known_site": "Eine bekannte, vertrauenswürdige Website",
       "popular_site": "Eine weit verbreitete, beliebte Website",
-      "detector_safe": "Unser Detektor hält diese Seite für sicher"
+      "detector_safe": "Unser Detektor hält diese Seite für sicher",
+      "not_a_real_business": "Nicht wie die Seite einer echten Firma eingerichtet",
+      "shifty_setup": "Die Seite wechselt ständig ihren Standort – ein typischer Betrugstrick",
+      "padded_address": "Die Adresse ist mit Zusätzen aufgebläht, um den echten Namen zu verstecken"
     }
   }
 }

@@ -1566,7 +1566,10 @@
       "detector_suspicious": "Detektor kami menilainya mencurigakan",
       "well_known_site": "Situs web terkenal dan tepercaya",
       "popular_site": "Situs yang banyak dipakai dan populer",
-      "detector_safe": "Detektor kami menilai situs ini aman"
+      "detector_safe": "Detektor kami menilai situs ini aman",
+      "not_a_real_business": "Tidak disiapkan seperti situs perusahaan asli",
+      "shifty_setup": "Situs terus berpindah lokasi — trik penipuan yang umum",
+      "padded_address": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
     }
   }
 }

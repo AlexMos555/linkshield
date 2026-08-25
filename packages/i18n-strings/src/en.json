@@ -1508,7 +1508,10 @@
       "detector_suspicious": "Our detector finds this site suspicious",
       "well_known_site": "A well-known, trusted website",
       "popular_site": "A widely used, popular website",
-      "detector_safe": "Our detector considers this site safe"
+      "detector_safe": "Our detector considers this site safe",
+      "not_a_real_business": "Not set up like a real company's site",
+      "shifty_setup": "The site keeps changing where it lives — a common scam trick",
+      "padded_address": "The address is padded with extra parts to hide the real name"
     }
   }
 }

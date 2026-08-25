@@ -78,6 +78,11 @@ const CODE_TO_KEY: Record<string, string> = {
   excessive_special_chars: "random_name",
   many_special_chars: "random_name",
   hex_encoding: "random_name",
+  // Suspicious infrastructure (DNS/hosting shape)
+  no_mx_record: "not_a_real_business",
+  low_dns_ttl: "shifty_setup",
+  many_a_records: "shifty_setup",
+  excessive_subdomains: "padded_address",
   // ML
   ml_suspicious: "detector_suspicious",
   ml_high_risk: "detector_suspicious",
