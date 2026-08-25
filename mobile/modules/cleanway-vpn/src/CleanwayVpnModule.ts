@@ -40,6 +40,10 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   blockLifetimeCounts?(): { blocked?: number; warned?: number; allowed?: number };
   /** Open a URL in a real (non-Cleanway) browser. False if none available. */
   openInBrowser?(url: string): boolean;
+  /** True when Cleanway is the default web-link handler (browser role). */
+  isDefaultLinkHandler?(): boolean;
+  /** Ask the OS to make Cleanway the default link handler. */
+  requestLinkHandler?(): Promise<boolean>;
   /** Loaded blocklist + freshness. Optional: older native builds lack it. */
   blocklistStatus?(): BlocklistStatus;
   /** Fetch the list now (background). */

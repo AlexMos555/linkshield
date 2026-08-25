@@ -1385,7 +1385,14 @@
       "language": "Idioma",
       "language_note": "Elige el idioma de la app.",
       "language_reload_title": "Se necesita reiniciar",
-      "language_reload_body": "Cierra y vuelve a abrir la app para terminar de cambiar la dirección del texto."
+      "language_reload_body": "Cierra y vuelve a abrir la app para terminar de cambiar la dirección del texto.",
+      "linkguard": "Comprobación de enlaces",
+      "linkguard_note": "Cuando está activo, Cleanway comprueba cada enlace que tocas —en cualquier app— y te avisa antes de que se abra una página fraudulenta. Los enlaces seguros se abren al instante.",
+      "linkguard_on": "Cleanway comprueba tus enlaces",
+      "linkguard_on_desc": "Cada enlace que tocas se comprueba primero.",
+      "linkguard_off": "Comprobar cada enlace",
+      "linkguard_off_desc": "Ahora los enlaces se abren sin comprobar. Actívalo para comprobarlos.",
+      "linkguard_enable": "Configurar"
     },
     "family": {
       "title": "Espacio Familiar",

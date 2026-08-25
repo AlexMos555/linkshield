@@ -1445,7 +1445,14 @@
       "language": "Idioma",
       "language_note": "Escolha o idioma do app.",
       "language_reload_title": "Reinício necessário",
-      "language_reload_body": "Feche e abra o app novamente para concluir a mudança de direção do texto."
+      "language_reload_body": "Feche e abra o app novamente para concluir a mudança de direção do texto.",
+      "linkguard": "Verificação de links",
+      "linkguard_note": "Quando ativo, o Cleanway verifica cada link que você toca — em qualquer app — e avisa antes de abrir uma página de golpe. Links seguros abrem na hora.",
+      "linkguard_on": "O Cleanway verifica seus links",
+      "linkguard_on_desc": "Cada link que você toca é verificado antes.",
+      "linkguard_off": "Verificar cada link",
+      "linkguard_off_desc": "Agora os links abrem sem verificação. Ative para verificá-los.",
+      "linkguard_enable": "Configurar"
     },
     "family": {
       "title": "Central da Família",

@@ -1445,7 +1445,14 @@
       "language": "Sprache",
       "language_note": "Wähle die Sprache der App.",
       "language_reload_title": "Neustart nötig",
-      "language_reload_body": "Schließe die App und öffne sie erneut, um die Textrichtung umzustellen."
+      "language_reload_body": "Schließe die App und öffne sie erneut, um die Textrichtung umzustellen.",
+      "linkguard": "Link-Prüfung",
+      "linkguard_note": "Wenn aktiv, prüft Cleanway jeden Link, den du antippst – in jeder App – und warnt dich, bevor eine Betrugsseite öffnet. Sichere Links öffnen sofort.",
+      "linkguard_on": "Cleanway prüft deine Links",
+      "linkguard_on_desc": "Jeder angetippte Link wird zuerst geprüft.",
+      "linkguard_off": "Jeden Link prüfen",
+      "linkguard_off_desc": "Derzeit öffnen Links ohne Prüfung. Aktiviere dies, um sie zu prüfen.",
+      "linkguard_enable": "Einrichten"
     },
     "family": {
       "title": "Family Hub",

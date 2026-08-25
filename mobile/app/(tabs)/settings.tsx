@@ -13,6 +13,7 @@ import { getSessionState, signOut } from "../../src/services/auth";
 import { clearKeypair } from "../../src/lib/family-crypto";
 import { setAuthToken, getAccountSettings } from "../../src/services/api";
 import { allowedSites, removeAllowedSite } from "../../src/services/shield-log";
+import { isDefaultLinkHandler, requestLinkHandler } from "../../modules/cleanway-vpn";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -75,6 +76,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const [locale, setLocale] = useState<SupportedLocale>(() => (i18n.language as SupportedLocale));
+  const [linkGuardOn, setLinkGuardOn] = useState(false);
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   // Set the moment the user taps a skill this focus; the in-flight remote
@@ -144,6 +146,16 @@ export default function SettingsScreen() {
     })();
     return () => { cancelled = true; };
   }, []));
+
+  useFocusEffect(useCallback(() => {
+    try { setLinkGuardOn(isDefaultLinkHandler()); } catch { /* older native build */ }
+  }, []));
+
+  async function handleLinkGuard(): Promise<void> {
+    await requestLinkHandler();
+    // The OS dialog returns asynchronously; re-read shortly after.
+    setTimeout(() => { try { setLinkGuardOn(isDefaultLinkHandler()); } catch {} }, 800);
+  }
 
   async function handleLanguageChange(next: SupportedLocale): Promise<void> {
     if (next === locale) return;
@@ -310,6 +322,20 @@ export default function SettingsScreen() {
                                   color={on ? colors.green : colors.textDisabled} />} />
           );
         })}
+      </Section>
+
+      <Section title={t("mobile.settings.linkguard")} footnote={t("mobile.settings.linkguard_note")}>
+        <Row
+          first
+          icon={linkGuardOn ? "shield-checkmark-outline" : "link-outline"}
+          iconColor={linkGuardOn ? colors.green : colors.textMuted}
+          label={t(linkGuardOn ? "mobile.settings.linkguard_on" : "mobile.settings.linkguard_off")}
+          desc={t(linkGuardOn ? "mobile.settings.linkguard_on_desc" : "mobile.settings.linkguard_off_desc")}
+          onPress={linkGuardOn ? undefined : () => void handleLinkGuard()}
+          right={linkGuardOn
+            ? <Ionicons name="checkmark-circle" size={22} color={colors.green} />
+            : <Text style={s.pill}>{t("mobile.settings.linkguard_enable")}</Text>}
+        />
       </Section>
 
       <Section title={t("mobile.settings.language")} footnote={t("mobile.settings.language_note")}>

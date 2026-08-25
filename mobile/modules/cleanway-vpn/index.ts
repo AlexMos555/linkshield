@@ -315,6 +315,24 @@ export function openInBrowser(url: string): boolean {
   }
 }
 
+/** True when Cleanway is the default web-link handler (every tapped link is checked). */
+export function isDefaultLinkHandler(): boolean {
+  try {
+    return typeof CleanwayVpn.isDefaultLinkHandler === 'function' && CleanwayVpn.isDefaultLinkHandler();
+  } catch {
+    return false;
+  }
+}
+
+/** Ask the OS to make Cleanway the default link handler. Resolves false if nothing could be shown. */
+export async function requestLinkHandler(): Promise<boolean> {
+  try {
+    return typeof CleanwayVpn.requestLinkHandler === 'function' ? await CleanwayVpn.requestLinkHandler() : false;
+  } catch {
+    return false;
+  }
+}
+
 export function isVpnRunning(): boolean {
   try {
     return CleanwayVpn.isRunning();

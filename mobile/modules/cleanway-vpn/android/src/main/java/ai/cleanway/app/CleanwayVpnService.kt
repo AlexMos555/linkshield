@@ -87,6 +87,22 @@ class CleanwayVpnService : VpnService() {
      */
     @Volatile
     private var allowedDomains: Set<String> = emptySet()
+
+    /**
+     * Hosts the link guard's full-URL check flagged as phishing after they
+     * were already opened once — novel domains not yet in the synced list.
+     * Read on the DNS thread on every query; swapped whole (copy-on-write).
+     * Session-scoped: cleared when the tunnel stops (they will re-appear from
+     * the synced list once the feeds catch up).
+     */
+    @Volatile
+    private var dynamicBlocked: Set<String> = emptySet()
+
+    // Full-URL checks for the link guard run here, off the DNS thread. Single
+    // thread: link taps are occasional, and the analyzer is the slow part.
+    private val urlCheckExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "Cleanway-UrlCheck").apply { isDaemon = true }
+    }
     private var blocklistSync: BlocklistSync? = null
     private val syncExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "Cleanway-Blocklist").apply { isDaemon = true }
@@ -120,6 +136,13 @@ class CleanwayVpnService : VpnService() {
                 BlocklistAlarm.schedule(this, sync.nextDelayMs())
             }
             // START_STICKY without touching the tunnel: it is already up.
+            return START_STICKY
+        }
+        if (intent?.action == ACTION_CHECK_URL) {
+            // The link guard forwarded a tapped link to the browser and asked
+            // us to check its full URL. If the analyzer calls it phishing, warn
+            // the person (it is already open) and block it from now on.
+            intent.getStringExtra(EXTRA_CHECK_HOST)?.let { checkUrlAsync(it) }
             return START_STICKY
         }
         if (intent?.action == ACTION_STOP) {
@@ -261,6 +284,7 @@ class CleanwayVpnService : VpnService() {
     private fun stopVpn() {
         running = false
         isRunning = false
+        dynamicBlocked = emptySet()
         BlocklistAlarm.cancel(this)
         stopPrivateDnsWatch?.invoke()
         stopPrivateDnsWatch = null
@@ -299,7 +323,7 @@ class CleanwayVpnService : VpnService() {
 
                 val normalized = domain.lowercase().trimEnd('.')
 
-                when (DnsDecision.classify(normalized, blockList, allowedDomains)) {
+                when (DnsDecision.classify(normalized, blockList, allowedDomains, dynamicBlocked)) {
                     DnsDecision.CANARY -> {
                         // Silent verification probe: the app resolves a RANDOM
                         // subdomain of the canary and expects NXDOMAIN. The
@@ -679,6 +703,50 @@ class CleanwayVpnService : VpnService() {
     }
 
     /** Re-read the person's allow list into the DNS thread's snapshot. */
+    /**
+     * GET /api/v1/public/check/{host}. If dangerous, warn (the site is already
+     * open) and add the host to dynamicBlocked so the DNS layer blocks it next
+     * time. Runs off the DNS thread. Only the domain is sent — never the path.
+     */
+    private fun checkUrlAsync(rawHost: String) {
+        val host = rawHost.lowercase().trimEnd('.')
+        if (host.isBlank() || host.length > 253) return
+        // Already known-bad or explicitly allowed — nothing to add.
+        if (blockList.match(host) != null || dynamicBlocked.contains(host)) return
+        if (UserAllow.covers(allowedDomains, host) != null) return
+        urlCheckExecutor.execute {
+            try {
+                val url = java.net.URL("$API_BASE/api/v1/public/check/$host")
+                val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 4000
+                    readTimeout = 5000
+                    requestMethod = "GET"
+                    setRequestProperty("User-Agent", "Cleanway-Android")
+                }
+                try {
+                    if (conn.responseCode == 200) {
+                        val body = conn.inputStream.bufferedReader().use { it.readText() }
+                        val level = org.json.JSONObject(body).optString("level")
+                        if (level == "dangerous") {
+                            // Block it from here on, and tell the person now.
+                            synchronized(this) {
+                                if (!dynamicBlocked.contains(host)) {
+                                    dynamicBlocked = (dynamicBlocked + host).toHashSet()
+                                }
+                            }
+                            notifyBlocked(host, BlockLog.KIND_WARNED)
+                            Log.i(TAG, "url_check_dangerous host=$host — dynamic-blocked + warned")
+                        }
+                    }
+                } finally {
+                    conn.disconnect()
+                }
+            } catch (e: Exception) {
+                Log.v(TAG, "url_check_error: ${e.message}")
+            }
+        }
+    }
+
     fun reloadAllowed() {
         allowedDomains = try {
             UserAllow.list(this).toHashSet()
@@ -733,6 +801,10 @@ class CleanwayVpnService : VpnService() {
         const val ACTION_STOP = "ai.cleanway.VPN_STOP"
         /** Delivered by BlocklistRefreshReceiver on the Doze-safe alarm. */
         const val ACTION_REFRESH_BLOCKLIST = "ai.cleanway.REFRESH_BLOCKLIST"
+        /** Link guard asks the (always-alive) service to check a tapped URL's host. */
+        const val ACTION_CHECK_URL = "ai.cleanway.CHECK_URL"
+        const val EXTRA_CHECK_HOST = "check_host"
+        private const val API_BASE = "https://api.cleanway.ai"
 
         /** Broadcast when the tunnel goes away without the user asking. */
         const val ACTION_VPN_STOPPED = "ai.cleanway.VPN_STOPPED"
@@ -845,6 +917,7 @@ enum class DnsDecision {
             normalized: String,
             list: BlockList,
             allowed: Set<String> = emptySet(),
+            dynamicBlocked: Set<String> = emptySet(),
         ): DnsDecision = when {
             normalized == CleanwayVpnService.CANARY_DOMAIN ||
                 normalized.endsWith(".${CleanwayVpnService.CANARY_DOMAIN}") -> CANARY
@@ -857,6 +930,11 @@ enum class DnsDecision {
             // a false positive they cannot undo costs us the whole shield.
             UserAllow.covers(allowed, normalized) != null -> FORWARD
             list.match(normalized) != null -> BLOCK
+            // Flagged dynamically after the link guard checked its full URL and
+            // the analyzer called it phishing — a novel domain not yet in the
+            // synced list. The site was already opened once (fail-open forward);
+            // from now on it is blocked, like a listed name.
+            dynamicBlocked.contains(normalized) -> BLOCK
             else -> FORWARD
         }
     }

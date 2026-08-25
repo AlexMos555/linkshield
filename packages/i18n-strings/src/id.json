@@ -1445,7 +1445,14 @@
       "language": "Bahasa",
       "language_note": "Pilih bahasa aplikasi.",
       "language_reload_title": "Perlu mulai ulang",
-      "language_reload_body": "Tutup dan buka lagi aplikasi untuk menyelesaikan perubahan arah teks."
+      "language_reload_body": "Tutup dan buka lagi aplikasi untuk menyelesaikan perubahan arah teks.",
+      "linkguard": "Pemeriksaan tautan",
+      "linkguard_note": "Saat aktif, Cleanway memeriksa setiap tautan yang kamu ketuk — di aplikasi mana pun — dan memperingatkan sebelum halaman penipuan terbuka. Tautan aman langsung terbuka.",
+      "linkguard_on": "Cleanway memeriksa tautanmu",
+      "linkguard_on_desc": "Setiap tautan yang diketuk diperiksa dulu.",
+      "linkguard_off": "Periksa setiap tautan",
+      "linkguard_off_desc": "Sekarang tautan terbuka tanpa diperiksa. Aktifkan untuk memeriksanya.",
+      "linkguard_enable": "Siapkan"
     },
     "family": {
       "title": "Family Hub",

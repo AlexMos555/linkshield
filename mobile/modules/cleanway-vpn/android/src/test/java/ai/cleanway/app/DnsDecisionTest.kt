@@ -78,4 +78,23 @@ class DnsDecisionTest {
         assertEquals(DnsDecision.FORWARD, DnsDecision.classify("new.tld", l))
         assertEquals(DnsDecision.FORWARD, DnsDecision.classify("new.tld", BlockList.empty()))
     }
+
+    @Test
+    fun `a dynamically-flagged host blocks, like a listed name`() {
+        val empty = BlockList.empty()
+        // Not in the synced list, not allowed → normally forwarded…
+        assertEquals(DnsDecision.FORWARD, DnsDecision.classify("novel-phish.example", empty))
+        // …but once the link guard's full-URL check flagged it, it blocks.
+        assertEquals(
+            DnsDecision.BLOCK,
+            DnsDecision.classify("novel-phish.example", empty, dynamicBlocked = setOf("novel-phish.example")),
+        )
+        // The user's allow still outranks a dynamic block (a FP they undid).
+        assertEquals(
+            DnsDecision.FORWARD,
+            DnsDecision.classify("novel-phish.example", empty,
+                allowed = setOf("novel-phish.example"), dynamicBlocked = setOf("novel-phish.example")),
+        )
+    }
+
 }

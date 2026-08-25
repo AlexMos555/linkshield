@@ -1445,7 +1445,14 @@
       "language": "Langue",
       "language_note": "Choisissez la langue de l'application.",
       "language_reload_title": "Redémarrage nécessaire",
-      "language_reload_body": "Fermez et rouvrez l'application pour terminer le changement de sens du texte."
+      "language_reload_body": "Fermez et rouvrez l'application pour terminer le changement de sens du texte.",
+      "linkguard": "Vérification des liens",
+      "linkguard_note": "Quand c'est activé, Cleanway vérifie chaque lien que vous touchez — dans n'importe quelle appli — et vous prévient avant qu'une page frauduleuse s'ouvre. Les liens sûrs s'ouvrent aussitôt.",
+      "linkguard_on": "Cleanway vérifie vos liens",
+      "linkguard_on_desc": "Chaque lien touché est d'abord vérifié.",
+      "linkguard_off": "Vérifier chaque lien",
+      "linkguard_off_desc": "Pour l'instant les liens s'ouvrent sans vérification. Activez pour les vérifier.",
+      "linkguard_enable": "Configurer"
     },
     "family": {
       "title": "Espace famille",

@@ -161,6 +161,53 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Is Cleanway currently the default handler for web links (the browser
+     * role)? When true, every tapped link routes through the link guard.
+     */
+    Function("isDefaultLinkHandler") {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@Function false
+      val rm = context.getSystemService(android.app.role.RoleManager::class.java)
+      try {
+        rm != null && rm.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER) &&
+          rm.isRoleHeld(android.app.role.RoleManager.ROLE_BROWSER)
+      } catch (e: Exception) {
+        false
+      }
+    }
+
+    /**
+     * Ask the system to make Cleanway the default link handler (browser role),
+     * so every tapped link is checked. Shows the OS "make default" dialog on
+     * Android 10+; older versions fall back to the default-apps settings.
+     * Returns false if we could not present anything.
+     */
+    AsyncFunction("requestLinkHandler") { promise: Promise ->
+      val activity = appContext.currentActivity
+      if (activity == null) { promise.resolve(false); return@AsyncFunction }
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+          val rm = context.getSystemService(android.app.role.RoleManager::class.java)
+          if (rm != null && rm.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER) &&
+              !rm.isRoleHeld(android.app.role.RoleManager.ROLE_BROWSER)) {
+            activity.startActivityForResult(
+              rm.createRequestRoleIntent(android.app.role.RoleManager.ROLE_BROWSER), 0x7A13
+            )
+            promise.resolve(true); return@AsyncFunction
+          }
+        }
+        // Fallback: the "Default apps" settings, where the user picks the
+        // browser app manually.
+        activity.startActivity(
+          Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        promise.resolve(true)
+      } catch (e: Exception) {
+        promise.resolve(false)
+      }
+    }
+
+    /**
      * Open a URL in a real browser that is NOT Cleanway — used by the link-
      * guard screen's "Open anyway". Explicit package so it can never bounce
      * back into our own link guard. Returns false if no other browser exists.
