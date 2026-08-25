@@ -470,6 +470,13 @@ def test_every_router_imports_rate_limit_helper():
             # (embedded conditional logic inside the handler body)
             if path.name == "check.py" and "check_rate_limit" in text:
                 continue
+            # blocklist.py is DELIBERATELY unlimited: GET /blocklist/dns serves a
+            # signed, ETag'd, edge-cacheable public static file, and the first
+            # customers arrive behind Tele2 CGNAT (thousands of phones per IPv4)
+            # where a per-IP 429 would strand fresh installs with an empty list.
+            # See docs/TELE2_LAUNCH_PLAN.md B4 + the router's own comment.
+            if path.name == "blocklist.py":
+                continue
             missing.append(path.name)
     assert missing == [], f"Routers without rate limit import: {missing}"
 

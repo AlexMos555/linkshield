@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Request, Response
 
 from api.services.blocklist_artifact import (
     REDIS_META_KEY,
@@ -21,7 +21,6 @@ from api.services.blocklist_artifact import (
     delta_key,
     sha256_bytes,
 )
-from api.services.rate_limiter import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -99,10 +98,16 @@ async def load_delta(from_generation: int) -> Optional[bytes]:
         return None
 
 
-@router.get(
-    "/dns",
-    dependencies=[Depends(rate_limit(mode="ip", category="blocklist"))],
-)
+# No per-IP rate limit on this GET, on purpose.
+#
+# It is a SIGNED, ETag'd, edge-cacheable public static file (the same bytes for
+# everyone), and the real first customers arrive behind Tele2 carrier-grade NAT
+# — thousands of phones share one public IPv4. A per-IP cap can't tell that
+# apart from abuse, so it would 429 a whole CGNAT gateway of fresh installs and
+# leave them with an EMPTY blocklist = unprotected, for up to the cap window.
+# For a static public artifact that is the wrong trade. Abuse is bounded by the
+# in-process cache here and the CDN in front (docs/TELE2_LAUNCH_PLAN.md B4).
+@router.get("/dns")
 async def get_dns_blocklist(request: Request) -> Response:
     # `from=<version>` says "I already have this one". Real feed movement is
     # ~0.2% per half day, so the answer is usually a few KB instead of 2.5 MB
