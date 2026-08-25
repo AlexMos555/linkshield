@@ -272,3 +272,14 @@ def test_route_serves_a_delta_when_the_client_names_a_version_it_has(monkeypatch
     assert r2.status_code == 200
     assert r2.content == BLOB
     assert "x-cleanway-blocklist-delta" not in r2.headers
+
+
+def test_no_per_ip_rate_limit_survives_a_cgnat_burst(client):
+    """The real first users are behind Tele2 CGNAT — thousands of phones on one
+    IPv4. The blocklist GET must NOT 429 them: a signed public static file has
+    nothing to protect per-IP, and a 429 leaves a fresh phone with an empty
+    list = unprotected. Hammer it from one IP and require all 200/304."""
+    c, _ = client
+    for _ in range(120):
+        r = c.get("/api/v1/blocklist/dns", headers={"x-forwarded-for": "10.11.12.13"})
+        assert r.status_code in (200, 304), r.status_code
