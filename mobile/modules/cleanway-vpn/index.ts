@@ -315,6 +315,19 @@ export function openInBrowser(url: string): boolean {
   }
 }
 
+/**
+ * Tell the native side which language to use for its notifications (block /
+ * foreground), so they match the in-app language even when the phone's system
+ * language differs. Android-only; a no-op elsewhere.
+ */
+export function setNotificationLocale(code: string): void {
+  try {
+    if (typeof CleanwayVpn.setNotificationLocale === 'function') CleanwayVpn.setNotificationLocale(code);
+  } catch {
+    /* older native build or non-Android */
+  }
+}
+
 /** True when Cleanway is the default web-link handler (every tapped link is checked). */
 export function isDefaultLinkHandler(): boolean {
   try {

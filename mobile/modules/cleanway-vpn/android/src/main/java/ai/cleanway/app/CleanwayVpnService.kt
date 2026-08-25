@@ -576,10 +576,10 @@ class CleanwayVpnService : VpnService() {
             nm.createNotificationChannel(
                 NotificationChannel(
                     CHANNEL_ID,
-                    getString(expo.modules.cleanwayvpn.R.string.fg_channel),
+                    LocalizedContext.of(this).getString(expo.modules.cleanwayvpn.R.string.fg_channel),
                     NotificationManager.IMPORTANCE_LOW,
                 ).apply {
-                    description = getString(expo.modules.cleanwayvpn.R.string.fg_channel_desc)
+                    description = LocalizedContext.of(this@CleanwayVpnService).getString(expo.modules.cleanwayvpn.R.string.fg_channel_desc)
                     setShowBadge(false)
                 }
             )
@@ -592,8 +592,8 @@ class CleanwayVpnService : VpnService() {
             )
         }
         val notif: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(expo.modules.cleanwayvpn.R.string.fg_title))
-            .setContentText(getString(expo.modules.cleanwayvpn.R.string.fg_text))
+            .setContentTitle(LocalizedContext.of(this).getString(expo.modules.cleanwayvpn.R.string.fg_title))
+            .setContentText(LocalizedContext.of(this).getString(expo.modules.cleanwayvpn.R.string.fg_text))
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setContentIntent(pending)

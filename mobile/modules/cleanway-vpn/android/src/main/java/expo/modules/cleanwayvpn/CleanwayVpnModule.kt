@@ -161,6 +161,15 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Remember the app's chosen UI locale so native NOTIFICATIONS are shown in
+     * it, not the phone's system language. Called from JS whenever the language
+     * changes and at startup. See ai.cleanway.app.LocalizedContext.
+     */
+    Function("setNotificationLocale") { code: String ->
+      ai.cleanway.app.LocalizedContext.set(context, code)
+    }
+
+    /**
      * Is Cleanway currently the default handler for web links (the browser
      * role)? When true, every tapped link routes through the link guard.
      */

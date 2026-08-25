@@ -41,6 +41,8 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   /** Open a URL in a real (non-Cleanway) browser. False if none available. */
   openInBrowser?(url: string): boolean;
   /** True when Cleanway is the default web-link handler (browser role). */
+  /** Persist the chosen UI locale for native notifications. */
+  setNotificationLocale?(code: string): void;
   isDefaultLinkHandler?(): boolean;
   /** Ask the OS to make Cleanway the default link handler. */
   requestLinkHandler?(): Promise<boolean>;

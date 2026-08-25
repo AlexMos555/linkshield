@@ -70,12 +70,13 @@ object BlockNotifier {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+        val loc = LocalizedContext.of(context)
         nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                context.getString(R.string.block_channel),
+                loc.getString(R.string.block_channel),
                 NotificationManager.IMPORTANCE_DEFAULT,
-            ).apply { description = context.getString(R.string.block_channel_desc) }
+            ).apply { description = loc.getString(R.string.block_channel_desc) }
         )
     }
 
@@ -87,13 +88,14 @@ object BlockNotifier {
     fun notifyAllowed(context: Context, domain: String) {
         try {
             ensureChannel(context)
+            val loc = LocalizedContext.of(context)
             val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
             val pending = launch?.let {
                 PendingIntent.getActivity(context, 2, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             }
-            val text = context.getString(R.string.allowed_text, domain)
+            val text = loc.getString(R.string.allowed_text, domain)
             val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(context.getString(R.string.allowed_title))
+                .setContentTitle(loc.getString(R.string.allowed_title))
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setSmallIcon(context.applicationInfo.icon)
@@ -112,11 +114,12 @@ object BlockNotifier {
         if (!throttle.shouldNotify(domain, now)) return
         try {
             ensureChannel(context)
+            val loc = LocalizedContext.of(context)
             val (title, text) = when (kind) {
-                BlockLog.KIND_WARNED -> context.getString(R.string.warn_title) to
-                    context.getString(R.string.warn_text, domain)
-                else -> context.getString(R.string.blocked_title) to
-                    context.getString(R.string.blocked_text, domain)
+                BlockLog.KIND_WARNED -> loc.getString(R.string.warn_title) to
+                    loc.getString(R.string.warn_text, domain)
+                else -> loc.getString(R.string.blocked_title) to
+                    loc.getString(R.string.blocked_text, domain)
             }
             // Tapping "Cleanway stopped X" opens the branded detail for that
             // exact site (why it was blocked), not just the app home — the

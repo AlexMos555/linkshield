@@ -15,6 +15,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import * as Localization from "expo-localization";
 import * as SecureStore from "expo-secure-store";
+import { setNotificationLocale } from "../../modules/cleanway-vpn";
 import { I18nManager } from "react-native";
 
 import en from "../../i18n/en.json";
@@ -108,6 +109,8 @@ i18n
   });
 
 applyRTL(initialLocale);
+// Seed the native notification locale with whatever we start in.
+setNotificationLocale(initialLocale);
 
 /**
  * Key for the user's explicit language choice (Settings → Language). It
@@ -125,6 +128,8 @@ export function localeChangeNeedsReload(next: SupportedLocale): boolean {
 export async function changeLocale(locale: SupportedLocale): Promise<void> {
   await i18n.changeLanguage(locale);
   applyRTL(locale);
+  // Native notifications read this, so they match the in-app language.
+  setNotificationLocale(locale);
   try {
     await SecureStore.setItemAsync(LOCALE_OVERRIDE_KEY, locale);
   } catch {
@@ -145,6 +150,7 @@ export async function restoreSavedLocale(): Promise<void> {
     if (saved && (SUPPORTED_LOCALES as readonly string[]).includes(saved) && saved !== i18n.language) {
       await i18n.changeLanguage(saved as SupportedLocale);
       applyRTL(saved as SupportedLocale);
+      setNotificationLocale(saved as SupportedLocale);
     }
   } catch {
     // No saved preference or storage unavailable: keep the device locale.
