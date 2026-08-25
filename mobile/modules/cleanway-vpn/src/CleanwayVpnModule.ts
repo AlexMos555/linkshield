@@ -38,6 +38,8 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   blockCountSince?(sinceMs: number): number;
   /** Lifetime totals per kind — {blocked, warned, allowed}. */
   blockLifetimeCounts?(): { blocked?: number; warned?: number; allowed?: number };
+  /** Open a URL in a real (non-Cleanway) browser. False if none available. */
+  openInBrowser?(url: string): boolean;
   /** Loaded blocklist + freshness. Optional: older native builds lack it. */
   blocklistStatus?(): BlocklistStatus;
   /** Fetch the list now (background). */

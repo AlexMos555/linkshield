@@ -486,6 +486,8 @@
   "mobile.shared.check_failed_body": "Não conseguimos falar com nossos servidores, então não sabemos se este link é seguro. Tente de novo daqui a pouco.",
   "mobile.shared.go_home": "Ir para o Cleanway",
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Pontuação de risco {{score}} de 100.",
+  "mobile.shared.open_in_browser": "Abrir no navegador",
+  "mobile.shared.open_anyway": "Abrir mesmo assim",
   "mobile.breach.title": "Verificação de senha vazada",
   "mobile.breach.subtitle": "Algumas pessoas usam o próprio endereço de e-mail como senha. Aqui você descobre se ele já vazou.",
   "mobile.breach.scope_note": "Este não é um relatório completo de vazamentos. Listar todos os vazamentos em que um endereço apareceu exige uma fonte de dados paga que ainda não conectamos.",

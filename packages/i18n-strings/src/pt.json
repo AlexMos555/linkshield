@@ -1298,7 +1298,9 @@
       "no_url_body": "Nada chegou até nós, ou o que foi compartilhado não era um link. Tente compartilhar de novo.",
       "check_failed_body": "Não conseguimos falar com nossos servidores, então não sabemos se este link é seguro. Tente de novo daqui a pouco.",
       "go_home": "Ir para o Cleanway",
-      "a11y_verdict": "{{verdict}}. {{domain}}. Pontuação de risco {{score}} de 100."
+      "a11y_verdict": "{{verdict}}. {{domain}}. Pontuação de risco {{score}} de 100.",
+      "open_in_browser": "Abrir no navegador",
+      "open_anyway": "Abrir mesmo assim"
     },
     "breach": {
       "title": "Verificação de senha vazada",

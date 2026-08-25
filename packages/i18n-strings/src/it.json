@@ -1298,7 +1298,9 @@
       "no_url_body": "Non è arrivato nulla, oppure quello che è stato condiviso non era un link. Prova a condividerlo di nuovo.",
       "check_failed_body": "Non siamo riusciti a raggiungere i nostri server, quindi non sappiamo se questo link è sicuro. Riprova tra un momento.",
       "go_home": "Vai a Cleanway",
-      "a11y_verdict": "{{verdict}}. {{domain}}. Punteggio di rischio {{score}} su 100."
+      "a11y_verdict": "{{verdict}}. {{domain}}. Punteggio di rischio {{score}} su 100.",
+      "open_in_browser": "Apri nel browser",
+      "open_anyway": "Apri comunque"
     },
     "breach": {
       "title": "Controllo password trapelate",

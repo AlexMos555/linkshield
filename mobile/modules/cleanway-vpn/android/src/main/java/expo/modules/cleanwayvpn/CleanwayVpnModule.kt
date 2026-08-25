@@ -161,6 +161,28 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Open a URL in a real browser that is NOT Cleanway — used by the link-
+     * guard screen's "Open anyway". Explicit package so it can never bounce
+     * back into our own link guard. Returns false if no other browser exists.
+     */
+    Function("openInBrowser") { url: String ->
+      try {
+        val view = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+          .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
+          .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        val probe = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("http://example.com"))
+          .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
+        val browser = context.packageManager.queryIntentActivities(probe, 0)
+          .map { it.activityInfo.packageName }.firstOrNull { it != context.packageName }
+        if (browser != null) view.setPackage(browser)
+        context.startActivity(view)
+        true
+      } catch (e: Exception) {
+        false
+      }
+    }
+
+    /**
      * Lifetime totals per kind: {blocked, warned, allowed}. Counted outside
      * the trimmed ring buffer, so "Blocked N sites" keeps growing past 200 —
      * it is the honest number of times the shield acted, not a page of recent

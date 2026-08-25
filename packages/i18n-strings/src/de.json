@@ -1298,7 +1298,9 @@
       "no_url_body": "Es ist nichts angekommen – oder das Geteilte war kein Link. Versuch bitte, es noch einmal zu teilen.",
       "check_failed_body": "Wir konnten unsere Server nicht erreichen und wissen deshalb nicht, ob dieser Link sicher ist. Bitte versuch es gleich noch mal.",
       "go_home": "Zu Cleanway",
-      "a11y_verdict": "{{verdict}}. {{domain}}. Risikowert {{score}} von 100."
+      "a11y_verdict": "{{verdict}}. {{domain}}. Risikowert {{score}} von 100.",
+      "open_in_browser": "Im Browser öffnen",
+      "open_anyway": "Trotzdem öffnen"
     },
     "breach": {
       "title": "Prüfung auf geleakte Passwörter",

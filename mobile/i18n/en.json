@@ -486,6 +486,8 @@
   "mobile.shared.check_failed_body": "We couldn't reach our servers, so we don't know if this link is safe. Please try again in a moment.",
   "mobile.shared.go_home": "Go to Cleanway",
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Risk score {{score}} out of 100.",
+  "mobile.shared.open_in_browser": "Open in browser",
+  "mobile.shared.open_anyway": "Open anyway",
   "mobile.breach.title": "Leaked password check",
   "mobile.breach.subtitle": "Some people use their email address as their password. This tells you if that has already leaked.",
   "mobile.breach.scope_note": "This is not a full breach report. Listing every breach an address was caught in needs a paid data source we have not connected yet.",

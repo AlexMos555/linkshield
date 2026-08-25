@@ -1298,7 +1298,9 @@
       "no_url_body": "Rien n'est arrivé, ou ce qui a été partagé n'était pas un lien. Essayez de le partager à nouveau.",
       "check_failed_body": "Nous n'avons pas pu joindre nos serveurs, donc nous ne savons pas si ce lien est sûr. Réessayez dans un instant.",
       "go_home": "Ouvrir Cleanway",
-      "a11y_verdict": "{{verdict}}. {{domain}}. Score de risque {{score}} sur 100."
+      "a11y_verdict": "{{verdict}}. {{domain}}. Score de risque {{score}} sur 100.",
+      "open_in_browser": "Ouvrir dans le navigateur",
+      "open_anyway": "Ouvrir quand même"
     },
     "breach": {
       "title": "Vérification des mots de passe divulgués",

@@ -486,6 +486,8 @@
   "mobile.shared.check_failed_body": "Wir konnten unsere Server nicht erreichen und wissen deshalb nicht, ob dieser Link sicher ist. Bitte versuch es gleich noch mal.",
   "mobile.shared.go_home": "Zu Cleanway",
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Risikowert {{score}} von 100.",
+  "mobile.shared.open_in_browser": "Im Browser öffnen",
+  "mobile.shared.open_anyway": "Trotzdem öffnen",
   "mobile.breach.title": "Prüfung auf geleakte Passwörter",
   "mobile.breach.subtitle": "Manche Menschen benutzen ihre E-Mail-Adresse als Passwort. Hier erfährst du, ob das schon einmal geleakt wurde.",
   "mobile.breach.scope_note": "Das ist kein vollständiger Datenleck-Bericht. Alle Lecks aufzulisten, in denen eine Adresse aufgetaucht ist, bräuchte eine bezahlte Datenquelle, die wir noch nicht angebunden haben.",

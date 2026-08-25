@@ -486,6 +486,8 @@
   "mobile.shared.check_failed_body": "Nous n'avons pas pu joindre nos serveurs, donc nous ne savons pas si ce lien est sûr. Réessayez dans un instant.",
   "mobile.shared.go_home": "Ouvrir Cleanway",
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Score de risque {{score}} sur 100.",
+  "mobile.shared.open_in_browser": "Ouvrir dans le navigateur",
+  "mobile.shared.open_anyway": "Ouvrir quand même",
   "mobile.breach.title": "Vérification des mots de passe divulgués",
   "mobile.breach.subtitle": "Certaines personnes utilisent leur adresse e-mail comme mot de passe. Cet outil vous dit si elle a déjà été divulguée.",
   "mobile.breach.scope_note": "Ce n'est pas un rapport complet sur les fuites de données. Lister toutes les fuites où une adresse est apparue demande une source de données payante que nous n'avons pas encore branchée.",

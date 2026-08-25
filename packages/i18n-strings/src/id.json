@@ -1298,7 +1298,9 @@
       "no_url_body": "Tidak ada yang masuk, atau yang dibagikan bukan link. Coba bagikan lagi.",
       "check_failed_body": "Kami tidak bisa menghubungi server kami, jadi kami tidak tahu apakah link ini aman. Silakan coba lagi sebentar lagi.",
       "go_home": "Buka Cleanway",
-      "a11y_verdict": "{{verdict}}. {{domain}}. Skor risiko {{score}} dari 100."
+      "a11y_verdict": "{{verdict}}. {{domain}}. Skor risiko {{score}} dari 100.",
+      "open_in_browser": "Buka di browser",
+      "open_anyway": "Tetap buka"
     },
     "breach": {
       "title": "Cek kata sandi bocor",

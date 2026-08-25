@@ -22,6 +22,7 @@ import {
 import { checkDomain, PublicCheckResult, ApiError } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
 import { reasonLabel } from "../src/utils/reason-label";
+import { openInBrowser } from "../modules/cleanway-vpn";
 import { toCheckableHost } from "../src/utils/host";
 
 type ErrorKind = "no_url" | ApiError["kind"];
@@ -38,7 +39,7 @@ const VERDICT_ICONS: Record<Level, keyof typeof Ionicons.glyphMap> = {
 export default function SharedScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { url } = useLocalSearchParams<{ url: string }>();
+  const { url, via } = useLocalSearchParams<{ url: string; via?: string }>();
   const [result, setResult] = useState<PublicCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorKind | null>(null);
@@ -165,13 +166,29 @@ export default function SharedScreen() {
         </View>
       )}
 
+      {via === "guard" && result && url && (
+        // Reached here by tapping a link (link guard), not by pasting. Let the
+        // person continue to the real browser — muted "open anyway" when the
+        // verdict is not safe, so it never nudges them toward a scam.
+        <TouchableOpacity
+          style={result.level === "safe" ? s.primaryBtn : s.secondaryBtn}
+          onPress={() => { openInBrowser(url); router.replace("/(tabs)"); }}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+        >
+          <Text style={result.level === "safe" ? s.primaryLabel : s.secondaryLabel}>
+            {t(result.level === "safe" ? "mobile.shared.open_in_browser" : "mobile.shared.open_anyway")}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity
-        style={s.primaryBtn}
+        style={via === "guard" && result && result.level === "safe" ? s.secondaryBtn : s.primaryBtn}
         onPress={() => router.push({ pathname: "/result", params: { domain } })}
         activeOpacity={0.85}
         accessibilityRole="button"
       >
-        <Text style={s.primaryLabel}>{t("mobile.shared.full_details")}</Text>
+        <Text style={via === "guard" && result && result.level === "safe" ? s.secondaryLabel : s.primaryLabel}>{t("mobile.shared.full_details")}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity

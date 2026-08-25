@@ -486,6 +486,8 @@
   "mobile.shared.check_failed_body": "Non siamo riusciti a raggiungere i nostri server, quindi non sappiamo se questo link è sicuro. Riprova tra un momento.",
   "mobile.shared.go_home": "Vai a Cleanway",
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Punteggio di rischio {{score}} su 100.",
+  "mobile.shared.open_in_browser": "Apri nel browser",
+  "mobile.shared.open_anyway": "Apri comunque",
   "mobile.breach.title": "Controllo password trapelate",
   "mobile.breach.subtitle": "Alcune persone usano il proprio indirizzo email come password. Qui scopri se è già trapelato.",
   "mobile.breach.scope_note": "Questo non è un rapporto completo sulle violazioni. Per elencare tutte le violazioni in cui è finito un indirizzo serve una fonte di dati a pagamento che non abbiamo ancora collegato.",

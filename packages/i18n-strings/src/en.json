@@ -1240,7 +1240,9 @@
       "no_url_body": "Nothing came through, or what was shared wasn't a link. Try sharing it again.",
       "check_failed_body": "We couldn't reach our servers, so we don't know if this link is safe. Please try again in a moment.",
       "go_home": "Go to Cleanway",
-      "a11y_verdict": "{{verdict}}. {{domain}}. Risk score {{score}} out of 100."
+      "a11y_verdict": "{{verdict}}. {{domain}}. Risk score {{score}} out of 100.",
+      "open_in_browser": "Open in browser",
+      "open_anyway": "Open anyway"
     },
     "breach": {
       "title": "Leaked password check",

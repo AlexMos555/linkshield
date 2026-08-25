@@ -303,6 +303,18 @@ export function removeAllowedDomain(domain: string): void {
   }
 }
 
+/**
+ * Open a URL in a real browser other than Cleanway (the link-guard "Open
+ * anyway"). Returns false if no other browser is installed.
+ */
+export function openInBrowser(url: string): boolean {
+  try {
+    return typeof CleanwayVpn.openInBrowser === 'function' && CleanwayVpn.openInBrowser(url);
+  } catch {
+    return false;
+  }
+}
+
 export function isVpnRunning(): boolean {
   try {
     return CleanwayVpn.isRunning();

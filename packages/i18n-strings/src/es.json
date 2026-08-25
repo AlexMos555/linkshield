@@ -1238,7 +1238,9 @@
       "no_url_body": "No llegó nada, o lo que se compartió no era un enlace. Intenta compartirlo otra vez.",
       "check_failed_body": "No pudimos conectar con nuestros servidores, así que no sabemos si este enlace es seguro. Inténtalo de nuevo en un momento.",
       "go_home": "Ir a Cleanway",
-      "a11y_verdict": "{{verdict}}. {{domain}}. Puntaje de riesgo: {{score}} de 100."
+      "a11y_verdict": "{{verdict}}. {{domain}}. Puntaje de riesgo: {{score}} de 100.",
+      "open_in_browser": "Abrir en el navegador",
+      "open_anyway": "Abrir de todos modos"
     },
     "breach": {
       "title": "Revisión de contraseñas filtradas",
