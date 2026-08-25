@@ -1568,7 +1568,19 @@
       "confirm_body": "हमने पुष्टि का एक लिंक भेजा है। अपना खाता चालू करने के लिए उसे खोलें।",
       "reset_sent_body": "अगर इस पते पर कोई खाता है, तो हमने पासवर्ड रीसेट करने का लिंक भेज दिया है।",
       "generic_error": "कुछ गड़बड़ हो गई। कृपया फिर कोशिश करें।",
-      "not_configured": "इस वर्ज़न में साइन-इन उपलब्ध नहीं है। बाकी सब कुछ आप बिना खाते के इस्तेमाल कर सकते हैं।"
+      "not_configured": "इस वर्ज़न में साइन-इन उपलब्ध नहीं है। बाकी सब कुछ आप बिना खाते के इस्तेमाल कर सकते हैं।",
+      "otp_title": "Sign in with email",
+      "otp_sub": "Enter your email and we'll send you a login code",
+      "otp_send": "Send code",
+      "err_email": "Enter a valid email",
+      "code_title": "Enter the code",
+      "code_sub": "We sent a 6-digit code to {{email}}",
+      "code_verify": "Sign in",
+      "code_resend": "Send the code again",
+      "code_resend_in": "Resend in {{seconds}}s",
+      "code_change_email": "Change email",
+      "err_code": "Enter the 6-digit code",
+      "err_code_wrong": "Wrong or expired code. Request a new one."
     },
     "onboarding": {
       "s1_title": "टैप करने से पहले कुछ भी जाँच लें",

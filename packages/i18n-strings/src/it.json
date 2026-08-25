@@ -1568,7 +1568,19 @@
       "confirm_body": "Ti abbiamo inviato un link di conferma. Aprilo per attivare il tuo account.",
       "reset_sent_body": "Se esiste un account per questo indirizzo, abbiamo inviato un link per reimpostare la password.",
       "generic_error": "Qualcosa è andato storto. Riprova.",
-      "not_configured": "L'accesso non è disponibile in questa versione dell'app. Puoi usare tutto il resto senza account."
+      "not_configured": "L'accesso non è disponibile in questa versione dell'app. Puoi usare tutto il resto senza account.",
+      "otp_title": "Sign in with email",
+      "otp_sub": "Enter your email and we'll send you a login code",
+      "otp_send": "Send code",
+      "err_email": "Enter a valid email",
+      "code_title": "Enter the code",
+      "code_sub": "We sent a 6-digit code to {{email}}",
+      "code_verify": "Sign in",
+      "code_resend": "Send the code again",
+      "code_resend_in": "Resend in {{seconds}}s",
+      "code_change_email": "Change email",
+      "err_code": "Enter the 6-digit code",
+      "err_code_wrong": "Wrong or expired code. Request a new one."
     },
     "onboarding": {
       "s1_title": "Controlla qualsiasi cosa prima di toccarla",

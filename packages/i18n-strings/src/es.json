@@ -1508,7 +1508,19 @@
       "confirm_body": "Te enviamos un enlace de confirmación. Ábrelo para activar tu cuenta.",
       "reset_sent_body": "Si existe una cuenta con esta dirección, te enviamos un enlace para restablecer tu contraseña.",
       "generic_error": "Algo salió mal. Inténtalo de nuevo.",
-      "not_configured": "Iniciar sesión no está disponible en esta versión. Puedes usar todo lo demás sin una cuenta."
+      "not_configured": "Iniciar sesión no está disponible en esta versión. Puedes usar todo lo demás sin una cuenta.",
+      "otp_title": "Sign in with email",
+      "otp_sub": "Enter your email and we'll send you a login code",
+      "otp_send": "Send code",
+      "err_email": "Enter a valid email",
+      "code_title": "Enter the code",
+      "code_sub": "We sent a 6-digit code to {{email}}",
+      "code_verify": "Sign in",
+      "code_resend": "Send the code again",
+      "code_resend_in": "Resend in {{seconds}}s",
+      "code_change_email": "Change email",
+      "err_code": "Enter the 6-digit code",
+      "err_code_wrong": "Wrong or expired code. Request a new one."
     },
     "onboarding": {
       "s1_title": "Revisa cualquier cosa antes de tocarla",

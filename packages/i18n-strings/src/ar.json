@@ -1568,7 +1568,19 @@
       "confirm_body": "أرسلنا رابط تأكيد. افتحه لتفعيل حسابك.",
       "reset_sent_body": "إذا كان هناك حساب بهذا العنوان، فقد أرسلنا رابطًا لإعادة تعيين كلمة المرور.",
       "generic_error": "حدث خطأ ما. حاول مرة أخرى.",
-      "not_configured": "تسجيل الدخول غير متاح في هذا الإصدار. يمكنك استخدام كل شيء آخر من دون حساب."
+      "not_configured": "تسجيل الدخول غير متاح في هذا الإصدار. يمكنك استخدام كل شيء آخر من دون حساب.",
+      "otp_title": "Sign in with email",
+      "otp_sub": "Enter your email and we'll send you a login code",
+      "otp_send": "Send code",
+      "err_email": "Enter a valid email",
+      "code_title": "Enter the code",
+      "code_sub": "We sent a 6-digit code to {{email}}",
+      "code_verify": "Sign in",
+      "code_resend": "Send the code again",
+      "code_resend_in": "Resend in {{seconds}}s",
+      "code_change_email": "Change email",
+      "err_code": "Enter the 6-digit code",
+      "err_code_wrong": "Wrong or expired code. Request a new one."
     },
     "onboarding": {
       "s1_title": "افحص أي شيء قبل أن تضغط عليه",

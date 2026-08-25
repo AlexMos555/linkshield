@@ -1568,7 +1568,19 @@
       "confirm_body": "Wir haben dir einen Bestätigungslink geschickt. Öffne ihn, um dein Konto zu aktivieren.",
       "reset_sent_body": "Falls es ein Konto mit dieser Adresse gibt, haben wir dir einen Link zum Zurücksetzen deines Passworts geschickt.",
       "generic_error": "Etwas ist schiefgelaufen. Bitte versuch es noch mal.",
-      "not_configured": "Die Anmeldung ist in dieser Version nicht verfügbar. Alles andere kannst du ohne Konto nutzen."
+      "not_configured": "Die Anmeldung ist in dieser Version nicht verfügbar. Alles andere kannst du ohne Konto nutzen.",
+      "otp_title": "Sign in with email",
+      "otp_sub": "Enter your email and we'll send you a login code",
+      "otp_send": "Send code",
+      "err_email": "Enter a valid email",
+      "code_title": "Enter the code",
+      "code_sub": "We sent a 6-digit code to {{email}}",
+      "code_verify": "Sign in",
+      "code_resend": "Send the code again",
+      "code_resend_in": "Resend in {{seconds}}s",
+      "code_change_email": "Change email",
+      "err_code": "Enter the 6-digit code",
+      "err_code_wrong": "Wrong or expired code. Request a new one."
     },
     "onboarding": {
       "s1_title": "Prüfe alles, bevor du es antippst",

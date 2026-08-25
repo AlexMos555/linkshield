@@ -1568,7 +1568,19 @@
       "confirm_body": "Enviamos um link de confirmação. Abra o link para ativar sua conta.",
       "reset_sent_body": "Se existir uma conta com este endereço, enviamos um link para redefinir sua senha.",
       "generic_error": "Algo deu errado. Tente de novo.",
-      "not_configured": "O login não está disponível nesta versão. Você pode usar todo o resto sem conta."
+      "not_configured": "O login não está disponível nesta versão. Você pode usar todo o resto sem conta.",
+      "otp_title": "Sign in with email",
+      "otp_sub": "Enter your email and we'll send you a login code",
+      "otp_send": "Send code",
+      "err_email": "Enter a valid email",
+      "code_title": "Enter the code",
+      "code_sub": "We sent a 6-digit code to {{email}}",
+      "code_verify": "Sign in",
+      "code_resend": "Send the code again",
+      "code_resend_in": "Resend in {{seconds}}s",
+      "code_change_email": "Change email",
+      "err_code": "Enter the 6-digit code",
+      "err_code_wrong": "Wrong or expired code. Request a new one."
     },
     "onboarding": {
       "s1_title": "Verifique qualquer coisa antes de tocar",

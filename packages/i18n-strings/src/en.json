@@ -1510,7 +1510,19 @@
       "confirm_body": "We sent a confirmation link. Open it to activate your account.",
       "reset_sent_body": "If an account exists for this address, we've sent a link to reset your password.",
       "generic_error": "Something went wrong. Please try again.",
-      "not_configured": "Sign-in isn't available in this build. You can use everything else without an account."
+      "not_configured": "Sign-in isn't available in this build. You can use everything else without an account.",
+      "otp_title": "Sign in with email",
+      "otp_sub": "Enter your email and we'll send you a login code",
+      "otp_send": "Send code",
+      "err_email": "Enter a valid email",
+      "code_title": "Enter the code",
+      "code_sub": "We sent a 6-digit code to {{email}}",
+      "code_verify": "Sign in",
+      "code_resend": "Send the code again",
+      "code_resend_in": "Resend in {{seconds}}s",
+      "code_change_email": "Change email",
+      "err_code": "Enter the 6-digit code",
+      "err_code_wrong": "Wrong or expired code. Request a new one."
     },
     "onboarding": {
       "s1_title": "Check anything before you tap it",

@@ -218,6 +218,46 @@ export async function signUp(
   return persistSession(data, data.user?.email ?? email);
 }
 
+// ─── Passwordless email OTP (the primary flow — unified with the web) ──
+//
+// The web signs up with a magic link; the app uses the SAME Supabase project,
+// so a code sent here logs into the SAME account and sync just works. No
+// password to set or remember (grandma-friendly), and no fragile web→app token
+// handoff: the user types the 6-digit code from the email on either surface.
+//
+// Requires the Supabase project's email template to expose the code
+// (`{{ .Token }}`); see docs/MOBILE_AUTH.md.
+
+/**
+ * Send a one-time login code to `email`. Creates the account if it's new
+ * (`create_user: true`), so the same call serves sign-in and sign-up.
+ * GoTrue returns 200 with an empty body; it never reveals whether the address
+ * already existed (no account enumeration).
+ */
+export async function sendEmailOtp(email: string): Promise<void> {
+  await goTrue("/auth/v1/otp", { email, create_user: true });
+}
+
+/**
+ * Exchange the 6-digit code the user typed for a session. `type: "email"` is
+ * the GoTrue verification type for a code sent via `/otp`.
+ */
+export async function verifyEmailOtp(
+  email: string,
+  token: string,
+): Promise<AuthSession> {
+  const data = await goTrue("/auth/v1/verify", {
+    type: "email",
+    email,
+    token: token.trim(),
+  });
+  const session = await persistSession(data, data.user?.email ?? email);
+  if (!session) {
+    throw new AuthError("bad_response", "Server returned an unexpected response.");
+  }
+  return session;
+}
+
 export async function signOut(): Promise<void> {
   const stored = await readStoredSession();
   // Best-effort logout: clear local state even if the API call fails.
@@ -325,4 +365,12 @@ export function validatePassword(v: string): string | null {
     return `Password must be at least ${MIN_PASSWORD_LEN} characters`;
   }
   return null;
+}
+
+export const OTP_CODE_LEN = 6;
+const OTP_RE = /^\d{6}$/;
+
+/** True when `v` is a well-formed 6-digit login code. */
+export function isValidOtpCode(v: string): boolean {
+  return OTP_RE.test(v.trim());
 }

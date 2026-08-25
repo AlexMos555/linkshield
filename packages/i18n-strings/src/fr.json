@@ -1568,7 +1568,19 @@
       "confirm_body": "Nous vous avons envoyé un lien de confirmation. Ouvrez-le pour activer votre compte.",
       "reset_sent_body": "Si un compte existe pour cette adresse, nous avons envoyé un lien pour réinitialiser votre mot de passe.",
       "generic_error": "Quelque chose s'est mal passé. Réessayez.",
-      "not_configured": "La connexion n'est pas disponible dans cette version. Vous pouvez utiliser tout le reste sans compte."
+      "not_configured": "La connexion n'est pas disponible dans cette version. Vous pouvez utiliser tout le reste sans compte.",
+      "otp_title": "Sign in with email",
+      "otp_sub": "Enter your email and we'll send you a login code",
+      "otp_send": "Send code",
+      "err_email": "Enter a valid email",
+      "code_title": "Enter the code",
+      "code_sub": "We sent a 6-digit code to {{email}}",
+      "code_verify": "Sign in",
+      "code_resend": "Send the code again",
+      "code_resend_in": "Resend in {{seconds}}s",
+      "code_change_email": "Change email",
+      "err_code": "Enter the 6-digit code",
+      "err_code_wrong": "Wrong or expired code. Request a new one."
     },
     "onboarding": {
       "s1_title": "Vérifiez tout avant d'y toucher",
