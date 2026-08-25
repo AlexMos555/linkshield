@@ -819,6 +819,23 @@
       "caveat_2": "PhishTank's free check API returns 'not indexed' for most fresh URLhaus URLs because their database lags by a few hours — that's why PhishTank's Recall column often shows '—' (unknown), not because it's broken.",
       "caveat_3": "Google Safe Browsing requires an API key (GOOGLE_SAFE_BROWSING_KEY). If unset, that column shows '—' and is excluded from the comparison.",
       "caveat_4": "Latency p50 measured from this script's host (US/EU CI runner); your latency from Asia or LATAM will differ. The relative comparison stays the same."
+    },
+    "support": {
+      "title": "Поддержка",
+      "subtitle": "Вопросы, проблемы или сайт заблокирован по ошибке — мы на связи.",
+      "email_label": "Напишите нам",
+      "email_hint": "Мы читаем каждое сообщение. Пожалуйста, укажите модель телефона и что произошло.",
+      "faq_title": "Частые вопросы",
+      "q_vpn": "Это VPN, который скрывает мой трафик?",
+      "a_vpn": "Нет. Cleanway создаёт на телефоне локальный фильтр, который блокирует мошеннические сайты во всех приложениях. Это не VPN для анонимности — он не скрывает, куда вы заходите, и не пускает трафик через другую страну. Запросы к сайтам, которые он не блокирует, идут к обычному публичному резолверу — так же, как телефон работает и сейчас.",
+      "q_install": "Как установить?",
+      "a_install": "Скачайте приложение, откройте файл и разрешите установку. При первом запуске нажмите «Включить защиту» и разрешите подключение, о котором спросит Android, — это запускается локальный фильтр.",
+      "q_off": "Как выключить?",
+      "a_off": "Откройте приложение и нажмите «Приостановить защиту». Включить обратно можно в любой момент.",
+      "q_fp": "Безопасный сайт заблокирован — что делать?",
+      "a_fp": "На экране блокировки нажмите «Это не мошенники» или напишите нам адрес. Мы быстро исправляем ошибочные блокировки.",
+      "q_privacy": "Что вы собираете?",
+      "a_privacy": "Щит сверяет имена сайтов прямо на телефоне — о том, куда вы заходите, мы ничего не узнаём. Подробности — на странице конфиденциальности."
     }
   },
   "email": {
