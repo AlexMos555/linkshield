@@ -86,19 +86,39 @@ class LinkGuardActivity : Activity() {
     /**
      * Open a URL in a real browser that is NOT Cleanway, so a forward can never
      * bounce back into this activity.
+     *
+     * We always forward with an EXPLICIT browser package. Firing an implicit
+     * VIEW would be catastrophic when Cleanway is the ONLY http/https handler on
+     * the device (e.g. the user made us default and has no other browser): the
+     * implicit intent resolves straight back to this activity → an infinite
+     * loop. So if there is no other browser, we hand the link to our own branded
+     * screen instead — the deep link is `cleanway://`, which this activity does
+     * not handle, so it cannot loop, and the link is never silently dropped.
      */
     private fun forwardToBrowser(url: String) {
-        val view = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
         val self = packageName
         val browser = packageManager.queryIntentActivities(
             Intent(Intent.ACTION_VIEW, Uri.parse("http://example.com")).addCategory(Intent.CATEGORY_BROWSABLE),
             0,
         ).map { it.activityInfo.packageName }.firstOrNull { it != self }
+
+        if (browser == null) {
+            Log.w(TAG, "no_other_browser: routing to app screen instead of looping")
+            routeToApp(url)
+            return
+        }
+
+        val view = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            .addCategory(Intent.CATEGORY_BROWSABLE)
+            .setPackage(browser)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         try {
-            if (browser != null) view.setPackage(browser)
-            startActivity(view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            startActivity(view)
         } catch (e: ActivityNotFoundException) {
-            Log.w(TAG, "no_browser_to_forward: ${e.message}")
+            // The chosen browser disappeared between query and launch — last
+            // resort our own screen rather than a dropped link.
+            Log.w(TAG, "browser_launch_failed: ${e.message}")
+            routeToApp(url)
         }
     }
 
