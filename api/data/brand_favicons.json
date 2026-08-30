@@ -107,7 +107,8 @@
       "connect.secure.wellsfargo.com"
     ],
     "known_favicon_hashes": [
-      "2420e2dd77fbe0494070da2c"
+      "2420e2dd77fbe0494070da2c",
+      "8670da3c95c03b59b091eac8"
     ]
   },
   "bankofamerica": {
@@ -184,7 +185,8 @@
       "www.fedex.com"
     ],
     "known_favicon_hashes": [
-      "f644a556676907e89b2144cf"
+      "f644a556676907e89b2144cf",
+      "b107119e80a5f160160257eb"
     ]
   },
   "linkedin": {
@@ -193,7 +195,8 @@
       "www.linkedin.com"
     ],
     "known_favicon_hashes": [
-      "19b079c09197fba68d021fa3"
+      "19b079c09197fba68d021fa3",
+      "0269ebcf4d19dfef4b7a8fc8"
     ]
   },
   "twitter": {
