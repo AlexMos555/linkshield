@@ -60,5 +60,6 @@
       }
     }
   },
+  "//captcha": "EXPO_PUBLIC_CAPTCHA_URL is OPTIONAL and deliberately NOT listed in the env blocks above. Unset (today) the sign-in flow is unchanged: no captcha, no browser hop, no extra request. Set it — as an EAS environment variable, or in mobile/.env for local gradle builds — only after Supabase captcha protection is enabled, pointing at the hosted challenge page (https://cleanway.ai/auth/captcha). It is left OUT of the profiles on purpose: an empty string here could shadow a value set in the Expo dashboard. See mobile/.env.example and mobile/src/services/captcha.ts.",
   "//supabase": "EXPO_PUBLIC_SUPABASE_ANON_KEY must exist as an EAS environment variable (Expo dashboard -> project -> Environment variables) or the build ships with sign-in dead. Local gradle builds read it from the git-ignored mobile/.env instead. See docs/MOBILE_AUTH.md."
 }

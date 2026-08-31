@@ -1509,7 +1509,10 @@
       "err_code": "Enter the 6-digit code",
       "err_code_wrong": "Wrong or expired code. Request a new one.",
       "err_network": "No connection. Check your internet and try again.",
-      "err_rate_limited": "Too many code requests. Please wait a little and try again."
+      "err_rate_limited": "Too many code requests. Please wait a little and try again.",
+      "err_captcha": "The security check didn't finish. Please try again.",
+      "err_captcha_update": "Signing in needs a newer version of Cleanway. Please update the app and try again.",
+      "captcha_wait": "Finishing the security check…"
     },
     "onboarding": {
       "s1_title": "Check anything before you tap it",

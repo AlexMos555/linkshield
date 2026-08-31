@@ -172,6 +172,10 @@ export default function RootLayout() {
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
         {/* Without an entry the header renders the raw route slug "family". */}
         <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />
+        {/* Deep-link sink for the OPTIONAL captcha flow. Unreachable unless
+            EXPO_PUBLIC_CAPTCHA_URL is set; it exists so the route is registered
+            (and headerless) the moment it is. */}
+        <Stack.Screen name="captcha-return" options={{ headerShown: false }} />
       </Stack>
       {/* Global overlay — subscribes to accountLockedEvents and renders
           the restore CTA whenever any authed call returns 410 Gone. */}

@@ -189,9 +189,18 @@ jobs:
         run: python3 scripts/check-stale-claims.py
 
   openapi-drift:
-    # Pin packages/api-types/schema/openapi.json to the live FastAPI app.
+    # Pin the whole generated packages/api-types/ to the live FastAPI app.
     # If a PR adds a route or schema but forgets to run `npm run build:api-types`,
     # this job fails so the stale spec doesn't leak into the typed clients.
+    #
+    # Both generated artifacts are gated, not just the JSON. This job used to
+    # run dump-openapi.py alone, which left src/openapi.d.ts — the file that
+    # landing/, mobile/ and packages/api-client/ actually import — invisible to
+    # CI. It drifted unnoticed for ~10 weeks (missing GET /api/v1/blocklist/dns
+    # and GET /api/v1/mobile/version, plus 19 properties still typed optional
+    # after --properties-required-by-default was added to the generator). So we
+    # now run the same single entry point contributors are told to run and diff
+    # everything it writes.
     runs-on: ubuntu-latest
     env:
       DEBUG: "true"
@@ -202,15 +211,27 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      # requirements.txt pins fastapi — the spec's exact shape depends on it
+      # (0.128 emits `format: binary` for UploadFile where 0.137 emits
+      # `contentMediaType`), so regenerating against anything else produces a
+      # file that is "fresh" locally and still red here.
       - run: pip install -r requirements.txt
-      - name: Regenerate spec
-        run: python3 scripts/dump-openapi.py
-      - name: Verify spec in repo matches regenerated
+      - run: npm ci
+      - name: Regenerate api-types (spec + TypeScript)
+        run: npm run build:api-types
+      - name: Verify generated api-types match the committed ones
         run: |
-          if ! git diff --exit-code -- packages/api-types/schema/openapi.json; then
+          if ! git diff --exit-code -- packages/api-types; then
             echo ""
-            echo "ERROR: packages/api-types/schema/openapi.json is out of date."
-            echo "Run 'npm run build:api-types' locally and commit the result."
+            echo "ERROR: packages/api-types is out of date — the committed"
+            echo "OpenAPI spec and/or generated types do not match the app."
+            echo "Regenerate with:  npm run build:api-types"
+            echo "then commit packages/api-types/schema/openapi.json and"
+            echo "packages/api-types/src/openapi.d.ts."
             exit 1
           fi
 

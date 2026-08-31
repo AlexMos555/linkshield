@@ -544,12 +544,46 @@ export interface paths {
          * Platform Stats
          * @description Global platform statistics for landing page and social proof.
          *
-         *     Numbers MUST stay consistent with docs/transparency/<latest>.json —
-         *     that file is the source of truth, but reading it here would
-         *     couple this fast hot-path endpoint to disk I/O. Mirror by hand
-         *     until we have a build step that injects the values at deploy.
+         *     detection_rate is read (and gated) from docs/benchmarks/latest.json — the
+         *     weekly-measured source of truth — NOT a hand-authored number. It is null
+         *     until a large-enough sample has been benchmarked, matching how the landing
+         *     presents recall. Other counts mirror docs/transparency/<latest>.json.
          */
         get: operations["platform_stats_api_v1_public_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/blocklist/dns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dns Blocklist */
+        get: operations["get_dns_blocklist_api_v1_blocklist_dns_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mobile/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mobile Version */
+        get: operations["mobile_version_api_v1_mobile_version_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1621,17 +1655,17 @@ export interface components {
              * Spf
              * @description SPF result from Authentication-Results
              */
-            spf?: string | null;
+            spf: string | null;
             /**
              * Dkim
              * @description DKIM result from Authentication-Results
              */
-            dkim?: string | null;
+            dkim: string | null;
             /**
              * Dmarc
              * @description DMARC result from Authentication-Results
              */
-            dmarc?: string | null;
+            dmarc: string | null;
             /**
              * Body Text
              * @description Plain-text body (cap 100 KB)
@@ -1690,7 +1724,7 @@ export interface components {
         /** Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post */
         Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post: {
             /** List Unsubscribe */
-            List_Unsubscribe?: string | null;
+            List_Unsubscribe: string | null;
         };
         /** BrandCreate */
         BrandCreate: {
@@ -1812,11 +1846,11 @@ export interface components {
          *     explicitly clears the override and falls back to the user-level value.
          */
         DeviceOverrideUpdate: {
-            skill_level_override?: components["schemas"]["SkillLevel"] | null;
+            skill_level_override: components["schemas"]["SkillLevel"] | null;
             /** Voice Alerts Enabled */
-            voice_alerts_enabled?: boolean | null;
+            voice_alerts_enabled: boolean | null;
             /** Font Scale */
-            font_scale?: number | null;
+            font_scale: number | null;
             /**
              * Clear Overrides
              * @default false
@@ -1907,7 +1941,7 @@ export interface components {
         /** ExplainRequest */
         ExplainRequest: {
             /** Signals */
-            signals?: string[];
+            signals: string[];
             /**
              * Locale
              * @default en
@@ -1948,7 +1982,7 @@ export interface components {
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+            detail: components["schemas"]["ValidationError"][];
         };
         /**
          * IncrementThreatsRequest
@@ -2325,7 +2359,7 @@ export interface components {
              */
             tier: string;
             /** Nudge Shown At */
-            nudge_shown_at?: string | null;
+            nudge_shown_at: string | null;
             /**
              * Nudge Count
              * @default 0
@@ -2386,15 +2420,15 @@ export interface components {
          * @description Partial update — all fields optional so clients can PATCH individually.
          */
         UserSettingsUpdate: {
-            skill_level?: components["schemas"]["SkillLevel"] | null;
+            skill_level: components["schemas"]["SkillLevel"] | null;
             /** Preferred Locale */
-            preferred_locale?: string | null;
+            preferred_locale: string | null;
             /** Voice Alerts Enabled */
-            voice_alerts_enabled?: boolean | null;
+            voice_alerts_enabled: boolean | null;
             /** Font Scale */
-            font_scale?: number | null;
+            font_scale: number | null;
             /** Parental Pin */
-            parental_pin?: string | null;
+            parental_pin: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -3292,6 +3326,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_dns_blocklist_api_v1_blocklist_dns_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    mobile_version_api_v1_mobile_version_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

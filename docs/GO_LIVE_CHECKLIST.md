@@ -45,10 +45,33 @@ inside the APK. With no CAPTCHA configured, a script can request codes in a loop
 and exhaust the project's email quota, so real users stop receiving login codes.
 It is mostly theoretical at 2 emails/hour (blocker #1 dwarfs it), but the moment
 real SMTP is wired this becomes the cheapest way to deny sign-in to everyone —
-and it costs money per message. **Fix:** enable CAPTCHA protection in Supabase
-(Authentication → Settings → Bot and abuse protection, hCaptcha or Turnstile),
-then pass the token from the app's sign-in call. Needs an hCaptcha/Turnstile
-account, so it is founder-gated; the client wiring is a small follow-up.
+and it costs money per message.
+
+**Mobile client wiring: DONE, and inert until configured.** `sendEmailOtp()`
+takes an optional captcha token, the sign-in screen fetches one when
+`EXPO_PUBLIC_CAPTCHA_URL` is set, and `cleanway://captcha-return` receives it
+(`mobile/src/services/captcha.ts`, `mobile/app/captcha-return.tsx`). With the
+variable unset — today — the flow is byte-identical to before: no captcha, no
+browser hop, no extra request, the same OTP body on the wire.
+
+**Still to do, in this order:**
+1. Create an hCaptcha or Turnstile account and get a sitekey (founder-gated —
+   this is the only reason the blocker is still open).
+2. Build the hosted challenge page (`landing/app/auth/captcha`) that renders the
+   widget and redirects to `cleanway://captcha-return?nonce=…&token=…`, and add
+   the provider's origins to the CSP in `landing/next.config.ts`
+   (`script-src` / `frame-src` / `connect-src`). NOT yet built — it needs the
+   provider decision from step 1.
+3. Pass `options.captchaToken` in `landing/app/[locale]/signup/SignupForm.tsx`.
+   **This is not optional.** The Supabase switch is PROJECT-WIDE, not
+   per-client: turning it on breaks web sign-up at the same instant it protects
+   mobile.
+4. Set `EXPO_PUBLIC_CAPTCHA_URL` and ship a new APK — `EXPO_PUBLIC_*` is inlined
+   at build time, so already-installed builds send no token and cannot sign in
+   until they update (the app names that case explicitly rather than showing a
+   generic error).
+5. Only then enable it in Supabase (Authentication → Settings → Bot and abuse
+   protection).
 
 ---
 

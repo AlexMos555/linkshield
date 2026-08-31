@@ -16,6 +16,11 @@ import {
   AuthError,
 } from "../src/services/auth";
 import { isSupabaseConfigured } from "../src/services/supabase";
+import {
+  isCaptchaRequired,
+  requestCaptchaToken,
+  cancelCaptcha,
+} from "../src/services/captcha";
 
 /**
  * Passwordless sign-in: enter email → receive a 6-digit code → enter it.
@@ -54,6 +59,10 @@ export default function AuthScreen() {
   // signs in) — otherwise the interval leaks and setState fires after unmount.
   useEffect(() => () => {
     if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+    // Drop any captcha challenge still waiting on a deep link, so its promise
+    // (and its AppState listener) can't outlive the screen. No-op when captcha
+    // is not configured — nothing is ever pending.
+    cancelCaptcha();
   }, []);
 
   const startCooldown = useCallback(() => {
@@ -90,7 +99,21 @@ export default function AuthScreen() {
     }
     setLoading(true);
     try {
-      await sendEmailOtp(cleanEmail);
+      // OPTIONAL captcha. With EXPO_PUBLIC_CAPTCHA_URL unset — today's state —
+      // isCaptchaRequired() is false, this block is skipped entirely and the
+      // call below is byte-for-byte the request it has always been.
+      let captchaToken: string | undefined;
+      if (isCaptchaRequired()) {
+        // Name it `token`, not `t` — `t` is the i18n function above.
+        const token = await requestCaptchaToken();
+        if (!token) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          setError(t("mobile.auth.err_captcha"));
+          return;
+        }
+        captchaToken = token;
+      }
+      await sendEmailOtp(cleanEmail, captchaToken);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setStep("code");
       setCode("");
@@ -104,8 +127,22 @@ export default function AuthScreen() {
       // 429 is a likely early-launch answer: the project-wide email quota is
       // small until real SMTP is wired, and GoTrue also caps per address.
       const limited = e instanceof AuthError && e.status === 429;
+      // The reverse failure mode, and the one worth naming BEFORE captcha is
+      // ever turned on: the Supabase switch is server-side and project-wide, so
+      // the instant it is flipped every already-installed build that sends no
+      // token starts getting 400 captcha_failed. Without this branch that reads
+      // as the generic "Something went wrong" — an undiagnosable launch
+      // incident instead of a one-line answer.
+      const captchaRejected = e instanceof AuthError && e.code === "captcha_failed";
       setError(
-        t(limited ? "mobile.auth.err_rate_limited"
+        t(captchaRejected
+            ? (isCaptchaRequired()
+                // We sent a token and the server refused it — retryable.
+                ? "mobile.auth.err_captcha"
+                // This build has no captcha wired but the server now demands
+                // one: only a newer app can sign in.
+                : "mobile.auth.err_captcha_update")
+          : limited ? "mobile.auth.err_rate_limited"
           : offline ? "mobile.auth.err_network"
           : "mobile.auth.generic_error"),
       );
