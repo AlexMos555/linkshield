@@ -1566,7 +1566,8 @@
       "code_change_email": "Cambia e-mail",
       "err_code": "Inserisci il codice di 6 cifre",
       "err_code_wrong": "Codice errato o scaduto. Richiedine uno nuovo.",
-      "err_network": "Nessuna connessione. Controlla Internet e riprova."
+      "err_network": "Nessuna connessione. Controlla Internet e riprova.",
+      "err_rate_limited": "Troppe richieste di codice. Attendi un momento e riprova."
     },
     "onboarding": {
       "s1_title": "Controlla qualsiasi cosa prima di toccarla",

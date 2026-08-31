@@ -21,6 +21,11 @@ const PLACEHOLDER_MARKERS = [
   "YOUR_PROJECT",
   "YOUR_ANON_KEY",
   "example.supabase.co",
+  // The literal shipped in mobile/.env.example. Without it, copying the example
+  // to .env and forgetting to paste the real key produced a build that LOOKED
+  // configured and failed every request with "Invalid API key", instead of the
+  // honest "sign-in is unavailable in this build".
+  "REPLACE_WITH_PUBLIC_ANON_KEY",
 ];
 
 function cleanValue(v: string | undefined | null): string {

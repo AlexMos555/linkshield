@@ -79,6 +79,12 @@ console.log("withReleaseSigning:");
   check("does not disturb the rest of the release block", () => {
     assert.match(out, /signingConfigs\.debug\)\s*\n\s*shrinkResources/);
   });
+  check("warns loudly instead of silently debug-signing", () => {
+    // A silent fallback is how a debug-signed APK reaches a store submission:
+    // the build still says BUILD SUCCESSFUL either way.
+    assert.ok(out.includes("NO RELEASE KEYSTORE"));
+    assert.ok(out.includes("if (!cleanwayKeystoreProps['storeFile'])"));
+  });
   check("is idempotent across repeated prebuilds", () => {
     assert.strictEqual(patchSigning(out), out);
   });

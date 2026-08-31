@@ -732,6 +732,7 @@
   "mobile.auth.err_code": "6 अंकों का कोड दर्ज करें",
   "mobile.auth.err_code_wrong": "गलत या समाप्त कोड। नया कोड मांगें।",
   "mobile.auth.err_network": "कोई कनेक्शन नहीं। अपना इंटरनेट जांचें और फिर कोशिश करें।",
+  "mobile.auth.err_rate_limited": "कोड के लिए बहुत अधिक अनुरोध। थोड़ा रुककर फिर कोशिश करें।",
   "mobile.onboarding.s1_title": "टैप करने से पहले कुछ भी जाँच लें",
   "mobile.onboarding.s1_desc": "कोई लिंक चिपकाएँ, QR कोड स्कैन करें, या कोई भी संदिग्ध चीज़ सीधे Cleanway को शेयर करें। आपको सीधा-सा जवाब मिलेगा और उसके पीछे की वजहें भी।",
   "mobile.onboarding.s2_title": "शुरू से ही निजी",

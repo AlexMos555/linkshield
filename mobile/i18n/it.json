@@ -732,6 +732,7 @@
   "mobile.auth.err_code": "Inserisci il codice di 6 cifre",
   "mobile.auth.err_code_wrong": "Codice errato o scaduto. Richiedine uno nuovo.",
   "mobile.auth.err_network": "Nessuna connessione. Controlla Internet e riprova.",
+  "mobile.auth.err_rate_limited": "Troppe richieste di codice. Attendi un momento e riprova.",
   "mobile.onboarding.s1_title": "Controlla qualsiasi cosa prima di toccarla",
   "mobile.onboarding.s1_desc": "Incolla un link, scansiona un codice QR o condividi con Cleanway qualsiasi cosa sospetta. Ricevi una risposta semplice e i motivi che ci stanno dietro.",
   "mobile.onboarding.s2_title": "Privato per come è fatto",

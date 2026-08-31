@@ -1506,7 +1506,8 @@
       "code_change_email": "Cambiar correo",
       "err_code": "Introduce el código de 6 dígitos",
       "err_code_wrong": "Código incorrecto o caducado. Solicita uno nuevo.",
-      "err_network": "Sin conexión. Comprueba tu internet e inténtalo de nuevo."
+      "err_network": "Sin conexión. Comprueba tu internet e inténtalo de nuevo.",
+      "err_rate_limited": "Demasiadas solicitudes de código. Espera un momento e inténtalo de nuevo."
     },
     "onboarding": {
       "s1_title": "Revisa cualquier cosa antes de tocarla",

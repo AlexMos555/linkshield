@@ -39,6 +39,17 @@ Workspace / a forwarder) and its MX records. If you later send mail *from*
 @cleanway.ai, the provider must also be added to SPF or DMARC `p=reject` will
 bounce it.
 
+### 3. Anyone can burn the login-email budget — no CAPTCHA on the auth endpoint
+`POST /auth/v1/otp` is public by design and needs only the anon key, which ships
+inside the APK. With no CAPTCHA configured, a script can request codes in a loop
+and exhaust the project's email quota, so real users stop receiving login codes.
+It is mostly theoretical at 2 emails/hour (blocker #1 dwarfs it), but the moment
+real SMTP is wired this becomes the cheapest way to deny sign-in to everyone —
+and it costs money per message. **Fix:** enable CAPTCHA protection in Supabase
+(Authentication → Settings → Bot and abuse protection, hCaptcha or Turnstile),
+then pass the token from the app's sign-in call. Needs an hCaptcha/Turnstile
+account, so it is founder-gated; the client wiring is a small follow-up.
+
 ---
 
 ## Founder must do (ordered)
@@ -52,7 +63,9 @@ bounce it.
 2. **Merge PR #39** → publishes `/android`, `/support`, `/api/v1/mobile/version`
    (all 404 in prod until then). Railway + Vercel deploy from `main`.
 3. **Real SMTP** (blocker #1) — hand Claude the Resend key, or configure it in the
-   Supabase dashboard: Project Settings → Auth → SMTP.
+   Supabase dashboard: Project Settings → Auth → SMTP. **Turn on CAPTCHA in the
+   same pass** (blocker #3): once sending actually works, an unprotected OTP
+   endpoint is the cheapest way for anyone to deny sign-in to every user.
 4. **Mail for `support@`** (blocker #2).
 5. **Host the APK** — the signed APK is built. Publish it (a GitHub Release on
    this public repo works — Claude can do it on request) and set

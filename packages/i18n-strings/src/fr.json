@@ -1566,7 +1566,8 @@
       "code_change_email": "Changer d'e-mail",
       "err_code": "Saisissez le code à 6 chiffres",
       "err_code_wrong": "Code incorrect ou expiré. Demandez-en un nouveau.",
-      "err_network": "Pas de connexion. Vérifiez votre accès Internet et réessayez."
+      "err_network": "Pas de connexion. Vérifiez votre accès Internet et réessayez.",
+      "err_rate_limited": "Trop de demandes de code. Patientez un instant et réessayez."
     },
     "onboarding": {
       "s1_title": "Vérifiez tout avant d'y toucher",

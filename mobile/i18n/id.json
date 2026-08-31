@@ -732,6 +732,7 @@
   "mobile.auth.err_code": "Masukkan kode 6 digit",
   "mobile.auth.err_code_wrong": "Kode salah atau kedaluwarsa. Minta kode baru.",
   "mobile.auth.err_network": "Tidak ada koneksi. Periksa internet Anda dan coba lagi.",
+  "mobile.auth.err_rate_limited": "Terlalu banyak permintaan kode. Tunggu sebentar dan coba lagi.",
   "mobile.onboarding.s1_title": "Cek apa saja sebelum Anda mengetuknya",
   "mobile.onboarding.s1_desc": "Tempel link, scan kode QR, atau bagikan apa pun yang mencurigakan langsung ke Cleanway. Anda mendapat jawaban yang sederhana beserta alasannya.",
   "mobile.onboarding.s2_title": "Dirancang menjaga privasi",

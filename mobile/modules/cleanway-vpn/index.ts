@@ -329,6 +329,22 @@ export function setNotificationLocale(code: string): void {
 }
 
 /** True when Cleanway is the default web-link handler (every tapped link is checked). */
+/**
+ * Can we VERIFY the browser role on this device at all? RoleManager is
+ * Android 10+; on 7-9 the link guard may still work via the system "Open with"
+ * chooser, but we cannot confirm it — and unverifiable protection is never
+ * shown as protection.
+ */
+export function isLinkHandlerSupported(): boolean {
+  try {
+    return typeof CleanwayVpn.isLinkHandlerSupported === 'function'
+      ? CleanwayVpn.isLinkHandlerSupported()
+      : false;
+  } catch {
+    return false;
+  }
+}
+
 export function isDefaultLinkHandler(): boolean {
   try {
     return typeof CleanwayVpn.isDefaultLinkHandler === 'function' && CleanwayVpn.isDefaultLinkHandler();

@@ -101,7 +101,14 @@ export default function AuthScreen() {
       // English in front of a Russian-speaking user. Map the two cases worth
       // distinguishing and fall back to our translated generic message.
       const offline = e instanceof AuthError && (e.code === "network_error" || e.code === "timeout");
-      setError(t(offline ? "mobile.auth.err_network" : "mobile.auth.generic_error"));
+      // 429 is a likely early-launch answer: the project-wide email quota is
+      // small until real SMTP is wired, and GoTrue also caps per address.
+      const limited = e instanceof AuthError && e.status === 429;
+      setError(
+        t(limited ? "mobile.auth.err_rate_limited"
+          : offline ? "mobile.auth.err_network"
+          : "mobile.auth.generic_error"),
+      );
     } finally {
       setLoading(false);
     }

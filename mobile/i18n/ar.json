@@ -732,6 +732,7 @@
   "mobile.auth.err_code": "أدخل الرمز المكوّن من 6 أرقام",
   "mobile.auth.err_code_wrong": "رمز خاطئ أو منتهي الصلاحية. اطلب رمزًا جديدًا.",
   "mobile.auth.err_network": "لا يوجد اتصال. تحقّق من الإنترنت وحاول مرة أخرى.",
+  "mobile.auth.err_rate_limited": "طلبات كثيرة جدًا للرمز. انتظر قليلًا ثم حاول مرة أخرى.",
   "mobile.onboarding.s1_title": "افحص أي شيء قبل أن تضغط عليه",
   "mobile.onboarding.s1_desc": "الصق رابطًا، أو امسح رمز QR، أو شارك أي شيء مريب مباشرة إلى Cleanway. تحصل على إجابة واضحة والأسباب وراءها.",
   "mobile.onboarding.s2_title": "مصمَّم من أجل الخصوصية",

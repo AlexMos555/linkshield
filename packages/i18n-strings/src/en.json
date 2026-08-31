@@ -1508,7 +1508,8 @@
       "code_change_email": "Change email",
       "err_code": "Enter the 6-digit code",
       "err_code_wrong": "Wrong or expired code. Request a new one.",
-      "err_network": "No connection. Check your internet and try again."
+      "err_network": "No connection. Check your internet and try again.",
+      "err_rate_limited": "Too many code requests. Please wait a little and try again."
     },
     "onboarding": {
       "s1_title": "Check anything before you tap it",

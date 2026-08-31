@@ -173,6 +173,14 @@ class CleanwayVpnModule : Module() {
      * Is Cleanway currently the default handler for web links (the browser
      * role)? When true, every tapped link routes through the link guard.
      */
+    // RoleManager (and therefore any way to VERIFY we hold the browser role)
+    // exists only on Android 10+. On 7-9 the link guard can still work if the
+    // user picks Cleanway in the system "Open with" chooser, but we cannot
+    // confirm it — and this app does not show protection it cannot verify.
+    Function("isLinkHandlerSupported") {
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+    }
+
     Function("isDefaultLinkHandler") {
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@Function false
       val rm = context.getSystemService(android.app.role.RoleManager::class.java)

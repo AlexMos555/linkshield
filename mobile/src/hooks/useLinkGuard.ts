@@ -15,16 +15,35 @@ import { useCallback, useState } from "react";
 import { Platform } from "react-native";
 import { useFocusEffect } from "expo-router";
 
-import { isDefaultLinkHandler, requestLinkHandler } from "../../modules/cleanway-vpn";
+import {
+  isDefaultLinkHandler,
+  isLinkHandlerSupported,
+  requestLinkHandler,
+} from "../../modules/cleanway-vpn";
 
 export interface LinkGuardStatus {
-  available: boolean; // Android + a native build new enough to expose the API
-  on: boolean; // Cleanway IS the default link handler right now
+  /** Android AND a version where holding the role can actually be verified. */
+  available: boolean;
+  /** Cleanway IS the default link handler right now (live system check). */
+  on: boolean;
   enable: () => Promise<void>;
+  /** Open the system default-apps screen — the only way to hand the role back. */
+  manage: () => Promise<void>;
 }
 
 export function useLinkGuard(): LinkGuardStatus {
-  const available = Platform.OS === "android";
+  // Android 7-9 has no RoleManager, so we cannot verify the role. Rather than
+  // park a permanently-failing "Set up" button on those phones, the card is
+  // hidden there — unverifiable is not the same as off, and neither may be
+  // dressed up as protection.
+  const [available] = useState(() => {
+    if (Platform.OS !== "android") return false;
+    try {
+      return isLinkHandlerSupported();
+    } catch {
+      return false; // older native build without the API
+    }
+  });
   const [on, setOn] = useState(false);
 
   const refresh = useCallback(() => {
@@ -52,5 +71,18 @@ export function useLinkGuard(): LinkGuardStatus {
     setTimeout(refresh, 800);
   }, [available, refresh]);
 
-  return { available, on, enable };
+  // There is no API to RELEASE the browser role, so the honest exit is the
+  // system screen where the user can hand it to another app. Without this the
+  // card was a one-way door: on, with no way back from inside the app.
+  const manage = useCallback(async () => {
+    if (!available) return;
+    try {
+      await requestLinkHandler();
+    } catch {
+      // dialog dismissed / unavailable — nothing to surface
+    }
+    setTimeout(refresh, 800);
+  }, [available, refresh]);
+
+  return { available, on, enable, manage };
 }

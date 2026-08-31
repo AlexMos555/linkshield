@@ -1566,7 +1566,8 @@
       "code_change_email": "Alterar e-mail",
       "err_code": "Digite o código de 6 dígitos",
       "err_code_wrong": "Código incorreto ou expirado. Solicite um novo.",
-      "err_network": "Sem conexão. Verifique sua internet e tente novamente."
+      "err_network": "Sem conexão. Verifique sua internet e tente novamente.",
+      "err_rate_limited": "Muitas solicitações de código. Aguarde um pouco e tente novamente."
     },
     "onboarding": {
       "s1_title": "Verifique qualquer coisa antes de tocar",

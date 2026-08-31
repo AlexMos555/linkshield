@@ -77,10 +77,13 @@ export default function HomeScreen() {
   const blockedTotal = stats.threats_blocked + shieldTotals.blocked;
   const warnedTotal = stats.threats_warned + shieldTotals.warned;
 
-  // Only shields that are shipped AND verifiable on this platform can count.
-  // A running-but-unverified tunnel deliberately counts as 0.
-  const totalCount = network.available ? 1 : 0;
-  const verifiedCount = network.verified ? 1 : 0;
+  // Only shields that are shipped AND verifiable on this platform can count;
+  // a running-but-unverified tunnel deliberately counts as 0. Equally, every
+  // shield that DOES exist on this device must be counted, or the
+  // headline lies: with only the DNS shield counted, a phone whose link guard
+  // was never set up still read "All shields on and verified".
+  const totalCount = (network.available ? 1 : 0) + (linkGuard.available ? 1 : 0);
+  const verifiedCount = (network.verified ? 1 : 0) + (linkGuard.on ? 1 : 0);
   const heroState =
     totalCount > 0 && verifiedCount === totalCount ? "all"
     : verifiedCount > 0 ? "partial"
@@ -275,7 +278,11 @@ export default function HomeScreen() {
                 : t("mobile.shield.linkguard.state_setup")
             }
             onAction={() => {
-              if (!linkGuard.on) void linkGuard.enable();
+              // ON is a pill, not a toggle (same contract as the network card):
+              // tapping opens the system screen where the role can be handed
+              // back, because there is no API to release it ourselves.
+              if (linkGuard.on) void linkGuard.manage();
+              else void linkGuard.enable();
             }}
           />
         </View>

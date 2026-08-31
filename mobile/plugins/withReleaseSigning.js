@@ -58,6 +58,24 @@ const RELEASE_SIGNING_BLOCK = `{
 const SIGNING_SELECTOR =
   "signingConfig (cleanwayKeystoreProps['storeFile'] ? signingConfigs.release : signingConfigs.debug)";
 
+
+// Falling back to the debug key must never be silent: the build still prints
+// BUILD SUCCESSFUL, and a debug-signed artifact is rejected by every store and
+// can never be updated over by a properly-signed one. Warn at configuration
+// time, where the person running the build will actually see it.
+const FALLBACK_WARNING = `
+// cleanway-release-signing
+if (!cleanwayKeystoreProps['storeFile']) {
+    logger.warn("")
+    logger.warn("****************************************************************")
+    logger.warn("* Cleanway: NO RELEASE KEYSTORE - signing with the DEBUG key.   *")
+    logger.warn("* This APK/AAB cannot be published and cannot be updated over.  *")
+    logger.warn("* Add android/keystore.properties (docs/RUSTORE_SUBMISSION.md). *")
+    logger.warn("****************************************************************")
+    logger.warn("")
+}
+`;
+
 function patch(contents) {
   if (contents.includes(SENTINEL)) return contents; // already applied
 
@@ -75,6 +93,9 @@ function patch(contents) {
   const signingConfigs = /signingConfigs\s*\{/;
   if (!signingConfigs.test(out)) return contents;
   out = out.replace(signingConfigs, `signingConfigs {\n        release ${RELEASE_SIGNING_BLOCK}\n`);
+
+  // 2b. Warn loudly, at configuration time, when we are about to debug-sign.
+  out = out.replace(KEYSTORE_LOADER, KEYSTORE_LOADER + FALLBACK_WARNING);
 
   // 3. Point the RELEASE buildType at that config (not the debug key). The
   //    non-greedy spans require the literal `release {` first, so the debug

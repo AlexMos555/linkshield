@@ -1566,7 +1566,8 @@
       "code_change_email": "E-Mail ändern",
       "err_code": "Geben Sie den 6-stelligen Code ein",
       "err_code_wrong": "Falscher oder abgelaufener Code. Fordern Sie einen neuen an.",
-      "err_network": "Keine Verbindung. Prüfen Sie Ihr Internet und versuchen Sie es erneut."
+      "err_network": "Keine Verbindung. Prüfen Sie Ihr Internet und versuchen Sie es erneut.",
+      "err_rate_limited": "Zu viele Code-Anfragen. Warten Sie kurz und versuchen Sie es erneut."
     },
     "onboarding": {
       "s1_title": "Prüfe alles, bevor du es antippst",

@@ -7,7 +7,7 @@
  *   User in WhatsApp → long press link → Share → Cleanway → alert if dangerous
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
 } from "react-native";
@@ -37,7 +37,17 @@ const VERDICT_ICONS: Record<Level, keyof typeof Ionicons.glyphMap> = {
 };
 
 export default function SharedScreen() {
+
   const router = useRouter();
+
+  // /shared is PUSHED by the share-intent router on every share, so replacing
+  // the route with "/(tabs)" stacked a fresh tabs navigator EACH time — two
+  // shares meant three mounted home screens, each with its own shield probe and
+  // AppState listener, growing for the whole session. Go back instead.
+  const leaveShared = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)");
+  }, [router]);
   const { t } = useTranslation();
   const { url, via } = useLocalSearchParams<{ url: string; via?: string }>();
   const [result, setResult] = useState<PublicCheckResult | null>(null);
@@ -106,7 +116,7 @@ export default function SharedScreen() {
         </Text>
         <TouchableOpacity
           style={s.primaryBtn}
-          onPress={() => router.replace("/(tabs)")}
+          onPress={() => leaveShared()}
           activeOpacity={0.85}
           accessibilityRole="button"
         >
@@ -172,7 +182,7 @@ export default function SharedScreen() {
         // verdict is not safe, so it never nudges them toward a scam.
         <TouchableOpacity
           style={result.level === "safe" ? s.primaryBtn : s.secondaryBtn}
-          onPress={() => { openInBrowser(url); router.replace("/(tabs)"); }}
+          onPress={() => { openInBrowser(url); leaveShared(); }}
           activeOpacity={0.85}
           accessibilityRole="button"
         >
@@ -193,7 +203,7 @@ export default function SharedScreen() {
 
       <TouchableOpacity
         style={s.secondaryBtn}
-        onPress={() => router.replace("/(tabs)")}
+        onPress={() => leaveShared()}
         activeOpacity={0.85}
         accessibilityRole="button"
       >
