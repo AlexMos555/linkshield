@@ -37,6 +37,10 @@ const API_BASE = (
 
 const WEB_BASE = "https://cleanway.ai";
 const CHECK_INTERVAL_MS = 20 * 60 * 60 * 1000; // ~daily, off launch cadence
+// After a failed check (endpoint not deployed yet, offline, 5xx) wait this long
+// instead of the full interval — but DO record the attempt, so a permanently
+// 404ing endpoint isn't re-hit on every single cold start.
+const RETRY_INTERVAL_MS = 60 * 60 * 1000;
 const SNAPSHOT_KEY = "cleanway_update_snapshot";
 const LAST_CHECK_KEY = "cleanway_update_last_check";
 const DISMISSED_KEY = "cleanway_update_dismissed"; // the version name last dismissed
@@ -98,15 +102,36 @@ export function useUpdateCheck(lang: string = "en"): UpdateStatus {
       try {
         const rawLast = await SecureStore.getItemAsync(LAST_CHECK_KEY);
         const last = rawLast ? parseInt(rawLast, 10) : 0;
-        if (Number.isFinite(last) && Date.now() - last < CHECK_INTERVAL_MS) return;
+        const now = Date.now();
+        const elapsed = now - last;
+        // `elapsed < 0` means the stored stamp is in the FUTURE — the phone's
+        // clock was ahead when we last checked (common on cheap devices booting
+        // without a network). Treating that as "checked recently" would disable
+        // update checks forever, so a future stamp counts as stale.
+        const fresh = Number.isFinite(last) && elapsed >= 0 && elapsed < CHECK_INTERVAL_MS;
+        if (fresh) return;
       } catch {
         // fall through and check
       }
-      const fresh = await fetchVersionInfo(API_BASE);
-      if (!alive || !fresh) return;
-      setInfo(fresh);
+      const fetched = await fetchVersionInfo(API_BASE);
+      if (!alive) return;
+      if (!fetched) {
+        // Record the failed attempt with a shorter backoff so a not-yet-deployed
+        // endpoint doesn't get hit on every launch, but a transient outage still
+        // resolves within the hour.
+        try {
+          await SecureStore.setItemAsync(
+            LAST_CHECK_KEY,
+            String(Date.now() - (CHECK_INTERVAL_MS - RETRY_INTERVAL_MS)),
+          );
+        } catch {
+          // best effort
+        }
+        return;
+      }
+      setInfo(fetched);
       try {
-        await SecureStore.setItemAsync(SNAPSHOT_KEY, JSON.stringify(fresh));
+        await SecureStore.setItemAsync(SNAPSHOT_KEY, JSON.stringify(fetched));
         await SecureStore.setItemAsync(LAST_CHECK_KEY, String(Date.now()));
       } catch {
         // Persisting is best-effort; the in-memory decision still holds.
@@ -126,7 +151,14 @@ export function useUpdateCheck(lang: string = "en"): UpdateStatus {
 
   if (!ready || Platform.OS !== "android" || !info) return NONE;
 
-  const raw = decideUpdate(RUNNING, info.latestVersionName, info.minSupportedVersionName);
+  // hasDownload=false when the server has no signed APK URL yet: we still tell
+  // the user, but never as an undismissable demand they cannot satisfy.
+  const raw = decideUpdate(
+    RUNNING,
+    info.latestVersionName,
+    info.minSupportedVersionName,
+    !!info.apkUrl,
+  );
   // Required is never suppressible; an optional nudge the user already waved
   // away stays hidden until a newer version supersedes what they dismissed.
   const decision: UpdateDecision =

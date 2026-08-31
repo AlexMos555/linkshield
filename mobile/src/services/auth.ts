@@ -77,7 +77,10 @@ interface GoTrueTokenResponse {
   msg?: string;
   error_description?: string;
   error?: string;
-  code?: string;
+  /** GoTrue's numeric HTTP status echo (e.g. 403) in the versioned error format. */
+  code?: string | number;
+  /** GoTrue's SYMBOLIC name (e.g. "otp_expired") — the one worth branching on. */
+  error_code?: string;
 }
 
 async function goTrue<T = GoTrueTokenResponse>(
@@ -107,8 +110,12 @@ async function goTrue<T = GoTrueTokenResponse>(
     const data = (await resp.json().catch(() => ({}))) as T & GoTrueTokenResponse;
 
     if (!resp.ok) {
+      // Prefer the symbolic name. GoTrue's versioned error format puts the
+      // numeric HTTP status in `code` and the actual identifier in `error_code`,
+      // so reading `code` first made every symbolic branch (e.g. "otp_expired")
+      // unreachable — it was comparing "otp_expired" against "403".
       throw new AuthError(
-        data.code || data.error || "auth_error",
+        data.error_code || data.error || (data.code != null ? String(data.code) : "auth_error"),
         data.msg || data.error_description || "Authentication failed",
         resp.status,
       );

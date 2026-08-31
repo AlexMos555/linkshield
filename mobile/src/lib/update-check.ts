@@ -60,16 +60,34 @@ export function compareVersions(a: string, b: string): number {
  * Decide what the app should show given the running build and the server's
  * numbers. Required beats optional; an empty/absent floor never forces.
  * Anything we can't make sense of falls back to "none" (stay quiet).
+ *
+ * Two guards against a misconfigured server trapping the user:
+ *  - A floor ABOVE the latest published version is nonsense (nothing you could
+ *    install would satisfy it), so it is ignored rather than obeyed. Without
+ *    this, one fat-fingered env value shows every user a permanent, undismissable
+ *    "you must update" with no version in existence that clears it.
+ *  - `hasDownload: false` means we have no signed artifact to send them to (the
+ *    /android page still says "coming soon"). Insisting on an update the user
+ *    physically cannot perform is a trap, so it degrades to the dismissible nudge.
  */
 export function decideUpdate(
   running: string,
   latest: string,
   minSupported: string | null,
+  hasDownload = true,
 ): UpdateDecision {
   if (!running || !latest) return "none";
-  if (minSupported && compareVersions(running, minSupported) < 0) return "required";
-  if (compareVersions(running, latest) < 0) return "optional";
+  const floorIsSane = !!minSupported && compareVersions(minSupported, latest) <= 0;
+  const belowFloor = floorIsSane && compareVersions(running, minSupported!) < 0;
+  const behindLatest = compareVersions(running, latest) < 0;
+  if (belowFloor) return hasDownload ? "required" : "optional";
+  if (behindLatest) return "optional";
   return "none";
+}
+
+/** Only https:// URLs may be opened from the update banner. */
+export function isSafeDownloadUrl(v: unknown): boolean {
+  return typeof v === "string" && /^https:\/\/[^\s]+$/i.test(v.trim());
 }
 
 /**
@@ -97,7 +115,11 @@ export async function fetchVersionInfo(
       latestVersionName: latest,
       minSupportedVersionName:
         typeof body.min_supported_version_name === "string" ? body.min_supported_version_name : null,
-      apkUrl: typeof body.apk_url === "string" ? body.apk_url : null,
+      // Only ever hand an https URL to Linking.openURL. The value comes from a
+      // server env var, and a wrong or tampered one (intent://, market://, a
+      // javascript: scheme) would otherwise be opened verbatim on the user's
+      // phone from a banner they trust.
+      apkUrl: isSafeDownloadUrl(body.apk_url) ? (body.apk_url as string) : null,
       releaseNotes: typeof body.release_notes === "string" ? body.release_notes : null,
     };
   } catch {

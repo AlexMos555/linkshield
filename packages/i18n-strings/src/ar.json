@@ -844,7 +844,7 @@
       "benefit_2": "Checks the links you tap and warns you before a dangerous page opens.",
       "benefit_3": "Free, works offline from a local list, nothing extra.",
       "download_cta": "Download the app",
-      "download_note": ".apk file · Android 8 and newer",
+      "download_note": "ملف .apk · أندرويد 7 والأحدث",
       "download_soon": "The download link is coming very soon.",
       "steps_title": "How to install",
       "step_1": "Tap \"Download the app\" and wait for the file.",
@@ -858,7 +858,8 @@
       "gplay": "Google Play",
       "store_soon": "Soon",
       "privacy_title": "This is not an \"anonymity VPN\"",
-      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us."
+      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us.",
+      "download_soon_note": "سيظهر رابط التنزيل هنا فور نشر الإصدار. الخطوات أدناه توضّح كيف ستبدو عملية التثبيت."
     }
   },
   "email": {
@@ -1548,39 +1549,24 @@
       "join_network_failed": "تعذّر الوصول إلى خوادمنا، لذلك لم يتم التحقق من الرمز. دعوتك ما زالت صالحة — حاول مرة أخرى بعد قليل."
     },
     "auth": {
-      "title_login": "مرحبًا بعودتك",
-      "title_register": "إنشاء حساب",
-      "title_reset": "إعادة تعيين كلمة المرور",
-      "sub_login": "سجّل الدخول لتبقى إعداداتك على جميع أجهزتك",
-      "sub_register": "ابدأ مجانًا — لا حاجة لبطاقة لإنشاء حساب",
-      "sub_reset": "سنرسل لك بالبريد الإلكتروني رابطًا لتعيين كلمة مرور جديدة",
-      "cta_login": "تسجيل الدخول",
-      "cta_register": "إنشاء حساب",
-      "cta_reset": "إرسال رابط إعادة التعيين",
       "email_ph": "البريد الإلكتروني",
-      "password_ph": "كلمة المرور",
-      "forgot": "هل نسيت كلمة المرور؟",
-      "switch_to_register": "ليس لديك حساب؟ أنشئ حسابًا",
-      "switch_to_login": "لديك حساب بالفعل؟ سجّل الدخول",
       "skip": "المتابعة من دون حساب",
       "privacy": "بحساب أو من دونه: نفحص أسماء المواقع على خوادمنا — ولا نفحص أبدًا كلمات مرورك أو رسائلك أو سجلّ تصفحك.",
-      "confirm_title": "تحقق من بريدك الإلكتروني",
-      "confirm_body": "أرسلنا رابط تأكيد. افتحه لتفعيل حسابك.",
-      "reset_sent_body": "إذا كان هناك حساب بهذا العنوان، فقد أرسلنا رابطًا لإعادة تعيين كلمة المرور.",
       "generic_error": "حدث خطأ ما. حاول مرة أخرى.",
       "not_configured": "تسجيل الدخول غير متاح في هذا الإصدار. يمكنك استخدام كل شيء آخر من دون حساب.",
-      "otp_title": "Sign in with email",
-      "otp_sub": "Enter your email and we'll send you a login code",
-      "otp_send": "Send code",
-      "err_email": "Enter a valid email",
-      "code_title": "Enter the code",
-      "code_sub": "We sent a 6-digit code to {{email}}",
-      "code_verify": "Sign in",
-      "code_resend": "Send the code again",
-      "code_resend_in": "Resend in {{seconds}}s",
-      "code_change_email": "Change email",
-      "err_code": "Enter the 6-digit code",
-      "err_code_wrong": "Wrong or expired code. Request a new one."
+      "otp_title": "تسجيل الدخول بالبريد الإلكتروني",
+      "otp_sub": "أدخل بريدك الإلكتروني وسنرسل لك رمز الدخول",
+      "otp_send": "إرسال الرمز",
+      "err_email": "أدخل بريدًا إلكترونيًا صالحًا",
+      "code_title": "أدخل الرمز",
+      "code_sub": "أرسلنا رمزًا من 6 أرقام إلى {{email}}",
+      "code_verify": "تسجيل الدخول",
+      "code_resend": "إعادة إرسال الرمز",
+      "code_resend_in": "إعادة الإرسال خلال {{seconds}} ثانية",
+      "code_change_email": "تغيير البريد الإلكتروني",
+      "err_code": "أدخل الرمز المكوّن من 6 أرقام",
+      "err_code_wrong": "رمز خاطئ أو منتهي الصلاحية. اطلب رمزًا جديدًا.",
+      "err_network": "لا يوجد اتصال. تحقّق من الإنترنت وحاول مرة أخرى."
     },
     "onboarding": {
       "s1_title": "افحص أي شيء قبل أن تضغط عليه",
@@ -1640,12 +1626,12 @@
       "padded_address": "العنوان محشوّ بأجزاء زائدة لإخفاء الاسم الحقيقي"
     },
     "update": {
-      "optional_title": "Update available",
-      "optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
-      "required_title": "Please update the app",
-      "required_body": "This version is out of date. Update Cleanway to keep your protection working.",
-      "action": "Update",
-      "later": "Later"
+      "optional_title": "يتوفر تحديث",
+      "optional_body": "صدرت نسخة أحدث من Cleanway. حدّث التطبيق للحفاظ على حمايتك.",
+      "required_title": "يرجى تحديث التطبيق",
+      "required_body": "هذه النسخة قديمة. حدّث Cleanway لتستمر الحماية في العمل.",
+      "action": "تحديث",
+      "later": "لاحقًا"
     }
   }
 }

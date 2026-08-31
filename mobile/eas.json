@@ -11,7 +11,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.cleanway.ai",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
       },
       "ios": {
         "simulator": true
@@ -23,7 +24,8 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.cleanway.ai",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -37,7 +39,8 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.cleanway.ai",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -56,5 +59,6 @@
         "track": "internal"
       }
     }
-  }
+  },
+  "//supabase": "EXPO_PUBLIC_SUPABASE_ANON_KEY must exist as an EAS environment variable (Expo dashboard -> project -> Environment variables) or the build ships with sign-in dead. Local gradle builds read it from the git-ignored mobile/.env instead. See docs/MOBILE_AUTH.md."
 }

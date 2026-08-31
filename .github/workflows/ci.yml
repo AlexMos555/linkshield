@@ -122,6 +122,13 @@ jobs:
       - name: Mobile i18n contract
         run: python3 scripts/check-mobile-i18n.py
 
+      # The Expo config plugins rewrite android/app/build.gradle on every
+      # prebuild, and the generated tree is not in git. A regression there means
+      # a debug-signed or needlessly fat release APK with a green build either
+      # way — so the transforms are asserted here, in CI, not by hand.
+      - name: Expo config plugins (release signing + ABI filters)
+        run: node mobile/plugins/__tests__/plugins.test.js
+
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
 

@@ -844,7 +844,7 @@
       "benefit_2": "Checks the links you tap and warns you before a dangerous page opens.",
       "benefit_3": "Free, works offline from a local list, nothing extra.",
       "download_cta": "Download the app",
-      "download_note": ".apk file · Android 8 and newer",
+      "download_note": "Berkas .apk · Android 7 ke atas",
       "download_soon": "The download link is coming very soon.",
       "steps_title": "How to install",
       "step_1": "Tap \"Download the app\" and wait for the file.",
@@ -858,7 +858,8 @@
       "gplay": "Google Play",
       "store_soon": "Soon",
       "privacy_title": "This is not an \"anonymity VPN\"",
-      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us."
+      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us.",
+      "download_soon_note": "Tautan unduhan akan muncul di sini setelah versinya dirilis. Langkah-langkah di bawah menunjukkan proses pemasangannya."
     }
   },
   "email": {
@@ -1548,39 +1549,24 @@
       "join_network_failed": "Kami tidak bisa menghubungi server kami, jadi kodenya belum dicek. Undangan Anda tetap berlaku — silakan coba lagi sebentar lagi."
     },
     "auth": {
-      "title_login": "Selamat datang kembali",
-      "title_register": "Buat akun",
-      "title_reset": "Atur ulang kata sandi",
-      "sub_login": "Masuk agar pengaturan Anda tersimpan di semua perangkat",
-      "sub_register": "Gratis untuk memulai — tidak perlu kartu untuk membuat akun",
-      "sub_reset": "Kami akan mengirim email berisi link untuk membuat kata sandi baru",
-      "cta_login": "Masuk",
-      "cta_register": "Buat akun",
-      "cta_reset": "Kirim link atur ulang",
       "email_ph": "Email",
-      "password_ph": "Kata sandi",
-      "forgot": "Lupa kata sandi?",
-      "switch_to_register": "Belum punya akun? Daftar",
-      "switch_to_login": "Sudah punya akun? Masuk",
       "skip": "Lanjut tanpa akun",
       "privacy": "Dengan atau tanpa akun: kami mengecek nama situs di server kami — tidak pernah kata sandi, pesan, atau riwayat browsing Anda.",
-      "confirm_title": "Periksa email Anda",
-      "confirm_body": "Kami sudah mengirim link konfirmasi. Buka link itu untuk mengaktifkan akun Anda.",
-      "reset_sent_body": "Kalau ada akun dengan alamat ini, kami sudah mengirim link untuk mengatur ulang kata sandi Anda.",
       "generic_error": "Terjadi kesalahan. Silakan coba lagi.",
       "not_configured": "Fitur masuk belum tersedia di versi aplikasi ini. Semua fitur lain tetap bisa dipakai tanpa akun.",
-      "otp_title": "Sign in with email",
-      "otp_sub": "Enter your email and we'll send you a login code",
-      "otp_send": "Send code",
-      "err_email": "Enter a valid email",
-      "code_title": "Enter the code",
-      "code_sub": "We sent a 6-digit code to {{email}}",
-      "code_verify": "Sign in",
-      "code_resend": "Send the code again",
-      "code_resend_in": "Resend in {{seconds}}s",
-      "code_change_email": "Change email",
-      "err_code": "Enter the 6-digit code",
-      "err_code_wrong": "Wrong or expired code. Request a new one."
+      "otp_title": "Masuk dengan email",
+      "otp_sub": "Masukkan email Anda dan kami akan mengirim kode masuk",
+      "otp_send": "Kirim kode",
+      "err_email": "Masukkan email yang valid",
+      "code_title": "Masukkan kode",
+      "code_sub": "Kami mengirim kode 6 digit ke {{email}}",
+      "code_verify": "Masuk",
+      "code_resend": "Kirim ulang kode",
+      "code_resend_in": "Kirim ulang dalam {{seconds}} d",
+      "code_change_email": "Ubah email",
+      "err_code": "Masukkan kode 6 digit",
+      "err_code_wrong": "Kode salah atau kedaluwarsa. Minta kode baru.",
+      "err_network": "Tidak ada koneksi. Periksa internet Anda dan coba lagi."
     },
     "onboarding": {
       "s1_title": "Cek apa saja sebelum Anda mengetuknya",
@@ -1640,12 +1626,12 @@
       "padded_address": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
     },
     "update": {
-      "optional_title": "Update available",
-      "optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
-      "required_title": "Please update the app",
-      "required_body": "This version is out of date. Update Cleanway to keep your protection working.",
-      "action": "Update",
-      "later": "Later"
+      "optional_title": "Pembaruan tersedia",
+      "optional_body": "Versi Cleanway yang lebih baru telah tersedia. Perbarui agar perlindungan Anda tetap mutakhir.",
+      "required_title": "Silakan perbarui aplikasi",
+      "required_body": "Versi ini sudah usang. Perbarui Cleanway agar perlindungan Anda tetap berfungsi.",
+      "action": "Perbarui",
+      "later": "Nanti"
     }
   }
 }

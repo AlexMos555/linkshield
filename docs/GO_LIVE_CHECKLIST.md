@@ -54,10 +54,12 @@ bounce it.
 3. **Real SMTP** (blocker #1) — hand Claude the Resend key, or configure it in the
    Supabase dashboard: Project Settings → Auth → SMTP.
 4. **Mail for `support@`** (blocker #2).
-5. **Host the APK** — the signed APK is built (see below). Publish it (a GitHub
-   Release on this public repo works, Claude can do it on request) and set
-   `NEXT_PUBLIC_APK_URL` in Vercel → the `/android` button goes live. *Vercel needs
-   your login; Claude has no token.*
+5. **Host the APK** — the signed APK is built. Publish it (a GitHub Release on
+   this public repo works — Claude can do it on request) and set
+   `NEXT_PUBLIC_APK_URL` in Vercel. ⚠️ **Then trigger a redeploy**: Next inlines
+   every `NEXT_PUBLIC_*` value at build time and the page is statically
+   prerendered per locale, so setting the variable alone changes nothing until
+   the site is rebuilt. *Vercel needs your login; Claude has no token.*
 6. **RuStore developer account** (ЕСИА, физлицо OK), then submit: listing copy in
    `mobile/STORE_LISTING.md`, data-safety + VpnService answers in
    `docs/RUSTORE_SUBMISSION.md` §3–4. **RuStore only** — Google Play now requires

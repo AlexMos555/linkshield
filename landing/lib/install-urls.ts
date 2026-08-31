@@ -21,9 +21,15 @@ export interface PlatformInfo {
   /** Where the install button leads. When not yet live, this is a placeholder
    *  that will redirect to the marketing page rather than a dead store. */
   href: string;
-  /** True when the store listing is live and the link resolves to a real
-   *  install page. When false, UI should render the button as a status pill
-   *  ("In review", "Coming soon") rather than a clickable CTA. */
+  /** True when the link resolves to a real, useful install destination — a live
+   *  store listing, or our own download page which states its own status. When
+   *  false, UI renders a non-clickable status pill instead ("In review",
+   *  "Coming soon").
+   *
+   *  Android is `true` because `/android` is a real page: it explains the app,
+   *  walks through the unknown-sources step, and says plainly when the build is
+   *  not published yet. Sending people to a page that tells the truth beats a
+   *  greyed-out pill that hides it. */
   available: boolean;
   /** Short user-facing status when `available=false`. */
   status?: string;

@@ -844,7 +844,7 @@
       "benefit_2": "Checks the links you tap and warns you before a dangerous page opens.",
       "benefit_3": "Free, works offline from a local list, nothing extra.",
       "download_cta": "Download the app",
-      "download_note": ".apk file · Android 8 and newer",
+      "download_note": "Archivo .apk · Android 7 o posterior",
       "download_soon": "The download link is coming very soon.",
       "steps_title": "How to install",
       "step_1": "Tap \"Download the app\" and wait for the file.",
@@ -858,7 +858,8 @@
       "gplay": "Google Play",
       "store_soon": "Soon",
       "privacy_title": "This is not an \"anonymity VPN\"",
-      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us."
+      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us.",
+      "download_soon_note": "El enlace de descarga aparecerá aquí en cuanto se publique la versión. Los pasos siguientes muestran cómo será la instalación."
     }
   },
   "email": {
@@ -1488,39 +1489,24 @@
       "join_network_failed": "No pudimos conectar con nuestros servidores, así que el código no se revisó. Tu invitación está bien; inténtalo de nuevo en un momento."
     },
     "auth": {
-      "title_login": "Hola de nuevo",
-      "title_register": "Crear cuenta",
-      "title_reset": "Restablecer contraseña",
-      "sub_login": "Inicia sesión para mantener tu configuración en todos tus dispositivos",
-      "sub_register": "Empieza gratis: no se necesita tarjeta para crear una cuenta",
-      "sub_reset": "Te enviaremos por correo un enlace para crear una nueva contraseña",
-      "cta_login": "Iniciar sesión",
-      "cta_register": "Crear cuenta",
-      "cta_reset": "Enviar enlace de restablecimiento",
       "email_ph": "Correo electrónico",
-      "password_ph": "Contraseña",
-      "forgot": "¿Olvidaste tu contraseña?",
-      "switch_to_register": "¿No tienes cuenta? Regístrate",
-      "switch_to_login": "¿Ya tienes cuenta? Inicia sesión",
       "skip": "Continuar sin cuenta",
       "privacy": "Con o sin cuenta: revisamos los nombres de los sitios web en nuestros servidores; nunca tus contraseñas, tus mensajes ni tu historial de navegación.",
-      "confirm_title": "Revisa tu correo",
-      "confirm_body": "Te enviamos un enlace de confirmación. Ábrelo para activar tu cuenta.",
-      "reset_sent_body": "Si existe una cuenta con esta dirección, te enviamos un enlace para restablecer tu contraseña.",
       "generic_error": "Algo salió mal. Inténtalo de nuevo.",
       "not_configured": "Iniciar sesión no está disponible en esta versión. Puedes usar todo lo demás sin una cuenta.",
-      "otp_title": "Sign in with email",
-      "otp_sub": "Enter your email and we'll send you a login code",
-      "otp_send": "Send code",
-      "err_email": "Enter a valid email",
-      "code_title": "Enter the code",
-      "code_sub": "We sent a 6-digit code to {{email}}",
-      "code_verify": "Sign in",
-      "code_resend": "Send the code again",
-      "code_resend_in": "Resend in {{seconds}}s",
-      "code_change_email": "Change email",
-      "err_code": "Enter the 6-digit code",
-      "err_code_wrong": "Wrong or expired code. Request a new one."
+      "otp_title": "Inicia sesión con tu correo",
+      "otp_sub": "Introduce tu correo y te enviaremos un código de acceso",
+      "otp_send": "Enviar código",
+      "err_email": "Introduce un correo válido",
+      "code_title": "Introduce el código",
+      "code_sub": "Enviamos un código de 6 dígitos a {{email}}",
+      "code_verify": "Iniciar sesión",
+      "code_resend": "Enviar el código de nuevo",
+      "code_resend_in": "Reenviar en {{seconds}} s",
+      "code_change_email": "Cambiar correo",
+      "err_code": "Introduce el código de 6 dígitos",
+      "err_code_wrong": "Código incorrecto o caducado. Solicita uno nuevo.",
+      "err_network": "Sin conexión. Comprueba tu internet e inténtalo de nuevo."
     },
     "onboarding": {
       "s1_title": "Revisa cualquier cosa antes de tocarla",
@@ -1580,12 +1566,12 @@
       "padded_address": "La dirección tiene partes de más para ocultar el nombre real"
     },
     "update": {
-      "optional_title": "Update available",
-      "optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
-      "required_title": "Please update the app",
-      "required_body": "This version is out of date. Update Cleanway to keep your protection working.",
-      "action": "Update",
-      "later": "Later"
+      "optional_title": "Actualización disponible",
+      "optional_body": "Hay una versión más reciente de Cleanway. Actualiza para mantener tu protección al día.",
+      "required_title": "Actualiza la aplicación",
+      "required_body": "Esta versión está desactualizada. Actualiza Cleanway para que tu protección siga funcionando.",
+      "action": "Actualizar",
+      "later": "Más tarde"
     }
   }
 }

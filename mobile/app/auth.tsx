@@ -44,6 +44,11 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Absolute wall-clock deadline, not a tick counter: RN suspends JS while the
+  // app is backgrounded, which is EXACTLY when the user leaves to read the
+  // email. A counting-down integer would freeze there and "resend" would stay
+  // disabled long after the server window had actually passed.
+  const cooldownUntil = useRef<number>(0);
 
   // Stop the resend countdown if the screen unmounts mid-tick (e.g. the user
   // signs in) — otherwise the interval leaks and setState fires after unmount.
@@ -52,16 +57,18 @@ export default function AuthScreen() {
   }, []);
 
   const startCooldown = useCallback(() => {
+    cooldownUntil.current = Date.now() + RESEND_COOLDOWN_S * 1000;
     setCooldown(RESEND_COOLDOWN_S);
     if (cooldownTimer.current) clearInterval(cooldownTimer.current);
     cooldownTimer.current = setInterval(() => {
-      setCooldown((c) => {
-        if (c <= 1 && cooldownTimer.current) {
-          clearInterval(cooldownTimer.current);
-          cooldownTimer.current = null;
-        }
-        return c - 1;
-      });
+      const left = Math.ceil((cooldownUntil.current - Date.now()) / 1000);
+      if (left <= 0) {
+        if (cooldownTimer.current) clearInterval(cooldownTimer.current);
+        cooldownTimer.current = null;
+        setCooldown(0);
+        return;
+      }
+      setCooldown(left);
     }, 1000);
   }, []);
 
@@ -73,20 +80,28 @@ export default function AuthScreen() {
       setError(t("mobile.auth.not_configured"));
       return;
     }
-    if (validateEmail(email)) {
+    // Validate the TRIMMED value — it is what we send. A pasted address often
+    // carries a trailing space, and the anchored regex would reject it while the
+    // request would have succeeded.
+    const cleanEmail = email.trim();
+    if (validateEmail(cleanEmail)) {
       setError(t("mobile.auth.err_email"));
       return;
     }
     setLoading(true);
     try {
-      await sendEmailOtp(email.trim());
+      await sendEmailOtp(cleanEmail);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setStep("code");
       setCode("");
       startCooldown();
     } catch (e: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError(e instanceof AuthError ? e.message : t("mobile.auth.generic_error"));
+      // GoTrue's own messages are English-only; showing them raw would put
+      // English in front of a Russian-speaking user. Map the two cases worth
+      // distinguishing and fall back to our translated generic message.
+      const offline = e instanceof AuthError && (e.code === "network_error" || e.code === "timeout");
+      setError(t(offline ? "mobile.auth.err_network" : "mobile.auth.generic_error"));
     } finally {
       setLoading(false);
     }
@@ -103,17 +118,32 @@ export default function AuthScreen() {
       const session = await verifyEmailOtp(email.trim(), code);
       setAuthToken(session.accessToken);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace("/(tabs)");
+      leaveAuth();
     } catch (e: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       // A wrong/expired code is the common case — name it plainly.
-      const wrong = e instanceof AuthError && (e.status === 401 || e.status === 403 || e.code === "otp_expired");
-      setError(wrong ? t("mobile.auth.err_code_wrong")
-        : e instanceof AuthError ? e.message : t("mobile.auth.generic_error"));
+      const wrong =
+        e instanceof AuthError &&
+        (e.status === 400 || e.status === 401 || e.status === 403 || e.code === "otp_expired");
+      const offline = e instanceof AuthError && (e.code === "network_error" || e.code === "timeout");
+      setError(
+        t(wrong ? "mobile.auth.err_code_wrong"
+          : offline ? "mobile.auth.err_network"
+          : "mobile.auth.generic_error"),
+      );
     } finally {
       setLoading(false);
     }
   }
+
+  // /auth is always PUSHED (from Settings or Family), so replacing the route
+  // with "/(tabs)" stacked a SECOND tabs navigator on top of the first — the
+  // user ended up with a back-stack that walks into a duplicate app. Go back to
+  // whatever opened us when we can, and only fall back to a replace otherwise.
+  const leaveAuth = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)");
+  }, [router]);
 
   const changeEmail = () => {
     setError(null);
@@ -161,7 +191,7 @@ export default function AuthScreen() {
                 : <Text style={styles.btnText}>{t("mobile.auth.otp_send")}</Text>}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.skipBtn} onPress={() => router.replace("/(tabs)")}>
+            <TouchableOpacity style={styles.skipBtn} onPress={leaveAuth}>
               <Text style={styles.skipText}>{t("mobile.auth.skip")}</Text>
             </TouchableOpacity>
           </View>

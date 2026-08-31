@@ -844,7 +844,7 @@
       "benefit_2": "Checks the links you tap and warns you before a dangerous page opens.",
       "benefit_3": "Free, works offline from a local list, nothing extra.",
       "download_cta": "Download the app",
-      "download_note": ".apk file · Android 8 and newer",
+      "download_note": ".apk फ़ाइल · Android 7 और नया",
       "download_soon": "The download link is coming very soon.",
       "steps_title": "How to install",
       "step_1": "Tap \"Download the app\" and wait for the file.",
@@ -858,7 +858,8 @@
       "gplay": "Google Play",
       "store_soon": "Soon",
       "privacy_title": "This is not an \"anonymity VPN\"",
-      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us."
+      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us.",
+      "download_soon_note": "बिल्ड प्रकाशित होते ही डाउनलोड लिंक यहाँ दिखेगा। नीचे दिए चरण बताते हैं कि इंस्टॉल कैसा होगा।"
     }
   },
   "email": {
@@ -1548,39 +1549,24 @@
       "join_network_failed": "हम अपने सर्वर तक नहीं पहुँच पाए, इसलिए कोड की जाँच नहीं हो पाई। आपका न्योता ठीक है — थोड़ी देर बाद फिर कोशिश करें।"
     },
     "auth": {
-      "title_login": "फिर से स्वागत है",
-      "title_register": "खाता बनाएँ",
-      "title_reset": "पासवर्ड रीसेट करें",
-      "sub_login": "साइन इन करें ताकि आपकी सेटिंग्स आपके सभी डिवाइस पर रहें",
-      "sub_register": "शुरुआत मुफ़्त है — खाते के लिए कार्ड की ज़रूरत नहीं",
-      "sub_reset": "हम आपको ईमेल से एक लिंक भेजेंगे, जिससे आप नया पासवर्ड बना सकेंगे",
-      "cta_login": "साइन इन करें",
-      "cta_register": "खाता बनाएँ",
-      "cta_reset": "रीसेट लिंक भेजें",
       "email_ph": "ईमेल",
-      "password_ph": "पासवर्ड",
-      "forgot": "पासवर्ड भूल गए?",
-      "switch_to_register": "खाता नहीं है? साइन अप करें",
-      "switch_to_login": "पहले से खाता है? साइन इन करें",
       "skip": "बिना खाते के आगे बढ़ें",
       "privacy": "खाता हो या न हो: हम वेबसाइट के नाम अपने सर्वर पर जाँचते हैं — आपके पासवर्ड, मैसेज या ब्राउज़िंग इतिहास कभी नहीं।",
-      "confirm_title": "अपना ईमेल देखें",
-      "confirm_body": "हमने पुष्टि का एक लिंक भेजा है। अपना खाता चालू करने के लिए उसे खोलें।",
-      "reset_sent_body": "अगर इस पते पर कोई खाता है, तो हमने पासवर्ड रीसेट करने का लिंक भेज दिया है।",
       "generic_error": "कुछ गड़बड़ हो गई। कृपया फिर कोशिश करें।",
       "not_configured": "इस वर्ज़न में साइन-इन उपलब्ध नहीं है। बाकी सब कुछ आप बिना खाते के इस्तेमाल कर सकते हैं।",
-      "otp_title": "Sign in with email",
-      "otp_sub": "Enter your email and we'll send you a login code",
-      "otp_send": "Send code",
-      "err_email": "Enter a valid email",
-      "code_title": "Enter the code",
-      "code_sub": "We sent a 6-digit code to {{email}}",
-      "code_verify": "Sign in",
-      "code_resend": "Send the code again",
-      "code_resend_in": "Resend in {{seconds}}s",
-      "code_change_email": "Change email",
-      "err_code": "Enter the 6-digit code",
-      "err_code_wrong": "Wrong or expired code. Request a new one."
+      "otp_title": "ईमेल से साइन इन करें",
+      "otp_sub": "अपना ईमेल दर्ज करें, हम आपको लॉगिन कोड भेजेंगे",
+      "otp_send": "कोड भेजें",
+      "err_email": "मान्य ईमेल दर्ज करें",
+      "code_title": "कोड दर्ज करें",
+      "code_sub": "हमने {{email}} पर 6 अंकों का कोड भेजा है",
+      "code_verify": "साइन इन करें",
+      "code_resend": "कोड फिर से भेजें",
+      "code_resend_in": "{{seconds}} सेकंड में फिर भेजें",
+      "code_change_email": "ईमेल बदलें",
+      "err_code": "6 अंकों का कोड दर्ज करें",
+      "err_code_wrong": "गलत या समाप्त कोड। नया कोड मांगें।",
+      "err_network": "कोई कनेक्शन नहीं। अपना इंटरनेट जांचें और फिर कोशिश करें।"
     },
     "onboarding": {
       "s1_title": "टैप करने से पहले कुछ भी जाँच लें",
@@ -1640,12 +1626,12 @@
       "padded_address": "असली नाम छिपाने के लिए पते में अतिरिक्त हिस्से जोड़े गए हैं"
     },
     "update": {
-      "optional_title": "Update available",
-      "optional_body": "A newer version of Cleanway is out. Update to keep your protection current.",
-      "required_title": "Please update the app",
-      "required_body": "This version is out of date. Update Cleanway to keep your protection working.",
-      "action": "Update",
-      "later": "Later"
+      "optional_title": "अपडेट उपलब्ध है",
+      "optional_body": "Cleanway का नया संस्करण आ गया है। सुरक्षा अद्यतन रखने के लिए अपडेट करें।",
+      "required_title": "कृपया ऐप अपडेट करें",
+      "required_body": "यह संस्करण पुराना है। सुरक्षा चालू रखने के लिए Cleanway अपडेट करें।",
+      "action": "अपडेट करें",
+      "later": "बाद में"
     }
   }
 }

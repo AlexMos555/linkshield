@@ -164,8 +164,11 @@ cd android
 #    (arm64-only, ~20 MB smaller but excludes old 32-bit phones:
 #     CLEANWAY_ABIS=arm64-v8a npx expo prebuild -p android --clean, then rebuild.)
 
-# B) App Bundle for the stores — do NOT filter ABIs; RuStore & Play split
-#    per-device automatically, so the download stays small without excluding anyone.
+# B) App Bundle for the stores. NOTE: withAbiFilters applies to every RELEASE
+#    variant, so the AAB is ARM-only too (armeabi-v7a + arm64-v8a), not
+#    universal — verified by building it. That is fine for this market (no
+#    retail x86 Android phones) but it does exclude x86 Chromebooks/tablets.
+#    Widen with CLEANWAY_ABIS + a fresh `expo prebuild --clean` if you need them.
 ./gradlew bundleRelease
 #    → android/app/build/outputs/bundle/release/app-release.aab
 ```
@@ -182,13 +185,16 @@ Then sanity-check on the real device: install the APK, confirm it opens, turn on
 the shield, then **bump versionCode, rebuild, reinstall over it** — it must update
 in place (no "App not installed"). That proves B2 is fixed end-to-end.
 
-> **What is and isn't verified.** The JS bundle IS verified (built in the mirror
-> on 2026-08-25, 4.98 MB Hermes bundle, all current app code included), and the
-> signing plugin's gradle transform is unit-verified (6/6 assertions: correct
-> anchors, idempotent across prebuilds, debug fallback without a keystore).
-> What nobody has run yet is the **Gradle release build with a real keystore** —
-> because the keystore doesn't exist yet. Expected failure mode there is at most
-> "still debug-signed" (the plugin's safe fallback), never a broken build.
+> **What is and isn't verified (2026-08-31).** The full release build IS done:
+> a signed 55 MB APK exists and `apksigner` reports *Verifies*, v2 scheme,
+> `CN=Cleanway` — not the debug key. Both config plugins have committed tests
+> (`mobile/plugins/__tests__/plugins.test.js`, 14 assertions, run in CI) covering
+> correct anchors, idempotency across prebuilds, the debug-signing fallback, and
+> that ABI filtering never touches debug builds.
+>
+> Still **unverified**: that the APK installs on a real phone and updates over
+> itself (bump versionCode, rebuild, reinstall). No device has been attached —
+> this is the one check that needs the founder's Samsung.
 
 ---
 

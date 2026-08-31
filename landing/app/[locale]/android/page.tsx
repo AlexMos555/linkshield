@@ -105,7 +105,10 @@ export default async function AndroidPage({
           </div>
         )}
         <p style={{ color: "#64748b", fontSize: 13.5, textAlign: "center", marginTop: 10 }}>
-          {t("download_note")}
+          {/* Without a hosted APK the steps below describe a button that is not
+              on the page — say so plainly instead of letting the reader hunt
+              for a download that does not exist yet. */}
+          {APK_URL ? t("download_note") : t("download_soon_note")}
         </p>
       </div>
 

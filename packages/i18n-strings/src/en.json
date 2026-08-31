@@ -846,7 +846,7 @@
       "benefit_2": "Checks the links you tap and warns you before a dangerous page opens.",
       "benefit_3": "Free, works offline from a local list, nothing extra.",
       "download_cta": "Download the app",
-      "download_note": ".apk file · Android 8 and newer",
+      "download_note": ".apk file · Android 7 and newer",
       "download_soon": "The download link is coming very soon.",
       "steps_title": "How to install",
       "step_1": "Tap \"Download the app\" and wait for the file.",
@@ -860,7 +860,8 @@
       "gplay": "Google Play",
       "store_soon": "Soon",
       "privacy_title": "This is not an \"anonymity VPN\"",
-      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us."
+      "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us.",
+      "download_soon_note": "The download link appears here as soon as the build is published. The steps below show what installing will look like."
     }
   },
   "email": {
@@ -1490,25 +1491,9 @@
       "join_network_failed": "We couldn't reach our servers, so the code wasn't checked. Your invite is fine — try again in a moment."
     },
     "auth": {
-      "title_login": "Welcome back",
-      "title_register": "Create account",
-      "title_reset": "Reset password",
-      "sub_login": "Sign in to keep your settings on all your devices",
-      "sub_register": "Free to start — no card needed for an account",
-      "sub_reset": "We'll email you a link to set a new password",
-      "cta_login": "Sign in",
-      "cta_register": "Create account",
-      "cta_reset": "Send reset link",
       "email_ph": "Email",
-      "password_ph": "Password",
-      "forgot": "Forgot password?",
-      "switch_to_register": "Don't have an account? Sign up",
-      "switch_to_login": "Already have an account? Sign in",
       "skip": "Continue without account",
       "privacy": "With or without an account: we check website names on our servers — never your passwords, messages, or browsing history.",
-      "confirm_title": "Check your email",
-      "confirm_body": "We sent a confirmation link. Open it to activate your account.",
-      "reset_sent_body": "If an account exists for this address, we've sent a link to reset your password.",
       "generic_error": "Something went wrong. Please try again.",
       "not_configured": "Sign-in isn't available in this build. You can use everything else without an account.",
       "otp_title": "Sign in with email",
@@ -1522,7 +1507,8 @@
       "code_resend_in": "Resend in {{seconds}}s",
       "code_change_email": "Change email",
       "err_code": "Enter the 6-digit code",
-      "err_code_wrong": "Wrong or expired code. Request a new one."
+      "err_code_wrong": "Wrong or expired code. Request a new one.",
+      "err_network": "No connection. Check your internet and try again."
     },
     "onboarding": {
       "s1_title": "Check anything before you tap it",

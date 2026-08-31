@@ -452,7 +452,7 @@
     "benefit_2": "Checks the links you tap and warns you before a dangerous page opens.",
     "benefit_3": "Free, works offline from a local list, nothing extra.",
     "download_cta": "Download the app",
-    "download_note": ".apk file · Android 8 and newer",
+    "download_note": "Archivo .apk · Android 7 o posterior",
     "download_soon": "The download link is coming very soon.",
     "steps_title": "How to install",
     "step_1": "Tap \"Download the app\" and wait for the file.",
@@ -466,6 +466,7 @@
     "gplay": "Google Play",
     "store_soon": "Soon",
     "privacy_title": "This is not an \"anonymity VPN\"",
-    "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us."
+    "privacy_body": "Cleanway sets up a local filter on your phone that blocks scam sites. It does not hide where you go or route your traffic through another country. Website names are matched on the phone — nothing about what you open is sent to us.",
+    "download_soon_note": "El enlace de descarga aparecerá aquí en cuanto se publique la versión. Los pasos siguientes muestran cómo será la instalación."
   }
 }
