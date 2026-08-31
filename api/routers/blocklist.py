@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from api.services.blocklist_artifact import (
     REDIS_META_KEY,
@@ -98,7 +98,38 @@ async def load_delta(from_generation: int) -> Optional[bytes]:
         return None
 
 
-# No per-IP rate limit on this GET, on purpose.
+async def _full_send_allowed(request: Request) -> bool:
+    """Bandwidth guard, applied ONLY to full-artifact responses.
+
+    The endpoint is a small request that returns ~2.6 MB, i.e. an amplifier, and
+    there is no CDN in front of it yet. A blanket per-IP limit is the wrong tool
+    (it would 429 a whole Tele2 CGNAT gateway of fresh installs into an empty
+    blocklist), so instead we only count the expensive case — a full send — and
+    set the ceiling far above anything real traffic produces. Cheap responses
+    (304, deltas) are never counted, so returning users are never affected.
+
+    Fails OPEN on any limiter problem: an unprotected phone is worse than a
+    served byte.
+    """
+    try:
+        from api.config import get_settings
+        from api.services.rate_limiter import _extract_client_ip, check_ip_rate_limit
+        s = get_settings()
+        await check_ip_rate_limit(
+            _extract_client_ip(request),
+            category="blocklist",
+            limit=s.blocklist_full_sends_per_ip_per_hour,
+            window_seconds=3600,
+        )
+        return True
+    except HTTPException:
+        return False
+    except Exception:
+        logger.warning("blocklist bandwidth guard unavailable — allowing", exc_info=True)
+        return True
+
+
+# No blanket per-IP rate limit on this GET, on purpose.
 #
 # It is a SIGNED, ETag'd, edge-cacheable public static file (the same bytes for
 # everyone), and the real first customers arrive behind Tele2 carrier-grade NAT
@@ -149,5 +180,15 @@ async def get_dns_blocklist(request: Request) -> Response:
     inm = request.headers.get("if-none-match", "")
     presented = {t.strip().removeprefix("W/").strip('"') for t in inm.split(",") if t.strip()}
     if meta["sha256"] in presented:
+        # Cheap: never counted against the bandwidth guard.
         return Response(status_code=304, headers=headers)
+
+    # Only the expensive full send is metered.
+    if not await _full_send_allowed(request):
+        return Response(
+            status_code=429,
+            content="too many full blocklist downloads from this address\n",
+            media_type="text/plain",
+            headers={"Retry-After": "900", "Cache-Control": "no-store"},
+        )
     return Response(content=blob, media_type="application/octet-stream", headers=headers)

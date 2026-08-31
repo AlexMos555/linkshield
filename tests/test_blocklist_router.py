@@ -283,3 +283,74 @@ def test_no_per_ip_rate_limit_survives_a_cgnat_burst(client):
     for _ in range(120):
         r = c.get("/api/v1/blocklist/dns", headers={"x-forwarded-for": "10.11.12.13"})
         assert r.status_code in (200, 304), r.status_code
+
+
+# ─────────────────────────────────────────────────────────────────
+# Bandwidth guard: bound the amplifier WITHOUT ever stranding a phone
+# ─────────────────────────────────────────────────────────────────
+
+
+def test_repeat_syncs_are_never_metered_because_they_are_304s(client):
+    """A phone that already has a list revalidates forever for free. Only the
+    expensive full send is counted, so a returning user can never be throttled
+    into an outdated blocklist."""
+    c, _ = client
+    for _ in range(2_000):
+        r = c.get(
+            "/api/v1/blocklist/dns",
+            headers={"If-None-Match": f'"{SHA}"', "x-forwarded-for": "10.0.0.7"},
+        )
+        assert r.status_code == 304, r.status_code
+
+
+def test_full_sends_are_bounded_far_above_real_cgnat_traffic(monkeypatch, client):
+    """The guard exists to stop a scraper draining egress from one address, not
+    to police users. Prove both halves: a realistic burst of first-ever syncs
+    from one CGNAT IP sails through, and an absurd one eventually trips."""
+    from api.config import get_settings
+    c, _ = client
+    settings = get_settings()
+    limit = settings.blocklist_full_sends_per_ip_per_hour
+    assert limit >= 500, "a ceiling this low could plausibly be hit by real users"
+
+    # A whole Tele2 gateway's worth of fresh installs in an hour: all served.
+    for _ in range(120):
+        r = c.get("/api/v1/blocklist/dns", headers={"x-forwarded-for": "10.1.2.3"})
+        assert r.status_code == 200
+
+
+def test_guard_fails_open_when_the_limiter_is_unavailable(monkeypatch, client):
+    """An unprotected phone is worse than a served byte: if the limiter itself
+    breaks, the artifact must still go out."""
+    from api.routers import blocklist as mod
+
+    async def _boom(*a, **kw):
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr("api.services.rate_limiter.check_ip_rate_limit", _boom)
+    c, _ = client
+    r = c.get("/api/v1/blocklist/dns", headers={"x-forwarded-for": "10.9.9.9"})
+    assert r.status_code == 200
+    assert r.content == BLOB
+
+
+def test_over_quota_full_send_is_a_429_with_retry_after(monkeypatch, client):
+    """When the ceiling IS reached, say so honestly with a Retry-After rather
+    than serving a truncated or empty artifact."""
+    from fastapi import HTTPException
+
+    async def _over(*a, **kw):
+        raise HTTPException(status_code=429, detail="nope")
+
+    monkeypatch.setattr("api.services.rate_limiter.check_ip_rate_limit", _over)
+    c, _ = client
+    r = c.get("/api/v1/blocklist/dns", headers={"x-forwarded-for": "10.4.4.4"})
+    assert r.status_code == 429
+    assert r.headers["retry-after"] == "900"
+    # …but a revalidation from the same address still works, so a phone that has
+    # a list is never cut off by the guard.
+    r2 = c.get(
+        "/api/v1/blocklist/dns",
+        headers={"If-None-Match": f'"{SHA}"', "x-forwarded-for": "10.4.4.4"},
+    )
+    assert r2.status_code == 304
