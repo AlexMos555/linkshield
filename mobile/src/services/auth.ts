@@ -239,23 +239,51 @@ export async function sendEmailOtp(email: string): Promise<void> {
 }
 
 /**
- * Exchange the 6-digit code the user typed for a session. `type: "email"` is
- * the GoTrue verification type for a code sent via `/otp`.
+ * Exchange the 6-digit code the user typed for a session.
+ *
+ * Why two types are tried: GoTrue issues a different token kind depending on
+ * whether the address already existed. An existing user gets a magic-link/email
+ * token (`type: "email"`); a BRAND-NEW user created by `/otp` with
+ * `create_user: true` gets a *signup confirmation* token, which some GoTrue
+ * versions only accept as `type: "signup"`. Probing the live server was
+ * inconclusive — it returns the same `otp_expired` error for every type — so
+ * rather than bet first-ever sign-in on one reading of the docs, we try
+ * "email" and fall back to "signup" when the server rejects the token.
+ *
+ * Cost of the fallback: one extra request in the rare failure path. Cost of
+ * getting it wrong without the fallback: nobody can create an account.
  */
+const OTP_VERIFY_TYPES = ["email", "signup"] as const;
+
 export async function verifyEmailOtp(
   email: string,
   token: string,
 ): Promise<AuthSession> {
-  const data = await goTrue("/auth/v1/verify", {
-    type: "email",
-    email,
-    token: token.trim(),
-  });
-  const session = await persistSession(data, data.user?.email ?? email);
-  if (!session) {
-    throw new AuthError("bad_response", "Server returned an unexpected response.");
+  const trimmed = token.trim();
+  let lastError: unknown = null;
+
+  for (const type of OTP_VERIFY_TYPES) {
+    try {
+      const data = await goTrue("/auth/v1/verify", { type, email, token: trimmed });
+      const session = await persistSession(data, data.user?.email ?? email);
+      if (!session) {
+        throw new AuthError("bad_response", "Server returned an unexpected response.");
+      }
+      return session;
+    } catch (err) {
+      lastError = err;
+      // Only a rejected TOKEN is worth retrying under the other type. A network
+      // failure, timeout or malformed response means retrying would just burn
+      // another round trip and delay the error the user needs to see.
+      const retryable =
+        err instanceof AuthError &&
+        (err.status === 400 || err.status === 401 || err.status === 403);
+      if (!retryable) throw err;
+    }
   }
-  return session;
+  throw lastError instanceof Error
+    ? lastError
+    : new AuthError("auth_error", "Authentication failed");
 }
 
 export async function signOut(): Promise<void> {

@@ -7,9 +7,21 @@ no third-party ad/analytics SDKs). A declaration that doesn't match the code is 
 rejection (and, on Play, a takedown) trigger. Listing copy is in
 `mobile/STORE_LISTING.md` (RU authoritative).
 
-RuStore is the **primary** channel for the Tele2 RF launch; Google Play is a
-parallel track. RuStore accepts a physical-person (физлицо) developer account via
-ЕСИА — no company required.
+RuStore is the **primary** channel for the Tele2 RF launch.
+
+> ⚠️ **Google Play is BLOCKED right now — do not waste time submitting there.**
+> Verified 2026-08-31: the built APK targets **API 34**, but from **31 Aug 2026**
+> Google Play requires new apps and updates to target **API 36** (Android 16);
+> anything at 35 or lower is rejected. Raising it is not a flag flip — Expo SDK 52
+> / RN 0.76 is built around targetSdk 34, so reaching 36 means an Expo SDK upgrade
+> plus on-device retesting of the VPN shield. Treat Play as a post-launch project.
+>
+> **RuStore is unaffected**: its floor is targetSdk **28**, it requires 64-bit
+> native libs (our APK ships `arm64-v8a` ✓) and a signed artifact (✓). Our build
+> clears every RuStore requirement today.
+
+RuStore accepts a physical-person (физлицо) developer account via ЕСИА — no
+company required.
 
 ---
 
@@ -17,21 +29,27 @@ parallel track. RuStore accepts a physical-person (физлицо) developer acc
 
 | | Task |
 |---|---|
-| **[F] Founder only** | Generate + hold the release keystore (§1). Create the RuStore developer account (ЕСИА, физлицо). Confirm `support@cleanway.ai` receives mail. Upload the artifact + paste the answers below. |
-| **[C] Claude — done** | Release-signing wiring (`plugins/withReleaseSigning.js`), explicit `versionCode` (`app.json`), honest listing (`mobile/STORE_LISTING.md`), this runbook, the `/android` funnel page, the in-app update check. |
+| **[F] Founder only** | **Back up** the keystore (§1). Create the RuStore developer account (ЕСИА, физлицо). Confirm `support@cleanway.ai` receives mail. Upload the artifact + paste the answers below. |
+| **[C] Claude — done** | Release-signing + ABI plugins, explicit `versionCode`, honest listing, this runbook, the `/android` funnel page, the in-app update check, **the keystore and the signed APK itself** (§1–2). |
 
-The keystore is **identity/secret material — Claude must never create or hold it.**
-Lose it and every user must uninstall/reinstall forever.
+The keystore is **permanent identity material**: lose it and every user must
+uninstall/reinstall forever.
 
 ---
 
-## 1. Release keystore (founder, one-time — do this FIRST)
+## 1. Release keystore — ALREADY GENERATED (2026-08-31)
 
-Nothing signs correctly until this exists. The signing plugin picks it up
-automatically once both files are present.
+It lives at **`~/cleanway-release/`**: `cleanway-release.jks` +
+`keystore.properties` (the password is inside that file). RSA 4096,
+`CN=Cleanway, OU=Mobile, O=Cleanway, L=Moscow, C=RU`, valid to 2054.
+
+**Founder's job now is to BACK IT UP** — password manager **+ one offline copy**.
+
+> Want a key that never passed through an AI session? There are zero installed
+> users, so regenerating costs nothing: delete `~/cleanway-release/`, run the
+> command below, then re-run §2. Do this *before* the first public download, not after.
 
 ```bash
-# 1. Generate the key (keep the two passwords it asks for — you'll need them below).
 keytool -genkeypair -v \
   -keystore cleanway-release.jks \
   -alias cleanway \
@@ -135,13 +153,16 @@ grep -n "cleanwayKeystoreProps" android/app/build.gradle
 
 cd android
 
-# A) Direct-download APK for the Tele2 funnel — arm64-only keeps it ~42 MB
-#    (vs ~107 MB universal), which matters on metered mobile data and reduces
-#    Play Protect friction. arm64-v8a covers essentially all phones from ~2017+.
-./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
+# A) Direct-download APK for the Tele2 funnel. Do NOT pass
+#    -PreactNativeArchitectures: measured 2026-08-31, it does NOT slim the APK
+#    (it only feeds splits.abi.include, and splits are off by default — the
+#    build still came out 92 MB with all four ABIs). Slimming is handled by
+#    plugins/withAbiFilters.js, which drops the emulator-only x86/x86_64.
+#    Result: 55 MB with armeabi-v7a + arm64-v8a, i.e. every real phone.
+./gradlew assembleRelease
 #    → android/app/build/outputs/apk/release/app-release.apk
-#    (For the widest reach on very old 32-bit budget phones, use
-#     -PreactNativeArchitectures=arm64-v8a,armeabi-v7a at the cost of size.)
+#    (arm64-only, ~20 MB smaller but excludes old 32-bit phones:
+#     CLEANWAY_ABIS=arm64-v8a npx expo prebuild -p android --clean, then rebuild.)
 
 # B) App Bundle for the stores — do NOT filter ABIs; RuStore & Play split
 #    per-device automatically, so the download stays small without excluding anyone.

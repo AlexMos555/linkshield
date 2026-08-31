@@ -60,7 +60,9 @@ bounce it.
    your login; Claude has no token.*
 6. **RuStore developer account** (ЕСИА, физлицо OK), then submit: listing copy in
    `mobile/STORE_LISTING.md`, data-safety + VpnService answers in
-   `docs/RUSTORE_SUBMISSION.md` §3–4.
+   `docs/RUSTORE_SUBMISSION.md` §3–4. **RuStore only** — Google Play now requires
+   targetSdk 36 (we ship 34, an Expo SDK 52 constraint), so Play is a post-launch
+   project, not a parallel track. RuStore's floor is 28, so our build qualifies.
 7. **Plug in the Samsung and authorize USB debugging** so the end-to-end run can be
    verified on a real device (no device is currently attached).
 
