@@ -67,7 +67,8 @@
         }
       ],
       "./plugins/withXcode26Patches",
-      "./plugins/withReleaseSigning"
+      "./plugins/withReleaseSigning",
+      "./plugins/withAbiFilters"
     ]
   }
 }

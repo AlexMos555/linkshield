@@ -1,101 +1,74 @@
 # Cleanway — Tele2 Go-Live Checklist
 
-The ordered path from "code is ready" to "a Tele2 subscriber installs and is
-protected, with an account that syncs." Owner tags: **[F]** founder-only,
-**[C]** Claude. Status as of 2026-08-25. Launch model: **free protection +
-account/sync**, Android-only, RU-first.
-
-Everything Claude can build is **done and on branch `feat/shield-checklist-phase1`**
-(backend 1084 tests green). The remaining critical path is almost entirely
-founder actions — they gate the launch.
+Ordered path from "code is ready" to "a Tele2 subscriber installs and is
+protected, with an account that syncs." **[F]** = founder-only, **[C]** = Claude.
+Status 2026-08-31. Launch model: free protection + account/sync, Android-only, RU-first.
 
 ---
 
-## Phase 0 — flip the switch (nothing is live until this)
+## ✅ Done (Claude, 2026-08-31 autonomous pass)
 
-1. **[F] Merge `feat/shield-checklist-phase1` → `main`.** Railway (API) and
-   Vercel (landing) deploy from `main`, so until this merge the `/android` page,
-   `GET /api/v1/mobile/version`, the honest listing, and every fix on the branch
-   are NOT in production. *(Claude can prepare the PR on request; merging/deploy
-   is the founder's call.)*
-2. **[C] After merge:** verify prod — `/android` renders, `GET /api/v1/mobile/version`
-   returns 200, blocklist still 200 under load. *(~5 min, once merged.)*
+- **PR opened** → https://github.com/AlexMos555/linkshield/pull/39 (74 commits, main ← feat/shield-checklist-phase1)
+- **Release keystore generated** — `~/cleanway-release/` (RSA 4096, valid to 2054,
+  `CN=Cleanway`). ⚠️ **Founder must back this up** — see "Founder must do" #1.
+- **Supabase anon key wired** — `mobile/.env` (git-ignored), verified live against
+  the project (HTTP 200). `isSupabaseConfigured()` now true ⇒ sign-in works in builds.
+- **Supabase email templates fixed** — `{{ .Token }}` added to Magic Link + Confirm
+  Signup via the Management API, so the 6-digit code actually reaches users. The
+  `{{ .ConfirmationURL }}` link is preserved for the web magic-link flow. RU-first
+  copy, EN fallback below the divider. (Backup of the previous config kept.)
+- Everything from the build sprint: `/android` funnel page, `/support`, in-app
+  update check, release-signing plugin + versionCode 1.0.0/100, honest store
+  listing + RuStore runbook, link-guard home card + no-browser loop fix,
+  passwordless email-OTP sign-in, keystore git-ignore fix.
 
-## Phase 1 — signing identity (the app's permanent identity)
+## 🚨 Blockers found on 2026-08-31 that only the founder can clear
 
-3. **[F] Generate the release keystore** (FIRST hardware move):
-   `keytool -genkeypair -v -keystore cleanway-release.jks -alias cleanway -keyalg RSA -keysize 4096 -validity 10000 -storetype PKCS12`
-   Back it up in a password manager **+ one offline copy**. Losing it = every
-   user reinstalls forever. Claude must never hold it.
-4. **[F] Create `mobile/android/keystore.properties`** (git-ignored — verify with
-   `git check-ignore`). Recipe: docs/RUSTORE_SUBMISSION.md §1. The signing plugin
-   picks it up on the next prebuild automatically.
+### 1. Supabase email is capped at **2 emails/hour** — the account launch is dead on arrival
+`rate_limit_email_sent: 2`, built-in Supabase SMTP, no custom `smtp_host`. Two
+Tele2 users per hour could receive a login code. **Fix:** point Supabase at a real
+SMTP provider. The backend already uses **Resend** (`RESEND_API_KEY`, set in
+Railway) — reuse it. *Give Claude that key and the Supabase SMTP config is one
+Management-API call.* Without this, launch with accounts is not possible.
 
-## Phase 2 — auth + sync (the account/sync launch model)
-
-5. **[F] Put the public anon key in the build** — `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-   in `mobile/.env` (local build) and eas.json/EAS (cloud). Public, RLS-gated,
-   safe. Without it, sign-in is dead. docs/MOBILE_AUTH.md §1.
-6. **[F] Add `{{ .Token }}` to the Supabase email templates** (Magic Link +
-   Confirm signup) so the 6-digit code actually reaches users; enable the Email
-   provider + a real SMTP for Tele2 volume. docs/MOBILE_AUTH.md §2–3.
-7. **[F+C] Verify auth+sync end-to-end on a device:** email → code → signed in →
-   a setting changed on the web appears in the app. *(Founder provides the built
-   app + a phone; Claude helps debug.)*
-
-## Phase 3 — build + host the APK
-
-8. **[F] Build the signed release — from the mirror sandbox, not the monorepo.**
-   `bash ~/Library/Caches/cleanway-dev/bin/sync.sh`, then Node 22 + JDK 17 +
-   `npx expo prebuild -p android --clean`, then
-   `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a` (~42 MB APK)
-   and `bundleRelease` (AAB). *Building from the repo checkout fails* — the
-   default Node is 25 (SDK 52 needs ≤22) and npm hoists `react-native@0.86.2`
-   to the monorepo root over the app's 0.76.9, breaking Metro. Verified
-   2026-08-25: the JS bundles cleanly in the mirror (4.98 MB). Exact commands +
-   the keystore's physical location: docs/RUSTORE_SUBMISSION.md §1–2.
-9. **[F] Host the signed APK** (GitHub Release or R2 + CDN) and set
-   `NEXT_PUBLIC_APK_URL` in Vercel → the `/android` download button goes live.
-10. **[F] Confirm `support@cleanway.ai`** receives mail (store listings require a
-    working support address).
-
-## Phase 4 — store channel (better path for non-technical users)
-
-11. **[F] Register the RuStore developer account** (ЕСИА, физлицо OK). Google Play
-    secondary. docs/RUSTORE_SUBMISSION.md.
-12. **[F] Submit to RuStore** — upload the AAB, paste the honest RU listing
-    (`mobile/STORE_LISTING.md`), the Data-Safety answers and the VpnService
-    justification (both in docs/RUSTORE_SUBMISSION.md §3–4).
-
-## Phase 5 — pre-blast hardening (before a large Tele2 send)
-
-13. **[C] Full Cloudflare in front of the blocklist** — the no-429 patch is
-    enough for a small cohort; CDN before any large blast. *(Claude can spec;
-    needs founder's CF/DNS.)*
-14. **[F] Stand up an uptime/latency monitor** on `/health` + the blocklist path,
-    with a push channel for launch week.
-15. **[F] Tele2 SMS copy sign-off** — phishing framing, never "VPN"; cohort size;
-    send window.
+### 2. `support@cleanway.ai` cannot receive mail — **no MX records**
+`dig MX cleanway.ai` → empty; SPF is `v=spf1 -all` and DMARC `p=reject` (a
+deliberate "this domain sends no mail" lockdown). The store listings declare this
+address, so today it bounces. **Fix:** add mail hosting (Yandex 360 / Google
+Workspace / a forwarder) and its MX records. If you later send mail *from*
+@cleanway.ai, the provider must also be added to SPF or DMARC `p=reject` will
+bounce it.
 
 ---
 
-## What's already done (Claude side) — reference
+## Founder must do (ordered)
 
-- ✅ `/android` funnel page + install-urls flip · ✅ honest RU store listing +
-  RuStore runbook + support page
-- ✅ Release-signing config plugin + explicit versionCode (1.0.0/100, matches the
-  update server) · ✅ keystore + native dirs git-ignored
-- ✅ `GET /api/v1/mobile/version` + in-app update banner · ✅ blocklist no-429 (CGNAT-safe)
-- ✅ Link-guard home shield card + no-browser loop fix · ✅ notification locale fix
-- ✅ Passwordless email-OTP sign-in (unified with web, reviewed + hardened) + anon-key plumbing
-- ✅ Family/settings sync already reads the same session the OTP flow produces — no rewire needed
+1. **Back up the keystore — today.** `~/cleanway-release/cleanway-release.jks` +
+   `keystore.properties` (the password is inside). Password manager **+ one offline
+   copy**. Losing it = every user reinstalls forever.
+   *Optional, costs nothing right now (zero installed users): regenerate it
+   yourself so the key never passed through an AI transcript — command in
+   docs/RUSTORE_SUBMISSION.md §1, then re-run the build.*
+2. **Merge PR #39** → publishes `/android`, `/support`, `/api/v1/mobile/version`
+   (all 404 in prod until then). Railway + Vercel deploy from `main`.
+3. **Real SMTP** (blocker #1) — hand Claude the Resend key, or configure it in the
+   Supabase dashboard: Project Settings → Auth → SMTP.
+4. **Mail for `support@`** (blocker #2).
+5. **Host the APK** — the signed APK is built (see below). Publish it (a GitHub
+   Release on this public repo works, Claude can do it on request) and set
+   `NEXT_PUBLIC_APK_URL` in Vercel → the `/android` button goes live. *Vercel needs
+   your login; Claude has no token.*
+6. **RuStore developer account** (ЕСИА, физлицо OK), then submit: listing copy in
+   `mobile/STORE_LISTING.md`, data-safety + VpnService answers in
+   `docs/RUSTORE_SUBMISSION.md` §3–4.
+7. **Plug in the Samsung and authorize USB debugging** so the end-to-end run can be
+   verified on a real device (no device is currently attached).
+
+## Verify together (needs a device + your accounts)
+- Install → shield turns on → blocks a known-bad domain.
+- Email → code arrives → signed in → a setting changed on the web shows in the app.
+- Bump versionCode, rebuild, reinstall over the top (proves updates work).
 
 ## Out of scope for this launch
-- iOS (no Org Apple account) · web→app deep-link token handoff (fragile; the
-  shared email + shared Supabase project is the unifier) · mobile IAP/billing.
-
----
-
-### The single highest-leverage next step
-**Merge to `main` (step 1) + generate the keystore (step 3).** Nothing downstream
-goes live or signs correctly until those two exist — and they're both yours.
+iOS (no Org Apple account) · web→app deep-link token handoff (the shared email +
+shared Supabase project is the unifier) · mobile IAP/billing.
