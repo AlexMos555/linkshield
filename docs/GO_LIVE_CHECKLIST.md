@@ -75,6 +75,40 @@ browser hop, no extra request, the same OTP body on the wire.
 
 ---
 
+## Known-red check: `npm-audit` (does NOT block the merge)
+
+`main` has **no branch protection**, so no check is required — the merge button
+works even with a red X. Worth knowing what the one remaining red actually is.
+
+CI had been failing on `main` since **19 Aug**, and every job that installs
+(`mobile`, `openapi-drift`, `npm-audit`, `e2e`, and Vercel's build) died on the
+same postinstall: `patch-package` looked for `mobile/node_modules/xcode`, but
+`mobile` is an npm workspace so its deps hoist to the monorepo root. Fixed by
+`mobile/scripts/apply-patches.js`, which finds the node_modules that actually
+holds the patched packages — works in the monorepo AND in the standalone build
+mirror. Five of the six checks went green.
+
+`npm-audit` now gets *past* install and reports what it was never able to reach:
+**five pre-existing HIGH advisories in landing's transitive dependencies** —
+`fast-uri` (host confusion via backslash), `nanoid` (infinite loop at size 0),
+`postcss` and `sharp` (the last two bundled under `next`). None are in code we
+wrote; all predate this branch.
+
+**Attempted and deliberately abandoned:** pinning the four libraries via root
+`overrides` — the surgical fix that leaves Next where it is. npm 11.11.0
+silently refuses to record them in this workspace (the lockfile comes back with
+no `overrides` key at all), and a full lockfile regeneration **removed 114
+packages without changing a single vulnerable version**. Destabilising a
+verified, device-tested build days before launch to chase pre-existing
+transitive CVEs is the wrong trade, so the attempt was reverted and the tree
+re-verified (1088 tests, landing typecheck, install intact).
+
+**Do it properly after launch**, when there is room to test the fallout: bump
+Next (clears `postcss` + `sharp` with it), or move `landing` out of the hoisted
+workspace so its tree can be resolved independently.
+
+---
+
 ## Founder must do (ordered)
 
 1. **Back up the keystore — today.** `~/cleanway-release/cleanway-release.jks` +
