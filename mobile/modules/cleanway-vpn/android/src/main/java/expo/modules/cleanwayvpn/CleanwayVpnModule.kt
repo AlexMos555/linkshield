@@ -236,7 +236,9 @@ class CleanwayVpnModule : Module() {
           .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         val probe = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://example.com"))
           .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
-        val browser = context.packageManager.queryIntentActivities(probe, 0)
+        // MATCH_ALL: with Cleanway holding the browser role, flags=0 returns only
+        // the role holder (us) and hides every real browser. See LinkGuardActivity.
+        val browser = context.packageManager.queryIntentActivities(probe, android.content.pm.PackageManager.MATCH_ALL)
           .map { it.activityInfo.packageName }.firstOrNull { it != context.packageName }
         // No other browser: an implicit VIEW resolves straight back to
         // LinkGuardActivity when Cleanway holds the browser role, so "Open

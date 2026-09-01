@@ -103,9 +103,14 @@ class LinkGuardActivity : Activity() {
         // browser invisible — the guard then believed no browser existed and sent
         // every SAFE link to the in-app fallback screen instead of Chrome. The
         // module manifest now also declares http, but probe https regardless.
+        // MATCH_ALL is load-bearing: while Cleanway HOLDS the browser role, the
+        // default resolver (flags=0) collapses the result to the role holder —
+        // i.e. ourselves — and every other browser vanishes from the answer.
+        // Field-diagnosed on API 35: flags=0 -> [cleanway], MATCH_ALL ->
+        // [chrome, cleanway]. Without it the guard believed no browser existed.
         val browser = packageManager.queryIntentActivities(
             Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")).addCategory(Intent.CATEGORY_BROWSABLE),
-            0,
+            android.content.pm.PackageManager.MATCH_ALL,
         ).map { it.activityInfo.packageName }.firstOrNull { it != self }
 
         if (browser == null) {
