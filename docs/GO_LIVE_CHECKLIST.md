@@ -94,18 +94,38 @@ mirror. Five of the six checks went green.
 `postcss` and `sharp` (the last two bundled under `next`). None are in code we
 wrote; all predate this branch.
 
-**Attempted and deliberately abandoned:** pinning the four libraries via root
-`overrides` — the surgical fix that leaves Next where it is. npm 11.11.0
-silently refuses to record them in this workspace (the lockfile comes back with
-no `overrides` key at all), and a full lockfile regeneration **removed 114
-packages without changing a single vulnerable version**. Destabilising a
-verified, device-tested build days before launch to chase pre-existing
-transitive CVEs is the wrong trade, so the attempt was reverted and the tree
-re-verified (1088 tests, landing typecheck, install intact).
+**Are they reachable in OUR usage?** Checked, rather than assumed:
+- `sharp` — Next pulls it as an *optional* dep for image optimization. The
+  landing uses `next/image` **zero times** (grepped) and declares no
+  `images.remotePatterns`, so libvips never processes an image, let alone an
+  attacker's one.
+- `postcss` — runs at BUILD time over our own Tailwind stylesheet
+  (`landing/postcss.config.mjs`). All four advisories need attacker-controlled
+  CSS or a hostile `sourceMappingURL`; neither exists in a static marketing site
+  whose CSS we author.
+- `fast-uri` / `nanoid` — transitive, not on any request path we expose.
 
-**Do it properly after launch**, when there is room to test the fallout: bump
-Next (clears `postcss` + `sharp` with it), or move `landing` out of the hoisted
-workspace so its tree can be resolved independently.
+That is a reason the risk is low today, **not** a reason to allowlist them. The
+CI step says so deliberately: *"Landing is server-rendered and ships to
+end-users. NO allowlist — every HIGH+ CVE here must be fixed or the deploy
+doesn't go."* Weakening that check to go green would be the wrong fix.
+
+**Why it is not fixed yet — a real constraint, not laziness.** The fix needs a
+lockfile change, and **this lockfile cannot be regenerated on macOS**. Measured:
+a fresh resolve here drops **114 platform-specific binaries** — 65 linux, 25
+win32, 8 freebsd, 4 android, plus wasm variants — because npm only fetches the
+current platform's. Committing that would strip exactly the Linux binaries CI
+installs, which is what the `Verify package-lock is in sync` check exists to
+catch. Pinning via root `overrides` was tried twice and npm 11.11.0 never
+records them in this workspace (the lockfile comes back with no `overrides`
+key), so that route does not work either. Both attempts were reverted and the
+tree re-verified.
+
+**The proper fix, as a follow-up PR done on Linux:** regenerate the lockfile
+there (a CI job, a container, or any Linux box) with `postcss` and `sharp`
+pinned to patched versions — or bump Next, which clears both at once but is a
+major upgrade and wants its own testing pass. Either way it is a contained
+change that deserves its own PR rather than riding along with the launch.
 
 ---
 
