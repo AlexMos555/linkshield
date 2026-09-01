@@ -530,6 +530,7 @@
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Puntaje de riesgo: {{score}} de 100.",
   "mobile.shared.open_in_browser": "Abrir en el navegador",
   "mobile.shared.open_anyway": "Abrir de todos modos",
+  "mobile.shared.no_browser": "No hay otro navegador en este teléfono para abrir el enlace. Instala uno o ábrelo manualmente.",
   "mobile.breach.title": "Revisión de contraseñas filtradas",
   "mobile.breach.subtitle": "Algunas personas usan su correo electrónico como contraseña. Esto te dice si ya se filtró.",
   "mobile.breach.scope_note": "Esto no es un informe completo de filtraciones. Para listar todas las filtraciones en las que apareció una dirección se necesita una fuente de datos de pago que todavía no hemos conectado.",

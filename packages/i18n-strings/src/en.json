@@ -1290,7 +1290,8 @@
       "go_home": "Go to Cleanway",
       "a11y_verdict": "{{verdict}}. {{domain}}. Risk score {{score}} out of 100.",
       "open_in_browser": "Open in browser",
-      "open_anyway": "Open anyway"
+      "open_anyway": "Open anyway",
+      "no_browser": "There's no other browser on this phone to open the link. Install one, or open it manually."
     },
     "breach": {
       "title": "Leaked password check",

@@ -31,6 +31,23 @@ fun interface BlocklistFetcher {
  * previous good list should survive regardless.
  */
 class BlocklistStore(private val dir: File) {
+    companion object {
+        /**
+         * The ONE place that decides where the synced list lives.
+         *
+         * It used to be spelled out at each call site, and the two drifted: the
+         * service wrote to filesDir/cleanway while the link guard read filesDir.
+         * `load()` then returned null for the guard on every launch, so it took
+         * the fast path for KNOWN-malicious links and opened them in a browser
+         * instead of showing the block screen — the guard silently protected
+         * nobody. Construct via `BlocklistStore.of(context.filesDir)` so a
+         * mismatch like that cannot be written again.
+         */
+        fun dirFor(filesDir: File): File = File(filesDir, "cleanway")
+
+        fun of(filesDir: File): BlocklistStore = BlocklistStore(dirFor(filesDir))
+    }
+
     data class Saved(val body: ByteArray, val etag: String?, val fetchedAtMs: Long)
 
     private val blobFile get() = File(dir, "dns-blocklist-v2.bin")

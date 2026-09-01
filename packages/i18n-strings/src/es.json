@@ -1288,7 +1288,8 @@
       "go_home": "Ir a Cleanway",
       "a11y_verdict": "{{verdict}}. {{domain}}. Puntaje de riesgo: {{score}} de 100.",
       "open_in_browser": "Abrir en el navegador",
-      "open_anyway": "Abrir de todos modos"
+      "open_anyway": "Abrir de todos modos",
+      "no_browser": "No hay otro navegador en este teléfono para abrir el enlace. Instala uno o ábrelo manualmente."
     },
     "breach": {
       "title": "Revisión de contraseñas filtradas",

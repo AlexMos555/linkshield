@@ -530,6 +530,7 @@
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Skor risiko {{score}} dari 100.",
   "mobile.shared.open_in_browser": "Buka di browser",
   "mobile.shared.open_anyway": "Tetap buka",
+  "mobile.shared.no_browser": "Tidak ada peramban lain di ponsel ini untuk membuka tautan. Pasang satu, atau buka secara manual.",
   "mobile.breach.title": "Cek kata sandi bocor",
   "mobile.breach.subtitle": "Sebagian orang memakai alamat email sebagai kata sandi. Fitur ini memberi tahu apakah alamat itu sudah muncul di daftar kata sandi yang bocor.",
   "mobile.breach.scope_note": "Ini bukan laporan kebocoran yang lengkap. Untuk mendaftar semua kebocoran yang pernah memuat sebuah alamat, dibutuhkan sumber data berbayar yang belum kami hubungkan.",

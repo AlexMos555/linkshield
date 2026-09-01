@@ -1348,7 +1348,8 @@
       "go_home": "Zu Cleanway",
       "a11y_verdict": "{{verdict}}. {{domain}}. Risikowert {{score}} von 100.",
       "open_in_browser": "Im Browser öffnen",
-      "open_anyway": "Trotzdem öffnen"
+      "open_anyway": "Trotzdem öffnen",
+      "no_browser": "Auf diesem Telefon gibt es keinen anderen Browser für den Link. Installieren Sie einen oder öffnen Sie ihn manuell."
     },
     "breach": {
       "title": "Prüfung auf geleakte Passwörter",

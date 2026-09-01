@@ -1348,7 +1348,8 @@
       "go_home": "Vai a Cleanway",
       "a11y_verdict": "{{verdict}}. {{domain}}. Punteggio di rischio {{score}} su 100.",
       "open_in_browser": "Apri nel browser",
-      "open_anyway": "Apri comunque"
+      "open_anyway": "Apri comunque",
+      "no_browser": "Non c'è un altro browser su questo telefono per aprire il link. Installane uno o aprilo manualmente."
     },
     "breach": {
       "title": "Controllo password trapelate",

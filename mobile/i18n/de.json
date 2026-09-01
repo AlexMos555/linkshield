@@ -530,6 +530,7 @@
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Risikowert {{score}} von 100.",
   "mobile.shared.open_in_browser": "Im Browser öffnen",
   "mobile.shared.open_anyway": "Trotzdem öffnen",
+  "mobile.shared.no_browser": "Auf diesem Telefon gibt es keinen anderen Browser für den Link. Installieren Sie einen oder öffnen Sie ihn manuell.",
   "mobile.breach.title": "Prüfung auf geleakte Passwörter",
   "mobile.breach.subtitle": "Manche Menschen benutzen ihre E-Mail-Adresse als Passwort. Hier erfährst du, ob das schon einmal geleakt wurde.",
   "mobile.breach.scope_note": "Das ist kein vollständiger Datenleck-Bericht. Alle Lecks aufzulisten, in denen eine Adresse aufgetaucht ist, bräuchte eine bezahlte Datenquelle, die wir noch nicht angebunden haben.",

@@ -1348,7 +1348,8 @@
       "go_home": "Buka Cleanway",
       "a11y_verdict": "{{verdict}}. {{domain}}. Skor risiko {{score}} dari 100.",
       "open_in_browser": "Buka di browser",
-      "open_anyway": "Tetap buka"
+      "open_anyway": "Tetap buka",
+      "no_browser": "Tidak ada peramban lain di ponsel ini untuk membuka tautan. Pasang satu, atau buka secara manual."
     },
     "breach": {
       "title": "Cek kata sandi bocor",

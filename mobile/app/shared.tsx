@@ -53,6 +53,9 @@ export default function SharedScreen() {
   const [result, setResult] = useState<PublicCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ErrorKind | null>(null);
+  // openInBrowser returns false when Cleanway is the only browser on the
+  // phone. Closing the screen anyway made "Open anyway" a silent no-op.
+  const [noBrowser, setNoBrowser] = useState(false);
 
   // One shared parser — see src/utils/host.ts for why the old split("/")
   // version leaked query strings and never punycoded IDN hosts. It returns
@@ -182,7 +185,10 @@ export default function SharedScreen() {
         // verdict is not safe, so it never nudges them toward a scam.
         <TouchableOpacity
           style={result.level === "safe" ? s.primaryBtn : s.secondaryBtn}
-          onPress={() => { openInBrowser(url); leaveShared(); }}
+          onPress={() => {
+            if (openInBrowser(url)) leaveShared();
+            else setNoBrowser(true);
+          }}
           activeOpacity={0.85}
           accessibilityRole="button"
         >
@@ -190,6 +196,10 @@ export default function SharedScreen() {
             {t(result.level === "safe" ? "mobile.shared.open_in_browser" : "mobile.shared.open_anyway")}
           </Text>
         </TouchableOpacity>
+      )}
+
+      {noBrowser && (
+        <Text style={s.noBrowserNote}>{t("mobile.shared.no_browser")}</Text>
       )}
 
       <TouchableOpacity
@@ -220,6 +230,13 @@ export default function SharedScreen() {
 
 
 const s = StyleSheet.create({
+  noBrowserNote: {
+    color: colors.caution,
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 10,
+    paddingHorizontal: 16,
+  },
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: 100 },
   center: {

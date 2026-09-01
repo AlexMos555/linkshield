@@ -632,7 +632,7 @@ class CleanwayVpnService : VpnService() {
             val shared = loadAsset("shared_suffixes.txt")
             blockList = BlockList.empty(veto, shared)
             reloadAllowed()
-            val store = BlocklistStore(File(filesDir, "cleanway"))
+            val store = BlocklistStore.of(filesDir)
             val sync = BlocklistSync(
                 store = store,
                 fetcher = HttpBlocklistFetcher("Cleanway-Android"),

@@ -530,6 +530,7 @@
   "mobile.shared.a11y_verdict": "{{verdict}}. {{domain}}. Risk score {{score}} out of 100.",
   "mobile.shared.open_in_browser": "Open in browser",
   "mobile.shared.open_anyway": "Open anyway",
+  "mobile.shared.no_browser": "There's no other browser on this phone to open the link. Install one, or open it manually.",
   "mobile.breach.title": "Leaked password check",
   "mobile.breach.subtitle": "Some people use their email address as their password. This tells you if that has already leaked.",
   "mobile.breach.scope_note": "This is not a full breach report. Listing every breach an address was caught in needs a paid data source we have not connected yet.",

@@ -238,7 +238,12 @@ class CleanwayVpnModule : Module() {
           .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
         val browser = context.packageManager.queryIntentActivities(probe, 0)
           .map { it.activityInfo.packageName }.firstOrNull { it != context.packageName }
-        if (browser != null) view.setPackage(browser)
+        // No other browser: an implicit VIEW resolves straight back to
+        // LinkGuardActivity when Cleanway holds the browser role, so "Open
+        // anyway" bounced into our own guard while this reported success and
+        // the screen closed. Report false and let the caller tell the user.
+        if (browser == null) return@Function false
+        view.setPackage(browser)
         context.startActivity(view)
         true
       } catch (e: Exception) {

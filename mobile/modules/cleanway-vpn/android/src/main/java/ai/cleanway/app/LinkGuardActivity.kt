@@ -129,7 +129,10 @@ class LinkGuardActivity : Activity() {
      * one thing we protect against hardest). Cached across invocations.
      */
     private fun cachedBlockList(): BlockList? {
-        val store = BlocklistStore(filesDir)
+        // Must be the SAME directory the service writes to; reading filesDir
+        // directly meant load() always returned null here and every known-bad
+        // link sailed through to the browser.
+        val store = BlocklistStore.of(filesDir)
         val saved = store.load() ?: return null
         synchronized(lock) {
             val cache = cached
