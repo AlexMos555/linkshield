@@ -234,7 +234,7 @@ class CleanwayVpnModule : Module() {
         val view = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
           .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
           .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        val probe = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("http://example.com"))
+        val probe = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://example.com"))
           .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
         val browser = context.packageManager.queryIntentActivities(probe, 0)
           .map { it.activityInfo.packageName }.firstOrNull { it != context.packageName }

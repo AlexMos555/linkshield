@@ -97,8 +97,14 @@ class LinkGuardActivity : Activity() {
      */
     private fun forwardToBrowser(url: String) {
         val self = packageName
+        // Android 11+ package visibility: the probe scheme must match a declared
+        // <queries> filter or queryIntentActivities returns NOTHING but ourselves.
+        // Expo's template declares https only, so an http:// probe made every
+        // browser invisible — the guard then believed no browser existed and sent
+        // every SAFE link to the in-app fallback screen instead of Chrome. The
+        // module manifest now also declares http, but probe https regardless.
         val browser = packageManager.queryIntentActivities(
-            Intent(Intent.ACTION_VIEW, Uri.parse("http://example.com")).addCategory(Intent.CATEGORY_BROWSABLE),
+            Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")).addCategory(Intent.CATEGORY_BROWSABLE),
             0,
         ).map { it.activityInfo.packageName }.firstOrNull { it != self }
 
