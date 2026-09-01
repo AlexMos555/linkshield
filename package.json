@@ -25,10 +25,13 @@
     "tsx": "^4.19.0"
   },
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=18"
   },
   "overrides": {
-    "next": "^16.3.4",
+    "next": "15.5.19",
+    "react-email": {
+      "next": "15.5.19"
+    },
     "expo": "~52.0.0"
   },
   "dependencies": {
