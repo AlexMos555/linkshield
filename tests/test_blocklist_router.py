@@ -236,7 +236,7 @@ def test_route_serves_a_delta_when_the_client_names_a_version_it_has(monkeypatch
     from api.services import cache as cache_mod
     from api.services import rate_limiter
     from api.services.blocklist_artifact import (
-        DELTA_MAGIC, delta_key, parse_artifact_v2, render_artifact_v2, render_delta, sha256_bytes,
+        DELTA_MAGIC, delta_key, parse_artifact_v2, render_artifact_v2, render_delta,
     )
 
     old_blob = render_artifact_v2({"a.example"}, generated=100)
@@ -322,7 +322,6 @@ def test_full_sends_are_bounded_far_above_real_cgnat_traffic(monkeypatch, client
 def test_guard_fails_open_when_the_limiter_is_unavailable(monkeypatch, client):
     """An unprotected phone is worse than a served byte: if the limiter itself
     breaks, the artifact must still go out."""
-    from api.routers import blocklist as mod
 
     async def _boom(*a, **kw):
         raise RuntimeError("redis down")

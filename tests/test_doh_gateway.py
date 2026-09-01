@@ -425,7 +425,7 @@ async def test_proxy_to_upstream_fail_open_returns_none(monkeypatch):
 # ─────────────────────────────────────────────────────────────────
 
 def _q(name: str) -> bytes:
-    labels = b"".join(bytes([len(l)]) + l.encode() for l in name.split("."))
+    labels = b"".join(bytes([len(part)]) + part.encode() for part in name.split("."))
     return b"\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + labels + b"\x00" + b"\x00\x01\x00\x01"
 
 
