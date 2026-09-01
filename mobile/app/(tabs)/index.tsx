@@ -1,277 +1,400 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, AppState, Linking, Platform,
+  View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Alert,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import * as Haptics from "expo-haptics";
-import * as Clipboard from "expo-clipboard";
-import { colors, spacing, fontSize } from "../../src/utils/theme";
-import { getStats, saveCheck } from "../../src/services/database";
-import { checkSingleDomain } from "../../src/services/api";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { colors, type as typo, space, radius } from "../../src/utils/theme";
+import { getStats } from "../../src/services/database";
+import { HeroShield } from "../../src/components/shield/HeroShield";
+import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
+import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
+import { ShieldCard } from "../../src/components/shield/ShieldCard";
+import { useNetworkShield } from "../../src/hooks/useNetworkShield";
+import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
+import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
+import { useLinkGuard } from "../../src/hooks/useLinkGuard";
+import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
+
+/**
+ * Shield Checklist home (docs/MOBILE_AUTO_PROTECTION.md §2,
+ * docs/design/shield-checklist-design.md).
+ *
+ * Honesty contract: the hero reflects only VERIFIED shields. On iOS v1
+ * nothing is verifiable yet, so the hero stays neutral and unbuilt shields
+ * sit in a muted "Rolling out" section. No placebo states, no passive
+ * clipboard monitoring (killed by design, not restyled).
+ */
+
+function rolloutItems(t: TFunction, platform: string): RolloutItem[] {
+  const browser: RolloutItem = {
+    icon: "compass-outline",
+    title: t("mobile.shield.browser.title"),
+    line: t(platform === "android" ? "mobile.rollout.browser_android" : "mobile.rollout.browser_ios"),
+  };
+  const messages: RolloutItem = {
+    icon: "chatbubble-outline",
+    title: t("mobile.shield.messages.title"),
+    line: t(platform === "android" ? "mobile.rollout.messages_android" : "mobile.rollout.messages_ios"),
+  };
+  // On Android the browser/link layer is no longer "rolling out" — it ships as
+  // the Link-checking shield card above. Only SMS remains a rollout item here.
+  if (platform === "android") return [messages];
+  return [
+    {
+      icon: "globe-outline",
+      title: t("mobile.shield.network.title"),
+      line: t("mobile.rollout.network_ios"),
+    },
+    browser,
+    messages,
+  ];
+}
 
 export default function HomeScreen() {
   const router = useRouter();
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
-  const [isProtected, setIsProtected] = useState(true);
-  const [clipboardUrl, setClipboardUrl] = useState<string | null>(null);
-  const [lastChecked, setLastChecked] = useState<any>(null);
-  const [checking, setChecking] = useState(false);
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const network = useNetworkShield();
+  // The link guard (Android): when Cleanway is the default link handler, tapped
+  // links are checked before they open — the exact SMS-phishing defense.
+  const linkGuard = useLinkGuard();
+  // What the DNS shield did — including while the app was closed. Merged
+  // into the activity card so "Blocked" counts real protection, not only
+  // links the person pasted by hand.
+  const shieldTotals = useShieldBlockTotals();
+  const { t, i18n } = useTranslation();
+  // Sideloaded (Tele2 direct-APK) users have no store to push updates; offer a
+  // fresher build here, and insist if the running one is below the security floor.
+  const update = useUpdateCheck(i18n.language);
 
-  // Reload on focus
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
-    checkClipboard();
   }, []));
 
-  // Auto-check clipboard when app opens
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") checkClipboard();
-    });
-    checkClipboard();
-    return () => sub.remove();
-  }, []);
+  const blockedTotal = stats.threats_blocked + shieldTotals.blocked;
+  const warnedTotal = stats.threats_warned + shieldTotals.warned;
 
-  // Handle incoming shared URLs (deep links)
-  useEffect(() => {
-    const handleUrl = ({ url }: { url: string }) => {
-      if (url) autoCheck(extractDomain(url));
-    };
-    const sub = Linking.addEventListener("url", handleUrl);
-    Linking.getInitialURL().then(url => { if (url) handleUrl({ url }); });
-    return () => sub.remove();
-  }, []);
+  // Only shields that are shipped AND verifiable on this platform can count;
+  // a running-but-unverified tunnel deliberately counts as 0. Equally, every
+  // shield that DOES exist on this device must be counted, or the
+  // headline lies: with only the DNS shield counted, a phone whose link guard
+  // was never set up still read "All shields on and verified".
+  const totalCount = (network.available ? 1 : 0) + (linkGuard.available ? 1 : 0);
+  const verifiedCount = (network.verified ? 1 : 0) + (linkGuard.on ? 1 : 0);
+  const heroState =
+    totalCount > 0 && verifiedCount === totalCount ? "all"
+    : verifiedCount > 0 ? "partial"
+    : "none";
+  const needsSetup = network.available && network.state === "setup";
 
-  async function checkClipboard() {
-    try {
-      const text = await Clipboard.getStringAsync();
-      if (text && isUrl(text) && text !== clipboardUrl) {
-        setClipboardUrl(text);
-      }
-    } catch {}
+  const rollout = rolloutItems(t, Platform.OS);
+
+  /**
+   * Prominent disclosure, shown BEFORE Android's own consent dialog.
+   *
+   * Play requires a VpnService app to explain, in its own UI, what the VPN is
+   * for and what it does with traffic — and our own bar says a person should
+   * never grant something this large without being told plainly. The system
+   * dialog says "can monitor network traffic", which is frightening and
+   * uninformative; this says what we actually do (match names on the phone,
+   * forward the rest to a public resolver, read nothing else).
+   */
+  function startWithDisclosure() {
+    Alert.alert(
+      t("mobile.shield.disclosure.title"),
+      t("mobile.shield.disclosure.body"),
+      [
+        { text: t("mobile.shield.disclosure.cancel"), style: "cancel" },
+        { text: t("mobile.shield.disclosure.continue"), onPress: () => void network.turnOn() },
+      ],
+      { cancelable: true },
+    );
   }
 
-  function extractDomain(url: string): string {
-    try {
-      if (url.startsWith("http")) return new URL(url).hostname;
-    } catch {}
-    return url.split("/")[0].toLowerCase();
+  function confirmPause() {
+    Alert.alert(
+      t("mobile.shield.pause_confirm_title"),
+      t("mobile.shield.pause_confirm_body"),
+      [
+        { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+        {
+          text: t("mobile.shield.status.pause_action"),
+          style: "destructive",
+          onPress: () => void network.turnOff(),
+        },
+      ],
+    );
   }
-
-  function isUrl(text: string): boolean {
-    return /^https?:\/\//i.test(text) || /^[a-z0-9][-a-z0-9]*\.[a-z]{2,}/i.test(text.trim());
-  }
-
-  async function autoCheck(domain: string) {
-    if (!domain || !domain.includes(".") || checking) return;
-    setChecking(true);
-    setClipboardUrl(null);
-
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const result = await checkSingleDomain(domain);
-      await saveCheck(result);
-      setLastChecked(result);
-      setStats(await getStats());
-
-      if (result.level === "dangerous") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert(
-          "\u26A0\uFE0F Dangerous Link!",
-          `${domain} scored ${result.score}/100.\n\n${result.reasons?.[0]?.detail || "Multiple risk signals detected."}`,
-          [
-            { text: "Details", onPress: () => router.push({ pathname: "/result", params: { domain } }) },
-            { text: "OK", style: "cancel" },
-          ]
-        );
-      } else if (result.level === "caution") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-    } catch (e) {
-      Alert.alert("Check Failed", "Could not reach server. Try again.");
-    } finally {
-      setChecking(false);
-    }
-  }
-
-  const levelColors: Record<string, string> = { safe: colors.safe, caution: colors.caution, dangerous: colors.dangerous };
-  const levelIcons: Record<string, string> = { safe: "\u2705", caution: "\u26A0\uFE0F", dangerous: "\u274C" };
-  const levelLabels: Record<string, string> = { safe: "Safe", caution: "Caution", dangerous: "Dangerous" };
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
+      <HeroShield
+        state={heroState}
+        verifiedCount={verifiedCount}
+        totalCount={totalCount}
+        // No alarm state exists any more: nothing in the code detects a
+        // competing VPN, so nothing may claim one. Unproven is shown as
+        // unproven, not as a warning.
+        attention={false}
+        interrupted={needsSetup && network.interrupted}
+      />
 
-      {/* Shield */}
-      <TouchableOpacity
-        style={s.shieldWrap}
-        onPress={() => { setIsProtected(!isProtected); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-        activeOpacity={0.7}
-      >
-        <View style={[s.shield, isProtected ? s.shieldOn : s.shieldOff]}>
-          <Text style={s.shieldIcon}>{isProtected ? "\u{1F6E1}" : "\u26A0"}</Text>
-        </View>
-        <Text style={[s.shieldLabel, { color: isProtected ? colors.safe : colors.caution }]}>
-          {isProtected ? "Protected" : "Protection Off"}
-        </Text>
-        <Text style={s.shieldSub}>
-          {isProtected ? "Monitoring links from clipboard & shared URLs" : "Tap to enable"}
-        </Text>
-      </TouchableOpacity>
+      <UpdateBanner status={update} />
 
-      {/* Clipboard detection — this is the core UX */}
-      {clipboardUrl && (
-        <TouchableOpacity
-          style={s.clipBanner}
-          onPress={() => autoCheck(extractDomain(clipboardUrl))}
-          activeOpacity={0.8}
-        >
-          <View style={s.clipLeft}>
-            <Text style={s.clipIcon}>{"\u{1F517}"}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={s.clipTitle}>Link detected in clipboard</Text>
-              <Text style={s.clipUrl} numberOfLines={1}>{clipboardUrl}</Text>
+      {needsSetup && (
+        <>
+          {network.interrupted && (
+            // The user had this on and something else turned it off (reboot
+            // without always-on, a battery manager). Say so — "let's set up"
+            // would tell them their earlier setup never happened.
+            <View style={s.interruptedRow}>
+              <Ionicons name="alert-circle-outline" size={15} color={colors.amber} />
+              <Text style={s.interruptedText}>{t("mobile.home.interrupted")}</Text>
             </View>
-          </View>
-          <View style={s.clipBtn}>
-            <Text style={s.clipBtnText}>Check</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {/* Last checked result */}
-      {lastChecked && (
-        <TouchableOpacity
-          style={[s.lastResult, { borderColor: (levelColors[lastChecked.level] || colors.border) + "40" }]}
-          onPress={() => router.push({ pathname: "/result", params: { domain: lastChecked.domain } })}
-        >
-          <Text style={s.lastIcon}>{levelIcons[lastChecked.level] || "\u2753"}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.lastDomain}>{lastChecked.domain}</Text>
-            <Text style={[s.lastLevel, { color: levelColors[lastChecked.level] || colors.textMuted }]}>
-              {levelLabels[lastChecked.level] || "Unknown"} — Score: {lastChecked.score}/100
+          )}
+          <TouchableOpacity
+            style={s.cta}
+            onPress={startWithDisclosure}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+          >
+            <Text style={s.ctaLabel}>
+              {t(network.interrupted ? "mobile.home.cta_turn_back_on" : "mobile.home.cta_turn_on")}
             </Text>
-          </View>
-          <Text style={s.lastArrow}>&rarr;</Text>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </>
       )}
 
-      {/* Stats */}
-      <View style={s.statsRow}>
-        <View style={s.stat}>
-          <Text style={s.statNum}>{stats.total_checks}</Text>
-          <Text style={s.statLabel}>Checked</Text>
+      {network.available && (
+        <View style={s.section}>
+          <ShieldCard
+            icon="globe-outline"
+            title={t("mobile.shield.network.title")}
+            description={t("mobile.shield.network.desc")}
+            honesty={t("mobile.shield.network.honesty")}
+            state={network.state}
+            stateCopy={
+              // Strict Private DNS: the one state whose fix is a system
+              // setting. Name the provider so the user recognises it.
+              network.state === "conflict"
+                ? t("mobile.shield.network.state_private_dns", { host: network.privateDnsHost ?? "" })
+              : network.state === "on" ? t("mobile.shield.network.state_on")
+              // Probe in flight: say "checking" rather than flashing the
+              // negative state at someone whose protection is fine.
+              : network.probing ? t("mobile.shield.network.state_checking")
+              : network.state === "offline" ? t("mobile.shield.network.state_offline")
+              : network.state === "unverified" ? t("mobile.shield.network.state_unverified")
+              : t("mobile.shield.network.state_setup")
+            }
+            onAction={() => {
+              if (network.state === "setup") startWithDisclosure();
+              else if (network.state === "conflict") network.openPrivateDnsSettings();
+            }}
+            // The status pill only acts in "setup". Switching a running shield
+            // OFF goes through the explicit pause row below, behind a confirm —
+            // for a while there was no way out of a running shield at all
+            // except the system VPN settings, which is its own kind of lie.
+            onPause={confirmPause}
+          />
+          {(network.state === "on" || network.state === "unverified" || network.state === "offline") && (
+            // The list is a separate truth from the tunnel: green tunnel +
+            // no/stale list = nothing is being blocked from the list. Say it
+            // in its own line, never fold it into "You're protected".
+            <TouchableOpacity
+              style={s.hintRow}
+              onPress={network.refreshBlocklist}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name={network.blocklist.stale ? "alert-circle-outline" : "list-outline"}
+                size={13}
+                color={network.blocklist.stale ? colors.amber : colors.textSecondary}
+              />
+              <Text style={[s.hintText, network.blocklist.stale && { color: colors.amber }]}>
+                {network.blocklist.count > 0 && !network.blocklist.stale
+                  // "updated 0h ago" is what a freshly synced list said — the
+                  // first thing a new user reads about it, and it sounds like
+                  // a bug. Under an hour it just says "just updated".
+                  ? (network.blocklist.ageMs ?? 0) < 3_600_000
+                    ? t("mobile.shield.blocklist.status_fresh", { count: network.blocklist.count })
+                    : t("mobile.shield.blocklist.status", {
+                        count: network.blocklist.count,
+                        hours: Math.round((network.blocklist.ageMs ?? 0) / 3_600_000),
+                      })
+                  : network.blocklist.count > 0
+                    ? t("mobile.shield.blocklist.stale", { count: network.blocklist.count })
+                    : t("mobile.shield.blocklist.missing")}
+              </Text>
+              <Ionicons name="refresh-outline" size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+          {network.state === "conflict" && (
+            <TouchableOpacity
+              style={s.hintRow}
+              onPress={network.openPrivateDnsSettings}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Ionicons name="settings-outline" size={13} color={colors.amber} />
+              <Text style={[s.hintText, { color: colors.amber }]}>{t("mobile.shield.network.private_dns_cta")}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.amber} />
+            </TouchableOpacity>
+          )}
+          {network.verified && (
+            // Protection returns on its own after a reboot; Always-on VPN
+            // additionally starts it with the phone, before any app receives
+            // BOOT_COMPLETED. Offer it as an upgrade, not as a requirement.
+            <TouchableOpacity
+              style={s.hintRow}
+              onPress={network.openVpnSettings}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
+              <Text style={s.hintText}>{t("mobile.shield.always_on_hint")}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
-        <View style={s.stat}>
-          <Text style={[s.statNum, { color: colors.dangerous }]}>{stats.threats_blocked}</Text>
-          <Text style={s.statLabel}>Blocked</Text>
+      )}
+
+      {linkGuard.available && (
+        <View style={s.section}>
+          <ShieldCard
+            icon="link-outline"
+            title={t("mobile.shield.linkguard.title")}
+            description={t("mobile.shield.linkguard.desc")}
+            honesty={t("mobile.shield.linkguard.honesty")}
+            // Live RoleManager check — green here means Cleanway really is the
+            // default link handler, not a placebo. Setup offers to become one.
+            state={linkGuard.on ? "on" : "setup"}
+            stateCopy={
+              linkGuard.on
+                ? t("mobile.shield.linkguard.state_on")
+                : t("mobile.shield.linkguard.state_setup")
+            }
+            onAction={() => {
+              // ON is a pill, not a toggle (same contract as the network card):
+              // tapping opens the system screen where the role can be handed
+              // back, because there is no API to release it ourselves.
+              if (linkGuard.on) void linkGuard.manage();
+              else void linkGuard.enable();
+            }}
+          />
         </View>
-        <View style={s.stat}>
-          <Text style={[s.statNum, { color: colors.caution }]}>{stats.threats_warned}</Text>
-          <Text style={s.statLabel}>Warned</Text>
-        </View>
+      )}
+
+      <View style={s.section}>
+        <CheckAnythingCard
+          onOpen={() => router.push("/check")}
+          onPaste={() => router.push({ pathname: "/check", params: { paste: "1" } })}
+          onScanQr={() => router.push("/scanner")}
+          onHowToShare={() => setShareSheetVisible(true)}
+        />
       </View>
 
-      {/* Quick Actions */}
-      <Text style={s.sectionTitle}>Tools</Text>
-      <View style={s.actionsGrid}>
-        <TouchableOpacity style={s.action} onPress={() => router.push("/check")}>
-          <Text style={s.actionIcon}>{"\u{1F517}"}</Text>
-          <Text style={s.actionText}>Check URL</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.action} onPress={() => router.push("/scanner")}>
-          <Text style={s.actionIcon}>{"\u{1F4F7}"}</Text>
-          <Text style={s.actionText}>QR Scan</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.action} onPress={() => router.push("/breach")}>
-          <Text style={s.actionIcon}>{"\u{1F513}"}</Text>
-          <Text style={s.actionText}>Breach Check</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.action} onPress={() => router.push("/report")}>
-          <Text style={s.actionIcon}>{"\u{1F4CA}"}</Text>
-          <Text style={s.actionText}>Weekly Report</Text>
-        </TouchableOpacity>
+      <View style={s.section}>
+        <RolloutList items={rollout} />
       </View>
 
-      {/* How it works */}
-      <View style={s.howCard}>
-        <Text style={s.howTitle}>How Cleanway protects you</Text>
-        <View style={s.howRow}>
-          <Text style={s.howIcon}>{"\u{1F4CB}"}</Text>
-          <Text style={s.howText}>Copy a link anywhere — we detect and check it automatically</Text>
+      {(stats.total_checks > 0 || blockedTotal > 0 || warnedTotal > 0) && (
+        <View style={[s.section, s.activityCard]}>
+          <ActivityColumn value={stats.total_checks} label={t("mobile.home.activity.checked")} />
+          <ActivityColumn value={blockedTotal} label={t("mobile.home.activity.blocked")} />
+          <ActivityColumn value={warnedTotal} label={t("mobile.home.activity.warned")} />
         </View>
-        <View style={s.howRow}>
-          <Text style={s.howIcon}>{"\u{1F4E4}"}</Text>
-          <Text style={s.howText}>Share a link from any app → Cleanway checks it</Text>
-        </View>
-        <View style={s.howRow}>
-          <Text style={s.howIcon}>{"\u{1F4F7}"}</Text>
-          <Text style={s.howText}>Scan QR codes — we check the URL before you open it</Text>
-        </View>
-        <View style={s.howRow}>
-          <Text style={s.howIcon}>{"\u{1F6E1}"}</Text>
-          <Text style={s.howText}>VPN mode blocks dangerous sites before they load</Text>
-        </View>
+      )}
+
+      <View style={s.privacyRow}>
+        <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
+<Text style={s.privacy}>{t("mobile.home.privacy")}</Text>
       </View>
 
-      <Text style={s.privacy}>{"\u{1F512}"} Your browsing data never leaves this device</Text>
+      <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
     </ScrollView>
+  );
+}
+
+function ActivityColumn({ value, label }: { value: number; label: string }) {
+  return (
+    <View style={s.activityCol}>
+      <Text style={s.activityNum}>{value}</Text>
+      <Text style={s.activityLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function ShareHowToSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={s.scrim} activeOpacity={1} onPress={onClose}>
+        <View style={s.sheet}>
+          <Text style={s.sheetTitle}>{t("mobile.home.check.share_sheet_title")}</Text>
+<Text style={s.sheetBody}>{t("mobile.home.check.share_sheet_body")}</Text>
+          <TouchableOpacity style={s.sheetBtn} onPress={onClose} activeOpacity={0.85}>
+            <Text style={s.sheetBtnLabel}>{t("mobile.home.check.share_sheet_ok")}</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: 120 },
+  content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: 120 },
+  section: { marginTop: space.xl + space.sm },
 
-  shieldWrap: { alignItems: "center", marginVertical: spacing.lg },
-  shield: { width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center", marginBottom: spacing.md },
-  shieldOn: { backgroundColor: colors.safeBg, borderWidth: 3, borderColor: colors.safe },
-  shieldOff: { backgroundColor: colors.cautionBg, borderWidth: 3, borderColor: colors.caution },
-  shieldIcon: { fontSize: 48 },
-  shieldLabel: { fontSize: fontSize.xl, fontWeight: "800" },
-  shieldSub: { color: colors.textMuted, fontSize: fontSize.xs, marginTop: 4, textAlign: "center" },
-
-  clipBanner: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: colors.primaryBg, borderRadius: 14, padding: spacing.md,
-    marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.primary + "40",
+  interruptedRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 6,
+    marginTop: space.lg, paddingHorizontal: space.xs,
   },
-  clipLeft: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
-  clipIcon: { fontSize: 24 },
-  clipTitle: { color: colors.primary, fontSize: fontSize.sm, fontWeight: "700" },
-  clipUrl: { color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 },
-  clipBtn: { backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
-  clipBtnText: { color: "white", fontWeight: "700", fontSize: fontSize.sm },
+  interruptedText: { ...typo.caption, color: colors.amber, flex: 1 },
 
-  lastResult: {
-    flexDirection: "row", alignItems: "center", gap: spacing.md,
-    backgroundColor: colors.bgCard, borderRadius: 14, padding: spacing.md,
-    marginBottom: spacing.lg, borderWidth: 1,
+  cta: {
+    height: 50, borderRadius: radius.control, backgroundColor: colors.blue,
+    alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
-  lastIcon: { fontSize: 28 },
-  lastDomain: { color: colors.text, fontSize: fontSize.md, fontWeight: "600" },
-  lastLevel: { fontSize: fontSize.sm, marginTop: 2 },
-  lastArrow: { color: colors.textMuted, fontSize: 20 },
+  ctaLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
 
-  statsRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.lg },
-  stat: { flex: 1, backgroundColor: colors.bgCard, borderRadius: 12, padding: spacing.md, alignItems: "center" },
-  statNum: { fontSize: 24, fontWeight: "800", color: colors.white },
-  statLabel: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 4 },
+  hintRow: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    marginTop: space.sm, paddingHorizontal: space.xs,
+  },
+  hintText: { ...typo.caption, color: colors.textSecondary, flex: 1 },
 
-  sectionTitle: { color: colors.textMuted, fontSize: fontSize.xs, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: spacing.sm },
+  activityCard: {
+    flexDirection: "row",
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    paddingVertical: space.lg,
+  },
+  activityCol: { flex: 1, alignItems: "center" },
+  activityNum: { fontSize: 20, lineHeight: 25, fontWeight: "600", color: colors.textPrimary },
+  activityLabel: { ...typo.caption, color: colors.textMuted, marginTop: 2 },
 
-  actionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.lg },
-  action: { width: "48%" as any, backgroundColor: colors.bgCard, borderRadius: 12, padding: spacing.lg, alignItems: "center", borderWidth: 1, borderColor: colors.border },
-  actionIcon: { fontSize: 28, marginBottom: 8 },
-  actionText: { color: colors.textSecondary, fontSize: fontSize.sm, fontWeight: "600" },
+  privacyRow: {
+    flexDirection: "row", alignItems: "flex-start", justifyContent: "center",
+    gap: 6, marginTop: space.xxl, paddingHorizontal: space.md,
+  },
+  privacy: { ...typo.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
 
-  howCard: { backgroundColor: colors.bgCard, borderRadius: 14, padding: spacing.lg, marginBottom: spacing.lg },
-  howTitle: { color: colors.white, fontSize: fontSize.md, fontWeight: "700", marginBottom: spacing.md },
-  howRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, marginBottom: spacing.sm },
-  howIcon: { fontSize: 16, marginTop: 2 },
-  howText: { color: colors.textSecondary, fontSize: fontSize.sm, flex: 1, lineHeight: 20 },
-
-  privacy: { textAlign: "center", color: colors.textMuted, fontSize: fontSize.xs },
+  scrim: { flex: 1, backgroundColor: "#0B1220E6", justifyContent: "flex-end" },
+  sheet: {
+    backgroundColor: "#141A28",
+    borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card,
+    padding: space.xxl, paddingBottom: space.huge,
+  },
+  sheetTitle: { ...typo.headline, color: colors.textPrimary },
+  sheetBody: { ...typo.body, color: colors.textSecondary, marginTop: space.sm },
+  sheetBtn: {
+    height: 50, borderRadius: radius.control, backgroundColor: colors.blue,
+    alignItems: "center", justifyContent: "center", marginTop: space.xl,
+  },
+  sheetBtnLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
 });

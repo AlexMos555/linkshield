@@ -1,0 +1,23 @@
+{
+  // Typecheck-only config: `npx tsc -p tsconfig.typecheck.json --noEmit`.
+  //
+  // Two copies of @types/react live in this workspace — landing pins ^19 and
+  // hoists it to the repo root, mobile pins ~18.3 for Expo SDK 52. Packages
+  // that hoist to the root (@expo/vector-icons among them) are then typed
+  // against React 19 while the app is typed against React 18, and every
+  // <Ionicons /> fails with TS2786 "cannot be used as a JSX component".
+  //
+  // The mapping below pins one React for the compile. It deliberately does NOT
+  // live in tsconfig.json: Expo's Metro reads that file's `paths` for real
+  // module resolution (experiments.tsconfigPaths is on by default in SDK 52),
+  // so putting it there makes the bundler resolve the `react` *module* to a
+  // types-only directory and the app dies at startup with
+  // "While trying to resolve module `react`". Verified the hard way.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "react": ["./node_modules/@types/react"]
+    }
+  }
+}

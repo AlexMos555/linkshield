@@ -26,6 +26,7 @@
  */
 
 import * as SecureStore from "expo-secure-store";
+import { setAuthToken } from "./api";
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -76,7 +77,10 @@ interface GoTrueTokenResponse {
   msg?: string;
   error_description?: string;
   error?: string;
-  code?: string;
+  /** GoTrue's numeric HTTP status echo (e.g. 403) in the versioned error format. */
+  code?: string | number;
+  /** GoTrue's SYMBOLIC name (e.g. "otp_expired") — the one worth branching on. */
+  error_code?: string;
 }
 
 async function goTrue<T = GoTrueTokenResponse>(
@@ -106,8 +110,12 @@ async function goTrue<T = GoTrueTokenResponse>(
     const data = (await resp.json().catch(() => ({}))) as T & GoTrueTokenResponse;
 
     if (!resp.ok) {
+      // Prefer the symbolic name. GoTrue's versioned error format puts the
+      // numeric HTTP status in `code` and the actual identifier in `error_code`,
+      // so reading `code` first made every symbolic branch (e.g. "otp_expired")
+      // unreachable — it was comparing "otp_expired" against "403".
       throw new AuthError(
-        data.code || data.error || "auth_error",
+        data.error_code || data.error || (data.code != null ? String(data.code) : "auth_error"),
         data.msg || data.error_description || "Authentication failed",
         resp.status,
       );
@@ -146,6 +154,12 @@ async function persistSession(
     SecureStore.setItemAsync(KEY_EXPIRES, String(expiresAt)),
   ]);
 
+  // Keep the api-client's module-level token in lockstep. Before this, a
+  // refresh updated only SecureStore: the client kept sending the original
+  // sign-in token, and after its ~1h expiry every pull through services/api
+  // silently 401'd while pushes (which read SecureStore) kept working.
+  setAuthToken(tokens.access_token);
+
   return {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
@@ -161,6 +175,7 @@ async function clearSession(): Promise<void> {
     SecureStore.deleteItemAsync(KEY_EMAIL),
     SecureStore.deleteItemAsync(KEY_EXPIRES),
   ]);
+  setAuthToken(null);
 }
 
 async function readStoredSession(): Promise<AuthSession | null> {
@@ -210,6 +225,93 @@ export async function signUp(
   return persistSession(data, data.user?.email ?? email);
 }
 
+// ─── Passwordless email OTP (the primary flow — unified with the web) ──
+//
+// The web signs up with a magic link; the app uses the SAME Supabase project,
+// so a code sent here logs into the SAME account and sync just works. No
+// password to set or remember (grandma-friendly), and no fragile web→app token
+// handoff: the user types the 6-digit code from the email on either surface.
+//
+// Requires the Supabase project's email template to expose the code
+// (`{{ .Token }}`); see docs/MOBILE_AUTH.md.
+
+/**
+ * Send a one-time login code to `email`. Creates the account if it's new
+ * (`create_user: true`), so the same call serves sign-in and sign-up.
+ * GoTrue returns 200 with an empty body; it never reveals whether the address
+ * already existed (no account enumeration).
+ *
+ * `captchaToken` is OPTIONAL and omitted entirely when absent. Pass it only
+ * when the Supabase project has captcha protection enabled — see
+ * src/services/captcha.ts for how the app obtains one, and note that the
+ * server-side switch is project-wide (it breaks web sign-up at the same
+ * instant it protects mobile).
+ */
+export async function sendEmailOtp(
+  email: string,
+  captchaToken?: string,
+): Promise<void> {
+  await goTrue("/auth/v1/otp", {
+    email,
+    create_user: true,
+    // The spread is load-bearing. With no captcha configured the body is
+    // EXACTLY `{"email":…,"create_user":true}` — the same bytes as before this
+    // parameter existed. Sending `gotrue_meta_security: {}` unconditionally
+    // (what supabase-js does) would be tolerated by GoTrue, but "tolerated" is
+    // a weaker guarantee than "unchanged", and unchanged is what the launch
+    // needs while captcha is off.
+    ...(captchaToken ? { gotrue_meta_security: { captcha_token: captchaToken } } : {}),
+  });
+}
+
+/**
+ * Exchange the 6-digit code the user typed for a session.
+ *
+ * Why two types are tried: GoTrue issues a different token kind depending on
+ * whether the address already existed. An existing user gets a magic-link/email
+ * token (`type: "email"`); a BRAND-NEW user created by `/otp` with
+ * `create_user: true` gets a *signup confirmation* token, which some GoTrue
+ * versions only accept as `type: "signup"`. Probing the live server was
+ * inconclusive — it returns the same `otp_expired` error for every type — so
+ * rather than bet first-ever sign-in on one reading of the docs, we try
+ * "email" and fall back to "signup" when the server rejects the token.
+ *
+ * Cost of the fallback: one extra request in the rare failure path. Cost of
+ * getting it wrong without the fallback: nobody can create an account.
+ */
+const OTP_VERIFY_TYPES = ["email", "signup"] as const;
+
+export async function verifyEmailOtp(
+  email: string,
+  token: string,
+): Promise<AuthSession> {
+  const trimmed = token.trim();
+  let lastError: unknown = null;
+
+  for (const type of OTP_VERIFY_TYPES) {
+    try {
+      const data = await goTrue("/auth/v1/verify", { type, email, token: trimmed });
+      const session = await persistSession(data, data.user?.email ?? email);
+      if (!session) {
+        throw new AuthError("bad_response", "Server returned an unexpected response.");
+      }
+      return session;
+    } catch (err) {
+      lastError = err;
+      // Only a rejected TOKEN is worth retrying under the other type. A network
+      // failure, timeout or malformed response means retrying would just burn
+      // another round trip and delay the error the user needs to see.
+      const retryable =
+        err instanceof AuthError &&
+        (err.status === 400 || err.status === 401 || err.status === 403);
+      if (!retryable) throw err;
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new AuthError("auth_error", "Authentication failed");
+}
+
 export async function signOut(): Promise<void> {
   const stored = await readStoredSession();
   // Best-effort logout: clear local state even if the API call fails.
@@ -223,7 +325,14 @@ export async function signOut(): Promise<void> {
   await clearSession();
 }
 
-export async function refreshAccessToken(): Promise<AuthSession | null> {
+/**
+ * Internal refresh that keeps the failure kinds apart. Only a definitive 401
+ * means the session is gone; a network failure (status 0, timeout, 5xx) means
+ * WE DON'T KNOW — the refresh token is untouched in SecureStore and the next
+ * online attempt will likely succeed. Collapsing both into null is what made
+ * the app tell an offline-but-signed-in user to go type her password again.
+ */
+async function _refresh(): Promise<AuthSession | "offline" | null> {
   const stored = await readStoredSession();
   if (!stored?.refreshToken) return null;
   try {
@@ -232,12 +341,40 @@ export async function refreshAccessToken(): Promise<AuthSession | null> {
     });
     return await persistSession(data, stored.email);
   } catch (err) {
-    // Refresh tokens don't come back — treat as logout
+    // Refresh tokens don't come back — a 401 is a real logout.
     if (err instanceof AuthError && err.status === 401) {
       await clearSession();
+      return null;
     }
-    return null;
+    return "offline";
   }
+}
+
+export async function refreshAccessToken(): Promise<AuthSession | null> {
+  const r = await _refresh();
+  return r === "offline" ? null : r;
+}
+
+/** What a screen may honestly say about the session right now. */
+export type SessionState =
+  | { kind: "ok"; session: AuthSession }
+  | { kind: "none" }
+  /** A session exists but could not be refreshed — offline, not signed out. */
+  | { kind: "offline"; email: string | null };
+
+export async function getSessionState(): Promise<SessionState> {
+  const stored = await readStoredSession();
+  if (!stored) return { kind: "none" };
+
+  const now = Math.floor(Date.now() / 1000);
+  if (stored.expiresAt - now > REFRESH_WINDOW_SECONDS) {
+    setAuthToken(stored.accessToken);
+    return { kind: "ok", session: stored };
+  }
+  const refreshed = await _refresh();
+  if (refreshed === "offline") return { kind: "offline", email: stored.email };
+  if (refreshed === null) return { kind: "none" };
+  return { kind: "ok", session: refreshed };
 }
 
 export async function sendPasswordResetEmail(email: string): Promise<void> {
@@ -257,6 +394,7 @@ export async function restoreSession(): Promise<AuthSession | null> {
 
   const now = Math.floor(Date.now() / 1000);
   if (stored.expiresAt - now > REFRESH_WINDOW_SECONDS) {
+    setAuthToken(stored.accessToken);
     return stored;
   }
   // Near or past expiry — try to refresh
@@ -281,4 +419,12 @@ export function validatePassword(v: string): string | null {
     return `Password must be at least ${MIN_PASSWORD_LEN} characters`;
   }
   return null;
+}
+
+export const OTP_CODE_LEN = 6;
+const OTP_RE = /^\d{6}$/;
+
+/** True when `v` is a well-formed 6-digit login code. */
+export function isValidOtpCode(v: string): boolean {
+  return OTP_RE.test(v.trim());
 }

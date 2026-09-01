@@ -21,6 +21,7 @@ from api.routers.email_unsubscribe import router as email_unsubscribe_router
 from api.routers.family import router as family_router
 from api.routers.email import router as email_router
 from api.routers.blocklist import router as blocklist_router
+from api.routers.mobile import router as mobile_router
 from api.routers.phone import router as phone_router
 from api.routers.scam import router as scam_router
 from api.routers.auth import router as auth_router
@@ -198,6 +199,7 @@ app.include_router(user_router)
 app.include_router(feedback_router)
 app.include_router(public_router)
 app.include_router(blocklist_router)
+app.include_router(mobile_router)
 app.include_router(breach_router)
 app.include_router(referral_router)
 app.include_router(org_router)

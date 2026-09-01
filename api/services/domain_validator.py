@@ -39,8 +39,16 @@ _BLOCKED_NETWORKS = [
 ]
 
 # Simple domain regex: letters, digits, hyphens, dots
+# The TLD alternative accepts punycode zones (xn--…). The previous pattern
+# required a purely alphabetic TLD, which 400'd every IDN-zone domain even in
+# its correct ASCII form — пример.рф arrives as xn--e1afmkfd.xn--p1ai, and
+# ".рф", ".中国", ".भारत" users simply could not get a verdict. Homograph
+# phishing leans on exactly these zones, so rejecting them disabled analysis
+# where it matters most.
 _DOMAIN_PATTERN = re.compile(
-    r"^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(\.[a-zA-Z0-9-]{1,63})*\.[a-zA-Z]{2,}$"
+    r"^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)"
+    r"(\.[a-zA-Z0-9-]{1,63})*"
+    r"\.([a-zA-Z]{2,63}|xn--[a-zA-Z0-9-]{1,59}(?<!-))$"
 )
 
 # Valid IP address pattern (for explicit IP check)

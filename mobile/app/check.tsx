@@ -1,27 +1,44 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { colors, spacing, fontSize } from "../src/utils/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { getRecentChecks } from "../src/services/database";
+import { toCheckableHost } from "../src/utils/host";
 
 export default function CheckScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+  // paste=1: user tapped "Paste link" on the home card — an explicit action,
+  // so reading the clipboard here is intentional (passive monitoring is killed).
+  const { paste } = useLocalSearchParams<{ paste?: string }>();
   const [url, setUrl] = useState("");
+  const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
 
-  useEffect(() => {
+  // On focus, not on mount. This screen stays mounted while the user goes off
+  // to /result and comes back, so a mount-only load meant the link they just
+  // checked never appeared under "Recent" — the list silently lagged one check
+  // behind for the whole session.
+  useFocusEffect(useCallback(() => {
     getRecentChecks(10).then(checks => {
       const domains = [...new Set(checks.map((c: any) => c.domain))].slice(0, 5);
       setRecent(domains);
     }).catch(() => {});
-  }, []);
+  }, []));
+
+  useEffect(() => {
+    if (paste === "1") void handlePaste();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paste]);
 
   function handleCheck() {
-    const domain = url.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
-    if (!domain || !domain.includes(".")) {
-      Alert.alert("Invalid URL", "Please enter a valid domain or URL.");
+    const domain = toCheckableHost(url);
+    if (!domain) {
+      Alert.alert(t("mobile.check.invalid_title"), t("mobile.check.invalid_body"));
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -42,16 +59,18 @@ export default function CheckScreen() {
   }
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content}>
-      <Text style={s.title}>Check a Link</Text>
-      <Text style={s.subtitle}>Paste any URL or domain to check safety</Text>
+    <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <Text style={s.title}>{t("mobile.check.title")}</Text>
+      <Text style={s.subtitle}>{t("mobile.check.subtitle")}</Text>
 
       <TextInput
-        style={s.input}
-        placeholder="https://example.com or example.com"
+        style={[s.input, focused && s.inputFocused]}
+        placeholder={t("mobile.check.placeholder")}
         placeholderTextColor={colors.textMuted}
         value={url}
         onChangeText={setUrl}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="url"
@@ -61,31 +80,30 @@ export default function CheckScreen() {
       />
 
       <View style={s.buttons}>
-        <TouchableOpacity style={s.pasteBtn} onPress={handlePaste}>
-          <Text style={s.pasteBtnText}>{"\u{1F4CB}"} Paste from clipboard</Text>
+        <TouchableOpacity style={s.pasteBtn} onPress={handlePaste} activeOpacity={0.85}>
+          <Ionicons name="clipboard-outline" size={18} color={colors.textSecondary} />
+          <Text style={s.pasteBtnText}>{t("mobile.check.paste_btn")}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.checkBtn} onPress={handleCheck}>
-          <Text style={s.checkBtnText}>Check Safety</Text>
+        <TouchableOpacity style={s.checkBtn} onPress={handleCheck} activeOpacity={0.85}>
+          <Text style={s.checkBtnText}>{t("mobile.check.submit")}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Quick test domains */}
-      <Text style={s.sectionTitle}>Try these</Text>
-      <View style={s.quickGrid}>
+      <Text style={s.sectionTitle}>{t("mobile.check.try")}</Text>
+      <View style={s.chipGrid}>
         {["google.com", "paypa1-verify.tk", "pay-pal.com", "evil.netlify.app"].map(d => (
-          <TouchableOpacity key={d} style={s.quickChip} onPress={() => quickCheck(d)}>
-            <Text style={s.quickText}>{d}</Text>
+          <TouchableOpacity key={d} style={s.tryChip} onPress={() => quickCheck(d)} activeOpacity={0.85}>
+            <Text style={s.tryText}>{d}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Recent */}
       {recent.length > 0 && (
         <>
-          <Text style={s.sectionTitle}>Recent</Text>
-          <View style={s.quickGrid}>
+          <Text style={s.sectionTitle}>{t("mobile.check.recent")}</Text>
+          <View style={s.chipGrid}>
             {recent.map(d => (
-              <TouchableOpacity key={d} style={s.recentChip} onPress={() => quickCheck(d)}>
+              <TouchableOpacity key={d} style={s.recentChip} onPress={() => quickCheck(d)} activeOpacity={0.85}>
                 <Text style={s.recentText}>{d}</Text>
               </TouchableOpacity>
             ))}
@@ -98,35 +116,44 @@ export default function CheckScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: 100 },
-  title: { fontSize: fontSize.xxl, fontWeight: "800", color: colors.white, textAlign: "center", marginTop: spacing.xl },
-  subtitle: { fontSize: fontSize.md, color: colors.textSecondary, textAlign: "center", marginBottom: spacing.xl },
+  content: { paddingHorizontal: space.xl, paddingBottom: 100 },
+  title: { ...typo.title1, color: colors.textPrimary, marginTop: space.sm },
+  subtitle: { ...typo.body, color: colors.textSecondary, marginTop: 4, marginBottom: space.xxl },
   input: {
-    backgroundColor: colors.bgCard, borderRadius: 14, padding: 18,
-    color: colors.text, fontSize: fontSize.lg, borderWidth: 1, borderColor: colors.border,
-    marginBottom: spacing.md,
+    height: 56,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.control,
+    paddingHorizontal: space.lg,
+    color: colors.textPrimary, fontSize: 17,
+    marginBottom: space.md,
   },
-  buttons: { gap: spacing.sm, marginBottom: spacing.xl },
+  inputFocused: { borderColor: colors.blue },
+  buttons: { gap: space.sm, marginBottom: space.xxl + 4 },
+  checkBtn: {
+    height: 50, backgroundColor: colors.blue, borderRadius: radius.control,
+    alignItems: "center", justifyContent: "center",
+  },
+  checkBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 17 },
   pasteBtn: {
-    backgroundColor: colors.bgCard, borderRadius: 12, padding: 14,
-    alignItems: "center", borderWidth: 1, borderColor: colors.border,
+    height: 50, flexDirection: "row", gap: space.sm,
+    backgroundColor: colors.surface, borderRadius: radius.control,
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: colors.stroke,
   },
-  pasteBtnText: { color: colors.textSecondary, fontSize: fontSize.md },
-  checkBtn: { backgroundColor: colors.accent, borderRadius: 12, padding: 16, alignItems: "center" },
-  checkBtnText: { color: colors.safeBg, fontWeight: "700", fontSize: fontSize.lg },
-  sectionTitle: {
-    color: colors.textMuted, fontSize: fontSize.xs, fontWeight: "600",
-    textTransform: "uppercase", letterSpacing: 0.5, marginBottom: spacing.sm,
+  pasteBtnText: { color: colors.textSecondary, fontSize: 15, fontWeight: "600" },
+  sectionTitle: { ...sectionHeader, marginBottom: space.sm },
+  chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginBottom: space.xl },
+  tryChip: {
+    height: 36, justifyContent: "center",
+    backgroundColor: colors.surface, borderRadius: radius.chip, paddingHorizontal: space.md,
+    borderWidth: 1, borderColor: colors.stroke,
   },
-  quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.lg },
-  quickChip: {
-    backgroundColor: colors.bgCard, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  quickText: { color: colors.textSecondary, fontSize: fontSize.sm },
+  tryText: { color: colors.textSecondary, fontSize: 13, fontWeight: "600" },
   recentChip: {
-    backgroundColor: colors.primaryBg, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: colors.primary + "30",
+    height: 36, justifyContent: "center",
+    backgroundColor: colors.blueWash, borderRadius: radius.chip, paddingHorizontal: space.md,
+    borderWidth: 1, borderColor: "#4C8DFF40",
   },
-  recentText: { color: colors.primary, fontSize: fontSize.sm },
+  recentText: { color: colors.blue, fontSize: 13, fontWeight: "600" },
 });

@@ -1,0 +1,74 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <application>
+    <service
+      android:name="ai.cleanway.app.CleanwayVpnService"
+      android:permission="android.permission.BIND_VPN_SERVICE"
+      android:foregroundServiceType="specialUse"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.net.VpnService" />
+      </intent-filter>
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="vpn" />
+    </service>
+    <!--
+      Link guard: registers as an http/https handler so a tapped link (from any
+      app) can be routed through Cleanway. Transparent + finishes immediately —
+      it decides locally and either hands off to the branded warning screen or
+      forwards to a real browser. exported=true because other apps send it links.
+    -->
+    <activity
+      android:name="ai.cleanway.app.LinkGuardActivity"
+      android:theme="@android:style/Theme.Translucent.NoTitleBar"
+      android:excludeFromRecents="true"
+      android:launchMode="singleTask"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="http" />
+        <data android:scheme="https" />
+      </intent-filter>
+    </activity>
+
+    <!--
+      Runs in its own lightweight process. The main process is a React Native
+      app whose Application.onCreate takes ~15s on a cold boot (Firebase,
+      Sentry, SoLoader, the JS runtime) — far past the ~10s a broadcast
+      receiver is given, so the receiver was being killed before its code ran.
+      ":boot" starts a bare process that only reads a flag and starts the
+      service.
+    -->
+    <!-- "Not a scam — allow it" from a block notification. Not exported: only
+         our own PendingIntent can fire it. -->
+    <receiver
+      android:name="ai.cleanway.app.AllowReceiver"
+      android:enabled="true"
+      android:exported="false" />
+    <receiver
+      android:name="ai.cleanway.app.BootReceiver"
+      android:process=":boot"
+      android:enabled="true"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+      </intent-filter>
+    </receiver>
+    <!-- Woken by AlarmManager to keep the blocklist fresh through Doze. Runs
+         in the main process so it can poke the already-running VPN service. -->
+    <receiver
+      android:name="ai.cleanway.app.BlocklistRefreshReceiver"
+      android:enabled="true"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="ai.cleanway.BLOCKLIST_REFRESH" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

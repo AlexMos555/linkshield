@@ -1354,6 +1354,48 @@
         }
       }
     },
+    "/api/v1/blocklist/dns": {
+      "get": {
+        "tags": [
+          "blocklist"
+        ],
+        "summary": "Get Dns Blocklist",
+        "operationId": "get_dns_blocklist_api_v1_blocklist_dns_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mobile/version": {
+      "get": {
+        "tags": [
+          "mobile"
+        ],
+        "summary": "Mobile Version",
+        "operationId": "mobile_version_api_v1_mobile_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Mobile Version Api V1 Mobile Version Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/breach/check/{hash_prefix}": {
       "get": {
         "tags": [

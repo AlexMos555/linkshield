@@ -78,6 +78,39 @@ object DnsUtil {
         out[26] = 0
         out[27] = 0
 
+        // Swapping the addresses changes the header, so the IPv4 checksum must
+        // be recomputed — otherwise the kernel drops this reply and the blocked
+        // domain just times out instead of failing fast with NXDOMAIN.
+        writeIpv4HeaderChecksum(out)
+
+        return out
+    }
+
+    /**
+     * Flip a query into a SERVFAIL (RCODE 2) reply.
+     *
+     * Used when no upstream transport could answer. A dropped query leaves
+     * every app on the phone waiting out its resolver timeout — the user
+     * experiences "the internet is broken" while the shield shows green.
+     * SERVFAIL says "this server failed" immediately: honest, fast, and
+     * distinct from NXDOMAIN, so a transport failure can never be mistaken
+     * for (or look like) a block.
+     */
+    fun makeServfail(query: ByteArray, length: Int): ByteArray? {
+        if (length < IP_UDP_HEADER + DNS_HEADER) return null
+        val out = query.copyOf(length)
+
+        // Flags: QR=1, RA=1, RCODE=2. Preserve RD.
+        val flagsHigh = IP_UDP_HEADER + 2
+        val flagsLow = IP_UDP_HEADER + 3
+        out[flagsHigh] = ((out[flagsHigh].toInt() and 0x01) or 0x80).toByte()
+        out[flagsLow] = 0x82.toByte()
+
+        swapIpv4Addresses(out)
+        swapUdpPorts(out)
+        out[26] = 0
+        out[27] = 0
+        writeIpv4HeaderChecksum(out)
         return out
     }
 
@@ -104,10 +137,6 @@ object DnsUtil {
         out[2] = ((totalLength ushr 8) and 0xFF).toByte()
         out[3] = (totalLength and 0xFF).toByte()
 
-        // Zero IP checksum (many clients accept 0)
-        out[10] = 0
-        out[11] = 0
-
         swapIpv4Addresses(out)
         swapUdpPorts(out)
 
@@ -116,11 +145,48 @@ object DnsUtil {
         out[24] = ((udpLength ushr 8) and 0xFF).toByte()
         out[25] = (udpLength and 0xFF).toByte()
 
-        // Zero UDP checksum
+        // UDP checksum is genuinely optional over IPv4 (RFC 768): 0 means
+        // "not computed" and receivers must accept it.
         out[26] = 0
         out[27] = 0
 
+        // The IPv4 header checksum is NOT optional (RFC 791). A zeroed one is
+        // simply wrong, and the kernel drops the packet before any app sees it
+        // — every lookup then times out and the user's whole internet looks
+        // broken while the tunnel claims to be up. Must be recomputed last,
+        // after every header field is final.
+        writeIpv4HeaderChecksum(out)
+
         return out
+    }
+
+    /**
+     * Compute and write the IPv4 header checksum (RFC 1071): one's-complement
+     * sum of the header's 16-bit words with the checksum field zeroed, folded
+     * and inverted. Header length comes from IHL so options are covered.
+     */
+    internal fun writeIpv4HeaderChecksum(packet: ByteArray) {
+        val ihlWords = packet[0].toInt() and 0x0F
+        val headerLength = ihlWords * 4
+        if (headerLength < 20 || headerLength > packet.size) return
+
+        packet[10] = 0
+        packet[11] = 0
+
+        var sum = 0L
+        var i = 0
+        while (i < headerLength) {
+            val hi = (packet[i].toInt() and 0xFF) shl 8
+            val lo = packet[i + 1].toInt() and 0xFF
+            sum += (hi or lo).toLong()
+            i += 2
+        }
+        while (sum shr 16 != 0L) {
+            sum = (sum and 0xFFFF) + (sum shr 16)
+        }
+        val checksum = sum.inv().toInt() and 0xFFFF
+        packet[10] = ((checksum ushr 8) and 0xFF).toByte()
+        packet[11] = (checksum and 0xFF).toByte()
     }
 
     private fun swapIpv4Addresses(packet: ByteArray) {

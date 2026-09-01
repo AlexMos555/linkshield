@@ -3,16 +3,38 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { colors, spacing, fontSize } from "../src/utils/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { checkBreach } from "../src/services/api";
 
+/**
+ * Leaked-password check.
+ *
+ * Honesty contract: /api/v1/breach/check proxies HIBP's Pwned PASSWORDS
+ * range API, so hashing an email and looking it up answers "has this string
+ * leaked as somebody's password?" — NOT "which breaches was this address
+ * in?". The extension twin (packages/extension-core/src/content/breach-check.js)
+ * was disabled in 2026-06 for claiming the latter; here the copy states what
+ * the lookup really does. A real breach report needs HIBP /breachedaccount.
+ */
+
+type BreachState =
+  | { kind: "found"; count: number }
+  | { kind: "clear" }
+  | { kind: "error" };
+
 export default function BreachScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
-  const [result, setResult] = useState<any>(null);
+  const [focused, setFocused] = useState(false);
+  const [result, setResult] = useState<BreachState | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const trimmed = email.trim().toLowerCase();
+  const canCheck = trimmed.includes("@") && !loading;
+
   async function handleCheck() {
-    const trimmed = email.trim().toLowerCase();
     if (!trimmed || !trimmed.includes("@")) return;
 
     setLoading(true);
@@ -25,98 +47,118 @@ export default function BreachScreen() {
       const suffix = hash.substring(5);
 
       const data = await checkBreach(prefix);
-      const match = data.suffixes?.find((s: any) => s.suffix === suffix);
+      const match = data.suffixes?.find(s => s.suffix === suffix);
 
-      if (match) {
-        setResult({ breached: true, count: match.count });
+      // The API deliberately returns padding rows with count 0 so a network
+      // observer can't size-match a real hit. A padding row is not a hit, so
+      // only a positive count may be shown as "found" — otherwise the card
+      // reads "turned up 0 times", which is nonsense and scares people.
+      if (match && match.count > 0) {
+        setResult({ kind: "found", count: match.count });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } else {
-        setResult({ breached: false, count: 0 });
+        setResult({ kind: "clear" });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-    } catch (e) {
-      setResult({ error: "Could not check. Try again later." });
+    } catch {
+      setResult({ kind: "error" });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.icon}>{"\u{1F513}"}</Text>
-        <Text style={styles.title}>Breach Check</Text>
-        <Text style={styles.subtitle}>
-          Check if your email appeared in data breaches.{"\n"}
-          Your email is hashed on-device — we never see it.
-        </Text>
+    <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <Text style={s.title}>{t("mobile.breach.title")}</Text>
+      <Text style={s.subtitle}>{t("mobile.breach.subtitle")}</Text>
+
+      <View style={s.noteRow}>
+        <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
+        <Text style={s.note}>{t("mobile.breach.scope_note")}</Text>
       </View>
 
-      <View style={styles.inputCard}>
-        <TextInput
-          style={styles.input}
-          placeholder="your@email.com"
-          placeholderTextColor={colors.textMuted}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          returnKeyType="go"
-          onSubmitEditing={handleCheck}
-        />
-        <TouchableOpacity
-          style={[styles.btn, loading && styles.btnDisabled]}
-          onPress={handleCheck}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={styles.btnText}>Check</Text>
-          )}
-        </TouchableOpacity>
+      <TextInput
+        style={[s.input, focused && s.inputFocused]}
+        placeholder={t("mobile.breach.placeholder")}
+        placeholderTextColor={colors.textMuted}
+        value={email}
+        onChangeText={setEmail}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        returnKeyType="go"
+        onSubmitEditing={handleCheck}
+        accessibilityLabel={t("mobile.breach.input_label")}
+      />
+
+      <TouchableOpacity
+        style={[s.submit, !canCheck && s.submitDisabled]}
+        onPress={handleCheck}
+        disabled={!canCheck}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !canCheck, busy: loading }}
+        accessibilityLabel={t("mobile.breach.submit")}
+      >
+        {loading
+          ? <ActivityIndicator color="#FFFFFF" />
+          : <Text style={s.submitLabel}>{t("mobile.breach.submit")}</Text>}
+      </TouchableOpacity>
+
+      {result && <ResultCard state={result} />}
+
+      <Text style={s.sectionTitle}>{t("mobile.breach.how_title")}</Text>
+      <View style={s.card}>
+        {[1, 2, 3, 4].map(n => (
+          <Step key={n} n={n} text={t(`mobile.breach.how_step_${n}`)} first={n === 1} />
+        ))}
       </View>
 
-      {result && !result.error && (
-        <View style={[
-          styles.resultCard,
-          { borderColor: result.breached ? colors.dangerous + "40" : colors.safe + "40" }
-        ]}>
-          <Text style={styles.resultIcon}>
-            {result.breached ? "\u274C" : "\u2705"}
-          </Text>
-          <Text style={[
-            styles.resultTitle,
-            { color: result.breached ? colors.dangerous : colors.safe }
-          ]}>
-            {result.breached ? "Breached!" : "No breaches found"}
-          </Text>
-          <Text style={styles.resultDesc}>
-            {result.breached
-              ? `Found in ${result.count} data breach(es). Change your passwords immediately.`
-              : "This email was not found in any known data breaches."
-            }
-          </Text>
-        </View>
-      )}
-
-      {result?.error && (
-        <View style={[styles.resultCard, { borderColor: colors.caution + "40" }]}>
-          <Text style={{ color: colors.caution, textAlign: "center" }}>{result.error}</Text>
-        </View>
-      )}
-
-      <View style={styles.privacyCard}>
-        <Text style={styles.privacyTitle}>{"\u{1F512}"} How k-anonymity works</Text>
-        <Text style={styles.privacyText}>
-          1. Your email is hashed with SHA-1 on this device{"\n"}
-          2. Only the first 5 characters of the hash are sent{"\n"}
-          3. Server returns ~500 matching suffixes{"\n"}
-          4. Your device checks locally if your hash matches{"\n\n"}
-          Result: nobody — not even us — ever sees your email or full hash.
-        </Text>
+      <View style={s.privacyRow}>
+        <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
+        <Text style={s.privacy}>{t("mobile.breach.privacy")}</Text>
       </View>
     </ScrollView>
+  );
+}
+
+// Colour is never the only cue: each tone carries an icon and a text label.
+const TONES = {
+  found: { color: colors.danger, stroke: colors.dangerStroke, wash: colors.dangerWash, icon: "alert-circle-outline" },
+  clear: { color: colors.green, stroke: colors.greenStroke, wash: colors.greenWash, icon: "checkmark-circle-outline" },
+  error: { color: colors.amber, stroke: colors.amberStroke, wash: colors.amberWash, icon: "cloud-offline-outline" },
+} as const;
+
+function ResultCard({ state }: { state: BreachState }) {
+  const { t } = useTranslation();
+  const tone = TONES[state.kind];
+  const body = state.kind === "found"
+    ? t("mobile.breach.found_body", { times: state.count })
+    : t(`mobile.breach.${state.kind}_body`);
+
+  return (
+    <View style={[s.card, s.resultCard, { borderColor: tone.stroke }]}>
+      <View style={[s.resultIcon, { backgroundColor: tone.wash }]}>
+        <Ionicons name={tone.icon} size={22} color={tone.color} />
+      </View>
+      <View style={s.resultBodyCol}>
+        <Text style={[s.resultTitle, { color: tone.color }]}>
+          {t(`mobile.breach.${state.kind}_title`)}
+        </Text>
+        <Text style={s.resultText}>{body}</Text>
+      </View>
+    </View>
+  );
+}
+
+function Step({ n, text, first }: { n: number; text: string; first?: boolean }) {
+  return (
+    <View style={[s.step, !first && s.stepBorder]}>
+      <View style={s.stepBadge}><Text style={s.stepNum}>{n}</Text></View>
+      <Text style={s.stepText}>{text}</Text>
+    </View>
   );
 }
 
@@ -172,30 +214,54 @@ function sha1(msg: string): string {
   return [h0, h1, h2, h3, h4].map(v => (v >>> 0).toString(16).padStart(8, "0")).join("").toUpperCase();
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: 100 },
-  header: { alignItems: "center", marginBottom: spacing.xl },
-  icon: { fontSize: 48, marginBottom: spacing.sm },
-  title: { color: colors.white, fontSize: fontSize.xxl, fontWeight: "800" },
-  subtitle: { color: colors.textSecondary, fontSize: fontSize.md, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
-  inputCard: { backgroundColor: colors.bgCard, borderRadius: 14, padding: spacing.lg, marginBottom: spacing.lg },
+  content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: 100 },
+  title: { ...typo.title1, color: colors.textPrimary },
+  subtitle: { ...typo.body, color: colors.textSecondary, marginTop: 4 },
+
+  noteRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: space.md, marginBottom: space.xl },
+  note: { ...typo.caption, color: colors.textSecondary, flex: 1 },
+
   input: {
-    backgroundColor: colors.bgInput, borderRadius: 10, padding: 14,
-    color: colors.text, fontSize: fontSize.lg, borderWidth: 1, borderColor: colors.border,
-    marginBottom: spacing.md,
+    height: 56, backgroundColor: colors.surfaceRaised, borderWidth: 1,
+    borderColor: colors.stroke, borderRadius: radius.control, marginBottom: space.md,
+    paddingHorizontal: space.lg, color: colors.textPrimary, fontSize: 17,
   },
-  btn: { backgroundColor: colors.primary, borderRadius: 10, padding: 14, alignItems: "center" },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { color: colors.white, fontWeight: "700", fontSize: fontSize.lg },
-  resultCard: {
-    backgroundColor: colors.bgCard, borderRadius: 14, padding: spacing.xl,
-    alignItems: "center", marginBottom: spacing.lg, borderWidth: 1,
+  inputFocused: { borderColor: colors.blue },
+  submit: {
+    height: 50, backgroundColor: colors.blue, borderRadius: radius.control,
+    alignItems: "center", justifyContent: "center", marginBottom: space.xxl,
   },
-  resultIcon: { fontSize: 48, marginBottom: spacing.sm },
-  resultTitle: { fontSize: fontSize.xl, fontWeight: "800", marginBottom: spacing.sm },
-  resultDesc: { color: colors.textSecondary, fontSize: fontSize.md, textAlign: "center", lineHeight: 22 },
-  privacyCard: { backgroundColor: colors.bgCard, borderRadius: 14, padding: spacing.lg },
-  privacyTitle: { color: colors.white, fontSize: fontSize.md, fontWeight: "700", marginBottom: spacing.md },
-  privacyText: { color: colors.textMuted, fontSize: fontSize.sm, lineHeight: 20 },
+  submitDisabled: { opacity: 0.4 },
+  submitLabel: { color: "#FFFFFF", fontSize: 17, fontWeight: "600" },
+
+  card: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.card, padding: space.lg,
+  },
+  resultCard: { flexDirection: "row", gap: space.md, marginBottom: space.xxl },
+  resultIcon: {
+    width: 40, height: 40, borderRadius: radius.icon,
+    alignItems: "center", justifyContent: "center",
+  },
+  resultBodyCol: { flex: 1 },
+  resultTitle: { ...typo.headline },
+  resultText: { ...typo.body, color: colors.textSecondary, marginTop: 4 },
+
+  sectionTitle: { ...sectionHeader, marginBottom: space.sm },
+  step: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: 10 },
+  stepBorder: { borderTopWidth: 1, borderTopColor: colors.hairline },
+  stepBadge: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: colors.blueWash,
+    alignItems: "center", justifyContent: "center",
+  },
+  stepNum: { fontSize: 13, fontWeight: "600", color: colors.blue },
+  stepText: { ...typo.body, color: colors.textSecondary, flex: 1 },
+
+  privacyRow: {
+    flexDirection: "row", alignItems: "flex-start", justifyContent: "center",
+    gap: 6, marginTop: space.xxl, paddingHorizontal: space.md,
+  },
+  privacy: { ...typo.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
 });

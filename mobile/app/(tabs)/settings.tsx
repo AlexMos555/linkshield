@@ -1,13 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking,
+  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking, I18nManager,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { colors, spacing, fontSize } from "../../src/utils/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import { SUPPORTED_LOCALES, LOCALE_NAMES, changeLocale, localeChangeNeedsReload, type SupportedLocale } from "../../src/i18n";
+import { colors, type as typo, space, radius, sectionHeader } from "../../src/utils/theme";
 import { pruneOldChecks } from "../../src/services/database";
+import { getSessionState, signOut } from "../../src/services/auth";
+import { clearKeypair } from "../../src/lib/family-crypto";
+import { setAuthToken, getAccountSettings } from "../../src/services/api";
+import { allowedSites, removeAllowedSite } from "../../src/services/shield-log";
+import { isDefaultLinkHandler, requestLinkHandler } from "../../modules/cleanway-vpn";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
+type IconName = keyof typeof Ionicons.glyphMap;
 
 const SKILL_DEFAULTS: Record<SkillLevel, { fontScale: number; voiceAlerts: boolean }> = {
   kids:    { fontScale: 1.0, voiceAlerts: false },
@@ -16,19 +25,27 @@ const SKILL_DEFAULTS: Record<SkillLevel, { fontScale: number; voiceAlerts: boole
   pro:     { fontScale: 1.0, voiceAlerts: false },
 };
 
-const SKILL_OPTIONS: Array<{ value: SkillLevel; label: string; desc: string; icon: string }> = [
-  { value: "kids",    icon: "👶", label: "Kids",    desc: "Simple blocking with parental PIN. Strict mode." },
-  { value: "regular", icon: "🙋", label: "Regular", desc: "Default. Clear warnings, balanced details." },
-  { value: "granny",  icon: "👵", label: "Granny",  desc: "Large text, simple words, voice alerts." },
-  { value: "pro",     icon: "🧑‍💻", label: "Pro",    desc: "Raw scores, threat types, technical details." },
+const SKILL_OPTIONS: Array<{ value: SkillLevel; icon: IconName }> = [
+  { value: "kids",    icon: "happy-outline" },
+  { value: "regular", icon: "person-outline" },
+  { value: "granny",  icon: "volume-high-outline" },
+  { value: "pro",     icon: "code-slash-outline" },
 ];
 
+/**
+ * Push a settings patch to the account.
+ *
+ * Returns "ok" | "failed" | "signed_out" instead of void: the response used
+ * to be discarded entirely, so "saved to your account" could be a silent
+ * no-op — a 401 from an expired session, a 500, an offline PUT all looked
+ * identical to success. The caller decides what to tell the user.
+ */
 async function pushSkillToApi(
   patch: Record<string, unknown>,
-): Promise<void> {
+): Promise<"ok" | "failed" | "signed_out"> {
   try {
     const token = await SecureStore.getItemAsync("auth_token");
-    if (!token) return;
+    if (!token) return "signed_out";
     // Audit mobile MEDIUM "settings.tsx reads API base URL from
     // SecureStore at runtime — creates a URL-injection vector":
     // previously we honoured `api_url` in SecureStore as an override.
@@ -40,7 +57,7 @@ async function pushSkillToApi(
     // uses this canonical source via services/api.ts.
     const apiBase =
       process.env.EXPO_PUBLIC_API_URL || "https://api.cleanway.ai";
-    await fetch(`${apiBase}/api/v1/user/settings`, {
+    const resp = await fetch(`${apiBase}/api/v1/user/settings`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -48,17 +65,134 @@ async function pushSkillToApi(
       },
       body: JSON.stringify(patch),
     });
+    return resp.ok ? "ok" : "failed";
   } catch {
-    // Offline or unauthenticated — SecureStore stays authoritative locally
+    // Offline — SecureStore stays authoritative locally.
+    return "failed";
   }
 }
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState(true);
-  const [autoCheck, setAutoCheck] = useState(true);
-  const [weeklyReport, setWeeklyReport] = useState(true);
+  const { t, i18n } = useTranslation();
+  const [locale, setLocale] = useState<SupportedLocale>(() => (i18n.language as SupportedLocale));
+  const [linkGuardOn, setLinkGuardOn] = useState(false);
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  // Set the moment the user taps a skill this focus; the in-flight remote
+  // pull then may NOT adopt its (older) value over the fresh choice — the
+  // pull raced the tap and snapped the selection back before this guard.
+  const userPickedSkillRef = useRef(false);
+
+  // On focus, not mount: the user goes to /auth, signs in, and comes BACK
+  // to this mounted screen — a mount-only read would keep saying "Sign in".
+  const [allowed, setAllowed] = useState<string[]>([]);
+
+  useFocusEffect(useCallback(() => {
+    setAllowed(allowedSites());
+  }, []));
+
+  function confirmRemoveAllowed(domain: string) {
+    Alert.alert(
+      domain,
+      t("mobile.settings.allowed_desc"),
+      [
+        { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+        {
+          text: t("mobile.settings.allowed_remove"),
+          style: "destructive",
+          onPress: () => {
+            removeAllowedSite(domain);
+            setAllowed(allowedSites());
+          },
+        },
+      ],
+    );
+  }
+
+  useFocusEffect(useCallback(() => {
+    let cancelled = false;
+    userPickedSkillRef.current = false;
+    void (async () => {
+      try {
+        const st = await getSessionState();
+        if (cancelled) return;
+        // "offline" keeps showing who is signed in — a failed refresh is not
+        // a sign-out, and flipping this row to "Sign in" told people to go
+        // find a password they had not lost.
+        setSessionEmail(st.kind === "ok" ? st.session.email : st.kind === "offline" ? st.email : null);
+        if (st.kind !== "ok") return;
+        // The other half of sync. The app only ever PUSHED settings, so a
+        // skill level changed in the browser extension never reached this
+        // phone. Signed in → the account is the source of truth.
+        const { data } = await getAccountSettings();
+        const remote = data?.skill_level;
+        if (
+          !cancelled &&
+          !userPickedSkillRef.current &&
+          typeof remote === "string" &&
+          ["kids", "regular", "granny", "pro"].includes(remote)
+        ) {
+          setSkillLevel(remote as SkillLevel);
+          try {
+            await SecureStore.setItemAsync("skill_level", remote);
+          } catch {
+            // Local persist is best-effort; the UI already shows it.
+          }
+        }
+      } catch {
+        if (!cancelled) setSessionEmail(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []));
+
+  useFocusEffect(useCallback(() => {
+    try { setLinkGuardOn(isDefaultLinkHandler()); } catch { /* older native build */ }
+  }, []));
+
+  async function handleLinkGuard(): Promise<void> {
+    await requestLinkHandler();
+    // The OS dialog returns asynchronously; re-read shortly after.
+    setTimeout(() => { try { setLinkGuardOn(isDefaultLinkHandler()); } catch {} }, 800);
+  }
+
+  async function handleLanguageChange(next: SupportedLocale): Promise<void> {
+    if (next === locale) return;
+    // A direction flip (to/from Arabic) only takes full effect after a reload;
+    // warn rather than leave the layout half-mirrored.
+    const needsReload = localeChangeNeedsReload(next);
+    await changeLocale(next);
+    setLocale(next);
+    if (needsReload) {
+      Alert.alert(t("mobile.settings.language_reload_title"), t("mobile.settings.language_reload_body"));
+    }
+  }
+
+  function confirmSignOut(): void {
+    Alert.alert(t("mobile.settings.sign_out_confirm_title"), t("mobile.settings.sign_out_confirm_body"), [
+      { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+      {
+        text: t("mobile.settings.sign_out"),
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            await signOut();
+            // The Family E2E secret key must leave with the account. It sat
+            // in SecureStore after sign-out, so the next user of a shared
+            // phone could decrypt the previous family's alerts.
+            try {
+              await clearKeypair();
+            } catch {
+              // Best-effort: the key is device-scoped; the account is gone.
+            }
+            setAuthToken(null);
+            setSessionEmail(null);
+          })();
+        },
+      },
+    ]);
+  }
 
   // Load persisted skill on mount
   useEffect(() => {
@@ -75,6 +209,7 @@ export default function SettingsScreen() {
   }, []);
 
   async function handleSkillChange(next: SkillLevel): Promise<void> {
+    userPickedSkillRef.current = true;
     setSkillLevel(next);
     try {
       await SecureStore.setItemAsync("skill_level", next);
@@ -84,195 +219,284 @@ export default function SettingsScreen() {
     } catch {
       // Best-effort: UI state is still updated so the user sees the change
     }
-    await pushSkillToApi({
+    const pushed = await pushSkillToApi({
       skill_level: next,
       font_scale: SKILL_DEFAULTS[next].fontScale,
       voice_alerts_enabled: SKILL_DEFAULTS[next].voiceAlerts,
     });
+    // Only a signed-in user was promised account sync, so only they are told
+    // when it did not happen. "signed_out" is the normal local-only case.
+    if (pushed === "failed") {
+      Alert.alert(
+        t("mobile.settings.sync_failed_title"),
+        t("mobile.settings.sync_failed_body"),
+      );
+    }
   }
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Account */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <TouchableOpacity style={styles.row} onPress={() => router.push("/auth")}>
-          <View>
-            <Text style={styles.rowLabel}>Sign In</Text>
-            <Text style={styles.rowDesc}>Sync settings across devices</Text>
-          </View>
-          <Text style={styles.rowArrow}>&rarr;</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.row} onPress={() => router.push("/upgrade")}>
-          <View>
-            <Text style={styles.rowLabel}>Plan</Text>
-            <Text style={styles.rowDesc}>Free &mdash; 10 checks/day</Text>
-          </View>
-          <Text style={[styles.upgradeBtn]}>Upgrade</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.row} onPress={() => router.push("/report")}>
-          <View>
-            <Text style={styles.rowLabel}>Weekly Report</Text>
-            <Text style={styles.rowDesc}>Your protection summary</Text>
-          </View>
-          <Text style={styles.rowArrow}>&rarr;</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.row} onPress={() => router.push("/family")}>
-          <View>
-            <Text style={styles.rowLabel}>Family Hub</Text>
-            <Text style={styles.rowDesc}>End-to-end encrypted alerts for loved ones</Text>
-          </View>
-          <Text style={styles.rowArrow}>&rarr;</Text>
-        </TouchableOpacity>
-      </View>
+  function confirmClearHistory(): void {
+    Alert.alert(t("mobile.settings.clear_confirm_title"), t("mobile.settings.clear_confirm_body"), [
+      { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+      {
+        text: t("mobile.settings.clear_confirm"),
+        style: "destructive",
+        // Was fire-and-forget: no await, errors swallowed, no confirmation.
+        // The user tapped a destructive action and got silence either way.
+        onPress: () => {
+          void (async () => {
+            try {
+              await pruneOldChecks(0);
+              Alert.alert(t("mobile.settings.clear_done_title"), t("mobile.settings.clear_done_body"));
+            } catch {
+              Alert.alert(t("mobile.settings.clear_failed_title"), t("mobile.settings.clear_failed_body"));
+            }
+          })();
+        },
+      },
+    ]);
+  }
 
-      {/* Skill Level */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Skill Level</Text>
-        {SKILL_OPTIONS.map((opt) => {
-          const isActive = skillLevel === opt.value;
+  // Disclosure chevrons must point INTO the row's reading direction — a
+  // forward-chevron in Arabic points out of the screen.
+  const chevron = (
+    <Ionicons
+      name={I18nManager.isRTL ? "chevron-back" : "chevron-forward"}
+      size={18}
+      color={colors.textMuted}
+    />
+  );
+  /**
+   * The Alerts switches are for features that do not exist yet — the section
+   * footnote says so in words. They used to default to `true` and paint green,
+   * so the screen showed three active-looking protections backed by nothing but
+   * local React state. Rendered off and disabled: the control now looks the way
+   * the feature actually is, and the reason travels with it for screen readers
+   * instead of living in a caption they may never reach.
+   */
+  const comingSoonToggle = (label: string) => (
+    <Switch
+      value={false}
+      disabled
+      trackColor={{ true: colors.green, false: colors.stroke }}
+      thumbColor={colors.textDisabled}
+      accessibilityLabel={label}
+      accessibilityHint={t("mobile.settings.alerts_note")}
+    />
+  );
+
+  return (
+    <ScrollView style={s.container} contentContainerStyle={s.content}>
+      <Section title={t("mobile.settings.account")}>
+        {/* The app had no signed-in state anywhere: after signing in, this row
+            still said "Sign in", and no screen offered a way out. Now it shows
+            who is signed in and signs them out — with a confirm, because for a
+            security product "am I signed in?" should never be a mystery. */}
+        {sessionEmail ? (
+          <Row first label={sessionEmail} desc={t("mobile.settings.signed_in_desc")}
+               right={<Text style={s.signOut}>{t("mobile.settings.sign_out")}</Text>}
+               onPress={confirmSignOut} />
+        ) : (
+          <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
+               right={chevron} onPress={() => router.push("/auth")} />
+        )}
+        <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
+             right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
+             onPress={() => router.push("/upgrade")} />
+        <Row label={t("mobile.settings.report")} desc={t("mobile.settings.report_desc")}
+             right={chevron} onPress={() => router.push("/report")} />
+        <Row label={t("mobile.settings.family")} desc={t("mobile.settings.family_desc")}
+             right={chevron} onPress={() => router.push("/family")} />
+      </Section>
+
+      <Section title={t("mobile.settings.skill")} footnote={t("mobile.settings.skill_note")}>
+        {SKILL_OPTIONS.map(({ value, icon }, i) => {
+          const on = skillLevel === value;
+          const label = t(`mobile.settings.skill_${value}`);
+          const desc = t(`mobile.settings.skill_${value}_desc`);
           return (
-            <TouchableOpacity
-              key={opt.value}
-              style={[styles.row, isActive && styles.rowActive]}
-              onPress={() => handleSkillChange(opt.value)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: isActive }}
-              accessibilityLabel={`${opt.label} mode. ${opt.desc}`}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowLabel}>
-                  {opt.icon}  {opt.label}
-                </Text>
-                <Text style={styles.rowDesc}>{opt.desc}</Text>
-              </View>
-              <View
-                style={[
-                  styles.radioDot,
-                  isActive && styles.radioDotActive,
-                ]}
-              />
-            </TouchableOpacity>
+            <Row key={value} first={i === 0} icon={icon} label={label} desc={desc}
+                 iconColor={on ? colors.green : colors.textMuted}
+                 role="radio" selected={on} a11yLabel={`${label}. ${desc}`}
+                 onPress={() => void handleSkillChange(value)}
+                 right={<Ionicons name={on ? "radio-button-on" : "radio-button-off"} size={22}
+                                  color={on ? colors.green : colors.textDisabled} />} />
           );
         })}
-      </View>
+      </Section>
 
-      {/* Protection */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Protection</Text>
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowLabel}>Push Notifications</Text>
-            <Text style={styles.rowDesc}>Alert when dangerous links detected</Text>
-          </View>
-          <Switch
-            value={notifications}
-            onValueChange={setNotifications}
-            trackColor={{ true: colors.safe, false: colors.border }}
-            thumbColor={colors.white}
-          />
-        </View>
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowLabel}>Auto-check shared links</Text>
-            <Text style={styles.rowDesc}>Check links from clipboard</Text>
-          </View>
-          <Switch
-            value={autoCheck}
-            onValueChange={setAutoCheck}
-            trackColor={{ true: colors.safe, false: colors.border }}
-            thumbColor={colors.white}
-          />
-        </View>
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowLabel}>Weekly Report</Text>
-            <Text style={styles.rowDesc}>Summary of your protection</Text>
-          </View>
-          <Switch
-            value={weeklyReport}
-            onValueChange={setWeeklyReport}
-            trackColor={{ true: colors.safe, false: colors.border }}
-            thumbColor={colors.white}
-          />
-        </View>
-      </View>
+      <Section title={t("mobile.settings.linkguard")} footnote={t("mobile.settings.linkguard_note")}>
+        <Row
+          first
+          icon={linkGuardOn ? "shield-checkmark-outline" : "link-outline"}
+          iconColor={linkGuardOn ? colors.green : colors.textMuted}
+          label={t(linkGuardOn ? "mobile.settings.linkguard_on" : "mobile.settings.linkguard_off")}
+          desc={t(linkGuardOn ? "mobile.settings.linkguard_on_desc" : "mobile.settings.linkguard_off_desc")}
+          onPress={linkGuardOn ? undefined : () => void handleLinkGuard()}
+          right={linkGuardOn
+            ? <Ionicons name="checkmark-circle" size={22} color={colors.green} />
+            : <Text style={s.pill}>{t("mobile.settings.linkguard_enable")}</Text>}
+        />
+      </Section>
 
-      {/* Data */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Data</Text>
-        <TouchableOpacity
-          style={styles.row}
-          onPress={() => {
-            Alert.alert("Clear History", "Delete all check history from this device?", [
-              { text: "Cancel", style: "cancel" },
-              { text: "Clear", style: "destructive", onPress: () => pruneOldChecks(0) },
-            ]);
-          }}
-        >
-          <View>
-            <Text style={[styles.rowLabel, { color: colors.dangerous }]}>Clear local history</Text>
-            <Text style={styles.rowDesc}>Delete all checks stored on this device</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+      <Section title={t("mobile.settings.language")} footnote={t("mobile.settings.language_note")}>
+        {SUPPORTED_LOCALES.map((code, i) => {
+          const on = locale === code;
+          return (
+            <Row key={code} first={i === 0} label={LOCALE_NAMES[code]}
+                 role="radio" selected={on} a11yLabel={LOCALE_NAMES[code]}
+                 onPress={() => void handleLanguageChange(code)}
+                 right={<Ionicons name={on ? "radio-button-on" : "radio-button-off"} size={22}
+                                  color={on ? colors.green : colors.textDisabled} />} />
+          );
+        })}
+      </Section>
 
-      {/* About */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("https://cleanway.ai/privacy-policy")}>
-          <Text style={styles.rowLabel}>Privacy Policy</Text>
-          <Text style={styles.rowArrow}>&rarr;</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.row} onPress={() => Linking.openURL("https://cleanway.ai/terms")}>
-          <Text style={styles.rowLabel}>Terms of Service</Text>
-          <Text style={styles.rowArrow}>&rarr;</Text>
-        </TouchableOpacity>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Version</Text>
-          <Text style={styles.rowDesc}>0.1.0</Text>
-        </View>
-      </View>
+      <Section title={t("mobile.settings.alerts")} footnote={t("mobile.settings.alerts_note")}>
+        <Row first label={t("mobile.settings.push")} desc={t("mobile.settings.push_desc")}
+             right={comingSoonToggle(t("mobile.settings.push"))} />
+        <Row label={t("mobile.settings.auto_check")} desc={t("mobile.settings.auto_check_desc")}
+             right={comingSoonToggle(t("mobile.settings.auto_check"))} />
+        <Row label={t("mobile.settings.weekly")} desc={t("mobile.settings.weekly_desc")}
+             right={comingSoonToggle(t("mobile.settings.weekly"))} />
+      </Section>
 
-      <Text style={styles.privacyNote}>
-        {"\u{1F512}"} Your browsing data lives only on this device
-      </Text>
+      {allowed.length > 0 && (
+        // The escape hatch has to be visible and revocable, or "allow" is a
+        // one-way door: a site the person rescued once would keep resolving
+        // forever with nowhere to say "actually, block it again".
+        <Section title={t("mobile.settings.allowed")} footnote={t("mobile.settings.allowed_desc")}>
+          {allowed.map((domain, i) => (
+            <Row
+              key={domain}
+              first={i === 0}
+              icon="shield-outline"
+              label={domain}
+              right={
+                <TouchableOpacity
+                  onPress={() => confirmRemoveAllowed(domain)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("mobile.settings.allowed_remove")} ${domain}`}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={s.removeLabel}>{t("mobile.settings.allowed_remove")}</Text>
+                </TouchableOpacity>
+              }
+            />
+          ))}
+        </Section>
+      )}
+
+      <Section title={t("mobile.settings.data")}>
+        <Row first icon="trash-outline" iconColor={colors.danger} tint={colors.danger}
+             label={t("mobile.settings.clear")} desc={t("mobile.settings.clear_desc")}
+             onPress={confirmClearHistory} />
+      </Section>
+
+      <Section title={t("mobile.settings.about")}>
+        <Row first label={t("mobile.settings.privacy_policy")} right={chevron}
+             onPress={() => void Linking.openURL("https://cleanway.ai/privacy-policy")} />
+        <Row label={t("mobile.settings.terms")} right={chevron}
+             onPress={() => void Linking.openURL("https://cleanway.ai/terms")} />
+        <Row label={t("mobile.settings.version")} right={<Text style={s.value}>0.1.0</Text>} />
+      </Section>
+
+      <View style={s.privacyRow}>
+        <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
+        <Text style={s.privacy}>{t("mobile.settings.privacy_note")}</Text>
+      </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+function Section({ title, footnote, children }: {
+  title: string; footnote?: string; children: ReactNode;
+}) {
+  return (
+    <View style={s.section}>
+      <Text style={s.sectionTitle}>{title}</Text>
+      <View style={s.card}>{children}</View>
+      {footnote ? (
+        <View style={s.footnoteRow}>
+          <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
+          <Text style={s.footnote}>{footnote}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+type RowProps = {
+  label: string; desc?: string; right?: ReactNode; onPress?: () => void;
+  first?: boolean; icon?: IconName; iconColor?: string; tint?: string;
+  role?: "button" | "radio"; selected?: boolean; a11yLabel?: string;
+};
+
+function Row({
+  label, desc, right, onPress, first, icon, iconColor, tint, role, selected, a11yLabel,
+}: RowProps) {
+  const inner = (
+    <>
+      {icon ? <Ionicons name={icon} size={18} color={iconColor ?? colors.textSecondary} /> : null}
+      <View style={s.rowText}>
+        <Text style={[s.rowLabel, tint ? { color: tint } : null]}>{label}</Text>
+        {desc ? <Text style={s.rowDesc}>{desc}</Text> : null}
+      </View>
+      {right}
+    </>
+  );
+  const style = [s.row, !first && s.rowBorder];
+  if (!onPress) return <View style={style}>{inner}</View>;
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole={role ?? "button"}
+      accessibilityState={role === "radio" ? { selected } : undefined}
+      accessibilityLabel={a11yLabel}
+    >
+      {inner}
+    </TouchableOpacity>
+  );
+}
+
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: 100 },
-  section: { backgroundColor: colors.bgCard, borderRadius: 14, marginBottom: spacing.lg, overflow: "hidden" },
-  sectionTitle: {
-    color: colors.textMuted, fontSize: fontSize.xs, fontWeight: "600",
-    textTransform: "uppercase", letterSpacing: 0.5,
-    padding: spacing.md, paddingBottom: spacing.xs,
+  content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: 100 },
+
+  section: { marginTop: space.xxl },
+  sectionTitle: { ...sectionHeader, marginBottom: space.sm, marginLeft: space.xs },
+  card: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
+    borderRadius: radius.card, padding: space.lg, paddingVertical: space.xs,
   },
+
   row: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: spacing.md, paddingVertical: 14,
-    borderTopWidth: 1, borderTopColor: colors.border,
+    flexDirection: "row", alignItems: "center", gap: space.md,
+    minHeight: 52, paddingVertical: space.md,
   },
-  rowLabel: { color: colors.text, fontSize: fontSize.md, fontWeight: "600" },
-  rowDesc: { color: colors.textMuted, fontSize: fontSize.sm, marginTop: 2 },
-  rowArrow: { color: colors.textMuted, fontSize: 18 },
-  upgradeBtn: {
-    backgroundColor: colors.primary, color: colors.white,
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6,
-    fontSize: fontSize.sm, fontWeight: "700", overflow: "hidden",
+  rowBorder: { borderTopWidth: 1, borderTopColor: colors.hairline },
+  rowText: { flex: 1 },
+  rowLabel: { ...typo.body, fontWeight: "600", color: colors.textPrimary },
+  rowDesc: { ...typo.caption, color: colors.textSecondary, marginTop: 2 },
+  value: { ...typo.body, color: colors.textMuted },
+  removeLabel: { ...typo.body, color: colors.danger },
+  pill: {
+    backgroundColor: colors.blue, color: "#FFFFFF", overflow: "hidden",
+    borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: 6,
+    fontSize: 13, lineHeight: 18, fontWeight: "600",
   },
-  privacyNote: {
-    textAlign: "center", color: colors.textMuted, fontSize: fontSize.sm, marginTop: spacing.md,
+
+  footnoteRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 6,
+    marginTop: space.sm, paddingHorizontal: space.xs,
   },
-  rowActive: { backgroundColor: "rgba(34, 197, 94, 0.08)" },
-  radioDot: {
-    width: 20, height: 20, borderRadius: 10,
-    borderWidth: 2, borderColor: colors.border,
+  footnote: { ...typo.caption, color: colors.textSecondary, flex: 1 },
+
+  privacyRow: {
+    flexDirection: "row", alignItems: "flex-start", justifyContent: "center",
+    gap: 6, marginTop: space.xxl, paddingHorizontal: space.md,
   },
-  radioDotActive: {
-    borderColor: colors.safe,
-    backgroundColor: colors.safe,
-  },
+  privacy: { ...typo.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
+  signOut: { ...typo.body, fontWeight: "600", color: colors.danger },
 });

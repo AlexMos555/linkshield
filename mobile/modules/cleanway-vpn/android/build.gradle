@@ -1,0 +1,42 @@
+apply plugin: 'com.android.library'
+
+group = 'expo.modules.cleanwayvpn'
+version = '0.1.0'
+
+// Expo SDK 52 wires local modules through ExpoModulesCorePlugin.gradle. The
+// newer `expo-module-gradle-plugin` plugin id only exists from SDK 53 — using
+// it here fails the build with "Plugin [id: 'expo-module-gradle-plugin'] was
+// not found in any of the following sources".
+def expoModulesCorePlugin = new File(
+  project(":expo-modules-core").projectDir.absolutePath,
+  "ExpoModulesCorePlugin.gradle"
+)
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+useExpoPublishing()
+
+android {
+  namespace "expo.modules.cleanwayvpn"
+  // JVM unit tests: android.util.Log etc. are unmocked stubs; make them no-ops
+  // so BlocklistSync/BlockLog (which log) are testable without Robolectric.
+  testOptions.unitTests.returnDefaultValues = true
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // NotificationCompat — the VpnService must run in the foreground with a
+  // persistent notification or Android kills it when the app backgrounds.
+  implementation "androidx.core:core-ktx:1.13.1"
+  // DnsUtilTest.kt uses kotlin.test (JUnit backend). Test-only — does not affect the app build.
+  testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
+  // org.json is an unmocked Android stub on the JVM; BlockLog serialises with it.
+  testImplementation "org.json:json:20240303"
+}

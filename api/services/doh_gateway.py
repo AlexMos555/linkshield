@@ -176,7 +176,7 @@ def _question_end(wire: bytes) -> int:
 
 
 def _encode_name(name: str) -> bytes:
-    return b"".join(bytes([len(l)]) + l.encode("ascii", "ignore") for l in name.split(".") if l) + b"\x00"
+    return b"".join(bytes([len(part)]) + part.encode("ascii", "ignore") for part in name.split(".") if part) + b"\x00"
 
 
 def _soa_rr(qname: str) -> bytes:

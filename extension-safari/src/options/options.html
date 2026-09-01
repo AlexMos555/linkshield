@@ -140,15 +140,22 @@
       </div>
     </div>
 
+    <!-- Parental PIN: NOT enforced. The skill-level radios above change mode
+         without asking for it, and the backend has no parental_pin field at
+         all, so the PIN was stored as a local boolean and sent to an endpoint
+         that ignored it. The control is disabled rather than deleted so the
+         intent stays visible, but it must not read as a working child lock —
+         a parent could rely on it. See docs/MOBILE_AUTO_PROTECTION.md for the
+         same honesty rule applied to shields. -->
     <div class="skill-opt" id="skill-opt-pin" hidden>
       <div class="row">
         <div>
           <div class="row-label" data-i18n="parental_pin_label">Parental PIN</div>
-          <div class="row-desc" data-i18n="parental_pin_desc">4 digits — required to change Kids Mode settings</div>
+          <div class="row-desc" data-i18n="parental_pin_desc">Not working yet — Kids Mode can still be switched off without a PIN. What Kids Mode does do today: a blocked page has no button to continue anyway.</div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="password" id="parental-pin" class="pin-input" inputmode="numeric" maxlength="4" pattern="\d{4}" placeholder="••••" aria-label="Parental PIN">
-          <button class="btn" id="save-pin" data-i18n="save_pin_btn">Set PIN</button>
+          <input type="password" id="parental-pin" class="pin-input" inputmode="numeric" maxlength="4" pattern="\d{4}" placeholder="••••" aria-label="Parental PIN" disabled>
+          <button class="btn" id="save-pin" data-i18n="save_pin_btn" disabled>Set PIN</button>
           <button class="btn" id="clear-pin" data-i18n="clear_pin_btn" hidden>Clear</button>
         </div>
       </div>

@@ -1,7 +1,12 @@
 import { useEffect } from "react";
-import { Stack } from "expo-router";
+import { Stack, useRouter, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
+import { useTranslation } from "react-i18next";
+import { Ionicons } from "@expo/vector-icons";
+import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { restoreSession } from "../src/services/auth";
+import { getSetting } from "../src/services/database";
 import { setAuthToken } from "../src/services/api";
 // Side-effecting import: initialises i18next at boot so every screen
 // can immediately `useTranslation()`. Previously the module was authored
@@ -9,6 +14,7 @@ import { setAuthToken } from "../src/services/api";
 // device, and every string fell back to the en hard-coded literal.
 // (Audit mobile-ts HIGH mobile-i18n-dead-code.)
 import "../src/i18n";
+import { restoreSavedLocale } from "../src/i18n";
 // Side-effecting import: initialises @sentry/react-native with the
 // PII scrubber + privacy-conservative defaults. No-op when
 // EXPO_PUBLIC_SENTRY_DSN is unset (dev / Expo Go) so this stays a
@@ -16,7 +22,101 @@ import "../src/i18n";
 import "../src/lib/sentry";
 import { AccountLockedModal } from "../src/components/AccountLockedModal";
 
+/**
+ * Bridges an inbound "Share -> Cleanway" (iOS Share Extension / Android ACTION_SEND,
+ * both created by the expo-share-intent config plugin) into the existing /shared
+ * screen, which runs the full domain check and shows the verdict + haptics.
+ *
+ * !! UNVERIFIED: the Expo SDK 52 toolchain can't run in the authoring env (Node 25).
+ * Requires `npx expo prebuild` + a dev-client build + on-device test.
+ * See mobile/SHARE_FLOW.md.
+ */
+/**
+ * First-launch gate. The onboarding screen wrote `onboarding_done` on finish,
+ * but nothing ever read it and nothing ever navigated to /onboarding — three
+ * slides of copy that no user in the app's history had ever seen. A share
+ * intent outranks it: someone who shared a suspicious link wants the verdict,
+ * not a tour.
+ */
+let _gateRanThisLaunch = false;
+
+function OnboardingGate() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { hasShareIntent } = useShareIntentContext();
+  useEffect(() => {
+    // Once per process. Also the backstop for broken storage: if setSetting
+    // can't persist onboarding_done, the tour shows at most once per launch
+    // instead of ambushing every navigation.
+    if (_gateRanThisLaunch) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const done = await getSetting("onboarding_done");
+        if (cancelled || done === "true") return;
+        // A share intent outranks the tour — and it can arrive AFTER this
+        // effect started (cold-start share: the intent parses while we read
+        // storage). Re-check at decision time, and never replace a screen
+        // the user is already looking at: if navigation moved off the tabs
+        // root, someone is mid-flow and yanking them to a tour is hostile.
+        if (hasShareIntent) return;
+        if (pathname && pathname !== "/" && !pathname.startsWith("/(tabs)") && pathname !== "/index") return;
+        _gateRanThisLaunch = true;
+        router.replace("/onboarding");
+      } catch {
+        // Storage unavailable — never block the app on a tour.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Re-evaluate when a share intent lands or the route settles; the
+    // _gateRanThisLaunch latch keeps this from ever firing twice.
+  }, [hasShareIntent, pathname, router]);
+  return null;
+}
+
+function ShareIntentRouter() {
+  const router = useRouter();
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
+
+  useEffect(() => {
+    if (!hasShareIntent) return;
+    const shared = shareIntent?.webUrl ?? shareIntent?.text ?? "";
+    if (shared) {
+      router.push({ pathname: "/shared", params: { url: shared } });
+    }
+    resetShareIntent();
+  }, [hasShareIntent, shareIntent]);
+
+  return null;
+}
+
 export default function RootLayout() {
+  const { t } = useTranslation();
+  // Apply the saved language choice (Settings → Language) over the device
+  // locale, once, at start.
+  useEffect(() => { void restoreSavedLocale(); }, []);
+
+  // Preload the icon font, and shout if it fails.
+  //
+  // On 2026-08-05 every icon in the app — tab bar, shield hero, every card and
+  // chevron — was drawing as blank space on Android while the surrounding text
+  // rendered fine. @expo/vector-icons loads its font lazily and swallows the
+  // failure, so nothing was logged and several passes of "design" work were in
+  // fact invisible on device. Loading it here surfaced the real cause:
+  //
+  //   ExpoAsset.downloadAsync rejected
+  //   → Module 'expo.modules.interfaces.filesystem.AppDirectories' not found
+  //
+  // expo-asset was declared but its native peer expo-file-system was not, so
+  // no asset could ever be fetched. Adding that dependency is the actual fix;
+  // this preload stays as the tripwire that would have caught it on day one.
+  const [fontsLoaded, fontError] = useFonts(Ionicons.font);
+  useEffect(() => {
+    if (fontError) console.warn("[cleanway] icon font failed to load:", fontError);
+  }, [fontError]);
+
   // Restore previously-persisted Supabase session on cold boot. Runs once.
   // - Valid token > 2 min from expiry: use as-is.
   // - Near/past expiry: transparent refresh via refresh_token.
@@ -38,8 +138,15 @@ export default function RootLayout() {
     };
   }, []);
 
+  // Deliberately NOT gated on fontsLoaded. Blocking the tree until the font
+  // resolves was tried and left the app on an empty screen indefinitely — the
+  // promise never settled and never rejected — so a missing glyph became a
+  // dead app. Icons are cosmetic; the app is not. Render immediately and let
+  // the glyphs appear when (if) the font arrives.
+  void fontsLoaded;
+
   return (
-    <>
+    <ShareIntentProvider options={{ resetOnBackground: true }}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -49,20 +156,32 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: "#0f172a" },
         }}
       >
+        {/* Titles go through i18n. They were hardcoded English literals, so the
+            navigation bar stayed in English in all 10 locales — on a product
+            whose whole point is being readable by someone's grandmother in her
+            own language. */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="check" options={{ title: "Check Link" }} />
-        <Stack.Screen name="result" options={{ title: "Result" }} />
-        <Stack.Screen name="breach" options={{ title: "Breach Check" }} />
-        <Stack.Screen name="scanner" options={{ title: "QR Scanner" }} />
+        <Stack.Screen name="check" options={{ title: t("mobile.check.title") }} />
+        <Stack.Screen name="result" options={{ title: t("mobile.nav.result") }} />
+        <Stack.Screen name="breach" options={{ title: t("mobile.breach.title") }} />
+        <Stack.Screen name="scanner" options={{ title: t("mobile.nav.scanner") }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="shared" options={{ title: "Link Check", presentation: "modal" }} />
+        <Stack.Screen name="shared" options={{ title: t("mobile.nav.shared"), presentation: "modal" }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen name="upgrade" options={{ title: "Upgrade" }} />
-        <Stack.Screen name="report" options={{ title: "Weekly Report" }} />
+        <Stack.Screen name="upgrade" options={{ title: t("mobile.nav.upgrade") }} />
+        <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
+        {/* Without an entry the header renders the raw route slug "family". */}
+        <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />
+        {/* Deep-link sink for the OPTIONAL captcha flow. Unreachable unless
+            EXPO_PUBLIC_CAPTCHA_URL is set; it exists so the route is registered
+            (and headerless) the moment it is. */}
+        <Stack.Screen name="captcha-return" options={{ headerShown: false }} />
       </Stack>
       {/* Global overlay — subscribes to accountLockedEvents and renders
           the restore CTA whenever any authed call returns 410 Gone. */}
+      <ShareIntentRouter />
+      <OnboardingGate />
       <AccountLockedModal />
-    </>
+    </ShareIntentProvider>
   );
 }

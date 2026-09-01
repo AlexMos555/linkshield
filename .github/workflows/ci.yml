@@ -86,11 +86,64 @@ jobs:
           # produces but the committer forgot to add) — a plain
           # `git diff --exit-code` on the working tree ignores untracked
           # files and would pass a build that emitted a new uncommitted file.
-          git add -A -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/'
-          if ! git diff --cached --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/'; then
+          git add -A -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/' 'mobile/modules/cleanway-vpn/android/src/main/res/'
+          if ! git diff --cached --exit-code -- 'extension/' 'extension-firefox/' 'extension-safari/' 'landing/messages/' 'mobile/i18n/' 'mobile/modules/cleanway-vpn/android/src/main/res/'; then
             echo "::error::Generated i18n/extension artifacts are out of sync with their source (packages/extension-core/ + packages/i18n-strings/). Edit the SOURCE, then run 'bash scripts/build-extensions.sh' locally and commit the regenerated files."
             exit 1
           fi
+
+  mobile:
+    # The mobile app has no test runner wired up, but three cheap static
+    # gates have each caught a shipped bug this quarter:
+    #   - tsc under tsconfig.typecheck.json (the dual-@types/react pin)
+    #   - the i18n contract check (the scanner shipped with its whole
+    #     namespace missing and rendered raw dotted keys on the camera-
+    #     permission screen)
+    #   - the host-parser table (an earlier parser rewrote the homograph
+    #     "пaypal.com" into the real domain "aypal.com" via a \b anchor)
+    # The Kotlin VPN unit tests are NOT run here: mobile/android is expo
+    # prebuild output that lives outside the repo, so they run in the local
+    # dev sandbox instead.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Mobile typecheck
+        run: npx tsc -p mobile/tsconfig.typecheck.json --noEmit
+
+      - name: Mobile i18n contract
+        run: python3 scripts/check-mobile-i18n.py
+
+      # The Expo config plugins rewrite android/app/build.gradle on every
+      # prebuild, and the generated tree is not in git. A regression there means
+      # a debug-signed or needlessly fat release APK with a green build either
+      # way — so the transforms are asserted here, in CI, not by hand.
+      - name: Expo config plugins (release signing + ABI filters)
+        run: node mobile/plugins/__tests__/plugins.test.js
+
+      - name: Host parser table test
+        run: node mobile/scripts/test-host-parser.mjs
+
+      - name: Mobile blocklist assets in sync with data/
+        # popular_veto.txt / shared_suffixes.txt gate the on-device
+        # false-positive veto. Deterministic from committed data files (no
+        # network): a hand-edit or a data refresh that skipped the rebuild
+        # ships a wrong veto — github.io un-blockable, or a legit brand
+        # blocked. Rebuild: python3 scripts/build_mobile_assets.py
+        run: python3 scripts/build_mobile_assets.py --check
+
+      - name: Public-suffix set still consistent with top_100k
+        # Offline invariant only (no PSL fetch), so an upstream PSL edit does
+        # not redden unrelated PRs; the refresh job runs the full --check.
+        run: python3 scripts/build_public_suffixes_in_top.py --verify-consistency
 
   lint:
     runs-on: ubuntu-latest
@@ -136,9 +189,18 @@ jobs:
         run: python3 scripts/check-stale-claims.py
 
   openapi-drift:
-    # Pin packages/api-types/schema/openapi.json to the live FastAPI app.
+    # Pin the whole generated packages/api-types/ to the live FastAPI app.
     # If a PR adds a route or schema but forgets to run `npm run build:api-types`,
     # this job fails so the stale spec doesn't leak into the typed clients.
+    #
+    # Both generated artifacts are gated, not just the JSON. This job used to
+    # run dump-openapi.py alone, which left src/openapi.d.ts — the file that
+    # landing/, mobile/ and packages/api-client/ actually import — invisible to
+    # CI. It drifted unnoticed for ~10 weeks (missing GET /api/v1/blocklist/dns
+    # and GET /api/v1/mobile/version, plus 19 properties still typed optional
+    # after --properties-required-by-default was added to the generator). So we
+    # now run the same single entry point contributors are told to run and diff
+    # everything it writes.
     runs-on: ubuntu-latest
     env:
       DEBUG: "true"
@@ -149,15 +211,27 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      # requirements.txt pins fastapi — the spec's exact shape depends on it
+      # (0.128 emits `format: binary` for UploadFile where 0.137 emits
+      # `contentMediaType`), so regenerating against anything else produces a
+      # file that is "fresh" locally and still red here.
       - run: pip install -r requirements.txt
-      - name: Regenerate spec
-        run: python3 scripts/dump-openapi.py
-      - name: Verify spec in repo matches regenerated
+      - run: npm ci
+      - name: Regenerate api-types (spec + TypeScript)
+        run: npm run build:api-types
+      - name: Verify generated api-types match the committed ones
         run: |
-          if ! git diff --exit-code -- packages/api-types/schema/openapi.json; then
+          if ! git diff --exit-code -- packages/api-types; then
             echo ""
-            echo "ERROR: packages/api-types/schema/openapi.json is out of date."
-            echo "Run 'npm run build:api-types' locally and commit the result."
+            echo "ERROR: packages/api-types is out of date — the committed"
+            echo "OpenAPI spec and/or generated types do not match the app."
+            echo "Regenerate with:  npm run build:api-types"
+            echo "then commit packages/api-types/schema/openapi.json and"
+            echo "packages/api-types/src/openapi.d.ts."
             exit 1
           fi
 

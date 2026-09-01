@@ -819,6 +819,47 @@
       "caveat_2": "PhishTank's free check API returns 'not indexed' for most fresh URLhaus URLs because their database lags by a few hours — that's why PhishTank's Recall column often shows '—' (unknown), not because it's broken.",
       "caveat_3": "Google Safe Browsing requires an API key (GOOGLE_SAFE_BROWSING_KEY). If unset, that column shows '—' and is excluded from the comparison.",
       "caveat_4": "Latency p50 measured from this script's host (US/EU CI runner); your latency from Asia or LATAM will differ. The relative comparison stays the same."
+    },
+    "support": {
+      "title": "Suporte",
+      "subtitle": "Dúvidas, problemas ou um site bloqueado por engano — estamos aqui.",
+      "email_label": "Escreva para a gente",
+      "email_hint": "Lemos todas as mensagens. Conte o modelo do seu celular e o que aconteceu.",
+      "faq_title": "Perguntas frequentes",
+      "q_vpn": "Isso é uma VPN que esconde meu tráfego?",
+      "a_vpn": "Não. O Cleanway cria no seu celular um filtro local que bloqueia sites de golpe em todos os aplicativos. Não é uma VPN para se esconder — ele não esconde por onde você anda nem manda seu tráfego por outro país. As consultas dos sites que ele não bloqueia vão para um servidor público comum, do mesmo jeito que seu celular já funciona.",
+      "q_install": "Como eu instalo?",
+      "a_install": "Baixe o aplicativo, abra o arquivo e permita a instalação. Na primeira vez, toque em “Ativar proteção” e permita a conexão que o Android pedir — é o filtro local começando a funcionar.",
+      "q_off": "Como eu desligo?",
+      "a_off": "Abra o aplicativo e toque em “Pausar a proteção”. Dá para ligar de novo quando quiser.",
+      "q_fp": "Um site seguro está bloqueado — o que eu faço?",
+      "a_fp": "Na tela de bloqueio, toque em “Não é golpe”, ou escreva para a gente com o endereço. A gente corrige bloqueios errados bem rápido.",
+      "q_privacy": "O que vocês coletam?",
+      "a_privacy": "O escudo confere os nomes dos sites no próprio celular — nada sobre os sites que você visita chega até nós. Todos os detalhes estão na nossa página de privacidade."
+    },
+    "android": {
+      "title": "Cleanway para Android",
+      "subtitle": "Proteção gratuita contra links de golpe — em todos os aplicativos do seu celular.",
+      "benefit_1": "Bloqueia sites de golpe conhecidos em qualquer aplicativo — navegador, mensageiros, e-mail.",
+      "benefit_2": "Confere os links que você toca e avisa antes que uma página perigosa abra.",
+      "benefit_3": "Gratuito, funciona sem internet com uma lista guardada no celular, nada além disso.",
+      "download_cta": "Baixar o aplicativo",
+      "download_note": "Arquivo .apk · Android 7 ou superior",
+      "download_soon": "O link para baixar aparece muito em breve.",
+      "steps_title": "Como instalar",
+      "step_1": "Toque em “Baixar o aplicativo” e espere o arquivo baixar.",
+      "step_2": "Abra o arquivo baixado (normalmente pela barra de notificações ou pela pasta Downloads).",
+      "step_3": "O Android vai pedir permissão para instalar a partir dessa origem — toque em Permitir e depois em Instalar.",
+      "step_4": "Abra o Cleanway, toque em “Ativar proteção” e permita a conexão que o sistema pedir.",
+      "unknown_title": "Por que o celular pede permissão?",
+      "unknown_body": "Você está instalando direto do site, e não de uma loja, então o Android pergunta uma vez se você confia na origem. Isso é normal. Em breve dará para instalar pela RuStore e pelo Google Play — aí este passo não será mais preciso.",
+      "stores_title": "Ou instale por uma loja",
+      "rustore": "RuStore",
+      "gplay": "Google Play",
+      "store_soon": "Em breve",
+      "privacy_title": "Isto não é uma “VPN para se esconder”",
+      "privacy_body": "O Cleanway cria no seu celular um filtro local que bloqueia sites de golpe. Ele não esconde por onde você anda nem manda seu tráfego por outro país. Os nomes dos sites são conferidos no próprio celular — não ficamos sabendo nada do que você abre.",
+      "download_soon_note": "O link de download aparecerá aqui assim que a versão for publicada. Os passos abaixo mostram como será a instalação."
     }
   },
   "email": {
@@ -1213,6 +1254,13 @@
         "body": "O Cleanway cria uma VPN local no seu celular. É assim que o Android permite que um app filtre as consultas de sites para todos os outros.\n\n• A lista de sites de golpe conhecidos fica no seu celular. Os nomes são comparados aqui, não enviados para nós.\n• As consultas que não bloqueamos vão para um resolvedor público (Cloudflare ou Quad9), como seu celular já faz.\n• Nenhum outro tráfego é lido, gravado ou redirecionado. Não é uma VPN de privacidade e não esconde sua navegação.\n\nAgora o Android vai pedir sua permissão.",
         "continue": "Continuar",
         "cancel": "Agora não"
+      },
+      "linkguard": {
+        "title": "Verificação de links",
+        "desc": "O Cleanway abre os links primeiro e verifica antes de você entrar",
+        "honesty": "Funciona quando o Cleanway é o aplicativo que abre seus links",
+        "state_on": "Todo link é verificado antes",
+        "state_setup": "Deixe o Cleanway abrir seus links"
       }
     },
     "rollout": {
@@ -1298,7 +1346,10 @@
       "no_url_body": "Nada chegou até nós, ou o que foi compartilhado não era um link. Tente compartilhar de novo.",
       "check_failed_body": "Não conseguimos falar com nossos servidores, então não sabemos se este link é seguro. Tente de novo daqui a pouco.",
       "go_home": "Ir para o Cleanway",
-      "a11y_verdict": "{{verdict}}. {{domain}}. Pontuação de risco {{score}} de 100."
+      "a11y_verdict": "{{verdict}}. {{domain}}. Pontuação de risco {{score}} de 100.",
+      "open_in_browser": "Abrir no navegador",
+      "open_anyway": "Abrir mesmo assim",
+      "no_browser": "Não há outro navegador neste telefone para abrir o link. Instale um ou abra manualmente."
     },
     "breach": {
       "title": "Verificação de senha vazada",
@@ -1439,7 +1490,18 @@
       "allowed_remove": "Remover",
       "allowed_empty": "Nenhum site permitido",
       "allow_confirm_title": "Permitir este site",
-      "allow_confirm_body": "{{domain}} não será bloqueado até você removê-lo aqui. Faça isso só se conhecer o site."
+      "allow_confirm_body": "{{domain}} não será bloqueado até você removê-lo aqui. Faça isso só se conhecer o site.",
+      "language": "Idioma",
+      "language_note": "Escolha o idioma do app.",
+      "language_reload_title": "Reinício necessário",
+      "language_reload_body": "Feche e abra o app novamente para concluir a mudança de direção do texto.",
+      "linkguard": "Verificação de links",
+      "linkguard_note": "Quando ativo, o Cleanway verifica cada link que você toca — em qualquer app — e avisa antes de abrir uma página de golpe. Links seguros abrem na hora.",
+      "linkguard_on": "O Cleanway verifica seus links",
+      "linkguard_on_desc": "Cada link que você toca é verificado antes.",
+      "linkguard_off": "Verificar cada link",
+      "linkguard_off_desc": "Agora os links abrem sem verificação. Ative para verificá-los.",
+      "linkguard_enable": "Configurar"
     },
     "family": {
       "title": "Central da Família",
@@ -1488,27 +1550,28 @@
       "join_network_failed": "Não conseguimos falar com nossos servidores, então o código não foi verificado. Seu convite continua válido — tente de novo daqui a pouco."
     },
     "auth": {
-      "title_login": "Que bom ter você de volta",
-      "title_register": "Criar conta",
-      "title_reset": "Redefinir senha",
-      "sub_login": "Entre para manter seus ajustes em todos os seus aparelhos",
-      "sub_register": "Grátis para começar — não precisa de cartão para criar a conta",
-      "sub_reset": "Vamos enviar um link por e-mail para você criar uma nova senha",
-      "cta_login": "Entrar",
-      "cta_register": "Criar conta",
-      "cta_reset": "Enviar link de redefinição",
       "email_ph": "E-mail",
-      "password_ph": "Senha",
-      "forgot": "Esqueceu a senha?",
-      "switch_to_register": "Não tem conta? Cadastre-se",
-      "switch_to_login": "Já tem conta? Entre",
       "skip": "Continuar sem conta",
       "privacy": "Com ou sem conta: verificamos os nomes dos sites em nossos servidores — nunca suas senhas, mensagens ou histórico de navegação.",
-      "confirm_title": "Confira seu e-mail",
-      "confirm_body": "Enviamos um link de confirmação. Abra o link para ativar sua conta.",
-      "reset_sent_body": "Se existir uma conta com este endereço, enviamos um link para redefinir sua senha.",
       "generic_error": "Algo deu errado. Tente de novo.",
-      "not_configured": "O login não está disponível nesta versão. Você pode usar todo o resto sem conta."
+      "not_configured": "O login não está disponível nesta versão. Você pode usar todo o resto sem conta.",
+      "otp_title": "Entrar com e-mail",
+      "otp_sub": "Digite seu e-mail e enviaremos um código de acesso",
+      "otp_send": "Enviar código",
+      "err_email": "Digite um e-mail válido",
+      "code_title": "Digite o código",
+      "code_sub": "Enviamos um código de 6 dígitos para {{email}}",
+      "code_verify": "Entrar",
+      "code_resend": "Enviar o código novamente",
+      "code_resend_in": "Reenviar em {{seconds}} s",
+      "code_change_email": "Alterar e-mail",
+      "err_code": "Digite o código de 6 dígitos",
+      "err_code_wrong": "Código incorreto ou expirado. Solicite um novo.",
+      "err_network": "Sem conexão. Verifique sua internet e tente novamente.",
+      "err_rate_limited": "Muitas solicitações de código. Aguarde um pouco e tente novamente.",
+      "err_captcha": "A verificação de segurança não foi concluída. Tente novamente.",
+      "err_captcha_update": "Para entrar, é preciso uma versão mais recente do Cleanway. Atualize o app e tente novamente.",
+      "captcha_wait": "Concluindo a verificação de segurança…"
     },
     "onboarding": {
       "s1_title": "Verifique qualquer coisa antes de tocar",
@@ -1535,6 +1598,45 @@
       "allow_action": "Não é golpe — permitir",
       "allowed_title": "Site permitido",
       "allowed_text": "{{domain}} agora está permitido. Você pode desfazer em Configurações → Sites permitidos."
+    },
+    "reason": {
+      "flagged_dangerous": "O Google marca este site como perigoso",
+      "flagged_phishing": "Denunciado como phishing",
+      "on_blocklists": "Em listas confiáveis de golpes e spam",
+      "threat_reports": "Mencionado em relatórios de ameaças",
+      "spreads_malware": "Conhecido por espalhar malware",
+      "imitates_brand": "O nome imita uma marca conhecida",
+      "lookalike_letters": "Usa letras parecidas para te enganar",
+      "fake_brand_address": "Um nome de marca confiável escondido num endereço falso",
+      "copies_brand_icon": "Copia o ícone de uma marca conhecida",
+      "no_https": "A conexão não é segura (sem HTTPS)",
+      "missing_protections": "Faltam proteções básicas de segurança",
+      "raw_ip_address": "O endereço é um número, não um nome real",
+      "unusual_connection": "Usa uma forma incomum de se conectar",
+      "hidden_destination": "Esconde para onde o link realmente leva",
+      "very_new_site": "Este site foi criado há muito pouco tempo",
+      "scam_words": "O endereço tem palavras típicas de golpes",
+      "carries_personal_data": "O link carrega seus dados pessoais dentro dele",
+      "long_complex_address": "O endereço é longo e confuso demais",
+      "many_redirects": "O link salta por vários sites",
+      "risky_ending": "Usa uma terminação que golpistas preferem",
+      "risky_registrar": "Registrado por um serviço usado por golpistas",
+      "random_name": "O nome parece gerado aleatoriamente",
+      "detector_suspicious": "Nosso detector considera este site suspeito",
+      "well_known_site": "Um site conhecido e confiável",
+      "popular_site": "Um site muito usado e popular",
+      "detector_safe": "Nosso detector considera este site seguro",
+      "not_a_real_business": "Não está configurado como o site de uma empresa real",
+      "shifty_setup": "O site fica mudando de lugar — um truque comum de golpes",
+      "padded_address": "O endereço tem partes a mais para esconder o nome verdadeiro"
+    },
+    "update": {
+      "optional_title": "Atualização disponível",
+      "optional_body": "Há uma versão mais recente do Cleanway. Atualize para manter sua proteção em dia.",
+      "required_title": "Atualize o aplicativo",
+      "required_body": "Esta versão está desatualizada. Atualize o Cleanway para que sua proteção continue funcionando.",
+      "action": "Atualizar",
+      "later": "Depois"
     }
   }
 }

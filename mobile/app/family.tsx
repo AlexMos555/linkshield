@@ -4,19 +4,25 @@
  * no-family / active (with owner-only invite controls).
  *
  * Crypto + REST live in mobile/src/lib/family-{crypto,api}.ts.
- * Auth resolves via mobile/src/lib/supabase-client.ts (Expo SecureStore-
- * backed Supabase SDK session).
+ * Auth resolves via src/services/auth.ts — the same SecureStore-backed
+ * session the sign-in screen writes.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   Modal, Pressable, ActivityIndicator, Alert,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 import { colors, spacing, fontSize } from "../src/utils/theme";
-import { getSupabaseSDK, getAccessToken } from "../src/lib/supabase-client";
+// Session comes from services/auth — the store the sign-in screen actually
+// writes to (the old Supabase-SDK parallel store made this screen loop on
+// "Sign in" forever). getSessionState keeps "offline" apart from "signed
+// out": telling an offline-but-signed-in user to re-enter her password was
+// the same class of lie in the other direction.
+import { getSessionState } from "../src/services/auth";
 import {
   getOrCreateKeypair,
   decryptForMe,
@@ -28,7 +34,7 @@ import {
   registerMyKey,
   listMembers,
   createInvite,
-  acceptInvite,
+  acceptInviteDetailed,
   listAlerts,
   type MyFamily,
   type FamilyMemberRow,
@@ -38,16 +44,25 @@ import {
 type Screen =
   | { kind: "loading" }
   | { kind: "signedOut" }
+  // A failed request is its own state. It used to collapse into "noFamily",
+  // which invited the worst possible recovery: a user with a flaky connection
+  // saw "create a family", tapped it, and split their household in two.
+  | { kind: "error" }
   | { kind: "noFamily" }
   | {
       kind: "active";
       family: MyFamily;
-      members: FamilyMemberRow[];
-      alerts: Array<AlertPayload & { _id: string; _at: string | null }>;
+      /** null = the member list request failed (NOT an empty family). */
+      members: FamilyMemberRow[] | null;
+      /** null = the alerts request failed (NOT "no alerts yet"). */
+      alerts: Array<AlertPayload & { _id: string; _at: string | null }> | null;
+      /** Envelopes that arrived but could not be decrypted on this device. */
+      undecryptable: number;
     };
 
 export default function FamilyScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
@@ -59,19 +74,29 @@ export default function FamilyScreen() {
   const [invite, setInvite] = useState<InviteCreateResponse | null>(null);
 
   const refresh = useCallback(async () => {
-    const sdk = getSupabaseSDK();
-    if (!sdk) {
+    try {
+    const st = await getSessionState();
+    if (st.kind === "none") {
       setScreen({ kind: "signedOut" });
       return;
     }
-    const token = await getAccessToken();
-    if (!token) {
-      setScreen({ kind: "signedOut" });
+    if (st.kind === "offline") {
+      // Signed in, can't refresh right now. NOT signed out — showing the
+      // password prompt here sent people hunting for a password they had
+      // not lost.
+      setScreen({ kind: "error" });
       return;
     }
+    const token = st.session.accessToken;
 
     const mine = await listMyFamilies(token);
-    if (!mine || mine.families.length === 0) {
+    // null means the request FAILED — offline, 5xx, timeout. Only a successful
+    // response with zero families means the user has no family.
+    if (!mine) {
+      setScreen({ kind: "error" });
+      return;
+    }
+    if (mine.families.length === 0) {
       setScreen({ kind: "noFamily" });
       return;
     }
@@ -85,42 +110,74 @@ export default function FamilyScreen() {
       await registerMyKey(token, family.family_id, kp.publicKeyB64);
     }
 
+    // A failed member list stays null — the UI falls back to the count the
+    // families response already carried, instead of asserting "0 members".
     const membersResp = await listMembers(token, family.family_id);
-    const members = membersResp?.members ?? [];
+    const members = membersResp ? membersResp.members : null;
 
-    // Decrypt alerts client-side. Failures dropped silently.
+    // Decrypt alerts client-side. An envelope that will not open on this
+    // device is counted, not dropped: "2 alerts could not be read" and
+    // "no alerts yet" are different facts, and hiding the first behind the
+    // second would mask a broken keypair forever.
     const alertsResp = await listAlerts(token, family.family_id);
-    const decoded: Array<AlertPayload & { _id: string; _at: string | null }> = [];
-    if (alertsResp && kp) {
+    let alerts: Array<AlertPayload & { _id: string; _at: string | null }> | null = null;
+    let undecryptable = 0;
+    if (alertsResp) {
+      const decoded: Array<AlertPayload & { _id: string; _at: string | null }> = [];
       for (const env of alertsResp.alerts) {
-        if (!env.ciphertext_b64 || !env.nonce_b64 || !env.sender_pubkey_b64) continue;
-        const opened = decryptForMe(
-          {
-            ciphertext_b64: env.ciphertext_b64,
-            nonce_b64: env.nonce_b64,
-            sender_pubkey_b64: env.sender_pubkey_b64,
-          },
-          kp.secretKeyB64,
-        );
+        if (!env.ciphertext_b64 || !env.nonce_b64 || !env.sender_pubkey_b64) {
+          undecryptable += 1;
+          continue;
+        }
+        const opened = kp
+          ? decryptForMe(
+              {
+                ciphertext_b64: env.ciphertext_b64,
+                nonce_b64: env.nonce_b64,
+                sender_pubkey_b64: env.sender_pubkey_b64,
+              },
+              kp.secretKeyB64,
+            )
+          : null;
         if (opened) decoded.push({ ...opened, _id: env.id, _at: env.created_at });
+        else undecryptable += 1;
       }
+      alerts = decoded;
     }
 
-    setScreen({ kind: "active", family, members, alerts: decoded });
+    setScreen({ kind: "active", family, members, alerts, undecryptable });
+    } catch {
+      // Anything unexpected (keypair generation, decrypt internals) must
+      // still land in a recoverable state, never an eternal spinner.
+      setScreen({ kind: "error" });
+    }
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh]));
+
+  // Resolves the token or tells the user why it couldn't — the old helper
+  // returned null and the handlers bare-returned: a tap that did nothing.
+  const token = async (): Promise<string | null> => {
+    const st = await getSessionState();
+    if (st.kind === "ok") return st.session.accessToken;
+    if (st.kind === "none") {
+      setScreen({ kind: "signedOut" });
+      return null;
+    }
+    Alert.alert(t("mobile.family.load_failed_title"), t("mobile.family.try_again"));
+    return null;
+  };
 
   const handleCreate = async () => {
     setBusy(true);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      const created = await createFamily(token, "My Family");
+      const tk = await token();
+      if (!tk) return;
+      const created = await createFamily(tk, t("mobile.family.default_name"));
       if (!created) {
-        Alert.alert("Couldn't create family", "Try again in a moment.");
+        Alert.alert(t("mobile.family.create_failed_title"), t("mobile.family.try_again"));
         return;
       }
       await refresh();
@@ -132,16 +189,24 @@ export default function FamilyScreen() {
   const handleAccept = async () => {
     setJoinError(null);
     if (!joinCode.trim() || !/^\d{4}$/.test(joinPin.trim())) {
-      setJoinError("Enter a code and 4-digit PIN.");
+      setJoinError(t("mobile.family.join_validation"));
       return;
     }
     setBusy(true);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      const joined = await acceptInvite(token, joinCode.trim(), joinPin.trim());
+      const tk = await token();
+      if (!tk) return;
+      const { data: joined, failure } = await acceptInviteDetailed(
+        tk, joinCode.trim(), joinPin.trim(),
+      );
       if (!joined) {
-        setJoinError("Invalid or expired invite.");
+        // "Your invite is bad" and "your wifi is bad" need different words:
+        // the first sends you to regenerate a code, the second to try again.
+        setJoinError(t(
+          failure === "network"
+            ? "mobile.family.join_network_failed"
+            : "mobile.family.join_invalid",
+        ));
         return;
       }
       setJoinOpen(false);
@@ -157,11 +222,11 @@ export default function FamilyScreen() {
     if (screen.kind !== "active") return;
     setBusy(true);
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      const res = await createInvite(token, screen.family.family_id);
+      const tk = await token();
+      if (!tk) return;
+      const res = await createInvite(tk, screen.family.family_id);
       if (!res) {
-        Alert.alert("Couldn't create invite", "Try again in a moment.");
+        Alert.alert(t("mobile.family.invite_failed_title"), t("mobile.family.try_again"));
         return;
       }
       setInvite(res);
@@ -173,9 +238,9 @@ export default function FamilyScreen() {
   const handleCopyInvite = async () => {
     if (!invite) return;
     await Clipboard.setStringAsync(
-      `Cleanway Family invite\nCode: ${invite.code}\nPIN: ${invite.pin}`,
+      `${t("mobile.family.invite_copy_header")}\n${t("mobile.family.code_label")}: ${invite.code}\n${t("mobile.family.pin_label")}: ${invite.pin}`,
     );
-    Alert.alert("Copied", "Invite copied to clipboard.");
+    Alert.alert(t("mobile.family.copied_title"), t("mobile.family.copied_body"));
   };
 
   // ─── Render branches ────────────────────────────────────────────
@@ -191,13 +256,28 @@ export default function FamilyScreen() {
   if (screen.kind === "signedOut") {
     return (
       <View style={[styles.container, styles.center]}>
-        <Text style={styles.h1}>Family Hub</Text>
-        <Text style={styles.sub}>
-          Sign in to set up Family Hub. End-to-end encrypted alerts when
-          loved ones are blocked from a scam.
-        </Text>
-        <TouchableOpacity style={styles.btnPrimary} onPress={() => router.push("/auth")}>
-          <Text style={styles.btnPrimaryText}>Sign in</Text>
+        <Text style={styles.h1}>{t("mobile.family.title")}</Text>
+        <Text style={styles.sub}>{t("mobile.family.signed_out_body")}</Text>
+        <TouchableOpacity style={[styles.btnPrimary, styles.btnSolo]} onPress={() => router.push("/auth")}>
+          <Text style={styles.btnPrimaryText}>{t("mobile.family.sign_in")}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (screen.kind === "error") {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <Text style={styles.h1}>{t("mobile.family.title")}</Text>
+        <Text style={styles.sub}>{t("mobile.family.load_failed_body")}</Text>
+        <TouchableOpacity
+          style={[styles.btnPrimary, styles.btnSolo]}
+          onPress={() => {
+            setScreen({ kind: "loading" });
+            void refresh();
+          }}
+        >
+          <Text style={styles.btnPrimaryText}>{t("mobile.family.retry")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -206,11 +286,8 @@ export default function FamilyScreen() {
   if (screen.kind === "noFamily") {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.h1}>Family Hub</Text>
-        <Text style={styles.sub}>
-          Get notified when scams are blocked on your loved ones&apos; devices.
-          End-to-end encrypted — even Cleanway can&apos;t read the alerts.
-        </Text>
+        <Text style={styles.h1}>{t("mobile.family.title")}</Text>
+        <Text style={styles.sub}>{t("mobile.family.no_family_body")}</Text>
 
         <View style={styles.row}>
           <TouchableOpacity
@@ -218,29 +295,36 @@ export default function FamilyScreen() {
             disabled={busy}
             onPress={handleCreate}
           >
-            <Text style={styles.btnPrimaryText}>{busy ? "Creating…" : "Create family"}</Text>
+            <Text style={styles.btnPrimaryText}>
+              {busy ? t("mobile.family.creating") : t("mobile.family.create")}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.btnGhost}
             onPress={() => setJoinOpen(true)}
           >
-            <Text style={styles.btnGhostText}>Join with code</Text>
+            <Text style={styles.btnGhostText}>{t("mobile.family.join_with_code")}</Text>
           </TouchableOpacity>
         </View>
 
         {joinOpen && (
           <View style={styles.joinForm}>
-            <Text style={styles.label}>Code</Text>
+            <Text style={styles.label}>{t("mobile.family.code_label")}</Text>
             <TextInput
               style={styles.input}
               value={joinCode}
               onChangeText={setJoinCode}
-              autoCapitalize="characters"
+              // Invite codes come from secrets.token_urlsafe() and the backend
+              // hashes them without case normalization, so they are
+              // CASE-SENSITIVE. autoCapitalize="characters" silently
+              // uppercased whatever the user typed — every hand-typed code
+              // failed with "invalid or expired", and only paste worked.
+              autoCapitalize="none"
               autoCorrect={false}
-              placeholder="ABC123"
+              placeholder="aB3xY9…"
               placeholderTextColor={colors.textMuted}
             />
-            <Text style={styles.label}>PIN</Text>
+            <Text style={styles.label}>{t("mobile.family.pin_label")}</Text>
             <TextInput
               style={styles.input}
               value={joinPin}
@@ -256,7 +340,9 @@ export default function FamilyScreen() {
               disabled={busy}
               onPress={handleAccept}
             >
-              <Text style={styles.btnPrimaryText}>{busy ? "Joining…" : "Join"}</Text>
+              <Text style={styles.btnPrimaryText}>
+                {busy ? t("mobile.family.joining") : t("mobile.family.join")}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -265,79 +351,104 @@ export default function FamilyScreen() {
   }
 
   // Active family
-  const { family, members, alerts } = screen;
+  const { family, members, alerts, undecryptable } = screen;
   const isOwner = family.role === "owner";
+  // When the member list failed to load, fall back to the count the families
+  // response already carried instead of asserting zero.
+  const memberCount = members ? members.length : family.member_count;
+  const roleLabel = t(
+    isOwner ? "mobile.family.role_owner" : "mobile.family.role_member",
+  );
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.h1}>{family.name}</Text>
       <Text style={styles.sub}>
-        {members.length} {members.length === 1 ? "member" : "members"} ·{" "}
+        {t("mobile.family.members_count", { n: memberCount })} ·{" "}
         <Text style={{ color: isOwner ? colors.safe : colors.textSecondary }}>
-          {family.role}
+          {roleLabel}
         </Text>
       </Text>
 
       {/* Members */}
-      <Text style={styles.sectionTitle}>Members</Text>
+      <Text style={styles.sectionTitle}>{t("mobile.family.members_title")}</Text>
       <View style={styles.card}>
-        {members.map((m) => (
-          <View key={m.user_id} style={styles.memberRow}>
-            <View
-              style={[
-                styles.memberDot,
-                { backgroundColor: m.public_key_b64 ? colors.safe : colors.textMuted },
-              ]}
-            />
-            <Text style={styles.memberId}>
-              {m.user_id.slice(0, 8)}… ({m.role})
-            </Text>
-            {!m.public_key_b64 && <Text style={styles.memberPending}>no key yet</Text>}
-          </View>
-        ))}
+        {members === null ? (
+          <Text style={styles.cardDesc}>{t("mobile.family.members_load_failed")}</Text>
+        ) : (
+          members.map((m) => (
+            <View key={m.user_id} style={styles.memberRow}>
+              <View
+                style={[
+                  styles.memberDot,
+                  { backgroundColor: m.public_key_b64 ? colors.safe : colors.textMuted },
+                ]}
+              />
+              <Text style={styles.memberId}>
+                {m.user_id.slice(0, 8)}… ({m.role === "owner" ? t("mobile.family.role_owner") : t("mobile.family.role_member")})
+              </Text>
+              {!m.public_key_b64 && (
+                <Text style={styles.memberPending}>{t("mobile.family.no_key_yet")}</Text>
+              )}
+            </View>
+          ))
+        )}
       </View>
 
       {/* Owner-only: invite */}
       {isOwner && (
         <>
-          <Text style={styles.sectionTitle}>Invite a family member</Text>
+          <Text style={styles.sectionTitle}>{t("mobile.family.invite_title")}</Text>
           <View style={styles.card}>
-            <Text style={styles.cardDesc}>
-              Generates a one-time code + PIN. Send by text, share on the spot,
-              or scan in person. Both values appear once — keep them somewhere
-              the recipient can read.
-            </Text>
+            {/* Copy no longer offers "scan in person" — no QR is generated
+                anywhere and the scanner cannot read invites. */}
+            <Text style={styles.cardDesc}>{t("mobile.family.invite_desc")}</Text>
             <TouchableOpacity
               style={[styles.btnPrimary, { marginTop: spacing.md }]}
               disabled={busy}
               onPress={handleInvite}
             >
               <Text style={styles.btnPrimaryText}>
-                {busy ? "Generating…" : "Generate invite"}
+                {busy ? t("mobile.family.generating") : t("mobile.family.generate_invite")}
               </Text>
             </TouchableOpacity>
           </View>
         </>
       )}
 
-      {/* Alerts */}
-      <Text style={styles.sectionTitle}>Recent alerts</Text>
-      {alerts.length === 0 ? (
+      {/* Alerts. Three different facts, three different sentences: the
+          request failed / nothing arrived / N arrived but won't open here. */}
+      <Text style={styles.sectionTitle}>{t("mobile.family.alerts_title")}</Text>
+      {alerts === null ? (
         <View style={styles.card}>
-          <Text style={styles.cardDesc}>
-            No alerts yet — you&apos;ll see family blocks here as they happen.
-          </Text>
+          <Text style={styles.cardDesc}>{t("mobile.family.alerts_load_failed")}</Text>
         </View>
       ) : (
-        alerts.map((a) => (
-          <View key={a._id} style={styles.alertRow}>
-            <Text style={styles.alertDomain}>{a.domain || "(unknown domain)"}</Text>
-            <Text style={styles.alertMeta}>
-              {a.level || "blocked"} ·{" "}
-              {a._at ? new Date(a._at).toLocaleString() : ""}
-            </Text>
-          </View>
-        ))
+        <>
+          {alerts.length === 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardDesc}>{t("mobile.family.alerts_empty")}</Text>
+            </View>
+          )}
+          {alerts.map((a) => (
+            <View key={a._id} style={styles.alertRow}>
+              <Text style={styles.alertDomain}>
+                {a.domain || t("mobile.family.unknown_domain")}
+              </Text>
+              <Text style={styles.alertMeta}>
+                {a.level || t("mobile.family.level_blocked")} ·{" "}
+                {a._at ? new Date(a._at).toLocaleString() : ""}
+              </Text>
+            </View>
+          ))}
+          {undecryptable > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardDesc}>
+                {t("mobile.family.alerts_undecryptable", { n: undecryptable })}
+              </Text>
+            </View>
+          )}
+        </>
       )}
 
       {/* Invite modal */}
@@ -355,28 +466,25 @@ export default function FamilyScreen() {
             style={styles.modalCard}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={styles.modalTitle}>Share this with your family member</Text>
-            <Text style={styles.modalDesc}>
-              Both values appear once. After this dialog closes, you can&apos;t
-              see them again — generate another invite if needed.
-            </Text>
+            <Text style={styles.modalTitle}>{t("mobile.family.modal_title")}</Text>
+            <Text style={styles.modalDesc}>{t("mobile.family.modal_desc")}</Text>
             <View style={styles.codeBox}>
-              <Text style={styles.codeLabel}>Code</Text>
+              <Text style={styles.codeLabel}>{t("mobile.family.code_label")}</Text>
               <Text style={styles.codeValue}>{invite?.code ?? ""}</Text>
             </View>
             <View style={styles.codeBox}>
-              <Text style={styles.codeLabel}>PIN</Text>
+              <Text style={styles.codeLabel}>{t("mobile.family.pin_label")}</Text>
               <Text style={styles.pinValue}>{invite?.pin ?? ""}</Text>
             </View>
             <View style={[styles.row, { marginTop: spacing.md }]}>
               <TouchableOpacity style={styles.btnGhost} onPress={handleCopyInvite}>
-                <Text style={styles.btnGhostText}>Copy both</Text>
+                <Text style={styles.btnGhostText}>{t("mobile.family.copy_both")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.btnPrimary}
                 onPress={() => setInvite(null)}
               >
-                <Text style={styles.btnPrimaryText}>Done</Text>
+                <Text style={styles.btnPrimaryText}>{t("mobile.family.done")}</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -424,7 +532,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  btnPrimaryText: { color: colors.safeBg, fontSize: fontSize.md, fontWeight: "700" },
+  btnPrimaryText: { color: "#0B1220", fontSize: fontSize.md, fontWeight: "700" },
+  btnSolo: { flex: 0, alignSelf: "stretch" },
   btnGhost: {
     flex: 1,
     backgroundColor: colors.bgCard,

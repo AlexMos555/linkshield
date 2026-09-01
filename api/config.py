@@ -121,6 +121,31 @@ class Settings(BaseSettings):
     # requests every ~2h per phone, many phones per CGNAT IP.
     blocklist_rate_limit_per_window: int = 3000
     blocklist_rate_limit_window_seconds: int = 3600
+    # Bandwidth guard for GET /blocklist/dns. Counts ONLY full-artifact sends
+    # (~2.6 MB); 304s and deltas are free, so a phone that already has a list is
+    # never counted. Sized so no realistic CGNAT gateway can reach it — 600
+    # first-ever syncs from ONE IPv4 inside an hour — while a scraper pulling
+    # multi-GB is still bounded. Fails OPEN (category is in FAIL_OPEN_CATEGORIES):
+    # if Redis is down, users get their blocklist.
+    blocklist_full_sends_per_ip_per_hour: int = 600
+
+    # Android update check (GET /api/v1/mobile/version). Bump these when a new
+    # signed APK is published (the founder sets them in Railway env at release
+    # time — no code deploy needed). Defaults describe the first public build so
+    # a phone at that version sees no spurious "update available" prompt.
+    mobile_latest_version_code: int = 100
+    mobile_latest_version_name: str = "1.0.0"
+    # Below this, the app should refuse to run old/insecure builds and require
+    # an update. 0 = never force. Keep <= latest.
+    mobile_min_supported_version_code: int = 0
+    # The phone compares embedded version NAMES (expo Constants.version, no
+    # native dep). latest_version_name above drives the optional nudge; this
+    # drives the hard "you must update" gate. Empty = never force.
+    mobile_min_supported_version_name: str = ""
+    # Where the app sends the user to update. Empty → the app falls back to the
+    # /android download page.
+    mobile_apk_url: str = ""
+    mobile_release_notes: str = ""
 
     # Rate limits — sensitive actions (per user, stricter)
     # Applied to /payments/checkout, /payments/portal, /org/create
