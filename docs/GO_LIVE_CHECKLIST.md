@@ -75,29 +75,23 @@ browser hop, no extra request, the same OTP body on the wire.
 
 ---
 
-## Known-red check: `npm-audit` — 3 of 5 CVEs cleared; the rest is hostage to a Vercel log
+## CI: all 14 checks green (2026-09-01) — including npm-audit and Vercel
 
-Current state (2026-09-01): **nanoid and fast-uri are fixed** (plain `npm update`
-inside their declared ranges — the tool the whole override saga should have
-reached for first), and **react-email 3 → 6.9.3** removed a hoisted Next copy
-from the root tree. What remains flagged is the postcss + sharp chain inside
-Next 15.
+The landing audit is at **0 vulnerabilities** and the Vercel preview deploys,
+simultaneously, without weakening any check. What it took, for the record:
 
-**The full fix exists and is proven** — commit `245040d` (+ `4e64c0d`): Next
-16.3.4 is the first release shipping the patched postcss 8.5.23, sharp resolves
-to 0.35.4, and the landing audit hit **0 vulnerabilities** with a clean local
-production build and 14/14 CI checks green. It was reverted for one reason
-only: **the Vercel deployment failed on both Next-16 commits** and was green on
-every commit before and after, and its build log needs the founder's Vercel
-dashboard login. An undeployable landing is no funnel at all, so Next 15 stays
-until that log is read.
-
-**Founder, to finish this** (15 min): open
-`npx vercel inspect dpl_HQuZmiPB1n4wD3zxdPcKX53yUPTu --logs` (or the dashboard →
-landing → failed deployment), read why the Next 16 build died there while
-building everywhere else, hand Claude the error — then revert the revert and the
-audit goes green for good. Until then the red X does not block: `main` has no
-branch protection, so no check is required for the merge button.
+- The root cause of every failed `overrides` attempt: npm on this machine never
+  truly resolved — with node_modules present it reconstructs the lockfile from
+  `node_modules/.package-lock.json`, so "delete the lock and reinstall" was a
+  no-op. A sandbox with manifests only (no lock, no node_modules) forces a real
+  network resolve, and there the overrides simply work.
+- The fix that survived: **next 15.5.25** (patch release — the first to allow
+  the patched sharp 0.35.x) + a global **postcss ^8.5.23 override** (dedupes
+  away the vulnerable copy Next bundles) + `npm update nanoid fast-uri`.
+- **react-email 6 broke the Vercel deploy** (green everywhere else, including an
+  identical fresh-install-and-build on Ubuntu). It went back to 3.x; the global
+  next override covers its nested copy, so the audit stays clean regardless.
+  If anyone bumps react-email again, watch the Vercel check specifically.
 ---
 
 ## Founder must do (ordered)
