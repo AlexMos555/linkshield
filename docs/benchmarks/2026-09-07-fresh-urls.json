@@ -1,0 +1,4494 @@
+{
+  "ts": "2026-09-07T11:25:56Z",
+  "n_phishing": 60,
+  "n_safe": 60,
+  "sources": {
+    "phishing": "URLhaus daily feed (60 URLs) + PhishTank online-valid (60 URLs), deduplicated by registrable domain.",
+    "legit": "Tranco top-1M rank 100-100000, random sample (seed=42).",
+    "cleanway_api": "https://api.cleanway.ai"
+  },
+  "phishing": {
+    "cleanway": {
+      "tp": 11,
+      "fp": 0,
+      "tn": 0,
+      "fn": 1,
+      "unknown": 48,
+      "recall": 0.9166666666666666,
+      "fpr": null,
+      "precision": 1.0,
+      "f1": 0.9565217391304348,
+      "latency_p50_ms": 8024.356064499983,
+      "latency_p95_ms": 8042.836537000085
+    },
+    "gsb": {
+      "tp": 2,
+      "fp": 0,
+      "tn": 0,
+      "fn": 58,
+      "unknown": 0,
+      "recall": 0.03333333333333333,
+      "fpr": null,
+      "precision": 1.0,
+      "f1": 0.06451612903225806,
+      "latency_p50_ms": 7.122555000023567,
+      "latency_p95_ms": 48.08556599982694
+    },
+    "phishtank": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0,
+      "unknown": 60,
+      "recall": null,
+      "fpr": null,
+      "precision": null,
+      "f1": null,
+      "latency_p50_ms": 141.5255659999275,
+      "latency_p95_ms": 265.4110209996361
+    },
+    "cloudflare_families": {
+      "tp": 56,
+      "fp": 0,
+      "tn": 0,
+      "fn": 4,
+      "unknown": 0,
+      "recall": 0.9333333333333333,
+      "fpr": null,
+      "precision": 1.0,
+      "f1": 0.9655172413793104,
+      "latency_p50_ms": 14.349092499969629,
+      "latency_p95_ms": 82.74229900007413
+    },
+    "virustotal": {
+      "tp": 57,
+      "fp": 0,
+      "tn": 0,
+      "fn": 3,
+      "unknown": 0,
+      "recall": 0.95,
+      "fpr": null,
+      "precision": 1.0,
+      "f1": 0.9743589743589743,
+      "latency_p50_ms": 214.0126419999433,
+      "latency_p95_ms": 667.2054959999514
+    }
+  },
+  "safe": {
+    "cleanway": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0,
+      "unknown": 60,
+      "recall": null,
+      "fpr": null,
+      "precision": null,
+      "f1": null,
+      "latency_p50_ms": 25545.020666499797,
+      "latency_p95_ms": 25748.443059000012
+    },
+    "gsb": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 60,
+      "fn": 0,
+      "unknown": 0,
+      "recall": null,
+      "fpr": 0.0,
+      "precision": null,
+      "f1": null,
+      "latency_p50_ms": 6.875153000009959,
+      "latency_p95_ms": 22.36920299992562
+    },
+    "phishtank": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0,
+      "unknown": 60,
+      "recall": null,
+      "fpr": null,
+      "precision": null,
+      "f1": null,
+      "latency_p50_ms": 6.432642499930807,
+      "latency_p95_ms": 27.44423200010715
+    },
+    "cloudflare_families": {
+      "tp": 0,
+      "fp": 2,
+      "tn": 49,
+      "fn": 0,
+      "unknown": 9,
+      "recall": null,
+      "fpr": 0.0392156862745098,
+      "precision": 0.0,
+      "f1": null,
+      "latency_p50_ms": 12.998861499909253,
+      "latency_p95_ms": 540.9390340000755
+    },
+    "virustotal": {
+      "tp": 0,
+      "fp": 1,
+      "tn": 59,
+      "fn": 0,
+      "unknown": 0,
+      "recall": null,
+      "fpr": 0.016666666666666666,
+      "precision": 0.0,
+      "f1": null,
+      "latency_p50_ms": 319.2754739998236,
+      "latency_p95_ms": 862.8649289998975
+    }
+  },
+  "raw": {
+    "phishing": {
+      "cleanway": [
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8089.835629000049,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 3421.442663999983,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8037.151688999984,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.417409000023,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.306986,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8036.015792,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8027.463170999965,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8040.023255000051,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 1333.4654299999897,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8025.387655999964,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.340128999995,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8042.836537000085,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.508508000054,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8022.297428000002,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 3392.240923000031,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8025.099381000018,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8026.404400000047,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8020.51373300003,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8023.511891999988,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.371999999971,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 1704.4801340000504,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.901204999992,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 3435.7248569999683,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8023.659804999966,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8026.661288000014,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8027.990220999982,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8023.956503000022,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.3095790000325,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8025.504167000008,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8023.76653400006,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8023.71777999997,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8029.736377999939,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.279073000002,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8023.168005000002,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.740340999983,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.87368300001,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 5472.7234499999895,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.490043000014,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8024.374998999974,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8023.643483000001,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8029.67631599995,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8019.071023000038,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8036.009252999975,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8023.758235999821,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8034.117540999887,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8025.474510999857,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 5698.234589000094,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8046.249128999989,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8028.382118999843,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8025.103343999945,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 3403.6703879999095,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8028.853865999963,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8034.481541999867,
+          "detail": "err:"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 93,
+          "latency_ms": 1678.6678010000742,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": 50,
+          "latency_ms": 5718.297821000078,
+          "detail": "caution"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": 45,
+          "latency_ms": 4353.366755000025,
+          "detail": "caution"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "safe",
+          "score": 10,
+          "latency_ms": 1670.6870109999272,
+          "detail": "safe"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 100,
+          "latency_ms": 2639.519928000027,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "dangerous",
+          "score": 65,
+          "latency_ms": 3446.8040479998763,
+          "detail": "dangerous"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": 50,
+          "latency_ms": 3727.2425280000334,
+          "detail": "caution"
+        }
+      ],
+      "gsb": [
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 53.420641999764484,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 48.08556599982694,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 51.5203630002361,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 43.41752300024382,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 20.46807200031253,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.176722999953199,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 20.151065999925777,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.487760000254639,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 19.083851000232244,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.7268999996485945,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 19.88609699992594,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.387094000023353,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.662888000140811,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.956114999866259,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 20.892250000088097,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 10.129870000127994,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.10555399993973,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.7325290001463145,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.22617099972922,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.041823999770713,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.077608000145119,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.800080000175512,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.1753249999346735,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.338095000046451,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.331606000003376,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.819674000074883,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.697771000039211,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.822192000025098,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.692162999774155,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.303618999732862,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.672266000303352,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.171714999709366,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.023972000046342,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.415626000238262,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.149241000002803,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.336066999869217,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.028734999948938,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 17.795972999920195,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.516382999961934,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.892232999893167,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.051084000318951,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.029952000062622,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.250040999882913,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.384244999935618,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.509613000162062,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.549900000005437,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.798408000122436,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.722953999997117,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.750986000042758,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.120928000200365,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.021913999778917,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.956876000003831,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.827760999840393,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.0084740000311285,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.09479200026908,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 7.15845900003842,
+          "detail": "matches=1"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.20661600027961,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 7.086651000008715,
+          "detail": "matches=1"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.696278000366874,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.51841599983527,
+          "detail": "matches=0"
+        }
+      ],
+      "phishtank": [
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 249.6611460001077,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 374.9092920002113,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 312.9828890000681,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 192.30754899990643,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 77.96710699994946,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 216.68410299980678,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 76.52136199976667,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 185.2957129999595,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 74.20639800011486,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 154.24336700016283,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 74.47305799996684,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 124.46331499995722,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 87.97260699975595,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 146.10350299972197,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 156.9966500001101,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 81.22450900009426,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 161.39934400007405,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 108.2972740000514,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 79.91538500027673,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 146.83352900010505,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 89.77982699980203,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 157.4850570000308,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 158.3402629999,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 166.8736789997638,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 136.94762900013302,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 243.51903400020092,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 218.02219699975467,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 95.40842500018698,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 168.7672289999682,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 103.85625400022036,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 244.1984679999223,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 189.25115399997594,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 265.4110209996361,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 113.37012599960872,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 75.08777399971223,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 215.74898700009726,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 113.86044399978346,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 176.41767599980085,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 200.3246530002798,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 78.03815099987332,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 242.20181400005458,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 89.77257700007613,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 237.54094300011275,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 162.39426800029833,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 78.76355400003376,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 146.67472999963138,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 169.92779500014876,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 169.60634199995184,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 167.96979899982034,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 79.71679899992523,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 74.50912300009804,
+          "detail": "not_in_db"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.94456299995727,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.635582999933831,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 7.329316999857838,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.060437999622081,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.430575000194949,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.273227999827213,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.328610999844386,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.605628000215802,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.097812999996677,
+          "detail": "status=429"
+        }
+      ],
+      "cloudflare_families": [
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 82.74229900007413,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 85.50852999997005,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 86.15678599971943,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 61.55621700008851,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 70.4062210002121,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 73.26187700027731,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 75.29402399995888,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 75.44260799977565,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 10.031000999788375,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 30.7110830003694,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 8.491715000218392,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 16.2145330000385,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.917582000180118,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.771392000056949,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 8.86175200002981,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.20851600005335,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 15.218274999824644,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 11.871130000145058,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 9.105467999688699,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 15.535590999661508,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 16.1876030001622,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.668456999970658,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.164208999773109,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 13.874493000002985,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 10.111661999872013,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 30.21076900040498,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 13.221080000221264,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 13.181420000364596,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 20.573301000240463,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 18.677909999951225,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 8.214317999772902,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 35.17844399993919,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.670170000044891,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 29.868856000121013,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 7.520685000145022,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.489668999885907,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 10.549351000008755,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 10.688028999993548,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 31.399078000049485,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 15.17031200000929,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 12.1741650000331,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.73669000006339,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 10.7217199997649,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 13.748764000411029,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 13.522964000003412,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 16.13634599971192,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 31.989816000077553,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 15.349793000041245,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 10.699367000142956,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 14.171539999551896,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 12.333995000062714,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 13.239127999895572,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 8.484865000355057,
+          "detail": "status=3 ip_block=False"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 6.0863559997414995,
+          "detail": "status=0 ip_block=True"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 20.388382999954047,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 11.092637999809085,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 11.074059999828023,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 6.350003000079596,
+          "detail": "status=0 ip_block=True"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.971360999770695,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 5.582287999914115,
+          "detail": "status=0 ip_block=True"
+        }
+      ],
+      "virustotal": [
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 10.0,
+          "latency_ms": 457.64445799977693,
+          "detail": "mal=9 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 1460.0421840000308,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 410.98024300026736,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 171.3675669998338,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 344.4535450003059,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 5.0,
+          "latency_ms": 207.50063199966462,
+          "detail": "mal=5 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 442.2906889999467,
+          "detail": "mal=6 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 175.11986499994237,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 18.0,
+          "latency_ms": 213.84068299994397,
+          "detail": "mal=17 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 7.0,
+          "latency_ms": 790.5373609996786,
+          "detail": "mal=7 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 360.55276000024605,
+          "detail": "mal=5 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 5.0,
+          "latency_ms": 172.21403099983945,
+          "detail": "mal=4 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 277.43767400033903,
+          "detail": "mal=6 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 9.0,
+          "latency_ms": 267.3222769999484,
+          "detail": "mal=9 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 20.0,
+          "latency_ms": 190.18091899988576,
+          "detail": "mal=17 susp=3"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 200.9662160003245,
+          "detail": "mal=4 susp=2"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 7.0,
+          "latency_ms": 605.8750299998792,
+          "detail": "mal=6 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 214.18460099994263,
+          "detail": "mal=5 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 10.0,
+          "latency_ms": 468.0775770002583,
+          "detail": "mal=10 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 11.0,
+          "latency_ms": 273.18082200008575,
+          "detail": "mal=7 susp=4"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 16.0,
+          "latency_ms": 425.9545050003908,
+          "detail": "mal=14 susp=2"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 10.0,
+          "latency_ms": 667.2054959999514,
+          "detail": "mal=8 susp=2"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 17.0,
+          "latency_ms": 185.63331499990454,
+          "detail": "mal=16 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 22.0,
+          "latency_ms": 210.74459699957515,
+          "detail": "mal=18 susp=4"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 264.08242999968934,
+          "detail": "mal=5 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 12.0,
+          "latency_ms": 183.86219400008486,
+          "detail": "mal=11 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 5.0,
+          "latency_ms": 242.68727700018644,
+          "detail": "mal=4 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 3.0,
+          "latency_ms": 194.46333399992,
+          "detail": "mal=3 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 252.2850280001876,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 316.62924000011117,
+          "detail": "mal=6 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 167.47219699982452,
+          "detail": "mal=5 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 7.0,
+          "latency_ms": 183.041695999691,
+          "detail": "mal=7 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 3.0,
+          "latency_ms": 208.16423900032532,
+          "detail": "mal=3 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 5.0,
+          "latency_ms": 159.62046899994675,
+          "detail": "mal=5 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 8.0,
+          "latency_ms": 182.5189070000306,
+          "detail": "mal=8 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 3.0,
+          "latency_ms": 161.91249700023036,
+          "detail": "mal=3 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 3.0,
+          "latency_ms": 230.25825900003838,
+          "detail": "mal=3 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 453.0468620000647,
+          "detail": "mal=6 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 12.0,
+          "latency_ms": 253.13945600009902,
+          "detail": "mal=10 susp=2"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 8.0,
+          "latency_ms": 180.01516899994385,
+          "detail": "mal=6 susp=2"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 232.27692599994043,
+          "detail": "mal=6 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 271.11968600002,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 3.0,
+          "latency_ms": 257.6077329999862,
+          "detail": "mal=3 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 149.11600699997507,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 5.0,
+          "latency_ms": 156.77587000027415,
+          "detail": "mal=4 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 160.51802899983159,
+          "detail": "mal=5 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 2.0,
+          "latency_ms": 162.22583899980236,
+          "detail": "mal=2 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 9.0,
+          "latency_ms": 301.50031199991645,
+          "detail": "mal=9 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 3.0,
+          "latency_ms": 209.68393100019966,
+          "detail": "mal=2 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 179.68051600018953,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 17.0,
+          "latency_ms": 265.6860150000284,
+          "detail": "mal=15 susp=2"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 3.0,
+          "latency_ms": 182.9420960002608,
+          "detail": "mal=2 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 6.0,
+          "latency_ms": 163.73452800007726,
+          "detail": "mal=4 susp=2"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 5.0,
+          "latency_ms": 193.23975599991172,
+          "detail": "mal=4 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 177.28805800015834,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 198.43329500008622,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 1.0,
+          "latency_ms": 223.1558160001441,
+          "detail": "mal=1 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 5.0,
+          "latency_ms": 213.10349499981385,
+          "detail": "mal=4 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 9.0,
+          "latency_ms": 221.184295999592,
+          "detail": "mal=9 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 5.0,
+          "latency_ms": 231.74655100001473,
+          "detail": "mal=5 susp=0"
+        }
+      ]
+    },
+    "safe": {
+      "cleanway": [
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25574.36974699999,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25540.166696999906,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25555.66677099978,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25563.875969000037,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25534.315062999893,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25558.856203000003,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25748.443059000012,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25585.270071000195,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25538.169683999968,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25520.416436000007,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25541.892743000062,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25561.223792999954,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25545.58486200017,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25579.168324999955,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25537.84877399994,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25539.318242000038,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25532.415287000047,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25642.94666899991,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25552.19273700004,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25586.79281500008,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25555.653383999925,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25556.610283999817,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 26130.74357100004,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25543.186409999864,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25539.76958099997,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25563.393644999906,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25562.211129000163,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25541.305348999915,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25989.412051999807,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25548.667998999917,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25564.329084999827,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25529.37299300038,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25545.502721999583,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25523.17889899996,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25548.438270000133,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25536.478481999893,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25537.183312000252,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25529.39263799999,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25527.290100999835,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25521.859209000013,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25736.19818799989,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25548.164928000006,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25526.215998000225,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25527.59693400003,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25538.769516999764,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25536.367804999827,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25528.361774999667,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25531.856393999988,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25544.538611000007,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25533.477683,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25540.608224999687,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25524.57904899984,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25533.80766400005,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25596.59780300035,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25554.195230999994,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25569.73591499991,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25554.007767000257,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25578.011939000135,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25529.13485800036,
+          "detail": "rate_limited"
+        },
+        {
+          "name": "cleanway",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 25563.88707899987,
+          "detail": "rate_limited"
+        }
+      ],
+      "gsb": [
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 25.838492000275437,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 23.881307000010565,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 22.36920299992562,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 20.984730000236596,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.199091000074986,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.238549000201601,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.099595000203408,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.0402920001033635,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.879585999991832,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.470477999959257,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.877426999835734,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.6397240000005695,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.849213999885251,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.429944000046817,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.476597999811929,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.588225999825227,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.406913000068016,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.822118999731174,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.306917999609141,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.982414000001882,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.753055000241147,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.66692599977614,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.610784000007698,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.79196300006879,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.531090999942535,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.304988999952911,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.410167999751138,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.5912510001217015,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.457855000007839,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.164162999994005,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.569607999812433,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 17.906659000345826,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.344474000296032,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.512973000302736,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.077476999711507,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.872879000184184,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.78656999980376,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.131003000064084,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.744816999798786,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.6590780002115935,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.374690000029659,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.363773999964906,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.783549999658135,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.605727000031038,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.571636999979091,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.137302000250202,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.340033000218682,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.889814999794908,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.944746999986819,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.853637000200251,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.490789999792469,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.474376000165648,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.360217999827,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.342862000110472,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.727279999722668,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.595211999865569,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.579728000360774,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.144833999769617,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 5.894807999993645,
+          "detail": "matches=0"
+        },
+        {
+          "name": "gsb",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 6.088500000259955,
+          "detail": "matches=0"
+        }
+      ],
+      "phishtank": [
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 26.68085400000564,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 28.937349999978323,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 27.44423200010715,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 33.178579000377795,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.254123999748117,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 7.43813000008231,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.300217999978486,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.083903000217106,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 11.124777000077302,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.835188000219205,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.997146000230714,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.1837420003030275,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.079144999603159,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.6608809997887874,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.331425000098534,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 11.379970000234607,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.562117999943439,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.723450000004959,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.604325999887806,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.315421000181232,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.480238999756693,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 11.096704000010504,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.385046000104921,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.579514000146446,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.2582710000024235,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 7.203217000096629,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 4.973762999725295,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 10.210020000158693,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 11.18159200041191,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8.21630099972026,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 4.989757000203099,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 7.305380000161676,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8.64554700001463,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.5041749999181775,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 10.388968999905046,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 4.803946999800246,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.12332199989396,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.153828000151407,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.570450000050187,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8.960669999851234,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.378030999963812,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.264018999696418,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.790501999854314,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.188975999772083,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.762703999811492,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 9.487812999850576,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.614085999695817,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.259803000171814,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.300357999862172,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.094128999848181,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.1668369999097195,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 8.471995000036259,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.983917000070505,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.871186999887868,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.598957999813138,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 11.494342999867513,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.862604000161809,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 7.695176999732212,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 6.174658999952953,
+          "detail": "status=429"
+        },
+        {
+          "name": "phishtank",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.805323000004137,
+          "detail": "status=429"
+        }
+      ],
+      "cloudflare_families": [
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 38.59073700004956,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 45.99506700014899,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 2881.633361999775,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 40.349221999804286,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 38.39626400031193,
+          "detail": "status=0"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 43.23474400007399,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 39.2440999999053,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 39.12726399994426,
+          "detail": "status=0"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 10.192533999997977,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 17.610224000236485,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 104.40988600021228,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 10.936573999970278,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 11.930038000173226,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 9.071436999875004,
+          "detail": "status=0"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.914476000176364,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 12.113283999951818,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 11.679680999804987,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 356.6810289999012,
+          "detail": "status=0"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 224.49840100034635,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 14.664532000097097,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.580178000102023,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 14.525593000144,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 83.72296500010634,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 766.3415970000642,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 540.9390340000755,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 11.481612999887147,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 10.551263999786897,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.414973999810172,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.861766000085481,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 5.987208000078681,
+          "detail": "status=0 ip_block=True"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 5.817331999878661,
+          "detail": "status=0"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.45624600035444,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 13.063563999821781,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 15.191935000075318,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 11.605499999859603,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 13.231796999662038,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.47918599993136,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.245976000125665,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.284949999757373,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 127.64845700030492,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "dangerous",
+          "score": null,
+          "latency_ms": 6.3542390003021865,
+          "detail": "status=0 ip_block=True"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 13.86731200000213,
+          "detail": "status=0"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 12.934158999996725,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.524629000225104,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 8.696974000031332,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 7.68096499996318,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 211.6608679998535,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 11.15837699990152,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 9.30637100009335,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 14.501786999971955,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 17.414549000022816,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 12.694267999904696,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 114.29426599988801,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 11.254462000124477,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 10.95995799960292,
+          "detail": "status=0"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 463.180704000024,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 165.1800100003129,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 283.4490250002091,
+          "detail": "status=0"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "safe",
+          "score": null,
+          "latency_ms": 131.26098300017475,
+          "detail": "resolved"
+        },
+        {
+          "name": "cloudflare_families",
+          "verdict": "unknown",
+          "score": null,
+          "latency_ms": 7.371829999556212,
+          "detail": "status=0"
+        }
+      ],
+      "virustotal": [
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 314.4196630000806,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 205.34267899984116,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 508.1567690003794,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 246.5372669998942,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 286.4759869999034,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 654.4034489998012,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 862.8649289998975,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 871.7010990003473,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 488.3379819998481,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 209.46078899987697,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 356.9657369998822,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 622.3816890001217,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 235.15640599998733,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 302.83072299971536,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 1333.7247899999056,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 175.017662999835,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 564.4206970000596,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 374.15512899951864,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 186.8440020007256,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 216.6416139998546,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 196.7770390001533,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 1.0,
+          "latency_ms": 197.2925899999609,
+          "detail": "mal=1 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 197.1833659999902,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 273.5923099999127,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 1.0,
+          "latency_ms": 219.43805399951088,
+          "detail": "mal=0 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 272.84110199980205,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 247.27370599975984,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 236.47045500001695,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 390.0021760000527,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 226.31977499986533,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 401.6934270002821,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 649.8568860006344,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 1.0,
+          "latency_ms": 343.161534000501,
+          "detail": "mal=0 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 1.0,
+          "latency_ms": 685.3099709996968,
+          "detail": "mal=1 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 205.34120699994673,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 324.13128499956656,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 529.288701999576,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 359.64713399971515,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 230.34494100011216,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 380.91262099987944,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 238.36143999960768,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "dangerous",
+          "score": 4.0,
+          "latency_ms": 192.78430299982574,
+          "detail": "mal=4 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 1.0,
+          "latency_ms": 416.57614300038404,
+          "detail": "mal=0 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 201.55804499972874,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 417.00264100018103,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 575.774808999995,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 257.2784040003171,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 214.52407000015228,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 362.96133099949657,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 1.0,
+          "latency_ms": 186.7862770004649,
+          "detail": "mal=0 susp=1"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 792.2939979998773,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 300.7763999994495,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 462.11186300024565,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 424.39966699930665,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 567.1850620001351,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 588.2285249999768,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 249.4892400000026,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 330.28206000017235,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 313.3845399997881,
+          "detail": "mal=0 susp=0"
+        },
+        {
+          "name": "virustotal",
+          "verdict": "safe",
+          "score": 0.0,
+          "latency_ms": 350.83270799987076,
+          "detail": "mal=0 susp=0"
+        }
+      ]
+    },
+    "phishing_urls": [
+      "http://219.155.201.136:36366/i",
+      "http://36.71.26.92:52208/i",
+      "http://105.156.250.235:48691/i",
+      "http://183.134.152.81:38332/i",
+      "http://39.40.177.101:58273/i",
+      "http://42.227.176.7:32988/bin.sh",
+      "http://39.79.233.141:36944/bin.sh",
+      "http://115.63.14.35:44703/i",
+      "http://210.208.110.147:59877/i",
+      "http://113.221.25.216:37532/bin.sh",
+      "http://182.116.123.155:56622/i",
+      "http://42.178.56.173:51013/i",
+      "http://182.124.36.215:59176/bin.sh",
+      "http://123.11.67.64:44127/i",
+      "http://43.252.159.117:39585/i",
+      "http://115.51.89.58:38582/i",
+      "http://115.54.108.81:38694/i",
+      "http://42.239.143.201:52770/i",
+      "http://123.9.80.85:51154/bin.sh",
+      "http://180.107.123.227:46139/i",
+      "http://210.208.111.100:56274/bin.sh",
+      "http://58.22.17.77:48437/bin.sh",
+      "http://210.208.111.36:50488/i",
+      "http://83.219.1.198:33918/bin.sh",
+      "http://125.41.231.68:59866/i",
+      "http://219.155.81.73:57148/i",
+      "http://42.6.220.55:52251/i",
+      "http://182.116.38.177:53412/i",
+      "http://223.14.78.86:55197/bin.sh",
+      "http://37.78.38.173:50492/bin.sh",
+      "http://115.55.52.39:37533/i",
+      "http://125.43.82.147:48369/bin.sh",
+      "http://42.5.251.216:54189/i",
+      "http://42.59.233.5:51478/i",
+      "http://42.178.165.19:37911/bin.sh",
+      "http://123.188.220.165:59568/i",
+      "http://59.180.158.76:54794/i",
+      "http://125.43.37.95:40928/i",
+      "http://120.28.189.248:50610/bin.sh",
+      "http://110.186.231.170:38543/i",
+      "http://222.142.207.37:51650/bin.sh",
+      "http://125.44.215.218:54441/i",
+      "http://183.150.205.192:57127/i",
+      "http://115.53.209.24:38958/bin.sh",
+      "http://115.56.12.39:52565/bin.sh",
+      "http://222.137.209.172:35853/bin.sh",
+      "http://103.18.13.54:47482/i",
+      "http://120.28.212.172:40293/i",
+      "http://125.47.231.185:44037/i",
+      "http://113.237.106.196:50262/bin.sh",
+      "http://210.208.110.130:43841/i",
+      "http://117.63.74.133:39063/i",
+      "http://222.139.36.162:57183/i",
+      "https://outgeud.com/",
+      "https://hotlinkcashrefound.wixsite.com/cash",
+      "https://nsakana.blogspot.com/nastchhd",
+      "https://shorturl.at/lsjnr",
+      "http://allegrolokalnie.pl-74162.top",
+      "https://do-nb-f39o-lg-tb-a.vercel.app/#",
+      "https://seconnectermonacotelecomwebmail.weebly.com/"
+    ],
+    "legit_urls": [
+      "https://rte.ie",
+      "https://niceranker.com",
+      "https://consumerhelpline.gov.in",
+      "https://fanlore.org",
+      "https://spmailtechnol.com",
+      "https://seesaa.jp",
+      "https://inews.id",
+      "https://jetbrains-ide-services.com",
+      "https://kueez.com",
+      "https://wisc.edu",
+      "https://sn.at",
+      "https://ttnews.com",
+      "https://banuri.edu.pk",
+      "https://awsdns-09.net",
+      "https://sensacine.com",
+      "https://eprize.net",
+      "https://luxuryestate.com",
+      "https://keibabook.co.jp",
+      "https://seoul.go.kr",
+      "https://nightteer.com",
+      "https://mob.org",
+      "https://thuvienmc.com",
+      "https://gzone.ph",
+      "https://bandec.cu",
+      "https://netcraze.pro",
+      "https://momentum.co.za",
+      "https://camelcamelcamel.com",
+      "https://globalrelay.com",
+      "https://hagebau.de",
+      "https://sex-studentki.bid",
+      "https://windowsupdate.com",
+      "https://fairfaxcounty.gov",
+      "https://applefile.com",
+      "https://traidmods.org",
+      "https://adam4adam.com",
+      "https://greenpeace.org.uk",
+      "https://vegnews.com",
+      "https://threatpost.com",
+      "https://seikowatches.com",
+      "https://unonet.it",
+      "https://ashemaletube.me",
+      "https://koipasti.tv",
+      "https://crex.com",
+      "https://lpl.com",
+      "https://vonagebusiness.com",
+      "https://defillama.com",
+      "https://myssl.ru",
+      "https://vidgo.cash",
+      "https://disneyfoodblog.com",
+      "https://10x10v2d.com",
+      "https://ganarchance.com",
+      "https://zhenaoijr.com",
+      "https://kabsi.at",
+      "https://thisoldhouse.com",
+      "https://personio-dev.com",
+      "https://tga.gov.au",
+      "https://bankinform.ru",
+      "https://ro-soft.ru",
+      "https://womenshealth.gov",
+      "https://public-trust.com"
+    ]
+  }
+}
