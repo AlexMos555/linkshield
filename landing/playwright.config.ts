@@ -39,6 +39,14 @@ export default defineConfig({
       use: { ...devices["iPhone 14"] },
       testMatch: /mobile\.spec\.ts$/,
     },
+    // Android UA + viewport — the primary CTA must resolve to the app page
+    // (/android), never /dns: strict Private DNS conflicts with the app's
+    // VPN shield. Chromium-based, so no extra browser install.
+    {
+      name: "android",
+      use: { ...devices["Pixel 7"] },
+      testMatch: /mobile\.spec\.ts$/,
+    },
   ],
 
   // Spin up the Next.js dev server automatically when running locally

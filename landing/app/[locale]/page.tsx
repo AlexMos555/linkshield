@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { InstallButtons } from "@/components/InstallButtons";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
+import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { loadLiveRecall } from "@/lib/live-recall";
 import { routing, type Locale } from "@/i18n/routing";
 
@@ -155,16 +155,16 @@ export default async function Home({ params }: HomeProps) {
             <a href="#privacy" className="text-sm text-slate-400 hover:text-white transition">{nav("privacy")}</a>
             <a href="/business" className="text-sm text-slate-400 hover:text-white transition">{nav("business")}</a>
             <LanguageSwitcher />
-            <a href={PRIMARY_INSTALL_HREF} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
+            <PrimaryInstallLink data-testid="primary-install-nav" androidLabel={nav("install_android")} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
               {nav("install")}
-            </a>
+            </PrimaryInstallLink>
           </div>
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-2">
             <LanguageSwitcher />
-            <a href={PRIMARY_INSTALL_HREF} className="bg-green-500 text-green-950 px-4 py-2 rounded-lg text-sm font-bold">
+            <PrimaryInstallLink data-testid="primary-install-nav-mobile" androidLabel={nav("install_android")} className="bg-green-500 text-green-950 px-4 py-2 rounded-lg text-sm font-bold">
               {nav("install_short")}
-            </a>
+            </PrimaryInstallLink>
           </div>
         </div>
       </nav>
@@ -188,9 +188,9 @@ export default async function Home({ params }: HomeProps) {
           </h1>
           <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">{hero("subtitle")}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href={PRIMARY_INSTALL_HREF} className="bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition glow-hover">
+            <PrimaryInstallLink data-testid="primary-install-hero" androidLabel={hero("cta_android")} className="bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition glow-hover">
               {hero("cta_primary")}
-            </a>
+            </PrimaryInstallLink>
             <a href="#how" className="border border-slate-600 text-slate-300 px-8 py-4 rounded-xl text-lg font-semibold hover:border-slate-400 transition">
               {hero("cta_secondary")}
             </a>
@@ -247,7 +247,7 @@ export default async function Home({ params }: HomeProps) {
               <ul className="space-y-2 text-sm text-slate-400 mb-8">
                 {pricingFree.features.map((f) => <li key={f}>{f}</li>)}
               </ul>
-              <a href={PRIMARY_INSTALL_HREF} className="block text-center py-3 rounded-xl border border-slate-600 text-slate-300 font-semibold hover:border-slate-400 transition">{pricingFree.cta}</a>
+              <PrimaryInstallLink androidLabel={nav("install_android")} className="block text-center py-3 rounded-xl border border-slate-600 text-slate-300 font-semibold hover:border-slate-400 transition">{pricingFree.cta}</PrimaryInstallLink>
             </div>
             {/* Personal */}
             <div className="bg-slate-800/50 rounded-2xl p-8 pricing-featured relative">
@@ -355,9 +355,9 @@ export default async function Home({ params }: HomeProps) {
         <h2 className="text-3xl font-extrabold text-white mb-4">{cta("title")}</h2>
         <p className="text-lg text-slate-400 mb-8">{cta("subtitle")}</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <a href={PRIMARY_INSTALL_HREF} className="bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition glow-hover">
+          <PrimaryInstallLink data-testid="primary-install-final" androidLabel={hero("cta_android")} className="bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition glow-hover">
             {cta("cta_primary")}
-          </a>
+          </PrimaryInstallLink>
           <a href="/business" className="border border-slate-600 text-slate-300 px-8 py-4 rounded-xl text-lg font-semibold hover:border-slate-400 transition">
             {cta("cta_business")}
           </a>

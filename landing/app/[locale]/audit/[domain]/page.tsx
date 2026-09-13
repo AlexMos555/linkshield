@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { InstallButtons } from "@/components/InstallButtons";
+import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { routing, type Locale } from "@/i18n/routing";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -63,6 +64,8 @@ export default async function AuditPage({ params }: Props) {
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
   const canonical = urlFor(safeLocale, domain);
+  // Android-only label for the primary install CTA (see PrimaryInstallLink).
+  const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
 
   // JSON-LD: WebPage describing the audit + the Cleanway WebSite
   const jsonLd = {
@@ -101,8 +104,8 @@ export default async function AuditPage({ params }: Props) {
           <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
             Cleanway
           </a>
-          <a
-            href={PRIMARY_INSTALL_HREF}
+          <PrimaryInstallLink
+            androidLabel={nav("install_android")}
             style={{
               background: "#22c55e",
               color: "#052e16",
@@ -114,7 +117,7 @@ export default async function AuditPage({ params }: Props) {
             }}
           >
             Add to Chrome
-          </a>
+          </PrimaryInstallLink>
         </div>
       </nav>
 
@@ -150,8 +153,8 @@ export default async function AuditPage({ params }: Props) {
           </div>
         </div>
 
-        <a
-          href={PRIMARY_INSTALL_HREF}
+        <PrimaryInstallLink
+          androidLabel={nav("install_android")}
           style={{
             display: "inline-block",
             background: "#22c55e",
@@ -164,7 +167,7 @@ export default async function AuditPage({ params }: Props) {
           }}
         >
           Install Cleanway to See Full Report
-        </a>
+        </PrimaryInstallLink>
 
         <div style={{ marginTop: 24 }}>
           <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />

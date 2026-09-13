@@ -397,7 +397,8 @@
       "privacy": "الخصوصية",
       "business": "الشركات",
       "install": "إضافة إلى Chrome",
-      "install_short": "تثبيت"
+      "install_short": "تثبيت",
+      "install_android": "تحميل تطبيق Android"
     },
     "hero": {
       "badge": "{recall}% من روابط التصيد الحديثة مكتشَفة (مقيس)",
@@ -405,6 +406,7 @@
       "title_part2": "تحترم خصوصيتك",
       "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
       "cta_primary": "إضافة إلى Chrome — مجاني",
+      "cta_android": "تحميل تطبيق Android",
       "cta_secondary": "كيف يعمل",
       "cta_footer": "حماية أساسية مجانية للأبد. بدون بطاقة.",
       "badge_fallback": "حماية خصوصية أولاً ضد التصيد — يُنشر معدل الاسترجاع أسبوعياً"
@@ -779,7 +781,7 @@
       "layer_body": "DNS is the widest layer — it protects every app on your device, not just the browser. It is also the shallowest: it can only block a domain that is already on our phishing blocklist. It cannot read a page, so on its own it will not catch a brand-new phishing kit the moment it appears, or a credential form hiding on a trusted-but-hacked site.",
       "layer_extension": "For that deeper protection, add the Cleanway browser extension. It runs the full per-page analysis on every site you open, spots look-alike login forms in real time, and warns you before you type a password. DNS covers the widest surface; the extension adds the deepest checks — together they cover both.",
       "layer_generic": "This is not a generic DNS filter. Cleanway DNS is tuned specifically for phishing and credential theft, driven by the same threat intelligence that powers the extension — not a repurposed ad-blocking list.",
-      "layer_extension_cta": "Get the Cleanway browser extension →"
+      "layer_extension_cta": "احصل على إضافة Cleanway للمتصفح →"
     },
     "install": {
       "browser_label": "إضافات المتصفح",

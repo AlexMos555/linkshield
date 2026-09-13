@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
+import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 
 interface SignupFormProps {
   planFromQuery: string | null;
@@ -34,6 +34,7 @@ interface SignupFormProps {
  */
 export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupFormProps) {
   const t = useTranslations("Signup");
+  const nav = useTranslations("Nav");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -211,9 +212,9 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
 
       <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 8, lineHeight: 1.5 }}>
         {t("footer_lead")} {t("footer_or")}{" "}
-        <a href={PRIMARY_INSTALL_HREF} style={{ color: "#60a5fa" }}>
+        <PrimaryInstallLink androidLabel={nav("install_android")} style={{ color: "#60a5fa" }}>
           {t("footer_install_cta")}
-        </a>{" "}
+        </PrimaryInstallLink>{" "}
         {t("footer_install_tail")}
       </p>
     </form>

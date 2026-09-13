@@ -111,3 +111,21 @@ test("testimonials render three cards", async ({ page }) => {
   const cards = page.getByTestId("testimonial-card");
   await expect(cards).toHaveCount(3);
 });
+
+// ─── Primary install CTA (desktop keeps the DoH profile path) ────────────────
+//
+// PrimaryInstallLink only re-points Android user agents; on desktop the
+// server-rendered /dns href and label must survive hydration untouched.
+
+test("desktop primary CTAs stay on /dns after hydration", async ({ page }) => {
+  await page.goto("/en");
+  await page.waitForLoadState("networkidle");
+
+  const nav = page.getByTestId("primary-install-nav");
+  await expect(nav).toHaveAttribute("href", "/dns");
+  await expect(nav).toHaveText("Add to Chrome");
+
+  const hero = page.getByTestId("primary-install-hero");
+  await expect(hero).toHaveAttribute("href", "/dns");
+  await expect(hero).toHaveText("Add to Chrome — Free");
+});

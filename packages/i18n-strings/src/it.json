@@ -397,7 +397,8 @@
       "privacy": "Privacy",
       "business": "Aziende",
       "install": "Aggiungi a Chrome",
-      "install_short": "Installa"
+      "install_short": "Installa",
+      "install_android": "Scarica l'app Android"
     },
     "hero": {
       "badge": "{recall}% di URL di phishing recenti rilevate (misurato)",
@@ -405,6 +406,7 @@
       "title_part2": "rispetta la tua privacy",
       "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
       "cta_primary": "Aggiungi a Chrome — gratis",
+      "cta_android": "Scarica l'app Android",
       "cta_secondary": "Come funziona",
       "cta_footer": "Protezione base gratuita per sempre. Senza carta.",
       "badge_fallback": "Protezione anti-phishing privata — recall pubblicato settimanalmente"
@@ -779,7 +781,7 @@
       "layer_body": "DNS is the widest layer — it protects every app on your device, not just the browser. It is also the shallowest: it can only block a domain that is already on our phishing blocklist. It cannot read a page, so on its own it will not catch a brand-new phishing kit the moment it appears, or a credential form hiding on a trusted-but-hacked site.",
       "layer_extension": "For that deeper protection, add the Cleanway browser extension. It runs the full per-page analysis on every site you open, spots look-alike login forms in real time, and warns you before you type a password. DNS covers the widest surface; the extension adds the deepest checks — together they cover both.",
       "layer_generic": "This is not a generic DNS filter. Cleanway DNS is tuned specifically for phishing and credential theft, driven by the same threat intelligence that powers the extension — not a repurposed ad-blocking list.",
-      "layer_extension_cta": "Get the Cleanway browser extension →"
+      "layer_extension_cta": "Installa l'estensione Cleanway →"
     },
     "install": {
       "browser_label": "Estensioni browser",

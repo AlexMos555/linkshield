@@ -5,7 +5,8 @@
     "privacy": "गोपनीयता",
     "business": "व्यवसाय",
     "install": "Chrome में जोड़ें",
-    "install_short": "इंस्टॉल"
+    "install_short": "इंस्टॉल",
+    "install_android": "Android ऐप डाउनलोड करें"
   },
   "Hero": {
     "badge": "{recall}% नए फ़िशिंग URL पकड़े गए (मापा गया)",
@@ -13,6 +14,7 @@
     "title_part2": "आपकी गोपनीयता का सम्मान करती है",
     "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
     "cta_primary": "Chrome में जोड़ें — मुफ़्त",
+    "cta_android": "Android ऐप डाउनलोड करें",
     "cta_secondary": "यह कैसे काम करता है",
     "cta_footer": "बुनियादी सुरक्षा हमेशा के लिए मुफ़्त। कोई कार्ड नहीं।",
     "badge_fallback": "गोपनीयता-प्रथम फ़िशिंग सुरक्षा — recall हर हफ़्ते प्रकाशित"
@@ -387,7 +389,7 @@
     "layer_body": "DNS is the widest layer — it protects every app on your device, not just the browser. It is also the shallowest: it can only block a domain that is already on our phishing blocklist. It cannot read a page, so on its own it will not catch a brand-new phishing kit the moment it appears, or a credential form hiding on a trusted-but-hacked site.",
     "layer_extension": "For that deeper protection, add the Cleanway browser extension. It runs the full per-page analysis on every site you open, spots look-alike login forms in real time, and warns you before you type a password. DNS covers the widest surface; the extension adds the deepest checks — together they cover both.",
     "layer_generic": "This is not a generic DNS filter. Cleanway DNS is tuned specifically for phishing and credential theft, driven by the same threat intelligence that powers the extension — not a repurposed ad-blocking list.",
-    "layer_extension_cta": "Get the Cleanway browser extension →"
+    "layer_extension_cta": "Cleanway ब्राउज़र एक्सटेंशन पाएँ →"
   },
   "Install": {
     "browser_label": "ब्राउज़र एक्सटेंशन",

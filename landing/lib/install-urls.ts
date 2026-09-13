@@ -86,9 +86,11 @@ export const PLATFORMS: Record<Platform, PlatformInfo> = {
   },
 };
 
-/** Where the primary install CTA points until any listing is live.
- *  Set to `/dns` because the DoH profile install is the ONE install path
- *  that works today without any store account. */
+/** Where the primary install CTA points: `/dns` for desktop until a store
+ *  listing is live (the DoH profile is the one install path that works today
+ *  without any store account). Android visitors are redirected client-side to
+ *  `PLATFORMS.android.href` by `PrimaryInstallLink` — strict Private DNS
+ *  conflicts with the app's VPN shield, so /dns is the wrong door for them. */
 export const PRIMARY_INSTALL_HREF = "/dns";
 
 export function isLive(platform: Platform): boolean {
