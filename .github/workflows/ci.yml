@@ -61,6 +61,12 @@ jobs:
         # all rely on. Uses node's built-in TS stripper — no test runner needed.
         run: npm run test:api-client
 
+      - name: Turnstile captcha-page helpers
+        # /auth/captcha hands the mobile app a cleanway:// deep link. This pins
+        # that the link is only ever built from an allowlisted scheme + the
+        # app's 32-hex nonce, and that the always-pass test sitekey is flagged.
+        run: node --experimental-strip-types scripts/test-turnstile-lib.mjs
+
       - name: Extension build drift guard
         # `packages/extension-core/` is the single source of truth.
         # `scripts/build-extensions.sh` fans the files out to
@@ -131,6 +137,12 @@ jobs:
 
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
+
+      - name: Captcha service unit tests
+        # Pins the deep-link contract with /auth/captcha: https-only URL,
+        # nonce must match, timeout/grace/cancel resolve null exactly once.
+        # node:test module mocks stand in for react-native; no runner needed.
+        run: node --experimental-test-module-mocks --experimental-strip-types mobile/scripts/test-captcha-service.mjs
 
       - name: Mobile blocklist assets in sync with data/
         # popular_veto.txt / shared_suffixes.txt gate the on-device

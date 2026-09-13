@@ -37,7 +37,11 @@ const CSP_DIRECTIVES = [
   // Sentry JS is bundled via @sentry/nextjs (not loaded from browser.sentry-cdn.com),
   // so script-src does NOT need the Sentry CDN origin. *.ingest.sentry.io stays in
   // connect-src only (it's an XHR endpoint, never a <script src>).
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+  // Cloudflare Turnstile (captcha on /signup + the hosted /auth/captcha
+  // challenge for the mobile app). Cloudflare's CSP reference asks for
+  // exactly script-src + frame-src on challenges.cloudflare.com; connect-src
+  // is only needed for pre-clearance, which we don't use.
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com",
   // 'unsafe-inline' on style-src is needed for the inline `style={...}`
   // attributes used throughout the App Router pages (success, restore,
   // pricing). Tailwind output is fine without it.
@@ -50,8 +54,8 @@ const CSP_DIRECTIVES = [
   // Sentry ingest is fetch-only (no <script>), kept in connect-src.
   "connect-src 'self' https://api.cleanway.ai https://*.supabase.co https://*.supabase.in https://api.stripe.com https://*.ingest.sentry.io",
   // Stripe Checkout + the Outlook add-in iframe surface (addin domain
-  // sits on the same Vercel deploy).
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://addin.cleanway.ai",
+  // sits on the same Vercel deploy) + the Turnstile widget iframe.
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://addin.cleanway.ai https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "form-action 'self' https://checkout.stripe.com",
   "base-uri 'self'",
