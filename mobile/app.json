@@ -37,6 +37,12 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
         "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "plugins": [
@@ -47,7 +53,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Cleanway to scan QR codes"
+          "cameraPermission": "Allow Cleanway to scan QR codes",
+          "recordAudioAndroid": false
         }
       ],
       "expo-asset",

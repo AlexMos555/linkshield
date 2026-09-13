@@ -20,8 +20,9 @@ RuStore is the **primary** channel for the Tele2 RF launch.
 > native libs (our APK ships `arm64-v8a` ✓) and a signed artifact (✓). Our build
 > clears every RuStore requirement today.
 
-RuStore accepts a physical-person (физлицо) developer account via ЕСИА — no
-company required.
+RuStore accepts a physical-person (физлицо) developer account — no company
+required. The developer console signs in with **VK ID** (Госуслуги / Яндекс /
+номер телефона are the ways *into* VK ID, not separate logins).
 
 ---
 
@@ -29,7 +30,7 @@ company required.
 
 | | Task |
 |---|---|
-| **[F] Founder only** | **Back up** the keystore (§1). Create the RuStore developer account (ЕСИА, физлицо). Confirm `support@cleanway.ai` receives mail. Upload the artifact + paste the answers below. |
+| **[F] Founder only** | Keep the keystore backup safe (§1). Create the RuStore developer account (VK ID, физлицо). Wire transactional SMTP for sign-in mail before submitting (§5). Confirm `support@cleanway.ai` receives mail. Upload the artifact + paste the answers below. |
 | **[C] Claude — done** | Release-signing + ABI plugins, explicit `versionCode`, honest listing, this runbook, the `/android` funnel page, the in-app update check, **the keystore and the signed APK itself** (§1–2). |
 
 The keystore is **permanent identity material**: lose it and every user must
@@ -37,17 +38,22 @@ uninstall/reinstall forever.
 
 ---
 
-## 1. Release keystore — ALREADY GENERATED (2026-08-31)
+## 1. Release keystore — ALREADY GENERATED (2026-08-31) and IN USE
 
-It lives at **`~/cleanway-release/`**: `cleanway-release.jks` +
-`keystore.properties` (the password is inside that file). RSA 4096,
-`CN=Cleanway, OU=Mobile, O=Cleanway, L=Moscow, C=RU`, valid to 2054.
+`cleanway-release.jks` (RSA 4096, `CN=Cleanway, OU=Mobile, O=Cleanway,
+L=Moscow, C=RU`, valid to 2054) and its `keystore.properties` exist in two
+places, both outside git: the **founder's backup** (the `.jks`, the properties
+file and a zipped copy, kept together with the downloaded v1.0.0 APK) and a
+**working copy next to the generated `android/` folder of the build sandbox**
+(§2). The password lives only in `keystore.properties` and the password manager
+— never in this repo.
 
-**Founder's job now is to BACK IT UP** — password manager **+ one offline copy**.
+> **Do not regenerate it.** The v1.0.0 APK (versionCode 100) signed with this key
+> has already been built and downloaded; a new key would make every phone that
+> installed it refuse the update ("App not installed"). The only remaining job is
+> to keep the backup safe: password manager **+ one offline copy**.
 
-> Want a key that never passed through an AI session? There are zero installed
-> users, so regenerating costs nothing: delete `~/cleanway-release/`, run the
-> command below, then re-run §2. Do this *before* the first public download, not after.
+For the record, it was created with:
 
 ```bash
 keytool -genkeypair -v \
@@ -57,18 +63,17 @@ keytool -genkeypair -v \
   -storetype PKCS12
 ```
 
-- Back up `cleanway-release.jks` in **two** places (password manager + one offline
-  copy). This file never enters git.
-- Move/copy it where the build can reach it, then create the credentials file the
-  plugin reads. `storeFile` is **relative to the `android/` directory**, so the
-  simplest is to drop the `.jks` into `android/` and reference it by name:
+- `cleanway-release.jks` never enters git.
+- The build reads the key through a credentials file next to it. `storeFile` is
+  **relative to the `android/` directory**, so the `.jks` sits inside `android/`
+  and is referenced by name:
 
 ```properties
 # mobile/android/keystore.properties  — never commit this or the .jks.
 storeFile=cleanway-release.jks
-storePassword=<the store password you set above>
+storePassword=<store password — from the password manager>
 keyAlias=cleanway
-keyPassword=<the key password you set above>
+keyPassword=<key password — from the password manager>
 ```
 
 > **Before you create these files, confirm git will ignore them.** `*.jks`,
@@ -83,11 +88,11 @@ keyPassword=<the key password you set above>
 > rotate the key, and every already-installed user would need to uninstall/reinstall.
 
 **Where the file must physically sit:** next to the generated `android/` tree of
-whatever you build from. Since §2 builds from the mirror sandbox, that is
-`~/Library/Caches/cleanway-dev/cwmobile/android/keystore.properties` (with the
-`.jks` in the same folder). The mirror is outside git entirely, so the key can
-never be committed from there — keep your master copy in the password manager
-and treat the mirror copy as disposable.
+whatever you build from. Since §2 builds from the mirror sandbox, that is the
+sandbox's `cwmobile/android/keystore.properties` (with the `.jks` in the same
+folder) — the copy that produced v1.0.0 is already there. The mirror is outside
+git entirely, so the key can never be committed from there; the founder's backup
+is the master copy and the mirror copy is disposable.
 
 **How the wiring works** (`mobile/plugins/withReleaseSigning.js`): `android/` is
 the *managed* workflow and is regenerated by every `expo prebuild`, so the plugin
@@ -188,7 +193,7 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > **What is and isn't verified (2026-08-31).** The full release build IS done:
 > a signed 55 MB APK exists and `apksigner` reports *Verifies*, v2 scheme,
 > `CN=Cleanway` — not the debug key. Both config plugins have committed tests
-> (`mobile/plugins/__tests__/plugins.test.js`, 14 assertions, run in CI) covering
+> (`mobile/plugins/__tests__/plugins.test.js`, 15 assertions, run in CI) covering
 > correct anchors, idempotency across prebuilds, the debug-signing fallback, and
 > that ABI filtering never touches debug builds.
 >
@@ -221,12 +226,43 @@ Cross-cutting answers:
 - **Breach/password check** (if surfaced): uses k-anonymity — only a short hash
   prefix leaves the device, never the email/password itself.
 
+### Manifest permissions (what RuStore's automated scan shows — answer from this table)
+
+The "photos: No" answer above and the `CAMERA` permission are **not** a
+contradiction: the camera is opened only when the user taps "Сканировать QR",
+frames are decoded live for a QR code and never saved, previewed elsewhere, or
+uploaded. Moderators do ask when a declared permission is missing from the
+justification, so every `uses-permission` in the APK is listed here.
+
+| Permission | Status | Why it is there |
+|---|---|---|
+| `BIND_VPN_SERVICE`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | **Used** | The on-device DNS shield (§4). |
+| `RECEIVE_BOOT_COMPLETED` | **Used** | Re-starts the shield after a reboot (the home screen says so). |
+| `POST_NOTIFICATIONS`, `VIBRATE` | **Used** | The persistent "shield on" notification and blocked-site alerts. |
+| `CAMERA` | **Used** | QR-code scanning only (`scanner.tsx`); runtime-requested on first use; no photo/video capture. |
+| `INTERNET`, `ACCESS_NETWORK_STATE`, `WAKE_LOCK` | **Used** | Domain checks against `api.cleanway.ai`, blocklist refresh, offline detection. |
+| `USE_BIOMETRIC`, `USE_FINGERPRINT` | Library | Declared by `expo-secure-store` for keystore-backed storage; the app never prompts for biometrics. |
+| `com.google.android.c2dm.permission.RECEIVE`, launcher badge permissions (`com.sec…`, `com.huawei…`, `com.htc…`, `READ_APP_BADGE`, …) | Library | Declared by `expo-notifications` for push/badges. No Firebase project is configured in the app, so no push token is ever created. |
+| `RECORD_AUDIO` | **Removed from the next build** | Came from the `expo-camera` plugin default (`recordAudioAndroid: true`); the app records no audio or video. |
+| `SYSTEM_ALERT_WINDOW` | **Removed from the next build** | Expo's bare template adds it for the development red-box overlay; unused in release. |
+| `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` | **Removed from the next build** | Expo template + `expo-file-system` manifest defaults; the app has no file picker, export, or gallery access. |
+
+The four "removed" rows are blocked in `mobile/app.json`
+(`expo.android.blockedPermissions` + `expo-camera` → `recordAudioAndroid: false`),
+which makes `expo prebuild` write `tools:node="remove"` entries so library
+manifests cannot re-add them. **v1.0.0 (versionCode 100) still declares them** —
+the change ships with the next build (versionCode 101). If you submit the
+versionCode 100 artifact, answer any moderator question with the rows above; if
+you rebuild first, re-run `aapt dump permissions` on the new APK and confirm the
+four names are gone before uploading.
+
 ---
 
-## 4. VpnService justification (BOTH stores will ask — the manifest declares BIND_VPN_SERVICE)
+## 4. Permission justifications — VpnService and Camera (BOTH stores will ask)
 
-Paste this verbatim into the "why does your app use VpnService / the VPN API"
-field. It is the same honest framing as the store copy and the landing page.
+Paste the first block verbatim into the "why does your app use VpnService / the
+VPN API" field. It is the same honest framing as the store copy and the landing
+page. The second block answers the camera question.
 
 > Cleanway uses Android's VpnService **locally, on the device, to filter DNS and
 > block known phishing/scam domains before they load**. It establishes a local
@@ -244,19 +280,46 @@ Google Play specifics:
 - Foreground-service type is `specialUse` (declared in the manifest); provide the
   same justification if Play asks about `FOREGROUND_SERVICE_SPECIAL_USE`.
 
+**Camera** (paste if asked about `android.permission.CAMERA`):
+
+> Cleanway uses the camera for one purpose: scanning a QR code so the link
+> inside it can be checked before it is opened. The permission is requested at
+> runtime only when the user opens the scanner. Frames are decoded on the device
+> and discarded; no photo or video is captured, stored, or uploaded, and the app
+> does not access the photo gallery. Audio recording is not used (the
+> `RECORD_AUDIO` permission is removed from builds after versionCode 100).
+
 ---
 
 ## 5. Store assets & review notes
 
-- **Screenshots** (phone, RU UI): (1) home with the shield ON / green, (2) a
-  blocked-site notification in Russian, (3) the "Проверка ссылки" link-check
-  screen with a clear verdict, (4) the link-check result with plain-language
-  reasons. Capture on a real device or emulator with the app in Russian.
-- **Icon / feature graphic**: from `mobile/assets/`.
+Everything RuStore asks for is in the repo — upload from these paths:
+
+| Asset | Path | Spec |
+|---|---|---|
+| App icon | `mobile/assets/store/icon-512.png` | 512 × 512 PNG, opaque (downscaled from `mobile/assets/icon.png`; do not upload the 1024 source). |
+| Phone screenshots (≥ 3 required) | `mobile/assets/store/screenshots/01.png` … `04.png` (+ optional `05.png`) | 1080 × 2400 PNG, RU locale, unedited frames of the **signed v1.0.0 APK** on an Android 15 emulator, captured 2026-09-13. `screenshots/README.md` says what each shows and why `05` (Settings) is optional. |
+
+Screenshot set: (1) home with the shield ON, (2) a live phishing domain with the
+red "Опасно" verdict and plain-Russian reasons, (3) history with domains marked
+"Остановлен щитом", (4) the on-device score screen. Still missing and worth
+adding when convenient: a blocked-site **notification** in Russian (the shade
+capture did not work on the emulator).
+
+**Sign-in is tested by moderators — fix SMTP before submitting.** RuStore
+reviewers open every entry point, including "Войти". The app's only sign-in is an
+email one-time code sent by Supabase, whose built-in mailer is capped at 2
+emails/hour and is not meant for production. Connect a transactional SMTP
+provider (e.g. Resend) in the Supabase Auth settings *before* upload, then verify
+a code actually arrives on a fresh address. In the review notes also give the
+reviewer a test address they can receive on (or state explicitly that login is
+optional and every protection feature works without it — both are true).
+
 - **Review note** (paste): "The VPN permission is used only for a local on-device
   DNS phishing filter — no remote VPN gateway, no IP masking, no traffic proxying.
-  See the VpnService justification. Core protection is free; no login required to
-  use it."
+  See the VpnService justification. The camera is used only to scan QR codes.
+  Core protection is free; no login required to use it — sign-in (email code) is
+  optional and only syncs settings / enables Family alerts."
 
 ---
 
@@ -264,5 +327,9 @@ Google Play specifics:
 
 - ✅ B1 signing wiring · ✅ B2 versionCode · ✅ B4 blocklist no-429 · ✅ B5 honest
   listing + support page · ✅ `/android` funnel page · ✅ in-app update check
-- ⏳ **Founder:** keystore + `keystore.properties` (§1), RuStore account, host the
-  signed APK + set `NEXT_PUBLIC_APK_URL`, confirm the support mailbox.
+- ✅ Release keystore generated + backed up, signed v1.0.0 APK (versionCode 100)
+  built and downloaded (§1–2) · ✅ store icon + screenshots in repo (§5) ·
+  ✅ unused Android permissions blocked in `app.json` — lands with versionCode 101
+- ⏳ **Founder:** RuStore account (VK ID), transactional SMTP for sign-in mail
+  (§5), host the signed APK + set `NEXT_PUBLIC_APK_URL`, confirm the support
+  mailbox, install-and-update test on a real phone (§2).

@@ -118,6 +118,13 @@ First public release:
 | Support | https://cleanway.ai/support · support@cleanway.ai |
 | Website | https://cleanway.ai |
 
+### Assets (in repo)
+
+| Asset | Path | Spec |
+|---|---|---|
+| Store icon | `mobile/assets/store/icon-512.png` | 512 × 512 PNG, opaque — downscaled from `mobile/assets/icon.png` (1024 × 1024, not for direct upload). |
+| Phone screenshots | `mobile/assets/store/screenshots/01.png` … `05.png` | 1080 × 2400 PNG, RU locale, unedited frames of the signed v1.0.0 APK. `screenshots/README.md` names each screen; upload `01`–`04`, `05` only once paid tiers are wired on-store. |
+
 ### Removed vs. the old draft (and why)
 - ❌ "YOUR DATA STAYS ON YOUR DEVICE / even if breached your data is safe" —
   false: domain names are sent to the server for checks. Replaced with the
