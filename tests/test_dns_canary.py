@@ -3,16 +3,23 @@
 A canary that only ever passes is worse than none: it turns "we are watching"
 into a claim nobody checked. These tests drive the three failure modes the
 incident (and its predecessor) actually produced.
+
+The opposite failure is a canary that cries wolf: measured 2026-09-02, 11 of
+100 runs failed and every one was noise (a freshness threshold equal to the
+publisher's cadence; a random Tranco sample full of adult/pirate names the
+list legitimately blocks). The tests at the bottom pin those fixes.
 """
 from __future__ import annotations
 
 import hashlib
 import importlib.util
 import io
+import json
 import pathlib
 import re
 import sys
 import time
+import urllib.error
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -41,9 +48,10 @@ def _artifact(names, generated=None, count=None) -> bytes:
 
 
 class _FakeResponse(io.BytesIO):
-    def __init__(self, blob: bytes, headers):
+    def __init__(self, blob: bytes, headers, status: int = 200):
         super().__init__(blob)
         self.headers = headers
+        self.status = status
 
     def __enter__(self):
         return self
@@ -52,8 +60,28 @@ class _FakeResponse(io.BytesIO):
         return False
 
 
-def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None):
-    """Stub the two network calls: DoH lookups and the artifact fetch."""
+HEALTH_OK = json.dumps({
+    "status": "ok",
+    "components": {"redis": {"ok": True}, "supabase": {"ok": True, "status": 401}},
+}).encode()
+HEALTH_DEGRADED = json.dumps({
+    "status": "degraded",
+    "components": {"redis": {"ok": False, "error": "ConnectionError"},
+                   "supabase": {"ok": True, "status": 401}},
+}).encode()
+
+
+def _http(url: str, status: int, body: bytes):
+    """What urllib does for a plain GET: a response for 2xx, HTTPError otherwise."""
+    if status >= 400:
+        raise urllib.error.HTTPError(url, status, "err", None, io.BytesIO(body))
+    return _FakeResponse(body, {}, status=status)
+
+
+def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None,
+             health=(200, HEALTH_OK), landing=(200, b"<html>"), requests=None):
+    """Stub every network call: DoH lookups, the artifact fetch, /health/deep
+    and the landing page. `requests` (a list) collects every urllib Request."""
     monkeypatch.setattr(canary, "doh", lambda base, name, timeout=10.0: (rcodes.get(name, 0), 1))
     blob = artifact_text
     sha = hashlib.sha256(blob).hexdigest()
@@ -65,15 +93,23 @@ def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None):
     }
 
     def _urlopen(req, timeout=30):
-        return _FakeResponse(blob, headers)
+        if requests is not None:
+            requests.append(req)
+        url = req.full_url
+        if url.endswith("/api/v1/blocklist/dns"):
+            return _FakeResponse(blob, headers)
+        if url.endswith("/health/deep"):
+            return _http(url, *health)
+        if url.endswith("/ru/android"):
+            return _http(url, *landing)
+        raise AssertionError(f"canary probed an unexpected URL: {url}")
 
     monkeypatch.setattr(canary.urllib.request, "urlopen", _urlopen)
-    monkeypatch.setattr(canary, "tranco_sample", lambda n: [])
 
 
-def _run(monkeypatch, capsys, **kw):
+def _run(monkeypatch, capsys, argv=(), **kw):
     _install(monkeypatch, **kw)
-    monkeypatch.setattr("sys.argv", ["dns_canary.py", "--sample", "0"])
+    monkeypatch.setattr("sys.argv", ["dns_canary.py", *argv])
     code = canary.main()
     return code, capsys.readouterr().out
 
@@ -105,7 +141,7 @@ def test_dead_blocklist_fails(monkeypatch, capsys):
 
 
 def test_stale_artifact_fails(monkeypatch, capsys):
-    old = _artifact(["phish.example"], generated=int(time.time()) - 9 * 3600)
+    old = _artifact(["phish.example"], generated=int(time.time()) - 14 * 3600)
     code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=old)
     assert code == 1
     assert "is the cron dead" in out
@@ -149,3 +185,149 @@ def test_wire_query_ids_are_random_so_no_cache_can_answer():
     assert len(ids) > 40
     q = canary.wire_query("a.b.example")
     assert q[12:] == b"\x01a\x01b\x07example\x00\x00\x01\x00\x01"
+
+
+# ── de-noising (measured 2026-09-02: 11/100 failures, all noise) ──
+
+CURATED = [
+    "gosuslugi.ru", "sberbank.ru", "tinkoff.ru", "vk.com", "yandex.ru", "mail.ru",
+    "ozon.ru", "wildberries.ru", "google.com", "apple.com", "microsoft.com",
+    "github.com", "cloudflare.com", "wikipedia.org",
+]
+PUBLISHER_CADENCE_S = 6 * 3600     # refresh-dangerous-domains.yml: cron '23 */6 * * *'
+PHONE_STALE_AFTER_S = 48 * 3600    # BlockList.kt STALE_AFTER_MS
+
+
+def test_freshness_threshold_clears_cron_drift_but_not_phone_tolerance():
+    """6h == the publisher's own cadence, so ordinary GitHub cron drift tripped
+    the canary 4 times in 100 runs while the publisher was 60/60 green."""
+    assert canary.MAX_ARTIFACT_AGE_S == 13 * 3600
+    assert canary.MAX_ARTIFACT_AGE_S >= 2 * PUBLISHER_CADENCE_S
+    assert canary.MAX_ARTIFACT_AGE_S < PHONE_STALE_AFTER_S
+
+
+def test_artifact_inside_cron_drift_window_passes(monkeypatch, capsys):
+    """The exact noise case: a 7h-old artifact is one late cron, not an outage."""
+    drifted = _artifact(["phish.example"], generated=int(time.time()) - 7 * 3600)
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=drifted)
+    assert code == 0, out
+
+
+def test_random_tranco_sample_is_gone():
+    """7/100 failures were 'BLOCKED A POPULAR NAME' on adult/pirate/phishy
+    Tranco names the list is right to block. Popularity is not innocence."""
+    assert not hasattr(canary, "tranco_sample")
+
+
+def test_must_resolve_list_lives_in_data_and_carries_the_curated_names():
+    assert canary.MUST_RESOLVE_PATH == ROOT / "data" / "canary_must_resolve.txt"
+    names = canary.load_must_resolve(canary.MUST_RESOLVE_PATH)
+    assert names == CURATED
+
+
+def test_load_must_resolve_ignores_comments_blank_lines_and_case(tmp_path):
+    f = tmp_path / "list.txt"
+    f.write_text("# header\n\nGosuslugi.RU  # inline\n  vk.com.\n\nvk.com\n")
+    assert canary.load_must_resolve(f) == ["gosuslugi.ru", "vk.com"]
+
+
+def test_empty_must_resolve_file_fails_loudly(monkeypatch, capsys, tmp_path):
+    f = tmp_path / "empty.txt"
+    f.write_text("# nothing but comments\n")
+    monkeypatch.setattr(canary, "MUST_RESOLVE_PATH", f)
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY)
+    assert code == 1
+    assert "MUST-RESOLVE LIST BROKEN" in out and "empty" in out
+
+
+def test_unreadable_must_resolve_file_fails_loudly(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(canary, "MUST_RESOLVE_PATH", tmp_path / "missing.txt")
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY)
+    assert code == 1
+    assert "MUST-RESOLVE LIST BROKEN" in out and "unreadable" in out
+
+
+def test_curated_name_blocked_fails_loudly(monkeypatch, capsys):
+    """The list is RU-first: gosuslugi.ru dark is the incident we now watch for."""
+    code, out = _run(monkeypatch, capsys,
+                     rcodes={"gosuslugi.ru": 3, "list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY)
+    assert code == 1
+    assert "BLOCKED A POPULAR NAME: gosuslugi.ru" in out
+
+
+def test_publisher_guards_are_still_checked(monkeypatch, capsys):
+    """NEVER_BLOCK_GUARDS (cleanway.ai, raw.githubusercontent.com, ...) stay in
+    the resolve set alongside the curated file — nothing was dropped."""
+    seen: list[str] = []
+    _install(monkeypatch, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY)
+    monkeypatch.setattr(canary, "doh", lambda base, name, timeout=10.0: (seen.append(name) or 0, 1))
+    monkeypatch.setattr("sys.argv", ["dns_canary.py"])
+    canary.main()
+    for guard in canary.NEVER_BLOCK_GUARDS:
+        assert guard in seen
+    for name in CURATED:
+        assert name in seen
+    assert len(seen) == len(set(seen)), "a name was probed twice"
+
+
+def test_health_deep_degraded_fails(monkeypatch, capsys):
+    """/health is always-200; /health/deep is the honest probe (503 + degraded)."""
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY, health=(503, HEALTH_DEGRADED))
+    assert code == 1
+    assert "/health/deep" in out and "503" in out and "redis" in out
+
+
+def test_health_deep_200_without_status_ok_fails(monkeypatch, capsys):
+    body = json.dumps({"status": "degraded", "components": {}}).encode()
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY, health=(200, body))
+    assert code == 1
+    assert "/health/deep" in out and "degraded" in out
+
+
+def test_health_deep_non_json_fails(monkeypatch, capsys):
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY, health=(200, b"<html>maintenance</html>"))
+    assert code == 1
+    assert "/health/deep" in out and "not JSON" in out
+
+
+def test_landing_not_200_fails(monkeypatch, capsys):
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY, landing=(404, b"not found"))
+    assert code == 1
+    assert "LANDING DOWN" in out and "/ru/android" in out and "404" in out
+
+
+def test_probes_use_get_never_head_and_hit_both_new_urls(monkeypatch, capsys):
+    """Every API path answers HEAD with 405, so a HEAD probe would page on a
+    healthy service. Default bases: api.cleanway.ai for the API, cleanway.ai
+    for the landing page."""
+    seen: list = []
+    code, _ = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3},
+                   artifact_text=HEALTHY, requests=seen)
+    assert code == 0
+    assert all(r.get_method() == "GET" for r in seen)
+    urls = [r.full_url for r in seen]
+    assert "https://api.cleanway.ai/health/deep" in urls
+    assert "https://cleanway.ai/ru/android" in urls
+
+
+def test_landing_base_is_configurable_separately_from_api_base(monkeypatch, capsys):
+    seen: list = []
+    code, _ = _run(monkeypatch, capsys, argv=["--base", "https://api.staging.test/",
+                                              "--landing-base", "https://staging.test/"],
+                   rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY, requests=seen)
+    assert code == 0
+    urls = [r.full_url for r in seen]
+    assert "https://api.staging.test/health/deep" in urls
+    assert "https://staging.test/ru/android" in urls
+
+
+def test_landing_base_env_var_is_honoured(monkeypatch, capsys):
+    monkeypatch.setenv("CANARY_LANDING_BASE", "https://env.test")
+    seen: list = []
+    _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY, requests=seen)
+    assert "https://env.test/ru/android" in [r.full_url for r in seen]

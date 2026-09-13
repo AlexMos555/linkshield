@@ -1,0 +1,35 @@
+# Names the DNS canary (scripts/dns_canary.py) requires to RESOLVE, always.
+# One host per line; '#' starts a comment; blank lines ignored; case-insensitive.
+#
+# This replaced a random Tranco top-10k sample on 2026-09-13. Over 100 runs
+# (measured 2026-09-02) that sample produced 7 false "BLOCKED A POPULAR NAME"
+# alarms on adult/pirate/phishy names a blocklist is right to block
+# (allyonostore.com, voiranime.com, motherless.com, 5movierulz.social, ...).
+# Popularity is not innocence. Curated names are.
+#
+# Every name here was verified ABSENT from the live artifact before being
+# added: no exact hash match and not covered by the phone's suffix rule
+# (api.services.blocklist_artifact.artifact_covers) for the apex or www.
+# (2026-09-13: GET https://api.cleanway.ai/api/v1/blocklist/dns, 431,478
+# hashes, all 14 absent.)
+#
+# The publisher's NEVER_BLOCK_GUARDS (cleanway.ai, raw.githubusercontent.com,
+# amazonaws.com, ...) are merged in by the canary itself — do not repeat them.
+
+# RU-first: the customers are Tele2 subscribers. Any of these dark = incident.
+gosuslugi.ru
+sberbank.ru
+tinkoff.ru
+vk.com
+yandex.ru
+mail.ru
+ozon.ru
+wildberries.ru
+
+# Global infrastructure everyone's phone touches.
+google.com
+apple.com
+microsoft.com
+github.com
+cloudflare.com
+wikipedia.org
