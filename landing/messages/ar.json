@@ -6,7 +6,8 @@
     "business": "الشركات",
     "install": "إضافة إلى Chrome",
     "install_short": "تثبيت",
-    "install_android": "تحميل تطبيق Android"
+    "install_android": "تحميل تطبيق Android",
+    "install_android_short": "تطبيق Android"
   },
   "Hero": {
     "badge": "{recall}% من روابط التصيد الحديثة مكتشَفة (مقيس)",

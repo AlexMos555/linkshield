@@ -113,6 +113,7 @@
   "landing.nav.install": "Chrome में जोड़ें",
   "landing.nav.install_short": "इंस्टॉल",
   "landing.nav.install_android": "Android ऐप डाउनलोड करें",
+  "landing.nav.install_android_short": "Android ऐप",
   "landing.hero.badge": "{recall}% नए फ़िशिंग URL पकड़े गए (मापा गया)",
   "landing.hero.title_part1": "धोखाधड़ी से सुरक्षा जो",
   "landing.hero.title_part2": "आपकी गोपनीयता का सम्मान करती है",

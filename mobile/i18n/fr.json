@@ -113,6 +113,7 @@
   "landing.nav.install": "Ajouter à Chrome",
   "landing.nav.install_short": "Installer",
   "landing.nav.install_android": "Télécharger l'app Android",
+  "landing.nav.install_android_short": "App Android",
   "landing.hero.badge": "{recall}% des URL de phishing récentes détectées (mesuré)",
   "landing.hero.title_part1": "Protection contre les arnaques qui",
   "landing.hero.title_part2": "respecte votre vie privée",

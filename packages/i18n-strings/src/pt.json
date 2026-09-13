@@ -398,7 +398,8 @@
       "business": "Empresas",
       "install": "Adicionar ao Chrome",
       "install_short": "Instalar",
-      "install_android": "Baixar o app Android"
+      "install_android": "Baixar o app Android",
+      "install_android_short": "App Android"
     },
     "hero": {
       "badge": "{recall}% de URLs de phishing recentes detectadas (medido)",

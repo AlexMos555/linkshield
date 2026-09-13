@@ -162,7 +162,7 @@ export default async function Home({ params }: HomeProps) {
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-2">
             <LanguageSwitcher />
-            <PrimaryInstallLink data-testid="primary-install-nav-mobile" androidLabel={nav("install_android")} className="bg-green-500 text-green-950 px-4 py-2 rounded-lg text-sm font-bold">
+            <PrimaryInstallLink data-testid="primary-install-nav-mobile" androidLabel={nav("install_android_short")} className="bg-green-500 text-green-950 px-4 py-2 rounded-lg text-sm font-bold">
               {nav("install_short")}
             </PrimaryInstallLink>
           </div>
@@ -247,7 +247,7 @@ export default async function Home({ params }: HomeProps) {
               <ul className="space-y-2 text-sm text-slate-400 mb-8">
                 {pricingFree.features.map((f) => <li key={f}>{f}</li>)}
               </ul>
-              <PrimaryInstallLink androidLabel={nav("install_android")} className="block text-center py-3 rounded-xl border border-slate-600 text-slate-300 font-semibold hover:border-slate-400 transition">{pricingFree.cta}</PrimaryInstallLink>
+              <PrimaryInstallLink data-testid="primary-install-free-card" androidLabel={nav("install_android")} className="block text-center py-3 rounded-xl border border-slate-600 text-slate-300 font-semibold hover:border-slate-400 transition">{pricingFree.cta}</PrimaryInstallLink>
             </div>
             {/* Personal */}
             <div className="bg-slate-800/50 rounded-2xl p-8 pricing-featured relative">

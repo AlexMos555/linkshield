@@ -398,7 +398,8 @@
       "business": "Для бизнеса",
       "install": "Добавить в Chrome",
       "install_short": "Установить",
-      "install_android": "Скачать для Android"
+      "install_android": "Скачать для Android",
+      "install_android_short": "Приложение"
     },
     "hero": {
       "badge": "{recall}% свежих фишинг-URL заблокированы (замерено)",

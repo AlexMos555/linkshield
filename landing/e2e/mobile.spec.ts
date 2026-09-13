@@ -17,7 +17,7 @@ const IOS_PROJECT = "mobile-safari";
 
 /** Label the compact nav CTA settles on after hydration, per project. */
 const COMPACT_INSTALL_LABEL: Record<string, RegExp> = {
-  [ANDROID_PROJECT]: /^Get the Android app$/,
+  [ANDROID_PROJECT]: /^Android app$/,
 };
 const DEFAULT_COMPACT_INSTALL_LABEL = /^Install$/;
 
@@ -72,7 +72,7 @@ test.describe("primary install CTA routing", () => {
 
     const navMobile = page.getByTestId("primary-install-nav-mobile");
     await expect(navMobile).toHaveAttribute("href", "/android");
-    await expect(navMobile).toHaveText("Get the Android app");
+    await expect(navMobile).toHaveText("Android app");
 
     const hero = page.getByTestId("primary-install-hero");
     await expect(hero).toHaveAttribute("href", "/android");
@@ -82,6 +82,7 @@ test.describe("primary install CTA routing", () => {
     // it is the same component, and a CSS breakpoint is not a platform check.
     await expect(page.getByTestId("primary-install-nav")).toHaveAttribute("href", "/android");
     await expect(page.getByTestId("primary-install-final")).toHaveAttribute("href", "/android");
+    await expect(page.getByTestId("primary-install-free-card")).toHaveAttribute("href", "/android");
   });
 
   test("iOS visitors keep the DNS profile path", async ({ page }) => {
@@ -97,5 +98,6 @@ test.describe("primary install CTA routing", () => {
     const hero = page.getByTestId("primary-install-hero");
     await expect(hero).toHaveAttribute("href", "/dns");
     await expect(hero).toHaveText("Add to Chrome — Free");
+    await expect(page.getByTestId("primary-install-free-card")).toHaveAttribute("href", "/dns");
   });
 });

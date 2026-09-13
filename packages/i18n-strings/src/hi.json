@@ -398,7 +398,8 @@
       "business": "व्यवसाय",
       "install": "Chrome में जोड़ें",
       "install_short": "इंस्टॉल",
-      "install_android": "Android ऐप डाउनलोड करें"
+      "install_android": "Android ऐप डाउनलोड करें",
+      "install_android_short": "Android ऐप"
     },
     "hero": {
       "badge": "{recall}% नए फ़िशिंग URL पकड़े गए (मापा गया)",

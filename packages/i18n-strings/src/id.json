@@ -398,7 +398,8 @@
       "business": "Bisnis",
       "install": "Tambahkan ke Chrome",
       "install_short": "Pasang",
-      "install_android": "Unduh aplikasi Android"
+      "install_android": "Unduh aplikasi Android",
+      "install_android_short": "Aplikasi Android"
     },
     "hero": {
       "badge": "{recall}% URL phishing baru terdeteksi (terukur)",

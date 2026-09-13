@@ -113,6 +113,7 @@
   "landing.nav.install": "Добавить в Chrome",
   "landing.nav.install_short": "Установить",
   "landing.nav.install_android": "Скачать для Android",
+  "landing.nav.install_android_short": "Приложение",
   "landing.hero.badge": "{recall}% свежих фишинг-URL заблокированы (замерено)",
   "landing.hero.title_part1": "Защита от мошенников, которая",
   "landing.hero.title_part2": "уважает вашу приватность",

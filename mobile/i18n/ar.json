@@ -113,6 +113,7 @@
   "landing.nav.install": "إضافة إلى Chrome",
   "landing.nav.install_short": "تثبيت",
   "landing.nav.install_android": "تحميل تطبيق Android",
+  "landing.nav.install_android_short": "تطبيق Android",
   "landing.hero.badge": "{recall}% من روابط التصيد الحديثة مكتشَفة (مقيس)",
   "landing.hero.title_part1": "حماية من الاحتيال",
   "landing.hero.title_part2": "تحترم خصوصيتك",

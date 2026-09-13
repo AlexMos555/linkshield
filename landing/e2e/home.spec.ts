@@ -125,6 +125,7 @@ test("desktop primary CTAs stay on /dns after hydration", async ({ page }) => {
   await expect(nav).toHaveAttribute("href", "/dns");
   await expect(nav).toHaveText("Add to Chrome");
 
+  await expect(page.getByTestId("primary-install-free-card")).toHaveAttribute("href", "/dns");
   const hero = page.getByTestId("primary-install-hero");
   await expect(hero).toHaveAttribute("href", "/dns");
   await expect(hero).toHaveText("Add to Chrome — Free");

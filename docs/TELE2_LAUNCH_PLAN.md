@@ -1,7 +1,3 @@
-All findings ground out. Writing the plan.
-
----
-
 # Cleanway → Tele2 Launch Plan
 
 *Android-only, RU-first, direct-APK + RuStore. Grounded in the 5 audits and live-prod/file verification (2026-08-25); status refreshed 2026-09-13.*
