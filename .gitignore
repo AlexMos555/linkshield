@@ -89,3 +89,20 @@ keystore.properties
 # must not be tracked (this is also what keeps a keystore dropped inside android/ out of git).
 /mobile/android/
 /mobile/ios/
+
+# macOS Finder 'Copy N' duplicates — Sep 1 2026 commit ee012a6 accidentally
+# tracked 'package-lock 3.json' because only '* 2.*' was covered.
+* [0-9].zip
+* [0-9].png
+* [0-9].json
+* [0-9].tsx
+* [0-9].ts
+* [0-9].jsx
+* [0-9].js
+* [0-9].py
+* [0-9].md
+* [0-9].yml
+* [0-9].sh
+* [0-9].mjs
+* [0-9].patch
+* [0-9].example
