@@ -13,16 +13,18 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PROJECT_REF="${SUPABASE_PROJECT_REF:-bpyqgzzclsbfvxthyfsf}"
-SENDER_EMAIL="${SMTP_SENDER_EMAIL:-noreply@cleanway.ai}"
+SENDER_EMAIL="${SMTP_SENDER_EMAIL:-no-reply@cleanway.ai}"
 SENDER_NAME="${SMTP_SENDER_NAME:-Cleanway}"
 
 : "${RESEND_API_KEY:?set RESEND_API_KEY=re_... (Resend dashboard -> API Keys)}"
 SB_TOKEN="$(grep -E '^SUPABASE_ACCESS_TOKEN=' .env | cut -d= -f2- | tr -d '"'"'"' ')"
 : "${SB_TOKEN:?SUPABASE_ACCESS_TOKEN missing from .env}"
 
-echo "→ sender domain must be VERIFIED in Resend, and cleanway.ai currently"
-echo "  publishes SPF '-all' + DMARC p=reject, so add Resend to SPF first or"
-echo "  every message will be rejected. (dig TXT cleanway.ai)"
+echo "→ Before running: cleanway.ai must show \"Verified\" in Resend → Domains."
+echo "  Add EXACTLY the records Resend lists (Squarespace Domains → DNS → Custom"
+echo "  records): resend._domainkey TXT (DKIM) + MX/TXT on send.cleanway.ai."
+echo "  Do NOT edit the apex SPF (-all): Resend's bounce domain is send.cleanway.ai,"
+echo "  and DMARC passes via DKIM aligned to cleanway.ai (adkim=s)."
 echo
 
 curl -sS -X PATCH \
