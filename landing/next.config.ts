@@ -28,6 +28,8 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
  * the site actually loads from. Audit current site with /diagnostics
  * or DevTools → Network before extending the list.
  */
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   // 'unsafe-inline' for script-src is required for Next.js inline
@@ -41,7 +43,11 @@ const CSP_DIRECTIVES = [
   // challenge for the mobile app). Cloudflare's CSP reference asks for
   // exactly script-src + frame-src on challenges.cloudflare.com; connect-src
   // is only needed for pre-clearance, which we don't use.
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com",
+  // `next dev` evaluates modules with eval() (React Refresh / webpack dev
+  // runtime). Without 'unsafe-eval' the dev page never hydrates, which
+  // silently disabled every client component under `next dev` — including
+  // in CI e2e. Production builds never need it, so it stays off there.
+  `script-src 'self' 'unsafe-inline'${IS_DEV ? " 'unsafe-eval'" : ""} https://js.stripe.com https://challenges.cloudflare.com`,
   // 'unsafe-inline' on style-src is needed for the inline `style={...}`
   // attributes used throughout the App Router pages (success, restore,
   // pricing). Tailwind output is fine without it.

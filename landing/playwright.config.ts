@@ -53,7 +53,9 @@ export default defineConfig({
   webServer: process.env.BASE_URL
     ? undefined
     : {
-        command: "npm run dev",
+        // CI already ran `npm run build`: test the artifact that ships (prod
+        // CSP, prod bundles) instead of the dev server. Locally, keep dev.
+        command: process.env.CI ? "npm run start" : "npm run dev",
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
