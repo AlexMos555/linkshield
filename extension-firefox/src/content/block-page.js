@@ -80,16 +80,6 @@ const EVIDENCE_BOOK = {
     title: "ThreatFox IOC match",
     body: "abuse.ch ThreatFox links this host to an active threat indicator.",
   },
-  malware_bazaar: {
-    icon: "🦠",
-    title: "MalwareBazaar samples",
-    body: "MalwareBazaar has malware samples tied to this host.",
-  },
-  feodo: {
-    icon: "📡",
-    title: "Active botnet C2",
-    body: "Feodo Tracker lists this host as an active botnet command-and-control server.",
-  },
   spamhaus_dbl: {
     icon: "📧",
     title: "Spamhaus DBL listed",
@@ -216,7 +206,16 @@ function bt(key, subs) {
   } catch (_) { /* preview mode */ }
   let out = BLOCK_EN[key] || key;
   if (subs && subs.length) {
-    out = out.replace(/\$(DOMAIN|BRAND|N)\$/g, () => subs[0]);
+    // Map each placeholder, in order of appearance, to its OWN
+    // substitution (mirrors popup.js interpolate()). The previous
+    // version fed subs[0] into every token, so a string combining
+    // $DOMAIN$ and $BRAND$ would have rendered the same value twice.
+    let i = 0;
+    out = out.replace(/\$(DOMAIN|BRAND|N)\$/g, () => {
+      const v = i < subs.length ? subs[i] : subs[subs.length - 1];
+      i += 1;
+      return String(v);
+    });
   }
   return out;
 }
@@ -340,8 +339,27 @@ function extractBrand(reasons) {
   if (!reasons || !Array.isArray(reasons)) return null;
   for (const r of reasons) {
     if (!r || !r.detail) continue;
-    const m = String(r.detail).match(/(?:typosquat|imitat|pretend|mimic)[^\w]*([A-Z][\w.-]+)/i);
+    // Real verdict strings (local-scorer.js:72, api scoring.py:728):
+    //   "Impersonates paypal.com (high similarity)"
+    //   "Uses look-alike Unicode characters to impersonate paypal.com"
+    // The keyword may carry a suffix ("Typosquatting", "mimicking",
+    // "Impersonates") and is often followed by a connector ("of", "to
+    // be", "as") before the brand. The previous pattern (a) lacked
+    // "impersonat" entirely — so the brand line NEVER rendered for a
+    // real verdict, only for the preview page's synthetic strings — and
+    // (b) captured the very next word, so "Typosquat of sberbank.ru"
+    // rendered "pretends to be of" and "mimicking PayPal" → "…be king".
+    // The brand must end on a word char so a trailing "." is never
+    // swallowed, and the "(method)" tail is naturally ignored.
+    const d = String(r.detail);
+    const m = d.match(
+      /(?:typosquat|imitat|pretend|mimic|impersonat)[a-z]*[^\w]*(?:(?:of|to\s+be|as|like)\s+)?([A-Za-z](?:[\w.-]*\w)?)/i
+    );
     if (m) return m[1];
+    // brand_subdomain verdicts (scoring.py:771) quote the brand instead:
+    //   "Uses 'paypal' brand name in subdomain to deceive"
+    const q = d.match(/'([A-Za-z](?:[\w.-]*\w)?)'\s+brand/i);
+    if (q) return q[1];
   }
   return null;
 }
@@ -695,10 +713,14 @@ function showBlockPage(result) {
     // power user who wants to see the raw numbers.
     if (lvl === "kids") {
       overlay.setAttribute("data-skill", "kids");
-      // Hide the small "Go back" link and any future "continue
-      // anyway" controls. A child should NOT be able to override
-      // a verdict from the block page.
-      var continueBtn = overlay.querySelector("#ls-block-continue");
+      // Hide the "I understand the risk — open anyway" escape hatch.
+      // A child should NOT be able to override a verdict from the block
+      // page. NB: the button's real id is #ls-block-proceed — an earlier
+      // revision queried a non-existent #ls-block-continue, so this
+      // never matched and Kids mode silently left the bypass clickable
+      // after the 5s countdown. display:none survives the countdown's
+      // later disabled=false / textContent updates.
+      var continueBtn = overlay.querySelector("#ls-block-proceed");
       if (continueBtn) continueBtn.style.display = "none";
       var backBtnEl = overlay.querySelector(".ls-block-btn-back");
       if (backBtnEl) {
@@ -718,6 +740,10 @@ function showBlockPage(result) {
       if (scheme) scheme.style.display = "none";
       var evidence = overlay.querySelector(".ls-block-evidence");
       if (evidence) evidence.style.display = "none";
+      // The numeric confidence chip is a technical signal too — strip
+      // it along with the scheme + evidence so a child sees only STOP.
+      var kidsChip = overlay.querySelector(".ls-block-confidence");
+      if (kidsChip) kidsChip.style.display = "none";
     } else if (lvl === "pro") {
       overlay.setAttribute("data-skill", "pro");
       // Pro mode: shrink the alarmist hero, expand the evidence
@@ -788,6 +814,14 @@ function showBlockPage(result) {
       evBodies.forEach(function (el) { el.style.fontSize = "16px"; el.style.lineHeight = "1.5"; });
       var evIcons = overlay.querySelectorAll(".ls-block-evidence-icon");
       evIcons.forEach(function (el) { el.style.fontSize = "28px"; });
+      // Confidence chip was the one text node left at its 11px base
+      // while everything around it grew — unreadable for the exact
+      // low-vision user this persona exists for.
+      var grannyChip = overlay.querySelector(".ls-block-confidence");
+      if (grannyChip) {
+        grannyChip.style.fontSize = "16px";
+        grannyChip.style.padding = "6px 14px";
+      }
 
       // Voice alert.
       try {
@@ -845,11 +879,38 @@ function showBlockPage(result) {
     }, 1000);
   }
 
-  // Escape key → same as "Go back"
+  // Keyboard handling.
+  //   Escape        → same as "Go back".
+  //   Tab/Shift+Tab → stay INSIDE the overlay. aria-modal="true" is only
+  //     a hint to assistive tech; browsers do not enforce it by trapping
+  //     focus. Without this trap a keyboard user pressing Shift+Tab from
+  //     "Go back" lands in the last focusable control of the blocked page
+  //     underneath — which is still fully interactive (e.g. the phishing
+  //     login form), just hidden under our z-index. That defeats the
+  //     whole point of the block page for keyboard / screen-reader users.
   overlay.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") {
       ev.preventDefault();
       if (backBtn) backBtn.click();
+      return;
+    }
+    if (ev.key !== "Tab") return;
+    // Only controls a user can actually reach right now: this skips the
+    // disabled countdown button and anything a persona has hidden (Kids
+    // removes the bypass entirely via display:none → offsetParent null).
+    var focusable = Array.prototype.filter.call(
+      overlay.querySelectorAll("button:not([disabled])"),
+      function (el) { return el.offsetParent !== null; }
+    );
+    if (!focusable.length) { ev.preventDefault(); return; }
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    var active = document.activeElement;
+    var outside = !overlay.contains(active);
+    if (ev.shiftKey) {
+      if (active === first || outside) { ev.preventDefault(); last.focus(); }
+    } else {
+      if (active === last || outside) { ev.preventDefault(); first.focus(); }
     }
   });
 }

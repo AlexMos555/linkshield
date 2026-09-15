@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { PricingFor } from "@cleanway/api-client";
 
 import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
+import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 
 // All shapes come from the generated contract — no hand-rolled types here.
 // If the API changes, `npm run build:api-types` regenerates the types and this
@@ -154,6 +154,7 @@ export default function PricingClient({ data }: PricingClientProps) {
   // or they'd be silently moved to English mid-flow.
   const locale = useLocale();
   const t = useTranslations("Pricing");
+  const nav = useTranslations("Nav");
 
   return (
     <section className="pb-16 px-6">
@@ -195,7 +196,7 @@ export default function PricingClient({ data }: PricingClientProps) {
               "1 device · 10 languages",
             ]}
             cta="Add to Chrome"
-            ctaHref={PRIMARY_INSTALL_HREF}
+            ctaAndroidLabel={nav("install_android")}
             emphasis={false}
           />
 
@@ -285,6 +286,9 @@ interface PlanCardProps {
   features: readonly string[];
   cta: string;
   ctaHref?: string;
+  // When set, the CTA is the site-wide primary install link: PrimaryInstallLink
+  // owns the href (/dns, or /android for Android visitors) and ctaHref is unused.
+  ctaAndroidLabel?: string;
   emphasis: boolean;
   badge?: string;
   // When set, the CTA becomes a button that hits /payments/checkout
@@ -293,12 +297,15 @@ interface PlanCardProps {
   paidPlan?: PaidPlan;
 }
 
-function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuffix, features, cta, ctaHref = "#", emphasis, badge, paidPlan }: PlanCardProps) {
+function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuffix, features, cta, ctaHref = "#", ctaAndroidLabel, emphasis, badge, paidPlan }: PlanCardProps) {
   const locale = useLocale();
   const [checkoutError, setCheckoutError] = useState<CheckoutError | null>(null);
   const [checkoutPending, setCheckoutPending] = useState(false);
   const displayPrice = price === 0 ? "$0" : `$${price.toFixed(2)}`;
   const intervalLabel = price === 0 ? "" : interval === "monthly" ? "/mo" : "/yr";
+  const linkClass = `block text-center px-4 py-3 rounded-xl font-semibold transition ${
+    emphasis ? "bg-green-500 text-green-950 hover:bg-green-400" : "bg-slate-700 text-white hover:bg-slate-600"
+  }`;
 
   return (
     <div
@@ -376,13 +383,12 @@ function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuf
             )}
           </div>
         </>
+      ) : ctaAndroidLabel !== undefined ? (
+        <PrimaryInstallLink androidLabel={ctaAndroidLabel} className={linkClass}>
+          {cta}
+        </PrimaryInstallLink>
       ) : (
-        <a
-          href={ctaHref}
-          className={`block text-center px-4 py-3 rounded-xl font-semibold transition ${
-            emphasis ? "bg-green-500 text-green-950 hover:bg-green-400" : "bg-slate-700 text-white hover:bg-slate-600"
-          }`}
-        >
+        <a href={ctaHref} className={linkClass}>
           {cta}
         </a>
       )}

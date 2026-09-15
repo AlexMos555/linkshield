@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { InstallButtons } from "@/components/InstallButtons";
+import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import ShareScanButton from "@/components/ShareScanButton";
 import { routing, type Locale } from "@/i18n/routing";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -105,6 +106,9 @@ export default async function CheckPage({ params }: Props) {
   const decodedDomain = decodeURIComponent(domain);
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  // Android-only labels for the primary install CTA (see PrimaryInstallLink).
+  const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
+  const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const result = await fetchScan(decodedDomain);
 
   type Level = "safe" | "caution" | "dangerous";
@@ -199,8 +203,8 @@ export default async function CheckPage({ params }: Props) {
           <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
             Cleanway
           </a>
-          <a
-            href={PRIMARY_INSTALL_HREF}
+          <PrimaryInstallLink
+            androidLabel={nav("install_android")}
             style={{
               background: "#22c55e",
               color: "#052e16",
@@ -212,7 +216,7 @@ export default async function CheckPage({ params }: Props) {
             }}
           >
             Add to Chrome
-          </a>
+          </PrimaryInstallLink>
         </div>
       </nav>
 
@@ -306,8 +310,8 @@ export default async function CheckPage({ params }: Props) {
             Cleanway checks every link automatically. 16 threat sources, ML-powered, server-blind by design.
             See the <a href="/transparency" style={{ color: "#60a5fa" }}>quarterly transparency report</a>.
           </p>
-          <a
-            href={PRIMARY_INSTALL_HREF}
+          <PrimaryInstallLink
+            androidLabel={hero("cta_android")}
             style={{
               display: "inline-block",
               background: "#22c55e",
@@ -320,7 +324,7 @@ export default async function CheckPage({ params }: Props) {
             }}
           >
             Add to Chrome &mdash; Free
-          </a>
+          </PrimaryInstallLink>
           <div style={{ marginTop: 20 }}>
             <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />
           </div>

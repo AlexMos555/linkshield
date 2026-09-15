@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient, type PricingFor } from "@cleanway/api-client";
 import PricingClient from "./PricingClient";
 import { routing, type Locale } from "@/i18n/routing";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
+import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { InstallButtons } from "@/components/InstallButtons";
 
 const SITE_URL = "https://cleanway.ai";
@@ -119,6 +119,9 @@ export default async function PricingPage({
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
   const t = await getTranslations({ locale: safeLocale, namespace: "Pricing" });
+  // Android-only labels for the primary install CTA (see PrimaryInstallLink).
+  const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
+  const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const initial = await fetchPricing(cc);
 
   // Fallback if API is down — base tier 2 defaults.
@@ -164,9 +167,9 @@ export default async function PricingPage({
             <a href="/#features" className="text-sm text-slate-400 hover:text-white transition">Features</a>
             <a href="/pricing" className="text-sm text-white font-semibold">Pricing</a>
             <a href="/business" className="text-sm text-slate-400 hover:text-white transition">Business</a>
-            <a href={PRIMARY_INSTALL_HREF} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
+            <PrimaryInstallLink androidLabel={nav("install_android")} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
               Add to Chrome
-            </a>
+            </PrimaryInstallLink>
           </div>
         </div>
       </nav>
@@ -292,9 +295,9 @@ export default async function PricingPage({
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">Start free today</h2>
           <p className="text-slate-400 mb-8">No credit card. Add to Chrome in 10 seconds. Upgrade only when it makes sense for you.</p>
-          <a href={PRIMARY_INSTALL_HREF} className="inline-block bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition">
+          <PrimaryInstallLink androidLabel={hero("cta_android")} className="inline-block bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition">
             Add to Chrome — Free
-          </a>
+          </PrimaryInstallLink>
           <div className="mt-8">
             <InstallButtons platforms={["chrome","firefox","edge","safari"]} size="sm" />
           </div>

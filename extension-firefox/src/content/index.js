@@ -11,6 +11,18 @@ var SCANNED_ATTR = "data-ls-scanned";
 var _scanTimeout = null;
 var _debugMode = false; // Audit extension-mv3 medium: ship quiet in prod
 
+// Skill persona, read once and cached. Regular / Kids / Granny never see a
+// raw numeric score anywhere in the product (the popup and block page
+// already hide it) — Pro is the one persona that wants the number.
+// Defaults to "regular" until storage answers, so the very first badges
+// painted are jargon-free rather than flashing a score.
+var _skillLevel = "regular";
+try {
+  chrome.storage.local.get(["skill_level"], function (d) {
+    _skillLevel = (d && d.skill_level) || "regular";
+  });
+} catch (e) { /* storage unavailable — stay regular */ }
+
 function _log() {
   if (_debugMode) console.log.apply(console, ["[Cleanway]"].concat(Array.from(arguments)));
 }
@@ -148,16 +160,18 @@ function addBadge(linkEl, result) {
   if (result.level === "safe") {
     badge.classList.add("ls-safe");
     badge.textContent = "\u2713";
-    badge.title = "Safe (score: " + result.score + ")";
+    badge.setAttribute("aria-label", "Safe link");
   } else if (result.level === "caution") {
     badge.classList.add("ls-caution");
     badge.textContent = "\u26A0";
-    badge.title = "Caution (score: " + result.score + ")";
+    badge.setAttribute("aria-label", "Caution \u2014 check this link before you trust it");
   } else {
     badge.classList.add("ls-dangerous");
     badge.textContent = "\u2717";
-    badge.title = "DANGEROUS (score: " + result.score + ")";
+    badge.setAttribute("aria-label", "Dangerous link \u2014 do not open");
   }
+
+  badge.setAttribute("role", "img");
 
   // Tooltip
   var tooltip = document.createElement("div");
@@ -171,7 +185,9 @@ function addBadge(linkEl, result) {
     '<div class="ls-tooltip-header">' +
     '<span class="ls-dot" style="background:' + (colors[result.level] || "#666") + '"></span>' +
     '<strong>' + (labels[result.level] || "Unknown") + '</strong>' +
-    '<span class="ls-score">Score: ' + (parseInt(result.score, 10) || 0) + '/100</span></div>' +
+    (_skillLevel === "pro"
+      ? '<span class="ls-score">Score: ' + (parseInt(result.score, 10) || 0) + '/100</span>'
+      : '') + '</div>' +
     '<div class="ls-domain">' + _esc(result.domain) + '</div>' +
     reasons +
     '<div class="ls-footer">Cleanway</div></div>';
@@ -227,7 +243,7 @@ function showFloatingResult(result) {
 
   var div = document.createElement("div");
   div.id = "ls-floating-result";
-  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;max-width:320px;border:1px solid ' + (c[result.level] || "#333") + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:28px;height:28px;border-radius:50%;background:' + (c[result.level] || "#333") + '20;color:' + (c[result.level] || "#999") + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + (icons[result.level] || "?") + '</span><strong style="font-size:14px;">' + (labels[result.level] || "?") + '</strong><span style="color:#9ca3af;font-size:12px;margin-left:auto;">Score: ' + (parseInt(result.score, 10) || 0) + '</span><span id="ls-float-close" style="cursor:pointer;color:#6b7280;font-size:18px;margin-left:8px;">\u00D7</span></div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + _esc(result.domain) + '</div>' + reasons + '</div>';
+  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;max-width:320px;border:1px solid ' + (c[result.level] || "#333") + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:28px;height:28px;border-radius:50%;background:' + (c[result.level] || "#333") + '20;color:' + (c[result.level] || "#999") + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + (icons[result.level] || "?") + '</span><strong style="font-size:14px;">' + (labels[result.level] || "?") + '</strong><span style="color:#9ca3af;font-size:12px;margin-left:auto;">' + (_skillLevel === "pro" ? 'Score: ' + (parseInt(result.score, 10) || 0) : '') + '</span><span id="ls-float-close" style="cursor:pointer;color:#6b7280;font-size:18px;margin-left:8px;">\u00D7</span></div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + _esc(result.domain) + '</div>' + reasons + '</div>';
 
   document.body.appendChild(div);
   document.getElementById("ls-float-close").onclick = function() { div.remove(); };

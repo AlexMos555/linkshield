@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { InstallButtons } from "@/components/InstallButtons";
+import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import ShareScanButton from "@/components/ShareScanButton";
 import { routing, type Locale } from "@/i18n/routing";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -125,6 +126,9 @@ export default async function GradePage({ params }: Props) {
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
   const canonical = urlFor(safeLocale, domain, grade);
   const info = GRADE_INFO[grade];
+  // Android-only labels for the primary install CTA (see PrimaryInstallLink).
+  const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
+  const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
 
   // JSON-LD Review with the grade as ratingValue. Schema.org accepts
   // string ratings, but Google prefers numeric — map A=5, B=4, ..., F=1.
@@ -178,8 +182,8 @@ export default async function GradePage({ params }: Props) {
           <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
             Cleanway
           </a>
-          <a
-            href={PRIMARY_INSTALL_HREF}
+          <PrimaryInstallLink
+            androidLabel={nav("install_android")}
             style={{
               background: "#22c55e",
               color: "#052e16",
@@ -191,7 +195,7 @@ export default async function GradePage({ params }: Props) {
             }}
           >
             Add to Chrome
-          </a>
+          </PrimaryInstallLink>
         </div>
       </nav>
 
@@ -263,8 +267,8 @@ export default async function GradePage({ params }: Props) {
           <p style={{ fontSize: 14, color: "#94a3b8", margin: "0 0 20px", lineHeight: 1.6 }}>
             Install Cleanway to run Privacy Audit on any page. The grade is computed entirely on your device — your browsing data never reaches our servers.
           </p>
-          <a
-            href={PRIMARY_INSTALL_HREF}
+          <PrimaryInstallLink
+            androidLabel={hero("cta_android")}
             style={{
               display: "inline-block",
               background: "#22c55e",
@@ -277,7 +281,7 @@ export default async function GradePage({ params }: Props) {
             }}
           >
             Add to Chrome — Free
-          </a>
+          </PrimaryInstallLink>
           <div style={{ marginTop: 20 }}>
             <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />
           </div>

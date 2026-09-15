@@ -125,4 +125,29 @@ console.log("withAbiFilters:");
   });
 }
 
+// Guard the RuStore-facing app.json config: the four Expo-template
+// permissions the app never uses must stay blocked, and expo-camera must
+// not pull RECORD_AUDIO back in. (RuStore asks to justify each sensitive
+// permission; docs/RUSTORE_SUBMISSION.md §3 declares mic/photos "No".)
+{
+  const fs = require("fs");
+  const path = require("path");
+  const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "app.json"), "utf8")).expo;
+  check("app.json blocks the four unused Android permissions", () => {
+    const blocked = (appJson.android && appJson.android.blockedPermissions) || [];
+    for (const perm of [
+      "android.permission.RECORD_AUDIO",
+      "android.permission.SYSTEM_ALERT_WINDOW",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+    ]) assert.ok(blocked.includes(perm), `${perm} must be in android.blockedPermissions`);
+    assert.ok(!blocked.includes("android.permission.CAMERA"), "CAMERA is used by the QR scanner and must stay");
+  });
+  check("expo-camera plugin disables Android audio recording", () => {
+    const cam = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-camera");
+    assert.ok(cam, "expo-camera plugin entry present");
+    assert.strictEqual(cam[1].recordAudioAndroid, false);
+  });
+}
+
 console.log(`\n${passed} assertions passed`);

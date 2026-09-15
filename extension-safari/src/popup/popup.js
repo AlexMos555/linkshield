@@ -339,7 +339,11 @@ function wireButtons() {
 
   var audit = $("btn-audit");
   if (audit) audit.addEventListener("click", async function() {
-    await sendToActiveTab({ type: "SHOW_AUDIT" });
+    // Must match the listener in content/index.js — it handles
+    // RUN_PRIVACY_AUDIT (the same type the context-menu path sends).
+    // An earlier revision sent "SHOW_AUDIT", which nothing listened
+    // for, so this button silently did nothing.
+    await sendToActiveTab({ type: "RUN_PRIVACY_AUDIT" });
     window.close();
   });
 

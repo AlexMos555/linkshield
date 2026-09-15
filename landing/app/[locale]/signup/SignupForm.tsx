@@ -4,7 +4,15 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
+import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
+import TurnstileWidget, { useTurnstileToken } from "@/components/TurnstileWidget";
+
+/**
+ * How long Continue waits for a Turnstile token before sending the OTP
+ * request without one. The managed widget normally resolves well under a
+ * second; this only matters when someone clicks faster than that.
+ */
+const CAPTCHA_TOKEN_WAIT_MS = 5_000;
 
 interface SignupFormProps {
   planFromQuery: string | null;
@@ -28,16 +36,26 @@ interface SignupFormProps {
  * login that's good enough for a privacy-first product. Adding password
  * support is a one-line swap to signInWithPassword later.
  *
+ * Captcha: a Cloudflare Turnstile token rides along as
+ * `options.captchaToken`. Supabase validates it only while the project's
+ * CAPTCHA protection is switched on (off today); auth-js already sends
+ * `gotrue_meta_security.captcha_token` on every OTP request, so with it
+ * off the field is simply ignored. The widget can never block a submit —
+ * if it failed to load or is slow, the request goes out without a token,
+ * exactly as before.
+ *
  * Fallback when NEXT_PUBLIC_SUPABASE_* env vars are absent: the form
  * sends a mailto: with the user's intent so leads aren't dropped while
  * Supabase Auth is being wired in Vercel/Railway.
  */
 export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupFormProps) {
   const t = useTranslations("Signup");
+  const nav = useTranslations("Nav");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const captcha = useTurnstileToken();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -102,14 +120,19 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
       const redirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
       const supabase = getSupabaseClient();
+      const captchaToken = await captcha.waitForToken(CAPTCHA_TOKEN_WAIT_MS);
       const { error: signInError } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: redirect,
           shouldCreateUser: true,
+          captchaToken: captchaToken ?? undefined,
         },
       });
       if (signInError) {
+        // Tokens are single-use: whatever we just sent is spent, so the
+        // next attempt needs a fresh one.
+        captcha.reset();
         setError(signInError.message);
         return;
       }
@@ -181,6 +204,8 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
         />
       </label>
 
+      <TurnstileWidget {...captcha.handlers} theme="dark" size="flexible" />
+
       {error && (
         <div style={{ background: "#7f1d1d20", color: "#fca5a5", border: "1px solid #7f1d1d", borderRadius: 8, padding: "8px 12px", fontSize: 13 }}>
           {error}
@@ -211,9 +236,9 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
 
       <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 8, lineHeight: 1.5 }}>
         {t("footer_lead")} {t("footer_or")}{" "}
-        <a href={PRIMARY_INSTALL_HREF} style={{ color: "#60a5fa" }}>
+        <PrimaryInstallLink androidLabel={nav("install_android")} style={{ color: "#60a5fa" }}>
           {t("footer_install_cta")}
-        </a>{" "}
+        </PrimaryInstallLink>{" "}
         {t("footer_install_tail")}
       </p>
     </form>

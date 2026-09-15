@@ -399,7 +399,9 @@
       "privacy": "Privacy",
       "business": "Business",
       "install": "Add to Chrome",
-      "install_short": "Install"
+      "install_short": "Install",
+      "install_android": "Get the Android app",
+      "install_android_short": "Android app"
     },
     "hero": {
       "badge": "{recall}% recall on fresh phishing URLs (measured)",
@@ -407,6 +409,7 @@
       "title_part2": "respects your privacy",
       "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
       "cta_primary": "Add to Chrome — Free",
+      "cta_android": "Get the Android app",
       "cta_secondary": "How it works",
       "cta_footer": "Free forever for basic protection. No credit card required.",
       "badge_fallback": "Privacy-first phishing protection — recall published weekly"
