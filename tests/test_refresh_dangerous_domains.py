@@ -144,6 +144,66 @@ def test_verified_legit_shared_tenant_is_never_blocked():
     assert "metamask-wallet-verify.github.io" in out2
 
 
+# ─────────────────────────────────────────────────────────────────
+# 2026-09-19: brand-owned domains in the feeds (data/brand_owned_hosts.txt)
+#
+# walmart.com.br (MarkMonitor DNS, WHOIS "Domain Under Protection", every path
+# 302 → www.walmart.com) and americanexpress.io (Amex's tech blog, WHOIS
+# American Express, CSC, americanexpress.com's own nameservers) were on every
+# phone. Found by scripts/sweep_brand_owned_fps.py.
+#
+# roblox.com.hr / roblox.ly were REPORTED as Roblox's defensive domains and are
+# not: registered 2026-07/08 by a private person on a shared Cloudflare account
+# and VPS, `/` bounces to www.roblox.com while /share serves a PHP phishing kit
+# (vhost "roblox.et"). They must stay blocked.
+# ─────────────────────────────────────────────────────────────────
+
+_PSL_BRANDS = {"com", "br", "com.br", "io", "hr", "com.hr", "ly"}
+
+
+def test_brand_owned_hosts_are_never_published_but_lookalikes_are():
+    out = rdd.build_blockset(["walmart.com.br", "www.walmart.com.br", "walmart-ofertas.com.br",
+                              "www.americanexpress.io", "americanexpress-login.io"],
+                             TOP, shared_suffixes=SHARED, public_suffixes=_PSL_BRANDS)
+    # Neither the feed host nor the registrable promoted from www.<brand> is published…
+    for owned in ("walmart.com.br", "www.walmart.com.br", "americanexpress.io", "www.americanexpress.io"):
+        assert owned not in out, owned
+    # …while a lookalike under the same ccTLD still is: exact hosts, not brand substrings.
+    assert {"walmart-ofertas.com.br", "americanexpress-login.io"} <= out
+
+
+def test_the_roblox_cloakers_are_not_vetoed_and_stay_blocked():
+    assert not {"roblox.com.hr", "www.roblox.com.hr", "roblox.ly", "www.roblox.ly"} & rdd.load_brand_owned_hosts()
+    out = rdd.build_blockset(["www.roblox.com.hr", "www.roblox.ly"], TOP, shared_suffixes=SHARED,
+                             public_suffixes=_PSL_BRANDS)
+    assert {"roblox.com.hr", "www.roblox.com.hr", "roblox.ly", "www.roblox.ly"} <= out
+
+
+def test_brand_owned_list_takes_exact_hostnames_only(tmp_path, caplog):
+    listing = tmp_path / "brand_owned_hosts.txt"
+    listing.write_text("# comment\nWalmart.COM.br.  # trailing comment\n*.roblox.com.hr\n"
+                       "https://americanexpress.io/\n\n", encoding="utf-8")
+    assert rdd.load_brand_owned_hosts(str(listing)) == {"walmart.com.br"}
+    rejected = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(rejected) == 2 and all("exact hostnames only" in m for m in rejected)
+
+
+def test_missing_brand_owned_list_warns_and_vetoes_nothing(tmp_path, caplog):
+    assert rdd.load_brand_owned_hosts(str(tmp_path / "absent.txt")) == frozenset()
+    assert any(r.levelno == logging.WARNING and "brand-owned" in r.getMessage() for r in caplog.records)
+
+
+def test_a_vetoed_host_still_covered_by_a_published_parent_is_reported(caplog):
+    # Vetoing www.<brand> alone does nothing while <brand> is published: the
+    # phone blocks every subdomain of a listed name. Say so instead of
+    # pretending the veto worked.
+    out = rdd.build_blockset(["www.brandsite.xyz"], TOP, shared_suffixes=SHARED,
+                             brand_owned=frozenset({"www.brandsite.xyz"}))
+    assert "www.brandsite.xyz" not in out and "brandsite.xyz" in out
+    assert any(r.levelno == logging.WARNING and "www.brandsite.xyz" in r.getMessage()
+               and "brandsite.xyz" in r.getMessage() for r in caplog.records)
+
+
 def test_ip_literals_are_skipped():
     assert _build(["1.2.3.4", "10.0.0.1"]) == set()
 
@@ -264,7 +324,7 @@ WINDOW = retention.DEFAULT_RETAIN_DAYS * DAY
 # A stable aggregate (Phishing.Database-shaped): enough names to pass the
 # publish gate, present on every run.
 BASE = [f"scam{i}.xyz" for i in range(400)]
-PSL = {"com", "xyz", "app", "vercel.app"}
+PSL = {"com", "xyz", "app", "vercel.app", "br", "com.br"}
 TENANT_PHISH = "securebankofamerica.vercel.app"
 DEDICATED_PHISH = "evil-bank.com"
 
@@ -506,6 +566,19 @@ async def test_retained_host_that_became_popular_is_vetoed(monkeypatch):
     await _run(monkeypatch, fake2, [_url(DEDICATED_PHISH)], now=T0)
     await _run(monkeypatch, fake2, [], now=T0 + 6 * 3600, top={DEDICATED_PHISH})
     assert DEDICATED_PHISH not in _published(fake2)
+
+
+@pytest.mark.asyncio
+async def test_a_brand_owned_host_published_before_the_veto_is_not_retained(monkeypatch):
+    fake = _FakeRedis()
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    # Published by a run that predates the veto list; now it left the feeds,
+    # so retention would carry it for 14 days — the veto must still win.
+    fake.data[rdd.SET_KEY] = _published(fake) | {"walmart.com.br"}
+    assert await _run(monkeypatch, fake, [], now=T0 + 6 * 3600) == 0
+    assert "walmart.com.br" in fake.data.get(retention.LAST_SEEN_KEY, {})  # it WAS a retention candidate
+    assert "walmart.com.br" not in _published(fake)
+    assert not _phone_blocks(fake, "www.walmart.com.br")
 
 
 @pytest.mark.asyncio

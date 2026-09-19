@@ -1,0 +1,39 @@
+# Brand-owned hosts the DNS blocklist must NEVER publish, fresh or retained.
+# Read by scripts/refresh_dangerous_domains.py (load_brand_owned_hosts) and
+# removed from the set after every other guard. One host per line; '#' starts
+# a comment; case-insensitive. EXACT hostnames only: a wildcard or URL line is
+# rejected, never widened, so a lookalike (walmart-ofertas.com.br) stays blocked.
+# List the covering registrable too: the phone blocks every subdomain of a
+# listed name, so vetoing www.<brand> alone changes nothing (the publisher
+# logs a warning when that happens).
+#
+# A host goes here only with BOTH kinds of evidence:
+#   * it is the brand's: WHOIS registrant is the brand or its brand-protection
+#     registrar, and the zone is on the brand's own DNS or a corporate
+#     registrar's (MarkMonitor, CSC, Com Laude);
+#   * the feed that lists it is wrong: it redirects to the brand, or serves
+#     the brand's own content.
+# A redirect to the brand is NOT evidence on its own. On 2026-09-19
+# roblox.com.hr, www.roblox.com.hr, roblox.ly and www.roblox.ly were reported
+# as Roblox's defensive domains because `/` 302s to www.roblox.com; they are
+# a phishing kit (registered 2026-07/08 by a private person, one shared
+# Cloudflare account and VPS, /share serving PHP from vhost "roblox.et").
+# They stay blocked.
+#
+# Re-run the sweep to find candidates (read-only, network-polite):
+#   python3 scripts/sweep_brand_owned_fps.py
+# then confirm WHOIS by hand before adding a line.
+
+# Walmart Brazil. Verified 2026-09-19: WHOIS owner "Domain Under Protection
+# Servicos de Internet Ltda." (MarkMonitor), NS ns1-7.markmonitor.com, every
+# path 302 -> http://www.walmart.com/.
+walmart.com.br
+www.walmart.com.br
+
+# American Express Technology (engineering blog). Verified 2026-09-19: WHOIS
+# registrant American Express Travel Related Services Company, registrar CSC
+# Corporate Domains, NS identical to americanexpress.com (Akamai
+# a1-196/a13-65/a22-66/a24-67/a8-64/a9-65.akam.net), title "American Express
+# Technology".
+americanexpress.io
+www.americanexpress.io

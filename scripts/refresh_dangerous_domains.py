@@ -107,6 +107,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("dangerous-domains-refresh")
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+# Hand-verified brand-owned hosts the feeds list anyway (walmart.com.br,
+# americanexpress.io). Header of the file has the evidence rule; candidates
+# come from scripts/sweep_brand_owned_fps.py.
+BRAND_OWNED_PATH = os.path.join(_DATA_DIR, "brand_owned_hosts.txt")
 URLHAUS_CSV = "https://urlhaus.abuse.ch/downloads/csv_online/"
 OPENPHISH_FEED = "https://openphish.com/feed.txt"
 
@@ -274,6 +278,30 @@ def _load_top_100k() -> set[str]:
         return set()
 
 
+def load_brand_owned_hosts(path: str = BRAND_OWNED_PATH) -> frozenset[str]:
+    """Exact hostnames from the brand-owned veto list. A line that is not a
+    plain hostname (a wildcard, a URL) is rejected, never widened — a veto
+    that grew into a pattern would un-block lookalike phishing. An unreadable
+    file only costs the handful of false positives it lists, so it warns and
+    vetoes nothing rather than stopping the publish."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError as e:
+        logger.warning("brand-owned veto list not loaded (%s) — its hosts may be published", e)
+        return frozenset()
+    hosts: set[str] = set()
+    for raw in text.splitlines():
+        line = _norm_host(raw.split("#", 1)[0])
+        if not line:
+            continue
+        if not is_hostname(line):
+            logger.warning("brand-owned veto list: ignoring %r — exact hostnames only", raw.strip())
+            continue
+        hosts.add(line)
+    return frozenset(hosts)
+
+
 async def _fetch(url: str) -> str:
     async with httpx.AsyncClient(timeout=90.0, follow_redirects=True,
                                  headers={"User-Agent": "cleanway-blocklist"}) as c:
@@ -383,8 +411,24 @@ def present_names(hosts, public_suffixes: set[str] | None) -> set[str]:
     return names | {_registrable_domain(n, public_suffixes) for n in names}
 
 
+def _apply_veto(names: set[str], veto: frozenset[str]) -> set[str]:
+    """Drop hand-verified legit hosts — exact names, never a parent or a
+    sibling. A vetoed host that a published parent still covers stays blocked
+    on every phone (a listed name blocks its subdomains), so say so."""
+    kept = names - veto
+    for host in sorted(veto):
+        parts = host.split(".")
+        parents = (".".join(parts[i:]) for i in range(1, len(parts) - 1))
+        parent = next((p for p in parents if p in kept), None)
+        if parent:
+            logger.warning("vetoed %s is still blocked through published %s — veto the parent too if it is "
+                           "the brand's", host, parent)
+    return kept
+
+
 def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None = None,
-                   is_popular=None, public_suffixes: set[str] | None = None) -> set[str]:
+                   is_popular=None, public_suffixes: set[str] | None = None,
+                   brand_owned: frozenset[str] | None = None) -> set[str]:
     """Decide, per feed hostname, what (if anything) to block.
 
     Never darken a shared or popular host — a false positive here breaks a
@@ -402,6 +446,11 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
                      (evil.github.io, gwcu.us.org, x.blob.core.windows.net).
       EXACT + REG    dedicated phishing domain: block the host and its
                      registrable (login.scotiabano.com + scotiabano.com).
+      VETO           last, on the result: hand-verified legit hosts
+                     (LEGIT_SHARED_TENANTS + `brand_owned`, default
+                     data/brand_owned_hosts.txt) are removed exactly — a
+                     promoted registrable included. Retained names pass
+                     through here too, so a veto beats retention.
 
     `hosts` may contain repeats (one per feed URL); repeats feed the
     shared-host threshold. `is_popular(registrable) -> bool` is optional
@@ -440,8 +489,6 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
             continue  # platform apex / a public suffix itself — never
         if public_suffixes and reg in public_suffixes:
             continue  # cannot even name a registrable — never promote a suffix
-        if h in LEGIT_SHARED_TENANTS:
-            continue  # hand-verified legit page on a shared platform
         if suffix is not None:
             # One tenant's site on a shared platform — unless the feed shows
             # this single hostname carrying many URLs (then it is a shared
@@ -458,7 +505,8 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
         out.add(h)
         if reg:
             out.add(reg)  # dedicated phishing domain
-    return out
+    veto = load_brand_owned_hosts() if brand_owned is None else frozenset(brand_owned)
+    return _apply_veto(out, LEGIT_SHARED_TENANTS | veto)
 
 
 # Publish gates. A bad publish darkens sites for every DNS user; a skipped
