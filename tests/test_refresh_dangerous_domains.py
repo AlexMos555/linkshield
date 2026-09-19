@@ -675,3 +675,71 @@ def test_retain_days_env_parsing(caplog):
     for bad in ("abc", "-1", str(retention.MAX_RETAIN_DAYS + 1), "7.5"):
         assert retention.retain_days_from_env(bad) == 14, bad
     assert any("BLOCKLIST_RETAIN_DAYS" in r.getMessage() for r in caplog.records)
+
+
+# ── Feed outages must not look like departures (review finding) ──────────
+# A feed that fails to download contributes nothing to `present`, so without
+# a guard every name it backed would be recorded as "departed" and retained:
+# the zset balloons (Phishing.Database alone is ~390k names) and a broken
+# feed is masked for the whole window instead of tripping the churn gate.
+
+
+def _stub_outage(monkeypatch, fake, failing_url, openphish_urls) -> None:
+    _stub_world(monkeypatch, fake, openphish_urls)
+    healthy = rdd._fetch
+
+    async def _fetch(url):
+        if url == failing_url:
+            raise ConnectionError("feed down")
+        return await healthy(url)
+
+    monkeypatch.setattr(rdd, "_fetch", _fetch)
+
+
+@pytest.mark.asyncio
+async def test_a_failed_feed_does_not_record_its_names_as_departed(monkeypatch, caplog):
+    fake = _FakeRedis()
+    already = "earlier-phish.example"
+    fake.data[retention.LAST_SEEN_KEY] = {already: float(T0 - DAY)}
+    assert await _run(monkeypatch, fake, [_url(TENANT_PHISH)], now=T0) == 0
+
+    _stub_outage(monkeypatch, fake, rdd.OPENPHISH_FEED, [])
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600) == 0
+
+    stored = fake.data.get(retention.LAST_SEEN_KEY, {})
+    assert TENANT_PHISH not in stored, "an outage must not be recorded as a departure"
+    assert already in stored, "names retained before the outage keep their clock"
+    assert "not recording departures" in caplog.text
+
+
+def test_plan_retention_records_nothing_when_told_not_to():
+    plan = retention.plan_retention(
+        stored={"kept.example": float(T0 - DAY)},
+        previous={"gone.example", "kept.example"},
+        present=set(), now=T0, window_seconds=WINDOW, record_departures=False,
+    )
+    assert plan.departed == frozenset()
+    assert plan.retained == {"kept.example"}
+    assert plan.skipped
+
+
+def test_plan_retention_refuses_a_departure_spike():
+    previous = {f"p{i}.example" for i in range(6)}
+    plan = retention.plan_retention(
+        stored={"kept.example": float(T0 - DAY)},
+        previous=previous | {"kept.example"},
+        present=set(), now=T0, window_seconds=WINDOW, max_departures=5,
+    )
+    # A silently broken parser looks like "everything left at once".
+    assert plan.departed == frozenset()
+    assert plan.retained == {"kept.example"}
+    assert "spike" in plan.skipped
+
+
+def test_plan_retention_normal_departures_still_recorded_under_the_cap():
+    plan = retention.plan_retention(
+        stored={}, previous={"a.example", "b.example"}, present={"b.example"},
+        now=T0, window_seconds=WINDOW, max_departures=5,
+    )
+    assert plan.departed == {"a.example"}
+    assert not plan.skipped

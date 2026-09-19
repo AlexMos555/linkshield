@@ -582,7 +582,7 @@ async def _tranco_guard(r, hosts, public_suffixes: set[str] | None):
 
 
 async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: set[str] | None,
-                          now: float, dry_run: bool) -> set[str]:
+                          now: float, dry_run: bool, feeds_failed: tuple[str, ...] = ()) -> set[str]:
     """Names to keep although no feed lists them now (blocklist_retention).
     Never raises and never blocks a publish: if the retention set cannot be
     read or written, the set is built from the feeds alone. A plan that was
@@ -601,7 +601,12 @@ async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: 
     except Exception as e:  # noqa: BLE001
         logger.warning("retention read failed (%s) — publishing from the feeds alone", e)
         return set()
-    plan = retention.plan_retention(stored, previous or set(), present_names(hosts, public_suffixes), now, window)
+    plan = retention.plan_retention(stored, previous or set(), present_names(hosts, public_suffixes), now, window,
+                                    record_departures=not feeds_failed)
+    if plan.skipped:
+        failed = f" ({', '.join(feeds_failed)})" if feeds_failed else ""
+        logger.warning("retention: not recording departures this run — %s%s; names already retained are kept",
+                       plan.skipped, failed)
     summary = (f"{len(plan.retained)} names kept after leaving the feeds ({len(plan.departed)} newly departed, "
                f"{len(plan.returned)} back in a feed, {len(stored)} stored before; window {days} days)")
     if dry_run:
@@ -621,6 +626,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     now = time.time() if now is None else now
     top_100k = _load_top_100k()
     hosts: list[str] = []  # one entry per feed URL — repeats feed the shared-host guard
+    feeds_failed: list[str] = []  # an unreadable feed must not look like its names all "left"
     for name, url, parser in (
         ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus),
         ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish),
@@ -634,6 +640,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
             logger.info("%s: +%d host entries (%d distinct so far)", name, len(hosts) - n0, len(set(hosts)))
         except Exception as e:  # noqa: BLE001
             logger.warning("%s fetch failed: %s (continuing)", name, e)
+            feeds_failed.append(name)
 
     if not hosts:
         logger.error("No hosts fetched from any feed — refusing to wipe the set")
@@ -654,7 +661,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     previous = await _read_previous(r)
     # Retained names join the feed hosts BEFORE the build, so every guard
     # below (Tranco and top-100k veto, tenant rules, …) judges them afresh.
-    retained = await _retained_names(r, previous, hosts, public_suffixes, now, dry_run)
+    retained = await _retained_names(r, previous, hosts, public_suffixes, now, dry_run, tuple(feeds_failed))
     candidate_hosts = hosts + sorted(retained)
     is_popular = await _tranco_guard(r, candidate_hosts, public_suffixes)
     blockset = build_blockset(candidate_hosts, top_100k, is_popular=is_popular, public_suffixes=public_suffixes)

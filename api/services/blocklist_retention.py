@@ -50,6 +50,12 @@ MAX_RETAIN_DAYS = 60
 TTL_MARGIN_SECONDS = 7 * 86_400
 WRITE_BATCH = 5_000
 SECONDS_PER_DAY = 86_400
+# Normal churn is ~1.2k departures a day (~300 per 6-hour run). A silently
+# broken parser on a big feed looks like "everything left at once" —
+# Phishing.Database alone backs ~390k names. Past this many departures in one
+# run, record nothing: retaining them would balloon the sorted set and hide
+# the breakage from the churn gate for the whole window.
+MAX_DEPARTURES_PER_RUN = 25_000
 
 
 @dataclass(frozen=True)
@@ -58,6 +64,7 @@ class RetentionPlan:
     departed: frozenset   # newly missing from the feeds — record with `now`
     returned: frozenset   # back in a feed — forget, their clock restarts later
     cutoff: int           # prune everything last seen before this
+    skipped: str = ""     # why departures were not recorded this run, if they weren't
 
 
 def retain_days_from_env(raw: Optional[str]) -> int:
@@ -77,16 +84,29 @@ def retain_days_from_env(raw: Optional[str]) -> int:
 
 
 def plan_retention(stored: Mapping[str, float], previous: set, present: set,
-                   now: float, window_seconds: int) -> RetentionPlan:
+                   now: float, window_seconds: int, record_departures: bool = True,
+                   max_departures: int = MAX_DEPARTURES_PER_RUN) -> RetentionPlan:
     """Decide what to keep, record, forget and prune — no I/O.
 
     `stored` is the sorted set as read; `previous` the live published set;
     `present` every name a current feed still backs. A name already stored
     keeps its first-departure time: re-stamping it each run would retain it
     forever.
+
+    Departures are NOT recorded when a feed failed to download
+    (`record_departures=False`) or when more than `max_departures` names
+    vanish at once: in both cases "absent from the feeds" means "we could not
+    see the feed", not "the feed dropped it". Names already stored are still
+    kept, so an outage never un-blocks what retention was already holding.
     """
     cutoff = int(now) - window_seconds
-    departed = set(previous) - set(present) - set(stored) - {LIST_CANARY}
+    candidates = set(previous) - set(present) - set(stored) - {LIST_CANARY}
+    skipped = ""
+    if not record_departures:
+        skipped = "a feed failed to download"
+    elif len(candidates) > max_departures:
+        skipped = f"departure spike ({len(candidates)} > {max_departures}) — a feed or parser is probably broken"
+    departed = set() if skipped else candidates
     returned = set(stored) & set(present)
     kept = {name for name, seen in stored.items() if seen >= cutoff and name not in present}
     return RetentionPlan(
@@ -94,6 +114,7 @@ def plan_retention(stored: Mapping[str, float], previous: set, present: set,
         departed=frozenset(departed),
         returned=frozenset(returned),
         cutoff=cutoff,
+        skipped=skipped,
     )
 
 
