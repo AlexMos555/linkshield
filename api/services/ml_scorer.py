@@ -201,3 +201,22 @@ def backend_status() -> str:
     """
     _load_model()
     return _backend or "disabled"
+
+
+def model_status() -> dict:
+    """Is the ML model actually usable in THIS process?
+
+    scoring.py calls ml_predict() for every domain but only emits a reason
+    when the probability clears 0.6, so a missing "ML model:" reason proves
+    nothing about whether the model loaded. Without this, the only way to
+    know the container shipped a working model was to read its logs.
+
+    Triggers the same lazy load as a real prediction (idempotent), so a
+    /health/deep hit after a deploy is a genuine end-to-end check.
+    """
+    loaded = _load_model()
+    return {
+        "loaded": loaded,
+        "backend": _backend,
+        "model_file": os.path.exists(_ONNX_PATH),
+    }

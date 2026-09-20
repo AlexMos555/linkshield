@@ -187,7 +187,11 @@ def main() -> int:
                  result["coverage_blockable_pct"], len(hit_blockable), len(blockable))
     log.info("out of scope: %d IP-literal, %d on shared hosting", len(ip_hosts), len(tenant_hosts))
     log.info("false positives in Tranco top-10k: %d %s", len(fp), fp[:5])
-    log.info("wrote %s", out_path.relative_to(ROOT))
+    try:
+        where = out_path.relative_to(ROOT)
+    except ValueError:  # --out outside the repo: report the absolute path
+        where = out_path
+    log.info("wrote %s", where)
     return 1 if fp else 0
 
 
