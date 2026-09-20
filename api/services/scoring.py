@@ -880,42 +880,80 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             detail=f"Contains suspicious keyword: '{keyword}'",
         ))
 
-    # ── ASCII gate for the English-trained name heuristics ──
+    # ── SCRIPT GATE for the name-shape heuristics ──
     #
     # 3.13 (entropy), 3.30 (n-gram), 3.31 (vowel ratio) and 3.32 (consonant
-    # cluster) are all calibrated on ASCII English, and on a non-ASCII name
-    # they do not measure "random", they measure "not English":
+    # cluster) all ask "does this look like a word, or like output from a
+    # generator?" — and the answer depends on WHICH LANGUAGE the name is in.
+    # Asking the English model about a Russian name does not measure
+    # "random", it measures "not English":
     #
     #   * bigram_score() looks names up in _ENGLISH_BIGRAMS, which has no
-    #     Cyrillic pairs — so it returns 0.0 for EVERY Russian name and
-    #     "unnatural_ngram" fires on all of them.
+    #     Cyrillic pairs — so it returns 0.0 for EVERY Russian name.
     #   * vowel_consonant_ratio() and consecutive_consonants_max() count
     #     against ASCII-only _VOWELS/_CONSONANTS — a Cyrillic name has zero
     #     of each, so the ratio is 0.0 and trips the "< 0.2" anomaly.
-    #   * the entropy thresholds (4.0 / 3.5) were tuned on a 26-letter
-    #     alphabet; Russian has 33, so the same "ordinariness" reads hotter.
     #
-    # We have no Cyrillic language model, so these SKIP non-ASCII names
-    # rather than guess at them. The cost is real and deliberate: a Cyrillic
-    # DGA name gets no lexical penalty. It is still covered by the other ~30
-    # signals (blocklists, domain age, no-HTTPS, brand checks, ML), and
-    # mixed-script look-alikes — the actual attack in this script — are
-    # caught by _check_homograph above, which is the right tool for them.
-    name_is_ascii = domain_name.isascii()
+    # So each script gets the model that fits it. Cleanway is RU-first, and
+    # the Russian branch exists because gating these on `isascii()` alone
+    # left an all-Cyrillic name with NO lexical scrutiny whatsoever:
+    # measured on the previous commit, жкшнвыапролдэъ.рф scored 0/safe with
+    # an empty reasons list, and 398 of 400 synthesised Cyrillic DGA names
+    # scored exactly 0. A freshly registered generated .рф domain with no
+    # reputation has to look suspicious to the local rules, or the local
+    # rules are not protecting the users we ship to first.
+    #
+    # A script we have no model for — Greek, Arabic, accented Latin — still
+    # skips, because guessing with the wrong table is what caused the
+    # original false positives. Mixed-script names also skip (name_script
+    # returns 'other'): they are homograph attacks, and _check_homograph
+    # above is the tool for them, unweakened.
+    from api.services.url_features import (
+        bigram_score,
+        consecutive_consonants_max,
+        cyrillic_consecutive_consonants_max,
+        cyrillic_vowel_consonant_ratio,
+        name_script,
+        russian_bigram_score,
+        vowel_consonant_ratio,
+    )
+
+    script = name_script(domain_name)
 
     # ── 3.13 Shannon entropy (DGA detection) ──
+    #
+    # Thresholds are per-alphabet: entropy is bounded by log2(alphabet), so
+    # the same "ordinariness" reads hotter on Russian's 33 letters than on
+    # English's 26. Calibrated 2026-09-20 against the 653 Cyrillic names in
+    # data/top-1m.csv vs 1,000 length-matched random Cyrillic names.
+    #
+    # Be honest about what this signal is worth on Cyrillic: it BARELY
+    # separates. Legitimate Russian domain names are long compounds that use
+    # many distinct letters, so they sit right on top of the random ones —
+    # перемышльский-район has entropy 3.93, HIGHER than the keyboard mash
+    # жкшнвыапролдэъ at 3.81. At Latin's medium threshold (3.5) the Cyrillic
+    # false-positive rate is 10.26%, so that tier is dropped entirely rather
+    # than shipped with a prettier-looking number. What survives is one
+    # conservative tier at the point where measured legitimate FPs hit zero
+    # (> 4.0 with len > 10: 0.00% of legitimate names, 2.5% of the DGA set).
     entropy = _shannon_entropy(domain_name)
-    if name_is_ascii and entropy > 4.0 and len(domain_name) > 8:
+    if script == "ascii" and entropy > 4.0 and len(domain_name) > 8:
         score += 12
         reasons.append(DomainReason(
             signal="high_entropy", weight=12,
             detail=f"Domain name has unusually high randomness (entropy={entropy}) — possible auto-generated domain",
         ))
-    elif name_is_ascii and entropy > 3.5 and len(domain_name) > 10:
+    elif script == "ascii" and entropy > 3.5 and len(domain_name) > 10:
         score += 6
         reasons.append(DomainReason(
             signal="medium_entropy", weight=6,
             detail=f"Domain name appears somewhat random (entropy={entropy})",
+        ))
+    elif script == "cyrillic" and entropy > 4.0 and len(domain_name) > 10:
+        score += 12
+        reasons.append(DomainReason(
+            signal="high_entropy", weight=12,
+            detail=f"Domain name has unusually high randomness (entropy={entropy}) — possible auto-generated domain",
         ))
 
     # ── 3.14 High digit ratio ──
@@ -1118,25 +1156,55 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.30 N-gram analysis: domain name "naturalness" ──
-    from api.services.url_features import bigram_score, vowel_consonant_ratio, consecutive_consonants_max
-
-    bg_score = bigram_score(domain_name)
-    if name_is_ascii and bg_score < 0.15 and len(domain_name) > 7:
-        score += 10
-        reasons.append(DomainReason(
-            signal="unnatural_ngram", weight=10,
-            detail=f"Domain name has unnatural character patterns (bigram score={bg_score})",
-        ))
-    elif name_is_ascii and bg_score < 0.25 and len(domain_name) > 10:
-        score += 5
-        reasons.append(DomainReason(
-            signal="suspicious_ngram", weight=5,
-            detail=f"Domain name has unusual character patterns (bigram score={bg_score})",
-        ))
+    if script == "ascii":
+        bg_score = bigram_score(domain_name)
+        if bg_score < 0.15 and len(domain_name) > 7:
+            score += 10
+            reasons.append(DomainReason(
+                signal="unnatural_ngram", weight=10,
+                detail=f"Domain name has unnatural character patterns (bigram score={bg_score})",
+            ))
+        elif bg_score < 0.25 and len(domain_name) > 10:
+            score += 5
+            reasons.append(DomainReason(
+                signal="suspicious_ngram", weight=5,
+                detail=f"Domain name has unusual character patterns (bigram score={bg_score})",
+            ))
+    elif script == "cyrillic":
+        # One tier only. The weak Latin tier ("suspicious_ngram", < 0.25)
+        # has no Cyrillic counterpart because it earns nothing: measured, a
+        # < 0.18 second tier moved the DGA caution rate by 0.00pp while
+        # adding a lexical mark to 79 more legitimate Russian domains
+        # (14.4% → 26.5%), including экзамен-пдд.рф and судьироссии.рф —
+        # the exact names the previous commit cleared.
+        bg_score = russian_bigram_score(domain_name)
+        if bg_score < 0.10 and len(domain_name) > 7:
+            score += 10
+            reasons.append(DomainReason(
+                signal="unnatural_ngram", weight=10,
+                detail=f"Domain name has unnatural character patterns (bigram score={bg_score})",
+            ))
 
     # ── 3.31 Vowel/consonant ratio anomaly ──
-    vc_ratio = vowel_consonant_ratio(domain_name)
-    if name_is_ascii and len(domain_name) > 6 and (vc_ratio < 0.2 or vc_ratio > 1.5):
+    #
+    # The band is per-alphabet. English has 5 vowels to 21 consonants, so a
+    # uniformly random Latin string lands near 5/21 = 0.24 and the "< 0.2"
+    # floor catches its lower tail. Russian has 10 vowels to 21 consonants,
+    # so random Cyrillic lands near 0.48 — comfortably INSIDE the Latin
+    # band. Reusing 0.2 would have made random Cyrillic look more
+    # pronounceable than random Latin, which is why the Cyrillic floor is
+    # raised to 0.30 (measured: 1.53% of legitimate names, 20.0% of the DGA
+    # set; at 0.35 it would be 3.68% / 27.2%, and the names it starts
+    # touching are abbreviation-style ones like транснефть and мфц-омск).
+    if script == "ascii":
+        vc_ratio = vowel_consonant_ratio(domain_name)
+        vc_floor = 0.2
+    elif script == "cyrillic":
+        vc_ratio = cyrillic_vowel_consonant_ratio(domain_name)
+        vc_floor = 0.30
+    else:
+        vc_ratio, vc_floor = None, 0.0
+    if vc_ratio is not None and len(domain_name) > 6 and (vc_ratio < vc_floor or vc_ratio > 1.5):
         score += 6
         reasons.append(DomainReason(
             signal="abnormal_vowel_ratio", weight=6,
@@ -1144,8 +1212,20 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.32 Consecutive consonants (>5 = very unnatural) ──
-    max_cons = consecutive_consonants_max(domain_name)
-    if name_is_ascii and max_cons >= 5 and len(domain_name) > 6:
+    #
+    # The >= 5 cut holds for Russian too, and the measurement is emphatic:
+    # across the 653 legitimate Cyrillic names NOT ONE has a 5-consonant
+    # run, while 28.1% of the DGA set does. Dropping to >= 4 would catch
+    # more (44.3%) but starts hitting real institutions —
+    # президентскиегранты, реестрповесток, декларации-соответствия — so it
+    # stays at 5. ъ and ь break a run; see CYRILLIC_SIGNS.
+    if script == "ascii":
+        max_cons = consecutive_consonants_max(domain_name)
+    elif script == "cyrillic":
+        max_cons = cyrillic_consecutive_consonants_max(domain_name)
+    else:
+        max_cons = 0
+    if max_cons >= 5 and len(domain_name) > 6:
         score += 6
         reasons.append(DomainReason(
             signal="consonant_cluster", weight=6,
@@ -1291,6 +1371,12 @@ def _extract_tld(domain: str) -> str:
 
 # ── IDN / punycode normalisation ──
 
+# RFC 1035 §2.3.4. _DOMAIN_PATTERN already caps labels at 63 on the request
+# path, so this is defence in depth for callers that reach the scorer some
+# other way (tests, scripts, future entry points).
+_MAX_DNS_LABEL = 63
+
+
 def _decode_idn(domain: str) -> str:
     """Return the Unicode form of an internationalised domain.
 
@@ -1314,6 +1400,13 @@ def _decode_idn(domain: str) -> str:
     tried first and the raw `punycode` codec second — the latter skips
     IDNA validation, so a deliberately malformed attack label still decodes
     to the characters it encodes instead of being waved through as ASCII.
+
+    That permissive second codec is why the length bound below exists. It
+    will happily "decode" anything, and punycode is expansive, so a label
+    longer than a DNS label may legally be ('xn--' + 'a' * 120) comes back
+    as a run of U+0080 control characters — not a name, and not something
+    any downstream heuristic should be handed. A label over
+    _MAX_DNS_LABEL keeps its ASCII spelling instead.
     """
     if "xn--" not in domain.lower():
         return domain
@@ -1321,6 +1414,12 @@ def _decode_idn(domain: str) -> str:
     out: list[str] = []
     for label in domain.split("."):
         if not label.lower().startswith("xn--"):
+            out.append(label)
+            continue
+        # RFC 1035 §2.3.4: a label is at most 63 octets. Anything longer is
+        # malformed input, not a name — decoding it yields control
+        # characters, so keep the ASCII form.
+        if len(label) > _MAX_DNS_LABEL:
             out.append(label)
             continue
         decoded = ""

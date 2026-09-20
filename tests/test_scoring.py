@@ -587,11 +587,14 @@ def test_idn_hyphen_count_uses_the_decoded_name():
     print("  hyphen count read off the real name, ASCII behaviour intact")
 
 
-def test_idn_cyrillic_skips_english_trained_heuristics():
-    # bigram_score() has no Cyrillic pairs (returns 0.0 for EVERY Russian
-    # name) and _VOWELS/_CONSONANTS are ASCII-only (so the vowel ratio is
-    # always 0.0 → "abnormal"). Applied to Cyrillic they measure "not
-    # English", not "random". With no Cyrillic language model they must skip.
+def test_idn_english_heuristics_do_not_judge_cyrillic():
+    # The ENGLISH-trained forms must never touch a Cyrillic name:
+    # bigram_score() has no Cyrillic pairs (0.0 for EVERY Russian name) and
+    # _VOWELS/_CONSONANTS are ASCII-only (vowel ratio always 0.0 →
+    # "abnormal"). Applied to Cyrillic they measure "not English", not
+    # "random". The Cyrillic name is judged by the Cyrillic forms instead
+    # (see the SCRIPT-AWARE block below) — these three legitimate names
+    # trip none of them.
     for d in (_EKZAMEN_PDD, _SUDI_ROSSII, _PEREMYSHL):
         _, _, reasons = calculate_score({"domain": d})
         fired = {r.signal for r in reasons}
@@ -602,7 +605,7 @@ def test_idn_cyrillic_skips_english_trained_heuristics():
     _, _, dga = calculate_score({"domain": "qwrtpsdfgh.ru"})
     dga_fired = {r.signal for r in dga}
     assert "unnatural_ngram" in dga_fired and "abnormal_vowel_ratio" in dga_fired
-    print("  English-trained heuristics skip non-ASCII, still fire on ASCII DGA")
+    print("  English-trained heuristics skip Cyrillic, still fire on ASCII DGA")
 
 
 def test_idn_legit_non_cyrillic_idn_is_safe():
@@ -612,6 +615,138 @@ def test_idn_legit_non_cyrillic_idn_is_safe():
     assert not ({r.signal for r in reasons} & _NAME_SHAPE_SIGNALS)
     assert level == RiskLevel.safe
     print(f"  café.com: score={score}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# SCRIPT-AWARE NAME-SHAPE HEURISTICS (Cyrillic)
+#
+# Skipping the English heuristics on non-ASCII names fixed the punycode
+# false positives but left a hole: an all-Cyrillic name got ZERO lexical
+# scrutiny. Measured on the branch before this change,
+# `xn--80adhfuilkik7f6ag8a.xn--p1ai` (жкшнвыапролдэъ.рф — a ЙЦУКЕН
+# home-row mash) scored 0/safe with an EMPTY reasons list, and 398 of 400
+# synthesised Cyrillic DGA names scored exactly 0.
+#
+# Cleanway is RU-first, so "we no longer judge Cyrillic names at all" is
+# the wrong end state: a freshly registered, algorithmically generated
+# Cyrillic domain with no reputation must still look suspicious locally.
+# The heuristics are therefore re-run against CYRILLIC reference data.
+#
+# Calibration sets (see the commit message for the full trade-off curve):
+#   negative — the 653 Cyrillic-name punycode domains in data/top-1m.csv
+#   positive — 1,000 synthesised uniform-random Cyrillic names, length
+#              distribution matched to the negative set, seed 1337
+# ═══════════════════════════════════════════════════════════════
+
+# The reviewer's reproduction case: a home-row keyboard mash under .рф.
+_CYRILLIC_MASH = "xn--80adhfuilkik7f6ag8a.xn--p1ai"   # жкшнвыапролдэъ.рф
+
+
+def test_cyrillic_dga_name_is_no_longer_invisible():
+    # THE regression this block exists for. Was: 0 / safe / [] — a name
+    # nobody could read got a clean bill of health with nothing to show
+    # for it. It must now be looked at and the finding must be NAMED.
+    score, _level, reasons = calculate_score({"domain": _CYRILLIC_MASH})
+    assert score > 0, "all-Cyrillic DGA name still gets zero lexical scrutiny"
+    assert reasons, "score with an empty reasons list — nothing to show a user"
+    assert any(r.signal in _NAME_SHAPE_SIGNALS for r in reasons), \
+        f"scored, but on no name-shape signal: {[r.signal for r in reasons]}"
+    print(f"  жкшнвыапролдэъ.рф: score={score} reasons={[r.signal for r in reasons]}")
+
+
+def test_cyrillic_stacked_anomalies_reach_caution():
+    # A Cyrillic name that trips several independent anomalies at once must
+    # clear the caution line. No single lexical signal can do this alone
+    # (max weight 12 < the 21 needed) — that is deliberate: one anomaly is
+    # an opinion, three are a pattern.
+    #   ьъщчжшгкхцф — no vowels at all, an 11-consonant run.
+    name = "xn--" + "ьъщчжшгкхцф".encode("punycode").decode() + ".xn--p1ai"
+    score, level, reasons = calculate_score({"domain": name})
+    fired = {r.signal for r in reasons}
+    assert "abnormal_vowel_ratio" in fired, fired
+    assert "consonant_cluster" in fired, fired
+    assert level == RiskLevel.caution, f"stacked Cyrillic anomalies scored only {score}"
+    print(f"  ьъщчжшгкхцф.рф: score={score} level={level.value} {sorted(fired)}")
+
+
+def test_cyrillic_vowel_ratio_uses_the_cyrillic_alphabet():
+    from api.services.url_features import cyrillic_vowel_consonant_ratio
+    # а е ё и о у ы э ю я are the vowels; б…щ the consonants.
+    assert cyrillic_vowel_consonant_ratio("оооо") == 2.0      # vowels, no consonants
+    assert cyrillic_vowel_consonant_ratio("ктпр") == 0.0      # consonants, no vowels
+    assert cyrillic_vowel_consonant_ratio("вода") == 1.0      # в-о-д-а → 2/2
+    # ASCII letters are not Cyrillic and must not be counted either way.
+    assert cyrillic_vowel_consonant_ratio("abcde") == 0.0
+    print("  Cyrillic vowel ratio counts the right alphabet")
+
+
+def test_cyrillic_soft_and_hard_signs_break_consonant_runs():
+    from api.services.url_features import cyrillic_consecutive_consonants_max
+    # ъ and ь are SIGNS, not consonants — they modify the consonant before
+    # them and cannot be spoken alone, so they BREAK a run. This is not a
+    # stylistic call: counting them as consonants turns three real domains
+    # in the Tranco Cyrillic set into >= 5-runs, one of which is the
+    # regional-government name this branch exists to protect.
+    assert cyrillic_consecutive_consonants_max("перемышльский-район") == 2   # ...шльс... → 5 if ь counted
+    assert cyrillic_consecutive_consonants_max("севастопольстрой") == 3      # ...льстр... → 5 if ь counted
+    assert cyrillic_consecutive_consonants_max("объясняем") == 2
+    assert cyrillic_consecutive_consonants_max("жкшнв") == 5
+    # Measured on the 653 legitimate Cyrillic names: a run of >= 5 never
+    # occurs, while >= 4 hits 17 of them — including президентскиегранты
+    # and реестрповесток, both Russian government sites. Hence the >= 5 cut.
+    assert cyrillic_consecutive_consonants_max("президентскиегранты") == 4
+    print("  ъ/ь break consonant runs; >=5 stays clear of real Russian words")
+
+
+def test_russian_bigram_score_separates_words_from_mash():
+    from api.services.url_features import russian_bigram_score
+    # Real Russian compounds score above the 0.10 line; uniform-random
+    # Cyrillic scores at or near zero (it has no common Russian pairs).
+    assert russian_bigram_score("всеостройке") > 0.10
+    assert russian_bigram_score("смородина") > 0.10
+    assert russian_bigram_score("щъэьжфхцщъ") < 0.10
+    # An ASCII string has no Russian bigrams at all.
+    assert russian_bigram_score("paypal") == 0.0
+    print("  Russian bigram table separates words from random Cyrillic")
+
+
+def test_legit_russian_domains_gain_nothing_from_the_cyrillic_rules():
+    # The whole point of the RU-first product: turning the heuristics back
+    # on must NOT re-flag the names the previous commit cleared.
+    for d in (_EKZAMEN_PDD, _SUDI_ROSSII, _PEREMYSHL):
+        score, level, reasons = calculate_score({"domain": d})
+        assert level == RiskLevel.safe, f"{_decode_idn(d)} scored {score}: {[r.signal for r in reasons]}"
+    print("  экзамен-пдд.рф / судьироссии.рф / перемышльский-район.рф still safe")
+
+
+def test_non_cyrillic_non_ascii_names_are_still_skipped():
+    # We have a language model for English and for Russian, and for nothing
+    # else. A Greek, Arabic or accented-Latin name must keep skipping rather
+    # than be judged by either table.
+    for d in ("xn--caf-dma.com",           # café.com
+              "xn--mgbh0fb.com",           # مثال.com
+              "xn--hxajbheg2az3al.com"):   # παράδειγμα.com
+        _score, _level, reasons = calculate_score({"domain": d})
+        fired = {r.signal for r in reasons}
+        assert not (fired & _NAME_SHAPE_SIGNALS), f"{d} judged by a table we do not have: {fired}"
+    print("  scripts with no language model are still skipped")
+
+
+def test_decode_idn_bounds_label_length():
+    # A DNS label is capped at 63 characters (RFC 1035). Punycode decoding
+    # is expansive, so an over-long label is not a name — it is malformed
+    # input, and decoding it produced C1 control characters
+    # ('xn--' + 'a' * 120 → U+0080 repeated). Keep the ASCII spelling.
+    over_long = "xn--" + "a" * 120
+    out = _decode_idn(over_long + ".com")
+    assert out == over_long + ".com", f"over-long label was decoded: {out!r}"
+    assert out.isascii(), "decoding an over-long label produced control characters"
+    # A label at exactly the limit is still a legal label and still decodes.
+    assert _decode_idn(_EKZAMEN_PDD) == "экзамен-пдд.рф"
+    # And the scorer survives the malformed form.
+    score, _level, _ = calculate_score({"domain": over_long + ".com"})
+    assert 0 <= score <= 100
+    print("  over-long punycode label keeps its ASCII form")
 
 
 # ── The homograph defence must NOT be weakened by any of the above ──
@@ -1068,13 +1203,23 @@ if __name__ == "__main__":
             test_idn_russian_domain_loses_encoding_artefact_penalties,
             test_idn_russian_government_domain_is_safe,
             test_idn_hyphen_count_uses_the_decoded_name,
-            test_idn_cyrillic_skips_english_trained_heuristics,
+            test_idn_english_heuristics_do_not_judge_cyrillic,
             test_idn_legit_non_cyrillic_idn_is_safe,
             test_idn_punycode_homograph_still_dangerous,
             test_idn_unicode_homograph_still_dangerous,
             test_idn_cyrillic_lookalike_of_top_domain_still_dangerous,
             test_idn_multichar_glyph_homoglyphs_still_fire,
             test_ascii_domain_scores_unchanged,
+        ]),
+        ("\n[Script-aware name shape (Cyrillic)]", [
+            test_cyrillic_dga_name_is_no_longer_invisible,
+            test_cyrillic_stacked_anomalies_reach_caution,
+            test_cyrillic_vowel_ratio_uses_the_cyrillic_alphabet,
+            test_cyrillic_soft_and_hard_signs_break_consonant_runs,
+            test_russian_bigram_score_separates_words_from_mash,
+            test_legit_russian_domains_gain_nothing_from_the_cyrillic_rules,
+            test_non_cyrillic_non_ascii_names_are_still_skipped,
+            test_decode_idn_bounds_label_length,
         ]),
         ("\n[Confidence]", [
             test_confidence_high, test_confidence_medium, test_confidence_low,
