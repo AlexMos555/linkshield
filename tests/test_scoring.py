@@ -18,6 +18,7 @@ from api.services.scoring import (
     _has_fake_tld_in_subdomain,
     _is_url_shortener,
     _extract_base_domain,
+    _decode_idn,
     TOP_DOMAINS,
 )
 from api.models.schemas import RiskLevel, ConfidenceLevel
@@ -499,6 +500,189 @@ def test_homograph_scoring():
 
 
 # ═══════════════════════════════════════════════════════════════
+# IDN / PUNYCODE NORMALISATION
+#
+# DNS carries internationalised domains in their ASCII-compatible
+# (punycode) form. That form is an ENCODING, not a name:
+# `xn----7sbnackuskv0m.xn--p1ai` has six hyphens and a 19-character
+# label, while the name it encodes — `экзамен-пдд.рф` — has one hyphen
+# and eleven characters. Measured 2026-09-20 on a 2,000-domain random
+# sample of the .ru/.рф/.su Tranco tail: 28 of the 29 punycode domains
+# came back 'caution', every one of them on name-shape heuristics
+# reading the encoding's artefacts (судьироссии.рф — the Russian
+# judiciary — scored 31). Cleanway is RU-first, so this is a direct
+# trust problem.
+# ═══════════════════════════════════════════════════════════════
+
+# Real .рф domains from the Tranco top-1M tail, with the names they encode.
+_EKZAMEN_PDD = "xn----7sbnackuskv0m.xn--p1ai"         # экзамен-пдд.рф
+_SUDI_ROSSII = "xn--d1aiaa2aleeao4h.xn--p1ai"         # судьироссии.рф
+_PEREMYSHL = "xn----8sbnapgcdijslcphl1j5bv.xn--p1ai"  # перемышльский-район.рф
+
+# Heuristics that judge the SHAPE of a name. Every one of them must read
+# the decoded name, never the punycode.
+_NAME_SHAPE_SIGNALS = {
+    "high_entropy", "medium_entropy",
+    "excessive_special_chars", "many_special_chars",
+    "unnatural_ngram", "suspicious_ngram",
+    "abnormal_vowel_ratio", "consonant_cluster",
+    "long_domain_name", "high_digit_ratio",
+}
+
+
+def test_decode_idn_returns_the_real_name():
+    assert _decode_idn(_EKZAMEN_PDD) == "экзамен-пдд.рф"
+    assert _decode_idn(_SUDI_ROSSII) == "судьироссии.рф"
+    # Only xn-- labels change; a mixed name keeps its ASCII labels verbatim.
+    assert _decode_idn("shop.xn--p1ai") == "shop.рф"
+    print("  _decode_idn: punycode → real name")
+
+
+def test_decode_idn_is_a_noop_for_ascii():
+    # The overwhelmingly common path must be byte-identical, not merely equal.
+    for d in ("paypal.com", "my-shop.ru", "a.b.c.example.co.uk", ""):
+        assert _decode_idn(d) == d
+    print("  _decode_idn: ASCII untouched")
+
+
+def test_decode_idn_never_raises_on_malformed_labels():
+    # A decode failure must degrade to the ASCII form, never propagate.
+    for bad in ("xn--.com", "xn--!!!!.com", "xn--" + "a" * 120 + ".com", "xn--xn--xn--.ru"):
+        out = _decode_idn(bad)
+        assert isinstance(out, str) and out          # no crash, no empty result
+        assert out.count(".") == bad.count(".")      # label structure preserved
+    # And the scorer as a whole survives them.
+    for bad in ("xn--.com", "xn--!!!!.ru"):
+        score, _level, _ = calculate_score({"domain": bad})
+        assert 0 <= score <= 100
+    print("  _decode_idn: malformed punycode falls back safely")
+
+
+def test_idn_russian_domain_loses_encoding_artefact_penalties():
+    # экзамен-пдд.рф — a driving-test site. Was: 37 / caution on
+    # medium_entropy + excessive_special_chars + unnatural_ngram +
+    # abnormal_vowel_ratio, all read off the punycode.
+    score, level, reasons = calculate_score({"domain": _EKZAMEN_PDD})
+    fired = {r.signal for r in reasons}
+    assert not (fired & _NAME_SHAPE_SIGNALS), f"name-shape signals still firing on the encoding: {fired}"
+    assert level == RiskLevel.safe, f"legit .рф domain scored {score}/{level}"
+    print(f"  экзамен-пдд.рф: score={score} level={level.value}")
+
+
+def test_idn_russian_government_domain_is_safe():
+    # судьироссии.рф — the Russian judiciary. Was 31 / caution.
+    score, level, reasons = calculate_score({"domain": _SUDI_ROSSII})
+    assert level == RiskLevel.safe, f"судьироссии.рф scored {score}: {[r.signal for r in reasons]}"
+    print(f"  судьироссии.рф: score={score} level={level.value}")
+
+
+def test_idn_hyphen_count_uses_the_decoded_name():
+    # The '----' in xn----7sb… is the ACE delimiter plus the hyphen of the
+    # real name — an artefact of the encoding, not four hyphens in the name.
+    _score, _level, reasons = calculate_score({"domain": _EKZAMEN_PDD})
+    assert not any(r.signal in ("excessive_special_chars", "many_special_chars") for r in reasons)
+    # An ASCII name with genuinely many hyphens must still be flagged.
+    _, _, ascii_reasons = calculate_score({"domain": "a-b-c-d-e.ru"})
+    assert any(r.signal == "excessive_special_chars" for r in ascii_reasons)
+    print("  hyphen count read off the real name, ASCII behaviour intact")
+
+
+def test_idn_cyrillic_skips_english_trained_heuristics():
+    # bigram_score() has no Cyrillic pairs (returns 0.0 for EVERY Russian
+    # name) and _VOWELS/_CONSONANTS are ASCII-only (so the vowel ratio is
+    # always 0.0 → "abnormal"). Applied to Cyrillic they measure "not
+    # English", not "random". With no Cyrillic language model they must skip.
+    for d in (_EKZAMEN_PDD, _SUDI_ROSSII, _PEREMYSHL):
+        _, _, reasons = calculate_score({"domain": d})
+        fired = {r.signal for r in reasons}
+        assert "unnatural_ngram" not in fired and "suspicious_ngram" not in fired
+        assert "abnormal_vowel_ratio" not in fired
+        assert "consonant_cluster" not in fired
+    # An ASCII DGA-looking name must still trip them.
+    _, _, dga = calculate_score({"domain": "qwrtpsdfgh.ru"})
+    dga_fired = {r.signal for r in dga}
+    assert "unnatural_ngram" in dga_fired and "abnormal_vowel_ratio" in dga_fired
+    print("  English-trained heuristics skip non-ASCII, still fire on ASCII DGA")
+
+
+def test_idn_legit_non_cyrillic_idn_is_safe():
+    # café.com — a legitimate accented name, not a lookalike. Was 18 on
+    # many_special_chars (punycode hyphens) + unnatural_ngram.
+    score, level, reasons = calculate_score({"domain": "xn--caf-dma.com"})
+    assert not ({r.signal for r in reasons} & _NAME_SHAPE_SIGNALS)
+    assert level == RiskLevel.safe
+    print(f"  café.com: score={score}")
+
+
+# ── The homograph defence must NOT be weakened by any of the above ──
+
+def test_idn_punycode_homograph_still_dangerous():
+    # xn--pypal-4ve.com = pаypal.com with a Cyrillic 'а'.
+    score, level, reasons = calculate_score({"domain": "xn--pypal-4ve.com"})
+    fired = {r.signal for r in reasons}
+    assert "homograph_attack" in fired, f"homograph defence lost: {fired}"
+    assert level == RiskLevel.dangerous, f"punycode homograph scored only {score}"
+    print(f"  punycode homograph: score={score} level={level.value}")
+
+
+def test_idn_unicode_homograph_still_dangerous():
+    score, level, reasons = calculate_score({"domain": "pаypal.com"})
+    assert any(r.signal == "homograph_attack" for r in reasons)
+    assert level == RiskLevel.dangerous
+    print(f"  unicode homograph: score={score}")
+
+
+def test_idn_cyrillic_lookalike_of_top_domain_still_dangerous():
+    # аpple.com with a leading Cyrillic 'а', in both wire forms.
+    for d in ("аpple.com", "xn--pple-43d.com"):
+        score, level, reasons = calculate_score({"domain": d})
+        assert any(r.signal == "homograph_attack" for r in reasons), d
+        assert level == RiskLevel.dangerous, f"{d} scored {score}"
+    print("  Cyrillic lookalike of a top domain: dangerous in both forms")
+
+
+def test_idn_multichar_glyph_homoglyphs_still_fire():
+    # rn→m and vv→w are ASCII tricks; the IDN work must not touch them.
+    for d in ("rnicrosoft-login.com", "vvhatsapp.com"):
+        _, _, reasons = calculate_score({"domain": d})
+        assert any(r.signal == "typosquatting" for r in reasons), d
+    print("  rn→m / vv→w glyph homoglyphs intact")
+
+
+# ── Regression guard: ASCII scoring is byte-identical ──
+#
+# Expected values captured from main @2b4f54c BEFORE the IDN change.
+# These exercise every heuristic the change touches (entropy, special
+# chars, n-gram, vowel ratio, consonant cluster, length, typosquatting)
+# on purely ASCII names, where decoding is a no-op.
+
+_ASCII_REGRESSION_BASELINE = {
+    "paypal.com": 0,
+    "google.com": 0,
+    "sudden-random-xkcdvbn.ru": 17,
+    "my-very-long-suspicious-domain-name-here.ru": 51,
+    "this-is-a-very-long-suspicious-domain-name.com": 51,
+    "qwrtpsdfgh.ru": 22,
+    "ikar.ru": 25,
+    "ngpedia.ru": 25,
+    "etsp.ru": 25,
+    "ugpr.ru": 25,
+    "rnicrosoft-login.com": 40,
+    "vvhatsapp.com": 25,
+}
+
+
+def test_ascii_domain_scores_unchanged():
+    for domain, expected in _ASCII_REGRESSION_BASELINE.items():
+        score, _, reasons = calculate_score({"domain": domain})
+        assert score == expected, (
+            f"ASCII regression on {domain}: {score} != {expected} "
+            f"({[(r.signal, r.weight) for r in reasons]})"
+        )
+    print(f"  {len(_ASCII_REGRESSION_BASELINE)} ASCII domains unchanged")
+
+
+# ═══════════════════════════════════════════════════════════════
 # CONFIDENCE LEVELS
 # ═══════════════════════════════════════════════════════════════
 
@@ -877,6 +1061,20 @@ if __name__ == "__main__":
         ]),
         ("\n[Homograph / IDN]", [
             test_homograph_cyrillic, test_homograph_pure_ascii, test_homograph_scoring,
+        ]),
+        ("\n[IDN / punycode normalisation]", [
+            test_decode_idn_returns_the_real_name, test_decode_idn_is_a_noop_for_ascii,
+            test_decode_idn_never_raises_on_malformed_labels,
+            test_idn_russian_domain_loses_encoding_artefact_penalties,
+            test_idn_russian_government_domain_is_safe,
+            test_idn_hyphen_count_uses_the_decoded_name,
+            test_idn_cyrillic_skips_english_trained_heuristics,
+            test_idn_legit_non_cyrillic_idn_is_safe,
+            test_idn_punycode_homograph_still_dangerous,
+            test_idn_unicode_homograph_still_dangerous,
+            test_idn_cyrillic_lookalike_of_top_domain_still_dangerous,
+            test_idn_multichar_glyph_homoglyphs_still_fire,
+            test_ascii_domain_scores_unchanged,
         ]),
         ("\n[Confidence]", [
             test_confidence_high, test_confidence_medium, test_confidence_low,

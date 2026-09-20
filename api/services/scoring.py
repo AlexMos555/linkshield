@@ -520,8 +520,34 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     score = 0
     reasons: list[DomainReason] = []
     domain: str = signals.get("domain", "")
-    base_domain = _extract_base_domain(domain)
-    domain_name = base_domain.split(".")[0] if "." in base_domain else base_domain
+
+    # ── IDN normalisation, done ONCE, up front ──
+    #
+    # An internationalised domain reaches us in its ASCII-compatible
+    # (punycode) form, because that is what DNS carries. Two different
+    # questions get asked about it downstream, and they need different forms:
+    #
+    #   ascii_domain   — the wire form. Everything that LOOKS THE NAME UP
+    #                    speaks punycode: DNS/DoH, the blocklists, the Tranco
+    #                    tables, the PSL helpers, and the ML model (whose
+    #                    training features were extracted from ASCII names —
+    #                    feeding it Unicode would break feature parity).
+    #   unicode_domain — the name a human reads. Everything that judges the
+    #                    SHAPE of the name (hyphens, length, entropy,
+    #                    n-grams) must use this, or it scores the encoder's
+    #                    artefacts: xn----7sbnackuskv0m.xn--p1ai "has" six
+    #                    hyphens and a 19-char label, while экзамен-пдд.рф
+    #                    has one hyphen and eleven characters.
+    #
+    # Each heuristic below states which form it takes and why.
+    ascii_domain = domain
+    unicode_domain = _decode_idn(domain)
+
+    # Lookup key: the top-domain / Tranco tables are indexed on the ASCII form.
+    base_domain = _extract_base_domain(ascii_domain)
+    # Name under judgement: the decoded registrable label.
+    unicode_base = _extract_base_domain(unicode_domain)
+    domain_name = unicode_base.split(".")[0] if "." in unicode_base else unicode_base
 
     # ════════════════════════════════════════════
     # LAYER 1: BLOCKLIST CHECK (instant block)
@@ -720,7 +746,10 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             ))
 
     # ── 3.1 Homograph / IDN attack ──
-    homograph_target = _check_homograph(domain)
+    # ASCII form: _check_homograph decodes internally, on purpose — it needs
+    # the raw characters (and its own permissive punycode fallback) to spot
+    # mixed-script look-alikes such as pаypal.com with a Cyrillic 'а'.
+    homograph_target = _check_homograph(ascii_domain)
     if homograph_target:
         score += 60
         reasons.append(DomainReason(
@@ -753,7 +782,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.4 Typosquatting (6 methods) ──
-    typosquat_result = _check_typosquatting_v2(domain)
+    # Unicode form: brand comparison is meaningless against punycode gibberish
+    # ('xn--pypal-4ve' resembles no brand), while on the decoded name a
+    # Cyrillic look-alike sits one edit from its target — so this now
+    # corroborates the homograph signal instead of missing it.
+    typosquat_result = _check_typosquatting_v2(unicode_domain)
     if typosquat_result:
         legit_domain, method = typosquat_result
         score += 25
@@ -763,7 +796,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.5 Brand in subdomain: "paypal.evil.com" ──
-    brand_sub = _check_brand_in_subdomain(domain)
+    # ASCII form: this walks the registrable-domain boundary with the PSL
+    # helper, whose compound-suffix tables are written in ASCII. Decoding
+    # would change nothing anyway — the brand list it matches against is
+    # Latin, so a decoded Cyrillic label can never match it.
+    brand_sub = _check_brand_in_subdomain(ascii_domain)
     if brand_sub:
         score += 30
         reasons.append(DomainReason(
@@ -772,7 +809,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.6 Fake TLD in subdomain: "paypal.com.evil.xyz" ──
-    if _has_fake_tld_in_subdomain(domain):
+    # ASCII form: looks for literal 'com'/'org'/… labels; decoding never
+    # creates or removes one.
+    if _has_fake_tld_in_subdomain(ascii_domain):
         score += 35
         reasons.append(DomainReason(
             signal="fake_tld_subdomain", weight=35,
@@ -805,7 +844,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.10 Risky TLD ──
-    tld = _extract_tld(domain)
+    # ASCII form: HIGH_RISK_TLDS / MEDIUM_RISK_TLDS are spelled in ASCII, so
+    # '.xn--p1ai' must stay encoded here rather than decode to '.рф'.
+    tld = _extract_tld(ascii_domain)
     if tld in HIGH_RISK_TLDS:
         score += 20
         reasons.append(DomainReason(
@@ -820,7 +861,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.11 Excessive subdomains (>3 levels) ──
-    dot_count = domain.count(".")
+    # Either form works — decoding never adds or removes a label separator.
+    dot_count = ascii_domain.count(".")
     if dot_count >= 3:
         score += 15
         reasons.append(DomainReason(
@@ -829,7 +871,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.12 Suspicious keywords in domain ──
-    keyword = _check_suspicious_keywords(domain)
+    # Unicode form: the keyword list is words a human would read in the name.
+    keyword = _check_suspicious_keywords(unicode_domain)
     if keyword:
         score += 10
         reasons.append(DomainReason(
@@ -837,15 +880,38 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             detail=f"Contains suspicious keyword: '{keyword}'",
         ))
 
+    # ── ASCII gate for the English-trained name heuristics ──
+    #
+    # 3.13 (entropy), 3.30 (n-gram), 3.31 (vowel ratio) and 3.32 (consonant
+    # cluster) are all calibrated on ASCII English, and on a non-ASCII name
+    # they do not measure "random", they measure "not English":
+    #
+    #   * bigram_score() looks names up in _ENGLISH_BIGRAMS, which has no
+    #     Cyrillic pairs — so it returns 0.0 for EVERY Russian name and
+    #     "unnatural_ngram" fires on all of them.
+    #   * vowel_consonant_ratio() and consecutive_consonants_max() count
+    #     against ASCII-only _VOWELS/_CONSONANTS — a Cyrillic name has zero
+    #     of each, so the ratio is 0.0 and trips the "< 0.2" anomaly.
+    #   * the entropy thresholds (4.0 / 3.5) were tuned on a 26-letter
+    #     alphabet; Russian has 33, so the same "ordinariness" reads hotter.
+    #
+    # We have no Cyrillic language model, so these SKIP non-ASCII names
+    # rather than guess at them. The cost is real and deliberate: a Cyrillic
+    # DGA name gets no lexical penalty. It is still covered by the other ~30
+    # signals (blocklists, domain age, no-HTTPS, brand checks, ML), and
+    # mixed-script look-alikes — the actual attack in this script — are
+    # caught by _check_homograph above, which is the right tool for them.
+    name_is_ascii = domain_name.isascii()
+
     # ── 3.13 Shannon entropy (DGA detection) ──
     entropy = _shannon_entropy(domain_name)
-    if entropy > 4.0 and len(domain_name) > 8:
+    if name_is_ascii and entropy > 4.0 and len(domain_name) > 8:
         score += 12
         reasons.append(DomainReason(
             signal="high_entropy", weight=12,
             detail=f"Domain name has unusually high randomness (entropy={entropy}) — possible auto-generated domain",
         ))
-    elif entropy > 3.5 and len(domain_name) > 10:
+    elif name_is_ascii and entropy > 3.5 and len(domain_name) > 10:
         score += 6
         reasons.append(DomainReason(
             signal="medium_entropy", weight=6,
@@ -853,6 +919,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.14 High digit ratio ──
+    # Unicode form (via domain_name): punycode encodes non-ASCII letters into
+    # a base-36 tail full of digits, so the wire form invents a digit ratio
+    # the real name does not have.
     d_ratio = _digit_ratio(domain_name)
     if d_ratio > 0.4 and len(domain_name) > 5:
         score += 15
@@ -862,7 +931,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.15 Excessive special characters ──
-    special = _special_char_count(domain)
+    # Unicode form. This is the single biggest source of the RU false
+    # positives: all 28 flagged punycode domains in the 2026-09-20 sample
+    # tripped it, because the '----' in xn----7sb… is the ACE delimiter plus
+    # the name's own hyphen, not four hyphens that anybody typed.
+    special = _special_char_count(unicode_domain)
     if special >= 4:
         score += 15
         reasons.append(DomainReason(
@@ -894,7 +967,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.18 Hex/percent encoding in domain ──
-    if _has_hex_encoding(domain):
+    # ASCII form: percent-encoding is a property of the wire representation.
+    if _has_hex_encoding(ascii_domain):
         score += 20
         reasons.append(DomainReason(
             signal="hex_encoding", weight=20,
@@ -956,7 +1030,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.22 URL shortener ──
-    if _is_url_shortener(domain):
+    # ASCII form: _URL_SHORTENERS is an ASCII lookup table.
+    if _is_url_shortener(ascii_domain):
         score += 15
         reasons.append(DomainReason(
             signal="url_shortener", weight=15,
@@ -964,6 +1039,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.23 Domain length ──
+    # Unicode form (via domain_name): punycode inflates length — перемышльский-район
+    # is 19 characters, its xn---- encoding is 28.
     if len(domain_name) > 25:
         score += 10
         reasons.append(DomainReason(
@@ -1044,13 +1121,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     from api.services.url_features import bigram_score, vowel_consonant_ratio, consecutive_consonants_max
 
     bg_score = bigram_score(domain_name)
-    if bg_score < 0.15 and len(domain_name) > 7:
+    if name_is_ascii and bg_score < 0.15 and len(domain_name) > 7:
         score += 10
         reasons.append(DomainReason(
             signal="unnatural_ngram", weight=10,
             detail=f"Domain name has unnatural character patterns (bigram score={bg_score})",
         ))
-    elif bg_score < 0.25 and len(domain_name) > 10:
+    elif name_is_ascii and bg_score < 0.25 and len(domain_name) > 10:
         score += 5
         reasons.append(DomainReason(
             signal="suspicious_ngram", weight=5,
@@ -1059,7 +1136,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
 
     # ── 3.31 Vowel/consonant ratio anomaly ──
     vc_ratio = vowel_consonant_ratio(domain_name)
-    if len(domain_name) > 6 and (vc_ratio < 0.2 or vc_ratio > 1.5):
+    if name_is_ascii and len(domain_name) > 6 and (vc_ratio < 0.2 or vc_ratio > 1.5):
         score += 6
         reasons.append(DomainReason(
             signal="abnormal_vowel_ratio", weight=6,
@@ -1068,7 +1145,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
 
     # ── 3.32 Consecutive consonants (>5 = very unnatural) ──
     max_cons = consecutive_consonants_max(domain_name)
-    if max_cons >= 5 and len(domain_name) > 6:
+    if name_is_ascii and max_cons >= 5 and len(domain_name) > 6:
         score += 6
         reasons.append(DomainReason(
             signal="consonant_cluster", weight=6,
@@ -1095,7 +1172,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # ── 3.34 ML Model prediction ──
     try:
         from api.services.ml_scorer import ml_predict
-        ml_result = ml_predict(domain)
+        # ASCII form: the model's features were extracted from ASCII domains,
+        # so the wire form is what keeps inference consistent with training.
+        ml_result = ml_predict(ascii_domain)
         if ml_result:
             ml_prob = ml_result["phishing_probability"]
             ml_confidence = ml_result["confidence"]
@@ -1210,24 +1289,63 @@ def _extract_tld(domain: str) -> str:
     return "." + parts[-1] if parts else ""
 
 
+# ── IDN / punycode normalisation ──
+
+def _decode_idn(domain: str) -> str:
+    """Return the Unicode form of an internationalised domain.
+
+    `xn----7sbnackuskv0m.xn--p1ai` → `экзамен-пдд.рф`.
+
+    Punycode is an ENCODING, not a name. That ASCII form has six hyphens and
+    a 19-character label; the name it actually spells has one hyphen and
+    eleven characters. Any heuristic that judges the SHAPE of a name — hyphen
+    counts, label length, entropy, n-grams — is reading the encoder's output
+    unless it decodes first, and scores the artefacts instead of the name.
+    (Measured 2026-09-20: 28 of the 29 punycode domains in a 2,000-domain
+    sample of the .ru/.рф/.su Tranco tail came back 'caution' this way.)
+
+    Callers keep the ASCII form for everything that legitimately speaks
+    punycode — DNS lookups, blocklists, the Tranco tables and the ML model,
+    all of which are keyed on the wire form.
+
+    Decoding is per-label and never raises: a label that is not valid
+    punycode keeps its ASCII spelling, so malformed input degrades to the
+    previous behaviour rather than erroring. The stdlib `idna` codec is
+    tried first and the raw `punycode` codec second — the latter skips
+    IDNA validation, so a deliberately malformed attack label still decodes
+    to the characters it encodes instead of being waved through as ASCII.
+    """
+    if "xn--" not in domain.lower():
+        return domain
+
+    out: list[str] = []
+    for label in domain.split("."):
+        if not label.lower().startswith("xn--"):
+            out.append(label)
+            continue
+        decoded = ""
+        try:
+            decoded = label.encode("ascii").decode("idna")
+        except Exception:
+            try:
+                decoded = label[4:].encode("ascii").decode("punycode")
+            except Exception:
+                decoded = ""
+        out.append(decoded or label)
+    return ".".join(out)
+
+
 # ── Homograph detection ──
 
 def _check_homograph(domain: str) -> Optional[str]:
     # IDN homograph attacks appear in DNS/URLs as ASCII punycode (xn--…), so a
-    # raw ascii check misses them entirely. Decode any xn-- label back to Unicode
-    # FIRST, then look for confusable characters on the decoded form.
-    decoded = domain
-    if "xn--" in domain.lower():
-        labels = []
-        for label in domain.split("."):
-            if label.lower().startswith("xn--"):
-                try:
-                    labels.append(label[4:].encode("ascii").decode("punycode"))
-                except Exception:
-                    labels.append(label)
-            else:
-                labels.append(label)
-        decoded = ".".join(labels)
+    # raw ascii check misses them entirely. Decode any xn-- label back to
+    # Unicode FIRST, then look for confusable characters on the decoded form.
+    # Shares _decode_idn with the scorer so the two cannot drift apart: this
+    # check is the reason a decode failure falls back to the raw punycode
+    # codec rather than giving up, and the reason callers hand it the ASCII
+    # form instead of a pre-decoded one.
+    decoded = _decode_idn(domain)
 
     try:
         decoded.encode("ascii")
