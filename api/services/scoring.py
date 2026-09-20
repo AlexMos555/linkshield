@@ -1430,6 +1430,17 @@ def _decode_idn(domain: str) -> str:
                 decoded = label[4:].encode("ascii").decode("punycode")
             except Exception:
                 decoded = ""
+        # The permissive codec can also emit UNPAIRED SURROGATES (U+D800-
+        # U+DFFF) — 'xn--zi0c0o6s' is one. Python keeps them in a str, but the
+        # first component that ENCODES the name (a log line, the JSON
+        # response, a cache key) raises UnicodeEncodeError, turning a hostile
+        # domain into a 500. Keep the ASCII spelling unless the decoded label
+        # survives a UTF-8 round trip.
+        if decoded:
+            try:
+                decoded.encode("utf-8")
+            except UnicodeEncodeError:
+                decoded = ""
         out.append(decoded or label)
     return ".".join(out)
 

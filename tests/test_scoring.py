@@ -1252,3 +1252,16 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 55)
     print(f"All {total} tests passed!")
+
+
+def test_decode_idn_never_returns_text_that_cannot_be_encoded():
+    """The permissive punycode fallback can emit unpaired surrogates. Such a
+    name survives inside a Python str but explodes on the first log line,
+    JSON response or cache key that encodes it — a hostile domain must not be
+    able to turn a verdict into a 500."""
+    from api.services.scoring import _decode_idn
+
+    for label in ("xn--zi0c0o6s", "xn--f2u01gur7kc4zxi8poi0qwp8hq"):
+        decoded = _decode_idn(f"{label}.com")
+        decoded.encode("utf-8")  # must not raise
+        assert decoded == f"{label}.com", "an undecodable label keeps its ASCII spelling"
