@@ -67,6 +67,15 @@ jobs:
         # app's 32-hex nonce, and that the always-pass test sitekey is flagged.
         run: node --experimental-strip-types scripts/test-turnstile-lib.mjs
 
+      - name: Extension local-scorer table test
+        # The offline scorer draws the badge before (and sometimes instead of)
+        # any backend verdict, so it is a fork of api/services/scoring.py that
+        # has drifted before (2026-07-20 QA: brand-subdomain and glyph bugs
+        # the backend had already fixed). This table pins the punycode/IDN
+        # decisions against the Python implementation, and runs against all
+        # four extension trees, so a hand-edit to a generated copy fails too.
+        run: node scripts/test-local-scorer.mjs
+
       - name: Extension build drift guard
         # `packages/extension-core/` is the single source of truth.
         # `scripts/build-extensions.sh` fans the files out to
