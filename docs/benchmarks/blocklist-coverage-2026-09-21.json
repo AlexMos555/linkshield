@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-09-21T06:50:25Z",
+  "artifact_source": "locally built from feat/more-threat-feeds (scripts/refresh_dangerous_domains.py --dry-run --artifact-out)",
+  "artifact_names": 463992,
+  "held_out_feed": "phishtank_online_valid",
+  "sample_hostnames": 3000,
+  "coverage_all_pct": 82.3,
+  "coverage_blockable_pct": 93.0,
+  "blockable_hostnames": 2541,
+  "ip_literal_hostnames": 0,
+  "shared_hosting_hostnames": 459,
+  "false_positives_top10k": 0,
+  "false_positive_examples": [],
+  "note": "Coverage is measured against a feed that does not build the list (PhishTank), so it is not circular. 'blockable' excludes IP-literal URLs and phishing on shared hosting, which domain-level DNS blocking cannot cover by design.",
+  "comparison": {
+    "note": "All three artifacts were scored against ONE PhishTank pull, so the numbers compare. 'local before' is the same publisher run from the base branch minutes earlier: it isolates what the four new feeds add from what a simple rebuild adds.",
+    "live_production": {
+      "artifact_names": 429557,
+      "coverage_all_pct": 80.2,
+      "coverage_blockable_pct": 91.0,
+      "false_positives_top10k": 0
+    },
+    "local_before_base_branch": {
+      "artifact_names": 431432,
+      "coverage_all_pct": 81.5,
+      "coverage_blockable_pct": 92.5,
+      "false_positives_top10k": 0,
+      "artifact_bytes": 2588676,
+      "blockset_entries": 555903
+    },
+    "local_after_this_branch": {
+      "artifact_names": 463992,
+      "coverage_all_pct": 82.3,
+      "coverage_blockable_pct": 93.0,
+      "false_positives_top10k": 0,
+      "artifact_bytes": 2784036,
+      "blockset_entries": 597377
+    },
+    "attributable_to_the_new_feeds": {
+      "coverage_all_pp": 0.8,
+      "coverage_blockable_pp": 0.5,
+      "held_out_hostnames_newly_caught": 24,
+      "held_out_hostnames_newly_missed": 0,
+      "by_feed_overlapping": {
+        "Phishunt": 16,
+        "TweetFeed": 12,
+        "CERT Polska": 4,
+        "CSIRT Italia": 0
+      },
+      "artifact_bytes_added": 195360,
+      "artifact_bytes_added_pct": 7.55,
+      "verdict": "Small. 32,560 more names on the phone bought 24 more held-out hostnames in 3,000. Phishunt is the only one that pays for its bytes (500 names -> 16 hits); TweetFeed's 34,807 names bought 12; CSIRT Italia is malware C2 and moves a phishing benchmark by nothing at all, which is what it was adopted for."
+    }
+  }
+}

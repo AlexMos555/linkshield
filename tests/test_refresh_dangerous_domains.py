@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import base64
 import importlib.util
+import json
 import logging
 import pathlib
 
@@ -468,13 +469,18 @@ def _score_in(score: float, low, high) -> bool:
     return above and below
 
 
-def _stub_world(monkeypatch, fake, openphish_urls, top=frozenset()) -> None:
+def _stub_world(monkeypatch, fake, openphish_urls, top=frozenset(), extra=None) -> None:
+    bodies = {
+        rdd.OPENPHISH_FEED: "\n".join(openphish_urls),
+        rdd.PHISHING_DATABASE: "\n".join(BASE),
+        # A healthy MISP feed with no events — an unparseable body would be an
+        # outage, which suppresses departure recording for every other feed.
+        rdd.CSIRT_IT_MANIFEST: "{}",
+        **(extra or {}),
+    }
+
     async def _fetch(url):
-        if url == rdd.OPENPHISH_FEED:
-            return "\n".join(openphish_urls)
-        if url == rdd.PHISHING_DATABASE:
-            return "\n".join(BASE)
-        return ""
+        return bodies.get(url, "")
 
     async def _psl():
         return set(PSL)
@@ -489,8 +495,8 @@ def _stub_world(monkeypatch, fake, openphish_urls, top=frozenset()) -> None:
     monkeypatch.setattr("redis.asyncio.from_url", lambda *_a, **_kw: fake)
 
 
-async def _run(monkeypatch, fake, openphish_urls, now, dry_run=False, top=frozenset()) -> int:
-    _stub_world(monkeypatch, fake, openphish_urls, top)
+async def _run(monkeypatch, fake, openphish_urls, now, dry_run=False, top=frozenset(), extra=None) -> int:
+    _stub_world(monkeypatch, fake, openphish_urls, top, extra)
     return await rdd.refresh("redis://fake", dry_run=dry_run, now=now)
 
 
@@ -743,3 +749,399 @@ def test_plan_retention_normal_departures_still_recorded_under_the_cap():
     )
     assert plan.departed == {"a.example"}
     assert not plan.skipped
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 2026-09-21: four more feeds (Phishunt CC0, TweetFeed CC0, CERT Polska,
+# CSIRT Italia TLP:CLEAR). Every sample below is a VERBATIM line from the
+# live feed on the day it was wired in — a parser tested against invented
+# input only proves the parser agrees with its author.
+# ══════════════════════════════════════════════════════════════════════════
+
+# https://raw.githubusercontent.com/0xDanielLopez/TweetFeed/master/year.csv
+TWEETFEED_SAMPLE = (
+    "2025-09-22 00:00:08,urldna_bot,domain,loginsapo.weebly.com,#scam #phishing,"
+    "https://x.com/urldna_bot/status/1969914576637399521\r\n"
+    "2025-09-22 00:00:08,urldna_bot,url,https://loginsapo.weebly.com,#scam #phishing,"
+    "https://x.com/urldna_bot/status/1969914576637399521\r\n"
+    "2025-09-22 00:04:20,skocherhan,ip,91.107.87.85,,"
+    "https://x.com/skocherhan/status/1969915633404973540\r\n"
+    "2025-09-22 00:04:20,skocherhan,url,http://91.107.87.85,,"
+    "https://x.com/skocherhan/status/1969915633404973540\r\n"
+    "2025-09-22 00:17:24,fbgwls245,sha256,"
+    "879523c832128a94b15d703d6a1611d3c6a7d0b61b9be9dcbcb1ea80c00309bf,#ransomware,"
+    "https://x.com/fbgwls245/status/1969918917922410978\r\n"
+    "2025-09-22 07:59:45,suyog41,md5,60df3ab3de912449d3889340cc6538d0,#stealer,"
+    "https://x.com/suyog41/status/1970035276098466079\r\n"
+    "2026-03-04 19:53:07,skocherhan,url,http://mantenimentgencatwebactualització.weebly.com,,"
+    "https://x.com/skocherhan/status/2029284020593299462\r\n"
+    "2026-03-04 19:53:07,skocherhan,domain,mantenimentgencatwebactualització.weebly.com,,"
+    "https://x.com/skocherhan/status/2029284020593299462\r\n"
+    "\r\n"
+    "2026-09-01 00:00:00,truncated_row,domain\r\n"
+)
+
+# Attachment names the reporters post in the domain/url columns.
+TWEETFEED_FILENAMES = (
+    "2025-09-22 10:11:47,PrakkiSathwik,domain,Officers.pdf.zip,#phishing #APT,"
+    "https://x.com/PrakkiSathwik/status/1970068501449810073\n"
+    "2025-10-02 18:06:37,skocherhan,domain,Brussels.zip,,"
+    "https://x.com/skocherhan/status/1973811876716068970\n"
+    "2025-10-02 18:06:38,skocherhan,url,http://documents.zip,,"
+    "https://x.com/skocherhan/status/1973811876716068971\n"
+)
+
+# https://phishunt.io/feed.txt — one full URL per line, no header, no comments.
+PHISHUNT_SAMPLE = (
+    "https://uvishnu.paypal-support.antimoney-laundering.org\r\n"
+    "https://office365.internal-alerts.com/i/d5b9af0d256f14c03ab8396a78d3687bf\r\n"
+    "http://support.m365-microsoft.com/i/ab041e84e499243eca3e98fb328201632\r\n"
+    "\r\n"
+    "https://rbxmodes.pro\r\n"
+)
+
+# https://hole.cert.pl/domains/v2/domains.txt — one host per line, punycode.
+CERT_PL_SAMPLE = (
+    "\ufeff0-ilxrc-w285.p9bckp.sbs\r\n"
+    "xn--agiel-kursawnia-hkd.org\r\n"
+    "xn--albilet-b9a.01289523rt.shop\r\n"
+    "amberroseline1.wixsite.com\r\n"
+    "\r\n"
+)
+
+# https://www.csirt.gov.it/feed-misp/<uuid>.json — MISP event, trimmed to the
+# attribute shapes that matter. Tag names are verbatim.
+CSIRT_EVENT = {
+    "Event": {
+        "info": "Warning: AsyncRAT IOCs 2026-09-19",
+        "Tag": [{"name": 'rsit:malicious-code="malware-distribution"'},
+                {"name": "tlp:clear"},
+                {"name": 'misp-galaxy:rat="AsyncRAT"'}],
+        "Attribute": [
+            {"category": "Payload delivery", "type": "sha256",
+             "value": "61539d1e98768dcb4843cb39e0c40625c015d8a2fce217beffe369349b6b8f1d"},
+            {"category": "Network activity", "type": "domain", "value": "anarchy10.duckdns.org"},
+            {"category": "Network activity", "type": "ip-dst", "value": "193.161.193.99"},
+            {"category": "Network activity", "type": "hostname", "value": "C2.BiOscolombia.com.co."},
+        ],
+        "Object": [{"Attribute": [
+            {"type": "domain|ip", "value": "evil-loader.example|203.0.113.7"},
+            {"type": "url", "value": "http://evil-loader.example/payload"},
+        ]}],
+    }
+}
+
+
+def test_tweetfeed_parser_keeps_only_the_rows_that_carry_a_name():
+    got = list(rdd._hosts_from_tweetfeed(TWEETFEED_SAMPLE))
+    # domain + url rows, including the IP-literal url (build_blockset drops it)
+    # and the Unicode host, which stays Unicode until _norm_host folds it.
+    assert got == [
+        "loginsapo.weebly.com",
+        "loginsapo.weebly.com",
+        "91.107.87.85",
+        "mantenimentgencatwebactualització.weebly.com",
+        "mantenimentgencatwebactualització.weebly.com",
+    ]
+    # ip / sha256 / md5 rows, the blank line and the truncated row yield nothing.
+    assert not any(h.startswith("8795") or h == "60df3ab3de912449d3889340cc6538d0" for h in got)
+
+
+def test_tweetfeed_url_rows_lose_the_path_and_the_scheme():
+    row = ("2026-01-02 03:04:05,bot,url,https://office365.internal-alerts.com/i/deadbeef,#phishing,"
+           "https://x.com/bot/status/1")
+    assert list(rdd._hosts_from_tweetfeed(row)) == ["office365.internal-alerts.com"]
+
+
+def test_tweetfeed_attachment_filenames_are_not_published_as_domains():
+    """'documents.zip' is a malware attachment, not a host. .zip is a real TLD,
+    so publishing it would block whoever registers documents.zip for real."""
+    assert list(rdd._hosts_from_tweetfeed(TWEETFEED_FILENAMES)) == []
+
+
+def test_phishunt_parser_takes_the_host_not_the_path():
+    got = list(rdd._hosts_from_openphish(PHISHUNT_SAMPLE))
+    assert got == ["uvishnu.paypal-support.antimoney-laundering.org",
+                   "office365.internal-alerts.com",
+                   "support.m365-microsoft.com",
+                   "rbxmodes.pro"]
+
+
+def test_cert_polska_parser_reads_one_host_per_line_including_punycode():
+    got = list(rdd._hosts_from_domain_list(CERT_PL_SAMPLE))
+    assert got == ["\ufeff0-ilxrc-w285.p9bckp.sbs", "xn--agiel-kursawnia-hkd.org",
+                   "xn--albilet-b9a.01289523rt.shop", "amberroseline1.wixsite.com"]
+    # The BOM is not whitespace, so it survives the parser — _norm_host is the
+    # single place that has to make every consumer agree on the wire form.
+    assert rdd._norm_host(got[0]) == "0-ilxrc-w285.p9bckp.sbs"
+
+
+def test_misp_event_yields_names_and_nothing_else():
+    got = list(rdd._hosts_from_misp_event(CSIRT_EVENT["Event"]))
+    assert got == ["anarchy10.duckdns.org", "c2.bioscolombia.com.co",
+                   "evil-loader.example"]  # domain|ip keeps the name half
+
+
+@pytest.mark.parametrize("tags,expected", [
+    ([{"name": "tlp:clear"}], True),
+    ([{"name": "TLP:WHITE"}], True),
+    ([{"name": 'misp-galaxy:rat="AsyncRAT"'}, {"name": "tlp:clear"}], True),
+    ([{"name": "tlp:green"}], False),
+    ([{"name": "tlp:amber+strict"}], False),
+    ([{"name": "tlp:clear"}, {"name": "tlp:amber"}], False),  # mixed = not ours
+    ([{"name": 'misp-galaxy:rat="AsyncRAT"'}], False),        # unmarked = not ours
+    ([], False),
+])
+def test_tlp_marking_decides_whether_a_misp_event_is_ours_to_ship(tags, expected):
+    """The redistribution grant for these feeds IS the TLP marking, so an
+    unmarked or restricted event must not reach the artifact."""
+    assert rdd._is_tlp_open(tags) is expected
+
+
+@pytest.mark.asyncio
+async def test_misp_feed_reads_newest_tlp_open_events_and_skips_the_rest(monkeypatch):
+    manifest = {
+        "aaa": {"date": "2026-09-20", "Tag": [{"name": "tlp:clear"}]},
+        "bbb": {"date": "2026-09-19", "Tag": [{"name": "tlp:green"}]},   # not ours
+        "ccc": {"date": "2026-09-18", "Tag": [{"name": "tlp:clear"}]},
+        "ddd": {"date": "2026-09-17", "Tag": [{"name": "tlp:clear"}]},   # unreadable
+    }
+    bodies = {
+        rdd.CSIRT_IT_MANIFEST: json.dumps(manifest),
+        "https://www.csirt.gov.it/feed-misp/aaa.json": json.dumps(CSIRT_EVENT),
+        "https://www.csirt.gov.it/feed-misp/ccc.json": json.dumps(
+            {"Event": {"Tag": [{"name": "tlp:amber"}],  # manifest lied — event wins
+                       "Attribute": [{"type": "domain", "value": "secret.example"}]}}),
+        "https://www.csirt.gov.it/feed-misp/ddd.json": "<html>502</html>",
+    }
+    asked: list[str] = []
+
+    async def _fetch(url):
+        asked.append(url)
+        return bodies[url]
+
+    monkeypatch.setattr(rdd, "_fetch", _fetch)
+    monkeypatch.setattr(rdd, "MISP_EVENT_PAUSE", 0)
+    got = await rdd._fetch_misp_feed(rdd.CSIRT_IT_MANIFEST)
+
+    assert got == ["anarchy10.duckdns.org", "c2.bioscolombia.com.co", "evil-loader.example"]
+    assert "https://www.csirt.gov.it/feed-misp/bbb.json" not in asked, "tlp:green was fetched"
+    assert "secret.example" not in got, "an event marked amber must not be republished"
+
+
+@pytest.mark.asyncio
+async def test_misp_feed_caps_how_many_events_one_run_fetches(monkeypatch):
+    manifest = {f"e{i:03d}": {"date": f"2026-09-{i % 28 + 1:02d}", "Tag": [{"name": "tlp:clear"}]}
+                for i in range(500)}
+
+    async def _fetch(url):
+        if url == rdd.CSIRT_IT_MANIFEST:
+            return json.dumps(manifest)
+        return json.dumps({"Event": {"Tag": [{"name": "tlp:clear"}], "Attribute": []}})
+
+    monkeypatch.setattr(rdd, "_fetch", _fetch)
+    monkeypatch.setattr(rdd, "MISP_EVENT_PAUSE", 0)
+    calls = []
+    real = rdd._fetch
+
+    async def _counting(url):
+        calls.append(url)
+        return await real(url)
+
+    monkeypatch.setattr(rdd, "_fetch", _counting)
+    await rdd._fetch_misp_feed(rdd.CSIRT_IT_MANIFEST)
+    assert len(calls) == rdd.MISP_MAX_EVENTS + 1  # + the manifest itself
+
+
+@pytest.mark.asyncio
+async def test_a_misp_manifest_that_is_not_an_object_raises(monkeypatch):
+    """The caller turns this into 'feed down', which stops retention reading
+    the feed's absence as every one of its names having left."""
+    async def _fetch(_url):
+        return "[]"
+
+    monkeypatch.setattr(rdd, "_fetch", _fetch)
+    with pytest.raises(ValueError):
+        await rdd._fetch_misp_feed(rdd.CSIRT_IT_MANIFEST)
+
+
+# ── IDN: the feeds disagree about the wire form ──────────────────────────
+
+
+@pytest.mark.parametrize("raw,wire", [
+    ("mantenimentgencatwebactualització.weebly.com", "xn--mantenimentgencatwebactualitzaci-med.weebly.com"),
+    ("автозаим.рф", "xn--80aafugyk5a.xn--p1ai"),
+    ("sapzq.keró.hu", "sapzq.xn--ker-ina.hu"),
+    ("XN--80AAFUGYK5A.xn--p1ai", "xn--80aafugyk5a.xn--p1ai"),  # already encoded
+    ("example.com.", "example.com"),
+    ("\ufeffexample.com", "example.com"),
+])
+def test_idn_hosts_are_folded_to_the_wire_form_every_guard_uses(raw, wire):
+    """A resolver only ever asks for the xn-- form. is_hostname() is an ASCII
+    regex, so before this the Unicode names TweetFeed ships were dropped in
+    silence — the phone got no hash for the name it would actually query."""
+    assert rdd._norm_host(raw) == wire
+    assert rdd.is_hostname(rdd._norm_host(raw))
+
+
+def test_an_idn_that_cannot_be_encoded_is_dropped_not_half_encoded():
+    assert rdd._norm_host("​​.​") == ""
+
+
+def test_an_idn_phishing_domain_survives_the_whole_build():
+    out = rdd.build_blockset(["мвд-россия.рф"], TOP, public_suffixes={"com", "xn--p1ai"},
+                             brand_owned=frozenset())
+    assert out == {"xn----ctbgrqpnja5l.xn--p1ai"}
+
+
+# ── Exact-host-only feeds ────────────────────────────────────────────────
+
+
+def test_exact_only_hosts_never_promote_their_platform_apex():
+    """CERT Polska's API spec: listing a.example.com must block a.example.com
+    and b.a.example.com but NOT example.com. turbo.site, webnode.ru and com.nl
+    are in its list only because one tenant on them is a scam."""
+    psl = {"site", "com", "nl"}
+    out = rdd.build_blockset(["townmoney.turbo.site", "actfinancial.com.nl"], TOP,
+                             public_suffixes=psl, brand_owned=frozenset(),
+                             exact_only={"townmoney.turbo.site", "actfinancial.com.nl"})
+    assert out == {"townmoney.turbo.site", "actfinancial.com.nl"}
+    assert "turbo.site" not in out and "com.nl" not in out
+
+
+def test_the_same_host_from_a_promoting_feed_still_promotes():
+    psl = {"site", "com", "nl"}
+    out = rdd.build_blockset(["townmoney.turbo.site"], TOP, public_suffixes=psl,
+                             brand_owned=frozenset(), exact_only=frozenset())
+    assert out == {"townmoney.turbo.site", "turbo.site"}
+
+
+def test_an_exact_only_host_still_meets_every_other_guard():
+    """Exact-only narrows what we publish; it never widens it."""
+    psl = {"com", "app", "vercel.app"}
+    out = rdd.build_blockset(["github.com", "raw.githubusercontent.com", "evil.vercel.app"],
+                             {"github.com", "vercel.app"}, public_suffixes=psl,
+                             brand_owned=frozenset(),
+                             exact_only={"github.com", "raw.githubusercontent.com", "evil.vercel.app"})
+    assert out == {"evil.vercel.app"}
+
+
+def test_present_names_does_not_claim_a_registrable_for_an_exact_only_host():
+    """Otherwise a platform apex one tenant put in the feed would look 'still
+    present' to retention and never age out."""
+    psl = {"site", "com"}
+    assert rdd.present_names(["townmoney.turbo.site"], psl) == {"townmoney.turbo.site", "turbo.site"}
+    assert rdd.present_names(["townmoney.turbo.site"], psl,
+                             exact_only={"townmoney.turbo.site"}) == {"townmoney.turbo.site"}
+
+
+# ── End to end through refresh() ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_each_new_feed_reaches_the_published_set(monkeypatch):
+    fake = _FakeRedis()
+    extra = {
+        rdd.PHISHUNT_FEED: "https://office365.internal-alerts.com/i/deadbeef",
+        rdd.TWEETFEED_YEAR: ("2026-09-20 10:00:00,urldna_bot,domain,tweetfeed-phish.com,#phishing,"
+                             "https://x.com/urldna_bot/status/1"),
+        rdd.CERT_PL_DOMAINS: "certpl-phish.com\namberroseline1.wixsite.com",
+        rdd.CSIRT_IT_MANIFEST: json.dumps({"aaa": {"date": "2026-09-20", "Tag": [{"name": "tlp:clear"}]}}),
+        "https://www.csirt.gov.it/feed-misp/aaa.json": json.dumps(CSIRT_EVENT),
+    }
+    assert await _run(monkeypatch, fake, [], now=T0, extra=extra) == 0
+    published = _published(fake)
+    assert "office365.internal-alerts.com" in published      # Phishunt
+    assert "tweetfeed-phish.com" in published                # TweetFeed
+    assert "certpl-phish.com" in published                   # CERT Polska
+    assert "anarchy10.duckdns.org" in published              # CSIRT Italia
+    assert _phone_blocks(fake, "anarchy10.duckdns.org")
+
+
+@pytest.mark.asyncio
+async def test_cert_polska_tenant_sites_never_darken_the_platform(monkeypatch):
+    fake = _FakeRedis()
+    extra = {rdd.CERT_PL_DOMAINS: "amberroseline1.wixsite.com"}
+    assert await _run(monkeypatch, fake, [], now=T0, extra=extra) == 0
+    assert "amberroseline1.wixsite.com" in _published(fake)
+    assert "wixsite.com" not in _published(fake)
+    assert not _phone_blocks(fake, "someone-elses-site.wixsite.com")
+
+
+@pytest.mark.asyncio
+async def test_a_retained_exact_only_host_does_not_promote_later(monkeypatch):
+    """A retained name is one NO feed still lists, so nothing vouches for its
+    registrable. Without this, a CERT Polska tenant host would quietly darken
+    its platform apex on the run after it left the feed."""
+    fake = _FakeRedis()
+    extra = {rdd.CERT_PL_DOMAINS: "shop-tenant.turbo.site"}
+    monkeypatch.setattr(rdd, "PSL_URL", rdd.PSL_URL)
+    await _run(monkeypatch, fake, [], now=T0, extra=extra)
+    assert "shop-tenant.turbo.site" in _published(fake)
+    await _run(monkeypatch, fake, [], now=T0 + 6 * 3600)  # CERT Polska drops it
+    assert "shop-tenant.turbo.site" in _published(fake), "retention should still carry it"
+    assert "turbo.site" not in _published(fake)
+
+
+@pytest.mark.parametrize("failing", ["PHISHUNT_FEED", "TWEETFEED_YEAR", "CERT_PL_DOMAINS",
+                                     "CSIRT_IT_MANIFEST"])
+@pytest.mark.asyncio
+async def test_a_new_feed_that_fails_to_download_does_not_break_the_publish(monkeypatch, caplog,
+                                                                           failing):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    extra = {rdd.PHISHUNT_FEED: "https://phishunt-phish.com",
+             rdd.CERT_PL_DOMAINS: "certpl-phish.com"}
+    _stub_world(monkeypatch, fake, [], frozenset(), extra)
+    healthy = rdd._fetch
+
+    async def _fetch(url):
+        if url == getattr(rdd, failing):
+            raise ConnectionError("feed down")
+        return await healthy(url)
+
+    monkeypatch.setattr(rdd, "_fetch", _fetch)
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
+    assert "scam1.xyz" in _published(fake), "the healthy feeds still published"
+    assert "fetch failed" in caplog.text
+    # …and the outage guard fires, so retention does not read the missing
+    # feed's names as having left.
+    assert "not recording departures" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_feed_that_starts_with_a_byte_order_mark_does_not_lose_its_first_entry(monkeypatch):
+    """A BOM decodes to a character, not nothing. Glued to 'https://' it makes
+    urlparse() find no host at all, so a URL feed silently drops line 1."""
+    class _Resp:
+        text = "﻿https://first-phish.example/login\nhttps://second-phish.example\n"
+
+        def raise_for_status(self):
+            return None
+
+    class _Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return False
+
+        async def get(self, _url):
+            return _Resp()
+
+    monkeypatch.setattr(rdd.httpx, "AsyncClient", lambda *_a, **_kw: _Client())
+    text = await rdd._fetch("https://example.invalid/feed.txt")
+    assert list(rdd._hosts_from_openphish(text)) == ["first-phish.example", "second-phish.example"]
+
+
+@pytest.mark.asyncio
+async def test_artifact_out_writes_the_exact_bytes_a_phone_would_download(monkeypatch, tmp_path):
+    """The coverage benchmark scores a FILE. Without this the only artifact you
+    could measure was whatever production already published."""
+    fake = _FakeRedis()
+    _stub_world(monkeypatch, fake, [_url(TENANT_PHISH)])
+    out = tmp_path / "list.bin"
+    assert await rdd.refresh("redis://fake", dry_run=True, now=T0, artifact_out=str(out)) == 0
+    header, hashes = parse_artifact_v2(out.read_bytes())
+    assert header["count"] == len(hashes)
+    assert artifact_covers(set(hashes), TENANT_PHISH)
