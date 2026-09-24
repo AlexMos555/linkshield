@@ -130,11 +130,11 @@ class Settings(BaseSettings):
     blocklist_full_sends_per_ip_per_hour: int = 600
 
     # Android update check (GET /api/v1/mobile/version). Bump these when a new
-    # signed APK is published (the founder sets them in Railway env at release
-    # time — no code deploy needed). Defaults describe the first public build so
-    # a phone at that version sees no spurious "update available" prompt.
-    mobile_latest_version_code: int = 100
-    mobile_latest_version_name: str = "1.0.0"
+    # signed APK is published (Railway env overrides them without a code deploy).
+    # Defaults describe the latest published GitHub release, so a phone on an
+    # older build is nudged to it and a phone on it sees no spurious prompt.
+    mobile_latest_version_code: int = 101
+    mobile_latest_version_name: str = "1.0.1"
     # Below this, the app should refuse to run old/insecure builds and require
     # an update. 0 = never force. Keep <= latest.
     mobile_min_supported_version_code: int = 0
@@ -144,7 +144,10 @@ class Settings(BaseSettings):
     mobile_min_supported_version_name: str = ""
     # Where the app sends the user to update. Empty → the app falls back to the
     # /android download page.
-    mobile_apk_url: str = ""
+    mobile_apk_url: str = (
+        "https://github.com/AlexMos555/linkshield/releases/download/"
+        "v1.0.1/cleanway-1.0.1-101-arm.apk"
+    )
     mobile_release_notes: str = ""
 
     # Rate limits — sensitive actions (per user, stricter)
