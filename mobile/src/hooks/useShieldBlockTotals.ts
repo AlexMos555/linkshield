@@ -17,10 +17,12 @@ function loadModule(): ShieldLogModule | null {
 }
 
 /**
- * Totals from the DNS shield's persisted block log — "blocked" (site never
- * opened) and "warned" (verdict came after the first lookup; future ones
- * blocked). Refreshes on foreground and live on each block event, so the
- * number a person sees is what the service actually did, app open or not.
+ * Totals from the shields' persisted block log — "blocked" (site never
+ * opened: DNS refused it, or the link guard stopped the tapped link) and
+ * "warned" (the link guard let a link open; its site was flagged after).
+ * One per event, not per DNS query (BlockLog coalesces repeats). Refreshes on
+ * foreground and live on each new block event, so the number a person sees
+ * is what the shields actually did, app open or not.
  */
 export function useShieldBlockTotals(): { blocked: number; warned: number } {
   const [mod] = useState<ShieldLogModule | null>(loadModule);

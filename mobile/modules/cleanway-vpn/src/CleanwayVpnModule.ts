@@ -56,6 +56,15 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   allowedDomains?(): string[];
   allowDomain?(domain: string): boolean;
   removeAllowedDomain?(domain: string): void;
+  /**
+   * On-device check of a message's text. Raw native shape — index.ts
+   * validates it into a MessageAnalysis. Optional: older native builds lack it.
+   */
+  analyzeMessage?(text: string): Promise<Record<string, unknown>>;
+  /** The blocklisted suffix covering this host (DNS rules), or null. */
+  matchBlocklist?(host: string): Promise<string | null>;
+  /** A blocklist exists for the link guard: the shield's, or a synced copy on disk. */
+  linkListAvailable?(): Promise<boolean>;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

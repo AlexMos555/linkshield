@@ -6,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
-import { getRecentChecks } from "../src/services/database";
+import { getRecentChecks, MESSAGE_CHECK_SOURCE } from "../src/services/database";
 import { toCheckableHost } from "../src/utils/host";
 
 export default function CheckScreen() {
@@ -25,7 +25,10 @@ export default function CheckScreen() {
   // behind for the whole session.
   useFocusEffect(useCallback(() => {
     getRecentChecks(10).then(checks => {
-      const domains = [...new Set(checks.map((c: any) => c.domain))].slice(0, 5);
+      // A message check's row holds several hosts (or none) and was never a
+      // link the person typed — not something to offer as a one-tap re-check.
+      const links = checks.filter((c: any) => c.source !== MESSAGE_CHECK_SOURCE);
+      const domains = [...new Set(links.map((c: any) => c.domain))].slice(0, 5);
       setRecent(domains);
     }).catch(() => {});
   }, []));

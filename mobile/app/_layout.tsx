@@ -21,6 +21,10 @@ import { restoreSavedLocale } from "../src/i18n";
 // zero-cost import in those environments.
 import "../src/lib/sentry";
 import { AccountLockedModal } from "../src/components/AccountLockedModal";
+import { isMessageCheckSupported } from "../modules/cleanway-vpn";
+import { handOffMessage } from "../src/services/message-handoff";
+import { isMessageText } from "../src/utils/message-verdict";
+import { toCheckableHost } from "../src/utils/host";
 
 /**
  * Bridges an inbound "Share -> Cleanway" (iOS Share Extension / Android ACTION_SEND,
@@ -76,14 +80,33 @@ function OnboardingGate() {
   return null;
 }
 
+/**
+ * A shared MESSAGE (words around a link, several links, plain words) goes to
+ * the on-device message check; a bare link keeps the link check.
+ *
+ * The message text is handed over in memory, never as a route param: params
+ * live in navigation state and in the screen's URL, and an SMS must not be
+ * written anywhere. `webUrl` is only the first http(s) link expo-share-intent
+ * found in the text, so the decision reads the full `text`. Where the message
+ * check is missing (iOS, an older build) a message still goes to the link
+ * check — as its host alone, never the text.
+ */
 function ShareIntentRouter() {
   const router = useRouter();
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
 
   useEffect(() => {
     if (!hasShareIntent) return;
-    const shared = shareIntent?.webUrl ?? shareIntent?.text ?? "";
-    if (shared) {
+    const text = shareIntent?.text ?? "";
+    const shared = shareIntent?.webUrl ?? text;
+    const message = Boolean(text) && isMessageText(text);
+    if (message && isMessageCheckSupported()) {
+      handOffMessage(text);
+      router.push({ pathname: "/message", params: { from: "share" } });
+    } else if (message) {
+      // No host → an empty param, which /shared answers with "no link found".
+      router.push({ pathname: "/shared", params: { url: toCheckableHost(shared) ?? "" } });
+    } else if (shared) {
       router.push({ pathname: "/shared", params: { url: shared } });
     }
     resetShareIntent();
@@ -167,6 +190,7 @@ export default function RootLayout() {
         <Stack.Screen name="scanner" options={{ title: t("mobile.nav.scanner") }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="shared" options={{ title: t("mobile.nav.shared"), presentation: "modal" }} />
+        <Stack.Screen name="message" options={{ title: t("mobile.message.nav_title") }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="upgrade" options={{ title: t("mobile.nav.upgrade") }} />
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />

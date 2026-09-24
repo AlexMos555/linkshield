@@ -5,9 +5,9 @@
     <string name="allowed_text">%1$s ora è consentito. Puoi annullare in Impostazioni → Siti consentiti.</string>
     <string name="allowed_title">Sito consentito</string>
     <string name="block_channel">Siti bloccati</string>
-    <string name="block_channel_desc">Ti avvisa quando un sito pericoloso è stato fermato</string>
-    <string name="blocked_text">%1$s sembrava una truffa: è stato fermato prima di aprirsi.</string>
-    <string name="blocked_title">Cleanway ha fermato un sito pericoloso</string>
+    <string name="block_channel_desc">Ti avvisa quando Cleanway blocca un sito pericoloso</string>
+    <string name="blocked_text">%1$s è nell\'elenco dei siti truffa. Non si aprirà.</string>
+    <string name="blocked_title">Cleanway ha bloccato un sito pericoloso</string>
     <string name="fg_channel">Protezione Cleanway</string>
     <string name="fg_channel_desc">Mostrata mentre la protezione anti-phishing è attiva</string>
     <string name="fg_text">Controllo dei nomi dei siti contro le truffe</string>

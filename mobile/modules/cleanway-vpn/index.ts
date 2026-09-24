@@ -12,9 +12,35 @@ export const LIST_CANARY_DOMAIN = 'list-canary.cleanway.ai';
 /** Overall probe deadline and the poll cadence within it. */
 const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
-import type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind } from './src/CleanwayVpn.types';
+import type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource } from './src/CleanwayVpn.types';
+import type {
+  MessageAnalysis,
+  MessageAnalysisResult,
+  MessageLegitShape,
+  MessageLink,
+  MessageLinkStatus,
+  MessageReason,
+  MessageVerdict,
+} from './src/CleanwayVpn.types';
+import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
 
-export type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind };
+export type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource };
+export type {
+  MessageAnalysis,
+  MessageAnalysisResult,
+  MessageLegitShape,
+  MessageLink,
+  MessageLinkStatus,
+  MessageReason,
+  MessageVerdict,
+};
+export { MESSAGE_REASONS };
+
+/**
+ * Longest text the native check reads (MessageAnalyzer.MAX_CHARS). Longer
+ * input is cut there and the result says `truncated`.
+ */
+const MESSAGE_MAX_CHARS = 10_000;
 
 export async function startVpn(): Promise<boolean> {
   return CleanwayVpn.startVpn();
@@ -357,6 +383,74 @@ export function isDefaultLinkHandler(): boolean {
 export async function requestLinkHandler(): Promise<boolean> {
   try {
     return typeof CleanwayVpn.requestLinkHandler === 'function' ? await CleanwayVpn.requestLinkHandler() : false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Can this build check a message on the phone? Android with a native build
+ * that carries the analyzer; false on iOS, web and older native builds.
+ */
+export function isMessageCheckSupported(): boolean {
+  try {
+    return Platform.OS === 'android' && typeof CleanwayVpn.analyzeMessage === 'function';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check a pasted or shared message ON THE PHONE (MessageAnalyzer.kt): the
+ * links it contains against the on-device blocklist, and its wording against
+ * the known scam shapes. Works with the shield off.
+ *
+ * Privacy: the text is analysed in memory by the native module and dropped —
+ * it is never stored, logged or sent. Only `links[].host` may leave the phone,
+ * and only if the caller sends it to the domain-only check, one host at a time.
+ * So nothing here logs, and a failure carries no detail.
+ */
+export async function analyzeMessage(text: string): Promise<MessageAnalysisResult> {
+  if (!isMessageCheckSupported()) return { available: false, reason: 'unsupported' };
+  try {
+    // One character past the limit lets the native side report `truncated`
+    // without carrying a whole pasted chat log across the bridge.
+    const clipped = text.length > MESSAGE_MAX_CHARS ? text.slice(0, MESSAGE_MAX_CHARS + 1) : text;
+    const raw = await CleanwayVpn.analyzeMessage?.(clipped);
+    if (raw === undefined) return { available: false, reason: 'unsupported' };
+    const analysis = parseMessageAnalysis(raw);
+    return analysis ? { available: true, ...analysis } : { available: false, reason: 'failed' };
+  } catch {
+    return { available: false, reason: 'failed' };
+  }
+}
+
+/**
+ * The blocklisted suffix that covers `host` (same rules as the DNS shield:
+ * system domains and sites the person allowed never match), or null. Reads
+ * the synced list from disk when the shield is off. Null on other platforms,
+ * on older native builds and on error — so null means "not known to be
+ * listed", never "safe".
+ */
+export async function matchBlocklist(host: string): Promise<string | null> {
+  if (Platform.OS !== 'android') return null;
+  try {
+    const hit = await CleanwayVpn.matchBlocklist?.(host);
+    return typeof hit === 'string' && hit.length > 0 ? hit : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Does the link guard have a list to check tapped links with? Only the "All
+ * apps" shield downloads one. False on other platforms, older native builds
+ * and on error — so the app never claims links are checked when they are not.
+ */
+export async function linkListAvailable(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return (await CleanwayVpn.linkListAvailable?.()) === true;
   } catch {
     return false;
   }

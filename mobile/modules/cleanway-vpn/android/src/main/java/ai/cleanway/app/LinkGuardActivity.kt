@@ -18,7 +18,11 @@ import android.util.Log
  * decides in microseconds from the on-device blocklist:
  *
  *   - KNOWN BAD  → the branded warning screen (shared.tsx), which says Cleanway
- *     stopped it and shows the reasons. Nothing is opened.
+ *     stopped it and shows the reasons. Nothing is opened, and the stop is
+ *     recorded in the block log so it shows in History and in "Blocked".
+ *     "Known bad" follows the DNS rules (LinkPolicy): a site the person
+ *     marked "not a scam" is not stopped here either — otherwise the rescue
+ *     offered in History would do nothing for links.
  *   - EVERYTHING ELSE → FAST PATH: the link opens in the real browser with no
  *     visible Cleanway screen (so a safe link never makes the user wait), and
  *     the always-alive service checks its FULL url in the background. If the
@@ -38,9 +42,13 @@ class LinkGuardActivity : Activity() {
         }
         try {
             val host = hostOf(url)
-            val list = cachedBlockList()
-            if (host != null && list != null && list.match(host) != null) {
+            // The shield's live list, else the synced file with the same veto as DNS.
+            val listed = host?.let {
+                LinkPolicy.listedSuffix(it, BlocklistHolder.current(this), BlocklistHolder.allowed(this))
+            }
+            if (listed != null) {
                 // Known bad — show the branded block, do not open it.
+                recordStopped(listed)
                 routeToApp(url)
             } else {
                 // Fast path: open now, check in the background.
@@ -56,6 +64,20 @@ class LinkGuardActivity : Activity() {
 
     private fun hostOf(url: String): String? =
         try { Uri.parse(url).host?.lowercase()?.trimEnd('.')?.ifBlank { null } } catch (_: Exception) { null }
+
+    /**
+     * The link never opened: record it like a DNS block, under the listed
+     * suffix, so History can say which shield stopped it. No notification —
+     * the person is looking at the branded screen already. The app screen does
+     * not save its own row for a guard hand-off, so this is counted once.
+     */
+    private fun recordStopped(listed: String) {
+        try {
+            BlockLog.record(this, listed, System.currentTimeMillis(), BlockLog.KIND_BLOCKED, BlockLog.SOURCE_LINK)
+        } catch (e: Exception) {
+            Log.w(TAG, "block_log_error: ${e.javaClass.simpleName}")
+        }
+    }
 
     /** Hand the URL to the RN app's branded link-check screen. */
     private fun routeToApp(url: String) {
@@ -133,45 +155,7 @@ class LinkGuardActivity : Activity() {
         }
     }
 
-    /**
-     * Load the synced blocklist from disk with the SAME popular-domain veto and
-     * shared-suffix set the service uses — otherwise the guard could show a
-     * block for a popular domain the DNS layer allows (a false positive, the
-     * one thing we protect against hardest). Cached across invocations.
-     */
-    private fun cachedBlockList(): BlockList? {
-        // Must be the SAME directory the service writes to; reading filesDir
-        // directly meant load() always returned null here and every known-bad
-        // link sailed through to the browser.
-        val store = BlocklistStore.of(filesDir)
-        val saved = store.load() ?: return null
-        synchronized(lock) {
-            val cache = cached
-            if (cache != null && cachedVersion == saved.fetchedAtMs) return cache
-            val list = BlockList.parse(
-                saved.body,
-                popularVeto = loadAsset("popular_veto.txt"),
-                nowMs = System.currentTimeMillis(),
-                sharedSuffixes = loadAsset("shared_suffixes.txt"),
-            )
-            cached = list
-            cachedVersion = saved.fetchedAtMs
-            return list
-        }
-    }
-
-    private fun loadAsset(name: String): Set<String> = try {
-        assets.open(name).bufferedReader().useLines { lines ->
-            lines.map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toHashSet()
-        }
-    } catch (e: Exception) {
-        emptySet()
-    }
-
     private companion object {
         const val TAG = "CleanwayLinkGuard"
-        private val lock = Any()
-        @Volatile private var cached: BlockList? = null
-        @Volatile private var cachedVersion: Long = -1L
     }
 }

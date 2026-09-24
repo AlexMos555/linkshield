@@ -5,9 +5,9 @@
     <string name="allowed_text">%1$s ist jetzt zugelassen. Rückgängig in Einstellungen → Zugelassene Seiten.</string>
     <string name="allowed_title">Seite zugelassen</string>
     <string name="block_channel">Blockierte Seiten</string>
-    <string name="block_channel_desc">Meldet, wenn eine gefährliche Seite gestoppt wurde</string>
-    <string name="blocked_text">%1$s sah nach Betrug aus und wurde gestoppt, bevor sie sich öffnen konnte.</string>
-    <string name="blocked_title">Cleanway hat eine gefährliche Seite gestoppt</string>
+    <string name="block_channel_desc">Meldet, wenn Cleanway eine gefährliche Seite blockiert</string>
+    <string name="blocked_text">%1$s steht auf der Liste der Betrugsseiten. Sie wird nicht geöffnet.</string>
+    <string name="blocked_title">Cleanway hat eine gefährliche Seite blockiert</string>
     <string name="fg_channel">Cleanway-Schutz</string>
     <string name="fg_channel_desc">Wird angezeigt, solange der Phishing-Schutz aktiv ist</string>
     <string name="fg_text">Website-Namen werden auf Betrug geprüft</string>

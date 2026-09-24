@@ -5,9 +5,9 @@
     <string name="allowed_text">%1$s sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan.</string>
     <string name="allowed_title">Situs diizinkan</string>
     <string name="block_channel">Situs yang diblokir</string>
-    <string name="block_channel_desc">Memberi tahu saat situs berbahaya dihentikan</string>
-    <string name="blocked_text">%1$s tampak seperti penipuan, jadi dihentikan sebelum terbuka.</string>
-    <string name="blocked_title">Cleanway menghentikan situs berbahaya</string>
+    <string name="block_channel_desc">Memberi tahu saat Cleanway memblokir situs berbahaya</string>
+    <string name="blocked_text">%1$s ada di daftar situs penipuan. Situs ini tidak akan terbuka.</string>
+    <string name="blocked_title">Cleanway memblokir situs berbahaya</string>
     <string name="fg_channel">Perlindungan Cleanway</string>
     <string name="fg_channel_desc">Ditampilkan selama perlindungan phishing aktif</string>
     <string name="fg_text">Memeriksa nama situs dari penipuan</string>

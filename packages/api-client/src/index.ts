@@ -466,8 +466,11 @@ export function createClient(opts: ClientOptions): CleanwayClient {
           .toLowerCase()
           .replace(/^https?:\/\//, "")
           .replace(/\/.*$/, "");
+        // Anonymous on purpose, even for a signed-in person: the host may come
+        // from a private SMS, and an account token next to it would tie the
+        // two together. The route never reads the header anyway.
         const res = await request<PublicCheckResponse>(
-          opts,
+          { ...opts, getAuthToken: undefined },
           "GET",
           `/api/v1/public/check/${encodeURIComponent(clean)}`,
         );

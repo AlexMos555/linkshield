@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Alert,
 } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -17,6 +17,9 @@ import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
 import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
 import { useLinkGuard } from "../../src/hooks/useLinkGuard";
 import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
+import { MessageCheckCard } from "../../src/components/shield/MessageCheckCard";
+import { isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
+import type { HistoryFilter } from "../../src/utils/history-model";
 
 /**
  * Shield Checklist home (docs/MOBILE_AUTO_PROTECTION.md §2,
@@ -28,7 +31,7 @@ import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
  * clipboard monitoring (killed by design, not restyled).
  */
 
-function rolloutItems(t: TFunction, platform: string): RolloutItem[] {
+function rolloutItems(t: TFunction, platform: string, messageCheck: boolean): RolloutItem[] {
   const browser: RolloutItem = {
     icon: "compass-outline",
     title: t("mobile.shield.browser.title"),
@@ -39,9 +42,12 @@ function rolloutItems(t: TFunction, platform: string): RolloutItem[] {
     title: t("mobile.shield.messages.title"),
     line: t(platform === "android" ? "mobile.rollout.messages_android" : "mobile.rollout.messages_ios"),
   };
-  // On Android the browser/link layer is no longer "rolling out" — it ships as
-  // the Link-checking shield card above. Only SMS remains a rollout item here.
-  if (platform === "android") return [messages];
+  // On Android the browser/link layer ships as the Link-checking shield card
+  // and SMS as the message-check card, so nothing is "rolling out" there. No
+  // line promises an automatic check of every incoming SMS: that needs SMS
+  // permissions this app deliberately does not ask for. The SMS row stays
+  // only for a native build without the analyzer, where it is still true.
+  if (platform === "android") return messageCheck ? [] : [messages];
   return [
     {
       icon: "globe-outline",
@@ -55,12 +61,22 @@ function rolloutItems(t: TFunction, platform: string): RolloutItem[] {
 
 export default function HomeScreen() {
   const router = useRouter();
+  // setup=1: History's "Turn on protection" sends people here to run the
+  // same flow as the button below, instead of a second copy of it.
+  const { setup } = useLocalSearchParams<{ setup?: string }>();
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const network = useNetworkShield();
   // The link guard (Android): when Cleanway is the default link handler, tapped
   // links are checked before they open — the exact SMS-phishing defense.
   const linkGuard = useLinkGuard();
+  // The SMS check (Android, native analyzer present). A tool, not a shield:
+  // it is deliberately left out of the hero counts below.
+  const [messageCheck] = useState(() => isMessageCheckSupported());
+  // The link guard checks tapped links against the blocklist, and only the
+  // "All apps" shield downloads one — so the SMS card may promise checked
+  // links only once a list exists.
+  const [linkListReady, setLinkListReady] = useState(false);
   // What the DNS shield did — including while the app was closed. Merged
   // into the activity card so "Blocked" counts real protection, not only
   // links the person pasted by hand.
@@ -74,6 +90,16 @@ export default function HomeScreen() {
     getStats().then(setStats).catch(() => {});
   }, []));
 
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    void linkListAvailable().then((ok) => {
+      if (alive) setLinkListReady(ok);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [network.state, network.blocklist.count]));
+
   const blockedTotal = stats.threats_blocked + shieldTotals.blocked;
   const warnedTotal = stats.threats_warned + shieldTotals.warned;
 
@@ -81,7 +107,8 @@ export default function HomeScreen() {
   // a running-but-unverified tunnel deliberately counts as 0. Equally, every
   // shield that DOES exist on this device must be counted, or the
   // headline lies: with only the DNS shield counted, a phone whose link guard
-  // was never set up still read "All shields on and verified".
+  // was never set up still read "All shields on and verified". The SMS check
+  // is not a shield (it acts only on what the person hands it) and stays out.
   const totalCount = (network.available ? 1 : 0) + (linkGuard.available ? 1 : 0);
   const verifiedCount = (network.verified ? 1 : 0) + (linkGuard.on ? 1 : 0);
   const heroState =
@@ -90,7 +117,7 @@ export default function HomeScreen() {
     : "none";
   const needsSetup = network.available && network.state === "setup";
 
-  const rollout = rolloutItems(t, Platform.OS);
+  const rollout = rolloutItems(t, Platform.OS, messageCheck);
 
   /**
    * Prominent disclosure, shown BEFORE Android's own consent dialog.
@@ -112,6 +139,25 @@ export default function HomeScreen() {
       ],
       { cancelable: true },
     );
+  }
+
+  useEffect(() => {
+    if (setup !== "1") return;
+    router.setParams({ setup: undefined });
+    // Only where the button itself would show: not running, and no strict
+    // Private DNS (then the card explains which setting to change instead).
+    if (network.available && !isVpnRunning() && !privateDnsStrictHost()) startWithDisclosure();
+    // startWithDisclosure is recreated each render; the param is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setup, network.available]);
+
+  /**
+   * The counters open History on the matching filter, so "Blocked 3" can
+   * always be answered with "which three". The filters are defined by what
+   * these numbers add up (see history-model.ts).
+   */
+  function openHistory(filter: HistoryFilter) {
+    router.navigate({ pathname: "/history", params: { filter } });
   }
 
   function confirmPause() {
@@ -288,6 +334,17 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {messageCheck && (
+        <View style={s.section}>
+          <MessageCheckCard
+            onOpen={() => router.push("/message")}
+            linkGuardAvailable={linkGuard.available}
+            linkGuardOn={linkGuard.on}
+            linkListReady={linkListReady}
+          />
+        </View>
+      )}
+
       <View style={s.section}>
         <CheckAnythingCard
           onOpen={() => router.push("/check")}
@@ -297,15 +354,32 @@ export default function HomeScreen() {
         />
       </View>
 
-      <View style={s.section}>
-        <RolloutList items={rollout} />
-      </View>
+      {rollout.length > 0 && (
+        <View style={s.section}>
+          <RolloutList items={rollout} />
+        </View>
+      )}
 
       {(stats.total_checks > 0 || blockedTotal > 0 || warnedTotal > 0) && (
         <View style={[s.section, s.activityCard]}>
-          <ActivityColumn value={stats.total_checks} label={t("mobile.home.activity.checked")} />
-          <ActivityColumn value={blockedTotal} label={t("mobile.home.activity.blocked")} />
-          <ActivityColumn value={warnedTotal} label={t("mobile.home.activity.warned")} />
+          <View style={s.activityRow}>
+            <ActivityColumn
+              value={stats.total_checks}
+              label={t("mobile.home.activity.checked")}
+              onPress={() => openHistory("checked")}
+            />
+            <ActivityColumn
+              value={blockedTotal}
+              label={t("mobile.home.activity.blocked")}
+              onPress={() => openHistory("blocked")}
+            />
+            <ActivityColumn
+              value={warnedTotal}
+              label={t("mobile.home.activity.warned")}
+              onPress={() => openHistory("warned")}
+            />
+          </View>
+          <Text style={s.activityHint}>{t("mobile.home.activity.hint")}</Text>
         </View>
       )}
 
@@ -319,12 +393,25 @@ export default function HomeScreen() {
   );
 }
 
-function ActivityColumn({ value, label }: { value: number; label: string }) {
+interface ActivityColumnProps {
+  value: number;
+  label: string;
+  onPress: () => void;
+}
+
+function ActivityColumn({ value, label, onPress }: ActivityColumnProps) {
+  const { t } = useTranslation();
   return (
-    <View style={s.activityCol}>
+    <TouchableOpacity
+      style={s.activityCol}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={t("mobile.home.activity.open_a11y", { label, value })}
+    >
       <Text style={s.activityNum}>{value}</Text>
       <Text style={s.activityLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -369,14 +456,20 @@ const s = StyleSheet.create({
   hintText: { ...typo.caption, color: colors.textSecondary, flex: 1 },
 
   activityCard: {
-    flexDirection: "row",
     backgroundColor: colors.surface,
     borderRadius: radius.card,
-    paddingVertical: space.lg,
+    paddingVertical: space.sm,
   },
-  activityCol: { flex: 1, alignItems: "center" },
-  activityNum: { fontSize: 20, lineHeight: 25, fontWeight: "600", color: colors.textPrimary },
-  activityLabel: { ...typo.caption, color: colors.textMuted, marginTop: 2 },
+  activityRow: { flexDirection: "row" },
+  // Each column is its own button; the padding makes the whole cell the
+  // target, not just the digits.
+  activityCol: { flex: 1, alignItems: "center", paddingVertical: space.sm, minHeight: 56 },
+  activityNum: { fontSize: 20, lineHeight: 25, fontWeight: "600", color: colors.blue },
+  activityLabel: { ...typo.caption, color: colors.textSecondary, marginTop: 2, textAlign: "center" },
+  activityHint: {
+    ...typo.caption, color: colors.textMuted, textAlign: "center",
+    paddingHorizontal: space.md, paddingBottom: space.sm,
+  },
 
   privacyRow: {
     flexDirection: "row", alignItems: "flex-start", justifyContent: "center",

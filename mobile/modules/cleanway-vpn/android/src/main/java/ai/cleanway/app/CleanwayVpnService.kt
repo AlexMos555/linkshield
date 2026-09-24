@@ -356,7 +356,9 @@ class CleanwayVpnService : VpnService() {
                         val nx = DnsUtil.makeNxDomain(packet, length)
                         if (nx != null) writeToTunnel(output, nx)
                         // A real block, on the first lookup: the site never opened.
-                        notifyBlocked(blockList.match(normalized) ?: normalized, BlockLog.KIND_BLOCKED)
+                        notifyBlocked(
+                            blockList.match(normalized) ?: normalized, BlockLog.KIND_BLOCKED, BlockLog.SOURCE_DNS,
+                        )
                     }
                     DnsDecision.FORWARD -> submitForward(packet, length, output)
                 }
@@ -549,16 +551,23 @@ class CleanwayVpnService : VpnService() {
      * Make a block visible: persist it (so the app can count and list it
      * later, JS or no JS), tell the person now (localized notification from
      * the service), and broadcast for a live UI. [kind] keeps it honest — see
-     * BlockLog for BLOCKED vs WARNED.
+     * BlockLog for BLOCKED vs WARNED — and [source] names the shield that
+     * acted, for History.
      */
-    private fun notifyBlocked(domain: String, kind: String) {
+    private fun notifyBlocked(domain: String, kind: String, source: String) {
         val now = System.currentTimeMillis()
-        try {
-            BlockLog.record(this, domain, now, kind)
-            BlockNotifier.notify(this, domain, kind, now)
+        val isNew = try {
+            BlockLog.record(this, domain, now, kind, source)
         } catch (e: Exception) {
             Log.w(TAG, "block_visibility_error: ${e.message}")
+            true
         }
+        // Throttled per site on its own; never throws.
+        BlockNotifier.notify(this, domain, kind, now)
+        // A repeat of a recent event changes no count. Announcing it would
+        // only make an open History re-read the log on every packet of an app
+        // that keeps polling a blocked host.
+        if (!isNew) return
         sendBroadcast(
             Intent(ACTION_DOMAIN_BLOCKED).apply {
                 setPackage(packageName)
@@ -594,7 +603,8 @@ class CleanwayVpnService : VpnService() {
         val notif: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(LocalizedContext.of(this).getString(expo.modules.cleanwayvpn.R.string.fg_title))
             .setContentText(LocalizedContext.of(this).getString(expo.modules.cleanwayvpn.R.string.fg_text))
-            .setSmallIcon(applicationInfo.icon)
+            .setSmallIcon(BlockNotifier.SMALL_ICON)
+            .setColor(BlockNotifier.ACCENT_COLOR)
             .setOngoing(true)
             .setContentIntent(pending)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -685,6 +695,13 @@ class CleanwayVpnService : VpnService() {
         emptySet()
     }
 
+    /**
+     * The list the DNS path is deciding with right now — an immutable
+     * snapshot, safe to read from any thread. For checks outside the DNS
+     * loop (BlocklistHolder), so they agree with what the shield blocks.
+     */
+    internal fun currentBlockList(): BlockList = blockList
+
     /** For the app: what list is loaded and how fresh it is. */
     fun blocklistStatus(): Map<String, Any?> {
         val now = System.currentTimeMillis()
@@ -734,7 +751,7 @@ class CleanwayVpnService : VpnService() {
                                     dynamicBlocked = (dynamicBlocked + host).toHashSet()
                                 }
                             }
-                            notifyBlocked(host, BlockLog.KIND_WARNED)
+                            notifyBlocked(host, BlockLog.KIND_WARNED, BlockLog.SOURCE_LINK)
                             Log.i(TAG, "url_check_dangerous host=$host — dynamic-blocked + warned")
                         }
                     }

@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import expo.modules.cleanwayvpn.R
+import java.net.URLEncoder
 
 /**
  * Tells the person what the shield just did — in their language, from the
@@ -19,12 +20,15 @@ import expo.modules.cleanwayvpn.R
  * work becomes visible in the moment.
  *
  * Two honest variants (see BlockLog):
- *  - blocked: "Cleanway stopped a dangerous site" — the query got NXDOMAIN
- *    before anything opened.
+ *  - blocked: "Cleanway blocked a dangerous site — it is on the list of scam
+ *    sites and won't open." The query got NXDOMAIN before anything opened.
  *  - warned:  "This site looks like a scam — if it is open, close it and
- *    don't type anything." The verdict came back after the first lookup had
- *    already been forwarded; a late warning is still protection, and it must
- *    not be dressed up as a block.
+ *    don't type anything." The link guard let the link open and the check of
+ *    its site came back afterwards; a late warning is still protection, and
+ *    it must not be dressed up as a block.
+ *
+ * Tapping either opens History on that site's entry ([historyDeepLink]):
+ * what happened, when, which shield, and the "not a scam" rescue.
  *
  * Strings come from res/values-xx/strings.xml, GENERATED from
  * packages/i18n-strings by scripts/build-i18n.py (10 locales).
@@ -39,6 +43,27 @@ object BlockNotifier {
     const val PER_DOMAIN_WINDOW_MS = 6L * 60 * 60 * 1000
     const val MAX_PER_MINUTE = 3
     private const val MINUTE_MS = 60_000L
+
+    /**
+     * Status-bar icon for EVERY Cleanway notification. Android draws a small
+     * icon from its alpha channel only, so the full-colour launcher icon came
+     * out as a white blob; this is a white shield on transparent.
+     */
+    val SMALL_ICON: Int get() = R.drawable.cleanway_ic_notification
+
+    /** Brand green: tints the small icon in the notification shade. */
+    const val ACCENT_COLOR: Int = 0xFF22C55E.toInt()
+
+    /**
+     * Pure: where tapping a block or warn notification lands — History,
+     * filtered to that kind, with this site's entry open. The route reads
+     * `domain` only if the site really is in the block log, so a crafted link
+     * from another app cannot put an arbitrary site in front of the person.
+     */
+    fun historyDeepLink(domain: String, kind: String): String {
+        val filter = if (kind == BlockLog.KIND_WARNED) "warned" else "blocked"
+        return "cleanway:///history?filter=$filter&domain=" + URLEncoder.encode(domain, "UTF-8")
+    }
 
     /**
      * Pure, JVM-tested throttle. One instance per process; state is tiny.
@@ -98,7 +123,8 @@ object BlockNotifier {
                 .setContentTitle(loc.getString(R.string.allowed_title))
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-                .setSmallIcon(context.applicationInfo.icon)
+                .setSmallIcon(SMALL_ICON)
+                .setColor(ACCENT_COLOR)
                 .setContentIntent(pending)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -121,13 +147,11 @@ object BlockNotifier {
                 else -> loc.getString(R.string.blocked_title) to
                     loc.getString(R.string.blocked_text, domain)
             }
-            // Tapping "Cleanway stopped X" opens the branded detail for that
-            // exact site (why it was blocked), not just the app home — the
-            // "details in the app" the block promises. Deep-links into the
-            // link-check screen for the domain.
-            val detail = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(
-                "cleanway:///shared?url=" + android.net.Uri.encode("http://$domain") + "&via=guard"
-            )).apply {
+            // Tapping "Cleanway blocked X" opens that exact entry in History
+            // (why, when, which shield) — not a fresh server check of the
+            // site, which used to add a second "dangerous" row and inflate
+            // the Blocked counter on every tap.
+            val detail = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(historyDeepLink(domain, kind))).apply {
                 component = android.content.ComponentName(context.packageName, "ai.cleanway.app.MainActivity")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
@@ -152,9 +176,13 @@ object BlockNotifier {
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-                .setSmallIcon(context.applicationInfo.icon)
+                .setSmallIcon(SMALL_ICON)
+                .setColor(ACCENT_COLOR)
                 .setContentIntent(pending)
-                .addAction(0, context.getString(R.string.allow_action), allowIntent)
+                // The chosen-locale context, like the title and text: the
+                // plain context rendered this one button in the phone's
+                // system language under a Russian notification.
+                .addAction(0, loc.getString(R.string.allow_action), allowIntent)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build()

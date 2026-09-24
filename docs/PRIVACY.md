@@ -18,12 +18,14 @@ The browser extension keeps the following locally and never sends it to our serv
 - **Modern-phishing detections.** BitB, tab-napping, and overlay-credential detections increment a local count only; the host is not sent to the server.
 - **An in-memory verdict cache.** The extension's background worker caches domain verdicts for 1 hour (max 1000 entries) on-device.
 
+The Android app has its own on-device data and its own message check; see [The Android app](#the-android-app) below.
+
 ## What the server receives
 
 Cleanway's server receives only what it needs, per request:
 
 - **Domain names — never full URLs.** The authenticated check endpoint (`POST /api/v1/check`) accepts a list of domain strings only. The public endpoint (`/api/v1/public/check/{domain}`) takes a single domain as a path parameter. The DoH gateway (`/dns-query`) handles wire-format DNS queries, which are domain-only by nature. On the authenticated path, the analyzer is never even given the raw URL (it defaults to an empty string).
-- **A user ID — only on authenticated endpoints.** Anonymous link checks carry no user identity; the extension does not send an auth token with public checks.
+- **A user ID — only on authenticated endpoints.** Anonymous link checks carry no user identity; neither the extension nor the mobile app sends an auth token with public checks (the shared API client strips it from `/api/v1/public/check`, even for a signed-in person).
 - **An email domain — only for pre-signup checks.** The `/check-email` flow receives the domain portion of an email, not the full address.
 - **Your client IP — used for rate limiting.** Extracted from the request (`request.client.host`, or `X-Forwarded-For` behind a trusted proxy) to enforce request limits (public checks are capped at 60 requests/hour per IP; a tighter sub-limit throttles expensive fresh-domain analyses). It is **not stored raw**; when an action is written to the audit log, the IP is first hashed.
 - **A hashed IP — for the audit log.** IPs are hashed with **HMAC-SHA-256** (keyed with the server secret) and truncated to 16 hex characters (64 bits) before storage. Caveat: 64 bits is enough to correlate rate-limit activity but is weaker than a full 128-bit hash.
@@ -33,6 +35,26 @@ Cleanway's server receives only what it needs, per request:
 ### The webmail exception
 
 If you enable the webmail scanner, the extension sends the email's **subject, sender, reply-to, and body (text and HTML)** to `POST /api/v1/email/analyze`. This is the one feature where page content leaves your device. It applies only to Gmail, Outlook, and Yahoo webmail and only when the feature is active. Subject lines and bodies can contain sensitive context, so treat this as an explicit trade-off you are opting into.
+
+## The Android app
+
+### Message check (SMS)
+
+- **Cleanway never reads your messages on its own.** The app requests no SMS, notification-listener or accessibility permission. It checks only a message you hand it: by tapping **Paste** on the check screen (the clipboard is read only on that tap), or by sharing a message to Cleanway from your messages app.
+- **The text stays in memory on the phone.** A shared message is handed to the check screen in memory, never as a navigation parameter. The on-device analyzer (`MessageAnalyzer`) reads it in memory and drops it. The text is never written to disk or to the database, never logged, and never sent to our server or to anyone else.
+- **What can leave the phone: up to 3 link hosts per message.** Links in the message are first compared with the blocklist on the phone. Then at most **3** distinct link **hosts** go to `GET /api/v1/public/check/{host}` — only hosts that are not on the on-device list and are not link shorteners, messenger links, shared system hosts such as `docs.google.com`, or IP addresses. Each link's path and query, and the rest of the message, stay on the phone. The requests carry no account token.
+- **Caveats, stated plainly.** The hosts of one message are requested in parallel from the same IP address, so the server could tell they arrived together. Like any checked domain, they are then checked with the third-party threat-intelligence providers listed below. A dotted word that looks like a domain name (for example `notes.md`) can be read as a link and sent as a host.
+- **What History keeps.** One row per message check in the app's SQLite database (`cleanway.db`, table `checks`, `source = 'sms'`): the verdict, the reason codes, up to 5 link hosts and the time. Never the text, and never a link's path.
+
+### Link guard and the "All apps" shield
+
+- **Link guard.** When Cleanway is your default link app, a tapped link's host is checked against the list on the phone. While the "All apps" shield runs, a host that is not on the list may also be sent, host only, to the same public check in the background.
+- **Blocklist download.** The "All apps" shield downloads the blocklist from `GET /api/v1/blocklist/dns`. The download sends nothing about your browsing.
+- **Shield activity log.** What the shields blocked, warned about or let through at your request is kept on the phone (`SharedPreferences` file `cleanway_block_log`: up to 200 events with the site name, the time, what happened and which shield acted, plus lifetime counters) and shown in History.
+
+### Retention on the phone
+
+Unlike the extension, the mobile check history is **not pruned automatically**: it stays until you tap **Settings → Clear history**, which deletes every saved check (links and messages). Clear history does **not** clear the shield activity log; that log keeps its latest 200 events and drops older ones as new ones arrive.
 
 ## What we store, and for how long
 
@@ -51,6 +73,8 @@ If you enable the webmail scanner, the extension sends the email's **subject, se
 | Family invite: SHA-256 code hash + bcrypt PIN hash | Supabase `family_invites` | Until redeemed or 7-day expiry |
 | Deletion flag (soft-delete) | Redis | 30-day grace period before hard delete |
 | Extension check history | Device (IndexedDB) | 30 days, auto-pruned |
+| Mobile check history: link host(s) + verdict + reason codes + time (never message text) | Device (SQLite `cleanway.db`) | Until you tap Settings → Clear history |
+| Mobile shield activity log: site name + time + event + shield | Device (SharedPreferences) | Latest 200 events; not cleared by Clear history |
 
 **Feature-log note:** Cleanway can optionally collect a machine-learning training log (`feature_log.jsonl`) recording the domain name, the analysis score, and the feature vector. It is **off by default** — in production no domain is written to disk at all unless an operator explicitly sets `FEATURE_LOG_ENABLED=true` for a training run. When enabled, the file is size-capped (default 50 MB via `FEATURE_LOG_MAX_BYTES`) and auto-rotated to its most recent half, so it never grows without bound. It never records user identity — only the domain, score, and features.
 
@@ -112,4 +136,4 @@ If you have a privacy request or question, contact us and reference this documen
 
 ## Footer
 
-This document describes the code as of **2026-07-01** (main branch). Generated with a code-grounded workflow whose every claim was adversarially verified against the source. Retention windows, hashing choices, and data flows above are drawn directly from the source and are intended to be auditable. The detection engine is open to inspection — see the benchmark methodology and open-source plan (`docs/OPEN-SOURCE.md`) for how to verify these claims against the code and against head-to-head accuracy results. If you find any statement here that the code does not support, that is a bug in this document; please report it.
+This document describes the code as of **2026-07-01** (main branch); the Android app section was added on **2026-09-25** with the on-device message check. Generated with a code-grounded workflow whose every claim was adversarially verified against the source. Retention windows, hashing choices, and data flows above are drawn directly from the source and are intended to be auditable. The detection engine is open to inspection — see the benchmark methodology and open-source plan (`docs/OPEN-SOURCE.md`) for how to verify these claims against the code and against head-to-head accuracy results. If you find any statement here that the code does not support, that is a bug in this document; please report it.

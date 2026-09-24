@@ -5,9 +5,9 @@
     <string name="allowed_text">%1$s теперь разрешён. Отменить можно в «Настройки → Разрешённые сайты».</string>
     <string name="allowed_title">Сайт разрешён</string>
     <string name="block_channel">Заблокированные сайты</string>
-    <string name="block_channel_desc">Сообщает, когда опасный сайт был остановлен</string>
-    <string name="blocked_text">%1$s похож на мошеннический — остановлен до того, как открылся.</string>
-    <string name="blocked_title">Cleanway остановил опасный сайт</string>
+    <string name="block_channel_desc">Сообщает, когда Cleanway блокирует опасный сайт</string>
+    <string name="blocked_text">%1$s — сайт из списка мошеннических. Он не откроется.</string>
+    <string name="blocked_title">Cleanway заблокировал опасный сайт</string>
     <string name="fg_channel">Защита Cleanway</string>
     <string name="fg_channel_desc">Показывается, пока работает защита от фишинга</string>
     <string name="fg_text">Проверяем адреса сайтов на мошенничество</string>

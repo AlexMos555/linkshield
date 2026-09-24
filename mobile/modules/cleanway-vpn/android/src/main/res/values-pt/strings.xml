@@ -5,9 +5,9 @@
     <string name="allowed_text">%1$s agora está permitido. Você pode desfazer em Configurações → Sites permitidos.</string>
     <string name="allowed_title">Site permitido</string>
     <string name="block_channel">Sites bloqueados</string>
-    <string name="block_channel_desc">Avisa quando um site perigoso foi parado</string>
-    <string name="blocked_text">%1$s parecia golpe, então foi parado antes de abrir.</string>
-    <string name="blocked_title">O Cleanway parou um site perigoso</string>
+    <string name="block_channel_desc">Avisa quando o Cleanway bloqueia um site perigoso</string>
+    <string name="blocked_text">%1$s está na lista de sites de golpe. Ele não vai abrir.</string>
+    <string name="blocked_title">O Cleanway bloqueou um site perigoso</string>
     <string name="fg_channel">Proteção Cleanway</string>
     <string name="fg_channel_desc">Aparece enquanto a proteção contra phishing está ativa</string>
     <string name="fg_text">Verificando nomes de sites contra golpes</string>

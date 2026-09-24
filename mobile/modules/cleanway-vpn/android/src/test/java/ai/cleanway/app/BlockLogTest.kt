@@ -71,6 +71,161 @@ class BlockLogTest {
     }
 
     @Test
+    fun `source round-trips, and entries written before it read back with their only possible source`() {
+        val json = BlockLog.appendJson("[]", "evil.example", ts = 1L, kind = BlockLog.KIND_BLOCKED, source = BlockLog.SOURCE_LINK)
+        assertEquals(BlockLog.SOURCE_LINK, BlockLog.parse(json).single().source)
+
+        // The shape every installed phone has on disk today: no "s" field.
+        // Until now only the DNS loop recorded blocks and only the link guard's
+        // background check recorded warnings.
+        val legacy = """[{"d":"a.example","t":3,"k":"blocked"},{"d":"b.example","t":2,"k":"warned"},""" +
+            """{"d":"c.example","t":1,"k":"allowed"},{"d":"d.example","t":0}]"""
+        val parsed = BlockLog.parse(legacy)
+        assertEquals(listOf("a.example", "b.example", "c.example", "d.example"), parsed.map { it.domain })
+        assertEquals(listOf(BlockLog.SOURCE_DNS, BlockLog.SOURCE_LINK, null, BlockLog.SOURCE_DNS), parsed.map { it.source })
+        assertEquals(BlockLog.KIND_BLOCKED, parsed.last().kind)
+    }
+
+    @Test
+    fun `an unknown source is dropped rather than guessed`() {
+        val e = BlockLog.parse("""[{"d":"a.example","t":1,"k":"blocked","s":"carrier-pigeon"}]""").single()
+        assertNull(e.source)
+    }
+
+    @Test
+    fun `allowed entries carry no source`() {
+        val json = BlockLog.appendJson("[]", "mybank.example", ts = 5L, kind = BlockLog.KIND_ALLOWED)
+        assertFalse(json.contains("\"s\""))
+        assertNull(BlockLog.parse(json).single().source)
+    }
+
+    private fun entry(domain: String, ts: Long, kind: String = BlockLog.KIND_BLOCKED, source: String? = BlockLog.SOURCE_DNS) =
+        BlockLog.Entry(domain, ts, kind, source)
+
+    @Test
+    fun `one visit is one event - A, AAAA and retries do not add rows or counts`() {
+        var json: String? = null
+        var newEvents = 0
+        // A page visit: A + AAAA + HTTPS lookups and a retry, within seconds.
+        for (ts in listOf(1_000L, 1_010L, 1_020L, 4_000L)) {
+            val (next, isNew) = BlockLog.recordJson(json, entry("evil.example", ts))
+            json = next
+            if (isNew) newEvents++
+        }
+        assertEquals(1, newEvents)
+        val only = BlockLog.parse(json).single()
+        assertEquals("evil.example", only.domain)
+        // The entry keeps the LATEST time: "blocked just now", not "a while ago".
+        assertEquals(4_000L, only.ts)
+    }
+
+    @Test
+    fun `a repeat moves to the front and a later visit is a new event`() {
+        val w = BlockLog.COALESCE_WINDOW_MS
+        var json = BlockLog.recordJson(null, entry("evil.example", 0L)).first
+        json = BlockLog.recordJson(json, entry("other.example", 1_000L)).first
+        val (repeated, repeatIsNew) = BlockLog.recordJson(json, entry("evil.example", 2_000L))
+        assertFalse(repeatIsNew)
+        assertEquals(listOf("evil.example", "other.example"), BlockLog.parse(repeated).map { it.domain })
+
+        val (later, laterIsNew) = BlockLog.recordJson(repeated, entry("evil.example", 2_000L + w))
+        assertTrue(laterIsNew)
+        assertEquals(listOf("evil.example", "evil.example", "other.example"), BlockLog.parse(later).map { it.domain })
+    }
+
+    @Test
+    fun `different kind or shield is a different event`() {
+        var json = BlockLog.recordJson(null, entry("evil.example", 0L)).first
+        val (viaLink, linkIsNew) = BlockLog.recordJson(json, entry("evil.example", 10L, source = BlockLog.SOURCE_LINK))
+        assertTrue(linkIsNew)
+        json = viaLink
+        val (allowed, allowIsNew) = BlockLog.recordJson(json, entry("evil.example", 20L, BlockLog.KIND_ALLOWED, null))
+        assertTrue(allowIsNew)
+        assertEquals(3, BlockLog.parse(allowed).size)
+    }
+
+    @Test
+    fun `an app polling a blocked host all day stays one row and does not push real events out`() {
+        val w = BlockLog.COALESCE_WINDOW_MS
+        var json: String? = null
+        var newEvents = 0
+        // One real block first, then a host polled every half window for a day.
+        json = BlockLog.recordJson(json, entry("phish.example", 0L)).first
+        var ts = 1_000L
+        while (ts < 24L * 60 * 60 * 1000) {
+            val (next, isNew) = BlockLog.recordJson(json, entry("tracker.example", ts), cap = 5)
+            json = next
+            if (isNew) newEvents++
+            ts += w / 2
+        }
+        assertEquals(1, newEvents)
+        assertEquals(listOf("tracker.example", "phish.example"), BlockLog.parse(json).map { it.domain })
+    }
+
+    @Test
+    fun `a clock stepped backwards does not mint a new event`() {
+        val json = BlockLog.recordJson(null, entry("evil.example", 100_000L)).first
+        val (next, isNew) = BlockLog.recordJson(json, entry("evil.example", 99_000L))
+        assertFalse(isNew)
+        assertEquals(1, BlockLog.parse(next).size)
+    }
+
+    @Test
+    fun `record keeps the cap`() {
+        var json: String? = null
+        for (i in 1..7) json = BlockLog.recordJson(json, entry("d$i.example", i * 1000L), cap = 3).first
+        assertEquals(listOf("d7.example", "d6.example", "d5.example"), BlockLog.parse(json).map { it.domain })
+    }
+
+    /** How every installed phone recorded until now: one entry per DNS query, no source. */
+    private fun legacyRing(vararg entries: Pair<String, Long>): String =
+        entries.joinToString(",", "[", "]") { (d, t) -> """{"d":"$d","t":$t,"k":"blocked"}""" }
+
+    @Test
+    fun `a log written per query is collapsed to events and recounted, once`() {
+        // Two visits to one site (A + AAAA + a retry, then again an hour
+        // later) and one visit to another: 7 raw entries that read "Blocked 7".
+        val hour = 60L * 60 * 1000
+        val ring = legacyRing(
+            "evil.example" to hour + 20, "evil.example" to hour + 10, "evil.example" to hour,
+            "other.example" to 5_000L,
+            "evil.example" to 2_000L, "evil.example" to 1_000L, "evil.example" to 0L,
+        )
+        val (entries, counts) = BlockLog.migrateJson(ring, """{"blocked":7,"warned":0,"allowed":0}""")
+        val events = BlockLog.parse(entries)
+        assertEquals(listOf("evil.example", "other.example", "evil.example"), events.map { it.domain })
+        assertEquals(listOf(hour + 20, 5_000L, 2_000L), events.map { it.ts })
+        assertEquals(listOf(BlockLog.SOURCE_DNS, BlockLog.SOURCE_DNS, BlockLog.SOURCE_DNS), events.map { it.source })
+        assertEquals(3, BlockLog.parseCounts(counts)[BlockLog.KIND_BLOCKED])
+    }
+
+    @Test
+    fun `a full legacy ring keeps its counts - what fell off cannot be recounted`() {
+        val ring = legacyRing(*Array(5) { "evil.example" to (4 - it) * 1_000L })
+        val (entries, counts) = BlockLog.migrateJson(ring, """{"blocked":900,"warned":2,"allowed":1}""", cap = 5)
+        assertEquals(1, BlockLog.parse(entries).size)
+        assertEquals(900, BlockLog.parseCounts(counts)[BlockLog.KIND_BLOCKED])
+        assertEquals(2, BlockLog.parseCounts(counts)[BlockLog.KIND_WARNED])
+    }
+
+    @Test
+    fun `an empty log migrates to an empty log with zero counts`() {
+        val (entries, counts) = BlockLog.migrateJson(null, null)
+        assertTrue(BlockLog.parse(entries).isEmpty())
+        assertEquals(0, BlockLog.parseCounts(counts)[BlockLog.KIND_BLOCKED])
+    }
+
+    @Test
+    fun `coalescing a list agrees with recording it event by event`() {
+        val w = BlockLog.COALESCE_WINDOW_MS
+        val times = listOf(0L, 1_000L, w / 2, w + w / 2 + 1, 3 * w, 3 * w + 5)
+        var recorded: String? = null
+        for (t in times) recorded = BlockLog.recordJson(recorded, entry("evil.example", t)).first
+        val raw = times.reversed().map { entry("evil.example", it) }
+        assertEquals(BlockLog.parse(recorded), BlockLog.coalesce(raw))
+    }
+
+    @Test
     fun `notify dedupe - same domain within window is suppressed, others pass`() {
         val t = BlockNotifier.Throttle()
         assertTrue(t.shouldNotify("a.example", now = 0L))

@@ -5,9 +5,9 @@
     <string name="allowed_text">%1$s is allowed now. You can undo this in Settings → Allowed sites.</string>
     <string name="allowed_title">Site allowed</string>
     <string name="block_channel">Blocked sites</string>
-    <string name="block_channel_desc">Tells you when a dangerous site was stopped</string>
-    <string name="blocked_text">%1$s looked like a scam, so it was stopped before it could open.</string>
-    <string name="blocked_title">Cleanway stopped a dangerous site</string>
+    <string name="block_channel_desc">Tells you when Cleanway blocks a dangerous site</string>
+    <string name="blocked_text">%1$s is on the list of scam sites. It won\'t open.</string>
+    <string name="blocked_title">Cleanway blocked a dangerous site</string>
     <string name="fg_channel">Cleanway protection</string>
     <string name="fg_channel_desc">Shown while phishing protection is active</string>
     <string name="fg_text">Checking website names for scams</string>
