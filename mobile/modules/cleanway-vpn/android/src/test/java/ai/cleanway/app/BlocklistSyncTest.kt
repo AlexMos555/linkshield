@@ -273,5 +273,39 @@ class BlocklistDeltaTest {
         assertEquals(d.size, s.lastFetchBytes)
     }
 
+    /**
+     * BlocklistRefreshJob builds a new sync from the file on every run. If a
+     * delta does not apply, that run must fetch in full itself: the next run
+     * would load the same base and get the same broken delta, for good.
+     */
+    @Test
+    fun `a delta that does not apply drops the base, and the same run fetches in full`() {
+        val oldBlob = artifact(listOf("a.example"), 100L)
+        val newBlob = artifact(listOf("a.example", "fresh.example"), 200L)
+        val store = BlocklistStore(tmp.newFolder())
+        store.save(oldBlob, "\"${sha(oldBlob)}\"", 10L)
+        val broken = delta(100L, 200L, listOf("fresh.example"), emptyList(), "0".repeat(64))
+        val urls = mutableListOf<String>()
+        val fetcher = object : BlocklistFetcher {
+            override fun fetch(url: String, etag: String?): FetchResult {
+                urls += url
+                return if ("from=" in url) FetchResult.Ok(broken, null) else FetchResult.Ok(newBlob, "\"${sha(newBlob)}\"")
+            }
+        }
+        val s = BlocklistSync(store, fetcher, veto, emptySet(), "https://x/list",
+                              nowMs = { 50_000L }, elapsedMs = { 5_000L }, onSwap = {})
+        assertNotNull(s.loadFromDisk())
+        val hadBase = s.hasBaseVersion
+        val first = s.refreshOnce()
+
+        assertTrue(hadBase)
+        assertFalse(first)
+        assertFalse(s.hasBaseVersion)
+        assertTrue(ListRefreshPolicy.refetchInFull(first, hadBase, s.hasBaseVersion))
+        assertTrue(s.refreshOnce())
+        assertEquals(listOf("https://x/list?from=100", "https://x/list"), urls)
+        assertTrue(newBlob.contentEquals(store.load()!!.body))
+    }
+
     @get:Rule val tmp = TemporaryFolder()
 }

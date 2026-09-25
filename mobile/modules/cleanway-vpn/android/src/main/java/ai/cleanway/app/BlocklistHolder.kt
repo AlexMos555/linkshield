@@ -98,15 +98,22 @@ object BlocklistHolder {
     /** Assets never change inside one install: read each once. */
     private fun assetSet(context: Context, name: String, have: Set<String>?, keep: (Set<String>) -> Unit): Set<String> {
         if (have != null) return have
-        return try {
-            context.assets.open(name).bufferedReader().useLines { lines ->
-                lines.map { it.trim().lowercase() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toHashSet()
-            }.also(keep)
-        } catch (e: Exception) {
-            // Not cached: an empty veto kept for the life of the process would
-            // let a bad publish flag popular sites until the next restart.
-            Log.w(TAG, "asset_missing $name: ${e.message}")
-            emptySet()
+        // Not cached when unreadable: an empty veto kept for the life of the
+        // process would let a bad publish flag popular sites until the next restart.
+        return readNameAsset(context, name)?.also(keep) ?: emptySet()
+    }
+
+    /**
+     * One lowercase name per line of a shipped asset ('#' comments), or null
+     * when it cannot be read. The veto and shared-suffix sets every list is
+     * parsed with — BlocklistRefreshJob uses it too.
+     */
+    internal fun readNameAsset(context: Context, name: String): Set<String>? = try {
+        context.assets.open(name).bufferedReader().useLines { lines ->
+            lines.map { it.trim().lowercase() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toHashSet()
         }
+    } catch (e: Exception) {
+        Log.w(TAG, "asset_missing $name: ${e.message}")
+        null
     }
 }

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Alert,
+  View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Alert, Linking,
 } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +18,10 @@ import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
 import { useLinkGuard } from "../../src/hooks/useLinkGuard";
 import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
 import { MessageCheckCard } from "../../src/components/shield/MessageCheckCard";
+import { SmsShieldCard } from "../../src/components/shield/SmsShieldCard";
+import { useSmsShield } from "../../src/hooks/useSmsShield";
+import { isSmsShieldListening } from "../../src/utils/sms-shield-view";
+import { rustoreListingUrl } from "../../src/config/stores";
 import { isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
 import type { HistoryFilter } from "../../src/utils/history-model";
 
@@ -44,9 +48,10 @@ function rolloutItems(t: TFunction, platform: string, messageCheck: boolean): Ro
   };
   // On Android the browser/link layer ships as the Link-checking shield card
   // and SMS as the message-check card, so nothing is "rolling out" there. No
-  // line promises an automatic check of every incoming SMS: that needs SMS
-  // permissions this app deliberately does not ask for. The SMS row stays
-  // only for a native build without the analyzer, where it is still true.
+  // line promises an automatic check of every incoming SMS: only the RuStore
+  // build can do that (it has its own card), and the website APK must never
+  // ask for SMS access. The SMS row stays only for a native build without the
+  // analyzer, where it is still true.
   if (platform === "android") return messageCheck ? [] : [messages];
   return [
     {
@@ -73,6 +78,12 @@ export default function HomeScreen() {
   // The SMS check (Android, native analyzer present). A tool, not a shield:
   // it is deliberately left out of the hero counts below.
   const [messageCheck] = useState(() => isMessageCheckSupported());
+  // The automatic check of every incoming SMS — a real shield, but only in
+  // the RuStore build (`supported`); everywhere else it does not exist.
+  const sms = useSmsShield();
+  // The website APK may point to the RuStore build for that, once its
+  // listing is live; until then the line does not exist.
+  const [storeUrl] = useState(() => (sms.supported || Platform.OS !== "android" ? null : rustoreListingUrl()));
   // The link guard checks tapped links against the blocklist, and only the
   // "All apps" shield downloads one — so the SMS card may promise checked
   // links only once a list exists.
@@ -101,16 +112,20 @@ export default function HomeScreen() {
   }, [network.state, network.blocklist.count]));
 
   const blockedTotal = stats.threats_blocked + shieldTotals.blocked;
-  const warnedTotal = stats.threats_warned + shieldTotals.warned;
+  // An SMS the automatic check flagged was warned about, never blocked: the
+  // phone's SMS app shows it anyway. History's Warned filter lists the same.
+  const warnedTotal = stats.threats_warned + shieldTotals.warned + sms.status.flaggedCount;
 
   // Only shields that are shipped AND verifiable on this platform can count;
   // a running-but-unverified tunnel deliberately counts as 0. Equally, every
   // shield that DOES exist on this device must be counted, or the
   // headline lies: with only the DNS shield counted, a phone whose link guard
-  // was never set up still read "All shields on and verified". The SMS check
-  // is not a shield (it acts only on what the person hands it) and stays out.
-  const totalCount = (network.available ? 1 : 0) + (linkGuard.available ? 1 : 0);
-  const verifiedCount = (network.verified ? 1 : 0) + (linkGuard.on ? 1 : 0);
+  // was never set up still read "All shields on and verified". The manual SMS
+  // check is not a shield (it acts only on what the person hands it) and
+  // stays out; the automatic one (RuStore build) is, and counts as verified
+  // only with permission, receiver, notifications and battery all in place.
+  const totalCount = (network.available ? 1 : 0) + (linkGuard.available ? 1 : 0) + (sms.supported ? 1 : 0);
+  const verifiedCount = (network.verified ? 1 : 0) + (linkGuard.on ? 1 : 0) + (sms.verified ? 1 : 0);
   const heroState =
     totalCount > 0 && verifiedCount === totalCount ? "all"
     : verifiedCount > 0 ? "partial"
@@ -334,6 +349,12 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {sms.supported && (
+        <View style={s.section}>
+          <SmsShieldCard sms={sms} />
+        </View>
+      )}
+
       {messageCheck && (
         <View style={s.section}>
           <MessageCheckCard
@@ -341,6 +362,8 @@ export default function HomeScreen() {
             linkGuardAvailable={linkGuard.available}
             linkGuardOn={linkGuard.on}
             linkListReady={linkListReady}
+            autoSms={sms.supported ? (isSmsShieldListening(sms.view) ? "listening" : "off") : undefined}
+            onOpenStore={storeUrl ? () => void Linking.openURL(storeUrl).catch(() => {}) : undefined}
           />
         </View>
       )}

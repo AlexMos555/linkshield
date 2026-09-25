@@ -131,9 +131,38 @@ jobs:
       # The Expo config plugins rewrite android/app/build.gradle on every
       # prebuild, and the generated tree is not in git. A regression there means
       # a debug-signed or needlessly fat release APK with a green build either
-      # way — so the transforms are asserted here, in CI, not by hand.
-      - name: Expo config plugins (release signing + ABI filters)
+      # way — or SMS access leaking into the browser APK, which Play Protect
+      # then hard-blocks — so the transforms are asserted here, in CI.
+      - name: Expo config plugins (release signing + ABI filters + RuStore variant)
         run: node mobile/plugins/__tests__/plugins.test.js
+
+      - name: APK permission guard table test
+        # check-apk-permissions.mjs is the last gate before an APK ships: the
+        # browser APK must declare no SMS / notification-listener /
+        # accessibility access, the RuStore APK RECEIVE_SMS and nothing more.
+        # The APKs are built outside CI; this pins the guard's parser and rules.
+        run: node mobile/scripts/test-apk-permissions.mjs
+
+      - name: Install source parser table test
+        # Where the app came from picks the SMS set-up path (Android 15+
+        # restricted settings for sideloads); odd native data must read as
+        # "not reported", never as a made-up source.
+        run: node mobile/scripts/test-install-source.mjs
+
+      - name: SMS shield bridge parser table test
+        # The automatic SMS check's status and flagged-SMS list cross from
+        # native (another process wrote the events) into JS. Odd data must
+        # read as "not supported" / "off" / "no event" — never as a check that
+        # is on, or a warning the deep link can open from a crafted id.
+        run: node mobile/scripts/test-sms-shield.mjs
+
+      - name: SMS shield card, RuStore link and update routing table test
+        # The card may say "On" (and count in the hero) only when permission,
+        # receiver, notifications and battery all hold; a restricted install
+        # must get the App-info steps, not another doomed request; the RuStore
+        # line appears only for a live https rustore.ru listing; and a RuStore
+        # install is never sent to the website APK (it would drop the SMS check).
+        run: node mobile/scripts/test-sms-shield-ui.mjs
 
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
@@ -160,8 +189,10 @@ jobs:
       - name: History model table test
         # Each home counter opens History on a filter; the filter must list
         # exactly what the counter adds up. Also pins that old block-log
-        # entries (no source) still read, and that the public deep link opens
-        # nothing for a site that is not in the log.
+        # entries (no source) still read, that the public deep link opens
+        # nothing for a site (or SMS id) that is not in its log, and that an
+        # automatic SMS warning is listed under Warned and SMS — the chips
+        # whose counters add it up — and never under Blocked or Checked.
         run: node mobile/scripts/test-history-model.mjs
 
       - name: Captcha service unit tests

@@ -46,6 +46,15 @@ class BlocklistStore(private val dir: File) {
         fun dirFor(filesDir: File): File = File(filesDir, "cleanway")
 
         fun of(filesDir: File): BlocklistStore = BlocklistStore(dirFor(filesDir))
+
+        /**
+         * Two syncs can write in one process — the shield's, and
+         * BlocklistRefreshJob's while the shield is off and just starting.
+         * Each file is replaced atomically; this keeps the body and its meta a
+         * pair, so an ETag never describes a different body. Readers need no
+         * lock: they see the old pair or the new one, at worst for one read.
+         */
+        private val writeLock = Any()
     }
 
     data class Saved(val body: ByteArray, val etag: String?, val fetchedAtMs: Long)
@@ -77,20 +86,22 @@ class BlocklistStore(private val dir: File) {
         null
     }
 
-    fun save(body: ByteArray, etag: String?, fetchedAtMs: Long) {
+    fun save(body: ByteArray, etag: String?, fetchedAtMs: Long) = synchronized(writeLock) {
         dir.mkdirs()
         writeAtomicBytes(blobFile, body)
         writeAtomic(metaFile, JSONObject().put("etag", etag ?: "").put("fetchedAt", fetchedAtMs).toString())
     }
 
     /** 304: same content, just refresh the fetch time. */
-    fun touch(fetchedAtMs: Long) {
+    fun touch(fetchedAtMs: Long) = synchronized(writeLock) {
         val meta = if (metaFile.exists()) runCatching { JSONObject(metaFile.readText()) }.getOrNull() ?: JSONObject() else JSONObject()
         writeAtomic(metaFile, meta.put("fetchedAt", fetchedAtMs).toString())
     }
 
     fun clear() {
-        blobFile.delete(); metaFile.delete()
+        synchronized(writeLock) {
+            blobFile.delete(); metaFile.delete()
+        }
     }
 
     private fun writeAtomicBytes(target: File, content: ByteArray) {
@@ -180,6 +191,14 @@ class BlocklistSync(
     /** Bytes moved by the last successful fetch — surfaced so "it eats my data" is answerable. */
     @Volatile var lastFetchBytes: Int = 0; private set
     @Volatile private var currentVersion: Long = 0L
+    /**
+     * A version is held that a delta can apply to. It drops to false when a
+     * delta did not apply: the next [refreshOnce] on THIS instance fetches
+     * the list in full. A caller that builds a new instance per run
+     * (BlocklistRefreshJob) must make that next call itself, or it would load
+     * the same base from disk and ask for the same broken delta forever.
+     */
+    val hasBaseVersion: Boolean get() = currentVersion > 0L
     private var future: ScheduledFuture<*>? = null
     /** The list we hold, so a delta has something to apply to. */
     @Volatile private var currentList: BlockList? = null

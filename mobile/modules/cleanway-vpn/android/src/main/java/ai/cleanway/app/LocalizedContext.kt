@@ -27,9 +27,16 @@ object LocalizedContext {
     /**
      * A Context whose resources resolve in the chosen locale, or the original
      * when nothing was chosen (fall back to the device locale, unchanged).
+     *
+     * [fresh]: re-read the choice from disk if the app changed it since this
+     * process last looked. The SMS receiver runs in its own process, which can
+     * stay alive for hours; without it a warning could arrive in the language
+     * the person switched away from.
      */
-    fun of(base: Context): Context {
-        val code = base.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
+    fun of(base: Context, fresh: Boolean = false): Context {
+        @Suppress("DEPRECATION") // MODE_MULTI_PROCESS: still honoured for exactly this, a reader in another process.
+        val mode = if (fresh) Context.MODE_MULTI_PROCESS else Context.MODE_PRIVATE
+        val code = base.getSharedPreferences(PREFS, mode).getString(KEY, null)
             ?.takeIf { it.isNotBlank() } ?: return base
         // Android keeps Indonesian under the legacy code "in"; every other
         // code we ship matches its values-xx directory directly.

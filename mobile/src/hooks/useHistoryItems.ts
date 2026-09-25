@@ -4,19 +4,26 @@ import { useFocusEffect } from "expo-router";
 
 import { getRecentChecks } from "../services/database";
 import { recentShieldBlocks } from "../services/shield-log";
-import { mergeHistory, shieldGaps, type HistoryGaps, type HistoryItem } from "../utils/history-model";
+import {
+  mergeHistory, shieldGaps, smsAlertGap, type HistoryGaps, type HistoryItem,
+} from "../utils/history-model";
+import type { SmsAlertEvent, SmsShieldStatus } from "../../modules/cleanway-vpn/src/CleanwayVpn.types";
 
 /** SQLite rows read per load. */
 const CHECK_LIMIT = 200;
 /** The whole block log: it keeps at most 200 events (BlockLog.DEFAULT_CAP). */
 const SHIELD_LIMIT = 200;
+/** The whole SMS event log: it keeps at most 200 events (SmsEvents.DEFAULT_CAP). */
+const SMS_ALERT_LIMIT = 200;
 
 interface BlockEventsModule {
   addDomainBlockedListener?(cb: () => void): { remove(): void };
   shieldBlockTotals?(): { blocked: number; warned: number };
+  recentSmsEvents?(limit?: number): SmsAlertEvent[];
+  smsShieldStatus?(): SmsShieldStatus;
 }
 
-const NO_GAPS: HistoryGaps = { checksFull: false, shieldBlocked: false, shieldWarned: false };
+const NO_GAPS: HistoryGaps = { checksFull: false, shieldBlocked: false, shieldWarned: false, smsAlerts: false };
 
 /** The lifetime counters behind the home numbers; zeros on an older native build. */
 function readTotals(mod: BlockEventsModule | null): { blocked: number; warned: number } {
@@ -24,6 +31,29 @@ function readTotals(mod: BlockEventsModule | null): { blocked: number; warned: n
     return mod?.shieldBlockTotals?.() ?? { blocked: 0, warned: 0 };
   } catch {
     return { blocked: 0, warned: 0 };
+  }
+}
+
+/**
+ * What the automatic SMS check flagged (RuStore build), read fresh every time:
+ * the ":sms" process writes it, and nothing tells this one when. Empty in
+ * every other build and on error.
+ */
+function readSmsAlerts(mod: BlockEventsModule | null): SmsAlertEvent[] {
+  try {
+    return mod?.recentSmsEvents?.(SMS_ALERT_LIMIT) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Is the SMS event log listing fewer flagged SMS than were ever flagged? Only asked when it lists any. */
+function readSmsAlertGap(mod: BlockEventsModule | null, listed: number): boolean {
+  if (listed === 0) return false;
+  try {
+    return smsAlertGap(listed, mod?.smsShieldStatus?.().flaggedCount ?? 0);
+  } catch {
+    return false;
   }
 }
 
@@ -45,13 +75,14 @@ export interface HistoryItems {
   gaps: HistoryGaps;
   /** Pull-to-refresh. */
   refresh: () => void;
-  /** Re-read both stores; resolves with the fresh list (the deep link looks its site up in it). */
+  /** Re-read every store; resolves with the fresh list (a deep link looks its site or SMS up in it). */
   reload: () => Promise<HistoryItem[]>;
 }
 
 /**
- * Everything History lists: checks from SQLite and the shields' block log,
- * merged newest first (see history-model.ts).
+ * Everything History lists: checks from SQLite, the shields' block log and
+ * the automatic SMS check's warnings, merged newest first (see
+ * history-model.ts).
  *
  * Re-read whenever the tab comes into view, when the app returns to the
  * foreground, and on every new block event. The tab stays mounted once
@@ -77,10 +108,15 @@ export function useHistoryItems(): HistoryItems {
   const reload = useCallback(async () => {
     const checks = await getRecentChecks(CHECK_LIMIT).catch(() => []);
     const shield = recentShieldBlocks(SHIELD_LIMIT);
-    const next = mergeHistory(checks, shield);
+    const alerts = readSmsAlerts(mod);
+    const next = mergeHistory(checks, shield, alerts);
     if (mounted.current) {
       setItems(next);
-      setGaps({ checksFull: checks.length >= CHECK_LIMIT, ...shieldGaps(shield, readTotals(mod)) });
+      setGaps({
+        checksFull: checks.length >= CHECK_LIMIT,
+        ...shieldGaps(shield, readTotals(mod)),
+        smsAlerts: readSmsAlertGap(mod, alerts.length),
+      });
       setLoading(false);
       setRefreshing(false);
     }

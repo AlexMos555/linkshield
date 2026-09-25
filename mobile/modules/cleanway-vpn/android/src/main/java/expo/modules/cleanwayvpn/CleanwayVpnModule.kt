@@ -9,6 +9,7 @@ import android.net.VpnService
 import android.os.Build
 import androidx.core.content.ContextCompat
 import ai.cleanway.app.CleanwayVpnService
+import expo.modules.interfaces.permissions.PermissionsStatus
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.exception.Exceptions
@@ -365,6 +366,116 @@ class CleanwayVpnModule : Module() {
         android.util.Log.w("CleanwayBlocklist", "available_failed: ${e.javaClass.simpleName}")
         false
       }
+    }
+
+    /**
+     * Does THIS APK check incoming SMS by itself? True only for the RuStore
+     * build, whose manifest requests RECEIVE_SMS; the browser-downloaded APK
+     * never does. Read from the installed manifest (ai.cleanway.app.AppInstallInfo).
+     */
+    Function("smsAutoSupported") {
+      try {
+        ai.cleanway.app.AppInstallInfo.smsAutoSupported(context)
+      } catch (e: Exception) {
+        android.util.Log.w("CleanwayInstallInfo", "sms_support_failed: ${e.javaClass.simpleName}")
+        false
+      }
+    }
+
+    /**
+     * How this app got onto the phone: {installer, initiator, packageSource},
+     * each null when Android does not say. "ru.vk.store" is RuStore; a browser
+     * download is packageSource 4 (API 33+), which on Android 15+ puts SMS
+     * access behind "Allow restricted settings".
+     */
+    Function("installSource") {
+      try {
+        ai.cleanway.app.AppInstallInfo.installSource(context).toWire()
+      } catch (e: Exception) {
+        android.util.Log.w("CleanwayInstallInfo", "install_source_failed: ${e.javaClass.simpleName}")
+        ai.cleanway.app.AppInstallInfo.of(null, null, null).toWire()
+      }
+    }
+
+    /**
+     * The automatic SMS check (RuStore build): {supported, permission,
+     * canAskAgain, enabled, notificationsEnabled, backgroundRestricted,
+     * checkedCount, flaggedCount, lastCheckedAt, listAgeMs}. permission is "granted" | "denied" |
+     * "restricted_maybe" | "not_requested" — see ai.cleanway.app.SmsPermissionState
+     * for what each can and cannot prove. Never throws: on error it reports
+     * "not supported", which the UI must not read as "off by choice".
+     */
+    Function("smsShieldStatus") {
+      try {
+        ai.cleanway.app.SmsShield.status(context, appContext.currentActivity)
+      } catch (e: Exception) {
+        android.util.Log.w("CleanwaySms", "sms_status_failed: ${e.javaClass.simpleName}")
+        mapOf(
+          "supported" to false, "permission" to ai.cleanway.app.SmsPermissionState.NOT_REQUESTED,
+          "canAskAgain" to false, "enabled" to false, "notificationsEnabled" to false, "backgroundRestricted" to false,
+          "checkedCount" to 0.0, "flaggedCount" to 0.0, "lastCheckedAt" to null, "listAgeMs" to null,
+        )
+      }
+    }
+
+    /**
+     * Turn the automatic SMS check on or off (the receiver component; the
+     * permission stays granted). False in the browser APK or on failure.
+     */
+    Function("setSmsShieldEnabled") { enabled: Boolean ->
+      ai.cleanway.app.SmsShield.setEnabled(context, enabled)
+    }
+
+    /**
+     * Ask for RECEIVE_SMS — and remember that we asked, which is what lets
+     * smsShieldStatus() tell "never asked" from "refused". Resolves true when
+     * granted. On Android 15+ a sideloaded install gets the system's "App was
+     * denied access" dialog instead of a grant dialog; that resolves false.
+     */
+    AsyncFunction("requestSmsPermission") { promise: Promise ->
+      val permissions = appContext.permissions
+      if (!ai.cleanway.app.AppInstallInfo.smsAutoSupported(context) || permissions == null) {
+        promise.resolve(false)
+        return@AsyncFunction
+      }
+      ai.cleanway.app.SmsShield.markPermissionRequested(context)
+      try {
+        permissions.askForPermissions(
+          { result ->
+            promise.resolve(result[ai.cleanway.app.AppInstallInfo.RECEIVE_SMS]?.status == PermissionsStatus.GRANTED)
+          },
+          ai.cleanway.app.AppInstallInfo.RECEIVE_SMS,
+        )
+      } catch (e: Exception) {
+        android.util.Log.w("CleanwaySms", "sms_permission_request_failed: ${e.javaClass.simpleName}")
+        promise.resolve(false)
+      }
+    }
+
+    /**
+     * SMS the automatic check flagged, newest first: [{id, ts, sender,
+     * verdict, reasons, hosts}]. Never the text — it was never stored.
+     */
+    Function("recentSmsEvents") { limit: Int ->
+      try {
+        ai.cleanway.app.SmsShield.recentEvents(context, limit)
+      } catch (e: Exception) {
+        android.util.Log.w("CleanwaySms", "sms_events_failed: ${e.javaClass.simpleName}")
+        emptyList<Map<String, Any?>>()
+      }
+    }
+
+    /** This app's page in system Settings: permissions, "Allow restricted settings", battery. */
+    Function("openAppDetailsSettings") {
+      ai.cleanway.app.SmsShield.openAppDetails(context)
+    }
+
+    /**
+     * Where the SMS warnings can be switched back on: the "Dangerous SMS"
+     * channel's page when only it is off, else the app's notification page.
+     */
+    Function("openSmsNotificationSettings") {
+      ai.cleanway.app.SmsShield.openNotificationSettings(context)
     }
 
     OnActivityResult { _, payload ->

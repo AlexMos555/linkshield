@@ -34,6 +34,17 @@ object UserAllow {
         parse(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null))
     }
 
+    /**
+     * [list] for a reader in ANOTHER process — the SMS receiver's ":sms". The
+     * main process writes the list; a plain read there would keep serving the
+     * copy it loaded first, and a site the person allowed an hour ago would
+     * still be called a scam site in an SMS warning.
+     */
+    fun listFresh(context: Context): List<String> = synchronized(lock) {
+        @Suppress("DEPRECATION") // MODE_MULTI_PROCESS: re-reads the file if another process changed it.
+        parse(context.getSharedPreferences(PREFS, Context.MODE_MULTI_PROCESS).getString(KEY, null))
+    }
+
     fun add(context: Context, domain: String): Boolean {
         val name = normalize(domain) ?: return false
         synchronized(lock) {

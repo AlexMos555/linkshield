@@ -85,6 +85,57 @@ export function decideUpdate(
   return "none";
 }
 
+/**
+ * Where the running build's updates come from.
+ *  - "direct": the APK from cleanway.ai (the Tele2 funnel).
+ *  - "rustore": installed by RuStore, or the RuStore build however it got
+ *    onto the phone (the one that checks incoming SMS).
+ */
+export type UpdateChannel = "direct" | "rustore";
+
+export interface UpdatePlan {
+  decision: UpdateDecision;
+  /** What "Update" opens; empty when there is nothing to show. */
+  url: string;
+  /** The update comes from a store listing, not a file from our website. */
+  viaStore: boolean;
+}
+
+/**
+ * What the banner shows, and where "Update" leads, for this channel.
+ *
+ * The RuStore build is never sent to the website APK: it carries the same
+ * package and signature, so it would install over the RuStore build and
+ * silently drop the automatic SMS check (the website APK may not ask for SMS
+ * access). It goes to the RuStore listing when that is live, and otherwise
+ * hears nothing from us — RuStore delivers its own updates. Only raise the
+ * server's security floor once the RuStore release is live too, or RuStore
+ * users get a demand their store cannot meet yet.
+ */
+export function planUpdate(
+  running: string,
+  info: VersionInfo,
+  channel: UpdateChannel,
+  directUrl: string,
+  storeUrl: string | null,
+): UpdatePlan {
+  if (channel === "rustore") {
+    if (!storeUrl) return { decision: "none", url: "", viaStore: true };
+    return {
+      decision: decideUpdate(running, info.latestVersionName, info.minSupportedVersionName, true),
+      url: storeUrl,
+      viaStore: true,
+    };
+  }
+  // hasDownload=false when the server has no signed APK URL yet: we still tell
+  // the user, but never as an undismissable demand they cannot satisfy.
+  return {
+    decision: decideUpdate(running, info.latestVersionName, info.minSupportedVersionName, !!info.apkUrl),
+    url: directUrl,
+    viaStore: false,
+  };
+}
+
 /** Only https:// URLs may be opened from the update banner. */
 export function isSafeDownloadUrl(v: unknown): boolean {
   return typeof v === "string" && /^https:\/\/[^\s]+$/i.test(v.trim());

@@ -65,6 +65,22 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   matchBlocklist?(host: string): Promise<string | null>;
   /** A blocklist exists for the link guard: the shield's, or a synced copy on disk. */
   linkListAvailable?(): Promise<boolean>;
+  /** This APK's manifest requests RECEIVE_SMS: the RuStore build. Optional: older native builds lack it. */
+  smsAutoSupported?(): boolean;
+  /** How the app was installed. Raw shape — index.ts validates it into an InstallSource. */
+  installSource?(): Record<string, unknown>;
+  /** The automatic SMS check's state. Raw shape — index.ts validates it into an SmsShieldStatus. */
+  smsShieldStatus?(): Record<string, unknown>;
+  /** Turn the automatic SMS check on or off (the receiver component). False in the browser APK. */
+  setSmsShieldEnabled?(enabled: boolean): boolean;
+  /** Ask for RECEIVE_SMS; resolves true when granted. */
+  requestSmsPermission?(): Promise<boolean>;
+  /** SMS the automatic check flagged, newest first. Raw shape — index.ts validates each one. */
+  recentSmsEvents?(limit: number): unknown[];
+  /** This app's page in system Settings (permissions, "Allow restricted settings", battery). */
+  openAppDetailsSettings?(): boolean;
+  /** Where the SMS warnings can be switched back on: our channel's page, or the app's notification page. */
+  openSmsNotificationSettings?(): boolean;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

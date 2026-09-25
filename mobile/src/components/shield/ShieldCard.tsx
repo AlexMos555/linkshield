@@ -21,6 +21,8 @@ interface ShieldCardProps {
   state: ShieldState;
   stateCopy?: string;
   onAction?: () => void;
+  /** The setup button's word when "Set up" is not what it does (a switch that is merely off says "Turn on"). */
+  actionLabel?: string;
   /**
    * Explicit, secondary way OUT of a running shield. The status pill on the
    * right is deliberately not a toggle — an accidental tap must never switch
@@ -39,7 +41,7 @@ const AMBER_STATES: ReadonlySet<ShieldState> = new Set(["conflict", "network-blo
  * Every card carries an ⓘ honesty line — non-negotiable (spec §2.4).
  */
 export function ShieldCard(props: ShieldCardProps) {
-  const { icon, title, description, honesty, state, stateCopy, onAction, onPause } = props;
+  const { icon, title, description, honesty, state, stateCopy, onAction, actionLabel, onPause } = props;
   const { t } = useTranslation();
   // "conflict" is deliberately not here: it means the tunnel is DOWN (the
   // service refused or stepped aside), so "Pause protection" would be a lie.
@@ -63,7 +65,7 @@ export function ShieldCard(props: ShieldCardProps) {
             {desc}
           </Text>
         </View>
-        <StatusControl state={state} onAction={onAction} />
+        <StatusControl state={state} onAction={onAction} actionLabel={actionLabel} />
       </View>
       <View style={s.honestyRow}>
         <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
@@ -85,9 +87,16 @@ export function ShieldCard(props: ShieldCardProps) {
   );
 }
 
-function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () => void }) {
+interface StatusControlProps {
+  state: ShieldState;
+  onAction?: () => void;
+  actionLabel?: string;
+}
+
+function StatusControl({ state, onAction, actionLabel }: StatusControlProps) {
   const { t } = useTranslation();
   if (state === "setup") {
+    const label = actionLabel ?? t("mobile.shield.status.setup_btn");
     return (
       <TouchableOpacity
         style={s.setupBtn}
@@ -95,9 +104,9 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
         activeOpacity={0.85}
         hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         accessibilityRole="button"
-        accessibilityLabel={t("mobile.shield.status.setup_btn")}
+        accessibilityLabel={label}
       >
-        <Text style={s.setupLabel}>{t("mobile.shield.status.setup_btn")}</Text>
+        <Text style={s.setupLabel}>{label}</Text>
       </TouchableOpacity>
     );
   }

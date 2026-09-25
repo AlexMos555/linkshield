@@ -144,3 +144,91 @@ export type MessageAnalysis = {
 export type MessageAnalysisResult =
   | ({ available: true } & MessageAnalysis)
   | { available: false; reason: 'unsupported' | 'failed' };
+
+// ── How this APK was installed (AppInstallInfo.kt) ────────────────────────
+
+/**
+ * Who installed the app, as Android reports it (getInstallSourceInfo on API
+ * 30+, getInstallerPackageName below). Each field is null when the platform
+ * does not say.
+ */
+export type InstallSource = {
+  /**
+   * The installing package: "ru.vk.store" for RuStore; the system package
+   * installer for an APK opened from a browser or a file manager; null or
+   * "com.android.shell" for adb, depending on the Android version.
+   */
+  installer: string | null;
+  /** The package that started the install (API 30+). */
+  initiator: string | null;
+  /**
+   * PackageInstaller.PACKAGE_SOURCE_* (API 33+), see PACKAGE_SOURCE. On
+   * Android 15+ LOCAL_FILE or DOWNLOADED_FILE puts SMS access behind "Allow
+   * restricted settings"; whether a store install is exempt is not known.
+   */
+  packageSource: number | null;
+};
+
+// ── The automatic SMS check (RuStore build; SmsShield.kt, SmsEventLog.kt) ──
+
+/**
+ * What can honestly be said about the SMS permission (SmsPermissionState.kt).
+ * Android never says whether a refusal came from the person or from Android
+ * 15+'s "restricted settings", so:
+ *  - 'restricted_maybe': refused where the restriction is likely (a file or
+ *    browser install on Android 15+, or Android's own "dialog shown" state);
+ *    the way out is App info → ⋮ → "Allow restricted settings";
+ *  - 'denied': refused, nothing points at the restriction — the person said
+ *    no; the way out is App info → Permissions → SMS;
+ *  - 'not_requested': never asked (a restriction shows only after a request).
+ */
+export type SmsPermissionState = 'granted' | 'denied' | 'restricted_maybe' | 'not_requested';
+
+/** smsShieldStatus(): everything the SMS screen needs to tell the truth. */
+export type SmsShieldStatus = {
+  /** This APK can check incoming SMS at all: the RuStore build. False everywhere else. */
+  supported: boolean;
+  permission: SmsPermissionState;
+  /**
+   * Android would show its SMS question again (the person said no once).
+   * False after a second no, "don't ask again", a restriction, or an
+   * installer that never allowed SMS access for this app — then only App
+   * info can help, and not even that in the last case.
+   */
+  canAskAgain: boolean;
+  /** The person turned the automatic check on (the receiver component is enabled). */
+  enabled: boolean;
+  /** A warning can reach the person: app notifications, the Android 13+ permission, our channel. */
+  notificationsEnabled: boolean;
+  /** Battery "Restricted" for the app (Android 9+): Android may hold back the check. */
+  backgroundRestricted: boolean;
+  /** Every SMS checked since install, harmless ones included — a number, the proof the check runs. */
+  checkedCount: number;
+  /** SMS flagged since install; History lists at most the last 200 of the last 90 days. */
+  flaggedCount: number;
+  /** When the last SMS was checked (ms), or null before the first. */
+  lastCheckedAt: number | null;
+  /** Age of the on-device blocklist by its last successful fetch, or null when there is none. */
+  listAgeMs: number | null;
+};
+
+/** Only these are ever recorded: a message with no signals leaves nothing but the counter. */
+export type SmsAlertVerdict = 'dangerous' | 'caution';
+
+/**
+ * One SMS the automatic check flagged, as the phone keeps it (SmsEvent in
+ * SmsEventLog.kt): never the text — time, sender, verdict, reasons, link hosts.
+ */
+export type SmsAlertEvent = {
+  /** 16 hex characters; the notification's deep link names it. */
+  id: string;
+  /** When it arrived (ms). */
+  ts: number;
+  /** As the phone showed it (number, short code or name), or null. */
+  sender: string | null;
+  verdict: SmsAlertVerdict;
+  /** Reason codes this build can explain, most important first. */
+  reasons: MessageReason[];
+  /** Lowercase punycode hosts of its links. */
+  hosts: string[];
+};

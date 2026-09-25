@@ -10,7 +10,8 @@
  *
  * Tapping "Update" opens the download target (the signed APK URL, or the
  * /android page as a fallback) in the browser; we do not, and cannot, install
- * an APK for the user.
+ * an APK for the user. A RuStore install opens its RuStore listing instead,
+ * and the button says so.
  */
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -63,7 +64,7 @@ export function UpdateBanner({ status }: { status: UpdateStatus }) {
           style={[s.update, { backgroundColor: accent }]}
           accessibilityRole="button"
         >
-          <Text style={s.updateLabel}>{t("mobile.update.action")}</Text>
+          <Text style={s.updateLabel}>{t(status.viaStore ? "mobile.update.action_store" : "mobile.update.action")}</Text>
         </TouchableOpacity>
       </View>
     </View>

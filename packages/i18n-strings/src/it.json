@@ -1206,7 +1206,10 @@
         "honesty": "Cleanway non legge i tuoi SMS da solo: controlla solo il messaggio che gli dai tu. Il testo resta sul tuo telefono.",
         "links_on": "Anche i link negli SMS vengono controllati quando li tocchi: il «Controllo dei link» è attivo.",
         "links_no_list": "Il «Controllo dei link» è attivo, ma per ora i link negli SMS non hanno con cosa essere confrontati: la lista dei siti truffa si scarica mentre la protezione «Ogni app» è attiva.",
-        "links_off": "Ora i link negli SMS non vengono controllati quando li tocchi. Per farlo, attiva qui sopra la protezione «Controllo dei link»."
+        "links_off": "Ora i link negli SMS non vengono controllati quando li tocchi. Per farlo, attiva qui sopra la protezione «Controllo dei link».",
+        "honesty_auto_on": "Cleanway controlla già da solo gli SMS in arrivo. Qui puoi controllare un messaggio da un'app di messaggi. Il testo resta sul tuo telefono.",
+        "honesty_auto_off": "Al momento Cleanway non controlla da solo gli SMS in arrivo: per questo attiva «Messaggi SMS» qui sopra. Qui puoi controllare qualsiasi messaggio. Il testo resta sul tuo telefono.",
+        "store_offer": "Il controllo automatico di ogni SMS in arrivo è nella versione di Cleanway su RuStore"
       },
       "rollout_header": "In arrivo",
       "activity": {
@@ -1276,6 +1279,42 @@
         "honesty": "Funziona quando Cleanway è impostata come app che apre i link",
         "state_on": "Ogni link viene controllato prima",
         "state_setup": "Imposta Cleanway per aprire i tuoi link"
+      },
+      "sms_auto": {
+        "title": "Messaggi SMS",
+        "desc": "Controlla ogni SMS in arrivo direttamente sul telefono e ti avvisa se sembra una truffa",
+        "honesty": "Vede solo gli SMS normali: non WhatsApp, Telegram o altre app di messaggi, né le chat RCS. Non può nascondere o cancellare un SMS, solo avvisarti.",
+        "state_setup": "Disattivato. Attivarlo richiede meno di un minuto.",
+        "state_paused": "Disattivato. L'accesso è già consentito: attiva il controllo e riparte.",
+        "state_refused": "Disattivato: l'accesso agli SMS non è stato consentito. Attiva il controllo e scegli «Consenti» nella finestra di Android.",
+        "state_on": "Attivo. SMS controllati: {{count}}",
+        "state_restricted": "Android non ha dato a Cleanway l'accesso agli SMS. Consentilo nelle impostazioni dell'app: basta farlo una volta.",
+        "state_permission_off": "Non funziona: Cleanway non ha più accesso agli SMS, quindi quelli nuovi non vengono controllati. Può succedere se l'app non è stata usata per un po'.",
+        "state_notifications": "Gli SMS vengono controllati, ma le notifiche di Cleanway sono disattivate: non vedrai l'avviso per un SMS truffa.",
+        "state_battery": "Android limita Cleanway in background, quindi il controllo potrebbe non funzionare.",
+        "action_enable": "Attiva",
+        "action_app_settings": "Apri le impostazioni dell'app",
+        "action_allow_sms": "Consenti l'accesso agli SMS",
+        "action_notifications": "Attiva le notifiche",
+        "list_missing": "L'elenco dei siti truffa non è ancora stato scaricato: per ora gli SMS vengono controllati solo dal testo. Si scaricherà da solo appena c'è Internet.",
+        "list_stale": "L'elenco dei siti truffa non viene aggiornato da un po'. Si aggiornerà da solo appena c'è Internet.",
+        "disclosure_title": "Controllo degli SMS in arrivo",
+        "disclosure_body": "Cleanway controllerà gli SMS in arrivo direttamente sul telefono. Il testo non viene mai inviato da nessuna parte né salvato. Se un messaggio sembra una truffa, ti mostreremo un avviso.\n\nOra Android ti chiederà se Cleanway può ricevere SMS e poi se può mostrare notifiche. Senza notifiche l'avviso non può comparire.",
+        "open_settings": "Apri impostazioni",
+        "restricted_title": "Android ha bloccato l'accesso agli SMS",
+        "restricted_body": "Android tiene chiuso l'accesso agli SMS finché non lo consenti tu. Basta farlo una volta:\n\n1. Tocca «Apri impostazioni».\n2. Tocca ⋮ in alto a destra.\n3. Scegli «Consenti impostazioni con limitazioni» e conferma.\n4. Torna in Cleanway e tocca di nuovo «Attiva».\n\nNon c'è «Consenti impostazioni con limitazioni»? Allora scegli «Autorizzazioni» → «SMS» → «Consenti».",
+        "denied_title": "L'accesso agli SMS è disattivato",
+        "denied_body": "Android non mostra più la domanda, quindi si può consentire solo a mano:\n\n1. Tocca «Apri impostazioni».\n2. Scegli «Autorizzazioni» → «SMS».\n3. Scegli «Consenti».\n4. Torna in Cleanway e tocca «Attiva».\n\nSe «Consenti» non si attiva, Android non lascia a Cleanway l'accesso agli SMS su questo telefono. Il resto della protezione funziona.",
+        "enable_failed_title": "Non è stato possibile attivarlo",
+        "enable_failed_body": "Android non ha permesso a Cleanway di attivare il controllo degli SMS. Riprova.",
+        "pause_confirm_title": "Disattivare il controllo degli SMS?",
+        "pause_confirm_body": "Cleanway smetterà di controllare gli SMS in arrivo e non ti avviserà di un messaggio truffa. Puoi riattivarlo in qualsiasi momento con un tocco.",
+        "pause_confirm_action": "Disattiva",
+        "restricted_steps": "Apri le impostazioni dell'app → tocca ⋮ in alto a destra → «Consenti impostazioni con limitazioni» → torna qui e tocca di nuovo «Attiva». Se questa voce non c'è, nelle impostazioni dell'app apri «Autorizzazioni» → «SMS» → «Consenti».",
+        "battery_steps": "Apri le impostazioni dell'app → «Batteria» → «Senza restrizioni».",
+        "denied_restricted_hint": "Se nel menu ⋮ in alto a destra c'è «Consenti impostazioni con limitazioni», sceglilo prima.",
+        "state_blocked": "Nessun accesso agli SMS e Android non lo chiede più. Consentilo nelle impostazioni dell'app.",
+        "blocked_steps": "Apri le impostazioni dell'app → «Autorizzazioni» → «SMS» → «Consenti» → torna qui e tocca «Attiva». Se «Consenti» non si attiva, Android non lascia a Cleanway l'accesso agli SMS su questo telefono: il resto della protezione funziona."
       }
     },
     "rollout": {
@@ -1521,12 +1560,15 @@
         "blocked": "Siti che Cleanway non ha lasciato aprire e link pericolosi che hai controllato tu.",
         "warned": "Siti su cui Cleanway ti ha avvisato e link controllati da te che richiedono attenzione.",
         "checked": "Link e messaggi che hai controllato tu.",
-        "sms": "Messaggi che hai controllato. Il testo non viene mai salvato: solo il risultato e i nomi dei siti."
+        "sms": "Messaggi che hai controllato. Il testo non viene mai salvato: solo il risultato e i nomi dei siti.",
+        "sms_auto": "SMS per cui Cleanway ti ha avvisato all’arrivo e messaggi che hai controllato tu. Il testo dei messaggi non viene mai salvato.",
+        "warned_sms_auto": "Siti e SMS per cui Cleanway ti ha avvisato, e link che hai controllato che richiedono cautela."
       },
       "source": {
         "dns": "Scudo «Ogni app»",
         "link": "Scudo «Controllo dei link»",
-        "manual": "Controllato da te"
+        "manual": "Controllato da te",
+        "sms_auto": "Scudo «Messaggi SMS»"
       },
       "row_open_hint": "Apre i dettagli",
       "truncated": "Qui sono mostrati solo gli eventi più recenti.",
@@ -1555,7 +1597,21 @@
         "allow_confirm_body": "{{domain}} non verrà più bloccato. Fallo solo se conosci questo sito. Puoi annullare in Impostazioni → Siti consentiti.",
         "block_again": "Blocca di nuovo",
         "close": "Chiudi"
-      }
+      },
+      "sms_alert": {
+        "row_title": "SMS da {{sender}}",
+        "row_title_unknown": "SMS da un mittente sconosciuto",
+        "checked_on_phone": "Cleanway ha controllato questo SMS sul tuo telefono appena è arrivato. Il testo non è stato inviato da nessuna parte e non viene conservato qui: si trova solo nell’app Messaggi.",
+        "checked_auto": "Controllato automaticamente",
+        "host_not_listed": "Non è nell'elenco dei siti truffa, ma questo non vuol dire che il sito sia sicuro",
+        "host_no_list": "Non controllato: su questo telefono non c'è ancora l'elenco dei siti truffa"
+      },
+      "empty_warned_body_sms": "Qui compariranno gli SMS e i siti per cui Cleanway ti avvisa, e i link che controlli che richiedono cautela.",
+      "empty_sms_auto_title": "Finora nessun SMS truffa",
+      "empty_sms_auto_body": "SMS in arrivo controllati: {{count}}. Nessuno sembrava una truffa.",
+      "empty_sms_auto_waiting": "Cleanway controlla ogni SMS appena arriva. Se uno sembra una truffa, comparirà qui.",
+      "empty_sms_auto_off_body": "Al momento Cleanway non controlla da solo gli SMS in arrivo. Attiva il controllo, oppure controlla un messaggio a mano.",
+      "empty_sms_auto_turn_on": "Attiva il controllo degli SMS"
     },
     "report": {
       "title": "Resoconto settimanale",
@@ -1667,7 +1723,11 @@
       "linkguard_on_desc": "Ogni link che tocchi viene prima controllato.",
       "linkguard_off": "Controlla ogni link",
       "linkguard_off_desc": "Ora i link si aprono senza controllo. Attivalo per controllarli.",
-      "linkguard_enable": "Configura"
+      "linkguard_enable": "Configura",
+      "sms": "Messaggi SMS",
+      "sms_note": "Ogni SMS in arrivo viene controllato direttamente sul telefono: il testo non viene mai inviato né salvato. Se un SMS sembra una truffa, la cronologia conserva solo l'ora, il mittente, i motivi e i nomi dei siti.",
+      "sms_on": "Il controllo degli SMS è attivo",
+      "sms_off": "Controlla gli SMS in arrivo"
     },
     "family": {
       "title": "Spazio famiglia",
@@ -1765,7 +1825,30 @@
       "warn_text": "{{domain}} sembra pericoloso. Se è aperto, chiudilo e non digitare nulla.",
       "allow_action": "Non è una truffa: consenti",
       "allowed_title": "Sito consentito",
-      "allowed_text": "{{domain}} ora è consentito. Puoi annullare in Impostazioni → Siti consentiti."
+      "allowed_text": "{{domain}} ora è consentito. Puoi annullare in Impostazioni → Siti consentiti.",
+      "sms_channel": "SMS pericolosi",
+      "sms_channel_desc": "Ti avvisa quando un SMS ricevuto sembra una truffa",
+      "sms_alert_title_dangerous": "Questo SMS sembra una truffa",
+      "sms_alert_title_caution": "Attenzione a questo SMS",
+      "sms_alert_text": "Da {{sender}}: {{reason}}. Non chiamare il numero del messaggio e non aprire i link.",
+      "sms_alert_unknown_sender": "un mittente sconosciuto",
+      "sms_reason_link_listed": "il link porta a un sito truffa noto",
+      "sms_reason_code": "ti chiede un codice ricevuto via SMS",
+      "sms_reason_safe_account": "ti chiede di spostare denaro su un «conto sicuro»",
+      "sms_reason_relative": "qualcuno che si finge un parente chiede soldi",
+      "sms_reason_sms_command": "ti chiede di inviare un SMS che trasferisce denaro",
+      "sms_reason_install": "ti chiede di installare un’app o aprire un file",
+      "sms_reason_call": "ti chiede di chiamare un numero non ufficiale",
+      "sms_reason_fake_site": "il link porta a una copia falsa di un sito vero",
+      "sms_reason_payment": "ti chiede di pagare",
+      "sms_reason_link": "il link non porta al sito ufficiale",
+      "sms_reason_confirm_data": "ti chiede di «confermare» i tuoi dati",
+      "sms_reason_bait": "promette un rimborso o un premio",
+      "sms_reason_sender": "il mittente non è chi dice di essere",
+      "sms_reason_threat": "cerca di spaventarti o di metterti fretta",
+      "sms_reason_organisation": "dice di venire da un’organizzazione nota",
+      "sms_reason_disguised": "ha lettere scambiate per aggirare i filtri",
+      "sms_reason_generic": "usa trucchi da truffatori"
     },
     "reason": {
       "flagged_dangerous": "Google segnala questo sito come pericoloso",
@@ -1804,7 +1887,8 @@
       "required_title": "Aggiorna l'app",
       "required_body": "Questa versione è obsoleta. Aggiorna Cleanway per far funzionare la protezione.",
       "action": "Aggiorna",
-      "later": "Più tardi"
+      "later": "Più tardi",
+      "action_store": "Aggiorna su RuStore"
     }
   }
 }

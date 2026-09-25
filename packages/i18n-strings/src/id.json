@@ -1206,7 +1206,10 @@
         "honesty": "Cleanway tidak membaca SMS Anda dengan sendirinya — hanya mengecek pesan yang Anda berikan. Teksnya tetap di HP Anda.",
         "links_on": "Tautan di SMS juga dicek saat Anda mengetuknya — “Pemeriksaan tautan” aktif.",
         "links_no_list": "“Pemeriksaan tautan” aktif, tetapi tautan di SMS belum bisa dicocokkan: daftar situs penipuan diunduh selama perlindungan “Semua aplikasi” aktif.",
-        "links_off": "Saat ini tautan di SMS tidak dicek saat Anda mengetuknya. Untuk itu, aktifkan perlindungan “Pemeriksaan tautan” di atas."
+        "links_off": "Saat ini tautan di SMS tidak dicek saat Anda mengetuknya. Untuk itu, aktifkan perlindungan “Pemeriksaan tautan” di atas.",
+        "honesty_auto_on": "Cleanway sudah memeriksa SMS masuk dengan sendirinya. Di sini Anda bisa memeriksa pesan dari aplikasi pesan. Teksnya tetap di HP Anda.",
+        "honesty_auto_off": "Saat ini Cleanway tidak memeriksa SMS masuk dengan sendirinya — untuk itu, nyalakan “Pesan SMS” di atas. Di sini Anda bisa memeriksa pesan apa pun. Teksnya tetap di HP Anda.",
+        "store_offer": "Pemeriksaan otomatis setiap SMS masuk ada di versi Cleanway dari RuStore"
       },
       "rollout_header": "Segera hadir",
       "activity": {
@@ -1276,6 +1279,42 @@
         "honesty": "Bekerja saat Cleanway disetel sebagai aplikasi pembuka tautan",
         "state_on": "Setiap tautan diperiksa lebih dulu",
         "state_setup": "Jadikan Cleanway pembuka tautan Anda"
+      },
+      "sms_auto": {
+        "title": "Pesan SMS",
+        "desc": "Memeriksa setiap SMS masuk langsung di HP Anda dan memperingatkan jika tampak seperti penipuan",
+        "honesty": "Hanya melihat SMS biasa — bukan WhatsApp, Telegram atau aplikasi pesan lain, juga bukan chat RCS. Tidak bisa menyembunyikan atau menghapus SMS, hanya memperingatkan.",
+        "state_setup": "Mati. Menyalakannya butuh kurang dari satu menit.",
+        "state_paused": "Mati. Izin sudah ada — nyalakan pemeriksaan dan ia berjalan lagi.",
+        "state_refused": "Mati: akses SMS tidak diizinkan. Nyalakan pemeriksaan lalu pilih “Izinkan” di jendela Android.",
+        "state_on": "Aktif. SMS diperiksa: {{count}}",
+        "state_restricted": "Android tidak memberi Cleanway akses ke SMS. Izinkan di setelan aplikasi — cukup sekali saja.",
+        "state_permission_off": "Tidak berjalan: Cleanway tidak lagi punya akses ke SMS, jadi SMS baru tidak diperiksa. Ini bisa terjadi jika aplikasi lama tidak dipakai.",
+        "state_notifications": "SMS sedang diperiksa, tetapi notifikasi Cleanway mati — Anda tidak akan melihat peringatan tentang SMS penipuan.",
+        "state_battery": "Android membatasi Cleanway di latar belakang, jadi pemeriksaan mungkin tidak berjalan.",
+        "action_enable": "Nyalakan",
+        "action_app_settings": "Buka setelan aplikasi",
+        "action_allow_sms": "Izinkan akses SMS",
+        "action_notifications": "Nyalakan notifikasi",
+        "list_missing": "Daftar situs penipuan belum terunduh — untuk sementara SMS hanya diperiksa dari teksnya. Daftar akan terunduh sendiri saat ada internet.",
+        "list_stale": "Daftar situs penipuan sudah lama tidak diperbarui. Daftar akan diperbarui sendiri saat ada internet.",
+        "disclosure_title": "Pemeriksaan SMS masuk",
+        "disclosure_body": "Cleanway akan memeriksa SMS masuk langsung di HP Anda. Teksnya tidak pernah dikirim ke mana pun atau disimpan. Jika sebuah pesan tampak seperti penipuan, kami akan menampilkan peringatan.\n\nSekarang Android akan bertanya apakah Cleanway boleh menerima SMS, lalu apakah boleh menampilkan notifikasi. Tanpa notifikasi, peringatan tidak bisa muncul.",
+        "open_settings": "Buka setelan",
+        "restricted_title": "Android memblokir akses SMS",
+        "restricted_body": "Android menutup akses SMS sampai Anda sendiri mengizinkannya. Cukup dilakukan sekali:\n\n1. Ketuk “Buka setelan”.\n2. Ketuk ⋮ di kanan atas.\n3. Pilih “Izinkan setelan terbatas” lalu konfirmasi.\n4. Kembali ke Cleanway dan ketuk “Nyalakan” lagi.\n\nTidak ada “Izinkan setelan terbatas”? Pilih “Izin” → “SMS” → “Izinkan”.",
+        "denied_title": "Akses SMS mati",
+        "denied_body": "Android tidak lagi menampilkan pertanyaannya, jadi izin hanya bisa diberikan secara manual:\n\n1. Ketuk “Buka setelan”.\n2. Pilih “Izin” → “SMS”.\n3. Pilih “Izinkan”.\n4. Kembali ke Cleanway dan ketuk “Nyalakan”.\n\nJika “Izinkan” tidak bisa dipilih, Android tidak memberi Cleanway akses SMS di HP ini. Perlindungan lainnya tetap berjalan.",
+        "enable_failed_title": "Tidak bisa dinyalakan",
+        "enable_failed_body": "Android tidak mengizinkan Cleanway menyalakan pemeriksaan SMS. Silakan coba lagi.",
+        "pause_confirm_title": "Matikan pemeriksaan SMS?",
+        "pause_confirm_body": "Cleanway akan berhenti memeriksa SMS masuk dan tidak akan memperingatkan Anda tentang pesan penipuan. Anda bisa menyalakannya lagi kapan saja dengan satu ketukan.",
+        "pause_confirm_action": "Matikan",
+        "restricted_steps": "Buka setelan aplikasi → ketuk ⋮ di kanan atas → “Izinkan setelan terbatas” → kembali dan ketuk “Nyalakan” lagi. Jika tidak ada pilihan itu, buka “Izin” → “SMS” → “Izinkan” di setelan aplikasi.",
+        "battery_steps": "Buka setelan aplikasi → “Baterai” → “Tidak dibatasi”.",
+        "denied_restricted_hint": "Jika menu ⋮ di kanan atas punya “Izinkan setelan terbatas”, pilih itu dulu.",
+        "state_blocked": "Tidak ada akses SMS, dan Android tidak lagi menanyakannya. Izinkan di setelan aplikasi.",
+        "blocked_steps": "Buka setelan aplikasi → “Izin” → “SMS” → “Izinkan” → kembali dan ketuk “Nyalakan”. Jika “Izinkan” tidak bisa dipilih, Android tidak memberi Cleanway akses SMS di HP ini — perlindungan lainnya tetap berjalan."
       }
     },
     "rollout": {
@@ -1521,12 +1560,15 @@
         "blocked": "Situs yang tidak dibiarkan terbuka oleh Cleanway, dan link berbahaya yang kamu cek sendiri.",
         "warned": "Situs yang diperingatkan Cleanway, dan link yang kamu cek dan perlu diwaspadai.",
         "checked": "Link dan pesan yang kamu cek sendiri.",
-        "sms": "Pesan yang kamu cek. Teksnya tidak pernah disimpan — hanya hasil dan nama situsnya."
+        "sms": "Pesan yang kamu cek. Teksnya tidak pernah disimpan — hanya hasil dan nama situsnya.",
+        "sms_auto": "SMS yang diperingatkan Cleanway saat masuk, dan pesan yang Anda periksa sendiri. Teks pesan tidak pernah disimpan.",
+        "warned_sms_auto": "Situs dan SMS yang diperingatkan Cleanway, serta tautan yang Anda periksa dan perlu diwaspadai."
       },
       "source": {
         "dns": "Perisai “Semua aplikasi”",
         "link": "Perisai “Pemeriksaan tautan”",
-        "manual": "Kamu cek sendiri"
+        "manual": "Kamu cek sendiri",
+        "sms_auto": "Perisai “Pesan SMS”"
       },
       "row_open_hint": "Membuka detail",
       "truncated": "Hanya kejadian terbaru yang ditampilkan di sini.",
@@ -1555,7 +1597,21 @@
         "allow_confirm_body": "{{domain}} tidak akan diblokir lagi. Lakukan ini hanya kalau kamu kenal situs ini. Bisa dibatalkan di Pengaturan → Situs yang diizinkan.",
         "block_again": "Blokir lagi",
         "close": "Tutup"
-      }
+      },
+      "sms_alert": {
+        "row_title": "SMS dari {{sender}}",
+        "row_title_unknown": "SMS dari pengirim tak dikenal",
+        "checked_on_phone": "Cleanway memeriksa SMS ini langsung di ponsel Anda saat masuk. Teksnya tidak dikirim ke mana pun dan tidak disimpan di sini — hanya ada di aplikasi Pesan Anda.",
+        "checked_auto": "Diperiksa otomatis",
+        "host_not_listed": "Tidak ada di daftar situs penipuan — tapi itu belum berarti situsnya aman",
+        "host_no_list": "Belum diperiksa: belum ada daftar situs penipuan di HP ini"
+      },
+      "empty_warned_body_sms": "SMS dan situs yang diperingatkan Cleanway, serta tautan yang Anda periksa dan perlu diwaspadai, akan muncul di sini.",
+      "empty_sms_auto_title": "Belum ada SMS penipuan",
+      "empty_sms_auto_body": "SMS masuk yang diperiksa: {{count}}. Tidak ada yang tampak seperti penipuan.",
+      "empty_sms_auto_waiting": "Cleanway memeriksa setiap SMS begitu masuk. Jika ada yang tampak seperti penipuan, SMS itu akan muncul di sini.",
+      "empty_sms_auto_off_body": "Saat ini Cleanway tidak memeriksa SMS masuk dengan sendirinya. Nyalakan pemeriksaan — atau periksa pesan secara manual.",
+      "empty_sms_auto_turn_on": "Nyalakan pemeriksaan SMS"
     },
     "report": {
       "title": "Laporan mingguan",
@@ -1667,7 +1723,11 @@
       "linkguard_on_desc": "Setiap tautan yang diketuk diperiksa dulu.",
       "linkguard_off": "Periksa setiap tautan",
       "linkguard_off_desc": "Sekarang tautan terbuka tanpa diperiksa. Aktifkan untuk memeriksanya.",
-      "linkguard_enable": "Siapkan"
+      "linkguard_enable": "Siapkan",
+      "sms": "Pesan SMS",
+      "sms_note": "Setiap SMS masuk diperiksa langsung di HP — teksnya tidak pernah dikirim ke mana pun atau disimpan. Jika sebuah SMS tampak seperti penipuan, riwayat hanya menyimpan waktu, pengirim, alasan, dan nama situs.",
+      "sms_on": "Pemeriksaan SMS aktif",
+      "sms_off": "Periksa SMS masuk"
     },
     "family": {
       "title": "Ruang Keluarga",
@@ -1765,7 +1825,30 @@
       "warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun.",
       "allow_action": "Bukan penipuan — izinkan",
       "allowed_title": "Situs diizinkan",
-      "allowed_text": "{{domain}} sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan."
+      "allowed_text": "{{domain}} sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan.",
+      "sms_channel": "SMS berbahaya",
+      "sms_channel_desc": "Memberi tahu Anda saat SMS yang masuk tampak seperti penipuan",
+      "sms_alert_title_dangerous": "SMS ini tampak seperti penipuan",
+      "sms_alert_title_caution": "Hati-hati dengan SMS ini",
+      "sms_alert_text": "Dari {{sender}}: {{reason}}. Jangan telepon nomor di pesan itu dan jangan buka tautannya.",
+      "sms_alert_unknown_sender": "pengirim tak dikenal",
+      "sms_reason_link_listed": "tautannya menuju situs penipuan yang sudah dikenal",
+      "sms_reason_code": "meminta Anda memberikan kode dari SMS",
+      "sms_reason_safe_account": "meminta Anda memindahkan uang ke “rekening aman”",
+      "sms_reason_relative": "seseorang yang mengaku kerabat meminta uang",
+      "sms_reason_sms_command": "meminta Anda mengirim SMS perintah transfer uang",
+      "sms_reason_install": "meminta Anda memasang aplikasi atau membuka file",
+      "sms_reason_call": "meminta Anda menelepon nomor tidak resmi",
+      "sms_reason_fake_site": "tautannya menuju tiruan palsu dari situs asli",
+      "sms_reason_payment": "meminta Anda membayar",
+      "sms_reason_link": "tautannya tidak menuju situs resmi",
+      "sms_reason_confirm_data": "meminta Anda “mengonfirmasi” data",
+      "sms_reason_bait": "menjanjikan pencairan dana atau hadiah",
+      "sms_reason_sender": "pengirimnya bukan pihak yang diakuinya",
+      "sms_reason_threat": "berusaha menakut-nakuti atau membuat Anda terburu-buru",
+      "sms_reason_organisation": "mengaku dari organisasi terkenal",
+      "sms_reason_disguised": "ada huruf yang ditukar untuk mengelabui filter",
+      "sms_reason_generic": "memakai trik penipu"
     },
     "reason": {
       "flagged_dangerous": "Google menandai situs ini berbahaya",
@@ -1804,7 +1887,8 @@
       "required_title": "Silakan perbarui aplikasi",
       "required_body": "Versi ini sudah usang. Perbarui Cleanway agar perlindungan Anda tetap berfungsi.",
       "action": "Perbarui",
-      "later": "Nanti"
+      "later": "Nanti",
+      "action_store": "Perbarui di RuStore"
     }
   }
 }

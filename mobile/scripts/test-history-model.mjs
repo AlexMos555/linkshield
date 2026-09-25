@@ -10,7 +10,10 @@
  *  - a block-log entry from before the `source` field, or a row this build
  *    does not know, crashing the list or being shown as something it is not;
  *  - the notification deep link opening a site that is not in the log — the
- *    cleanway:// scheme is public, so any app can craft one.
+ *    cleanway:// scheme is public, so any app can craft one;
+ *  - an automatic SMS warning missing from Warned, whose home counter adds
+ *    it up (flaggedCount), or listed under a chip whose counter never counts
+ *    it; or an SMS warning's deep link opening an id the log lacks.
  * Same approach as test-host-parser.mjs: compile the one file with the tree's
  * TypeScript, run the table for real, exit non-zero on failure.
  */
@@ -51,6 +54,12 @@ const SHIELD = [
   { domain: "x.example", ts: T0, kind: "exploded" },
 ];
 
+// SMS the automatic check flagged, as recentSmsEvents() returns them (validated).
+const ALERTS = [
+  { id: "00000000000000a1", ts: T0 - 0.25 * HOUR, sender: "900", verdict: "dangerous", reasons: ["asks_for_code"], hosts: ["gosuslugi-help.ru"] },
+  { id: "00000000000000a2", ts: T0 - 6 * HOUR, sender: null, verdict: "caution", reasons: [], hosts: [] },
+];
+
 try {
   execFileSync(
     "npx",
@@ -63,7 +72,9 @@ try {
 
   const m = await import(pathToFileURL(join(out, "src/utils/history-model.js")).href);
   const items = m.mergeHistory(CHECKS, SHIELD);
-  const names = (list) => list.map((i) => (i.type === "sms" ? `sms:${i.hosts.join("+") || "-"}` : `${i.type}:${i.domain}`));
+  const withAlerts = m.mergeHistory(CHECKS, SHIELD, ALERTS);
+  const names = (list) => list.map((i) =>
+    i.type === "sms" ? `sms:${i.hosts.join("+") || "-"}` : i.type === "sms_alert" ? `alert:${i.id}` : `${i.type}:${i.domain}`);
 
   const CASES = [
     // ── merge ────────────────────────────────────────────────────────
@@ -139,13 +150,13 @@ try {
     [
       "the note follows the filter: a blocked gap shows under Blocked and All, not under Warned or SMS",
       () => ["all", "blocked", "warned", "checked", "sms"].map((f) =>
-        m.isTruncated(f, { checksFull: false, shieldBlocked: true, shieldWarned: false })),
+        m.isTruncated(f, { checksFull: false, shieldBlocked: true, shieldWarned: false, smsAlerts: false })),
       [true, true, false, false, false],
     ],
     [
       "a full page of checks shows the note everywhere",
       () => ["all", "blocked", "warned", "checked", "sms"].every((f) =>
-        m.isTruncated(f, { checksFull: true, shieldBlocked: false, shieldWarned: false })),
+        m.isTruncated(f, { checksFull: true, shieldBlocked: false, shieldWarned: false, smsAlerts: false })),
       true,
     ],
 
@@ -178,6 +189,77 @@ try {
     [
       "a site that is not in the block log opens nothing — even if it was checked by hand",
       () => [m.findShieldEvent(items, "bad-check.example", "blocked"), m.findShieldEvent(items, "never.example", "blocked")],
+      [null, null],
+    ],
+
+    // ── the automatic SMS check (RuStore build) ─────────────────────
+    [
+      "without SMS warnings the list is what it always was",
+      () => names(m.mergeHistory(CHECKS, SHIELD, [])),
+      names(items),
+    ],
+    [
+      "SMS warnings merge in by time",
+      () => names(withAlerts).slice(0, 3),
+      ["alert:00000000000000a1", "shield:dns-blocked.example", "check:bad-check.example"],
+    ],
+    ["keys stay unique with SMS warnings", () => new Set(withAlerts.map((i) => i.key)).size === withAlerts.length, true],
+    [
+      "a warning keeps sender, verdict, reasons and hosts — and nothing else",
+      () => {
+        const a = withAlerts.find((i) => i.type === "sms_alert");
+        return Object.keys(a).sort();
+      },
+      ["hosts", "id", "key", "reasons", "sender", "ts", "type", "verdict"],
+    ],
+    [
+      "the SMS chip lists warnings and messages checked by hand",
+      () => names(m.filterHistory(withAlerts, "sms")),
+      ["alert:00000000000000a1", "sms:a.example+b.example", "sms:-", "alert:00000000000000a2"],
+    ],
+    [
+      "Warned lists every SMS warning, whatever its verdict: the home counter adds flaggedCount",
+      () => names(m.filterHistory(withAlerts, "warned")),
+      ["alert:00000000000000a1", "check:meh.example", "shield:warned.example", "alert:00000000000000a2"],
+    ],
+    [
+      "a warning is never under Blocked or Checked: the phone showed the SMS, and no one checked it by hand",
+      () => ["blocked", "checked"].map((f) => m.filterHistory(withAlerts, f).some((i) => i.type === "sms_alert")),
+      [false, false],
+    ],
+    [
+      "Warned is exactly its counter's parts: shield warned + caution checks + flagged SMS",
+      () => m.filterHistory(withAlerts, "warned").length,
+      SHIELD.filter((r) => r.kind === "warned").length + CHECKS.filter((c) => c.level === "caution" && c.source !== "sms").length + ALERTS.length,
+    ],
+    ["Checked is still exactly the SQLite rows", () => m.filterHistory(withAlerts, "checked").length, CHECKS.length],
+    ["All lists the warnings too", () => m.filterHistory(withAlerts, "all").length, items.length + ALERTS.length],
+    ["more flagged than listed is a gap", () => m.smsAlertGap(2, 5), true],
+    ["as many flagged as listed is no gap", () => m.smsAlertGap(2, 2), false],
+    [
+      "an SMS gap shows the note under All, Warned and SMS — the chips that list warnings",
+      () => ["all", "blocked", "warned", "checked", "sms"].map((f) =>
+        m.isTruncated(f, { checksFull: false, shieldBlocked: false, shieldWarned: false, smsAlerts: true })),
+      [true, false, true, false, true],
+    ],
+    ["a stored SMS id is kept", () => m.parseDeepLinkSmsId("00000000000000a1"), "00000000000000a1"],
+    ["an array SMS param takes its first value", () => m.parseDeepLinkSmsId(["00000000000000a1", "x"]), "00000000000000a1"],
+    [
+      "anything but a stored id's shape is ignored",
+      () => ["00000000000000A1", "0a1", "../../etc", "00000000000000a1&filter=all", 12, undefined].map((v) => m.parseDeepLinkSmsId(v)),
+      [null, null, null, null, null, null],
+    ],
+    [
+      "a warning's link opens that warning",
+      () => {
+        const a = m.findSmsAlert(withAlerts, "00000000000000a1");
+        return [a.sender, a.verdict, a.hosts];
+      },
+      ["900", "dangerous", ["gosuslugi-help.ru"]],
+    ],
+    [
+      "an id the log does not hold opens nothing — a crafted link cannot show a made-up warning",
+      () => [m.findSmsAlert(withAlerts, "ffffffffffffffff"), m.findSmsAlert(items, "00000000000000a1")],
       [null, null],
     ],
 

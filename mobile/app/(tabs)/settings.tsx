@@ -14,6 +14,9 @@ import { clearKeypair } from "../../src/lib/family-crypto";
 import { setAuthToken, getAccountSettings } from "../../src/services/api";
 import { allowedSites, removeAllowedSite } from "../../src/services/shield-log";
 import { isDefaultLinkHandler, requestLinkHandler } from "../../modules/cleanway-vpn";
+import { useSmsShield, type SmsShield } from "../../src/hooks/useSmsShield";
+import { smsShieldAction } from "../../src/utils/sms-shield-view";
+import { SMS_ACTION_KEYS, smsFixRow, smsFixStepsKey, smsStateCopy } from "../../src/utils/sms-shield-labels";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -77,6 +80,8 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const [locale, setLocale] = useState<SupportedLocale>(() => (i18n.language as SupportedLocale));
   const [linkGuardOn, setLinkGuardOn] = useState(false);
+  // The automatic SMS check — its section exists only in the RuStore build.
+  const sms = useSmsShield();
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   // Set the moment the user taps a skill this focus; the in-flight remote
@@ -338,6 +343,8 @@ export default function SettingsScreen() {
         />
       </Section>
 
+      {sms.supported && <SmsSection sms={sms} chevron={chevron} />}
+
       <Section title={t("mobile.settings.language")} footnote={t("mobile.settings.language_note")}>
         {SUPPORTED_LOCALES.map((code, i) => {
           const on = locale === code;
@@ -405,6 +412,49 @@ export default function SettingsScreen() {
         <Text style={s.privacy}>{t("mobile.settings.privacy_note")}</Text>
       </View>
     </ScrollView>
+  );
+}
+
+/**
+ * The automatic SMS check (RuStore build): the same live state as its home
+ * card, and a real on/off switch. Off asks first (the check stops warning);
+ * on runs the same disclosure and Android dialogs as the card. When
+ * something outside the app blocks it, the fix gets its own row.
+ */
+function SmsSection({ sms, chevron }: { sms: SmsShield; chevron: ReactNode }) {
+  const { t } = useTranslation();
+  const on = sms.status.enabled;
+  const fixRow = smsFixRow(smsShieldAction(sms.view));
+  const stepsKey = smsFixStepsKey(sms.view);
+  const label = t(on ? "mobile.settings.sms_on" : "mobile.settings.sms_off");
+  return (
+    <Section title={t("mobile.settings.sms")} footnote={t("mobile.settings.sms_note")}>
+      <Row
+        first
+        icon={sms.verified ? "shield-checkmark-outline" : "chatbubble-ellipses-outline"}
+        iconColor={sms.verified ? colors.green : fixRow ? colors.amber : colors.textMuted}
+        label={label}
+        desc={smsStateCopy(sms.view, t)}
+        right={
+          <Switch
+            value={on}
+            disabled={sms.busy}
+            onValueChange={(next) => (next ? sms.turnOn() : sms.confirmPause())}
+            trackColor={{ true: colors.green, false: colors.stroke }}
+            accessibilityLabel={label}
+          />
+        }
+      />
+      {fixRow && (
+        <Row
+          label={t(SMS_ACTION_KEYS[fixRow])}
+          desc={stepsKey ? t(stepsKey) : undefined}
+          tint={colors.amber}
+          right={chevron}
+          onPress={sms.fix}
+        />
+      )}
+    </Section>
   );
 }
 

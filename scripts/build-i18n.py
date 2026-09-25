@@ -36,6 +36,11 @@ ANDROID_RES_DIR = ROOT / "mobile" / "modules" / "cleanway-vpn" / "android" / "sr
 ANDROID_NATIVE_NAMESPACE = ("mobile", "android_native")
 # Android resource qualifiers; Indonesian is the legacy "in" on Android.
 ANDROID_LOCALE_DIR = {"en": "values", "id": "values-in"}
+# Native placeholders → positional format arguments, in the order Kotlin
+# passes them: getString(id, domain) for the block/allow strings,
+# getString(id, sender, reason) for the SMS warning (SmsNotifier.kt).
+# Positional, so a translation may put them in any order.
+ANDROID_PLACEHOLDERS = {"domain": "%1$s", "sender": "%1$s", "reason": "%2$s"}
 
 
 # Extension namespaces that get flattened back to chrome.i18n format.
@@ -171,9 +176,11 @@ def flatten_for_mobile(source: dict[str, Any]) -> dict[str, str]:
 def android_strings_xml(source: dict[str, Any]) -> str | None:
     """Render mobile.android_native.* as an Android strings.xml.
 
-    {{domain}} → %1$s (positional, so RTL/word-order translations can move
-    it). Apostrophes, ampersands and angle brackets are escaped for XML.
-    Returns None when the namespace is absent (older source files).
+    {{domain}} → %1$s, {{sender}} → %1$s, {{reason}} → %2$s (positional, so
+    RTL/word-order translations can move them; see ANDROID_PLACEHOLDERS).
+    Apostrophes, ampersands and angle brackets are escaped for XML. A
+    placeholder with no mapping is an error, not a literal "{{x}}" in a
+    notification. Returns None when the namespace is absent (older source files).
     """
     node: Any = source
     for key in ANDROID_NATIVE_NAMESPACE:
@@ -187,8 +194,10 @@ def android_strings_xml(source: dict[str, Any]) -> str | None:
         if isinstance(value, dict):
             value = value.get("text", "")
         text = str(value)
-        for ph in ("domain",):
-            text = text.replace("{{" + ph + "}}", "%1$s")
+        for ph, arg in ANDROID_PLACEHOLDERS.items():
+            text = text.replace("{{" + ph + "}}", arg)
+        if "{{" in text or "%" in text.replace("%1$s", "").replace("%2$s", ""):
+            raise ValueError(f"android_native.{name}: unmapped placeholder or bare % in {text!r}")
         text = (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                     .replace("'", "\\'").replace('"', '\\"'))
         lines.append(f'    <string name="{name}">{text}</string>')

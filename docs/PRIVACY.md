@@ -38,13 +38,25 @@ If you enable the webmail scanner, the extension sends the email's **subject, se
 
 ## The Android app
 
+There are two Android builds. The **app from cleanway.ai** (the APK downloaded in a browser, also published as a GitHub release) never asks for SMS access. The **app from RuStore** is the same app plus one feature, the automatic SMS check described below, which you turn on yourself. Everything else in this section applies to both.
+
 ### Message check (SMS)
 
-- **Cleanway never reads your messages on its own.** The app requests no SMS, notification-listener or accessibility permission. It checks only a message you hand it: by tapping **Paste** on the check screen (the clipboard is read only on that tap), or by sharing a message to Cleanway from your messages app.
+- **The app from cleanway.ai never reads your messages on its own.** It requests no SMS, notification-listener or accessibility permission. It checks only a message you hand it: by tapping **Paste** on the check screen (the clipboard is read only on that tap), or by sharing a message to Cleanway from your messages app. The app from RuStore does the same, and reads incoming SMS by itself only while its automatic SMS check is on (next section).
 - **The text stays in memory on the phone.** A shared message is handed to the check screen in memory, never as a navigation parameter. The on-device analyzer (`MessageAnalyzer`) reads it in memory and drops it. The text is never written to disk or to the database, never logged, and never sent to our server or to anyone else.
 - **What can leave the phone: up to 3 link hosts per message.** Links in the message are first compared with the blocklist on the phone. Then at most **3** distinct link **hosts** go to `GET /api/v1/public/check/{host}` — only hosts that are not on the on-device list and are not link shorteners, messenger links, shared system hosts such as `docs.google.com`, or IP addresses. Each link's path and query, and the rest of the message, stay on the phone. The requests carry no account token.
 - **Caveats, stated plainly.** The hosts of one message are requested in parallel from the same IP address, so the server could tell they arrived together. Like any checked domain, they are then checked with the third-party threat-intelligence providers listed below. A dotted word that looks like a domain name (for example `notes.md`) can be read as a link and sent as a host.
 - **What History keeps.** One row per message check in the app's SQLite database (`cleanway.db`, table `checks`, `source = 'sms'`): the verdict, the reason codes, up to 5 link hosts and the time. Never the text, and never a link's path.
+
+### Automatic SMS check (app from RuStore only)
+
+- **Off until you turn it on.** The home card "SMS messages" explains what happens before Android asks for anything. Turning it on asks Android for `RECEIVE_SMS` (and, on Android 13+, for notifications, so a warning can show). The app from cleanway.ai does not have this feature and never declares the permission; a build check (`mobile/scripts/check-apk-permissions.mjs`) fails any website APK that does.
+- **What it can see: each SMS as it arrives, nothing else.** It asks for `RECEIVE_SMS` only — not `READ_SMS`, so it never opens your inbox or old messages, and it is not your default SMS app, so it cannot hide, delete, move or mark a message. Chats in WhatsApp, Telegram and other messengers, and RCS chats, never reach it.
+- **Where it runs: on the phone, in memory.** Android hands the SMS to a small receiver (`SmsReceiver`) that runs in a separate background process (`:sms`) in which no crash-reporting or analytics library starts. The same on-device analyzer as the manual check (`MessageAnalyzer`) reads the text and the sender against the on-device rules and the blocklist on the phone, and then the text is dropped. It is never written to disk, a database or preferences, never logged, and never put in a crash report.
+- **What leaves the phone: nothing.** Not the text, not the sender, and — unlike the manual check — not even a link's domain: the automatic check makes no server lookup at all. The one network request this feature adds is the blocklist download (`GET /api/v1/blocklist/dns`, the same file the "All apps" shield uses), about every 6 hours while the check is on and the "All apps" shield is off. It sends nothing about your messages.
+- **What it keeps.** For an SMS that looks like a scam: the time, the sender as your phone shows it (a number, a short code or a name, cut at 32 characters), the verdict ("dangerous" or "be careful"), the reason codes and up to 5 link **hosts** — never the text and never a link's path. They are kept in a file on the phone (`files/cleanway/sms-events.json`, the latest 200 for up to 90 days) and shown in History. A harmless SMS leaves nothing but counters: how many SMS were checked, when the last one was, and how many were flagged.
+- **The warning.** A notification on the "Dangerous SMS" channel names the sender and one reason (for example "it asks you to call an unofficial number") — never a word of the message. On the lock screen only its title shows.
+- **Turning it off.** The switch on the card or in Settings turns the receiver off: Android stops handing SMS to Cleanway at all. The permission stays granted until you revoke it in Android's settings, so turning the check back on is one tap. Flagged-SMS records stay until you uninstall the app; **Settings → Clear history** does not remove them.
 
 ### Link guard and the "All apps" shield
 
@@ -54,7 +66,7 @@ If you enable the webmail scanner, the extension sends the email's **subject, se
 
 ### Retention on the phone
 
-Unlike the extension, the mobile check history is **not pruned automatically**: it stays until you tap **Settings → Clear history**, which deletes every saved check (links and messages). Clear history does **not** clear the shield activity log; that log keeps its latest 200 events and drops older ones as new ones arrive.
+Unlike the extension, the mobile check history is **not pruned automatically**: it stays until you tap **Settings → Clear history**, which deletes every saved check (links and messages). Clear history does **not** clear the shield activity log; that log keeps its latest 200 events and drops older ones as new ones arrive. Nor does it clear the flagged-SMS records of the automatic SMS check (app from RuStore), which keep the latest 200 for up to 90 days.
 
 ## What we store, and for how long
 
@@ -75,6 +87,7 @@ Unlike the extension, the mobile check history is **not pruned automatically**: 
 | Extension check history | Device (IndexedDB) | 30 days, auto-pruned |
 | Mobile check history: link host(s) + verdict + reason codes + time (never message text) | Device (SQLite `cleanway.db`) | Until you tap Settings → Clear history |
 | Mobile shield activity log: site name + time + event + shield | Device (SharedPreferences) | Latest 200 events; not cleared by Clear history |
+| Automatic SMS check (app from RuStore): flagged SMS time + sender + verdict + reason codes + link hosts (never text); counters of checked and flagged SMS | Device (file `sms-events.json`) | Latest 200 flagged SMS, up to 90 days; counters until uninstall; not cleared by Clear history |
 
 **Feature-log note:** Cleanway can optionally collect a machine-learning training log (`feature_log.jsonl`) recording the domain name, the analysis score, and the feature vector. It is **off by default** — in production no domain is written to disk at all unless an operator explicitly sets `FEATURE_LOG_ENABLED=true` for a training run. When enabled, the file is size-capped (default 50 MB via `FEATURE_LOG_MAX_BYTES`) and auto-rotated to its most recent half, so it never grows without bound. It never records user identity — only the domain, score, and features.
 

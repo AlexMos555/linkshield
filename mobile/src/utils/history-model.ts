@@ -1,20 +1,32 @@
-import type { MessageVerdict } from "../../modules/cleanway-vpn/src/CleanwayVpn.types";
+import type {
+  MessageReason,
+  MessageVerdict,
+  SmsAlertEvent,
+  SmsAlertVerdict,
+} from "../../modules/cleanway-vpn/src/CleanwayVpn.types";
 
 /**
  * What the History tab shows and which filter each row belongs to.
  *
- * Two stores feed it: the SQLite `checks` table (links and messages the
- * person checked) and the native block log (what the shields did on their
- * own, app open or not). The home activity card counts the same two stores,
- * and each counter opens History with the matching filter — so the filters
- * here are defined by what those counters add up, row for row:
+ * Three stores feed it: the SQLite `checks` table (links and messages the
+ * person checked), the native block log (what the shields did on their own,
+ * app open or not) and, in the RuStore build, the SMS event log (messages the
+ * automatic SMS check flagged as they arrived). The home activity card counts
+ * all three, and each counter opens History with the matching filter — so
+ * the filters here are defined by what those counters add up, row for row:
  *
  *   Checked → every SQLite row (getStats total_checks, links and SMS)
  *   Blocked → shield "blocked" + checked links "dangerous" (threats_blocked)
  *   Warned  → shield "warned"  + checked links "caution"   (threats_warned)
+ *             + every SMS the automatic check flagged (its flaggedCount)
  *
  * A message check is listed under Checked and SMS only: nothing was blocked
- * or warned on its own — the person asked, and was told.
+ * or warned on its own — the person asked, and was told. An automatic SMS
+ * warning is listed under Warned and SMS, whatever its verdict: Cleanway
+ * warned as it arrived, but the phone showed the message anyway (only the
+ * default SMS app can hold one back), so it was never blocked. The harmless
+ * SMS the automatic check read leave no row, so they are in no counter here
+ * (the SMS card shows their number on its own).
  *
  * Pure — no React Native — so scripts/test-history-model.mjs runs it under
  * plain node. Only type imports: the test loads the compiled file as an ES
@@ -64,7 +76,23 @@ export type SmsItem = {
   verdict: MessageVerdict | null;
 };
 
-export type HistoryItem = ShieldItem | CheckItem | SmsItem;
+/**
+ * An SMS the automatic check flagged as it arrived. Opens its detail sheet.
+ * Never the text: it was never stored.
+ */
+export type SmsAlertItem = {
+  type: "sms_alert";
+  key: string;
+  ts: number;
+  /** The event id; the notification's deep link names it. */
+  id: string;
+  sender: string | null;
+  verdict: SmsAlertVerdict;
+  reasons: MessageReason[];
+  hosts: string[];
+};
+
+export type HistoryItem = ShieldItem | CheckItem | SmsItem | SmsAlertItem;
 
 /** A SQLite `checks` row as getRecentChecks returns it (unvalidated). */
 export interface CheckRowInput {
@@ -90,6 +118,8 @@ const CHECK_LEVELS: readonly CheckLevel[] = ["safe", "caution", "dangerous"];
 const MESSAGE_VERDICTS: readonly MessageVerdict[] = ["dangerous", "caution", "no_signals"];
 const HOSTNAME = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 const MAX_HOSTNAME = 253;
+/** SmsEvents.eventId (same as isSmsEventId in the module; repeated to keep this file import-free). */
+const SMS_EVENT_ID = /^[0-9a-f]{16}$/;
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T | null {
   return typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : null;
@@ -150,14 +180,33 @@ function keyShieldItems(items: readonly Omit<ShieldItem, "key">[]): ShieldItem[]
   });
 }
 
-/** Both stores as one list, newest first. Rows with no readable time sink to the end. */
-export function mergeHistory(checks: readonly CheckRowInput[], shield: readonly ShieldRowInput[]): HistoryItem[] {
+/** Validated by the module (parseSmsAlertEvents): ids are unique, so the id is the key. */
+function toSmsAlertItem(event: SmsAlertEvent): SmsAlertItem {
+  return {
+    type: "sms_alert",
+    key: `a:${event.id}`,
+    ts: event.ts,
+    id: event.id,
+    sender: event.sender,
+    verdict: event.verdict,
+    reasons: [...event.reasons],
+    hosts: [...event.hosts],
+  };
+}
+
+/** Every store as one list, newest first. Rows with no readable time sink to the end. */
+export function mergeHistory(
+  checks: readonly CheckRowInput[],
+  shield: readonly ShieldRowInput[],
+  smsAlerts: readonly SmsAlertEvent[] = [],
+): HistoryItem[] {
   const shieldItems = keyShieldItems(
     shield.map(toShieldItem).filter((x): x is Omit<ShieldItem, "key"> => x !== null),
   );
   const checkItems = checks.map(toCheckOrSms);
+  const alertItems = smsAlerts.map(toSmsAlertItem);
   const time = (item: HistoryItem) => (Number.isFinite(item.ts) ? item.ts : -Infinity);
-  return [...checkItems, ...shieldItems].sort((a, b) => time(b) - time(a));
+  return [...checkItems, ...shieldItems, ...alertItems].sort((a, b) => time(b) - time(a));
 }
 
 /** Does this row belong under this chip? Mirrors the home counters (see top). */
@@ -168,11 +217,13 @@ export function matchesFilter(item: HistoryItem, filter: HistoryFilter): boolean
     case "blocked":
       return item.type === "shield" ? item.kind === "blocked" : item.type === "check" && item.level === "dangerous";
     case "warned":
-      return item.type === "shield" ? item.kind === "warned" : item.type === "check" && item.level === "caution";
+      return item.type === "shield" ? item.kind === "warned"
+        : item.type === "check" ? item.level === "caution"
+        : item.type === "sms_alert";
     case "checked":
-      return item.type !== "shield";
+      return item.type === "check" || item.type === "sms";
     case "sms":
-      return item.type === "sms";
+      return item.type === "sms" || item.type === "sms_alert";
   }
 }
 
@@ -187,6 +238,8 @@ export type HistoryGaps = {
   /** The lifetime counter of a kind is above the events the log still holds. */
   shieldBlocked: boolean;
   shieldWarned: boolean;
+  /** More SMS were flagged than the SMS event log still lists (it keeps 200, for 90 days). */
+  smsAlerts: boolean;
 };
 
 /**
@@ -203,18 +256,24 @@ export function shieldGaps(
   return { shieldBlocked: totals.blocked > listed("blocked"), shieldWarned: totals.warned > listed("warned") };
 }
 
+/** Flagged SMS the event log no longer lists: the lifetime count is above what it holds. */
+export function smsAlertGap(listed: number, flaggedTotal: number): boolean {
+  return flaggedTotal > listed;
+}
+
 /** Should this filter say "only the latest events are shown"? */
 export function isTruncated(filter: HistoryFilter, gaps: HistoryGaps): boolean {
   switch (filter) {
     case "all":
-      return gaps.checksFull || gaps.shieldBlocked || gaps.shieldWarned;
+      return gaps.checksFull || gaps.shieldBlocked || gaps.shieldWarned || gaps.smsAlerts;
     case "blocked":
       return gaps.checksFull || gaps.shieldBlocked;
     case "warned":
-      return gaps.checksFull || gaps.shieldWarned;
+      return gaps.checksFull || gaps.shieldWarned || gaps.smsAlerts;
     case "checked":
-    case "sms":
       return gaps.checksFull;
+    case "sms":
+      return gaps.checksFull || gaps.smsAlerts;
   }
 }
 
@@ -250,4 +309,23 @@ export function findShieldEvent(
   const forSite = items.filter((i): i is ShieldItem => i.type === "shield" && i.domain === domain);
   const wanted = filter === "blocked" || filter === "warned" ? filter : null;
   return forSite.find((i) => i.kind === wanted) ?? forSite[0] ?? null;
+}
+
+/**
+ * The `sms` route param → an SMS event id, or null. Set by the SMS warning's
+ * notification (cleanway:///history?filter=sms&sms=<id>); any app can craft
+ * that link, so anything but a stored id's shape is ignored.
+ */
+export function parseDeepLinkSmsId(raw: unknown): string | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === "string" && SMS_EVENT_ID.test(value) ? value : null;
+}
+
+/**
+ * The flagged SMS a notification points at, or null when the event log does
+ * not hold that id — then nothing opens, so a crafted link cannot put a
+ * made-up warning, sender or site in front of the person.
+ */
+export function findSmsAlert(items: readonly HistoryItem[], id: string): SmsAlertItem | null {
+  return items.find((i): i is SmsAlertItem => i.type === "sms_alert" && i.id === id) ?? null;
 }

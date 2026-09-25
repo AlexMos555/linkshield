@@ -14,6 +14,11 @@ const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
 import type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource } from './src/CleanwayVpn.types';
 import type {
+  InstallSource,
+  SmsAlertEvent,
+  SmsAlertVerdict,
+  SmsPermissionState,
+  SmsShieldStatus,
   MessageAnalysis,
   MessageAnalysisResult,
   MessageLegitShape,
@@ -22,10 +27,17 @@ import type {
   MessageReason,
   MessageVerdict,
 } from './src/CleanwayVpn.types';
+import { PACKAGE_SOURCE, RUSTORE_INSTALLER, parseInstallSource } from './src/InstallSource';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
+import { SMS_SHIELD_UNSUPPORTED, isSmsEventId, parseSmsAlertEvents, parseSmsShieldStatus } from './src/SmsShield';
 
 export type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource };
 export type {
+  InstallSource,
+  SmsAlertEvent,
+  SmsAlertVerdict,
+  SmsPermissionState,
+  SmsShieldStatus,
   MessageAnalysis,
   MessageAnalysisResult,
   MessageLegitShape,
@@ -34,7 +46,7 @@ export type {
   MessageReason,
   MessageVerdict,
 };
-export { MESSAGE_REASONS };
+export { MESSAGE_REASONS, PACKAGE_SOURCE, RUSTORE_INSTALLER, SMS_SHIELD_UNSUPPORTED, isSmsEventId };
 
 /**
  * Longest text the native check reads (MessageAnalyzer.MAX_CHARS). Longer
@@ -263,14 +275,28 @@ export function shieldBlockTotals(): { blocked: number; warned: number } {
  * sense. Never nags: a refusal is respected; the block log still records.
  */
 export async function requestBlockNotificationPermission(): Promise<boolean> {
-  if (Platform.OS !== 'android' || Platform.Version < 33) return true;
+  return (await askNotificationPermission()) === 'granted';
+}
+
+/**
+ * The Android 13+ notification permission, asked for if it can be, with
+ * Android's own answer: 'granted' (also below Android 13, where there is no
+ * such permission — the app switch and channels live in Settings only);
+ * 'denied' — the person said no and Android will ask again; 'blocked' —
+ * Android will not show the question again ("don't ask again", or refused
+ * twice), so only system Settings can turn warnings back on.
+ */
+export async function askNotificationPermission(): Promise<'granted' | 'denied' | 'blocked'> {
+  if (Platform.OS !== 'android' || Platform.Version < 33) return 'granted';
   try {
     const perm = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
-    if (await PermissionsAndroid.check(perm)) return true;
+    if (await PermissionsAndroid.check(perm)) return 'granted';
     const res = await PermissionsAndroid.request(perm);
-    return res === PermissionsAndroid.RESULTS.GRANTED;
+    return res === PermissionsAndroid.RESULTS.GRANTED ? 'granted'
+      : res === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN ? 'blocked'
+      : 'denied';
   } catch {
-    return false;
+    return 'blocked';
   }
 }
 
@@ -451,6 +477,126 @@ export async function linkListAvailable(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
   try {
     return (await CleanwayVpn.linkListAvailable?.()) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Does THIS build check incoming SMS by itself? Only the RuStore APK does: its
+ * manifest requests RECEIVE_SMS. The APK downloaded from cleanway.ai never can
+ * — Play Protect blocks sideloaded apps that ask for SMS access. Read from the
+ * installed manifest, not a build flag. False on iOS, web, older native builds
+ * and on error, so the app never offers a switch that cannot work.
+ */
+export function smsAutoSupported(): boolean {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return typeof CleanwayVpn.smsAutoSupported === 'function' && CleanwayVpn.smsAutoSupported() === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * How the app got onto the phone (see InstallSource). Null on iOS, web, older
+ * native builds and on error: "not known", which the UI must not read as "not
+ * from a store".
+ */
+export function installSource(): InstallSource | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    return typeof CleanwayVpn.installSource === 'function' ? parseInstallSource(CleanwayVpn.installSource()) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The automatic SMS check (RuStore build), as the phone reports it now. See
+ * SmsShieldStatus for what each field can and cannot prove. On iOS, web, an
+ * older native build, the browser APK and on error: SMS_SHIELD_UNSUPPORTED —
+ * never "on" when it cannot be shown to be.
+ */
+export function smsShieldStatus(): SmsShieldStatus {
+  if (Platform.OS !== 'android') return SMS_SHIELD_UNSUPPORTED;
+  try {
+    return typeof CleanwayVpn.smsShieldStatus === 'function'
+      ? parseSmsShieldStatus(CleanwayVpn.smsShieldStatus())
+      : SMS_SHIELD_UNSUPPORTED;
+  } catch {
+    return SMS_SHIELD_UNSUPPORTED;
+  }
+}
+
+/**
+ * Turn the automatic SMS check on or off. The permission stays granted either
+ * way, so turning it back on is one tap. False when this build cannot (the
+ * browser APK, iOS) or Android refused. Asks for nothing: call
+ * requestSmsPermission() first.
+ */
+export function setSmsShieldEnabled(enabled: boolean): boolean {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return typeof CleanwayVpn.setSmsShieldEnabled === 'function' && CleanwayVpn.setSmsShieldEnabled(enabled) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ask Android for RECEIVE_SMS. True when granted. On Android 15+ an install
+ * from a file or a browser gets "App was denied access" instead of a dialog
+ * and resolves false; smsShieldStatus().permission then says
+ * 'restricted_maybe'.
+ */
+export async function requestSmsPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return typeof CleanwayVpn.requestSmsPermission === 'function' && (await CleanwayVpn.requestSmsPermission()) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * SMS the automatic check flagged, newest first: time, sender, verdict,
+ * reasons, link hosts — never the text, which was never stored. Empty on
+ * other platforms, older builds and on error.
+ */
+export function recentSmsEvents(limit = 200): SmsAlertEvent[] {
+  if (Platform.OS !== 'android') return [];
+  try {
+    return typeof CleanwayVpn.recentSmsEvents === 'function'
+      ? parseSmsAlertEvents(CleanwayVpn.recentSmsEvents(limit), MESSAGE_REASONS)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** This app's page in system Settings: permissions, "Allow restricted settings", battery. False if it could not open. */
+export function openAppDetailsSettings(): boolean {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return typeof CleanwayVpn.openAppDetailsSettings === 'function' && CleanwayVpn.openAppDetailsSettings() === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The screen where the SMS warnings can be switched back on: the "Dangerous
+ * SMS" channel when only it is off, else the app's notifications (whose main
+ * switch also grants the Android 13+ permission). An older native build
+ * without it opens the app's page instead. False if nothing could open.
+ */
+export function openSmsNotificationSettings(): boolean {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return typeof CleanwayVpn.openSmsNotificationSettings === 'function'
+      ? CleanwayVpn.openSmsNotificationSettings() === true
+      : openAppDetailsSettings();
   } catch {
     return false;
   }

@@ -1148,7 +1148,10 @@
         "honesty": "Cleanway doesn't read your SMS on its own — it checks only the message you give it. The text stays on your phone.",
         "links_on": "Links in SMS are also checked when you tap them — “Link checking” is on.",
         "links_no_list": "“Link checking” is on, but there is nothing to check SMS links against yet: the list of scam sites downloads while the “All apps” shield is on.",
-        "links_off": "Links in SMS are not checked when you tap them right now. For that, turn on the “Link checking” shield above."
+        "links_off": "Links in SMS are not checked when you tap them right now. For that, turn on the “Link checking” shield above.",
+        "honesty_auto_on": "Cleanway already checks incoming SMS by itself. Here you can check a message from a messenger. The text stays on your phone.",
+        "honesty_auto_off": "Cleanway isn't checking incoming SMS by itself right now — for that, turn on “SMS messages” above. Here you can check any message. The text stays on your phone.",
+        "store_offer": "Automatic checking of every incoming SMS is in the RuStore version of Cleanway"
       },
       "rollout_header": "Rolling out",
       "activity": {
@@ -1218,6 +1221,42 @@
         "honesty": "Works when Cleanway is set as your link-opening app",
         "state_on": "Every link is checked first",
         "state_setup": "Set Cleanway to open your links"
+      },
+      "sms_auto": {
+        "title": "SMS messages",
+        "desc": "Checks every incoming SMS right on your phone and warns you if it looks like a scam",
+        "honesty": "Sees only regular SMS — not WhatsApp, Telegram or other messengers, nor RCS chats. It can't hide or delete an SMS, only warn you.",
+        "state_setup": "Off. Turning it on takes less than a minute.",
+        "state_paused": "Off. Access is already allowed — turn the check on and it works again.",
+        "state_refused": "Off: access to SMS was not allowed. Turn the check on and choose “Allow” in Android's window.",
+        "state_on": "On. SMS checked: {{count}}",
+        "state_restricted": "Android didn't give Cleanway access to SMS. Allow it in the app settings — you only do this once.",
+        "state_permission_off": "Not working: Cleanway no longer has access to SMS, so new SMS aren't checked. This can happen when the app hasn't been used for a while.",
+        "state_notifications": "SMS are being checked, but Cleanway's notifications are off — you won't see a warning about a scam SMS.",
+        "state_battery": "Android is limiting Cleanway in the background, so the check may not run.",
+        "action_enable": "Turn on",
+        "action_app_settings": "Open app settings",
+        "action_allow_sms": "Allow access to SMS",
+        "action_notifications": "Turn on notifications",
+        "list_missing": "The list of scam sites hasn't downloaded yet — for now SMS are checked by their text only. It downloads by itself when you're online.",
+        "list_stale": "The list of scam sites hasn't been updated for a while. It updates by itself when you're online.",
+        "disclosure_title": "Checking incoming SMS",
+        "disclosure_body": "Cleanway will check incoming SMS right on your phone. The text is never sent anywhere or saved. If a message looks like a scam, we'll show you a warning.\n\nAndroid will now ask whether Cleanway may receive SMS, and then whether it may show notifications. Without notifications, the warning can't appear.",
+        "open_settings": "Open settings",
+        "restricted_title": "Android blocked access to SMS",
+        "restricted_body": "Android keeps SMS access closed until you allow it yourself. You only do this once:\n\n1. Tap “Open settings”.\n2. Tap ⋮ at the top right.\n3. Choose “Allow restricted settings” and confirm.\n4. Come back to Cleanway and tap “Turn on” again.\n\nNo “Allow restricted settings” item? Then choose “Permissions” → “SMS” → “Allow” instead.",
+        "denied_title": "SMS access is off",
+        "denied_body": "Android no longer shows the question, so it can only be allowed by hand:\n\n1. Tap “Open settings”.\n2. Choose “Permissions” → “SMS”.\n3. Choose “Allow”.\n4. Come back to Cleanway and tap “Turn on”.\n\nIf “Allow” won't switch on, Android doesn't let Cleanway read SMS on this phone. The rest of the protection still works.",
+        "enable_failed_title": "Couldn't turn it on",
+        "enable_failed_body": "Android didn't let Cleanway turn on the SMS check. Please try again.",
+        "pause_confirm_title": "Turn off the SMS check?",
+        "pause_confirm_body": "Cleanway will stop checking incoming SMS and won't warn you about a scam message. You can turn it back on at any time with one tap.",
+        "pause_confirm_action": "Turn off",
+        "restricted_steps": "Open the app settings → tap ⋮ at the top right → “Allow restricted settings” → come back and tap “Turn on” again. If there is no such item, open “Permissions” → “SMS” → “Allow” in the app settings.",
+        "battery_steps": "Open the app settings → “Battery” → “Unrestricted”.",
+        "denied_restricted_hint": "If the ⋮ menu at the top right has “Allow restricted settings”, choose it first.",
+        "state_blocked": "No access to SMS, and Android no longer asks about it. Allow it in the app settings.",
+        "blocked_steps": "Open the app settings → “Permissions” → “SMS” → “Allow” → come back and tap “Turn on”. If “Allow” won't switch on, Android doesn't let Cleanway read SMS on this phone — the rest of the protection still works."
       }
     },
     "rollout": {
@@ -1463,12 +1502,15 @@
         "blocked": "Sites Cleanway didn't let open, and dangerous links you checked yourself.",
         "warned": "Sites Cleanway warned you about, and links you checked that call for care.",
         "checked": "Links and messages you checked yourself.",
-        "sms": "Messages you checked. The text itself is never saved — only the result and the website names."
+        "sms": "Messages you checked. The text itself is never saved — only the result and the website names.",
+        "sms_auto": "SMS Cleanway warned you about as they arrived, and messages you checked yourself. The text of a message is never saved.",
+        "warned_sms_auto": "Sites and SMS Cleanway warned you about, and links you checked that call for care."
       },
       "source": {
         "dns": "“All apps” shield",
         "link": "“Link checking” shield",
-        "manual": "You checked"
+        "manual": "You checked",
+        "sms_auto": "“SMS messages” shield"
       },
       "row_open_hint": "Opens the details",
       "truncated": "Only the most recent events are shown.",
@@ -1497,7 +1539,21 @@
         "allow_confirm_body": "{{domain}} will no longer be blocked. Only do this if you know this site. You can undo it in Settings → Allowed sites.",
         "block_again": "Block it again",
         "close": "Close"
-      }
+      },
+      "sms_alert": {
+        "row_title": "SMS from {{sender}}",
+        "row_title_unknown": "SMS from an unknown sender",
+        "checked_on_phone": "Cleanway checked this SMS on your phone as it arrived. Its text was not sent anywhere and is not kept here — it is only in your Messages app.",
+        "checked_auto": "Checked automatically",
+        "host_not_listed": "Not on the list of scam sites — that doesn't mean the site is safe",
+        "host_no_list": "Not checked: there's no list of scam sites on this phone yet"
+      },
+      "empty_warned_body_sms": "SMS and sites Cleanway warns you about, and links you check that call for care, will show up here.",
+      "empty_sms_auto_title": "No scam SMS so far",
+      "empty_sms_auto_body": "Incoming SMS checked: {{count}}. None of them looked like a scam.",
+      "empty_sms_auto_waiting": "Cleanway checks every incoming SMS as soon as it arrives. If one looks like a scam, it will show up here.",
+      "empty_sms_auto_off_body": "Cleanway isn't checking incoming SMS by itself right now. Turn the check on — or check a message by hand.",
+      "empty_sms_auto_turn_on": "Turn on the SMS check"
     },
     "report": {
       "title": "Weekly report",
@@ -1609,7 +1665,11 @@
       "linkguard_on_desc": "Every link you tap is checked first.",
       "linkguard_off": "Check every link",
       "linkguard_off_desc": "Right now links open without a check. Turn this on to check them.",
-      "linkguard_enable": "Set up"
+      "linkguard_enable": "Set up",
+      "sms": "SMS messages",
+      "sms_note": "Every incoming SMS is checked right on the phone — the text is never sent anywhere or saved. If an SMS looks like a scam, History keeps only the time, the sender, the reasons and the website names.",
+      "sms_on": "SMS check is on",
+      "sms_off": "Check incoming SMS"
     },
     "family": {
       "title": "Family Hub",
@@ -1707,7 +1767,30 @@
       "warn_text": "{{domain}} looks dangerous. If it is open, close it and don't type anything.",
       "allow_action": "Not a scam — allow it",
       "allowed_title": "Site allowed",
-      "allowed_text": "{{domain}} is allowed now. You can undo this in Settings → Allowed sites."
+      "allowed_text": "{{domain}} is allowed now. You can undo this in Settings → Allowed sites.",
+      "sms_channel": "Scam SMS warnings",
+      "sms_channel_desc": "Warns you when an incoming SMS looks like a scam",
+      "sms_alert_title_dangerous": "This SMS looks like a scam",
+      "sms_alert_title_caution": "Be careful with this SMS",
+      "sms_alert_text": "From {{sender}}: {{reason}}. Don’t call the number in the message and don’t open its links.",
+      "sms_alert_unknown_sender": "an unknown sender",
+      "sms_reason_link_listed": "the link leads to a known scam site",
+      "sms_reason_code": "it asks you to share a code from an SMS",
+      "sms_reason_safe_account": "it asks you to move money to a “safe account”",
+      "sms_reason_relative": "someone posing as a relative is asking for money",
+      "sms_reason_sms_command": "it asks you to send an SMS command that moves money",
+      "sms_reason_install": "it asks you to install an app or open a file",
+      "sms_reason_call": "it asks you to call an unofficial number",
+      "sms_reason_fake_site": "the link leads to a fake copy of a real site",
+      "sms_reason_payment": "it asks you to pay",
+      "sms_reason_link": "the link doesn’t lead to the official site",
+      "sms_reason_confirm_data": "it asks you to “confirm” your details",
+      "sms_reason_bait": "it promises a payout or a prize",
+      "sms_reason_sender": "the sender isn’t who they claim to be",
+      "sms_reason_threat": "it tries to scare or rush you",
+      "sms_reason_organisation": "it claims to be from a well-known organisation",
+      "sms_reason_disguised": "letters in the words are swapped to get past filters",
+      "sms_reason_generic": "it uses tricks scammers use"
     },
     "reason": {
       "flagged_dangerous": "Google flags this site as dangerous",
@@ -1746,7 +1829,8 @@
       "required_title": "Please update the app",
       "required_body": "This version is out of date. Update Cleanway to keep your protection working.",
       "action": "Update",
-      "later": "Later"
+      "later": "Later",
+      "action_store": "Update in RuStore"
     }
   }
 }

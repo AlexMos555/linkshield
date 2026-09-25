@@ -854,8 +854,12 @@ class CleanwayVpnService : VpnService() {
          */
         private const val UPSTREAM_DNS_HOST_2 = "9.9.9.9"
         private const val UPSTREAM_DNS_PORT = 53
-        /** The one thing the shield fetches from Cleanway: the blocklist artifact. */
-        private const val BLOCKLIST_URL = "https://api.cleanway.ai/api/v1/blocklist/dns"
+        /**
+         * The one thing the shield fetches from Cleanway: the blocklist
+         * artifact. Internal: BlocklistRefreshJob fetches the same one while
+         * the shield is off and the SMS check needs a fresh list.
+         */
+        internal const val BLOCKLIST_URL = "https://api.cleanway.ai/api/v1/blocklist/dns"
 
         /**
          * Count of list-canary queries answered — proof the LOADED LIST is

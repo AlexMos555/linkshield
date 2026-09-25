@@ -5,8 +5,10 @@ import { useTranslation } from "react-i18next";
 import {
   colors, type as typo, space, radius, levelColors, levelWashes, levelStrokes,
 } from "../../utils/theme";
-import type { CheckItem, HistoryItem, ShieldItem, SmsItem } from "../../utils/history-model";
-import { CHECK_LEVEL_KEYS, SHIELD_KIND_KEYS, SHIELD_SOURCE_KEYS } from "../../utils/history-labels";
+import type { CheckItem, HistoryItem, ShieldItem, SmsAlertItem, SmsItem } from "../../utils/history-model";
+import {
+  CHECK_LEVEL_KEYS, SHIELD_KIND_KEYS, SHIELD_SOURCE_KEYS, SMS_ALERT_ROW_META_KEY, smsAlertTitle,
+} from "../../utils/history-labels";
 import { VERDICT_KEYS } from "../../utils/message-labels";
 import { relativeTime } from "../../utils/relative-time";
 
@@ -28,6 +30,10 @@ export function shieldIcon(item: ShieldItem): keyof typeof Ionicons.glyphMap {
   return item.kind === "blocked" ? "shield-checkmark-outline"
     : item.kind === "warned" ? "shield-half-outline"
     : "shield-outline";
+}
+
+export function smsAlertTone(item: SmsAlertItem): Tone {
+  return item.verdict === "dangerous" ? "danger" : "caution";
 }
 
 /** "source · time", dropping whichever part is missing. */
@@ -173,9 +179,47 @@ const SmsRow = memo(function SmsRow({ item }: { item: SmsItem }) {
   );
 });
 
-export function HistoryRow({ item, onOpenShield }: { item: HistoryItem; onOpenShield: (item: ShieldItem) => void }) {
+/**
+ * An SMS the automatic check warned about as it arrived. Tappable: the sheet
+ * says why and what to do. Titled by its sender — the one thing that tells
+ * the person which message in their SMS app this is.
+ */
+const SmsAlertRow = memo(function SmsAlertRow({
+  item,
+  onOpen,
+}: {
+  item: SmsAlertItem;
+  onOpen: (item: SmsAlertItem) => void;
+}) {
+  const { t } = useTranslation();
+  const title = smsAlertTitle(item, t);
+  const what = t(VERDICT_KEYS[item.verdict]);
+  const source = t(SMS_ALERT_ROW_META_KEY);
+  const when = relativeTime(item.ts, t);
+  return (
+    <RowFrame
+      tone={smsAlertTone(item)}
+      icon="chatbubble-ellipses-outline"
+      title={title}
+      what={what}
+      meta={metaLine([source, when])}
+      a11yLabel={[title, what, source, when].filter(Boolean).join(". ")}
+      a11yHint={t("mobile.history.row_open_hint")}
+      onPress={() => onOpen(item)}
+    />
+  );
+});
+
+interface HistoryRowProps {
+  item: HistoryItem;
+  onOpenShield: (item: ShieldItem) => void;
+  onOpenSmsAlert: (item: SmsAlertItem) => void;
+}
+
+export function HistoryRow({ item, onOpenShield, onOpenSmsAlert }: HistoryRowProps) {
   if (item.type === "shield") return <ShieldRow item={item} onOpen={onOpenShield} />;
   if (item.type === "sms") return <SmsRow item={item} />;
+  if (item.type === "sms_alert") return <SmsAlertRow item={item} onOpen={onOpenSmsAlert} />;
   return <CheckRow item={item} />;
 }
 
