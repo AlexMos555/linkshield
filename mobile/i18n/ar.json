@@ -894,6 +894,8 @@
   "mobile.android_native.fg_text": "نتحقق من أسماء المواقع بحثًا عن الاحتيال",
   "mobile.android_native.block_channel": "المواقع المحظورة",
   "mobile.android_native.block_channel_desc": "يخبرك عندما يحظر Cleanway موقعًا خطيرًا",
+  "mobile.android_native.allow_channel": "المواقع المسموح بها",
+  "mobile.android_native.allow_channel_desc": "يؤكّد أنك سمحت بموقع كان Cleanway قد حظره",
   "mobile.android_native.blocked_title": "حظر Cleanway موقعًا خطيرًا",
   "mobile.android_native.blocked_text": "{{domain}} موجود في قائمة مواقع الاحتيال. لن يُفتح.",
   "mobile.android_native.warn_title": "هذا الموقع يبدو احتياليًا",

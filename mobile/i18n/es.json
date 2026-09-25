@@ -894,6 +894,8 @@
   "mobile.android_native.fg_text": "Comprobando nombres de sitios en busca de estafas",
   "mobile.android_native.block_channel": "Sitios bloqueados",
   "mobile.android_native.block_channel_desc": "Te avisa cuando Cleanway bloquea un sitio peligroso",
+  "mobile.android_native.allow_channel": "Sitios permitidos",
+  "mobile.android_native.allow_channel_desc": "Confirma cuando permites un sitio que Cleanway había bloqueado",
   "mobile.android_native.blocked_title": "Cleanway bloqueó un sitio peligroso",
   "mobile.android_native.blocked_text": "{{domain}} está en la lista de sitios de estafa. No se abrirá.",
   "mobile.android_native.warn_title": "Este sitio parece una estafa",

@@ -1757,6 +1757,8 @@
       "fg_text": "Controllo dei nomi dei siti contro le truffe",
       "block_channel": "Siti bloccati",
       "block_channel_desc": "Ti avvisa quando Cleanway blocca un sito pericoloso",
+      "allow_channel": "Siti consentiti",
+      "allow_channel_desc": "Conferma quando consenti un sito che Cleanway aveva bloccato",
       "blocked_title": "Cleanway ha bloccato un sito pericoloso",
       "blocked_text": "{{domain}} è nell'elenco dei siti truffa. Non si aprirà.",
       "warn_title": "Questo sito sembra una truffa",

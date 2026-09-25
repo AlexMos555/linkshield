@@ -1697,6 +1697,8 @@
       "fg_text": "Comprobando nombres de sitios en busca de estafas",
       "block_channel": "Sitios bloqueados",
       "block_channel_desc": "Te avisa cuando Cleanway bloquea un sitio peligroso",
+      "allow_channel": "Sitios permitidos",
+      "allow_channel_desc": "Confirma cuando permites un sitio que Cleanway había bloqueado",
       "blocked_title": "Cleanway bloqueó un sitio peligroso",
       "blocked_text": "{{domain}} está en la lista de sitios de estafa. No se abrirá.",
       "warn_title": "Este sitio parece una estafa",

@@ -1757,6 +1757,8 @@
       "fg_text": "Website-Namen werden auf Betrug geprüft",
       "block_channel": "Blockierte Seiten",
       "block_channel_desc": "Meldet, wenn Cleanway eine gefährliche Seite blockiert",
+      "allow_channel": "Erlaubte Seiten",
+      "allow_channel_desc": "Bestätigt, wenn du eine von Cleanway blockierte Seite erlaubst",
       "blocked_title": "Cleanway hat eine gefährliche Seite blockiert",
       "blocked_text": "{{domain}} steht auf der Liste der Betrugsseiten. Sie wird nicht geöffnet.",
       "warn_title": "Diese Seite sieht nach Betrug aus",

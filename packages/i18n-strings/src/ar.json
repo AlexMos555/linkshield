@@ -1757,6 +1757,8 @@
       "fg_text": "نتحقق من أسماء المواقع بحثًا عن الاحتيال",
       "block_channel": "المواقع المحظورة",
       "block_channel_desc": "يخبرك عندما يحظر Cleanway موقعًا خطيرًا",
+      "allow_channel": "المواقع المسموح بها",
+      "allow_channel_desc": "يؤكّد أنك سمحت بموقع كان Cleanway قد حظره",
       "blocked_title": "حظر Cleanway موقعًا خطيرًا",
       "blocked_text": "{{domain}} موجود في قائمة مواقع الاحتيال. لن يُفتح.",
       "warn_title": "هذا الموقع يبدو احتياليًا",

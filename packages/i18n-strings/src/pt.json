@@ -1757,6 +1757,8 @@
       "fg_text": "Verificando nomes de sites contra golpes",
       "block_channel": "Sites bloqueados",
       "block_channel_desc": "Avisa quando o Cleanway bloqueia um site perigoso",
+      "allow_channel": "Sites permitidos",
+      "allow_channel_desc": "Confirma quando você permite um site que o Cleanway tinha bloqueado",
       "blocked_title": "O Cleanway bloqueou um site perigoso",
       "blocked_text": "{{domain}} está na lista de sites de golpe. Ele não vai abrir.",
       "warn_title": "Este site parece golpe",

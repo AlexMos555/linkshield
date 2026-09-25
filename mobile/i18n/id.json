@@ -894,6 +894,8 @@
   "mobile.android_native.fg_text": "Memeriksa nama situs dari penipuan",
   "mobile.android_native.block_channel": "Situs yang diblokir",
   "mobile.android_native.block_channel_desc": "Memberi tahu saat Cleanway memblokir situs berbahaya",
+  "mobile.android_native.allow_channel": "Situs yang diizinkan",
+  "mobile.android_native.allow_channel_desc": "Mengonfirmasi saat Anda mengizinkan situs yang sebelumnya diblokir Cleanway",
   "mobile.android_native.blocked_title": "Cleanway memblokir situs berbahaya",
   "mobile.android_native.blocked_text": "{{domain}} ada di daftar situs penipuan. Situs ini tidak akan terbuka.",
   "mobile.android_native.warn_title": "Situs ini tampak seperti penipuan",

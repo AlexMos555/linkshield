@@ -894,6 +894,8 @@
   "mobile.android_native.fg_text": "Vérification des noms de sites contre les arnaques",
   "mobile.android_native.block_channel": "Sites bloqués",
   "mobile.android_native.block_channel_desc": "Vous prévient quand Cleanway bloque un site dangereux",
+  "mobile.android_native.allow_channel": "Sites autorisés",
+  "mobile.android_native.allow_channel_desc": "Confirme quand vous autorisez un site que Cleanway avait bloqué",
   "mobile.android_native.blocked_title": "Cleanway a bloqué un site dangereux",
   "mobile.android_native.blocked_text": "{{domain}} figure sur la liste des sites d'arnaque. Il ne s'ouvrira pas.",
   "mobile.android_native.warn_title": "Ce site ressemble à une arnaque",

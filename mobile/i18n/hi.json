@@ -894,6 +894,8 @@
   "mobile.android_native.fg_text": "वेबसाइट के नाम धोखाधड़ी के लिए जाँचे जा रहे हैं",
   "mobile.android_native.block_channel": "रोकी गई साइटें",
   "mobile.android_native.block_channel_desc": "जब Cleanway कोई खतरनाक साइट ब्लॉक करता है तो बताता है",
+  "mobile.android_native.allow_channel": "अनुमति दी गई साइटें",
+  "mobile.android_native.allow_channel_desc": "पुष्टि करता है कि आपने वह साइट खोलने की अनुमति दी जिसे Cleanway ने ब्लॉक किया था",
   "mobile.android_native.blocked_title": "Cleanway ने एक खतरनाक साइट ब्लॉक की",
   "mobile.android_native.blocked_text": "{{domain}} धोखाधड़ी वाली साइटों की सूची में है। यह नहीं खुलेगी।",
   "mobile.android_native.warn_title": "यह साइट धोखाधड़ी जैसी लगती है",

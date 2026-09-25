@@ -1757,6 +1757,8 @@
       "fg_text": "Vérification des noms de sites contre les arnaques",
       "block_channel": "Sites bloqués",
       "block_channel_desc": "Vous prévient quand Cleanway bloque un site dangereux",
+      "allow_channel": "Sites autorisés",
+      "allow_channel_desc": "Confirme quand vous autorisez un site que Cleanway avait bloqué",
       "blocked_title": "Cleanway a bloqué un site dangereux",
       "blocked_text": "{{domain}} figure sur la liste des sites d'arnaque. Il ne s'ouvrira pas.",
       "warn_title": "Ce site ressemble à une arnaque",

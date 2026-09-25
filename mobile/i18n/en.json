@@ -894,6 +894,8 @@
   "mobile.android_native.fg_text": "Checking website names for scams",
   "mobile.android_native.block_channel": "Blocked sites",
   "mobile.android_native.block_channel_desc": "Tells you when Cleanway blocks a dangerous site",
+  "mobile.android_native.allow_channel": "Allowed sites",
+  "mobile.android_native.allow_channel_desc": "Confirms when you allow a site Cleanway had blocked",
   "mobile.android_native.blocked_title": "Cleanway blocked a dangerous site",
   "mobile.android_native.blocked_text": "{{domain}} is on the list of scam sites. It won't open.",
   "mobile.android_native.warn_title": "This site looks like a scam",

@@ -227,11 +227,33 @@ class BlockLogTest {
 
     @Test
     fun `notify dedupe - same domain within window is suppressed, others pass`() {
+        val w = BlockNotifier.PER_DOMAIN_WINDOW_MS
         val t = BlockNotifier.Throttle()
         assertTrue(t.shouldNotify("a.example", now = 0L))
-        assertFalse(t.shouldNotify("a.example", now = 60_000L))
-        assertTrue(t.shouldNotify("b.example", now = 61_000L))
-        assertTrue(t.shouldNotify("a.example", now = BlockNotifier.PER_DOMAIN_WINDOW_MS + 1L))
+        assertFalse(t.shouldNotify("a.example", now = w - 1L))
+        assertTrue(t.shouldNotify("b.example", now = w - 1L))
+        // The window restarted at w - 1 (the suppressed lookup), not at 0.
+        assertFalse(t.shouldNotify("a.example", now = w + 1L))
+        assertTrue(t.shouldNotify("a.example", now = 3 * w))
+    }
+
+    @Test
+    fun `notify - an app polling a blocked host alerts a few times an hour, not every minute`() {
+        val t = BlockNotifier.Throttle()
+        val alerts = (0 until 60).count { t.shouldNotify("beacon.example", now = it * 60_000L) }
+        assertEquals(BlockNotifier.MAX_PER_DOMAIN_PER_HOUR, alerts)
+        // An hour after the first alert the budget frees up again.
+        assertTrue(t.shouldNotify("beacon.example", now = 61 * 60_000L))
+    }
+
+    @Test
+    fun `notify - one attempt's lookup burst and auto-reloads alert once, a new attempt alerts again`() {
+        val t = BlockNotifier.Throttle()
+        // A, AAAA, HTTPS record, then the browser's 1 s / 5 s / 30 s reloads.
+        val burst = listOf(0L, 15L, 40L, 1_000L, 6_000L, 36_000L)
+        assertEquals(1, burst.count { t.shouldNotify("scam.example", now = it) })
+        // The person tries the site again a minute later: it must pop up again.
+        assertTrue(t.shouldNotify("scam.example", now = 96_000L))
     }
 
     @Test

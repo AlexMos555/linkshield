@@ -1757,6 +1757,8 @@
       "fg_text": "Memeriksa nama situs dari penipuan",
       "block_channel": "Situs yang diblokir",
       "block_channel_desc": "Memberi tahu saat Cleanway memblokir situs berbahaya",
+      "allow_channel": "Situs yang diizinkan",
+      "allow_channel_desc": "Mengonfirmasi saat Anda mengizinkan situs yang sebelumnya diblokir Cleanway",
       "blocked_title": "Cleanway memblokir situs berbahaya",
       "blocked_text": "{{domain}} ada di daftar situs penipuan. Situs ini tidak akan terbuka.",
       "warn_title": "Situs ini tampak seperti penipuan",

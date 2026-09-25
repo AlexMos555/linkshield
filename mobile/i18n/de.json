@@ -894,6 +894,8 @@
   "mobile.android_native.fg_text": "Website-Namen werden auf Betrug geprüft",
   "mobile.android_native.block_channel": "Blockierte Seiten",
   "mobile.android_native.block_channel_desc": "Meldet, wenn Cleanway eine gefährliche Seite blockiert",
+  "mobile.android_native.allow_channel": "Erlaubte Seiten",
+  "mobile.android_native.allow_channel_desc": "Bestätigt, wenn du eine von Cleanway blockierte Seite erlaubst",
   "mobile.android_native.blocked_title": "Cleanway hat eine gefährliche Seite blockiert",
   "mobile.android_native.blocked_text": "{{domain}} steht auf der Liste der Betrugsseiten. Sie wird nicht geöffnet.",
   "mobile.android_native.warn_title": "Diese Seite sieht nach Betrug aus",
