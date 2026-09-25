@@ -4,9 +4,13 @@ import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius } from "../../utils/theme";
 import type { HistoryFilter } from "../../utils/history-model";
 import { useProtectionActive } from "../../hooks/useProtectionActive";
+import { useSmsShield } from "../../hooks/useSmsShield";
+import { isSmsShieldListening } from "../../utils/sms-shield-view";
 
 interface HistoryEmptyProps {
   filter: HistoryFilter;
+  /** This build checks incoming SMS by itself (RuStore): Warned and SMS then list its warnings too. */
+  smsWarnings: boolean;
   onCheckLink: () => void;
   onCheckMessage: () => void;
   /** Go to the Shield tab and start the same turn-on flow its button starts. */
@@ -56,9 +60,10 @@ function EmptyView({ icon, iconColor = colors.textSecondary, title, body, primar
  * So the blocked/all views read the live shield state and offer to turn
  * protection on, with the link check as the second action.
  */
-export function HistoryEmpty({ filter, onCheckLink, onCheckMessage, onTurnOn }: HistoryEmptyProps) {
+export function HistoryEmpty({ filter, smsWarnings, onCheckLink, onCheckMessage, onTurnOn }: HistoryEmptyProps) {
   const { t } = useTranslation();
   const checkLink: EmptyAction = { label: t("mobile.history.empty_cta"), onPress: onCheckLink };
+  const checkMessage: EmptyAction = { label: t("mobile.home.sms_check.cta"), onPress: onCheckMessage };
 
   if (filter === "checked") {
     return (
@@ -71,12 +76,13 @@ export function HistoryEmpty({ filter, onCheckLink, onCheckMessage, onTurnOn }: 
     );
   }
   if (filter === "sms") {
+    if (smsWarnings) return <SmsAutoEmpty checkMessage={checkMessage} />;
     return (
       <EmptyView
         icon="chatbubble-ellipses-outline"
         title={t("mobile.history.empty_sms_title")}
         body={t("mobile.history.empty_sms_body")}
-        primary={{ label: t("mobile.home.sms_check.cta"), onPress: onCheckMessage }}
+        primary={checkMessage}
       />
     );
   }
@@ -85,12 +91,51 @@ export function HistoryEmpty({ filter, onCheckLink, onCheckMessage, onTurnOn }: 
       <EmptyView
         icon="alert-circle-outline"
         title={t("mobile.history.empty_warned_title")}
-        body={t("mobile.history.empty_warned_body")}
+        body={t(smsWarnings ? "mobile.history.empty_warned_body_sms" : "mobile.history.empty_warned_body")}
         secondary={checkLink}
       />
     );
   }
   return <ProtectionEmpty checkLink={checkLink} onTurnOn={onTurnOn} />;
+}
+
+/**
+ * The SMS chip with nothing in it, where Cleanway checks incoming SMS itself.
+ * Empty means two very different things: every SMS was checked and none
+ * looked like a scam — say how many, that is the proof it works — or the
+ * check is off and nothing was looked at. Never the first when it is the
+ * second.
+ */
+function SmsAutoEmpty({ checkMessage }: { checkMessage: EmptyAction }) {
+  const { t } = useTranslation();
+  const sms = useSmsShield();
+  const checked = sms.status.checkedCount;
+
+  if (isSmsShieldListening(sms.view)) {
+    return (
+      <EmptyView
+        icon="shield-checkmark-outline"
+        iconColor={colors.green}
+        title={t("mobile.history.empty_sms_auto_title")}
+        body={checked > 0
+          ? t("mobile.history.empty_sms_auto_body", { count: checked })
+          : t("mobile.history.empty_sms_auto_waiting")}
+        secondary={checkMessage}
+      />
+    );
+  }
+  return (
+    <EmptyView
+      icon="chatbubble-ellipses-outline"
+      iconColor={colors.amber}
+      title={t("mobile.history.empty_sms_title")}
+      body={t("mobile.history.empty_sms_auto_off_body")}
+      primary={sms.view.kind === "setup"
+        ? { label: t("mobile.history.empty_sms_auto_turn_on"), onPress: sms.turnOn }
+        : undefined}
+      secondary={checkMessage}
+    />
+  );
 }
 
 function ProtectionEmpty({ checkLink, onTurnOn }: { checkLink: EmptyAction; onTurnOn: () => void }) {
