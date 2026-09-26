@@ -75,6 +75,16 @@ const CODE_TO_KEY: Readonly<Record<string, string>> = {
   known_legitimate: "well_known_site",
   tranco_popularity: "popular_site",
   ml_safe_override: "detector_safe",
+  // Lists: ours on the server (API verdict_basis "blocklist") and the phone's
+  cleanway_blocklist: "on_cleanway_list",
+  on_device_list: "on_device_list",
+  // What a verdict could not see (api/services/verdict_basis.py
+  // INFORMATIONAL_REASONS) — shown whatever the verdict
+  domain_not_found: "site_not_found",
+  unreachable_from_scanner: "unreachable_abroad",
+  checks_incomplete: "checks_incomplete",
+  partial_analysis: "checks_incomplete",
+  user_content_platform: "user_content_platform",
 };
 
 export function reasonLabelKey(code: string | undefined | null): string | null {

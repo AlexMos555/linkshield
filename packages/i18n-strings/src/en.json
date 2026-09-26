@@ -1124,7 +1124,7 @@
       "email_hint": "Please include your phone model and what happened.",
       "faq_title": "Common questions",
       "q_vpn": "Is this a VPN that hides my traffic?",
-      "a_vpn": "No. Cleanway uses Android's VPN mechanism only to run a local filter on your phone that blocks scam sites in every app. It does not hide where you go and does not send your traffic through another country. To reach the sites it doesn't block, your phone looks up their names in a public DNS service — Cloudflare (1.1.1.1) or Quad9 (9.9.9.9).",
+      "a_vpn": "No. Cleanway uses Android's VPN mechanism only to run a local filter on your phone that blocks scam sites in every app. It does not hide where you go and does not send your traffic through another country. To reach the sites it doesn't block, your phone looks up their names, as it would without Cleanway, with your mobile operator's or Wi-Fi router's DNS server — and only if that doesn't answer, with Cloudflare (1.1.1.1) or Quad9 (9.9.9.9).",
       "q_install": "How do I install it?",
       "a_install": "Download the app, open the file and allow the installation — the Android page walks through every warning you may see on the way. On the first run, tap \"Turn on protection\" and allow the connection Android asks about.",
       "q_off": "How do I turn it off?",
@@ -1364,7 +1364,8 @@
           "paragraphs": [
             "When you turn on protection, Cleanway starts a local filter using Android's VPN mechanism. Only DNS queries pass through it — the questions your phone asks to find a site's address, such as \"where is example.com?\". The contents of pages, your messages and calls do not go through the filter and are not read.",
             "Each site name is compared with the list of scam sites stored on the phone. If it is on the list, the phone doesn't open the site, and a note (the site's name, the time and what happened) is saved on the phone for the app's History.",
-            "Names that are not on the list are passed on to a public DNS service to find the address — what a phone does without Cleanway too, only through a different service. In app version 1.0.1 these queries go to Cloudflare (1.1.1.1), with Quad9 (9.9.9.9) as a backup and Cloudflare's encrypted DNS-over-HTTPS as a last resort. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries."
+            "Names that are not on the list are passed on to find the site's address: first to the DNS server of the network the phone is on — your mobile operator's or your Wi-Fi router's — as without Cleanway. Only if it does not answer do they go to Cloudflare (1.1.1.1), then Quad9 (9.9.9.9), and as a last resort Cloudflare's encrypted DNS-over-HTTPS. This is how app version 1.0.2 works; version 1.0.1 asked Cloudflare first. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries.",
+            "From version 1.0.2 the app carries a copy of the scam-site list, used only until the phone downloads a fresh one."
           ]
         },
         {
@@ -1376,7 +1377,7 @@
         {
           "title": "5. Checking sites and links",
           "paragraphs": [
-            "A site's name — without the rest of the link, without page contents and without your account details — goes to our server when you check a site by hand (in the app or on cleanway.ai/check), and when protection is on and you open a link through Cleanway that isn't on the list.",
+            "A site's name — without the rest of the link, without page contents and without your account details — goes to our server when you check a site by hand (in the app or on cleanway.ai/check), and when you open a link through Cleanway that isn't on the list (from version 1.0.2 also when the “Every app” protection is off).",
             "To decide whether the site is dangerous, our server may:"
           ],
           "items": [
@@ -1387,7 +1388,8 @@
           ],
           "after": [
             "The result is kept in our server's cache for up to 24 hours so that a repeat check is fast. It is tied to the site, not to you.",
-            "Your IP address is used to limit how many checks one connection can make. For that it is kept as is, as a counter in our server's memory, for up to an hour, and then deleted. The security log of account actions stores only a shortened cryptographic hash of it, never the address itself."
+            "Your IP address is used to limit how many checks one connection can make. For that it is kept as is, as a counter in our server's memory, for up to an hour, and then deleted. The security log of account actions stores only a shortened cryptographic hash of it, never the address itself.",
+            "With every check, app version 1.0.2 also sends an install number: a random number made on the phone and replaced with a new one every 24 hours. It is not tied to the phone, the SIM card or an account; it lets us limit checks per phone rather than for all the subscribers who share a carrier's IP address. Our server keeps only a cryptographic hash of it, as a counter, for up to an hour."
           ]
         },
         {

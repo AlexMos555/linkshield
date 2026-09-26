@@ -1122,7 +1122,7 @@
       "email_hint": "Indiquez le modèle de votre téléphone et ce qui s'est passé.",
       "faq_title": "Questions fréquentes",
       "q_vpn": "Est-ce un VPN qui cache mon trafic ?",
-      "a_vpn": "Non. Cleanway utilise le mécanisme VPN d'Android uniquement pour faire tourner sur votre téléphone un filtre local qui bloque les sites d'arnaque dans toutes les applis. Il ne cache pas où vous allez et ne fait pas passer votre trafic par un autre pays. Pour joindre les sites qu'il ne bloque pas, votre téléphone cherche leur nom auprès d'un service DNS public — Cloudflare (1.1.1.1) ou Quad9 (9.9.9.9).",
+      "a_vpn": "Non. Cleanway utilise le mécanisme VPN d'Android uniquement pour faire tourner sur votre téléphone un filtre local qui bloque les sites d'arnaque dans toutes les applis. Il ne cache pas où vous allez et ne fait pas passer votre trafic par un autre pays. Pour joindre les sites qu'il ne bloque pas, votre téléphone cherche leur nom, comme sans Cleanway, auprès du serveur DNS de votre opérateur mobile ou de votre box Wi-Fi — et seulement s'il ne répond pas, auprès de Cloudflare (1.1.1.1) ou de Quad9 (9.9.9.9).",
       "q_install": "Comment l'installer ?",
       "a_install": "Téléchargez l'appli, ouvrez le fichier et autorisez l'installation : la page Android explique chaque avertissement que vous pouvez rencontrer. Au premier lancement, appuyez sur « Activer la protection » et autorisez la connexion demandée par Android.",
       "q_off": "Comment la désactiver ?",
@@ -1362,7 +1362,8 @@
           "paragraphs": [
             "Quand vous activez la protection, Cleanway lance un filtre local en utilisant le mécanisme VPN d'Android. Seules les requêtes DNS y passent — les questions que pose le téléphone pour trouver l'adresse d'un site, comme « où se trouve example.com ? ». Le contenu des pages, vos messages et vos appels ne passent pas par le filtre et ne sont pas lus.",
             "Chaque nom de site est comparé à la liste des sites d'arnaque enregistrée sur le téléphone. S'il figure sur la liste, le téléphone n'ouvre pas le site, et une note (le nom du site, l'heure et ce qui s'est passé) est enregistrée sur le téléphone pour l'Historique de l'appli.",
-            "Les noms qui ne figurent pas sur la liste sont transmis à un service DNS public pour trouver l'adresse — ce que le téléphone fait aussi sans Cleanway, simplement via un autre service. Dans la version 1.0.1 de l'appli, ces requêtes vont chez Cloudflare (1.1.1.1), avec Quad9 (9.9.9.9) en secours et le DNS-over-HTTPS chiffré de Cloudflare en dernier recours. Ces services voient le nom du site et l'adresse IP de votre connexion, comme n'importe quel service DNS ; leurs propres politiques de confidentialité s'appliquent. Cleanway ne reçoit ni ne conserve ces requêtes."
+            "Les noms qui ne figurent pas sur la liste sont transmis pour trouver l'adresse du site : d'abord au serveur DNS du réseau auquel le téléphone est connecté — celui de votre opérateur mobile ou de votre box Wi-Fi —, comme sans Cleanway. Seulement s'il ne répond pas, ils vont à Cloudflare (1.1.1.1), puis à Quad9 (9.9.9.9) et, en dernier recours, au DNS-over-HTTPS chiffré de Cloudflare. C'est ainsi que fonctionne la version 1.0.2 de l'appli ; la version 1.0.1 interrogeait d'abord Cloudflare. Ces services voient le nom du site et l'adresse IP de votre connexion, comme tout service DNS ; leurs propres politiques de confidentialité s'appliquent. Cleanway ne reçoit ni ne conserve ces requêtes.",
+            "Depuis la version 1.0.2, l'appli contient une copie de la liste des sites d'arnaque, utilisée seulement jusqu'à ce que le téléphone en télécharge une récente."
           ]
         },
         {
@@ -1374,7 +1375,7 @@
         {
           "title": "5. Vérification des sites et des liens",
           "paragraphs": [
-            "Le nom d'un site — sans le reste du lien, sans le contenu de la page et sans les données de votre compte — arrive sur notre serveur quand vous vérifiez un site vous-même (dans l'appli ou sur cleanway.ai/check), et quand la protection est active et que vous ouvrez via Cleanway un lien qui n'est pas sur la liste.",
+            "Le nom d'un site — sans le reste du lien, sans le contenu de la page et sans les données de votre compte — arrive sur notre serveur quand vous vérifiez un site vous-même (dans l'appli ou sur cleanway.ai/check), et quand vous ouvrez via Cleanway un lien qui n'est pas sur la liste (depuis la version 1.0.2, même si la protection « Toutes les applis » est désactivée).",
             "Pour décider si le site est dangereux, notre serveur peut :"
           ],
           "items": [
@@ -1385,7 +1386,8 @@
           ],
           "after": [
             "Le résultat est conservé dans le cache de notre serveur jusqu'à 24 heures pour qu'une nouvelle vérification soit rapide. Il est lié au site, pas à vous.",
-            "Votre adresse IP sert à limiter le nombre de vérifications par connexion. Pour cela, elle est conservée telle quelle, comme compteur dans la mémoire de notre serveur, une heure au plus, puis supprimée. Le journal de sécurité des actions sur les comptes n'en garde qu'une empreinte cryptographique raccourcie, jamais l'adresse elle-même."
+            "Votre adresse IP sert à limiter le nombre de vérifications par connexion. Pour cela, elle est conservée telle quelle, comme compteur dans la mémoire de notre serveur, une heure au plus, puis supprimée. Le journal de sécurité des actions sur les comptes n'en garde qu'une empreinte cryptographique raccourcie, jamais l'adresse elle-même.",
+            "À chaque vérification, la version 1.0.2 de l'appli envoie aussi un numéro d'installation : un nombre aléatoire créé sur le téléphone et remplacé par un nouveau toutes les 24 heures. Il n'est lié ni au téléphone, ni à la carte SIM, ni à un compte ; il nous permet de limiter les vérifications par téléphone plutôt que pour tous les abonnés qui partagent l'adresse IP d'un opérateur. Notre serveur n'en garde qu'un hachage cryptographique, comme compteur, pendant une heure au plus."
           ]
         },
         {

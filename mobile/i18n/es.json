@@ -420,7 +420,7 @@
   "landing.support.email_hint": "Indica el modelo de tu teléfono y qué ha pasado.",
   "landing.support.faq_title": "Preguntas frecuentes",
   "landing.support.q_vpn": "¿Es una VPN que oculta mi tráfico?",
-  "landing.support.a_vpn": "No. Cleanway usa el mecanismo de VPN de Android solo para ejecutar en tu teléfono un filtro local que bloquea sitios fraudulentos en todas las aplicaciones. No oculta a dónde vas ni envía tu tráfico a través de otro país. Para llegar a los sitios que no bloquea, tu teléfono busca sus nombres en un servicio DNS público: Cloudflare (1.1.1.1) o Quad9 (9.9.9.9).",
+  "landing.support.a_vpn": "No. Cleanway usa el mecanismo de VPN de Android solo para ejecutar en tu teléfono un filtro local que bloquea sitios fraudulentos en todas las aplicaciones. No oculta a dónde vas ni envía tu tráfico a través de otro país. Para llegar a los sitios que no bloquea, tu teléfono busca sus nombres, como sin Cleanway, en el servidor DNS de tu operador móvil o de tu router wifi y, solo si no responde, en Cloudflare (1.1.1.1) o Quad9 (9.9.9.9).",
   "landing.support.q_install": "¿Cómo la instalo?",
   "landing.support.a_install": "Descarga la app, abre el archivo y permite la instalación: la página de Android explica cada aviso que puede aparecer por el camino. La primera vez, toca «Activar la protección» y permite la conexión que pida Android.",
   "landing.support.q_off": "¿Cómo la desactivo?",

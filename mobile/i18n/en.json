@@ -420,7 +420,7 @@
   "landing.support.email_hint": "Please include your phone model and what happened.",
   "landing.support.faq_title": "Common questions",
   "landing.support.q_vpn": "Is this a VPN that hides my traffic?",
-  "landing.support.a_vpn": "No. Cleanway uses Android's VPN mechanism only to run a local filter on your phone that blocks scam sites in every app. It does not hide where you go and does not send your traffic through another country. To reach the sites it doesn't block, your phone looks up their names in a public DNS service — Cloudflare (1.1.1.1) or Quad9 (9.9.9.9).",
+  "landing.support.a_vpn": "No. Cleanway uses Android's VPN mechanism only to run a local filter on your phone that blocks scam sites in every app. It does not hide where you go and does not send your traffic through another country. To reach the sites it doesn't block, your phone looks up their names, as it would without Cleanway, with your mobile operator's or Wi-Fi router's DNS server — and only if that doesn't answer, with Cloudflare (1.1.1.1) or Quad9 (9.9.9.9).",
   "landing.support.q_install": "How do I install it?",
   "landing.support.a_install": "Download the app, open the file and allow the installation — the Android page walks through every warning you may see on the way. On the first run, tap \"Turn on protection\" and allow the connection Android asks about.",
   "landing.support.q_off": "How do I turn it off?",

@@ -386,7 +386,7 @@
     "email_hint": "Sebutkan model ponsel Anda dan apa yang terjadi.",
     "faq_title": "Pertanyaan umum",
     "q_vpn": "Apakah ini VPN yang menyembunyikan lalu lintas saya?",
-    "a_vpn": "Bukan. Cleanway memakai mekanisme VPN Android hanya untuk menjalankan filter lokal di ponsel Anda yang memblokir situs penipuan di semua aplikasi. Filter ini tidak menyembunyikan ke mana Anda pergi dan tidak mengalihkan lalu lintas Anda lewat negara lain. Untuk membuka situs yang tidak diblokir, ponsel Anda mencari namanya melalui layanan DNS publik — Cloudflare (1.1.1.1) atau Quad9 (9.9.9.9).",
+    "a_vpn": "Bukan. Cleanway memakai mekanisme VPN Android hanya untuk menjalankan filter lokal di ponsel Anda yang memblokir situs penipuan di semua aplikasi. Filter ini tidak menyembunyikan ke mana Anda pergi dan tidak mengalihkan lalu lintas Anda lewat negara lain. Untuk membuka situs yang tidak diblokir, ponsel Anda mencari namanya, sama seperti tanpa Cleanway, melalui server DNS operator seluler atau router Wi-Fi Anda — dan hanya jika server itu tidak menjawab, melalui Cloudflare (1.1.1.1) atau Quad9 (9.9.9.9).",
     "q_install": "Bagaimana cara memasangnya?",
     "a_install": "Unduh aplikasinya, buka filenya, lalu izinkan pemasangan: halaman Android menjelaskan setiap peringatan yang mungkin muncul. Saat pertama kali dibuka, ketuk \"Nyalakan perlindungan\" dan izinkan koneksi yang diminta Android.",
     "q_off": "Bagaimana cara mematikannya?",
@@ -626,7 +626,8 @@
         "paragraphs": [
           "Saat Anda menyalakan perlindungan, Cleanway menjalankan filter lokal menggunakan mekanisme VPN Android. Yang melewatinya hanya permintaan DNS, yaitu pertanyaan ponsel untuk mencari alamat sebuah situs, seperti \"di mana example.com?\". Isi halaman, pesan, dan panggilan Anda tidak melewati filter dan tidak dibaca.",
           "Setiap nama situs dicocokkan dengan daftar situs penipuan yang tersimpan di ponsel. Jika ada di daftar, ponsel tidak membuka situs itu, dan sebuah catatan (nama situs, waktu, dan apa yang terjadi) disimpan di ponsel untuk Riwayat aplikasi.",
-          "Nama yang tidak ada di daftar diteruskan ke layanan DNS publik untuk mencari alamatnya; ponsel juga melakukan ini tanpa Cleanway, hanya lewat layanan yang berbeda. Di aplikasi versi 1.0.1, permintaan ini dikirim ke Cloudflare (1.1.1.1), dengan Quad9 (9.9.9.9) sebagai cadangan dan DNS-over-HTTPS terenkripsi dari Cloudflare sebagai pilihan terakhir. Layanan-layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima dan tidak menyimpan permintaan ini."
+          "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
+          "Sejak versi 1.0.2, aplikasi membawa salinan daftar situs penipuan, yang hanya dipakai sampai ponsel mengunduh daftar terbaru."
         ]
       },
       {
@@ -638,7 +639,7 @@
       {
         "title": "5. Memeriksa situs dan tautan",
         "paragraphs": [
-          "Nama sebuah situs, tanpa sisa tautannya, tanpa isi halaman, dan tanpa data akun Anda, dikirim ke server kami saat Anda memeriksa situs secara manual (di aplikasi atau di cleanway.ai/check), dan saat perlindungan menyala dan Anda membuka tautan lewat Cleanway yang tidak ada di daftar.",
+          "Nama sebuah situs, tanpa sisa tautannya, tanpa isi halaman, dan tanpa data akun Anda, dikirim ke server kami saat Anda memeriksa situs secara manual (di aplikasi atau di cleanway.ai/check), dan saat Anda membuka tautan lewat Cleanway yang tidak ada di daftar (sejak versi 1.0.2, juga saat perlindungan “Semua aplikasi” mati).",
           "Untuk memutuskan apakah situs itu berbahaya, server kami dapat:"
         ],
         "items": [
@@ -649,7 +650,8 @@
         ],
         "after": [
           "Hasilnya disimpan di cache server kami hingga 24 jam agar pemeriksaan ulang berlangsung cepat. Hasil ini terkait dengan situsnya, bukan dengan Anda.",
-          "Alamat IP Anda dipakai untuk membatasi berapa banyak pemeriksaan dari satu koneksi. Untuk itu alamat ini disimpan apa adanya, sebagai penghitung di memori server kami, paling lama satu jam, lalu dihapus. Log keamanan tindakan akun hanya menyimpan hash kriptografis yang dipersingkat, tidak pernah alamatnya sendiri."
+          "Alamat IP Anda dipakai untuk membatasi berapa banyak pemeriksaan dari satu koneksi. Untuk itu alamat ini disimpan apa adanya, sebagai penghitung di memori server kami, paling lama satu jam, lalu dihapus. Log keamanan tindakan akun hanya menyimpan hash kriptografis yang dipersingkat, tidak pernah alamatnya sendiri.",
+          "Pada setiap pemeriksaan, aplikasi versi 1.0.2 juga mengirim nomor instalasi: angka acak yang dibuat di ponsel dan diganti dengan yang baru setiap 24 jam. Nomor ini tidak terkait dengan ponsel, kartu SIM, atau akun; dengan nomor ini kami bisa membatasi pemeriksaan per ponsel, bukan untuk semua pelanggan yang berbagi alamat IP operator. Server kami hanya menyimpan hash kriptografisnya, sebagai penghitung, paling lama satu jam."
         ]
       },
       {
@@ -778,6 +780,12 @@
     "detector_safe": "Detektor kami menilai situs ini aman",
     "not_a_real_business": "Tidak disiapkan seperti situs perusahaan asli",
     "shifty_setup": "Situs terus berpindah lokasi — trik penipuan yang umum",
-    "padded_address": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
+    "padded_address": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli",
+    "site_not_found": "Alamat ini tidak ada",
+    "on_cleanway_list": "Ada di daftar situs penipuan Cleanway",
+    "unreachable_abroad": "Server kami di luar negeri tidak bisa membuka situs ini. Banyak bank dan situs pemerintah memblokir alamat dari luar negeri, jadi ini saja bukan tanda bahaya",
+    "checks_incomplete": "Sebagian pengecekan tidak selesai, jadi hasilnya kurang pasti",
+    "user_content_platform": "Siapa pun bisa membuat halaman di layanan ini — penipu juga",
+    "on_device_list": "Ada di daftar situs penipuan di HP kamu"
   }
 }

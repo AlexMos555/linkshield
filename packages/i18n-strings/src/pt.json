@@ -1122,7 +1122,7 @@
       "email_hint": "Informe o modelo do celular e o que aconteceu.",
       "faq_title": "Perguntas frequentes",
       "q_vpn": "Isso é uma VPN que esconde meu tráfego?",
-      "a_vpn": "Não. O Cleanway usa o mecanismo de VPN do Android só para rodar no celular um filtro local que bloqueia sites de golpe em todos os apps. Ele não esconde aonde você vai e não manda seu tráfego por outro país. Para chegar aos sites que ele não bloqueia, o celular busca os nomes deles em um serviço de DNS público — Cloudflare (1.1.1.1) ou Quad9 (9.9.9.9).",
+      "a_vpn": "Não. O Cleanway usa o mecanismo de VPN do Android só para rodar no celular um filtro local que bloqueia sites de golpe em todos os apps. Ele não esconde aonde você vai e não manda seu tráfego por outro país. Para chegar aos sites que ele não bloqueia, o celular busca os nomes deles, como sem o Cleanway, no servidor DNS da sua operadora ou do seu roteador Wi-Fi — e, só se ele não responder, no Cloudflare (1.1.1.1) ou no Quad9 (9.9.9.9).",
       "q_install": "Como eu instalo?",
       "a_install": "Baixe o app, abra o arquivo e permita a instalação: a página do Android explica cada aviso que pode aparecer no caminho. Na primeira vez, toque em “Ativar proteção” e permita a conexão que o Android pedir.",
       "q_off": "Como eu desligo?",
@@ -1362,7 +1362,8 @@
           "paragraphs": [
             "Quando você ativa a proteção, o Cleanway liga um filtro local usando o mecanismo de VPN do Android. Por ele passam só as consultas DNS — as perguntas que o celular faz para achar o endereço de um site, como “onde fica example.com?”. O conteúdo das páginas, suas mensagens e ligações não passam pelo filtro e não são lidos.",
             "Cada nome de site é comparado com a lista de sites de golpe guardada no celular. Se ele estiver na lista, o celular não abre o site e uma anotação (o nome do site, a hora e o que aconteceu) é salva no celular para o Histórico do app.",
-            "Os nomes que não estão na lista são repassados a um serviço de DNS público para achar o endereço — o celular também faz isso sem o Cleanway, só que por outro serviço. Na versão 1.0.1 do app essas consultas vão para a Cloudflare (1.1.1.1), com a Quad9 (9.9.9.9) como reserva e o DNS-over-HTTPS criptografado da Cloudflare como último recurso. Esses serviços veem o nome do site e o endereço IP da sua conexão, como qualquer serviço de DNS; valem as políticas de privacidade deles. O Cleanway não recebe nem guarda essas consultas."
+            "Os nomes que não estão na lista são repassados para achar o endereço do site: primeiro ao servidor DNS da rede em que o celular está — da sua operadora ou do seu roteador Wi-Fi —, como sem o Cleanway. Só se ele não responder, vão para o Cloudflare (1.1.1.1), depois para o Quad9 (9.9.9.9) e, em último caso, para o DNS-over-HTTPS criptografado do Cloudflare. É assim que funciona a versão 1.0.2 do app; a versão 1.0.1 perguntava primeiro ao Cloudflare. Esses serviços veem o nome do site e o endereço IP da sua conexão, como qualquer serviço de DNS; valem as políticas de privacidade deles. O Cleanway não recebe nem guarda essas consultas.",
+            "A partir da versão 1.0.2, o app traz uma cópia da lista de sites de golpe, usada só até o celular baixar uma lista nova."
           ]
         },
         {
@@ -1374,7 +1375,7 @@
         {
           "title": "5. Verificação de sites e links",
           "paragraphs": [
-            "O nome de um site — sem o resto do link, sem o conteúdo da página e sem os dados da sua conta — vai para o nosso servidor quando você verifica um site manualmente (no app ou em cleanway.ai/check) e quando a proteção está ativa e você abre pelo Cleanway um link que não está na lista.",
+            "O nome de um site — sem o resto do link, sem o conteúdo da página e sem os dados da sua conta — vai para o nosso servidor quando você verifica um site manualmente (no app ou em cleanway.ai/check) e quando você abre pelo Cleanway um link que não está na lista (a partir da versão 1.0.2, também com a proteção “Todos os aplicativos” desligada).",
             "Para decidir se o site é perigoso, nosso servidor pode:"
           ],
           "items": [
@@ -1385,7 +1386,8 @@
           ],
           "after": [
             "O resultado fica no cache do nosso servidor por até 24 horas para que uma nova verificação seja rápida. Ele está ligado ao site, não a você.",
-            "Seu endereço IP é usado para limitar quantas verificações uma conexão pode fazer. Para isso ele fica guardado como está, como contador na memória do nosso servidor, por no máximo uma hora, e depois é apagado. O registro de segurança das ações da conta guarda só um hash criptográfico encurtado, nunca o próprio endereço."
+            "Seu endereço IP é usado para limitar quantas verificações uma conexão pode fazer. Para isso ele fica guardado como está, como contador na memória do nosso servidor, por no máximo uma hora, e depois é apagado. O registro de segurança das ações da conta guarda só um hash criptográfico encurtado, nunca o próprio endereço.",
+            "A cada verificação, a versão 1.0.2 do app também envia um número de instalação: um número aleatório criado no celular e trocado por um novo a cada 24 horas. Ele não está ligado ao celular, ao chip nem a uma conta; serve para limitarmos as verificações por celular, e não para todos os clientes que compartilham o endereço IP de uma operadora. Nosso servidor guarda só um hash criptográfico dele, como contador, por no máximo uma hora."
           ]
         },
         {

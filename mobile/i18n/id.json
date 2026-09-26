@@ -420,7 +420,7 @@
   "landing.support.email_hint": "Sebutkan model ponsel Anda dan apa yang terjadi.",
   "landing.support.faq_title": "Pertanyaan umum",
   "landing.support.q_vpn": "Apakah ini VPN yang menyembunyikan lalu lintas saya?",
-  "landing.support.a_vpn": "Bukan. Cleanway memakai mekanisme VPN Android hanya untuk menjalankan filter lokal di ponsel Anda yang memblokir situs penipuan di semua aplikasi. Filter ini tidak menyembunyikan ke mana Anda pergi dan tidak mengalihkan lalu lintas Anda lewat negara lain. Untuk membuka situs yang tidak diblokir, ponsel Anda mencari namanya melalui layanan DNS publik — Cloudflare (1.1.1.1) atau Quad9 (9.9.9.9).",
+  "landing.support.a_vpn": "Bukan. Cleanway memakai mekanisme VPN Android hanya untuk menjalankan filter lokal di ponsel Anda yang memblokir situs penipuan di semua aplikasi. Filter ini tidak menyembunyikan ke mana Anda pergi dan tidak mengalihkan lalu lintas Anda lewat negara lain. Untuk membuka situs yang tidak diblokir, ponsel Anda mencari namanya, sama seperti tanpa Cleanway, melalui server DNS operator seluler atau router Wi-Fi Anda — dan hanya jika server itu tidak menjawab, melalui Cloudflare (1.1.1.1) atau Quad9 (9.9.9.9).",
   "landing.support.q_install": "Bagaimana cara memasangnya?",
   "landing.support.a_install": "Unduh aplikasinya, buka filenya, lalu izinkan pemasangan: halaman Android menjelaskan setiap peringatan yang mungkin muncul. Saat pertama kali dibuka, ketuk \"Nyalakan perlindungan\" dan izinkan koneksi yang diminta Android.",
   "landing.support.q_off": "Bagaimana cara mematikannya?",

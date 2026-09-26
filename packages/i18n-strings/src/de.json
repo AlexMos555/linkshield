@@ -1122,7 +1122,7 @@
       "email_hint": "Gib bitte dein Handymodell an und was passiert ist.",
       "faq_title": "Häufige Fragen",
       "q_vpn": "Ist das ein VPN, das meinen Datenverkehr versteckt?",
-      "a_vpn": "Nein. Cleanway nutzt den VPN-Mechanismus von Android nur, um auf deinem Handy einen lokalen Filter zu betreiben, der Betrugsseiten in allen Apps blockiert. Er verbirgt nicht, wohin du gehst, und leitet deinen Datenverkehr nicht über ein anderes Land. Um Seiten zu erreichen, die er nicht blockiert, fragt dein Handy deren Namen bei einem öffentlichen DNS-Dienst ab – Cloudflare (1.1.1.1) oder Quad9 (9.9.9.9).",
+      "a_vpn": "Nein. Cleanway nutzt den VPN-Mechanismus von Android nur, um auf deinem Handy einen lokalen Filter zu betreiben, der Betrugsseiten in allen Apps blockiert. Er verbirgt nicht, wohin du gehst, und leitet deinen Datenverkehr nicht über ein anderes Land. Um Seiten zu erreichen, die er nicht blockiert, fragt dein Handy deren Namen wie ohne Cleanway beim DNS-Server deines Mobilfunkanbieters oder WLAN-Routers ab – und nur wenn der nicht antwortet, bei Cloudflare (1.1.1.1) oder Quad9 (9.9.9.9).",
       "q_install": "Wie installiere ich sie?",
       "a_install": "Lade die App herunter, öffne die Datei und erlaube die Installation – die Android-Seite erklärt jede Warnung, die unterwegs auftauchen kann. Tippe beim ersten Start auf „Schutz einschalten“ und erlaube die Verbindung, nach der Android fragt.",
       "q_off": "Wie schalte ich sie aus?",
@@ -1362,7 +1362,8 @@
           "paragraphs": [
             "Wenn du den Schutz einschaltest, startet Cleanway einen lokalen Filter über den VPN-Mechanismus von Android. Durch ihn laufen nur DNS-Anfragen – die Fragen, mit denen das Handy die Adresse einer Seite sucht, etwa „Wo ist example.com?“. Seiteninhalte, deine Nachrichten und Anrufe laufen nicht durch den Filter und werden nicht gelesen.",
             "Jeder Seitenname wird mit der auf dem Handy gespeicherten Liste von Betrugsseiten abgeglichen. Steht er auf der Liste, öffnet das Handy die Seite nicht, und auf dem Handy wird ein Eintrag (Name der Seite, Uhrzeit und was passiert ist) für den Verlauf der App gespeichert.",
-            "Namen, die nicht auf der Liste stehen, werden an einen öffentlichen DNS-Dienst weitergegeben, um die Adresse zu finden – das tut das Handy auch ohne Cleanway, nur über einen anderen Dienst. In App-Version 1.0.1 gehen diese Anfragen an Cloudflare (1.1.1.1), mit Quad9 (9.9.9.9) als Ersatz und dem verschlüsselten DNS-over-HTTPS von Cloudflare als letzter Möglichkeit. Diese Dienste sehen den Seitennamen und die IP-Adresse deiner Verbindung, wie jeder DNS-Dienst; es gelten ihre eigenen Datenschutzbestimmungen. Cleanway erhält und speichert diese Anfragen nicht."
+            "Namen, die nicht auf der Liste stehen, werden weitergegeben, um die Adresse der Seite zu finden: zuerst an den DNS-Server des Netzes, mit dem das Handy verbunden ist – den deines Mobilfunkanbieters oder deines WLAN-Routers –, wie ohne Cleanway. Nur wenn er nicht antwortet, gehen sie an Cloudflare (1.1.1.1), dann an Quad9 (9.9.9.9) und als letzter Ausweg an das verschlüsselte DNS-over-HTTPS von Cloudflare. So arbeitet die App-Version 1.0.2; Version 1.0.1 fragte zuerst Cloudflare. Diese Dienste sehen den Namen der Seite und die IP-Adresse deiner Verbindung, wie jeder DNS-Dienst; es gelten ihre eigenen Datenschutzrichtlinien. Cleanway erhält und speichert diese Anfragen nicht.",
+            "Seit Version 1.0.2 enthält die App eine Kopie der Liste der Betrugsseiten, die nur genutzt wird, bis das Handy eine aktuelle Liste heruntergeladen hat."
           ]
         },
         {
@@ -1374,7 +1375,7 @@
         {
           "title": "5. Prüfen von Seiten und Links",
           "paragraphs": [
-            "Der Name einer Seite – ohne den Rest des Links, ohne Seiteninhalte und ohne deine Kontodaten – geht an unseren Server, wenn du eine Seite selbst prüfst (in der App oder auf cleanway.ai/check) und wenn der Schutz an ist und du über Cleanway einen Link öffnest, der nicht auf der Liste steht.",
+            "Der Name einer Seite – ohne den Rest des Links, ohne Seiteninhalte und ohne deine Kontodaten – geht an unseren Server, wenn du eine Seite selbst prüfst (in der App oder auf cleanway.ai/check) und wenn du über Cleanway einen Link öffnest, der nicht auf der Liste steht (seit Version 1.0.2 auch, wenn der Schutz „Jede App“ aus ist).",
             "Um zu entscheiden, ob die Seite gefährlich ist, kann unser Server:"
           ],
           "items": [
@@ -1385,7 +1386,8 @@
           ],
           "after": [
             "Das Ergebnis bleibt bis zu 24 Stunden im Cache unseres Servers, damit eine erneute Prüfung schnell geht. Es ist mit der Seite verknüpft, nicht mit dir.",
-            "Deine IP-Adresse wird genutzt, um zu begrenzen, wie viele Prüfungen eine Verbindung machen kann. Dafür wird sie im Klartext als Zähler im Speicher unseres Servers höchstens eine Stunde lang gespeichert und dann gelöscht. Das Sicherheitsprotokoll der Kontoaktionen speichert nur einen gekürzten kryptografischen Hash, nie die Adresse selbst."
+            "Deine IP-Adresse wird genutzt, um zu begrenzen, wie viele Prüfungen eine Verbindung machen kann. Dafür wird sie im Klartext als Zähler im Speicher unseres Servers höchstens eine Stunde lang gespeichert und dann gelöscht. Das Sicherheitsprotokoll der Kontoaktionen speichert nur einen gekürzten kryptografischen Hash, nie die Adresse selbst.",
+            "Bei jeder Prüfung sendet die App-Version 1.0.2 außerdem eine Installationsnummer: eine zufällige Zahl, die auf dem Handy erzeugt und alle 24 Stunden durch eine neue ersetzt wird. Sie ist nicht mit dem Handy, der SIM-Karte oder einem Konto verknüpft; mit ihr begrenzen wir Prüfungen pro Handy statt für alle Kunden, die sich die IP-Adresse eines Anbieters teilen. Unser Server speichert davon nur einen kryptografischen Hash, als Zähler, höchstens eine Stunde lang."
           ]
         },
         {
