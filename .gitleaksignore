@@ -1,0 +1,15 @@
+# Exact gitleaks findings verified to be false positives (commit:file:rule:line).
+# An entry silences that one finding only — the same file at any other line,
+# and every other commit, is still scanned. Never add a finding here without
+# reading the flagged line; never add a real secret (rotate it instead).
+#
+# Verified 2026-09-26 (these kept the Security workflow red for 14 weeks):
+#
+# Weekly benchmark URL lists: the "_token=" query value of a phishing kit's
+# tracking link (random.epoch.n.md5), copied from a public phishing feed.
+bcbc5cf4fa8c8881b5cde99b55e1b13e8b33b6c6:docs/benchmarks/2026-08-10-fresh-urls.json:generic-api-key:4378
+46e5a66f36ecba33684dbe6d14e45caa489df498:docs/benchmarks/2026-07-13-fresh-urls.json:generic-api-key:4405
+46e5a66f36ecba33684dbe6d14e45caa489df498:docs/benchmarks/2026-07-13-fresh-urls.json:generic-api-key:4406
+# Generated i18n: "…credential-stealing page." followed by the next JSON key;
+# the heuristic read the word "credential" and took the key name as a secret.
+63ca5e18a26add9454ab4bebd02e835079b73ddc:mobile/i18n/en.json:generic-api-key:244

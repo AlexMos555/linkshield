@@ -1,16 +1,23 @@
 name: DNS canary
 
-# Watches the live DNS surface every 15 minutes.
+# Watches the live DNS surface — scheduled every 15 minutes, but see the
+# schedule limits below.
 #
 # On 2026-08-18 production NXDOMAIN'd github.com — and every *.github.com —
 # for everyone using our DNS profile, because the blocklist publisher added an
 # exact feed hostname unconditionally. Nothing noticed until a person went
 # looking. This job asks five questions the incident would have failed:
-#   1. do names that must never be blocked still resolve?
+#   1. do names that must never be blocked still resolve — and does the
+#      gateway resolve anything at all?
 #      (publisher guards + the curated list in data/canary_must_resolve.txt)
-#   2. does a name that IS on the published list still get NXDOMAIN?
+#   2. does a name that IS on the published list get NXDOMAIN from US?
 #      (an empty/dead blocklist is the other failure mode, and it once lasted
-#      months)
+#      months). Our NXDOMAIN carries an SOA naming blocked.cleanway.ai; an
+#      NXDOMAIN without it is upstream saying "no such name". Before
+#      2026-09-26 this probe could not fail: list-canary.cleanway.ai does not
+#      exist anywhere, so upstream answered NXDOMAIN too. Also probed: up to
+#      three hosts from Phishunt's CC0 feed that are on our list and resolve
+#      on 1.1.1.1 — best-effort, a quiet feed is a note, not a failure.
 #   3. is the phone artifact fresh, self-consistent, and carrying its canary?
 #      (fresh = under 13h: twice the publisher's 6h cadence, so ordinary cron
 #      drift no longer trips it; phones tolerate 48h)
@@ -19,10 +26,17 @@ name: DNS canary
 #
 # A failing run mails the repository owner. No secrets: everything it touches
 # is a public endpoint.
+#
+# SCHEDULE LIMITS — read before trusting this as paging. GitHub runs scheduled
+# workflows best-effort and drops runs under load. Measured 2026-09-18..25:
+# 46–47 runs in 7 days (about one every 3.5 h) instead of 672. The minutes
+# below avoid :00, which GitHub documents as its busiest slot; that may help,
+# nothing guarantees it. So an outage can go unnoticed for hours. Minute-level
+# uptime needs an external monitor — see docs/runbooks/monitoring.md.
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
     inputs:
       base:
