@@ -81,8 +81,15 @@ paths = [
                                          # a handful of legit domain names look
                                          # base64-shaped to the heuristic
 ]
-# Ignore obvious placeholder strings
+# Ignore obvious placeholder strings. Matched against the extracted secret.
 regexes = [
+    # Tracking token of a phishing kit's link ("_token=<random>.<epoch>.<n>.<md5>")
+    # in the weekly benchmark's public-feed URL lists. No credential of ours
+    # has this shape. Exact historical findings are in .gitleaksignore.
+    '''^[a-z0-9]{8,20}\.1[0-9]{9}\.[0-9]{1,2}\.[0-9a-f]{32}$''',
+    # A dotted i18n key (landing.dns.benefit_2) read as the "secret" after a
+    # translated sentence containing "credential"/"token"/"password".
+    '''^(landing|mobile|extension|email|common)(\.[a-z0-9_]+)+$''',
     '''sbp_\.\.\.''',
     '''sb_secret_\.\.\.''',
     '''sk_test_\.\.\.''',
