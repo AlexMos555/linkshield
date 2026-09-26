@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
+import { pickClientMessages } from "@/lib/client-messages";
 
 /**
  * Site-wide default metadata, in the page's language.
@@ -87,12 +88,14 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   setRequestLocale(locale as Locale);
 
   const dir = RTL_LOCALES.includes(locale as Locale) ? "rtl" : "ltr";
+  // Only what client components read — not the policy, terms and methodology.
+  const clientMessages = pickClientMessages(await getMessages());
 
   return (
     <html lang={locale} dir={dir}>
       <body style={{ margin: 0 }}>
         <ServiceWorkerRegistration />
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider messages={clientMessages}>{children}</NextIntlClientProvider>
       </body>
     </html>
   );

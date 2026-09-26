@@ -9,10 +9,15 @@
  * tracesSampleRate: 0.1 (10% of transactions traced). At Cleanway's
  * scale that's plenty for finding regressions; we can dial up if we
  * have spare quota. Free tier allows 10K transactions/month per project.
+ *
+ * No Session Replay. It recorded 1% of all visits and every visit with an
+ * error, and a replay carries the page URLs — /ru/check/<site> — past the
+ * scrubber (replays never go through beforeSend). The privacy policy says the
+ * site records no sessions; keep it that way.
  */
 import * as Sentry from "@sentry/nextjs";
 
-import { beforeBreadcrumbScrub, beforeSendScrub } from "./lib/sentry-scrub";
+import { beforeBreadcrumbScrub, beforeSendScrub, beforeSendTransactionScrub } from "./lib/sentry-scrub";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
@@ -27,20 +32,8 @@ if (dsn) {
     // retain for 90 days and employees have read access.
     sendDefaultPii: false,
     beforeSend: beforeSendScrub,
+    beforeSendTransaction: beforeSendTransactionScrub,
     beforeBreadcrumb: beforeBreadcrumbScrub,
-    // Replays only in production — they cost more quota.
-    replaysSessionSampleRate: process.env.NEXT_PUBLIC_VERCEL_ENV === "production" ? 0.01 : 0,
-    replaysOnErrorSampleRate: 1.0,
-    // Privacy: never capture user input fields or text content
-    // (we're a privacy-first product; behavior should match the
-    // marketing copy).
-    integrations: [
-      Sentry.replayIntegration({
-        maskAllText: true,
-        maskAllInputs: true,
-        blockAllMedia: true,
-      }),
-    ],
   });
 
   // Expose Sentry on `window` only in non-production builds.

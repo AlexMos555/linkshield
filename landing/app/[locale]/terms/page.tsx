@@ -16,8 +16,6 @@ import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
 const SITE_URL = "https://cleanway.ai";
-/** Index of the "Privacy" section, which gets a link to the policy. */
-const PRIVACY_SECTION = 6;
 
 function urlFor(locale: Locale | string, path: string): string {
   return locale === routing.defaultLocale ? `${SITE_URL}${path}` : `${SITE_URL}/${locale}${path}`;
@@ -103,7 +101,7 @@ export default async function Terms({
       title={t("title")}
       updated={t("updated")}
       sections={sections}
-      slots={{ [PRIVACY_SECTION]: privacyLink, [sections.length - 1]: contact }}
+      slots={{ privacy: privacyLink, contact }}
     />
   );
 }

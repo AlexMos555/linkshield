@@ -11,7 +11,7 @@
     "support": "Support"
   },
   "Hero": {
-    "badge": "{recall}% recall on fresh phishing URLs (measured)",
+    "badge": "In our latest benchmark, our server flagged {recall}% of fresh phishing links as dangerous",
     "title_part1": "Phishing protection that",
     "title_part2": "respects your privacy",
     "subtitle": "Cleanway for Android blocks known scam and phishing sites in every app on your phone — the browser, messengers, email. Free, no account needed. To check a site we send only its name (like example.com), never the full link or what is on the page.",
@@ -22,7 +22,7 @@
   },
   "FinalCta": {
     "title": "Ready to browse safely?",
-    "subtitle": "Free. No account needed. We only ever see the names of the sites being checked.",
+    "subtitle": "Free. No account needed. To check a site, we need only its name.",
     "cta_primary": "Get protected — free",
     "cta_business": "For Business Teams"
   },
@@ -49,7 +49,7 @@
       {
         "icon": "🔗",
         "title": "Checks the links you tap",
-        "desc": "Make Cleanway your default app for links and it checks each link you tap. Known scam sites won't open; other sites are checked in the background, and Cleanway warns you if one turns out to be dangerous."
+        "desc": "Make Cleanway your default app for links and it checks each link you tap. Known scam sites won't open. Other sites open straight away and, while protection is on, are checked in the background; if our server finds one dangerous, Cleanway warns you — after the page has already opened."
       },
       {
         "icon": "💬",
@@ -94,55 +94,18 @@
     ]
   },
   "PricingTeaser": {
-    "heading": "Simple, transparent pricing",
-    "unit_forever": "/forever",
-    "unit_month": "/month",
-    "most_popular": "Most Popular",
-    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
-    "free": {
-      "name": "Free",
-      "price": "$0",
-      "features": [
-        "10 API checks/day",
-        "Unlimited local checks",
-        "Privacy Audit (grade only)",
-        "Link badges on all pages"
-      ],
-      "cta": "Get Started"
-    },
-    "personal": {
-      "name": "Personal",
-      "price": "$4.99",
-      "features": [
-        "Unlimited checks",
-        "Full Privacy Audit breakdown",
-        "Weekly Security Report",
-        "Security Score + tips",
-        "Priority support"
-      ],
-      "cta": "Start Free Trial"
-    },
-    "family": {
-      "name": "Family",
-      "price": "$9.99",
-      "features": [
-        "Everything in Personal",
-        "Up to 6 devices",
-        "Family Hub with E2E alerts",
-        "Parental mode"
-      ],
-      "cta": "Start Free Trial"
-    },
     "free_only_heading": "Protection is free",
     "free_only_body": "Blocking scam sites and checking links and messages cost nothing and need no account. There are no paid plans in your country right now.",
-    "free_only_cta": "Get the Android app"
+    "free_only_cta": "Get the Android app",
+    "free_body_with_plans": "Blocking scam sites and checking links and messages cost nothing and need no account. Paid plans are optional and never switch the protection itself off.",
+    "plans_link": "See paid plans"
   },
   "Privacy": {
     "heading": "Privacy is not a feature. It's the architecture.",
     "server_heading": "What reaches our server",
     "server_items": [
       "The name of a site being checked (like example.com) — never the full link or the page",
-      "Your IP address, to limit how many checks one connection can make — it is not stored as is",
+      "Your IP address, to limit how many checks one connection can make — kept as is for up to an hour, only for that",
       "Your email and plan — only if you create an account"
     ],
     "server_note": "To judge a site, our server may ask services such as Google Safe Browsing about its name — only the name, never who you are.",
@@ -153,7 +116,9 @@
       "The text of messages you check",
       "The keys to your family's encrypted alerts"
     ],
-    "device_note": "You can clear the check history in the app's Settings."
+    "device_note": "You can clear the check history in the app's Settings.",
+    "dns_heading": "Who else sees site names",
+    "dns_note": "While protection is on, your phone looks up the addresses of sites it doesn't block through a public DNS service — Cloudflare or Quad9 — instead of your operator's. Like any DNS service, it sees the site's name and your connection's IP address. Cleanway does not receive these lookups."
   },
   "Testimonials": {
     "heading": "What we hold ourselves to",
@@ -188,7 +153,7 @@
       },
       {
         "q": "Can I use it together with a VPN?",
-        "a": "Not at the same time. Cleanway's protection uses Android's VPN mechanism to check site names on the phone — your traffic doesn't travel anywhere through it — and Android runs only one such service at a time. If you turn on another VPN, Cleanway's protection switches off. When you are done, open Cleanway and turn protection back on. Checking a site or a message by hand in the app keeps working either way."
+        "a": "Not at the same time. Cleanway's protection uses Android's VPN mechanism only for site names: the phone checks each name against the list and looks up the ones that aren't blocked in a public DNS service (Cloudflare or Quad9). The rest of your traffic goes as usual — not through Cleanway and not through another country. Android runs only one such service at a time, so if you turn on another VPN, Cleanway's protection switches off. When you are done, open Cleanway and turn protection back on. Checking a site or a message by hand in the app keeps working either way."
       },
       {
         "q": "How is this different from Google Safe Browsing?",
@@ -200,7 +165,7 @@
       },
       {
         "q": "Does Cleanway catch every scam?",
-        "a": "No, and nobody can honestly promise that. Cleanway blocks sites that are already on the list of known scam sites and checks others as fast as it can, but a brand-new scam site can open before anyone knows about it. Never enter card details or codes from text messages on a site you opened from a message link."
+        "a": "No, and nobody can honestly promise that. Cleanway blocks sites that are already on the list of known scam sites. Links you open through Cleanway are also checked in the background, but a warning, if any, comes after the page has opened, and a brand-new scam site can open with no warning at all. Never enter card details or codes from text messages on a site you opened from a message link."
       },
       {
         "q": "Will Cleanway ever call me or text me a link?",
@@ -382,7 +347,7 @@
     "caveats_heading": "Honest caveats",
     "results_not_publishable": "The latest snapshot ({date}) is too small to quote: {phishing} phishing links, {classified} of them with a Cleanway verdict. We show numbers only when a run has at least {min_phishing} phishing links and at least {min_classified} verdicts. Every weekly run, small ones included, is in the repository.",
     "results_snapshot": "Snapshot: {date}. Sample: {phishing} phishing links, {legit} legitimate sites.",
-    "fp_not_measured": "False alarms were not measured in this run: too few legitimate sites got a verdict from Cleanway.",
+    "fp_not_measured": "We show no false-alarm rate for this run: too few real sites got an answer from Cleanway, or the sample holds only sites our server treats as safe without checking (see the caveats below).",
     "all_runs_link": "All weekly results on GitHub",
     "col_service": "Service",
     "col_recall": "Recall",
@@ -396,16 +361,17 @@
     "col_fp": "False alarms",
     "col_tn": "Correct",
     "dataset_phishing_desc": "fresh links from the URLhaus and PhishTank public feeds, downloaded at each run and de-duplicated by domain.",
-    "dataset_safe_desc": "random domains from the Tranco top-1M list, ranks 100 to 100,000 (the very top is skipped because it is too easy), with a fixed random seed so the sample can be reproduced.",
+    "dataset_safe_desc": "random domains from the Tranco top-1M list, ranks 100 to 100,000, with a fixed random seed so the sample can be reproduced.",
     "mapping_cleanway": "Cleanway: \"dangerous\" counts as dangerous, \"safe\" as safe, \"caution\" as unknown.",
     "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: a blocked answer (NXDOMAIN or 0.0.0.0 / ::) counts as dangerous, a normal answer as safe.",
     "mapping_virustotal": "VirusTotal: dangerous when at least 2 of its vendors flag the link; a single vendor is ignored as too noisy.",
-    "caveat_endpoint": "Cleanway is measured through its public site-check endpoint — the same anonymous path a visitor uses — not through a privileged one.",
+    "caveat_endpoint": "Cleanway is measured through its public site-check endpoint — the same anonymous path a visitor uses — not through a privileged one. It measures our server's verdict, not blocking on the phone: the phone's protection blocks straight away only the sites on its list, so this number does not say how many of these links a phone would block.",
     "caveat_rate_limit": "Right now the weekly run is slowed down by that endpoint's rate limit, so many links get no verdict and most runs are too small to publish.",
     "caveat_phishtank": "PhishTank's free lookup often answers \"not indexed\" for fresh links because its database lags by a few hours, so its column often shows \"—\".",
     "caveat_gsb": "Google Safe Browsing needs an API key; when none is configured for the run, its column shows \"—\".",
     "caveat_nxdomain": "A domain that no longer exists also gets NXDOMAIN from Cloudflare and is counted as a Cloudflare block, which flatters Cloudflare on phishing domains that have already been taken down.",
-    "caveat_latency": "Response times are measured from the machine that runs the script (a cloud runner in the US or EU); from other regions they will differ."
+    "caveat_latency": "Response times are measured from the machine that runs the script (a cloud runner in the US or EU); from other regions they will differ.",
+    "caveat_allowlist": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, and the sample of real sites above comes from that same range. So it cannot show how often Cleanway wrongly calls a less famous real site dangerous, and we publish no false-alarm rate from it. We will once the sample includes real sites outside that list."
   },
   "Install": {
     "browser_label": "Browser extensions",
@@ -420,13 +386,13 @@
     "email_hint": "Please include your phone model and what happened.",
     "faq_title": "Common questions",
     "q_vpn": "Is this a VPN that hides my traffic?",
-    "a_vpn": "No. Cleanway uses Android's VPN mechanism only to run a local filter on your phone that blocks scam sites in every app. It does not hide where you go and does not send your traffic through another country. Lookups for sites it doesn't block go to a public DNS service (Cloudflare 1.1.1.1 or Quad9 9.9.9.9); from app version 1.0.2, first to the DNS of your mobile operator or Wi-Fi network.",
+    "a_vpn": "No. Cleanway uses Android's VPN mechanism only to run a local filter on your phone that blocks scam sites in every app. It does not hide where you go and does not send your traffic through another country. To reach the sites it doesn't block, your phone looks up their names in a public DNS service — Cloudflare (1.1.1.1) or Quad9 (9.9.9.9).",
     "q_install": "How do I install it?",
     "a_install": "Download the app, open the file and allow the installation — the Android page walks through every warning you may see on the way. On the first run, tap \"Turn on protection\" and allow the connection Android asks about.",
     "q_off": "How do I turn it off?",
     "a_off": "Open the app and tap \"Pause protection\". You can turn it back on anytime.",
     "q_fp": "A safe site is blocked — what do I do?",
-    "a_fp": "On the block screen, tap \"Not a scam\". Cleanway will stop blocking that site on your phone.",
+    "a_fp": "Open Cleanway, go to the History tab and tap that site. Then tap \"Not a scam — allow it\" and confirm. Cleanway will stop blocking the site on your phone. The same button is in the block notification, if one appeared. Allow a site only if you are sure it is the real one.",
     "q_privacy": "What do you collect?",
     "a_privacy": "Sites are checked against the list on your phone. When a site needs a closer look, only its name goes to our server — not the full link and not who you are. The text of messages you check never leaves the phone. The full details are in the privacy policy.",
     "email_not_live_title": "We can't receive email yet",
@@ -521,7 +487,10 @@
     "share_copied": "Copied!",
     "share_text": "{verdict}: {domain} — Cleanway risk score {score}/100",
     "share_title": "Is {domain} safe?",
-    "share_email": "Email"
+    "share_email": "Email",
+    "invalid_input": "That doesn't look like a site name. Type something like example.com.",
+    "share_grade_text": "{domain} — Cleanway privacy grade: {grade}",
+    "share_grade_title": "{domain} — privacy grade"
   },
   "NotFound": {
     "title": "Page not found",
@@ -534,7 +503,7 @@
     "meta_description": "The rules for using Cleanway: what the service does and does not promise, accounts, paid plans and acceptable use.",
     "back": "Back to Cleanway",
     "title": "Terms of use",
-    "updated": "Last updated: September 26, 2026",
+    "updated": "Last updated: September 27, 2026",
     "privacy_link": "Read the privacy policy",
     "contact_live": "Questions about these terms:",
     "contact_not_live": "Our support mailbox is still being set up, so we cannot receive email yet. The support page has answers to common questions.",
@@ -564,7 +533,7 @@
       {
         "title": "3. Free use and accounts",
         "paragraphs": [
-          "Blocking scam sites is free and works without an account. An account is needed only for family features and paid plans. If you create one, use a real email address and keep access to it: we sign you in with one-time links sent there."
+          "Blocking scam sites is free and works without an account. An account is needed only for family features and paid plans. If you create one, use a real email address and keep access to it: you sign in with one-time codes or links sent there."
         ]
       },
       {
@@ -596,6 +565,7 @@
         ]
       },
       {
+        "id": "privacy",
         "title": "7. Privacy",
         "paragraphs": [
           "How we handle data is described in the privacy policy."
@@ -620,6 +590,7 @@
         ]
       },
       {
+        "id": "contact",
         "title": "11. Contact",
         "paragraphs": []
       }
@@ -630,7 +601,7 @@
     "meta_description": "What Cleanway receives, what stays on your phone, who else sees what, and how long anything is kept.",
     "back": "Back to Cleanway",
     "title": "Privacy policy",
-    "updated": "Last updated: September 26, 2026",
+    "updated": "Last updated: September 27, 2026",
     "intro": "This policy explains in plain words what data Cleanway handles, why, and who else sees it. It describes the service as it works today. If something here does not match what Cleanway actually does, that is a mistake and we want to hear about it.",
     "contact_live": "Questions and requests about your data:",
     "contact_not_live": "Our support mailbox is still being set up, so we cannot receive email yet. This section will show the address as soon as it works.",
@@ -655,7 +626,7 @@
         "paragraphs": [
           "When you turn on protection, Cleanway starts a local filter using Android's VPN mechanism. Only DNS queries pass through it — the questions your phone asks to find a site's address, such as \"where is example.com?\". The contents of pages, your messages and calls do not go through the filter and are not read.",
           "Each site name is compared with the list of scam sites stored on the phone. If it is on the list, the phone doesn't open the site, and a note (the site's name, the time and what happened) is saved on the phone for the app's History.",
-          "Names that are not on the list are passed on to a public DNS service to find the address — what a phone does without Cleanway too, only through a different service. In app version 1.0.1 these queries go to Cloudflare (1.1.1.1), with Quad9 (9.9.9.9) as a backup and Cloudflare's encrypted DNS-over-HTTPS as a last resort. From version 1.0.2 they go first to the DNS of your mobile operator or Wi-Fi network, and Cloudflare and Quad9 are used only if it doesn't answer. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries."
+          "Names that are not on the list are passed on to a public DNS service to find the address — what a phone does without Cleanway too, only through a different service. In app version 1.0.1 these queries go to Cloudflare (1.1.1.1), with Quad9 (9.9.9.9) as a backup and Cloudflare's encrypted DNS-over-HTTPS as a last resort. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries."
         ]
       },
       {
@@ -671,13 +642,14 @@
           "To decide whether the site is dangerous, our server may:"
         ],
         "items": [
-          "ask external checking services about the name: Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus DBL, SURBL, AlienVault OTX and IPQualityScore. They receive only the site name, not who you are;",
+          "ask external checking services about the name: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX and IPQualityScore, and look up when the site was registered through the RDAP service rdap.org. They receive only the site name, not who you are;",
+          "compare its answer with Cloudflare's DNS filter (1.1.1.1 for Families), which receives the site name in an ordinary DNS query;",
           "look at the site itself (its address, certificate and settings) — from our server, not from your phone;",
           "in borderline cases, ask an AI model made by Anthropic for a second opinion. It receives only abstract signals, without the site name."
         ],
         "after": [
           "The result is kept in our server's cache for up to 24 hours so that a repeat check is fast. It is tied to the site, not to you.",
-          "Your IP address is used to limit how many checks one connection can make. It is not stored as is; where a record is needed, we keep only a shortened cryptographic hash of it."
+          "Your IP address is used to limit how many checks one connection can make. For that it is kept as is, as a counter in our server's memory, for up to an hour, and then deleted. The security log of account actions stores only a shortened cryptographic hash of it, never the address itself."
         ]
       },
       {
@@ -700,8 +672,8 @@
       {
         "title": "8. Account and email",
         "paragraphs": [
-          "An account is optional: it is needed only for family features and paid plans. If you create one, we store your email address, your plan, a random device ID (not derived from your phone's hardware) and your app settings. We sign you in with one-time links sent to your email; there is no password.",
-          "Accounts are stored with our database provider, Supabase."
+          "An account is optional: it is needed only for family features and paid plans. If you create one, we store your email address, your plan, a random device ID (not derived from your phone's hardware) and your app settings. You sign in with a one-time code (in the app) or a one-time link (on the website) sent to your email; there is no password.",
+          "Accounts are stored with our database provider, Supabase. Supabase may also record the IP address a sign-in came from in its own security log."
         ]
       },
       {
@@ -720,7 +692,7 @@
       {
         "title": "11. Error reports",
         "paragraphs": [
-          "The app, the website and our server may send technical error reports to Sentry so that we can fix bugs. Before sending, we remove site names and addresses from them. Sentry keeps them for up to 90 days."
+          "The app, the website and our server may send Sentry technical error reports, so that we can fix bugs, and timing measurements for about one request in ten. We remove email addresses, IP addresses and access keys from error reports. A report or a measurement can still contain the address of a page or request — for example, the name of a site that was being checked. The website does not record sessions. Sentry keeps this data for up to 90 days."
         ]
       },
       {
@@ -738,7 +710,7 @@
           "GitHub — hosts the app file you download and sees your IP address when you download it;",
           "Cloudflare and Quad9 — public DNS used by the app, see section 3;",
           "the checking services listed in section 5, and Anthropic — receive site names or abstract signals only;",
-          "Sentry — error reports; Stripe — payments outside Russia."
+          "Sentry — error reports and timing measurements; Stripe — payments outside Russia."
         ],
         "after": [
           "These companies are based outside Russia, mainly in the USA and the EU, so the data they process is transferred abroad."
@@ -748,6 +720,7 @@
         "title": "14. How long we keep data",
         "items": [
           "site check results in the server cache — up to 24 hours;",
+          "your IP address in the check-limit counter — up to an hour;",
           "account data — until you delete the account; after a deletion request we keep it for 30 more days in case you change your mind, then delete it;",
           "the security log of account actions (with hashed IP addresses) — 2 years;",
           "weekly counters for accounts (numbers only, no site names) — 1 year;",
@@ -758,7 +731,7 @@
       {
         "title": "15. Your rights",
         "paragraphs": [
-          "You can ask what data about you we hold, ask us to correct or delete it, and withdraw your consent. Without an account we hold nothing that identifies you. To delete an account or make a request, contact us as described below. Removing the app deletes everything it stored on the phone."
+          "You can ask what data about you we hold, ask us to correct or delete it, and withdraw your consent. Without an account we don't know who you are: we have no name, email or phone number of yours — only the technical data described above, such as your IP address in the check counter and in hosting logs. To delete an account or make a request, contact us as described below. Removing the app deletes everything it stored on the phone."
         ]
       },
       {
@@ -768,6 +741,7 @@
         ]
       },
       {
+        "id": "contact",
         "title": "17. Changes and contact",
         "paragraphs": [
           "If we change this policy, we will publish the new version on this page with a new date."

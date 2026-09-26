@@ -82,13 +82,6 @@ interface HowItWorksStep {
   desc: string;
 }
 
-interface PricingTier {
-  name: string;
-  price: string;
-  features: string[];
-  cta: string;
-}
-
 interface TestimonialItem {
   q: string;
   n: string;
@@ -120,16 +113,16 @@ export default async function Home({ params }: HomeProps) {
   // until a run clears the quality gate — then there is no badge at all rather
   // than a number nobody measured.
   const liveRecall = await loadLiveRecall();
-  // Russian visitors cannot buy the paid plans (Stripe), and the launch promise
-  // is free protection — they get what's included, not prices.
-  const showPaidPlans = paidPlansOffered({ locale });
+  // The home page describes the free Android app, so its pricing block says
+  // what is free — everywhere. The old plan cards sold extension features
+  // (link badges, "10 API checks/day") and a 14-day trial nobody on Android
+  // can get. Where paid plans exist at all, a link leads to /pricing; Russian
+  // visitors cannot buy them (Stripe) and get no link.
+  const showPlansLink = paidPlansOffered({ locale });
   const href = (path: string) => localePath(locale, path);
 
   const featureItems = features.raw("items") as FeatureItem[];
   const howSteps = how.raw("steps") as HowItWorksStep[];
-  const pricingFree = pricing.raw("free") as PricingTier;
-  const pricingPersonal = pricing.raw("personal") as PricingTier;
-  const pricingFamily = pricing.raw("family") as PricingTier;
   const privacyServerItems = privacy.raw("server_items") as string[];
   const privacyDeviceItems = privacy.raw("device_items") as string[];
   const testimonialItems = testimonials.raw("items") as TestimonialItem[];
@@ -230,50 +223,22 @@ export default async function Home({ params }: HomeProps) {
 
       {/* Pricing */}
       <section id="pricing" className="py-20 px-6">
-        {showPaidPlans ? (
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-extrabold text-white text-center mb-14">{pricing("heading")}</h2>
-          <div className="grid md:grid-cols-3 gap-5 items-start stagger">
-            {/* Free */}
-            <div className="bg-slate-800/50 rounded-2xl p-8">
-              <h3 className="text-xl font-bold text-white mb-2">{pricingFree.name}</h3>
-              <div className="mb-6"><span className="text-4xl font-extrabold text-white">{pricingFree.price}</span><span className="text-sm text-slate-500">{pricing("unit_forever")}</span></div>
-              <ul className="space-y-2 text-sm text-slate-400 mb-8">
-                {pricingFree.features.map((f) => <li key={f}>{f}</li>)}
-              </ul>
-              <PrimaryInstallLink data-testid="primary-install-free-card" androidLabel={nav("install_android")} className="block text-center py-3 rounded-xl border border-slate-600 text-slate-300 font-semibold hover:border-slate-400 transition">{pricingFree.cta}</PrimaryInstallLink>
-            </div>
-            {/* Personal */}
-            <div className="bg-slate-800/50 rounded-2xl p-8 pricing-featured relative">
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-green-950 px-4 py-1 rounded-full text-xs font-bold">{pricing("most_popular")}</span>
-              <h3 className="text-xl font-bold text-white mb-2">{pricingPersonal.name}</h3>
-              <div className="mb-6"><span className="text-4xl font-extrabold text-white">{pricingPersonal.price}</span><span className="text-sm text-slate-500">{pricing("unit_month")}</span></div>
-              <ul className="space-y-2 text-sm text-slate-400 mb-8">
-                {pricingPersonal.features.map((f) => <li key={f}>{f}</li>)}
-              </ul>
-              <a href={href("/signup")} className="block text-center py-3 rounded-xl bg-green-500 text-green-950 font-bold hover:bg-green-400 transition">{pricingPersonal.cta}</a>
-            </div>
-            {/* Family */}
-            <div className="bg-slate-800/50 rounded-2xl p-8">
-              <h3 className="text-xl font-bold text-white mb-2">{pricingFamily.name}</h3>
-              <div className="mb-6"><span className="text-4xl font-extrabold text-white">{pricingFamily.price}</span><span className="text-sm text-slate-500">{pricing("unit_month")}</span></div>
-              <ul className="space-y-2 text-sm text-slate-400 mb-8">
-                {pricingFamily.features.map((f) => <li key={f}>{f}</li>)}
-              </ul>
-              <a href={`${href("/signup")}?plan=family`} className="block text-center py-3 rounded-xl border border-slate-600 text-slate-300 font-semibold hover:border-slate-400 transition">{pricingFamily.cta}</a>
-            </div>
-          </div>
-          <p className="text-sm text-slate-400 text-center mt-6">{pricing("trial_note")}</p>
-        </div>
-        ) : (
         <div className="max-w-2xl mx-auto text-center bg-slate-800/50 rounded-2xl p-8">
           <h2 className="text-3xl font-extrabold text-white mb-4">{pricing("free_only_heading")}</h2>
-          <p className="text-slate-400 leading-relaxed mb-8">{pricing("free_only_body")}</p>
+          <p className="text-slate-400 leading-relaxed mb-8">
+            {showPlansLink ? pricing("free_body_with_plans") : pricing("free_only_body")}
+          </p>
           <a data-testid="free-only-android" href={href("/android")} className="inline-block bg-green-500 text-green-950 px-8 py-3 rounded-xl font-bold hover:bg-green-400 transition">
             {pricing("free_only_cta")}
           </a>
+          {showPlansLink && (
+            <p className="mt-6">
+              <a data-testid="home-plans-link" href={href("/pricing")} className="text-sm text-green-400 hover:text-green-300 underline">
+                {pricing("plans_link")}
+              </a>
+            </p>
+          )}
         </div>
-        )}
       </section>
 
       {/* Privacy */}
@@ -295,6 +260,12 @@ export default async function Home({ params }: HomeProps) {
               </ul>
               <p className="text-sm text-green-400 italic mt-4">{privacy("device_note")}</p>
             </div>
+          </div>
+          {/* The third party nobody expects: with protection on, the phone's
+              DNS lookups for unblocked sites go to Cloudflare or Quad9. */}
+          <div data-testid="privacy-dns" className="bg-slate-800/50 rounded-2xl p-8 mt-6">
+            <h3 className="text-lg font-bold text-white mb-2">{privacy("dns_heading")}</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">{privacy("dns_note")}</p>
           </div>
           <p className="text-center mt-8">
             <a href={href("/privacy-policy")} className="text-sm text-green-400 hover:text-green-300 underline">{support("privacy_link")}</a>

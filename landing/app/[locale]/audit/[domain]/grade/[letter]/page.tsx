@@ -130,7 +130,6 @@ export default async function GradePage({ params }: Props) {
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const check = await getTranslations({ locale: safeLocale, namespace: "Check" });
-  const shareLevel = grade === "A" || grade === "B" ? "safe" : grade === "F" ? "dangerous" : "caution";
 
   // JSON-LD Review with the grade as ratingValue. Schema.org accepts
   // string ratings, but Google prefers numeric — map A=5, B=4, ..., F=1.
@@ -245,10 +244,11 @@ export default async function GradePage({ params }: Props) {
             {info.description}
           </p>
 
+          {/* A privacy grade, shared as one — not as a scam verdict with a
+              letter "out of 100". */}
           <ShareScanButton
-            domain={decoded}
-            verdict={check(`level_${shareLevel}`)}
-            score={grade}
+            text={check("share_grade_text", { domain: decoded, grade })}
+            title={check("share_grade_title", { domain: decoded })}
             url={canonical}
           />
         </div>

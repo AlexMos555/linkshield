@@ -82,5 +82,30 @@ export function reasonLabelKey(code: string | undefined | null): string | null {
   return Object.prototype.hasOwnProperty.call(CODE_TO_KEY, code) ? CODE_TO_KEY[code] : null;
 }
 
+/**
+ * The reason lines a scorecard shows, one per plain-language label.
+ *
+ * Many codes share a label — domain_new, new_certificate and
+ * free_ssl_new_domain all read "very new site"; spamhaus_dbl, surbl and
+ * multi_blocklist all read "on blocklists" — and a fresh phishing domain often
+ * carries several of them, so a straight mapping printed the same line two or
+ * three times. The first occurrence wins. `details` and `codes` are the API's
+ * positionally aligned `signals` / `reason_codes`; an unmapped code keeps its
+ * English detail, deduplicated by that text.
+ */
+export function reasonLines(
+  details: readonly string[],
+  codes: readonly (string | undefined)[] | undefined,
+  label: (key: string) => string,
+): string[] {
+  const entries = details.map((detail, i) => {
+    const key = reasonLabelKey(codes?.[i]);
+    return key ? { id: `label:${key}`, text: label(key) } : { id: `detail:${detail}`, text: detail };
+  });
+  return entries
+    .filter((entry, i) => entries.findIndex((other) => other.id === entry.id) === i)
+    .map((entry) => entry.text);
+}
+
 /** Exported for the drift test only. */
 export const REASON_CODE_TO_KEY = CODE_TO_KEY;

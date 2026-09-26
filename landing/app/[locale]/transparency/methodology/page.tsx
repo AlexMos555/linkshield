@@ -204,6 +204,7 @@ export default async function MethodologyPage({
   const transparencyHref = localePath(safeLocale, "/transparency");
   const caveats = [
     t("caveat_endpoint"),
+    t("caveat_allowlist"),
     t("caveat_rate_limit"),
     t("caveat_phishtank"),
     t("caveat_gsb"),

@@ -2,10 +2,11 @@
  * Privacy policy, in the reader's language.
  *
  * Grounded in docs/PRIVACY.md, which is written against the code: the VPN-based
- * DNS shield and what it sees, where lookups for unblocked sites go (and how
- * that changes in Android 1.0.2), the blocklist download, domain-only site
- * checks and the third parties behind them, the on-device message check,
- * accounts, Family, retention. The previous page was English-only, dated May,
+ * DNS shield and what it sees, where lookups for unblocked sites go in the
+ * released app version (scripts/check-landing-claims.py fails when
+ * mobile/app.json moves on and the policy still names the old version), the
+ * blocklist download, domain-only site checks and the third parties behind
+ * them, the on-device message check, accounts, Family, retention. The previous page was English-only, dated May,
  * described a browser extension that isn't published, and said "your browsing
  * data lives only on your device" (report #11).
  *
@@ -96,7 +97,7 @@ export default async function PrivacyPolicy({
       updated={t("updated")}
       intro={t("intro")}
       sections={sections}
-      slots={{ [sections.length - 1]: contact }}
+      slots={{ contact }}
     />
   );
 }

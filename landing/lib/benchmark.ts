@@ -26,10 +26,20 @@ export interface ResolverStats {
   latency_p50_ms: number | null;
 }
 
+export interface BenchmarkSources {
+  /**
+   * True only when the legitimate sample holds real sites OUTSIDE the list
+   * our server trusts without analysis (Tranco top 100k, is_trusted_top_domain).
+   * Written by scripts/eval_fresh_urls.py; absent in older snapshots.
+   */
+  legit_outside_allowlist?: boolean;
+}
+
 export interface BenchmarkSnapshot {
   ts: string;
   n_phishing: number;
   n_safe: number;
+  sources?: BenchmarkSources;
   phishing: Record<string, ResolverStats>;
   safe: Record<string, ResolverStats>;
 }
@@ -69,9 +79,18 @@ export function recallIsPublishable(snapshot: BenchmarkSnapshot | null): boolean
   );
 }
 
-/** True when enough legitimate sites got a verdict to quote a false-positive rate. */
+/**
+ * True when a false-positive rate from this snapshot would mean something:
+ * enough legitimate sites got a verdict AND they were sites our server really
+ * analysed. The benchmark draws its legitimate sample from Tranco ranks
+ * 100–100,000, and the public check answers every one of those "safe" without
+ * looking (is_trusted_top_domain). A rate from that sample is near 0% by
+ * construction — the hand-written "0.08%" again, with a real-looking source —
+ * while real Russian sites outside the top got "Dangerous" 6 times in 12
+ * (report 2026-09-25 #1).
+ */
 export function falsePositiveRateIsPublishable(snapshot: BenchmarkSnapshot | null): boolean {
-  if (!snapshot) return false;
+  if (!snapshot || snapshot.sources?.legit_outside_allowlist !== true) return false;
   const ours = snapshot.safe?.[OURS];
   return typeof ours?.fpr === "number" && classified(ours, "tn", "fp") >= MIN_SAFE_CLASSIFIED;
 }

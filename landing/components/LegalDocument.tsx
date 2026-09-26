@@ -7,6 +7,13 @@ import type { ReactNode } from "react";
  * lives in packages/i18n-strings like every other user-facing sentence.
  */
 export interface LegalSection {
+  /**
+   * Stable name for a section a page attaches content to ("privacy",
+   * "contact"). Positions differ the moment one locale gains or loses a
+   * section; ids don't. scripts/test-landing-honesty.mjs checks every locale
+   * has the same sections with the same ids.
+   */
+  id?: string;
   title: string;
   paragraphs?: string[];
   items?: string[];
@@ -21,8 +28,8 @@ interface LegalDocumentProps {
   updated: string;
   intro?: string;
   sections: LegalSection[];
-  /** Extra content rendered inside the section at this index (e.g. contact details). */
-  slots?: Record<number, ReactNode>;
+  /** Extra content rendered inside the section with this id (e.g. contact details). */
+  slots?: Readonly<Record<string, ReactNode>>;
 }
 
 const body: React.CSSProperties = { fontSize: 15, lineHeight: 1.8, color: "#94a3b8" };
@@ -38,8 +45,8 @@ export function LegalDocument({ backHref, backLabel, backArrow, title, updated, 
         <p style={{ color: "#64748b", marginBottom: intro ? 20 : 40 }}>{updated}</p>
         {intro && <p style={{ ...body, marginBottom: 40 }}>{intro}</p>}
 
-        {sections.map((section, index) => (
-          <section key={section.title} style={{ marginBottom: 32 }}>
+        {sections.map((section) => (
+          <section key={section.title} id={section.id} style={{ marginBottom: 32 }}>
             <h2 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", marginBottom: 12 }}>{section.title}</h2>
             <div style={body}>
               {section.paragraphs?.map((text) => <p key={text} style={{ margin: "0 0 12px" }}>{text}</p>)}
@@ -49,7 +56,7 @@ export function LegalDocument({ backHref, backLabel, backArrow, title, updated, 
                 </ul>
               )}
               {section.after?.map((text) => <p key={text} style={{ margin: "0 0 12px" }}>{text}</p>)}
-              {slots[index]}
+              {section.id ? slots[section.id] : null}
             </div>
           </section>
         ))}

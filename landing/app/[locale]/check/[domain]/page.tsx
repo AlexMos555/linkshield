@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import CheckForm from "@/components/CheckForm";
 import { InstallButtons } from "@/components/InstallButtons";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import ShareScanButton from "@/components/ShareScanButton";
 import { routing, type Locale } from "@/i18n/routing";
+import { hostFromSegment } from "@/lib/check-host";
+import { displayHost } from "@/lib/display-host";
 import { localePath } from "@/lib/locale-path";
-import { reasonLabelKey } from "@/lib/reason-label";
+import { reasonLines } from "@/lib/reason-label";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -60,23 +64,26 @@ function resolveLocale(locale: string): Locale {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain, locale } = await params;
-  const decoded = decodeURIComponent(domain);
+  // Not a site name: the page redirects or 404s; keep it out of the index.
+  const decoded = hostFromSegment(domain);
+  if (!decoded) return { robots: { index: false, follow: false } };
   const safeLocale = resolveLocale(locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Check" });
 
-  const canonical = urlFor(safeLocale, domain);
+  const canonical = urlFor(safeLocale, decoded);
 
   // hreflang map — every locale plus an x-default pointing at English
   const languages: Record<string, string> = {};
   for (const loc of routing.locales) {
-    languages[loc] = urlFor(loc as Locale, domain);
+    languages[loc] = urlFor(loc as Locale, decoded);
   }
-  languages["x-default"] = urlFor(routing.defaultLocale as Locale, domain);
+  languages["x-default"] = urlFor(routing.defaultLocale as Locale, decoded);
 
-  const title = t("meta_title", { domain: decoded });
-  const description = t("meta_description", { domain: decoded });
-  const ogTitle = t("heading", { domain: decoded });
-  const ogDescription = t("og_description", { domain: decoded });
+  const shown = displayHost(decoded);
+  const title = t("meta_title", { domain: shown });
+  const description = t("meta_description", { domain: shown });
+  const ogTitle = t("heading", { domain: shown });
+  const ogDescription = t("og_description", { domain: shown });
 
   return {
     title,
@@ -129,22 +136,25 @@ function isLevel(value: unknown): value is Level {
 }
 
 /**
- * Plain-language reason labels in the page's language. The API sends an
- * English `detail` per reason plus a code; a known code gets the app's label,
- * anything else keeps the API's wording rather than disappearing.
+ * Plain-language reason labels in the page's language, each once. The API
+ * sends an English `detail` per reason plus a code; a known code gets the
+ * app's label, anything else keeps the API's wording rather than disappearing.
  */
 function reasonLabels(result: ScanResult, label: (key: string) => string): string[] {
-  const signals = result.signals ?? [];
-  return signals.map((detail, i) => {
-    const key = reasonLabelKey(result.reason_codes?.[i]);
-    return key ? label(key) : detail;
-  });
+  return reasonLines(result.signals ?? [], result.reason_codes, label);
 }
 
 export default async function CheckPage({ params }: Props) {
   const { domain, locale } = await params;
-  const decodedDomain = decodeURIComponent(domain);
   const safeLocale = resolveLocale(locale);
+  // Only a site name is ever looked up. A pasted link that reached this route
+  // (/check/bank.ru%2Fconfirm%3Femail%3D...) is cut down to its host before
+  // anything is fetched; something with no host in it is not a check.
+  const decodedDomain = hostFromSegment(domain);
+  if (!decodedDomain) notFound();
+  if (decodedDomain !== domain) redirect(pathFor(safeLocale, decodedDomain));
+  // What people read: президент.рф, not xn--d1abbgf6aiiy.xn--p1ai (lib/display-host.ts).
+  const shownDomain = displayHost(decodedDomain);
   const t = await getTranslations({ locale: safeLocale, namespace: "Check" });
   // Android-only labels for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
@@ -157,7 +167,7 @@ export default async function CheckPage({ params }: Props) {
   const level: Level | null = isLevel(result.level) ? result.level : null;
   const score = typeof result.score === "number" ? result.score : null;
   const color = level ? LEVEL_COLORS[level] : "#64748b";
-  const canonical = urlFor(safeLocale, domain);
+  const canonical = urlFor(safeLocale, decodedDomain);
   const signals = level ? reasonLabels(result, (key) => reasons(key)) : [];
   const href = (path: string) => localePath(safeLocale, path);
 
@@ -171,7 +181,7 @@ export default async function CheckPage({ params }: Props) {
             "@type": "WebPage",
             "@id": `${canonical}#webpage`,
             url: canonical,
-            name: t("heading", { domain: decodedDomain }),
+            name: t("heading", { domain: shownDomain }),
             inLanguage: safeLocale,
             isPartOf: { "@id": `${SITE_URL}#website` },
           },
@@ -183,10 +193,10 @@ export default async function CheckPage({ params }: Props) {
             publisher: { "@type": "Organization", name: "Cleanway", url: SITE_URL },
             itemReviewed: {
               "@type": "WebSite",
-              name: decodedDomain,
+              name: shownDomain,
               url: `https://${decodedDomain}`,
             },
-            reviewBody: t(`verdict_${level}`, { domain: decodedDomain }),
+            reviewBody: t(`verdict_${level}`, { domain: shownDomain }),
             // Our score is a risk score (0 = no risk); the rating is its inverse.
             ...(score !== null && {
               reviewRating: {
@@ -262,7 +272,7 @@ export default async function CheckPage({ params }: Props) {
             </div>
             <div style={{ minWidth: 0 }}>
               <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", margin: 0, overflowWrap: "anywhere" }}>
-                {t("heading", { domain: decodedDomain })}
+                {t("heading", { domain: shownDomain })}
               </h1>
               {level && (
                 <p style={{ fontSize: 18, color, fontWeight: 600, margin: "4px 0 0" }}>
@@ -288,7 +298,7 @@ export default async function CheckPage({ params }: Props) {
           </div>
 
           <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.6, marginBottom: 20 }}>
-            {level ? t(`verdict_${level}`, { domain: decodedDomain }) : t("check_failed", { domain: decodedDomain })}
+            {level ? t(`verdict_${level}`, { domain: shownDomain }) : t("check_failed", { domain: shownDomain })}
           </p>
 
           {signals.length > 0 && (
@@ -313,9 +323,8 @@ export default async function CheckPage({ params }: Props) {
 
           {level && (
             <ShareScanButton
-              domain={decodedDomain}
-              verdict={t(`level_${level}`)}
-              score={score ?? "?"}
+              text={t("share_text", { verdict: t(`level_${level}`), domain: shownDomain, score: String(score ?? "?") })}
+              title={t("share_title", { domain: shownDomain })}
               url={canonical}
             />
           )}
@@ -354,43 +363,14 @@ export default async function CheckPage({ params }: Props) {
         {/* Check Another */}
         <div style={{ marginTop: 32, textAlign: "center" }}>
           <p style={{ color: "#64748b", fontSize: 14, marginBottom: 12 }}>{t("another")}</p>
-          <form action={href("/check")} method="get" style={{ display: "flex", gap: 8, maxWidth: 400, margin: "0 auto" }}>
-            {/* aria-label provides an accessible name for the input.
-                Placeholder text alone disappears on focus + isn't read
-                by some screen readers. (Audit landing-a11y MEDIUM
-                "Domain search form in check/[domain]/page.tsx has no
-                accessible label — placeholder only".) */}
-            <input
-              name="q"
-              placeholder={t("input_placeholder")}
-              aria-label={t("input_label")}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                padding: "10px 14px",
-                borderRadius: 8,
-                border: "1px solid #334155",
-                background: "#0f172a",
-                color: "#e2e8f0",
-                fontSize: 14,
-                outline: "none",
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                background: "#3b82f6",
-                color: "white",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: 8,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {t("submit")}
-            </button>
-          </form>
+          <CheckForm
+            locale={safeLocale}
+            placeholder={t("input_placeholder")}
+            label={t("input_label")}
+            submit={t("submit")}
+            invalid={t("invalid_input")}
+            variant="compact"
+          />
         </div>
 
         <p style={{ textAlign: "center", fontSize: 12, color: "#475569", marginTop: 32 }}>
