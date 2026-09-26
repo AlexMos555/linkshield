@@ -24,29 +24,33 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius } from "../src/utils/theme";
 import { useMessageCheck } from "../src/hooks/useMessageCheck";
-import { takeHandedOffMessage } from "../src/services/message-handoff";
+import { takeForScreen } from "../src/services/message-handoff";
 import { MessageResult } from "../src/components/message/MessageResult";
 
 export default function MessageScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  // from=share: the share router left the text in the in-memory handoff.
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  // from=share: the share router left the text in the in-memory handoff,
+  // under the id in `handoff`.
+  const { from, handoff } = useLocalSearchParams<{ from?: string; handoff?: string }>();
   const fromShare = from === "share";
-  // Taken exactly once, on the first render; a second take returns null.
-  const [shared] = useState(() => (fromShare ? takeHandedOffMessage() : null));
-  const [text, setText] = useState(shared ?? "");
+  const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
   const [clipboardEmpty, setClipboardEmpty] = useState(false);
   const { state, check, retryLinks, reset } = useMessageCheck();
-  const autoStarted = useRef(false);
+  const handled = useRef<string | null>(null);
 
-  // Someone who shared a message wants the verdict, not a Check button.
+  // Someone who shared a message wants the verdict, not a Check button — and
+  // when this screen is already open and ANOTHER message is shared, the router
+  // hands it a new `handoff` id instead of a new screen. Each id is checked
+  // once; a new one replaces whatever is on screen (report #5).
   useEffect(() => {
-    if (!shared || autoStarted.current) return;
-    autoStarted.current = true;
+    const shared = takeForScreen({ from, handoff }, handled);
+    if (!shared) return;
+    setText(shared);
+    setClipboardEmpty(false);
     void check(shared);
-  }, [shared, check]);
+  }, [from, handoff, check]);
 
   // Same exit as shared.tsx: going back, never stacking a fresh tabs navigator.
   const leave = useCallback(() => {
