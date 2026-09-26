@@ -19,7 +19,7 @@ on:
         type: boolean
         default: false
       force:
-        description: 'Bypass the churn gate (intentional big change, e.g. adding a feed)'
+        description: 'Bypass the churn gate and accept shrunken feed sizes (intentional big change, e.g. adding a feed)'
         type: boolean
         default: false
 
@@ -50,10 +50,17 @@ jobs:
             set +e
             python scripts/refresh_dangerous_domains.py ${{ inputs.force && '--force' || '' }}
             code=$?
+            # Exit codes: 0 published; 2 no feed readable; 4 a publish gate
+            # kept the previous set; 5 post-publish check failed, rolled back;
+            # 6 published, but a feed has been down or truncated for 12h+
+            # (its names are being carried — look at the FEED DEGRADED lines).
             # Exit 3 = another run holds the lock (overlap) — not a failure.
             if [ "$code" = "3" ]; then
               echo "::warning::Another refresh holds the lock. Skipping."
               exit 0
+            fi
+            if [ "$code" = "6" ]; then
+              echo "::error::Blocklist published, but a threat feed has been degraded for 12h+. See the FEED DEGRADED lines above."
             fi
             exit $code
           fi

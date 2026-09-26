@@ -17,9 +17,12 @@ import io
 import json
 import pathlib
 import re
+import struct
 import sys
 import time
 import urllib.error
+
+import pytest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -78,11 +81,34 @@ def _http(url: str, status: int, body: bytes):
     return _FakeResponse(body, {}, status=status)
 
 
+UPSTREAM_SOA = "ns-cloud-a1.googledomains.com"  # a real zone's SOA, not ours
+
+
+def _gateway_answer(rcode: int, soa=None):
+    """What our gateway sends: its own NXDOMAIN carries the blocked.cleanway.ai
+    SOA; anything else is a forwarded upstream answer."""
+    if rcode == 3:
+        return canary.DnsAnswer(3, 0, soa or canary.BLOCK_SOA_MNAME)
+    return canary.DnsAnswer(rcode, 1 if rcode == 0 else 0, None)
+
+
 def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None,
-             health=(200, HEALTH_OK), landing=(200, b"<html>"), requests=None):
-    """Stub every network call: DoH lookups, the artifact fetch, /health/deep
-    and the landing page. `requests` (a list) collects every urllib Request."""
-    monkeypatch.setattr(canary, "doh", lambda base, name, timeout=10.0: (rcodes.get(name, 0), 1))
+             health=(200, HEALTH_OK), landing=(200, b"<html>"), requests=None,
+             soa=None, public=None, live_feed=(200, b"")):
+    """Stub every network call: DoH lookups (our gateway, and the public
+    resolver the live probe asks), the artifact fetch, the live-probe feed,
+    /health/deep and the landing page. `soa` overrides the SOA of a gateway
+    NXDOMAIN per name; `public` maps name -> DnsAnswer from the public
+    resolver. `requests` (a list) collects every urllib Request."""
+    soa = soa or {}
+    public = public or {}
+
+    def _doh(base, name, timeout=10.0):
+        if base == canary.PUBLIC_DOH_BASE:
+            return public.get(name, canary.DnsAnswer(3, 0, UPSTREAM_SOA))
+        return _gateway_answer(rcodes.get(name, 0), soa.get(name))
+
+    monkeypatch.setattr(canary, "doh", _doh)
     blob = artifact_text
     sha = hashlib.sha256(blob).hexdigest()
     nl = blob.index(b"\n", len(MAGIC))
@@ -102,6 +128,8 @@ def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None,
             return _http(url, *health)
         if url.endswith("/ru/android"):
             return _http(url, *landing)
+        if url == canary.DEFAULT_LIVE_SOURCE:
+            return _http(url, *live_feed)
         raise AssertionError(f"canary probed an unexpected URL: {url}")
 
     monkeypatch.setattr(canary.urllib.request, "urlopen", _urlopen)
@@ -261,7 +289,8 @@ def test_publisher_guards_are_still_checked(monkeypatch, capsys):
     the resolve set alongside the curated file — nothing was dropped."""
     seen: list[str] = []
     _install(monkeypatch, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY)
-    monkeypatch.setattr(canary, "doh", lambda base, name, timeout=10.0: (seen.append(name) or 0, 1))
+    monkeypatch.setattr(canary, "doh",
+                        lambda base, name, timeout=10.0: seen.append(name) or canary.DnsAnswer(0, 1, None))
     monkeypatch.setattr("sys.argv", ["dns_canary.py"])
     canary.main()
     for guard in canary.NEVER_BLOCK_GUARDS:
@@ -331,3 +360,106 @@ def test_landing_base_env_var_is_honoured(monkeypatch, capsys):
     seen: list = []
     _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY, requests=seen)
     assert "https://env.test/ru/android" in [r.full_url for r in seen]
+
+
+# ── 2026-09-26: the block probe must be able to fail ──────────────────────
+# list-canary.cleanway.ai exists nowhere in public DNS. With the blocklist
+# dead the gateway forwards the query and upstream says NXDOMAIN too — the
+# old probe passed either way. Only our own SOA marker proves the block.
+
+
+def test_upstream_nxdomain_for_the_canary_is_not_proof_of_blocking(monkeypatch, capsys):
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3},
+                     soa={"list-canary.cleanway.ai": UPSTREAM_SOA}, artifact_text=HEALTHY)
+    assert code == 1
+    assert "LISTED NAME NOT BLOCKED BY US: list-canary.cleanway.ai" in out
+
+
+def test_a_gateway_that_resolves_nothing_fails(monkeypatch, capsys):
+    """SERVFAIL for everything is not NXDOMAIN — and it is every phone on the
+    DNS profile offline."""
+    everything_servfail = {n: 2 for n in canary.must_resolve_names(canary.MUST_RESOLVE_PATH)}
+    code, out = _run(monkeypatch, capsys, rcodes={**everything_servfail, "list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY)
+    assert code == 1
+    assert "GATEWAY RESOLVES ALMOST NOTHING" in out
+
+
+def test_the_soa_marker_matches_what_the_gateway_really_sends():
+    from api.services import doh_gateway
+    assert canary.BLOCK_SOA_MNAME == doh_gateway._SOA_MNAME
+    assert canary.PUBLIC_DOH_BASE + "/dns-query" == doh_gateway.CLOUDFLARE_DOH_URL
+    ours = canary.parse_response(doh_gateway.make_nxdomain_response(canary.wire_query("evil.example")))
+    assert ours == canary.DnsAnswer(3, 0, canary.BLOCK_SOA_MNAME)
+
+
+def test_parse_response_follows_compressed_names_like_real_upstream_answers():
+    # NXDOMAIN for x.cleanway.ai as a public resolver sends it: the SOA owner
+    # and MNAME use compression pointers into the question.
+    question = b"\x01x\x08cleanway\x02ai\x00\x00\x01\x00\x01"
+    header = b"\x12\x34\x81\x83" + struct.pack("!HHHH", 1, 0, 1, 0)
+    mname = b"\x03ns1\x0bdnsprovider\x03net\x00"
+    rdata = mname + b"\xc0\x0e" + struct.pack("!IIIII", 1, 2, 3, 4, 5)   # RNAME -> cleanway.ai
+    soa = b"\xc0\x0e" + struct.pack("!HHIH", 6, 1, 300, len(rdata)) + rdata
+    answer = canary.parse_response(header + question + soa)
+    assert answer == canary.DnsAnswer(3, 0, "ns1.dnsprovider.net")
+
+
+def test_parse_response_refuses_a_pointer_loop():
+    looped = b"\x00\x00\x81\x83" + struct.pack("!HHHH", 1, 0, 0, 0) + b"\xc0\x0c"
+    with pytest.raises(ValueError):
+        canary.parse_response(looped)
+
+
+# The live probe: a real listed host that public DNS resolves.
+
+LIVE_LISTED = "live-phish.example"
+FEED = (f"https://{LIVE_LISTED}/login\nhttps://dead-listed.example/x\n"
+        "https://not-on-our-list.example/\n").encode()
+LISTED = _artifact([LIVE_LISTED, "dead-listed.example"])
+RESOLVES = canary.DnsAnswer(0, 1, None)
+
+
+def test_a_live_listed_host_that_our_gateway_blocks_passes(monkeypatch, capsys):
+    code, out = _run(monkeypatch, capsys, artifact_text=LISTED, live_feed=(200, FEED),
+                     rcodes={"list-canary.cleanway.ai": 3, LIVE_LISTED: 3},
+                     public={LIVE_LISTED: RESOLVES})
+    assert code == 0, out
+    assert "live-block-check: 1 listed names that resolve publicly (2 listed in the source, 1 resolve" in out
+
+
+def test_a_live_listed_host_our_gateway_lets_through_fails(monkeypatch, capsys):
+    code, out = _run(monkeypatch, capsys, artifact_text=LISTED, live_feed=(200, FEED),
+                     rcodes={"list-canary.cleanway.ai": 3, LIVE_LISTED: 0},
+                     public={LIVE_LISTED: RESOLVES})
+    assert code == 1
+    assert f"LISTED NAME NOT BLOCKED: {LIVE_LISTED}" in out
+
+
+@pytest.mark.parametrize("live_feed,note", [
+    ((200, b""), "no host of the source is on our list"),
+    ((503, b"down"), "source answered HTTP 503"),
+])
+def test_no_usable_live_host_is_a_note_not_a_failure(monkeypatch, capsys, live_feed, note):
+    code, out = _run(monkeypatch, capsys, artifact_text=LISTED, live_feed=live_feed,
+                     rcodes={"list-canary.cleanway.ai": 3})
+    assert code == 0, out
+    assert note in out
+
+
+def test_the_live_probe_can_be_switched_off(monkeypatch, capsys):
+    seen: list = []
+    code, out = _run(monkeypatch, capsys, argv=["--live-source", ""], artifact_text=LISTED,
+                     rcodes={"list-canary.cleanway.ai": 3}, requests=seen)
+    assert code == 0
+    assert "(disabled)" in out
+    assert canary.DEFAULT_LIVE_SOURCE not in [r.full_url for r in seen]
+
+
+def test_the_live_probe_asks_public_dns_a_bounded_number_of_times(monkeypatch):
+    asked: list = []
+    monkeypatch.setattr(canary, "doh", lambda base, name, timeout=10.0: asked.append(name) or
+                        canary.DnsAnswer(3, 0, UPSTREAM_SOA))
+    many = [f"h{i}.example" for i in range(50)]
+    assert canary.pick_live_probes(many) == []
+    assert len(asked) == canary.MAX_LIVE_LOOKUPS

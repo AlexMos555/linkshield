@@ -42,6 +42,7 @@ from api.services.circuit_breaker import (
     malware_bazaar_breaker, feodo_breaker,
     tranco_breaker, favicon_breaker, watchtower_breaker,
 )
+from api.services.confirmed_threats import record_if_confirmed
 from api.services.tranco import check_tranco_popularity
 from api.services.favicon_hash import check_favicon_brand_clone
 from api.services.watchtower_lookup import check_typosquat_alert
@@ -270,6 +271,11 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         "confidence": confidence.value, "confidence_pct": confidence_pct,
         "checks": checks_succeeded,
     })
+
+    # A dangerous verdict that rests on threat intel (Safe Browsing, URLhaus,
+    # ThreatFox …) reaches every phone's blocklist on the next publish;
+    # heuristic verdicts never do. Bounded and never raises.
+    await record_if_confirmed(domain, level.value, signals)
 
     return DomainResult(
         domain=domain, score=score, level=level, confidence=confidence,
