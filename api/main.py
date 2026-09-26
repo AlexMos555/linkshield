@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -66,6 +67,22 @@ if _sentry_dsn:
         logger.debug("sentry-sdk not installed, skipping")
 
 
+async def _warm_ml_model() -> None:
+    """Load the ML model before serving, off the event loop.
+
+    Loaded lazily, the model was loaded by the FIRST fresh check after every
+    deploy — ~7 s of onnxruntime start-up measured locally, synchronously on
+    the event loop, so that check blew its 3 s budget and every other request
+    stalled behind it. Failure is logged, never fatal: scoring runs without ML.
+    """
+    try:
+        from api.services.ml_scorer import backend_status
+        backend = await asyncio.to_thread(backend_status)
+        logger.info("ml_model_warmed", extra={"backend": backend})
+    except Exception as e:  # noqa: BLE001 — ML is optional
+        logger.warning("ml_model_warmup_failed", extra={"error": str(e)})
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── Startup ──
@@ -95,6 +112,7 @@ async def lifespan(app: FastAPI):
             "strict_config": settings.strict_config,
         },
     )
+    await _warm_ml_model()
     yield
     # ── Shutdown ──
     await close_redis()

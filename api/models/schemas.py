@@ -58,6 +58,16 @@ class DomainResult(BaseModel):
     has_ssl: Optional[bool] = None
     ssl_issuer: Optional[str] = None
     cached: bool = False
+    # What the verdict rests on — see api/services/verdict_basis.py. Only
+    # 'blocklist' and 'threat_intel' are evidence a client may BLOCK on; every
+    # other value (and any value a client does not know) is advice only.
+    # None on results cached before this field existed.
+    verdict_basis: Optional[str] = None
+    # False = DNS says the name does not exist (NXDOMAIN). None = not checked
+    # or the lookup did not answer in time.
+    exists: Optional[bool] = None
+    # Checks that did not finish inside the analysis time budget, by name.
+    checks_incomplete: list[str] = Field(default_factory=list)
 
 
 class CheckResponse(BaseModel):

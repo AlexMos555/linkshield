@@ -92,6 +92,11 @@ def test_public_check_router_no_longer_shortcuts_public_suffix_subdomain(monkeyp
             called["n"] += 1
             return 1
 
+        async def eval(self, _script, _numkeys, k, *args):
+            # The fresh-check cap now uses the limiter's atomic INCR+TTL.
+            called["n"] += 1
+            return 1
+
         async def expire(self, k, s):
             return True
 

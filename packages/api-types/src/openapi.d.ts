@@ -497,32 +497,27 @@ export interface paths {
          * Public Check
          * @description Public domain safety check. No auth required.
          *
-         *     Up until 2026-06-17 this endpoint ran ONLY rule-based scoring
-         *     and intentionally skipped the 16-source threat-intel fan-out
-         *     for speed. Measured result: 0% recall on fresh URLhaus URLs.
+         *     Runs the full analyzer (threat-intel fan-out, site probes, ML, LLM judge)
+         *     inside a ~3 s budget, behind these short-circuits and defenses:
          *
-         *     Now runs the FULL 18-check analyzer, but with FOUR defenses
-         *     against analyzer cost (each closes a distinct adversarial-review
-         *     finding from 2026-06-17):
+         *       1. Top-domain allowlist (instant safe for popular sites that are not
+         *          shared platforms — no API calls).
+         *       2. Cleanway's own published blocklist, the list the phone blocks: a
+         *          listed host is 'dangerous' at once (verdict_basis 'blocklist').
+         *       3. The service host of a user-content platform (disk.yandex.ru,
+         *          onedrive.live.com): a fixed "real service, we cannot vouch for the
+         *          page" caution (verdict_basis 'user_content'), no analysis.
+         *       4. Per-endpoint Redis cache, in its own namespace: a day for a full
+         *          verdict, less for a not-found or partial one.
+         *       5. A fresh-analysis cap per minute — per IP, or per install when the
+         *          app sends X-Cleanway-Install (CGNAT: one IP, thousands of phones).
+         *       6. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
+         *          domain collapse to ONE analyze_domain call.
          *
-         *       1. Top-domain allowlist short-circuit (instant safe verdict
-         *          for top-10k legit hosts — no API calls).
-         *       2. Per-endpoint Redis cache, single 24h TTL across verdict
-         *          levels. The endpoint OWNS its cache namespace separately
-         *          from cache_result()/get_cached_result() so it cannot get
-         *          clobbered by the authed flow's 5-min dangerous TTL.
-         *       3. SINGLEFLIGHT coalescing: N concurrent requests for the
-         *          same fresh domain collapse to ONE analyze_domain call.
-         *          The rest await the same Future.
-         *       4. IP rate-limit uses _extract_client_ip() so X-Forwarded-For
-         *          is honored when the immediate caller is in trusted_proxy_cidrs
-         *          — without it we collapse all traffic behind Railway's
-         *          single egress IP into one bucket.
-         *
-         *     Trade-off: first cold-cache lookup on a never-seen domain takes
-         *     1-3 seconds (vs prior ~100 ms). Every subsequent hit on the
-         *     same domain serves from cache in sub-50 ms — 99% of real
-         *     traffic will land there.
+         *     Every response carries `verdict_basis`. Only 'blocklist' and
+         *     'threat_intel' are evidence a client may block on; everything else is
+         *     advice. `exists` is false for a domain that does not exist, and
+         *     `checks_incomplete` names checks the time budget cut off.
          */
         get: operations["public_check_api_v1_public_check__domain__get"];
         put?: never;
@@ -542,12 +537,14 @@ export interface paths {
         };
         /**
          * Platform Stats
-         * @description Global platform statistics for landing page and social proof.
+         * @description Global platform statistics — measured values only.
          *
-         *     detection_rate is read (and gated) from docs/benchmarks/latest.json — the
-         *     weekly-measured source of truth — NOT a hand-authored number. It is null
-         *     until a large-enough sample has been benchmarked, matching how the landing
-         *     presents recall. Other counts mirror docs/transparency/<latest>.json.
+         *     Every number is read from something that measured it (the weekly
+         *     benchmark, the deployed model's held-out test, the live blocklist, the
+         *     brand list the scorer loads) or is null, with `notes` saying why. The
+         *     hand-written figures this used to return — including a 0.08% false-
+         *     positive rate that was never measured — are gone. Keys are unchanged so
+         *     existing clients keep working.
          */
         get: operations["platform_stats_api_v1_public_stats_get"];
         put?: never;
@@ -1905,6 +1902,12 @@ export interface components {
              * @default false
              */
             cached: boolean;
+            /** Verdict Basis */
+            verdict_basis?: string | null;
+            /** Exists */
+            exists?: boolean | null;
+            /** Checks Incomplete */
+            checks_incomplete?: string[];
         };
         /**
          * EffectiveSkillResponse

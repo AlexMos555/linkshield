@@ -26,6 +26,8 @@ from api.models.schemas import (
     ConfidenceLevel,
 )
 from api.services.analyzer import analyze_domain
+from api.services import verdict_basis as vb
+from api.services.cleanway_blocklist import listed_as
 # /check is the most expensive auth-required endpoint — fans out to
 # Google Safe Browsing + IPQS + a half dozen other paid providers per
 # domain. Use the disposable-email-blocking variant so a sophisticated
@@ -39,54 +41,35 @@ from api.services.domain_validator import validate_domain, normalize_domain, Dom
 router = APIRouter(prefix="/api/v1", tags=["check"])
 
 
-# Hosting platforms whose subdomains can belong to anyone — never
-# eligible for the fast safe-path even if the apex domain is in Tranco
-# Top 100K. Module-level frozenset so we don't reconstruct the set on
-# every /check call (audit backend MEDIUM "_HOSTING platform set is
-# reconstructed on every call to _quick_allowlist_check"). frozenset
-# guarantees no caller can mutate it accidentally.
-_HOSTING_PLATFORMS: frozenset[str] = frozenset({
-    "pages.dev", "workers.dev", "r2.dev", "netlify.app", "vercel.app",
-    "herokuapp.com", "github.io", "gitlab.io", "web.app", "firebaseapp.com",
-    "appspot.com", "azurewebsites.net", "cloudfront.net", "onrender.com",
-    "fly.dev", "railway.app", "blogspot.com", "wordpress.com", "wixsite.com",
-    "wixstudio.com", "weebly.com", "webflow.io", "framer.app", "framer.website",
-    "carrd.co", "notion.site", "myshopify.com", "lovable.app", "replit.app",
-    "webcindario.com", "contaboserver.net", "s3.amazonaws.com",
-})
-
-
 def _quick_allowlist_check(domain: str) -> DomainResult | None:
     """
-    Fast path: check if domain is in Tranco Top 100K.
-    Returns instant safe result without any API calls.
-    Skips hosting platforms and URL shorteners (handled by full analysis).
+    Fast path: a popular domain gets an instant safe result, no API calls.
+
+    Uses the ONE allowlist rule the public check and the scorer share,
+    is_trusted_top_domain(): this path used to keep its own shorter hosting
+    list, so a tenant on a shared platform the public check already refused
+    (gwcu.us.org, a tw1.ru page) was still "known legitimate" here.
     """
-    from api.services.scoring import TOP_DOMAINS, _extract_base_domain, _is_url_shortener, _TRANCO_TOP_10K
+    from api.services.scoring import _extract_base_domain, _TRANCO_TOP_10K, is_trusted_top_domain
+
+    if not is_trusted_top_domain(domain):
+        return None  # Unknown or shared platform — needs full analysis
 
     base = _extract_base_domain(domain)
-    is_hosting = base in _HOSTING_PLATFORMS and domain != base
-    is_shortener = _is_url_shortener(base)
-
-    if is_hosting or is_shortener:
-        return None  # Need full analysis
-
-    if base in TOP_DOMAINS:
-        rank = _TRANCO_TOP_10K.get(base)
-        detail = f"Ranked #{rank} globally" if rank else "In global top 100K"
-        return DomainResult(
-            domain=domain,
-            score=0,
-            level=RiskLevel.safe,
-            confidence=ConfidenceLevel.high,
-            reasons=[DomainReason(
-                signal="known_legitimate",
-                detail=f"Known legitimate domain: {base}. {detail}",
-                weight=-50,
-            )],
-        )
-
-    return None  # Unknown — needs full analysis
+    rank = _TRANCO_TOP_10K.get(base)
+    detail = f"Ranked #{rank} globally" if rank else "In global top 100K"
+    return DomainResult(
+        domain=domain,
+        score=0,
+        level=RiskLevel.safe,
+        confidence=ConfidenceLevel.high,
+        reasons=[DomainReason(
+            signal="known_legitimate",
+            detail=f"Known legitimate domain: {base}. {detail}",
+            weight=-50,
+        )],
+        verdict_basis=vb.BASIS_ALLOWLIST,
+    )
 
 
 @router.post("/check", response_model=CheckResponse)
@@ -132,12 +115,22 @@ async def check_domains(
             results[domain] = DomainResult(
                 domain=domain, score=0, level=RiskLevel.caution,
                 reasons=[DomainReason(signal="invalid", detail="Invalid domain format", weight=0)],
+                verdict_basis=vb.BASIS_HEURISTICS,
             )
+            continue
+
+        # Our own published blocklist first — the list the phone blocks — so
+        # a verdict cached before the host was listed cannot outlive it.
+        listed = await listed_as(domain)
+        if listed:
+            results[domain] = vb.blocklist_result(domain, listed)
             continue
 
         cached = await get_cached_result(domain)
         if cached:
-            results[domain] = cached
+            # Results cached before verdict_basis existed get one derived
+            # from their reasons, so every result in the response has one.
+            results[domain] = cached.model_copy(update={"verdict_basis": vb.basis_of(cached)})
         else:
             uncached.append(domain)
 
@@ -166,6 +159,7 @@ async def check_domains(
                 domain=domain, score=0, level=RiskLevel.safe,
                 confidence=ConfidenceLevel.high,
                 reasons=[DomainReason(signal="user_whitelist", detail="In your personal whitelist", weight=-50)],
+                verdict_basis=vb.BASIS_ALLOWLIST,
             )
             results[domain] = result
             uncached.remove(domain)
@@ -198,6 +192,7 @@ async def check_domains(
                 results[domain] = DomainResult(
                     domain=domain, score=25, level=RiskLevel.caution,
                     reasons=[DomainReason(signal="analysis_error", detail="Check failed, proceed with caution", weight=0)],
+                    verdict_basis=vb.BASIS_HEURISTICS,
                 )
             else:
                 results[domain] = result

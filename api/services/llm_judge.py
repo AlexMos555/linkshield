@@ -29,9 +29,12 @@ Privacy invariants (load-bearing):
      same cache entry — that's correct, the answer is about the
      pattern, not the host.
 
-  3. The LLM call has a hard 4-second budget. The analyzer is
-     already in a parallel-gather hot path; the judge can never
-     stretch the user's checkmark wait by more than its budget.
+  3. The analyzer waits for the judge only as long as its ~3 s
+     analysis budget allows, so the judge can never stretch the
+     user's wait. A live call still running then is NOT cancelled:
+     it finishes in the background and fills the cache for the next
+     domain with the same pattern (_live_opinion). Live calls are
+     capped per day for the whole service (paid_budget).
 
   4. On any LLM failure (network, schema mismatch, rate-limit,
      SDK exception) we silently fall back to the rule-based
@@ -44,6 +47,7 @@ Privacy invariants (load-bearing):
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -115,8 +119,10 @@ def _extract_judge_features(signals: dict, score: int) -> dict:
         # Domain shape (no hostname)
         "domain_age_days", "is_ip_based", "registrar",
         "dns_has_mx", "dns_a_count", "dns_ttl",
-        # TLS / hosting
-        "no_https", "free_ssl", "cert_age_days",
+        # TLS / hosting. site_reachable=false means the TLS/header/redirect
+        # fields below were NOT measured (our scanner could not open the
+        # site) — null there is "unknown", not "clean".
+        "site_reachable", "no_https", "free_ssl", "cert_age_days",
         # HTTP / page features
         "missing_security_headers", "redirect_count",
         "redirect_cross_domain",
@@ -471,28 +477,69 @@ async def judge_ambiguous_verdict(
     except Exception:
         pass
 
-    # L2: live LLM call. Catch every exception — a crashing SDK
-    # release MUST NOT take down the analyzer hot path.
+    # L2: live LLM call, shared and shielded (see _live_opinion).
+    opinion = await _live_opinion(cache_key, features, score, redis_client)
+    if opinion is None:
+        return None
+    result = {
+        "verdict": opinion["verdict"],
+        "confidence": opinion["confidence"],
+        "one_line_reason": opinion["one_line_reason"],
+        "score_shift": _shift_for_verdict(opinion["verdict"], score),
+        "source": "llm",
+    }
+    return _apply_shift_cap(result, score)
+
+
+# Live calls in flight, by cache key. The analyzer gives the judge only what
+# is left of its ~3 s budget, and an Opus call usually needs more; a call
+# cancelled there used to be sent (and billed), thrown away and never cached,
+# so the next domain with the same pattern paid for it again. Now the call
+# runs as its own task: a caller that stops waiting leaves it to finish and
+# fill the cache, and callers with the same pattern meanwhile share it.
+_INFLIGHT: dict[str, "asyncio.Task[Optional[dict]]"] = {}
+
+
+async def _live_opinion(
+    cache_key: str, features: dict, score: int, redis_client,
+) -> Optional[dict]:
+    task = _INFLIGHT.get(cache_key)
+    if task is None:
+        from api.config import get_settings
+        from api.services import paid_budget
+        if not await paid_budget.take("llm_judge", get_settings().llm_judge_daily_budget):
+            return None
+        task = asyncio.ensure_future(_ask_and_cache(cache_key, features, score, redis_client))
+        _INFLIGHT[cache_key] = task
+        task.add_done_callback(lambda t: _forget(cache_key, t))
+    # shield: cancelling THIS caller (the analysis deadline) must not cancel
+    # the call itself.
+    return await asyncio.shield(task)
+
+
+def _forget(cache_key: str, task: "asyncio.Task[Optional[dict]]") -> None:
+    if _INFLIGHT.get(cache_key) is task:
+        _INFLIGHT.pop(cache_key, None)
+    if not task.cancelled():
+        task.exception()  # retrieved: _ask_and_cache never raises, but be sure
+
+
+async def _ask_and_cache(
+    cache_key: str, features: dict, score: int, redis_client,
+) -> Optional[dict]:
+    """One live call; a confident answer is cached for every later caller
+    with the same feature pattern. Never raises."""
+    # Catch every exception — a crashing SDK release MUST NOT take down the
+    # analyzer hot path.
     try:
         llm_out = await _call_claude(features)
     except Exception as exc:
         logger.warning("LLM judge wrapper caught: %s", exc)
         llm_out = None
-    if llm_out is None:
+    if llm_out is None or llm_out["confidence"] < LLM_MIN_CONFIDENCE:
+        # No answer, or the model itself is uncertain — don't shift the
+        # rule verdict in any direction.
         return None
-
-    if llm_out["confidence"] < LLM_MIN_CONFIDENCE:
-        # The model itself is uncertain — don't shift the rule
-        # verdict in any direction.
-        return None
-
-    result = {
-        "verdict": llm_out["verdict"],
-        "confidence": llm_out["confidence"],
-        "one_line_reason": llm_out["one_line_reason"],
-        "score_shift": _shift_for_verdict(llm_out["verdict"], score),
-        "source": "llm",
-    }
 
     # Write to cache for future identical-pattern hits.
     if redis_client is not None:
@@ -500,15 +547,15 @@ async def judge_ambiguous_verdict(
             await redis_client.setex(
                 cache_key, LLM_CACHE_TTL_S,
                 json.dumps({
-                    "verdict": result["verdict"],
-                    "confidence": result["confidence"],
-                    "one_line_reason": result["one_line_reason"],
-                    "score_shift": result["score_shift"],
+                    "verdict": llm_out["verdict"],
+                    "confidence": llm_out["confidence"],
+                    "one_line_reason": llm_out["one_line_reason"],
+                    "score_shift": _shift_for_verdict(llm_out["verdict"], score),
                 }),
             )
         except Exception:
             pass
-    return _apply_shift_cap(result, score)
+    return llm_out
 
 
 def _shift_for_verdict(verdict: str, score: int) -> int:

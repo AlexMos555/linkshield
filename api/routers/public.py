@@ -1,8 +1,9 @@
 """
 Public API endpoints (no auth required).
 
-  GET  /api/v1/public/check/{domain} — public domain safety check (rate limited by IP)
-  GET  /api/v1/public/stats — global platform stats
+  GET  /api/v1/public/check/{domain} — public domain safety check (rate limited
+                                       per IP, or per install behind CGNAT)
+  GET  /api/v1/public/stats — global platform stats (measured values only)
 
 These power the SEO pages and the public "is X safe?" feature.
 """
@@ -10,21 +11,27 @@ These power the SEO pages and the public "is X safe?" feature.
 from __future__ import annotations
 
 import asyncio
-import functools
 import json
 import logging
-import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from api.services.scoring import (
-    calculate_score, is_trusted_top_domain,
-    calculate_confidence_pct,
+
+from api.config import get_settings
+from api.models.schemas import ConfidenceLevel, DomainResult, RiskLevel
+from api.services import ml_scorer, public_stats
+from api.services import verdict_basis as vb
+from api.services.cleanway_blocklist import listed_as
+from api.services.domain_validator import DomainValidationError, validate_domain
+from api.services.hosting_platforms import is_user_content_service
+from api.services.rate_limiter import rate_limit
+from api.services.rate_limiter import (
+    _extract_client_ip,
+    _incr_with_ttl_on_first,
+    benchmark_bypass,
+    install_key,
 )
-from api.services.domain_validator import validate_domain, DomainValidationError
-from api.services.rate_limiter import rate_limit, _extract_client_ip
-from api.models.schemas import DomainResult, RiskLevel, ConfidenceLevel
-from api.services import ml_scorer
+from api.services.scoring import calculate_confidence_pct, calculate_score, is_trusted_top_domain
 
 # Per-domain in-flight singleflight map. When N concurrent requests
 # arrive for the same fresh domain, only the first runs analyze_domain;
@@ -32,13 +39,47 @@ from api.services import ml_scorer
 # back into 19 — guards against thundering-herd / cache stampede.
 _INFLIGHT: dict[str, asyncio.Future] = {}
 
-# Public endpoint cache: domain-only, 24h TTL across all verdict
-# levels. Separate from the default cache (5m/15m/1h) which serves
-# the authed extension flow where 'recheck often after a takedown'
-# is valid. On the anonymous SEO surface we want maximum cache hit
-# rate — anyone re-querying the same domain pays nothing.
-_PUBLIC_CACHE_PREFIX = "public_check:"
+# Public endpoint cache: domain-only. Separate from the default cache
+# (5m/15m/1h) which serves the authed extension flow where 'recheck often
+# after a takedown' is valid. On the anonymous SEO surface we want maximum
+# cache hit rate — anyone re-querying the same domain pays nothing.
+#
+# v2 (2026-09-26): verdicts cached before this carried the "could not connect
+# = insecure" penalties — bankspb.ru, президент.рф, rosreestr.gov.ru sat at
+# 'dangerous' for a day. A new namespace retires them at deploy without
+# anyone writing to production Redis; the old keys expire on their own.
+_PUBLIC_CACHE_PREFIX = "public_check:v2:"
 _PUBLIC_CACHE_TTL_SECONDS = 24 * 60 * 60
+# A name that does not exist can be registered at any moment, and a verdict
+# the scanner could not complete may be better next time — neither is kept
+# for a whole day.
+_NOT_FOUND_CACHE_TTL_SECONDS = 15 * 60
+_PARTIAL_CACHE_TTL_SECONDS = 60 * 60
+# The analyzer enforces its own budget; this router-level backstop only
+# catches a bug in that enforcement, so a request can never hang.
+_BACKSTOP_GRACE_SECONDS = 1.0
+_FRESH_WINDOW_SECONDS = 60
+
+# Android 1.0.1 — on phones today — localizes a reason by its code and shows
+# the English `detail` for any code it does not know, and it knows none of the
+# codes added with verdict_basis. A client that sends X-Cleanway-Install (1.0.2
+# on) knows them. For the others: our own blocklist is shown under a code they
+# DO localize («В доверенных списках мошеннических и спам-сайтов»), a broken
+# certificate under the "connection is not secure" one — what the browser
+# itself will say — and the informational reasons, which explain a verdict's
+# limits, are sent only when nothing else explains it: a Russian card with an
+# English paragraph under «Почему мы так считаем» helps no one when a
+# localized reason is there anyway.
+_LEGACY_CODE_ALIASES = {
+    vb.REASON_CLEANWAY_BLOCKLIST: "multi_blocklist",
+    "invalid_certificate": "no_https",
+}
+
+_INSTALL_URL = "https://cleanway.ai/android"
+_CTA = (
+    "Get Cleanway for Android to block known scam sites on your phone, "
+    "and see how we measure in our public transparency report."
+)
 
 logger = logging.getLogger("cleanway.public")
 
@@ -47,8 +88,8 @@ router = APIRouter(prefix="/api/v1/public", tags=["public"])
 
 async def _get_public_cache(domain: str) -> DomainResult | None:
     """Read the public-endpoint cache. Separate namespace from
-    the default cache so the public surface owns its own 24h
-    TTL policy independent of the authed extension flow's tighter
+    the default cache so the public surface owns its own TTL
+    policy independent of the authed extension flow's tighter
     re-check cadence.
     """
     try:
@@ -65,17 +106,23 @@ async def _get_public_cache(domain: str) -> DomainResult | None:
         return None
 
 
+def _public_cache_ttl(result: DomainResult) -> int:
+    if result.exists is False:
+        return _NOT_FOUND_CACHE_TTL_SECONDS
+    if result.checks_incomplete or vb.basis_of(result) == vb.BASIS_UNREACHABLE:
+        return _PARTIAL_CACHE_TTL_SECONDS
+    return _PUBLIC_CACHE_TTL_SECONDS
+
+
 async def _put_public_cache(result: DomainResult) -> None:
-    """Write the public-endpoint cache. Single TTL across all
-    verdict levels — the public anonymous surface doesn't need the
-    'recheck dangerous after takedown' cadence the authed path uses.
-    """
+    """Write the public-endpoint cache. A full verdict is kept for a day; a
+    not-found or partial one for much less (see the TTL constants)."""
     try:
         from api.services.cache import get_redis
         r = await get_redis()
         await r.setex(
             _PUBLIC_CACHE_PREFIX + result.domain,
-            _PUBLIC_CACHE_TTL_SECONDS,
+            _public_cache_ttl(result),
             result.model_dump_json(),
         )
     except Exception:
@@ -84,173 +131,219 @@ async def _put_public_cache(result: DomainResult) -> None:
 
 @router.get(
     "/check/{domain}",
-    dependencies=[Depends(rate_limit(mode="ip", category="public_check"))],
+    dependencies=[Depends(rate_limit(mode="ip", category="public_check", install_aware=True))],
 )
 async def public_check(domain: str, request: Request):
     """Public domain safety check. No auth required.
 
-    Up until 2026-06-17 this endpoint ran ONLY rule-based scoring
-    and intentionally skipped the 16-source threat-intel fan-out
-    for speed. Measured result: 0% recall on fresh URLhaus URLs.
+    Runs the full analyzer (threat-intel fan-out, site probes, ML, LLM judge)
+    inside a ~3 s budget, behind these short-circuits and defenses:
 
-    Now runs the FULL 18-check analyzer, but with FOUR defenses
-    against analyzer cost (each closes a distinct adversarial-review
-    finding from 2026-06-17):
+      1. Top-domain allowlist (instant safe for popular sites that are not
+         shared platforms — no API calls).
+      2. Cleanway's own published blocklist, the list the phone blocks: a
+         listed host is 'dangerous' at once (verdict_basis 'blocklist').
+      3. The service host of a user-content platform (disk.yandex.ru,
+         onedrive.live.com): a fixed "real service, we cannot vouch for the
+         page" caution (verdict_basis 'user_content'), no analysis.
+      4. Per-endpoint Redis cache, in its own namespace: a day for a full
+         verdict, less for a not-found or partial one.
+      5. A fresh-analysis cap per minute — per IP, or per install when the
+         app sends X-Cleanway-Install (CGNAT: one IP, thousands of phones).
+      6. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
+         domain collapse to ONE analyze_domain call.
 
-      1. Top-domain allowlist short-circuit (instant safe verdict
-         for top-10k legit hosts — no API calls).
-      2. Per-endpoint Redis cache, single 24h TTL across verdict
-         levels. The endpoint OWNS its cache namespace separately
-         from cache_result()/get_cached_result() so it cannot get
-         clobbered by the authed flow's 5-min dangerous TTL.
-      3. SINGLEFLIGHT coalescing: N concurrent requests for the
-         same fresh domain collapse to ONE analyze_domain call.
-         The rest await the same Future.
-      4. IP rate-limit uses _extract_client_ip() so X-Forwarded-For
-         is honored when the immediate caller is in trusted_proxy_cidrs
-         — without it we collapse all traffic behind Railway's
-         single egress IP into one bucket.
-
-    Trade-off: first cold-cache lookup on a never-seen domain takes
-    1-3 seconds (vs prior ~100 ms). Every subsequent hit on the
-    same domain serves from cache in sub-50 ms — 99% of real
-    traffic will land there.
+    Every response carries `verdict_basis`. Only 'blocklist' and
+    'threat_intel' are evidence a client may block on; everything else is
+    advice. `exists` is false for a domain that does not exist, and
+    `checks_incomplete` names checks the time budget cut off.
     """
     # 1) Validate domain (cheap, in-process).
     try:
         domain = validate_domain(domain.lower().strip())
     except DomainValidationError as e:
         raise HTTPException(400, f"Invalid domain: {e}")
+    modern = install_key(request) is not None
 
-    # 2) Public-cache hit: serve previously-analysed result.
-    #    Cache hits are essentially free — Redis GET, no fan-out, no LLM.
-    #    Rate-limiting these would punish landing-page repeat visitors AND
-    #    prevent the credibility-page side-by-side from rendering multiple
-    #    comparison rows. The 2026-06-29 audit caught the prior ordering:
-    #    incrementing before the cache check made warm domains 429 on the
-    #    6th visitor inside a minute. Cache + top-domain paths now run
-    #    FREE; only the expensive fan-out below increments the IP cap.
+    # 2) Top-domain allowlist short-circuit (free — in-memory set lookup).
+    #    NOT for subdomains of shared platforms / public suffixes / hosting
+    #    (us.org, github.io, tw1.ru, forms.yandex.ru …): anyone can publish
+    #    there. One rule shared with the scorer and the authed /check.
+    if is_trusted_top_domain(domain):
+        return await _build_response(vb.allowlist_result(domain), modern)
+
+    # 3) Our own blocklist — before the cache, so a verdict cached before the
+    #    host was listed cannot outlive the listing. One Redis round-trip.
+    listed = await listed_as(domain)
+    if listed:
+        return _format_public_result(vb.blocklist_result(domain, listed), modern_client=modern)
+
+    # 4) A user-content service host: free, fixed answer (see analyzer).
+    if is_user_content_service(domain):
+        return await _build_response(vb.user_content_result(domain), modern)
+
+    # 5) Public-cache hit: serve previously-analysed result. Essentially
+    #    free (Redis GET, no fan-out, no LLM), so it does not touch the
+    #    fresh-analysis cap below.
     cached = await _get_public_cache(domain)
     if cached:
-        return await _build_response(cached)
+        return await _build_response(cached, modern)
 
-    # 3) Top-domain allowlist short-circuit (also free — in-memory set
-    #    lookup, no network, no analyzer).
-    #    NOT for subdomains of shared platforms / public suffixes: `us.org`,
-    #    `github.io`, `blogspot.com`, `s3.amazonaws.com` … are Tranco-ranked
-    #    AND anyone can register under them. `gwcu.us.org` (live phishing,
-    #    2026-08-18) came through here as "safe, 99%" and the DNS shield
-    #    cached that for a day. One rule shared with the scorer.
-    if is_trusted_top_domain(domain):
-        # Build a synthetic DomainResult so the response shape stays
-        # identical (incl. competitors[] side-by-side) — easier for
-        # the landing scorecard than a separate branch.
-        synth = DomainResult(
-            domain=domain,
-            score=0,
-            level=RiskLevel.safe,
-            confidence=ConfidenceLevel.high,
-            confidence_pct=99,
-            reasons=[],
-        )
-        return await _build_response(synth)
+    # 6) Cap the expensive fan-out, then run it once per domain.
+    await _enforce_fresh_check_budget(request)
+    return _format_public_result(await _analyze_once(domain), modern_client=modern)
 
-    # 4) NOW rate-limit the expensive fan-out path.
-    #    Moved here from the top of the function (audit 2026-06-29) so
-    #    cache hits + top-domain hits stay free. The 5-req/min cap only
-    #    protects the analyzer (16-source fan-out + ML + LLM), which is
-    #    what the cap was designed for in the first place.
+
+async def _enforce_fresh_check_budget(request: Request) -> None:
+    """At most N fresh analyses a minute: per IP, or per install under a
+    per-IP ceiling. Cache hits, allowlisted and blocklisted domains never
+    get here. The benchmark bypass skips it, as the config promises."""
+    if benchmark_bypass(request):
+        return
+    settings = get_settings()
+    ikey = install_key(request)
     client_ip = _extract_client_ip(request)
+    if ikey:
+        limits = (
+            (f"public_rate:install:{ikey}", settings.public_fresh_checks_per_minute),
+            (f"public_rate:ip_ceiling:{client_ip}", settings.public_fresh_ip_ceiling_per_minute),
+        )
+    else:
+        limits = ((f"public_rate:{client_ip}", settings.public_fresh_checks_per_minute),)
     try:
         from api.services.cache import get_redis
         r = await get_redis()
-        ip_key = f"public_rate:{client_ip}"
-        count = await r.incr(ip_key)
-        if count == 1:
-            await r.expire(ip_key, 60)
-        if count > 5:
-            raise HTTPException(
-                429,
-                "Rate limit exceeded (5 fresh checks per minute). "
-                "Install the Cleanway extension for unlimited checks.",
-            )
+        for key, limit in limits:
+            if await _incr_with_ttl_on_first(r, key, _FRESH_WINDOW_SECONDS) > limit:
+                raise HTTPException(
+                    429,
+                    f"Rate limit exceeded ({limit} fresh checks per minute). "
+                    "Please try again in a minute.",
+                )
     except HTTPException:
         raise
     except Exception:
         pass  # Redis down — allow request
 
-    # 5) SINGLEFLIGHT — collapse N concurrent fresh-domain requests
-    #    into ONE analyzer fan-out. The first caller starts the work;
-    #    every subsequent caller arrives, finds an in-flight Future,
-    #    and awaits it.
-    loop = asyncio.get_event_loop()
-    fut = _INFLIGHT.get(domain)
-    if fut is None:
-        fut = loop.create_future()
-        _INFLIGHT[domain] = fut
-        owner = True
-    else:
-        owner = False
 
-    if not owner:
+async def _analyze_once(domain: str) -> DomainResult:
+    """SINGLEFLIGHT: the first caller runs the analysis, concurrent callers
+    for the same domain await its result. If the first caller goes away
+    (its request was cancelled), a waiter runs its own analysis."""
+    existing = _INFLIGHT.get(domain)
+    if existing is not None:
         try:
-            result = await fut
-            return _format_public_result(result)
-        except Exception:
-            # Owner crashed — fall through to compute ourselves.
-            pass
-
-    # We are the owner — run the analyzer.
+            return await asyncio.shield(existing)
+        except asyncio.CancelledError:
+            if not existing.cancelled():
+                raise  # this request itself was cancelled
+    fut = asyncio.get_event_loop().create_future()
+    _INFLIGHT[domain] = fut
     try:
-        from api.services.analyzer import analyze_domain
-        result = await analyze_domain(domain, raw_url=domain)
-        # 6) Cache the analyzer result for 24h. Without this, every
-        #    repeat request paid the full fan-out — the original
-        #    adversarial-review finding.
-        await _put_public_cache(result)
-        if not fut.done():
-            fut.set_result(result)
-    except Exception as exc:
-        # Fail-soft: rule-only fallback. DO NOT cache the degraded
-        # verdict — we want a real measurement next time.
-        logger.warning("public_check analyzer failed for %s: %s", domain, exc)
-        signals = {"domain": domain, "raw_url": domain}
-        score, level, reasons = calculate_score(signals)
-        result = DomainResult(
-            domain=domain,
-            score=score,
-            level=level,
-            confidence=ConfidenceLevel.low,
-            reasons=reasons,
-        )
-        if not fut.done():
-            fut.set_exception(exc)  # waiters fall through to compute
+        result = await _run_analyzer(domain)
+        fut.set_result(result)
+        return result
     finally:
+        if not fut.done():
+            fut.cancel()
         # Drop the in-flight slot so memory doesn't grow unbounded.
-        _INFLIGHT.pop(domain, None)
+        if _INFLIGHT.get(domain) is fut:
+            _INFLIGHT.pop(domain, None)
 
-    return _format_public_result(result)
+
+async def _run_analyzer(domain: str) -> DomainResult:
+    """The full analysis, cached. Fail-soft: on an error — or the backstop
+    firing — a rule-only verdict that says it is partial, NOT cached so the
+    next request gets a real measurement."""
+    from api.services.analyzer import analyze_domain
+    backstop = get_settings().analysis_budget_seconds + _BACKSTOP_GRACE_SECONDS
+    try:
+        result = await asyncio.wait_for(analyze_domain(domain, raw_url=domain), timeout=backstop)
+    except Exception as exc:
+        logger.warning("public_check analyzer failed for %s: %r", domain, exc)
+        return _fallback_result(domain)
+    await _put_public_cache(result)
+    return result
 
 
-def _verdict_reasons(result) -> list:
-    """Top reasons whose direction matches the verdict (see _format_public_result).
+def _fallback_result(domain: str) -> DomainResult:
+    signals = {"domain": domain, "raw_url": domain}
+    score, level, reasons = calculate_score(signals)
+    partial = DomainResult(
+        domain=domain,
+        score=score,
+        level=level,
+        confidence=ConfidenceLevel.low,
+        reasons=reasons + [vb.checks_incomplete_reason(["analysis"])],
+        checks_incomplete=["analysis"],
+    )
+    return partial.model_copy(update={"verdict_basis": vb.derive_verdict_basis(partial)})
+
+
+def _verdict_reasons(result, modern_client: bool = True) -> list:
+    """Top reasons whose direction matches the verdict (see _format_public_result),
+    then the informational ones.
 
     Dangerous/caution → only risk-increasing signals (weight > 0). Safe → the
-    positive ones. If polarity filtering empties the list (e.g. a verdict
-    driven entirely by a hard blocklist hit with odd weights), fall back to the
-    unfiltered top-5 so the card is never reasonless.
+    positive ones. Informational reasons (domain not found, site unreachable
+    from the scanner, checks cut off, shared platform — weight 0, see
+    verdict_basis.INFORMATIONAL_REASONS) say what the verdict could NOT see;
+    they are shown whatever its direction. Only when neither explains the
+    verdict does the card fall back to the other direction's reasons (e.g. a
+    verdict driven by a hard listing with odd weights), so it is never
+    reasonless — but never to put "the name looks randomly generated" under
+    "appears to be safe" while an informational reason is there to say why.
+    A client that cannot localize the informational codes gets them only when
+    nothing else explains the verdict (see _LEGACY_CODE_ALIASES).
     """
     reasons = list(result.reasons or [])
     if not reasons:
         return []
+    info = [r for r in reasons if r.signal in vb.INFORMATIONAL_REASONS][:5]
+    rest = [r for r in reasons if r.signal not in vb.INFORMATIONAL_REASONS]
     is_safe = result.level == RiskLevel.safe
-    matched = [r for r in reasons if (r.weight <= 0) == is_safe]
-    return (matched or reasons)[:5]
+    matched = [r for r in rest if (r.weight <= 0) == is_safe]
+    directional = matched or ([] if info else rest)
+    if directional and not modern_client:
+        return directional[:5]
+    return directional[:5 - len(info)] + info
+
+
+def _verdict_text(result: DomainResult) -> str:
+    domain = result.domain
+    if result.exists is False:
+        return f"{domain} does not work right now: there is no site at this address. Check the spelling of the address."
+    basis = vb.basis_of(result)
+    if basis == vb.BASIS_USER_CONTENT:
+        return (
+            f"{domain} is a real service where anyone can publish pages, scammers "
+            "included. We cannot vouch for the page itself. Do not enter passwords "
+            "or card details there unless you trust whoever sent you the link."
+        )
+    if basis == vb.BASIS_UNREACHABLE and result.level != RiskLevel.dangerous:
+        # "appears to be safe" would claim a check that never happened.
+        return {
+            "safe": f"Our scanner could not open {domain}, so the site itself was not checked. No threat list we checked flags it.",
+            "caution": f"Our scanner could not open {domain} and cannot vouch for it. Proceed with caution.",
+        }[result.level.value]
+    verdicts = {
+        "safe": f"{domain} appears to be safe.",
+        "caution": f"{domain} has some suspicious characteristics. Proceed with caution.",
+        "dangerous": f"{domain} shows strong indicators of being a phishing or malicious site. Do not enter personal information.",
+    }
+    return verdicts.get(result.level.value, "")
+
+
+def _reason_codes(shown: list, modern_client: bool) -> list[str]:
+    if modern_client:
+        return [r.signal for r in shown]
+    return [_LEGACY_CODE_ALIASES.get(r.signal, r.signal) for r in shown]
 
 
 def _format_public_result(
     result: DomainResult,
     competitors: list[dict] | None = None,
+    modern_client: bool = True,
 ) -> dict:
     """Format result for public/SEO consumption.
 
@@ -264,17 +357,15 @@ def _format_public_result(
 
     No competitor publishes their per-domain verdict next to a
     competitor's. We do. That's the credibility moat.
-    """
-    verdicts = {
-        "safe": f"{result.domain} appears to be safe.",
-        "caution": f"{result.domain} has some suspicious characteristics. Proceed with caution.",
-        "dangerous": f"{result.domain} shows strong indicators of being a phishing or malicious site. Do not enter personal information.",
-    }
 
+    `modern_client` False (no X-Cleanway-Install) adapts the reasons to
+    clients that cannot localize the newer codes (_LEGACY_CODE_ALIASES).
+    """
     confidence_pct = (
         getattr(result, "confidence_pct", None)
         or calculate_confidence_pct(result.score, 0, 1)
     )
+    shown = _verdict_reasons(result, modern_client)
 
     return {
         "domain": result.domain,
@@ -283,91 +374,57 @@ def _format_public_result(
         "level": result.level.value,
         "confidence": result.confidence.value if hasattr(result, 'confidence') else "medium",
         "confidence_pct": confidence_pct,
-        "verdict": verdicts.get(result.level.value, ""),
+        "verdict": _verdict_text(result),
         # Show reasons that match the verdict's direction. A DANGEROUS/CAUTION
         # result must not list a positive signal like "our detector considers
         # this site safe" (weight <= 0) as a red "why we say this" bullet — a
         # real contradiction a user hit on amazont-support.com. A SAFE result
-        # keeps its positive reasons ("known legitimate"). Fall back to the
-        # unfiltered top-5 only if filtering would leave nothing to show.
-        "signals": [r.detail for r in _verdict_reasons(result)],
+        # keeps its positive reasons ("known legitimate").
+        "signals": [r.detail for r in shown],
         # Machine-readable code per signal, positionally aligned with `signals`.
         # Clients localize from the code (mobile.reason.<code>) and fall back to
         # the English `detail` for codes they don't map — so an Arabic or
         # Russian user stops seeing "Site does not use HTTPS encryption" in
         # English, which broke the grandma-grade promise on a 10-locale app.
-        "reason_codes": [r.signal for r in _verdict_reasons(result)],
+        "reason_codes": _reason_codes(shown, modern_client),
+        # What the verdict rests on. A client blocks a site ONLY when this is
+        # 'blocklist' or 'threat_intel' — never on 'heuristics',
+        # 'ml_and_heuristics', 'unreachable', 'not_found' or an unknown value.
+        "verdict_basis": vb.basis_of(result),
+        # false = DNS says no such domain; null = not checked / no answer.
+        "exists": result.exists,
+        # Checks the time budget cut off, by name (empty when complete).
+        "checks_incomplete": list(result.checks_incomplete),
         "checked_at": datetime.now(timezone.utc).isoformat(),
         # Side-by-side comparison — nobody else publishes this.
         # Renders as a 'vs Cloudflare' card on the landing scorecard.
         "competitors": competitors or [],
-        "cta": "Install Cleanway for real-time protection backed by 16 independent threat-intel sources and our public transparency report.",
-        "install_url": "https://chrome.google.com/webstore/detail/cleanway",
+        # No hand-kept source count (/stats says why) and only a platform
+        # that is actually installable: the Chrome listing is not live.
+        "cta": _CTA,
+        "install_url": _INSTALL_URL,
         "transparency_url": "https://cleanway.ai/transparency",
     }
 
 
-async def _build_response(result: DomainResult) -> dict:
+async def _build_response(result: DomainResult, modern_client: bool = True) -> dict:
     """Helper: assemble the final response with competitor verdicts
-    fetched in parallel. Used by every successful return path
-    (cache hit, allowlist short-circuit, fresh analyzer run).
+    fetched in parallel. Used by the cache-hit and allowlist paths.
 
     Competitor lookup is bounded by COMPETITOR timeout (3 s); a
     slow Cloudflare response can never block the user response by
     more than that. If lookup fails entirely we just ship empty
-    competitors — the page still renders with our verdict.
+    competitors — the page still renders with our verdict. Our own
+    `exists` answer lets it tell "Cloudflare blocked it" from "the
+    domain does not exist" without a second query.
     """
     try:
         from api.services.competitor_verdicts import gather_competitor_verdicts
-        competitors = await gather_competitor_verdicts(result.domain)
+        competitors = await gather_competitor_verdicts(result.domain, domain_exists=result.exists)
     except Exception as exc:
         logger.debug("competitor lookup failed for %s: %s", result.domain, exc)
         competitors = []
-    return _format_public_result(result, competitors=competitors)
-
-
-_LATEST_BENCHMARK = os.path.join(
-    os.path.dirname(__file__), "..", "..", "docs", "benchmarks", "latest.json"
-)
-_MODEL_META = os.path.join(
-    os.path.dirname(__file__), "..", "..", "data", "model_meta.json"
-)
-
-
-@functools.lru_cache(maxsize=1)
-def _model_auc() -> "float | None":
-    """Live ML model AUC read from data/model_meta.json — never hardcoded, so it
-    stays honest as the weekly retrain changes it. Returns None if unreadable."""
-    try:
-        with open(_MODEL_META, "r") as f:
-            return float(json.load(f).get("test_auc"))
-    except Exception:
-        return None
-
-
-@functools.lru_cache(maxsize=1)
-def _measured_detection_rate() -> "float | None":
-    """Honest fresh-URL recall from the latest weekly benchmark.
-
-    Gated exactly like the landing's live-recall.ts: only return a number when
-    the sample is statistically meaningful (n_phishing >= 100 AND classified
-    (tp+fn) >= 50). Otherwise return None so the endpoint publishes no rate
-    rather than a hand-authored one — the old hardcoded 93.5% was never re-run
-    against the live endpoint (see docs/AUDIT_2026-06-29.md) and is not
-    defensible. Cached: latest.json only changes on redeploy / the weekly cron.
-    """
-    try:
-        with open(_LATEST_BENCHMARK, "r") as f:
-            d = json.load(f)
-        cw = d.get("phishing", {}).get("cleanway", {})
-        recall = cw.get("recall")
-        n_phishing = d.get("n_phishing", 0)
-        classified = (cw.get("tp") or 0) + (cw.get("fn") or 0)
-        if recall is None or n_phishing < 100 or classified < 50:
-            return None
-        return round(recall * 100, 1)
-    except Exception:
-        return None
+    return _format_public_result(result, competitors=competitors, modern_client=modern_client)
 
 
 @router.get(
@@ -375,30 +432,29 @@ def _measured_detection_rate() -> "float | None":
     dependencies=[Depends(rate_limit(mode="ip", category="public_stats"))],
 )
 async def platform_stats():
-    """Global platform statistics for landing page and social proof.
+    """Global platform statistics — measured values only.
 
-    detection_rate is read (and gated) from docs/benchmarks/latest.json — the
-    weekly-measured source of truth — NOT a hand-authored number. It is null
-    until a large-enough sample has been benchmarked, matching how the landing
-    presents recall. Other counts mirror docs/transparency/<latest>.json.
+    Every number is read from something that measured it (the weekly
+    benchmark, the deployed model's held-out test, the live blocklist, the
+    brand list the scorer loads) or is null, with `notes` saying why. The
+    hand-written figures this used to return — including a 0.08% false-
+    positive rate that was never measured — are gone. Keys are unchanged so
+    existing clients keep working.
     """
+    report = public_stats.benchmark()
     return {
-        "total_domains_protected": 100000,
-        # 16 active sources as of Q2 2026 transparency report:
-        # 11 external blocklists + 2 reputation/visual identity
-        # (Tranco, favicon) + 3 Cleanway-original (credential-form,
-        # modern-phish guard, URL-PII).
-        "threat_sources": 16,
-        "detection_signals": 42,
-        "ml_model_auc": _model_auc(),  # read live from model_meta (drifts on retrain)
+        "total_domains_protected": None,
+        "threat_sources": None,
+        "detection_signals": None,
+        "ml_model_auc": public_stats.model_auc(),
         # Which ML backend is actually live: 'onnx' | 'catboost' | 'disabled'.
         # Lets us verify from prod that ML is firing, not silently degraded.
         "ml_backend": ml_scorer.backend_status(),
-        # Measured fresh-URL recall, gated (null until n>=100). Never hardcoded.
-        "detection_rate": _measured_detection_rate(),
-        # Mirrors docs/transparency/2026-q2.json. 0.0 was wishful;
-        # 0.0008 (0.08%) is what the latest period actually measured.
-        "false_positive_rate": 0.0008,
-        "brand_targets_monitored": 125,
+        "detection_rate": public_stats.measured_detection_rate(report),
+        "false_positive_rate": public_stats.measured_false_positive_rate(report),
+        "benchmark_measured_at": report.get("ts"),
+        "blocklist_entries": await public_stats.blocklist_entries(),
+        "brand_targets_monitored": public_stats.brand_targets_monitored(),
+        "notes": public_stats.notes_for(report),
         "transparency_url": "https://cleanway.ai/transparency",
     }
