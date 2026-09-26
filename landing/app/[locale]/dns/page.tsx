@@ -3,9 +3,11 @@
  *
  * Server-rendered landing for the "Cleanway DNS without the app"
  * flow. The same page works for iOS (one-tap .mobileconfig
- * download), Android (paste hostname into Private DNS),
- * macOS Big Sur+ (same .mobileconfig as iOS), and Windows 11
- * (DoH server URL in Settings → Network).
+ * download), macOS Big Sur+ (same .mobileconfig as iOS), and Windows 11
+ * (DoH server URL in Settings → Network). Android is sent to the app:
+ * its Private DNS needs DNS-over-TLS on port 853, which dns.cleanway.ai
+ * does not serve, and a strict Private DNS host that never answers takes
+ * the whole phone offline.
  *
  * The page deliberately does NOT use platform detection on the
  * server — Cloudflare Workers and CDNs cache the page across
@@ -19,7 +21,6 @@ import { routing, type Locale } from "@/i18n/routing";
 
 const SITE_URL = "https://cleanway.ai";
 const DEFAULT_API_URL = "https://api.cleanway.ai";
-const DNS_HOST = "dns.cleanway.ai";
 const DOH_URL = "https://dns.cleanway.ai/dns-query";
 
 function urlFor(locale: Locale | string): string {
@@ -76,6 +77,8 @@ export default async function DnsPage({
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
   const mobileconfigUrl = `${apiBase}/api/v1/mobileconfig?locale=${safeLocale}`;
+  const androidUrl =
+    safeLocale === routing.defaultLocale ? "/android" : `/${safeLocale}/android`;
 
   return (
     <main
@@ -128,27 +131,39 @@ export default async function DnsPage({
         </p>
       </section>
 
-      {/* Android Private DNS — copy & paste the hostname */}
+      {/* Android — the app, never Private DNS (no DoT on :853 yet) */}
       <section style={_sectionStyle("#22c55e")}>
-        <h2 style={_h2Style}>🤖 Android (9.0+)</h2>
-        <p style={{ marginBottom: 12 }}>{t("android_intro")}</p>
-        <ol style={{ paddingLeft: 22, marginBottom: 16 }}>
-          <li>{t("android_step1")}</li>
-          <li>{t("android_step2")}</li>
-          <li>
-            {t("android_step3")}{" "}
-            <code style={_codeStyle}>{DNS_HOST}</code>
-          </li>
-          <li>{t("android_step4")}</li>
-        </ol>
-        <div style={{ marginBottom: 12 }}>
-          <code style={{ ..._codeStyle, padding: "10px 14px", fontSize: 16 }}>
-            {DNS_HOST}
-          </code>
+        <h2 style={_h2Style}>🤖 Android</h2>
+        <p style={{ marginBottom: 16 }}>{t("android_app_intro")}</p>
+        <a
+          href={androidUrl}
+          style={{
+            display: "inline-block",
+            background: "#22c55e",
+            color: "#052e16",
+            padding: "12px 22px",
+            borderRadius: 10,
+            fontWeight: 600,
+            fontSize: 15,
+            textDecoration: "none",
+          }}
+        >
+          {t("android_app_cta")}
+        </a>
+        <div
+          style={{
+            marginTop: 20,
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #f59e0b",
+            background: "rgba(245, 158, 11, 0.08)",
+          }}
+        >
+          <p style={{ color: "#fbbf24", fontWeight: 600, marginBottom: 6 }}>
+            {t("android_undo_title")}
+          </p>
+          <p style={{ fontSize: 14 }}>{t("android_undo_body")}</p>
         </div>
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 12 }}>
-          {t("android_compat_note")}
-        </p>
       </section>
 
       {/* Windows 11 — DoH server in network settings */}
