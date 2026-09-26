@@ -20,7 +20,8 @@
     "https://mail.yahoo.com/*"
   ],
   "background": {
-    "service_worker": "src/background/index.js"
+    "service_worker": "src/background/index.js",
+    "type": "module"
   },
   "content_scripts": [
     {

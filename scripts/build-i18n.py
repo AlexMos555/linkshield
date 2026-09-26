@@ -55,6 +55,15 @@ EXTENSION_NS_TO_FLAT_PREFIX = {
     "extension.common": "",          # trust_footer
     "extension.block_page": "block_",
     "extension.welcome": "welcome_",
+    # Content scripts, context menu, manifest commands and the family
+    # notifier (used to be hard-coded English).
+    "extension.badge": "badge_",
+    "extension.privacy_audit": "audit_",
+    "extension.credential_guard": "credguard_",
+    "extension.modern_phish": "mpg_",
+    "extension.menu": "menu_",
+    "extension.commands": "command_",
+    "extension.family_notify": "family_notify_",
 }
 
 # For popup namespace: keys NOT in the dict above use bare names (no prefix).

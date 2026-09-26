@@ -23,7 +23,8 @@
   ],
 
   "background": {
-    "service_worker": "src/background/index.js"
+    "service_worker": "src/background/index.js",
+    "type": "module"
   },
 
   "content_scripts": [
@@ -79,11 +80,11 @@
   "commands": {
     "_execute_action": {
       "suggested_key": { "default": "Ctrl+Shift+L", "mac": "Command+Shift+L" },
-      "description": "Open Cleanway popup"
+      "description": "__MSG_command_open_popup__"
     },
     "check-page": {
       "suggested_key": { "default": "Ctrl+Shift+K", "mac": "Command+Shift+K" },
-      "description": "Check current page safety"
+      "description": "__MSG_command_check_page__"
     }
   },
 

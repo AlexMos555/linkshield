@@ -377,5 +377,208 @@
   },
   "welcome_trust_footer": {
     "message": "الحظر مجاني دائمًا. بياناتك لا تغادر هذا الجهاز أبدًا."
+  },
+  "badge_label_safe": {
+    "message": "آمن"
+  },
+  "badge_label_caution": {
+    "message": "تنبيه"
+  },
+  "badge_label_dangerous": {
+    "message": "خطير"
+  },
+  "badge_label_unknown": {
+    "message": "غير معروف"
+  },
+  "badge_aria_safe": {
+    "message": "رابط آمن"
+  },
+  "badge_aria_caution": {
+    "message": "تنبيه — تحقّق من هذا الرابط قبل أن تثق به"
+  },
+  "badge_aria_dangerous": {
+    "message": "رابط خطير — لا تفتحه"
+  },
+  "badge_score": {
+    "message": "التقييم: $SCORE$/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_reason_official_site": {
+    "message": "موقع رسمي"
+  },
+  "audit_title": {
+    "message": "فحص الخصوصية"
+  },
+  "audit_trackers": {
+    "message": "أدوات التتبّع"
+  },
+  "audit_cookies": {
+    "message": "ملفات تعريف الارتباط"
+  },
+  "audit_data_fields": {
+    "message": "حقول البيانات"
+  },
+  "audit_fingerprint": {
+    "message": "البصمة الرقمية"
+  },
+  "audit_yes": {
+    "message": "نعم"
+  },
+  "audit_no": {
+    "message": "لا"
+  },
+  "audit_share": {
+    "message": "مشاركة التقييم"
+  },
+  "audit_on_device": {
+    "message": "تم الفحص على جهازك"
+  },
+  "credguard_banner_title": {
+    "message": "توقّف — تبدو هذه صفحة احتيال"
+  },
+  "credguard_banner_brand": {
+    "message": "تبدو مثل $BRAND$، لكن العنوان هو $HOST$ — وليس $LEGIT$.",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "legit": {
+        "content": "$3"
+      }
+    }
+  },
+  "credguard_banner_action": {
+    "message": "هذا النموذج يرسل كلمة مرورك إلى $HOST$ — وهو موقع مختلف عن الظاهر في شريط العنوان.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_tld": {
+    "message": "يستخدم الموقع عنوانًا بنطاق $TLD$، وهو نطاق يستخدمه المحتالون كثيرًا لصفحات مزيفة مؤقتة.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_advice": {
+    "message": "لا تكتب كلمة مرورك هنا. افتح الموقع الحقيقي بكتابة عنوانه بنفسك."
+  },
+  "credguard_dismiss": {
+    "message": "إغلاق"
+  },
+  "credguard_modal_title": {
+    "message": "يرى Cleanway أن هذا النموذج احتيالي"
+  },
+  "credguard_modal_intro": {
+    "message": "إذا تابعت، فسيتم إرسال اسم المستخدم وكلمة المرور. إليك سبب عدم أمانه:"
+  },
+  "credguard_reason_action": {
+    "message": "النموذج يرسل كلمة مرورك إلى $ACTION$ — وليس إلى $PAGE$.",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "page": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_typosquat": {
+    "message": "هذا العنوان ($HOST$) يبدو تحريفًا لاسم $BRAND$.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "brand": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_tld": {
+    "message": "صفحات تسجيل الدخول على عناوين $TLD$ نادرًا جدًا ما تكون حقيقية.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_button_cancel": {
+    "message": "لا ترسل — أعدني"
+  },
+  "credguard_button_honeypot": {
+    "message": "احمِ كلمة مروري"
+  },
+  "credguard_button_honeypot_hint": {
+    "message": "سيرسل Cleanway بدلًا منها كلمة مرور عشوائية مختلَقة. تبقى كلمة مرورك الحقيقية على هذا الجهاز."
+  },
+  "credguard_button_override": {
+    "message": "أرسل على أي حال"
+  },
+  "credguard_toast_title": {
+    "message": "أرسل Cleanway كلمة مرور مختلَقة"
+  },
+  "credguard_toast_body": {
+    "message": "بقيت كلمة مرورك الحقيقية على هذا الجهاز. إذا تبيّن أن الصفحة حقيقية، فأعد كتابة كلمة المرور فقط — فهي لم تُرسَل أبدًا."
+  },
+  "mpg_bitb": {
+    "message": "هذه الصفحة ترسم شريط عنوان مزيفًا ($FAKE$). أنت في الحقيقة على $REAL$.",
+    "placeholders": {
+      "fake": {
+        "content": "$1"
+      },
+      "real": {
+        "content": "$2"
+      }
+    }
+  },
+  "mpg_orphan": {
+    "message": "هذه الصفحة تطلب كلمة مرور دون نموذج تسجيل دخول حقيقي — قد تُسرق كلمة مرورك."
+  },
+  "menu_check_link": {
+    "message": "افحص هذا الرابط باستخدام Cleanway"
+  },
+  "menu_privacy_audit": {
+    "message": "افحص خصوصية هذه الصفحة"
+  },
+  "command_open_popup": {
+    "message": "افتح Cleanway"
+  },
+  "command_check_page": {
+    "message": "افحص هذه الصفحة"
+  },
+  "family_notify_title_blocked": {
+    "message": "حمى Cleanway أحد أفراد عائلتك"
+  },
+  "family_notify_message_blocked": {
+    "message": "تم حظر موقع احتيالي: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_title_warned": {
+    "message": "تنبيه للعائلة"
+  },
+  "family_notify_message_warned": {
+    "message": "تم تحذير أحد أفراد عائلتك من موقع مشبوه: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_unknown_site": {
+    "message": "موقع غير معروف"
   }
 }

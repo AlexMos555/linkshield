@@ -377,5 +377,208 @@
   },
   "welcome_trust_footer": {
     "message": "Il blocco è gratis per sempre. I tuoi dati non lasciano mai questo dispositivo."
+  },
+  "badge_label_safe": {
+    "message": "Sicuro"
+  },
+  "badge_label_caution": {
+    "message": "Attenzione"
+  },
+  "badge_label_dangerous": {
+    "message": "Pericoloso"
+  },
+  "badge_label_unknown": {
+    "message": "Sconosciuto"
+  },
+  "badge_aria_safe": {
+    "message": "Link sicuro"
+  },
+  "badge_aria_caution": {
+    "message": "Attenzione: controlla questo link prima di fidarti"
+  },
+  "badge_aria_dangerous": {
+    "message": "Link pericoloso: non aprirlo"
+  },
+  "badge_score": {
+    "message": "Punteggio: $SCORE$/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_reason_official_site": {
+    "message": "Sito ufficiale"
+  },
+  "audit_title": {
+    "message": "Controllo privacy"
+  },
+  "audit_trackers": {
+    "message": "Tracker"
+  },
+  "audit_cookies": {
+    "message": "Cookie"
+  },
+  "audit_data_fields": {
+    "message": "Campi dati"
+  },
+  "audit_fingerprint": {
+    "message": "Impronta digitale"
+  },
+  "audit_yes": {
+    "message": "Sì"
+  },
+  "audit_no": {
+    "message": "No"
+  },
+  "audit_share": {
+    "message": "Condividi il voto"
+  },
+  "audit_on_device": {
+    "message": "Eseguito sul tuo dispositivo"
+  },
+  "credguard_banner_title": {
+    "message": "Stop: sembra una pagina truffa"
+  },
+  "credguard_banner_brand": {
+    "message": "Sembra $BRAND$, ma l'indirizzo è $HOST$, non $LEGIT$.",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "legit": {
+        "content": "$3"
+      }
+    }
+  },
+  "credguard_banner_action": {
+    "message": "Questo modulo invia la tua password a $HOST$, un sito diverso da quello nella barra degli indirizzi.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_tld": {
+    "message": "Il sito usa un indirizzo $TLD$, spesso usato dai truffatori per pagine false usa e getta.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_advice": {
+    "message": "Non scrivere qui la tua password. Apri il sito vero digitando tu stesso l'indirizzo."
+  },
+  "credguard_dismiss": {
+    "message": "Chiudi"
+  },
+  "credguard_modal_title": {
+    "message": "Cleanway pensa che questo modulo sia una truffa"
+  },
+  "credguard_modal_intro": {
+    "message": "Se continui, verranno inviati il tuo nome utente e la tua password. Ecco perché sembra pericoloso:"
+  },
+  "credguard_reason_action": {
+    "message": "Il modulo invia la tua password a $ACTION$, non a $PAGE$.",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "page": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_typosquat": {
+    "message": "Questo indirizzo ($HOST$) sembra una storpiatura di $BRAND$.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "brand": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_tld": {
+    "message": "Le pagine di accesso con indirizzi $TLD$ non sono quasi mai autentiche.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_button_cancel": {
+    "message": "Non inviare, torna indietro"
+  },
+  "credguard_button_honeypot": {
+    "message": "Proteggi la mia password"
+  },
+  "credguard_button_honeypot_hint": {
+    "message": "Cleanway invierà al suo posto una password inventata a caso. La tua vera password resta su questo dispositivo."
+  },
+  "credguard_button_override": {
+    "message": "Invia comunque"
+  },
+  "credguard_toast_title": {
+    "message": "Cleanway ha inviato una password inventata"
+  },
+  "credguard_toast_body": {
+    "message": "La tua vera password è rimasta su questo dispositivo. Se la pagina si rivela autentica, digita di nuovo la password: non è mai stata inviata."
+  },
+  "mpg_bitb": {
+    "message": "Questa pagina disegna una finta barra degli indirizzi ($FAKE$). In realtà sei su $REAL$.",
+    "placeholders": {
+      "fake": {
+        "content": "$1"
+      },
+      "real": {
+        "content": "$2"
+      }
+    }
+  },
+  "mpg_orphan": {
+    "message": "Questa pagina chiede una password senza un vero modulo di accesso: potrebbe essere rubata."
+  },
+  "menu_check_link": {
+    "message": "Controlla questo link con Cleanway"
+  },
+  "menu_privacy_audit": {
+    "message": "Controlla la privacy di questa pagina"
+  },
+  "command_open_popup": {
+    "message": "Apri Cleanway"
+  },
+  "command_check_page": {
+    "message": "Controlla questa pagina"
+  },
+  "family_notify_title_blocked": {
+    "message": "Cleanway ha protetto un familiare"
+  },
+  "family_notify_message_blocked": {
+    "message": "È stato bloccato un sito truffa: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_title_warned": {
+    "message": "Avviso di famiglia"
+  },
+  "family_notify_message_warned": {
+    "message": "Un familiare è stato avvisato di un sito sospetto: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_unknown_site": {
+    "message": "un sito sconosciuto"
   }
 }

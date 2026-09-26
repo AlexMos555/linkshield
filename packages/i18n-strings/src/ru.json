@@ -388,6 +388,223 @@
       "trust_footer": {
         "text": "Блокировка бесплатна навсегда. Ваши данные не покидают это устройство."
       }
+    },
+    "badge": {
+      "label_safe": {
+        "text": "Безопасно"
+      },
+      "label_caution": {
+        "text": "Осторожно"
+      },
+      "label_dangerous": {
+        "text": "Опасно"
+      },
+      "label_unknown": {
+        "text": "Неизвестно"
+      },
+      "aria_safe": {
+        "text": "Безопасная ссылка"
+      },
+      "aria_caution": {
+        "text": "Осторожно — проверьте ссылку, прежде чем ей доверять"
+      },
+      "aria_dangerous": {
+        "text": "Опасная ссылка — не открывайте"
+      },
+      "score": {
+        "text": "Оценка: $SCORE$/100",
+        "placeholders": {
+          "score": {
+            "content": "$1"
+          }
+        }
+      },
+      "reason_official_site": {
+        "text": "Официальный сайт"
+      }
+    },
+    "privacy_audit": {
+      "title": {
+        "text": "Проверка приватности"
+      },
+      "trackers": {
+        "text": "Трекеры"
+      },
+      "cookies": {
+        "text": "Cookie-файлы"
+      },
+      "data_fields": {
+        "text": "Поля для данных"
+      },
+      "fingerprint": {
+        "text": "Цифровой отпечаток"
+      },
+      "yes": {
+        "text": "Да"
+      },
+      "no": {
+        "text": "Нет"
+      },
+      "share": {
+        "text": "Поделиться оценкой"
+      },
+      "on_device": {
+        "text": "Проверено на вашем устройстве"
+      }
+    },
+    "credential_guard": {
+      "banner_title": {
+        "text": "Стоп — похоже, это сайт мошенников"
+      },
+      "banner_brand": {
+        "text": "Похоже на $BRAND$, но адрес сайта — $HOST$, а не $LEGIT$.",
+        "placeholders": {
+          "brand": {
+            "content": "$1"
+          },
+          "host": {
+            "content": "$2"
+          },
+          "legit": {
+            "content": "$3"
+          }
+        }
+      },
+      "banner_action": {
+        "text": "Эта форма отправит ваш пароль на $HOST$ — это другой сайт, не тот, что в адресной строке.",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_tld": {
+        "text": "Адрес сайта в зоне $TLD$ — мошенники часто заводят в ней одноразовые поддельные страницы.",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_advice": {
+        "text": "Не вводите здесь пароль. Откройте настоящий сайт, набрав адрес вручную."
+      },
+      "dismiss": {
+        "text": "Закрыть"
+      },
+      "modal_title": {
+        "text": "Cleanway считает эту форму ловушкой мошенников"
+      },
+      "modal_intro": {
+        "text": "Если продолжить, ваш логин и пароль будут отправлены. Почему это выглядит опасно:"
+      },
+      "reason_action": {
+        "text": "Форма отправит ваш пароль на $ACTION$, а не на $PAGE$.",
+        "placeholders": {
+          "action": {
+            "content": "$1"
+          },
+          "page": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_typosquat": {
+        "text": "Этот адрес ($HOST$) похож на искажённое название $BRAND$.",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          },
+          "brand": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_tld": {
+        "text": "Страницы входа с адресом в зоне $TLD$ почти никогда не бывают настоящими.",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "button_cancel": {
+        "text": "Не отправлять — вернуться"
+      },
+      "button_honeypot": {
+        "text": "Защитить мой пароль"
+      },
+      "button_honeypot_hint": {
+        "text": "Cleanway отправит вместо него случайный выдуманный пароль. Ваш настоящий пароль останется на этом устройстве."
+      },
+      "button_override": {
+        "text": "Всё равно отправить"
+      },
+      "toast_title": {
+        "text": "Cleanway отправил выдуманный пароль"
+      },
+      "toast_body": {
+        "text": "Ваш настоящий пароль остался на этом устройстве. Если сайт окажется настоящим, просто введите пароль ещё раз — он никуда не отправлялся."
+      }
+    },
+    "modern_phish": {
+      "bitb": {
+        "text": "Эта страница рисует поддельную адресную строку ($FAKE$). На самом деле вы на сайте $REAL$.",
+        "placeholders": {
+          "fake": {
+            "content": "$1"
+          },
+          "real": {
+            "content": "$2"
+          }
+        }
+      },
+      "orphan": {
+        "text": "Эта страница просит пароль без настоящей формы входа — пароль могут украсть."
+      }
+    },
+    "menu": {
+      "check_link": {
+        "text": "Проверить ссылку в Cleanway"
+      },
+      "privacy_audit": {
+        "text": "Проверить приватность страницы"
+      }
+    },
+    "commands": {
+      "open_popup": {
+        "text": "Открыть Cleanway"
+      },
+      "check_page": {
+        "text": "Проверить эту страницу"
+      }
+    },
+    "family_notify": {
+      "title_blocked": {
+        "text": "Cleanway защитил вашего близкого"
+      },
+      "message_blocked": {
+        "text": "Заблокирован мошеннический сайт: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "title_warned": {
+        "text": "Оповещение для семьи"
+      },
+      "message_warned": {
+        "text": "Вашего близкого предупредили о подозрительном сайте: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "unknown_site": {
+        "text": "неизвестный сайт"
+      }
     }
   },
   "landing": {

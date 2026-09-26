@@ -12,13 +12,15 @@
  *      family-crypto.js's encryptForFamily helper and POSTs to
  *      /family/{id}/alerts.
  *
- * Loaded into the MV3 service-worker context via importScripts of
- * tweetnacl + tweetnacl-util (at the top of background/index.js), so
- * globalThis.nacl is already populated before this module runs.
+ * Imported statically by the background (a module service worker, where
+ * import() is forbidden) and dynamically by the Options page.
  *
  * Fail-open: every error path silently no-ops. The block UX always
  * runs; family alerts are a best-effort courtesy.
  */
+
+import { submitAlerts } from "./family-api.js";
+import { encryptForFamily, getOrCreateKeypair } from "./family-crypto.js";
 
 const CACHE_KEY = "family_cache";
 const DEDUP_KEY = "family_alerts_dedup";
@@ -148,19 +150,9 @@ export async function fanOutAlerts(token, blockedResults) {
     return 0; // No family or no siblings with keys — nothing to do
   }
 
-  // Need crypto helpers — loaded as ESM via dynamic import.
-  // family-crypto.js itself relies on globalThis.nacl which the
-  // service worker populated via importScripts() at startup.
-  let crypto;
-  try {
-    crypto = await import(chrome.runtime.getURL("src/utils/family-crypto.js"));
-  } catch {
-    return 0;
-  }
-
   let secretKeyB64;
   try {
-    const kp = await crypto.getOrCreateKeypair();
+    const kp = await getOrCreateKeypair();
     secretKeyB64 = kp.secretKeyB64;
   } catch {
     return 0; // No keypair yet (user hasn't opened Family Hub) — defer
@@ -178,13 +170,6 @@ export async function fanOutAlerts(token, blockedResults) {
   if (fresh.length === 0) return 0;
 
   // Build envelopes per dangerous result × per sibling
-  let api;
-  try {
-    api = await import(chrome.runtime.getURL("src/utils/family-api.js"));
-  } catch {
-    return 0;
-  }
-
   let totalSent = 0;
   for (const r of fresh) {
     const alert = {
@@ -196,10 +181,10 @@ export async function fanOutAlerts(token, blockedResults) {
       alert_type: "block",
     };
     try {
-      const envelopes = crypto.encryptForFamily(alert, cache.members, secretKeyB64);
+      const envelopes = encryptForFamily(alert, cache.members, secretKeyB64);
       if (!envelopes || envelopes.length === 0) continue;
       // eslint-disable-next-line no-await-in-loop
-      const resp = await api.submitAlerts(token, cache.family_id, envelopes);
+      const resp = await submitAlerts(token, cache.family_id, envelopes);
       if (resp && typeof resp.accepted === "number") {
         totalSent += resp.accepted;
         // eslint-disable-next-line no-await-in-loop

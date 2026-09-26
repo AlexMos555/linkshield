@@ -379,5 +379,208 @@
   },
   "welcome_trust_footer": {
     "message": "Free forever for blocking. Your data never leaves this device."
+  },
+  "badge_label_safe": {
+    "message": "Safe"
+  },
+  "badge_label_caution": {
+    "message": "Caution"
+  },
+  "badge_label_dangerous": {
+    "message": "Dangerous"
+  },
+  "badge_label_unknown": {
+    "message": "Unknown"
+  },
+  "badge_aria_safe": {
+    "message": "Safe link"
+  },
+  "badge_aria_caution": {
+    "message": "Caution — check this link before you trust it"
+  },
+  "badge_aria_dangerous": {
+    "message": "Dangerous link — do not open"
+  },
+  "badge_score": {
+    "message": "Score: $SCORE$/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_reason_official_site": {
+    "message": "Official site"
+  },
+  "audit_title": {
+    "message": "Privacy Audit"
+  },
+  "audit_trackers": {
+    "message": "Trackers"
+  },
+  "audit_cookies": {
+    "message": "Cookies"
+  },
+  "audit_data_fields": {
+    "message": "Data fields"
+  },
+  "audit_fingerprint": {
+    "message": "Fingerprinting"
+  },
+  "audit_yes": {
+    "message": "Yes"
+  },
+  "audit_no": {
+    "message": "No"
+  },
+  "audit_share": {
+    "message": "Share grade"
+  },
+  "audit_on_device": {
+    "message": "Ran on your device"
+  },
+  "credguard_banner_title": {
+    "message": "Stop — this looks like a scam page"
+  },
+  "credguard_banner_brand": {
+    "message": "Looks like $BRAND$, but the address is $HOST$ — not $LEGIT$.",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "legit": {
+        "content": "$3"
+      }
+    }
+  },
+  "credguard_banner_action": {
+    "message": "This form sends your password to $HOST$ — a different site from the one in the address bar.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_tld": {
+    "message": "The site uses a $TLD$ address, which scammers often use for one-off fake pages.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_advice": {
+    "message": "Don't type your password here. Open the real site by typing the address yourself."
+  },
+  "credguard_dismiss": {
+    "message": "Close"
+  },
+  "credguard_modal_title": {
+    "message": "Cleanway thinks this form is a scam"
+  },
+  "credguard_modal_intro": {
+    "message": "If you continue, your login and password will be sent. Here's why this looks unsafe:"
+  },
+  "credguard_reason_action": {
+    "message": "The form sends your password to $ACTION$ — not $PAGE$.",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "page": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_typosquat": {
+    "message": "This address ($HOST$) looks like a misspelling of $BRAND$.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "brand": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_tld": {
+    "message": "Login pages on $TLD$ addresses are very rarely genuine.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_button_cancel": {
+    "message": "Don't submit — take me back"
+  },
+  "credguard_button_honeypot": {
+    "message": "Keep my password safe"
+  },
+  "credguard_button_honeypot_hint": {
+    "message": "Cleanway will send a random made-up password instead. Your real password stays on this device."
+  },
+  "credguard_button_override": {
+    "message": "Submit anyway"
+  },
+  "credguard_toast_title": {
+    "message": "Cleanway sent a made-up password"
+  },
+  "credguard_toast_body": {
+    "message": "Your real password stayed on this device. If this page turns out to be genuine, just type your password again — it was never sent."
+  },
+  "mpg_bitb": {
+    "message": "This page is drawing a fake browser address bar ($FAKE$). You are actually on $REAL$.",
+    "placeholders": {
+      "fake": {
+        "content": "$1"
+      },
+      "real": {
+        "content": "$2"
+      }
+    }
+  },
+  "mpg_orphan": {
+    "message": "This page asks for a password without a real login form — your password may be stolen."
+  },
+  "menu_check_link": {
+    "message": "Check this link with Cleanway"
+  },
+  "menu_privacy_audit": {
+    "message": "Check this page's privacy"
+  },
+  "command_open_popup": {
+    "message": "Open Cleanway"
+  },
+  "command_check_page": {
+    "message": "Check this page"
+  },
+  "family_notify_title_blocked": {
+    "message": "Cleanway protected your family member"
+  },
+  "family_notify_message_blocked": {
+    "message": "A scam site was blocked: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_title_warned": {
+    "message": "Family alert"
+  },
+  "family_notify_message_warned": {
+    "message": "Your family member was warned about a suspicious site: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_unknown_site": {
+    "message": "an unknown site"
   }
 }

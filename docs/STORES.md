@@ -113,7 +113,7 @@ grep '"version"' extension/manifest.json
 **Dev account:** https://addons.mozilla.org/developers/ — free, Mozilla account required.
 
 **Notes:**
-- We ship MV2 with a `browser.*` Promise shim (see `scripts/build-extensions.sh`). Firefox's MV3 transition is still mid-flight; MV2 keeps the broadest compatibility.
+- We ship MV2 with a module background (`"type": "module"`, so Firefox 112+) and a `chrome → browser` alias in `src/background/browser-compat.js`. Firefox's MV3 transition is still mid-flight; MV2 keeps the broadest compatibility. Chromium can't load MV2, so `scripts/test-extension-sw.mjs` does not cover this build: load it by hand in Firefox (about:debugging) before submitting.
 - AMO requires a **source-code submission** for any extension that uses minified or bundled code. Our build is hand-written JS — but AMO's check is heuristic. If they flag, link the GitHub repo: https://github.com/AlexMos555/linkshield.
 - Mozilla's review is human-led; expect 3-10 business days. The honest publish-our-FP-rate angle plays VERY well with AMO reviewers.
 

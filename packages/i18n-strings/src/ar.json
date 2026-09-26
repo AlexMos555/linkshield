@@ -388,6 +388,223 @@
       "trust_footer": {
         "text": "الحظر مجاني دائمًا. بياناتك لا تغادر هذا الجهاز أبدًا."
       }
+    },
+    "badge": {
+      "label_safe": {
+        "text": "آمن"
+      },
+      "label_caution": {
+        "text": "تنبيه"
+      },
+      "label_dangerous": {
+        "text": "خطير"
+      },
+      "label_unknown": {
+        "text": "غير معروف"
+      },
+      "aria_safe": {
+        "text": "رابط آمن"
+      },
+      "aria_caution": {
+        "text": "تنبيه — تحقّق من هذا الرابط قبل أن تثق به"
+      },
+      "aria_dangerous": {
+        "text": "رابط خطير — لا تفتحه"
+      },
+      "score": {
+        "text": "التقييم: $SCORE$/100",
+        "placeholders": {
+          "score": {
+            "content": "$1"
+          }
+        }
+      },
+      "reason_official_site": {
+        "text": "موقع رسمي"
+      }
+    },
+    "privacy_audit": {
+      "title": {
+        "text": "فحص الخصوصية"
+      },
+      "trackers": {
+        "text": "أدوات التتبّع"
+      },
+      "cookies": {
+        "text": "ملفات تعريف الارتباط"
+      },
+      "data_fields": {
+        "text": "حقول البيانات"
+      },
+      "fingerprint": {
+        "text": "البصمة الرقمية"
+      },
+      "yes": {
+        "text": "نعم"
+      },
+      "no": {
+        "text": "لا"
+      },
+      "share": {
+        "text": "مشاركة التقييم"
+      },
+      "on_device": {
+        "text": "تم الفحص على جهازك"
+      }
+    },
+    "credential_guard": {
+      "banner_title": {
+        "text": "توقّف — تبدو هذه صفحة احتيال"
+      },
+      "banner_brand": {
+        "text": "تبدو مثل $BRAND$، لكن العنوان هو $HOST$ — وليس $LEGIT$.",
+        "placeholders": {
+          "brand": {
+            "content": "$1"
+          },
+          "host": {
+            "content": "$2"
+          },
+          "legit": {
+            "content": "$3"
+          }
+        }
+      },
+      "banner_action": {
+        "text": "هذا النموذج يرسل كلمة مرورك إلى $HOST$ — وهو موقع مختلف عن الظاهر في شريط العنوان.",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_tld": {
+        "text": "يستخدم الموقع عنوانًا بنطاق $TLD$، وهو نطاق يستخدمه المحتالون كثيرًا لصفحات مزيفة مؤقتة.",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_advice": {
+        "text": "لا تكتب كلمة مرورك هنا. افتح الموقع الحقيقي بكتابة عنوانه بنفسك."
+      },
+      "dismiss": {
+        "text": "إغلاق"
+      },
+      "modal_title": {
+        "text": "يرى Cleanway أن هذا النموذج احتيالي"
+      },
+      "modal_intro": {
+        "text": "إذا تابعت، فسيتم إرسال اسم المستخدم وكلمة المرور. إليك سبب عدم أمانه:"
+      },
+      "reason_action": {
+        "text": "النموذج يرسل كلمة مرورك إلى $ACTION$ — وليس إلى $PAGE$.",
+        "placeholders": {
+          "action": {
+            "content": "$1"
+          },
+          "page": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_typosquat": {
+        "text": "هذا العنوان ($HOST$) يبدو تحريفًا لاسم $BRAND$.",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          },
+          "brand": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_tld": {
+        "text": "صفحات تسجيل الدخول على عناوين $TLD$ نادرًا جدًا ما تكون حقيقية.",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "button_cancel": {
+        "text": "لا ترسل — أعدني"
+      },
+      "button_honeypot": {
+        "text": "احمِ كلمة مروري"
+      },
+      "button_honeypot_hint": {
+        "text": "سيرسل Cleanway بدلًا منها كلمة مرور عشوائية مختلَقة. تبقى كلمة مرورك الحقيقية على هذا الجهاز."
+      },
+      "button_override": {
+        "text": "أرسل على أي حال"
+      },
+      "toast_title": {
+        "text": "أرسل Cleanway كلمة مرور مختلَقة"
+      },
+      "toast_body": {
+        "text": "بقيت كلمة مرورك الحقيقية على هذا الجهاز. إذا تبيّن أن الصفحة حقيقية، فأعد كتابة كلمة المرور فقط — فهي لم تُرسَل أبدًا."
+      }
+    },
+    "modern_phish": {
+      "bitb": {
+        "text": "هذه الصفحة ترسم شريط عنوان مزيفًا ($FAKE$). أنت في الحقيقة على $REAL$.",
+        "placeholders": {
+          "fake": {
+            "content": "$1"
+          },
+          "real": {
+            "content": "$2"
+          }
+        }
+      },
+      "orphan": {
+        "text": "هذه الصفحة تطلب كلمة مرور دون نموذج تسجيل دخول حقيقي — قد تُسرق كلمة مرورك."
+      }
+    },
+    "menu": {
+      "check_link": {
+        "text": "افحص هذا الرابط باستخدام Cleanway"
+      },
+      "privacy_audit": {
+        "text": "افحص خصوصية هذه الصفحة"
+      }
+    },
+    "commands": {
+      "open_popup": {
+        "text": "افتح Cleanway"
+      },
+      "check_page": {
+        "text": "افحص هذه الصفحة"
+      }
+    },
+    "family_notify": {
+      "title_blocked": {
+        "text": "حمى Cleanway أحد أفراد عائلتك"
+      },
+      "message_blocked": {
+        "text": "تم حظر موقع احتيالي: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "title_warned": {
+        "text": "تنبيه للعائلة"
+      },
+      "message_warned": {
+        "text": "تم تحذير أحد أفراد عائلتك من موقع مشبوه: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "unknown_site": {
+        "text": "موقع غير معروف"
+      }
     }
   },
   "landing": {

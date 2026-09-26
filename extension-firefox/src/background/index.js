@@ -1,21 +1,41 @@
-// build-extensions.sh firefox shim: re-alias chrome to browser so Promise APIs work under MV2
-if (typeof browser !== "undefined" && (typeof chrome === "undefined" || !chrome.storage || typeof chrome.storage.local.get === "function")) { var chrome = browser; }
 /**
- * Cleanway Background — v3 (bullet-proof)
+ * Cleanway Background — v4 (module service worker)
+ *
+ * Loaded as an ES module ("type": "module" in all three manifests) and
+ * pulls its helpers in with STATIC imports. It used to be a classic
+ * service worker that loaded them with import(), which the service-worker
+ * spec forbids: every call threw, the try/catch around it hid the error,
+ * and the threat counter, Family Hub alerts, the Family Hub poller and the
+ * daily 30-day history prune never ran for anyone.
+ * scripts/test-extension-sw.mjs now drives this file in a real Chromium.
+ *
+ * Optional browser APIs (context menus, notifications, keyboard commands,
+ * the toolbar badge) are feature-checked before use: Yandex Browser on
+ * Android, Safari and Firefox each lack some of them, and one unguarded
+ * top-level `undefined.addListener` would abort the whole module — every
+ * listener after it, including the link check, would never register.
  */
 
-// Load TweetNaCl into the SW global scope BEFORE any handlers run, so
-// utils/family-crypto.js (loaded later via dynamic import) finds
-// globalThis.nacl. importScripts is the only way to do this in MV3
-// classic-script SWs; if it fails (manifest mode mismatch, manifest
-// glob excluded the file), Family Hub fan-out is silently disabled.
-try {
-  importScripts(
-    chrome.runtime.getURL("src/utils/vendor/tweetnacl.min.js"),
-    chrome.runtime.getURL("src/utils/vendor/tweetnacl-util.min.js")
-  );
-} catch (e) {
-  console.warn("[Cleanway] tweetnacl load failed; family fan-out disabled:", e && e.message);
+import "./browser-compat.js"; // must stay first: aliases chrome → browser in Firefox
+import { incrementThreatCounter } from "../utils/api.js";
+import { fanOutAlerts } from "../utils/family-fanout.js";
+import {
+  ensureFamilyPollAlarm,
+  isFamilyNotificationId,
+  isFamilyPollAlarm,
+  pollAndNotify,
+} from "../utils/family-notifier.js";
+import { pruneOldChecks } from "../utils/storage.js";
+import { isKnownSafeHost } from "./trusted-hosts.js";
+
+const HISTORY_PRUNE_ALARM = "cleanway_history_prune";
+
+function _t(key, subs) {
+  try {
+    return chrome.i18n.getMessage(key, subs || []) || key;
+  } catch (e) {
+    return key;
+  }
 }
 
 /**
@@ -79,7 +99,6 @@ try {
     }
   });
 } catch (e) { /* ignore */ }
-chrome.storage.local.get(["api_url"], d => { if (d.api_url) API_BASE = d.api_url; });
 
 // ── Cache (bounded LRU) ──
 // MV3 service workers can stay alive for hours during active browsing.
@@ -118,9 +137,8 @@ function setCached(d, r) {
   _cache.set(d, { r, ts: Date.now() });
 }
 
-// ── Safe domains ──
-const SAFE = new Set(["google.com","youtube.com","facebook.com","amazon.com","wikipedia.org","twitter.com","instagram.com","linkedin.com","reddit.com","apple.com","microsoft.com","github.com","netflix.com","whatsapp.com","tiktok.com","yahoo.com","bing.com","zoom.us","paypal.com","stripe.com","x.com","shopify.com","wordpress.com","medium.com","notion.so","slack.com","discord.com","telegram.org","spotify.com","twitch.tv","stackoverflow.com","cloudflare.com","dropbox.com","adobe.com","ebay.com","walmart.com","chase.com","cnn.com","bbc.com","nytimes.com","google.ru","vk.com","yandex.ru","mail.ru"]);
-
+// Last two labels. Used ONLY by the offline brand heuristics below — never
+// to decide trust (see trusted-hosts.js for why).
 function baseDomain(d) { var p = d.split("."); return p.length >= 2 ? p.slice(-2).join(".") : d; }
 
 // ── Fetch with timeout ──
@@ -193,8 +211,8 @@ async function handleCheck(domains) {
   for (const domain of domains) {
     const cached = getCached(domain);
     if (cached) { results.push(cached); continue; }
-    if (SAFE.has(baseDomain(domain))) {
-      const r = { domain, score: 0, level: "safe", reasons: [{signal:"known",detail:"Known safe",weight:-50}] };
+    if (isKnownSafeHost(domain)) {
+      const r = { domain, score: 0, level: "safe", reasons: [{signal:"known",detail:_t("badge_reason_official_site"),weight:-50}] };
       setCached(domain, r);
       results.push(r);
       continue;
@@ -275,8 +293,7 @@ async function handleCheck(domains) {
     try {
       const stored = await chrome.storage.local.get(["auth_token"]);
       if (stored && stored.auth_token) {
-        const apiModule = await import(chrome.runtime.getURL("src/utils/api.js"));
-        await apiModule.incrementThreatCounter(stored.auth_token, dangerousBlocksThisBatch);
+        await incrementThreatCounter(stored.auth_token, dangerousBlocksThisBatch);
 
         // Family Hub auto-fan-out: encrypt this batch of dangerous
         // results to every sibling's pubkey (cached by options.js
@@ -285,9 +302,8 @@ async function handleCheck(domains) {
         // happens here. Dedup window inside fanOutAlerts prevents
         // spam from page reloads.
         try {
-          const fanout = await import(chrome.runtime.getURL("src/utils/family-fanout.js"));
           const dangerous = results.filter(r => r.level === "dangerous");
-          await fanout.fanOutAlerts(stored.auth_token, dangerous);
+          await fanOutAlerts(stored.auth_token, dangerous);
         } catch (e) {
           // Silent — family alerts are courtesy; never block UX.
         }
@@ -298,12 +314,14 @@ async function handleCheck(domains) {
     }
   }
 
-  // Badge
+  // Badge — `action` in MV3, `browserAction` in Firefox MV2; absent on
+  // mobile browsers with no toolbar.
   try {
+    const toolbar = chrome.action || chrome.browserAction;
     const threats = results.filter(r => r.level === "dangerous" || r.level === "caution").length;
-    if (threats > 0) {
-      chrome.action.setBadgeText({ text: String(threats) });
-      chrome.action.setBadgeBackgroundColor({ color: results.some(r => r.level === "dangerous") ? "#ef4444" : "#f59e0b" });
+    if (toolbar && threats > 0) {
+      toolbar.setBadgeText({ text: String(threats) });
+      toolbar.setBadgeBackgroundColor({ color: results.some(r => r.level === "dangerous") ? "#ef4444" : "#f59e0b" });
     }
   } catch (e) {}
 
@@ -414,87 +432,88 @@ chrome.runtime.onInstalled.addListener((details) => {
       chrome.tabs.create({ url: chrome.runtime.getURL("src/popup/welcome.html") });
     } catch (e) { /* tabs unavailable — non-fatal */ }
   }
-  // removeAll() first so re-running onInstalled (fires on update/reload, and
-  // the SW can replay it) doesn't hit "Cannot create item with duplicate id".
-  //
-  // removeAll()'s callback is ASYNC, so removeAll+create alone is NOT race-safe:
-  // if onInstalled runs twice (SW restart replay, or a dev reload), both
-  // removeAll calls can complete before either callback runs, and then both
-  // callbacks create the same ids -> "Cannot create item with duplicate id
-  // audit-page" surfaced in chrome://extensions. Pass a callback to each
-  // create() so the benign duplicate is READ (and thus cleared) instead of
-  // bubbling up as an unchecked runtime.lastError.
+  installContextMenus();
+});
+
+// Right-click menu, in the browser's language. Absent on mobile browsers
+// (Yandex on Android), so feature-check instead of letting it throw.
+//
+// removeAll() first so re-running onInstalled (fires on update/reload, and
+// the SW can replay it) doesn't hit "Cannot create item with duplicate id".
+// removeAll()'s callback is ASYNC, so removeAll+create alone is NOT race-safe:
+// if onInstalled runs twice (SW restart replay, or a dev reload), both
+// removeAll calls can complete before either callback runs, and then both
+// callbacks create the same ids -> "Cannot create item with duplicate id
+// audit-page" surfaced in chrome://extensions. Pass a callback to each
+// create() so the benign duplicate is READ (and thus cleared) instead of
+// bubbling up as an unchecked runtime.lastError.
+function installContextMenus() {
+  if (!chrome.contextMenus) return;
   chrome.contextMenus.removeAll(() => {
     // Read lastError to clear it (removeAll on an empty menu set is fine).
     void chrome.runtime.lastError;
     chrome.contextMenus.create(
-      { id: "check-link", title: "Check with Cleanway", contexts: ["link"] },
+      { id: "check-link", title: _t("menu_check_link"), contexts: ["link"] },
       () => void chrome.runtime.lastError,
     );
     chrome.contextMenus.create(
-      { id: "audit-page", title: "Privacy Audit", contexts: ["page"] },
+      { id: "audit-page", title: _t("menu_privacy_audit"), contexts: ["page"] },
       () => void chrome.runtime.lastError,
     );
   });
-  // Family Hub poller — fires every minute while the user is signed
-  // in + has a family cached. Fan-out (background side) ensures the
-  // server has the alert; this poller surfaces incoming siblings'
-  // alerts as OS notifications.
-  void (async () => {
+}
+
+// Family Hub poller — fires every minute while the user is signed in +
+// has a family cached. Fan-out (background side) ensures the server has
+// the alert; this poller surfaces incoming siblings' alerts as OS
+// notifications. Armed on every SW start: alarms survive eviction, and
+// create() with the same name is idempotent.
+ensureFamilyPollAlarm(1);
+
+// Daily history prune — Privacy Policy promises 30-day on-device
+// retention. Created only when missing: re-creating on every SW wake
+// would restart the 24h clock each time and it might never fire. Checked
+// on every start rather than only onInstalled because the browser may
+// drop alarms on restart or update.
+function ensureHistoryPruneAlarm() {
+  if (!chrome.alarms) return;
+  chrome.alarms.get(HISTORY_PRUNE_ALARM).then((existing) => {
+    if (existing) return;
+    chrome.alarms.create(HISTORY_PRUNE_ALARM, {
+      delayInMinutes: 5,           // first prune shortly after install
+      periodInMinutes: 24 * 60,    // every 24h after that
+    });
+  }).catch(() => { /* alarms unavailable — nothing to schedule */ });
+}
+ensureHistoryPruneAlarm();
+
+async function onAlarm(alarm) {
+  if (isFamilyPollAlarm(alarm.name)) {
     try {
-      const notifier = await import(chrome.runtime.getURL("src/utils/family-notifier.js"));
-      notifier.ensureFamilyPollAlarm(1);
-    } catch (e) { /* alarms permission missing — silent */ }
-  })();
-
-  // Daily history prune — Privacy Policy promises 30-day on-device
-  // retention; the prune helper has been there since launch but
-  // nobody was actually invoking it, so IndexedDB grew unbounded.
-  // chrome.alarms persists across SW eviction, so once installed the
-  // schedule keeps firing without further setup.
-  chrome.alarms.create("cleanway_history_prune", {
-    delayInMinutes: 5,           // first prune shortly after install
-    periodInMinutes: 24 * 60,    // every 24h after that
-  });
-});
-
-// Re-arm the alarm on every SW startup (the SW can get evicted; alarms
-// survive eviction, but installing on startup is idempotent insurance).
-void (async () => {
-  try {
-    const notifier = await import(chrome.runtime.getURL("src/utils/family-notifier.js"));
-    notifier.ensureFamilyPollAlarm(1);
-  } catch (e) { /* silent */ }
-})();
-
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  // Family Hub minute poller
-  try {
-    const notifier = await import(chrome.runtime.getURL("src/utils/family-notifier.js"));
-    if (notifier.isFamilyPollAlarm(alarm.name)) {
-      await notifier.pollAndNotify();
-      return;
+      await pollAndNotify();
+    } catch (e) {
+      // Silent — pollAndNotify is fail-open. A missed minute is fine.
     }
-  } catch (e) {
-    // Silent — pollAndNotify is fail-open. A missed minute is fine.
+    return;
   }
 
   // Daily local-history prune (30-day rolling retention per Privacy Policy)
-  if (alarm.name === "cleanway_history_prune") {
+  if (alarm.name === HISTORY_PRUNE_ALARM) {
     try {
-      const storage = await import(chrome.runtime.getURL("src/utils/storage.js"));
-      await storage.pruneOldChecks();
+      const deleted = await pruneOldChecks();
+      _log("History prune removed", deleted, "rows");
     } catch (e) {
       // Silent — IndexedDB transient failure isn't user-facing. Worst
       // case is one missed daily prune; tomorrow's run catches up.
     }
   }
-});
+}
 
-chrome.notifications.onClicked.addListener(async (notificationId) => {
-  try {
-    const notifier = await import(chrome.runtime.getURL("src/utils/family-notifier.js"));
-    if (!notifier.isFamilyNotificationId(notificationId)) return;
+if (chrome.alarms) chrome.alarms.onAlarm.addListener(onAlarm);
+
+if (chrome.notifications) {
+  chrome.notifications.onClicked.addListener((notificationId) => {
+    if (!isFamilyNotificationId(notificationId)) return;
     // Open the Options page Family Hub section. chrome.runtime.
     // openOptionsPage() is the canonical way; some MV3 builds need a
     // tabs.create fallback if the options page isn't declared.
@@ -504,29 +523,33 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
       chrome.tabs.create({ url: chrome.runtime.getURL("src/options/options.html") });
     }
     chrome.notifications.clear(notificationId);
-  } catch (e) { /* silent */ }
-});
+  });
+}
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === "check-link" && info.linkUrl) {
-    try {
-      const domain = new URL(info.linkUrl).hostname.toLowerCase();
-      const r = await handleCheck([domain]);
-      if (r.results[0]) chrome.tabs.sendMessage(tab.id, { type: "SHOW_CHECK_RESULT", result: r.results[0] });
-    } catch (e) {}
-  }
-  if (info.menuItemId === "audit-page") chrome.tabs.sendMessage(tab.id, { type: "RUN_PRIVACY_AUDIT" });
-});
-
-chrome.commands.onCommand.addListener(async (cmd) => {
-  if (cmd === "check-page") {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0]?.url) {
-      const domain = new URL(tabs[0].url).hostname;
-      const r = await handleCheck([domain]);
-      if (r.results[0]) chrome.tabs.sendMessage(tabs[0].id, { type: "SHOW_CHECK_RESULT", result: r.results[0] });
+if (chrome.contextMenus) {
+  chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId === "check-link" && info.linkUrl) {
+      try {
+        const domain = new URL(info.linkUrl).hostname.toLowerCase();
+        const r = await handleCheck([domain]);
+        if (r.results[0]) chrome.tabs.sendMessage(tab.id, { type: "SHOW_CHECK_RESULT", result: r.results[0] });
+      } catch (e) {}
     }
-  }
-});
+    if (info.menuItemId === "audit-page") chrome.tabs.sendMessage(tab.id, { type: "RUN_PRIVACY_AUDIT" });
+  });
+}
+
+if (chrome.commands) {
+  chrome.commands.onCommand.addListener(async (cmd) => {
+    if (cmd === "check-page") {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]?.url) {
+        const domain = new URL(tabs[0].url).hostname;
+        const r = await handleCheck([domain]);
+        if (r.results[0]) chrome.tabs.sendMessage(tabs[0].id, { type: "SHOW_CHECK_RESULT", result: r.results[0] });
+      }
+    }
+  });
+}
 
 _log("Background ready, API:", API_BASE);

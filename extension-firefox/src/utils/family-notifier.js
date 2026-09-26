@@ -24,7 +24,14 @@
  * Click handling: notification.onClicked opens the Family Hub section
  * of the Options page. Wired in background/index.js, not here, so the
  * persistent listener doesn't get redefined per poll.
+ *
+ * Imports are static: the background is a module service worker, where
+ * import() is forbidden (it used to be called here and always threw).
  */
+
+import { listAlerts } from "./family-api.js";
+import { decryptForMe, getOrCreateKeypair } from "./family-crypto.js";
+import { getCachedFamilyState } from "./family-fanout.js";
 
 const SEEN_KEY = "family_last_seen_alert_id";
 const ALARM_NAME = "cleanway_family_poll";
@@ -65,27 +72,18 @@ export async function pollAndNotify() {
   if (!stored || !stored.auth_token) return 0;
 
   // Need the cached family — without it we have nothing to poll.
-  let fanoutMod, cryptoMod, apiMod;
-  try {
-    fanoutMod = await import(chrome.runtime.getURL("src/utils/family-fanout.js"));
-    cryptoMod = await import(chrome.runtime.getURL("src/utils/family-crypto.js"));
-    apiMod = await import(chrome.runtime.getURL("src/utils/family-api.js"));
-  } catch {
-    return 0;
-  }
-
-  const cache = await fanoutMod.getCachedFamilyState();
+  const cache = await getCachedFamilyState();
   if (!cache) return 0;
 
   let kp;
   try {
-    kp = await cryptoMod.getOrCreateKeypair();
+    kp = await getOrCreateKeypair();
   } catch {
     return 0;
   }
   if (!kp || !kp.secretKeyB64) return 0;
 
-  const list = await apiMod.listAlerts(stored.auth_token, cache.family_id);
+  const list = await listAlerts(stored.auth_token, cache.family_id);
   if (!list || !Array.isArray(list.alerts) || list.alerts.length === 0) {
     return 0;
   }
@@ -95,7 +93,7 @@ export async function pollAndNotify() {
   for (const env of list.alerts) {
     if (lastSeen && env.id === lastSeen) break; // we've caught up
     if (!env.ciphertext_b64 || !env.nonce_b64 || !env.sender_pubkey_b64) continue;
-    const opened = cryptoMod.decryptForMe(
+    const opened = decryptForMe(
       {
         ciphertext_b64: env.ciphertext_b64,
         nonce_b64: env.nonce_b64,
@@ -119,12 +117,7 @@ export async function pollAndNotify() {
   // is what the user sees on top of the stack.
   fresh.reverse();
   for (const item of fresh) {
-    const domain = item.alert.domain || "(unknown domain)";
-    const level = (item.alert.level || "block").toString();
-    const title = level === "dangerous"
-      ? "Family member protected from a scam"
-      : "Family alert";
-    const message = `${domain} — ${level}`;
+    const { title, message } = notificationText(item.alert);
     try {
       // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => {
@@ -154,6 +147,30 @@ export async function pollAndNotify() {
   }
 
   return fresh.length;
+}
+
+function _t(key, subs) {
+  try {
+    return chrome.i18n.getMessage(key, subs || []) || key;
+  } catch {
+    return key;
+  }
+}
+
+/**
+ * Plain-language notification copy in the browser's language. A relative's
+ * alert is either a block (the default — fan-out only sends dangerous
+ * verdicts) or, for older/other senders, a caution warning.
+ *
+ * @param {{ domain?: string, level?: string }} alert — decrypted payload
+ * @returns {{ title: string, message: string }}
+ */
+export function notificationText(alert) {
+  const domain = (alert && alert.domain) || _t("family_notify_unknown_site");
+  const warned = alert && alert.level === "caution";
+  return warned
+    ? { title: _t("family_notify_title_warned"), message: _t("family_notify_message_warned", [domain]) }
+    : { title: _t("family_notify_title_blocked"), message: _t("family_notify_message_blocked", [domain]) };
 }
 
 /**

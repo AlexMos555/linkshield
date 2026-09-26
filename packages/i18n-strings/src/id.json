@@ -388,6 +388,223 @@
       "trust_footer": {
         "text": "Pemblokiran gratis selamanya. Data Anda tidak pernah meninggalkan perangkat ini."
       }
+    },
+    "badge": {
+      "label_safe": {
+        "text": "Aman"
+      },
+      "label_caution": {
+        "text": "Hati-hati"
+      },
+      "label_dangerous": {
+        "text": "Berbahaya"
+      },
+      "label_unknown": {
+        "text": "Tidak diketahui"
+      },
+      "aria_safe": {
+        "text": "Tautan aman"
+      },
+      "aria_caution": {
+        "text": "Hati-hati — periksa tautan ini sebelum memercayainya"
+      },
+      "aria_dangerous": {
+        "text": "Tautan berbahaya — jangan dibuka"
+      },
+      "score": {
+        "text": "Skor: $SCORE$/100",
+        "placeholders": {
+          "score": {
+            "content": "$1"
+          }
+        }
+      },
+      "reason_official_site": {
+        "text": "Situs resmi"
+      }
+    },
+    "privacy_audit": {
+      "title": {
+        "text": "Audit privasi"
+      },
+      "trackers": {
+        "text": "Pelacak"
+      },
+      "cookies": {
+        "text": "Cookie"
+      },
+      "data_fields": {
+        "text": "Kolom data"
+      },
+      "fingerprint": {
+        "text": "Sidik jari digital"
+      },
+      "yes": {
+        "text": "Ya"
+      },
+      "no": {
+        "text": "Tidak"
+      },
+      "share": {
+        "text": "Bagikan nilai"
+      },
+      "on_device": {
+        "text": "Dijalankan di perangkat Anda"
+      }
+    },
+    "credential_guard": {
+      "banner_title": {
+        "text": "Berhenti — ini tampak seperti halaman penipuan"
+      },
+      "banner_brand": {
+        "text": "Tampak seperti $BRAND$, tetapi alamatnya $HOST$ — bukan $LEGIT$.",
+        "placeholders": {
+          "brand": {
+            "content": "$1"
+          },
+          "host": {
+            "content": "$2"
+          },
+          "legit": {
+            "content": "$3"
+          }
+        }
+      },
+      "banner_action": {
+        "text": "Formulir ini mengirim kata sandi Anda ke $HOST$ — situs yang berbeda dari yang terlihat di bilah alamat.",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_tld": {
+        "text": "Situs ini memakai alamat $TLD$, yang sering dipakai penipu untuk halaman palsu sekali pakai.",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_advice": {
+        "text": "Jangan ketik kata sandi Anda di sini. Buka situs aslinya dengan mengetik alamatnya sendiri."
+      },
+      "dismiss": {
+        "text": "Tutup"
+      },
+      "modal_title": {
+        "text": "Cleanway menilai formulir ini adalah penipuan"
+      },
+      "modal_intro": {
+        "text": "Jika dilanjutkan, nama pengguna dan kata sandi Anda akan terkirim. Ini alasannya tampak tidak aman:"
+      },
+      "reason_action": {
+        "text": "Formulir mengirim kata sandi Anda ke $ACTION$ — bukan ke $PAGE$.",
+        "placeholders": {
+          "action": {
+            "content": "$1"
+          },
+          "page": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_typosquat": {
+        "text": "Alamat ini ($HOST$) tampak seperti salah ketik dari $BRAND$.",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          },
+          "brand": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_tld": {
+        "text": "Halaman masuk dengan alamat $TLD$ hampir tidak pernah asli.",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "button_cancel": {
+        "text": "Jangan kirim — kembali"
+      },
+      "button_honeypot": {
+        "text": "Lindungi kata sandi saya"
+      },
+      "button_honeypot_hint": {
+        "text": "Cleanway akan mengirim kata sandi karangan acak sebagai gantinya. Kata sandi asli Anda tetap di perangkat ini."
+      },
+      "button_override": {
+        "text": "Tetap kirim"
+      },
+      "toast_title": {
+        "text": "Cleanway mengirim kata sandi karangan"
+      },
+      "toast_body": {
+        "text": "Kata sandi asli Anda tetap di perangkat ini. Jika halaman ini ternyata asli, cukup ketik ulang kata sandi Anda — kata sandi itu tidak pernah terkirim."
+      }
+    },
+    "modern_phish": {
+      "bitb": {
+        "text": "Halaman ini menggambar bilah alamat palsu ($FAKE$). Sebenarnya Anda berada di $REAL$.",
+        "placeholders": {
+          "fake": {
+            "content": "$1"
+          },
+          "real": {
+            "content": "$2"
+          }
+        }
+      },
+      "orphan": {
+        "text": "Halaman ini meminta kata sandi tanpa formulir masuk yang asli — kata sandi Anda bisa dicuri."
+      }
+    },
+    "menu": {
+      "check_link": {
+        "text": "Periksa tautan ini dengan Cleanway"
+      },
+      "privacy_audit": {
+        "text": "Periksa privasi halaman ini"
+      }
+    },
+    "commands": {
+      "open_popup": {
+        "text": "Buka Cleanway"
+      },
+      "check_page": {
+        "text": "Periksa halaman ini"
+      }
+    },
+    "family_notify": {
+      "title_blocked": {
+        "text": "Cleanway melindungi anggota keluarga Anda"
+      },
+      "message_blocked": {
+        "text": "Situs penipuan diblokir: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "title_warned": {
+        "text": "Peringatan keluarga"
+      },
+      "message_warned": {
+        "text": "Anggota keluarga Anda diperingatkan tentang situs mencurigakan: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "unknown_site": {
+        "text": "situs tidak dikenal"
+      }
     }
   },
   "landing": {
