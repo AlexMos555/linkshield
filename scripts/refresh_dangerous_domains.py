@@ -21,12 +21,18 @@ Atomic swap: SADD into a versioned staging key, then RENAME to `dangerous_domain
 so concurrent SISMEMBER readers never see a half-loaded set. A SETNX lock guards
 against overlapping runs (exit 3 = lock held).
 
+Retention: a name stays listed for BLOCKLIST_RETAIN_DAYS (default 14) after the
+feeds stop listing it. OpenPhish is a short rolling window, so rebuilding from
+the feeds alone un-blocked phishing sites that were still live. Retained names
+go through every guard again on every run (api/services/blocklist_retention.py).
+
 Usage:
     python scripts/refresh_dangerous_domains.py            # fetch + write Redis
     python scripts/refresh_dangerous_domains.py --dry-run  # fetch + report, no write
 
 Env:
-    REDIS_URL   — connection string (required unless --dry-run)
+    REDIS_URL              — connection string (required unless --dry-run)
+    BLOCKLIST_RETAIN_DAYS  — retention window in days, 0 disables (default 14)
 """
 from __future__ import annotations
 
@@ -37,6 +43,7 @@ import json
 import logging
 import os
 import sys
+import time
 from urllib.parse import urlparse
 
 import httpx
@@ -46,6 +53,7 @@ from api.services.blocklist_artifact import (  # noqa: E402
     LIST_CANARY, NEVER_BLOCK_GUARDS, REDIS_META_KEY, REDIS_TEXT_KEY, delta_key,
     meta_for_v2, parse_artifact_v2, render_artifact_v2, render_delta,
 )
+from api.services import blocklist_retention as retention  # noqa: E402
 
 API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
 PREV_SET_KEY = "dangerous_domains:prev"
@@ -53,7 +61,7 @@ PREV_TEXT_KEY = REDIS_TEXT_KEY + ":prev"
 
 
 def _wire_query(name: str) -> bytes:
-    labels = b"".join(bytes([len(l)]) + l.encode("ascii") for l in name.split(".")) + b"\x00"
+    labels = b"".join(bytes([len(label)]) + label.encode("ascii") for label in name.split(".")) + b"\x00"
     # Random transaction id: a fixed one makes the GET URL cacheable at the
     # edge, and a cached answer proves nothing about what we just published.
     return os.urandom(2) + b"\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + labels + b"\x00\x01\x00\x01"
@@ -99,6 +107,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("dangerous-domains-refresh")
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+# Hand-verified brand-owned hosts the feeds list anyway (walmart.com.br,
+# americanexpress.io). Header of the file has the evidence rule; candidates
+# come from scripts/sweep_brand_owned_fps.py.
+BRAND_OWNED_PATH = os.path.join(_DATA_DIR, "brand_owned_hosts.txt")
 URLHAUS_CSV = "https://urlhaus.abuse.ch/downloads/csv_online/"
 OPENPHISH_FEED = "https://openphish.com/feed.txt"
 
@@ -266,6 +278,30 @@ def _load_top_100k() -> set[str]:
         return set()
 
 
+def load_brand_owned_hosts(path: str = BRAND_OWNED_PATH) -> frozenset[str]:
+    """Exact hostnames from the brand-owned veto list. A line that is not a
+    plain hostname (a wildcard, a URL) is rejected, never widened — a veto
+    that grew into a pattern would un-block lookalike phishing. An unreadable
+    file only costs the handful of false positives it lists, so it warns and
+    vetoes nothing rather than stopping the publish."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError as e:
+        logger.warning("brand-owned veto list not loaded (%s) — its hosts may be published", e)
+        return frozenset()
+    hosts: set[str] = set()
+    for raw in text.splitlines():
+        line = _norm_host(raw.split("#", 1)[0])
+        if not line:
+            continue
+        if not is_hostname(line):
+            logger.warning("brand-owned veto list: ignoring %r — exact hostnames only", raw.strip())
+            continue
+        hosts.add(line)
+    return frozenset(hosts)
+
+
 async def _fetch(url: str) -> str:
     async with httpx.AsyncClient(timeout=90.0, follow_redirects=True,
                                  headers={"User-Agent": "cleanway-blocklist"}) as c:
@@ -354,11 +390,45 @@ def is_hostname(host: str) -> bool:
         return False
     if len(labels[-1]) < 2 or labels[-1].isdigit():
         return False
-    return all(_LABEL_OK.match(l) for l in labels)
+    return all(_LABEL_OK.match(label) for label in labels)
+
+
+def _norm_host(h: str) -> str:
+    """One normalisation for every consumer. Without it a trailing-dot host
+    ('example.com.') reached the gate and the Redis set unnormalised while the
+    artifact renderer stripped the dot later — so the gate's set-intersection
+    could be defeated by a dot, and the registrable of 'example.com.' was
+    'com.', a bare TLD."""
+    return h.strip().lower().rstrip(".")
+
+
+def present_names(hosts, public_suffixes: set[str] | None) -> set[str]:
+    """Every name a current feed still backs: each feed host and the
+    registrable it would promote. A published name outside this set has left
+    the feeds; one inside it is decided by the fresh build (and its guards)."""
+    names = {_norm_host(h) for h in hosts if h}
+    names.discard("")
+    return names | {_registrable_domain(n, public_suffixes) for n in names}
+
+
+def _apply_veto(names: set[str], veto: frozenset[str]) -> set[str]:
+    """Drop hand-verified legit hosts — exact names, never a parent or a
+    sibling. A vetoed host that a published parent still covers stays blocked
+    on every phone (a listed name blocks its subdomains), so say so."""
+    kept = names - veto
+    for host in sorted(veto):
+        parts = host.split(".")
+        parents = (".".join(parts[i:]) for i in range(1, len(parts) - 1))
+        parent = next((p for p in parents if p in kept), None)
+        if parent:
+            logger.warning("vetoed %s is still blocked through published %s — veto the parent too if it is "
+                           "the brand's", host, parent)
+    return kept
 
 
 def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None = None,
-                   is_popular=None, public_suffixes: set[str] | None = None) -> set[str]:
+                   is_popular=None, public_suffixes: set[str] | None = None,
+                   brand_owned: frozenset[str] | None = None) -> set[str]:
     """Decide, per feed hostname, what (if anything) to block.
 
     Never darken a shared or popular host — a false positive here breaks a
@@ -376,6 +446,11 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
                      (evil.github.io, gwcu.us.org, x.blob.core.windows.net).
       EXACT + REG    dedicated phishing domain: block the host and its
                      registrable (login.scotiabano.com + scotiabano.com).
+      VETO           last, on the result: hand-verified legit hosts
+                     (LEGIT_SHARED_TENANTS + `brand_owned`, default
+                     data/brand_owned_hosts.txt) are removed exactly — a
+                     promoted registrable included. Retained names pass
+                     through here too, so a veto beats retention.
 
     `hosts` may contain repeats (one per feed URL); repeats feed the
     shared-host threshold. `is_popular(registrable) -> bool` is optional
@@ -383,17 +458,9 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
     """
     shared = default_shared_suffixes() if shared_suffixes is None else set(shared_suffixes)
 
-    def norm(h: str) -> str:
-        """One normalisation for every consumer. Without it a trailing-dot
-        host ('example.com.') reached the gate and the Redis set unnormalised
-        while the artifact renderer stripped the dot later — so the gate's
-        set-intersection could be defeated by a dot, and the registrable of
-        'example.com.' was 'com.', a bare TLD."""
-        return h.strip().lower().rstrip(".")
-
     counts: dict[str, int] = {}
     for raw_host in hosts:
-        h = norm(raw_host or "")
+        h = _norm_host(raw_host or "")
         if h:
             counts[h] = counts.get(h, 0) + 1
 
@@ -422,8 +489,6 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
             continue  # platform apex / a public suffix itself — never
         if public_suffixes and reg in public_suffixes:
             continue  # cannot even name a registrable — never promote a suffix
-        if h in LEGIT_SHARED_TENANTS:
-            continue  # hand-verified legit page on a shared platform
         if suffix is not None:
             # One tenant's site on a shared platform — unless the feed shows
             # this single hostname carrying many URLs (then it is a shared
@@ -440,7 +505,8 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
         out.add(h)
         if reg:
             out.add(reg)  # dedicated phishing domain
-    return out
+    veto = load_brand_owned_hosts() if brand_owned is None else frozenset(brand_owned)
+    return _apply_veto(out, LEGIT_SHARED_TENANTS | veto)
 
 
 # Publish gates. A bad publish darkens sites for every DNS user; a skipped
@@ -472,9 +538,95 @@ def publish_gate(blockset: set[str], previous: set[str] | None, popular: set[str
     return True, "ok"
 
 
-async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> int:
+def _open_redis(redis_url: str | None):
+    """A client, or None without a URL. from_url does not connect — a dead
+    Redis surfaces on the first command, where each caller handles it."""
+    if not redis_url:
+        return None
+    try:
+        import redis.asyncio as redis
+        return redis.from_url(redis_url, decode_responses=True)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Redis client unavailable (%s) — Tranco guard, retention and churn gate skipped", e)
+        return None
+
+
+async def _read_previous(r) -> set[str] | None:
+    """The live set: the churn gate's baseline and the reference retention
+    detects departures against. None when unreadable."""
+    if r is None:
+        return None
+    try:
+        return set(await r.smembers(SET_KEY))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("could not read previous set (%s) — churn gate skipped", e)
+        return None
+
+
+async def _tranco_guard(r, hosts, public_suffixes: set[str] | None):
+    """Tranco-1M popularity from prod Redis (tranco:ranks, refreshed daily) —
+    a stronger guard than the bundled top-100k, when we can reach it. `hosts`
+    includes retained names: a domain that became popular after it was
+    listed is vetoed exactly like a fresh one."""
+    if r is None:
+        return None
+    try:
+        candidates = sorted({_registrable_domain(h, public_suffixes) for h in hosts if h})
+        ranks = await r.hmget("tranco:ranks", candidates) if candidates else []
+        popular_set = {d for d, rank in zip(candidates, ranks) if rank}
+        logger.info("Tranco-1M guard: %d of %d registrables are ranked", len(popular_set), len(candidates))
+        return popular_set.__contains__
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Tranco rank guard unavailable (%s) — top-100k only", e)
+        return None
+
+
+async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: set[str] | None,
+                          now: float, dry_run: bool, feeds_failed: tuple[str, ...] = ()) -> set[str]:
+    """Names to keep although no feed lists them now (blocklist_retention).
+    Never raises and never blocks a publish: if the retention set cannot be
+    read or written, the set is built from the feeds alone. A plan that was
+    not recorded is not used — an unrecorded departure would be re-stamped
+    'just left' on every run and never age out."""
+    days = retention.retain_days_from_env(os.environ.get(retention.RETAIN_DAYS_ENV))
+    if days == 0:
+        logger.info("retention disabled (%s=0) — publishing from the feeds alone", retention.RETAIN_DAYS_ENV)
+        return set()
+    if r is None:
+        logger.info("retention: no Redis — retained set is empty, building from the feeds alone")
+        return set()
+    window = days * retention.SECONDS_PER_DAY
+    try:
+        stored = await retention.load_last_seen(r)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("retention read failed (%s) — publishing from the feeds alone", e)
+        return set()
+    plan = retention.plan_retention(stored, previous or set(), present_names(hosts, public_suffixes), now, window,
+                                    record_departures=not feeds_failed)
+    if plan.skipped:
+        failed = f" ({', '.join(feeds_failed)})" if feeds_failed else ""
+        logger.warning("retention: not recording departures this run — %s%s; names already retained are kept",
+                       plan.skipped, failed)
+    summary = (f"{len(plan.retained)} names kept after leaving the feeds ({len(plan.departed)} newly departed, "
+               f"{len(plan.returned)} back in a feed, {len(stored)} stored before; window {days} days)")
+    if dry_run:
+        logger.info("[dry-run] retention: %s — nothing written", summary)
+        return set(plan.retained)
+    try:
+        await retention.save_plan(r, plan, now, window)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("retention write failed (%s) — publishing from the feeds alone", e)
+        return set()
+    logger.info("retention: %s", summary)
+    return set(plan.retained)
+
+
+async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
+                  now: float | None = None) -> int:
+    now = time.time() if now is None else now
     top_100k = _load_top_100k()
     hosts: list[str] = []  # one entry per feed URL — repeats feed the shared-host guard
+    feeds_failed: list[str] = []  # an unreadable feed must not look like its names all "left"
     for name, url, parser in (
         ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus),
         ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish),
@@ -488,6 +640,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
             logger.info("%s: +%d host entries (%d distinct so far)", name, len(hosts) - n0, len(set(hosts)))
         except Exception as e:  # noqa: BLE001
             logger.warning("%s fetch failed: %s (continuing)", name, e)
+            feeds_failed.append(name)
 
     if not hosts:
         logger.error("No hosts fetched from any feed — refusing to wipe the set")
@@ -504,32 +657,18 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False) -> 
         return 4
     logger.info("PSL loaded: %d rules", len(public_suffixes))
 
-    # Tranco-1M popularity from prod Redis (tranco:ranks, refreshed daily) —
-    # a stronger guard than the bundled top-100k, when we can reach it.
-    is_popular = None
-    r = None
-    if redis_url:
-        try:
-            import redis.asyncio as redis
-            r = redis.from_url(redis_url, decode_responses=True)
-            candidates = sorted({_registrable_domain(h, public_suffixes) for h in hosts if h})
-            ranks = await r.hmget("tranco:ranks", candidates) if candidates else []
-            popular_set = {d for d, rank in zip(candidates, ranks) if rank}
-            logger.info("Tranco-1M guard: %d of %d registrables are ranked", len(popular_set), len(candidates))
-            is_popular = popular_set.__contains__
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Tranco rank guard unavailable (%s) — top-100k only", e)
-
-    blockset = build_blockset(hosts, top_100k, is_popular=is_popular, public_suffixes=public_suffixes)
-    logger.info("Built dangerous set: %d entries (from %d feed URLs / %d distinct hosts)",
-                len(blockset), len(hosts), len(set(hosts)))
+    r = _open_redis(redis_url)
+    previous = await _read_previous(r)
+    # Retained names join the feed hosts BEFORE the build, so every guard
+    # below (Tranco and top-100k veto, tenant rules, …) judges them afresh.
+    retained = await _retained_names(r, previous, hosts, public_suffixes, now, dry_run, tuple(feeds_failed))
+    candidate_hosts = hosts + sorted(retained)
+    is_popular = await _tranco_guard(r, candidate_hosts, public_suffixes)
+    blockset = build_blockset(candidate_hosts, top_100k, is_popular=is_popular, public_suffixes=public_suffixes)
+    logger.info("Built dangerous set: %d entries (from %d feed URLs / %d distinct feed hosts; "
+                "%d retained-only names, %d of them passed the guards)",
+                len(blockset), len(hosts), len(set(hosts)), len(retained), len(retained & blockset))
     shared_all = default_shared_suffixes()
-    previous: set[str] | None = None
-    if r is not None:
-        try:
-            previous = set(await r.smembers(SET_KEY))
-        except Exception as e:  # noqa: BLE001
-            logger.warning("could not read previous set (%s) — churn gate skipped", e)
     ok, why = publish_gate(blockset, previous, top_100k | (public_suffixes or set()), shared_all, force=force)
     if not ok:
         logger.error("PUBLISH GATE: %s — keeping the previous set", why)
