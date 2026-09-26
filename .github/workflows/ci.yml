@@ -67,6 +67,14 @@ jobs:
         # app's 32-hex nonce, and that the always-pass test sitekey is flagged.
         run: node --experimental-strip-types scripts/test-turnstile-lib.mjs
 
+      - name: Landing honesty helpers
+        # What the site may claim: no accuracy % from a too-small benchmark
+        # sample (incl. the committed latest.json), no paid plans for Russian
+        # visitors, no support address until the mailbox works, install
+        # screenshots only when the file exists, reason labels in sync with
+        # the app's.
+        run: node --experimental-strip-types scripts/test-landing-honesty.mjs
+
       - name: Extension local-scorer table test
         # The offline scorer draws the badge before (and sometimes instead of)
         # any backend verdict, so it is a fork of api/services/scoring.py that
@@ -234,6 +242,14 @@ jobs:
         # committed after the 2026-06-17 validation pass. A future PR can't
         # accidentally re-introduce the older, inflated copy.
         run: python3 scripts/check-stale-claims.py
+
+      - name: Landing claims guard
+        # The 2026-09-25 service check found the Russian landing promising
+        # things the product does not do: "browsing history never leaves your
+        # device", "works alongside NordVPN", "Add to Chrome" with no listing,
+        # "Google Play soon", hand-written transparency numbers, literal
+        # $DATE$ placeholders. See scripts/check-landing-claims.py.
+        run: python3 scripts/check-landing-claims.py
 
   openapi-drift:
     # Pin the whole generated packages/api-types/ to the live FastAPI app.

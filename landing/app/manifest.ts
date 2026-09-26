@@ -19,7 +19,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Cleanway — Protection from scam links",
     short_name: "Cleanway",
     description:
-      "Privacy-first protection from phishing and scam links. 9 threat sources, ML-powered, your browsing data stays on your device.",
+      "Protection from phishing and scam sites. To check a site, only its name is sent — never the full link or the page.",
     start_url: "/?utm_source=pwa",
     scope: "/",
     display: "standalone",

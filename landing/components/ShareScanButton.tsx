@@ -1,9 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 
 /**
- * Share button for /check/{domain} pages.
+ * Share button for /check/{domain} and /audit/{domain}/grade/{letter} pages.
  *
  * Behavior:
  *  - Mobile / supports Web Share API → one-tap native share sheet (X,
@@ -11,44 +12,37 @@ import { useCallback, useState } from "react";
  *  - Desktop → expand into a row of platform-specific share links plus
  *    a Copy Link button
  *
+ * The page writes the message: a scorecard shares its verdict and risk score,
+ * a privacy-audit grade shares the grade — never the other way round (a
+ * privacy "F" is not "Dangerous", and a letter is not a score out of 100).
+ *
  * No tracking, no analytics — keeps the page clean and privacy-first.
  */
 interface ShareScanButtonProps {
-  domain: string;
-  level: "safe" | "caution" | "dangerous";
-  score: number | string;
+  /** Localized share message, e.g. "Опасно: example.ru — оценка риска 78 из 100". */
+  text: string;
+  /** Localized share title (native share sheet, email subject). */
+  title: string;
   url: string;
 }
 
-const LEVEL_PHRASES: Record<ShareScanButtonProps["level"], string> = {
-  safe: "Looks safe",
-  caution: "Use caution",
-  dangerous: "Flagged as dangerous",
-};
-
-function buildShareText(domain: string, level: ShareScanButtonProps["level"], score: number | string): string {
-  const phrase = LEVEL_PHRASES[level] ?? "Checked";
-  return `${phrase}: ${domain} — Cleanway score ${score}/100`;
-}
-
-export default function ShareScanButton({ domain, level, score, url }: ShareScanButtonProps) {
+export default function ShareScanButton({ text, title, url }: ShareScanButtonProps) {
+  const t = useTranslations("Check");
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
-
-  const text = buildShareText(domain, level, score);
 
   const handleNativeShare = useCallback(async () => {
     // Avoid relying on `navigator.canShare` which is not always present
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: `Is ${domain} safe?`, text, url });
+        await navigator.share({ title, text, url });
         return;
       } catch {
         // User dismissed — fall through to expanded view
       }
     }
     setExpanded((v) => !v);
-  }, [domain, text, url]);
+  }, [title, text, url]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -69,7 +63,7 @@ export default function ShareScanButton({ domain, level, score, url }: ShareScan
     { name: "Reddit", href: `https://reddit.com/submit?url=${encodedUrl}&title=${encodedText}` },
     { name: "Telegram", href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}` },
     { name: "WhatsApp", href: `https://wa.me/?text=${encodedText}%20${encodedUrl}` },
-    { name: "Email", href: `mailto:?subject=${encodedText}&body=${encodedUrl}` },
+    { name: t("share_email"), href: `mailto:?subject=${encodedText}&body=${encodedUrl}` },
   ];
 
   return (
@@ -89,7 +83,7 @@ export default function ShareScanButton({ domain, level, score, url }: ShareScan
           alignSelf: "flex-start",
         }}
       >
-        Share this scan
+        {t("share_button")}
       </button>
 
       {expanded && (
@@ -136,7 +130,7 @@ export default function ShareScanButton({ domain, level, score, url }: ShareScan
               fontWeight: 600,
             }}
           >
-            {copied ? "Copied!" : "Copy link"}
+            {copied ? t("share_copied") : t("share_copy")}
           </button>
         </div>
       )}

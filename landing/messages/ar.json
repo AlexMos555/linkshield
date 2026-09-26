@@ -4,247 +4,138 @@
     "pricing": "الأسعار",
     "privacy": "الخصوصية",
     "business": "الشركات",
-    "install": "إضافة إلى Chrome",
+    "install": "تثبيت",
     "install_short": "تثبيت",
     "install_android": "تحميل تطبيق Android",
-    "install_android_short": "تطبيق Android"
+    "install_android_short": "تطبيق Android",
+    "support": "المساعدة"
   },
   "Hero": {
-    "badge": "{recall}% من روابط التصيد الحديثة مكتشَفة (مقيس)",
+    "badge": "في آخر قياس، صنّف خادمنا {recall}% من روابط التصيّد الحديثة على أنها خطيرة",
     "title_part1": "حماية من الاحتيال",
     "title_part2": "تحترم خصوصيتك",
-    "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
-    "cta_primary": "إضافة إلى Chrome — مجاني",
+    "subtitle": "يحظر Cleanway لأندرويد مواقع الاحتيال والتصيد المعروفة في كل تطبيقات هاتفك: المتصفح وتطبيقات المراسلة والبريد الإلكتروني. مجانًا ودون حساب. لفحص موقع نرسل اسمه فقط (مثل example.com)، ولا نرسل أبدًا الرابط الكامل أو محتوى الصفحة.",
+    "cta_primary": "احمِ نفسك مجانًا",
     "cta_android": "تحميل تطبيق Android",
     "cta_secondary": "كيف يعمل",
-    "cta_footer": "حماية أساسية مجانية للأبد. بدون بطاقة.",
-    "badge_fallback": "حماية خصوصية أولاً ضد التصيد — يُنشر معدل الاسترجاع أسبوعياً"
+    "cta_footer": "حظر مواقع الاحتيال مجاني. دون بطاقة ودون حساب."
   },
   "FinalCta": {
     "title": "مستعد للتصفّح بأمان؟",
-    "subtitle": "Free to start. No account needed. Your browsing stays on your device.",
-    "cta_primary": "إضافة إلى Chrome — مجاني",
+    "subtitle": "مجانًا ودون حساب. لفحص موقع لا نحتاج إلا إلى اسمه.",
+    "cta_primary": "احمِ نفسك مجانًا",
     "cta_business": "للشركات"
   },
   "Footer": {
     "brand": "Cleanway",
     "privacy": "الخصوصية",
     "terms": "الشروط",
-    "contact": "التواصل",
+    "contact": "المساعدة",
     "github": "GitHub",
-    "tagline": "بياناتك، جهازك."
+    "tagline": "حماية من مواقع الاحتيال.",
+    "methodology": "المنهجية"
   },
   "LanguageSwitcher": {
     "label": "اللغة"
   },
   "Features": {
-    "heading": "كل ما تحتاجه. لا شيء زائد.",
+    "heading": "ما يفعله Cleanway اليوم",
     "items": [
       {
+        "icon": "🛡️",
+        "title": "يحظر مواقع الاحتيال في كل التطبيقات",
+        "desc": "إذا حاول أي تطبيق في هاتفك فتح موقع من قائمتنا لمواقع الاحتيال والتصيد المعروفة، يمنعه Cleanway: في المتصفح وتطبيقات المراسلة والبريد الإلكتروني، في أي مكان."
+      },
+      {
+        "icon": "🔗",
+        "title": "يفحص الروابط التي تنقر عليها",
+        "desc": "اجعل Cleanway التطبيق الافتراضي لفتح الروابط، وسيفحص كل رابط تنقر عليه. مواقع الاحتيال المعروفة لن تُفتح. أما المواقع الأخرى فتُفتح فورًا، وما دامت الحماية مفعّلة تُفحص في الخلفية؛ وإذا عدّ خادمنا أحدها خطيرًا ينبّهك Cleanway، بعد أن تكون الصفحة قد فُتحت."
+      },
+      {
+        "icon": "💬",
+        "title": "يفحص الرسائل المشبوهة",
+        "desc": "شارك رسالة SMS مع Cleanway أو الصق نصها. يبحث عن حيل الاحتيال المعتادة: «قسم أمن البنك، أخبرنا بالرمز»، «أمي، أرسلي لي المال بسرعة». النص لا يغادر هاتفك أبدًا."
+      },
+      {
         "icon": "🔍",
-        "title": "فحص تلقائي للروابط",
-        "desc": "يُفحَص كل رابط في كل صفحة مقابل 16 مصدراً لمعلومات التهديدات. وتُظهر الشارات الحمراء والصفراء والخضراء مستوى الأمان بنظرة واحدة."
+        "title": "افحص أي موقع",
+        "desc": "اكتب اسم موقع في التطبيق أو هنا على الموقع لترى إن كان يبدو خطيرًا ولماذا، بكلمات بسيطة."
       },
       {
         "icon": "🔒",
-        "title": "تدقيق الخصوصية",
-        "desc": "انقر بزر الفأرة الأيمن على أي صفحة لرؤية المتعقبات وملفات الكوكيز وجمع البيانات والبصمة الرقمية. تقييم من A إلى F."
+        "title": "اسم الموقع فقط، لا الصفحة",
+        "desc": "المطابقة مع القائمة تجري على هاتفك. وإذا احتاج موقع إلى فحص أدق، لا يصل إلى خادمنا إلا اسمه: لا الرابط الكامل ولا الصفحة ولا رسائلك."
       },
       {
-        "icon": "🧠",
-        "title": "كشف بالذكاء الاصطناعي",
-        "desc": "نموذج CatBoost مدرَّب على نحو 24٬000 نطاق (تصيّد ونطاقات مشروعة معاً). يكتشف التصيّد الجديد الذي تفوته الأنظمة المعتمدة على القواعد — راجع منهجيتنا المنشورة."
-      },
-      {
-        "icon": "⚡",
-        "title": "حماية فورية",
-        "desc": "تُفحص معظم النطاقات فوراً على جهازك مقابل قائمة محلية للنطاقات الموثوقة. النطاقات غير المعروفة فقط تذهب إلى خوادمنا — واسم النطاق فقط، وليس عنوان URL الكامل أبداً."
-      },
-      {
-        "icon": "📱",
-        "title": "بياناتك، جهازك",
-        "desc": "سجل التصفح لا يصل أبداً إلى خوادمنا. نرى فقط أسماء النطاقات. حتى في حالة الاختراق، بياناتك آمنة."
-      },
-      {
-        "icon": "📧",
-        "title": "ماسح صندوق الوارد",
-        "desc": "يعثر على روابط التصيد في Gmail و Outlook التي فاتت متصفحك."
+        "icon": "🆓",
+        "title": "مجاني ودون حساب",
+        "desc": "حظر مواقع الاحتيال مجاني ويعمل دون تسجيل."
       }
     ]
   },
   "HowItWorks": {
-    "heading": "How Cleanway protects you",
+    "heading": "كيف تحصل على الحماية",
     "steps": [
       {
         "step": "1",
-        "title": "Install",
-        "desc": "Add the Chrome extension. Takes 10 seconds."
+        "title": "نزّل التطبيق",
+        "desc": "نزّل Cleanway لأندرويد من هذا الموقع. الملف كبير، لذا يُفضّل استخدام Wi-Fi."
       },
       {
         "step": "2",
-        "title": "Browse",
-        "desc": "Cleanway checks every link automatically. No action needed."
+        "title": "شغّل الحماية",
+        "desc": "افتح Cleanway وانقر «تشغيل الحماية». سيطلب أندرويد الإذن مرة واحدة."
       },
       {
         "step": "3",
-        "title": "Stay Safe",
-        "desc": "Dangerous links get red badges. Click for details."
+        "title": "استخدم هاتفك كالمعتاد",
+        "desc": "لن تُفتح مواقع الاحتيال المعروفة في أي تطبيق. وكل ما تم حظره يظهر في سجل التطبيق."
       }
     ]
   },
   "PricingTeaser": {
-    "heading": "Simple, transparent pricing",
-    "unit_forever": "/forever",
-    "unit_month": "/month",
-    "most_popular": "Most Popular",
-    "trial_note": "All plans include 14-day free trial. Cancel anytime.",
-    "free": {
-      "name": "Free",
-      "price": "$0",
-      "features": [
-        "10 API checks/day",
-        "Unlimited local checks",
-        "Privacy Audit (grade only)",
-        "Link badges on all pages"
-      ],
-      "cta": "Get Started"
-    },
-    "personal": {
-      "name": "Personal",
-      "price": "$4.99",
-      "features": [
-        "Unlimited checks",
-        "Full Privacy Audit breakdown",
-        "Weekly Security Report",
-        "Security Score + tips",
-        "Priority support"
-      ],
-      "cta": "Start Free Trial"
-    },
-    "family": {
-      "name": "Family",
-      "price": "$9.99",
-      "features": [
-        "Everything in Personal",
-        "Up to 6 devices",
-        "Family Hub with E2E alerts",
-        "Parental mode"
-      ],
-      "cta": "Start Free Trial"
-    }
-  },
-  "Comparison": {
-    "heading": "المقارنة",
-    "headers": [
-      "الميزة",
-      "Cleanway",
-      "Guardio",
-      "NordVPN TP",
-      "Norton 360",
-      "إضافات مجانية"
-    ],
-    "rows": [
-      [
-        "السعر",
-        "4.99 $/شهر",
-        "9.99 $/شهر",
-        "~5 $/شهر (مع VPN)",
-        "40-100 $/سنة",
-        "مجاناً"
-      ],
-      [
-        "المنصات",
-        "كل الـ5",
-        "Chrome فقط",
-        "Win/Mac",
-        "الكل",
-        "المتصفح فقط"
-      ],
-      [
-        "تدقيق الخصوصية",
-        "✅",
-        "❌",
-        "❌",
-        "❌",
-        "❌"
-      ],
-      [
-        "البيانات على الجهاز",
-        "✅",
-        "❌",
-        "❌",
-        "❌",
-        "❌"
-      ],
-      [
-        "كشف بالتعلم الآلي",
-        "✅",
-        "✅",
-        "✅",
-        "✅",
-        "❌"
-      ],
-      [
-        "مراقبة التسريبات",
-        "✅",
-        "❌",
-        "❌",
-        "✅",
-        "❌"
-      ],
-      [
-        "مركز العائلة",
-        "✅ (E2E)",
-        "❌",
-        "❌",
-        "✅",
-        "❌"
-      ],
-      [
-        "محاكاة تصيد B2B",
-        "✅",
-        "❌",
-        "❌",
-        "❌",
-        "❌"
-      ]
-    ]
+    "free_only_heading": "الحماية مجانية",
+    "free_only_body": "حظر مواقع الاحتيال وفحص الروابط والرسائل لا يكلّف شيئًا ولا يحتاج إلى حساب. لا توجد خطط مدفوعة في بلدك حاليًا.",
+    "free_only_cta": "نزّل تطبيق أندرويد",
+    "free_body_with_plans": "حظر مواقع الاحتيال وفحص الروابط والرسائل لا يكلّف شيئًا ولا يحتاج إلى حساب. الخطط المدفوعة اختيارية ولا توقف الحماية نفسها أبدًا.",
+    "plans_link": "عرض الخطط المدفوعة"
   },
   "Privacy": {
     "heading": "Privacy is not a feature. It's the architecture.",
-    "server_heading": "What our server knows",
+    "server_heading": "ما يصل إلى خادمنا",
     "server_items": [
-      "Your email address",
-      "Subscription status",
-      "Weekly aggregate numbers"
+      "اسم الموقع الذي يجري فحصه (مثل example.com)، ولا يصل أبدًا الرابط الكامل أو الصفحة",
+      "عنوان IP الخاص بك، للحد من عدد الفحوصات من الاتصال الواحد، ولهذا يُحفظ كما هو مدة ساعة على الأكثر",
+      "بريدك الإلكتروني وخطتك، فقط إذا أنشأت حسابًا"
     ],
-    "server_note": "If breached: attacker gets emails + subscription. Boring.",
-    "device_heading": "What stays on your device",
+    "server_note": "لتقييم موقع، قد يسأل خادمنا خدمات مثل Google Safe Browsing عن اسمه: الاسم فقط، ولا يسألها أبدًا عن هويتك.",
+    "device_heading": "ما يبقى على هاتفك",
     "device_items": [
-      "Full URL check history",
-      "Privacy Audit results",
-      "Security Score breakdown",
-      "Weekly Report details",
-      "Family alert content (E2E encrypted)"
+      "قائمة مواقع الاحتيال التي تطابق عليها الحماية",
+      "سجل فحوصاتك وقائمة ما تم حظره",
+      "نص الرسائل التي تفحصها",
+      "مفاتيح تنبيهات العائلة المشفّرة"
     ],
-    "device_note": "If device is lost: protected by OS encryption."
+    "device_note": "يمكنك مسح سجل الفحوصات من إعدادات التطبيق.",
+    "dns_heading": "من يرى أسماء المواقع أيضًا",
+    "dns_note": "ما دامت الحماية مفعّلة، يبحث هاتفك عن عناوين المواقع التي لا يحظرها لدى خدمة DNS عامة — Cloudflare أو Quad9 — بدلًا من DNS مشغّلك. وكأي خدمة DNS، ترى اسم الموقع وعنوان IP لاتصالك. لا يتلقى Cleanway هذه الطلبات."
   },
   "Testimonials": {
-    "heading": "Built on principles, not promises",
+    "heading": "ما نلتزم به",
     "items": [
       {
-        "q": "We send only a domain to check it — never your full URLs or page content. Privacy is the architecture, not a marketing checkbox.",
-        "n": "Server-blind by design",
+        "q": "لفحص موقع نرسل اسمه فقط، ولا نرسل أبدًا الرابط الكامل أو الصفحة أو رسائلك. وكل ما نتلقاه فعلًا موضّح في سياسة الخصوصية.",
+        "n": "الضروري فقط",
         "r": ""
       },
       {
-        "q": "We publish our phishing-detection rate every week — the exact script, the exact dataset, side by side with Cloudflare and Google. Measured, not marketed.",
-        "n": "Open, reproducible benchmark",
+        "q": "نقيس قدرتنا على كشف التصيد بنص برمجي مفتوح يمكن لأي شخص إعادة تشغيله، ولا نعرض رقمًا إلا حين تكون العينة كبيرة بما يكفي ليكون له معنى. مقيس لا مُعلَن.",
+        "n": "قياس مفتوح وقابل للتكرار",
         "r": ""
       },
       {
-        "q": "Core link-blocking is free forever. We only charge for extras like family protection and detailed explanations — never for the protection itself.",
-        "n": "Free protection, always",
+        "q": "حظر مواقع الاحتيال مجاني وسيبقى مجانيًا. الحماية نفسها لن تكون مدفوعة أبدًا.",
+        "n": "حماية مجانية دائمًا",
         "r": ""
       }
     ]
@@ -253,28 +144,32 @@
     "heading": "الأسئلة الشائعة",
     "items": [
       {
-        "q": "كيف تُحمى بياناتي؟",
-        "a": "سجل التصفح لا يغادر جهازك أبداً. خوادمنا تخزن فقط بريدك الإلكتروني وحالة الاشتراك. حتى لو تعرضنا للاختراق، لن يعرف المهاجمون شيئاً عن نشاطك على الإنترنت."
+        "q": "ماذا يعرف Cleanway عني؟",
+        "a": "تُطابق المواقع مع القائمة على هاتفك مباشرة. وإذا احتاج موقع إلى فحص أدق، لا يصل إلى خادمنا إلا اسمه (مثل example.com)، وقد يسأل الخادم خدمات مثل Google Safe Browsing عن هذا الاسم. لا نتلقى روابط كاملة ولا محتوى صفحات ولا نصوص رسائل، ولا نحتفظ بسجل للمواقع التي تفتحها. التفاصيل في سياسة الخصوصية."
       },
       {
-        "q": "هل يُبطئ التصفح؟",
-        "a": "لا. تُحلّ معظم النطاقات فوراً عبر قائمة محلية. ترسل النطاقات غير المعروفة فقط إلى واجهتنا البرمجية، ونرسل اسم النطاق فقط — وليس عنوان URL الكامل أبداً."
+        "q": "هل سيصبح هاتفي أبطأ؟",
+        "a": "المطابقة مع القائمة تجري على الهاتف نفسه وتستغرق جزءًا من الثانية. لا ينظر Cleanway إلا إلى أسماء المواقع التي يتصل بها هاتفك، لا إلى ما تفعله فيها."
       },
       {
         "q": "هل يمكنني استخدامه مع VPN؟",
-        "a": "نعم! على الجوال، يكتشف Cleanway VPN تلقائياً ويتحول إلى وضع DNS، ويعمل جنباً إلى جنب مع NordVPN و ExpressVPN أو أي مزود آخر."
+        "a": "ليس في الوقت نفسه. تستخدم حماية Cleanway آلية VPN في أندرويد لأسماء المواقع فقط: يطابق الهاتف كل اسم مع القائمة، ويبحث عن الأسماء غير المحظورة لدى خدمة DNS عامة (Cloudflare أو Quad9). أما بقية حركة بياناتك فتمضي كالمعتاد، لا عبر Cleanway ولا عبر بلد آخر. ولا يشغّل أندرويد إلا خدمة واحدة من هذا النوع في كل مرة، لذا إذا شغّلت VPN آخر تتوقف حماية Cleanway. عند الانتهاء، افتح Cleanway وشغّل الحماية من جديد. أما فحص موقع أو رسالة يدويًا في التطبيق فيعمل في كل الأحوال."
       },
       {
         "q": "ما الفرق بينه وبين Google Safe Browsing؟",
-        "a": "‏Google Safe Browsing أداة تفاعلية — تلتقط التهديدات المعروفة لكنها تفوت التصيّد الجديد. يضيف Cleanway إشارة كشف بالتعلم الآلي، ونحو 15 مصدراً إضافياً لمعلومات التهديدات، وتدقيق خصوصية، ولا يرسل سجل تصفحك إلى Google."
+        "a": "Google Safe Browsing أحد المصادر التي نستخدمها. ويضيف Cleanway حظر مواقع الاحتيال المعروفة في كل تطبيقات الهاتف لا في المتصفح وحده، وفحص الرسائل المشبوهة على الهاتف نفسه، وشرح نتائجه بكلمات بسيطة. وحين نسأل Google عن موقع، نرسل اسمه فقط، لا هويتك."
       },
       {
-        "q": "هل توجد خطة مجانية؟",
-        "a": "نعم! تشمل الخطة المجانية 10 فحوصات API يومياً وفحوصات بلوم فلتر محلية غير محدودة وتدقيق خصوصية أساسي. معظم المستخدمين العاديين لا يحتاجون أبداً إلى الترقية."
+        "q": "هل هو مجاني؟",
+        "a": "نعم. حظر مواقع الاحتيال مجاني ويعمل دون حساب. وحيث توجد إضافات مدفوعة، فهي لا توقف الحماية نفسها أبدًا."
       },
       {
-        "q": "كيف تعمل محاكاة التصيد؟",
-        "a": "تتضمن خطة الأعمال رسائل بريد إلكتروني تصيد محاكاة تُرسل إلى فريقك. اختر قالباً، ونرسل رسائل اختبار، ونتعقب من ينقر مقابل من يبلِّغ. للتدريب، لا للعقاب."
+        "q": "هل يكشف Cleanway كل عمليات الاحتيال؟",
+        "a": "لا، ولا يستطيع أحد أن يعد بذلك بصدق. يحظر Cleanway المواقع الموجودة بالفعل في قائمة مواقع الاحتيال المعروفة. والروابط التي تفتحها عبر Cleanway تُفحص أيضًا في الخلفية، لكن التنبيه، إن جاء، يصل بعد أن تكون الصفحة قد فُتحت، وقد يُفتح موقع احتيال جديد تمامًا دون أي تنبيه. لا تُدخل أبدًا بيانات بطاقتك أو رموز الرسائل القصيرة في موقع فتحته من رابط في رسالة."
+      },
+      {
+        "q": "هل سيتصل بي Cleanway أو يرسل لي رابطًا في رسالة قصيرة؟",
+        "a": "لا. Cleanway لا يتصل أبدًا ولا يرسل روابط في الرسائل القصيرة. إذا اتصل بك أحد أو راسلك باسم Cleanway وطلب منك تثبيت شيء أو إملاء رمز أو إيقاف الحماية، فهذا احتيال."
       }
     ]
   },
@@ -314,17 +209,41 @@
   },
   "Signup": {
     "check_inbox": "تحقق من بريدك الإلكتروني",
-    "magic_link_sent": "أرسلنا رابطًا سحريًا لتسجيل الدخول إلى $EMAIL$.",
-    "magic_link_followup": "انقر على الرابط لإكمال تسجيل الدخول. ستستمر الصفحة تلقائيًا.",
+    "magic_link_sent": "أرسلنا رابط تسجيل الدخول إلى <strong>{email}</strong>.",
+    "magic_link_followup": "افتح الرابط في تلك الرسالة لإكمال تسجيل الدخول. إذا لم يصل شيء خلال 10 دقائق، فتحقق من مجلد الرسائل غير المرغوب فيها.",
     "email_label": "البريد الإلكتروني",
     "email_placeholder": "anta@example.com",
-    "submitting": "جارٍ إرسال الرابط السحري…",
+    "submitting": "جارٍ إرسال الرابط…",
     "submit_with_plan": "أرسل لي رابط تسجيل الدخول",
     "submit_no_plan": "متابعة",
     "footer_lead": "سنرسل لك رابط تسجيل دخول لمرة واحدة. لا توجد كلمة مرور للتذكر.",
     "footer_or": "أو",
-    "footer_install_cta": "ثبّت الإضافة مجانًا",
-    "footer_install_tail": "— الحظر يعمل دائمًا بدون حساب."
+    "footer_install_cta": "ثبّت التطبيق مجانًا",
+    "footer_install_tail": "— الحظر يعمل دون حساب.",
+    "meta_title": "تسجيل الدخول — Cleanway",
+    "meta_description": "سجّل الدخول إلى Cleanway برابط يُستخدم مرة واحدة يُرسل إلى بريدك الإلكتروني. الحماية نفسها تعمل دون حساب.",
+    "back_to_pricing": "العودة إلى الأسعار",
+    "heading": "أنشئ حسابًا أو سجّل الدخول",
+    "intro": "لا تحتاج إلى حساب لتكون محميًا، فحظر مواقع الاحتيال يعمل دونه. الحساب مطلوب فقط لميزات العائلة والخطط المدفوعة.",
+    "plan_label": "خطة {plan}",
+    "interval_monthly": "شهريًا",
+    "interval_yearly": "سنويًا",
+    "plan_next": "بعد تسجيل الدخول سننقلك إلى صفحة الدفع.",
+    "store_title": "ما الذي نحتفظ به",
+    "store_items": [
+      "عنوان بريدك الإلكتروني",
+      "خطتك، إن كانت لديك خطة",
+      "معرّف جهاز عشوائي لمزامنة الإعدادات",
+      "عدّادات: أرقام فقط، دون أسماء مواقع"
+    ],
+    "store_note": "لا تصلنا أبدًا الروابط الكاملة أو محتوى الصفحات أو نصوص الرسائل.",
+    "store_more": "سياسة الخصوصية",
+    "error_invalid_email": "يُرجى التحقق من عنوان البريد الإلكتروني، فيبدو أنه غير مكتمل.",
+    "error_disposable": "لا يمكن استخدام عناوين خدمات البريد المؤقت ({domain}). يُرجى استخدام بريدك المعتاد.",
+    "error_rate_limited": "محاولات كثيرة جدًا. انتظر بضع دقائق ثم حاول مرة أخرى.",
+    "error_send_failed": "تعذّر إرسال رسالة تسجيل الدخول. حاول مرة أخرى لاحقًا.",
+    "error_network": "لا يوجد اتصال بالخادم. تحقّق من الإنترنت وحاول مرة أخرى.",
+    "error_unavailable": "تسجيل الدخول غير متاح الآن. الحماية تعمل دون حساب."
   },
   "Pricing": {
     "page_title": "الأسعار",
@@ -334,24 +253,35 @@
     "interval_monthly": "شهري",
     "interval_yearly": "سنوي",
     "badge_save_2_months": "وفّر شهرين",
-    "tier_badge": "المستوى $TIER$ — $COUNTRY$"
+    "free_badge": "الحماية مجانية",
+    "free_title": "Cleanway مجاني",
+    "free_subtitle": "حظر مواقع الاحتيال وفحص الروابط والرسائل لا يكلّف شيئًا ولا يحتاج إلى حساب. لا توجد خطط مدفوعة في بلدك حاليًا.",
+    "free_list_title": "ما الذي تحصل عليه",
+    "free_items": [
+      "حظر مواقع الاحتيال المعروفة في كل تطبيقات الهاتف",
+      "فحص الروابط التي تنقر عليها",
+      "فحص الرسائل المشبوهة على الهاتف",
+      "فحص أي موقع باسمه",
+      "قائمة لمواقع الاحتيال تتحدّث تلقائيًا"
+    ],
+    "free_note": "إذا ظهرت يومًا إضافات مدفوعة، فسيبقى حظر مواقع الاحتيال مجانيًا.",
+    "free_cta": "نزّل تطبيق أندرويد",
+    "footer_cta_title": "ابدأ مجانًا اليوم",
+    "footer_cta_body": "دون بطاقة ائتمان. لا تنتقل إلى خطة مدفوعة إلا حين يكون ذلك مفيدًا لك."
   },
   "Transparency": {
     "page_title": "تقرير الشفافية",
-    "page_description": "الأرقام التي تنشرها Cleanway: إجمالي عمليات الفحص، ونسبة النتائج الإيجابية الخاطئة، وزمن الاستجابة، ومصادر المعلومات، وطلبات البيانات الحكومية — يتم تحديثها كل ربع سنة.",
-    "hero_subtitle": "ما رصدته Cleanway وحجبته خلال $PERIOD$.",
-    "published_at": "نُشر في $DATE$.",
-    "section_volume": "الحجم",
-    "section_latency": "زمن الاستجابة",
-    "section_sources": "مصادر المعلومات النشطة",
-    "section_categories": "أبرز الفئات المحجوبة",
-    "section_government": "طلبات البيانات الحكومية",
-    "metric_total_checks": "إجمالي عمليات الفحص",
-    "metric_dangerous": "تهديدات مؤكدة",
-    "metric_fp_rate": "نسبة النتائج الإيجابية الخاطئة",
-    "gov_requests": "$COUNT$ طلب بيانات حكومي",
-    "court_orders": "$COUNT$ أمر قضائي",
-    "error_unavailable": "تقرير الشفافية غير متاح مؤقتًا. يُرجى تحديث الصفحة بعد بضع دقائق."
+    "page_description": "ما قاسه Cleanway عن دقته، وما لم يقسه بعد.",
+    "intro": "لا ننشر أرقامًا عن Cleanway إلا إذا جاءت من قياس حقيقي قابل للتكرار. وما لم نقسه بعد ليس موجودًا في هذه الصفحة.",
+    "section_accuracy": "كشف التصيد",
+    "recall_measured": "آخر قياس أسبوعي ({date}): صنّف Cleanway ‎{recall}%‎ من روابط التصيد الحديثة التي أصدر حكمًا بشأنها على أنها خطيرة ({classified} رابطًا).",
+    "recall_not_yet": "لا يوجد رقم موثوق بعد. لم يُجرَ القياس الأسبوعي حتى الآن على عينة كبيرة بما يكفي للنشر: {min} رابط تصيد على الأقل، ومعظمها بحكم. وحتى ذلك الحين لا نذكر نسبة كشف.",
+    "section_fp": "الإنذارات الكاذبة",
+    "fp_measured": "صُنّف ‎{fpr}%‎ من {count} موقعًا سليمًا خطأً على أنها خطيرة ({date}).",
+    "fp_not_yet": "لم يُقَس بعد. لم نُجرِ حتى الآن قياسًا يبيّن كم مرة يصنّف Cleanway مواقع سليمة خطأً على أنها خطيرة، لذلك لا نذكر نسبة الإنذارات الكاذبة.",
+    "section_how": "كيف نقيس",
+    "how_body": "النص البرمجي للقياس ومصادر بياناته ونتيجة كل أسبوع متاحة للجميع.",
+    "methodology_link": "اقرأ المنهجية"
   },
   "Dns": {
     "page_title": "خادم DNS يحجب التصيّد — نقرة واحدة، بدون تطبيق",
@@ -393,81 +323,461 @@
   "Install": {
     "browser_label": "إضافات المتصفح",
     "mobile_label": "الجوال",
-    "status_in_review": "قيد المراجعة",
-    "status_coming_this_week": "هذا الأسبوع",
-    "status_native_after_launch": "تطبيق أصلي بعد الإطلاق",
-    "status_appsource_pending": "AppSource قيد الانتظار"
+    "status_appsource_pending": "AppSource قيد الانتظار",
+    "status_coming_soon": "قريبًا"
   },
   "Methodology": {
-    "page_title": "Benchmark methodology",
-    "page_description": "Cleanway's per-domain detection results vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal — measured weekly on fresh URLhaus + PhishTank URLs. Reproducible benchmark script linked.",
-    "back_to_transparency": "Back to transparency report",
-    "hero_title": "How we measure our own detection rate",
-    "hero_subtitle": "Every recall number we publish points here. The dataset, the script, and a button to clone it on GitHub.",
-    "why_heading": "Why this page exists",
-    "why_p1": "Every other anti-phishing vendor publishes glossy quarterly threat reports without their false-positive rate or per-vendor recall comparison. The numbers exist only in their internal dashboards.",
-    "why_p2": "We do the opposite: this page runs the same Python script anyone can clone, every Monday, against fresh URLhaus + PhishTank phishing URLs, and publishes the raw results. The script's output IS the marketing claim.",
-    "results_heading": "Latest results",
-    "results_unavailable": "Latest benchmark snapshot not available — re-running cron now.",
-    "results_meta": "Snapshot: $DATE$. Sample: $PHISHING$ phishing URLs, $LEGIT$ Tranco legit URLs.",
-    "phishing_table_heading": "Phishing batch (expected verdict: dangerous)",
-    "safe_table_heading": "Legit batch (FPR — false-positive rate, expected verdict: safe)",
-    "datasets_heading": "Datasets",
-    "dataset_phishing": "Phishing samples",
-    "dataset_safe": "Legit samples",
-    "verdict_mapping_heading": "How we map each resolver's response",
-    "verdict_mapping_p1": "Different vendors return different verdict shapes. We normalise to three: dangerous / safe / unknown. Unknown verdicts (rate-limited, not indexed, error) are reported separately — not counted as right or wrong.",
-    "reproduce_heading": "Reproduce these numbers",
-    "reproduce_p1": "Two commands and a Python 3 install. The script fetches the same feeds, runs the same comparisons, writes the same JSON output:",
-    "reproduce_note": "Source:",
-    "cadence_heading": "Cadence + automation",
-    "cadence_p1": "The benchmark runs every Monday at 05:15 UTC via a GitHub Actions cron. Results commit to docs/benchmarks/ in this repo. A regression-detection step opens a PR if recall drops more than 5 percentage points week-over-week.",
-    "cadence_p2": "Workflow file:",
-    "caveats_heading": "Honest caveats",
-    "caveat_1": "Cleanway uses the public /api/v1/check endpoint — same anonymous surface a regular user would see. We deliberately do NOT use a privileged path for benchmarking ourselves.",
-    "caveat_2": "PhishTank's free check API returns 'not indexed' for most fresh URLhaus URLs because their database lags by a few hours — that's why PhishTank's Recall column often shows '—' (unknown), not because it's broken.",
-    "caveat_3": "Google Safe Browsing requires an API key (GOOGLE_SAFE_BROWSING_KEY). If unset, that column shows '—' and is excluded from the comparison.",
-    "caveat_4": "Latency p50 measured from this script's host (US/EU CI runner); your latency from Asia or LATAM will differ. The relative comparison stays the same."
+    "page_title": "منهجية القياس",
+    "page_description": "كيف يقيس Cleanway قدرته على كشف التصيد: البيانات والنص البرمجي ومتى يُسمح بعرض رقم على الموقع.",
+    "back_to_transparency": "العودة إلى تقرير الشفافية",
+    "hero_title": "كيف نقيس نسبة الكشف لدينا",
+    "hero_subtitle": "كل رقم عن الدقة نعرضه يحيل إلى هنا: البيانات، والنص البرمجي، وكيف تعيد القياس بنفسك.",
+    "why_heading": "لماذا توجد هذه الصفحة",
+    "why_p1": "لا قيمة لنسبة الكشف إلا إذا أمكن رؤية كيف قيست. لذلك ننشر النص البرمجي ومصادر البيانات ونتيجة كل أسبوع.",
+    "why_p2": "يعمل النص البرمجي كل يوم اثنين على روابط تصيد حديثة من مصادر عامة وعلى عينة من المواقع السليمة. وتُحفظ النتائج في مستودعنا العام على GitHub، حتى في الأسابيع التي تبدو فيها الأرقام سيئة.",
+    "results_heading": "أحدث النتائج",
+    "results_unavailable": "لا يتوفر أي قياس حاليًا.",
+    "phishing_table_heading": "روابط التصيد (الحكم المتوقع: خطير)",
+    "safe_table_heading": "المواقع السليمة (الحكم المتوقع: آمن)",
+    "datasets_heading": "البيانات",
+    "dataset_phishing": "روابط التصيد",
+    "dataset_safe": "المواقع السليمة",
+    "verdict_mapping_heading": "كيف تُحتسب إجابة كل خدمة",
+    "verdict_mapping_p1": "تجيب الخدمات بطرق مختلفة. نختصر كل إجابة إلى: خطير أو آمن أو غير معروف. الإجابات غير المعروفة (حد الطلبات، غير مفهرس، خطأ) تُحتسب منفصلة، فلا هي صحيحة ولا خاطئة.",
+    "reproduce_heading": "أعِد القياس بنفسك",
+    "reproduce_p1": "تحتاج إلى git وPython 3. ينزّل النص البرمجي المصادر نفسها ويجري المقارنات نفسها ويكتب ملف JSON نفسه:",
+    "reproduce_note": "الشيفرة المصدرية:",
+    "cadence_heading": "الجدول الزمني",
+    "cadence_p1": "يعمل القياس كل يوم اثنين الساعة 05:15 بالتوقيت العالمي في GitHub Actions ويحفظ نتائجه في docs/benchmarks/. وإذا انخفضت نسبة الكشف بأكثر من 5 نقاط مئوية عن الأسبوع السابق، يفتح سير العمل طلب دمج (pull request) ينبّه إلى ذلك.",
+    "cadence_p2": "ملف سير العمل:",
+    "caveats_heading": "تنبيهات صريحة",
+    "results_not_publishable": "آخر قياس ({date}) أصغر من أن يُستشهد به: {phishing} رابط تصيد، منها {classified} بحكم من Cleanway. لا نعرض أرقامًا إلا إذا ضمّ القياس {min_phishing} رابط تصيد على الأقل و{min_classified} حكمًا على الأقل. كل القياسات الأسبوعية، بما فيها الصغيرة، موجودة في المستودع.",
+    "results_snapshot": "القياس: {date}. العينة: {phishing} رابط تصيد، و{legit} موقعًا سليمًا.",
+    "fp_not_measured": "لا نعرض نسبة للإنذارات الكاذبة في هذا القياس: إما لأن عددًا قليلًا جدًا من المواقع الحقيقية تلقّى جوابًا من Cleanway، وإما لأن العيّنة لا تضم إلا مواقع يعدّها خادمنا آمنة دون فحصها (انظر الملاحظات أدناه).",
+    "all_runs_link": "كل النتائج الأسبوعية على GitHub",
+    "col_service": "الخدمة",
+    "col_recall": "نسبة الكشف",
+    "col_precision": "الدقة",
+    "col_f1": "F1",
+    "col_tp": "مكتشفة",
+    "col_fn": "فائتة",
+    "col_unknown": "دون حكم",
+    "col_latency": "الزمن الوسيط",
+    "col_fpr": "نسبة الإنذارات الكاذبة",
+    "col_fp": "إنذارات كاذبة",
+    "col_tn": "صحيحة",
+    "dataset_phishing_desc": "روابط حديثة من المصدرين العامين URLhaus وPhishTank، تُنزَّل في كل تشغيل مع إزالة التكرار حسب النطاق.",
+    "dataset_safe_desc": "نطاقات عشوائية من قائمة Tranco top-1M من المرتبة 100 إلى 100,000، مع بذرة عشوائية ثابتة لإمكان تكرار العينة.",
+    "mapping_cleanway": "Cleanway: «خطير» يُحتسب خطيرًا، و«آمن» آمنًا، و«انتبه» غير معروف.",
+    "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: الإجابة المحظورة (NXDOMAIN أو 0.0.0.0 / ::) تُحتسب خطيرة، والإجابة العادية آمنة.",
+    "mapping_virustotal": "VirusTotal: خطير إذا أشار إلى الرابط اثنان على الأقل من برامج مكافحة الفيروسات لديه؛ وتُتجاهل إشارة برنامج واحد لأنها غير موثوقة.",
+    "caveat_endpoint": "يُقاس Cleanway عبر فحص المواقع العام، وهو المسار المجهول نفسه الذي يستخدمه أي زائر، لا عبر مسار مميز. وهو يقيس جواب خادمنا لا الحظر على الهاتف: فحماية الهاتف لا تحظر فورًا إلا المواقع الموجودة في قائمتها، لذا لا يدلّ هذا الرقم على عدد هذه الروابط التي سيحظرها الهاتف.",
+    "caveat_rate_limit": "حاليًا يتباطأ التشغيل الأسبوعي بسبب حد الطلبات في ذلك الفحص، لذلك تبقى روابط كثيرة دون حكم، ومعظم القياسات أصغر من أن تُنشر.",
+    "caveat_phishtank": "كثيرًا ما يجيب البحث المجاني في PhishTank بـ«غير مفهرس» على الروابط الحديثة لأن قاعدة بياناته متأخرة بضع ساعات، لذلك يظهر في عموده غالبًا «—».",
+    "caveat_gsb": "تحتاج خدمة Google Safe Browsing إلى مفتاح API، وإذا لم يُضبط للتشغيل يظهر في عمودها «—».",
+    "caveat_nxdomain": "النطاق الذي لم يعد موجودًا يحصل هو أيضًا على NXDOMAIN من Cloudflare ويُحتسب حظرًا من Cloudflare، وهذا يجمّل نتيجة Cloudflare في نطاقات التصيد التي أُغلقت بالفعل.",
+    "caveat_latency": "تُقاس أزمنة الاستجابة من الجهاز الذي يشغّل النص البرمجي (خادم سحابي في الولايات المتحدة أو الاتحاد الأوروبي)، ومن مناطق أخرى ستكون مختلفة.",
+    "caveat_allowlist": "يَعُدّ خادمنا المواقع الواردة في أعلى 100,000 من قائمة Tranco آمنة دون تحليلها، وعيّنة المواقع الحقيقية أعلاه مأخوذة من النطاق نفسه. لذلك لا يمكنها أن تُظهر كم مرة يصف Cleanway خطأً موقعًا حقيقيًا أقل شهرة بأنه خطير، ولا ننشر منها أي نسبة للإنذارات الكاذبة. سننشرها حين تضم العيّنة مواقع حقيقية من خارج تلك القائمة."
   },
   "Support": {
     "title": "الدعم",
-    "subtitle": "أسئلة أو مشكلات أو موقع حُظر بالخطأ — نحن معك.",
-    "email_label": "راسلنا بالبريد",
-    "email_hint": "نقرأ كل رسالة. أخبرنا من فضلك بطراز هاتفك وبما حدث.",
+    "subtitle": "إجابات عن الأسئلة الشائعة، وما العمل إذا حدث خطأ ما.",
+    "email_label": "راسلنا",
+    "email_hint": "يُرجى ذكر طراز هاتفك وما حدث.",
     "faq_title": "أسئلة شائعة",
     "q_vpn": "هل هذه VPN تخفي بياناتي؟",
-    "a_vpn": "لا. يُنشئ Cleanway على هاتفك مُرشِّحًا محليًا يحظر مواقع الاحتيال في كل التطبيقات. وهي ليست VPN لإخفاء الهوية — فهي لا تخفي إلى أين تذهب ولا تمرّر بياناتك عبر بلد آخر. أما طلبات المواقع التي لا يحظرها فتذهب إلى محلّل أسماء عام عادي، تمامًا كما يعمل هاتفك الآن.",
+    "a_vpn": "لا. يستخدم Cleanway آلية VPN في أندرويد فقط لتشغيل مرشّح محلي على هاتفك يحظر مواقع الاحتيال في كل التطبيقات. لا يخفي وجهتك ولا يمرّر حركة بياناتك عبر بلد آخر. وللوصول إلى المواقع التي لا يحظرها، يبحث هاتفك عن أسمائها لدى خدمة DNS عامة: Cloudflare ‏(1.1.1.1) أو Quad9 ‏(9.9.9.9).",
     "q_install": "كيف أُثبّته؟",
-    "a_install": "نزّل التطبيق، وافتح الملف، واسمح بتثبيته. عند أول تشغيل انقر «تشغيل الحماية» واسمح بالاتصال الذي يطلبه Android — بذلك يبدأ المُرشِّح المحلي عمله.",
+    "a_install": "نزّل التطبيق وافتح الملف واسمح بالتثبيت، وصفحة أندرويد تشرح كل تحذير قد يظهر لك في الطريق. عند التشغيل الأول انقر «تشغيل الحماية» واسمح بالاتصال الذي يطلبه أندرويد.",
     "q_off": "كيف أُوقفه؟",
     "a_off": "افتح التطبيق وانقر «إيقاف الحماية مؤقتًا». يمكنك تشغيله من جديد متى شئت.",
     "q_fp": "موقع آمن محظور — ماذا أفعل؟",
-    "a_fp": "في شاشة الحظر انقر «ليس احتيالًا»، أو راسلنا وأرسل لنا العنوان. نصحّح الحظر الخاطئ بسرعة.",
+    "a_fp": "افتح Cleanway، وانتقل إلى تبويب «السجل» وانقر على ذلك الموقع. ثم انقر «ليس احتيالًا — اسمح به» وأكّد. سيتوقف Cleanway عن حظر هذا الموقع على هاتفك. ويوجد الزر نفسه في إشعار الحظر إن ظهر. لا تسمح بموقع إلا إذا كنت متأكدًا من أنه الموقع الحقيقي.",
     "q_privacy": "ما الذي تجمعونه؟",
-    "a_privacy": "يُطابق الدرع أسماء المواقع على هاتفك — ولا يصلنا أي شيء عن المواقع التي تزورها. التفاصيل كاملة في صفحة الخصوصية."
+    "a_privacy": "تُطابق المواقع مع القائمة على هاتفك. وإذا احتاج موقع إلى فحص أدق، لا يصل إلى خادمنا إلا اسمه، لا الرابط الكامل ولا هويتك. ونص الرسائل التي تفحصها لا يغادر الهاتف أبدًا. التفاصيل الكاملة في سياسة الخصوصية.",
+    "email_not_live_title": "لا يمكننا استقبال البريد الإلكتروني بعد",
+    "email_not_live_body": "ما زال صندوق بريد الدعم قيد الإعداد، لذلك قد لا تصلنا الرسائل المرسلة إلى support@cleanway.ai. لا ترسل إليه أي شيء مهم في الوقت الحالي. الإجابات أدناه تساعد في أكثر المشكلات شيوعًا.",
+    "q_app_vpn": "تطبيق آخر يطلب مني إيقاف VPN",
+    "a_app_vpn": "بعض التطبيقات، مثل البنوك وتطبيقات المراسلة والخدمات الحكومية، لا تعمل ما دام أي VPN يعمل، وحماية Cleanway تبدو لأندرويد مثل VPN. افتح Cleanway وانقر «إيقاف الحماية مؤقتًا»، واستخدم ذلك التطبيق، ثم شغّل الحماية من جديد.",
+    "q_no_internet": "توقف الإنترنت عن العمل بعد تثبيت Cleanway",
+    "a_no_internet": "أوقف الحماية مؤقتًا في Cleanway أولًا وتحقق مما إذا كانت المواقع تُفتح. وإذا كنت قد كتبت يومًا dns.cleanway.ai في «DNS خاص» في إعدادات الهاتف، فأعده إلى «تلقائي»: مع هذا الإعداد لا يعمل Cleanway وقد ينقطع الإنترنت.",
+    "q_calls": "اتصل بي شخص من «دعم Cleanway»",
+    "a_calls": "Cleanway لا يتصل أبدًا ولا يرسل روابط في الرسائل القصيرة. إذا اتصل بك أحد أو راسلك باسم Cleanway وطلب منك تثبيت شيء أو إملاء رمز أو إيقاف الحماية، فأغلق الخط. هذا احتيال.",
+    "privacy_link": "سياسة الخصوصية",
+    "android_link": "Cleanway لأندرويد: التنزيل والمساعدة في التثبيت"
   },
   "Android": {
     "title": "Cleanway لنظام Android",
-    "subtitle": "حماية مجانية من روابط الاحتيال — في كل تطبيقات هاتفك.",
-    "benefit_1": "يحظر مواقع الاحتيال المعروفة في أي تطبيق — المتصفح وتطبيقات المراسلة والبريد.",
-    "benefit_2": "يفحص الروابط التي تنقر عليها ويحذّرك قبل أن تُفتح صفحة خطيرة.",
-    "benefit_3": "مجاني، ويعمل بدون إنترنت من قائمة محفوظة على الهاتف، ولا شيء زائد.",
+    "subtitle": "حماية مجانية من مواقع الاحتيال في كل تطبيقات هاتفك.",
+    "benefit_1": "يحظر مواقع الاحتيال المعروفة في أي تطبيق: المتصفح وتطبيقات المراسلة والبريد الإلكتروني.",
+    "benefit_2": "يفحص الروابط التي تنقر عليها: موقع الاحتيال المعروف لن يُفتح، والمواقع الأخرى تُفحص في الخلفية.",
+    "benefit_3": "يفحص الرسائل القصيرة المشبوهة على الهاتف نفسه، فلا يذهب النص إلى أي مكان.",
     "download_cta": "نزّل التطبيق",
-    "download_note": "ملف .apk · أندرويد 7 والأحدث",
+    "download_note": "ملف ‎.apk · أندرويد 7 أو أحدث · الملف كبير، ويُفضّل استخدام Wi-Fi",
     "download_soon": "رابط التنزيل سيظهر قريبًا جدًا.",
     "steps_title": "طريقة التثبيت",
-    "step_1": "انقر «نزّل التطبيق» وانتظر وصول الملف.",
-    "step_2": "افتح الملف الذي نزّلته (عادةً من شريط الإشعارات أو من مجلد التنزيلات).",
-    "step_3": "سيطلب Android الإذن بالتثبيت من هذا المصدر — انقر «السماح» ثم «تثبيت».",
-    "step_4": "افتح Cleanway، وانقر «تشغيل الحماية»، ثم اسمح بالاتصال الذي يطلبه النظام.",
+    "step_1": "انقر «تنزيل التطبيق» وانتظر حتى يكتمل تنزيل الملف.",
+    "step_2": "افتح الملف الذي تم تنزيله، من الإشعار أو من مجلد التنزيلات.",
+    "step_3": "إذا قال أندرويد إن التثبيت من هذا المصدر غير مسموح، فانقر «الإعدادات» وفعّل «السماح من هذا المصدر» ثم ارجع وانقر «تثبيت».",
+    "step_4": "افتح Cleanway وانقر «تشغيل الحماية» واسمح بالاتصال الذي يطلبه أندرويد.",
     "unknown_title": "لماذا يطلب الهاتف إذنًا؟",
-    "unknown_body": "أنت تُثبّت التطبيق مباشرة من الموقع لا من متجر، لذلك يسألك Android مرة واحدة إن كنت تثق بالمصدر. وهذا أمر طبيعي. التثبيت من RuStore وGoogle Play قادم قريبًا — وعندها لن تحتاج إلى هذه الخطوة.",
-    "stores_title": "أو ثبّته من متجر",
+    "unknown_body": "أنت تثبّت التطبيق مباشرة من موقعنا لا من متجر، لذلك يسألك أندرويد مرة واحدة إن كنت تثق بالمصدر. هذا أمر طبيعي. نحن نجهّز لإصدار التطبيق على RuStore، وعندها لن تحتاج إلى هذه الخطوة.",
+    "stores_title": "متاجر التطبيقات",
     "rustore": "RuStore",
-    "gplay": "Google Play",
     "store_soon": "قريبًا",
     "privacy_title": "هذه ليست «VPN لإخفاء هويتك»",
-    "privacy_body": "يُنشئ Cleanway على هاتفك مُرشِّحًا محليًا يحظر مواقع الاحتيال. وهو لا يخفي إلى أين تذهب ولا يمرّر بياناتك عبر بلد آخر. تُطابَق أسماء المواقع على الهاتف نفسه — ولا نعرف شيئًا عمّا تفتحه.",
-    "download_soon_note": "سيظهر رابط التنزيل هنا فور نشر الإصدار. الخطوات أدناه توضّح كيف ستبدو عملية التثبيت."
+    "privacy_body": "يُنشئ Cleanway على هاتفك مرشّحًا محليًا يحظر مواقع الاحتيال. لا يخفي وجهتك ولا يمرّر حركة بياناتك عبر بلد آخر. تُطابق المواقع مع القائمة على الهاتف، وإذا احتاج موقع إلى فحص أدق لا يصل إلى خادمنا إلا اسمه، ولا يصل أبدًا الرابط الكامل ولا هويتك.",
+    "download_soon_note": "سيظهر رابط التنزيل هنا فور نشر الإصدار. الخطوات أدناه توضّح كيف ستبدو عملية التثبيت.",
+    "og_title": "Cleanway لأندرويد — حماية مجانية من مواقع الاحتيال",
+    "og_description": "يحظر مواقع الاحتيال والتصيد المعروفة في كل تطبيقات هاتفك. مجانًا ودون حساب.",
+    "benefit_4": "مجاني ودون حساب.",
+    "honesty_note": "تظهر مواقع احتيال جديدة كل يوم، ويستغرق وصولها إلى أي قائمة وقتًا. لا تُدخل أبدًا بيانات بطاقتك أو رموز الرسائل القصيرة في موقع فتحته من رابط في رسالة.",
+    "warnings_title": "التحذيرات المخيفة في الطريق أمر طبيعي",
+    "warnings_intro": "يحذّر أندرويد وChrome من أي تطبيق لا يأتي من متجر. إليك شكل كل تحذير وما الذي تنقر عليه.",
+    "warn_chrome_title": "Chrome: «قد يكون هذا الملف ضارًا»",
+    "warn_chrome_body": "يعرض Chrome هذا التحذير لأي ملف تطبيق يُنزَّل من موقع ويب. انقر «التنزيل على أي حال» (وفي بعض الهواتف «تنزيل» فقط).",
+    "warn_samsung_title": "سامسونج: «المانع التلقائي»",
+    "warn_samsung_body": "في هواتف سامسونج الأحدث يمنع «المانع التلقائي» تثبيت التطبيقات من خارج المتاجر. أوقفه أثناء التثبيت: الإعدادات ← الأمان والخصوصية ← المانع التلقائي ← إيقاف.",
+    "warn_samsung_after": "بعد تثبيت Cleanway أعِد تشغيل «المانع التلقائي». سيستمر Cleanway في العمل، لأن المانع التلقائي لا يمنع إلا التثبيتات الجديدة. ولتحديث Cleanway لاحقًا ستحتاج إلى إيقافه مجددًا لدقيقة.",
+    "warn_protect_title": "Play Protect: «تطبيق غير آمن»",
+    "warn_protect_body": "يحذّر Google Play Protect من التطبيقات التي لا يعرفها عبر Google Play، وCleanway غير موجود على Google Play. انقر «مزيد من التفاصيل» ثم «التثبيت على أي حال».",
+    "screenshot_alt_chrome": "تحذير التنزيل في Chrome مع زر «التنزيل على أي حال»",
+    "screenshot_alt_samsung": "شاشة إعدادات «المانع التلقائي» في سامسونج",
+    "screenshot_alt_protect": "تحذير Play Protect مع «مزيد من التفاصيل» و«التثبيت على أي حال»",
+    "never_calls_title": "Cleanway لا يرسل لك روابط في الرسائل القصيرة ولا يتصل بك أبدًا",
+    "never_calls_body": "إذا اتصل بك أحد أو راسلك باسم Cleanway وطلب منك تثبيت شيء أو إملاء رمز أو إيقاف الحماية، فهذا احتيال. نزّل Cleanway من هذا الموقع فقط: cleanway.ai.",
+    "links_privacy": "سياسة الخصوصية",
+    "links_support": "المساعدة والدعم"
+  },
+  "Meta": {
+    "title": "Cleanway — حماية من مواقع الاحتيال",
+    "description": "يحظر Cleanway لأندرويد مواقع الاحتيال والتصيد المعروفة في كل تطبيقات هاتفك. مجانًا ودون حساب."
+  },
+  "Check": {
+    "index_title": "هل هذا الموقع آمن؟",
+    "index_subtitle": "أدخل اسم موقع أو رابطًا لترى إن كان يبدو احتياليًا.",
+    "input_placeholder": "مثل paypal-verify.com",
+    "input_label": "الموقع المراد فحصه",
+    "submit": "افحص",
+    "index_footer": "نطابق اسم الموقع مع قوائم مواقع الاحتيال المعروفة وعلامات أخرى. الحكم نصيحة لا ضمان.",
+    "meta_title": "هل {domain} آمن؟ — فحص Cleanway",
+    "meta_description": "افحص إن كان {domain} يبدو موقع تصيد أو احتيال. فحص مجاني مع الأسباب بكلمات بسيطة.",
+    "og_description": "فحص Cleanway للموقع {domain}",
+    "heading": "هل {domain} آمن؟",
+    "level_safe": "يبدو آمنًا",
+    "level_caution": "انتبه",
+    "level_dangerous": "خطير",
+    "risk_score": "درجة الخطر: {score} من 100",
+    "confidence": "الثقة: {pct}%",
+    "confidence_hint": "تعتمد الثقة على عدد الفحوصات التي أُجريت ومدى قرب الدرجة من المستوى التالي. ولا تبلغ 100% أبدًا.",
+    "how_we_measure": "كيف نقيس",
+    "verdict_safe": "{domain} يبدو آمنًا.",
+    "verdict_caution": "تظهر على {domain} بعض العلامات المريبة. انتبه.",
+    "verdict_dangerous": "تظهر على {domain} علامات قوية على أنه موقع تصيد أو احتيال. لا تُدخل بياناتك الشخصية.",
+    "check_failed": "تعذّر علينا فحص {domain} الآن. حاول مرة أخرى بعد بضع دقائق.",
+    "signals_heading": "لماذا",
+    "low_confidence": "هذا فحص سريع ببيانات محدودة.",
+    "cta_title": "احمِ كل التطبيقات على هاتفك",
+    "cta_body": "يحظر Cleanway لأندرويد مواقع الاحتيال المعروفة في كل التطبيقات مجانًا.",
+    "another": "افحص موقعًا آخر:",
+    "footer_note": "الحكم نصيحة لا ضمان.",
+    "privacy_link": "سياسة الخصوصية",
+    "share_button": "شارك هذا الفحص",
+    "share_copy": "نسخ الرابط",
+    "share_copied": "تم النسخ!",
+    "share_email": "البريد الإلكتروني",
+    "share_text": "{verdict}: {domain} — درجة الخطر لدى Cleanway ‏{score}/100",
+    "share_title": "هل {domain} آمن؟",
+    "invalid_input": "لا يبدو هذا اسم موقع. اكتب مثلًا example.com.",
+    "share_grade_text": "{domain}: درجة الخصوصية لدى Cleanway — {grade}",
+    "share_grade_title": "{domain}: درجة الخصوصية"
+  },
+  "NotFound": {
+    "title": "الصفحة غير موجودة",
+    "body": "هذه الصفحة غير موجودة، لكن ما زال بإمكاننا مساعدتك على البقاء آمنًا.",
+    "home": "إلى الصفحة الرئيسية",
+    "check": "افحص موقعًا"
+  },
+  "Terms": {
+    "meta_title": "شروط الاستخدام — Cleanway",
+    "meta_description": "قواعد استخدام Cleanway: ما تعد به الخدمة وما لا تعد به، والحسابات، والخطط المدفوعة، والاستخدام المقبول.",
+    "back": "العودة إلى Cleanway",
+    "title": "شروط الاستخدام",
+    "updated": "آخر تحديث: 27 سبتمبر 2026",
+    "privacy_link": "اقرأ سياسة الخصوصية",
+    "contact_live": "أسئلة عن هذه الشروط:",
+    "contact_not_live": "ما زال صندوق بريد الدعم قيد الإعداد، لذلك لا يمكننا استقبال البريد الإلكتروني بعد. صفحة المساعدة تجيب عن الأسئلة الشائعة.",
+    "support_link": "صفحة المساعدة",
+    "sections": [
+      {
+        "title": "1. ما هو Cleanway",
+        "paragraphs": [
+          "يساعدك Cleanway على حماية نفسك من مواقع الاحتيال والتصيد. ويتكوّن من تطبيق أندرويد، وفحص المواقع على cleanway.ai، ومرشّح DNS لأجهزة iPhone وMac وWindows. يطابق Cleanway أسماء المواقع مع قوائم التهديدات المعروفة وعلامات أخرى، ويخبرك بما وجده."
+        ]
+      },
+      {
+        "title": "2. ما لا نعد به",
+        "paragraphs": [
+          "أحكام Cleanway نصيحة لا ضمان. لا يمكننا أن نعد بأن:"
+        ],
+        "items": [
+          "كل موقع احتيال أو تصيد سيُكتشف، فالجديد منها يظهر كل يوم؛",
+          "الموقع الآمن لن يُصنّف خطأً أبدًا؛",
+          "موقع الاحتيال الجديد تمامًا سيُحظر لحظة ظهوره؛",
+          "Cleanway يحمي من كل أنواع الاحتيال؛ فمثلًا لا يحمي من المكالمات الهاتفية."
+        ],
+        "after": [
+          "استخدم Cleanway طبقةً من طبقات الحماية: لا تشارك أبدًا رموز الرسائل القصيرة، وتحقّق من أي أمر عاجل بالاتصال ببنكك على الرقم المطبوع على بطاقتك."
+        ]
+      },
+      {
+        "title": "3. الاستخدام المجاني والحسابات",
+        "paragraphs": [
+          "حظر مواقع الاحتيال مجاني ويعمل دون حساب. الحساب مطلوب فقط لميزات العائلة والخطط المدفوعة. إذا أنشأت حسابًا، فاستخدم بريدًا إلكترونيًا حقيقيًا واحتفظ بإمكانية الوصول إليه: فأنت تسجّل الدخول برموز أو روابط تُستخدم مرة واحدة تُرسل إليه."
+        ]
+      },
+      {
+        "title": "4. الخطط المدفوعة",
+        "paragraphs": [
+          "في بعض البلدان يقدّم Cleanway خططًا مدفوعة بميزات إضافية. لا تُقدَّم خطط مدفوعة في روسيا. وحيث توجد، تتولى Stripe الدفع، ويُعرض السعر ومدة الفوترة قبل الدفع، ويمكنك الإلغاء في أي وقت، وتبقى الخطة سارية حتى نهاية المدة المدفوعة. تُعالج المبالغ المستردة وفق ما يقتضيه القانون. ولن يصبح حظر مواقع الاحتيال ميزة مدفوعة أبدًا."
+        ]
+      },
+      {
+        "title": "5. الاستخدام المقبول",
+        "paragraphs": [
+          "يُرجى عدم:"
+        ],
+        "items": [
+          "استخدام Cleanway لاختبار مواقع الاحتيال أو تحسينها؛",
+          "إرسال طلبات آلية جماعية أو محاولة تجاوز حدود الطلبات؛",
+          "إعادة بيع الوصول إلى فحوصات Cleanway؛",
+          "التشويش على الخدمة أو مهاجمة بنيتها التحتية؛",
+          "استخدام ميزات العائلة لمضايقة أحد أو الضغط عليه، أو إضافة شخص إلى مجموعة عائلية دون موافقته."
+        ],
+        "after": [
+          "يجوز لنا تقييد الوصول أو إغلاقه لمن يفعل ذلك."
+        ]
+      },
+      {
+        "title": "6. ميزات العائلة",
+        "paragraphs": [
+          "تنبيهات العائلة مشفّرة من طرف إلى طرف: لا يمكننا قراءتها، ولا يمكننا استعادتها إذا فقدت كل أجهزة العائلة مفاتيحها. تنبيه العائلة إشارة مفيدة، وليس بديلًا عن الحديث مع بعضكم."
+        ]
+      },
+      {
+        "id": "privacy",
+        "title": "7. الخصوصية",
+        "paragraphs": [
+          "كيفية تعاملنا مع البيانات موضّحة في سياسة الخصوصية."
+        ]
+      },
+      {
+        "title": "8. الشيفرة المصدرية",
+        "paragraphs": [
+          "الشيفرة المصدرية لـ Cleanway منشورة على GitHub بترخيص MIT."
+        ]
+      },
+      {
+        "title": "9. المسؤولية",
+        "paragraphs": [
+          "يُقدَّم Cleanway «كما هو». وبالقدر الذي يسمح به القانون، لا نتحمّل مسؤولية الخسائر غير المباشرة، وتقتصر مسؤوليتنا الإجمالية على ما دفعته لنا خلال الأشهر الاثني عشر الأخيرة. ولا شيء في هذه الشروط يقيّد حقوقًا لا يسمح القانون بتقييدها."
+        ]
+      },
+      {
+        "title": "10. التغييرات",
+        "paragraphs": [
+          "قد نحدّث هذه الشروط. سننشر التغييرات المهمة في هذه الصفحة قبل سريانها، والتاريخ في الأعلى يبيّن النسخة السارية."
+        ]
+      },
+      {
+        "id": "contact",
+        "title": "11. التواصل",
+        "paragraphs": []
+      }
+    ]
+  },
+  "PrivacyPolicy": {
+    "meta_title": "سياسة الخصوصية — Cleanway",
+    "meta_description": "ما الذي يتلقاه Cleanway، وما الذي يبقى على هاتفك، ومن يرى ماذا، وكم يُحتفظ بكل شيء.",
+    "back": "العودة إلى Cleanway",
+    "title": "سياسة الخصوصية",
+    "updated": "آخر تحديث: 27 سبتمبر 2026",
+    "intro": "توضّح هذه السياسة بكلمات بسيطة ما البيانات التي يتعامل معها Cleanway، ولماذا، ومن يراها أيضًا. وهي تصف الخدمة كما تعمل اليوم. إذا لم يتطابق شيء هنا مع ما يفعله Cleanway فعلًا، فهذا خطأ ونريد أن نعرف به.",
+    "contact_live": "الأسئلة والطلبات المتعلقة ببياناتك:",
+    "contact_not_live": "ما زال صندوق بريد الدعم قيد الإعداد، لذلك لا يمكننا استقبال البريد الإلكتروني بعد. سيظهر العنوان في هذا القسم حالما يعمل.",
+    "sections": [
+      {
+        "title": "1. باختصار",
+        "items": [
+          "لفحص موقع نحتاج إلى اسمه فقط (مثل example.com). لا نتلقى روابط كاملة ولا محتوى صفحات ولا نصوص رسائلك.",
+          "تجري معظم الفحوصات على هاتفك، بمطابقتها مع قائمة مواقع الاحتيال المعروفة.",
+          "إذا احتاج موقع إلى فحص أدق، يصل اسمه إلى خادمنا، وقد يسأل الخادم خدمات فحص أخرى عن هذا الاسم، ولا يسألها عنك أبدًا.",
+          "لا تحتاج إلى حساب لتكون محميًا. لا نعرض إعلانات ولا نبيع البيانات."
+        ]
+      },
+      {
+        "title": "2. من نحن",
+        "paragraphs": [
+          "يحمي Cleanway (cleanway.ai) من مواقع الاحتيال والتصيد. ويتكوّن من تطبيق أندرويد، وفحص المواقع على cleanway.ai، ومرشّح DNS لأجهزة iPhone وMac وWindows. طريقة التواصل معنا مذكورة في آخر هذه السياسة."
+        ]
+      },
+      {
+        "title": "3. تطبيق أندرويد: حماية في كل التطبيقات",
+        "paragraphs": [
+          "عندما تشغّل الحماية، يبدأ Cleanway مرشّحًا محليًا باستخدام آلية VPN في أندرويد. لا يمرّ عبره إلا طلبات DNS، أي الأسئلة التي يطرحها الهاتف للعثور على عنوان موقع، مثل «أين example.com؟». أما محتوى الصفحات ورسائلك ومكالماتك فلا تمرّ عبر المرشّح ولا تُقرأ.",
+          "يُطابق كل اسم موقع مع قائمة مواقع الاحتيال المحفوظة على الهاتف. فإن كان في القائمة لا يفتح الهاتف الموقع، وتُحفظ على الهاتف ملاحظة (اسم الموقع والوقت وما حدث) لسجل التطبيق.",
+          "الأسماء غير الموجودة في القائمة تُمرَّر إلى خدمة DNS عامة للعثور على العنوان، وهو ما يفعله الهاتف دون Cleanway أيضًا، لكن عبر خدمة أخرى. في الإصدار 1.0.1 من التطبيق تذهب هذه الطلبات إلى Cloudflare (1.1.1.1)، ومعها Quad9 (9.9.9.9) احتياطًا، وخدمة DNS-over-HTTPS المشفّرة من Cloudflare ملاذًا أخيرًا. ترى هذه الخدمات اسم الموقع وعنوان IP لاتصالك، كأي خدمة DNS، وتسري عليها سياسات الخصوصية الخاصة بها. لا يتلقى Cleanway هذه الطلبات ولا يحتفظ بها."
+        ]
+      },
+      {
+        "title": "4. قائمة مواقع الاحتيال",
+        "paragraphs": [
+          "ينزّل التطبيق القائمة من خادمنا (api.cleanway.ai) ويحدّثها نحو كل 6 ساعات، وبوتيرة أقل عبر بيانات الجوال. لا يكشف هذا الطلب شيئًا عن المواقع التي تزورها: فهو لا يحمل إلا المعلومات التقنية المعتادة لأي طلب على الإنترنت، مثل عنوان IP الخاص بك، وعلامة لإصدار القائمة الموجود على الهاتف. ومن حين لآخر يسأل التطبيق خادمنا أيضًا عمّا إذا كان هناك إصدار أحدث من التطبيق."
+        ]
+      },
+      {
+        "title": "5. فحص المواقع والروابط",
+        "paragraphs": [
+          "يصل اسم الموقع إلى خادمنا، دون بقية الرابط ودون محتوى الصفحة ودون بيانات حسابك، عندما تفحص موقعًا بنفسك (في التطبيق أو على cleanway.ai/check)، وعندما تكون الحماية قيد التشغيل وتفتح عبر Cleanway رابطًا غير موجود في القائمة.",
+          "لتحديد ما إذا كان الموقع خطيرًا، قد يقوم خادمنا بما يلي:"
+        ],
+        "items": [
+          "سؤال خدمات فحص خارجية عن الاسم: Google Safe Browsing وPhishTank وURLhaus وMalwareBazaar وThreatFox وPhishStats وSpamhaus DBL وSURBL وAlienVault OTX وIPQualityScore، ومعرفة تاريخ تسجيل الموقع عبر خدمة RDAP ‏rdap.org. وهي لا تتلقى إلا اسم الموقع، لا هويتك؛",
+          "مقارنة جوابه بجواب مرشّح DNS من Cloudflare ‏(1.1.1.1 for Families)، الذي يتلقى اسم الموقع في طلب DNS عادي؛",
+          "النظر في الموقع نفسه (عنوانه وشهادته وإعداداته) من خادمنا، لا من هاتفك؛",
+          "في الحالات الملتبسة، طلب رأي ثانٍ من نموذج ذكاء اصطناعي من Anthropic. ولا يتلقى إلا علامات مجرّدة، دون اسم الموقع."
+        ],
+        "after": [
+          "تُحفظ النتيجة في ذاكرة التخزين المؤقت لخادمنا حتى 24 ساعة ليكون الفحص التالي سريعًا. وهي مرتبطة بالموقع لا بك.",
+          "يُستخدم عنوان IP الخاص بك للحد من عدد الفحوصات من الاتصال الواحد. ولهذا يُحفظ كما هو، عدّادًا في ذاكرة خادمنا، مدة ساعة على الأكثر ثم يُحذف. أما سجل أمان إجراءات الحساب فلا يحتفظ إلا ببصمة تشفيرية مختصرة منه، لا بالعنوان نفسه."
+        ]
+      },
+      {
+        "title": "6. فحص الرسائل",
+        "paragraphs": [
+          "لا يقرأ Cleanway رسائلك القصيرة من تلقاء نفسه ولا يطلب الوصول إليها. إنه يفحص فقط الرسالة التي تشاركها معه أو تلصقها.",
+          "يُحلَّل النص على الهاتف ولا يُرسل إلى أي مكان، لا إلينا ولا إلى غيرنا. قد تُفحص على خادمنا أسماء ثلاثة مواقع على الأكثر من روابط الرسالة كما هو موضّح أعلاه، دون بقية الرابط. يحتفظ السجل بالحكم وأسماء المواقع، ولا يحتفظ بالنص أبدًا."
+        ]
+      },
+      {
+        "title": "7. ما يبقى على هاتفك",
+        "items": [
+          "قائمة مواقع الاحتيال؛",
+          "سجل الفحوصات (أسماء المواقع والأحكام والأسباب والأوقات) إلى أن تمسحه من الإعدادات؛",
+          "سجل ما حظرته الحماية أو نبّهت إليه: آخر 200 حدث؛",
+          "المواقع التي سمحت بها عبر «ليس احتيالًا»؛",
+          "مفاتيح تنبيهات العائلة المشفّرة، في مساحة التخزين المحمية على الهاتف."
+        ]
+      },
+      {
+        "title": "8. الحساب والبريد الإلكتروني",
+        "paragraphs": [
+          "الحساب اختياري: لا يلزم إلا لميزات العائلة والخطط المدفوعة. إذا أنشأت حسابًا نحتفظ بعنوان بريدك الإلكتروني وخطتك ومعرّف جهاز عشوائي (لا يُشتق من عتاد الهاتف) وإعدادات التطبيق. تسجّل الدخول برمز يُستخدم مرة واحدة (في التطبيق) أو رابط يُستخدم مرة واحدة (على الموقع) يُرسلان إلى بريدك، ولا توجد كلمة مرور.",
+          "تُحفظ الحسابات لدى مزوّد قاعدة البيانات لدينا، Supabase. وقد تسجّل Supabase أيضًا في سجل الأمان الخاص بها عنوان IP الذي جرى منه تسجيل الدخول."
+        ]
+      },
+      {
+        "title": "9. العائلة",
+        "paragraphs": [
+          "تُشفَّر تنبيهات العائلة على جهاز المرسِل، ولا يمكن قراءتها إلا على أجهزة المستلمين. يحتفظ خادمنا بالنص المشفّر فقط ولا يستطيع قراءته، لكنه يرى من ينتمي إلى أي عائلة، ومن أرسل تنبيهًا إلى من ومتى. تُحفظ التنبيهات حتى 30 يومًا. وتُحفظ رموز الدعوة وأرقام PIN في صورة بصمات تشفيرية فقط."
+        ]
+      },
+      {
+        "title": "10. الموقع الإلكتروني ومرشّح DNS",
+        "paragraphs": [
+          "لا يحتوي cleanway.ai على إعلانات ولا أدوات تتبّع تحليلية. ويحتفظ مزوّدو الاستضافة لدينا، Vercel للموقع وRailway للخادم، بسجلات تقنية معتادة للطلبات قد تتضمن العنوان المطلوب وعنوان IP الخاص بك.",
+          "إذا أعددت مرشّح DNS من Cleanway ‏(dns.cleanway.ai) على iPhone أو Mac أو حاسوب بنظام Windows، فستذهب كل طلبات DNS الصادرة من الجهاز إلى خادمنا. يحظر الخادم الأسماء الموجودة في القائمة ويمرّر البقية إلى Cloudflare للعثور على العنوان. لا تُكتب الطلبات على القرص؛ وبالنسبة إلى الاسم المحظور لا يحتفظ سجلّنا إلا بآخر 32 حرفًا منه على الأكثر، دون عنوان IP الخاص بك."
+        ]
+      },
+      {
+        "title": "11. تقارير الأخطاء",
+        "paragraphs": [
+          "قد يرسل التطبيق والموقع وخادمنا إلى Sentry تقارير أخطاء تقنية كي نتمكن من إصلاح الأعطال، وقياسات للسرعة لنحو طلب واحد من كل عشرة. نزيل من تقارير الأخطاء عناوين البريد الإلكتروني وعناوين IP ومفاتيح الوصول. لكن قد يبقى في التقرير أو القياس عنوان صفحة أو طلب، مثل اسم موقع كان قيد الفحص. لا يسجّل الموقع الجلسات. وتحتفظ Sentry بهذه البيانات حتى 90 يومًا."
+        ]
+      },
+      {
+        "title": "12. الدفع",
+        "paragraphs": [
+          "لا تُقدَّم خطط مدفوعة في روسيا. وحيث توجد، يتم الدفع عبر Stripe: تتلقى Stripe بريدك الإلكتروني والخطة المختارة وتتولى البطاقة بنفسها. لا نرى بيانات البطاقة ولا نحتفظ بها أبدًا."
+        ]
+      },
+      {
+        "title": "13. من يعالج البيانات نيابةً عنا",
+        "items": [
+          "Railway: يشغّل خادمنا (api.cleanway.ai)؛",
+          "Vercel: يستضيف الموقع الإلكتروني؛",
+          "Supabase: يحفظ الحسابات وبيانات العائلة؛",
+          "GitHub: يستضيف ملف التطبيق الذي تنزّله ويرى عنوان IP الخاص بك عند التنزيل؛",
+          "Cloudflare وQuad9: خدمات DNS عامة يستخدمها التطبيق، انظر القسم 3؛",
+          "خدمات الفحص المذكورة في القسم 5 وAnthropic: لا تتلقى إلا أسماء المواقع أو علامات مجرّدة؛",
+          "Sentry: تقارير الأخطاء وقياسات السرعة؛ Stripe: المدفوعات خارج روسيا."
+        ],
+        "after": [
+          "تقع هذه الشركات خارج روسيا، وأغلبها في الولايات المتحدة والاتحاد الأوروبي، لذلك تُنقل البيانات التي تعالجها إلى الخارج."
+        ]
+      },
+      {
+        "title": "14. مدة الاحتفاظ بالبيانات",
+        "items": [
+          "نتائج الفحص في ذاكرة الخادم المؤقتة: حتى 24 ساعة؛",
+          "عنوان IP الخاص بك في عدّاد حدّ الفحوصات: ساعة على الأكثر؛",
+          "بيانات الحساب: إلى أن تحذف الحساب؛ وبعد طلب الحذف نحتفظ بها 30 يومًا أخرى تحسّبًا لتغيير رأيك، ثم نحذفها؛",
+          "سجل الأمان لإجراءات الحساب (مع عناوين IP في صورة بصمات تشفيرية): سنتان؛",
+          "العدّادات الأسبوعية للحسابات (أرقام فقط دون أسماء مواقع): سنة واحدة؛",
+          "تنبيهات العائلة المشفّرة: حتى 30 يومًا؛",
+          "البيانات على هاتفك: إلى أن تمسحها أو تزيل التطبيق."
+        ]
+      },
+      {
+        "title": "15. حقوقك",
+        "paragraphs": [
+          "يمكنك أن تسأل عن البيانات التي نحتفظ بها عنك، وأن تطلب تصحيحها أو حذفها، وأن تسحب موافقتك. دون حساب لا نعرف من أنت: ليس لدينا اسمك ولا بريدك ولا رقم هاتفك، بل فقط البيانات التقنية الموضّحة أعلاه، مثل عنوان IP الخاص بك في عدّاد الفحوصات وفي سجلات الاستضافة. لحذف حساب أو تقديم طلب، تواصل معنا كما هو موضّح أدناه. وإزالة التطبيق تمسح كل ما حفظه على الهاتف."
+        ]
+      },
+      {
+        "title": "16. الأطفال",
+        "paragraphs": [
+          "Cleanway غير مخصص لاستخدام الأطفال دون 13 عامًا بمفردهم؛ ويدير ميزات العائلة شخص بالغ."
+        ]
+      },
+      {
+        "id": "contact",
+        "title": "17. التغييرات والتواصل",
+        "paragraphs": [
+          "إذا غيّرنا هذه السياسة فسننشر النسخة الجديدة في هذه الصفحة بتاريخ جديد."
+        ]
+      }
+    ]
+  },
+  "Reasons": {
+    "flagged_dangerous": "يصنّف Google هذا الموقع كخطير",
+    "flagged_phishing": "تم الإبلاغ عنه كتصيّد",
+    "on_blocklists": "على قوائم موثوقة للاحتيال والبريد المزعج",
+    "threat_reports": "مذكور في تقارير التهديدات",
+    "spreads_malware": "معروف بنشر البرمجيات الخبيثة",
+    "imitates_brand": "الاسم يقلّد علامة تجارية معروفة",
+    "lookalike_letters": "يستخدم حروفًا متشابهة لخداعك",
+    "fake_brand_address": "اسم علامة موثوقة مخفي داخل عنوان مزيّف",
+    "copies_brand_icon": "ينسخ أيقونة علامة تجارية معروفة",
+    "no_https": "الاتصال غير آمن (بدون HTTPS)",
+    "missing_protections": "تنقصه وسائل الحماية الأساسية",
+    "raw_ip_address": "العنوان رقم وليس اسمًا حقيقيًا",
+    "unusual_connection": "يستخدم طريقة اتصال غير معتادة",
+    "hidden_destination": "يخفي إلى أين يقودك الرابط فعلًا",
+    "very_new_site": "أُنشئ هذا الموقع حديثًا جدًا",
+    "scam_words": "يحتوي العنوان على كلمات يستخدمها المحتالون كثيرًا",
+    "carries_personal_data": "يحمل الرابط بياناتك الشخصية بداخله",
+    "long_complex_address": "العنوان طويل ومعقّد بشكل غير عادي",
+    "many_redirects": "يقفز الرابط عبر عدة مواقع",
+    "risky_ending": "يستخدم نهاية يفضّلها المحتالون",
+    "risky_registrar": "مسجَّل عبر خدمة يستخدمها المحتالون كثيرًا",
+    "random_name": "يبدو الاسم مولّدًا عشوائيًا",
+    "detector_suspicious": "يعتبره كاشفنا مريبًا",
+    "well_known_site": "موقع معروف وموثوق",
+    "popular_site": "موقع شائع وواسع الاستخدام",
+    "detector_safe": "يعتبر كاشفنا هذا الموقع آمنًا",
+    "not_a_real_business": "ليس مُعدًّا كموقع شركة حقيقية",
+    "shifty_setup": "يغيّر الموقع مكانه باستمرار — حيلة احتيال شائعة",
+    "padded_address": "العنوان محشوّ بأجزاء زائدة لإخفاء الاسم الحقيقي"
   }
 }

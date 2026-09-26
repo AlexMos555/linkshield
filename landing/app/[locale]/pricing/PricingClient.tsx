@@ -195,7 +195,7 @@ export default function PricingClient({ data }: PricingClientProps) {
               "Privacy Audit (grade)",
               "1 device · 10 languages",
             ]}
-            cta="Add to Chrome"
+            cta={nav("install")}
             ctaAndroidLabel={nav("install_android")}
             emphasis={false}
           />

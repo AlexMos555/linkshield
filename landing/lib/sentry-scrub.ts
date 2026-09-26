@@ -18,9 +18,25 @@ interface PiiPattern {
   replacement: string;
 }
 
+/**
+ * The site being checked, as it appears in our own page and API paths:
+ * /ru/check/<site>, /audit/<site>/grade/F, /api/v1/public/check/<site>.
+ * Page URLs reach Sentry as navigation breadcrumbs (`from` / `to`) and as
+ * transaction names — keys the always-redact set below does not cover.
+ */
+const SITE_PATH: PiiPattern = {
+  pattern: /(\/(?:check|audit)\/)[^/?#\s"']+/g,
+  replacement: "$1[site]",
+};
+
+export function scrubSitePaths(s: string): string {
+  return s.replace(SITE_PATH.pattern, SITE_PATH.replacement);
+}
+
 // Order matters — JWT must match BEFORE the generic Bearer header so
 // the token gets replaced rather than the literal word "Bearer".
 const PII_PATTERNS: PiiPattern[] = [
+  SITE_PATH,
   {
     pattern: /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
     replacement: "[redacted-jwt]",
@@ -161,6 +177,15 @@ export function beforeSendScrub(event: ErrorEvent, _hint: EventHint): ErrorEvent
     }
   }
   return scrub(event) as ErrorEvent;
+}
+
+/**
+ * Performance transactions skip `beforeSend` entirely; without this hook a
+ * sampled page load shipped its URL — /ru/check/<site> — to Sentry as is.
+ * Generic because @sentry/nextjs does not re-export its TransactionEvent type.
+ */
+export function beforeSendTransactionScrub<T extends object>(event: T): T {
+  return scrub(event) as T;
 }
 
 export function beforeBreadcrumbScrub(

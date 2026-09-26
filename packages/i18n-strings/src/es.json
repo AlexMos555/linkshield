@@ -396,247 +396,138 @@
       "pricing": "Precios",
       "privacy": "Privacidad",
       "business": "Empresas",
-      "install": "Añadir a Chrome",
+      "install": "Instalar",
       "install_short": "Instalar",
       "install_android": "Descargar la app Android",
-      "install_android_short": "App Android"
+      "install_android_short": "App Android",
+      "support": "Ayuda"
     },
     "hero": {
-      "badge": "{recall}% de URL de phishing recientes detectadas (medido)",
+      "badge": "En nuestra última medición, nuestro servidor marcó como peligrosos el {recall}% de los enlaces de phishing recientes",
       "title_part1": "Protección contra fraudes que",
       "title_part2": "respeta tu privacidad",
-      "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
-      "cta_primary": "Añadir a Chrome — gratis",
+      "subtitle": "Cleanway para Android bloquea sitios fraudulentos y de phishing conocidos en todas las aplicaciones del teléfono: el navegador, la mensajería, el correo. Gratis y sin cuenta. Para comprobar un sitio solo enviamos su nombre (como example.com), nunca el enlace completo ni lo que hay en la página.",
+      "cta_primary": "Protégete gratis",
       "cta_android": "Descargar la app Android",
       "cta_secondary": "Cómo funciona",
-      "cta_footer": "Protección básica gratis para siempre. Sin tarjeta.",
-      "badge_fallback": "Protección anti-phishing privada — recall publicado semanalmente"
+      "cta_footer": "Bloquear sitios fraudulentos es gratis. Sin tarjeta y sin cuenta."
     },
     "final_cta": {
       "title": "¿Listo para navegar seguro?",
-      "subtitle": "Free to start. No account needed. Your browsing stays on your device.",
-      "cta_primary": "Añadir a Chrome — gratis",
+      "subtitle": "Gratis y sin cuenta. Para comprobar un sitio solo necesitamos su nombre.",
+      "cta_primary": "Protégete gratis",
       "cta_business": "Para empresas"
     },
     "footer": {
       "brand": "Cleanway",
       "privacy": "Privacidad",
       "terms": "Términos",
-      "contact": "Contacto",
+      "contact": "Ayuda",
       "github": "GitHub",
-      "tagline": "Tus datos, tu dispositivo."
+      "tagline": "Protección contra sitios fraudulentos.",
+      "methodology": "Metodología"
     },
     "language_switcher": {
       "label": "Idioma"
     },
     "features": {
-      "heading": "Todo lo que necesitas. Nada de lo que no.",
+      "heading": "Lo que Cleanway hace hoy",
       "items": [
         {
+          "icon": "🛡️",
+          "title": "Bloquea sitios fraudulentos en todas las apps",
+          "desc": "Si cualquier aplicación del teléfono intenta abrir un sitio de nuestra lista de sitios fraudulentos y de phishing conocidos, Cleanway lo impide: en el navegador, la mensajería, el correo, en cualquier parte."
+        },
+        {
+          "icon": "🔗",
+          "title": "Comprueba los enlaces que tocas",
+          "desc": "Haz de Cleanway tu aplicación predeterminada para enlaces y comprobará cada enlace que toques. Los sitios fraudulentos conocidos no se abren. Los demás se abren enseguida y, mientras la protección está activada, se comprueban en segundo plano; si nuestro servidor considera peligroso alguno, Cleanway te avisa, ya con la página abierta."
+        },
+        {
+          "icon": "💬",
+          "title": "Comprueba mensajes sospechosos",
+          "desc": "Comparte un SMS con Cleanway o pega el texto. Busca los trucos típicos de las estafas: «seguridad del banco, díganos el código», «mamá, mándame dinero urgente». El texto nunca sale del teléfono."
+        },
+        {
           "icon": "🔍",
-          "title": "Escaneo automático de enlaces",
-          "desc": "Cada enlace en cada página se verifica con 16 fuentes de inteligencia de amenazas. Insignias rojas, amarillas y verdes muestran la seguridad de un vistazo."
+          "title": "Comprueba cualquier sitio",
+          "desc": "Escribe el nombre de un sitio en la app o en esta web para ver si parece peligroso y por qué, en palabras sencillas."
         },
         {
           "icon": "🔒",
-          "title": "Auditoría de privacidad",
-          "desc": "Clic derecho en cualquier página para ver rastreadores, cookies, recolección de datos y fingerprinting. Calificación de A a F."
+          "title": "Solo el nombre del sitio, nunca la página",
+          "desc": "La comparación con la lista se hace en tu teléfono. Cuando un sitio necesita una revisión más a fondo, solo su nombre llega a nuestro servidor: ni el enlace completo, ni la página, ni tus mensajes."
         },
         {
-          "icon": "🧠",
-          "title": "Detección con IA",
-          "desc": "Modelo CatBoost entrenado con unos 24.000 dominios (phishing y legítimos). Detecta phishing nuevo que los sistemas basados en reglas pasan por alto; consulta nuestra metodología publicada."
-        },
-        {
-          "icon": "⚡",
-          "title": "Protección instantánea",
-          "desc": "La mayoría de los dominios se comprueban al instante en una lista local de seguros. Solo los dominios desconocidos llegan a nuestros servidores — y solo el nombre del dominio, nunca la URL completa."
-        },
-        {
-          "icon": "📱",
-          "title": "Tus datos, tu dispositivo",
-          "desc": "El historial de navegación nunca llega a nuestros servidores. Solo vemos nombres de dominio. Aunque nos hackeen, tus datos están a salvo."
-        },
-        {
-          "icon": "📧",
-          "title": "Escáner de correo",
-          "desc": "Encuentra enlaces de phishing en Gmail y Outlook que tu navegador dejó pasar."
+          "icon": "🆓",
+          "title": "Gratis y sin cuenta",
+          "desc": "Bloquear sitios fraudulentos es gratis y funciona sin registrarse."
         }
       ]
     },
     "how_it_works": {
-      "heading": "Cómo te protege Cleanway",
+      "heading": "Cómo protegerte",
       "steps": [
         {
           "step": "1",
-          "title": "Instala",
-          "desc": "Añade la extensión a Chrome. Toma 10 segundos."
+          "title": "Descarga",
+          "desc": "Descarga Cleanway para Android desde este sitio. El archivo es grande, mejor con Wi-Fi."
         },
         {
           "step": "2",
-          "title": "Navega",
-          "desc": "Cleanway verifica cada enlace automáticamente. No hace falta hacer nada."
+          "title": "Activa la protección",
+          "desc": "Abre Cleanway y toca «Activar la protección». Android pedirá permiso una sola vez."
         },
         {
           "step": "3",
-          "title": "Mantente seguro",
-          "desc": "Los enlaces peligrosos reciben una insignia roja. Haz clic para ver detalles."
+          "title": "Sigue como siempre",
+          "desc": "Los sitios fraudulentos conocidos no se abrirán en ninguna app. Todo lo bloqueado aparece en el Historial de la app."
         }
       ]
     },
     "pricing_teaser": {
-      "heading": "Precios simples y transparentes",
-      "unit_forever": "/para siempre",
-      "unit_month": "/mes",
-      "most_popular": "Más popular",
-      "trial_note": "Todos los planes incluyen 14 días de prueba gratis. Cancela cuando quieras.",
-      "free": {
-        "name": "Free",
-        "price": "$0",
-        "features": [
-          "10 verificaciones API al día",
-          "Verificaciones locales ilimitadas",
-          "Auditoría de privacidad (solo calificación)",
-          "Insignias de enlace en todas las páginas"
-        ],
-        "cta": "Empezar"
-      },
-      "personal": {
-        "name": "Personal",
-        "price": "$4.99",
-        "features": [
-          "Verificaciones ilimitadas",
-          "Auditoría de privacidad completa",
-          "Informe semanal de seguridad",
-          "Puntuación de seguridad + consejos",
-          "Soporte prioritario"
-        ],
-        "cta": "Empezar prueba gratis"
-      },
-      "family": {
-        "name": "Family",
-        "price": "$9.99",
-        "features": [
-          "Todo de Personal",
-          "Hasta 6 dispositivos",
-          "Centro Familiar con alertas E2E",
-          "Modo parental"
-        ],
-        "cta": "Empezar prueba gratis"
-      }
-    },
-    "comparison": {
-      "heading": "Cómo nos comparamos",
-      "headers": [
-        "Característica",
-        "Cleanway",
-        "Guardio",
-        "NordVPN TP",
-        "Norton 360",
-        "Extensiones gratis"
-      ],
-      "rows": [
-        [
-          "Precio",
-          "$4.99/mes",
-          "$9.99/mes",
-          "~$5/mes (con VPN)",
-          "$40-100/año",
-          "Gratis"
-        ],
-        [
-          "Plataformas",
-          "Las 5",
-          "Solo Chrome",
-          "Win/Mac",
-          "Todas",
-          "Solo navegador"
-        ],
-        [
-          "Auditoría de privacidad",
-          "✅",
-          "❌",
-          "❌",
-          "❌",
-          "❌"
-        ],
-        [
-          "Datos en el dispositivo",
-          "✅",
-          "❌",
-          "❌",
-          "❌",
-          "❌"
-        ],
-        [
-          "Detección por ML",
-          "✅",
-          "✅",
-          "✅",
-          "✅",
-          "❌"
-        ],
-        [
-          "Monitoreo de filtraciones",
-          "✅",
-          "❌",
-          "❌",
-          "✅",
-          "❌"
-        ],
-        [
-          "Centro Familiar",
-          "✅ (E2E)",
-          "❌",
-          "❌",
-          "✅",
-          "❌"
-        ],
-        [
-          "Simulación de phishing B2B",
-          "✅",
-          "❌",
-          "❌",
-          "❌",
-          "❌"
-        ]
-      ]
+      "free_only_heading": "La protección es gratis",
+      "free_only_body": "Bloquear sitios fraudulentos y comprobar enlaces y mensajes no cuesta nada ni requiere cuenta. En tu país no hay planes de pago por ahora.",
+      "free_only_cta": "Descargar la app para Android",
+      "free_body_with_plans": "Bloquear sitios fraudulentos y comprobar enlaces y mensajes no cuesta nada ni requiere cuenta. Los planes de pago son opcionales y nunca desactivan la protección en sí.",
+      "plans_link": "Ver planes de pago"
     },
     "privacy": {
       "heading": "La privacidad no es una función. Es la arquitectura.",
-      "server_heading": "Lo que sabe nuestro servidor",
+      "server_heading": "Qué llega a nuestro servidor",
       "server_items": [
-        "Tu correo electrónico",
-        "Estado de la suscripción",
-        "Números agregados semanales"
+        "El nombre del sitio que se comprueba (como example.com), nunca el enlace completo ni la página",
+        "Tu dirección IP, para limitar cuántas comprobaciones puede hacer una conexión; para eso se guarda tal cual durante una hora como máximo",
+        "Tu correo y tu plan, solo si creas una cuenta"
       ],
-      "server_note": "Si nos hackean: el atacante obtiene correos + suscripciones. Aburrido.",
-      "device_heading": "Lo que queda en tu dispositivo",
+      "server_note": "Para valorar un sitio, nuestro servidor puede consultar su nombre a servicios como Google Safe Browsing: solo el nombre, nunca quién eres.",
+      "device_heading": "Qué se queda en tu teléfono",
       "device_items": [
-        "Historial completo de URL verificadas",
-        "Resultados de la Auditoría de privacidad",
-        "Desglose de la Puntuación de seguridad",
-        "Detalles del Informe semanal",
-        "Contenido de alertas familiares (cifrado E2E)"
+        "La lista de sitios fraudulentos con la que compara la protección",
+        "Tu historial de comprobaciones y la lista de lo bloqueado",
+        "El texto de los mensajes que compruebas",
+        "Las claves de las alertas familiares cifradas"
       ],
-      "device_note": "Si pierdes el dispositivo: protegido por el cifrado del sistema operativo."
+      "device_note": "Puedes borrar el historial de comprobaciones en la Configuración de la app.",
+      "dns_heading": "Quién más ve los nombres de los sitios",
+      "dns_note": "Mientras la protección está activada, tu teléfono busca las direcciones de los sitios que no bloquea en un servicio DNS público —Cloudflare o Quad9— en lugar del de tu operador. Como cualquier servicio DNS, ve el nombre del sitio y la dirección IP de tu conexión. Cleanway no recibe estas consultas."
     },
     "testimonials": {
-      "heading": "Built on principles, not promises",
+      "heading": "A lo que nos comprometemos",
       "items": [
         {
-          "q": "We send only a domain to check it — never your full URLs or page content. Privacy is the architecture, not a marketing checkbox.",
-          "n": "Server-blind by design",
+          "q": "Para comprobar un sitio solo enviamos su nombre: nunca el enlace completo, la página ni tus mensajes. Todo lo que sí recibimos está detallado en nuestra política de privacidad.",
+          "n": "Solo lo necesario",
           "r": ""
         },
         {
-          "q": "We publish our phishing-detection rate every week — the exact script, the exact dataset, side by side with Cloudflare and Google. Measured, not marketed.",
-          "n": "Open, reproducible benchmark",
+          "q": "Medimos cómo detectamos el phishing con un script abierto que cualquiera puede volver a ejecutar, y solo mostramos una cifra cuando la muestra es lo bastante grande para significar algo. Medido, no publicitado.",
+          "n": "Medición abierta y reproducible",
           "r": ""
         },
         {
-          "q": "Core link-blocking is free forever. We only charge for extras like family protection and detailed explanations — never for the protection itself.",
-          "n": "Free protection, always",
+          "q": "Bloquear sitios fraudulentos es gratis y seguirá siéndolo. La protección en sí nunca estará detrás de un pago.",
+          "n": "Protección gratuita, siempre",
           "r": ""
         }
       ]
@@ -645,28 +536,32 @@
       "heading": "Preguntas frecuentes",
       "items": [
         {
-          "q": "¿Cómo se protegen mis datos?",
-          "a": "Tu historial de navegación nunca sale del dispositivo. Nuestros servidores solo almacenan tu correo y el estado de la suscripción. Aunque nos hackeen, los atacantes no aprenden nada sobre tu actividad en línea."
+          "q": "¿Qué sabe Cleanway de mí?",
+          "a": "Los sitios se comparan con la lista directamente en tu teléfono. Cuando un sitio necesita una revisión más a fondo, solo su nombre (como example.com) llega a nuestro servidor, que puede consultar ese nombre a servicios como Google Safe Browsing. No recibimos enlaces completos, contenido de páginas ni textos de mensajes, y no llevamos un registro de los sitios que abres. Los detalles están en nuestra política de privacidad."
         },
         {
-          "q": "¿Ralentiza la navegación?",
-          "a": "No. La mayoría de los dominios se resuelven al instante en una lista local. Solo los dominios desconocidos se envían a nuestra API, y enviamos solo el nombre del dominio, nunca la URL completa."
+          "q": "¿Hará más lento mi teléfono?",
+          "a": "La comparación con la lista se hace en el propio teléfono y tarda una fracción de segundo. Cleanway solo mira los nombres de los sitios a los que se conecta el teléfono, no lo que haces en ellos."
         },
         {
-          "q": "¿Puedo usarlo con una VPN?",
-          "a": "¡Sí! En móvil, Cleanway detecta automáticamente tu VPN y cambia al modo DNS, funcionando junto a NordVPN, ExpressVPN o cualquier otro proveedor."
+          "q": "¿Puedo usarlo junto con una VPN?",
+          "a": "No a la vez. La protección de Cleanway usa el mecanismo de VPN de Android solo para los nombres de los sitios: el teléfono compara cada nombre con la lista y busca los que no están bloqueados en un servicio DNS público (Cloudflare o Quad9). El resto de tu tráfico va como siempre, ni a través de Cleanway ni de otro país. Android solo ejecuta un servicio así cada vez, así que si activas otra VPN, la protección de Cleanway se apaga. Cuando termines, abre Cleanway y vuelve a activar la protección. Comprobar a mano un sitio o un mensaje en la app sigue funcionando en cualquier caso."
         },
         {
-          "q": "¿Qué lo diferencia de Google Safe Browsing?",
-          "a": "Google Safe Browsing es reactivo: atrapa amenazas conocidas pero deja pasar phishing nuevo. Cleanway añade una señal de detección por ML, unas 15 fuentes más de inteligencia de amenazas, Auditoría de privacidad, y no envía tus datos de navegación a Google."
+          "q": "¿En qué se diferencia de Google Safe Browsing?",
+          "a": "Google Safe Browsing es una de las fuentes que usamos. Cleanway además bloquea sitios fraudulentos conocidos en todas las aplicaciones del teléfono, no solo en el navegador, comprueba mensajes sospechosos en el propio teléfono y explica sus veredictos con palabras sencillas. Cuando preguntamos a Google por un sitio, solo enviamos su nombre, no quién eres."
         },
         {
-          "q": "¿Hay un plan gratuito?",
-          "a": "¡Sí! El plan gratuito incluye 10 comprobaciones API/día para dominios desconocidos, comprobaciones instantáneas ilimitadas en la lista local, y Privacy Audit básico. La mayoría de los usuarios no necesitan actualizar."
+          "q": "¿Es gratis?",
+          "a": "Sí. Bloquear sitios fraudulentos es gratis y funciona sin cuenta. Donde hay extras de pago, nunca apagan la protección en sí."
         },
         {
-          "q": "¿Cómo funciona la simulación de phishing?",
-          "a": "El plan Business incluye correos de phishing simulados enviados a tu equipo. Elige una plantilla, enviamos correos de prueba y rastreamos quién hace clic y quién reporta. Para capacitar, no para castigar."
+          "q": "¿Cleanway detecta todas las estafas?",
+          "a": "No, y nadie puede prometerlo con honestidad. Cleanway bloquea los sitios que ya están en la lista de sitios fraudulentos conocidos. Los enlaces que abres a través de Cleanway también se comprueban en segundo plano, pero el aviso, si llega, llega cuando la página ya se abrió, y un sitio fraudulento recién creado puede abrirse sin ningún aviso. Nunca introduzcas datos de tu tarjeta ni códigos de SMS en un sitio que abriste desde el enlace de un mensaje."
+        },
+        {
+          "q": "¿Cleanway me llamará o me enviará un enlace por SMS?",
+          "a": "No. Cleanway nunca llama y nunca envía enlaces por SMS. Si alguien llama o escribe en nombre de Cleanway y te pide instalar algo, dictar un código o desactivar la protección, es una estafa."
         }
       ]
     },
@@ -706,17 +601,41 @@
     },
     "signup": {
       "check_inbox": "Revisa tu bandeja",
-      "magic_link_sent": "Te enviamos un enlace mágico a $EMAIL$.",
-      "magic_link_followup": "Haz clic en el enlace para terminar de iniciar sesión. La página continuará automáticamente.",
+      "magic_link_sent": "Hemos enviado un enlace de inicio de sesión a <strong>{email}</strong>.",
+      "magic_link_followup": "Abre el enlace de ese correo para terminar. Si no llega nada en 10 minutos, revisa la carpeta de spam.",
       "email_label": "Correo electrónico",
       "email_placeholder": "tu@ejemplo.com",
-      "submitting": "Enviando enlace mágico…",
+      "submitting": "Enviando el enlace…",
       "submit_with_plan": "Enviarme el enlace",
       "submit_no_plan": "Continuar",
       "footer_lead": "Te enviaremos un enlace de un solo uso. Sin contraseñas que recordar.",
       "footer_or": "O",
-      "footer_install_cta": "instala la extensión gratis",
-      "footer_install_tail": "— el bloqueo siempre funciona sin cuenta."
+      "footer_install_cta": "instala la app gratis",
+      "footer_install_tail": "— el bloqueo funciona sin cuenta.",
+      "meta_title": "Iniciar sesión — Cleanway",
+      "meta_description": "Inicia sesión en Cleanway con un enlace de un solo uso enviado a tu correo. La protección funciona sin cuenta.",
+      "back_to_pricing": "Volver a precios",
+      "heading": "Crea una cuenta o inicia sesión",
+      "intro": "No necesitas una cuenta para estar protegido: bloquear sitios fraudulentos funciona sin ella. La cuenta solo sirve para las funciones familiares y los planes de pago.",
+      "plan_label": "Plan {plan}",
+      "interval_monthly": "mensual",
+      "interval_yearly": "anual",
+      "plan_next": "Después de iniciar sesión te llevaremos al pago.",
+      "store_title": "Qué guardamos",
+      "store_items": [
+        "Tu dirección de correo",
+        "Tu plan, si tienes uno",
+        "Un identificador de dispositivo aleatorio para sincronizar los ajustes",
+        "Contadores: solo números, sin nombres de sitios"
+      ],
+      "store_note": "Nunca nos llegan enlaces completos, contenido de páginas ni textos de mensajes.",
+      "store_more": "Política de privacidad",
+      "error_invalid_email": "Revisa la dirección de correo: parece incompleta.",
+      "error_disposable": "No se pueden usar direcciones de correo temporal ({domain}). Usa tu correo habitual.",
+      "error_rate_limited": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+      "error_send_failed": "No pudimos enviar el correo de inicio de sesión. Inténtalo más tarde.",
+      "error_network": "No hay conexión con el servidor. Comprueba tu internet y vuelve a intentarlo.",
+      "error_unavailable": "Ahora mismo no se puede iniciar sesión. La protección funciona sin cuenta."
     },
     "pricing": {
       "page_title": "Precios",
@@ -726,24 +645,35 @@
       "interval_monthly": "Mensual",
       "interval_yearly": "Anual",
       "badge_save_2_months": "Ahorra 2 meses",
-      "tier_badge": "Nivel $TIER$ — $COUNTRY$"
+      "free_badge": "La protección es gratis",
+      "free_title": "Cleanway es gratis",
+      "free_subtitle": "Bloquear sitios fraudulentos y comprobar enlaces y mensajes no cuesta nada ni requiere cuenta. En tu país no hay planes de pago por ahora.",
+      "free_list_title": "Qué incluye",
+      "free_items": [
+        "Bloqueo de sitios fraudulentos conocidos en todas las apps del teléfono",
+        "Comprobación de los enlaces que tocas",
+        "Comprobación de mensajes sospechosos en el teléfono",
+        "Comprobación de cualquier sitio por su nombre",
+        "Una lista de sitios fraudulentos que se actualiza sola"
+      ],
+      "free_note": "Si algún día aparecen extras de pago, bloquear sitios fraudulentos seguirá siendo gratis.",
+      "free_cta": "Descargar la app para Android",
+      "footer_cta_title": "Empieza gratis hoy",
+      "footer_cta_body": "Sin tarjeta. Mejora tu plan solo cuando tenga sentido para ti."
     },
     "transparency": {
       "page_title": "Informe de transparencia",
-      "page_description": "Las cifras publicadas por Cleanway: total de verificaciones, tasa de falsos positivos, tiempo de respuesta, fuentes de inteligencia y solicitudes de datos gubernamentales, actualizadas cada trimestre.",
-      "hero_subtitle": "Lo que Cleanway detectó y bloqueó durante $PERIOD$.",
-      "published_at": "Publicado el $DATE$.",
-      "section_volume": "Volumen",
-      "section_latency": "Tiempo de respuesta",
-      "section_sources": "Fuentes de inteligencia activas",
-      "section_categories": "Principales categorías bloqueadas",
-      "section_government": "Solicitudes de datos gubernamentales",
-      "metric_total_checks": "Verificaciones totales",
-      "metric_dangerous": "Amenazas confirmadas",
-      "metric_fp_rate": "Tasa de falsos positivos",
-      "gov_requests": "$COUNT$ solicitudes de datos gubernamentales",
-      "court_orders": "$COUNT$ órdenes judiciales",
-      "error_unavailable": "El informe de transparencia no está disponible temporalmente. Por favor, actualiza la página en unos minutos."
+      "page_description": "Lo que Cleanway ha medido sobre su propia precisión y lo que todavía no ha medido.",
+      "intro": "Solo publicamos cifras sobre Cleanway cuando salen de una medición real y repetible. Lo que aún no hemos medido no está en esta página.",
+      "section_accuracy": "Detección de phishing",
+      "recall_measured": "Última medición semanal ({date}): Cleanway marcó como peligrosos el {recall}% de los enlaces de phishing recientes sobre los que dio un veredicto ({classified} enlaces).",
+      "recall_not_yet": "Todavía no hay una cifra fiable. La medición semanal aún no se ha hecho con una muestra lo bastante grande para publicarla: al menos {min} enlaces de phishing, casi todos con veredicto. Hasta entonces, no damos una tasa de detección.",
+      "section_fp": "Falsas alarmas",
+      "fp_measured": "El {fpr}% de {count} sitios legítimos se marcó por error como peligroso ({date}).",
+      "fp_not_yet": "Aún no se ha medido. No hemos hecho una medición que muestre con qué frecuencia Cleanway marca por error sitios legítimos, así que no damos una tasa de falsas alarmas.",
+      "section_how": "Cómo medimos",
+      "how_body": "El script de medición, sus fuentes de datos y cada resultado semanal son públicos.",
+      "methodology_link": "Ver la metodología"
     },
     "dns": {
       "page_title": "DNS antiphishing — un toque, sin aplicación",
@@ -785,82 +715,431 @@
     "install": {
       "browser_label": "Extensiones de navegador",
       "mobile_label": "Móvil",
-      "status_in_review": "En revisión",
-      "status_coming_this_week": "Esta semana",
-      "status_native_after_launch": "App nativa tras lanzar",
-      "status_appsource_pending": "AppSource pendiente"
+      "status_appsource_pending": "AppSource pendiente",
+      "status_coming_soon": "Próximamente"
     },
     "methodology": {
-      "page_title": "Benchmark methodology",
-      "page_description": "Cleanway's per-domain detection results vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal — measured weekly on fresh URLhaus + PhishTank URLs. Reproducible benchmark script linked.",
-      "back_to_transparency": "Back to transparency report",
-      "hero_title": "How we measure our own detection rate",
-      "hero_subtitle": "Every recall number we publish points here. The dataset, the script, and a button to clone it on GitHub.",
-      "why_heading": "Why this page exists",
-      "why_p1": "Every other anti-phishing vendor publishes glossy quarterly threat reports without their false-positive rate or per-vendor recall comparison. The numbers exist only in their internal dashboards.",
-      "why_p2": "We do the opposite: this page runs the same Python script anyone can clone, every Monday, against fresh URLhaus + PhishTank phishing URLs, and publishes the raw results. The script's output IS the marketing claim.",
-      "results_heading": "Latest results",
-      "results_unavailable": "Latest benchmark snapshot not available — re-running cron now.",
-      "results_meta": "Snapshot: $DATE$. Sample: $PHISHING$ phishing URLs, $LEGIT$ Tranco legit URLs.",
-      "phishing_table_heading": "Phishing batch (expected verdict: dangerous)",
-      "safe_table_heading": "Legit batch (FPR — false-positive rate, expected verdict: safe)",
-      "datasets_heading": "Datasets",
-      "dataset_phishing": "Phishing samples",
-      "dataset_safe": "Legit samples",
-      "verdict_mapping_heading": "How we map each resolver's response",
-      "verdict_mapping_p1": "Different vendors return different verdict shapes. We normalise to three: dangerous / safe / unknown. Unknown verdicts (rate-limited, not indexed, error) are reported separately — not counted as right or wrong.",
-      "reproduce_heading": "Reproduce these numbers",
-      "reproduce_p1": "Two commands and a Python 3 install. The script fetches the same feeds, runs the same comparisons, writes the same JSON output:",
-      "reproduce_note": "Source:",
-      "cadence_heading": "Cadence + automation",
-      "cadence_p1": "The benchmark runs every Monday at 05:15 UTC via a GitHub Actions cron. Results commit to docs/benchmarks/ in this repo. A regression-detection step opens a PR if recall drops more than 5 percentage points week-over-week.",
-      "cadence_p2": "Workflow file:",
-      "caveats_heading": "Honest caveats",
-      "caveat_1": "Cleanway uses the public /api/v1/check endpoint — same anonymous surface a regular user would see. We deliberately do NOT use a privileged path for benchmarking ourselves.",
-      "caveat_2": "PhishTank's free check API returns 'not indexed' for most fresh URLhaus URLs because their database lags by a few hours — that's why PhishTank's Recall column often shows '—' (unknown), not because it's broken.",
-      "caveat_3": "Google Safe Browsing requires an API key (GOOGLE_SAFE_BROWSING_KEY). If unset, that column shows '—' and is excluded from the comparison.",
-      "caveat_4": "Latency p50 measured from this script's host (US/EU CI runner); your latency from Asia or LATAM will differ. The relative comparison stays the same."
+      "page_title": "Metodología de la medición",
+      "page_description": "Cómo mide Cleanway su propia detección de phishing: los datos, el script y cuándo una cifra puede aparecer en el sitio.",
+      "back_to_transparency": "Volver al informe de transparencia",
+      "hero_title": "Cómo medimos nuestra propia tasa de detección",
+      "hero_subtitle": "Cada cifra de precisión que mostramos remite aquí: los datos, el script y cómo repetirlo tú mismo.",
+      "why_heading": "Por qué existe esta página",
+      "why_p1": "Una tasa de detección solo vale algo si se ve cómo se midió. Por eso publicamos el script, las fuentes de datos y cada resultado semanal.",
+      "why_p2": "El script se ejecuta cada lunes con enlaces de phishing recientes de fuentes públicas y una muestra de sitios legítimos. Los resultados se guardan en nuestro repositorio público de GitHub, también las semanas en que las cifras son malas.",
+      "results_heading": "Últimos resultados",
+      "results_unavailable": "Ahora mismo no hay ninguna medición disponible.",
+      "phishing_table_heading": "Enlaces de phishing (veredicto esperado: peligroso)",
+      "safe_table_heading": "Sitios legítimos (veredicto esperado: seguro)",
+      "datasets_heading": "Datos",
+      "dataset_phishing": "Enlaces de phishing",
+      "dataset_safe": "Sitios legítimos",
+      "verdict_mapping_heading": "Cómo se cuenta la respuesta de cada servicio",
+      "verdict_mapping_p1": "Cada servicio responde a su manera. Reducimos toda respuesta a peligroso, seguro o desconocido. Las respuestas desconocidas (límite de peticiones, no indexado, error) se cuentan aparte, ni como acierto ni como error.",
+      "reproduce_heading": "Repítelo tú mismo",
+      "reproduce_p1": "Necesitas git y Python 3. El script descarga las mismas fuentes, hace las mismas comparaciones y escribe el mismo JSON:",
+      "reproduce_note": "Código fuente:",
+      "cadence_heading": "Calendario",
+      "cadence_p1": "La medición se ejecuta cada lunes a las 05:15 UTC en GitHub Actions y guarda sus resultados en docs/benchmarks/. Si la tasa de detección cae más de 5 puntos porcentuales respecto a la semana anterior, el flujo abre una pull request que lo señala.",
+      "cadence_p2": "Archivo del flujo:",
+      "caveats_heading": "Advertencias honestas",
+      "results_not_publishable": "La última medición ({date}) es demasiado pequeña para citarla: {phishing} enlaces de phishing, {classified} de ellos con veredicto de Cleanway. Solo mostramos cifras cuando una medición tiene al menos {min_phishing} enlaces de phishing y al menos {min_classified} veredictos. Todas las mediciones semanales, incluidas las pequeñas, están en el repositorio.",
+      "results_snapshot": "Medición: {date}. Muestra: {phishing} enlaces de phishing, {legit} sitios legítimos.",
+      "fp_not_measured": "No mostramos una tasa de falsas alarmas para esta medición: muy pocos sitios reales recibieron respuesta de Cleanway, o la muestra solo incluye sitios que nuestro servidor considera seguros sin comprobarlos (ver las advertencias abajo).",
+      "all_runs_link": "Todos los resultados semanales en GitHub",
+      "col_service": "Servicio",
+      "col_recall": "Tasa de detección",
+      "col_precision": "Precisión",
+      "col_f1": "F1",
+      "col_tp": "Detectados",
+      "col_fn": "No detectados",
+      "col_unknown": "Sin veredicto",
+      "col_latency": "Tiempo mediano",
+      "col_fpr": "Tasa de falsas alarmas",
+      "col_fp": "Falsas alarmas",
+      "col_tn": "Correctos",
+      "dataset_phishing_desc": "enlaces recientes de las fuentes públicas URLhaus y PhishTank, descargados en cada ejecución y sin duplicados por dominio.",
+      "dataset_safe_desc": "dominios aleatorios de la lista Tranco top-1M, de la posición 100 a la 100.000, con una semilla aleatoria fija para que la muestra se pueda reproducir.",
+      "mapping_cleanway": "Cleanway: «peligroso» cuenta como peligroso, «seguro» como seguro, «precaución» como desconocido.",
+      "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: una respuesta bloqueada (NXDOMAIN o 0.0.0.0 / ::) cuenta como peligroso; una respuesta normal, como seguro.",
+      "mapping_virustotal": "VirusTotal: peligroso cuando al menos 2 de sus antivirus marcan el enlace; la marca de uno solo se ignora por demasiado ruidosa.",
+      "caveat_endpoint": "Cleanway se mide a través de su comprobación pública de sitios, el mismo camino anónimo que usa un visitante, no uno privilegiado. Mide la respuesta de nuestro servidor, no el bloqueo en el teléfono: la protección del teléfono solo bloquea al instante los sitios de su lista, así que esta cifra no dice cuántos de estos enlaces bloquearía un teléfono.",
+      "caveat_rate_limit": "Ahora mismo la ejecución semanal se ralentiza por el límite de peticiones de esa comprobación, así que muchos enlaces quedan sin veredicto y la mayoría de las mediciones son demasiado pequeñas para publicarlas.",
+      "caveat_phishtank": "La consulta gratuita de PhishTank suele responder «no indexado» a los enlaces recientes porque su base va unas horas por detrás, por eso su columna muestra a menudo «—».",
+      "caveat_gsb": "Google Safe Browsing necesita una clave de API; si no está configurada para la ejecución, su columna muestra «—».",
+      "caveat_nxdomain": "Un dominio que ya no existe también recibe NXDOMAIN de Cloudflare y se cuenta como bloqueo de Cloudflare, lo que favorece a Cloudflare con dominios de phishing que ya se han dado de baja.",
+      "caveat_latency": "Los tiempos de respuesta se miden desde la máquina que ejecuta el script (un servidor en la nube en EE. UU. o la UE); desde otras regiones serán distintos.",
+      "caveat_allowlist": "Nuestro servidor considera seguros, sin analizarlos, los sitios del top 100.000 de Tranco, y la muestra de sitios reales de arriba sale de ese mismo rango. Por eso no puede mostrar con qué frecuencia Cleanway califica por error de peligroso un sitio real menos conocido, y no publicamos ninguna tasa de falsas alarmas basada en ella. Lo haremos cuando la muestra incluya sitios reales fuera de esa lista."
     },
     "support": {
       "title": "Soporte",
-      "subtitle": "Dudas, problemas o un sitio bloqueado por error: aquí estamos.",
+      "subtitle": "Respuestas a las preguntas frecuentes y qué hacer si algo sale mal.",
       "email_label": "Escríbenos",
-      "email_hint": "Leemos todos los mensajes. Cuéntanos el modelo de tu teléfono y qué pasó.",
+      "email_hint": "Indica el modelo de tu teléfono y qué ha pasado.",
       "faq_title": "Preguntas frecuentes",
       "q_vpn": "¿Es una VPN que oculta mi tráfico?",
-      "a_vpn": "No. Cleanway crea en tu teléfono un filtro local que bloquea los sitios de estafa en todas las apps. No es una VPN para ocultarte: no esconde a dónde entras ni hace pasar tu tráfico por otro país. Las consultas de los sitios que no bloquea van a un servidor público normal, igual que ya funciona tu teléfono.",
+      "a_vpn": "No. Cleanway usa el mecanismo de VPN de Android solo para ejecutar en tu teléfono un filtro local que bloquea sitios fraudulentos en todas las aplicaciones. No oculta a dónde vas ni envía tu tráfico a través de otro país. Para llegar a los sitios que no bloquea, tu teléfono busca sus nombres en un servicio DNS público: Cloudflare (1.1.1.1) o Quad9 (9.9.9.9).",
       "q_install": "¿Cómo la instalo?",
-      "a_install": "Descarga la app, abre el archivo y permite la instalación. La primera vez, toca «Activar la protección» y permite la conexión que pide Android: así arranca el filtro local.",
+      "a_install": "Descarga la app, abre el archivo y permite la instalación: la página de Android explica cada aviso que puede aparecer por el camino. La primera vez, toca «Activar la protección» y permite la conexión que pida Android.",
       "q_off": "¿Cómo la desactivo?",
       "a_off": "Abre la app y toca «Pausar la protección». Puedes volver a activarla cuando quieras.",
       "q_fp": "Un sitio seguro está bloqueado, ¿qué hago?",
-      "a_fp": "En la pantalla de bloqueo toca «No es una estafa», o escríbenos con la dirección. Corregimos rápido los bloqueos equivocados.",
+      "a_fp": "Abre Cleanway, ve a la pestaña «Historial» y toca ese sitio. Luego toca «No es una estafa: permitir» y confirma. Cleanway dejará de bloquear ese sitio en tu teléfono. El mismo botón está en la notificación de bloqueo, si apareció. Permite un sitio solo si estás seguro de que es el auténtico.",
       "q_privacy": "¿Qué datos recopiláis?",
-      "a_privacy": "El escudo comprueba los nombres de los sitios en tu propio teléfono: no nos llega nada sobre las páginas que visitas. Tienes todos los detalles en nuestra página de privacidad."
+      "a_privacy": "Los sitios se comparan con la lista en tu teléfono. Cuando un sitio necesita una revisión más a fondo, solo su nombre llega a nuestro servidor, no el enlace completo ni quién eres. El texto de los mensajes que compruebas nunca sale del teléfono. Todos los detalles están en la política de privacidad.",
+      "email_not_live_title": "Todavía no podemos recibir correos",
+      "email_not_live_body": "Nuestro buzón de soporte aún se está configurando, así que los mensajes a support@cleanway.ai podrían no llegarnos. Por ahora no envíes allí nada importante. Las respuestas de abajo cubren los problemas más habituales.",
+      "q_app_vpn": "Otra app me pide que desactive la VPN",
+      "a_app_vpn": "Algunas apps —bancos, mensajería, servicios públicos— no funcionan mientras haya una VPN activa, y para Android la protección de Cleanway parece una. Abre Cleanway, toca «Pausar la protección», usa esa app y luego vuelve a activar la protección.",
+      "q_no_internet": "Internet dejó de funcionar al instalar Cleanway",
+      "a_no_internet": "Primero pausa la protección en Cleanway y comprueba si los sitios se abren. Si alguna vez escribiste dns.cleanway.ai en «DNS privado» en los ajustes del teléfono, vuelve a ponerlo en «Automático»: con ese ajuste Cleanway no funciona y puede cortarse internet.",
+      "q_calls": "Me llamaron del «soporte de Cleanway»",
+      "a_calls": "Cleanway nunca llama y nunca envía enlaces por SMS. Si alguien llama o escribe en nombre de Cleanway y te pide instalar algo, dictar un código o desactivar la protección, cuelga. Es una estafa.",
+      "privacy_link": "Política de privacidad",
+      "android_link": "Cleanway para Android: descarga y ayuda con la instalación"
     },
     "android": {
       "title": "Cleanway para Android",
-      "subtitle": "Protección gratuita contra los enlaces de estafa, en todas las apps de tu teléfono.",
-      "benefit_1": "Bloquea sitios de estafa conocidos en cualquier app: navegador, mensajería, correo.",
-      "benefit_2": "Revisa los enlaces que tocas y te avisa antes de que se abra una página peligrosa.",
-      "benefit_3": "Gratis, funciona sin internet con una lista guardada en el teléfono, nada más.",
+      "subtitle": "Protección gratuita contra sitios fraudulentos, en todas las apps del teléfono.",
+      "benefit_1": "Bloquea sitios fraudulentos conocidos en cualquier app: el navegador, la mensajería, el correo.",
+      "benefit_2": "Comprueba los enlaces que tocas: un sitio fraudulento conocido no se abre y los demás se comprueban en segundo plano.",
+      "benefit_3": "Comprueba SMS sospechosos en el propio teléfono: el texto no va a ninguna parte.",
       "download_cta": "Descargar la app",
-      "download_note": "Archivo .apk · Android 7 o posterior",
+      "download_note": "Archivo .apk · Android 7 o posterior · archivo grande, mejor con Wi-Fi",
       "download_soon": "El enlace de descarga estará disponible muy pronto.",
       "steps_title": "Cómo instalarla",
-      "step_1": "Toca «Descargar la app» y espera a que baje el archivo.",
-      "step_2": "Abre el archivo descargado (suele estar en la barra de notificaciones o en la carpeta Descargas).",
-      "step_3": "Android te pedirá permiso para instalar desde este origen: toca Permitir y luego Instalar.",
-      "step_4": "Abre Cleanway, toca «Activar la protección» y permite la conexión que te pida el sistema.",
+      "step_1": "Toca «Descargar la app» y espera a que termine la descarga.",
+      "step_2": "Abre el archivo descargado, desde la notificación o desde la carpeta Descargas.",
+      "step_3": "Si Android dice que no se permite instalar desde este origen, toca «Ajustes», activa «Permitir desde este origen», vuelve atrás y toca «Instalar».",
+      "step_4": "Abre Cleanway, toca «Activar la protección» y permite la conexión que pida Android.",
       "unknown_title": "¿Por qué el teléfono pide permiso?",
-      "unknown_body": "La estás instalando directamente desde la web y no desde una tienda, así que Android pregunta una vez si confías en el origen. Es normal. Pronto se podrá instalar desde RuStore y Google Play; entonces este paso ya no hará falta.",
-      "stores_title": "O instálala desde una tienda",
+      "unknown_body": "Estás instalando directamente desde nuestra web, no desde una tienda, así que Android pregunta una vez si confías en el origen. Es normal. Estamos preparando la publicación en RuStore; entonces este paso no hará falta.",
+      "stores_title": "Tiendas de apps",
       "rustore": "RuStore",
-      "gplay": "Google Play",
-      "store_soon": "Pronto",
+      "store_soon": "Próximamente",
       "privacy_title": "Esto no es una «VPN para ocultarte»",
-      "privacy_body": "Cleanway crea en tu teléfono un filtro local que bloquea los sitios de estafa. No oculta a dónde entras ni hace pasar tu tráfico por otro país. Los nombres de los sitios se comprueban en el propio teléfono: no nos enteramos de nada de lo que abres.",
-      "download_soon_note": "El enlace de descarga aparecerá aquí en cuanto se publique la versión. Los pasos siguientes muestran cómo será la instalación."
+      "privacy_body": "Cleanway crea en tu teléfono un filtro local que bloquea sitios fraudulentos. No oculta a dónde vas ni envía tu tráfico a través de otro país. Los sitios se comparan con la lista en el teléfono; cuando uno necesita una revisión más a fondo, solo su nombre llega a nuestro servidor, nunca el enlace completo ni quién eres.",
+      "download_soon_note": "El enlace de descarga aparecerá aquí en cuanto se publique la versión. Los pasos siguientes muestran cómo será la instalación.",
+      "og_title": "Cleanway para Android — protección gratuita contra sitios fraudulentos",
+      "og_description": "Bloquea sitios fraudulentos y de phishing conocidos en todas las aplicaciones del teléfono. Gratis y sin cuenta.",
+      "benefit_4": "Gratis y sin cuenta.",
+      "honesty_note": "Cada día aparecen sitios fraudulentos nuevos y tardan en llegar a cualquier lista. Nunca introduzcas datos de tu tarjeta ni códigos de SMS en un sitio que abriste desde el enlace de un mensaje.",
+      "warnings_title": "Los avisos que asustan por el camino son normales",
+      "warnings_intro": "Android y Chrome avisan de cualquier app que no venga de una tienda. Así es cada aviso y esto es lo que hay que tocar.",
+      "warn_chrome_title": "Chrome: «Este archivo puede ser dañino»",
+      "warn_chrome_body": "Chrome dice esto de cualquier archivo de app descargado de una web. Toca «Descargar de todos modos» (en algunos teléfonos, simplemente «Descargar»).",
+      "warn_samsung_title": "Samsung: «Bloqueador automático»",
+      "warn_samsung_body": "En los Samsung recientes, el Bloqueador automático impide instalar apps fuera de las tiendas. Desactívalo para la instalación: Ajustes → Seguridad y privacidad → Bloqueador automático → desactivar.",
+      "warn_samsung_after": "Cuando Cleanway esté instalado, vuelve a activar el Bloqueador automático: Cleanway sigue funcionando, porque el Bloqueador solo impide instalaciones nuevas. Para actualizar Cleanway más adelante tendrás que desactivarlo otra vez un minuto.",
+      "warn_protect_title": "Play Protect: «App no segura»",
+      "warn_protect_body": "Google Play Protect avisa de las apps que no conoce por Google Play, y Cleanway no está en Google Play. Toca «Más detalles» y luego «Instalar de todos modos».",
+      "screenshot_alt_chrome": "Aviso de descarga de Chrome con el botón «Descargar de todos modos»",
+      "screenshot_alt_samsung": "Pantalla de ajustes del Bloqueador automático de Samsung",
+      "screenshot_alt_protect": "Aviso de Play Protect con «Más detalles» e «Instalar de todos modos»",
+      "never_calls_title": "Cleanway nunca te envía enlaces por SMS ni te llama",
+      "never_calls_body": "Si alguien llama o escribe en nombre de Cleanway y te pide instalar algo, dictar un código o desactivar la protección, es una estafa. Descarga Cleanway solo desde este sitio, cleanway.ai.",
+      "links_privacy": "Política de privacidad",
+      "links_support": "Ayuda y soporte"
+    },
+    "meta": {
+      "title": "Cleanway — protección contra sitios fraudulentos",
+      "description": "Cleanway para Android bloquea sitios fraudulentos y de phishing conocidos en todas las aplicaciones del teléfono. Gratis y sin cuenta."
+    },
+    "check": {
+      "index_title": "¿Es seguro este sitio?",
+      "index_subtitle": "Escribe el nombre de un sitio o un enlace para ver si parece una estafa.",
+      "input_placeholder": "p. ej., paypal-verify.com",
+      "input_label": "Sitio a comprobar",
+      "submit": "Comprobar",
+      "index_footer": "Comparamos el nombre del sitio con listas de sitios fraudulentos conocidos y otras señales. Un veredicto es un consejo, no una garantía.",
+      "meta_title": "¿Es seguro {domain}? — comprobación de Cleanway",
+      "meta_description": "Comprueba si {domain} parece un sitio de phishing o fraude. Comprobación gratuita con los motivos en palabras sencillas.",
+      "og_description": "Comprobación de Cleanway para {domain}",
+      "heading": "¿Es seguro {domain}?",
+      "level_safe": "Parece seguro",
+      "level_caution": "Ten cuidado",
+      "level_dangerous": "Peligroso",
+      "risk_score": "Nivel de riesgo: {score} de 100",
+      "confidence": "Confianza: {pct}%",
+      "confidence_hint": "La confianza depende de cuántas comprobaciones se hicieron y de lo cerca que está la puntuación del siguiente nivel. Nunca es del 100%.",
+      "how_we_measure": "Cómo medimos",
+      "verdict_safe": "{domain} parece seguro.",
+      "verdict_caution": "{domain} tiene algunas señales sospechosas. Ten cuidado.",
+      "verdict_dangerous": "{domain} muestra señales claras de ser un sitio de phishing o fraude. No introduzcas datos personales.",
+      "check_failed": "Ahora mismo no hemos podido comprobar {domain}. Inténtalo de nuevo en unos minutos.",
+      "signals_heading": "Por qué",
+      "low_confidence": "Es una comprobación rápida con datos limitados.",
+      "cta_title": "Protege todas las apps de tu teléfono",
+      "cta_body": "Cleanway para Android bloquea gratis los sitios fraudulentos conocidos en todas las apps.",
+      "another": "Comprobar otro sitio:",
+      "footer_note": "Un veredicto es un consejo, no una garantía.",
+      "privacy_link": "Política de privacidad",
+      "share_button": "Compartir esta comprobación",
+      "share_copy": "Copiar enlace",
+      "share_copied": "¡Copiado!",
+      "share_email": "Correo",
+      "share_text": "{verdict}: {domain} — nivel de riesgo de Cleanway {score}/100",
+      "share_title": "¿Es seguro {domain}?",
+      "invalid_input": "Eso no parece el nombre de un sitio. Escribe algo como example.com.",
+      "share_grade_text": "{domain}: nota de privacidad de Cleanway — {grade}",
+      "share_grade_title": "{domain}: nota de privacidad"
+    },
+    "not_found": {
+      "title": "Página no encontrada",
+      "body": "Esta página no existe, pero aun así podemos ayudarte a estar seguro.",
+      "home": "Ir al inicio",
+      "check": "Comprobar un sitio"
+    },
+    "terms": {
+      "meta_title": "Condiciones de uso — Cleanway",
+      "meta_description": "Las reglas para usar Cleanway: lo que el servicio promete y lo que no, cuentas, planes de pago y uso aceptable.",
+      "back": "Volver a Cleanway",
+      "title": "Condiciones de uso",
+      "updated": "Última actualización: 27 de septiembre de 2026",
+      "privacy_link": "Leer la política de privacidad",
+      "contact_live": "Preguntas sobre estas condiciones:",
+      "contact_not_live": "Nuestro buzón de soporte aún se está configurando, así que todavía no podemos recibir correos. La página de ayuda responde a las preguntas frecuentes.",
+      "support_link": "Página de ayuda",
+      "sections": [
+        {
+          "title": "1. Qué es Cleanway",
+          "paragraphs": [
+            "Cleanway te ayuda a protegerte de sitios fraudulentos y de phishing. Lo forman la app para Android, la comprobación de sitios en cleanway.ai y un filtro DNS para iPhone, Mac y Windows. Cleanway compara los nombres de los sitios con listas de amenazas conocidas y otras señales y te dice lo que encontró."
+          ]
+        },
+        {
+          "title": "2. Lo que no prometemos",
+          "paragraphs": [
+            "Los veredictos de Cleanway son un consejo, no una garantía. No podemos prometer que:"
+          ],
+          "items": [
+            "se detecte cada sitio fraudulento o de phishing: aparecen nuevos cada día;",
+            "un sitio seguro nunca se marque por error;",
+            "un sitio fraudulento recién creado se bloquee en el momento en que aparece;",
+            "Cleanway proteja contra todo tipo de fraude; por ejemplo, no protege contra las llamadas telefónicas."
+          ],
+          "after": [
+            "Usa Cleanway como una capa de protección más: nunca compartas códigos de SMS y comprueba cualquier urgencia llamando a tu banco al número impreso en tu tarjeta."
+          ]
+        },
+        {
+          "title": "3. Uso gratuito y cuentas",
+          "paragraphs": [
+            "Bloquear sitios fraudulentos es gratis y funciona sin cuenta. La cuenta solo es necesaria para las funciones familiares y los planes de pago. Si creas una, usa un correo real y conserva el acceso: inicias sesión con códigos o enlaces de un solo uso que se envían allí."
+          ]
+        },
+        {
+          "title": "4. Planes de pago",
+          "paragraphs": [
+            "En algunos países Cleanway ofrece planes de pago con extras. En Rusia no se ofrecen planes de pago. Donde existen, el pago lo gestiona Stripe, el precio y el periodo se muestran antes de pagar y puedes cancelar en cualquier momento: el plan sigue activo hasta el final del periodo pagado. Los reembolsos se tramitan según exija la ley. Bloquear sitios fraudulentos nunca será una función de pago."
+          ]
+        },
+        {
+          "title": "5. Uso aceptable",
+          "paragraphs": [
+            "Por favor, no:"
+          ],
+          "items": [
+            "uses Cleanway para probar o mejorar sitios fraudulentos;",
+            "envíes peticiones automáticas masivas ni intentes saltarte los límites de peticiones;",
+            "revendas el acceso a las comprobaciones de Cleanway;",
+            "interfieras con el servicio ni ataques su infraestructura;",
+            "uses las funciones familiares para acosar o presionar a nadie, ni añadas a una persona a un grupo familiar sin su consentimiento."
+          ],
+          "after": [
+            "Podemos limitar o cerrar el acceso a quien lo haga."
+          ]
+        },
+        {
+          "title": "6. Funciones familiares",
+          "paragraphs": [
+            "Las alertas familiares están cifradas de extremo a extremo: no podemos leerlas ni recuperarlas si todos los dispositivos de la familia pierden sus claves. Una alerta familiar es un aviso útil, no un sustituto de hablar entre vosotros."
+          ]
+        },
+        {
+          "id": "privacy",
+          "title": "7. Privacidad",
+          "paragraphs": [
+            "Cómo tratamos los datos se describe en la política de privacidad."
+          ]
+        },
+        {
+          "title": "8. Código fuente",
+          "paragraphs": [
+            "El código fuente de Cleanway está publicado en GitHub bajo la licencia MIT."
+          ]
+        },
+        {
+          "title": "9. Responsabilidad",
+          "paragraphs": [
+            "Cleanway se ofrece «tal cual». En la medida en que la ley lo permita, no respondemos de pérdidas indirectas y nuestra responsabilidad total se limita a lo que nos hayas pagado en los últimos 12 meses. Nada en estas condiciones limita derechos que la ley no permite limitar."
+          ]
+        },
+        {
+          "title": "10. Cambios",
+          "paragraphs": [
+            "Podemos actualizar estas condiciones. Publicaremos los cambios importantes en esta página antes de que entren en vigor; la fecha de arriba indica la versión vigente."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "11. Contacto",
+          "paragraphs": []
+        }
+      ]
+    },
+    "privacy_policy": {
+      "meta_title": "Política de privacidad — Cleanway",
+      "meta_description": "Qué recibe Cleanway, qué se queda en tu teléfono, quién más ve qué y cuánto tiempo se guarda todo.",
+      "back": "Volver a Cleanway",
+      "title": "Política de privacidad",
+      "updated": "Última actualización: 27 de septiembre de 2026",
+      "intro": "Esta política explica con palabras sencillas qué datos trata Cleanway, por qué y quién más los ve. Describe el servicio tal como funciona hoy. Si algo de aquí no coincide con lo que Cleanway hace realmente, es un error y queremos saberlo.",
+      "contact_live": "Preguntas y solicitudes sobre tus datos:",
+      "contact_not_live": "Nuestro buzón de soporte aún se está configurando, así que todavía no podemos recibir correos. En esta sección aparecerá la dirección en cuanto funcione.",
+      "sections": [
+        {
+          "title": "1. En resumen",
+          "items": [
+            "Para comprobar un sitio solo necesitamos su nombre (por ejemplo, example.com). No recibimos enlaces completos, contenido de páginas ni el texto de tus mensajes.",
+            "La mayoría de las comprobaciones se hacen en tu teléfono, con una lista de sitios fraudulentos conocidos.",
+            "Cuando un sitio necesita una revisión más a fondo, su nombre llega a nuestro servidor, que puede consultar ese nombre a otros servicios de comprobación, nunca datos sobre ti.",
+            "No necesitas una cuenta para estar protegido. No mostramos publicidad ni vendemos datos."
+          ]
+        },
+        {
+          "title": "2. Quiénes somos",
+          "paragraphs": [
+            "Cleanway (cleanway.ai) protege contra sitios fraudulentos y de phishing. Lo forman una app para Android, una comprobación de sitios en cleanway.ai y un filtro DNS para iPhone, Mac y Windows. Cómo contactarnos está al final de esta política."
+          ]
+        },
+        {
+          "title": "3. La app para Android: protección en todas las apps",
+          "paragraphs": [
+            "Cuando activas la protección, Cleanway pone en marcha un filtro local usando el mecanismo de VPN de Android. Por él solo pasan las consultas DNS, las preguntas que hace el teléfono para encontrar la dirección de un sitio, como «¿dónde está example.com?». El contenido de las páginas, tus mensajes y tus llamadas no pasan por el filtro y no se leen.",
+            "Cada nombre de sitio se compara con la lista de sitios fraudulentos guardada en el teléfono. Si está en la lista, el teléfono no abre el sitio y se guarda en el teléfono una nota (el nombre del sitio, la hora y lo que pasó) para el Historial de la app.",
+            "Los nombres que no están en la lista se pasan a un servicio DNS público para encontrar la dirección, algo que el teléfono también hace sin Cleanway, solo que a través de otro servicio. En la versión 1.0.1 de la app estas consultas van a Cloudflare (1.1.1.1), con Quad9 (9.9.9.9) como reserva y el DNS-over-HTTPS cifrado de Cloudflare como último recurso. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas."
+          ]
+        },
+        {
+          "title": "4. La lista de sitios fraudulentos",
+          "paragraphs": [
+            "La app descarga la lista de nuestro servidor (api.cleanway.ai) y la actualiza aproximadamente cada 6 horas, con menos frecuencia con datos móviles. La petición no dice nada de los sitios que visitas: solo lleva los datos técnicos habituales de cualquier petición en internet, como tu dirección IP, y una marca de la versión de la lista que ya tiene el teléfono. De vez en cuando la app también pregunta a nuestro servidor si hay una versión nueva de la app."
+          ]
+        },
+        {
+          "title": "5. Comprobación de sitios y enlaces",
+          "paragraphs": [
+            "El nombre de un sitio, sin el resto del enlace, sin el contenido de la página y sin los datos de tu cuenta, llega a nuestro servidor cuando compruebas un sitio a mano (en la app o en cleanway.ai/check) y cuando la protección está activa y abres a través de Cleanway un enlace que no está en la lista.",
+            "Para decidir si el sitio es peligroso, nuestro servidor puede:"
+          ],
+          "items": [
+            "consultar el nombre a servicios de comprobación externos: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, y averiguar cuándo se registró el sitio a través del servicio RDAP rdap.org. Solo reciben el nombre del sitio, no quién eres;",
+            "comparar su respuesta con la del filtro DNS de Cloudflare (1.1.1.1 for Families), que recibe el nombre del sitio en una consulta DNS normal;",
+            "revisar el propio sitio (su dirección, certificado y configuración) desde nuestro servidor, no desde tu teléfono;",
+            "en casos dudosos, pedir una segunda opinión a un modelo de IA de Anthropic. Solo recibe señales abstractas, sin el nombre del sitio."
+          ],
+          "after": [
+            "El resultado se guarda en la caché de nuestro servidor hasta 24 horas para que una nueva comprobación sea rápida. Está ligado al sitio, no a ti.",
+            "Tu dirección IP se usa para limitar cuántas comprobaciones puede hacer una conexión. Para eso se guarda tal cual, como contador en la memoria de nuestro servidor, durante una hora como máximo, y después se borra. El registro de seguridad de las acciones de la cuenta solo guarda un hash criptográfico acortado, nunca la dirección misma."
+          ]
+        },
+        {
+          "title": "6. Comprobación de mensajes",
+          "paragraphs": [
+            "Cleanway no lee tus SMS por su cuenta ni pide acceso a ellos. Solo comprueba el mensaje que tú compartes con él o pegas.",
+            "El texto se analiza en el teléfono y no se envía a ninguna parte, ni a nosotros ni a nadie. Hasta tres nombres de sitios de los enlaces del mensaje pueden comprobarse en nuestro servidor como se describe arriba, sin el resto del enlace. El Historial guarda el veredicto y los nombres de los sitios, nunca el texto."
+          ]
+        },
+        {
+          "title": "7. Qué se queda en tu teléfono",
+          "items": [
+            "la lista de sitios fraudulentos;",
+            "el historial de comprobaciones (nombres de sitios, veredictos, motivos y horas) hasta que lo borres en Configuración;",
+            "el registro de lo que la protección bloqueó o avisó: los últimos 200 eventos;",
+            "los sitios que permitiste con «No es una estafa»;",
+            "las claves de las alertas familiares cifradas, en el almacenamiento protegido del teléfono."
+          ]
+        },
+        {
+          "title": "8. Cuenta y correo",
+          "paragraphs": [
+            "La cuenta es opcional: solo se necesita para las funciones familiares y los planes de pago. Si creas una, guardamos tu dirección de correo, tu plan, un identificador de dispositivo aleatorio (no derivado del hardware del teléfono) y los ajustes de la app. Inicias sesión con un código de un solo uso (en la app) o un enlace de un solo uso (en el sitio web) que se envían a tu correo; no hay contraseña.",
+            "Las cuentas se guardan en nuestro proveedor de base de datos, Supabase. Supabase también puede registrar en su propio registro de seguridad la dirección IP desde la que se inició sesión."
+          ]
+        },
+        {
+          "title": "9. Familia",
+          "paragraphs": [
+            "Las alertas familiares se cifran en el dispositivo del remitente y solo pueden leerse en los dispositivos de los destinatarios. Nuestro servidor solo guarda el texto cifrado y no puede leerlo, pero sí ve quién pertenece a qué familia y quién envió una alerta a quién y cuándo. Las alertas se guardan hasta 30 días. Los códigos de invitación y los PIN solo se guardan como hashes."
+          ]
+        },
+        {
+          "title": "10. El sitio web y el filtro DNS",
+          "paragraphs": [
+            "cleanway.ai no tiene publicidad ni rastreadores de analítica. Nuestros proveedores de alojamiento —Vercel para el sitio web y Railway para el servidor— guardan registros técnicos habituales de las peticiones, que pueden incluir la dirección solicitada y tu dirección IP.",
+            "Si configuras el filtro DNS de Cleanway (dns.cleanway.ai) en un iPhone, un Mac o un ordenador con Windows, todas las consultas DNS del dispositivo van a nuestro servidor. Este bloquea los nombres de la lista y pasa el resto a Cloudflare para encontrar la dirección. Las consultas no se escriben en disco; de un nombre bloqueado, nuestro registro guarda como mucho sus últimos 32 caracteres, sin tu dirección IP."
+          ]
+        },
+        {
+          "title": "11. Informes de errores",
+          "paragraphs": [
+            "La app, el sitio web y nuestro servidor pueden enviar a Sentry informes técnicos de errores, para que podamos corregir fallos, y mediciones de tiempos de más o menos una de cada diez solicitudes. De los informes de errores quitamos direcciones de correo, direcciones IP y claves de acceso. Aun así, un informe o una medición puede contener la dirección de una página o solicitud; por ejemplo, el nombre de un sitio que se estaba comprobando. El sitio web no graba sesiones. Sentry guarda estos datos hasta 90 días."
+          ]
+        },
+        {
+          "title": "12. Pagos",
+          "paragraphs": [
+            "En Rusia no se ofrecen planes de pago. Donde existen, el pago se hace a través de Stripe: Stripe recibe tu correo y el plan elegido y gestiona la tarjeta por su cuenta. Nunca vemos ni guardamos los datos de la tarjeta."
+          ]
+        },
+        {
+          "title": "13. Quién trata los datos por nosotros",
+          "items": [
+            "Railway: ejecuta nuestro servidor (api.cleanway.ai);",
+            "Vercel: aloja el sitio web;",
+            "Supabase: guarda las cuentas y los datos familiares;",
+            "GitHub: aloja el archivo de la app que descargas y ve tu dirección IP al descargarlo;",
+            "Cloudflare y Quad9: DNS públicos que usa la app, ver la sección 3;",
+            "los servicios de comprobación de la sección 5 y Anthropic: solo reciben nombres de sitios o señales abstractas;",
+            "Sentry: informes de errores y mediciones de tiempos; Stripe: pagos fuera de Rusia."
+          ],
+          "after": [
+            "Estas empresas están fuera de Rusia, principalmente en EE. UU. y la UE, así que los datos que tratan se transfieren al extranjero."
+          ]
+        },
+        {
+          "title": "14. Cuánto tiempo guardamos los datos",
+          "items": [
+            "resultados de comprobación en la caché del servidor: hasta 24 horas;",
+            "tu dirección IP en el contador que limita las comprobaciones: una hora como máximo;",
+            "datos de la cuenta: hasta que la elimines; tras una solicitud de eliminación los guardamos 30 días más por si cambias de opinión y después los borramos;",
+            "registro de seguridad de las acciones de la cuenta (con direcciones IP en hash): 2 años;",
+            "contadores semanales de las cuentas (solo números, sin nombres de sitios): 1 año;",
+            "alertas familiares cifradas: hasta 30 días;",
+            "datos en tu teléfono: hasta que los borres o elimines la app."
+          ]
+        },
+        {
+          "title": "15. Tus derechos",
+          "paragraphs": [
+            "Puedes preguntar qué datos tuyos tenemos, pedirnos que los corrijamos o eliminemos y retirar tu consentimiento. Sin cuenta no sabemos quién eres: no tenemos tu nombre, tu correo ni tu teléfono, solo los datos técnicos descritos arriba, como tu dirección IP en el contador de comprobaciones y en los registros del alojamiento. Para eliminar una cuenta o hacer una solicitud, contáctanos como se indica abajo. Desinstalar la app borra todo lo que guardó en el teléfono."
+          ]
+        },
+        {
+          "title": "16. Menores",
+          "paragraphs": [
+            "Cleanway no está pensado para que lo usen solos niños menores de 13 años; las funciones familiares las gestiona un adulto."
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "17. Cambios y contacto",
+          "paragraphs": [
+            "Si cambiamos esta política, publicaremos la nueva versión en esta página con una fecha nueva."
+          ]
+        }
+      ]
     }
   },
   "email": {

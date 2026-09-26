@@ -10,7 +10,7 @@
  */
 import * as Sentry from "@sentry/nextjs";
 
-import { beforeBreadcrumbScrub, beforeSendScrub } from "./lib/sentry-scrub";
+import { beforeBreadcrumbScrub, beforeSendScrub, beforeSendTransactionScrub } from "./lib/sentry-scrub";
 
 const dsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
 
@@ -22,6 +22,7 @@ if (dsn) {
     tracesSampleRate: 0.1,
     sendDefaultPii: false,
     beforeSend: beforeSendScrub,
+    beforeSendTransaction: beforeSendTransactionScrub,
     beforeBreadcrumb: beforeBreadcrumbScrub,
   });
 }

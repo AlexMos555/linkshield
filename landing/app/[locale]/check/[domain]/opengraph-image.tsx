@@ -9,6 +9,8 @@
  */
 import { ImageResponse } from "next/og";
 
+import { hostFromSegment } from "@/lib/check-host";
+
 export const runtime = "edge";
 export const alt = "Cleanway safety check";
 export const size = { width: 1200, height: 630 };
@@ -47,8 +49,9 @@ export default async function OpenGraphImage({
 }: {
   params: { domain: string };
 }) {
-  const decoded = decodeURIComponent(params.domain);
-  const result = await fetchScanResult(decoded);
+  // Only a real site name goes to the API — never a pasted link's path/query.
+  const decoded = hostFromSegment(params.domain) ?? "";
+  const result = decoded ? await fetchScanResult(decoded) : {};
   const level = (result.level ?? "caution") as keyof typeof COLORS;
   const score = result.score ?? "?";
   const palette = COLORS[level] ?? COLORS.caution;
@@ -251,7 +254,7 @@ export default async function OpenGraphImage({
               fontSize: 18,
             }}
           >
-            Add to Chrome — Free
+            cleanway.ai/check
           </div>
         </div>
       </div>

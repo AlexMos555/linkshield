@@ -24,6 +24,9 @@ import {
 
 import { TURNSTILE_SITE_KEY, loadTurnstile, type TurnstileApi } from "@/lib/turnstile";
 
+/** Operator notices are for us, not for the person signing up. */
+const SHOW_OPERATOR_NOTICE = process.env.NODE_ENV !== "production";
+
 export interface TurnstileControls {
   /** Discard the current token and run the challenge again. */
   readonly reset: () => void;
@@ -44,10 +47,19 @@ export interface TurnstileWidgetProps {
   readonly size?: "normal" | "flexible" | "compact";
   readonly language?: string;
   readonly style?: CSSProperties;
+  /**
+   * With Cloudflare's always-pass TEST key in a production build, render no
+   * widget at all and report "unavailable" at once. The test widget itself
+   * prints "for testing only — tell the site owner" at the visitor, and its
+   * token protects nothing. /signup opts in; the mobile /auth/captcha page
+   * does not, because the app waits for a token from it.
+   */
+  readonly skipTestKeyInProduction?: boolean;
 }
 
 export default function TurnstileWidget(props: TurnstileWidgetProps) {
   const { theme = "dark", size = "normal", language = "auto", style } = props;
+  const skip = props.skipTestKeyInProduction === true && TURNSTILE_SITE_KEY.testMode && !SHOW_OPERATOR_NOTICE;
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Latest callbacks in a ref: the widget renders once per mount instead of
@@ -58,6 +70,10 @@ export default function TurnstileWidget(props: TurnstileWidgetProps) {
   });
 
   useEffect(() => {
+    if (skip) {
+      callbacks.current.onUnavailable?.("test_key_in_production");
+      return;
+    }
     const container = containerRef.current;
     if (!container) return;
     let api: TurnstileApi | null = null;
@@ -94,7 +110,9 @@ export default function TurnstileWidget(props: TurnstileWidgetProps) {
       cancelled = true;
       if (api && widgetId !== undefined) api.remove(widgetId);
     };
-  }, [theme, size, language]);
+  }, [theme, size, language, skip]);
+
+  if (skip) return <TurnstileTestModeNotice />;
 
   return (
     <div style={style}>
@@ -106,12 +124,19 @@ export default function TurnstileWidget(props: TurnstileWidgetProps) {
 
 /**
  * Rendered whenever the always-pass test sitekey is in use. Deliberately
- * un-translated and loud: it is an operator signal, not user copy, and it must
- * be visible on the live site until NEXT_PUBLIC_TURNSTILE_SITE_KEY is set.
- * Exported so /auth/captcha can keep it on screen after the widget unmounts
- * (the test key passes in about a second, which would hide it otherwise).
+ * un-translated and loud in development: it is an operator signal, not user
+ * copy. In production it used to be loud too, and a Russian visitor on
+ * /ru/signup saw "Turnstile test mode — NEXT_PUBLIC_TURNSTILE_SITE_KEY is not
+ * set" in English (report #19). There it is now an invisible marker the
+ * operator can still find: `curl -s https://cleanway.ai/signup | grep
+ * data-turnstile-test-mode`.
+ * Exported so /auth/captcha can keep it after the widget unmounts (the test
+ * key passes in about a second, which would hide it otherwise).
  */
 export function TurnstileTestModeNotice() {
+  if (!SHOW_OPERATOR_NOTICE) {
+    return <span data-turnstile-test-mode="true" hidden />;
+  }
   return (
     <p
       role="status"

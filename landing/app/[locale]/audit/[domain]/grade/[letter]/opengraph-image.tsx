@@ -189,7 +189,7 @@ export default function OpenGraphImage({
               fontSize: 17,
             }}
           >
-            Add to Chrome — Free
+            cleanway.ai/check
           </div>
         </div>
       </div>

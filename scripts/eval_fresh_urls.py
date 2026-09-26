@@ -985,6 +985,13 @@ async def main() -> int:
                         "deduplicated by registrable domain.",
             "legit": f"Tranco top-1M rank 100-100000, "
                      f"random sample (seed=42).",
+            # The public check answers every Tranco top-100k domain "safe"
+            # without analysing it (is_trusted_top_domain), so this sample
+            # cannot measure false positives. The landing publishes a
+            # false-positive rate only when this is True
+            # (landing/lib/benchmark.ts falsePositiveRateIsPublishable) — set
+            # it only once the legit sample comes from outside that list.
+            "legit_outside_allowlist": False,
             "cleanway_api": CLEANWAY_API,
         },
         "phishing": {

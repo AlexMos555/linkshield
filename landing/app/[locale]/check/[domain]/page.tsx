@@ -1,26 +1,47 @@
 import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import CheckForm from "@/components/CheckForm";
 import { InstallButtons } from "@/components/InstallButtons";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import ShareScanButton from "@/components/ShareScanButton";
 import { routing, type Locale } from "@/i18n/routing";
+import { hostFromSegment } from "@/lib/check-host";
+import { displayHost } from "@/lib/display-host";
+import { localePath } from "@/lib/locale-path";
+import { reasonLines } from "@/lib/reason-label";
 
 const SITE_URL = "https://cleanway.ai";
 
 type Props = { params: Promise<{ domain: string; locale: string }> };
 
+type Level = "safe" | "caution" | "dangerous";
+
 type ScanResult = {
-  level?: "safe" | "caution" | "dangerous";
+  level?: Level;
   score?: number;
   verdict?: string;
   signals?: string[];
+  // Machine-readable code per signal, positionally aligned with `signals`.
+  reason_codes?: string[];
   confidence?: string;
   // Strategy doc #12 — numeric confidence band 50..99.
   confidence_pct?: number;
-  // Strategy doc #16 — link the per-domain card back to the
-  // platform-wide transparency report.
-  transparency_url?: string;
+};
+
+const LEVELS: readonly Level[] = ["safe", "caution", "dangerous"];
+
+const LEVEL_COLORS: Record<Level, string> = {
+  safe: "#22c55e",
+  caution: "#f59e0b",
+  dangerous: "#ef4444",
+};
+
+const LEVEL_ICONS: Record<Level, string> = {
+  safe: "✅",
+  caution: "⚠️",
+  dangerous: "❌",
 };
 
 /**
@@ -37,23 +58,32 @@ function urlFor(locale: Locale, domain: string): string {
   return `${SITE_URL}${pathFor(locale, domain)}`;
 }
 
+function resolveLocale(locale: string): Locale {
+  return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain, locale } = await params;
-  const decoded = decodeURIComponent(domain);
-  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
-  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  // Not a site name: the page redirects or 404s; keep it out of the index.
+  const decoded = hostFromSegment(domain);
+  if (!decoded) return { robots: { index: false, follow: false } };
+  const safeLocale = resolveLocale(locale);
+  const t = await getTranslations({ locale: safeLocale, namespace: "Check" });
 
-  const canonical = urlFor(safeLocale, domain);
+  const canonical = urlFor(safeLocale, decoded);
 
   // hreflang map — every locale plus an x-default pointing at English
   const languages: Record<string, string> = {};
   for (const loc of routing.locales) {
-    languages[loc] = urlFor(loc as Locale, domain);
+    languages[loc] = urlFor(loc as Locale, decoded);
   }
-  languages["x-default"] = urlFor(routing.defaultLocale as Locale, domain);
+  languages["x-default"] = urlFor(routing.defaultLocale as Locale, decoded);
 
-  const title = `Is ${decoded} safe? — Cleanway Safety Check`;
-  const description = `Check if ${decoded} is a phishing or scam website. Free safety analysis with 42+ detection signals and 16 threat intelligence sources — false-positive rate published every quarter.`;
+  const shown = displayHost(decoded);
+  const title = t("meta_title", { domain: shown });
+  const description = t("meta_description", { domain: shown });
+  const ogTitle = t("heading", { domain: shown });
+  const ogDescription = t("og_description", { domain: shown });
 
   return {
     title,
@@ -64,8 +94,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages,
     },
     openGraph: {
-      title: `Is ${decoded} safe?`,
-      description: `Cleanway safety report for ${decoded}`,
+      title: ogTitle,
+      description: ogDescription,
       url: canonical,
       siteName: "Cleanway",
       type: "article",
@@ -73,8 +103,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: `Is ${decoded} safe?`,
-      description: `Cleanway safety report for ${decoded}`,
+      title: ogTitle,
+      description: ogDescription,
       site: "@cleanwayai",
     },
     robots: {
@@ -101,93 +131,85 @@ async function fetchScan(domain: string): Promise<ScanResult> {
   }
 }
 
+function isLevel(value: unknown): value is Level {
+  return typeof value === "string" && (LEVELS as readonly string[]).includes(value);
+}
+
+/**
+ * Plain-language reason labels in the page's language, each once. The API
+ * sends an English `detail` per reason plus a code; a known code gets the
+ * app's label, anything else keeps the API's wording rather than disappearing.
+ */
+function reasonLabels(result: ScanResult, label: (key: string) => string): string[] {
+  return reasonLines(result.signals ?? [], result.reason_codes, label);
+}
+
 export default async function CheckPage({ params }: Props) {
   const { domain, locale } = await params;
-  const decodedDomain = decodeURIComponent(domain);
-  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
-  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const safeLocale = resolveLocale(locale);
+  // Only a site name is ever looked up. A pasted link that reached this route
+  // (/check/bank.ru%2Fconfirm%3Femail%3D...) is cut down to its host before
+  // anything is fetched; something with no host in it is not a check.
+  const decodedDomain = hostFromSegment(domain);
+  if (!decodedDomain) notFound();
+  if (decodedDomain !== domain) redirect(pathFor(safeLocale, decodedDomain));
+  // What people read: президент.рф, not xn--d1abbgf6aiiy.xn--p1ai (lib/display-host.ts).
+  const shownDomain = displayHost(decodedDomain);
+  const t = await getTranslations({ locale: safeLocale, namespace: "Check" });
   // Android-only labels for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
+  const reasons = await getTranslations({ locale: safeLocale, namespace: "Reasons" });
   const result = await fetchScan(decodedDomain);
 
-  type Level = "safe" | "caution" | "dangerous";
-  const levelColors: Record<Level, string> = {
-    safe: "#22c55e",
-    caution: "#f59e0b",
-    dangerous: "#ef4444",
-  };
-
-  const levelIcons: Record<Level, string> = {
-    safe: "✅",
-    caution: "⚠️",
-    dangerous: "❌",
-  };
-
-  const levelLabels: Record<Level, string> = {
-    safe: "Safe",
-    caution: "Caution",
-    dangerous: "Dangerous",
-  };
-
-  const level: Level = (result?.level && ["safe", "caution", "dangerous"].includes(result.level)
-    ? result.level
-    : "caution") as Level;
-  const score = result?.score ?? "?";
-  const color = levelColors[level] || "#64748b";
-  const canonical = urlFor(safeLocale, domain);
+  // No verdict (API down, timed out, rate-limited): say so. Showing a yellow
+  // "Caution — Score ?/100" for a check that never ran is a verdict we never made.
+  const level: Level | null = isLevel(result.level) ? result.level : null;
+  const score = typeof result.score === "number" ? result.score : null;
+  const color = level ? LEVEL_COLORS[level] : "#64748b";
+  const canonical = urlFor(safeLocale, decodedDomain);
+  const signals = level ? reasonLabels(result, (key) => reasons(key)) : [];
+  const href = (path: string) => localePath(safeLocale, path);
 
   // ── JSON-LD: rich structured data ──────────────────────────────
-  // Two-graph: WebPage describing the report itself, plus Review on the
-  // domain as a SoftwareApplication target so search engines understand
-  // we're rating the site, not just describing one. Best ratings are 100,
-  // worst is 0 — explicit so Google can show the score chip in SERPs.
-  const numericScore = typeof score === "number" ? score : null;
-  const ratingValue = numericScore ?? (level === "safe" ? 90 : level === "dangerous" ? 15 : 50);
-  const reviewBody =
-    result?.verdict ?? `Cleanway analyzed ${decodedDomain} against 9 threat intelligence sources and ML detection.`;
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebPage",
-        "@id": `${canonical}#webpage`,
-        url: canonical,
-        name: `Is ${decodedDomain} safe? — Cleanway`,
-        description: `Safety check for ${decodedDomain}. Score ${score}/100.`,
-        inLanguage: safeLocale,
-        isPartOf: { "@id": `${SITE_URL}#website` },
-        primaryImageOfPage: { "@id": `${canonical}#og-image` },
-      },
-      {
-        "@type": "Review",
-        "@id": `${canonical}#review`,
-        url: canonical,
-        author: { "@type": "Organization", name: "Cleanway", url: SITE_URL },
-        publisher: { "@type": "Organization", name: "Cleanway", url: SITE_URL },
-        itemReviewed: {
-          "@type": "WebSite",
-          name: decodedDomain,
-          url: `https://${decodedDomain}`,
-        },
-        reviewBody,
-        reviewRating: {
-          "@type": "Rating",
-          ratingValue,
-          bestRating: 100,
-          worstRating: 0,
-        },
-      },
-      {
-        "@type": "WebSite",
-        "@id": `${SITE_URL}#website`,
-        url: SITE_URL,
-        name: "Cleanway",
-        description: "Privacy-first protection from phishing and scam sites.",
-        publisher: { "@type": "Organization", name: "Cleanway" },
-      },
-    ],
-  };
+  // Only when there is a verdict: a Review with no rating would be invented.
+  const jsonLd = level
+    ? {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebPage",
+            "@id": `${canonical}#webpage`,
+            url: canonical,
+            name: t("heading", { domain: shownDomain }),
+            inLanguage: safeLocale,
+            isPartOf: { "@id": `${SITE_URL}#website` },
+          },
+          {
+            "@type": "Review",
+            "@id": `${canonical}#review`,
+            url: canonical,
+            author: { "@type": "Organization", name: "Cleanway", url: SITE_URL },
+            publisher: { "@type": "Organization", name: "Cleanway", url: SITE_URL },
+            itemReviewed: {
+              "@type": "WebSite",
+              name: shownDomain,
+              url: `https://${decodedDomain}`,
+            },
+            reviewBody: t(`verdict_${level}`, { domain: shownDomain }),
+            // Our score is a risk score (0 = no risk); the rating is its inverse.
+            ...(score !== null && {
+              reviewRating: {
+                "@type": "Rating",
+                ratingValue: 100 - score,
+                bestRating: 100,
+                worstRating: 0,
+              },
+            }),
+          },
+        ],
+      }
+    : null;
 
   return (
     <div
@@ -200,7 +222,7 @@ export default async function CheckPage({ params }: Props) {
     >
       <nav style={{ background: "#0f172af0", borderBottom: "1px solid #1e293b", padding: "14px 24px" }}>
         <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
+          <a href={href("/")} style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
             Cleanway
           </a>
           <PrimaryInstallLink
@@ -215,7 +237,7 @@ export default async function CheckPage({ params }: Props) {
               textDecoration: "none",
             }}
           >
-            Add to Chrome
+            {nav("install")}
           </PrimaryInstallLink>
         </div>
       </nav>
@@ -223,6 +245,7 @@ export default async function CheckPage({ params }: Props) {
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px" }}>
         {/* Main Result Card */}
         <div
+          data-testid="check-result"
           style={{
             background: "#1e293b",
             borderRadius: 16,
@@ -242,50 +265,48 @@ export default async function CheckPage({ params }: Props) {
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 32,
+                flexShrink: 0,
               }}
             >
-              {levelIcons[level]}
+              {level ? LEVEL_ICONS[level] : "…"}
             </div>
-            <div>
-              <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", margin: 0 }}>Is {decodedDomain} safe?</h1>
-              <p style={{ fontSize: 18, color, fontWeight: 600, margin: "4px 0 0" }}>
-                {levelLabels[level]} &mdash; Score: {score}/100
-              </p>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", margin: 0, overflowWrap: "anywhere" }}>
+                {t("heading", { domain: shownDomain })}
+              </h1>
+              {level && (
+                <p style={{ fontSize: 18, color, fontWeight: 600, margin: "4px 0 0" }}>
+                  {t(`level_${level}`)}
+                  {score !== null && <> &mdash; {t("risk_score", { score })}</>}
+                </p>
+              )}
               {/* Strategy doc #12: numeric confidence band chip. The
                   number is sourced from the API's calculate_confidence_pct
                   output, which blends data coverage × signal margin. */}
-              {typeof result?.confidence_pct === "number" && (
+              {level && typeof result.confidence_pct === "number" && (
                 <p
-                  style={{
-                    fontSize: 13,
-                    color: "#94a3b8",
-                    margin: "4px 0 0",
-                    fontWeight: 500,
-                  }}
-                  title="Confidence is derived from how many checks ran and how far the score sits from the next-tier boundary. Never 100% — the conformal point."
+                  style={{ fontSize: 13, color: "#94a3b8", margin: "4px 0 0", fontWeight: 500 }}
+                  title={t("confidence_hint")}
                 >
-                  Confidence: {result.confidence_pct}% &middot;{" "}
-                  <a
-                    href="/transparency"
-                    style={{ color: "#60a5fa", textDecoration: "underline" }}
-                  >
-                    How we measure
+                  {t("confidence", { pct: result.confidence_pct })} &middot;{" "}
+                  <a href={href("/transparency/methodology")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
+                    {t("how_we_measure")}
                   </a>
                 </p>
               )}
             </div>
           </div>
 
-          {result?.verdict && (
-            <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.6, marginBottom: 20 }}>{result.verdict}</p>
-          )}
+          <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.6, marginBottom: 20 }}>
+            {level ? t(`verdict_${level}`, { domain: shownDomain }) : t("check_failed", { domain: shownDomain })}
+          </p>
 
-          {result?.signals && result.signals.length > 0 && (
+          {signals.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <h3 style={{ fontSize: 14, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-                Detection Signals
-              </h3>
-              {result.signals.map((s: string, i: number) => (
+              <h2 style={{ fontSize: 14, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                {t("signals_heading")}
+              </h2>
+              {signals.map((s, i) => (
                 <div key={i} style={{ display: "flex", gap: 8, padding: "6px 0", fontSize: 14, color: "#94a3b8" }}>
                   <span style={{ color }}>&#x2022;</span>
                   <span>{s}</span>
@@ -294,22 +315,25 @@ export default async function CheckPage({ params }: Props) {
             </div>
           )}
 
-          {result?.confidence === "low" && (
+          {level && result.confidence === "low" && (
             <p style={{ fontSize: 13, color: "#f59e0b", fontStyle: "italic", marginBottom: 20 }}>
-              This is a basic analysis. Install Cleanway for real-time protection with 9 threat intelligence sources.
+              {t("low_confidence")}
             </p>
           )}
 
-          <ShareScanButton domain={decodedDomain} level={level} score={score} url={canonical} />
+          {level && (
+            <ShareScanButton
+              text={t("share_text", { verdict: t(`level_${level}`), domain: shownDomain, score: String(score ?? "?") })}
+              title={t("share_title", { domain: shownDomain })}
+              url={canonical}
+            />
+          )}
         </div>
 
         {/* CTA */}
         <div style={{ background: "#1e293b", borderRadius: 16, padding: 24, textAlign: "center" }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", marginBottom: 8 }}>Get real-time protection</h2>
-          <p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>
-            Cleanway checks every link automatically. 16 threat sources, ML-powered, server-blind by design.
-            See the <a href="/transparency" style={{ color: "#60a5fa" }}>quarterly transparency report</a>.
-          </p>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", marginBottom: 8 }}>{t("cta_title")}</h2>
+          <p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>{t("cta_body")}</p>
           <PrimaryInstallLink
             androidLabel={hero("cta_android")}
             style={{
@@ -323,67 +347,39 @@ export default async function CheckPage({ params }: Props) {
               textDecoration: "none",
             }}
           >
-            Add to Chrome &mdash; Free
+            {hero("cta_primary")}
           </PrimaryInstallLink>
           <div style={{ marginTop: 20 }}>
-            <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />
+            <InstallButtons platforms={["android", "ios"]} size="sm" />
           </div>
           <div style={{ marginTop: 12 }}>
-            <InstallButtons platforms={["ios", "android"]} size="sm" />
+            <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />
           </div>
         </div>
 
         {/* SEO: Structured Data */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
 
         {/* Check Another */}
         <div style={{ marginTop: 32, textAlign: "center" }}>
-          <p style={{ color: "#64748b", fontSize: 14, marginBottom: 12 }}>Check another domain:</p>
-          <form action="/check" method="get" style={{ display: "flex", gap: 8, maxWidth: 400, margin: "0 auto" }}>
-            {/* aria-label provides an accessible name for the input.
-                Placeholder text alone disappears on focus + isn't read
-                by some screen readers. (Audit landing-a11y MEDIUM
-                "Domain search form in check/[domain]/page.tsx has no
-                accessible label — placeholder only".) */}
-            <input
-              name="q"
-              placeholder="Enter domain..."
-              aria-label="Domain to check"
-              style={{
-                flex: 1,
-                padding: "10px 14px",
-                borderRadius: 8,
-                border: "1px solid #334155",
-                background: "#0f172a",
-                color: "#e2e8f0",
-                fontSize: 14,
-                outline: "none",
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                background: "#3b82f6",
-                color: "white",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: 8,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Check
-            </button>
-          </form>
+          <p style={{ color: "#64748b", fontSize: 14, marginBottom: 12 }}>{t("another")}</p>
+          <CheckForm
+            locale={safeLocale}
+            placeholder={t("input_placeholder")}
+            label={t("input_label")}
+            submit={t("submit")}
+            invalid={t("invalid_input")}
+            variant="compact"
+          />
         </div>
 
         <p style={{ textAlign: "center", fontSize: 12, color: "#475569", marginTop: 32 }}>
-          Data from 16 threat intelligence sources. Updated in real-time. Quarterly{" "}
-          <a href="/transparency" style={{ color: "#60a5fa" }}>
-            transparency report
+          {t("footer_note")}{" "}
+          <a href={href("/transparency/methodology")} style={{ color: "#60a5fa" }}>
+            {t("how_we_measure")}
           </a>{" "}&middot;{" "}
-          <a href="/privacy-policy" style={{ color: "#60a5fa" }}>
-            Privacy Policy
+          <a href={href("/privacy-policy")} style={{ color: "#60a5fa" }}>
+            {t("privacy_link")}
           </a>
         </p>
       </div>

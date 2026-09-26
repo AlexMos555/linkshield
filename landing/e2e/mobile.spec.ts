@@ -82,7 +82,6 @@ test.describe("primary install CTA routing", () => {
     // it is the same component, and a CSS breakpoint is not a platform check.
     await expect(page.getByTestId("primary-install-nav")).toHaveAttribute("href", "/android");
     await expect(page.getByTestId("primary-install-final")).toHaveAttribute("href", "/android");
-    await expect(page.getByTestId("primary-install-free-card")).toHaveAttribute("href", "/android");
   });
 
   test("iOS visitors keep the DNS profile path", async ({ page }) => {
@@ -97,7 +96,6 @@ test.describe("primary install CTA routing", () => {
 
     const hero = page.getByTestId("primary-install-hero");
     await expect(hero).toHaveAttribute("href", "/dns");
-    await expect(hero).toHaveText("Add to Chrome — Free");
-    await expect(page.getByTestId("primary-install-free-card")).toHaveAttribute("href", "/dns");
+    await expect(hero).toHaveText("Get protected — free");
   });
 });
