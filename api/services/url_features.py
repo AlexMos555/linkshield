@@ -50,6 +50,134 @@ _VOWELS = set("aeiou")
 _CONSONANTS = set("bcdfghjklmnpqrstvwxyz")
 
 
+# ═══════════════════════════════════════════════════════════════
+# CYRILLIC LANGUAGE MODEL
+#
+# Cleanway is RU-first. The English model above cannot judge a Russian
+# name — _ENGLISH_BIGRAMS has no Cyrillic pairs, so bigram_score() returns
+# 0.0 for every Russian name, and _VOWELS/_CONSONANTS are ASCII-only, so a
+# Cyrillic name has a 0.0 vowel ratio. Applied to Cyrillic those functions
+# measure "not English", not "random".
+#
+# Rather than skip Cyrillic names entirely (which left an all-Cyrillic DGA
+# name with ZERO lexical scrutiny), the same three questions are asked
+# against Cyrillic reference data.
+# ═══════════════════════════════════════════════════════════════
+
+# The 10 Russian vowels. ё is kept distinct from е: it is a separate letter
+# and appears as such in domain names.
+CYRILLIC_VOWELS = set("аеёиоуыэюя")
+# The 21 Russian consonants.
+CYRILLIC_CONSONANTS = set("бвгджзйклмнпрстфхцчшщ")
+# ъ (hard sign) and ь (soft sign) are SIGNS, not letters that are spoken.
+# They modify the consonant in front of them and never occur alone, so they
+# count as NEITHER vowel nor consonant: counting them as consonants would
+# read 'объясняем' as a 3-consonant run. Measured on the 653 Cyrillic names
+# in data/top-1m.csv, treating them as consonants raises the >= 5-run false
+# positive rate from 0.00% to 0.46%.
+CYRILLIC_SIGNS = set("ъь")
+
+# Russian bigram frequencies, as percentages — same units and same top-50
+# shape as _ENGLISH_BIGRAMS above.
+#
+# DERIVED, not invented: counted over packages/i18n-strings/src/ru.json,
+# the project's own Russian copy (24,408 in-word bigrams, 483 distinct
+# pairs), lowercased, with everything outside а-яё treated as a word
+# boundary. That is a PROSE corpus, deliberately independent of the domain
+# names the thresholds were then calibrated against, so the calibration is
+# not circular. It is small — 24k bigrams is thin — and the top-50 cut
+# inherits the same weakness as the English table: a keyboard mash made of
+# adjacent home-row keys ('выапролдэ') scores like a real word because it
+# contains genuinely common pairs. Re-derive it if the Russian copy is
+# substantially rewritten.
+_RUSSIAN_BIGRAMS: dict[str, float] = {
+    "ро": 1.92, "пр": 1.75, "ст": 1.74, "ов": 1.71, "ен": 1.64,
+    "ит": 1.61, "ни": 1.60, "на": 1.59, "то": 1.58, "по": 1.42,
+    "те": 1.39, "ер": 1.35, "но": 1.32, "не": 1.23, "ве": 1.13,
+    "ра": 1.13, "ка": 1.08, "ть": 1.02, "ва": 1.00, "ет": 0.99,
+    "та": 0.98, "от": 0.95, "ан": 0.93, "ко": 0.90, "ки": 0.83,
+    "ны": 0.82, "ос": 0.80, "од": 0.78, "ри": 0.77, "да": 0.75,
+    "ре": 0.75, "ло": 0.74, "ес": 0.73, "за": 0.68, "ас": 0.67,
+    "ат": 0.65, "ли": 0.65, "йт": 0.64, "ок": 0.62, "ол": 0.62,
+    "ль": 0.61, "об": 0.60, "ск": 0.59, "че": 0.59, "тр": 0.58,
+    "ся": 0.57, "се": 0.57, "ой": 0.55, "де": 0.54, "мо": 0.53,
+}
+
+
+def name_script(s: str) -> str:
+    """Which language model, if any, may judge this name.
+
+    Returns 'ascii' (the English model), 'cyrillic' (the Russian model), or
+    'other' — a script we have no model for, where every lexical heuristic
+    must stand down rather than guess. Digits, hyphens and other non-letters
+    do not decide the answer; a name with no letters at all is 'ascii', which
+    is what the ASCII-only digit/length heuristics already assume.
+
+    A MIXED-script name is 'other' on purpose. It is not a name in one
+    language, it is the signature of a homograph attack, and _check_homograph
+    is the tool for it — a mixed name must never be waved through here on the
+    strength of whichever alphabet happened to win a majority vote.
+    """
+    letters = [c for c in s if c.isalpha()]
+    if not letters:
+        return "ascii"
+    if all(c.isascii() for c in letters):
+        return "ascii"
+    if all(c in CYRILLIC_VOWELS or c in CYRILLIC_CONSONANTS or c in CYRILLIC_SIGNS
+           for c in (c.lower() for c in letters)):
+        return "cyrillic"
+    return "other"
+
+
+def russian_bigram_score(s: str) -> float:
+    """Russian counterpart of bigram_score(). Higher = more word-like."""
+    s = s.lower()
+    if len(s) < 2:
+        return 0.5
+
+    total_freq = 0.0
+    count = 0
+    for i in range(len(s) - 1):
+        bigram = s[i:i + 2]
+        if bigram.isalpha():
+            total_freq += _RUSSIAN_BIGRAMS.get(bigram, 0.0)
+            count += 1
+
+    if count == 0:
+        return 0.0
+
+    # Same /2.0 normalisation as the English score, so the two are on one
+    # scale and the calibrated thresholds stay comparable.
+    return round(min((total_freq / count) / 2.0, 1.0), 3)
+
+
+def cyrillic_vowel_consonant_ratio(s: str) -> float:
+    """Russian counterpart of vowel_consonant_ratio()."""
+    s = s.lower()
+    vowels = sum(1 for c in s if c in CYRILLIC_VOWELS)
+    consonants = sum(1 for c in s if c in CYRILLIC_CONSONANTS)
+    if consonants == 0:
+        return 2.0 if vowels > 0 else 0.0
+    return round(vowels / consonants, 3)
+
+
+def cyrillic_consecutive_consonants_max(s: str) -> int:
+    """Russian counterpart of consecutive_consonants_max().
+
+    ъ and ь break a run — see CYRILLIC_SIGNS.
+    """
+    s = s.lower()
+    max_run = 0
+    current = 0
+    for c in s:
+        if c in CYRILLIC_CONSONANTS:
+            current += 1
+            max_run = max(max_run, current)
+        else:
+            current = 0
+    return max_run
+
+
 def bigram_score(s: str) -> float:
     """
     Score how "English-like" a string is based on bigram frequency.
