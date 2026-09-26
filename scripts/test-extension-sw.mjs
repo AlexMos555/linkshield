@@ -350,7 +350,9 @@ async function runTree(tree) {
       assert.ok(banner.includes(msg("credguard_banner_title")), `[${locale}] banner: ${banner}`);
       assert.ok(banner.includes(msg("credguard_dismiss")), `[${locale}] banner: ${banner}`);
       assert.ok(!banner.includes(english.credguard_banner_advice.message), `English left in banner: ${banner}`);
-      await tab.click("button");
+      // Enter in the password field, not a click: the fixed banner can sit
+      // on top of this tiny page's button (it did on the Linux runner).
+      await tab.press('input[type="password"]', "Enter");
       const modal = await (await tab.waitForSelector("#ls-credguard-modal", { timeout: 5000 })).innerText();
       for (const key of ["credguard_modal_title", "credguard_button_cancel", "credguard_button_override"]) {
         assert.ok(modal.includes(msg(key)), `[${locale}] modal lacks ${key}: ${modal}`);
