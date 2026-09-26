@@ -6,9 +6,25 @@ empty set and blocked nothing (a dead feature). This job aggregates fresh
 phishing/malware hosts from free bulk feeds and rebuilds the set on a schedule,
 so DNS-level blocking actually works.
 
-Sources (free, no API key, bulk):
-  * URLhaus  — abuse.ch online URL CSV
-  * OpenPhish — community phishing feed (feed.txt)
+Sources (free, no API key, bulk). Every one of them is redistributable — the
+licence is quoted beside its URL constant below, and a source whose terms do
+not clearly allow shipping the names inside a paid product does not belong
+here no matter how good the data is:
+  * URLhaus          — abuse.ch online URL CSV
+  * OpenPhish        — community phishing feed (feed.txt)
+  * Phishing.Database — mitchellkrogza phishing-domains-ACTIVE (MIT)
+  * phishing.army    — extended blocklist
+  * Phishunt.io      — hourly phishing URL feed (CC0 1.0)
+  * TweetFeed.live   — 365-day OSINT window from reporting accounts (CC0 1.0)
+  * CERT Polska      — Lista Ostrzeżeń, hole.cert.pl (unrestricted processing)
+  * CSIRT Italia/ACN — public MISP feed, TLP:CLEAR events only
+
+Exact-host-only sources: CERT Polska and CSIRT Italia name the precise host
+and say so — CERT Polska's API spec is explicit that listing `a.example.com`
+must block `a.example.com` and `b.a.example.com` but NOT `example.com`. Their
+names therefore never promote a registrable (see `exact_only` in
+build_blockset): both feeds list tenant hosts on site builders and hacked
+legitimate sites, and promoting those apexes would darken a whole platform.
 
 Safety: the DoH gateway checks BOTH the exact QNAME and the registrable base
 (doh_gateway.is_blocked_redis). So we add the FULL phishing hostname always, and
@@ -29,6 +45,8 @@ go through every guard again on every run (api/services/blocklist_retention.py).
 Usage:
     python scripts/refresh_dangerous_domains.py            # fetch + write Redis
     python scripts/refresh_dangerous_domains.py --dry-run  # fetch + report, no write
+    python scripts/refresh_dangerous_domains.py --dry-run --artifact-out /tmp/list.bin
+        # …then: python3 scripts/eval_blocklist_coverage.py --artifact /tmp/list.bin
 
 Env:
     REDIS_URL              — connection string (required unless --dry-run)
@@ -39,6 +57,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+import csv
+import encodings.idna
 import json
 import logging
 import os
@@ -124,6 +144,40 @@ OPENPHISH_FEED = "https://openphish.com/feed.txt"
 PHISHING_DATABASE = ("https://raw.githubusercontent.com/mitchellkrogza/"
                      "Phishing.Database/master/phishing-domains-ACTIVE.txt")
 PHISHING_ARMY = "https://phishing.army/download/phishing_army_blocklist_extended.txt"
+
+# ── 2026-09-21: four more feeds, each licence-checked before it was wired ──
+#
+# Phishunt.io — hourly, one phishing URL per line. Terms §7 "Data license":
+# "The data distributed through phishunt.io (JSON, CSV, TXT feeds, and API
+# responses) is released into the public domain under Creative Commons CC0
+# 1.0." Their §3 calls the data "suspicion, not verdict", so it is fine to
+# block on and NOT fine to cite as proof anywhere in marketing copy.
+PHISHUNT_FEED = "https://phishunt.io/feed.txt"
+
+# TweetFeed.live — 365-day rolling window of IOCs reported by ~50 security
+# accounts. README: "The data feeds (CSV, JSON, RSS, MISP, STIX) and the
+# public API responses are released under CC0 1.0 Universal - no rights
+# reserved, reuse freely, no attribution required." Never touch /v1/ioc or
+# external.json: that block is abuse.ch-licensed, not CC0.
+TWEETFEED_YEAR = "https://raw.githubusercontent.com/0xDanielLopez/TweetFeed/master/year.csv"
+
+# CERT Polska — Lista Ostrzeżeń. API v2 spec, §1: "Treść Listy Ostrzeżeń jest
+# publicznie dostępna, a zawarte w niej informacje mogą być bez ograniczeń
+# przetwarzane przez wszystkie podmioty zarówno w sposób manualny, jak i
+# zautomatyzowany." The same paragraph obliges us to UN-block names that leave
+# the list; we rebuild the set from scratch every run, so a name CERT Polska
+# drops leaves us within one retention window and nothing is cached across
+# runs. Listed under art. 20 of the 2023 Polish anti-abuse act (phishing and
+# fraud only, with a statutory appeal to UKE) — not a censorship registry.
+CERT_PL_DOMAINS = "https://hole.cert.pl/domains/v2/domains.txt"
+
+# CSIRT Italia / ACN — public MISP feed. Every event carries tlp:clear, which
+# under the Traffic Light Protocol means unlimited disclosure; we read no
+# event that is not marked CLEAR. Malware C2 (AsyncRAT, RedLine, Remcos …),
+# ~44 domains/day — it will not move the phishing benchmark, it blocks
+# infostealer callbacks.
+CSIRT_IT_MANIFEST = "https://www.csirt.gov.it/feed-misp/manifest.json"
+
 BATCH = 5_000
 SET_KEY = "dangerous_domains"
 TTL_SECONDS = 60 * 60 * 24 * 3  # 3-day safety TTL: if the cron dies, the set expires
@@ -307,11 +361,13 @@ async def _fetch(url: str) -> str:
                                  headers={"User-Agent": "cleanway-blocklist"}) as c:
         r = await c.get(url)
         r.raise_for_status()
-        return r.text
+        # A UTF-8 BOM decodes to a character, not nothing. On a URL feed it
+        # glues itself to the first line's scheme, urlparse() then finds no
+        # host, and the feed loses its first entry without a word.
+        return r.text.lstrip("\ufeff")
 
 
 def _hosts_from_urlhaus(text: str):
-    import csv
     for line in text.splitlines():
         if line.startswith("#") or not line.strip():
             continue
@@ -344,6 +400,112 @@ def _hosts_from_openphish(text: str):
             h = urlparse(line).hostname
             if h:
                 yield h.lower()
+
+
+# TLDs that are also common file extensions. TweetFeed's reporters post
+# malware ATTACHMENT NAMES in the domain/url columns ('documents.zip',
+# 'invoices.zip', 'bill.zip', 'incometax.zip', 'brussels.zip' — 90 of them in
+# the 365-day window, most wrapped in a fake 'http://' as well). Those are
+# filenames, not hosts: publishing them would block whoever legitimately
+# registers documents.zip. A real .zip phishing site still reaches us through
+# the other six feeds.
+FILENAME_TLDS = (".zip", ".mov")
+
+
+def _hosts_from_tweetfeed(text: str):
+    """TweetFeed CSV: `date,user,type,value,tags,tweet`, no header row.
+
+    Only `domain` and `url` rows carry a name — `ip`, `md5`, `sha256` rows do
+    not, and yielding them would put IP literals and hex blobs through every
+    guard for nothing. Values arrive as raw Unicode; _norm_host() later folds
+    them to punycode.
+    """
+    for row in csv.reader(text.splitlines()):
+        if len(row) < 4:
+            continue
+        kind, value = row[2].strip().lower(), row[3].strip()
+        if kind == "domain":
+            host = value
+        elif kind == "url":
+            host = urlparse(value).hostname or ""
+        else:
+            continue
+        host = host.strip().lower().rstrip(".")
+        if not host or "/" in host or host.endswith(FILENAME_TLDS):
+            continue
+        yield host
+
+
+# MISP attribute types that hold a DNS name. `domain|ip` is a composite
+# ('evil.example|203.0.113.7') — the name is the part before the bar.
+MISP_HOST_TYPES = frozenset({"domain", "hostname", "domain|ip"})
+# TLP markings that permit unlimited redistribution. Anything else (green,
+# amber, red) is shared in confidence and is not ours to publish.
+TLP_OPEN = frozenset({"tlp:clear", "tlp:white"})
+# One GET per event: cap the fan-out so a manifest that suddenly lists
+# thousands of events cannot turn one cron run into a crawl of someone's site.
+MISP_MAX_EVENTS = 80
+MISP_EVENT_PAUSE = 0.3  # seconds between event fetches — be a polite guest
+
+
+def _is_tlp_open(tags) -> bool:
+    """True only when a TLP marking is present AND every marking is open.
+
+    The redistribution grant for these feeds IS the TLP marking, so 'no
+    marking' and 'also marked amber' both mean 'not ours to ship'.
+    """
+    names = {str(t.get("name", "")).strip().lower() for t in tags if isinstance(t, dict)}
+    tlp = {n for n in names if n.startswith("tlp:")}
+    return bool(tlp) and tlp <= TLP_OPEN
+
+
+def _hosts_from_misp_event(event: dict):
+    attributes = list(event.get("Attribute") or [])
+    for obj in event.get("Object") or []:
+        attributes.extend(obj.get("Attribute") or [])
+    for attr in attributes:
+        if not isinstance(attr, dict):
+            continue
+        if str(attr.get("type", "")).strip().lower() not in MISP_HOST_TYPES:
+            continue
+        value = str(attr.get("value") or "").split("|", 1)[0]
+        host = value.strip().lower().rstrip(".")
+        if host and "/" not in host:
+            yield host
+
+
+async def _fetch_misp_feed(manifest_url: str, max_events: int = MISP_MAX_EVENTS) -> list[str]:
+    """Hosts from a MISP feed: manifest.json plus one JSON file per event.
+
+    Events are read newest-first and only when TLP-open, at both the manifest
+    and the event level (the manifest is a summary — the event file is the
+    thing we actually redistribute). One unreadable event is skipped; a
+    manifest we cannot read raises, so the caller records the feed as down
+    rather than treating its names as departed.
+    """
+    manifest = json.loads(await _fetch(manifest_url))
+    if not isinstance(manifest, dict):
+        raise ValueError(f"MISP manifest is {type(manifest).__name__}, expected an object")
+    base = manifest_url.rsplit("/", 1)[0]
+    listed = [(str(meta.get("date", "")), uuid) for uuid, meta in manifest.items()
+              if isinstance(meta, dict) and _is_tlp_open(meta.get("Tag") or [])]
+    newest = [uuid for _, uuid in sorted(listed, reverse=True)[:max_events]]
+    if len(listed) < len(manifest):
+        logger.info("MISP %s: %d of %d events are TLP-open", base, len(listed), len(manifest))
+
+    hosts: list[str] = []
+    for i, uuid in enumerate(newest):
+        if i:
+            await asyncio.sleep(MISP_EVENT_PAUSE)
+        try:
+            event = json.loads(await _fetch(f"{base}/{uuid}.json")).get("Event") or {}
+        except Exception as e:  # noqa: BLE001
+            logger.warning("MISP event %s unreadable (%s) — skipping", uuid, e)
+            continue
+        if not _is_tlp_open(event.get("Tag") or []):
+            continue
+        hosts.extend(_hosts_from_misp_event(event))
+    return hosts
 
 
 def _load_public_suffixes_in_top() -> set[str]:
@@ -393,22 +555,47 @@ def is_hostname(host: str) -> bool:
     return all(_LABEL_OK.match(label) for label in labels)
 
 
+def _to_punycode(host: str) -> str:
+    """An IDN in the wire form DNS actually carries, '' if it has none.
+
+    The feeds disagree: CERT Polska and Phishing.Database ship punycode,
+    TweetFeed ships raw Unicode ('mantenimentgencatwebactualització.weebly.com',
+    'автозаим.рф'). is_hostname() is an ASCII regex, so an un-encoded name was
+    dropped without a word — and a resolver only ever asks for the xn-- form,
+    so the dropped names were exactly the ones the phone needed a hash for.
+    """
+    if host.isascii():
+        return host
+    try:
+        return ".".join(
+            label if label.isascii() else encodings.idna.ToASCII(label).decode("ascii")
+            for label in host.split(".")
+        )
+    except (UnicodeError, ValueError):
+        return ""
+
+
 def _norm_host(h: str) -> str:
     """One normalisation for every consumer. Without it a trailing-dot host
     ('example.com.') reached the gate and the Redis set unnormalised while the
     artifact renderer stripped the dot later — so the gate's set-intersection
     could be defeated by a dot, and the registrable of 'example.com.' was
-    'com.', a bare TLD."""
-    return h.strip().lower().rstrip(".")
+    'com.', a bare TLD. IDNs are folded to punycode here for the same reason:
+    one form, decided once, for the gate, the artifact and every guard."""
+    return _to_punycode(h.strip().lower().rstrip("."))
 
 
-def present_names(hosts, public_suffixes: set[str] | None) -> set[str]:
+def present_names(hosts, public_suffixes: set[str] | None,
+                  exact_only: frozenset[str] | set[str] = frozenset()) -> set[str]:
     """Every name a current feed still backs: each feed host and the
     registrable it would promote. A published name outside this set has left
-    the feeds; one inside it is decided by the fresh build (and its guards)."""
+    the feeds; one inside it is decided by the fresh build (and its guards).
+
+    An exact-only host backs no registrable — claiming otherwise would keep a
+    platform apex alive in retention forever on the strength of one tenant."""
     names = {_norm_host(h) for h in hosts if h}
     names.discard("")
-    return names | {_registrable_domain(n, public_suffixes) for n in names}
+    return names | {_registrable_domain(n, public_suffixes) for n in names - set(exact_only)}
 
 
 def _apply_veto(names: set[str], veto: frozenset[str]) -> set[str]:
@@ -428,7 +615,8 @@ def _apply_veto(names: set[str], veto: frozenset[str]) -> set[str]:
 
 def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None = None,
                    is_popular=None, public_suffixes: set[str] | None = None,
-                   brand_owned: frozenset[str] | None = None) -> set[str]:
+                   brand_owned: frozenset[str] | None = None,
+                   exact_only: frozenset[str] | set[str] = frozenset()) -> set[str]:
     """Decide, per feed hostname, what (if anything) to block.
 
     Never darken a shared or popular host — a false positive here breaks a
@@ -443,7 +631,13 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
                      host under a tenant suffix but carrying >= SHARED_URL_THRESHOLD
                      feed URLs (a shared file host, not a tenant).
       EXACT ONLY     host is one tenant's site under a shared suffix
-                     (evil.github.io, gwcu.us.org, x.blob.core.windows.net).
+                     (evil.github.io, gwcu.us.org, x.blob.core.windows.net);
+                     or host is in `exact_only` — a name from a feed that
+                     addresses the precise host (CERT Polska, CSIRT Italia)
+                     or a retained name no current feed still backs. Those
+                     never promote a registrable: CERT Polska lists tenant
+                     sites on turbo.site / webnode.ru / com.nl, and promoting
+                     one would darken every other tenant on the platform.
       EXACT + REG    dedicated phishing domain: block the host and its
                      registrable (login.scotiabano.com + scotiabano.com).
       VETO           last, on the result: hand-verified legit hosts
@@ -503,7 +697,7 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
         if popular(reg) or reg in BIG_ORGS:
             continue  # popular org's own host — never
         out.add(h)
-        if reg:
+        if reg and h not in exact_only:
             out.add(reg)  # dedicated phishing domain
     veto = load_brand_owned_hosts() if brand_owned is None else frozenset(brand_owned)
     return _apply_veto(out, LEGIT_SHARED_TENANTS | veto)
@@ -582,7 +776,8 @@ async def _tranco_guard(r, hosts, public_suffixes: set[str] | None):
 
 
 async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: set[str] | None,
-                          now: float, dry_run: bool, feeds_failed: tuple[str, ...] = ()) -> set[str]:
+                          now: float, dry_run: bool, feeds_failed: tuple[str, ...] = (),
+                          exact_only: frozenset[str] | set[str] = frozenset()) -> set[str]:
     """Names to keep although no feed lists them now (blocklist_retention).
     Never raises and never blocks a publish: if the retention set cannot be
     read or written, the set is built from the feeds alone. A plan that was
@@ -601,7 +796,8 @@ async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: 
     except Exception as e:  # noqa: BLE001
         logger.warning("retention read failed (%s) — publishing from the feeds alone", e)
         return set()
-    plan = retention.plan_retention(stored, previous or set(), present_names(hosts, public_suffixes), now, window,
+    plan = retention.plan_retention(stored, previous or set(),
+                                    present_names(hosts, public_suffixes, exact_only), now, window,
                                     record_departures=not feeds_failed)
     if plan.skipped:
         failed = f" ({', '.join(feeds_failed)})" if feeds_failed else ""
@@ -622,27 +818,44 @@ async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: 
 
 
 async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
-                  now: float | None = None) -> int:
+                  now: float | None = None, artifact_out: str | None = None) -> int:
     now = time.time() if now is None else now
     top_100k = _load_top_100k()
     hosts: list[str] = []  # one entry per feed URL — repeats feed the shared-host guard
+    exact_hosts: list[str] = []  # feeds that address the precise host; never promote a registrable
     feeds_failed: list[str] = []  # an unreadable feed must not look like its names all "left"
-    for name, url, parser in (
-        ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus),
-        ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish),
-        ("Phishing.Database", PHISHING_DATABASE, _hosts_from_domain_list),
-        ("phishing.army", PHISHING_ARMY, _hosts_from_domain_list),
+    for name, url, parser, promote in (
+        ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus, True),
+        ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish, True),
+        ("Phishing.Database", PHISHING_DATABASE, _hosts_from_domain_list, True),
+        ("phishing.army", PHISHING_ARMY, _hosts_from_domain_list, True),
+        ("Phishunt", PHISHUNT_FEED, _hosts_from_openphish, True),
+        ("TweetFeed", TWEETFEED_YEAR, _hosts_from_tweetfeed, True),
+        ("CERT Polska", CERT_PL_DOMAINS, _hosts_from_domain_list, False),
     ):
+        bucket = hosts if promote else exact_hosts
         try:
             text = await _fetch(url)
-            n0 = len(hosts)
-            hosts.extend(parser(text))
-            logger.info("%s: +%d host entries (%d distinct so far)", name, len(hosts) - n0, len(set(hosts)))
+            n0 = len(bucket)
+            bucket.extend(parser(text))
+            logger.info("%s: +%d host entries%s (%d distinct so far)", name, len(bucket) - n0,
+                        "" if promote else " (exact-only)", len(set(hosts) | set(exact_hosts)))
         except Exception as e:  # noqa: BLE001
             logger.warning("%s fetch failed: %s (continuing)", name, e)
             feeds_failed.append(name)
 
-    if not hosts:
+    # A MISP feed is a manifest plus one GET per event, so it cannot ride the
+    # loop above — but it must fail the same way: logged, skipped, and counted
+    # as an outage so retention does not read its absence as a mass departure.
+    try:
+        n0 = len(exact_hosts)
+        exact_hosts.extend(await _fetch_misp_feed(CSIRT_IT_MANIFEST))
+        logger.info("CSIRT Italia: +%d host entries (exact-only)", len(exact_hosts) - n0)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("CSIRT Italia fetch failed: %s (continuing)", e)
+        feeds_failed.append("CSIRT Italia")
+
+    if not hosts and not exact_hosts:
         logger.error("No hosts fetched from any feed — refusing to wipe the set")
         return 2
 
@@ -661,13 +874,27 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     previous = await _read_previous(r)
     # Retained names join the feed hosts BEFORE the build, so every guard
     # below (Tranco and top-100k veto, tenant rules, …) judges them afresh.
-    retained = await _retained_names(r, previous, hosts, public_suffixes, now, dry_run, tuple(feeds_failed))
-    candidate_hosts = hosts + sorted(retained)
+    promoting = {_norm_host(h) for h in hosts}
+    promoting.discard("")
+    exact_only = {_norm_host(h) for h in exact_hosts} - promoting
+    exact_only.discard("")
+    feed_hosts = hosts + exact_hosts
+    retained = await _retained_names(r, previous, feed_hosts, public_suffixes, now, dry_run,
+                                     tuple(feeds_failed), exact_only)
+    # A retained name is one no feed still lists, so nothing currently vouches
+    # for its registrable. Promoting it would invent a name that was never
+    # published while the host was live — a registrable that WAS published
+    # comes back through its own retention entry, not through promotion.
+    exact_only |= {_norm_host(n) for n in retained} - promoting
+    exact_only.discard("")
+    candidate_hosts = feed_hosts + sorted(retained)
     is_popular = await _tranco_guard(r, candidate_hosts, public_suffixes)
-    blockset = build_blockset(candidate_hosts, top_100k, is_popular=is_popular, public_suffixes=public_suffixes)
-    logger.info("Built dangerous set: %d entries (from %d feed URLs / %d distinct feed hosts; "
-                "%d retained-only names, %d of them passed the guards)",
-                len(blockset), len(hosts), len(set(hosts)), len(retained), len(retained & blockset))
+    blockset = build_blockset(candidate_hosts, top_100k, is_popular=is_popular,
+                              public_suffixes=public_suffixes, exact_only=exact_only)
+    logger.info("Built dangerous set: %d entries (from %d feed URLs / %d distinct feed hosts, "
+                "%d of them exact-only; %d retained-only names, %d of them passed the guards)",
+                len(blockset), len(feed_hosts), len(set(feed_hosts)), len(exact_only),
+                len(retained), len(retained & blockset))
     shared_all = default_shared_suffixes()
     ok, why = publish_gate(blockset, previous, top_100k | (public_suffixes or set()), shared_all, force=force)
     if not ok:
@@ -691,6 +918,13 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     meta = meta_for_v2(artifact)
     logger.info("mobile artifact v2: %s bytes, sha256 %s…, count %s (from %d names, %d redundant)",
                 len(artifact), meta["sha256"][:12], meta["count"], len(blockset), len(blockset) - len(minimal))
+    if artifact_out:
+        # The exact bytes a phone would download, on disk, so the coverage
+        # benchmark can score THIS build instead of whatever is live:
+        #   scripts/eval_blocklist_coverage.py --artifact <path>
+        with open(artifact_out, "wb") as f:
+            f.write(artifact)
+        logger.info("wrote artifact to %s", artifact_out)
 
     if dry_run:
         logger.info("[dry-run] would rebuild '%s' with %d entries; sample: %s",
@@ -837,8 +1071,11 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--dry-run", action="store_true", help="Fetch + report, do not write Redis")
     p.add_argument("--force", action="store_true", help="Bypass the churn gate (intentional big change)")
+    p.add_argument("--artifact-out", default=None,
+                   help="Also write the phone artifact to this path (for eval_blocklist_coverage.py --artifact)")
     args = p.parse_args()
-    return asyncio.run(refresh(os.environ.get("REDIS_URL", "").strip() or None, args.dry_run, force=args.force))
+    return asyncio.run(refresh(os.environ.get("REDIS_URL", "").strip() or None, args.dry_run,
+                               force=args.force, artifact_out=args.artifact_out))
 
 
 if __name__ == "__main__":
