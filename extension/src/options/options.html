@@ -483,10 +483,9 @@
 
   <div class="saved" id="saved-msg">Settings saved</div>
 
-  <!-- TweetNaCl loaded as classic scripts BEFORE options.js so
-       family-crypto.js (dynamically imported) finds globalThis.nacl. -->
-  <script src="../utils/vendor/tweetnacl.min.js"></script>
-  <script src="../utils/vendor/tweetnacl-util.min.js"></script>
+  <!-- No TweetNaCl tags here: family-crypto.js imports the vendored
+       tweetnacl.min.js itself, so it works the same in this page and in
+       the module service worker. -->
   <script src="../utils/vendor/qrcode-generator.min.js"></script>
   <script src="../utils/family-invite-url.js"></script>
   <script src="options.js"></script>

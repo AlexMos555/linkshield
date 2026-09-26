@@ -88,6 +88,7 @@ body { width: 380px; min-height: 300px; }
 .status-card[data-state="warning"]  { background: linear-gradient(180deg, var(--yellow-bg), transparent); }
 .status-card[data-state="danger"]   { background: linear-gradient(180deg, var(--red-bg), transparent); }
 .status-card[data-state="unknown"]  { background: linear-gradient(180deg, var(--bg-subtle), transparent); }
+.status-card[data-state="user_content"] { background: linear-gradient(180deg, var(--bg-subtle), transparent); }
 .status-card[data-state="scanning"] { background: linear-gradient(180deg, var(--blue-bg), transparent); }
 
 .status-icon {
@@ -106,6 +107,7 @@ body { width: 380px; min-height: 300px; }
 .status-card[data-state="safe"] .status-icon    { background: var(--green-bg); color: var(--green-text); border: 2px solid var(--green-border); }
 .status-card[data-state="warning"] .status-icon { background: var(--yellow-bg); color: var(--yellow-text); border: 2px solid var(--yellow-border); }
 .status-card[data-state="danger"] .status-icon  { background: var(--red-bg); color: var(--red-text); border: 2px solid var(--red-border); }
+.status-card[data-state="user_content"] .status-icon { color: var(--text-muted); border: 2px solid var(--border-subtle); }
 
 .status-title {
   font-size: 20px;

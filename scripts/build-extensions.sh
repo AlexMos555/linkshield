@@ -55,20 +55,10 @@ sync_one() {
     rsync -a "$dest/overrides/" "$dest/"
   fi
 
-  # Firefox MV2 compatibility: Promise-returning chrome.* APIs require Firefox's
-  # `browser.*` namespace. Inject a shim so our code (which uses .then()) works.
-  if [[ "$flavor" == "firefox" ]]; then
-    local bg="$dest/src/background/index.js"
-    if [[ -f "$bg" ]] && ! grep -q 'build-extensions.sh firefox shim' "$bg"; then
-      echo "  [firefox] Injecting browser.* promise shim into background/index.js"
-      {
-        printf '// build-extensions.sh firefox shim: re-alias chrome to browser so Promise APIs work under MV2\n'
-        printf 'if (typeof browser !== "undefined" && (typeof chrome === "undefined" || !chrome.storage || typeof chrome.storage.local.get === "function")) { var chrome = browser; }\n'
-        cat "$bg"
-      } > "$bg.tmp"
-      mv "$bg.tmp" "$bg"
-    fi
-  fi
+  # Firefox's chrome → browser alias is no longer injected here: the
+  # background is an ES module now, and text prepended to index.js cannot
+  # reach the modules it imports. src/background/browser-compat.js does it
+  # at runtime for every build instead (a no-op outside Firefox).
 }
 
 for entry in "${TARGETS[@]}"; do

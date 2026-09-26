@@ -274,8 +274,19 @@
   "locked_error_network": {
     "message": "Impossible de joindre nos serveurs. Vérifiez votre connexion."
   },
+  "status_user_content_title": {
+    "message": "Ici, n'importe qui peut publier une page"
+  },
+  "status_user_content_subtitle": {
+    "message": "Cleanway ne peut pas vérifier les pages sur $DOMAIN$. Ne saisissez ni données de carte ni mots de passe si vous ne savez pas qui a créé cette page.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "trust_footer": {
-    "message": "Vos données ne quittent jamais cet appareil"
+    "message": "Nous vérifions les adresses des sites, pas les liens complets ni le contenu des pages"
   },
   "block_title": {
     "message": "STOP"
@@ -326,7 +337,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Protégé par Cleanway. Vos données restent sur votre appareil."
+    "message": "Protégé par Cleanway. Nous ne vendons jamais vos données."
   },
   "block_voice_alert": {
     "message": "Arrêtez. Le site $DOMAIN$ est dangereux. Ne tapez pas votre mot de passe.",
@@ -352,10 +363,10 @@
     "message": "Chaque page, chaque lien. Badge vert : sûr. Rouge : arnaque."
   },
   "welcome_step2_title": {
-    "message": "Vos données restent avec vous"
+    "message": "La confidentialité d'abord"
   },
   "welcome_step2_desc": {
-    "message": "Nous ne vérifions que les noms de sites. Votre historique ne quitte jamais cet appareil."
+    "message": "Nous vérifions les adresses des sites, pas les liens complets ni le contenu des pages. Nous ne vendons jamais vos données."
   },
   "welcome_step3_title": {
     "message": "Sans ralentissement"
@@ -376,6 +387,323 @@
     "message": "Passer — commencer à naviguer"
   },
   "welcome_trust_footer": {
-    "message": "Le blocage est toujours gratuit. Vos données ne quittent jamais cet appareil."
+    "message": "Le blocage est gratuit pour toujours. Nous ne vendons jamais vos données."
+  },
+  "badge_label_safe": {
+    "message": "Sûr"
+  },
+  "badge_label_caution": {
+    "message": "Prudence"
+  },
+  "badge_label_dangerous": {
+    "message": "Dangereux"
+  },
+  "badge_label_unknown": {
+    "message": "Inconnu"
+  },
+  "badge_aria_safe": {
+    "message": "Lien sûr"
+  },
+  "badge_aria_caution": {
+    "message": "Prudence : vérifiez ce lien avant de lui faire confiance"
+  },
+  "badge_aria_dangerous": {
+    "message": "Lien dangereux : ne l'ouvrez pas"
+  },
+  "badge_score": {
+    "message": "Risque : $SCORE$/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_reason_official_site": {
+    "message": "Site officiel"
+  },
+  "badge_label_user_content": {
+    "message": "Vérification impossible"
+  },
+  "badge_aria_user_content": {
+    "message": "Lien vers un site où n'importe qui peut publier une page — non vérifié"
+  },
+  "badge_reason_user_content": {
+    "message": "Ici, n'importe qui peut publier une page. Ne saisissez ni données de carte ni mots de passe."
+  },
+  "audit_title": {
+    "message": "Audit de confidentialité"
+  },
+  "audit_trackers": {
+    "message": "Traqueurs"
+  },
+  "audit_cookies": {
+    "message": "Cookies"
+  },
+  "audit_data_fields": {
+    "message": "Champs de données"
+  },
+  "audit_fingerprint": {
+    "message": "Empreinte numérique"
+  },
+  "audit_yes": {
+    "message": "Oui"
+  },
+  "audit_no": {
+    "message": "Non"
+  },
+  "audit_share": {
+    "message": "Partager la note"
+  },
+  "audit_on_device": {
+    "message": "Effectué sur votre appareil"
+  },
+  "credguard_banner_title": {
+    "message": "Stop : cette page ressemble à une arnaque"
+  },
+  "credguard_banner_brand": {
+    "message": "Ressemble à $BRAND$, mais l'adresse est $HOST$, et non $LEGIT$.",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "legit": {
+        "content": "$3"
+      }
+    }
+  },
+  "credguard_banner_action": {
+    "message": "Ce formulaire envoie votre mot de passe à $HOST$, un autre site que celui affiché dans la barre d'adresse.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_tld": {
+    "message": "Le site utilise une adresse en $TLD$, souvent utilisée par les escrocs pour des pages piégées jetables.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_advice": {
+    "message": "Ne tapez pas votre mot de passe ici. Ouvrez le vrai site en saisissant vous-même son adresse."
+  },
+  "credguard_dismiss": {
+    "message": "Fermer"
+  },
+  "credguard_modal_title": {
+    "message": "Cleanway pense que ce formulaire est une arnaque"
+  },
+  "credguard_modal_intro": {
+    "message": "Si vous continuez, votre identifiant et votre mot de passe seront envoyés. Voici pourquoi cela semble dangereux :"
+  },
+  "credguard_reason_action": {
+    "message": "Le formulaire envoie votre mot de passe à $ACTION$, et non à $PAGE$.",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "page": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_typosquat": {
+    "message": "Cette adresse ($HOST$) ressemble à une faute de frappe de $BRAND$.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "brand": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_tld": {
+    "message": "Les escrocs utilisent souvent des adresses en $TLD$ pour de fausses pages de connexion.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_button_cancel": {
+    "message": "Ne pas envoyer, revenir en arrière"
+  },
+  "credguard_button_honeypot": {
+    "message": "Protéger mon mot de passe"
+  },
+  "credguard_button_honeypot_hint": {
+    "message": "Cleanway envoie avec le formulaire un mot de passe inventé au hasard à la place du vôtre."
+  },
+  "credguard_button_override": {
+    "message": "Envoyer quand même"
+  },
+  "credguard_toast_title": {
+    "message": "Cleanway a envoyé un mot de passe inventé"
+  },
+  "credguard_toast_body": {
+    "message": "Cleanway n'a pas envoyé votre vrai mot de passe avec ce formulaire. La page a pu le lire pendant que vous le tapiez : le plus sûr est de changer ce mot de passe."
+  },
+  "credguard_banner_title_weak": {
+    "message": "Prudence sur cette page de connexion"
+  },
+  "credguard_banner_advice_weak": {
+    "message": "Si vous n'êtes pas sûr que ce soit le vrai site, ouvrez-le en tapant vous-même son adresse."
+  },
+  "credguard_modal_title_weak": {
+    "message": "Vérifiez ce site avant d'envoyer votre mot de passe"
+  },
+  "credguard_page_flagged": {
+    "message": "Cleanway a déjà identifié ce site comme frauduleux."
+  },
+  "mpg_bitb": {
+    "message": "Cette page dessine une fausse barre d'adresse ($FAKE$). Vous êtes en réalité sur $REAL$.",
+    "placeholders": {
+      "fake": {
+        "content": "$1"
+      },
+      "real": {
+        "content": "$2"
+      }
+    }
+  },
+  "mpg_orphan": {
+    "message": "Cette page demande un mot de passe sans vrai formulaire de connexion : il pourrait être volé."
+  },
+  "menu_check_link": {
+    "message": "Vérifier ce lien avec Cleanway"
+  },
+  "menu_privacy_audit": {
+    "message": "Vérifier la confidentialité de cette page"
+  },
+  "command_open_popup": {
+    "message": "Ouvrir Cleanway"
+  },
+  "command_check_page": {
+    "message": "Vérifier cette page"
+  },
+  "family_notify_title_blocked": {
+    "message": "Cleanway a protégé un proche"
+  },
+  "family_notify_message_blocked": {
+    "message": "Un site frauduleux a été bloqué : $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_title_warned": {
+    "message": "Alerte famille"
+  },
+  "family_notify_message_warned": {
+    "message": "Un proche a été averti d'un site suspect : $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_message_blocked_unnamed": {
+    "message": "Un site frauduleux a été bloqué."
+  },
+  "family_notify_message_warned_unnamed": {
+    "message": "Un proche a été averti d'un site suspect."
+  },
+  "reason_flagged_dangerous": {
+    "message": "Google signale ce site comme dangereux"
+  },
+  "reason_flagged_phishing": {
+    "message": "Signalé comme hameçonnage"
+  },
+  "reason_on_blocklists": {
+    "message": "Sur des listes fiables d'arnaques et de spam"
+  },
+  "reason_threat_reports": {
+    "message": "Mentionné dans des rapports de menaces"
+  },
+  "reason_spreads_malware": {
+    "message": "Connu pour diffuser des logiciels malveillants"
+  },
+  "reason_imitates_brand": {
+    "message": "Le nom imite une marque connue"
+  },
+  "reason_lookalike_letters": {
+    "message": "Utilise des lettres ressemblantes pour vous tromper"
+  },
+  "reason_fake_brand_address": {
+    "message": "Un nom de marque de confiance caché dans une fausse adresse"
+  },
+  "reason_copies_brand_icon": {
+    "message": "Copie l'icône d'une marque connue"
+  },
+  "reason_no_https": {
+    "message": "La connexion n'est pas sécurisée (pas de HTTPS)"
+  },
+  "reason_missing_protections": {
+    "message": "Il manque des protections de sécurité de base"
+  },
+  "reason_raw_ip_address": {
+    "message": "L'adresse est un numéro, pas un vrai nom"
+  },
+  "reason_unusual_connection": {
+    "message": "Utilise une connexion inhabituelle"
+  },
+  "reason_hidden_destination": {
+    "message": "Cache où mène vraiment le lien"
+  },
+  "reason_very_new_site": {
+    "message": "Ce site a été créé très récemment"
+  },
+  "reason_scam_words": {
+    "message": "L'adresse contient des mots typiques des arnaques"
+  },
+  "reason_carries_personal_data": {
+    "message": "Le lien transporte vos données personnelles"
+  },
+  "reason_long_complex_address": {
+    "message": "L'adresse est anormalement longue et compliquée"
+  },
+  "reason_many_redirects": {
+    "message": "Le lien rebondit par plusieurs sites"
+  },
+  "reason_risky_ending": {
+    "message": "Utilise une terminaison prisée des arnaques"
+  },
+  "reason_risky_registrar": {
+    "message": "Enregistré via un service prisé des arnaqueurs"
+  },
+  "reason_random_name": {
+    "message": "Le nom semble généré au hasard"
+  },
+  "reason_detector_suspicious": {
+    "message": "Notre détecteur juge ce site suspect"
+  },
+  "reason_well_known_site": {
+    "message": "Un site web connu et fiable"
+  },
+  "reason_popular_site": {
+    "message": "Un site très utilisé et populaire"
+  },
+  "reason_detector_safe": {
+    "message": "Notre détecteur juge ce site sûr"
+  },
+  "reason_not_a_real_business": {
+    "message": "Pas configuré comme le site d'une vraie entreprise"
+  },
+  "reason_shifty_setup": {
+    "message": "Le site change sans cesse d'emplacement, une astuce d'arnaque courante"
+  },
+  "reason_padded_address": {
+    "message": "L'adresse est gonflée de morceaux en trop pour cacher le vrai nom"
+  },
+  "reason_shared_hosting": {
+    "message": "Hébergé sur un service gratuit où n'importe qui peut créer un site"
   }
 }

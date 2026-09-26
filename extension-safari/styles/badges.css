@@ -45,6 +45,14 @@
   border: 1px solid #fcd34d;
 }
 
+/* Anyone can publish on this host (docs.google.com, forms.yandex.ru…), so
+   the page itself was not checked: neither green nor red. */
+.ls-neutral {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
 .ls-dangerous {
   background: #fee2e2;
   color: #dc2626;
@@ -81,10 +89,15 @@
   padding: 10px 14px;
   font-size: 12px;
   line-height: 1.5;
-  white-space: nowrap;
+  /* Wrap long (translated) reason lines inside the box: max-content sizes
+     the box to its text, max-width caps it, and the text wraps from there.
+     nowrap let a long line run out past the box edge. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  width: max-content;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   min-width: 220px;
-  max-width: 350px;
+  max-width: 320px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 

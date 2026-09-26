@@ -24,25 +24,48 @@
  * Click handling: notification.onClicked opens the Family Hub section
  * of the Options page. Wired in background/index.js, not here, so the
  * persistent listener doesn't get redefined per poll.
+ *
+ * Imports are static: the background is a module service worker, where
+ * import() is forbidden (it used to be called here and always threw).
  */
+
+import { listAlerts } from "./family-api.js";
+import { decryptForMe, getOrCreateKeypair } from "./family-crypto.js";
+import { familyStateFor, readFamilyCache } from "./family-fanout.js";
 
 const SEEN_KEY = "family_last_seen_alert_id";
 const ALARM_NAME = "cleanway_family_poll";
 const NOTIFICATION_PREFIX = "cleanway-family:";
 
+const POLL_PERIOD_MINUTES = 1;
+
 /**
- * Register the periodic alarm. Idempotent — Chrome dedups by name so
- * calling this on every SW startup is fine. The alarm fires while the
- * SW is alive AND wakes a torn-down SW back up.
+ * Arm the poll alarm when there is someone to hear from — a signed-in user
+ * with a family — and clear it otherwise. The alarm wakes a torn-down
+ * worker every minute, so nobody else should pay for it.
+ *
+ * An existing alarm is left alone: chrome.alarms.create() REPLACES an alarm
+ * of the same name and restarts its clock, so re-creating it on every worker
+ * start could keep pushing the next poll back.
+ *
+ * @returns {Promise<boolean>} whether the alarm is wanted
  */
-export function ensureFamilyPollAlarm(periodMinutes = 1) {
+export async function syncFamilyPollAlarm() {
+  if (!chrome.alarms) return false;
+  let wanted = false;
   try {
-    chrome.alarms.create(ALARM_NAME, {
-      periodInMinutes: Math.max(1, periodMinutes),
-    });
+    const stored = await chrome.storage.local.get(["auth_token"]);
+    wanted = Boolean(stored && stored.auth_token) && Boolean(await readFamilyCache());
+    const existing = await chrome.alarms.get(ALARM_NAME);
+    if (wanted && !existing) {
+      chrome.alarms.create(ALARM_NAME, { periodInMinutes: POLL_PERIOD_MINUTES });
+    } else if (!wanted && existing) {
+      await chrome.alarms.clear(ALARM_NAME);
+    }
   } catch {
-    // alarms permission missing or API unavailable — silent
+    // alarms or storage unavailable — nothing to schedule
   }
+  return wanted;
 }
 
 export function isFamilyPollAlarm(alarmName) {
@@ -64,28 +87,20 @@ export async function pollAndNotify() {
   }
   if (!stored || !stored.auth_token) return 0;
 
-  // Need the cached family — without it we have nothing to poll.
-  let fanoutMod, cryptoMod, apiMod;
-  try {
-    fanoutMod = await import(chrome.runtime.getURL("src/utils/family-fanout.js"));
-    cryptoMod = await import(chrome.runtime.getURL("src/utils/family-crypto.js"));
-    apiMod = await import(chrome.runtime.getURL("src/utils/family-api.js"));
-  } catch {
-    return 0;
-  }
-
-  const cache = await fanoutMod.getCachedFamilyState();
+  // Need the family — without it we have nothing to poll. Refreshed from the
+  // server once the cached copy is an hour old (family-fanout.js).
+  const cache = await familyStateFor(stored.auth_token);
   if (!cache) return 0;
 
   let kp;
   try {
-    kp = await cryptoMod.getOrCreateKeypair();
+    kp = await getOrCreateKeypair();
   } catch {
     return 0;
   }
   if (!kp || !kp.secretKeyB64) return 0;
 
-  const list = await apiMod.listAlerts(stored.auth_token, cache.family_id);
+  const list = await listAlerts(stored.auth_token, cache.family_id);
   if (!list || !Array.isArray(list.alerts) || list.alerts.length === 0) {
     return 0;
   }
@@ -95,7 +110,7 @@ export async function pollAndNotify() {
   for (const env of list.alerts) {
     if (lastSeen && env.id === lastSeen) break; // we've caught up
     if (!env.ciphertext_b64 || !env.nonce_b64 || !env.sender_pubkey_b64) continue;
-    const opened = cryptoMod.decryptForMe(
+    const opened = decryptForMe(
       {
         ciphertext_b64: env.ciphertext_b64,
         nonce_b64: env.nonce_b64,
@@ -119,12 +134,7 @@ export async function pollAndNotify() {
   // is what the user sees on top of the stack.
   fresh.reverse();
   for (const item of fresh) {
-    const domain = item.alert.domain || "(unknown domain)";
-    const level = (item.alert.level || "block").toString();
-    const title = level === "dangerous"
-      ? "Family member protected from a scam"
-      : "Family alert";
-    const message = `${domain} — ${level}`;
+    const { title, message } = notificationText(item.alert);
     try {
       // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => {
@@ -154,6 +164,41 @@ export async function pollAndNotify() {
   }
 
   return fresh.length;
+}
+
+function _t(key, subs) {
+  try {
+    return chrome.i18n.getMessage(key, subs || []) || key;
+  } catch {
+    return key;
+  }
+}
+
+/**
+ * Plain-language notification copy in the browser's language. A relative's
+ * alert is a block — fan-out sends only block pages the API confirmed — or,
+ * from older/other senders, a caution warning. An alert without a domain
+ * gets a sentence that does not need one.
+ *
+ * @param {{ domain?: string, level?: string }} alert — decrypted payload
+ * @returns {{ title: string, message: string }}
+ */
+export function notificationText(alert) {
+  const domain = alert && typeof alert.domain === "string" ? alert.domain : "";
+  if (alert && alert.level === "caution") {
+    return {
+      title: _t("family_notify_title_warned"),
+      message: domain
+        ? _t("family_notify_message_warned", [domain])
+        : _t("family_notify_message_warned_unnamed"),
+    };
+  }
+  return {
+    title: _t("family_notify_title_blocked"),
+    message: domain
+      ? _t("family_notify_message_blocked", [domain])
+      : _t("family_notify_message_blocked_unnamed"),
+  };
 }
 
 /**

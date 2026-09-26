@@ -29,23 +29,31 @@
  *   B. visible-host typosquat — the address bar hostname matches a
  *      known brand pattern (paypal0.com, paypa1.com). We reuse the
  *      same `_BR` table the URL scorer uses.
- *   C. high-risk TLD on a credential page — login-collecting page
- *      on .tk / .ml / .top / .xyz / etc. is almost certainly hostile.
+ *   C. high-risk TLD on a credential page — scammers favour .tk / .ml /
+ *      .top / .xyz / etc. for throwaway login pages, but plenty of real
+ *      sites live there too.
  *
- * Privacy: the script reads DOM only. Nothing leaves the device. We
- * never send the form contents, the URL, or anything else — the
- * warning fires entirely locally. The whole feature works offline.
+ * A lone weak signal (C, or A with an HTTPS action) gets calmer copy —
+ * "take care", not "this is a scam". Two signals, a typosquat, a password
+ * posted over plain HTTP, or a page the URL check already blocked (strict
+ * mode) get the full warning.
+ *
+ * Privacy: the script reads the DOM. The only network call is the
+ * brand-name lookup below (the brand, e.g. "paypal" — never the URL or
+ * anything typed into the form). Without it the warning still fires.
  */
 (function () {
   "use strict";
 
   // ── Toggles ──
-  // Strict mode also INTERCEPTS the submit (preventDefault + warn).
-  // Default is observation-mode: warn + let the user decide. Strict
-  // mode goes on automatically once the URL scorer has flagged the
-  // current page as dangerous.
+  // Strict mode: the background has shown this page's block page (the URL
+  // check called the page itself dangerous) and the user may have clicked
+  // past it. Then EVERY password field warns and every such form asks
+  // before submitting, whether or not the form checks below fire.
   var _strictMode = false;
-  var _warned = false;
+  // 0 = no banner yet, 1 = the calm "take care" banner, 2 = the full
+  // warning. A stronger verdict replaces a weaker banner, never the reverse.
+  var _bannerRank = 0;
   var _debugMode = false;
 
   function _log() {
@@ -145,6 +153,29 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  // ── i18n ──
+  // Text in the browser's language; it lives in packages/i18n-strings
+  // (extension.credential_guard). scripts/test-extension-core.mjs fails CI
+  // if a key used here is missing from any locale.
+  function _t(key, subs) {
+    try {
+      return chrome.i18n.getMessage(key, subs || []) || key;
+    } catch (e) {
+      return key;
+    }
+  }
+
+  // A translated sentence with page-supplied values in bold. The sentence
+  // is escaped as a whole and every value on its own, so neither a hostile
+  // hostname nor a translation can inject markup. \u0001N\u0001 markers
+  // hold the values' places while the sentence is escaped.
+  function _tHtml(key, values) {
+    var markers = values.map(function (_v, i) { return "\u0001" + i + "\u0001"; });
+    return _esc(_t(key, markers)).replace(/\u0001(\d+)\u0001/g, function (_m, i) {
+      return "<strong>" + _esc(values[Number(i)]) + "</strong>";
+    });
   }
 
   // ── Backend verified-host allowlist lookup ──
@@ -253,21 +284,28 @@
   }
 
   // ── Warning UI ──
-  // Single-shot per page load. Inserted as an overlay above the form,
-  // not blocking the page (observation mode). Strict mode adds an
-  // additional intercept on submit.
+  // Every flagged form is guarded at submit time; the banner shows once per
+  // page load, upgraded in place if a stronger verdict arrives later.
   function _renderWarning(form, evidence) {
-    if (_warned) return;
-    _warned = true;
+    _guardForm(form, evidence);
+    var rank = evidence.weak ? 1 : 2;
+    if (_bannerRank >= rank) return;
+    _bannerRank = rank;
+    var previous = document.getElementById("ls-credguard-banner");
+    if (previous) previous.remove();
+    _showBanner(evidence);
+  }
 
+  function _showBanner(evidence) {
+    var flaggedLine = evidence.pageFlagged ? _esc(_t("credguard_page_flagged")) : "";
     var brandLine = evidence.typosquat
-      ? 'Looks like <strong>' + _esc(evidence.brand) + '</strong> but the address is <strong>' + _esc(evidence.host) + '</strong> — not <strong>' + _esc(evidence.legit) + '</strong>.'
+      ? _tHtml("credguard_banner_brand", [evidence.brand, evidence.host, evidence.legit])
       : "";
     var actionLine = evidence.mismatch
-      ? 'This form sends your password to <strong>' + _esc(evidence.actionHost) + '</strong> — a different site from what you see in the address bar.'
+      ? _tHtml("credguard_banner_action", [evidence.actionHost])
       : "";
     var tldLine = evidence.tldSuspicious
-      ? 'The site uses a <strong>' + _esc(evidence.tld) + '</strong> domain, which is often abused for one-off phishing pages.'
+      ? _tHtml("credguard_banner_tld", [evidence.tld])
       : "";
 
     var box = document.createElement("div");
@@ -289,7 +327,7 @@
       "max-width:520px",
       "background:#0f172a",
       "color:#e2e8f0",
-      "border:2px solid #ef4444",
+      "border:2px solid " + (evidence.weak ? "#f59e0b" : "#ef4444"),
       "border-radius:12px",
       "padding:14px 18px",
       "font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif",
@@ -301,14 +339,17 @@
     box.innerHTML = ''
       + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">'
       + '  <span style="font-size:20px;line-height:1;" aria-hidden="true">⚠️</span>'
-      + '  <strong style="color:#fecaca;font-size:15px;">Stop — this looks like a phishing page</strong>'
+      + '  <strong style="color:' + (evidence.weak ? "#fde68a" : "#fecaca") + ';font-size:15px;">'
+      + _esc(_t(evidence.weak ? "credguard_banner_title_weak" : "credguard_banner_title")) + '</strong>'
       + '</div>'
+      + (flaggedLine ? '<div style="margin-top:6px;">' + flaggedLine + '</div>' : '')
       + (actionLine ? '<div style="margin-top:6px;">' + actionLine + '</div>' : '')
       + (brandLine ? '<div style="margin-top:6px;">' + brandLine + '</div>' : '')
       + (tldLine ? '<div style="margin-top:6px;">' + tldLine + '</div>' : '')
-      + '<div style="margin-top:10px;color:#94a3b8;font-size:12px;">Don\'t type your password here. Open the real site by typing the address yourself.</div>'
+      + '<div style="margin-top:10px;color:#94a3b8;font-size:12px;">'
+      + _esc(_t(evidence.weak ? "credguard_banner_advice_weak" : "credguard_banner_advice")) + '</div>'
       + '<div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">'
-      + '  <button id="ls-credguard-dismiss" type="button" style="background:transparent;color:#94a3b8;border:1px solid #334155;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;">Dismiss</button>'
+      + '  <button id="ls-credguard-dismiss" type="button" style="background:transparent;color:#94a3b8;border:1px solid #334155;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;">' + _esc(_t("credguard_dismiss")) + '</button>'
       + '</div>';
 
     (document.body || document.documentElement).appendChild(box);
@@ -325,31 +366,37 @@
         setTimeout(function () { if (box.parentNode) box.remove(); }, 280);
       });
     }
+  }
 
-    // Strategy doc Top-20 #7 — active credential guardian.
-    // The passive banner above is "early warning". This block adds
-    // SUBMIT-TIME interception with a confirmation modal so the user
-    // can't blow past the warning by hitting Enter. We wire on ANY
-    // credential warning (mismatch / typosquat / TLD) — not just
-    // strict-mode-from-SW — because by the time a user typed their
-    // password into a flagged form, the cost of one extra click is
-    // cheap relative to credential theft.
-    if (form && !form._lsGuardWired) {
-      form._lsGuardWired = true;
-      form.addEventListener(
-        "submit",
-        function (e) {
-          if (form._lsGuardOverridden) {
-            // User chose "submit anyway" in this tab — let it through.
-            return;
-          }
-          e.preventDefault();
-          e.stopPropagation();
-          _renderConfirmModal(form, evidence);
-        },
-        true,
-      );
+  // Strategy doc Top-20 #7 — active credential guardian.
+  // The passive banner is "early warning". This adds SUBMIT-TIME
+  // interception with a confirmation modal so the user can't blow past the
+  // warning by hitting Enter. We wire on ANY credential warning (mismatch /
+  // typosquat / TLD / strict mode), because by the time a user typed their
+  // password into a flagged form, the cost of one extra click is cheap
+  // relative to credential theft. The modal reads the form's latest
+  // evidence, so strict mode arriving later upgrades it too.
+  function _guardForm(form, evidence) {
+    if (!form) return;
+    var current = form._lsGuardEvidence;
+    if (!current || (current.weak && !evidence.weak) || (evidence.pageFlagged && !current.pageFlagged)) {
+      form._lsGuardEvidence = evidence;
     }
+    if (form._lsGuardWired) return;
+    form._lsGuardWired = true;
+    form.addEventListener(
+      "submit",
+      function (e) {
+        if (form._lsGuardOverridden) {
+          // User chose "submit anyway" in this tab — let it through.
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        _renderConfirmModal(form, form._lsGuardEvidence);
+      },
+      true,
+    );
   }
 
   // ── Strategy doc #7: confirmation modal at submit time ──
@@ -360,31 +407,20 @@
   function _renderConfirmModal(form, evidence) {
     if (document.getElementById("ls-credguard-modal")) return;
 
+    // Each value is set whenever its flag is (see _evaluate), so no
+    // "another host"-style fallbacks are needed.
     var reasons = [];
+    if (evidence.pageFlagged) {
+      reasons.push(_esc(_t("credguard_page_flagged")));
+    }
     if (evidence.mismatch) {
-      reasons.push(
-        "The form posts your password to " +
-          _esc(evidence.actionHost || "another host") +
-          " — not " +
-          _esc(window.location.host) +
-          ".",
-      );
+      reasons.push(_esc(_t("credguard_reason_action", [evidence.actionHost, window.location.host])));
     }
     if (evidence.typosquat) {
-      reasons.push(
-        "This domain (" +
-          _esc(evidence.host || window.location.host) +
-          ") looks like a misspelling of " +
-          _esc(evidence.brand || "a known brand") +
-          ".",
-      );
+      reasons.push(_esc(_t("credguard_reason_typosquat", [evidence.host || window.location.host, evidence.brand])));
     }
     if (evidence.tldSuspicious) {
-      reasons.push(
-        "Login pages on " +
-          _esc(evidence.tld || "this TLD") +
-          " are very rarely legitimate.",
-      );
+      reasons.push(_esc(_t("credguard_reason_tld", [evidence.tld])));
     }
 
     var dialog = document.createElement("div");
@@ -413,36 +449,39 @@
       "border-radius:14px",
       "padding:24px 24px 20px",
       "box-shadow:0 24px 80px rgba(0,0,0,0.6)",
-      "border:1px solid #ef4444",
+      "border:1px solid " + (evidence.weak ? "#f59e0b" : "#ef4444"),
     ].join(";");
 
     var reasonsHtml = reasons
       .map(function (r) { return "<li style=\"margin-bottom:6px\">" + r + "</li>"; })
       .join("");
+    var honeypotLabel = _t("credguard_button_honeypot");
+    var honeypotHint = _t("credguard_button_honeypot_hint");
 
     card.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
       '<span style="font-size:24px">⚠️</span>' +
-      '<h2 id="ls-credguard-modal-title" style="margin:0;font-size:18px;font-weight:700;color:#fecaca">' +
-      "Cleanway thinks this is a phishing form" +
+      '<h2 id="ls-credguard-modal-title" style="margin:0;font-size:18px;font-weight:700;color:' +
+      (evidence.weak ? "#fde68a" : "#fecaca") + '">' +
+      _esc(_t(evidence.weak ? "credguard_modal_title_weak" : "credguard_modal_title")) +
       "</h2></div>" +
       '<div id="ls-credguard-modal-body" style="margin-bottom:14px;color:#cbd5e1">' +
-      '<p style="margin:0 0 10px">Submitting will send your credentials. Here\'s why this looks unsafe:</p>' +
+      '<p style="margin:0 0 10px">' + _esc(_t("credguard_modal_intro")) + '</p>' +
       (reasons.length ? '<ul style="padding-left:18px;margin:0;color:#e2e8f0">' + reasonsHtml + "</ul>" : "") +
       "</div>" +
       // Strategy #8 — three buttons: cancel (safest, default focus),
-      // honeypot shield (real password stays on device, attacker
-      // gets a random throwaway), full override (user explicitly
-      // accepts the risk). The honeypot is the headline new option
-      // — closes the "guaranteed no-leak" marketing promise.
+      // honeypot shield (the form carries a random throwaway instead of
+      // the real password), full override (user explicitly accepts the
+      // risk). The honeypot cannot take back what the page may have read
+      // while the user typed, and its toast says so.
       '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap">' +
-      '<button id="ls-credguard-cancel" style="background:#22c55e;color:#052e16;border:0;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer">Don\'t submit — take me back</button>' +
+      '<button id="ls-credguard-cancel" style="background:#22c55e;color:#052e16;border:0;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer">' + _esc(_t("credguard_button_cancel")) + '</button>' +
       // Grandma-test copy: "Send fake password" reads as "lie / cheat".
       // "Keep my password safe" reads as the user's intent.
       // The blue background was failing WCAG AA contrast on grey text;
       // we now use a deeper navy with light text (verified 7.4:1).
-      '<button id="ls-credguard-honeypot" aria-label="Keep my real password safe — submit a randomly generated placeholder instead" style="background:#0c4a6e;color:#f0f9ff;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer" title="Cleanway will submit a random placeholder password. Your real password stays on this device.">🛡️ Keep my password safe</button>' +
-      '<button id="ls-credguard-override" style="background:transparent;color:#fca5a5;border:1px solid #7f1d1d;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer">Submit anyway</button>' +
+      '<button id="ls-credguard-honeypot" aria-label="' + _esc(honeypotLabel + ". " + honeypotHint) + '" style="background:#0c4a6e;color:#f0f9ff;border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer" title="' + _esc(honeypotHint) + '">🛡️ ' + _esc(honeypotLabel) + '</button>' +
+      '<button id="ls-credguard-override" style="background:transparent;color:#fca5a5;border:1px solid #7f1d1d;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer">' + _esc(_t("credguard_button_override")) + '</button>' +
       "</div>";
 
     dialog.appendChild(card);
@@ -660,10 +699,9 @@
       "max-width:340px",
     ].join(";");
     toast.innerHTML =
-      '<strong>🛡️ Cleanway sent a safe placeholder</strong>' +
+      '<strong>🛡️ ' + _esc(_t("credguard_toast_title")) + '</strong>' +
       '<div style="margin-top:6px;color:#bae6fd">' +
-      "Your real password stayed on this device. If this page turns out " +
-      "to be legit, just retype your password — it was never sent." +
+      _esc(_t("credguard_toast_body")) +
       "</div>";
     shadow.appendChild(toast);
     document.documentElement.appendChild(host);
@@ -682,7 +720,19 @@
     var brandCheck = _classifyVisibleHost();
     var tldCheck = _classifyTld();
 
+    var triggers = 0;
+    if (actionCheck.mismatch && actionCheck.scheme === "https:") triggers += 1;
+    // HTTP action on a password page is its own escalation — always warn.
+    if (actionCheck.mismatch && actionCheck.scheme === "http:") triggers += 2;
+    if (brandCheck.typosquat) triggers += 2;
+    if (tldCheck.suspicious) triggers += 1;
+    if (_strictMode) triggers += 2;
+
     var evidence = {
+      pageFlagged: _strictMode,
+      // One weak signal on its own: a real site on a .top address, or a
+      // login that posts to the company's other domain, looks like this too.
+      weak: triggers === 1,
       mismatch: actionCheck.mismatch,
       actionHost: actionCheck.actionHost,
       scheme: actionCheck.scheme,
@@ -693,13 +743,6 @@
       tldSuspicious: tldCheck.suspicious,
       tld: tldCheck.tld,
     };
-
-    var triggers = 0;
-    if (evidence.mismatch && evidence.scheme === "https:") triggers += 1;
-    // HTTP action on a password page is its own escalation — always warn.
-    if (evidence.mismatch && actionCheck.scheme === "http:") triggers += 2;
-    if (evidence.typosquat) triggers += 2;
-    if (evidence.tldSuspicious) triggers += 1;
 
     _log("evaluate", { triggers: triggers, evidence: evidence });
 
@@ -712,7 +755,9 @@
     // chase.com). If the FORM ACTION hits the brand's verified list,
     // the form is plausibly legitimate even though the host looks
     // like a typosquat — skip the warning for those cases.
-    if (evidence.typosquat && evidence.brand && actionCheck.actionHost) {
+    // Not when the URL check already blocked this page: a kit that relays
+    // the password to the real brand's host is still a scam page.
+    if (evidence.typosquat && evidence.brand && actionCheck.actionHost && !evidence.pageFlagged) {
       _fetchVerifiedHosts(evidence.brand).then(function (hosts) {
         if (hosts && hosts.indexOf(actionCheck.actionHost) >= 0) {
           _log("brand verified host match — skipping warning", evidence.brand);
@@ -756,15 +801,23 @@
   }
 
   // ── Background-script integration ──
-  // The background script can promote us into strict mode mid-page
-  // if its scorer flags the current host. Until then we stay in
-  // observation mode and only warn (without blocking submit).
+  // The background promotes us into strict mode once this page's block
+  // page has been shown (PAGE_BLOCKED). Password fields already on the
+  // page are evaluated again with that knowledge.
+  function _enterStrictMode() {
+    if (_strictMode) return;
+    _strictMode = true;
+    _log("strict mode enabled");
+    var inputs = document.querySelectorAll('input[type="password"]');
+    for (var i = 0; i < inputs.length; i++) {
+      inputs[i]._lsGuardSeen = false;
+      _evaluate(inputs[i]);
+    }
+  }
+
   try {
     chrome.runtime.onMessage.addListener(function (msg) {
-      if (msg && msg.type === "CREDGUARD_STRICT") {
-        _strictMode = true;
-        _log("strict mode enabled");
-      }
+      if (msg && msg.type === "CREDGUARD_STRICT") _enterStrictMode();
     });
   } catch (e) { /* not in extension context */ }
 

@@ -17,11 +17,15 @@ src/
 │   ├── popup.css
 │   ├── popup.js
 │   └── welcome.html
-├── background/         ← Service worker / background script
-│   └── index.js
+├── background/         ← Module service worker / background script ("type": "module")
+│   ├── index.js           (entry; STATIC imports only — import() is forbidden in a service worker)
+│   ├── browser-compat.js  (Firefox chrome → browser alias; imported first)
+│   ├── page-blocks.js     (what counts as a blocked scam: a block page shown, once per site per day)
+│   └── trusted-hosts.js   (exact official hosts answered "safe", and user-content hosts answered "can't be checked")
 ├── content/            ← Content scripts injected into every page
 │   ├── index.js           (main orchestrator)
 │   ├── block-page.js      (STOP overlay for scam sites)
+│   ├── reason-labels.js   (badge reason lines in the browser's language, by reason code)
 │   ├── privacy-audit.js
 │   ├── security-score.js
 │   ├── weekly-report.js
@@ -38,9 +42,10 @@ src/
     ├── family-fanout.js    (per-recipient alert dispatch)
     ├── family-invite-url.js (invite-link parsing)
     ├── family-notifier.js  (chrome.notifications for incoming family alerts)
+    ├── link-target.js      (where a link really goes: unwraps google.com/url?q=, vk.com/away.php… — content script + background)
     ├── local-scorer.js     (offline rule-based scorer)
     ├── storage.js          (chrome.storage.local wrappers)
-    └── vendor/             (TweetNaCl + util — vendored to avoid CDN dependency)
+    └── vendor/             (TweetNaCl + QR generator — vendored to avoid CDN dependency)
 
 public/icons/            ← Extension icons (16/32/48/128 px)
 styles/badges.css        ← Link-badge CSS injected via content_scripts
@@ -63,8 +68,16 @@ This:
 1. Clears `src/`, `public/`, `styles/` in each extension dir
 2. Copies from `packages/extension-core/`
 3. Applies `extension-{flavor}/overrides/` (if present) on top
-4. For Firefox MV2: auto-injects a `chrome → browser` promise shim at the top of `background/index.js` (Firefox's `chrome.*` uses callbacks, our code uses `.then()`)
-5. Re-runs `scripts/build-i18n.py` so locales stay in sync
+4. Re-runs `scripts/build-i18n.py` so locales stay in sync
+
+The Firefox `chrome → browser` alias is no longer text injected by the build: the background is an ES module, so it lives in `src/background/browser-compat.js` (a no-op outside Firefox).
+
+## Background rules
+
+- The background loads as an ES module in all three builds (`"type": "module"`; Chrome 92+, Firefox 112+, Safari 16.4+). Use **static** `import` only — `import()` and `importScripts()` throw in a module service worker. `scripts/test-extension-core.mjs` fails CI if anything the background can reach calls either.
+- Feature-check optional APIs (`contextMenus`, `notifications`, `commands`, `action`) before touching them. Yandex Browser on Android, Safari and Firefox each lack some; one unguarded `undefined.addListener` at top level aborts the whole module, link checks included.
+- A "dangerous" verdict is not a block. `CHECK_DOMAINS` carries every link on a page as well as the page itself, so nothing that counts or tells anyone acts on it. Only `PAGE_BLOCKED` — sent by the content script after it has drawn the block page, accepted only for the sender's own top-frame host — bumps "Scams blocked" (once per site per day), turns the tab's credential guard strict and, when the API itself said "dangerous", syncs the account counter and alerts the family.
+- The Family Hub poll alarm exists only while `auth_token` and `family_cache` do; the family list is refreshed from the server once it is an hour old.
 
 Typical iteration:
 ```bash
@@ -92,4 +105,10 @@ Code in this package uses `chrome.i18n.getMessage("key_name")`. The keys come fr
 
 ## Testing
 
-For now: manual — load unpacked in each browser, verify popup/block page/welcome render and behave. A future task adds Playwright E2E tests that load the built extension into a headless Chromium.
+```bash
+node scripts/test-extension-core.mjs   # static: trusted hosts, SW module graph, manifests, i18n keys (all trees)
+node scripts/test-local-scorer.mjs     # offline scorer table
+node scripts/test-extension-sw.mjs     # real headless Chromium: loads extension/ + extension-safari/ unpacked
+```
+
+`test-extension-sw.mjs` needs `playwright` + `tweetnacl` (repo `node_modules`) and `npx playwright install chromium`. It points the extension at a local mock API and blocks `*.cleanway.ai`, so it never touches production. It proves the threat counter, Family Hub fan-out (decrypted on the other side), the Family Hub poller, the 30-day history prune, the exact-host trust list and Russian content-script warnings. Firefox (MV2) can't load in Chromium; it is covered by the static checks only — still load it by hand in Firefox before a release.

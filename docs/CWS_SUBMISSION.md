@@ -98,8 +98,9 @@ Paste one per permission. All 5 permissions and all 6 host-permissions are
 100%-on-device scoring engine (`src/utils/local-scorer.js`) and badge links locally;
 no page data is sent for known-safe/cached domains.
 
-**Remote code:** **No.** `importScripts` loads only local bundled files via
-`chrome.runtime.getURL`. No `eval`, no `new Function`, no remotely-hosted scripts.
+**Remote code:** **No.** The background is a module service worker that loads only
+local bundled files through static `import` statements (the vendored TweetNaCl
+included). No `eval`, no `new Function`, no remotely-hosted scripts.
 
 ---
 

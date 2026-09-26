@@ -9,6 +9,7 @@
     "storage",
     "alarms",
     "contextMenus",
+    "notifications",
     "https://api.cleanway.ai/*",
     "https://*.cleanway.ai/*",
     "https://mail.google.com/*",
@@ -20,6 +21,7 @@
     "scripts": [
       "src/background/index.js"
     ],
+    "type": "module",
     "persistent": false
   },
   "content_scripts": [
@@ -29,6 +31,7 @@
       ],
       "js": [
         "src/utils/local-scorer.js",
+        "src/utils/link-target.js",
         "src/content/tracking-cleaner.js",
         "src/content/crypto-blocker.js",
         "src/content/weekly-report.js",
@@ -37,6 +40,7 @@
         "src/content/credential-guardian.js",
         "src/content/modern-phish-guard.js",
         "src/content/password-pwned.js",
+        "src/content/reason-labels.js",
         "src/content/block-page.js",
         "src/content/index.js"
       ],
@@ -79,7 +83,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "cleanway@cleanway.ai",
-      "strict_min_version": "109.0"
+      "strict_min_version": "112.0"
     }
   }
 }

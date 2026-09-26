@@ -1,5 +1,14 @@
 # Privacy-copy honesty audit (2026-07-12) — ready for your sign-off
 
+> **Status 2026-09-27:** rows 1, 2 and 5 are applied in the extension (PR #49),
+> in all 10 locales, framed as in `docs/CWS_SUBMISSION.md` §5: "We check site
+> addresses, not full links or page content" and "We never sell your data".
+> Row 5 changed too: the Chrome Web Store form answers "Web history: YES", so
+> "your browsing history never leaves this device" could not stay. The popup,
+> welcome page and block page no longer say that data stays on the device;
+> `scripts/test-extension-core.mjs` fails if they start again. Rows 3–4
+> (e-mail, landing) are not part of that PR.
+
 Everything below is **code-grounded**. This session already fixed the landing hero,
 the testimonial, and 4 landing claims (commits `eb756da`, `82a3d3a`). This doc covers
 the **remaining** "never leaves your device" overclaims, plus a data-retention check so
