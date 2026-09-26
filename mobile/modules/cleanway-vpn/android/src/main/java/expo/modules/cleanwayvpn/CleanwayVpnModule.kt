@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import ai.cleanway.app.CleanwayVpnService
 import expo.modules.kotlin.Promise
+import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -144,14 +145,15 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
-     * The shield's persisted block log, newest first: [{domain, ts, kind}].
-     * kind is "blocked" (site never opened) or "warned" (verdict arrived after
-     * the first lookup had been forwarded — future lookups blocked). Lets the
+     * The shield's persisted block log, newest first: [{domain, ts, kind, source}].
+     * kind is "blocked" (site never opened), "warned" (the link guard let a
+     * link open and its site was flagged afterwards) or "allowed". source is
+     * "dns" or "link" — which shield acted — and null for allows. Lets the
      * app count and list what the service did while no JS was alive.
      */
     Function("recentBlocks") { limit: Int ->
       ai.cleanway.app.BlockLog.recent(context, limit).map {
-        mapOf("domain" to it.domain, "ts" to it.ts.toDouble(), "kind" to it.kind)
+        mapOf("domain" to it.domain, "ts" to it.ts.toDouble(), "kind" to it.kind, "source" to it.source)
       }
     }
 
@@ -316,6 +318,53 @@ class CleanwayVpnModule : Module() {
      */
     Function("canaryAnswerCount") {
       CleanwayVpnService.canaryAnswerCount.toDouble()
+    }
+
+    /**
+     * On-device check of a pasted or shared message (ai.cleanway.app.MessageAnalyzer):
+     * {verdict, reasons, links, phones, legitShape, organisations, truncated,
+     * listAvailable, listStale}.
+     *
+     * The text is analysed in memory on the modules queue (a worker thread —
+     * the blocklist may have to be read from disk) and dropped. It is never
+     * logged, stored or sent; only the links' hosts come back, and on failure
+     * only the exception's class name is logged.
+     */
+    AsyncFunction("analyzeMessage") { text: String ->
+      try {
+        ai.cleanway.app.MessageCheck.analyze(context, text).toWire()
+      } catch (e: Exception) {
+        android.util.Log.w("CleanwayMessageCheck", "analyze_failed: ${e.javaClass.simpleName}")
+        throw CodedException("E_MESSAGE_CHECK", "The message could not be checked", null)
+      }
+    }
+
+    /**
+     * The blocklisted suffix that covers [host], or null. Same rules as the
+     * DNS path: system domains and sites the person allowed never match.
+     * Works with the shield off (reads the synced list from disk).
+     */
+    AsyncFunction("matchBlocklist") { host: String ->
+      try {
+        ai.cleanway.app.MessageCheck.matchBlocklist(context, host)
+      } catch (e: Exception) {
+        android.util.Log.w("CleanwayMessageCheck", "match_failed: ${e.javaClass.simpleName}")
+        null
+      }
+    }
+
+    /**
+     * Is there a blocklist for the link guard to check tapped links with?
+     * Only the shield fetches one; with "All apps" never turned on there is
+     * none, and the guard lets every link through unchecked.
+     */
+    AsyncFunction("linkListAvailable") {
+      try {
+        ai.cleanway.app.BlocklistHolder.available(context)
+      } catch (e: Exception) {
+        android.util.Log.w("CleanwayBlocklist", "available_failed: ${e.javaClass.simpleName}")
+        false
+      }
     }
 
     OnActivityResult { _, payload ->

@@ -183,6 +183,26 @@ await test("public check: missing reason_codes leaves code undefined (older API)
   assert.equal(norm.reasons[0].code, undefined);
 });
 
+await test("public check: never carries the account token", async () => {
+  const seen = [];
+  const client = createClient({
+    baseUrl: "https://api.test",
+    timeoutMs: 1000,
+    getAuthToken: () => "jwt-of-a-signed-in-person",
+    fetchImpl: async (url, init) => {
+      seen.push({ url, headers: init.headers });
+      return makeResponse({ status: 200, body: { domain: "evil.tk", score: 90, level: "dangerous", safe: false } });
+    },
+  });
+  await client.check.publicDomain("https://evil.tk/login?token=1");
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].url, "https://api.test/api/v1/public/check/evil.tk");
+  assert.equal(seen[0].headers.Authorization, undefined);
+  // …while an account route still sends it.
+  await client.health();
+  assert.equal(seen[1].headers.Authorization, "Bearer jwt-of-a-signed-in-person");
+});
+
 if (failed > 0) {
   console.error(`\n${failed} test(s) failed`);
   process.exit(1);

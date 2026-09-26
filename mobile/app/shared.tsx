@@ -78,14 +78,17 @@ export default function SharedScreen() {
           return;
         }
         setResult(r);
-        await saveCheck(r);
+        // A link-guard hand-off is not a check the person made: the guard
+        // already recorded the stop in the block log (History, "Blocked").
+        // Saving it here too counted every stopped link twice.
+        if (via !== "guard") await saveCheck(r);
         if (r.level === "dangerous") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         else if (r.level === "caution") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       })
       .catch(() => setError("network"))
       .finally(() => setLoading(false));
-  }, [domain]);
+  }, [domain, via]);
 
   if (loading) {
     return (
@@ -204,7 +207,10 @@ export default function SharedScreen() {
 
       <TouchableOpacity
         style={via === "guard" && result && result.level === "safe" ? s.secondaryBtn : s.primaryBtn}
-        onPress={() => router.push({ pathname: "/result", params: { domain } })}
+        onPress={() => router.push({
+          pathname: "/result",
+          params: via === "guard" ? { domain, from: "guard" } : { domain },
+        })}
         activeOpacity={0.85}
         accessibilityRole="button"
       >

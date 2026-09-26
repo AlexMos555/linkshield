@@ -13,7 +13,12 @@ import { checkDomain, PublicCheckResult, ApiError } from "../src/services/api";
 import { saveCheck } from "../src/services/database";
 
 export default function ResultScreen() {
-  const { domain } = useLocalSearchParams<{ domain: string }>();
+  // from=history | guard: the person is reading up on a site a shield
+  // already stopped (a History entry, or the link guard's screen). Show the
+  // check, but do not save it as a new one — a second "dangerous" row would
+  // count the same block twice on the home screen.
+  const { domain, from } = useLocalSearchParams<{ domain: string; from?: string }>();
+  const record = from !== "history" && from !== "guard";
   const { t } = useTranslation();
   const [result, setResult] = useState<PublicCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,10 +53,12 @@ export default function ResultScreen() {
         // started. Failure is logged but doesn't block the UI — the
         // visible result is what matters; the history row is bonus.
         // (Audit mobile-ts LOW saveCheck-no-await race.)
-        try {
-          await saveCheck(r);
-        } catch {
-          // Silent — best-effort persistence.
+        if (record) {
+          try {
+            await saveCheck(r);
+          } catch {
+            // Silent — best-effort persistence.
+          }
         }
         if (r.level === "dangerous") {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -70,7 +77,7 @@ export default function ResultScreen() {
     return () => {
       cancelled = true;
     };
-  }, [domain, attempt]);
+  }, [domain, attempt, record]);
 
   if (loading) {
     return (

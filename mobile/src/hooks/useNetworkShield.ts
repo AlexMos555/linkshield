@@ -253,7 +253,13 @@ export function useNetworkShield(): NetworkShield {
     setProbing(true);
     try {
       await new Promise((r) => setTimeout(r, 400));
-      setVerified(await vpn.verifyFiltering());
+      const proven = await vpn.verifyFiltering();
+      setVerified(proven);
+      // Proof outranks a stale read. The consent dialog closing fires an
+      // AppState "active" sync that can read isRunning before the service
+      // has set it; seen on the emulator, the hero then counted the shield
+      // as verified while its own card still said "set up".
+      if (proven) setRunning(true);
     } finally {
       setProbing(false);
     }

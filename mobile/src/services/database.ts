@@ -5,6 +5,7 @@
  */
 
 import { Platform } from "react-native";
+import { MESSAGE_CHECK_SOURCE, splitHosts } from "../utils/history-model";
 
 // In-memory fallback for web (SQLite is native-only)
 let _memoryChecks: any[] = [];
@@ -52,6 +53,10 @@ async function getDB(): Promise<SQLiteDB | null> {
 
 // ── Check History ──
 
+/** SQL: the row is not a message check (older rows may have no source at all). */
+const NOT_MESSAGE = "COALESCE(source, '') != ?";
+
+/** Saves one history row; resolves with its id, or null if it could not be stored. */
 export async function saveCheck(check: {
   url?: string;
   domain: string;
@@ -60,7 +65,7 @@ export async function saveCheck(check: {
   reasons?: any[];
   confidence?: string;
   source?: string;
-}) {
+}): Promise<number | null> {
   const entry = {
     ...check,
     id: Date.now(),
@@ -71,7 +76,7 @@ export async function saveCheck(check: {
   const db = await getDB();
   if (db) {
     try {
-      await db.runAsync(
+      const result = await db.runAsync(
         // checked_at is written explicitly rather than left to the column
         // default. datetime('now') produces "YYYY-MM-DD HH:MM:SS", but every
         // range query below compares against an ISO string with a "T" — and
@@ -93,7 +98,7 @@ export async function saveCheck(check: {
           entry.checked_at,
         ]
       );
-      return;
+      return result.lastInsertRowId;
     } catch (e) {
       console.warn("SQLite write failed:", e);
     }
@@ -102,6 +107,59 @@ export async function saveCheck(check: {
   // Fallback: in-memory
   _memoryChecks.unshift(entry);
   if (_memoryChecks.length > 200) _memoryChecks = _memoryChecks.slice(0, 200);
+  return entry.id;
+}
+
+/** `source` of the history rows written by the message check (app/message.tsx). */
+export { MESSAGE_CHECK_SOURCE };
+
+type MessageCheckRow = { hosts: string[]; level: string; reasons: string[] };
+
+/**
+ * One history row per message check, WITHOUT the message: the text is never
+ * stored, and neither is any link's path or query (they carry tokens).
+ *
+ * Row shape: level = the verdict ("dangerous" | "caution" | "no_signals",
+ * never "safe"; getStats counts every message check as "checked" only);
+ * reasons = the reason codes; domain = the link hosts, space-separated
+ * (hosts cannot contain spaces), empty for a message without links; score 0,
+ * because a message verdict is not a number. Read the hosts back with
+ * messageCheckHosts(). Resolves with the row id, so a later "check the links
+ * again" updates this row instead of adding a second one.
+ */
+export async function saveMessageCheck(entry: MessageCheckRow): Promise<number | null> {
+  return saveCheck({
+    domain: entry.hosts.join(" "),
+    score: 0,
+    level: entry.level,
+    reasons: entry.reasons,
+    source: MESSAGE_CHECK_SOURCE,
+  });
+}
+
+/** The same message checked again (its links re-asked): rewrite its row, never add one. */
+export async function updateMessageCheck(id: number, entry: MessageCheckRow): Promise<void> {
+  const reasons = JSON.stringify(entry.reasons);
+  const domain = entry.hosts.join(" ");
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `UPDATE checks SET domain = ?, level = ?, reasons = ? WHERE id = ? AND source = ?`,
+        [domain, entry.level, reasons, id, MESSAGE_CHECK_SOURCE],
+      );
+      return;
+    } catch (e) {
+      console.warn("SQLite update failed:", e);
+    }
+  }
+  _memoryChecks = _memoryChecks.map((c) =>
+    c.id === id && c.source === MESSAGE_CHECK_SOURCE ? { ...c, domain, level: entry.level, reasons: entry.reasons } : c,
+  );
+}
+
+export function messageCheckHosts(row: { domain?: string }): string[] {
+  return splitHosts(row.domain);
 }
 
 export async function getRecentChecks(limit = 50): Promise<any[]> {
@@ -125,13 +183,23 @@ export async function getRecentChecks(limit = 50): Promise<any[]> {
   return _memoryChecks.slice(0, limit);
 }
 
+/**
+ * The home activity counters. A message check counts under "checked" only:
+ * nothing was blocked — the person was told what the message looks like —
+ * and "Blocked 2" after pasting two scam SMS would teach that Cleanway blocks
+ * SMS on its own, which it does not.
+ */
 export async function getStats() {
   const db = await getDB();
   if (db) {
     try {
       const total = await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM checks`);
-      const blocked = await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM checks WHERE level = 'dangerous'`);
-      const warned = await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM checks WHERE level = 'caution'`);
+      const blocked = await db.getFirstAsync<{ count: number }>(
+        `SELECT COUNT(*) as count FROM checks WHERE level = 'dangerous' AND ${NOT_MESSAGE}`, [MESSAGE_CHECK_SOURCE],
+      );
+      const warned = await db.getFirstAsync<{ count: number }>(
+        `SELECT COUNT(*) as count FROM checks WHERE level = 'caution' AND ${NOT_MESSAGE}`, [MESSAGE_CHECK_SOURCE],
+      );
       return {
         total_checks: total?.count || 0,
         threats_blocked: blocked?.count || 0,
@@ -143,27 +211,36 @@ export async function getStats() {
   }
 
   // Fallback: in-memory
+  const links = _memoryChecks.filter(c => c.source !== MESSAGE_CHECK_SOURCE);
   return {
     total_checks: _memoryChecks.length,
-    threats_blocked: _memoryChecks.filter(c => c.level === "dangerous").length,
-    threats_warned: _memoryChecks.filter(c => c.level === "caution").length,
+    threats_blocked: links.filter(c => c.level === "dangerous").length,
+    threats_warned: links.filter(c => c.level === "caution").length,
   };
 }
 
+/** The weekly report is about links ("Проверено ссылок"); message checks are not links. */
 export async function getWeeklyStats() {
   const weekAgo = Date.now() - 7 * 86400000;
   const db = await getDB();
   if (db) {
     try {
       const cutoff = new Date(weekAgo).toISOString();
-      const total = await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM checks WHERE checked_at >= ?`, [cutoff]);
-      const blocked = await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM checks WHERE level = 'dangerous' AND checked_at >= ?`, [cutoff]);
+      const total = await db.getFirstAsync<{ count: number }>(
+        `SELECT COUNT(*) as count FROM checks WHERE checked_at >= ? AND ${NOT_MESSAGE}`, [cutoff, MESSAGE_CHECK_SOURCE],
+      );
+      const blocked = await db.getFirstAsync<{ count: number }>(
+        `SELECT COUNT(*) as count FROM checks WHERE level = 'dangerous' AND checked_at >= ? AND ${NOT_MESSAGE}`,
+        [cutoff, MESSAGE_CHECK_SOURCE],
+      );
       return { total_checks: total?.count || 0, threats_blocked: blocked?.count || 0 };
     } catch (e) {}
   }
 
   // Fallback
-  const recent = _memoryChecks.filter(c => new Date(c.checked_at).getTime() >= weekAgo);
+  const recent = _memoryChecks.filter(
+    c => c.source !== MESSAGE_CHECK_SOURCE && new Date(c.checked_at).getTime() >= weekAgo,
+  );
   return {
     total_checks: recent.length,
     threats_blocked: recent.filter(c => c.level === "dangerous").length,

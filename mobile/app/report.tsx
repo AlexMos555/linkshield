@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share } from "rea
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
-import { getWeeklyStats, getRecentChecks } from "../src/services/database";
+import { getWeeklyStats, getRecentChecks, MESSAGE_CHECK_SOURCE } from "../src/services/database";
 
 /**
  * Weekly report.
@@ -14,6 +14,9 @@ import { getWeeklyStats, getRecentChecks } from "../src/services/database";
  * says "links you checked in this app" and nothing more. The old
  * "Safer than N% of users" hero was a locally invented number with no
  * population behind it — removed rather than restyled.
+ *
+ * Links only: a message check is not a link, and "no signals" is not "clean",
+ * so SMS checks stay out of every number and list here (getWeeklyStats too).
  */
 
 type FlaggedDomain = { domain: string; count: number };
@@ -35,11 +38,13 @@ export default function ReportScreen() {
     const weekAgo = Date.now() - 7 * 86400000;
     const weekChecks = checks.filter((c: any) => new Date(c.checked_at).getTime() >= weekAgo);
 
-    // Count domains
+    // Count domains. Only links that came back dangerous or worth a second look.
     const counts: Record<string, number> = {};
-    weekChecks.filter((c: any) => c.level !== "safe").forEach((c: any) => {
-      counts[c.domain] = (counts[c.domain] || 0) + 1;
-    });
+    weekChecks
+      .filter((c: any) => c.source !== MESSAGE_CHECK_SOURCE && (c.level === "dangerous" || c.level === "caution"))
+      .forEach((c: any) => {
+        counts[c.domain] = (counts[c.domain] || 0) + 1;
+      });
 
     const sorted = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])

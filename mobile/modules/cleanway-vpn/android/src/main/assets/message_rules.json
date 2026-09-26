@@ -1,0 +1,433 @@
+{
+  "_comment": "Vocabulary for the on-device message check (MessageAnalyzer.kt). Data only: the combining logic lives in code, and no single entry here can raise a warning on its own. Phrases are space-separated word stems: 'word*' matches any word starting with the stem, a bare word must match exactly, and one unrelated word may sit between two stems. Text is lowercased with ё folded to е before matching, so write stems that way. Every change here must keep MessageCorpusTest green: zero warnings on the legitimate corpus. Beware of prefixes that start ordinary words: 'сбер*' would also start 'сбережения', 'приз*' starts 'призыв'.",
+  "version": 1,
+
+  "negators": ["не", "ни", "никогда", "нельзя", "никому", "never", "not", "dont", "no", "cannot"],
+  "intermediates": [
+    "никому", "никогда", "ни", "надо", "нужно", "стоит", "следует", "просит", "просят", "просим", "требует",
+    "будет", "будут", "станет", "станут", "может", "могут", "ever", "to", "need", "should", "must"
+  ],
+
+  "groups": {
+    "threat": [
+      "взлом*", "несанкционир*", "подозрит*", "заблокир*", "блокиров*", "блокировк*", "утечк*",
+      "оформлен* кредит*", "оформля* кредит*", "заявк* на кредит*", "заявк* на смен*", "смен* номер*",
+      "штраф*", "задолженн*", "уголовн*", "арест*", "хищен*", "мошенническ*", "в суд*", "судебн*",
+      "попытк* вход*", "вход* с нов*", "зафиксирован* вход*", "будет удален*", "будет удал*", "будут удал*",
+      "будет заблок*", "отмен* операц*", "отмен* списан*", "отмен* платеж*", "отмен* перевод*", "под угроз*",
+      "задержан* на таможн*", "возбужден* дел*", "отмен* заявк*", "не подавал* заявк*", "аннулир*", "дач* показани*",
+      "допрос*", "доверенност*",
+      "suspended", "locked", "blocked", "unusual activity", "suspicious", "unauthori*", "compromised",
+      "overdue", "unpaid", "outstanding", "on hold", "legal action", "arrest*", "penalty", "fraud*",
+      "could not be delivered", "couldnt be delivered", "undeliverable"
+    ],
+    "urgency": [
+      "срочно", "немедленно", "незамедлительно", "как можно скорее", "в кратчайш*", "последн* предупрежд*",
+      "истека*", "истек", "приостановлен*", "ограничен*", "отключ*", "до завтра", "до конца дня", "до конца суток",
+      "до полуноч*", "в течение суток", "в течение часа",
+      "urgent*", "immediately", "asap", "right away", "final notice", "last warning", "expire*", "before midnight",
+      "by midnight", "today"
+    ],
+    "confirm_data": [
+      "подтверд* личност*", "подтверд* данн*", "подтверд* адрес*", "подтверд* вход*", "уточн* данн*", "уточн* адрес*",
+      "подтверд* получени*", "подтверд* по ссылк*", "обнов* данн*", "введ* данн* карт*", "укаж* данн* карт*", "реквизит* карт*",
+      "confirm* your", "verify your", "update* your detail*", "update* your payment*", "update* your account*"
+    ],
+    "bait": [
+      "выигр*", "выиграл*", "победител*", "приз", "приза", "призу", "призом", "призе", "призы", "призов*", "призам*",
+      "подар*", "компенсац*", "выплат*", "положен* доплат*", "доплат* к пенси*", "кешбэк*",
+      "кэшбэк*", "бонус* сгора*", "вознагражден*", "возврат* налог*", "налогов* вычет*", "вычет*", "доход*",
+      "заработ*", "пассивн* доход*",
+      "won", "winner", "prize*", "reward*", "refund*", "compensation", "gift*", "cashback"
+    ],
+    "payout": [
+      "выигр*", "выиграл*", "победител*", "компенсац*", "выплат*", "положен* доплат*", "доплат* к пенси*",
+      "возврат* налог*", "налогов* вычет*", "вычет*", "получил* перевод*",
+      "won", "winner", "refund*", "compensation"
+    ],
+
+    "call": [
+      "позвоните", "позвони", "перезвоните", "перезвони", "звоните", "звони", "свяжитесь", "свяжись", "обратитесь",
+      "обратись", "наберите", "набери", "тел", "телефону",
+      "call", "ring", "phone us", "contact us", "contact our"
+    ],
+    "code_verb": [
+      "сообщите", "сообщи", "продиктуйте", "продиктуй", "назовите", "назови", "скажите", "скажи", "передайте",
+      "передай", "перешлите", "перешли", "отправьте", "отправь", "пришлите", "пришли", "напишите", "напиши",
+      "скиньте", "скинь", "киньте", "кинь", "зачитайте",
+      "сообщайте", "называйте", "говорите", "передавайте", "диктуйте",
+      "tell", "share", "give", "read", "provide", "forward", "send"
+    ],
+    "code_dictate": ["продиктуйте", "продиктуй", "зачитайте", "зачитай", "read out", "read back"],
+    "code_word": [
+      "код*", "пароль*", "цифр*", "code*", "pin", "password*", "digits", "passcode*", "otp"
+    ],
+    "code_target": [
+      "оператор*", "специалист*", "сотрудник*", "звонящ*", "мастер*", "менеджер*", "консультант*", "агент*",
+      "по телефон*", "в ответ*", "ответн*", "нам", "мне", "сюда", "в этот чат", "в чат", "в личк*",
+      "agent*", "operator*", "representative*", "caller", "over the phone", "by phone", "to us"
+    ],
+    "call_context": [
+      "звонит*", "позвонит*", "позвоним", "позвонят", "звонок*", "звонк*", "звонящ*", "на линии", "свяжется",
+      "свяжутся",
+      "we will call", "will call you", "calling you"
+    ],
+    "pickup_context": [
+      "курьер*", "пункт* выдач*", "пвз", "постамат*", "при получени*", "получени* заказ*", "получени* посылк*",
+      "courier", "pickup", "pick up", "driver"
+    ],
+    "obey": [
+      "не кладите трубк*", "выполня* указани*", "выполня* инструкци*", "следу* указани*", "следу* инструкци*",
+      "follow his instructions", "follow their instructions", "do not hang up", "dont hang up"
+    ],
+    "call_coming": [
+      "ожидайте звонк*", "ждите звонк*", "вам позвонит", "вам позвонят", "с вами свяжется", "с вами свяжутся",
+      "свяжется с вами", "свяжутся с вами", "будьте на связи", "will call you", "expect a call"
+    ],
+    "code_incoming": [
+      "из смс*", "из sms", "из сообщени*", "котор* придет", "котор* придут", "что придет", "придет в смс*",
+      "придет вам", "from the sms", "we sent", "we just sent", "you will receive"
+    ],
+    "code_pronoun": ["его", "этот", "it"],
+    "code_except": ["кроме", "за исключением", "except"],
+    "code_household": [
+      "домофон*", "подъезд*", "двер*", "калитк*", "ворот*", "замк*", "сейф*", "шлагбаум*", "гараж*", "квартир*",
+      "wifi", "wi fi", "вайфа*", "вай фа*", "роутер*", "door", "gate"
+    ],
+    "flash_call": [
+      "последн* цифр* номер*", "последн* цифр* входящ*", "last digits", "last four digits"
+    ],
+
+    "money_verb": [
+      "переведите", "переведи", "перечислите", "перечисли", "скиньте", "скинь", "кинь", "киньте", "займи", "займите",
+      "одолжи", "одолжите", "внесите", "переводите", "перечисляйте", "отправляйте",
+      "transfer", "wire", "lend", "send me", "send money"
+    ],
+    "money_infinitive": ["перевести", "перечислить", "скинуть", "внести", "отправить", "переводить", "перечислять", "отправлять"],
+    "directive": [
+      "необходимо", "нужно", "надо", "следует", "требуется", "должны", "должен", "обязаны", "просим", "рекомендуем",
+      "срочно", "please", "must", "need to"
+    ],
+    "money_request": ["нужн* деньг*", "нужн* денег", "нужн* тысяч*", "need money", "can you send", "could you send", "can you transfer"],
+    "safe_account": [
+      "безопасн* счет*", "защищен* счет*", "резервн* счет*", "специальн* счет*", "безопасн* ячейк*",
+      "safe account*", "secure account*", "safety account*"
+    ],
+    "pay_verb": ["оплат*", "заплат*", "погас*", "pay", "settle"],
+    "fee_word": [
+      "пошлин*", "комисси*", "доставк*", "страховк*", "сбор*", "таможен*", "налог*",
+      "fee*", "customs", "duty", "shipping", "delivery", "redelivery", "postage"
+    ],
+
+    "install": [
+      "установ* приложен*", "скача* приложен*", "установ* программ*", "скача* программ*", "установ* файл*",
+      "install* app*", "download* app*"
+    ],
+    "malware_lure": [
+      "это ты на фото*", "это ты на видео*", "это вы на фото*", "это вы на видео*", "ты на фото*", "ты на видео*",
+      "твои фото*", "твое фото*", "смотри фото*", "посмотри фото*", "is this you", "is that you", "your photo*"
+    ],
+
+    "kin": [
+      "мам*", "мамочк*", "пап*", "сын*", "сынок", "доч*", "дочк*", "бабул*", "бабушк*", "дедул*", "дедушк*", "внук*",
+      "внучк*", "mum", "mom", "mummy", "mommy", "dad", "daddy", "son", "daughter", "grandma", "granny", "nan"
+    ],
+    "new_number": [
+      "нов* номер*", "чуж* номер*", "чуж* телефон*", "телефон сел*", "телефон разбил*", "разбил* телефон*",
+      "потерял* телефон*", "телефон потерял*", "телефон отобрал*", "не звони на старый", "номер* друг*",
+      "номер* подруг*", "разрядил*", "сломал* телефон*", "телефон* сломал*", "с чужого",
+      "new number", "lost my phone", "broke my phone", "dropped my phone", "phone broke", "phone is broken", "phone died"
+    ],
+    "emergency": [
+      "беда", "беде", "бед", "авари*", "дтп", "больниц*", "полици*", "задержал*", "попал*", "в участк*",
+      "у меня проблем*",
+      "accident", "hospital", "police", "trouble", "arrested"
+    ],
+    "secrecy": ["никому не говори*", "потом объясн*", "не говори*", "dont tell", "explain later"],
+
+    "awareness": [
+      "мошенник* прос*", "мошенник* мог*", "мошенник* мож*", "мошенник* звон*", "мошенник* представля*",
+      "мошенник* выда*", "мошенник* предлаг*", "злоумышленник* прос*",
+      "злоумышленник* мог*", "только мошенник*", "спрашива* только", "никогда не прос*", "никогда не звон*",
+      "не прос*", "будьте бдительн*", "остерегайтесь мошенник*", "если вам звонят", "если вам позвонили",
+      "положите трубку",
+      "scammer* ask*", "scammer* may", "fraudster* ask*", "fraudster* may", "we will never", "never ask*", "will never ask*"
+    ],
+
+    "code_label": ["код*", "пароль*", "code", "password", "passcode", "otp", "pin"],
+    "code_disclaimer": [
+      "никому не сообщ*", "не сообщайте никому", "не сообщайте код*", "не сообщайте его", "никому не говори*",
+      "никому не называ*", "никому его не сообщ*", "не передавайте код*", "спрашива* только мошенник*",
+      "never share", "do not share", "dont share", "not share"
+    ],
+    "payment_op": [
+      "покупк*", "списан*", "оплат*", "зачислен*", "перевод", "поступлен*", "снятие", "выдач* наличн*",
+      "пополнен*", "платеж*", "возврат*", "зарплат*", "purchase", "payment", "debited", "credited"
+    ],
+    "balance_word": ["баланс*", "остаток*", "доступно", "balance", "available"],
+    "currency": ["р", "руб*", "rub", "rur", "usd", "eur", "gbp"],
+    "pickup": [
+      "код* получен*", "код* выдач*", "код* для открыт*", "пункт* выдач*", "пвз", "постамат*", "ячейк*",
+      "готов* к выдач*", "ожида* в пункт*", "ожида* получен*", "прибыл* в отделени*", "назов* код курьер*",
+      "назов* курьер* код*", "pickup code", "collection code", "parcel locker"
+    ],
+    "public_alert": [
+      "мчс", "беспилотн* опасност*", "ракетн* опасност*", "воздушн* тревог*", "угроз* атак*", "гражданск* оборон*",
+      "штормов* предупрежд*", "экстренн* оповещен*", "emergency alert"
+    ],
+    "scam_label": [
+      "мошенник*", "мошенничеств*", "уловк*", "обман*", "не существует", "не существуют", "злоумышленник*",
+      "аферист*", "scam*", "fraudster*", "does not exist", "doesnt exist"
+    ],
+    "sms_command": ["смс перевод*", "sms перевод*", "сообщени* перевод*", "текстом перевод*", "команд* перевод*"]
+  },
+
+  "organisations": [
+    {
+      "id": "gosuslugi", "kind": "gov",
+      "names": ["госуслуг*", "gosuslug*", "портал* государствен* услуг*", "есиа", "мфц"],
+      "domains": ["gosuslugi.ru", "госуслуги.рф"],
+      "domain_tokens": ["gosuslugi", "gosuslug", "gosusluga", "gosuslugi24", "esia", "госуслуг", "есиа"],
+      "phones": ["115", "8 800 100-70-10"],
+      "senders": ["0919", "gosuslugi"]
+    },
+    {
+      "id": "fns", "kind": "gov",
+      "names": ["фнс", "налогов* служб*", "налогов* инспекц*", "налогов*", "hmrc", "irs", "tax office"],
+      "domains": ["nalog.ru", "nalog.gov.ru", "gov.uk"],
+      "domain_tokens": ["nalog", "fns", "налог", "фнс"],
+      "phones": ["8 800 222-22-22"]
+    },
+    {
+      "id": "sfr", "kind": "gov",
+      "names": [
+        "сфр", "пфр", "соцфонд*", "социальн* фонд*", "пенсионн* фонд*", "социальн* выплат*", "единовременн* выплат*",
+        "государствен* выплат*", "государствен* компенсац*", "выплат* от государств*", "пособи*"
+      ],
+      "domains": ["sfr.gov.ru"],
+      "domain_tokens": ["sfr", "pfr", "сфр", "пфр", "соцфонд"],
+      "phones": ["8 800 100-00-01"]
+    },
+    {
+      "id": "gibdd", "kind": "gov",
+      "names": ["гибдд", "гаи", "госавтоинспекц*", "пдд"],
+      "domains": ["gibdd.ru", "xn--90adear.xn--p1ai"],
+      "domain_tokens": ["gibdd", "shtraf", "shtrafy", "гибдд", "штраф", "штрафы"]
+    },
+    {
+      "id": "customs", "kind": "gov",
+      "names": ["таможн*", "фтс", "customs"],
+      "domains": ["customs.gov.ru"],
+      "domain_tokens": ["tamozhnya", "tamozhnia", "customs"]
+    },
+    {
+      "id": "court", "kind": "gov",
+      "names": ["фссп", "судебн* пристав*", "прокуратур*", "суд"],
+      "domains": ["fssp.gov.ru", "sudrf.ru"],
+      "domain_tokens": ["fssp"]
+    },
+    {
+      "id": "cbr", "kind": "security",
+      "names": ["банк россии", "центробанк*", "центральн* банк*", "цб рф", "цб", "росфинмониторинг*"],
+      "domains": ["cbr.ru", "fincult.info", "fedsfm.ru"],
+      "domain_tokens": ["cbr", "centrobank", "центробанк"],
+      "phones": ["300", "8 800 300-30-00"]
+    },
+    {
+      "id": "police", "kind": "security",
+      "names": [
+        "мвд", "полици*", "фсб", "росгвард*", "следствен* комитет*", "следовател*", "служб* безопасност*", "отдел* безопасност*",
+        "police", "security team", "security department", "fraud department", "fraud team"
+      ],
+      "domains": ["mvd.ru", "xn--b1aew.xn--p1ai", "fsb.ru", "sledcom.ru"],
+      "domain_tokens": ["mvd", "fsb", "мвд", "фсб"]
+    },
+    {
+      "id": "sber", "kind": "bank",
+      "names": ["сбер", "сбера", "сберу", "сбером", "сбере", "сбербанк*", "sber", "sberbank*"],
+      "domains": [
+        "sberbank.ru", "sber.ru", "sberbank.com", "spasibosberbank.ru", "sbermarket.ru", "kuper.ru", "megamarket.ru",
+        "sberhealth.ru", "sberlogistics.ru", "domclick.ru"
+      ],
+      "domain_tokens": ["sber", "sberbank", "sberbank-online", "sberonline", "сбер", "сбербанк"],
+      "phones": ["900", "8 800 555-55-50", "+7 495 500-55-50"],
+      "senders": ["900", "sberbank", "sber"]
+    },
+    {
+      "id": "vtb", "kind": "bank",
+      "names": ["втб*", "vtb*"],
+      "domains": ["vtb.ru"],
+      "domain_tokens": ["vtb", "vtb24", "втб"],
+      "phones": ["1000", "8 800 100-24-24", "+7 495 777-24-24"],
+      "senders": ["vtb"]
+    },
+    {
+      "id": "tbank", "kind": "bank",
+      "names": ["т банк*", "тинькофф*", "тинькоф*", "tinkoff*", "tbank*", "t bank*"],
+      "domains": ["tbank.ru", "tinkoff.ru"],
+      "domain_tokens": ["tinkoff", "tbank", "tinkof", "тинькофф", "тбанк"],
+      "phones": ["8 800 555-777-8", "+7 495 648-11-11"],
+      "senders": ["tbank", "tinkoff"]
+    },
+    {
+      "id": "alfa", "kind": "bank",
+      "names": ["альфа банк*", "альфабанк*", "альфа", "alfa bank*", "alfabank*"],
+      "domains": ["alfabank.ru"],
+      "domain_tokens": ["alfabank", "alfa", "альфабанк", "альфа"],
+      "phones": ["8 800 200-00-00", "+7 495 788-88-78"],
+      "senders": ["alfa-bank", "alfabank"]
+    },
+    {
+      "_comment": "Catch-all for every other bank: 'банк*' names hundreds of banks whose sites we cannot list, so a date alone is not pressure enough for its foreign-link rule. List the big ones' own domains here.",
+      "id": "bank", "kind": "bank", "catch_all": true,
+      "names": [
+        "газпромбанк*", "совкомбанк*", "почта банк*", "россельхозбанк*", "райффайзен*", "мтс банк*", "озон банк*",
+        "росбанк*", "псб", "промсвязьбанк*", "уралсиб*", "ак барс*", "хоум кредит*", "отп банк*", "ренессанс кредит*",
+        "русск* стандарт*", "мкб", "банк*", "bank*", "paypal",
+        "карт* заблокир*", "блокир* карт*", "операци* по карт*", "по ваш* карт*", "с ваш* карт*"
+      ],
+      "domains": [
+        "gazprombank.ru", "sovcombank.ru", "halvacard.ru", "pochtabank.ru", "rshb.ru", "raiffeisen.ru", "mtsbank.ru",
+        "paypal.com", "rosbank.ru", "psbank.ru", "uralsib.ru", "open.ru", "akbars.ru", "homebank.ru", "home.bank",
+        "homecredit.ru", "otpbank.ru", "rencredit.ru", "rsb.ru", "mkb.ru", "bspb.ru", "domrfbank.ru",
+        "unicreditbank.ru", "zenit.ru", "absolutbank.ru", "rncb.ru", "vbrr.ru", "ubrr.ru", "sviaz-bank.ru",
+        "centrinvest.ru", "tochka.com", "modulbank.ru", "yoomoney.ru"
+      ],
+      "domain_tokens": [
+        "gazprombank", "sovcombank", "pochtabank", "rshb", "raiffeisen", "paypal", "rosbank", "psbank", "uralsib",
+        "halvacard", "akbars", "homecredit", "otpbank", "rencredit", "газпромбанк", "совкомбанк", "росбанк"
+      ],
+      "phones": [
+        "8 800 100-07-01", "8 800 100-00-06", "8 800 550-07-70", "8 800 100-01-00", "8 800 700-91-00", "8 800 250-05-20",
+        "8 800 200-54-34", "8 800 333-03-03", "8 800 444-44-00", "8 800 250-57-57", "8 800 100-55-55",
+        "8 800 700-80-06", "8 800 200-09-81", "8 800 200-6-200", "8 800 100-48-88", "8 800 200-53-03"
+      ]
+    },
+    {
+      "id": "pochta", "kind": "delivery",
+      "names": ["почт* росси*", "royal mail", "usps", "post office"],
+      "domains": ["pochta.ru", "royalmail.com", "usps.com"],
+      "domain_tokens": ["pochta", "pochta-rus", "russianpost", "royalmail", "usps", "почта"],
+      "phones": ["8 800 100-00-00"]
+    },
+    {
+      "id": "cdek", "kind": "delivery",
+      "names": ["сдэк", "сдек", "cdek"],
+      "domains": ["cdek.ru"],
+      "domain_tokens": ["cdek", "sdek", "сдэк", "сдек"]
+    },
+    {
+      "id": "ozon", "kind": "delivery",
+      "names": ["озон", "ozon"],
+      "domains": ["ozon.ru"],
+      "domain_tokens": ["ozon", "озон"]
+    },
+    {
+      "id": "wildberries", "kind": "delivery",
+      "names": ["wildberries", "вайлдберриз", "wb"],
+      "domains": ["wildberries.ru", "wb.ru"],
+      "domain_tokens": ["wildberries", "wb", "vaildberriz"]
+    },
+    {
+      "id": "delivery", "kind": "delivery",
+      "names": [
+        "boxberry", "dpd", "dhl", "fedex", "ups", "evri", "авито", "avito", "яндекс маркет*", "яндекс доставк*",
+        "5post", "самокат"
+      ],
+      "domains": ["boxberry.ru", "dpd.ru", "dhl.com", "fedex.com", "ups.com", "evri.com", "avito.ru", "5post.ru"],
+      "domain_tokens": ["boxberry", "dpd", "dhl", "fedex", "avito"]
+    },
+    {
+      "id": "operator", "kind": "operator",
+      "names": [
+        "мтс", "билайн", "мегафон", "t2", "т2", "теле2", "tele2", "yota", "йота", "ростелеком", "оператор* связи",
+        "сотов* оператор*", "мобильн* оператор*", "уважаем* абонент*", "сим карт*", "sim карт*", "sim",
+        "продлени* договор*", "номер будет отключ*", "номер будет заблок*"
+      ],
+      "domains": ["mts.ru", "beeline.ru", "megafon.ru", "t2.ru", "tele2.ru", "yota.ru", "rt.ru"],
+      "domain_tokens": ["mts", "beeline", "megafon", "tele2", "t2", "yota", "мтс", "билайн", "мегафон", "теле2"],
+      "phones": [
+        "0890", "0611", "0500", "611", "8 800 250-08-90", "8 800 700-06-11", "8 800 550-05-00", "8 800 555-06-11",
+        "+7 951 520-06-11"
+      ]
+    },
+    {
+      "id": "messenger", "kind": "messenger",
+      "names": ["telegram", "телеграм*", "whatsapp", "ватсап*", "вотсап*"],
+      "domains": ["telegram.org", "whatsapp.com"],
+      "domain_tokens": ["telegram", "whatsapp", "telegramm", "телеграм", "ватсап"]
+    },
+    {
+      "id": "vk", "kind": "messenger",
+      "names": ["вконтакте", "вк", "vk", "vkontakte"],
+      "domains": ["vk.com", "vk.ru"],
+      "domain_tokens": ["vk", "vkontakte"]
+    },
+    {
+      "id": "company", "kind": "company",
+      "names": [
+        "газпром", "газпром инвест*", "роснефть*", "лукойл*", "столото", "stoloto", "netflix", "amazon", "apple",
+        "microsoft"
+      ],
+      "domains": [
+        "gazprom.ru", "stoloto.ru", "netflix.com", "amazon.com", "amazon.co.uk", "amzn.to", "amzn.eu", "apple.com",
+        "microsoft.com"
+      ],
+      "domain_tokens": ["gazprom", "stoloto", "netflix", "amazon", "apple", "microsoft", "газпром", "столото"]
+    },
+    {
+      "id": "housing", "kind": "service",
+      "names": ["управляющ* компан*", "ук", "домофон*", "военкомат*", "жкх", "водоканал*", "газов* служб*"],
+      "domains": []
+    }
+  ],
+
+  "trusted_domains": [
+    "gov.ru", "mos.ru", "rustore.ru", "apps.apple.com", "appgallery.huawei.com", "yandex.ru", "ya.ru", "emias.info"
+  ],
+  "user_content_hosts": [
+    "disk.yandex.ru", "disk.yandex.com", "disk.360.yandex.ru", "forms.yandex.ru", "forms.yandex.com", "docs.yandex.ru"
+  ],
+  "app_stores": ["rustore.ru", "appgallery.huawei.com", "apps.apple.com", "play.google.com"],
+  "shorteners": [
+    "clck.ru", "vk.cc", "bit.ly", "tinyurl.com", "cutt.ly", "goo.su", "is.gd", "u.to", "goo.gl", "t.co", "ow.ly",
+    "rb.gy", "rebrand.ly", "shorturl.at", "tiny.cc", "surl.li", "v.gd", "qps.ru", "t.ly", "buff.ly", "adf.ly",
+    "bl.ink", "short.io", "dub.sh", "lnkd.in", "shrtco.de", "1url.cz", "qr.ae", "inlnk.ru", "to.click", "sokrat.ru"
+  ],
+  "messengers": [
+    "t.me", "telegram.me", "telegram.dog", "wa.me", "chat.whatsapp.com", "api.whatsapp.com", "vk.me", "max.ru",
+    "invite.viber.com", "viber.click"
+  ],
+  "bare_tlds": [
+    "com", "net", "org", "info", "biz", "name", "pro", "mobi", "app", "dev", "online", "site", "top", "xyz", "shop",
+    "store", "club", "live", "life", "link", "click", "help", "support", "services", "service", "center", "fun",
+    "space", "website", "tech", "cloud", "digital", "email", "host", "press", "today", "world", "zip", "mov", "sbs",
+    "cfd", "buzz", "rest", "bond", "cyou", "lol", "mom", "beauty", "hair", "skin", "quest", "monster", "vip", "win",
+    "bid", "loan", "loans", "work", "men", "date", "review", "trade", "party", "science", "stream", "download",
+    "racing", "accountant", "cricket", "faith", "gdn", "kim", "country", "ninja", "rocks", "social", "group",
+    "company", "business", "agency", "team", "solutions", "network", "systems", "tools", "finance", "financial",
+    "bank", "money", "credit", "capital", "cash", "gold", "pay", "fund", "exchange", "market", "trading",
+    "investments", "news", "blog", "page", "one", "best", "guru", "expert", "delivery", "express", "post", "gift",
+    "gifts", "promo", "sale", "deals", "discount", "bonus", "free", "cam", "pics", "photo", "photos", "video",
+    "tube", "movie", "games", "game", "bet", "casino", "poker", "ltd", "inc", "llc", "global", "asia", "moscow",
+    "tatar", "yandex", "gle", "icu", "ink", "plus", "run", "art", "red", "blue", "pink", "black", "homes", "autos",
+    "boats", "yachts", "motorcycles", "makeup", "lat", "bar", "wiki", "ooo", "fyi", "forum", "zone", "locker", "ing",
+    "mobile", "tel", "baby", "love", "surf", "fit", "xin", "vin", "wang", "boo",
+    "рф", "рус", "москва", "онлайн", "сайт", "орг", "ком", "дети", "бел", "укр", "срб", "мкд", "қаз", "мон"
+  ],
+  "country_tlds": [
+    "ac", "ad", "ae", "af", "ag", "ai", "al", "am", "ao", "aq", "ar", "as", "at", "au", "aw", "ax", "az", "ba", "bb",
+    "bd", "be", "bf", "bg", "bh", "bi", "bj", "bm", "bn", "bo", "bq", "br", "bs", "bt", "bw", "by", "bz", "ca", "cc",
+    "cd", "cf", "cg", "ch", "ci", "ck", "cl", "cm", "cn", "co", "cr", "cu", "cv", "cw", "cx", "cy", "cz", "de", "dj",
+    "dk", "dm", "do", "dz", "ec", "ee", "eg", "er", "es", "et", "eu", "fi", "fj", "fk", "fm", "fo", "fr", "ga", "gd",
+    "ge", "gf", "gg", "gh", "gi", "gl", "gm", "gn", "gp", "gq", "gr", "gs", "gt", "gu", "gw", "gy", "hk", "hm", "hn",
+    "hr", "ht", "hu", "id", "ie", "il", "im", "in", "io", "iq", "ir", "is", "it", "je", "jm", "jo", "jp", "ke", "kg",
+    "kh", "ki", "km", "kn", "kp", "kr", "kw", "ky", "kz", "la", "lb", "lc", "li", "lk", "lr", "ls", "lt", "lu", "lv",
+    "ly", "ma", "mc", "md", "me", "mg", "mh", "mk", "ml", "mm", "mn", "mo", "mp", "mq", "mr", "ms", "mt", "mu", "mv",
+    "mw", "mx", "my", "mz", "na", "nc", "ne", "nf", "ng", "ni", "nl", "no", "np", "nr", "nu", "nz", "om", "pa", "pe",
+    "pf", "pg", "ph", "pk", "pl", "pm", "pn", "pr", "ps", "pt", "pw", "py", "qa", "re", "ro", "rs", "ru", "rw", "sa",
+    "sb", "sc", "sd", "se", "sg", "sh", "si", "sk", "sl", "sm", "sn", "so", "sr", "ss", "st", "su", "sv", "sx", "sy",
+    "sz", "tc", "td", "tf", "tg", "th", "tj", "tk", "tl", "tm", "tn", "to", "tr", "tt", "tv", "tw", "tz", "ua", "ug",
+    "uk", "us", "uy", "uz", "va", "vc", "ve", "vg", "vi", "vn", "vu", "wf", "ws", "ye", "yt", "za", "zm", "zw"
+  ]
+}

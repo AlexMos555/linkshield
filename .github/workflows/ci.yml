@@ -147,6 +147,32 @@ jobs:
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
 
+      - name: Message check vocabulary asset
+        # message_rules.json is hand-edited; a parse error or a renamed group
+        # ships an APK whose text check is silently off. The Kotlin tests that
+        # would catch it do not run in CI, so the asset is checked here.
+        run: node mobile/scripts/check-message-rules.mjs
+
+      - name: Message check result parser table test
+        # The native analyzeMessage() map is validated in JS; an unknown
+        # verdict must read as "could not check", never as a verdict.
+        run: node mobile/scripts/test-message-analysis.mjs
+
+      - name: Message check verdict table test
+        # Which link hosts may leave the phone (never a shortener, a shared
+        # system host such as docs.google.com, an IP or more than 3), how
+        # server answers fold into the on-device verdict (they can only raise
+        # it), when a calm verdict must say a link is still unchecked, and
+        # bare link vs message share routing.
+        run: node mobile/scripts/test-message-verdict.mjs
+
+      - name: History model table test
+        # Each home counter opens History on a filter; the filter must list
+        # exactly what the counter adds up. Also pins that old block-log
+        # entries (no source) still read, and that the public deep link opens
+        # nothing for a site that is not in the log.
+        run: node mobile/scripts/test-history-model.mjs
+
       - name: Captcha service unit tests
         # Pins the deep-link contract with /auth/captcha: https-only URL,
         # nonce must match, timeout/grace/cancel resolve null exactly once.

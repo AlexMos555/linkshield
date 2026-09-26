@@ -1,15 +1,18 @@
 import { Platform } from "react-native";
 
-/** One entry of the DNS shield's persisted block log (see BlockLog.kt). */
+/** One entry of the shields' persisted block log (see BlockLog.kt). */
 export interface ShieldRow {
   domain: string;
   ts: number;
   /**
-   * "blocked": the query got NXDOMAIN — the site never opened.
-   * "warned": the verdict arrived after the first lookup had been forwarded.
+   * "blocked": the site never opened (DNS refused it, or the link guard
+   * stopped the tapped link).
+   * "warned": the link guard let the link open; its site was flagged after.
    * "allowed": the person said "not a scam" and rescued it.
    */
   kind: "blocked" | "warned" | "allowed";
+  /** Which shield acted: "dns" (All apps) or "link" (Link checking); null for allows. */
+  source?: "dns" | "link" | null;
 }
 
 interface ShieldLogModule {

@@ -62,6 +62,21 @@ class BlocklistStore(private val dir: File) {
         null
     }
 
+    /**
+     * The fetch stamp alone, from the small meta file — lets a reader tell
+     * "same list as last time" without re-reading the ~2.6 MB body. Null
+     * when no list is stored.
+     */
+    fun fetchedAtMs(): Long? = try {
+        when {
+            !blobFile.exists() -> null
+            metaFile.exists() -> JSONObject(metaFile.readText()).optLong("fetchedAt", 0L)
+            else -> 0L
+        }
+    } catch (_: Exception) {
+        null
+    }
+
     fun save(body: ByteArray, etag: String?, fetchedAtMs: Long) {
         dir.mkdirs()
         writeAtomicBytes(blobFile, body)

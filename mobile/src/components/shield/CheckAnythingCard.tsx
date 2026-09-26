@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius } from "../../utils/theme";
@@ -13,7 +13,7 @@ interface CheckAnythingCardProps {
 /**
  * The on-demand layer — always present, always fully working
  * (paste / QR / share-sheet). Makes no protection claim, so it carries
- * no honesty line; the footnote states the iMessage-capable scope.
+ * no honesty line; the footnote states the scope (iMessage exists only on iOS).
  */
 export function CheckAnythingCard({ onOpen, onPaste, onScanQr, onHowToShare }: CheckAnythingCardProps) {
   const { t } = useTranslation();
@@ -36,7 +36,9 @@ export function CheckAnythingCard({ onOpen, onPaste, onScanQr, onHowToShare }: C
         <Chip icon="share-outline" label={t("mobile.home.check.share")} onPress={onHowToShare} />
       </View>
 
-      <Text style={s.note}>{t("mobile.home.check.note")}</Text>
+      <Text style={s.note}>
+        {t(Platform.OS === "android" ? "mobile.home.check.note_android" : "mobile.home.check.note")}
+      </Text>
     </TouchableOpacity>
   );
 }
