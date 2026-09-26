@@ -73,10 +73,59 @@ def test_an_ongoing_outage_keeps_its_first_timestamp():
     assert fh.assess({"URLhaus": 5}, {}, {}, NOW).outage_seconds(NOW) == 0
 
 
-def test_carry_keeps_what_nothing_backs_except_the_canary():
-    carried = fh.carry_names({"a.example", "b.example", "list-canary.cleanway.ai"},
-                             {"a.example"}, {"list-canary.cleanway.ai"})
-    assert carried == {"b.example"}
+PREVIOUS = {"army1.top", "army2.top", "op-dropped.top", "csirt.example", "listed.top",
+            "list-canary.cleanway.ai"}
+LISTED = {"listed.top"}
+CANARY = frozenset({"list-canary.cleanway.ai"})
+
+
+def test_the_carry_keeps_only_what_the_missing_feed_backed():
+    plan = fh.plan_carry(PREVIOUS, LISTED, {"phishing.army": NOW - 3600}, NOW,
+                         {"phishing.army": {"army1.top", "army2.top"}}, protected=CANARY)
+    assert plan.carried == {"army1.top", "army2.top"}
+    assert plan.backed == {"army1.top", "army2.top"}
+    # op-dropped.top left a HEALTHY feed: not carried, and free to be
+    # recorded as an ordinary departure (nothing blind).
+    assert not plan.blind and not plan.expired
+
+
+def test_the_window_is_judged_per_feed_not_on_the_oldest_outage():
+    weeks = NOW - fh.CARRY_MAX_SECONDS - 86_400
+    plan = fh.plan_carry(PREVIOUS, LISTED, {"CSIRT Italia": weeks, "phishing.army": NOW - 3600}, NOW,
+                         {"CSIRT Italia": {"csirt.example"}, "phishing.army": {"army1.top", "army2.top"}},
+                         protected=CANARY)
+    assert plan.carried == {"army1.top", "army2.top"}
+    # The dead feed's names leave — but are not departures either, or
+    # retention would hold them another 14 days.
+    assert plan.backed == {"army1.top", "army2.top", "csirt.example"}
+    assert plan.expired == ("CSIRT Italia",)
+
+
+def test_without_a_record_the_carry_keeps_every_unlisted_name_and_blocks_departures():
+    plan = fh.plan_carry(PREVIOUS, LISTED, {"phishing.army": NOW - 3600}, NOW, {}, protected=CANARY)
+    assert plan.carried == PREVIOUS - LISTED - CANARY
+    assert plan.blind == ("phishing.army",)
+
+
+def test_a_dead_feed_without_a_record_stops_blocking_departures_once_its_names_left():
+    settling = NOW - fh.CARRY_MAX_SECONDS - fh.CARRY_SETTLE_SECONDS + 3600
+    settled = NOW - fh.CARRY_MAX_SECONDS - fh.CARRY_SETTLE_SECONDS - 3600
+    assert fh.plan_carry(PREVIOUS, LISTED, {"CSIRT Italia": settling}, NOW, {}).blind == ("CSIRT Italia",)
+    plan = fh.plan_carry(PREVIOUS, LISTED, {"CSIRT Italia": settled}, NOW, {})
+    assert plan.blind == () and plan.carried == frozenset()
+
+
+def test_an_uncarried_source_is_counted_but_never_kept():
+    """The server-confirmed set: a host it cannot vouch for must not outlive
+    its 7-day window — not even through another feed's blind carry."""
+    records = {"Cleanway checks": {"csirt.example"}}
+    only = fh.plan_carry(PREVIOUS, LISTED, {"Cleanway checks": NOW - 3600}, NOW, records,
+                         uncarried=frozenset({"Cleanway checks"}), protected=CANARY)
+    assert only.carried == frozenset() and only.backed == {"csirt.example"}
+    both = fh.plan_carry(PREVIOUS, LISTED, {"Cleanway checks": NOW - 3600, "phishing.army": NOW - 3600},
+                         NOW, records, uncarried=frozenset({"Cleanway checks"}), protected=CANARY)
+    assert "csirt.example" not in both.carried
+    assert "army1.top" in both.carried
 
 
 class _Pipe:

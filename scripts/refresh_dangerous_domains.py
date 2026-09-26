@@ -44,16 +44,18 @@ go through every guard again on every run (api/services/blocklist_retention.py).
 
 Outage guard: a feed that fails to download, or returns under half its last
 healthy size, is DEGRADED (api/services/blocklist_feed_health.py). While one
-is, every published name that no healthy source backs is carried into the new
-set instead of silently dropping out; an outage older than 12 h makes the run
-exit 6 after publishing so it goes red. Losing phishing.army once looked like
-a 29% change — under the churn gate — and took fresh-phishing coverage from
-~73% to ~1%.
+is, the published names it backed on its last healthy run (recorded per feed
+by api/services/blocklist_feed_backing.py) are carried into the new set
+instead of silently dropping out, for up to 14 days of that feed's outage; an
+outage older than 12 h makes the run exit 6 after publishing so it goes red.
+Losing phishing.army once looked like a 29% change — under the churn gate —
+and took fresh-phishing coverage from ~73% to ~1%.
 
-Server-confirmed hosts: hosts the analyzer found DANGEROUS on threat-intel
-evidence (Safe Browsing, URLhaus, ThreatFox …) are recorded by
-api/services/confirmed_threats.py and published here as exact hosts, through
-every guard, for 7 days after their last confirmation.
+Server-confirmed hosts (OFF unless PUBLISH_CONFIRMED_THREATS is set — a
+licence decision, see api/services/confirmed_threats.py): hosts the analyzer
+found DANGEROUS on a Google Safe Browsing phishing/malware listing are
+published here as exact hosts, through every guard, for 7 days after their
+last confirmation. Switched off, any hosts still stored leave at once.
 
 Promotion: a registrable is blocked whole only when the feeds name it (bare or
 as www.) or several of its subdomains — never on one subdomain, never a
@@ -66,8 +68,9 @@ Usage:
         # …then: python3 scripts/eval_blocklist_coverage.py --artifact /tmp/list.bin
 
 Env:
-    REDIS_URL              — connection string (required unless --dry-run)
-    BLOCKLIST_RETAIN_DAYS  — retention window in days, 0 disables (default 14)
+    REDIS_URL                  — connection string (required unless --dry-run)
+    BLOCKLIST_RETAIN_DAYS      — retention window in days, 0 disables (default 14)
+    PUBLISH_CONFIRMED_THREATS  — 1/true to publish server-confirmed hosts (default off)
 """
 from __future__ import annotations
 
@@ -81,6 +84,7 @@ import logging
 import os
 import sys
 import time
+from typing import NamedTuple
 from urllib.parse import urlparse
 
 import httpx
@@ -90,12 +94,14 @@ from api.services.blocklist_artifact import (  # noqa: E402
     LIST_CANARY, NEVER_BLOCK_GUARDS, REDIS_META_KEY, REDIS_TEXT_KEY, delta_key,
     meta_for_v2, parse_artifact_v2, render_artifact_v2, render_delta,
 )
+from api.services import blocklist_feed_backing as feed_backing  # noqa: E402
 from api.services import blocklist_feed_health as feed_health  # noqa: E402
 from api.services import blocklist_retention as retention  # noqa: E402
 from api.services import confirmed_threats  # noqa: E402
 
 API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
-# The analyzer's threat-intel-confirmed hosts, treated as one more source.
+# The analyzer's Safe-Browsing-confirmed hosts, one more source when
+# publishing them is switched on (confirmed_threats.enabled).
 CONFIRMED_SOURCE = "Cleanway checks"
 # Exit code: published, but a feed has been down for more than
 # feed_health.ALERT_AFTER_SECONDS — the run goes red so someone looks.
@@ -891,14 +897,28 @@ def _feed_specs() -> tuple:
     )
 
 
-async def _fetch_feeds() -> tuple[list[str], list[str], dict[str, int | None]]:
-    """(promoting hosts, exact-only hosts, feed -> distinct hosts parsed or
-    None when it could not be read). Hosts repeat once per feed URL — the
-    repeats feed the shared-host guard."""
+class FeedFetch(NamedTuple):
+    """One run's feeds. `hosts` / `exact_hosts` repeat a host once per feed
+    URL — the repeats feed the shared-host guard. `fetched` is feed ->
+    distinct hosts parsed, or None when it could not be read; `by_feed` holds
+    each readable feed's normalised hosts, `exact_feeds` the feeds that never
+    promote a registrable."""
+    hosts: list
+    exact_hosts: list
+    fetched: dict
+    by_feed: dict
+    exact_feeds: frozenset
+
+
+async def _fetch_feeds() -> FeedFetch:
     hosts: list[str] = []
     exact_hosts: list[str] = []
     fetched: dict[str, int | None] = {}
+    by_feed: dict[str, set[str]] = {}
+    exact_feeds = {"CSIRT Italia"}
     for name, url, parser, promote in _feed_specs():
+        if not promote:
+            exact_feeds.add(name)
         try:
             parsed = list(parser(await _fetch(url)))
         except Exception as e:  # noqa: BLE001
@@ -906,6 +926,7 @@ async def _fetch_feeds() -> tuple[list[str], list[str], dict[str, int | None]]:
             fetched[name] = None
             continue
         (hosts if promote else exact_hosts).extend(parsed)
+        by_feed[name] = {_norm_host(h) for h in parsed} - {""}
         fetched[name] = len(set(parsed))
         logger.info("%s: +%d host entries%s (%d distinct so far)", name, len(parsed),
                     "" if promote else " (exact-only)", len(set(hosts) | set(exact_hosts)))
@@ -915,12 +936,14 @@ async def _fetch_feeds() -> tuple[list[str], list[str], dict[str, int | None]]:
     try:
         parsed = await _fetch_misp_feed(CSIRT_IT_MANIFEST)
         exact_hosts.extend(parsed)
+        by_feed["CSIRT Italia"] = {_norm_host(h) for h in parsed} - {""}
         fetched["CSIRT Italia"] = len(set(parsed))
         logger.info("CSIRT Italia: +%d host entries (exact-only)", len(parsed))
     except Exception as e:  # noqa: BLE001
         logger.warning("CSIRT Italia fetch failed: %s (continuing)", e)
         fetched["CSIRT Italia"] = None
-    return hosts, exact_hosts, fetched
+    return FeedFetch(hosts=hosts, exact_hosts=exact_hosts, fetched=fetched, by_feed=by_feed,
+                     exact_feeds=frozenset(exact_feeds))
 
 
 def _utc(ts: float) -> str:
@@ -951,46 +974,104 @@ async def _feed_health(r, fetched: dict[str, int | None], now: float, dry_run: b
     return health
 
 
-async def _confirmed_hosts(r, now: float) -> tuple[set[str], set[str]] | None:
-    """(active, expired) hosts our own checks confirmed through threat intel
-    (confirmed_threats), or None when the set could not be read."""
+async def _confirmed_hosts(r, now: float, publish: bool) -> tuple[set[str], set[str]] | None:
+    """(active, expired) hosts our own checks confirmed through Safe Browsing
+    (confirmed_threats), or None when the set could not be read. With
+    publishing switched off every stored host counts as expired: it leaves
+    the list at once, with no retention tail, and an unreadable set is no
+    outage."""
     if r is None:
         return set(), set()
     try:
         entries = await confirmed_threats.load(r)
     except Exception as e:  # noqa: BLE001
         logger.warning("server-confirmed threats unreadable (%s) — publishing without them", e)
-        return None
+        return None if publish else (set(), set())
+    if not publish:
+        if entries:
+            logger.info("server-confirmed threats: publishing is off (%s) — %d stored hosts leave the list",
+                        confirmed_threats.ENABLE_ENV, len(entries))
+        return set(), {_norm_host(n) for n in entries} - {""}
     active, expired = confirmed_threats.split(entries, now)
     logger.info("server-confirmed threats: %d inside the %d-day window, %d expired", len(active),
                 confirmed_threats.CONFIRMED_WINDOW_SECONDS // 86_400, len(expired))
     return {_norm_host(n) for n in active} - {""}, {_norm_host(n) for n in expired} - {""}
 
 
-def _carried_names(previous: set[str] | None, listed: set[str], degraded: dict[str, str],
-                   outage_seconds: float, dry_run: bool) -> set[str] | None:
-    """Published names to keep because a degraded source may still back them:
-    everything published that is not a host a live source lists this run.
-    None means: do not publish at all (we cannot tell what we would lose)."""
-    if not degraded:
-        return set()
-    feeds = ", ".join(sorted(degraded))
+async def _load_backing(r, now: float) -> dict:
+    """Which names each source backed on its last healthy run. Never raises:
+    without the records an outage keeps every unlisted published name."""
+    try:
+        return await feed_backing.load(r, now)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("feed backing records unreadable (%s) — an outage keeps every unlisted published name", e)
+        return {}
+
+
+def _log_carry(plan: feed_health.CarryPlan, carrying: list[str], down_since: dict, now: float) -> None:
+    for source in plan.expired:
+        logger.error("%s down for %.1f days — past the %d-day carry window; its names now leave the list",
+                     source, (now - down_since[source]) / 86_400, feed_health.CARRY_MAX_SECONDS // 86_400)
+    for source in plan.blind:
+        logger.warning("%s: no record of which names it backed (the records start with its next healthy "
+                       "publish) — %s", source, "keeping every published name no live source lists"
+                       if source in carrying else "not recording departures")
+    if CONFIRMED_SOURCE in down_since:
+        logger.warning("%s: its hosts are not carried — none may outlive its 7-day window", CONFIRMED_SOURCE)
+    if set(carrying) & set(plan.blind):
+        logger.warning("outage guard: keeping %d published names no live source lists (%s down)",
+                       len(plan.carried), ", ".join(carrying))
+    elif carrying:
+        logger.warning("outage guard: keeping %d published names %s backed", len(plan.carried), ", ".join(carrying))
+
+
+async def _plan_carry(r, previous: set[str] | None, listed: set[str], health: feed_health.FeedHealth,
+                      now: float, dry_run: bool) -> feed_health.CarryPlan | None:
+    """What the outage guard keeps this run (blocklist_feed_health.plan_carry).
+    None means: do not publish at all — a carried source is down and the live
+    set is unreadable, so we cannot tell what we would lose."""
+    down_since = dict(health.down_since)
+    if not down_since:
+        return feed_health.CarryPlan()
+    carrying = sorted(source for source, since in down_since.items()
+                      if source != CONFIRMED_SOURCE and now - since <= feed_health.CARRY_MAX_SECONDS)
     if previous is None:
+        if not carrying:
+            return feed_health.CarryPlan()
+        feeds = ", ".join(carrying)
         if dry_run:
             logger.warning("[dry-run] %s degraded and the live set is unreadable — a real run would "
                            "refuse to publish", feeds)
-            return set()
+            return feed_health.CarryPlan()
         logger.error("%s degraded and the live set is unreadable — cannot keep what it backed; "
                      "refusing to publish. Previous set stays live.", feeds)
         return None
-    if outage_seconds > feed_health.CARRY_MAX_SECONDS:
-        logger.error("%s down for %.1f days — past the %d-day carry window; its names now leave the list",
-                     feeds, outage_seconds / 86_400, feed_health.CARRY_MAX_SECONDS // 86_400)
-        return set()
-    carried = feed_health.carry_names(previous, listed, {LIST_CANARY})
-    logger.warning("outage guard: keeping %d published names no healthy source backs this run (%s degraded)",
-                   len(carried), feeds)
-    return carried
+    plan = feed_health.plan_carry(previous, listed, down_since, now, await _load_backing(r, now),
+                                  uncarried=frozenset({CONFIRMED_SOURCE}), protected=frozenset({LIST_CANARY}))
+    _log_carry(plan, carrying, down_since, now)
+    return plan
+
+
+async def _save_backing(r, run: FeedFetch, health: feed_health.FeedHealth, sources: set[str],
+                        published: frozenset[str], inputs: set[str], confirmed_active: set[str],
+                        public_suffixes: set[str] | None, now: float) -> None:
+    """Record which published names each healthy source backed, for the next
+    outage (blocklist_feed_backing). `sources` is every source of this run;
+    records of any other are dropped. Never raises: without the records an
+    outage falls back to keeping every unlisted published name."""
+    def registrable(host: str) -> str:
+        return _registrable_domain(host, public_suffixes)
+
+    hosts_of = {**run.by_feed, CONFIRMED_SOURCE: confirmed_active}
+    records = {}
+    for source in sorted(set(health.healthy_counts) & set(hosts_of)):
+        promotes = source not in run.exact_feeds and source != CONFIRMED_SOURCE
+        names = feed_backing.names_backed(published, inputs, hosts_of[source], promotes, registrable)
+        records[source] = feed_backing.build(names, now)
+    try:
+        await feed_backing.save(r, records, sources)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("feed backing records not saved (%s)", e)
 
 
 async def _prune_confirmed(r, now: float) -> None:
@@ -1004,7 +1085,8 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
                   now: float | None = None, artifact_out: str | None = None) -> int:
     now = time.time() if now is None else now
     top_100k = _load_top_100k()
-    hosts, exact_hosts, fetched = await _fetch_feeds()
+    run = await _fetch_feeds()
+    hosts, exact_hosts = run.hosts, run.exact_hosts
 
     if not hosts and not exact_hosts:
         logger.error("No hosts fetched from any feed — refusing to wipe the set")
@@ -1023,36 +1105,39 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
 
     r = _open_redis(redis_url)
     previous = await _read_previous(r)
-    confirmed = await _confirmed_hosts(r, now)
-    if r is not None:
-        # One more source for the outage guard: an unreadable set is carried
-        # like a failed feed, and alerts like one when it stays unreadable.
-        fetched = {**fetched, CONFIRMED_SOURCE: None if confirmed is None else len(confirmed[0])}
+    publish_confirmed = confirmed_threats.enabled()
+    confirmed = await _confirmed_hosts(r, now, publish_confirmed)
+    fetched = dict(run.fetched)
+    if r is not None and publish_confirmed:
+        # One more source for the outage guard: an unreadable set alerts like
+        # a failed feed when it stays unreadable (it is never carried).
+        fetched[CONFIRMED_SOURCE] = None if confirmed is None else len(confirmed[0])
     health = await _feed_health(r, fetched, now, dry_run, accept_sizes=force)
-    degraded = dict(health.degraded)
     active, expired = confirmed or (set(), set())
     promoting = {_norm_host(h) for h in hosts}
     promoting.discard("")
     exact_only = {_norm_host(h) for h in exact_hosts} - promoting
     exact_only.discard("")
     feed_hosts = hosts + exact_hosts
-    # An expired confirmation counts as present so retention does not hold it
-    # for another window: the confirmation window already was its retention.
-    present = present_names(feed_hosts, public_suffixes, exact_only) | active | expired
-    retained = await _retained_names(r, previous, present, now, dry_run, tuple(sorted(degraded)))
-    # The carry keeps every published name that is not itself a host a live
-    # source lists — registrables included: one the missing feed promoted
+    # The carry keeps the published names each degraded source backed on its
+    # last healthy run — registrables included: one the missing feed promoted
     # may not reach PROMOTE_MIN_SUBDOMAINS on the healthy feeds alone.
     listed = {_norm_host(h) for h in feed_hosts} | active | expired
-    carried = _carried_names(previous, listed, degraded, health.outage_seconds(now), dry_run)
-    if carried is None:
+    carry = await _plan_carry(r, previous, listed, health, now, dry_run)
+    if carry is None:
         return 4
+    # An expired confirmation counts as present so retention does not hold it
+    # for another window: the confirmation window already was its retention.
+    # So does a name a degraded source backed: it has not left, we just
+    # cannot see it this run. Everything else that left is a real departure.
+    present = present_names(feed_hosts, public_suffixes, exact_only) | active | expired | carry.backed
+    retained = await _retained_names(r, previous, present, now, dry_run, carry.blind)
     # Retained, carried and server-confirmed names join the feed hosts BEFORE
     # the build, so every guard below (Tranco and top-100k veto, brand-owned
     # veto, tenant rules, zones) judges them afresh. None of them promotes a
     # registrable: nothing in a current feed vouches for it, and a registrable
     # that WAS published comes back through its own entry, not through promotion.
-    extra = retained | carried | active
+    extra = retained | set(carry.carried) | active
     exact_only |= {_norm_host(n) for n in extra} - promoting
     exact_only.discard("")
     candidate_hosts = feed_hosts + sorted(extra)
@@ -1063,7 +1148,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
                 "%d exact-only; %d retained, %d carried through an outage, %d server-confirmed — "
                 "%d of those passed the guards)",
                 len(blockset), len(feed_hosts), len(set(feed_hosts)), len(exact_only),
-                len(retained), len(carried), len(active), len(extra & blockset))
+                len(retained), len(carry.carried), len(active), len(extra & blockset))
     shared_all = default_shared_suffixes()
     ok, why = publish_gate(blockset, previous, top_100k | (public_suffixes or set()), shared_all, force=force)
     if not ok:
@@ -1078,6 +1163,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
         return any(".".join(parts[i:]) in blockset for i in range(1, len(parts) - 1))
 
     minimal = {n for n in blockset if not _redundant(n)}
+    published = frozenset(blockset)  # what the feeds and guards chose, before the canary
     # The canary lives in both places: the artifact (so a phone can prove its
     # list is live) and the gateway set (so the 15-minute canary can prove
     # server-side filtering is not silently dead — the state that once lasted
@@ -1205,6 +1291,8 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
             return 5
         logger.info("post-publish verification: live gateway healthy")
         await _prune_confirmed(r, now)
+        await _save_backing(r, run, health, set(fetched), published, {_norm_host(h) for h in candidate_hosts},
+                            active, public_suffixes, now)
         outage = health.outage_seconds(now)
         if outage >= feed_health.ALERT_AFTER_SECONDS:
             logger.error("published, but %s has been degraded for %.0f h — exit %d so this run alerts",

@@ -29,6 +29,7 @@ import pathlib
 
 import pytest
 
+from api.services import blocklist_feed_backing as feed_backing
 from api.services import blocklist_retention as retention
 from api.services.blocklist_artifact import REDIS_TEXT_KEY, artifact_covers, parse_artifact_v2
 
@@ -473,6 +474,9 @@ class _FakeRedis:
         self._check("hgetall")
         return dict(self.data.get(key, {}))
 
+    async def hkeys(self, key):
+        return list(self.data.get(key, {}))
+
     async def hdel(self, key, *fields):
         h = self.data.get(key, {})
         removed = sum(h.pop(f, None) is not None for f in fields)
@@ -683,12 +687,9 @@ async def test_retention_read_failure_publishes_from_the_feeds_alone(monkeypatch
     await _run(monkeypatch, fake, [_url(TENANT_PHISH)], now=T0)
     fake.fail = {"zrange"}
     assert await _run(monkeypatch, fake, [], now=T0 + 6 * 3600) == 0
-    assert "scam1.xyz" in _published(fake)  # the set WAS published
+    assert TENANT_PHISH not in _published(fake)
+    assert "scam1.xyz" in _published(fake)  # the feed-only set WAS published
     assert any(r.levelno == logging.WARNING and "retention" in r.getMessage() for r in caplog.records)
-    # The same Redis blip hid the server-confirmed hosts too, so that source
-    # counts as down and the outage guard keeps what was published.
-    assert TENANT_PHISH in _published(fake)
-    assert "outage guard" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -794,7 +795,25 @@ async def test_a_failed_feed_does_not_record_its_names_as_departed(monkeypatch, 
     stored = fake.data.get(retention.LAST_SEEN_KEY, {})
     assert TENANT_PHISH not in stored, "an outage must not be recorded as a departure"
     assert already in stored, "names retained before the outage keep their clock"
+    assert TENANT_PHISH in _published(fake), "the missing feed's name is carried"
+    assert "outage guard: keeping 1 published names OpenPhish backed" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_without_a_record_of_its_names_a_failed_feed_stops_departures(monkeypatch, caplog):
+    """The first outage after the records began (or with the record
+    unreadable): nothing tells the feed's names from departures, so none is
+    recorded and every unlisted published name is kept, as before."""
+    fake = _FakeRedis()
+    assert await _run(monkeypatch, fake, [_url(TENANT_PHISH)], now=T0) == 0
+    del fake.data[feed_backing.BACKING_KEY]
+
+    _stub_outage(monkeypatch, fake, rdd.OPENPHISH_FEED, [])
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600) == 0
+    assert TENANT_PHISH not in fake.data.get(retention.LAST_SEEN_KEY, {})
+    assert TENANT_PHISH in _published(fake)
     assert "not recording departures" in caplog.text
+    assert "OpenPhish: no record of which names it backed" in caplog.text
 
 
 def test_plan_retention_records_nothing_when_told_not_to():
@@ -1249,13 +1268,16 @@ ARMY = [f"army{i}.top" for i in range(165)]
 ARMY_PSL = PSL | {"top"}
 
 
-def _army_world(monkeypatch, fake, army_body, openphish_urls=()):
+def _army_world(monkeypatch, fake, army_body, openphish_urls=(), failing=frozenset()):
     """BASE (Phishing.Database) + phishing.army; `army_body` is a string, or
-    an Exception instance to raise from the download."""
+    an Exception instance to raise from the download. URLs in `failing`
+    raise too."""
     _stub_world(monkeypatch, fake, list(openphish_urls))
     healthy = rdd._fetch
 
     async def _fetch(url):
+        if url in failing:
+            raise ConnectionError(f"{url} down")
         if url == rdd.PHISHING_ARMY:
             if isinstance(army_body, Exception):
                 raise army_body
@@ -1269,8 +1291,9 @@ def _army_world(monkeypatch, fake, army_body, openphish_urls=()):
     monkeypatch.setattr(rdd, "_fetch_psl", _psl)
 
 
-async def _army_run(monkeypatch, fake, army_body, now, force=False, openphish_urls=()) -> int:
-    _army_world(monkeypatch, fake, army_body, openphish_urls)
+async def _army_run(monkeypatch, fake, army_body, now, force=False, openphish_urls=(),
+                    failing=frozenset()) -> int:
+    _army_world(monkeypatch, fake, army_body, openphish_urls, failing)
     return await rdd.refresh("redis://fake", dry_run=False, force=force, now=now)
 
 
@@ -1362,6 +1385,108 @@ async def test_the_carry_stops_after_the_window_and_the_names_leave(monkeypatch,
     assert "past the 14-day carry window" in caplog.text
 
 
+# ── Review of #50: the carry keeps what the MISSING feed backed, judged per
+# feed — not every unlisted name, not on the oldest outage. ────────────────
+ARMY_DOWN = ConnectionError("phishing.army down")
+
+
+@pytest.mark.asyncio
+async def test_a_feed_dead_for_weeks_never_switches_the_guard_off_for_another(monkeypatch, caplog):
+    """The carry window was judged on the OLDEST outage: once CSIRT Italia had
+    been down 14 days, a fresh phishing.army outage lost all 165 names."""
+    fake = _FakeRedis()
+    army, csirt_down = "\n".join(ARMY), frozenset({rdd.CSIRT_IT_MANIFEST})
+    assert await _army_run(monkeypatch, fake, army, now=T0) == 0
+    assert await _army_run(monkeypatch, fake, army, now=T0 + 6 * 3600, failing=csirt_down) == 0
+    weeks = T0 + 6 * 3600 + feed_health.CARRY_MAX_SECONDS + DAY
+    assert await _army_run(monkeypatch, fake, army, now=weeks, failing=csirt_down) == rdd.EXIT_FEED_OUTAGE
+
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=weeks + 6 * 3600,
+                           failing=csirt_down) == rdd.EXIT_FEED_OUTAGE
+    assert set(ARMY) <= _published(fake), "a fresh outage keeps its names whatever else is dead"
+    assert "outage guard: keeping 165 published names phishing.army backed" in caplog.text
+    assert "CSIRT Italia down for 15.2 days — past the 14-day carry window" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_during_an_outage_another_feeds_delisting_is_an_ordinary_departure(monkeypatch, caplog):
+    """The carry kept every published name no live source listed, so while any
+    feed was down, a name a HEALTHY feed dropped (an upstream false-positive
+    removal) stayed frozen on every phone for the length of the outage."""
+    fake = _FakeRedis()
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0, openphish_urls=[_url("fp-legit.top")])
+    assert "fp-legit.top" in _published(fake)
+
+    down = T0 + 6 * 3600
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=down) == 0
+    assert "outage guard: keeping 165 published names phishing.army backed" in caplog.text
+    stored = fake.data[retention.LAST_SEEN_KEY]
+    assert stored["fp-legit.top"] == down, "recorded as departed, exactly as without an outage"
+    assert not set(ARMY) & set(stored), "the missing feed's names are not departures"
+    # It leaves on retention's clock while phishing.army is still down.
+    later = down + retention.DEFAULT_RETAIN_DAYS * DAY + 3600
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=later) == rdd.EXIT_FEED_OUTAGE
+    assert "fp-legit.top" not in _published(fake)
+
+
+@pytest.mark.asyncio
+async def test_an_outage_never_carries_back_a_domain_the_old_rule_promoted(monkeypatch):
+    """#17 transition: with any feed down, the carry re-published zoom.pl-style
+    registrables the one-subdomain rule had promoted, until an all-healthy run."""
+    fake = _FakeRedis()
+    op = [_url("login.oneshot.top")]
+    monkeypatch.setattr(rdd, "PROMOTE_MIN_SUBDOMAINS", 1)
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0, openphish_urls=op)
+    assert "oneshot.top" in _published(fake)
+
+    monkeypatch.setattr(rdd, "PROMOTE_MIN_SUBDOMAINS", 2)
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=T0 + 6 * 3600, openphish_urls=op) == 0
+    assert "oneshot.top" not in _published(fake)
+    assert "login.oneshot.top" in _published(fake)
+    assert set(ARMY) <= _published(fake)
+
+
+@pytest.mark.asyncio
+async def test_before_a_feed_has_a_record_its_outage_keeps_every_unlisted_name(monkeypatch, caplog):
+    """The first runs after this change have no records yet. An outage then
+    falls back to the old carry — whole-domain promotions included — until
+    the degraded feed publishes healthy once. The release notes say so."""
+    fake = _FakeRedis()
+    op = [_url("login.oneshot.top")]
+    monkeypatch.setattr(rdd, "PROMOTE_MIN_SUBDOMAINS", 1)
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0, openphish_urls=op)
+    del fake.data[feed_backing.BACKING_KEY]
+
+    monkeypatch.setattr(rdd, "PROMOTE_MIN_SUBDOMAINS", 2)
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=T0 + 6 * 3600, openphish_urls=op) == 0
+    assert {"oneshot.top", *ARMY} <= _published(fake)
+    assert "phishing.army: no record of which names it backed" in caplog.text
+    # phishing.army back: its record exists from now on, and the old
+    # promotion is gone for good.
+    assert await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0 + 12 * 3600, openphish_urls=op) == 0
+    assert "oneshot.top" not in _published(fake)
+    assert "phishing.army" in fake.data[feed_backing.BACKING_KEY]
+
+
+@pytest.mark.asyncio
+async def test_records_are_written_only_by_a_publish_and_only_for_healthy_feeds(monkeypatch):
+    fake = _FakeRedis()
+    _army_world(monkeypatch, fake, "\n".join(ARMY))
+    assert await rdd.refresh("redis://fake", dry_run=True, now=T0) == 0
+    assert feed_backing.BACKING_KEY not in fake.data, "a dry run writes no records"
+
+    assert await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0) == 0
+    records = {feed: feed_backing.decode(text) for feed, text in fake.data[feed_backing.BACKING_KEY].items()}
+    assert all(name in records["phishing.army"] for name in ARMY)
+    assert all(name in records["Phishing.Database"] for name in BASE)
+    army_before = fake.data[feed_backing.BACKING_KEY]["phishing.army"]
+
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=T0 + 6 * 3600) == 0
+    assert fake.data[feed_backing.BACKING_KEY]["phishing.army"] == army_before, \
+        "a degraded feed keeps the record of its last healthy run"
+    assert feed_backing.decode(fake.data[feed_backing.BACKING_KEY]["Phishing.Database"]).built_at == T0 + 6 * 3600
+
+
 @pytest.mark.asyncio
 async def test_no_publish_when_a_feed_is_down_and_the_live_set_is_unreadable(monkeypatch, caplog):
     fake = _FakeRedis()
@@ -1388,9 +1513,15 @@ async def test_a_feed_outage_in_a_dry_run_is_reported_and_writes_nothing(monkeyp
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# 2026-09-26: hosts our own checks confirmed through threat intel reach the
-# phones (api/services/confirmed_threats.py), through every guard.
+# 2026-09-26: hosts our own checks confirmed through Safe Browsing reach the
+# phones (api/services/confirmed_threats.py), through every guard — only
+# while PUBLISH_CONFIRMED_THREATS is on (a licence decision, off by default).
 # ══════════════════════════════════════════════════════════════════════════
+
+
+@pytest.fixture
+def publishing_on(monkeypatch):
+    monkeypatch.setenv(confirmed_threats.ENABLE_ENV, "1")
 
 
 def _confirm(fake, host, at):
@@ -1398,7 +1529,7 @@ def _confirm(fake, host, at):
 
 
 @pytest.mark.asyncio
-async def test_a_server_confirmed_host_is_published_exactly(monkeypatch):
+async def test_a_server_confirmed_host_is_published_exactly(monkeypatch, publishing_on):
     fake = _FakeRedis()
     _confirm(fake, "login.gsb-flagged.com", T0 - 3600)
     assert await _run(monkeypatch, fake, [], now=T0) == 0
@@ -1410,7 +1541,33 @@ async def test_a_server_confirmed_host_is_published_exactly(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_server_confirmed_hosts_meet_every_false_positive_guard(monkeypatch):
+async def test_with_publishing_off_stored_hosts_leave_at_once_without_a_tail(monkeypatch, publishing_on,
+                                                                              caplog):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    _confirm(fake, "login.gsb-flagged.com", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    assert "login.gsb-flagged.com" in _published(fake)
+
+    monkeypatch.delenv(confirmed_threats.ENABLE_ENV)
+    assert await _run(monkeypatch, fake, [], now=T0 + 6 * 3600) == 0
+    assert "login.gsb-flagged.com" not in _published(fake)
+    assert "login.gsb-flagged.com" not in fake.data.get(retention.LAST_SEEN_KEY, {})
+    assert "publishing is off" in caplog.text
+    # Off, the set is not a source any more: its record of names is dropped.
+    assert rdd.CONFIRMED_SOURCE not in fake.data[feed_backing.BACKING_KEY]
+
+
+@pytest.mark.asyncio
+async def test_with_publishing_off_an_unreadable_set_is_no_outage(monkeypatch):
+    fake = _ConfirmedUnreadable()
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    assert await _run(monkeypatch, fake, [], now=T0 + 18 * 3600) == 0
+    assert feed_health.FEED_DOWN_SINCE_KEY not in fake.data
+
+
+@pytest.mark.asyncio
+async def test_server_confirmed_hosts_meet_every_false_positive_guard(monkeypatch, publishing_on):
     fake = _FakeRedis()
     for host in ("popular-bank.com", "walmart.com.br", "vercel.app", "github.com", "co.pt",
                  "tenant-phish.vercel.app"):
@@ -1426,7 +1583,7 @@ async def test_server_confirmed_hosts_meet_every_false_positive_guard(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_a_confirmation_expires_after_its_window_without_a_retention_tail(monkeypatch):
+async def test_a_confirmation_expires_after_its_window_without_a_retention_tail(monkeypatch, publishing_on):
     fake = _FakeRedis()
     _confirm(fake, "stale-phish.com", T0 - 3600)
     await _run(monkeypatch, fake, [], now=T0)
@@ -1441,6 +1598,26 @@ async def test_a_confirmation_expires_after_its_window_without_a_retention_tail(
     assert "stale-phish.com" not in fake.data.get(confirmed_threats.CONFIRMED_KEY, {})
 
 
+@pytest.mark.asyncio
+async def test_the_runbooks_manual_expiry_takes_a_wrong_host_off_without_a_tail(monkeypatch, publishing_on):
+    """docs/runbooks/monitoring.md: to lift a Safe Browsing false positive,
+    set its confirmation to just past the window — ZREM would turn it into a
+    departure that retention keeps published for 14 more days."""
+    fake = _FakeRedis()
+    _confirm(fake, "small-clinic.ru", T0 - 3600)
+    await _run(monkeypatch, fake, [], now=T0)
+    assert "small-clinic.ru" in _published(fake)
+
+    later = T0 + 3600
+    _confirm(fake, "small-clinic.ru", later - confirmed_threats.CONFIRMED_WINDOW_SECONDS - 3600)
+    # Another host confirmed in between must not delete it before the refresh.
+    await confirmed_threats.record(fake, "other-phish.top", later)
+    assert "small-clinic.ru" in fake.data[confirmed_threats.CONFIRMED_KEY]
+    assert await _run(monkeypatch, fake, [], now=later) == 0
+    assert "small-clinic.ru" not in _published(fake)
+    assert "small-clinic.ru" not in fake.data.get(retention.LAST_SEEN_KEY, {})
+
+
 class _ConfirmedUnreadable(_FakeRedis):
     """Only the server-confirmed set is broken (e.g. the key has the wrong
     type) — the live blocklist and retention still read fine."""
@@ -1452,24 +1629,30 @@ class _ConfirmedUnreadable(_FakeRedis):
 
 
 @pytest.mark.asyncio
-async def test_an_unreadable_confirmed_set_is_an_outage_that_alerts(monkeypatch, caplog):
+async def test_an_unreadable_confirmed_set_alerts_and_never_outlives_the_window(monkeypatch, publishing_on,
+                                                                                 caplog):
+    """Carrying hosts we can no longer see would publish some past their
+    7-day window — the privacy promise. They leave instead, with no
+    retention tail, and the outage alerts like any feed's."""
     fake = _FakeRedis()
     _confirm(fake, "login.gsb-flagged.com", T0 - 3600)
     assert await _run(monkeypatch, fake, [], now=T0) == 0
     broken = _ConfirmedUnreadable()
     broken.data, broken.ttl = fake.data, fake.ttl
     assert await _run(monkeypatch, broken, [], now=T0 + 6 * 3600) == 0
-    assert "login.gsb-flagged.com" in _published(broken), "carried like a failed feed"
+    assert "login.gsb-flagged.com" not in _published(broken)
+    assert "login.gsb-flagged.com" not in broken.data.get(retention.LAST_SEEN_KEY, {})
     assert "FEED DEGRADED: Cleanway checks" in caplog.text
+    assert "its hosts are not carried" in caplog.text
     assert await _run(monkeypatch, broken, [], now=T0 + 18 * 3600) == rdd.EXIT_FEED_OUTAGE
-    # Readable again: the outage closes, even with nothing confirmed lately.
-    fake.data.pop(confirmed_threats.CONFIRMED_KEY, None)
+    # Readable again: the outage closes and the host is back while confirmed.
     assert await _run(monkeypatch, fake, [], now=T0 + 24 * 3600) == 0
     assert feed_health.FEED_DOWN_SINCE_KEY not in fake.data
+    assert "login.gsb-flagged.com" in _published(fake)
 
 
 @pytest.mark.asyncio
-async def test_a_dry_run_reads_confirmed_hosts_but_prunes_nothing(monkeypatch, caplog):
+async def test_a_dry_run_reads_confirmed_hosts_but_prunes_nothing(monkeypatch, publishing_on, caplog):
     caplog.set_level(logging.INFO)
     fake = _FakeRedis()
     _confirm(fake, "ancient.example", T0 - 60 * DAY)

@@ -43,6 +43,10 @@ jobs:
       - name: Populate dangerous_domains
         env:
           REDIS_URL: ${{ secrets.REDIS_URL_PRODUCTION }}
+          # Unset = off. Publishing server-confirmed (Safe Browsing) hosts is a
+          # licence decision — see docs/runbooks/monitoring.md before setting
+          # this repository variable (and the same one on the API).
+          PUBLISH_CONFIRMED_THREATS: ${{ vars.PUBLISH_CONFIRMED_THREATS }}
         run: |
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             python scripts/refresh_dangerous_domains.py ${{ inputs.force && '--force' || '' }} --dry-run

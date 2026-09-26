@@ -14,11 +14,17 @@ What this module decides (no I/O in `assess`):
   * a feed is DEGRADED when it could not be downloaded or read, when it
     parsed to no hosts at all after having some, or when a big feed parsed
     to less than SHRINK_FLOOR of the size it had on its last healthy run.
-    The server-confirmed Redis set is a source too, judged on availability
-    alone (`unsized`): an empty quiet week is not an outage;
-  * while any feed is degraded, the refresh job keeps every published name
-    that no healthy feed backs any more (the "carry"), for at most
-    CARRY_MAX_SECONDS of outage;
+    While publishing it is switched on, the server-confirmed Redis set is a
+    source too, judged on availability alone (`unsized`): an empty quiet
+    week is not an outage;
+  * while a source is degraded, the refresh job keeps the published names it
+    backed on its last healthy run (the "carry", `plan_carry`; which names
+    those were comes from blocklist_feed_backing), for at most
+    CARRY_MAX_SECONDS of THAT source's outage. Without such a record it
+    keeps every published name no live source lists, as before the records
+    existed. The server-confirmed set is never carried: a host it cannot
+    vouch for leaves rather than risk outliving its 7-day window (the
+    privacy promise in docs/PRIVACY.md);
   * an outage older than ALERT_AFTER_SECONDS makes the job exit non-zero
     after publishing, so the run goes red and GitHub mails the owner.
 
@@ -26,11 +32,12 @@ Storage (two small Redis hashes, one field per feed):
   FEED_COUNTS_KEY      feed -> distinct hosts on its last healthy run
   FEED_DOWN_SINCE_KEY  feed -> unix time of the first degraded run of the
                        current outage (removed when the feed is healthy again)
+The record of which names each feed backed lives in blocklist_feed_backing.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Mapping, Optional
+from typing import Container, Mapping, Optional
 
 FEED_COUNTS_KEY = "dangerous_domains:feed_counts"
 FEED_DOWN_SINCE_KEY = "dangerous_domains:feed_down_since"
@@ -49,8 +56,14 @@ EMPTY_MIN_BASELINE = 20
 # cron is every 6 h — is an outage someone should look at.
 ALERT_AFTER_SECONDS = 12 * 3600
 # Carrying a dead feed's names forever would freeze them in the list. After
-# the same window retention uses, the carry stops and its names depart.
+# the same window retention uses, that feed's carry stops and its names
+# leave — judged per source, so a feed dead for weeks never switches the
+# guard off for a fresh outage of another.
 CARRY_MAX_SECONDS = 14 * 86_400
+# Names carried until the window closed leave with the next publish. Until
+# then a source with no record of its names makes their exit look like
+# departures, which retention would hold for another 14 days.
+CARRY_SETTLE_SECONDS = 2 * 86_400
 # The state keys outlive any outage we would still act on.
 STATE_TTL_SECONDS = CARRY_MAX_SECONDS + 7 * 86_400
 
@@ -95,10 +108,57 @@ def assess(fetched: Mapping[str, Optional[int]], baselines: Mapping[str, int],
     return FeedHealth(degraded=degraded, healthy_counts=healthy, down_since=since)
 
 
-def carry_names(previous: set, present: set, protected: set) -> set:
-    """Published names nothing backs this run: what a degraded feed took with
-    it. `protected` (the list canary) is re-added by the job anyway."""
-    return set(previous) - set(present) - set(protected)
+@dataclass(frozen=True)
+class CarryPlan:
+    """What the outage guard does with the published names no live source
+    lists this run."""
+    carried: frozenset = frozenset()  # keep them in the new set
+    backed: frozenset = frozenset()   # a degraded source backed them: not departures
+    blind: tuple = ()                 # degraded sources whose names cannot be told from departures
+    expired: tuple = ()               # degraded past CARRY_MAX_SECONDS: carry stopped
+
+
+def plan_carry(previous: set, listed: set, down_since: Mapping[str, float], now: float,
+               backing: Mapping[str, Container], uncarried: frozenset = frozenset(),
+               protected: frozenset = frozenset()) -> CarryPlan:
+    """Per degraded source (`down_since`): inside the carry window, keep the
+    unlisted published names its `backing` record holds; past it, keep none
+    but still count them as backed, so retention does not hold them for
+    another window. A source in `uncarried` is only ever counted, never kept.
+
+    A source with no record is BLIND: inside the window it makes the carry
+    keep every unlisted published name (unless it is uncarried), and until
+    its carried names have had time to leave (CARRY_SETTLE_SECONDS past the
+    window) retention must not record departures. `protected` (the list
+    canary) is re-added by the job anyway."""
+    unlisted = set(previous) - set(listed) - set(protected)
+    carried: set = set()
+    backed: set = set()
+    never_carry: set = set()
+    blind: list[str] = []
+    expired: list[str] = []
+    keep_all = False
+    for source, since in sorted(down_since.items()):
+        age = now - since
+        inside = age <= CARRY_MAX_SECONDS
+        if not inside:
+            expired.append(source)
+        record = backing.get(source)
+        if record is None:
+            if age <= CARRY_MAX_SECONDS + CARRY_SETTLE_SECONDS:
+                blind.append(source)
+            keep_all = keep_all or (inside and source not in uncarried)
+            continue
+        mine = {name for name in unlisted if name in record}
+        backed |= mine
+        if source in uncarried:
+            never_carry |= mine
+        elif inside:
+            carried |= mine
+    if keep_all:
+        carried = unlisted - never_carry
+    return CarryPlan(carried=frozenset(carried), backed=frozenset(backed),
+                     blind=tuple(blind), expired=tuple(expired))
 
 
 async def load_state(r) -> tuple[dict[str, int], dict[str, float]]:
