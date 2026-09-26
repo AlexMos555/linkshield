@@ -36,12 +36,26 @@ class LinkVerdictPolicyTest {
     }
 
     @Test
-    fun `dangerous from heuristics alone - warn, never block`() {
-        // The shape of the bankspb.ru / region-site false alarms.
-        val heuristics = answer("dangerous", listOf("no_https", "missing_headers", "cross_domain_redirect", "ml_high_risk"))
-        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(heuristics))
-        // OTX and IPQS are not listings we block on.
-        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(answer("dangerous", listOf("alienvault_otx_high", "ipqs_phishing"))))
+    fun `an older server's heuristics-only dangerous - no warning, no block`() {
+        // Production answers of 2026-09-25, no verdict_basis: a real bank and
+        // президент.рф, "dangerous" only because the scanner abroad could not
+        // connect. A tapped link from an SMS must not be called a scam.
+        val bankspb = answer("dangerous", listOf("no_https", "missing_headers", "abnormal_vowel_ratio", "consonant_cluster"))
+        val president = answer("dangerous", listOf("no_https", "missing_headers", "excessive_special_chars", "unnatural_ngram"))
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(bankspb))
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(president))
+        // OTX pulses and IPQS scores are not listings either.
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("dangerous", listOf("alienvault_otx_high", "ipqs_phishing"))))
+    }
+
+    @Test
+    fun `an older server's dangerous with the ML model sure - warn, never block`() {
+        val sure = answer("dangerous", listOf("no_https", "missing_headers", "cross_domain_redirect", "ml_high_risk"))
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(sure))
+        assertEquals(
+            LinkAction.WARN,
+            LinkVerdictPolicy.decide(answer("dangerous", listOf("missing_headers"), signals = listOf("ML model: 92% phishing probability"))),
+        )
     }
 
     @Test
@@ -50,6 +64,21 @@ class LinkVerdictPolicyTest {
         assertEquals(LinkAction.WARN_AND_BLOCK, LinkVerdictPolicy.decide(answer("dangerous", listOf("no_https"), basis = listOf("threat_intel"))))
         assertEquals(LinkAction.WARN_AND_BLOCK, LinkVerdictPolicy.decide(answer("dangerous", basis = listOf("Blocklist"))))
         assertEquals(LinkAction.WARN_AND_BLOCK, LinkVerdictPolicy.decide(answer("dangerous", basis = listOf("heuristics", "threat-intel"))))
+    }
+
+    @Test
+    fun `a newer server's dangerous warns when it judged the site itself`() {
+        // The server opened the site and its rules (and model) found it dangerous.
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(answer("dangerous", listOf("no_mx_record"), basis = listOf("heuristics"))))
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(answer("dangerous", basis = listOf("ML_and_heuristics"))))
+    }
+
+    @Test
+    fun `a newer server's dangerous it could not open, or of unknown basis, warns only when the ML model is sure`() {
+        // A bank that turns away foreign addresses: the verdict rests on the name alone.
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("dangerous", listOf("unreachable_from_scanner"), basis = listOf("unreachable"))))
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("dangerous", basis = listOf("some_future_basis"))))
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(answer("dangerous", listOf("ml_high_risk"), basis = listOf("unreachable"))))
     }
 
     @Test

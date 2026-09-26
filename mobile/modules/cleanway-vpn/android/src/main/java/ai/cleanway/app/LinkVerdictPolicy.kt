@@ -31,15 +31,24 @@ enum class LinkAction {
  * The link opened already (fail-open fast path), so this decides two separate
  * things, with deliberately different bars:
  *
- *  - WARN — "this looks like a scam, close it" — on a dangerous verdict, and
- *    on "caution" when the ML model is sure it is phishing. A caution at 50
- *    with the model at 100% (seen 2026-09-25 on a live wallet-drainer page)
- *    used to pass in silence.
+ *  - WARN — "this looks like a scam, close it" — on a dangerous verdict that
+ *    rests on something the phone can stand behind: a threat feed, the ML
+ *    model being sure, or (newer servers) the server having opened and
+ *    judged the site itself. Also on "caution" when the model is sure: a
+ *    caution at 50 with the model at 100% (seen 2026-09-25 on a live
+ *    wallet-drainer page) used to pass in silence.
  *  - BLOCK — the site stops resolving on this phone — ONLY when the verdict
- *    rests on threat intel: a curated list saw this site doing harm. A
- *    heuristics-only "dangerous" never blocks: the same heuristics called
- *    real Russian banks and regional governments dangerous from abroad
- *    (report #1), and a false block of someone's bank is worse than no block.
+ *    rests on threat intel: a curated list saw this site doing harm.
+ *
+ * Why a heuristics-only "dangerous" from an older server is neither: that
+ * server read "could not connect from abroad" as "no HTTPS, no security
+ * headers" and called a real bank, two regional governments and президент.рф
+ * dangerous (report #1). The warning reads «Этот сайт похож на мошеннический
+ * … закройте его» and comes with or without the "All apps" shield — told
+ * about her own bank's link, a grandmother learns to ignore the next warning.
+ * Servers that send `verdict_basis` separate "judged the site" from "could
+ * not open it" (`unreachable`), so their dangerous verdicts are trusted when
+ * they judged the site.
  *
  * `verdict_basis` from the server decides BLOCK when present; older servers
  * do not send it, and then a conservative allowlist of reason codes that only
@@ -51,6 +60,14 @@ enum class LinkAction {
 object LinkVerdictPolicy {
     /** `verdict_basis` values that mean "a threat feed listed this site". */
     val INTEL_BASES = setOf("threat_intel", "blocklist")
+
+    /**
+     * `verdict_basis` values that mean "the server opened the site and judged
+     * it" (api/services/verdict_basis.py). Not here: `unreachable` (the
+     * verdict rests on the name alone), `allowlist`, `not_found`, and any
+     * value this build has never seen.
+     */
+    val SITE_BASES = setOf("heuristics", "ml_and_heuristics")
 
     /**
      * Reason codes only a threat-feed hit produces (api/services/scoring.py).
@@ -70,7 +87,8 @@ object LinkVerdictPolicy {
 
     fun decide(answer: LinkAnswer): LinkAction = when {
         doesNotExist(answer) -> LinkAction.NONE
-        answer.level == "dangerous" -> if (restsOnIntel(answer)) LinkAction.WARN_AND_BLOCK else LinkAction.WARN
+        answer.level == "dangerous" && restsOnIntel(answer) -> LinkAction.WARN_AND_BLOCK
+        answer.level == "dangerous" && (judgedTheSite(answer) || mlIsSure(answer)) -> LinkAction.WARN
         answer.level == "caution" && mlIsSure(answer) -> LinkAction.WARN
         else -> LinkAction.NONE
     }
@@ -78,11 +96,14 @@ object LinkVerdictPolicy {
     fun doesNotExist(answer: LinkAnswer): Boolean = answer.exists == false || NOT_FOUND_CODE in answer.reasonCodes
 
     fun restsOnIntel(answer: LinkAnswer): Boolean {
-        if (answer.verdictBasis.isNotEmpty()) {
-            return answer.verdictBasis.any { it.trim().lowercase().replace('-', '_') in INTEL_BASES }
-        }
+        if (answer.verdictBasis.isNotEmpty()) return answer.verdictBasis.any { basis(it) in INTEL_BASES }
         return answer.reasonCodes.any { it in INTEL_CODES }
     }
+
+    /** The server says it opened the site and judged it. Older servers never say so. */
+    fun judgedTheSite(answer: LinkAnswer): Boolean = answer.verdictBasis.any { basis(it) in SITE_BASES }
+
+    private fun basis(value: String): String = value.trim().lowercase().replace('-', '_')
 
     fun mlIsSure(answer: LinkAnswer): Boolean {
         if (ML_HIGH_CODE in answer.reasonCodes) return true

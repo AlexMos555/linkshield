@@ -20,8 +20,10 @@ import java.util.concurrent.Executors
  *  - it waits up to ~12 s and retries a timeout once (LinkCheckRunner);
  *  - whenever the answer arrives, a warning is recorded in History and shown
  *    as a notification — late is still worth saying;
- *  - it warns on "caution" when the ML model is sure, and asks the DNS shield
- *    to block the site only when a threat feed listed it (LinkVerdictPolicy).
+ *  - it warns on "caution" when the ML model is sure, never on an older
+ *    server's heuristics-only "dangerous" (that is how real banks got called
+ *    scams), and asks the DNS shield to block the site only when a threat
+ *    feed listed it (LinkVerdictPolicy).
  *
  * Only the host leaves the phone, with the install number (InstallId).
  */
