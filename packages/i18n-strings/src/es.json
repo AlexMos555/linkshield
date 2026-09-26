@@ -1745,7 +1745,11 @@
         "sub_all": "Todos los escudos activados y verificados",
         "attention": "Un escudo necesita atención",
         "a11y": "Estado de la protección: {{status}}",
-        "title_interrupted": "La protección se detuvo"
+        "title_interrupted": "La protección se detuvo",
+        "title_paused": "Protección en pausa hasta las {{time}}",
+        "sub_paused": "Ahora mismo no se bloquean los sitios fraudulentos",
+        "title_conflict": "La protección no está funcionando",
+        "sub_conflict": "El ajuste de DNS privado lo impide: abajo verás qué cambiar"
       },
       "cta_turn_on": "Activar la protección",
       "check": {
@@ -1765,7 +1769,7 @@
         "desc": "¿Te llegó un SMS sospechoso? Envíalo a Cleanway: mantén pulsado el mensaje → Compartir → Cleanway. O pega el texto.",
         "cta": "Revisar un mensaje",
         "honesty": "Cleanway no lee tus SMS por su cuenta: solo revisa el mensaje que tú le das. El texto se queda en tu teléfono.",
-        "links_on": "Los enlaces de los SMS también se revisan al tocarlos: «Revisión de enlaces» está activada.",
+        "links_on": "Los enlaces de los SMS también se revisan al tocarlos: los sitios fraudulentos conocidos no se abrirán.",
         "links_no_list": "«Revisión de enlaces» está activada, pero aún no hay con qué comparar los enlaces de los SMS: la lista de sitios fraudulentos se descarga mientras el escudo «Todas las apps» está activado.",
         "links_off": "Ahora los enlaces de los SMS no se revisan al tocarlos. Para eso, activa arriba el escudo «Revisión de enlaces»."
       },
@@ -1777,7 +1781,7 @@
         "open_a11y": "{{label}}: {{value}}. Abre la lista en el historial.",
         "hint": "Toca un número para ver la lista."
       },
-      "privacy": "El escudo compara nombres de sitios en tu teléfono: no nos llega nada sobre las páginas que visitas. Cuando compruebas un enlace tú mismo, solo sale el nombre del sitio.",
+      "privacy": "El escudo «Todas las apps» compara los nombres de los sitios en tu teléfono. A nuestro servidor solo se envía el nombre de un sitio: cuando revisas un enlace tú mismo o lo tocas con la «Revisión de enlaces» activada.",
       "interrupted": "Suele pasar tras un reinicio. Tu configuración sigue aquí: un toque y vuelve.",
       "cta_turn_back_on": "Volver a activar la protección"
     },
@@ -1794,7 +1798,8 @@
         "state_checking": "Revisando la protección…",
         "state_offline": "Ahora no hay internet. El escudo está configurado y filtrará en cuanto vuelvas a conectarte.",
         "state_private_dns": "Tu teléfono tiene activado el DNS privado ({{host}}). Android no puede usarlo junto con Cleanway: con ambos activados, internet deja de funcionar. En Ajustes, pon el DNS privado en Automático y luego vuelve y activa Cleanway.",
-        "private_dns_cta": "Abrir ajustes de red"
+        "private_dns_cta": "Abrir ajustes de red",
+        "state_paused_until": "En pausa hasta las {{time}}; luego se vuelve a activar solo. Ahora mismo no se bloquean los sitios fraudulentos."
       },
       "browser": {
         "title": "Tu navegador",
@@ -1818,7 +1823,7 @@
       },
       "always_on_hint": "Se reactiva solo tras un reinicio. Para que arranque con el teléfono, antes que cualquier app: activa VPN siempre activada",
       "pause_confirm_title": "¿Pausar la protección?",
-      "pause_confirm_body": "Los sitios de estafa no se bloquearán en tus apps hasta que la vuelvas a activar. Tus verificaciones guardadas no cambian.",
+      "pause_confirm_body": "Mientras la protección está en pausa, los sitios fraudulentos se abren en todas las apps.",
       "blocklist": {
         "status": "Lista de bloqueo: {{count}} sitios fraudulentos conocidos · actualizada hace {{hours}} h",
         "stale": "La lista está desactualizada ({{count}} sitios): toca para actualizar",
@@ -1827,17 +1832,23 @@
       },
       "disclosure": {
         "title": "Cómo funciona el escudo",
-        "body": "Cleanway crea una VPN local en tu teléfono. Es la única forma en que Android permite a una app filtrar las consultas de sitios para todas las demás.\n\n• La lista de sitios fraudulentos conocidos se guarda en tu teléfono. Los nombres se comparan aquí, no se nos envían.\n• Las consultas que no bloqueamos van a un resolutor público (Cloudflare o Quad9), igual que ya hace tu teléfono.\n• Ningún otro tráfico se lee, se guarda ni se redirige. No es una VPN de privacidad y no oculta tu navegación.\n\nAhora Android te pedirá permitir la conexión.",
+        "body": "Cleanway crea una VPN local en tu teléfono. Es la única forma en que Android permite a una app filtrar las consultas de sitios para todas las demás.\n\n• La lista de sitios fraudulentos conocidos se guarda en tu teléfono. Los nombres se comparan aquí, no se nos envían.\n• Las consultas que no bloqueamos van al servidor DNS de tu propia red —el de tu operador o tu router—, igual que sin Cleanway. Si no responde, van a un resolutor público (Cloudflare o Quad9).\n• Ningún otro tráfico se lee, se guarda ni se redirige. No es una VPN de privacidad y no oculta tu navegación.\n\nAhora Android te pedirá permitir la conexión.",
         "continue": "Continuar",
         "cancel": "Ahora no"
       },
       "linkguard": {
         "title": "Revisión de enlaces",
-        "desc": "Cleanway abre los enlaces primero y los revisa antes de que entres",
-        "honesty": "Funciona cuando Cleanway es la app que abre tus enlaces",
-        "state_on": "Cada enlace se revisa primero",
+        "desc": "Los enlaces que tocas pasan primero por Cleanway",
+        "honesty": "Funciona cuando Cleanway es tu app para abrir enlaces. Un sitio fraudulento muy nuevo puede llegar a abrirse; entonces recibes un aviso.",
+        "state_on": "Los sitios fraudulentos conocidos no se abrirán. Los demás enlaces se revisan justo después de abrirse.",
         "state_setup": "Haz que Cleanway abra tus enlaces"
-      }
+      },
+      "pause_scam_warning": "Si alguien por teléfono te pide desactivar la protección, es una estafa.",
+      "pause_timed": "Pausar {{minutes}} minutos",
+      "pause_timed_note": "La protección se vuelve a activar sola a las {{time}}.",
+      "pause_until_on": "Desactivar hasta que la vuelva a activar",
+      "pause_keep": "Mantener la protección",
+      "resume_now": "Volver a activar la protección ahora"
     },
     "rollout": {
       "network_ios": "Bloquea sitios de estafa en casi todas las apps. Está en pruebas finales; todavía no llega al iPhone.",
@@ -1902,12 +1913,22 @@
       "no": "No",
       "share": "Compartir resultado",
       "share_message": "{{domain}}: {{verdict}} (puntaje: {{score}}/100). Revisado con Cleanway — https://cleanway.ai/check/{{domain}}",
-      "privacy": "Revisado en nuestros servidores. Solo se envió el nombre del sitio web, nada más.",
+      "privacy": "Revisado en nuestros servidores. Solo se envió el nombre del sitio y un número aleatorio de esta instalación, que sirve para contar el límite de revisiones. Nada sobre ti.",
       "error_title": "No pudimos terminar la revisión",
       "error_body": "El servidor no respondió. Revisa tu conexión e inténtalo de nuevo.",
       "error_rate_limited": "Revisaste muchos enlaces en el último minuto. Espera un momento e inténtalo de nuevo.",
       "error_server": "Nuestro servidor tuvo un problema; no es tu conexión. Inténtalo de nuevo en un minuto.",
-      "error_retry": "Intentar de nuevo"
+      "error_retry": "Intentar de nuevo",
+      "listed_title": "Peligroso: este sitio está en la lista de sitios fraudulentos",
+      "listed_reason": "Este sitio está en la lista de sitios fraudulentos de tu teléfono",
+      "details_loading": "Cargando detalles de nuestro servidor…",
+      "details_failed": "No se pudieron cargar los detalles del servidor. Pero el sitio ya está en la lista de fraudes: no lo abras.",
+      "details_retry": "Cargar detalles",
+      "listed_server_calm": "Nuestro servidor no encontró nada más, pero el sitio está en la lista de sitios fraudulentos: no lo abras.",
+      "error_slow": "Nuestro servidor está respondiendo despacio. Inténtalo de nuevo en un minuto.",
+      "not_found_title": "Este sitio no existe: revisa la dirección",
+      "not_found_body": "Puede que haya un error en la dirección o que el sitio ya lo hayan cerrado. Si el enlace te llegó en un mensaje, no confíes en ese mensaje.",
+      "share_message_listed": "{{domain}}: {{verdict}}. Revisado con Cleanway — https://cleanway.ai/check/{{domain}}"
     },
     "shared": {
       "eyebrow": "Enlace compartido",
@@ -2004,7 +2025,8 @@
         "rate_limited": "No revisado: demasiadas revisiones seguidas. Inténtalo dentro de unos minutos.",
         "offline": "No revisado: no hay conexión a internet",
         "timeout": "No revisado: nuestro servidor no respondió a tiempo",
-        "failed": "No se pudo revisar el sitio"
+        "failed": "No se pudo revisar el sitio",
+        "not_found": "Este sitio no existe"
       },
       "list_missing": "La lista de sitios fraudulentos aún no está en este teléfono, así que los enlaces no se compararon con ella. La lista se descarga mientras el escudo «Todas las apps» está activado.",
       "list_stale": "La lista de sitios fraudulentos de este teléfono lleva tiempo sin actualizarse. Se actualiza mientras el escudo «Todas las apps» está activado.",
@@ -2116,7 +2138,8 @@
         "allow_confirm_body": "{{domain}} dejará de bloquearse. Hazlo solo si conoces este sitio. Puedes deshacerlo en Configuración → Sitios permitidos.",
         "block_again": "Volver a bloquear",
         "close": "Cerrar"
-      }
+      },
+      "listed_a11y": "En la lista de sitios fraudulentos"
     },
     "report": {
       "title": "Informe semanal",
@@ -2170,7 +2193,7 @@
       "sign_out_confirm_title": "¿Cerrar sesión?",
       "sign_out_confirm_body": "Las verificaciones y el historial se quedan en este teléfono. Los ajustes dejan de sincronizarse hasta que vuelvas a iniciar sesión.",
       "plan": "Plan",
-      "plan_desc": "Gratis: 10 revisiones al día",
+      "plan_desc": "La protección en este teléfono es gratuita",
       "upgrade": "Mejorar plan",
       "report": "Informe semanal",
       "report_desc": "Un resumen de los enlaces que revisaste",
@@ -2187,13 +2210,11 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Puntajes sin procesar, tipos de amenaza y detalle técnico.",
       "alerts": "Alertas",
-      "alerts_note": "El escudo te avisa cuando detiene un sitio peligroso. Los interruptores de arriba aún no funcionan, y Cleanway nunca mira tu portapapeles.",
-      "push": "Alertas de enlaces peligrosos",
-      "push_desc": "Avisarme cuando un enlace parezca peligroso",
-      "auto_check": "Revisar los enlaces que comparto",
-      "auto_check_desc": "Revisar el enlace apenas lo comparta con Cleanway",
-      "weekly": "Informe semanal",
-      "weekly_desc": "Enviarme un resumen una vez por semana",
+      "alerts_note": "Cleanway nunca lee tu portapapeles ni tus SMS: solo lo que compartes con él tú mismo.",
+      "push": "Avisos de bloqueo",
+      "push_desc": "Cleanway te avisa cuando detiene un sitio peligroso.",
+      "auto_check": "Revisión de lo que compartes",
+      "auto_check_desc": "Comparte un enlace o un SMS con Cleanway y se revisa al instante. Siempre activo.",
       "data": "Datos",
       "clear": "Borrar el historial de este teléfono",
       "clear_desc": "Elimina todas las revisiones guardadas aquí",
@@ -2205,7 +2226,7 @@
       "privacy_policy": "Política de privacidad",
       "terms": "Términos del servicio",
       "version": "Versión",
-      "privacy_note": "Tu historial de revisiones se queda en este teléfono. Cuando revisas un enlace, solo el nombre del sitio web va a nuestros servidores.",
+      "privacy_note": "Tu historial de revisiones se queda en este teléfono. Cuando revisas un enlace, a nuestros servidores solo va el nombre del sitio y un número aleatorio de esta instalación, que sirve para contar el límite de revisiones.",
       "sync_failed_title": "Guardado solo en este teléfono",
       "sync_failed_body": "No pudimos conectar con tu cuenta, así que este cambio todavía no se verá en tus otros dispositivos. Se sincronizará la próxima vez que lo cambies estando en línea.",
       "clear_done_title": "Historial borrado",
@@ -2223,12 +2244,14 @@
       "language_reload_title": "Se necesita reiniciar",
       "language_reload_body": "Cierra y vuelve a abrir la app para terminar de cambiar la dirección del texto.",
       "linkguard": "Comprobación de enlaces",
-      "linkguard_note": "Cuando está activo, Cleanway comprueba cada enlace que tocas —en cualquier app— y te avisa antes de que se abra una página fraudulenta. Los enlaces seguros se abren al instante.",
+      "linkguard_note": "Si está activado, los enlaces que tocas en cualquier app pasan primero por Cleanway. Los sitios fraudulentos conocidos no se abren. Los demás se abren al instante y revisamos el sitio en ese mismo segundo: te avisamos si resulta peligroso.",
       "linkguard_on": "Cleanway comprueba tus enlaces",
-      "linkguard_on_desc": "Cada enlace que tocas se comprueba primero.",
+      "linkguard_on_desc": "Los sitios fraudulentos conocidos no se abren; los demás enlaces se revisan justo después de abrirse.",
       "linkguard_off": "Comprobar cada enlace",
       "linkguard_off_desc": "Ahora los enlaces se abren sin comprobar. Actívalo para comprobarlos.",
-      "linkguard_enable": "Configurar"
+      "linkguard_enable": "Configurar",
+      "push_off_desc": "Desactivados en los ajustes del teléfono: no sabrás cuándo se bloquea algo. Toca para activarlos.",
+      "push_enable": "Activar"
     },
     "family": {
       "title": "Espacio Familiar",
@@ -2326,7 +2349,10 @@
       "warn_text": "{{domain}} parece peligroso. Si está abierto, ciérralo y no escribas nada.",
       "allow_action": "No es una estafa: permitir",
       "allowed_title": "Sitio permitido",
-      "allowed_text": "{{domain}} ahora está permitido. Puedes deshacerlo en Ajustes → Sitios permitidos."
+      "allowed_text": "{{domain}} ahora está permitido. Puedes deshacerlo en Ajustes → Sitios permitidos.",
+      "paused_title": "La protección de Cleanway está en pausa",
+      "paused_text": "Se vuelve a activar sola a las {{time}}.",
+      "resume_action": "Activar ahora"
     },
     "reason": {
       "flagged_dangerous": "Google marca este sitio como peligroso",

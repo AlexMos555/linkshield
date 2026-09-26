@@ -14,6 +14,9 @@
     <string name="fg_channel_desc">يظهر أثناء تشغيل الحماية من التصيّد</string>
     <string name="fg_text">نتحقق من أسماء المواقع بحثًا عن الاحتيال</string>
     <string name="fg_title">حماية Cleanway مفعّلة</string>
+    <string name="paused_text">تعود تلقائيًا الساعة %1$s.</string>
+    <string name="paused_title">حماية Cleanway متوقفة مؤقتًا</string>
+    <string name="resume_action">تشغيل الآن</string>
     <string name="warn_text">يبدو %1$s خطيرًا. إذا كان مفتوحًا فأغلقه ولا تكتب أي شيء.</string>
     <string name="warn_title">هذا الموقع يبدو احتياليًا</string>
 </resources>

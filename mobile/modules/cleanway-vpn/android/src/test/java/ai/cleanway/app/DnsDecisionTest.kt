@@ -97,4 +97,17 @@ class DnsDecisionTest {
         )
     }
 
+    @Test
+    fun `paused - nothing blocks, the tunnel canary still answers, the list canary does not`() {
+        val l = list(listCanary, "evil.tld")
+        assertEquals(DnsDecision.FORWARD, DnsDecision.classify("evil.tld", l, paused = true))
+        assertEquals(DnsDecision.FORWARD, DnsDecision.classify("x.novel.example", l, dynamicBlocked = setOf("x.novel.example"), paused = true))
+        // The tunnel is up — that much is still true and provable…
+        assertEquals(DnsDecision.CANARY, DnsDecision.classify("r4nd0m.$canary", l, paused = true))
+        // …but the list is not in force, so it must not prove itself live.
+        assertEquals(DnsDecision.FORWARD, DnsDecision.classify("x7.$listCanary", l, paused = true))
+        // And blocking is back the moment the pause is over.
+        assertEquals(DnsDecision.BLOCK, DnsDecision.classify("evil.tld", l, paused = false))
+    }
+
 }

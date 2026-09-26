@@ -1,16 +1,28 @@
-import { useEffect, useState, useCallback } from "react";
 import { reasonLabel } from "../src/utils/reason-label";
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Share } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import {
   colors, type as typo, space, radius,
   levelColors, levelWashes, levelStrokes,
 } from "../src/utils/theme";
-import { checkDomain, PublicCheckResult, ApiError } from "../src/services/api";
-import { saveCheck } from "../src/services/database";
+import type { ApiError } from "../src/services/api";
+import { useDomainCheck } from "../src/hooks/useDomainCheck";
+import { isNotFound, reasonsToShow, serverLevel, showScore, shownLevel } from "../src/utils/check-verdict";
+import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
+
+/**
+ * Say what actually went wrong. A rate limit, a slow server and a dead server
+ * are not "check your connection", and telling someone to retry into a rate
+ * limit only digs the hole deeper.
+ */
+function errorBodyKey(error: ApiError["kind"] | null): string {
+  if (error === "rate_limited") return "mobile.result.error_rate_limited";
+  if (error === "http_5xx") return "mobile.result.error_server";
+  if (error === "timeout") return "mobile.result.error_slow";
+  return "mobile.result.error_body";
+}
 
 export default function ResultScreen() {
   // from=history | guard: the person is reading up on a site a shield
@@ -20,66 +32,11 @@ export default function ResultScreen() {
   const { domain, from } = useLocalSearchParams<{ domain: string; from?: string }>();
   const record = from !== "history" && from !== "guard";
   const { t } = useTranslation();
-  const [result, setResult] = useState<PublicCheckResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ApiError["kind"] | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  // The on-device list first, the server after — a listed site never waits
+  // for the server and is never downgraded by it (useDomainCheck).
+  const { listed, result, error, pending, retry } = useDomainCheck(domain || null, record);
 
-  const retry = useCallback(() => {
-    setError(null);
-    setResult(null);
-    setLoading(true);
-    setAttempt(a => a + 1);
-  }, []);
-
-  useEffect(() => {
-    if (!domain) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        // Result-based call so the error KIND survives. The old throwing
-        // wrapper flattened everything to a message this screen then ignored,
-        // and every failure — rate limit, server error, offline — rendered
-        // the same "check your connection" with a Retry that could not help.
-        const { data: r, error: apiError } = await checkDomain(domain);
-        if (cancelled) return;
-        if (!r) {
-          setError(apiError?.kind ?? "network");
-          return;
-        }
-        setResult(r);
-        // Persist before kicking off the haptic so that if the user
-        // immediately navigates away the SQLite write has at least
-        // started. Failure is logged but doesn't block the UI — the
-        // visible result is what matters; the history row is bonus.
-        // (Audit mobile-ts LOW saveCheck-no-await race.)
-        if (record) {
-          try {
-            await saveCheck(r);
-          } catch {
-            // Silent — best-effort persistence.
-          }
-        }
-        if (r.level === "dangerous") {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        } else if (r.level === "caution") {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        } else {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-      } catch {
-        if (cancelled) return;
-        setError("network");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [domain, attempt, record]);
-
-  if (loading) {
+  if (listed === undefined || (!listed && pending)) {
     return (
       <View style={s.center}>
         <ActivityIndicator size="large" color={colors.blue} />
@@ -89,19 +46,21 @@ export default function ResultScreen() {
     );
   }
 
-  if (error || !result) {
-    // Say what actually went wrong. A rate limit and a dead server are not
-    // "check your connection", and telling someone to retry into a rate
-    // limit only digs the hole deeper.
-    const bodyKey =
-      error === "rate_limited" ? "mobile.result.error_rate_limited"
-      : error === "http_5xx" ? "mobile.result.error_server"
-      : "mobile.result.error_body";
+  if (!listed && isNotFound(result)) {
+    return (
+      <ScrollView style={s.container} contentContainerStyle={s.content}>
+        <NotFoundCard domain={domain} />
+      </ScrollView>
+    );
+  }
+
+  const level = shownLevel(listed, result);
+  if (!level) {
     return (
       <View style={s.center}>
         <Ionicons name="alert-circle" size={44} color={colors.amber} />
         <Text style={s.errorTitle}>{t("mobile.result.error_title")}</Text>
-        <Text style={s.errorBody}>{t(bodyKey)}</Text>
+        <Text style={s.errorBody}>{t(errorBodyKey(error))}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={retry} activeOpacity={0.85}>
           <Text style={s.retryLabel}>{t("mobile.result.error_retry")}</Text>
         </TouchableOpacity>
@@ -109,24 +68,39 @@ export default function ResultScreen() {
     );
   }
 
-  const level = (result.level in levelColors ? result.level : "caution") as keyof typeof levelColors;
   const color = levelColors[level];
   const wash = levelWashes[level];
   const stroke = levelStrokes[level];
-  const label = t(`mobile.result.verdict_${level === "safe" ? "safe" : level === "caution" ? "caution" : "dangerous"}`);
+  const label = listed ? t("mobile.result.listed_title") : t(`mobile.result.verdict_${level}`);
+  const score = showScore(listed, result) ? result?.score : undefined;
+  const serverReasons = reasonsToShow(listed, result);
+  const hasSignals = Boolean(listed) || serverReasons.length > 0;
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
-      {/* Verdict card with score ring */}
+      {/* Verdict card with score ring — or, when the on-device list decided
+          and the server has no agreeing score, the list's mark instead. */}
       <View style={[s.verdictCard, { borderColor: stroke }]}>
-        <View style={[s.ring, { borderColor: color + "66" }]}>
-          <Text style={[s.ringScore, { color }]}>{result.score}</Text>
-          <Text style={s.ringMax}>/100</Text>
-        </View>
+        {score === undefined ? (
+          <ListedMark size={120} />
+        ) : (
+          <View style={[s.ring, { borderColor: color + "66" }]}>
+            <Text style={[s.ringScore, { color }]}>{score}</Text>
+            <Text style={s.ringMax}>/100</Text>
+          </View>
+        )}
         <Text style={[s.verdictLabel, { color }]}>{label}</Text>
-        <Text style={s.domain}>{result.domain}</Text>
-        {result.confidence === "low" && (
+        <Text style={s.domain}>{result?.domain ?? domain}</Text>
+        {!listed && result?.confidence === "low" && (
           <Text style={s.lowConf}>{t("mobile.result.low_confidence")}</Text>
+        )}
+        {listed && (
+          <ServerDetailsNote
+            pending={pending}
+            failed={!pending && !result}
+            calm={!!result && serverLevel(result) === "safe"}
+            onRetry={retry}
+          />
         )}
       </View>
 
@@ -139,18 +113,24 @@ export default function ResultScreen() {
         <Text style={s.summary}>{t(`mobile.shared.advice_${level}`)}</Text>
       </View>
 
-      {/* Signals */}
-      {result.reasons.length > 0 && (
+      {/* Signals — the list's own line first when it decided. */}
+      {hasSignals && (
         <View style={s.card}>
           <Text style={s.cardTitle}>{t("mobile.result.signals")}</Text>
-          {result.reasons.map((r, i) => (
-            <View key={i} style={[s.signalRow, i > 0 && s.signalBorder]}>
+          {listed && (
+            <View style={s.signalRow}>
+              <View style={[s.signalDot, { backgroundColor: color }]} />
+              <Text style={s.signalText}>{t("mobile.result.listed_reason")}</Text>
+            </View>
+          )}
+          {serverReasons.map((r, i) => (
+            <View key={i} style={[s.signalRow, (i > 0 || Boolean(listed)) && s.signalBorder]}>
               <View style={[s.signalDot, { backgroundColor: color }]} />
               <Text style={s.signalText}>{reasonLabel(r, t)}</Text>
               {/* The public endpoint scores the domain, not each signal, so a
                   weight is usually absent. Rendering it unconditionally printed
                   a "+undefined" chip. */}
-              {typeof r.weight === "number" && (
+              {"weight" in r && typeof r.weight === "number" && (
                 <View style={[s.weightChip, { backgroundColor: wash }]}>
                   <Text style={[s.weightLabel, { color }]}>+{r.weight}</Text>
                 </View>
@@ -165,7 +145,7 @@ export default function ResultScreen() {
           read straight off a response that never contains it, so every site —
           google.com included — was labelled "HTTPS: No". A missing fact is now
           a missing row, never a confident wrong answer. */}
-      {(result.confidence_pct != null || result.confidence) && (
+      {!listed && result && (result.confidence_pct != null || result.confidence) && (
         <View style={s.card}>
           <Text style={s.cardTitle}>{t("mobile.result.details")}</Text>
           <DetailRow
@@ -190,9 +170,9 @@ export default function ResultScreen() {
           // we lost the error silently. Now we await + ignore Cancel
           // (it's not really an error) and let the result fall through.
           void Share.share({
-            message: t("mobile.result.share_message", {
-              domain: result.domain, verdict: label, score: result.score,
-            }),
+            message: score === undefined
+              ? t("mobile.result.share_message_listed", { domain: result?.domain ?? domain, verdict: label })
+              : t("mobile.result.share_message", { domain: result?.domain ?? domain, verdict: label, score }),
           }).catch(() => {
             /* User dismissed share sheet — not an error worth surfacing. */
           });

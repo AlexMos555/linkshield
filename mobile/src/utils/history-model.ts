@@ -29,6 +29,13 @@ export const HISTORY_FILTERS: readonly HistoryFilter[] = ["all", "blocked", "war
 /** `source` of the SQLite rows written by the message check (database.ts re-exports it). */
 export const MESSAGE_CHECK_SOURCE = "sms";
 
+/**
+ * `source` of a checked link the on-device list decided (check-verdict.ts
+ * writes it as LIST_CHECK_SOURCE — same value). Its score, when there is one,
+ * is the server's; the verdict is the list's.
+ */
+export const LIST_CHECK_SOURCE = "list";
+
 export type ShieldKind = "blocked" | "warned" | "allowed";
 export type ShieldSource = "dns" | "link";
 export type CheckLevel = "safe" | "caution" | "dangerous";
@@ -53,6 +60,8 @@ export type CheckItem = {
   /** null for a level this build does not know — shown as "unknown", never as safe. */
   level: CheckLevel | null;
   score: number;
+  /** The on-device list decided the verdict: the row shows the list's mark, not a server score. */
+  listed: boolean;
 };
 
 /** A message check. The text was never stored — only the verdict and link hosts. */
@@ -132,6 +141,7 @@ function toCheckOrSms(row: CheckRowInput, index: number): HistoryItem {
     domain: typeof row.domain === "string" ? row.domain : "",
     level: oneOf(row.level, CHECK_LEVELS),
     score,
+    listed: row.source === LIST_CHECK_SOURCE,
   };
 }
 

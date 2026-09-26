@@ -140,6 +140,20 @@ try {
     ["rate limit is named", () => m.linkVerdict(link("a.tld"), { "a.tld": { kind: "failed", why: "rate_limited" } }), "rate_limited"],
     ["an unknown error is 'failed'", () => m.linkVerdict(link("a.tld"), { "a.tld": { kind: "failed", why: "error" } }), "failed"],
     ["over the cap reads 'not checked'", () => m.linkVerdict(link("d.tld"), { "d.tld": { kind: "not_sent" } }), "not_checked"],
+    ["a site that does not exist says so", () => m.linkVerdict(link("sbertank.ru"), { "sbertank.ru": { kind: "not_found" } }), "not_found"],
+    [
+      "a site that does not exist neither raises nor clears the message's verdict",
+      () => [
+        m.mergeVerdict({ verdict: "caution", reasons: ["asks_for_code"] }, { "x.tld": { kind: "not_found" } }),
+        m.mergeVerdict({ verdict: "no_signals", reasons: [] }, { "x.tld": { kind: "not_found" } }),
+      ],
+      [{ verdict: "caution", reasons: ["asks_for_code"] }, { verdict: "no_signals", reasons: [] }],
+    ],
+    [
+      "a site that does not exist is a known fact: the links count as checked",
+      () => m.linksState([link("x.tld")], { "x.tld": { kind: "not_found" } }),
+      "checked",
+    ],
 
     // ── a calm verdict is not a link check ──────────────────────────
     ["no links: nothing to say about links", () => m.linksState([], {}), "none"],

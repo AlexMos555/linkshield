@@ -14,6 +14,9 @@
     <string name="fg_channel_desc">फ़िशिंग सुरक्षा चालू रहने पर दिखता है</string>
     <string name="fg_text">वेबसाइट के नाम धोखाधड़ी के लिए जाँचे जा रहे हैं</string>
     <string name="fg_title">Cleanway सुरक्षा चालू है</string>
+    <string name="paused_text">%1$s पर अपने-आप फिर चालू होगी।</string>
+    <string name="paused_title">Cleanway सुरक्षा रुकी हुई है</string>
+    <string name="resume_action">अभी चालू करें</string>
     <string name="warn_text">%1$s खतरनाक लगती है। अगर खुली है तो बंद करें और कुछ भी न लिखें।</string>
     <string name="warn_title">यह साइट धोखाधड़ी जैसी लगती है</string>
 </resources>

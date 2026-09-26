@@ -25,8 +25,10 @@ import android.util.Log
  *     offered in History would do nothing for links.
  *   - EVERYTHING ELSE → FAST PATH: the link opens in the real browser with no
  *     visible Cleanway screen (so a safe link never makes the user wait), and
- *     the always-alive service checks its FULL url in the background. If the
- *     analyzer calls it phishing, the service warns and blocks it from then on.
+ *     LinkCheckService checks its site in the background — with the "All
+ *     apps" shield on or off. If the answer says scam, the person is warned
+ *     (and it lands in History); only a threat-feed listing also has the
+ *     shield block the site from then on (LinkVerdictPolicy).
  *
  * No UI of its own (transparent, finishes immediately). Never loops back into
  * itself: forwarding uses an explicit browser package that is NOT us.
@@ -53,7 +55,7 @@ class LinkGuardActivity : Activity() {
             } else {
                 // Fast path: open now, check in the background.
                 forwardToBrowser(url)
-                if (host != null) requestServiceCheck(host)
+                if (host != null) LinkCheckService.request(this, host)
             }
         } catch (e: Exception) {
             Log.w(TAG, "link_guard_error: ${e.message}")
@@ -88,21 +90,6 @@ class LinkGuardActivity : Activity() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
         )
-    }
-
-    /** Ask the always-alive VPN service to check this host's full URL. */
-    private fun requestServiceCheck(host: String) {
-        if (!CleanwayVpnService.isRunning) return
-        try {
-            startService(
-                Intent(this, CleanwayVpnService::class.java).apply {
-                    action = CleanwayVpnService.ACTION_CHECK_URL
-                    putExtra(CleanwayVpnService.EXTRA_CHECK_HOST, host)
-                }
-            )
-        } catch (e: Exception) {
-            Log.v(TAG, "service_check_request_failed: ${e.message}")
-        }
     }
 
     /**

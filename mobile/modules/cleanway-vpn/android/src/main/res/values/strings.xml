@@ -14,6 +14,9 @@
     <string name="fg_channel_desc">Shown while phishing protection is active</string>
     <string name="fg_text">Checking website names for scams</string>
     <string name="fg_title">Cleanway protection is on</string>
+    <string name="paused_text">Turns back on by itself at %1$s.</string>
+    <string name="paused_title">Cleanway protection is paused</string>
+    <string name="resume_action">Turn on now</string>
     <string name="warn_text">%1$s looks dangerous. If it is open, close it and don\'t type anything.</string>
     <string name="warn_title">This site looks like a scam</string>
 </resources>

@@ -14,6 +14,9 @@
     <string name="fg_channel_desc">Affiché tant que la protection anti-phishing est active</string>
     <string name="fg_text">Vérification des noms de sites contre les arnaques</string>
     <string name="fg_title">La protection Cleanway est activée</string>
+    <string name="paused_text">Se réactive toute seule à %1$s.</string>
+    <string name="paused_title">La protection Cleanway est en pause</string>
+    <string name="resume_action">Activer maintenant</string>
     <string name="warn_text">%1$s semble dangereux. S\'il est ouvert, fermez-le et ne saisissez rien.</string>
     <string name="warn_title">Ce site ressemble à une arnaque</string>
 </resources>

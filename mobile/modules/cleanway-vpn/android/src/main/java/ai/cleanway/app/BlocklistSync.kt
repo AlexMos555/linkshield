@@ -52,6 +52,7 @@ class BlocklistStore(private val dir: File) {
 
     private val blobFile get() = File(dir, "dns-blocklist-v2.bin")
     private val metaFile get() = File(dir, "dns-blocklist-v2.meta.json")
+    private val revokedFile get() = File(dir, "dns-blocklist-v2.revoked")
 
     fun load(): Saved? = try {
         if (!blobFile.exists()) null else {
@@ -81,7 +82,21 @@ class BlocklistStore(private val dir: File) {
         dir.mkdirs()
         writeAtomicBytes(blobFile, body)
         writeAtomic(metaFile, JSONObject().put("etag", etag ?: "").put("fetchedAt", fetchedAtMs).toString())
+        revokedFile.delete()
     }
+
+    /**
+     * The publisher revoked the list. Remembered on its own, after the list
+     * itself is cleared: without it, the next start finds no synced list and
+     * falls back to the seed bundled in the APK — switching back on exactly
+     * the blocking the kill switch turned off. A later good list clears it.
+     */
+    fun markRevoked() {
+        dir.mkdirs()
+        writeAtomic(revokedFile, "revoked\n")
+    }
+
+    fun isRevoked(): Boolean = revokedFile.exists()
 
     /** 304: same content, just refresh the fetch time. */
     fun touch(fetchedAtMs: Long) {
@@ -183,6 +198,12 @@ class BlocklistSync(
     private var future: ScheduledFuture<*>? = null
     /** The list we hold, so a delta has something to apply to. */
     @Volatile private var currentList: BlockList? = null
+    /**
+     * The seed's bytes while the seed is what we hold. If the server answers
+     * 304 — the seed IS the current list — they are stored as the synced
+     * list, and the phone never downloads 2.6 MB it already carries.
+     */
+    @Volatile private var seedBody: ByteArray? = null
 
     /** Load what is on disk (fast, synchronous — call before the DNS loop). */
     fun loadFromDisk(): BlockList? {
@@ -208,6 +229,20 @@ class BlocklistSync(
         return list
     }
 
+    /**
+     * Start from the list bundled in the APK ([SeedBlocklist]) because none
+     * was ever synced. The seed is held like a synced list — a delta can
+     * apply to it — but it is not one: lastFetchAtMs stays 0, so [start]
+     * fetches at once, and the first list the server sends replaces it.
+     */
+    fun adoptSeed(list: BlockList, body: ByteArray) {
+        currentEtag = "\"" + sha256Hex(body) + "\""
+        currentVersion = list.version
+        currentList = list
+        seedBody = body
+        onSwap(list)
+    }
+
     /** One fetch. Returns true if a new list was applied or confirmed fresh. */
     fun refreshOnce(force: Boolean = false): Boolean {
         val age = if (lastFetchAtMs > 0) nowMs() - lastFetchAtMs else null
@@ -221,7 +256,14 @@ class BlocklistSync(
         return when (val res = fetcher.fetch(requestUrl, currentEtag)) {
             is FetchResult.NotModified -> {
                 lastFetchAtMs = nowMs(); consecutiveFailures = 0; lastError = null
-                store.touch(lastFetchAtMs)
+                val seed = seedBody
+                if (seed != null) {
+                    // The bundled seed is the list the server publishes now.
+                    store.save(seed, currentEtag, lastFetchAtMs)
+                    seedBody = null
+                } else {
+                    store.touch(lastFetchAtMs)
+                }
                 Log.i(TAG, "blocklist_not_modified")
                 true
             }
@@ -257,7 +299,13 @@ class BlocklistSync(
                 currentEtag = if (BlockList.isDelta(res.body)) null else res.etag
                 currentVersion = if (list.revoked) 0L else list.version
                 currentList = list
-                if (list.revoked) store.clear() else store.save(full, currentEtag, lastFetchAtMs)
+                seedBody = null
+                if (list.revoked) {
+                    store.clear()
+                    store.markRevoked()
+                } else {
+                    store.save(full, currentEtag, lastFetchAtMs)
+                }
                 onSwap(list)
                 Log.i(TAG, "blocklist_loaded version=${list.version} count=${list.count} revoked=${list.revoked}")
                 true

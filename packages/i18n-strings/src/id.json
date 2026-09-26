@@ -1805,7 +1805,11 @@
         "sub_all": "Semua perisai aktif dan sudah dipastikan bekerja",
         "attention": "Satu perisai butuh perhatian",
         "a11y": "Status perlindungan: {{status}}",
-        "title_interrupted": "Perlindungan berhenti"
+        "title_interrupted": "Perlindungan berhenti",
+        "title_paused": "Perlindungan dijeda sampai {{time}}",
+        "sub_paused": "Situs penipuan sedang tidak diblokir",
+        "title_conflict": "Perlindungan tidak bekerja",
+        "sub_conflict": "Setelan DNS Pribadi menghalangi — lihat di bawah apa yang perlu diubah"
       },
       "cta_turn_on": "Nyalakan perlindungan",
       "check": {
@@ -1825,7 +1829,7 @@
         "desc": "Dapat SMS mencurigakan? Kirim ke Cleanway: tekan lama pesannya → Bagikan → Cleanway. Atau tempel teksnya.",
         "cta": "Cek pesan",
         "honesty": "Cleanway tidak membaca SMS Anda dengan sendirinya — hanya mengecek pesan yang Anda berikan. Teksnya tetap di HP Anda.",
-        "links_on": "Tautan di SMS juga dicek saat Anda mengetuknya — “Pemeriksaan tautan” aktif.",
+        "links_on": "Tautan di SMS juga dicek saat kamu mengetuknya: situs penipuan yang sudah dikenal tidak akan terbuka.",
         "links_no_list": "“Pemeriksaan tautan” aktif, tetapi tautan di SMS belum bisa dicocokkan: daftar situs penipuan diunduh selama perlindungan “Semua aplikasi” aktif.",
         "links_off": "Saat ini tautan di SMS tidak dicek saat Anda mengetuknya. Untuk itu, aktifkan perlindungan “Pemeriksaan tautan” di atas."
       },
@@ -1837,7 +1841,7 @@
         "open_a11y": "{{label}}: {{value}}. Membuka daftarnya di Riwayat.",
         "hint": "Ketuk angka untuk melihat daftarnya."
       },
-      "privacy": "Perisai mencocokkan nama situs di HP kamu — tidak ada yang sampai ke kami soal halaman yang kamu buka. Saat kamu memeriksa tautan sendiri, hanya nama situs itu yang keluar dari HP.",
+      "privacy": "Perisai “Semua aplikasi” mencocokkan nama situs langsung di HP kamu. Hanya nama situs yang dikirim ke server kami — saat kamu mengecek tautan sendiri, atau mengetuknya ketika “Pemeriksaan tautan” aktif.",
       "interrupted": "Biasanya terjadi setelah restart. Pengaturanmu masih ada — satu ketukan dan kembali.",
       "cta_turn_back_on": "Nyalakan perlindungan lagi"
     },
@@ -1854,7 +1858,8 @@
         "state_checking": "Mengecek perlindungan…",
         "state_offline": "Tidak ada internet sekarang. Perisai sudah disiapkan dan akan menyaring begitu Anda online lagi.",
         "state_private_dns": "HP kamu mengaktifkan DNS Pribadi ({{host}}). Android tidak bisa menjalankannya bersama Cleanway — kalau keduanya aktif, internet berhenti bekerja. Di Setelan, ubah DNS Pribadi ke Otomatis, lalu kembali dan nyalakan Cleanway.",
-        "private_dns_cta": "Buka setelan jaringan"
+        "private_dns_cta": "Buka setelan jaringan",
+        "state_paused_until": "Dijeda sampai {{time}}, lalu menyala lagi sendiri. Situs penipuan sedang tidak diblokir."
       },
       "browser": {
         "title": "Browser Anda",
@@ -1878,7 +1883,7 @@
       },
       "always_on_hint": "Menyala sendiri setelah HP di-restart. Agar mulai bersama HP, sebelum aplikasi apa pun: aktifkan VPN Selalu Aktif",
       "pause_confirm_title": "Jeda perlindungan?",
-      "pause_confirm_body": "Situs penipuan tidak akan diblokir di aplikasi Anda sampai Anda menyalakannya lagi. Pemeriksaan tersimpan Anda tidak berubah.",
+      "pause_confirm_body": "Selama perlindungan dijeda, situs penipuan bisa terbuka di semua aplikasi.",
       "blocklist": {
         "status": "Daftar blokir: {{count}} situs penipuan yang diketahui · diperbarui {{hours}} jam lalu",
         "stale": "Daftar blokir sudah usang ({{count}} situs) — ketuk untuk memperbarui",
@@ -1887,17 +1892,23 @@
       },
       "disclosure": {
         "title": "Cara kerja perisai",
-        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju resolver publik (Cloudflare atau Quad9), sama seperti cara HP kamu bekerja sekarang.\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nAndroid sekarang akan meminta izin.",
+        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju server DNS jaringanmu sendiri — milik operator atau router, sama seperti tanpa Cleanway. Kalau server itu tidak menjawab, permintaan menuju resolver publik (Cloudflare atau Quad9).\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nAndroid sekarang akan meminta izin.",
         "continue": "Lanjutkan",
         "cancel": "Nanti saja"
       },
       "linkguard": {
         "title": "Pemeriksaan tautan",
-        "desc": "Cleanway membuka tautan lebih dulu dan memeriksanya sebelum Anda masuk",
-        "honesty": "Bekerja saat Cleanway disetel sebagai aplikasi pembuka tautan",
-        "state_on": "Setiap tautan diperiksa lebih dulu",
+        "desc": "Tautan yang kamu ketuk masuk ke Cleanway lebih dulu",
+        "honesty": "Berfungsi jika Cleanway dipilih sebagai aplikasi pembuka tautan. Situs penipuan yang benar-benar baru bisa sempat terbuka — lalu kamu mendapat peringatan.",
+        "state_on": "Situs penipuan yang sudah dikenal tidak akan terbuka. Tautan lain dicek begitu terbuka.",
         "state_setup": "Jadikan Cleanway pembuka tautan Anda"
-      }
+      },
+      "pause_scam_warning": "Jika ada yang di telepon menyuruh kamu mematikan perlindungan — itu penipuan.",
+      "pause_timed": "Jeda {{minutes}} menit",
+      "pause_timed_note": "Perlindungan menyala lagi sendiri pukul {{time}}.",
+      "pause_until_on": "Matikan sampai saya nyalakan lagi",
+      "pause_keep": "Tetap nyalakan perlindungan",
+      "resume_now": "Nyalakan perlindungan sekarang"
     },
     "rollout": {
       "network_ios": "Memblokir situs penipuan di hampir semua aplikasi. Sedang tahap uji akhir — belum tersedia di iPhone.",
@@ -1962,12 +1973,22 @@
       "no": "Tidak",
       "share": "Bagikan hasil",
       "share_message": "{{domain}} dinilai {{verdict}} (skor: {{score}}/100). Dicek dengan Cleanway — https://cleanway.ai/check/{{domain}}",
-      "privacy": "Dicek di server kami. Hanya nama situs yang dikirim — tidak ada yang lain.",
+      "privacy": "Dicek di server kami. Yang dikirim hanya nama situs dan nomor acak untuk instalasi ini — nomor itu dipakai untuk menghitung batas pengecekan. Tidak ada data tentang kamu.",
       "error_title": "Pengecekan tidak bisa diselesaikan",
       "error_body": "Server tidak merespons. Periksa koneksi Anda lalu coba lagi.",
       "error_rate_limited": "Anda mengecek banyak link dalam satu menit terakhir. Tunggu sebentar lalu coba lagi.",
       "error_server": "Server kami sedang bermasalah, bukan koneksi Anda. Silakan coba lagi dalam satu menit.",
-      "error_retry": "Coba lagi"
+      "error_retry": "Coba lagi",
+      "listed_title": "Berbahaya — situs ini ada di daftar situs penipuan",
+      "listed_reason": "Situs ini ada di daftar situs penipuan di HP kamu",
+      "details_loading": "Memuat detail dari server kami…",
+      "details_failed": "Detail dari server gagal dimuat. Tapi situs ini sudah ada di daftar penipuan — jangan dibuka.",
+      "details_retry": "Muat detail",
+      "listed_server_calm": "Server kami tidak menemukan hal lain, tapi situs ini ada di daftar situs penipuan — jangan dibuka.",
+      "error_slow": "Server kami merespons lambat. Coba lagi sebentar lagi.",
+      "not_found_title": "Situs ini tidak ada — periksa alamatnya",
+      "not_found_body": "Mungkin ada salah ketik di alamatnya, atau situsnya sudah ditutup. Kalau tautannya datang lewat pesan, jangan percaya pesan itu.",
+      "share_message_listed": "{{domain}}: {{verdict}}. Dicek dengan Cleanway — https://cleanway.ai/check/{{domain}}"
     },
     "shared": {
       "eyebrow": "Link yang dibagikan",
@@ -2064,7 +2085,8 @@
         "rate_limited": "Tidak dicek: terlalu banyak pengecekan berturut-turut. Coba lagi beberapa menit lagi.",
         "offline": "Tidak dicek: tidak ada koneksi internet",
         "timeout": "Tidak dicek: server kami tidak menjawab tepat waktu",
-        "failed": "Situs tidak bisa dicek"
+        "failed": "Situs tidak bisa dicek",
+        "not_found": "Situs ini tidak ada"
       },
       "list_missing": "Daftar situs penipuan belum ada di HP ini, jadi tautannya belum dicocokkan dengan daftar itu. Daftar itu diunduh selama perlindungan “Semua aplikasi” aktif.",
       "list_stale": "Daftar situs penipuan di HP ini sudah lama tidak diperbarui. Daftar itu diperbarui selama perlindungan “Semua aplikasi” aktif.",
@@ -2176,7 +2198,8 @@
         "allow_confirm_body": "{{domain}} tidak akan diblokir lagi. Lakukan ini hanya kalau kamu kenal situs ini. Bisa dibatalkan di Pengaturan → Situs yang diizinkan.",
         "block_again": "Blokir lagi",
         "close": "Tutup"
-      }
+      },
+      "listed_a11y": "Ada di daftar situs penipuan"
     },
     "report": {
       "title": "Laporan mingguan",
@@ -2230,7 +2253,7 @@
       "sign_out_confirm_title": "Keluar dari akun?",
       "sign_out_confirm_body": "Pemeriksaan dan riwayat tetap ada di ponsel ini. Pengaturan berhenti disinkronkan sampai Anda masuk lagi.",
       "plan": "Paket",
-      "plan_desc": "Gratis — 10 kali cek per hari",
+      "plan_desc": "Perlindungan di HP ini gratis",
       "upgrade": "Upgrade",
       "report": "Laporan mingguan",
       "report_desc": "Ringkasan link yang Anda cek",
@@ -2247,13 +2270,11 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Skor mentah, jenis ancaman, dan detail teknis.",
       "alerts": "Notifikasi",
-      "alerts_note": "Perisai memberi tahu saat menghentikan situs berbahaya. Sakelar di atas belum ada, dan Cleanway tidak pernah melihat papan klip kamu.",
-      "push": "Peringatan link berbahaya",
-      "push_desc": "Beri tahu saya saat ada link yang tampak berbahaya",
-      "auto_check": "Cek link yang saya bagikan",
-      "auto_check_desc": "Cek link begitu saya membagikannya ke Cleanway",
-      "weekly": "Laporan mingguan",
-      "weekly_desc": "Kirimi saya ringkasan sekali seminggu",
+      "alerts_note": "Cleanway tidak pernah membaca papan klip atau SMS kamu — hanya yang kamu bagikan sendiri.",
+      "push": "Pemberitahuan pemblokiran",
+      "push_desc": "Cleanway memberi tahu saat menghentikan situs berbahaya.",
+      "auto_check": "Pengecekan yang kamu bagikan",
+      "auto_check_desc": "Bagikan tautan atau SMS ke Cleanway, langsung dicek. Selalu aktif.",
       "data": "Data",
       "clear": "Hapus riwayat di HP ini",
       "clear_desc": "Menghapus semua catatan cek yang tersimpan di sini",
@@ -2265,7 +2286,7 @@
       "privacy_policy": "Kebijakan privasi",
       "terms": "Ketentuan layanan",
       "version": "Versi",
-      "privacy_note": "Riwayat cek Anda tetap di HP ini. Saat Anda mengecek link, hanya nama situs yang dikirim ke server kami.",
+      "privacy_note": "Riwayat pengecekan tetap di HP ini. Saat kamu mengecek tautan, yang dikirim ke server kami hanya nama situs dan nomor acak untuk instalasi ini — nomor itu dipakai untuk menghitung batas pengecekan.",
       "sync_failed_title": "Hanya tersimpan di HP ini",
       "sync_failed_body": "Kami tidak bisa menghubungi akun Anda, jadi perubahan ini belum akan muncul di perangkat Anda yang lain. Perubahan akan tersinkron saat Anda mengubahnya lagi dalam keadaan online.",
       "clear_done_title": "Riwayat terhapus",
@@ -2283,12 +2304,14 @@
       "language_reload_title": "Perlu mulai ulang",
       "language_reload_body": "Tutup dan buka lagi aplikasi untuk menyelesaikan perubahan arah teks.",
       "linkguard": "Pemeriksaan tautan",
-      "linkguard_note": "Saat aktif, Cleanway memeriksa setiap tautan yang kamu ketuk — di aplikasi mana pun — dan memperingatkan sebelum halaman penipuan terbuka. Tautan aman langsung terbuka.",
+      "linkguard_note": "Jika aktif, tautan yang kamu ketuk di aplikasi mana pun masuk ke Cleanway lebih dulu. Situs penipuan yang sudah dikenal tidak akan terbuka. Tautan lain langsung terbuka, dan kami mengecek situsnya di detik yang sama — kamu akan diperingatkan jika ternyata berbahaya.",
       "linkguard_on": "Cleanway memeriksa tautanmu",
-      "linkguard_on_desc": "Setiap tautan yang diketuk diperiksa dulu.",
+      "linkguard_on_desc": "Situs penipuan yang sudah dikenal tidak akan terbuka; tautan lain dicek begitu terbuka.",
       "linkguard_off": "Periksa setiap tautan",
       "linkguard_off_desc": "Sekarang tautan terbuka tanpa diperiksa. Aktifkan untuk memeriksanya.",
-      "linkguard_enable": "Siapkan"
+      "linkguard_enable": "Siapkan",
+      "push_off_desc": "Dimatikan di setelan HP — kamu tidak akan tahu saat ada pemblokiran. Ketuk untuk menyalakan.",
+      "push_enable": "Nyalakan"
     },
     "family": {
       "title": "Ruang Keluarga",
@@ -2386,7 +2409,10 @@
       "warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun.",
       "allow_action": "Bukan penipuan — izinkan",
       "allowed_title": "Situs diizinkan",
-      "allowed_text": "{{domain}} sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan."
+      "allowed_text": "{{domain}} sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan.",
+      "paused_title": "Perlindungan Cleanway sedang dijeda",
+      "paused_text": "Menyala lagi sendiri pukul {{time}}.",
+      "resume_action": "Nyalakan sekarang"
     },
     "reason": {
       "flagged_dangerous": "Google menandai situs ini berbahaya",

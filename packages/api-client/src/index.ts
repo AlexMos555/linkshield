@@ -55,6 +55,10 @@ export interface PublicCheckResponse {
   /** Conformal confidence, 50-99. Only present when coverage is established. */
   confidence_pct?: number | null;
   checked_at?: string | null;
+  /** False when the name does not exist at all (newer servers; absent = not said). */
+  exists?: boolean | null;
+  /** What the verdict rests on, e.g. "threat_intel" or "heuristics" (newer servers). */
+  verdict_basis?: string | string[] | null;
   cta?: string | null;
   install_url?: string | null;
   transparency_url?: string | null;
@@ -78,11 +82,25 @@ export interface PublicCheckResult {
   confidence?: string;
   confidence_pct?: number;
   checked_at?: string;
+  /** False when the server says the name does not exist. Absent on servers that do not say. */
+  exists?: boolean;
+  /** What the verdict rests on, always a list; absent on servers that do not say. */
+  verdict_basis?: string[];
+}
+
+function basisList(value: PublicCheckResponse["verdict_basis"]): string[] | undefined {
+  if (typeof value === "string") return value ? [value] : undefined;
+  if (Array.isArray(value)) {
+    const items = value.filter((v): v is string => typeof v === "string" && v.length > 0);
+    return items.length > 0 ? items : undefined;
+  }
+  return undefined;
 }
 
 export function normalizePublicCheck(raw: PublicCheckResponse): PublicCheckResult {
   const signals = Array.isArray(raw.signals) ? raw.signals : [];
   const codes = Array.isArray(raw.reason_codes) ? raw.reason_codes : [];
+  const basis = basisList(raw.verdict_basis);
   return {
     domain: raw.domain,
     score: raw.score,
@@ -95,6 +113,8 @@ export function normalizePublicCheck(raw: PublicCheckResponse): PublicCheckResul
     confidence: raw.confidence ?? undefined,
     confidence_pct: typeof raw.confidence_pct === "number" ? raw.confidence_pct : undefined,
     checked_at: raw.checked_at ?? undefined,
+    ...(typeof raw.exists === "boolean" ? { exists: raw.exists } : {}),
+    ...(basis ? { verdict_basis: basis } : {}),
   };
 }
 

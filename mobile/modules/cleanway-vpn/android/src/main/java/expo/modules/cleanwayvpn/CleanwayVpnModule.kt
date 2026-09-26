@@ -103,6 +103,83 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Pause blocking until [untilMs] (epoch millis). The tunnel stays up and
+     * blocking returns by itself at that time, with the app closed or not —
+     * a scammer on the phone cannot talk a timed pause into a permanent one.
+     * No-op when the shield is not running.
+     */
+    Function("pauseProtection") { untilMs: Double ->
+      if (CleanwayVpnService.isRunning) {
+        context.startService(
+          Intent(context, CleanwayVpnService::class.java)
+            .setAction(CleanwayVpnService.ACTION_PAUSE)
+            .putExtra(CleanwayVpnService.EXTRA_PAUSE_UNTIL, untilMs.toLong())
+        )
+      }
+      Unit
+    }
+
+    /** End a timed pause now. */
+    Function("resumeProtection") {
+      if (CleanwayVpnService.isRunning) {
+        context.startService(
+          Intent(context, CleanwayVpnService::class.java).setAction(CleanwayVpnService.ACTION_RESUME)
+        )
+      }
+      Unit
+    }
+
+    /** When the current pause ends (epoch millis, Double for JS); 0 when not paused. */
+    Function("pausedUntil") {
+      val until = ai.cleanway.app.ShieldPreference.pausedUntil(context)
+      (if (until > System.currentTimeMillis()) until else 0L).toDouble()
+    }
+
+    /**
+     * This install's random number (ai.cleanway.app.InstallId), sent with
+     * every site check so the server can rate-limit per phone instead of per
+     * carrier-NAT address. The same value the link guard sends.
+     */
+    Function("installId") {
+      ai.cleanway.app.InstallId.get(context)
+    }
+
+    /**
+     * Can Cleanway show notifications at all? False when the person turned
+     * them off for the app (or refused the Android 13+ prompt) — then a block
+     * happens in silence, and Settings says so and offers the way back.
+     */
+    Function("notificationsEnabled") {
+      androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    /** Open this app's page in the system notification settings. */
+    Function("openNotificationSettings") {
+      val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+          .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+      } else {
+        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+          .setData(android.net.Uri.fromParts("package", context.packageName, null))
+      }
+      try {
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+      } catch (e: Exception) {
+        false
+      }
+    }
+
+    /**
+     * Which upstream resolvers have been answering: counts per transport
+     * (network = the operator's/router's own resolver), SERVFAILs, and the
+     * kind of network in use. Diagnostics; empty when the shield is off.
+     */
+    Function("upstreamStatus") {
+      CleanwayVpnService.instance?.upstreamStatus() ?: emptyMap<String, Any?>()
+    }
+
+    /**
      * Whether the user last chose to have the shield ON. Combined with
      * isRunning() this lets the app tell "never set up" apart from "was on,
      * and something turned it off" — a reboot without always-on, an OEM

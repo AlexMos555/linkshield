@@ -174,6 +174,71 @@ class BlocklistSyncTest {
     }
 
     @Test
+    fun `a revoke is remembered, so the bundled seed cannot switch blocking back on`() {
+        val store = BlocklistStore(tmp.newFolder())
+        assertTrue(SeedBlocklist.applies(store))
+        val s = sync(FakeFetcher(FetchResult.Ok(revokedArtifact(), null)), store)
+        assertTrue(s.refreshOnce())
+        assertNull(store.load())
+        assertTrue(store.isRevoked())
+        assertFalse(SeedBlocklist.applies(store))
+        // A later good list lifts it.
+        store.save(artifact("evil.example"), null, 2L)
+        assertFalse(store.isRevoked())
+    }
+
+    // ── the starter list bundled in the APK ───────────────────────────
+
+    @Test
+    fun `the seed is used only with no synced list`() {
+        val store = BlocklistStore(tmp.newFolder())
+        assertTrue(SeedBlocklist.applies(store))
+        store.save(artifact("evil.example"), null, 1L)
+        assertFalse(SeedBlocklist.applies(store))
+    }
+
+    @Test
+    fun `a seed that is malformed, empty or revoked is no seed`() {
+        assertNull(SeedBlocklist.parse(null, veto, emptySet(), 0L, 0L))
+        assertNull(SeedBlocklist.parse("garbage".toByteArray(), veto, emptySet(), 0L, 0L))
+        assertNull(SeedBlocklist.parse(revokedArtifact(), veto, emptySet(), 0L, 0L))
+        val seed = SeedBlocklist.parse(artifact("evil.example"), veto, emptySet(), 0L, 0L)!!
+        assertEquals("evil.example", seed.list.match("login.evil.example"))
+    }
+
+    @Test
+    fun `an adopted seed blocks at once, and a 304 makes it the synced list without a download`() {
+        val body = artifact("evil.example", generated = 500L)
+        val seed = SeedBlocklist.parse(body, veto, emptySet(), 0L, 0L)!!
+        val store = BlocklistStore(tmp.newFolder())
+        var swapped: BlockList? = null
+        val fetcher = FakeFetcher(FetchResult.NotModified)
+        val s = sync(fetcher, store, onSwap = { swapped = it })
+        s.adoptSeed(seed.list, seed.body)
+        assertEquals("evil.example", swapped!!.match("evil.example"))
+        // Asked as "I hold version 500, this exact artifact".
+        assertTrue(s.refreshOnce())
+        assertEquals("https://x/list?from=500", fetcher.lastUrl)
+        assertEquals("\"" + BlocklistSync.sha256Hex(body) + "\"", fetcher.lastEtag)
+        assertTrue(body.contentEquals(store.load()!!.body))
+        assertFalse(SeedBlocklist.applies(store))
+    }
+
+    @Test
+    fun `the first list the server sends replaces the seed`() {
+        val seed = SeedBlocklist.parse(artifact("old.example", generated = 500L), veto, emptySet(), 0L, 0L)!!
+        val fresh = artifact("new.example", generated = 600L)
+        val store = BlocklistStore(tmp.newFolder())
+        var swapped: BlockList? = null
+        val s = sync(FakeFetcher(FetchResult.Ok(fresh, "\"" + BlocklistSync.sha256Hex(fresh) + "\"")), store, onSwap = { swapped = it })
+        s.adoptSeed(seed.list, seed.body)
+        assertTrue(s.refreshOnce())
+        assertEquals("new.example", swapped!!.match("new.example"))
+        assertNull(swapped!!.match("old.example"))
+        assertTrue(fresh.contentEquals(store.load()!!.body))
+    }
+
+    @Test
     fun `corrupt on-disk file is rejected and cleared on load`() {
         val store = BlocklistStore(tmp.newFolder())
         store.save("garbage".toByteArray(), null, 1L)

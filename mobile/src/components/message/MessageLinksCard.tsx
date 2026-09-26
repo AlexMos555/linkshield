@@ -28,6 +28,9 @@ const LOOKS: Record<Exclude<LinkVerdict, "checking">, Look> = {
   allowed: { icon: "person-outline", color: colors.textSecondary },
   system: { icon: "help-circle-outline", color: colors.textMuted },
   clean: { icon: "checkmark-circle-outline", color: colors.textSecondary },
+  // Amber, not red: nothing is there to be a scam, but a link that leads
+  // nowhere in a message that claims to be from someone is itself a warning.
+  not_found: { icon: "help-circle-outline", color: colors.amber },
   not_checked: { icon: "help-circle-outline", color: colors.textMuted },
   rate_limited: { icon: "time-outline", color: colors.textMuted },
   offline: { icon: "cloud-offline-outline", color: colors.textMuted },

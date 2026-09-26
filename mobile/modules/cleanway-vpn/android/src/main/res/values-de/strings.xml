@@ -14,6 +14,9 @@
     <string name="fg_channel_desc">Wird angezeigt, solange der Phishing-Schutz aktiv ist</string>
     <string name="fg_text">Website-Namen werden auf Betrug geprüft</string>
     <string name="fg_title">Cleanway-Schutz ist an</string>
+    <string name="paused_text">Schaltet sich um %1$s von selbst wieder ein.</string>
+    <string name="paused_title">Cleanway-Schutz ist pausiert</string>
+    <string name="resume_action">Jetzt einschalten</string>
     <string name="warn_text">%1$s wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben.</string>
     <string name="warn_title">Diese Seite sieht nach Betrug aus</string>
 </resources>

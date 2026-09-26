@@ -8,11 +8,13 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { colors, type as typo, space, radius } from "../../src/utils/theme";
 import { getStats } from "../../src/services/database";
-import { HeroShield } from "../../src/components/shield/HeroShield";
+import { HeroShield, type HeroHold } from "../../src/components/shield/HeroShield";
+import { PauseSheet } from "../../src/components/shield/PauseSheet";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { ShieldCard } from "../../src/components/shield/ShieldCard";
-import { useNetworkShield } from "../../src/hooks/useNetworkShield";
+import { useNetworkShield, PAUSE_MINUTES } from "../../src/hooks/useNetworkShield";
+import { clockTime } from "../../src/utils/relative-time";
 import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
 import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
 import { useLinkGuard } from "../../src/hooks/useLinkGuard";
@@ -66,6 +68,7 @@ export default function HomeScreen() {
   const { setup } = useLocalSearchParams<{ setup?: string }>();
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [pauseSheetVisible, setPauseSheetVisible] = useState(false);
   const network = useNetworkShield();
   // The link guard (Android): when Cleanway is the default link handler, tapped
   // links are checked before they open — the exact SMS-phishing defense.
@@ -116,6 +119,11 @@ export default function HomeScreen() {
     : verifiedCount > 0 ? "partial"
     : "none";
   const needsSetup = network.available && network.state === "setup";
+  // Paused or blocked by Private DNS: whatever else is on, the hero is not green.
+  const heroHold: HeroHold | null =
+    network.state === "paused" ? { kind: "paused", until: network.pausedUntil }
+    : network.state === "conflict" ? { kind: "conflict" }
+    : null;
 
   const rollout = rolloutItems(t, Platform.OS, messageCheck);
 
@@ -160,19 +168,13 @@ export default function HomeScreen() {
     router.navigate({ pathname: "/history", params: { filter } });
   }
 
+  /**
+   * Pause goes through PauseSheet: the scam warning first, 15 minutes by
+   * default with protection returning by itself, "until I turn it back on"
+   * second, and "keep protection" the most prominent choice.
+   */
   function confirmPause() {
-    Alert.alert(
-      t("mobile.shield.pause_confirm_title"),
-      t("mobile.shield.pause_confirm_body"),
-      [
-        { text: t("mobile.settings.clear_cancel"), style: "cancel" },
-        {
-          text: t("mobile.shield.status.pause_action"),
-          style: "destructive",
-          onPress: () => void network.turnOff(),
-        },
-      ],
-    );
+    setPauseSheetVisible(true);
   }
 
   return (
@@ -186,6 +188,7 @@ export default function HomeScreen() {
         // unproven, not as a warning.
         attention={false}
         interrupted={needsSetup && network.interrupted}
+        hold={heroHold}
       />
 
       <UpdateBanner status={update} />
@@ -227,6 +230,8 @@ export default function HomeScreen() {
               // setting. Name the provider so the user recognises it.
               network.state === "conflict"
                 ? t("mobile.shield.network.state_private_dns", { host: network.privateDnsHost ?? "" })
+              : network.state === "paused"
+                ? t("mobile.shield.network.state_paused_until", { time: clockTime(network.pausedUntil, i18n.language) })
               : network.state === "on" ? t("mobile.shield.network.state_on")
               // Probe in flight: say "checking" rather than flashing the
               // negative state at someone whose protection is fine.
@@ -238,6 +243,7 @@ export default function HomeScreen() {
             onAction={() => {
               if (network.state === "setup") startWithDisclosure();
               else if (network.state === "conflict") network.openPrivateDnsSettings();
+              else if (network.state === "paused") network.resume();
             }}
             // The status pill only acts in "setup". Switching a running shield
             // OFF goes through the explicit pause row below, behind a confirm —
@@ -276,6 +282,20 @@ export default function HomeScreen() {
                     : t("mobile.shield.blocklist.missing")}
               </Text>
               <Ionicons name="refresh-outline" size={14} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+          {network.state === "paused" && (
+            // Said as a button, not only as the pill: turning protection back
+            // on must be the easiest thing on this screen.
+            <TouchableOpacity
+              style={s.hintRow}
+              onPress={network.resume}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Ionicons name="play-circle-outline" size={15} color={colors.blue} />
+              <Text style={[s.hintText, s.resumeText]}>{t("mobile.shield.resume_now")}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.blue} />
             </TouchableOpacity>
           )}
           {network.state === "conflict" && (
@@ -389,6 +409,19 @@ export default function HomeScreen() {
       </View>
 
       <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
+      <PauseSheet
+        visible={pauseSheetVisible}
+        minutes={PAUSE_MINUTES}
+        onKeep={() => setPauseSheetVisible(false)}
+        onPauseTimed={() => {
+          setPauseSheetVisible(false);
+          network.pause(PAUSE_MINUTES);
+        }}
+        onPauseUntilOn={() => {
+          setPauseSheetVisible(false);
+          void network.turnOff();
+        }}
+      />
     </ScrollView>
   );
 }
@@ -454,6 +487,7 @@ const s = StyleSheet.create({
     marginTop: space.sm, paddingHorizontal: space.xs,
   },
   hintText: { ...typo.caption, color: colors.textSecondary, flex: 1 },
+  resumeText: { fontSize: 15, fontWeight: "600", color: colors.blue },
 
   activityCard: {
     backgroundColor: colors.surface,

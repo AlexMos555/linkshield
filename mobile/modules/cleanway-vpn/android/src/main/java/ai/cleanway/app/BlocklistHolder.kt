@@ -7,13 +7,16 @@ import android.util.Log
  * The on-device blocklist for anything OUTSIDE the DNS loop — the link guard
  * and the message check.
  *
- * Two sources, in order:
+ * Three sources, in order:
  *  1. the running shield's live list (same process), so a check sees exactly
  *     what DNS is blocking with, including a refresh from a minute ago;
  *  2. otherwise the synced file on disk, parsed with the SAME popular-domain
  *     veto and shared-suffix set the service uses — without them a check
  *     could flag a popular domain the DNS layer allows, a false positive,
- *     the one thing this product guards against hardest.
+ *     the one thing this product guards against hardest;
+ *  3. with no list ever synced, the starter list bundled in the APK
+ *     ([SeedBlocklist]) — so the link guard knows known scam sites on a
+ *     fresh install, even with the shield off and our server unreachable.
  *
  * The disk copy is cached by the list's fetch stamp: a re-check reads only
  * the small meta file, not the ~2.6 MB body. Disk loads BLOCK — call from a
@@ -27,6 +30,10 @@ object BlocklistHolder {
     @Volatile private var cachedStamp: Long = -1L
     @Volatile private var veto: Set<String>? = null
     @Volatile private var shared: Set<String>? = null
+    /** This APK carries no seed: remembered so each check does not retry the asset. */
+    @Volatile private var seedMissing = false
+    /** [cachedStamp] of a list that came from the seed, not from a sync. */
+    private const val SEED_STAMP = -2L
 
     /** The list to check against, or null when none has ever been synced. */
     fun current(context: Context): BlockList? {
@@ -45,7 +52,16 @@ object BlocklistHolder {
     fun available(context: Context): Boolean {
         val live = liveList()
         if (live != null) return live.count > 0 && !live.revoked
-        return BlocklistStore.of(context.applicationContext.filesDir).fetchedAtMs() != null
+        val app = context.applicationContext
+        val store = BlocklistStore.of(app.filesDir)
+        if (store.fetchedAtMs() != null) return true
+        return !seedMissing && SeedBlocklist.applies(store) && hasSeedAsset(app)
+    }
+
+    private fun hasSeedAsset(context: Context): Boolean = try {
+        context.assets.list("")?.contains(SeedBlocklist.ASSET) == true
+    } catch (_: Exception) {
+        false
     }
 
     private fun liveList(): BlockList? = CleanwayVpnService.instance
@@ -76,9 +92,31 @@ object BlocklistHolder {
         emptySet()
     }
 
+    /** No list was ever synced: the starter list from the APK, parsed once per process. */
+    private fun fromSeed(context: Context, store: BlocklistStore): BlockList? {
+        if (seedMissing || !SeedBlocklist.applies(store)) return null
+        synchronized(lock) {
+            if (cachedStamp == SEED_STAMP) cached?.let { return it }
+            val seed = SeedBlocklist.load(
+                context.assets,
+                popularVeto = assetSet(context, "popular_veto.txt", veto) { veto = it },
+                sharedSuffixes = assetSet(context, "shared_suffixes.txt", shared) { shared = it },
+                nowMs = System.currentTimeMillis(),
+                elapsedMs = android.os.SystemClock.elapsedRealtime(),
+            )
+            if (seed == null) {
+                seedMissing = true
+                return null
+            }
+            cached = seed.list
+            cachedStamp = SEED_STAMP
+            return seed.list
+        }
+    }
+
     private fun fromDisk(context: Context): BlockList? {
         val store = BlocklistStore.of(context.filesDir)
-        val stamp = store.fetchedAtMs() ?: return null
+        val stamp = store.fetchedAtMs() ?: return fromSeed(context, store)
         synchronized(lock) {
             val hit = cached
             if (hit != null && cachedStamp == stamp) return hit

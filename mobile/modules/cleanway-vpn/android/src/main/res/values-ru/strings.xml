@@ -14,6 +14,9 @@
     <string name="fg_channel_desc">Показывается, пока работает защита от фишинга</string>
     <string name="fg_text">Проверяем адреса сайтов на мошенничество</string>
     <string name="fg_title">Защита Cleanway включена</string>
+    <string name="paused_text">Включится сама в %1$s.</string>
+    <string name="paused_title">Защита Cleanway на паузе</string>
+    <string name="resume_action">Включить сейчас</string>
     <string name="warn_text">%1$s выглядит опасным. Если он открыт — закройте его и ничего не вводите.</string>
     <string name="warn_title">Этот сайт похож на мошеннический</string>
 </resources>

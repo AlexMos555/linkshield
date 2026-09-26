@@ -78,6 +78,20 @@ try {
       ],
     ],
     ["the legacy SQLite time reads as UTC", () => items.find((i) => i.domain === "old.example").ts, Date.UTC(2026, 8, 24, 6, 0, 0)],
+    [
+      "a link the on-device list decided is marked listed; a server-only check is not",
+      () => {
+        const [listed, server] = m.mergeHistory(
+          [
+            { id: 11, domain: "evil.example", score: 0, level: "dangerous", source: "list", checked_at: new Date(T0).toISOString() },
+            { id: 12, domain: "meh.example", score: 45, level: "caution", source: "api", checked_at: new Date(T0 - 1).toISOString() },
+          ],
+          [],
+        );
+        return [listed.listed, listed.level, server.listed];
+      },
+      [true, "dangerous", false],
+    ],
     ["an entry without source keeps a null source, not a guess", () => items.find((i) => i.domain === "legacy.example").source, null],
     ["keys are unique", () => new Set(items.map((i) => i.key)).size === items.length, true],
     [

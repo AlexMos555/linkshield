@@ -41,4 +41,24 @@ internal object ShieldPreference {
         context.applicationContext
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(KEY_ENABLED, false)
+
+    /**
+     * End of a timed pause (epoch ms), 0 when not paused. Stored so a pause
+     * ends at its time even if the service restarts in between — and never
+     * turns into "paused until the next reboot".
+     */
+    fun setPausedUntil(context: Context, untilMs: Long) {
+        context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_PAUSED_UNTIL, untilMs)
+            .commit()
+    }
+
+    fun pausedUntil(context: Context): Long =
+        context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong(KEY_PAUSED_UNTIL, 0L)
+
+    private const val KEY_PAUSED_UNTIL = "paused_until_ms"
 }

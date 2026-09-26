@@ -192,6 +192,17 @@ jobs:
         # nothing for a site that is not in the log.
         run: node mobile/scripts/test-history-model.mjs
 
+      - name: Link check verdict table test
+        # A site on the on-device list is "dangerous" at once and no server
+        # answer can downgrade it; a name that does not exist is never scored
+        # as a scam; a slow first check is retried once, a rate limit never.
+        run: node mobile/scripts/test-check-verdict.mjs
+
+      - name: Shared message handoff regression test
+        # Report #5: a second SMS shared to an open message screen must be
+        # checked — the router reuses the screen, so each share needs its id.
+        run: node mobile/scripts/test-message-handoff.mjs
+
       - name: Captcha service unit tests
         # Pins the deep-link contract with /auth/captcha: https-only URL,
         # nonce must match, timeout/grace/cancel resolve null exactly once.
