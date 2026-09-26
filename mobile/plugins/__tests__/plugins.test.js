@@ -13,6 +13,7 @@
 const assert = require("node:assert");
 const { _patch: patchSigning } = require("../withReleaseSigning.js");
 const { _patch: patchAbi, DEFAULT_ABIS } = require("../withAbiFilters.js");
+const { _patch: patchSeed } = require("../withSeedGuard.js");
 
 // A trimmed but structurally faithful Expo SDK 52 / RN 0.76 app/build.gradle.
 const TEMPLATE = `
@@ -122,6 +123,29 @@ console.log("withAbiFilters:");
   });
   check("leaves unrecognised gradle untouched", () => {
     assert.strictEqual(patchAbi("no build types here", DEFAULT_ABIS), "no build types here");
+  });
+}
+
+console.log("withSeedGuard:");
+{
+  const out = patchSeed(TEMPLATE);
+  check("fails a non-debug build that has no starter blocklist", () => {
+    assert.ok(out.includes('file("../../modules/cleanway-vpn/android/src/main/assets/dns-blocklist-v2.seed.bin")'));
+    assert.ok(out.includes("throw new GradleException("));
+    assert.ok(out.includes("!cleanwaySeed.isFile()"));
+  });
+  check("hooks every pre<Variant>Build except debug ones, before compiling", () => {
+    assert.ok(out.includes("it.name ==~ /pre\\w+Build/ && !(it.name ==~ /(?i).*debug.*/)"));
+  });
+  check("says how to fix it, and how to skip it on purpose", () => {
+    assert.ok(out.includes("fetch-seed-blocklist.sh"));
+    assert.ok(out.includes('!project.hasProperty("cleanwayNoSeed")'));
+  });
+  check("leaves the android block untouched (appended after it)", () => {
+    assert.ok(out.startsWith(TEMPLATE.trimEnd()));
+  });
+  check("is idempotent across repeated prebuilds", () => {
+    assert.strictEqual(patchSeed(out), out);
   });
 }
 

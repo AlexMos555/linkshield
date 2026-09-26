@@ -13,7 +13,8 @@
 #   bash mobile/scripts/fetch-seed-blocklist.sh <assets-dir>     # explicit target
 #
 # The default target is this checkout's module assets, next to the script.
-# The file is gitignored; a build without it still works — it just has no seed.
+# The file is gitignored. A debug build without it works; a release build
+# refuses to start (plugins/withSeedGuard.js) unless given -PcleanwayNoSeed.
 #
 # Nothing is installed unless the download verifies: HTTP 200, sha256 equal
 # to the ETag, the v2 magic and header, count × 6 bytes, strictly ascending
@@ -80,12 +81,18 @@ age_h = (time.time() - generated) / 3600
 if age_h > max_age_h:
     fail(f"published {age_h:.0f} h ago (> {max_age_h} h)")
 
+# The ETag is the published sha256 — the one check that ties these bytes to
+# what the server published. No ETag, or one of another shape (an edge that
+# rewrites it), means the download cannot be verified: fail closed.
 etag = re.findall(r"^etag:\s*(.+?)\s*$", headers, re.M | re.I)
 sha = hashlib.sha256(body).hexdigest()
-if etag:
-    want = etag[-1].removeprefix("W/").strip('"').lower()
-    if re.fullmatch(r"[0-9a-f]{64}", want) and want != sha:
-        fail("sha256 does not match the ETag")
+if not etag:
+    fail("no ETag header, so the sha256 cannot be checked")
+want = etag[-1].removeprefix("W/").strip('"').lower()
+if not re.fullmatch(r"[0-9a-f]{64}", want):
+    fail(f"the ETag is not a sha256 ({etag[-1][:40]}), so the download cannot be checked")
+if want != sha:
+    fail("sha256 does not match the ETag")
 print(f"ok: count={count} generated={generated} ({age_h:.1f} h ago) sha256={sha[:16]}…")
 PY
 
