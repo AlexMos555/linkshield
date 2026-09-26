@@ -29,6 +29,7 @@ from difflib import SequenceMatcher
 from typing import Optional
 
 from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
+from api.services.hosting_platforms import is_shared_platform_site
 
 logger = logging.getLogger("cleanway.scoring")
 
@@ -135,17 +136,27 @@ GOOGLE_ABUSED_SUBDOMAINS: frozenset[str] = frozenset({
 })
 
 
+# Every suffix the scorer itself knows to be shared; the curated
+# data/hosting_platforms.json (tw1.ru, weeblysite.com, forms.yandex.ru …) is
+# added on top by hosting_platforms.is_shared_platform_site().
+_SCORER_SHARED_SUFFIXES: frozenset[str] = frozenset(PUBLIC_SUFFIXES_IN_TOP) | HOSTING_PLATFORMS
+
+
 def _is_under_shared_suffix(domain: str) -> bool:
     """True when `domain` is a STRICT subdomain of a public suffix / hosting
-    platform, i.e. a name someone else could have registered."""
-    parts = domain.split(".")
-    # Check every proper suffix of length >= 2 labels: evil.s3.amazonaws.com
+    platform (a name someone else could have registered), or a page host
+    that many users publish to at different paths (forms.yandex.ru)."""
+    # Every proper suffix of length >= 2 labels is checked: evil.s3.amazonaws.com
     # must match s3.amazonaws.com; a.b.evil.us.org must match us.org.
-    for k in range(2, len(parts)):
-        suffix = ".".join(parts[-k:])
-        if suffix in PUBLIC_SUFFIXES_IN_TOP or suffix in HOSTING_PLATFORMS:
-            return True
-    return False
+    return is_shared_platform_site(domain, _SCORER_SHARED_SUFFIXES)
+
+
+def is_hosting_platform_site(domain: str) -> bool:
+    """A customer's site on a hosting / site-builder platform, or a page on a
+    user-content host — from the curated lists only. Deliberately NOT the
+    PSL-derived set: that also holds restricted registries such as gov.ru,
+    where "anyone can publish here" would be a false statement."""
+    return is_shared_platform_site((domain or "").lower().strip("."), HOSTING_PLATFORMS)
 
 
 def is_trusted_top_domain(domain: str) -> bool:
@@ -153,8 +164,12 @@ def is_trusted_top_domain(domain: str) -> bool:
 
     True only when the domain is a top domain (Tranco 100k) or a subdomain of
     one that is NOT a shared platform / public suffix / URL shortener /
-    abused Google service. Used by the public /check router and by the
-    scorer's Layer 2, so both cannot disagree again.
+    abused Google service. Shared platforms include the curated
+    data/hosting_platforms.json — Timeweb, Beget, SpaceWeb, Selectel, Weebly,
+    WordPress staging, ScreenConnect, Yandex Forms/Disk … — whose customers'
+    pages came back "safe, 99%" in production (report 2026-09-25 #7). Used by
+    the public and authenticated /check routers and by the scorer's Layer 2,
+    so none of them can disagree again.
     """
     d = (domain or "").lower().strip(".")
     if not d:
@@ -819,6 +834,10 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.7 No HTTPS ──
+    # True only on positive evidence. "Our scanner could not connect" is None,
+    # never True: президент.рф, rosreestr.gov.ru and bankspb.ru refuse foreign
+    # connections, and scoring that as "no HTTPS" (+40) plus "no headers"
+    # (+15) alone crossed the 'dangerous' line (report 2026-09-25 #1).
     if signals.get("no_https"):
         score += 40
         reasons.append(DomainReason(
@@ -835,7 +854,10 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.9 Missing security headers ──
-    missing_headers = signals.get("missing_security_headers", [])
+    # None = not measured (the scanner could not open the site over HTTPS).
+    # Only a real HTTPS response that lacks the headers counts — a site that
+    # refuses our foreign scanner has not shown us anything to judge.
+    missing_headers = signals.get("missing_security_headers") or []
     if len(missing_headers) >= 3:
         score += 15
         reasons.append(DomainReason(

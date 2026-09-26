@@ -1,0 +1,73 @@
+{
+  "_meta": {
+    "purpose": "Shared platforms whose sites belong to their customers, not to the platform. A popular platform is NOT evidence that one customer's site is safe, so these never get the instant 'known legitimate' verdict (api/services/hosting_platforms.py, is_trusted_top_domain()).",
+    "tenant_suffixes": "Every subdomain is a separate customer's site: <anything>.tw1.ru is whoever rented it. The apex itself (tw1.ru) stays trusted.",
+    "user_content_hosts": "One hostname, many users' pages at different PATHS (forms.yandex.ru/u/<id>). The public check only sees the host, so it can vouch for the service, never for the page.",
+    "sources": "Confirmed on the live /public/check on 2026-09-25 (tw1.ru x2, weebly, wpcomstaging.com, screenconnect.com all came back 'safe, 99%'), plus the registrables of the 34,193 active feed hosts that sat under a top-100k name with no tenant rule (fullcheck recheck-tenant, PhishTank + OpenPhish + URLhaus, 2026-09-25). Names already covered by data/public_suffixes_in_top.json or the scorer's hand list need not be repeated here, but a duplicate is harmless.",
+    "updated": "2026-09-26"
+  },
+  "tenant_suffixes": {
+    "ru_hosting": [
+      "tw1.ru", "tmweb.ru", "twc1.net", "timeweb.cloud",
+      "xsph.ru", "swtest.ru",
+      "beget.tech", "bget.ru", "beget.app",
+      "selcdn.ru", "selstorage.ru", "vkcloud-storage.ru",
+      "regruhosting.ru", "nichost.ru", "1gb.ru", "justhost.ru", "simplecloud.ru"
+    ],
+    "ru_site_builders": [
+      "ucoz.ru", "ucoz.net", "ucoz.com", "ucoz.org", "narod.ru", "my1.ru", "moy.su",
+      "clan.su", "3dn.ru", "at.ua", "do.am",
+      "tilda.ws", "nethouse.ru", "craftum.io", "ukit.me", "bitrix24.site", "myinsales.ru",
+      "blogspot.ru"
+    ],
+    "site_builders": [
+      "weeblysite.com", "editmysite.com", "godaddysites.com", "wpcomstaging.com",
+      "mystrikingly.com", "jimdofree.com", "jimdosite.com", "moonfruit.com", "webnode.page",
+      "webnode.com", "site123.me", "sitey.me", "webador.com", "flazio.com", "cabanova.com",
+      "onepage.me", "my-free.website", "creatorlink.net", "canva.site", "studio.site",
+      "start.page", "tiiny.site", "neocities.org", "tumblr.com", "joomla.com", "ghost.io",
+      "myportfolio.com", "teachable.com", "thinkific.com", "systeme.io", "myclickfunnels.com",
+      "mybigcommerce.com", "odoo.com", "hs-sites.com", "hs-sites-eu1.com", "activehosted.com",
+      "sibforms.com", "typeform.com", "multiscreensite.com", "lovestoblog.com", "mixh.jp"
+    ],
+    "hosting_and_cloud": [
+      "usrfiles.com", "filesusr.com", "appdomain.cloud", "ic0.app", "arweave.net",
+      "myqcloud.com", "edgeone.app", "b-cdn.net", "secureserver.net", "myftpupload.com",
+      "temp-site.link", "temporary.link", "temporary.site", "mytemp.website", "mywebsitetransfer.com",
+      "websitetestlink.com", "mystagingwebsite.com", "hostingersite.com", "stackstaging.com",
+      "wpengine.com", "flywheelsites.com", "kinsta.cloud", "cloudwaysapps.com", "nxcli.io", "nxcli.net",
+      "serv00.net", "free.nf", "wuaze.com", "unaux.com", "kesug.com", "42web.io", "x10.mx",
+      "16mb.com", "esy.es", "somee.com", "webhostbox.net", "meusitehostgator.com.br",
+      "codeanyapp.com", "codesandbox.io", "koyeb.app", "firebaseio.com", "publicvm.com",
+      "run.place", "sslip.io", "netlify.com", "surge.sh", "sharepoint.com",
+      "screenconnect.com", "app.link", "page.link"
+    ],
+    "dynamic_dns": [
+      "crabdance.com", "zzux.com", "otzo.com", "zyns.com", "ydns.eu", "dns.army",
+      "dynamic-dns.net", "dnset.com", "25u.com", "itsaol.com", "myddns.me", "ygto.com",
+      "4dq.com", "serveuser.com", "serveusers.com", "2waky.com", "jkub.com", "dns05.com",
+      "dns04.com", "ezua.com", "x24hr.com", "mooo.com", "us.to", "dumb1.com", "onedumb.com",
+      "my03.com", "ourhobby.com", "linkpc.net", "4pu.com", "qpoe.com", "lflink.com",
+      "ignorelist.com", "mrbasic.com", "myddns.com", "qhigh.com", "ddnss.eu", "freetcp.com",
+      "strangled.net", "changeip.co", "dynssl.com", "jumpingcrab.com", "mrbonus.com",
+      "wikaba.com", "ocry.com", "work.gd"
+    ],
+    "blogspot_cctld": [
+      "blogspot.be", "blogspot.ca", "blogspot.ch", "blogspot.co.at", "blogspot.co.id",
+      "blogspot.co.il", "blogspot.co.nz", "blogspot.co.uk", "blogspot.com.ar", "blogspot.com.au",
+      "blogspot.com.br", "blogspot.com.es", "blogspot.com.tr", "blogspot.cz", "blogspot.de",
+      "blogspot.dk", "blogspot.fi", "blogspot.fr", "blogspot.gr", "blogspot.hk", "blogspot.hu",
+      "blogspot.ie", "blogspot.in", "blogspot.it", "blogspot.jp", "blogspot.kr", "blogspot.mx",
+      "blogspot.my", "blogspot.nl", "blogspot.no", "blogspot.pt", "blogspot.ro", "blogspot.se",
+      "blogspot.sg", "blogspot.tw"
+    ]
+  },
+  "user_content_hosts": [
+    "forms.yandex.ru", "forms.yandex.com", "disk.yandex.ru", "disk.yandex.com", "disk.360.yandex.ru",
+    "yadi.sk", "telegra.ph", "teletype.in", "taplink.cc",
+    "docs.google.com", "sites.google.com", "forms.google.com", "drive.google.com",
+    "script.google.com", "forms.gle", "storage.googleapis.com", "firebasestorage.googleapis.com",
+    "forms.office.com", "forms.microsoft.com", "onedrive.live.com", "1drv.ms",
+    "dl.dropboxusercontent.com", "pastebin.com", "gist.github.com", "raw.githubusercontent.com"
+  ]
+}

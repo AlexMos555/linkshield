@@ -324,6 +324,10 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
         data = r.json()
         level = (data.get("level") or "").lower()
         score = data.get("score")
+        if data.get("exists") is False:
+            # The domain no longer exists — nobody can block or miss it.
+            return Verdict("cleanway", "unknown", score=score,
+                           latency_ms=elapsed, detail="not_found")
         v = "dangerous" if level == "dangerous" else (
             "safe" if level == "safe" else "unknown"
         )
@@ -468,10 +472,38 @@ async def check_phishtank(client: httpx.AsyncClient, url: str) -> Verdict:
                        detail=f"err:{exc}")
 
 
+CLOUDFLARE_UNFILTERED_DOH = "https://cloudflare-dns.com/dns-query"
+
+
+async def _unfiltered_nxdomain(client: httpx.AsyncClient, d: str) -> Optional[bool]:
+    """Does Cloudflare's UNFILTERED resolver also say NXDOMAIN? None if unsure."""
+    try:
+        r = await client.get(
+            CLOUDFLARE_UNFILTERED_DOH,
+            params={"name": d, "type": "A"},
+            headers={"Accept": "application/dns-json"},
+            timeout=8.0,
+        )
+        if r.status_code != 200:
+            return None
+        return r.json().get("Status", 0) == 3
+    except Exception:
+        return None
+
+
 async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verdict:
-    """Cloudflare 1.1.1.1 for Families (security): NXDOMAIN on
-    known-malicious. We do a DoH lookup against family.cloudflare-
-    dns.com and check the response code."""
+    """Cloudflare 1.1.1.1 for Families (security). We do a DoH lookup
+    against family.cloudflare-dns.com and check the answer.
+
+    Families blocks with a 0.0.0.0 / :: sinkhole. NXDOMAIN is only a
+    block when the name exists: a phishing domain that has already been
+    taken down is NXDOMAIN on EVERY resolver, and counting it as a
+    Cloudflare catch inflated the published comparison — 8 of the 13
+    Cloudflare "hits" in the 2026-06 run were domains that no longer
+    existed (report 2026-09-25 #18). So an NXDOMAIN is re-asked of the
+    unfiltered resolver; if that one says NXDOMAIN too, the verdict is
+    'unknown' (detail 'nxdomain') and counts for no one.
+    """
     d = domain_of(url)
     if not d:
         return Verdict("cloudflare_families", "unknown", detail="bad_domain")
@@ -489,8 +521,6 @@ async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verd
                            latency_ms=elapsed,
                            detail=f"status={r.status_code}")
         data = r.json()
-        # Status 3 = NXDOMAIN. Cloudflare's family resolver returns
-        # 0.0.0.0 for blocked domains; we treat both as 'dangerous'.
         status = data.get("Status", 0)
         answers = data.get("Answer", []) or []
         blocked_ips = {"0.0.0.0", "::"}
@@ -498,10 +528,17 @@ async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verd
             (a.get("data") or "").strip() in blocked_ips
             for a in answers if a.get("type") in (1, 28)
         )
-        if status == 3 or ip_blocked:
+        if ip_blocked:
             return Verdict("cloudflare_families", "dangerous",
                            latency_ms=elapsed,
-                           detail=f"status={status} ip_block={ip_blocked}")
+                           detail=f"status={status} ip_block=True")
+        if status == 3:
+            everywhere = await _unfiltered_nxdomain(client, d)
+            if everywhere is False:
+                return Verdict("cloudflare_families", "dangerous",
+                               latency_ms=elapsed, detail="status=3 blocked")
+            return Verdict("cloudflare_families", "unknown", latency_ms=elapsed,
+                           detail="nxdomain" if everywhere else "nxdomain_unverified")
         if status == 0 and answers:
             return Verdict("cloudflare_families", "safe",
                            latency_ms=elapsed, detail="resolved")
@@ -701,8 +738,10 @@ def render_md(report: dict) -> str:
                  "(rate-limited, not indexed, error). 'Unknown' is NOT counted as "
                  "either correct or incorrect — it's reported separately.")
     lines.append("- VirusTotal verdict is 'dangerous' iff ≥2 vendors out of 70+ flag the URL.")
-    lines.append("- Cloudflare 1.1.1.1 for Families is treated as 'dangerous' on "
-                 "NXDOMAIN or 0.0.0.0 sinkhole response.")
+    lines.append("- Cloudflare 1.1.1.1 for Families is treated as 'dangerous' on a "
+                 "0.0.0.0 sinkhole, or on NXDOMAIN only when Cloudflare's unfiltered "
+                 "resolver still resolves the name. A domain that no longer exists "
+                 "(NXDOMAIN everywhere) is 'unknown' for every resolver, not a catch.")
     lines.append("- Cleanway's 'caution' band is reported as 'unknown' here so the "
                  "binary comparison is apples-to-apples. The raw JSON shows the per-"
                  "resolver level distribution.")

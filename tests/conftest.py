@@ -141,3 +141,107 @@ def redis_down(monkeypatch):
         raise ConnectionError("simulated Redis outage")
 
     monkeypatch.setattr("api.services.cache.get_redis", _boom)
+
+
+# ─── Offline analyzer ──────────────────────────────────────────────
+#
+# analyze_domain() with every network call replaced, so verdict tests are
+# hermetic and fast. The scorer and the ML model run for real — they are
+# what the tests are about. See tests/test_unreachable_verdicts.py.
+
+# check name → (analyzer attribute, value when the source has NO hit)
+_OFFLINE_CHECKS = {
+    "safe_browsing": ("check_safe_browsing", False),
+    "phishtank": ("check_phishtank", False),
+    "urlhaus": ("check_urlhaus", False),
+    "phishstats": ("check_phishstats", False),
+    "threatfox": ("check_threatfox", False),
+    "spamhaus": ("check_spamhaus_dbl", False),
+    "surbl": ("check_surbl", False),
+    "alienvault": ("check_alienvault_otx", {}),
+    "ipqs": ("check_ipqualityscore", {}),
+    "malware_bazaar": ("check_malware_bazaar", False),
+    "feodo": ("check_feodo_tracker", False),
+    "tranco": ("check_tranco_popularity", {"ranked": False, "rank": None, "weight": 0, "label": ""}),
+    "favicon": ("check_favicon_brand_clone", {"cloned": False, "brand": None, "weight": 0, "detail": ""}),
+    "watchtower": ("check_typosquat_alert", {"matched": False, "weight": 0}),
+    "whois": ("check_whois_age", {}),
+    "dns": ("check_dns", {"a_count": 1, "ttl": 3600, "ns_count": 2, "has_mx": True}),
+}
+_REACHABLE_SITE = {
+    "check_ssl": {"reachable": True, "has_ssl": True, "issuer": "Test CA",
+                  "is_free_ssl": False, "cert_age_days": 400},
+    "check_security_headers": {"reachable": True, "present": ["strict-transport-security"],
+                               "missing": ["content-security-policy"]},
+    "check_redirect_chain": {"reachable": True, "count": 1, "cross_domain": False},
+}
+
+
+class _UnreachableClient:
+    """httpx.AsyncClient stand-in for a site that refuses foreign scanners."""
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def _fail(self, url, *args, **kwargs):
+        import httpx
+        raise httpx.ConnectTimeout("timed out from abroad")
+
+    get = head = _fail
+
+
+@pytest.fixture
+def offline_analyzer(monkeypatch):
+    """Returns `configure(**kw)`, which wires analyze_domain for one case:
+
+      exists   True / False (NXDOMAIN) / None (DNS gave no answer)
+      site     "unreachable" (the real probes, network refused) or "reachable"
+      hits     check name → hit value, e.g. {"urlhaus": True}
+      values   check name → value, overriding the no-hit defaults above
+      delays   check name (or "exists"/"resolution") → seconds before it answers
+    """
+    import asyncio
+    import socket
+
+    from api.services import analyzer, site_probes
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    def _fake(value, delay):
+        async def _check(domain):
+            if delay:
+                await asyncio.sleep(delay)
+            return value
+        return _check
+
+    def configure(exists=True, site="unreachable", hits=None, values=None, delays=None):
+        hits, values, delays = hits or {}, values or {}, delays or {}
+
+        async def _exists(domain):
+            await asyncio.sleep(delays.get("exists", 0))
+            return exists
+
+        async def _resolution(domain):
+            await asyncio.sleep(delays.get("resolution", 0))
+
+        monkeypatch.setattr(analyzer, "check_domain_exists", _exists)
+        monkeypatch.setattr(analyzer, "validate_domain_resolution", _resolution)
+        for name, (attr, clean) in _OFFLINE_CHECKS.items():
+            value = values.get(name, hits.get(name, clean))
+            monkeypatch.setattr(analyzer, attr, _fake(value, delays.get(name, 0)))
+        if site == "reachable":
+            for attr, value in _REACHABLE_SITE.items():
+                monkeypatch.setattr(analyzer, attr, _fake(value, delays.get(attr, 0)))
+        else:
+            def _refuse(*args, **kwargs):
+                raise socket.timeout("timed out from abroad")
+            monkeypatch.setattr(site_probes.socket, "create_connection", _refuse)
+            monkeypatch.setattr(site_probes.httpx, "AsyncClient", _UnreachableClient)
+
+    return configure

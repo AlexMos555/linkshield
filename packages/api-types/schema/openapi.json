@@ -1299,7 +1299,7 @@
           "public"
         ],
         "summary": "Public Check",
-        "description": "Public domain safety check. No auth required.\n\nUp until 2026-06-17 this endpoint ran ONLY rule-based scoring\nand intentionally skipped the 16-source threat-intel fan-out\nfor speed. Measured result: 0% recall on fresh URLhaus URLs.\n\nNow runs the FULL 18-check analyzer, but with FOUR defenses\nagainst analyzer cost (each closes a distinct adversarial-review\nfinding from 2026-06-17):\n\n  1. Top-domain allowlist short-circuit (instant safe verdict\n     for top-10k legit hosts — no API calls).\n  2. Per-endpoint Redis cache, single 24h TTL across verdict\n     levels. The endpoint OWNS its cache namespace separately\n     from cache_result()/get_cached_result() so it cannot get\n     clobbered by the authed flow's 5-min dangerous TTL.\n  3. SINGLEFLIGHT coalescing: N concurrent requests for the\n     same fresh domain collapse to ONE analyze_domain call.\n     The rest await the same Future.\n  4. IP rate-limit uses _extract_client_ip() so X-Forwarded-For\n     is honored when the immediate caller is in trusted_proxy_cidrs\n     — without it we collapse all traffic behind Railway's\n     single egress IP into one bucket.\n\nTrade-off: first cold-cache lookup on a never-seen domain takes\n1-3 seconds (vs prior ~100 ms). Every subsequent hit on the\nsame domain serves from cache in sub-50 ms — 99% of real\ntraffic will land there.",
+        "description": "Public domain safety check. No auth required.\n\nRuns the full analyzer (threat-intel fan-out, site probes, ML, LLM judge)\ninside a ~3 s budget, behind these short-circuits and defenses:\n\n  1. Top-domain allowlist (instant safe for popular sites that are not\n     shared platforms — no API calls).\n  2. Cleanway's own published blocklist, the list the phone blocks: a\n     listed host is 'dangerous' at once (verdict_basis 'blocklist').\n  3. Per-endpoint Redis cache, in its own namespace: a day for a full\n     verdict, less for a not-found or partial one.\n  4. A fresh-analysis cap per minute — per IP, or per install when the\n     app sends X-Cleanway-Install (CGNAT: one IP, thousands of phones).\n  5. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh\n     domain collapse to ONE analyze_domain call.\n\nEvery response carries `verdict_basis`. Only 'blocklist' and\n'threat_intel' are evidence a client may block on; everything else is\nadvice. `exists` is false for a domain that does not exist, and\n`checks_incomplete` names checks the time budget cut off.",
         "operationId": "public_check_api_v1_public_check__domain__get",
         "parameters": [
           {
@@ -1340,7 +1340,7 @@
           "public"
         ],
         "summary": "Platform Stats",
-        "description": "Global platform statistics for landing page and social proof.\n\ndetection_rate is read (and gated) from docs/benchmarks/latest.json — the\nweekly-measured source of truth — NOT a hand-authored number. It is null\nuntil a large-enough sample has been benchmarked, matching how the landing\npresents recall. Other counts mirror docs/transparency/<latest>.json.",
+        "description": "Global platform statistics — measured values only.\n\nEvery number is read from something that measured it (the weekly\nbenchmark, the deployed model's held-out test, the live blocklist, the\nbrand list the scorer loads) or is null, with `notes` saying why. The\nhand-written figures this used to return — including a 0.08% false-\npositive rate that was never measured — are gone. Keys are unchanged so\nexisting clients keep working.",
         "operationId": "platform_stats_api_v1_public_stats_get",
         "responses": {
           "200": {
@@ -4484,6 +4484,35 @@
             "type": "boolean",
             "title": "Cached",
             "default": false
+          },
+          "verdict_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict Basis"
+          },
+          "exists": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exists"
+          },
+          "checks_incomplete": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Checks Incomplete"
           }
         },
         "type": "object",

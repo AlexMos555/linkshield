@@ -115,8 +115,10 @@ def _extract_judge_features(signals: dict, score: int) -> dict:
         # Domain shape (no hostname)
         "domain_age_days", "is_ip_based", "registrar",
         "dns_has_mx", "dns_a_count", "dns_ttl",
-        # TLS / hosting
-        "no_https", "free_ssl", "cert_age_days",
+        # TLS / hosting. site_reachable=false means the TLS/header/redirect
+        # fields below were NOT measured (our scanner could not open the
+        # site) — null there is "unknown", not "clean".
+        "site_reachable", "no_https", "free_ssl", "cert_age_days",
         # HTTP / page features
         "missing_security_headers", "redirect_count",
         "redirect_cross_domain",

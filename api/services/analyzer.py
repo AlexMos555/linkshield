@@ -1,15 +1,23 @@
 """
-Domain Analysis Engine 3.0
+Domain Analysis Engine 3.1
 
-Runs 8 parallel checks via circuit breakers:
-  1. Google Safe Browsing (blocklist)
-  2. PhishTank (blocklist)
-  3. URLhaus / abuse.ch (blocklist)
-  4. WHOIS/RDAP (domain age, registrar)
-  5. SSL certificate (issuer, age, free cert detection)
-  6. Security headers (HSTS, CSP, etc.)
-  7. DNS analysis (TTL, NS count, MX existence)
-  8. Redirect chain (depth, cross-domain redirects)
+Before anything else, two cheap questions:
+  * does the domain exist at all? NXDOMAIN → an honest "no such site"
+    (verdict_basis 'not_found') instead of reasons invented from failed
+    connections;
+  * does it resolve to a safe network? (SSRF guard)
+
+Then 19 checks run in parallel via circuit breakers, inside ONE time budget
+(config.analysis_budget_seconds):
+  threat intel (11)  Google Safe Browsing, PhishTank, URLhaus, PhishStats,
+                     ThreatFox, Spamhaus DBL, SURBL, AlienVault OTX,
+                     IPQualityScore, MalwareBazaar, Feodo Tracker
+  reputation (3)     Tranco popularity, favicon brand clone, typosquat watchtower
+  enrichment (5)     WHOIS/RDAP age, TLS certificate, security headers, DNS,
+                     redirect chain (the connection probes live in site_probes)
+
+A check still running at the deadline is cancelled and named in
+`checks_incomplete`; the LLM judge only gets whatever budget is left.
 
 Privacy: only domain names processed — never full URLs or user data.
 """
@@ -17,16 +25,18 @@ Privacy: only domain names processed — never full URLs or user data.
 from __future__ import annotations
 
 import asyncio
-import dns.resolver  # dnspython
 import logging
-import ssl
-import socket
 from datetime import datetime, timezone
+from typing import Any, Optional
 
 import httpx
 
 from api.config import get_settings
-from api.services.scoring import calculate_score, calculate_confidence, calculate_confidence_pct
+from api.services import verdict_basis as vb
+from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
+from api.services.scoring import (
+    calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
+)
 from api.services.domain_validator import (
     validate_domain,
     validate_domain_resolution,
@@ -42,22 +52,47 @@ from api.services.circuit_breaker import (
     malware_bazaar_breaker, feodo_breaker,
     tranco_breaker, favicon_breaker, watchtower_breaker,
 )
+from api.services.dns_checks import (  # noqa: F401 — re-exported
+    EXISTENCE_TIMEOUT_S, check_dns, check_domain_exists,
+)
 from api.services.tranco import check_tranco_popularity
 from api.services.favicon_hash import check_favicon_brand_clone
 from api.services.watchtower_lookup import check_typosquat_alert
+# Connection probes: re-exported here, where callers and tests have always
+# found them.
+from api.services.site_probes import (  # noqa: F401
+    check_redirect_chain, check_security_headers, check_ssl,
+    first_failure, site_reachability,
+)
 from api.models.schemas import DomainResult, DomainReason, RiskLevel, ConfidenceLevel
 
 logger = logging.getLogger("cleanway.analyzer")
+
+TOTAL_CHECKS = 19
+# The checks that connect to the site itself. They are skipped when the SSRF
+# guard could not finish (we would not know where we are connecting), and an
+# unreachable result counts as "not measured" for confidence.
+_SITE_PROBES = frozenset({"favicon", "ssl", "headers", "redirect"})
+# Cap for the SSRF resolution step inside the overall budget.
+RESOLUTION_TIMEOUT_S = 1.5
+# Every external source gives up BELOW the analysis budget (3 s), so a source
+# that hangs raises — and its circuit breaker counts the failure and opens —
+# instead of being silently cancelled at the deadline on every single check.
+# (PhishStats hung like that, holding each fresh check to the full budget.)
+SOURCE_TIMEOUT_S = 2.5
 
 
 # ═══════════════════════════════════════════════════════════════
 # MAIN ORCHESTRATOR
 # ═══════════════════════════════════════════════════════════════
 
-async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
-    """
-    Analyze a domain by running 8 checks in parallel.
-    Returns a DomainResult with score, level, confidence, and reasons.
+async def analyze_domain(
+    domain: str, raw_url: str = "", budget_s: Optional[float] = None,
+) -> DomainResult:
+    """Analyze a domain inside one time budget.
+
+    Returns a DomainResult with score, level, confidence, reasons,
+    `verdict_basis`, `exists` and `checks_incomplete`.
     """
     # ── Validate & normalize domain (SSRF protection) ──
     try:
@@ -67,109 +102,230 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         return DomainResult(
             domain=domain, score=0, level=RiskLevel.caution,
             reasons=[DomainReason(signal="invalid_domain", detail=f"Invalid domain: {str(e)}", weight=0)],
+            verdict_basis=vb.BASIS_HEURISTICS,
         )
 
+    budget = get_settings().analysis_budget_seconds if budget_s is None else budget_s
+    deadline = Deadline(budget)
     is_ip = _is_ip_address(domain)
+
+    exists = None if is_ip else await _domain_exists_within(domain, deadline)
+    if exists is False:
+        logger.info("analysis_not_found", extra={"domain": domain})
+        return vb.not_found_result(domain)
 
     # Resolve DNS and block internal IPs before making any requests
     try:
-        await validate_domain_resolution(domain)
+        probes_allowed = await _resolution_is_safe(domain, deadline)
     except DomainValidationError as e:
         logger.warning("DNS resolution blocked (SSRF): %s — %s", domain, str(e))
         return DomainResult(
             domain=domain, score=100, level=RiskLevel.dangerous,
             reasons=[DomainReason(signal="ssrf_blocked", detail="Domain resolves to a blocked network", weight=100)],
+            exists=exists, verdict_basis=vb.BASIS_HEURISTICS,
         )
 
-    # ── Run ALL 18 checks in parallel via circuit breakers ──
-    # Strategy doc Top-20 #5: full abuse.ch bundle adds MalwareBazaar
-    # (malware-distribution domains) + Feodo Tracker (active C2 hosts)
-    # to the existing URLhaus + ThreatFox coverage.
-    # Strategy doc Top-20 #14: Tranco rank — popularity-as-trust signal.
-    # Strategy doc Top-20 #2 (partial): favicon brand-clone detection.
-    results = await asyncio.gather(
-        # Blocklist sources (11)
-        safe_browsing_breaker.call(check_safe_browsing, domain),   # 0
-        phishtank_breaker.call(check_phishtank, domain),           # 1
-        urlhaus_breaker.call(check_urlhaus, domain),               # 2
-        phishstats_breaker.call(check_phishstats, domain),         # 3
-        threatfox_breaker.call(check_threatfox, domain),           # 4
-        spamhaus_breaker.call(check_spamhaus_dbl, domain),         # 5
-        surbl_breaker.call(check_surbl, domain),                   # 6
-        alienvault_breaker.call(check_alienvault_otx, domain),     # 7
-        ipqs_breaker.call(check_ipqualityscore, domain),           # 8
-        malware_bazaar_breaker.call(check_malware_bazaar, domain), # 9
-        feodo_breaker.call(check_feodo_tracker, domain),           # 10
-        # Reputation + visual identity (2)
-        tranco_breaker.call(check_tranco_popularity, domain),      # 11
-        favicon_breaker.call(check_favicon_brand_clone, domain),   # 12
-        watchtower_breaker.call(check_typosquat_alert, domain),    # 13
-        # Enrichment sources (5)
-        whois_breaker.call(check_whois_age, domain),               # 14
-        ssl_breaker.call(check_ssl, domain),                       # 15
-        headers_breaker.call(check_security_headers, domain),      # 16
-        dns_breaker.call(check_dns, domain),                       # 17
-        redirect_breaker.call(check_redirect_chain, domain),       # 18
+    outcomes, unfinished = await run_within_budget(
+        _check_calls(domain, probes_allowed), deadline.remaining(),
     )
+    if not probes_allowed:
+        unfinished = unfinished + sorted(_SITE_PROBES)
+    return await _judge(domain, raw_url, is_ip, exists, outcomes, unfinished, deadline)
 
-    total_checks = 19
-    checks_succeeded = sum(1 for _, ok in results if ok)
 
-    # ── Unpack blocklist results ──
-    def _val(idx, default=False):
-        return results[idx][0] if results[idx][1] else default
+async def _judge(
+    domain: str, raw_url: str, is_ip: bool, exists: Optional[bool],
+    outcomes: dict, unfinished: list[str], deadline: Deadline,
+) -> DomainResult:
+    """Score the gathered evidence, let the LLM judge use what budget is left,
+    and assemble the result."""
+    signals = _build_signals(domain, raw_url, is_ip, outcomes)
+    whois_age = signals["domain_age_days"]
+    measured = _measured_checks(outcomes, signals["site_reachable"])
+    signals["checks_succeeded"] = measured
 
-    safe_browsing_hit = _val(0)
-    phishtank_hit = _val(1)
-    urlhaus_hit = _val(2)
-    phishstats_hit = _val(3)
-    threatfox_hit = _val(4)
-    spamhaus_hit = _val(5)
-    surbl_hit = _val(6)
-    alienvault_data = _val(7, default={})
-    ipqs_data = _val(8, default={})
-    malware_bazaar_hit = _val(9)
-    feodo_hit = _val(10)
-    tranco_result = _val(11, default={"ranked": False, "rank": None, "weight": 0, "label": ""})
-    favicon_result = _val(12, default={"cloned": False, "brand": None, "matched_hash": None, "weight": 0, "detail": ""})
-    watchtower_result = _val(13, default={"matched": False, "brand": None, "variant_kind": None, "edit_distance": None, "weight": 0})
+    score, level, reasons = calculate_score(signals)
+    confidence = calculate_confidence(measured, TOTAL_CHECKS, whois_age)
 
-    # ── Unpack enrichment results ──
-    whois_data = _val(14, default={})
-    ssl_data = _val(15, default={})
-    headers_data = _val(16, default={})
-    dns_data = _val(17, default={})
-    redirect_data = _val(18, default={})
+    if confidence == ConfidenceLevel.low and level == RiskLevel.safe:
+        score = max(score, 25)
+        level = RiskLevel.caution
+        reasons.append(DomainReason(
+            signal="partial_analysis", weight=0,
+            detail=f"Only {measured}/{TOTAL_CHECKS} checks completed — limited confidence",
+        ))
 
-    # Aggregate blocklist hits
-    blocklist_hits = sum([
-        safe_browsing_hit, phishtank_hit, urlhaus_hit,
-        phishstats_hit, threatfox_hit, spamhaus_hit, surbl_hit,
-        bool(alienvault_data.get("hit")),
-        bool(ipqs_data.get("hit")),
-        malware_bazaar_hit, feodo_hit,
-    ])
+    # A verdict on a site we could not open, or on partial data near 'safe',
+    # is never 'high' confidence.
+    if (measured < TOTAL_CHECKS and score < 20) or signals["site_reachable"] is False:
+        confidence = _at_most(confidence, ConfidenceLevel.medium)
 
-    # Build signals dict — all 42+ signals for scoring engine
-    signals = {
+    score, level, judge_reason, judge_finished = await _llm_judge_within(signals, score, level, deadline)
+    if judge_reason is not None:
+        reasons.append(judge_reason)
+    if not judge_finished:
+        unfinished = unfinished + ["llm_judge"]
+    reasons.extend(_informational_reasons(domain, outcomes, signals, unfinished))
+
+    _log_features(domain, signals, score)
+
+    # Strategy doc #12 — numeric confidence band per verdict.
+    confidence_pct = calculate_confidence_pct(score, measured, TOTAL_CHECKS)
+    result = DomainResult(
+        domain=domain, score=score, level=level, confidence=confidence,
+        confidence_pct=confidence_pct,
+        reasons=reasons,
+        domain_age_days=whois_age,
+        has_ssl=_value(outcomes, "ssl", {}).get("has_ssl"),
+        ssl_issuer=_value(outcomes, "ssl", {}).get("issuer"),
+        exists=exists,
+        checks_incomplete=sorted(set(unfinished)),
+    )
+    basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available())
+    logger.info("analysis_complete", extra={
+        "domain": domain, "score": score, "level": level.value,
+        "confidence": confidence.value, "confidence_pct": confidence_pct,
+        "checks": measured, "basis": basis, "incomplete": result.checks_incomplete,
+    })
+    return result.model_copy(update={"verdict_basis": basis})
+
+
+# ── Steps ──
+
+async def _domain_exists_within(domain: str, deadline: Deadline) -> Optional[bool]:
+    try:
+        return await asyncio.wait_for(
+            check_domain_exists(domain), timeout=deadline.step(EXISTENCE_TIMEOUT_S),
+        )
+    except asyncio.TimeoutError:
+        return None
+
+
+async def _resolution_is_safe(domain: str, deadline: Deadline) -> bool:
+    """SSRF guard inside the budget.
+
+    True: safe to connect. False: the lookup did not finish in time, so
+    nothing may connect to the site (we would not know where we are
+    connecting) — the site probes are skipped and reported as incomplete.
+    Raises DomainValidationError when the domain resolves to a blocked
+    network.
+    """
+    try:
+        await asyncio.wait_for(
+            validate_domain_resolution(domain), timeout=deadline.step(RESOLUTION_TIMEOUT_S),
+        )
+        return True
+    except asyncio.TimeoutError:
+        logger.info("ssrf_resolution_timeout — site probes skipped", extra={"domain": domain})
+        return False
+
+
+def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
+    """Every check, by name, as a not-yet-awaited breaker call.
+
+    Built per call rather than at import so a monkeypatched check function
+    is the one that runs.
+    """
+    plan = {
+        # Blocklist sources (11)
+        "safe_browsing": (safe_browsing_breaker, check_safe_browsing),
+        "phishtank": (phishtank_breaker, check_phishtank),
+        "urlhaus": (urlhaus_breaker, check_urlhaus),
+        "phishstats": (phishstats_breaker, check_phishstats),
+        "threatfox": (threatfox_breaker, check_threatfox),
+        "spamhaus": (spamhaus_breaker, check_spamhaus_dbl),
+        "surbl": (surbl_breaker, check_surbl),
+        "alienvault": (alienvault_breaker, check_alienvault_otx),
+        "ipqs": (ipqs_breaker, check_ipqualityscore),
+        "malware_bazaar": (malware_bazaar_breaker, check_malware_bazaar),
+        "feodo": (feodo_breaker, check_feodo_tracker),
+        # Reputation + visual identity (3)
+        "tranco": (tranco_breaker, check_tranco_popularity),
+        "favicon": (favicon_breaker, check_favicon_brand_clone),
+        "watchtower": (watchtower_breaker, check_typosquat_alert),
+        # Enrichment sources (5)
+        "whois": (whois_breaker, check_whois_age),
+        "ssl": (ssl_breaker, check_ssl),
+        "headers": (headers_breaker, check_security_headers),
+        "dns": (dns_breaker, check_dns),
+        "redirect": (redirect_breaker, check_redirect_chain),
+    }
+    return {
+        name: breaker.call(fn, domain)
+        for name, (breaker, fn) in plan.items()
+        if probes_allowed or name not in _SITE_PROBES
+    }
+
+
+def _value(outcomes: dict, name: str, default: Any) -> Any:
+    """A check's value, or `default` when it failed, was cut off or skipped."""
+    value, ok = outcomes.get(name, (default, False))
+    return value if ok else default
+
+
+def _measured_checks(outcomes: dict, site_reachable: Optional[bool]) -> int:
+    """Checks that returned real data. A site probe that could not reach the
+    site ran fine but measured nothing, so it does not count — nor does any
+    site probe (the favicon fetch included) once the site is known to be
+    unreachable."""
+    count = 0
+    for name, (value, ok) in outcomes.items():
+        probe = name in _SITE_PROBES
+        unreachable = probe and (
+            site_reachable is False
+            or (isinstance(value, dict) and value.get("reachable") is False)
+        )
+        if ok and not unreachable:
+            count += 1
+    return count
+
+
+_CONFIDENCE_RANK = {ConfidenceLevel.low: 0, ConfidenceLevel.medium: 1, ConfidenceLevel.high: 2}
+
+
+def _at_most(confidence: ConfidenceLevel, cap: ConfidenceLevel) -> ConfidenceLevel:
+    # Ranked explicitly: the previous min(..., key=c.value) compared the
+    # STRINGS, and "high" < "medium" alphabetically, so it never capped.
+    return confidence if _CONFIDENCE_RANK[confidence] <= _CONFIDENCE_RANK[cap] else cap
+
+
+def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict) -> dict:
+    """The scorer's input — all 42+ signals, from the gathered outcomes."""
+    alienvault_data = _value(outcomes, "alienvault", {})
+    ipqs_data = _value(outcomes, "ipqs", {})
+    tranco_result = _value(outcomes, "tranco", {"ranked": False, "rank": None, "weight": 0, "label": ""})
+    favicon_result = _value(outcomes, "favicon", {"cloned": False, "brand": None, "weight": 0, "detail": ""})
+    watchtower_result = _value(outcomes, "watchtower", {"matched": False, "weight": 0})
+    whois_data = _value(outcomes, "whois", {})
+    ssl_data = _value(outcomes, "ssl", {})
+    headers_data = _value(outcomes, "headers", {})
+    dns_data = _value(outcomes, "dns", {})
+    redirect_data = _value(outcomes, "redirect", {})
+    hard_hits = [_value(outcomes, name, False) for name in (
+        "safe_browsing", "phishtank", "urlhaus", "phishstats", "threatfox",
+        "spamhaus", "surbl", "malware_bazaar", "feodo",
+    )]
+
+    return {
         "domain": domain,
         "raw_url": raw_url or domain,
-        # Blocklist hits — 11 named source adapters wired below. phishtank_hit
-        # always resolves False until Cisco reopens PhishTank registration but
-        # is kept for backward compatibility with older scoring rules.
-        "safe_browsing_hit": safe_browsing_hit,
-        "phishtank_hit": phishtank_hit,
-        "urlhaus_hit": urlhaus_hit,
-        "phishstats_hit": phishstats_hit,
-        "threatfox_hit": threatfox_hit,
-        "spamhaus_hit": spamhaus_hit,
-        "surbl_hit": surbl_hit,
+        # Blocklist hits — 11 named source adapters. phishtank_hit always
+        # resolves False until Cisco reopens PhishTank registration but is
+        # kept for backward compatibility with older scoring rules.
+        "safe_browsing_hit": _value(outcomes, "safe_browsing", False),
+        "phishtank_hit": _value(outcomes, "phishtank", False),
+        "urlhaus_hit": _value(outcomes, "urlhaus", False),
+        "phishstats_hit": _value(outcomes, "phishstats", False),
+        "threatfox_hit": _value(outcomes, "threatfox", False),
+        "spamhaus_hit": _value(outcomes, "spamhaus", False),
+        "surbl_hit": _value(outcomes, "surbl", False),
         "alienvault_pulse_count": alienvault_data.get("pulse_count", 0),
         "ipqs_risk_score": ipqs_data.get("risk_score", 0),
         "ipqs_phishing": ipqs_data.get("phishing", False),
-        "malware_bazaar_hit": malware_bazaar_hit,
-        "feodo_hit": feodo_hit,
-        "blocklist_hits": blocklist_hits,
+        "malware_bazaar_hit": _value(outcomes, "malware_bazaar", False),
+        "feodo_hit": _value(outcomes, "feodo", False),
+        "blocklist_hits": sum(bool(h) for h in hard_hits)
+        + bool(alienvault_data.get("hit")) + bool(ipqs_data.get("hit")),
         # Strategy #14 — Tranco popularity (negative weight = trust)
         "tranco_ranked": bool(tranco_result.get("ranked")),
         "tranco_rank": tranco_result.get("rank"),
@@ -188,13 +344,14 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         # WHOIS
         "domain_age_days": whois_data.get("age_days"),
         "registrar": whois_data.get("registrar"),
-        # SSL
+        # TLS / site probes. None = not measured (unreachable, cut off or
+        # skipped) — never "insecure".
         "is_ip_based": is_ip,
-        "no_https": not ssl_data.get("has_ssl", True),
+        "site_reachable": site_reachability(ssl_data, headers_data, redirect_data),
+        "no_https": (not ssl_data["has_ssl"]) if "has_ssl" in ssl_data else None,
         "free_ssl": ssl_data.get("is_free_ssl", False),
         "cert_age_days": ssl_data.get("cert_age_days"),
-        # Headers
-        "missing_security_headers": headers_data.get("missing", []),
+        "missing_security_headers": headers_data.get("missing"),
         # DNS
         "dns_ttl": dns_data.get("ttl"),
         "dns_ns_count": dns_data.get("ns_count"),
@@ -203,82 +360,82 @@ async def analyze_domain(domain: str, raw_url: str = "") -> DomainResult:
         # Redirects
         "redirect_count": redirect_data.get("count", 0),
         "redirect_cross_domain": redirect_data.get("cross_domain", False),
-        # Meta
-        "checks_succeeded": checks_succeeded,
-        "total_checks": total_checks,
+        # Meta (checks_succeeded is filled in by the caller)
+        "checks_succeeded": 0,
+        "total_checks": TOTAL_CHECKS,
     }
 
-    score, level, reasons = calculate_score(signals)
 
-    confidence = calculate_confidence(
-        checks_succeeded, total_checks, whois_data.get("age_days")
-    )
+async def _llm_judge_within(
+    signals: dict, score: int, level: RiskLevel, deadline: Deadline,
+) -> tuple[int, RiskLevel, Optional[DomainReason], bool]:
+    """Strategy #21 — the LLM judge for caution-band verdicts, inside the budget.
 
-    if confidence == ConfidenceLevel.low and level == RiskLevel.safe:
-        score = max(score, 25)
-        level = RiskLevel.caution
-        reasons.append(DomainReason(
-            signal="partial_analysis", weight=0,
-            detail=f"Only {checks_succeeded}/{total_checks} checks completed — limited confidence",
-        ))
-
-    if checks_succeeded < total_checks and score < 20:
-        confidence = min(confidence, ConfidenceLevel.medium, key=lambda c: c.value)
-
-    # ── Strategy #21 — LLM judge for ambiguous verdicts ──
-    # When the rule-based scorer landed in the caution band (no
-    # blocklist hit, no allowlist short-circuit), let Claude weigh
-    # in. The judge sees a domain-FREE feature vector and proposes
-    # a verdict + signed score shift capped at ±20. We apply the
-    # shift, then re-derive level/confidence so the rest of the
-    # function continues unaware that an LLM ran.
+    When the rule-based scorer landed in the caution band (no blocklist hit,
+    no allowlist short-circuit), Claude weighs in on a domain-FREE feature
+    vector and proposes a signed score shift capped at ±20. Returns
+    (score, level, reason or None, finished). `finished` is False when the
+    judge was still running at the deadline — the verdict then stands
+    without it, and says so.
+    """
     try:
         from api.services.llm_judge import judge_ambiguous_verdict
-        judge = await judge_ambiguous_verdict(signals, score, level.value)
-        if judge is not None:
-            shift = int(judge.get("score_shift", 0))
-            if shift != 0:
-                score = max(0, min(score + shift, 100))
-                if score >= 70:
-                    level = RiskLevel.dangerous
-                elif score >= 30:
-                    level = RiskLevel.caution
-                else:
-                    level = RiskLevel.safe
-            reasons.append(DomainReason(
-                signal="llm_judge",
-                weight=shift,
-                detail=judge["one_line_reason"],
-            ))
+        judge = await asyncio.wait_for(
+            judge_ambiguous_verdict(signals, score, level.value),
+            timeout=max(MIN_STEP_S, deadline.remaining()),
+        )
+    except asyncio.TimeoutError:
+        return score, level, None, False
     except Exception:
         # Judge MUST NEVER take down the analyzer hot path.
         logger.debug("LLM judge wrapper failed", exc_info=True)
+        return score, level, None, True
+    if judge is None:
+        return score, level, None, True
+    shift = int(judge.get("score_shift", 0))
+    if shift != 0:
+        score = max(0, min(score + shift, 100))
+        if score >= 70:
+            level = RiskLevel.dangerous
+        elif score >= 30:
+            level = RiskLevel.caution
+        else:
+            level = RiskLevel.safe
+    reason = DomainReason(signal="llm_judge", weight=shift, detail=judge["one_line_reason"])
+    return score, level, reason, True
 
-    # ── Log ML feature vector (for future model training) ──
+
+def _informational_reasons(
+    domain: str, outcomes: dict, signals: dict, unfinished: list[str],
+) -> list[DomainReason]:
+    """Zero-weight reasons that say what the verdict could NOT see."""
+    out: list[DomainReason] = []
+    if signals.get("site_reachable") is False:
+        out.append(vb.unreachable_reason(first_failure(
+            _value(outcomes, "ssl", {}), _value(outcomes, "headers", {}), _value(outcomes, "redirect", {}),
+        )))
+    if is_hosting_platform_site(domain):
+        out.append(vb.user_content_reason())
+    if unfinished:
+        out.append(vb.checks_incomplete_reason(unfinished))
+    return out
+
+
+def _log_features(domain: str, signals: dict, score: int) -> None:
+    """Log the ML feature vector (for future model training). Non-critical."""
     try:
         from api.services.url_features import extract_features, log_features
-        features = extract_features(domain, signals)
-        log_features(domain, features, score)
+        log_features(domain, extract_features(domain, signals), score)
     except Exception:
-        pass  # Feature logging is non-critical
+        pass
 
-    # Strategy doc #12 — numeric confidence band per verdict.
-    confidence_pct = calculate_confidence_pct(score, checks_succeeded, total_checks)
 
-    logger.info("analysis_complete", extra={
-        "domain": domain, "score": score, "level": level.value,
-        "confidence": confidence.value, "confidence_pct": confidence_pct,
-        "checks": checks_succeeded,
-    })
-
-    return DomainResult(
-        domain=domain, score=score, level=level, confidence=confidence,
-        confidence_pct=confidence_pct,
-        reasons=reasons,
-        domain_age_days=whois_data.get("age_days"),
-        has_ssl=ssl_data.get("has_ssl"),
-        ssl_issuer=ssl_data.get("issuer"),
-    )
+def _ml_available() -> bool:
+    try:
+        from api.services import ml_scorer
+        return ml_scorer.backend_status() != "disabled"
+    except Exception:
+        return False
 
 
 def _is_ip_address(domain: str) -> bool:
@@ -304,7 +461,7 @@ from api.services.safe_browsing import check_safe_browsing  # noqa: E402,F401
 # ═══════════════════════════════════════════════════════════════
 
 async def check_phishtank(domain: str) -> bool:
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.post(
             "https://checkurl.phishtank.com/checkurl/",
             data={"url": f"http://{domain}/", "format": "json", "app_key": get_settings().phishtank_api_key or ""},
@@ -322,7 +479,7 @@ async def check_phishtank(domain: str) -> bool:
 
 async def check_urlhaus(domain: str) -> bool:
     """Check domain against URLhaus malware URL database (free, no key needed)."""
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.post(
             "https://urlhaus-api.abuse.ch/v1/host/",
             data={"host": domain},
@@ -341,7 +498,7 @@ async def check_urlhaus(domain: str) -> bool:
 # ═══════════════════════════════════════════════════════════════
 
 async def check_whois_age(domain: str) -> dict:
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.get(f"https://rdap.org/domain/{domain}")
         if resp.status_code != 200:
             return {}
@@ -372,196 +529,12 @@ async def check_whois_age(domain: str) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════
-# CHECK 5: SSL Certificate — issuer, age, free detection
-# ═══════════════════════════════════════════════════════════════
-
-async def check_ssl(domain: str) -> dict:
-    try:
-        # asyncio.to_thread is the right call inside a running coroutine
-        # (Python 3.9+). The previous `asyncio.get_event_loop()` is
-        # discouraged in this context and emits DeprecationWarning in
-        # 3.10+. Behaviour is equivalent here — both offload to the
-        # default executor. (Audit finding backend-async-3.)
-        result = await asyncio.to_thread(_check_ssl_sync, domain)
-        return result
-    except Exception:
-        return {"has_ssl": False}
-
-
-def _check_ssl_sync(domain: str) -> dict:
-    try:
-        ctx = ssl.create_default_context()
-        with socket.create_connection((domain, 443), timeout=5) as sock:
-            with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
-                cert = ssock.getpeercert()
-
-                # Issuer info
-                issuer_parts = dict(x[0] for x in cert.get("issuer", []))
-                issuer_org = issuer_parts.get("organizationName", "Unknown")
-                issuer_cn = issuer_parts.get("commonName", "")
-
-                # Free SSL detection
-                free_issuers = ["let's encrypt", "zerossl", "buypass", "ssl.com"]
-                is_free = any(fi in issuer_org.lower() or fi in issuer_cn.lower() for fi in free_issuers)
-
-                # Certificate age (notBefore → now)
-                cert_age_days = None
-                not_before = cert.get("notBefore")
-                if not_before:
-                    try:
-                        # Format: "Mon DD HH:MM:SS YYYY GMT"
-                        nb_date = datetime.strptime(not_before, "%b %d %H:%M:%S %Y %Z")
-                        nb_date = nb_date.replace(tzinfo=timezone.utc)
-                        cert_age_days = (datetime.now(timezone.utc) - nb_date).days
-                    except (ValueError, TypeError):
-                        pass
-
-                return {
-                    "has_ssl": True,
-                    "issuer": issuer_org,
-                    "is_free_ssl": is_free,
-                    "cert_age_days": cert_age_days,
-                }
-    except Exception:
-        return {"has_ssl": False}
-
-
-# ═══════════════════════════════════════════════════════════════
-# CHECK 6: Security Headers
-# ═══════════════════════════════════════════════════════════════
-
-async def check_security_headers(domain: str) -> dict:
-    important_headers = [
-        "strict-transport-security", "content-security-policy",
-        "x-frame-options", "x-content-type-options", "referrer-policy",
-    ]
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True, max_redirects=3) as client:
-            resp = await client.head(f"https://{domain}/")
-            present = [h for h in important_headers if h in resp.headers]
-            missing = [h for h in important_headers if h not in resp.headers]
-            return {"present": present, "missing": missing}
-    except Exception:
-        try:
-            async with httpx.AsyncClient(timeout=5.0, follow_redirects=True, max_redirects=3) as client:
-                resp = await client.head(f"http://{domain}/")
-                missing = [h for h in important_headers if h not in resp.headers]
-                return {"present": [], "missing": missing}
-        except Exception:
-            return {"missing": important_headers}
-
-
-# ═══════════════════════════════════════════════════════════════
-# CHECK 7: DNS Analysis — TTL, NS count, MX, A record count
-# ═══════════════════════════════════════════════════════════════
-
-async def check_dns(domain: str) -> dict:
-    """
-    Analyze DNS records for phishing indicators:
-    - Low TTL = fast-flux (bulletproof hosting)
-    - No MX = not a real business domain
-    - Many A records = CDN or fast-flux
-    - Few/suspicious NS = cheap/disposable hosting
-    """
-    result = {}
-    resolver = dns.resolver.Resolver()
-    resolver.timeout = 3
-    resolver.lifetime = 3
-
-    # A records + TTL — to_thread instead of get_event_loop().run_in_executor
-    # (audit finding backend-async-3). Pre-bound lambdas avoid late-binding
-    # `domain` in case the surrounding loop ever fans out.
-    try:
-        answers = await asyncio.to_thread(resolver.resolve, domain, "A")
-        result["a_count"] = len(answers)
-        result["ttl"] = answers.rrset.ttl if answers.rrset else None
-    except Exception:
-        result["a_count"] = 0
-        result["ttl"] = None
-
-    # NS records
-    try:
-        ns_answers = await asyncio.to_thread(resolver.resolve, domain, "NS")
-        result["ns_count"] = len(ns_answers)
-        result["nameservers"] = [str(ns) for ns in ns_answers]
-    except Exception:
-        result["ns_count"] = 0
-
-    # MX records
-    try:
-        mx_answers = await asyncio.to_thread(resolver.resolve, domain, "MX")
-        result["has_mx"] = len(mx_answers) > 0
-    except Exception:
-        result["has_mx"] = False
-
-    return result
-
-
-# ═══════════════════════════════════════════════════════════════
-# CHECK 8: Redirect Chain Analysis
-# ═══════════════════════════════════════════════════════════════
-
-async def check_redirect_chain(domain: str) -> dict:
-    """
-    Follow redirects and analyze the chain:
-    - Many redirects = obfuscation
-    - Cross-domain redirects = suspicious (landing on different domain)
-    """
-    try:
-        async with httpx.AsyncClient(timeout=4.0, follow_redirects=True, max_redirects=5) as client:
-            resp = await client.get(f"https://{domain}/")
-            history = resp.history
-
-            count = len(history)
-            cross_domain = False
-            domains_seen = set()
-
-            for r in history:
-                redirect_host = r.headers.get("location", "")
-                if "://" in redirect_host:
-                    from urllib.parse import urlparse
-                    parsed = urlparse(redirect_host)
-                    if parsed.hostname:
-                        domains_seen.add(parsed.hostname.lower())
-
-            # Check if we ended up on a different REGISTRABLE domain.
-            # Comparing raw hostnames flagged the ubiquitous apex->www redirect
-            # (barclays.co.uk -> www.barclays.co.uk) as a "possible phishing
-            # redirect" — a false positive on most of the web. Compare eTLD+1 so
-            # only a genuine cross-site landing (evil.tk -> phish.ru) counts.
-            final_host = resp.url.host
-            if final_host:
-                from api.services.doh_gateway import _registrable_domain
-                if _registrable_domain(final_host.lower()) != _registrable_domain(domain.lower()):
-                    cross_domain = True
-                    domains_seen.add(final_host.lower())
-
-            return {
-                "count": count,
-                "cross_domain": cross_domain,
-                "domains_visited": list(domains_seen),
-                "final_url": str(resp.url),
-            }
-    except Exception:
-        # Try HTTP fallback
-        try:
-            async with httpx.AsyncClient(timeout=4.0, follow_redirects=True, max_redirects=5) as client:
-                resp = await client.get(f"http://{domain}/")
-                return {
-                    "count": len(resp.history),
-                    "cross_domain": resp.url.host and resp.url.host.lower() != domain.lower(),
-                }
-        except Exception:
-            return {"count": 0, "cross_domain": False}
-
-
-# ═══════════════════════════════════════════════════════════════
 # CHECK 9: PhishStats — aggregated phishing intelligence
 # ═══════════════════════════════════════════════════════════════
 
 async def check_phishstats(domain: str) -> bool:
     """Check domain against PhishStats API (free, no key, 20 req/min)."""
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.get(
             f"https://phishstats.info:2096/api/phishing?_where=(url,like,~{domain}~)&_size=1"
         )
@@ -578,7 +551,7 @@ async def check_phishstats(domain: str) -> bool:
 
 async def check_threatfox(domain: str) -> bool:
     """Check domain against ThreatFox IOC database (free, no key)."""
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.post(
             "https://threatfox-api.abuse.ch/api/v1/",
             json={"query": "search_ioc", "search_term": domain},
@@ -603,7 +576,7 @@ async def check_malware_bazaar(domain: str) -> bool:
     when MalwareBazaar has at least one malware sample tied to this
     host (delivery URL, payload download, or C2 callback).
     """
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.post(
             "https://mb-api.abuse.ch/api/v1/",
             data={"query": "get_taginfo", "tag": domain, "limit": "1"},
@@ -650,7 +623,7 @@ async def _refresh_feodo_cache() -> None:
     now = _time.time()
     if now - _FEODO_CACHE["fetched_at"] < _FEODO_TTL_SECONDS:
         return
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.get(_FEODO_URL)
         if resp.status_code != 200:
             return
@@ -710,8 +683,8 @@ async def check_spamhaus_dbl(domain: str) -> bool:
     import dns.resolver as dns_resolver
 
     resolver = dns_resolver.Resolver()
-    resolver.timeout = 3
-    resolver.lifetime = 3
+    resolver.timeout = SOURCE_TIMEOUT_S
+    resolver.lifetime = SOURCE_TIMEOUT_S
 
     query = f"{domain}.dbl.spamhaus.org"
     try:
@@ -748,8 +721,8 @@ async def check_surbl(domain: str) -> bool:
     base = _extract_base_domain(domain)
 
     resolver = dns_resolver.Resolver()
-    resolver.timeout = 3
-    resolver.lifetime = 3
+    resolver.timeout = SOURCE_TIMEOUT_S
+    resolver.lifetime = SOURCE_TIMEOUT_S
 
     query = f"{base}.multi.surbl.org"
     try:
@@ -776,7 +749,7 @@ async def check_alienvault_otx(domain: str) -> dict:
     Check domain reputation via AlienVault OTX (free, no key for basic lookup).
     Returns reputation data including pulse count (community threat reports).
     """
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.get(
             f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general",
             headers={"Accept": "application/json"},
@@ -807,7 +780,7 @@ async def check_ipqualityscore(domain: str) -> dict:
     if not ipqs_key:
         return {}
 
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.get(
             f"https://ipqualityscore.com/api/json/url/{ipqs_key}/{domain}",
         )

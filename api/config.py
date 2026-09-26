@@ -97,6 +97,25 @@ class Settings(BaseSettings):
     # Applied to /pricing/*, /public/*, unauthenticated /breach/*
     public_rate_limit_per_window: int = 60        # 60 requests per hour per IP
     public_rate_limit_window_seconds: int = 3600  # 1 hour window
+    # Fresh (uncached, full-analyzer) public checks, per minute. Without an
+    # install header this is per IP — the historical 5/min.
+    public_fresh_checks_per_minute: int = 5
+
+    # Carrier-grade NAT: Tele2 puts hundreds to thousands of phones behind one
+    # public IPv4, so per-IP limits would 429 a whole city at once. A client
+    # that sends a valid `X-Cleanway-Install: <random UUID>` header is limited
+    # per install instead (same 60/h and 5/min as an IP), under a much higher
+    # per-IP ceiling that still bounds one address. Requests without the
+    # header keep the per-IP limits above, unchanged.
+    public_install_rate_limit_per_window: int = 60
+    public_install_ip_ceiling_per_window: int = 1500
+    public_fresh_ip_ceiling_per_minute: int = 60
+
+    # Wall-clock budget for ONE fresh domain analysis (all sources, the site
+    # probes and the LLM judge). Checks still running at the deadline are cut
+    # off and named in the verdict's `checks_incomplete`. The phone waits 5 s
+    # and the app 6 s, so the verdict must be back well inside that.
+    analysis_budget_seconds: float = 3.0
 
     # Benchmark bypass token. When set (non-empty), a request carrying the
     # matching `X-Cleanway-Benchmark` header skips IP rate limiting on the
