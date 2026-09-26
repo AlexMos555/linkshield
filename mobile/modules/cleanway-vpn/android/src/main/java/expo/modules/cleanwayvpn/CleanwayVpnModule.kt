@@ -146,17 +146,32 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
-     * Can Cleanway show notifications at all? False when the person turned
-     * them off for the app (or refused the Android 13+ prompt) — then a block
-     * happens in silence, and Settings says so and offers the way back.
+     * Will a block alert show? False when the person turned notifications off
+     * for the app (or refused the Android 13+ prompt), or turned off just the
+     * block-alerts channel — then a block happens in silence, and Settings
+     * says so and offers the way back.
      */
     Function("notificationsEnabled") {
-      androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+      ai.cleanway.app.BlockNotifier.alertsAudible(
+        androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled(),
+        ai.cleanway.app.BlockNotifier.alertChannelImportance(context),
+      )
     }
 
-    /** Open this app's page in the system notification settings. */
+    /**
+     * Open the system switch that is off: the block-alerts channel's own page
+     * when the app's notifications are on but that channel is not, else this
+     * app's notification page.
+     */
     Function("openNotificationSettings") {
-      val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val appOn = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+      val channelOff = ai.cleanway.app.BlockNotifier.alertChannelImportance(context) ==
+        android.app.NotificationManager.IMPORTANCE_NONE
+      val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && appOn && channelOff) {
+        Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+          .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+          .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, ai.cleanway.app.BlockNotifier.ALERT_CHANNEL_ID)
+      } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
           .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
       } else {
