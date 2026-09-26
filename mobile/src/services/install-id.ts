@@ -7,42 +7,37 @@
  * whole neighbourhood at once. A per-install number lets the server count per
  * phone instead.
  *
- * What it is: a random UUID made on this phone, once. Not derived from the
- * device or the account, sent only with site checks (never with the anonymous
- * blocklist download), gone when the app is uninstalled. On Android the value
- * lives in the native module (InstallId.kt) so the link guard's background
- * checks send the same one; elsewhere it is kept in SecureStore.
+ * What it is: a random UUID made on this phone, not derived from the device or
+ * the account, sent only with site checks (never with the anonymous blocklist
+ * download), and replaced by a new one every day — the limit counts per hour,
+ * and the server can never tie more than a day of checks together.
+ *
+ * On Android the native module keeps it (InstallId.kt: renewed daily, stored
+ * where Android's backup never copies it), so the link guard's background
+ * checks send the same number. Elsewhere it lives only in memory: a new one
+ * each time the app starts, and each day it keeps running.
  */
 import "react-native-get-random-values";
-import * as SecureStore from "expo-secure-store";
 
 import { nativeInstallId } from "../../modules/cleanway-vpn";
 
-const STORE_KEY = "install_id";
-const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const RENEW_AFTER_MS = 24 * 60 * 60 * 1000;
 
-let pending: Promise<string | null> | null = null;
+let inMemory: { id: string; madeAt: number } | null = null;
 
-/** The install id, or null when it cannot be read or made — the check then goes without it. */
-export function getInstallId(): Promise<string | null> {
-  if (!pending) {
-    pending = load().catch(() => {
-      // Not cached: storage may come back, and the next check can try again.
-      pending = null;
-      return null;
-    });
-  }
-  return pending;
-}
-
-async function load(): Promise<string | null> {
+/** The install id, or null when it cannot be made — the check then goes without it. */
+export async function getInstallId(): Promise<string | null> {
   const native = nativeInstallId();
   if (native) return native;
-  const stored = await SecureStore.getItemAsync(STORE_KEY);
-  if (stored && UUID_V4.test(stored)) return stored;
-  const made = randomUuid();
-  await SecureStore.setItemAsync(STORE_KEY, made);
-  return made;
+  try {
+    const now = Date.now();
+    if (!inMemory || now - inMemory.madeAt >= RENEW_AFTER_MS || now < inMemory.madeAt) {
+      inMemory = { id: randomUuid(), madeAt: now };
+    }
+    return inMemory.id;
+  } catch {
+    return null;
+  }
 }
 
 /** RFC 4122 version-4 UUID from the platform's secure random source. */
