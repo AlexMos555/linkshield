@@ -5,6 +5,10 @@ Bytes + validators only. The artifact is prepared by the refresh cron
 never computes anything per request, so it is never the slow part of a
 phone's sync. ETag = sha256(text) — the phone verifies the body against it
 before loading, so a truncated or tampered artifact is rejected at both ends.
+
+A sync costs, in order of preference: 304 when `?from=` names the current
+version or If-None-Match names its sha; a few-KB delta when `?from=` names an
+older version we still have a delta for; the full artifact otherwise.
 """
 from __future__ import annotations
 
@@ -31,29 +35,46 @@ RETRY_AFTER_S = 600
 
 
 # The artifact is ~2.6 MB of packed hashes, stored base64 in Redis (the client
-# runs with decode_responses=True for everything else). Decoding it per request
-# would be pure waste, so keep the last one in process, keyed by its sha.
+# runs with decode_responses=True for everything else). Reading and decoding it
+# per request would be pure waste, so keep the last one in process, keyed by
+# its sha — and read the small meta hash first, so the body is fetched from
+# Redis only when the published sha changed.
 _cached: Optional[tuple[str, bytes]] = None
 
 
-async def load_artifact() -> Optional[tuple[bytes, dict]]:
+async def load_meta() -> Optional[dict]:
+    """The artifact's meta hash (version, sha256, count, generated_at), or
+    None when Redis is unreachable or nothing is published."""
+    try:
+        from api.services.cache import get_redis
+        r = await get_redis()
+        raw = await r.hgetall(REDIS_META_KEY) or {}
+    except Exception:
+        logger.warning("blocklist artifact: redis unavailable", exc_info=True)
+        return None
+    meta = {(k.decode() if isinstance(k, bytes) else k): (v.decode() if isinstance(v, bytes) else v)
+            for k, v in raw.items()}
+    return meta if meta.get("sha256") else None
+
+
+async def load_artifact(meta: Optional[dict] = None) -> Optional[tuple[bytes, dict]]:
     """(blob, meta) from Redis, or None when absent/inconsistent."""
     global _cached
+    meta = meta or await load_meta()
+    if not meta:
+        return None
+    sha = meta["sha256"]
+    if _cached and _cached[0] == sha:
+        return _cached[1], meta
     try:
         from api.services.cache import get_redis
         r = await get_redis()
         encoded = await r.get(REDIS_TEXT_KEY)
-        meta = await r.hgetall(REDIS_META_KEY) or {}
     except Exception:
         logger.warning("blocklist artifact: redis unavailable", exc_info=True)
         return None
-    if not encoded or not meta:
+    if not encoded:
         return None
-    meta = {(k.decode() if isinstance(k, bytes) else k): (v.decode() if isinstance(v, bytes) else v)
-            for k, v in meta.items()}
-    sha = meta.get("sha256", "")
-    if _cached and _cached[0] == sha:
-        return _cached[1], meta
     try:
         blob = base64.b64decode(encoded)
     except Exception:
@@ -138,13 +159,47 @@ async def _full_send_allowed(request: Request) -> bool:
 # leave them with an EMPTY blocklist = unprotected, for up to the cap window.
 # For a static public artifact that is the wrong trade. Abuse is bounded by the
 # in-process cache here and the CDN in front (docs/TELE2_LAUNCH_PLAN.md B4).
+def _unavailable() -> Response:
+    return Response(
+        status_code=503,
+        content="blocklist temporarily unavailable\n",
+        media_type="text/plain",
+        headers={"Retry-After": str(RETRY_AFTER_S), "Cache-Control": "no-store"},
+    )
+
+
+def _presents_sha(request: Request, sha: str) -> bool:
+    """Does If-None-Match name this sha? Edges that gzip the body rewrite our
+    strong ETag into a weak one (W/"<sha>") on the way out, and clients echo
+    that back. Compare on the sha alone so those clients still get their 304."""
+    inm = request.headers.get("if-none-match", "")
+    return sha in {t.strip().removeprefix("W/").strip('"') for t in inm.split(",") if t.strip()}
+
+
 @router.get("/dns")
 async def get_dns_blocklist(request: Request) -> Response:
-    # `from=<version>` says "I already have this one". Real feed movement is
-    # ~0.2% per half day, so the answer is usually a few KB instead of 2.5 MB
-    # — the difference between a phone that stays current on a metered plan
-    # and one that does not.
+    meta = await load_meta()
+    if not meta:
+        return _unavailable()
+    headers = {
+        "ETag": f'"{meta["sha256"]}"',
+        "Cache-Control": f"public, max-age={CACHE_MAX_AGE_S}",
+        "X-Cleanway-Blocklist-Version": str(meta.get("version", "")),
+        "X-Cleanway-Blocklist-Count": str(meta.get("count", "")),
+    }
+    # `from=<version>` says "I already have this one". When that IS the
+    # current version there is nothing to send, with or without an ETag: the
+    # Android 1.0.1 app keeps no ETag after applying a delta, and each such
+    # poll used to fall through to the full 2.57 MB (~24 MB a month per phone
+    # instead of ~0.3 MB). Answering here, before any delta lookup, also means
+    # a phone on a version restored by a rollback is never handed the delta
+    # that leads to the rolled-back list.
     raw_from = request.query_params.get("from")
+    if raw_from and raw_from == str(meta.get("version", "")):
+        return Response(status_code=304, headers=headers)
+    # An older version: real feed movement is ~0.2% per half day, so the
+    # answer is usually a few KB instead of 2.5 MB. The delta keeps its own
+    # sha as ETag — the phone verifies the body it received against it.
     if raw_from and raw_from.isdigit():
         delta = await load_delta(int(raw_from))
         if delta:
@@ -157,29 +212,7 @@ async def get_dns_blocklist(request: Request) -> Response:
                     "X-Cleanway-Blocklist-Delta": "1",
                 },
             )
-
-    loaded = await load_artifact()
-    if not loaded:
-        return Response(
-            status_code=503,
-            content="blocklist temporarily unavailable\n",
-            media_type="text/plain",
-            headers={"Retry-After": str(RETRY_AFTER_S), "Cache-Control": "no-store"},
-        )
-    blob, meta = loaded
-    etag = f'"{meta["sha256"]}"'
-    headers = {
-        "ETag": etag,
-        "Cache-Control": f"public, max-age={CACHE_MAX_AGE_S}",
-        "X-Cleanway-Blocklist-Version": str(meta.get("version", "")),
-        "X-Cleanway-Blocklist-Count": str(meta.get("count", "")),
-    }
-    # Edges that gzip the body rewrite our strong ETag into a weak one
-    # (W/"<sha>") on the way out, and clients echo that back. Compare on the
-    # sha alone so those clients still get their 304.
-    inm = request.headers.get("if-none-match", "")
-    presented = {t.strip().removeprefix("W/").strip('"') for t in inm.split(",") if t.strip()}
-    if meta["sha256"] in presented:
+    if _presents_sha(request, meta["sha256"]):
         # Cheap: never counted against the bandwidth guard.
         return Response(status_code=304, headers=headers)
 
@@ -191,4 +224,8 @@ async def get_dns_blocklist(request: Request) -> Response:
             media_type="text/plain",
             headers={"Retry-After": "900", "Cache-Control": "no-store"},
         )
+    loaded = await load_artifact(meta)
+    if not loaded:
+        return _unavailable()
+    blob, _ = loaded
     return Response(content=blob, media_type="application/octet-stream", headers=headers)
