@@ -1,4 +1,13 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test, expect } from "@playwright/test";
+
+// The Android version that ships — the same source check-landing-claims.py
+// reads, so this test follows each release instead of pinning one.
+const RELEASED_APP: string = JSON.parse(
+  readFileSync(join(__dirname, "..", "..", "mobile", "app.json"), "utf-8"),
+).expo.version;
+const NEXT_PATCH = RELEASED_APP.replace(/\d+$/, (n) => String(Number(n) + 1));
 
 /**
  * The Russian pages a Tele2 subscriber actually lands on must be in Russian
@@ -70,8 +79,8 @@ test("/ru/privacy-policy is Russian and describes only the released app", async 
   const body = page.locator("body");
   await expect(body).toContainText("1.1.1.1");
   await expect(body).toContainText("9.9.9.9");
-  await expect(body).toContainText("1.0.1");
-  await expect(body).not.toContainText("1.0.2");
+  await expect(body).toContainText(RELEASED_APP);
+  await expect(body).not.toContainText(NEXT_PATCH);
   // Every service that receives a checked site's name is named.
   for (const service of ["rdap.org", "MalwareBazaar", "1.1.1.1 for Families"]) {
     await expect(body).toContainText(service);
