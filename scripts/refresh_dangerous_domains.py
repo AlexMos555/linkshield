@@ -939,7 +939,8 @@ async def _feed_health(r, fetched: dict[str, int | None], now: float, dry_run: b
             baselines, down_since = await feed_health.load_state(r)
         except Exception as e:  # noqa: BLE001
             logger.warning("feed health state unreadable (%s) — only failed downloads count as outages", e)
-    health = feed_health.assess(fetched, baselines, down_since, now, accept_sizes=accept_sizes)
+    health = feed_health.assess(fetched, baselines, down_since, now, accept_sizes=accept_sizes,
+                                unsized=frozenset({CONFIRMED_SOURCE}))
     for feed, why in sorted(health.degraded.items()):
         logger.error("FEED DEGRADED: %s — %s (down since %s)", feed, why, _utc(health.down_since[feed]))
     if r is not None and not dry_run:
@@ -1022,11 +1023,13 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
 
     r = _open_redis(redis_url)
     previous = await _read_previous(r)
+    confirmed = await _confirmed_hosts(r, now)
+    if r is not None:
+        # One more source for the outage guard: an unreadable set is carried
+        # like a failed feed, and alerts like one when it stays unreadable.
+        fetched = {**fetched, CONFIRMED_SOURCE: None if confirmed is None else len(confirmed[0])}
     health = await _feed_health(r, fetched, now, dry_run, accept_sizes=force)
     degraded = dict(health.degraded)
-    confirmed = await _confirmed_hosts(r, now)
-    if confirmed is None:
-        degraded[CONFIRMED_SOURCE] = "unreadable"
     active, expired = confirmed or (set(), set())
     promoting = {_norm_host(h) for h in hosts}
     promoting.discard("")

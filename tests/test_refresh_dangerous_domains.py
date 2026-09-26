@@ -1441,6 +1441,33 @@ async def test_a_confirmation_expires_after_its_window_without_a_retention_tail(
     assert "stale-phish.com" not in fake.data.get(confirmed_threats.CONFIRMED_KEY, {})
 
 
+class _ConfirmedUnreadable(_FakeRedis):
+    """Only the server-confirmed set is broken (e.g. the key has the wrong
+    type) — the live blocklist and retention still read fine."""
+
+    async def zrange(self, key, start, end, withscores=False):
+        if key == confirmed_threats.CONFIRMED_KEY:
+            raise ConnectionError("WRONGTYPE Operation against a key holding the wrong kind of value")
+        return await super().zrange(key, start, end, withscores=withscores)
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_confirmed_set_is_an_outage_that_alerts(monkeypatch, caplog):
+    fake = _FakeRedis()
+    _confirm(fake, "login.gsb-flagged.com", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    broken = _ConfirmedUnreadable()
+    broken.data, broken.ttl = fake.data, fake.ttl
+    assert await _run(monkeypatch, broken, [], now=T0 + 6 * 3600) == 0
+    assert "login.gsb-flagged.com" in _published(broken), "carried like a failed feed"
+    assert "FEED DEGRADED: Cleanway checks" in caplog.text
+    assert await _run(monkeypatch, broken, [], now=T0 + 18 * 3600) == rdd.EXIT_FEED_OUTAGE
+    # Readable again: the outage closes, even with nothing confirmed lately.
+    fake.data.pop(confirmed_threats.CONFIRMED_KEY, None)
+    assert await _run(monkeypatch, fake, [], now=T0 + 24 * 3600) == 0
+    assert feed_health.FEED_DOWN_SINCE_KEY not in fake.data
+
+
 @pytest.mark.asyncio
 async def test_a_dry_run_reads_confirmed_hosts_but_prunes_nothing(monkeypatch, caplog):
     caplog.set_level(logging.INFO)

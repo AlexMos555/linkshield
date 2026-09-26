@@ -11,9 +11,11 @@ back a fraction of its usual size (a truncated file, an HTML error page, a
 format change) looked perfectly healthy.
 
 What this module decides (no I/O in `assess`):
-  * a feed is DEGRADED when its download failed, when it parsed to no hosts
-    at all after having some, or when a big feed parsed to less than
-    SHRINK_FLOOR of the size it had on its last healthy run;
+  * a feed is DEGRADED when it could not be downloaded or read, when it
+    parsed to no hosts at all after having some, or when a big feed parsed
+    to less than SHRINK_FLOOR of the size it had on its last healthy run.
+    The server-confirmed Redis set is a source too, judged on availability
+    alone (`unsized`): an empty quiet week is not an outage;
   * while any feed is degraded, the refresh job keeps every published name
     that no healthy feed backs any more (the "carry"), for at most
     CARRY_MAX_SECONDS of outage;
@@ -27,11 +29,8 @@ Storage (two small Redis hashes, one field per feed):
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
-
-logger = logging.getLogger("dangerous-domains-refresh")
 
 FEED_COUNTS_KEY = "dangerous_domains:feed_counts"
 FEED_DOWN_SINCE_KEY = "dangerous_domains:feed_down_since"
@@ -70,18 +69,19 @@ class FeedHealth:
 
 def assess(fetched: Mapping[str, Optional[int]], baselines: Mapping[str, int],
            down_since: Mapping[str, float], now: float,
-           accept_sizes: bool = False) -> FeedHealth:
+           accept_sizes: bool = False, unsized: frozenset = frozenset()) -> FeedHealth:
     """Classify each feed of this run. `fetched` is feed -> distinct hosts
-    parsed, or None when the download failed. `accept_sizes` (the job's
-    --force) takes a shrunken feed at face value — the operator has looked —
-    but never excuses a failed download."""
+    parsed, or None when it could not be downloaded or read. `accept_sizes`
+    (the job's --force) takes a shrunken feed at face value — the operator
+    has looked — but never excuses an unreadable one. Sources in `unsized`
+    are judged on availability alone (their size swings by nature)."""
     degraded: dict[str, str] = {}
     healthy: dict[str, int] = {}
     for feed, count in fetched.items():
         baseline = int(baselines.get(feed, 0) or 0)
         if count is None:
-            degraded[feed] = "download failed"
-        elif accept_sizes:
+            degraded[feed] = "unavailable (download or read failed)"
+        elif accept_sizes or feed in unsized:
             healthy[feed] = int(count)
         elif count == 0 and baseline >= EMPTY_MIN_BASELINE:
             # Even a small feed: an empty parse of a feed that had names is

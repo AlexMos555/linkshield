@@ -14,9 +14,19 @@ NOW = 1_790_000_000.0
 
 def test_a_failed_download_is_degraded_whatever_the_feed_size():
     health = fh.assess({"OpenPhish": None}, {}, {}, NOW)
-    assert health.degraded == {"OpenPhish": "download failed"}
+    assert health.degraded == {"OpenPhish": "unavailable (download or read failed)"}
     assert health.down_since == {"OpenPhish": NOW}
     assert not health.healthy_counts
+
+
+def test_an_unsized_source_is_judged_on_availability_alone():
+    """The server-confirmed set can be empty on a quiet week; it is down
+    only when it cannot be read."""
+    ok = fh.assess({"Cleanway checks": 0}, {"Cleanway checks": 5_000}, {}, NOW,
+                   unsized=frozenset({"Cleanway checks"}))
+    assert not ok.degraded
+    down = fh.assess({"Cleanway checks": None}, {}, {}, NOW, unsized=frozenset({"Cleanway checks"}))
+    assert set(down.degraded) == {"Cleanway checks"}
 
 
 def test_a_big_feed_under_half_its_last_size_is_degraded():
@@ -52,7 +62,7 @@ def test_a_feed_without_a_recorded_size_is_accepted():
 def test_accept_sizes_takes_a_shrink_but_never_a_failed_download():
     health = fh.assess({"phishing.army": 10, "URLhaus": None},
                        {"phishing.army": 160_000}, {}, NOW, accept_sizes=True)
-    assert health.degraded == {"URLhaus": "download failed"}
+    assert health.degraded == {"URLhaus": "unavailable (download or read failed)"}
     assert health.healthy_counts == {"phishing.army": 10}
 
 

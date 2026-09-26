@@ -41,11 +41,13 @@ The list was still published — every name the missing feed backed was kept
 ("outage guard: keeping N published names" in the log), for up to 14 days of
 outage. Look for the `FEED DEGRADED:` line:
 
-- **`download failed`** — open the feed URL from the constants at the top of
-  `scripts/refresh_dangerous_domains.py`. Temporary (5xx, timeout): wait, the
-  next healthy run closes the outage by itself. Moved or gone for good: fix or
-  remove the feed in a PR; after 14 days the carry stops and its names leave
-  the list anyway.
+- **`unavailable (download or read failed)`** — open the feed URL from the
+  constants at the top of `scripts/refresh_dangerous_domains.py`. Temporary
+  (5xx, timeout): wait, the next healthy run closes the outage by itself.
+  Moved or gone for good: fix or remove the feed in a PR; after 14 days the
+  carry stops and its names leave the list anyway. For **`Cleanway checks`**
+  the unreadable source is the Redis set `dangerous_domains:confirmed`
+  (written by the API): check the key's type and the API logs.
 - **`shrank from X to Y hosts`** — the feed answered with under half its last
   healthy size. Truncated or broken: wait or fix the parser. A real change
   (the maintainer pruned it): run the workflow by hand with **force** ticked;
