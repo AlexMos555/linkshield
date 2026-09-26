@@ -42,6 +42,23 @@ feeds stop listing it. OpenPhish is a short rolling window, so rebuilding from
 the feeds alone un-blocked phishing sites that were still live. Retained names
 go through every guard again on every run (api/services/blocklist_retention.py).
 
+Outage guard: a feed that fails to download, or returns under half its last
+healthy size, is DEGRADED (api/services/blocklist_feed_health.py). While one
+is, every published name that no healthy source backs is carried into the new
+set instead of silently dropping out; an outage older than 12 h makes the run
+exit 6 after publishing so it goes red. Losing phishing.army once looked like
+a 29% change — under the churn gate — and took fresh-phishing coverage from
+~73% to ~1%.
+
+Server-confirmed hosts: hosts the analyzer found DANGEROUS on threat-intel
+evidence (Safe Browsing, URLhaus, ThreatFox …) are recorded by
+api/services/confirmed_threats.py and published here as exact hosts, through
+every guard, for 7 days after their last confirmation.
+
+Promotion: a registrable is blocked whole only when the feeds name it (bare or
+as www.) or several of its subdomains — never on one subdomain, never a
+national zone (see PROMOTE_MIN_SUBDOMAINS and is_zone_like).
+
 Usage:
     python scripts/refresh_dangerous_domains.py            # fetch + write Redis
     python scripts/refresh_dangerous_domains.py --dry-run  # fetch + report, no write
@@ -73,9 +90,16 @@ from api.services.blocklist_artifact import (  # noqa: E402
     LIST_CANARY, NEVER_BLOCK_GUARDS, REDIS_META_KEY, REDIS_TEXT_KEY, delta_key,
     meta_for_v2, parse_artifact_v2, render_artifact_v2, render_delta,
 )
+from api.services import blocklist_feed_health as feed_health  # noqa: E402
 from api.services import blocklist_retention as retention  # noqa: E402
+from api.services import confirmed_threats  # noqa: E402
 
 API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
+# The analyzer's threat-intel-confirmed hosts, treated as one more source.
+CONFIRMED_SOURCE = "Cleanway checks"
+# Exit code: published, but a feed has been down for more than
+# feed_health.ALERT_AFTER_SECONDS — the run goes red so someone looks.
+EXIT_FEED_OUTAGE = 6
 PREV_SET_KEY = "dangerous_domains:prev"
 PREV_TEXT_KEY = REDIS_TEXT_KEY + ":prev"
 
@@ -275,6 +299,27 @@ _CCTLD_SECOND_LEVELS = frozenset({
     "govt", "mil", "nic", "int", "art", "name", "pro", "tv", "mobi", "priv",
     "perso", "presse", "asso", "firm", "store", "res", "ind", "me", "my", "ltda",
 })
+
+# A registrable is promoted (blocked with all its subdomains) only when the
+# feeds show it is the phisher's own: it is listed itself (bare or as its
+# www. host), or at least this many distinct subdomains of it are. On
+# 2026-09-25 one listed subdomain was enough, and 52,054 registrables were in
+# the list on that evidence alone — among them zoom.pl (a Polish furniture
+# company, one hacked host) and co.pt (a Portuguese registry that sells
+# name.co.pt, so every customer site went dark). One listed host now blocks
+# that host; a phishing link names the host, so the link is still blocked.
+PROMOTE_MIN_SUBDOMAINS = 2
+
+
+def is_zone_like(name: str) -> bool:
+    """A national second-level zone the PSL may not know: a generic label
+    under a two-letter ccTLD (co.pt, gov.gm, com.tg, go.kg, presse.ci).
+    Others register names under these; the zone itself is never a site to
+    block, and it is never promoted from one of its registrants."""
+    parts = name.split(".")
+    return (len(parts) == 2 and len(parts[1]) == 2 and parts[1].isalpha()
+            and parts[0] in _CCTLD_SECOND_LEVELS)
+
 
 PSL_URL = "https://publicsuffix.org/list/public_suffix_list.dat"
 
@@ -639,7 +684,13 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
                      sites on turbo.site / webnode.ru / com.nl, and promoting
                      one would darken every other tenant on the platform.
       EXACT + REG    dedicated phishing domain: block the host and its
-                     registrable (login.scotiabano.com + scotiabano.com).
+                     registrable (login.scotiabano.com + scotiabano.com) —
+                     only when the feeds name the registrable itself (or
+                     its www. host) or at least PROMOTE_MIN_SUBDOMAINS
+                     distinct subdomains of it. One listed subdomain is as
+                     often one hacked host of a company site (zoom.pl).
+      ZONE           a national second-level zone (co.pt, gov.gm — see
+                     is_zone_like) is never listed and never promoted.
       VETO           last, on the result: hand-verified legit hosts
                      (LEGIT_SHARED_TENANTS + `brand_owned`, default
                      data/brand_owned_hosts.txt) are removed exactly — a
@@ -667,10 +718,11 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
             return False
 
     out: set[str] = set()
+    backers: dict[str, set[str]] = {}  # registrable -> listed subdomains that would promote it
     for h in counts:
         if h.replace(".", "").replace(":", "").isdigit():
             continue  # IP literal — DNS blocking cannot cover it
-        if not is_hostname(h):
+        if not is_hostname(h) or is_zone_like(h):
             continue
         if h in SHARED_HOSTNAMES:
             continue
@@ -697,10 +749,19 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
         if popular(reg) or reg in BIG_ORGS:
             continue  # popular org's own host — never
         out.add(h)
-        if reg and h not in exact_only:
-            out.add(reg)  # dedicated phishing domain
+        if reg and reg != h and h not in exact_only and not is_zone_like(reg):
+            backers.setdefault(reg, set()).add(h)
+    out |= _promoted(backers)
     veto = load_brand_owned_hosts() if brand_owned is None else frozenset(brand_owned)
     return _apply_veto(out, LEGIT_SHARED_TENANTS | veto)
+
+
+def _promoted(backers: dict[str, set[str]]) -> set[str]:
+    """Registrables the feeds show to be the phisher's own (build_blockset
+    EXACT + REG): named via their www. host, or backed by at least
+    PROMOTE_MIN_SUBDOMAINS distinct listed subdomains."""
+    return {reg for reg, subs in backers.items()
+            if f"www.{reg}" in subs or len(subs) >= PROMOTE_MIN_SUBDOMAINS}
 
 
 # Publish gates. A bad publish darkens sites for every DNS user; a skipped
@@ -775,14 +836,14 @@ async def _tranco_guard(r, hosts, public_suffixes: set[str] | None):
         return None
 
 
-async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: set[str] | None,
-                          now: float, dry_run: bool, feeds_failed: tuple[str, ...] = (),
-                          exact_only: frozenset[str] | set[str] = frozenset()) -> set[str]:
+async def _retained_names(r, previous: set[str] | None, present: set[str], now: float, dry_run: bool,
+                          feeds_failed: tuple[str, ...] = ()) -> set[str]:
     """Names to keep although no feed lists them now (blocklist_retention).
-    Never raises and never blocks a publish: if the retention set cannot be
-    read or written, the set is built from the feeds alone. A plan that was
-    not recorded is not used — an unrecorded departure would be re-stamped
-    'just left' on every run and never age out."""
+    `present` is every name a current source backs (present_names plus the
+    server-confirmed hosts). Never raises and never blocks a publish: if the
+    retention set cannot be read or written, the set is built from the feeds
+    alone. A plan that was not recorded is not used — an unrecorded departure
+    would be re-stamped 'just left' on every run and never age out."""
     days = retention.retain_days_from_env(os.environ.get(retention.RETAIN_DAYS_ENV))
     if days == 0:
         logger.info("retention disabled (%s=0) — publishing from the feeds alone", retention.RETAIN_DAYS_ENV)
@@ -796,8 +857,7 @@ async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: 
     except Exception as e:  # noqa: BLE001
         logger.warning("retention read failed (%s) — publishing from the feeds alone", e)
         return set()
-    plan = retention.plan_retention(stored, previous or set(),
-                                    present_names(hosts, public_suffixes, exact_only), now, window,
+    plan = retention.plan_retention(stored, previous or set(), present, now, window,
                                     record_departures=not feeds_failed)
     if plan.skipped:
         failed = f" ({', '.join(feeds_failed)})" if feeds_failed else ""
@@ -817,14 +877,10 @@ async def _retained_names(r, previous: set[str] | None, hosts, public_suffixes: 
     return set(plan.retained)
 
 
-async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
-                  now: float | None = None, artifact_out: str | None = None) -> int:
-    now = time.time() if now is None else now
-    top_100k = _load_top_100k()
-    hosts: list[str] = []  # one entry per feed URL — repeats feed the shared-host guard
-    exact_hosts: list[str] = []  # feeds that address the precise host; never promote a registrable
-    feeds_failed: list[str] = []  # an unreadable feed must not look like its names all "left"
-    for name, url, parser, promote in (
+def _feed_specs() -> tuple:
+    """(name, url, parser, promotes) per bulk feed. Built per call so a test
+    that swaps a URL constant is honoured."""
+    return (
         ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus, True),
         ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish, True),
         ("Phishing.Database", PHISHING_DATABASE, _hosts_from_domain_list, True),
@@ -832,28 +888,122 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
         ("Phishunt", PHISHUNT_FEED, _hosts_from_openphish, True),
         ("TweetFeed", TWEETFEED_YEAR, _hosts_from_tweetfeed, True),
         ("CERT Polska", CERT_PL_DOMAINS, _hosts_from_domain_list, False),
-    ):
-        bucket = hosts if promote else exact_hosts
+    )
+
+
+async def _fetch_feeds() -> tuple[list[str], list[str], dict[str, int | None]]:
+    """(promoting hosts, exact-only hosts, feed -> distinct hosts parsed or
+    None when it could not be read). Hosts repeat once per feed URL — the
+    repeats feed the shared-host guard."""
+    hosts: list[str] = []
+    exact_hosts: list[str] = []
+    fetched: dict[str, int | None] = {}
+    for name, url, parser, promote in _feed_specs():
         try:
-            text = await _fetch(url)
-            n0 = len(bucket)
-            bucket.extend(parser(text))
-            logger.info("%s: +%d host entries%s (%d distinct so far)", name, len(bucket) - n0,
-                        "" if promote else " (exact-only)", len(set(hosts) | set(exact_hosts)))
+            parsed = list(parser(await _fetch(url)))
         except Exception as e:  # noqa: BLE001
             logger.warning("%s fetch failed: %s (continuing)", name, e)
-            feeds_failed.append(name)
-
+            fetched[name] = None
+            continue
+        (hosts if promote else exact_hosts).extend(parsed)
+        fetched[name] = len(set(parsed))
+        logger.info("%s: +%d host entries%s (%d distinct so far)", name, len(parsed),
+                    "" if promote else " (exact-only)", len(set(hosts) | set(exact_hosts)))
     # A MISP feed is a manifest plus one GET per event, so it cannot ride the
     # loop above — but it must fail the same way: logged, skipped, and counted
-    # as an outage so retention does not read its absence as a mass departure.
+    # as an outage so its absence is never read as a mass departure.
     try:
-        n0 = len(exact_hosts)
-        exact_hosts.extend(await _fetch_misp_feed(CSIRT_IT_MANIFEST))
-        logger.info("CSIRT Italia: +%d host entries (exact-only)", len(exact_hosts) - n0)
+        parsed = await _fetch_misp_feed(CSIRT_IT_MANIFEST)
+        exact_hosts.extend(parsed)
+        fetched["CSIRT Italia"] = len(set(parsed))
+        logger.info("CSIRT Italia: +%d host entries (exact-only)", len(parsed))
     except Exception as e:  # noqa: BLE001
         logger.warning("CSIRT Italia fetch failed: %s (continuing)", e)
-        feeds_failed.append("CSIRT Italia")
+        fetched["CSIRT Italia"] = None
+    return hosts, exact_hosts, fetched
+
+
+def _utc(ts: float) -> str:
+    return time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(ts))
+
+
+async def _feed_health(r, fetched: dict[str, int | None], now: float, dry_run: bool,
+                       accept_sizes: bool) -> feed_health.FeedHealth:
+    """Judge each feed against its last healthy size (blocklist_feed_health)
+    and say loudly which ones are down. Never raises: without the stored
+    state a failed download still counts, only the size check is lost."""
+    baselines: dict[str, int] = {}
+    down_since: dict[str, float] = {}
+    if r is not None:
+        try:
+            baselines, down_since = await feed_health.load_state(r)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("feed health state unreadable (%s) — only failed downloads count as outages", e)
+    health = feed_health.assess(fetched, baselines, down_since, now, accept_sizes=accept_sizes)
+    for feed, why in sorted(health.degraded.items()):
+        logger.error("FEED DEGRADED: %s — %s (down since %s)", feed, why, _utc(health.down_since[feed]))
+    if r is not None and not dry_run:
+        try:
+            await feed_health.save_state(r, health)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("feed health state not saved (%s)", e)
+    return health
+
+
+async def _confirmed_hosts(r, now: float) -> tuple[set[str], set[str]] | None:
+    """(active, expired) hosts our own checks confirmed through threat intel
+    (confirmed_threats), or None when the set could not be read."""
+    if r is None:
+        return set(), set()
+    try:
+        entries = await confirmed_threats.load(r)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("server-confirmed threats unreadable (%s) — publishing without them", e)
+        return None
+    active, expired = confirmed_threats.split(entries, now)
+    logger.info("server-confirmed threats: %d inside the %d-day window, %d expired", len(active),
+                confirmed_threats.CONFIRMED_WINDOW_SECONDS // 86_400, len(expired))
+    return {_norm_host(n) for n in active} - {""}, {_norm_host(n) for n in expired} - {""}
+
+
+def _carried_names(previous: set[str] | None, listed: set[str], degraded: dict[str, str],
+                   outage_seconds: float, dry_run: bool) -> set[str] | None:
+    """Published names to keep because a degraded source may still back them:
+    everything published that is not a host a live source lists this run.
+    None means: do not publish at all (we cannot tell what we would lose)."""
+    if not degraded:
+        return set()
+    feeds = ", ".join(sorted(degraded))
+    if previous is None:
+        if dry_run:
+            logger.warning("[dry-run] %s degraded and the live set is unreadable — a real run would "
+                           "refuse to publish", feeds)
+            return set()
+        logger.error("%s degraded and the live set is unreadable — cannot keep what it backed; "
+                     "refusing to publish. Previous set stays live.", feeds)
+        return None
+    if outage_seconds > feed_health.CARRY_MAX_SECONDS:
+        logger.error("%s down for %.1f days — past the %d-day carry window; its names now leave the list",
+                     feeds, outage_seconds / 86_400, feed_health.CARRY_MAX_SECONDS // 86_400)
+        return set()
+    carried = feed_health.carry_names(previous, listed, {LIST_CANARY})
+    logger.warning("outage guard: keeping %d published names no healthy source backs this run (%s degraded)",
+                   len(carried), feeds)
+    return carried
+
+
+async def _prune_confirmed(r, now: float) -> None:
+    try:
+        await confirmed_threats.prune(r, now)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("could not prune server-confirmed threats (%s)", e)
+
+
+async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
+                  now: float | None = None, artifact_out: str | None = None) -> int:
+    now = time.time() if now is None else now
+    top_100k = _load_top_100k()
+    hosts, exact_hosts, fetched = await _fetch_feeds()
 
     if not hosts and not exact_hosts:
         logger.error("No hosts fetched from any feed — refusing to wipe the set")
@@ -872,29 +1022,45 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
 
     r = _open_redis(redis_url)
     previous = await _read_previous(r)
-    # Retained names join the feed hosts BEFORE the build, so every guard
-    # below (Tranco and top-100k veto, tenant rules, …) judges them afresh.
+    health = await _feed_health(r, fetched, now, dry_run, accept_sizes=force)
+    degraded = dict(health.degraded)
+    confirmed = await _confirmed_hosts(r, now)
+    if confirmed is None:
+        degraded[CONFIRMED_SOURCE] = "unreadable"
+    active, expired = confirmed or (set(), set())
     promoting = {_norm_host(h) for h in hosts}
     promoting.discard("")
     exact_only = {_norm_host(h) for h in exact_hosts} - promoting
     exact_only.discard("")
     feed_hosts = hosts + exact_hosts
-    retained = await _retained_names(r, previous, feed_hosts, public_suffixes, now, dry_run,
-                                     tuple(feeds_failed), exact_only)
-    # A retained name is one no feed still lists, so nothing currently vouches
-    # for its registrable. Promoting it would invent a name that was never
-    # published while the host was live — a registrable that WAS published
-    # comes back through its own retention entry, not through promotion.
-    exact_only |= {_norm_host(n) for n in retained} - promoting
+    # An expired confirmation counts as present so retention does not hold it
+    # for another window: the confirmation window already was its retention.
+    present = present_names(feed_hosts, public_suffixes, exact_only) | active | expired
+    retained = await _retained_names(r, previous, present, now, dry_run, tuple(sorted(degraded)))
+    # The carry keeps every published name that is not itself a host a live
+    # source lists — registrables included: one the missing feed promoted
+    # may not reach PROMOTE_MIN_SUBDOMAINS on the healthy feeds alone.
+    listed = {_norm_host(h) for h in feed_hosts} | active | expired
+    carried = _carried_names(previous, listed, degraded, health.outage_seconds(now), dry_run)
+    if carried is None:
+        return 4
+    # Retained, carried and server-confirmed names join the feed hosts BEFORE
+    # the build, so every guard below (Tranco and top-100k veto, brand-owned
+    # veto, tenant rules, zones) judges them afresh. None of them promotes a
+    # registrable: nothing in a current feed vouches for it, and a registrable
+    # that WAS published comes back through its own entry, not through promotion.
+    extra = retained | carried | active
+    exact_only |= {_norm_host(n) for n in extra} - promoting
     exact_only.discard("")
-    candidate_hosts = feed_hosts + sorted(retained)
+    candidate_hosts = feed_hosts + sorted(extra)
     is_popular = await _tranco_guard(r, candidate_hosts, public_suffixes)
     blockset = build_blockset(candidate_hosts, top_100k, is_popular=is_popular,
                               public_suffixes=public_suffixes, exact_only=exact_only)
     logger.info("Built dangerous set: %d entries (from %d feed URLs / %d distinct feed hosts, "
-                "%d of them exact-only; %d retained-only names, %d of them passed the guards)",
+                "%d exact-only; %d retained, %d carried through an outage, %d server-confirmed — "
+                "%d of those passed the guards)",
                 len(blockset), len(feed_hosts), len(set(feed_hosts)), len(exact_only),
-                len(retained), len(retained & blockset))
+                len(retained), len(carried), len(active), len(extra & blockset))
     shared_all = default_shared_suffixes()
     ok, why = publish_gate(blockset, previous, top_100k | (public_suffixes or set()), shared_all, force=force)
     if not ok:
@@ -1035,6 +1201,12 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
                          else "NO SNAPSHOT — the bad set is still live, revert manually")
             return 5
         logger.info("post-publish verification: live gateway healthy")
+        await _prune_confirmed(r, now)
+        outage = health.outage_seconds(now)
+        if outage >= feed_health.ALERT_AFTER_SECONDS:
+            logger.error("published, but %s has been degraded for %.0f h — exit %d so this run alerts",
+                         ", ".join(sorted(health.degraded)), outage / 3600, EXIT_FEED_OUTAGE)
+            return EXIT_FEED_OUTAGE
         return 0
     finally:
         try:
@@ -1055,11 +1227,16 @@ async def rollback(r) -> bool:
         await pipe.execute()
         prev_text = await r.get(PREV_TEXT_KEY)
         if prev_text:
+            meta = meta_for_v2(base64.b64decode(prev_text))
             pipe = r.pipeline(transaction=True)
             pipe.set(REDIS_TEXT_KEY, prev_text, ex=TTL_SECONDS)
             pipe.delete(REDIS_META_KEY)
-            pipe.hset(REDIS_META_KEY, mapping=meta_for_v2(base64.b64decode(prev_text)))
+            pipe.hset(REDIS_META_KEY, mapping=meta)
             pipe.expire(REDIS_META_KEY, TTL_SECONDS)
+            # The publish we are undoing wrote a delta FROM the restored
+            # version TO the bad one. Left behind, every phone still on the
+            # restored version would download the bad list as a "delta".
+            pipe.delete(delta_key(int(meta["generated_at"])))
             await pipe.execute()
         return True
     except Exception as e:  # noqa: BLE001

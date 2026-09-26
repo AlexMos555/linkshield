@@ -57,6 +57,7 @@ from api.services.circuit_breaker import (
 from api.services.dns_checks import (  # noqa: F401 — re-exported
     EXISTENCE_TIMEOUT_S, check_dns, check_domain_exists,
 )
+from api.services.confirmed_threats import record_if_confirmed
 from api.services.tranco import check_tranco_popularity, get_tranco_rank
 from api.services.favicon_hash import check_favicon_brand_clone
 from api.services.watchtower_lookup import check_typosquat_alert
@@ -192,6 +193,11 @@ async def _judge(
     reasons.extend(_informational_reasons(domain, outcomes, signals, unfinished, vouched))
 
     _log_features(domain, signals, score)
+    # With PUBLISH_CONFIRMED_THREATS on (off by default — a licence
+    # decision), a dangerous verdict that rests on a Safe Browsing
+    # phishing/malware listing reaches every phone's blocklist on the next
+    # publish; heuristic verdicts never do. Bounded and never raises.
+    await record_if_confirmed(domain, level.value, signals)
 
     # Strategy doc #12 — numeric confidence band per verdict.
     confidence_pct = calculate_confidence_pct(score, measured, TOTAL_CHECKS)
