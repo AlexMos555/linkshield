@@ -207,3 +207,31 @@ def test_soft_health_still_returns_200_when_redis_down(client, monkeypatch):
     assert body["redis"] == "down"
     # Status field is informational — "degraded" is a soft signal.
     assert body["status"] in ("ok", "degraded")
+
+
+# ── ML visibility (fail-soft: reported, never pages) ──────────────────────
+
+
+def test_deep_reports_the_ml_backend(client, configured_settings, monkeypatch):
+    """Without this, a container that silently shipped no model looked healthy
+    and identical to one that did."""
+    _patch_redis(monkeypatch, fail=False)
+    _patch_httpx(monkeypatch, status_code=200)
+    monkeypatch.setattr("api.services.ml_scorer.model_status",
+                        lambda: {"loaded": True, "backend": "onnx", "model_file": True})
+    resp = client.get("/health/deep")
+    assert resp.status_code == 200
+    assert resp.json()["components"]["ml"] == {"loaded": True, "backend": "onnx", "model_file": True}
+
+
+def test_a_dead_ml_model_does_not_page(client, configured_settings, monkeypatch):
+    """Scoring fail-softs without the model, so a failed load must not 503."""
+    _patch_redis(monkeypatch, fail=False)
+    _patch_httpx(monkeypatch, status_code=200)
+    monkeypatch.setattr("api.services.ml_scorer.model_status",
+                        lambda: {"loaded": False, "backend": None, "model_file": False})
+    resp = client.get("/health/deep")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["components"]["ml"]["loaded"] is False

@@ -353,7 +353,21 @@ async def health_deep_check():
         except Exception as e:
             components["supabase"] = {"ok": False, "error": type(e).__name__}
 
-    all_ok = all(c.get("ok") for c in components.values())
+    # The ML model is deliberately NOT part of the paging decision: scoring
+    # fail-softs without it (rules + 18-check fan-out still run), so a model
+    # that failed to load must not wake on-call at 3am. It is reported
+    # because otherwise there is no way to tell from outside whether the
+    # container actually shipped a working model.
+    try:
+        from api.services.ml_scorer import model_status
+
+        components["ml"] = model_status()
+    except Exception as e:  # noqa: BLE001
+        components["ml"] = {"loaded": False, "error": type(e).__name__}
+
+    # Only these can page. Anything else in `components` is informational.
+    PAGING_COMPONENTS = ("redis", "supabase")
+    all_ok = all(components[name].get("ok") for name in PAGING_COMPONENTS)
     body = {"status": "ok" if all_ok else "degraded", "components": components}
     if all_ok:
         return body
