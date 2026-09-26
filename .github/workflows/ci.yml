@@ -76,6 +76,17 @@ jobs:
         # four extension trees, so a hand-edit to a generated copy fails too.
         run: node scripts/test-local-scorer.mjs
 
+      - name: Extension static checks (trust list, SW module graph, i18n keys)
+        # The background was a classic service worker calling import(), which
+        # service workers forbid: the threat counter, Family Hub alerts and
+        # poller, and the 30-day history prune silently never ran. This fails
+        # if anything the background can reach calls import()/importScripts(),
+        # if the "known safe" shortcut trusts a user-content host
+        # (sites.google.com, forms.yandex.ru, *.wordpress.com...), or if an
+        # i18n key the extension uses is missing from any locale. The real-
+        # browser proof is .github/workflows/e2e-extension.yml.
+        run: node scripts/test-extension-core.mjs
+
       - name: Extension build drift guard
         # `packages/extension-core/` is the single source of truth.
         # `scripts/build-extensions.sh` fans the files out to

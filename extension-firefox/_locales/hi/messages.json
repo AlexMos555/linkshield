@@ -377,5 +377,208 @@
   },
   "welcome_trust_footer": {
     "message": "ब्लॉकिंग हमेशा मुफ़्त। आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता।"
+  },
+  "badge_label_safe": {
+    "message": "सुरक्षित"
+  },
+  "badge_label_caution": {
+    "message": "सावधान"
+  },
+  "badge_label_dangerous": {
+    "message": "खतरनाक"
+  },
+  "badge_label_unknown": {
+    "message": "अज्ञात"
+  },
+  "badge_aria_safe": {
+    "message": "सुरक्षित लिंक"
+  },
+  "badge_aria_caution": {
+    "message": "सावधान — इस लिंक पर भरोसा करने से पहले इसे जाँच लें"
+  },
+  "badge_aria_dangerous": {
+    "message": "खतरनाक लिंक — इसे न खोलें"
+  },
+  "badge_score": {
+    "message": "स्कोर: $SCORE$/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_reason_official_site": {
+    "message": "आधिकारिक साइट"
+  },
+  "audit_title": {
+    "message": "निजता जाँच"
+  },
+  "audit_trackers": {
+    "message": "ट्रैकर"
+  },
+  "audit_cookies": {
+    "message": "कुकीज़"
+  },
+  "audit_data_fields": {
+    "message": "डेटा फ़ील्ड"
+  },
+  "audit_fingerprint": {
+    "message": "डिजिटल फ़िंगरप्रिंट"
+  },
+  "audit_yes": {
+    "message": "हाँ"
+  },
+  "audit_no": {
+    "message": "नहीं"
+  },
+  "audit_share": {
+    "message": "ग्रेड शेयर करें"
+  },
+  "audit_on_device": {
+    "message": "आपके डिवाइस पर जाँचा गया"
+  },
+  "credguard_banner_title": {
+    "message": "रुकिए — यह धोखाधड़ी वाला पेज लगता है"
+  },
+  "credguard_banner_brand": {
+    "message": "यह $BRAND$ जैसा दिखता है, लेकिन पता $HOST$ है — $LEGIT$ नहीं।",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "legit": {
+        "content": "$3"
+      }
+    }
+  },
+  "credguard_banner_action": {
+    "message": "यह फ़ॉर्म आपका पासवर्ड $HOST$ पर भेजता है — यह एड्रेस बार में दिख रही साइट से अलग साइट है।",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_tld": {
+    "message": "यह साइट $TLD$ पते का इस्तेमाल करती है, जिसे ठग अक्सर एक बार के नकली पेजों के लिए इस्तेमाल करते हैं।",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_advice": {
+    "message": "यहाँ अपना पासवर्ड न लिखें। असली साइट खुद पता टाइप करके खोलें।"
+  },
+  "credguard_dismiss": {
+    "message": "बंद करें"
+  },
+  "credguard_modal_title": {
+    "message": "Cleanway के अनुसार यह फ़ॉर्म धोखाधड़ी है"
+  },
+  "credguard_modal_intro": {
+    "message": "आगे बढ़ने पर आपका लॉगिन और पासवर्ड भेज दिया जाएगा। यह असुरक्षित क्यों लगता है:"
+  },
+  "credguard_reason_action": {
+    "message": "फ़ॉर्म आपका पासवर्ड $ACTION$ पर भेजता है — $PAGE$ पर नहीं।",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "page": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_typosquat": {
+    "message": "यह पता ($HOST$) $BRAND$ की गलत वर्तनी जैसा लगता है।",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "brand": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_tld": {
+    "message": "$TLD$ पते वाले लॉगिन पेज लगभग कभी असली नहीं होते।",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_button_cancel": {
+    "message": "न भेजें — वापस जाएँ"
+  },
+  "credguard_button_honeypot": {
+    "message": "मेरा पासवर्ड सुरक्षित रखें"
+  },
+  "credguard_button_honeypot_hint": {
+    "message": "Cleanway इसकी जगह एक बनावटी, बेतरतीब पासवर्ड भेजेगा। आपका असली पासवर्ड इसी डिवाइस पर रहेगा।"
+  },
+  "credguard_button_override": {
+    "message": "फिर भी भेजें"
+  },
+  "credguard_toast_title": {
+    "message": "Cleanway ने बनावटी पासवर्ड भेजा"
+  },
+  "credguard_toast_body": {
+    "message": "आपका असली पासवर्ड इसी डिवाइस पर रहा। अगर यह पेज असली निकले, तो बस अपना पासवर्ड दोबारा लिखें — वह कभी भेजा नहीं गया।"
+  },
+  "mpg_bitb": {
+    "message": "यह पेज एक नकली एड्रेस बार ($FAKE$) दिखा रहा है। असल में आप $REAL$ पर हैं।",
+    "placeholders": {
+      "fake": {
+        "content": "$1"
+      },
+      "real": {
+        "content": "$2"
+      }
+    }
+  },
+  "mpg_orphan": {
+    "message": "यह पेज बिना असली लॉगिन फ़ॉर्म के पासवर्ड माँग रहा है — आपका पासवर्ड चुराया जा सकता है।"
+  },
+  "menu_check_link": {
+    "message": "Cleanway से यह लिंक जाँचें"
+  },
+  "menu_privacy_audit": {
+    "message": "इस पेज की निजता जाँचें"
+  },
+  "command_open_popup": {
+    "message": "Cleanway खोलें"
+  },
+  "command_check_page": {
+    "message": "यह पेज जाँचें"
+  },
+  "family_notify_title_blocked": {
+    "message": "Cleanway ने आपके परिवार के सदस्य को बचाया"
+  },
+  "family_notify_message_blocked": {
+    "message": "धोखाधड़ी वाली साइट ब्लॉक की गई: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_title_warned": {
+    "message": "परिवार के लिए चेतावनी"
+  },
+  "family_notify_message_warned": {
+    "message": "परिवार के सदस्य को एक संदिग्ध साइट के बारे में चेताया गया: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_unknown_site": {
+    "message": "अज्ञात साइट"
   }
 }

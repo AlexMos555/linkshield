@@ -9,6 +9,7 @@
     "storage",
     "alarms",
     "contextMenus",
+    "notifications",
     "https://api.cleanway.ai/*",
     "https://*.cleanway.ai/*",
     "https://mail.google.com/*",
@@ -20,6 +21,7 @@
     "scripts": [
       "src/background/index.js"
     ],
+    "type": "module",
     "persistent": false
   },
   "content_scripts": [
@@ -79,7 +81,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "cleanway@cleanway.ai",
-      "strict_min_version": "109.0"
+      "strict_min_version": "112.0"
     }
   }
 }

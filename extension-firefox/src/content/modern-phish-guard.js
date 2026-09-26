@@ -25,6 +25,17 @@
   if (window.__cwModernPhishGuardLoaded) return;
   window.__cwModernPhishGuardLoaded = true;
 
+  // Warning text in the browser's language (extension.modern_phish in
+  // packages/i18n-strings). The banner is set via textContent, so the
+  // page-supplied hostnames inside it need no escaping.
+  function _t(key, subs) {
+    try {
+      return chrome.i18n.getMessage(key, subs || []) || key;
+    } catch (e) {
+      return key;
+    }
+  }
+
   // ── 2. Tab-napping: patch target=_blank without rel=noopener ──
   // We don't show UI for this — it's pure hardening. Just keep
   // every external link from being able to repaint the tab the
@@ -177,12 +188,9 @@
     if (document.getElementById("cw-modern-phish-banner")) return;
     var msg = "";
     if (threats.bitb && threats.bitb.length) {
-      msg = "This page is drawing a fake browser address bar (\"" +
-        threats.bitb[0].fakeHost +
-        "\"). You are actually on " + window.location.host + ".";
+      msg = _t("mpg_bitb", ["\"" + threats.bitb[0].fakeHost + "\"", window.location.host]);
     } else if (threats.orphans && threats.orphans.length) {
-      msg = "This page asks for a password without a real login form — " +
-        "credentials may be stolen.";
+      msg = _t("mpg_orphan");
     } else {
       return;
     }

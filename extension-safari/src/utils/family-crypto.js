@@ -18,45 +18,64 @@
  *   - The matching public key is uploaded once via
  *     POST /api/v1/family/{id}/keys and shared with siblings.
  *
- * Loading: this file expects globalThis.nacl + globalThis.naclUtil to
- * be defined by tweetnacl.min.js + tweetnacl-util.min.js, loaded as
- * classic <script> tags BEFORE this module. If they're missing, every
- * helper throws a clear error rather than silently producing garbage.
+ * Loading: this module imports the vendored TweetNaCl itself (the file
+ * sets self.nacl), so it works the same in the background service
+ * worker and in extension pages, whatever else they load first. Base64
+ * and UTF-8 use the platform's btoa/atob/TextEncoder/TextDecoder rather
+ * than tweetnacl-util: that vendor file uses `this` as its global, which
+ * is undefined inside an ES module, so the module service worker could
+ * not load it at all.
  */
+
+import "./vendor/tweetnacl.min.js";
 
 const STORAGE_KEY_SECRET = "family_secret_key_b64";
 const STORAGE_KEY_PUBLIC = "family_public_key_b64";
 
-// ─── Vendor accessors ──────────────────────────────────────────────
+// ─── Vendor accessor ───────────────────────────────────────────────
 
 function getNacl() {
   const n = typeof globalThis !== "undefined" ? globalThis.nacl : undefined;
   if (!n || !n.box) {
-    throw new Error("tweetnacl not loaded — include utils/vendor/tweetnacl.min.js before family-crypto.js");
+    throw new Error("tweetnacl not loaded — src/utils/vendor/tweetnacl.min.js did not evaluate");
   }
   return n;
 }
 
-function getNaclUtil() {
-  const u = typeof globalThis !== "undefined" ? globalThis.nacl?.util : undefined;
-  if (!u) {
-    throw new Error("tweetnacl-util not loaded — include utils/vendor/tweetnacl-util.min.js before family-crypto.js");
-  }
-  return u;
+// ─── Byte codecs ───────────────────────────────────────────────────
+
+function utf8Encode(text) {
+  return new TextEncoder().encode(text);
+}
+
+function utf8Decode(bytes) {
+  // fatal: a box that opens to invalid UTF-8 is treated as unreadable.
+  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function base64ToBytes(b64) {
+  const binary = atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
 }
 
 // ─── base64url helpers (URL-safe, padding-free) ────────────────────
 // The backend uses base64url for ciphertext / nonce / pubkey transport.
-// nacl-util ships standard base64; convert at the wire boundary.
 
 function toB64Url(uint8) {
-  const b64 = getNaclUtil().encodeBase64(uint8);
-  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return bytesToBase64(uint8).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function fromB64Url(s) {
   const padded = s.replace(/-/g, "+").replace(/_/g, "/").padEnd(s.length + ((4 - (s.length % 4)) % 4), "=");
-  return getNaclUtil().decodeBase64(padded);
+  return base64ToBytes(padded);
 }
 
 // ─── Keypair lifecycle ─────────────────────────────────────────────
@@ -114,9 +133,8 @@ export async function clearKeypair() {
  */
 export function encryptForRecipient(alert, recipientPubKeyB64, mySecretKeyB64) {
   const nacl = getNacl();
-  const util = getNaclUtil();
 
-  const payload = util.decodeUTF8(JSON.stringify(alert));
+  const payload = utf8Encode(JSON.stringify(alert));
   const nonce = nacl.randomBytes(nacl.box.nonceLength); // 24 bytes
   const recipientKey = fromB64Url(recipientPubKeyB64);
   const myKey = fromB64Url(mySecretKeyB64);
@@ -153,7 +171,6 @@ export function encryptForRecipient(alert, recipientPubKeyB64, mySecretKeyB64) {
  */
 export function decryptForMe(envelope, mySecretKeyB64) {
   const nacl = getNacl();
-  const util = getNaclUtil();
 
   let ct, nonce, senderPub, mySec;
   try {
@@ -169,7 +186,7 @@ export function decryptForMe(envelope, mySecretKeyB64) {
   if (!opened) return null;
 
   try {
-    return JSON.parse(util.encodeUTF8(opened));
+    return JSON.parse(utf8Decode(opened));
   } catch {
     return null;
   }
