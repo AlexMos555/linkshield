@@ -48,6 +48,31 @@ function _esc(s) {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Localised string in the browser's language (chrome.i18n). The text lives
+ * in packages/i18n-strings (extension.badge / extension.privacy_audit);
+ * scripts/test-extension-core.mjs fails CI if a key used here is missing
+ * from any locale, so the key itself is only ever a last-ditch fallback.
+ */
+function _t(key, subs) {
+  try {
+    return chrome.i18n.getMessage(key, subs || []) || key;
+  } catch (e) {
+    return key;
+  }
+}
+
+var LEVEL_LABEL_KEYS = { safe: "badge_label_safe", caution: "badge_label_caution", dangerous: "badge_label_dangerous" };
+
+function _levelLabel(level) {
+  return _t(LEVEL_LABEL_KEYS[level] || "badge_label_unknown");
+}
+
+// Pro is the only persona that sees the number (see _skillLevel above).
+function _scoreText(score) {
+  return _t("badge_score", [String(parseInt(score, 10) || 0)]);
+}
+
 // ═══════════════════════════════════════════════════
 // 1. SCAN LINKS
 // ═══════════════════════════════════════════════════
@@ -160,15 +185,15 @@ function addBadge(linkEl, result) {
   if (result.level === "safe") {
     badge.classList.add("ls-safe");
     badge.textContent = "\u2713";
-    badge.setAttribute("aria-label", "Safe link");
+    badge.setAttribute("aria-label", _t("badge_aria_safe"));
   } else if (result.level === "caution") {
     badge.classList.add("ls-caution");
     badge.textContent = "\u26A0";
-    badge.setAttribute("aria-label", "Caution \u2014 check this link before you trust it");
+    badge.setAttribute("aria-label", _t("badge_aria_caution"));
   } else {
     badge.classList.add("ls-dangerous");
     badge.textContent = "\u2717";
-    badge.setAttribute("aria-label", "Dangerous link \u2014 do not open");
+    badge.setAttribute("aria-label", _t("badge_aria_dangerous"));
   }
 
   badge.setAttribute("role", "img");
@@ -180,13 +205,12 @@ function addBadge(linkEl, result) {
     return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + _esc(r.detail) + '</div>';
   }).join("");
   var colors = { safe: "#22c55e", caution: "#f59e0b", dangerous: "#ef4444" };
-  var labels = { safe: "Safe", caution: "Caution", dangerous: "Dangerous" };
   tooltip.innerHTML = '<div class="ls-tooltip-inner">' +
     '<div class="ls-tooltip-header">' +
     '<span class="ls-dot" style="background:' + (colors[result.level] || "#666") + '"></span>' +
-    '<strong>' + (labels[result.level] || "Unknown") + '</strong>' +
+    '<strong>' + _esc(_levelLabel(result.level)) + '</strong>' +
     (_skillLevel === "pro"
-      ? '<span class="ls-score">Score: ' + (parseInt(result.score, 10) || 0) + '/100</span>'
+      ? '<span class="ls-score">' + _esc(_scoreText(result.score)) + '</span>'
       : '') + '</div>' +
     '<div class="ls-domain">' + _esc(result.domain) + '</div>' +
     reasons +
@@ -236,14 +260,13 @@ function showFloatingResult(result) {
 
   var c = { safe: "#22c55e", caution: "#f59e0b", dangerous: "#ef4444" };
   var icons = { safe: "\u2713", caution: "\u26A0", dangerous: "\u2717" };
-  var labels = { safe: "Safe", caution: "Caution", dangerous: "Dangerous" };
   var reasons = (result.reasons || []).slice(0, 3).map(function(r) {
     return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + _esc(r.detail) + '</div>';
   }).join("");
 
   var div = document.createElement("div");
   div.id = "ls-floating-result";
-  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;max-width:320px;border:1px solid ' + (c[result.level] || "#333") + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:28px;height:28px;border-radius:50%;background:' + (c[result.level] || "#333") + '20;color:' + (c[result.level] || "#999") + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + (icons[result.level] || "?") + '</span><strong style="font-size:14px;">' + (labels[result.level] || "?") + '</strong><span style="color:#9ca3af;font-size:12px;margin-left:auto;">' + (_skillLevel === "pro" ? 'Score: ' + (parseInt(result.score, 10) || 0) : '') + '</span><span id="ls-float-close" style="cursor:pointer;color:#6b7280;font-size:18px;margin-left:8px;">\u00D7</span></div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + _esc(result.domain) + '</div>' + reasons + '</div>';
+  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;max-width:320px;border:1px solid ' + (c[result.level] || "#333") + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:28px;height:28px;border-radius:50%;background:' + (c[result.level] || "#333") + '20;color:' + (c[result.level] || "#999") + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + (icons[result.level] || "?") + '</span><strong style="font-size:14px;">' + _esc(_levelLabel(result.level)) +'</strong><span style="color:#9ca3af;font-size:12px;margin-left:auto;">' + (_skillLevel === "pro" ? _esc(_scoreText(result.score)) : '') + '</span><span id="ls-float-close" style="cursor:pointer;color:#6b7280;font-size:18px;margin-left:8px;">\u00D7</span></div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + _esc(result.domain) + '</div>' + reasons + '</div>';
 
   document.body.appendChild(div);
   document.getElementById("ls-float-close").onclick = function() { div.remove(); };
@@ -302,7 +325,7 @@ function runPrivacyAudit() {
   // `host` is window.location.hostname \u2014 attacker can craft a hostile
   // domain to inject HTML through it. Same defense-in-depth as the
   // block page and floating result above. (Audit extension-mv3 HIGH.)
-  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;width:300px;border:1px solid ' + color + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:32px;font-weight:bold;color:' + color + ';">' + _esc(grade) + '</span><div><div style="font-size:14px;font-weight:600;">Privacy Audit</div><div style="font-size:11px;color:#94a3b8;">' + _esc(host) + '</div></div></div><span id="ls-audit-close" style="cursor:pointer;color:#6b7280;font-size:18px;">\u00D7</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(trackers.length, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">Trackers</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(cookies, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">Cookies</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(sensitive, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">Data fields</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (fp ? "Yes" : "No") + '</div><div style="color:#94a3b8;font-size:10px;">Fingerprint</div></div></div><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;"><button id="ls-audit-share" style="margin-top:12px;width:100%;background:' + color + ';color:#0a0e15;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">Share grade</button><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;">\uD83D\uDD12 Ran on your device</div></div>';
+  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;width:300px;border:1px solid ' + color + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:32px;font-weight:bold;color:' + color + ';">' + _esc(grade) + '</span><div><div style="font-size:14px;font-weight:600;">' + _esc(_t("audit_title")) + '</div><div style="font-size:11px;color:#94a3b8;">' + _esc(host) + '</div></div></div><span id="ls-audit-close" style="cursor:pointer;color:#6b7280;font-size:18px;">\u00D7</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(trackers.length, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">' + _esc(_t("audit_trackers")) + '</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(cookies, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">' + _esc(_t("audit_cookies")) + '</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + (parseInt(sensitive, 10) || 0) + '</div><div style="color:#94a3b8;font-size:10px;">' + _esc(_t("audit_data_fields")) + '</div></div><div style="background:#111827;border-radius:8px;padding:8px;text-align:center;"><div style="font-size:18px;font-weight:bold;">' + _esc(_t(fp ? "audit_yes" : "audit_no")) + '</div><div style="color:#94a3b8;font-size:10px;">' + _esc(_t("audit_fingerprint")) + '</div></div></div><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;"><button id="ls-audit-share" style="margin-top:12px;width:100%;background:' + color + ';color:#0a0e15;border:none;padding:8px 12px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;">' + _esc(_t("audit_share")) + '</button><div style="font-size:10px;color:#475569;margin-top:10px;text-align:center;">\uD83D\uDD12 ' + _esc(_t("audit_on_device")) + '</div></div>';
 
   document.body.appendChild(div);
   document.getElementById("ls-audit-close").onclick = function() { div.remove(); };

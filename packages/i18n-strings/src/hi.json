@@ -388,6 +388,223 @@
       "trust_footer": {
         "text": "ब्लॉकिंग हमेशा मुफ़्त। आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता।"
       }
+    },
+    "badge": {
+      "label_safe": {
+        "text": "सुरक्षित"
+      },
+      "label_caution": {
+        "text": "सावधान"
+      },
+      "label_dangerous": {
+        "text": "खतरनाक"
+      },
+      "label_unknown": {
+        "text": "अज्ञात"
+      },
+      "aria_safe": {
+        "text": "सुरक्षित लिंक"
+      },
+      "aria_caution": {
+        "text": "सावधान — इस लिंक पर भरोसा करने से पहले इसे जाँच लें"
+      },
+      "aria_dangerous": {
+        "text": "खतरनाक लिंक — इसे न खोलें"
+      },
+      "score": {
+        "text": "स्कोर: $SCORE$/100",
+        "placeholders": {
+          "score": {
+            "content": "$1"
+          }
+        }
+      },
+      "reason_official_site": {
+        "text": "आधिकारिक साइट"
+      }
+    },
+    "privacy_audit": {
+      "title": {
+        "text": "निजता जाँच"
+      },
+      "trackers": {
+        "text": "ट्रैकर"
+      },
+      "cookies": {
+        "text": "कुकीज़"
+      },
+      "data_fields": {
+        "text": "डेटा फ़ील्ड"
+      },
+      "fingerprint": {
+        "text": "डिजिटल फ़िंगरप्रिंट"
+      },
+      "yes": {
+        "text": "हाँ"
+      },
+      "no": {
+        "text": "नहीं"
+      },
+      "share": {
+        "text": "ग्रेड शेयर करें"
+      },
+      "on_device": {
+        "text": "आपके डिवाइस पर जाँचा गया"
+      }
+    },
+    "credential_guard": {
+      "banner_title": {
+        "text": "रुकिए — यह धोखाधड़ी वाला पेज लगता है"
+      },
+      "banner_brand": {
+        "text": "यह $BRAND$ जैसा दिखता है, लेकिन पता $HOST$ है — $LEGIT$ नहीं।",
+        "placeholders": {
+          "brand": {
+            "content": "$1"
+          },
+          "host": {
+            "content": "$2"
+          },
+          "legit": {
+            "content": "$3"
+          }
+        }
+      },
+      "banner_action": {
+        "text": "यह फ़ॉर्म आपका पासवर्ड $HOST$ पर भेजता है — यह एड्रेस बार में दिख रही साइट से अलग साइट है।",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_tld": {
+        "text": "यह साइट $TLD$ पते का इस्तेमाल करती है, जिसे ठग अक्सर एक बार के नकली पेजों के लिए इस्तेमाल करते हैं।",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_advice": {
+        "text": "यहाँ अपना पासवर्ड न लिखें। असली साइट खुद पता टाइप करके खोलें।"
+      },
+      "dismiss": {
+        "text": "बंद करें"
+      },
+      "modal_title": {
+        "text": "Cleanway के अनुसार यह फ़ॉर्म धोखाधड़ी है"
+      },
+      "modal_intro": {
+        "text": "आगे बढ़ने पर आपका लॉगिन और पासवर्ड भेज दिया जाएगा। यह असुरक्षित क्यों लगता है:"
+      },
+      "reason_action": {
+        "text": "फ़ॉर्म आपका पासवर्ड $ACTION$ पर भेजता है — $PAGE$ पर नहीं।",
+        "placeholders": {
+          "action": {
+            "content": "$1"
+          },
+          "page": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_typosquat": {
+        "text": "यह पता ($HOST$) $BRAND$ की गलत वर्तनी जैसा लगता है।",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          },
+          "brand": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_tld": {
+        "text": "$TLD$ पते वाले लॉगिन पेज लगभग कभी असली नहीं होते।",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "button_cancel": {
+        "text": "न भेजें — वापस जाएँ"
+      },
+      "button_honeypot": {
+        "text": "मेरा पासवर्ड सुरक्षित रखें"
+      },
+      "button_honeypot_hint": {
+        "text": "Cleanway इसकी जगह एक बनावटी, बेतरतीब पासवर्ड भेजेगा। आपका असली पासवर्ड इसी डिवाइस पर रहेगा।"
+      },
+      "button_override": {
+        "text": "फिर भी भेजें"
+      },
+      "toast_title": {
+        "text": "Cleanway ने बनावटी पासवर्ड भेजा"
+      },
+      "toast_body": {
+        "text": "आपका असली पासवर्ड इसी डिवाइस पर रहा। अगर यह पेज असली निकले, तो बस अपना पासवर्ड दोबारा लिखें — वह कभी भेजा नहीं गया।"
+      }
+    },
+    "modern_phish": {
+      "bitb": {
+        "text": "यह पेज एक नकली एड्रेस बार ($FAKE$) दिखा रहा है। असल में आप $REAL$ पर हैं।",
+        "placeholders": {
+          "fake": {
+            "content": "$1"
+          },
+          "real": {
+            "content": "$2"
+          }
+        }
+      },
+      "orphan": {
+        "text": "यह पेज बिना असली लॉगिन फ़ॉर्म के पासवर्ड माँग रहा है — आपका पासवर्ड चुराया जा सकता है।"
+      }
+    },
+    "menu": {
+      "check_link": {
+        "text": "Cleanway से यह लिंक जाँचें"
+      },
+      "privacy_audit": {
+        "text": "इस पेज की निजता जाँचें"
+      }
+    },
+    "commands": {
+      "open_popup": {
+        "text": "Cleanway खोलें"
+      },
+      "check_page": {
+        "text": "यह पेज जाँचें"
+      }
+    },
+    "family_notify": {
+      "title_blocked": {
+        "text": "Cleanway ने आपके परिवार के सदस्य को बचाया"
+      },
+      "message_blocked": {
+        "text": "धोखाधड़ी वाली साइट ब्लॉक की गई: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "title_warned": {
+        "text": "परिवार के लिए चेतावनी"
+      },
+      "message_warned": {
+        "text": "परिवार के सदस्य को एक संदिग्ध साइट के बारे में चेताया गया: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "unknown_site": {
+        "text": "अज्ञात साइट"
+      }
     }
   },
   "landing": {

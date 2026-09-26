@@ -388,6 +388,223 @@
       "trust_footer": {
         "text": "Il blocco è gratis per sempre. I tuoi dati non lasciano mai questo dispositivo."
       }
+    },
+    "badge": {
+      "label_safe": {
+        "text": "Sicuro"
+      },
+      "label_caution": {
+        "text": "Attenzione"
+      },
+      "label_dangerous": {
+        "text": "Pericoloso"
+      },
+      "label_unknown": {
+        "text": "Sconosciuto"
+      },
+      "aria_safe": {
+        "text": "Link sicuro"
+      },
+      "aria_caution": {
+        "text": "Attenzione: controlla questo link prima di fidarti"
+      },
+      "aria_dangerous": {
+        "text": "Link pericoloso: non aprirlo"
+      },
+      "score": {
+        "text": "Punteggio: $SCORE$/100",
+        "placeholders": {
+          "score": {
+            "content": "$1"
+          }
+        }
+      },
+      "reason_official_site": {
+        "text": "Sito ufficiale"
+      }
+    },
+    "privacy_audit": {
+      "title": {
+        "text": "Controllo privacy"
+      },
+      "trackers": {
+        "text": "Tracker"
+      },
+      "cookies": {
+        "text": "Cookie"
+      },
+      "data_fields": {
+        "text": "Campi dati"
+      },
+      "fingerprint": {
+        "text": "Impronta digitale"
+      },
+      "yes": {
+        "text": "Sì"
+      },
+      "no": {
+        "text": "No"
+      },
+      "share": {
+        "text": "Condividi il voto"
+      },
+      "on_device": {
+        "text": "Eseguito sul tuo dispositivo"
+      }
+    },
+    "credential_guard": {
+      "banner_title": {
+        "text": "Stop: sembra una pagina truffa"
+      },
+      "banner_brand": {
+        "text": "Sembra $BRAND$, ma l'indirizzo è $HOST$, non $LEGIT$.",
+        "placeholders": {
+          "brand": {
+            "content": "$1"
+          },
+          "host": {
+            "content": "$2"
+          },
+          "legit": {
+            "content": "$3"
+          }
+        }
+      },
+      "banner_action": {
+        "text": "Questo modulo invia la tua password a $HOST$, un sito diverso da quello nella barra degli indirizzi.",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_tld": {
+        "text": "Il sito usa un indirizzo $TLD$, spesso usato dai truffatori per pagine false usa e getta.",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "banner_advice": {
+        "text": "Non scrivere qui la tua password. Apri il sito vero digitando tu stesso l'indirizzo."
+      },
+      "dismiss": {
+        "text": "Chiudi"
+      },
+      "modal_title": {
+        "text": "Cleanway pensa che questo modulo sia una truffa"
+      },
+      "modal_intro": {
+        "text": "Se continui, verranno inviati il tuo nome utente e la tua password. Ecco perché sembra pericoloso:"
+      },
+      "reason_action": {
+        "text": "Il modulo invia la tua password a $ACTION$, non a $PAGE$.",
+        "placeholders": {
+          "action": {
+            "content": "$1"
+          },
+          "page": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_typosquat": {
+        "text": "Questo indirizzo ($HOST$) sembra una storpiatura di $BRAND$.",
+        "placeholders": {
+          "host": {
+            "content": "$1"
+          },
+          "brand": {
+            "content": "$2"
+          }
+        }
+      },
+      "reason_tld": {
+        "text": "Le pagine di accesso con indirizzi $TLD$ non sono quasi mai autentiche.",
+        "placeholders": {
+          "tld": {
+            "content": "$1"
+          }
+        }
+      },
+      "button_cancel": {
+        "text": "Non inviare, torna indietro"
+      },
+      "button_honeypot": {
+        "text": "Proteggi la mia password"
+      },
+      "button_honeypot_hint": {
+        "text": "Cleanway invierà al suo posto una password inventata a caso. La tua vera password resta su questo dispositivo."
+      },
+      "button_override": {
+        "text": "Invia comunque"
+      },
+      "toast_title": {
+        "text": "Cleanway ha inviato una password inventata"
+      },
+      "toast_body": {
+        "text": "La tua vera password è rimasta su questo dispositivo. Se la pagina si rivela autentica, digita di nuovo la password: non è mai stata inviata."
+      }
+    },
+    "modern_phish": {
+      "bitb": {
+        "text": "Questa pagina disegna una finta barra degli indirizzi ($FAKE$). In realtà sei su $REAL$.",
+        "placeholders": {
+          "fake": {
+            "content": "$1"
+          },
+          "real": {
+            "content": "$2"
+          }
+        }
+      },
+      "orphan": {
+        "text": "Questa pagina chiede una password senza un vero modulo di accesso: potrebbe essere rubata."
+      }
+    },
+    "menu": {
+      "check_link": {
+        "text": "Controlla questo link con Cleanway"
+      },
+      "privacy_audit": {
+        "text": "Controlla la privacy di questa pagina"
+      }
+    },
+    "commands": {
+      "open_popup": {
+        "text": "Apri Cleanway"
+      },
+      "check_page": {
+        "text": "Controlla questa pagina"
+      }
+    },
+    "family_notify": {
+      "title_blocked": {
+        "text": "Cleanway ha protetto un familiare"
+      },
+      "message_blocked": {
+        "text": "È stato bloccato un sito truffa: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "title_warned": {
+        "text": "Avviso di famiglia"
+      },
+      "message_warned": {
+        "text": "Un familiare è stato avvisato di un sito sospetto: $DOMAIN$",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "unknown_site": {
+        "text": "un sito sconosciuto"
+      }
     }
   },
   "landing": {

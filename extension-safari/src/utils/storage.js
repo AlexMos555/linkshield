@@ -163,25 +163,36 @@ export async function getSetting(key, defaultValue = null) {
   });
 }
 
+export const HISTORY_RETENTION_DAYS = 30;
+
 /**
- * Clear old checks (older than 30 days)
+ * Delete checks older than HISTORY_RETENTION_DAYS (docs/PRIVACY.md promises
+ * 30-day on-device retention). Resolves once the deletions are committed,
+ * so the caller (the daily alarm) can't be torn down mid-transaction.
+ *
+ * checked_at is an ISO-8601 UTC string, which sorts chronologically, so the
+ * index range visits only the rows that have to go.
+ *
+ * @returns {Promise<number>} rows deleted
  */
 export async function pruneOldChecks() {
   const db = await openDB();
   const tx = db.transaction("checks", "readwrite");
-  const store = tx.objectStore("checks");
+  const cutoff = new Date(Date.now() - HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const request = tx.objectStore("checks").index("checked_at").openCursor(IDBKeyRange.upperBound(cutoff, true));
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const request = store.openCursor();
+  let deleted = 0;
   request.onsuccess = (event) => {
     const cursor = event.target.result;
-    if (cursor) {
-      if (new Date(cursor.value.checked_at) < thirtyDaysAgo) {
-        cursor.delete();
-      }
-      cursor.continue();
-    }
+    if (!cursor) return;
+    cursor.delete();
+    deleted++;
+    cursor.continue();
   };
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve(deleted);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }
