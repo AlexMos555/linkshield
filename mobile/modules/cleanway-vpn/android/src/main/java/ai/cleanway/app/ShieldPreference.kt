@@ -60,5 +60,26 @@ internal object ShieldPreference {
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getLong(KEY_PAUSED_UNTIL, 0L)
 
+    /** What happened to the tunnel, as far as a stored pause is concerned. */
+    enum class PauseEvent {
+        /** The person tapped "Turn on" in the app. */
+        STARTED_BY_PERSON,
+        /** The system brought the service back: a killed process, a reboot, Always-on VPN. */
+        CAME_BACK_BY_ITSELF,
+        /** The person tapped "Turn off". */
+        STOPPED_BY_PERSON,
+        /** Another VPN took the tunnel, or VPN access was revoked in Settings. */
+        TAKEN_AWAY,
+    }
+
+    /**
+     * Pure: the stored pause after [event]. A pause outlives the service
+     * coming back by itself, so a restart can neither cut it short nor let it
+     * run past its time. Anything the person does — or the tunnel being taken
+     * away — ends it: "Turn on" must mean on.
+     */
+    fun pauseAfter(event: PauseEvent, storedUntilMs: Long): Long =
+        if (event == PauseEvent.CAME_BACK_BY_ITSELF) storedUntilMs else 0L
+
     private const val KEY_PAUSED_UNTIL = "paused_until_ms"
 }

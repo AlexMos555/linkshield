@@ -138,7 +138,8 @@ class CleanwayVpnModule : Module() {
     /**
      * This install's random number (ai.cleanway.app.InstallId), sent with
      * every site check so the server can rate-limit per phone instead of per
-     * carrier-NAT address. The same value the link guard sends.
+     * carrier-NAT address. The same value the link guard sends; renewed
+     * every day, so JS asks for it per check rather than keeping it.
      */
     Function("installId") {
       ai.cleanway.app.InstallId.get(context)
@@ -466,8 +467,12 @@ class CleanwayVpnModule : Module() {
     }
   }
 
+  /** The person's "Turn on": the service ends any pause left from before (see ShieldPreference.pauseAfter). */
   private fun startService() {
-    ContextCompat.startForegroundService(context, Intent(context, CleanwayVpnService::class.java))
+    ContextCompat.startForegroundService(
+      context,
+      Intent(context, CleanwayVpnService::class.java).setAction(CleanwayVpnService.ACTION_START_BY_PERSON),
+    )
   }
 
   private fun registerBlockReceiver() {

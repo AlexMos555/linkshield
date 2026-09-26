@@ -169,15 +169,33 @@ class CleanwayVpnService : VpnService() {
             // Explicit user request: forget the intent so we do not come back
             // on the next boot.
             ShieldPreference.setUserEnabled(this, false)
-            ShieldPreference.setPausedUntil(this, 0L)
+            ShieldPreference.setPausedUntil(
+                this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STOPPED_BY_PERSON, pausedUntilMs),
+            )
             stopVpn()
             return START_NOT_STICKY
         }
-        if (!running) startVpn()
+        // Only the app's "Turn on" says START_BY_PERSON; a boot, Always-on VPN
+        // or a sticky restart arrives without it.
+        val byPerson = intent?.action == ACTION_START_BY_PERSON
+        if (running) {
+            if (byPerson) pauseUntil(ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STARTED_BY_PERSON, pausedUntilMs))
+        } else {
+            startVpn(byPerson)
+        }
         return START_STICKY
     }
 
-    private fun startVpn() {
+    private fun startVpn(byPerson: Boolean) {
+        // A pause survives the service coming back by itself, but not the
+        // person turning protection on — decided (and stored) before anything
+        // below can stop the start, so a failed start leaves no pause behind.
+        val pause = ShieldPreference.pauseAfter(
+            if (byPerson) ShieldPreference.PauseEvent.STARTED_BY_PERSON else ShieldPreference.PauseEvent.CAME_BACK_BY_ITSELF,
+            ShieldPreference.pausedUntil(this),
+        )
+        ShieldPreference.setPausedUntil(this, pause)
+
         // A VPN must run as a foreground service, or Android kills it when the app
         // backgrounds (and startForegroundService crashes without a prompt startForeground).
         startInForeground()
@@ -258,7 +276,7 @@ class CleanwayVpnService : VpnService() {
 
         // A pause outlives a restart of the service (process killed, reboot):
         // it ends at its time, not whenever the service happens to come back.
-        pauseUntil(ShieldPreference.pausedUntil(this))
+        pauseUntil(pause)
 
         // Load the stored blocklist synchronously (≈30 KB, milliseconds) so
         // the very first query after start is already filtered; then keep it
@@ -298,6 +316,11 @@ class CleanwayVpnService : VpnService() {
      */
     override fun onRevoke() {
         Log.i(TAG, "tunnel_revoked")
+        // Whoever took the tunnel, a pause from before must not come back
+        // when the person turns protection on again.
+        ShieldPreference.setPausedUntil(
+            this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.TAKEN_AWAY, pausedUntilMs),
+        )
         broadcastStopped(REASON_REVOKED)
         super.onRevoke()
     }
@@ -959,6 +982,8 @@ class CleanwayVpnService : VpnService() {
         private const val NOTIF_ID = 4711
         private const val TAG = "CleanwayVPN"
         const val ACTION_STOP = "ai.cleanway.VPN_STOP"
+        /** The person turned protection on in the app: starts the tunnel and ends any pause. */
+        const val ACTION_START_BY_PERSON = "ai.cleanway.VPN_START_BY_PERSON"
         /** Delivered by BlocklistRefreshReceiver on the Doze-safe alarm. */
         const val ACTION_REFRESH_BLOCKLIST = "ai.cleanway.REFRESH_BLOCKLIST"
         /** Pause blocking until [EXTRA_PAUSE_UNTIL] (epoch ms); the tunnel stays up. */
