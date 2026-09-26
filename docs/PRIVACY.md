@@ -61,6 +61,7 @@ Unlike the extension, the mobile check history is **not pruned automatically**: 
 | Data | Where | Retention |
 |---|---|---|
 | Domain + verdict + score (cache) | Redis (server) | 5 min (dangerous) / 15 min (suspicious) / 1 hr (safe); public endpoint 24 hr |
+| Checked host that threat intelligence (Safe Browsing, URLhaus, ThreatFox, PhishTank, MalwareBazaar, Feodo) confirmed **dangerous** + time of last confirmation — no user, IP or URL | Redis sorted set `dangerous_domains:confirmed` | 7 days after the last confirmation (+2 days before it is deleted); at most 20,000 hosts. While inside the 7 days the host is published in the shared blocklist every phone downloads (as a hash) |
 | Domain + ML feature vector + timestamp | Local `feature_log.jsonl` file (server) | **Off by default in production**; only written when `FEATURE_LOG_ENABLED=true` for an offline training run, then size-capped (default 50 MB, auto-rotated) |
 | User ID + action + target + hashed IP + metadata | Supabase `audit_log` | 2 years (730 days), purged by `purge_old_audit_log` |
 | User ID + email | Supabase `users` | Until account deletion |
@@ -123,6 +124,8 @@ Family Hub lets family members warn each other about dangerous sites. Those aler
 The core invariant is: **the server sees the domain, not your browsing.** The extension extracts the hostname from each URL locally and sends only that. No full URL, path, or query string reaches the server on the check path; no per-user check history is stored in any database.
 
 We are precise about one thing that is easy to overstate: "server-blind" does **not** mean the domain stays on your device. To check whether a domain is malicious, the server sends that **domain name** to external threat-intelligence services (Google Safe Browsing and the others listed above). What is *not* sent to them is your identity, your full URL, or any page context — only the bare domain, the same way a DNS resolver sees it. So the honest framing is: the domain of a site you visit is checked against third-party blocklists; who you are and what you did on that site are not part of that check.
+
+One more thing a check can change: when the threat-intelligence services above confirm that a checked host is dangerous (a heuristic guess never counts), the server keeps that host — without any record of who checked it — and adds it to the public blocklist that every phone downloads, so the next person is protected before they tap. See the retention table for how long.
 
 Two operational logs can record domain names for legitimate reasons, and we disclose them rather than hide them: the ML **feature log** (off by default; see note above) and the **DoH gateway**, which logs only the last 32 characters of a blocked query name to structured logs. Neither is linked to user identity. Redis cache keys are also plaintext domain names, readable by anyone with direct Redis access — which is why that access is restricted.
 
