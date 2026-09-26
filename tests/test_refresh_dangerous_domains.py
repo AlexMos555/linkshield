@@ -29,6 +29,7 @@ import pathlib
 
 import pytest
 
+from api.services import blocklist_feed_backing as feed_backing
 from api.services import blocklist_retention as retention
 from api.services.blocklist_artifact import REDIS_TEXT_KEY, artifact_covers, parse_artifact_v2
 
@@ -91,9 +92,11 @@ def test_many_urls_on_one_host_under_shared_suffix_means_shared_host_not_tenant(
 
 
 def test_dedicated_phishing_domain_blocks_host_and_registrable():
-    out = _build(["www.paypal-security.891374.cfd", "login.scotiabano.com"])
+    out = _build(["www.paypal-security.891374.cfd", "login.891374.cfd",
+                  "login.scotiabano.com", "secure.scotiabano.com"])
     # registrable of www.paypal-security.891374.cfd is 891374.cfd (the
-    # brand-looking label is a subdomain) — block host + registrable.
+    # brand-looking label is a subdomain). Two distinct listed subdomains
+    # show the registrable is the phisher's own — block hosts + registrable.
     assert {"www.paypal-security.891374.cfd", "891374.cfd",
             "login.scotiabano.com", "scotiabano.com"} <= out
 
@@ -109,13 +112,67 @@ def test_compound_tld_registrable_is_three_labels_heuristic():
 
 def test_psl_registrable_and_never_promote_a_public_suffix():
     psl = {"com", "am", "com.am", "cfd", "io", "github.io", "uk", "co.uk", "*.ck", "ee", "com.ee"}
-    out = rdd.build_blockset(["www.roblox.com.am", "evil.github.io", "a.b.co.uk", "x.www.ck", "roblox.com.ee"],
+    out = rdd.build_blockset(["www.roblox.com.am", "evil.github.io", "a.b.co.uk", "c.b.co.uk",
+                              "x.www.ck", "roblox.com.ee"],
                              TOP, shared_suffixes=SHARED, public_suffixes=psl)
     assert "roblox.com.am" in out and "com.am" not in out
     assert "evil.github.io" in out and "github.io" not in out
     assert "b.co.uk" in out and "co.uk" not in out
     assert "x.www.ck" in out and "www.ck" not in out  # wildcard rule *.ck
     assert "roblox.com.ee" in out and "com.ee" not in out
+
+
+# ── 2026-09-26: one listed subdomain no longer blocks a whole domain ──────
+# Measured on the live list of 2026-09-25: 52,054 registrables were listed
+# only because ONE of their subdomains was — zoom.pl (a Polish furniture
+# company, one hacked host) and co.pt (a Portuguese registry: every
+# name.co.pt customer went dark) among them.
+
+PSL_EU = {"com", "pl", "pt", "com.pt", "gm", "tg", "cfd"}
+
+
+def test_one_listed_subdomain_blocks_that_host_not_the_company_domain():
+    out = rdd.build_blockset(["inout.zoom.pl"], set(), shared_suffixes=set(),
+                             public_suffixes=PSL_EU, brand_owned=frozenset())
+    assert out == {"inout.zoom.pl"}
+    # A phishing link names the host, so the link itself is still blocked.
+
+
+def test_several_listed_subdomains_or_the_www_host_still_promote():
+    out = rdd.build_blockset(["login.scotiabano.com", "secure.scotiabano.com", "www.evil-bank.com"],
+                             set(), shared_suffixes=set(), public_suffixes=PSL_EU, brand_owned=frozenset())
+    assert {"scotiabano.com", "evil-bank.com"} <= out
+    # Repeats of ONE subdomain (one per feed URL) are still one subdomain.
+    out = rdd.build_blockset(["login.one-host.com"] * 5, set(), shared_suffixes=set(),
+                             public_suffixes=PSL_EU, brand_owned=frozenset())
+    assert out == {"login.one-host.com"}
+
+
+def test_a_listed_registrable_is_blocked_whole_on_its_own_evidence():
+    out = rdd.build_blockset(["scam-shop.com", "pay.scam-shop.com"], set(), shared_suffixes=set(),
+                             public_suffixes=PSL_EU, brand_owned=frozenset())
+    assert "scam-shop.com" in out
+
+
+@pytest.mark.parametrize("zone,registrant", [
+    ("co.pt", "ajs.co.pt"), ("gov.gm", "moh.gov.gm"), ("com.tg", "shop.com.tg"),
+    ("go.kg", "x.go.kg"), ("presse.ci", "journal.presse.ci"),
+])
+def test_a_national_zone_missing_from_the_psl_is_never_listed(zone, registrant):
+    # Several registrants, the zone itself in a feed, a PSL that does not
+    # know the zone: the registrants are listed, the zone never is.
+    hosts = [registrant, f"other.{zone}", f"www.{zone}", zone]
+    out = rdd.build_blockset(hosts, set(), shared_suffixes=set(), public_suffixes=PSL_EU,
+                             brand_owned=frozenset())
+    assert zone not in out
+    assert registrant in out
+
+
+def test_zone_detection_is_about_generic_labels_under_cctlds():
+    assert rdd.is_zone_like("co.pt") and rdd.is_zone_like("gov.gm")
+    assert not rdd.is_zone_like("zoom.pl")        # a company, not a zone
+    assert not rdd.is_zone_like("gov.moi")        # .moi is a gTLD: someone's domain
+    assert not rdd.is_zone_like("ajs.co.pt")      # a registrant under the zone
     # PSL parsing keeps wildcards, drops exceptions and comments.
     assert rdd.parse_psl("// c\n*.ck\n!www.ck\n\nCOM.AM\n") == {"*.ck", "com.am"}
 
@@ -396,6 +453,7 @@ class _FakeRedis:
         return len(members_set) - before
 
     async def smembers(self, key):
+        self._check("smembers")
         return set(self.data.get(key, set()))
 
     async def scard(self, key):
@@ -411,6 +469,28 @@ class _FakeRedis:
 
     async def hmget(self, key, fields):
         return [self.data.get(key, {}).get(f) for f in fields]
+
+    async def hgetall(self, key):
+        self._check("hgetall")
+        return dict(self.data.get(key, {}))
+
+    async def hkeys(self, key):
+        return list(self.data.get(key, {}))
+
+    async def hdel(self, key, *fields):
+        h = self.data.get(key, {})
+        removed = sum(h.pop(f, None) is not None for f in fields)
+        self._drop_if_empty(key)
+        return removed
+
+    async def zremrangebyrank(self, key, start, end):
+        rows = sorted(self.data.get(key, {}).items(), key=lambda kv: (kv[1], kv[0]))
+        stop = len(rows) + end + 1 if end < 0 else end + 1  # Redis ranks are inclusive
+        doomed = [m for m, _ in rows[start:max(stop, 0)]]
+        for m in doomed:
+            del self.data[key][m]
+        self._drop_if_empty(key)
+        return len(doomed)
 
     async def zadd(self, key, mapping, nx=False):
         self._check("zadd")
@@ -715,7 +795,25 @@ async def test_a_failed_feed_does_not_record_its_names_as_departed(monkeypatch, 
     stored = fake.data.get(retention.LAST_SEEN_KEY, {})
     assert TENANT_PHISH not in stored, "an outage must not be recorded as a departure"
     assert already in stored, "names retained before the outage keep their clock"
+    assert TENANT_PHISH in _published(fake), "the missing feed's name is carried"
+    assert "outage guard: keeping 1 published names OpenPhish backed" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_without_a_record_of_its_names_a_failed_feed_stops_departures(monkeypatch, caplog):
+    """The first outage after the records began (or with the record
+    unreadable): nothing tells the feed's names from departures, so none is
+    recorded and every unlisted published name is kept, as before."""
+    fake = _FakeRedis()
+    assert await _run(monkeypatch, fake, [_url(TENANT_PHISH)], now=T0) == 0
+    del fake.data[feed_backing.BACKING_KEY]
+
+    _stub_outage(monkeypatch, fake, rdd.OPENPHISH_FEED, [])
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600) == 0
+    assert TENANT_PHISH not in fake.data.get(retention.LAST_SEEN_KEY, {})
+    assert TENANT_PHISH in _published(fake)
     assert "not recording departures" in caplog.text
+    assert "OpenPhish: no record of which names it backed" in caplog.text
 
 
 def test_plan_retention_records_nothing_when_told_not_to():
@@ -1009,11 +1107,16 @@ def test_exact_only_hosts_never_promote_their_platform_apex():
     assert "turbo.site" not in out and "com.nl" not in out
 
 
-def test_the_same_host_from_a_promoting_feed_still_promotes():
+def test_the_same_hosts_from_a_promoting_feed_still_promote():
     psl = {"site", "com", "nl"}
-    out = rdd.build_blockset(["townmoney.turbo.site"], TOP, public_suffixes=psl,
-                             brand_owned=frozenset(), exact_only=frozenset())
-    assert out == {"townmoney.turbo.site", "turbo.site"}
+    hosts = ["townmoney.turbo.site", "citymoney.turbo.site"]
+    out = rdd.build_blockset(hosts, TOP, public_suffixes=psl, brand_owned=frozenset(),
+                             exact_only=frozenset())
+    assert out == {"townmoney.turbo.site", "citymoney.turbo.site", "turbo.site"}
+    # …and exact-only copies of the same hosts do not count toward it.
+    out = rdd.build_blockset(hosts, TOP, public_suffixes=psl, brand_owned=frozenset(),
+                             exact_only={"citymoney.turbo.site"})
+    assert "turbo.site" not in out
 
 
 def test_an_exact_only_host_still_meets_every_other_guard():
@@ -1145,3 +1248,438 @@ async def test_artifact_out_writes_the_exact_bytes_a_phone_would_download(monkey
     header, hashes = parse_artifact_v2(out.read_bytes())
     assert header["count"] == len(hashes)
     assert artifact_covers(set(hashes), TENANT_PHISH)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 2026-09-26: outage guard — a feed that goes missing must not quietly take
+# its names out of the list.
+#
+# Report of 2026-09-25: if phishing.army fails to download once, the list is
+# published without it; the change is 28.9%, under the 50% churn gate, and
+# coverage of fresh PhishTank phishing falls from ~73% to ~1%.
+# ══════════════════════════════════════════════════════════════════════════
+
+from api.services import blocklist_feed_health as feed_health  # noqa: E402
+from api.services import confirmed_threats  # noqa: E402
+
+# Shaped like the real split: the aggregate that is not phishing.army carries
+# ~71% of the names, phishing.army the other ~29%.
+ARMY = [f"army{i}.top" for i in range(165)]
+ARMY_PSL = PSL | {"top"}
+
+
+def _army_world(monkeypatch, fake, army_body, openphish_urls=(), failing=frozenset()):
+    """BASE (Phishing.Database) + phishing.army; `army_body` is a string, or
+    an Exception instance to raise from the download. URLs in `failing`
+    raise too."""
+    _stub_world(monkeypatch, fake, list(openphish_urls))
+    healthy = rdd._fetch
+
+    async def _fetch(url):
+        if url in failing:
+            raise ConnectionError(f"{url} down")
+        if url == rdd.PHISHING_ARMY:
+            if isinstance(army_body, Exception):
+                raise army_body
+            return army_body
+        return await healthy(url)
+
+    async def _psl():
+        return set(ARMY_PSL)
+
+    monkeypatch.setattr(rdd, "_fetch", _fetch)
+    monkeypatch.setattr(rdd, "_fetch_psl", _psl)
+
+
+async def _army_run(monkeypatch, fake, army_body, now, force=False, openphish_urls=(),
+                    failing=frozenset()) -> int:
+    _army_world(monkeypatch, fake, army_body, openphish_urls, failing)
+    return await rdd.refresh("redis://fake", dry_run=False, force=force, now=now)
+
+
+def test_the_report_scenario_passes_the_churn_gate_on_its_own():
+    """Why a separate guard is needed at all: without phishing.army the set
+    changes by ~29%, and the churn gate (50%) waves it through."""
+    full = set(BASE) | set(ARMY)
+    ok, _ = rdd.publish_gate(set(BASE), full, set(), set())
+    assert ok, "if this ever fails, the churn gate alone would catch the outage"
+    assert 0.25 < len(full - set(BASE)) / len(full) < 0.5
+
+
+@pytest.mark.asyncio
+async def test_a_feed_that_fails_to_download_keeps_its_names_in_the_list(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    assert await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0) == 0
+    assert set(ARMY) <= _published(fake)
+
+    assert await _army_run(monkeypatch, fake, ConnectionError("phishing.army down"), now=T0 + 6 * 3600) == 0
+    assert set(ARMY) <= _published(fake), "an outage must not take the feed's names off every phone"
+    assert _phone_blocks(fake, ARMY[0])
+    assert "FEED DEGRADED: phishing.army" in caplog.text
+    assert "outage guard: keeping 165" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_registrable_the_missing_feed_promoted_is_kept_too(monkeypatch):
+    """shared-reg.top was blocked whole on two phishing.army subdomains. With
+    the feed down, OpenPhish's one subdomain alone would not promote it — the
+    outage must not shrink it back to a single host."""
+    fake = _FakeRedis()
+    army = "\n".join(ARMY + ["a.shared-reg.top", "b.shared-reg.top"])
+    op = [_url("c.shared-reg.top")]
+    await _army_run(monkeypatch, fake, army, now=T0, openphish_urls=op)
+    assert "shared-reg.top" in _published(fake)
+    await _army_run(monkeypatch, fake, ConnectionError("down"), now=T0 + 6 * 3600, openphish_urls=op)
+    assert "shared-reg.top" in _published(fake)
+    assert _phone_blocks(fake, "d.shared-reg.top")
+
+
+@pytest.mark.asyncio
+async def test_a_feed_that_answers_but_shrinks_abnormally_counts_as_down(monkeypatch, caplog):
+    big = [f"army{i}.top" for i in range(feed_health.MIN_BASELINE + 200)]
+    fake = _FakeRedis()
+    assert await _army_run(monkeypatch, fake, "\n".join(big), now=T0, force=True) == 0
+    assert fake.data[feed_health.FEED_COUNTS_KEY]["phishing.army"] == str(len(big))
+
+    # A 200 OK with a tenth of the list: a truncated file, not a real change.
+    truncated = "\n".join(big[:120])
+    assert await _army_run(monkeypatch, fake, truncated, now=T0 + 6 * 3600) == 0
+    assert set(big) <= _published(fake)
+    assert "shrank from 1200 to 120 hosts" in caplog.text
+    # A broken run never becomes the yardstick for the next one.
+    assert fake.data[feed_health.FEED_COUNTS_KEY]["phishing.army"] == str(len(big))
+
+
+@pytest.mark.asyncio
+async def test_force_accepts_a_real_shrink_as_the_new_size(monkeypatch):
+    big = [f"army{i}.top" for i in range(feed_health.MIN_BASELINE + 200)]
+    fake = _FakeRedis()
+    await _army_run(monkeypatch, fake, "\n".join(big), now=T0, force=True)
+    assert await _army_run(monkeypatch, fake, "\n".join(big[:600]), now=T0 + 6 * 3600, force=True) == 0
+    assert fake.data[feed_health.FEED_COUNTS_KEY]["phishing.army"] == "600"
+    assert feed_health.FEED_DOWN_SINCE_KEY not in fake.data
+
+
+@pytest.mark.asyncio
+async def test_an_outage_past_twelve_hours_turns_the_run_red_until_the_feed_is_back(monkeypatch):
+    fake = _FakeRedis()
+    down = ConnectionError("phishing.army down")
+    assert await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0) == 0
+    assert await _army_run(monkeypatch, fake, down, now=T0 + 6 * 3600) == 0       # weather
+    assert await _army_run(monkeypatch, fake, down, now=T0 + 18 * 3600) == rdd.EXIT_FEED_OUTAGE
+    assert set(ARMY) <= _published(fake), "the alerting run still published, names kept"
+    assert await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0 + 24 * 3600) == 0
+    assert feed_health.FEED_DOWN_SINCE_KEY not in fake.data
+
+
+@pytest.mark.asyncio
+async def test_the_carry_stops_after_the_window_and_the_names_leave(monkeypatch, caplog):
+    fake = _FakeRedis()
+    down = ConnectionError("phishing.army gone for good")
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0)
+    await _army_run(monkeypatch, fake, down, now=T0 + 6 * 3600)
+    later = T0 + 6 * 3600 + feed_health.CARRY_MAX_SECONDS + DAY
+    assert await _army_run(monkeypatch, fake, down, now=later) == rdd.EXIT_FEED_OUTAGE
+    assert not set(ARMY) & _published(fake)
+    assert "past the 14-day carry window" in caplog.text
+
+
+# ── Review of #50: the carry keeps what the MISSING feed backed, judged per
+# feed — not every unlisted name, not on the oldest outage. ────────────────
+ARMY_DOWN = ConnectionError("phishing.army down")
+
+
+@pytest.mark.asyncio
+async def test_a_feed_dead_for_weeks_never_switches_the_guard_off_for_another(monkeypatch, caplog):
+    """The carry window was judged on the OLDEST outage: once CSIRT Italia had
+    been down 14 days, a fresh phishing.army outage lost all 165 names."""
+    fake = _FakeRedis()
+    army, csirt_down = "\n".join(ARMY), frozenset({rdd.CSIRT_IT_MANIFEST})
+    assert await _army_run(monkeypatch, fake, army, now=T0) == 0
+    assert await _army_run(monkeypatch, fake, army, now=T0 + 6 * 3600, failing=csirt_down) == 0
+    weeks = T0 + 6 * 3600 + feed_health.CARRY_MAX_SECONDS + DAY
+    assert await _army_run(monkeypatch, fake, army, now=weeks, failing=csirt_down) == rdd.EXIT_FEED_OUTAGE
+
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=weeks + 6 * 3600,
+                           failing=csirt_down) == rdd.EXIT_FEED_OUTAGE
+    assert set(ARMY) <= _published(fake), "a fresh outage keeps its names whatever else is dead"
+    assert "outage guard: keeping 165 published names phishing.army backed" in caplog.text
+    assert "CSIRT Italia down for 15.2 days — past the 14-day carry window" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_during_an_outage_another_feeds_delisting_is_an_ordinary_departure(monkeypatch, caplog):
+    """The carry kept every published name no live source listed, so while any
+    feed was down, a name a HEALTHY feed dropped (an upstream false-positive
+    removal) stayed frozen on every phone for the length of the outage."""
+    fake = _FakeRedis()
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0, openphish_urls=[_url("fp-legit.top")])
+    assert "fp-legit.top" in _published(fake)
+
+    down = T0 + 6 * 3600
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=down) == 0
+    assert "outage guard: keeping 165 published names phishing.army backed" in caplog.text
+    stored = fake.data[retention.LAST_SEEN_KEY]
+    assert stored["fp-legit.top"] == down, "recorded as departed, exactly as without an outage"
+    assert not set(ARMY) & set(stored), "the missing feed's names are not departures"
+    # It leaves on retention's clock while phishing.army is still down.
+    later = down + retention.DEFAULT_RETAIN_DAYS * DAY + 3600
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=later) == rdd.EXIT_FEED_OUTAGE
+    assert "fp-legit.top" not in _published(fake)
+
+
+@pytest.mark.asyncio
+async def test_an_outage_never_carries_back_a_domain_the_old_rule_promoted(monkeypatch):
+    """#17 transition: with any feed down, the carry re-published zoom.pl-style
+    registrables the one-subdomain rule had promoted, until an all-healthy run."""
+    fake = _FakeRedis()
+    op = [_url("login.oneshot.top")]
+    monkeypatch.setattr(rdd, "PROMOTE_MIN_SUBDOMAINS", 1)
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0, openphish_urls=op)
+    assert "oneshot.top" in _published(fake)
+
+    monkeypatch.setattr(rdd, "PROMOTE_MIN_SUBDOMAINS", 2)
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=T0 + 6 * 3600, openphish_urls=op) == 0
+    assert "oneshot.top" not in _published(fake)
+    assert "login.oneshot.top" in _published(fake)
+    assert set(ARMY) <= _published(fake)
+
+
+@pytest.mark.asyncio
+async def test_before_a_feed_has_a_record_its_outage_keeps_every_unlisted_name(monkeypatch, caplog):
+    """The first runs after this change have no records yet. An outage then
+    falls back to the old carry — whole-domain promotions included — until
+    the degraded feed publishes healthy once. The release notes say so."""
+    fake = _FakeRedis()
+    op = [_url("login.oneshot.top")]
+    monkeypatch.setattr(rdd, "PROMOTE_MIN_SUBDOMAINS", 1)
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0, openphish_urls=op)
+    del fake.data[feed_backing.BACKING_KEY]
+
+    monkeypatch.setattr(rdd, "PROMOTE_MIN_SUBDOMAINS", 2)
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=T0 + 6 * 3600, openphish_urls=op) == 0
+    assert {"oneshot.top", *ARMY} <= _published(fake)
+    assert "phishing.army: no record of which names it backed" in caplog.text
+    # phishing.army back: its record exists from now on, and the old
+    # promotion is gone for good.
+    assert await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0 + 12 * 3600, openphish_urls=op) == 0
+    assert "oneshot.top" not in _published(fake)
+    assert "phishing.army" in fake.data[feed_backing.BACKING_KEY]
+
+
+@pytest.mark.asyncio
+async def test_records_are_written_only_by_a_publish_and_only_for_healthy_feeds(monkeypatch):
+    fake = _FakeRedis()
+    _army_world(monkeypatch, fake, "\n".join(ARMY))
+    assert await rdd.refresh("redis://fake", dry_run=True, now=T0) == 0
+    assert feed_backing.BACKING_KEY not in fake.data, "a dry run writes no records"
+
+    assert await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0) == 0
+    records = {feed: feed_backing.decode(text) for feed, text in fake.data[feed_backing.BACKING_KEY].items()}
+    assert all(name in records["phishing.army"] for name in ARMY)
+    assert all(name in records["Phishing.Database"] for name in BASE)
+    army_before = fake.data[feed_backing.BACKING_KEY]["phishing.army"]
+
+    assert await _army_run(monkeypatch, fake, ARMY_DOWN, now=T0 + 6 * 3600) == 0
+    assert fake.data[feed_backing.BACKING_KEY]["phishing.army"] == army_before, \
+        "a degraded feed keeps the record of its last healthy run"
+    assert feed_backing.decode(fake.data[feed_backing.BACKING_KEY]["Phishing.Database"]).built_at == T0 + 6 * 3600
+
+
+@pytest.mark.asyncio
+async def test_no_publish_when_a_feed_is_down_and_the_live_set_is_unreadable(monkeypatch, caplog):
+    fake = _FakeRedis()
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0)
+    before = set(_published(fake))
+    fake.fail = {"smembers"}
+    assert await _army_run(monkeypatch, fake, ConnectionError("down"), now=T0 + 6 * 3600) == 4
+    fake.fail = set()
+    assert _published(fake) == before
+    assert "refusing to publish" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_feed_outage_in_a_dry_run_is_reported_and_writes_nothing(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    await _army_run(monkeypatch, fake, "\n".join(ARMY), now=T0)
+    counts_before = dict(fake.data[feed_health.FEED_COUNTS_KEY])
+    _army_world(monkeypatch, fake, ConnectionError("down"))
+    assert await rdd.refresh("redis://fake", dry_run=True, now=T0 + 6 * 3600) == 0
+    assert "FEED DEGRADED: phishing.army" in caplog.text
+    assert fake.data[feed_health.FEED_COUNTS_KEY] == counts_before
+    assert feed_health.FEED_DOWN_SINCE_KEY not in fake.data
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 2026-09-26: hosts our own checks confirmed through Safe Browsing reach the
+# phones (api/services/confirmed_threats.py), through every guard — only
+# while PUBLISH_CONFIRMED_THREATS is on (a licence decision, off by default).
+# ══════════════════════════════════════════════════════════════════════════
+
+
+@pytest.fixture
+def publishing_on(monkeypatch):
+    monkeypatch.setenv(confirmed_threats.ENABLE_ENV, "1")
+
+
+def _confirm(fake, host, at):
+    fake.data.setdefault(confirmed_threats.CONFIRMED_KEY, {})[host] = float(at)
+
+
+@pytest.mark.asyncio
+async def test_a_server_confirmed_host_is_published_exactly(monkeypatch, publishing_on):
+    fake = _FakeRedis()
+    _confirm(fake, "login.gsb-flagged.com", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    assert "login.gsb-flagged.com" in _published(fake)
+    assert _phone_blocks(fake, "login.gsb-flagged.com")
+    # One confirmed host never darkens its registrable.
+    assert "gsb-flagged.com" not in _published(fake)
+    assert not _phone_blocks(fake, "gsb-flagged.com")
+
+
+@pytest.mark.asyncio
+async def test_with_publishing_off_stored_hosts_leave_at_once_without_a_tail(monkeypatch, publishing_on,
+                                                                              caplog):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    _confirm(fake, "login.gsb-flagged.com", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    assert "login.gsb-flagged.com" in _published(fake)
+
+    monkeypatch.delenv(confirmed_threats.ENABLE_ENV)
+    assert await _run(monkeypatch, fake, [], now=T0 + 6 * 3600) == 0
+    assert "login.gsb-flagged.com" not in _published(fake)
+    assert "login.gsb-flagged.com" not in fake.data.get(retention.LAST_SEEN_KEY, {})
+    assert "publishing is off" in caplog.text
+    # Off, the set is not a source any more: its record of names is dropped.
+    assert rdd.CONFIRMED_SOURCE not in fake.data[feed_backing.BACKING_KEY]
+
+
+@pytest.mark.asyncio
+async def test_with_publishing_off_an_unreadable_set_is_no_outage(monkeypatch):
+    fake = _ConfirmedUnreadable()
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    assert await _run(monkeypatch, fake, [], now=T0 + 18 * 3600) == 0
+    assert feed_health.FEED_DOWN_SINCE_KEY not in fake.data
+
+
+@pytest.mark.asyncio
+async def test_server_confirmed_hosts_meet_every_false_positive_guard(monkeypatch, publishing_on):
+    fake = _FakeRedis()
+    for host in ("popular-bank.com", "walmart.com.br", "vercel.app", "github.com", "co.pt",
+                 "tenant-phish.vercel.app"):
+        _confirm(fake, host, T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0, top={"popular-bank.com"}) == 0
+    published = _published(fake)
+    assert "popular-bank.com" not in published       # top-100k veto
+    assert "walmart.com.br" not in published         # brand-owned veto
+    assert "vercel.app" not in published             # shared-platform apex
+    assert "github.com" not in published             # path-shared host
+    assert "co.pt" not in published                  # a national zone
+    assert "tenant-phish.vercel.app" in published    # one tenant, exactly
+
+
+@pytest.mark.asyncio
+async def test_a_confirmation_expires_after_its_window_without_a_retention_tail(monkeypatch, publishing_on):
+    fake = _FakeRedis()
+    _confirm(fake, "stale-phish.com", T0 - 3600)
+    await _run(monkeypatch, fake, [], now=T0)
+    assert "stale-phish.com" in _published(fake)
+    after = T0 - 3600 + confirmed_threats.CONFIRMED_WINDOW_SECONDS + 3600
+    assert await _run(monkeypatch, fake, [], now=after) == 0
+    assert "stale-phish.com" not in _published(fake)
+    # The confirmation window WAS its retention: no second 14-day tail.
+    assert "stale-phish.com" not in fake.data.get(retention.LAST_SEEN_KEY, {})
+    # …and it is forgotten once past the grace period.
+    await _run(monkeypatch, fake, [], now=after + confirmed_threats.EXPIRED_GRACE_SECONDS + DAY)
+    assert "stale-phish.com" not in fake.data.get(confirmed_threats.CONFIRMED_KEY, {})
+
+
+@pytest.mark.asyncio
+async def test_the_runbooks_manual_expiry_takes_a_wrong_host_off_without_a_tail(monkeypatch, publishing_on):
+    """docs/runbooks/monitoring.md: to lift a Safe Browsing false positive,
+    set its confirmation to just past the window — ZREM would turn it into a
+    departure that retention keeps published for 14 more days."""
+    fake = _FakeRedis()
+    _confirm(fake, "small-clinic.ru", T0 - 3600)
+    await _run(monkeypatch, fake, [], now=T0)
+    assert "small-clinic.ru" in _published(fake)
+
+    later = T0 + 3600
+    _confirm(fake, "small-clinic.ru", later - confirmed_threats.CONFIRMED_WINDOW_SECONDS - 3600)
+    # Another host confirmed in between must not delete it before the refresh.
+    await confirmed_threats.record(fake, "other-phish.top", later)
+    assert "small-clinic.ru" in fake.data[confirmed_threats.CONFIRMED_KEY]
+    assert await _run(monkeypatch, fake, [], now=later) == 0
+    assert "small-clinic.ru" not in _published(fake)
+    assert "small-clinic.ru" not in fake.data.get(retention.LAST_SEEN_KEY, {})
+
+
+class _ConfirmedUnreadable(_FakeRedis):
+    """Only the server-confirmed set is broken (e.g. the key has the wrong
+    type) — the live blocklist and retention still read fine."""
+
+    async def zrange(self, key, start, end, withscores=False):
+        if key == confirmed_threats.CONFIRMED_KEY:
+            raise ConnectionError("WRONGTYPE Operation against a key holding the wrong kind of value")
+        return await super().zrange(key, start, end, withscores=withscores)
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_confirmed_set_alerts_and_never_outlives_the_window(monkeypatch, publishing_on,
+                                                                                 caplog):
+    """Carrying hosts we can no longer see would publish some past their
+    7-day window — the privacy promise. They leave instead, with no
+    retention tail, and the outage alerts like any feed's."""
+    fake = _FakeRedis()
+    _confirm(fake, "login.gsb-flagged.com", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    broken = _ConfirmedUnreadable()
+    broken.data, broken.ttl = fake.data, fake.ttl
+    assert await _run(monkeypatch, broken, [], now=T0 + 6 * 3600) == 0
+    assert "login.gsb-flagged.com" not in _published(broken)
+    assert "login.gsb-flagged.com" not in broken.data.get(retention.LAST_SEEN_KEY, {})
+    assert "FEED DEGRADED: Cleanway checks" in caplog.text
+    assert "its hosts are not carried" in caplog.text
+    assert await _run(monkeypatch, broken, [], now=T0 + 18 * 3600) == rdd.EXIT_FEED_OUTAGE
+    # Readable again: the outage closes and the host is back while confirmed.
+    assert await _run(monkeypatch, fake, [], now=T0 + 24 * 3600) == 0
+    assert feed_health.FEED_DOWN_SINCE_KEY not in fake.data
+    assert "login.gsb-flagged.com" in _published(fake)
+
+
+@pytest.mark.asyncio
+async def test_a_dry_run_reads_confirmed_hosts_but_prunes_nothing(monkeypatch, publishing_on, caplog):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    _confirm(fake, "ancient.example", T0 - 60 * DAY)
+    _confirm(fake, "fresh.example", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0, dry_run=True) == 0
+    assert "ancient.example" in fake.data[confirmed_threats.CONFIRMED_KEY]
+    assert "server-confirmed threats: 1 inside the 7-day window, 1 expired" in caplog.text
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 2026-09-26: a rollback must not leave the bad list reachable as a delta.
+# ══════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_rollback_removes_the_delta_that_leads_to_the_bad_list(monkeypatch):
+    from api.services.blocklist_artifact import REDIS_META_KEY, delta_key
+    fake = _FakeRedis()
+    await _run(monkeypatch, fake, [_url(TENANT_PHISH)], now=T0)
+    good_gen = int(fake.data[REDIS_META_KEY]["generated_at"])
+
+    async def _broken(_sample):
+        return ["github.com is NXDOMAIN after publish"]
+
+    _stub_world(monkeypatch, fake, [_url(TENANT_PHISH), _url("second-phish.vercel.app")])
+    monkeypatch.setattr(rdd, "verify_published", _broken)
+    monkeypatch.setattr(rdd.time, "time", lambda: T0 + 6 * 3600)
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600) == 5
+    assert int(fake.data[REDIS_META_KEY]["generated_at"]) == good_gen
+    assert delta_key(good_gen) not in fake.data, "phones on the restored list would fetch the bad one"

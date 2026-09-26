@@ -7,13 +7,27 @@ profile. Nothing noticed until a person went looking. It now runs every 15
 minutes and fails loudly.
 
 Five questions, all against the LIVE endpoints:
-  1. Do names that must never be blocked resolve?  (the publisher's
-     NEVER_BLOCK_GUARDS plus the curated list in data/canary_must_resolve.txt)
-  2. Does a name that IS on the published list get NXDOMAIN? — otherwise the
-     blocklist is silently dead (that state lasted months once already).
+  1. Do names that must never be blocked resolve — and does the gateway
+     resolve anything at all?  (the publisher's NEVER_BLOCK_GUARDS plus the
+     curated list in data/canary_must_resolve.txt; at least half of them
+     must come back with an answer, not just "not NXDOMAIN")
+  2. Does a name that IS on the published list get NXDOMAIN *from us*? —
+     otherwise the blocklist is silently dead (that state lasted months once
+     already). The gateway's own NXDOMAIN carries an SOA naming
+     blocked.cleanway.ai; an NXDOMAIN without it came from upstream. Until
+     2026-09-26 this probe could not fail: list-canary.cleanway.ai exists
+     nowhere, so upstream said NXDOMAIN too. Also probed: up to three hosts
+     from a public phishing feed that are on our list AND resolve on the
+     public internet (the gateway's own upstream) — the whole path, on real
+     names. Best-effort: no such host right now is a note, not a failure.
   3. Is the phone artifact fresh, self-consistent, and carrying its canary?
   4. Is the API healthy end to end?  (/health/deep — /health is always-200)
   5. Is the landing page people install from up?  (/ru/android)
+
+Schedule: GitHub runs '*/15' crons best-effort. Measured 2026-09-18..25:
+46–47 runs in 7 days (about one every 3.5 h) instead of 672. Treat this as a
+periodic audit, not paging; minute-level uptime needs an external monitor
+(docs/runbooks/monitoring.md).
 
 A canary that cries wolf is muted. Measured 2026-09-02: 11 of 100 runs failed
 and every one was noise — 4 from a freshness threshold equal to the
@@ -26,6 +40,7 @@ the owner. Read-only: it never writes Redis.
 Usage:
     python3 scripts/dns_canary.py [--base https://api.cleanway.ai]
                                   [--landing-base https://cleanway.ai]
+                                  [--live-source https://phishunt.io/feed.txt]
 """
 from __future__ import annotations
 
@@ -40,12 +55,27 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import NamedTuple, Optional
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BASE = "https://api.cleanway.ai"
 DEFAULT_LANDING_BASE = "https://cleanway.ai"
 LANDING_PATH = "/ru/android"
 USER_AGENT = "cleanway-dns-canary"
+
+# The SOA MNAME in every NXDOMAIN the gateway synthesises
+# (api/services/doh_gateway.py _SOA_MNAME; a test pins the two together —
+# this script runs on a bare runner without the API's dependencies).
+BLOCK_SOA_MNAME = "blocked.cleanway.ai"
+# Live phishing hosts to probe: Phishunt's hourly feed, CC0 1.0 ("released
+# into the public domain", terms §7). Empty string disables the live probe.
+DEFAULT_LIVE_SOURCE = "https://phishunt.io/feed.txt"
+# Where "does the public internet resolve it" is asked: the gateway's own
+# upstream (doh_gateway.CLOUDFLARE_DOH_URL), unfiltered 1.1.1.1.
+PUBLIC_DOH_BASE = "https://cloudflare-dns.com"
+MAX_LIVE_LOOKUPS = 10  # public-DNS questions per run, at most
+MAX_LIVE_PROBES = 3
 
 sys.path.insert(0, str(ROOT))
 from api.services.blocklist_artifact import (  # noqa: E402
@@ -70,8 +100,56 @@ def wire_query(name: str) -> bytes:
     return os.urandom(2) + b"\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + labels + b"\x00\x01\x00\x01"
 
 
-def doh(base: str, name: str, timeout: float = 10.0) -> tuple[int, int]:
-    """(rcode, answer_count) from the live gateway."""
+class DnsAnswer(NamedTuple):
+    rcode: int
+    answers: int
+    soa_mname: Optional[str]  # MNAME of the first SOA in the authority section
+
+
+def _read_name(buf: bytes, pos: int) -> tuple[str, int]:
+    """A (possibly compressed) domain name at `pos`: (name, offset after it)."""
+    labels: list[str] = []
+    after: Optional[int] = None
+    for _ in range(128):  # bounded: a pointer loop must not hang the canary
+        if pos >= len(buf):
+            raise ValueError("name runs past the end of the message")
+        length = buf[pos]
+        if length & 0xC0 == 0xC0:
+            if pos + 1 >= len(buf):
+                raise ValueError("truncated compression pointer")
+            after = pos + 2 if after is None else after
+            pos = ((length & 0x3F) << 8) | buf[pos + 1]
+            continue
+        if length == 0:
+            return ".".join(labels), (pos + 1 if after is None else after)
+        labels.append(buf[pos + 1:pos + 1 + length].decode("ascii", "replace").lower())
+        pos += 1 + length
+    raise ValueError("name too long or a compression loop")
+
+
+def parse_response(body: bytes) -> DnsAnswer:
+    """RCODE, answer count and the authority SOA's MNAME of a DNS response."""
+    if len(body) < 12:
+        raise ValueError(f"short DNS response: {len(body)} bytes")
+    qdcount, ancount, nscount, _ = struct.unpack("!HHHH", body[4:12])
+    pos = 12
+    for _ in range(qdcount):
+        pos = _read_name(body, pos)[1] + 4          # QTYPE + QCLASS
+    for _ in range(ancount):
+        pos = _read_name(body, pos)[1]
+        pos += 10 + struct.unpack("!H", body[pos + 8:pos + 10])[0]
+    soa: Optional[str] = None
+    for _ in range(nscount):
+        pos = _read_name(body, pos)[1]
+        rtype, _cls, _ttl, rdlength = struct.unpack("!HHIH", body[pos:pos + 10])
+        if rtype == 6 and soa is None:
+            soa = _read_name(body, pos + 10)[0]
+        pos += 10 + rdlength
+    return DnsAnswer(body[3] & 0x0F, ancount, soa)
+
+
+def doh(base: str, name: str, timeout: float = 10.0) -> DnsAnswer:
+    """Ask the DoH endpoint at `base` (RFC 8484 GET) for `name`'s A record."""
     q = base64.urlsafe_b64encode(wire_query(name)).decode().rstrip("=")
     req = urllib.request.Request(
         f"{base}/dns-query?dns={q}",
@@ -79,9 +157,7 @@ def doh(base: str, name: str, timeout: float = 10.0) -> tuple[int, int]:
     )
     with urllib.request.urlopen(req, timeout=timeout) as r:
         body = r.read()
-    if len(body) < 12:
-        raise ValueError(f"short DoH response for {name}: {len(body)} bytes")
-    return body[3] & 0x0F, struct.unpack("!H", body[6:8])[0]
+    return parse_response(body)
 
 
 def http_get(url: str, timeout: float = 15.0) -> tuple[int, bytes]:
@@ -97,9 +173,69 @@ def http_get(url: str, timeout: float = 15.0) -> tuple[int, bytes]:
 
 def known_blocked_samples() -> list[str]:
     """Names we know are published, to prove filtering is not silently dead.
-    Kept in the repo (not read from the artifact — it carries hashes now) and
-    refreshed whenever they stop appearing in the feeds."""
-    return ["list-canary.cleanway.ai"]
+    The publisher writes the list canary into every set it publishes. It
+    exists nowhere in public DNS, so only our SOA marker proves the block."""
+    return [LIST_CANARY]
+
+
+def listed_hosts_in_feed(text: str, hashes: set[int]) -> list[str]:
+    """Hosts of a URL-per-line feed that the artifact lists exactly, in feed
+    order, without repeats. Exact hash only: such a name is in the gateway's
+    set too (the artifact is a subset of it)."""
+    out: list[str] = []
+    for line in text.splitlines():
+        host = (urlparse(line.strip()).hostname or "").lower().rstrip(".")
+        if host and host not in out and name_hash(host) in hashes:
+            out.append(host)
+    return out
+
+
+def pick_live_probes(candidates: list[str]) -> list[str]:
+    """Up to MAX_LIVE_PROBES candidates the public internet resolves right
+    now. A name that does not resolve publicly would be NXDOMAIN at our
+    gateway even with filtering dead, so it proves nothing."""
+    picked: list[str] = []
+    for host in candidates[:MAX_LIVE_LOOKUPS]:
+        try:
+            answer = doh(PUBLIC_DOH_BASE, host)
+        except Exception:  # noqa: BLE001
+            continue
+        if answer.rcode == 0 and answer.answers > 0:
+            picked.append(host)
+        if len(picked) == MAX_LIVE_PROBES:
+            break
+    return picked
+
+
+def live_probes(source_url: str, hashes: set[int]) -> tuple[list[str], str]:
+    """(listed hosts that resolve publicly, a note on how they were found).
+    Best-effort by design: a quiet feed or an unreachable source is a note,
+    never a failure — the list-canary check still guards the gateway."""
+    if not source_url:
+        return [], "disabled"
+    if not hashes:
+        return [], "skipped: no parsed artifact"
+    try:
+        status, body = http_get(source_url)
+    except Exception as exc:  # noqa: BLE001
+        return [], f"skipped: source unreachable ({exc})"
+    if status != 200:
+        return [], f"skipped: source answered HTTP {status}"
+    candidates = listed_hosts_in_feed(body.decode("utf-8", "replace"), hashes)
+    if not candidates:
+        return [], "skipped: no host of the source is on our list right now"
+    picked = pick_live_probes(candidates)
+    note = f"{len(candidates)} listed in the source, {len(picked)} resolve publicly"
+    return picked, note
+
+
+def artifact_hashes(blob: bytes) -> set[int]:
+    """The artifact's hashes, or an empty set if it does not parse (the
+    artifact check reports that on its own)."""
+    try:
+        return set(parse_artifact_v2(blob)[1])
+    except Exception:  # noqa: BLE001
+        return set()
 
 
 def load_must_resolve(path: Path) -> list[str]:
@@ -127,32 +263,45 @@ def must_resolve_names(path: Path) -> list[str]:
 
 
 def check_resolves(base: str, names: list[str]) -> list[str]:
-    """Nothing on the must-resolve list may be dark."""
+    """Nothing on the must-resolve list may be dark, and the gateway must
+    actually resolve: a SERVFAIL for everything is not NXDOMAIN either, but
+    it is every phone on the DNS profile offline."""
     problems: list[str] = []
+    answered = 0
     for name in names:
         try:
-            rcode, _ = doh(base, name)
+            answer = doh(base, name)
         except Exception as exc:  # noqa: BLE001
             problems.append(f"{name}: DoH request failed: {exc}")
             continue
-        if rcode == 3:
+        if answer.rcode == 3:
             problems.append(f"BLOCKED A POPULAR NAME: {name} -> NXDOMAIN")
-        elif rcode not in (0, 2):
-            problems.append(f"{name}: unexpected rcode {rcode}")
+        elif answer.rcode not in (0, 2):
+            problems.append(f"{name}: unexpected rcode {answer.rcode}")
+        elif answer.rcode == 0 and answer.answers > 0:
+            answered += 1
+    if names and answered * 2 < len(names):
+        problems.append(f"GATEWAY RESOLVES ALMOST NOTHING: {answered} of {len(names)} must-resolve names "
+                        f"got an answer (upstream down?)")
     return problems
 
 
 def check_blocked(base: str, probes: list[str]) -> list[str]:
-    """Any name the publisher just wrote must be NXDOMAIN at the gateway."""
+    """Any name the publisher just wrote must be NXDOMAIN at the gateway, and
+    the NXDOMAIN must be ours (SOA MNAME BLOCK_SOA_MNAME) — not upstream's
+    honest "no such name"."""
     problems: list[str] = []
     for name in probes:
         try:
-            rcode, _ = doh(base, name)
+            answer = doh(base, name)
         except Exception as exc:  # noqa: BLE001
             problems.append(f"{name}: DoH request failed: {exc}")
             continue
-        if rcode != 3:
-            problems.append(f"LISTED NAME NOT BLOCKED: {name} -> rcode {rcode} (blocklist dead?)")
+        if answer.rcode != 3:
+            problems.append(f"LISTED NAME NOT BLOCKED: {name} -> rcode {answer.rcode} (blocklist dead?)")
+        elif answer.soa_mname != BLOCK_SOA_MNAME:
+            problems.append(f"LISTED NAME NOT BLOCKED BY US: {name} -> NXDOMAIN from upstream "
+                            f"(SOA {answer.soa_mname or 'none'}), not from our blocklist (blocklist dead?)")
     return problems
 
 
@@ -229,6 +378,9 @@ def parse_args() -> argparse.Namespace:
                     help="API base URL (env CANARY_BASE)")
     ap.add_argument("--landing-base", default=os.environ.get("CANARY_LANDING_BASE", DEFAULT_LANDING_BASE),
                     help="landing-page base URL (env CANARY_LANDING_BASE)")
+    ap.add_argument("--live-source", default=os.environ.get("CANARY_LIVE_SOURCE", DEFAULT_LIVE_SOURCE),
+                    help="URL-per-line phishing feed for the live block probe; '' disables "
+                         "(env CANARY_LIVE_SOURCE)")
     return ap.parse_args()
 
 
@@ -247,8 +399,8 @@ def main() -> int:
     problems += check_resolves(base, names)
     print(f"resolve-check: {len(names)} names")
 
-    # 2. The blocklist must still block. The artifact carries hashes, not
-    #    names, so probe names taken from the Redis-backed set instead.
+    # 2. The blocklist must still block — with OUR NXDOMAIN. The list canary
+    #    always; plus real listed hosts that the public internet resolves.
     try:
         blob, etag, count_hdr = fetch_artifact(base)
     except Exception as exc:  # noqa: BLE001
@@ -257,6 +409,9 @@ def main() -> int:
     probes = list(known_blocked_samples())
     problems += check_blocked(base, probes)
     print(f"block-check: {len(probes)} listed names")
+    live, note = live_probes(args.live_source, artifact_hashes(blob))
+    problems += check_blocked(base, live)
+    print(f"live-block-check: {len(live)} listed names that resolve publicly ({note})")
 
     # 3. The artifact phones sync.
     if blob:
