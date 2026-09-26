@@ -274,6 +274,124 @@ def test_route_serves_a_delta_when_the_client_names_a_version_it_has(monkeypatch
     assert "x-cleanway-blocklist-delta" not in r2.headers
 
 
+# ─────────────────────────────────────────────────────────────────
+# 2026-09-26: a phone that already holds the current list downloads nothing
+#
+# Measured on the Android 1.0.1 sync code: after applying a delta the app
+# stores no ETag, so its next poll is `?from=<current version>` with no
+# If-None-Match. There is no delta FROM the current version, so the server
+# sent the full 2.57 MB — about every second poll, ~24 MB a month per phone
+# on a prepaid plan instead of ~0.3 MB.
+# ─────────────────────────────────────────────────────────────────
+
+
+def _with_redis(monkeypatch, fake):
+    from api.services import cache as cache_mod
+    from api.services import rate_limiter
+
+    async def _r():
+        return fake
+
+    monkeypatch.setattr(cache_mod, "get_redis", _r)
+    monkeypatch.setattr(rate_limiter, "get_redis", _r)
+
+
+def test_a_phone_naming_the_current_version_gets_304_even_without_an_etag(monkeypatch, client):
+    c, _ = client
+    metered = []
+
+    async def _count(request):
+        metered.append(1)
+        return True
+
+    monkeypatch.setattr("api.routers.blocklist._full_send_allowed", _count)
+    r = c.get("/api/v1/blocklist/dns", params={"from": "1755530000"})
+    assert r.status_code == 304
+    assert r.content == b""
+    assert r.headers["etag"] == f'"{SHA}"'
+    assert r.headers["x-cleanway-blocklist-version"] == "1755530000"
+    assert not metered, "a no-change answer is never a full send"
+
+
+def test_after_a_rollback_the_restored_version_is_not_offered_the_bad_delta(monkeypatch):
+    """A rolled-back publish leaves a delta FROM the restored version TO the
+    bad list. A phone on the restored version must get 'not modified', never
+    that delta."""
+    from api.main import app
+    from api.services.blocklist_artifact import delta_key, parse_artifact_v2, render_artifact_v2, render_delta
+
+    bad = render_artifact_v2({"github.com"}, generated=1755539999)
+    _, cur_h = parse_artifact_v2(BLOB)
+    _, bad_h = parse_artifact_v2(bad)
+    leftover = render_delta(cur_h, bad_h, from_gen=1755530000, to_gen=1755539999,
+                            target_sha=hashlib.sha256(bad).hexdigest())
+
+    class _R(_FakeRedis):
+        async def get(self, key):
+            if key == delta_key(1755530000):
+                return base64.b64encode(leftover).decode()
+            return await super().get(key)
+
+    _with_redis(monkeypatch, _R())
+    r = TestClient(app).get("/api/v1/blocklist/dns", params={"from": "1755530000"})
+    assert r.status_code == 304
+    assert "x-cleanway-blocklist-delta" not in r.headers
+
+
+def test_revalidation_never_rereads_the_artifact_body_from_redis(monkeypatch):
+    """A 304 needs the sha, not 3.4 MB of base64. Every poll and every /health
+    probe used to pull the whole body out of Redis first."""
+    from api.main import app
+    from api.routers import blocklist as blocklist_router
+
+    class _Counting(_FakeRedis):
+        body_reads = 0
+
+        async def get(self, key):
+            if key == "dangerous_domains:mobile:v1":
+                _Counting.body_reads += 1
+            return await super().get(key)
+
+    monkeypatch.setattr(blocklist_router, "_cached", None)
+    _with_redis(monkeypatch, _Counting())
+    c = TestClient(app)
+    for _ in range(5):
+        assert c.get("/api/v1/blocklist/dns", headers={"If-None-Match": f'"{SHA}"'}).status_code == 304
+        assert c.get("/api/v1/blocklist/dns", params={"from": "1755530000"}).status_code == 304
+    assert _Counting.body_reads == 0
+    # A full send reads it once, then serves it from memory.
+    assert c.get("/api/v1/blocklist/dns").content == BLOB
+    assert c.get("/api/v1/blocklist/dns").content == BLOB
+    assert _Counting.body_reads == 1
+
+
+def test_an_older_version_still_gets_its_delta_and_an_unknown_one_the_full_list(monkeypatch):
+    from api.main import app
+    from api.services.blocklist_artifact import DELTA_MAGIC, delta_key, parse_artifact_v2, render_artifact_v2, \
+        render_delta
+
+    old = render_artifact_v2({"a.example"}, generated=100)
+    _, old_h = parse_artifact_v2(old)
+    _, new_h = parse_artifact_v2(BLOB)
+    delta = render_delta(old_h, new_h, from_gen=100, to_gen=1755530000, target_sha=SHA)
+
+    class _R(_FakeRedis):
+        async def get(self, key):
+            if key == delta_key(100):
+                return base64.b64encode(delta).decode()
+            return await super().get(key)
+
+    _with_redis(monkeypatch, _R())
+    c = TestClient(app)
+    r = c.get("/api/v1/blocklist/dns", params={"from": "100"})
+    assert r.status_code == 200 and r.content.startswith(DELTA_MAGIC)
+    # The 1.0.1 app verifies a delta body against the ETag it came with, so
+    # the delta's ETag stays the delta's own sha.
+    assert r.headers["etag"] == f'"{hashlib.sha256(delta).hexdigest()}"'
+    r = c.get("/api/v1/blocklist/dns", params={"from": "42"})
+    assert r.status_code == 200 and r.content == BLOB
+
+
 def test_no_per_ip_rate_limit_survives_a_cgnat_burst(client):
     """The real first users are behind Tele2 CGNAT — thousands of phones on one
     IPv4. The blocklist GET must NOT 429 them: a signed public static file has
