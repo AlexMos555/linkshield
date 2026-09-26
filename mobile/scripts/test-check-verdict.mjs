@@ -110,6 +110,45 @@ try {
     ],
     ["nothing known: nothing kept", () => m.historyRecord("x.tld", null, null), null],
 
+    // ── when History is written (the screen may close before the server answers) ──
+    ["the list not read yet: nothing written", () => m.historyStep("evil.tld", undefined, answer("dangerous"), "nothing").write, "none"],
+    [
+      "listed: saved the moment the list answers, before the server",
+      () => {
+        const step = m.historyStep("evil.tld", "evil.tld", undefined, "nothing");
+        return [step.write, step.saved, step.row.level, step.row.source];
+      },
+      ["insert", "list", "dangerous", "list"],
+    ],
+    [
+      "listed, the server answers later: the same row gets its score",
+      () => {
+        const step = m.historyStep("evil.tld", "evil.tld", answer("dangerous", { score: 95 }), "list");
+        return [step.write, step.saved, step.row.score];
+      },
+      ["update", "final", 95],
+    ],
+    ["listed, the server failed: the list's row stays as it is", () => m.historyStep("evil.tld", "evil.tld", null, "list").write, "none"],
+    [
+      "listed, the server answered before the list: one complete row",
+      () => {
+        const step = m.historyStep("evil.tld", "evil.tld", answer("dangerous", { score: 90 }), "nothing");
+        return [step.write, step.saved, step.row.score];
+      },
+      ["insert", "final", 90],
+    ],
+    ["unlisted, the server has not answered: nothing yet", () => m.historyStep("x.tld", null, undefined, "nothing").write, "none"],
+    [
+      "unlisted, the server answered: saved once",
+      () => {
+        const step = m.historyStep("x.tld", null, answer("caution", { score: 45 }), "nothing");
+        return [step.write, step.saved, step.row.level];
+      },
+      ["insert", "final", "caution"],
+    ],
+    ["a complete row is never written again", () => m.historyStep("x.tld", null, answer("safe"), "final").write, "none"],
+    ["a name that does not exist is never written", () => m.historyStep("x.tld", null, answer("dangerous", { exists: false }), "nothing").write, "none"],
+
     // ── one retry, on a timeout only ────────────────────────────────
     ["an answer first time is not asked twice", () => retried(ok), { result: ok, calls: 1 }],
     ["a timeout is retried once and the late answer used", () => retried(timeout, ok), { result: ok, calls: 2 }],

@@ -198,6 +198,13 @@ jobs:
         # as a scam; a slow first check is retried once, a rate limit never.
         run: node mobile/scripts/test-check-verdict.mjs
 
+      - name: Link check hook regression test
+        # useDomainCheck under real React 18: a second link shared to the open
+        # /shared screen is saved and buzzed under its own name, never the
+        # previous site's; a listed site reaches History even when the screen
+        # closes before the server answers.
+        run: node mobile/scripts/test-domain-check-hook.mjs
+
       - name: Shared message handoff regression test
         # Report #5: a second SMS shared to an open message screen must be
         # checked — the router reuses the screen, so each share needs its id.

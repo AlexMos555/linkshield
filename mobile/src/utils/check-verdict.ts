@@ -79,21 +79,23 @@ export function reasonsToShow(listed: string | null, answer: ServerAnswer | null
   return answer.reasons;
 }
 
+/** One History row, the shape src/services/database.ts saves. */
+export interface HistoryRow {
+  domain: string;
+  score: number;
+  level: CheckLevel;
+  reasons: Array<{ detail: string; code?: string }>;
+  confidence?: string;
+  source?: string;
+}
+
 /** The History row a finished check becomes, or null when there is nothing to keep. */
 export function historyRecord(
   domain: string,
   listed: string | null,
   answer: ServerAnswer | null,
-): { domain: string; score: number; level: CheckLevel; reasons: Array<{ detail: string; code?: string }>; confidence?: string; source?: string } | null {
-  if (listed) {
-    return {
-      domain,
-      score: answer && serverLevel(answer) === "dangerous" ? answer.score : 0,
-      level: "dangerous",
-      reasons: [{ code: ON_DEVICE_LIST_CODE, detail: "On the list of scam sites on this phone" }, ...reasonsToShow(listed, answer)],
-      source: LIST_CHECK_SOURCE,
-    };
-  }
+): HistoryRow | null {
+  if (listed) return listedRecord(domain, listed, answer);
   // A name that does not exist is not a site to remember a verdict for.
   if (!answer || isNotFound(answer)) return null;
   return {
@@ -103,6 +105,53 @@ export function historyRecord(
     reasons: [...answer.reasons],
     ...(answer.confidence ? { confidence: answer.confidence } : {}),
   };
+}
+
+/** The row of a site the on-device list knows: dangerous, with the server's details when it has them. */
+function listedRecord(domain: string, listed: string, answer: ServerAnswer | null): HistoryRow {
+  return {
+    domain,
+    score: answer && serverLevel(answer) === "dangerous" ? answer.score : 0,
+    level: "dangerous",
+    reasons: [{ code: ON_DEVICE_LIST_CODE, detail: "On the list of scam sites on this phone" }, ...reasonsToShow(listed, answer)],
+    source: LIST_CHECK_SOURCE,
+  };
+}
+
+/** How far one site's History row has got: none yet, the list's row alone, or complete. */
+export type HistorySaved = "nothing" | "list" | "final";
+
+/** What to write to History now, and how far the row has got once it is written. */
+export type HistoryStep =
+  | { write: "none" }
+  | { write: "insert" | "update"; row: HistoryRow; saved: HistorySaved };
+
+/**
+ * The History write one site needs now. `listed` is undefined while the list
+ * is being read; `answer` is undefined while the server has not answered and
+ * null when it failed.
+ *
+ * A listed site is saved the moment the list answers: its verdict is on
+ * screen at once, and people close it long before a slow server check ends —
+ * a row that waited for the server was lost with the screen. The row is then
+ * filled in with the server's score and reasons if they come. Any other site
+ * is saved once the server answers.
+ */
+export function historyStep(
+  domain: string,
+  listed: string | null | undefined,
+  answer: ServerAnswer | null | undefined,
+  saved: HistorySaved,
+): HistoryStep {
+  if (saved === "final" || listed === undefined) return { write: "none" };
+  if (listed) {
+    if (saved === "nothing") {
+      return { write: "insert", row: listedRecord(domain, listed, answer ?? null), saved: answer ? "final" : "list" };
+    }
+    return answer ? { write: "update", row: listedRecord(domain, listed, answer), saved: "final" } : { write: "none" };
+  }
+  const row = answer ? historyRecord(domain, null, answer) : null;
+  return row ? { write: "insert", row, saved: "final" } : { write: "none" };
 }
 
 /**
