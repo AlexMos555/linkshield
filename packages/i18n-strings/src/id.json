@@ -396,91 +396,92 @@
       "pricing": "Harga",
       "privacy": "Privasi",
       "business": "Bisnis",
-      "install": "Tambahkan ke Chrome",
+      "install": "Pasang",
       "install_short": "Pasang",
       "install_android": "Unduh aplikasi Android",
-      "install_android_short": "Aplikasi Android"
+      "install_android_short": "Aplikasi Android",
+      "support": "Bantuan"
     },
     "hero": {
       "badge": "{recall}% URL phishing baru terdeteksi (terukur)",
       "title_part1": "Perlindungan dari penipuan yang",
       "title_part2": "menghormati privasi Anda",
-      "subtitle": "Automatic link scanning on every page, backed by 16 threat-intelligence signals and an ML model. We publish our detection rate weekly against Cloudflare and Google. We check domains, never your full URLs or page content.",
-      "cta_primary": "Tambahkan ke Chrome — gratis",
+      "subtitle": "Cleanway untuk Android memblokir situs penipuan dan phishing yang sudah dikenal di semua aplikasi ponsel Anda: browser, aplikasi pesan, email. Gratis, tanpa akun. Untuk memeriksa sebuah situs, kami hanya mengirim namanya (misalnya example.com), tidak pernah tautan lengkapnya atau isi halamannya.",
+      "cta_primary": "Lindungi diri gratis",
       "cta_android": "Unduh aplikasi Android",
       "cta_secondary": "Cara kerjanya",
-      "cta_footer": "Perlindungan dasar gratis selamanya. Tanpa kartu.",
-      "badge_fallback": "Proteksi phishing privasi-pertama — recall dipublikasikan mingguan"
+      "cta_footer": "Memblokir situs penipuan itu gratis. Tanpa kartu, tanpa akun."
     },
     "final_cta": {
       "title": "Siap berselancar dengan aman?",
-      "subtitle": "Free to start. No account needed. Your browsing stays on your device.",
-      "cta_primary": "Tambahkan ke Chrome — gratis",
+      "subtitle": "Gratis, tanpa akun. Kami hanya melihat nama situs yang sedang diperiksa.",
+      "cta_primary": "Lindungi diri gratis",
       "cta_business": "Untuk bisnis"
     },
     "footer": {
       "brand": "Cleanway",
       "privacy": "Privasi",
       "terms": "Ketentuan",
-      "contact": "Kontak",
+      "contact": "Bantuan",
       "github": "GitHub",
-      "tagline": "Data Anda, perangkat Anda."
+      "tagline": "Perlindungan dari situs penipuan.",
+      "methodology": "Metodologi"
     },
     "language_switcher": {
       "label": "Bahasa"
     },
     "features": {
-      "heading": "Semua yang Anda butuhkan. Tidak ada yang berlebih.",
+      "heading": "Yang bisa dilakukan Cleanway saat ini",
       "items": [
         {
+          "icon": "🛡️",
+          "title": "Memblokir situs penipuan di semua aplikasi",
+          "desc": "Jika aplikasi apa pun di ponsel Anda mencoba membuka situs dari daftar situs penipuan dan phishing yang sudah dikenal, Cleanway menghentikannya: di browser, aplikasi pesan, email, di mana saja."
+        },
+        {
+          "icon": "🔗",
+          "title": "Memeriksa tautan yang Anda ketuk",
+          "desc": "Jadikan Cleanway aplikasi default untuk tautan, dan Cleanway akan memeriksa setiap tautan yang Anda ketuk. Situs penipuan yang dikenal tidak akan terbuka; situs lain diperiksa di latar belakang, dan Cleanway memperingatkan Anda jika ternyata berbahaya."
+        },
+        {
+          "icon": "💬",
+          "title": "Memeriksa pesan mencurigakan",
+          "desc": "Bagikan SMS ke Cleanway atau tempelkan teksnya. Cleanway mencari trik penipuan yang umum: \"bagian keamanan bank, sebutkan kodenya\", \"Ma, kirim uang sekarang juga\". Teksnya tidak pernah keluar dari ponsel Anda."
+        },
+        {
           "icon": "🔍",
-          "title": "Pemindaian tautan otomatis",
-          "desc": "Setiap tautan di setiap halaman diperiksa terhadap 16 sumber intelijen ancaman. Lencana merah, kuning, hijau menunjukkan keamanan secara sekilas."
+          "title": "Periksa situs apa pun",
+          "desc": "Ketik nama situs di aplikasi atau di situs ini untuk melihat apakah situs itu tampak berbahaya dan mengapa, dengan kata-kata sederhana."
         },
         {
           "icon": "🔒",
-          "title": "Audit privasi",
-          "desc": "Klik kanan di halaman mana pun untuk melihat pelacak, cookie, pengumpulan data, dan fingerprinting. Nilai A hingga F."
+          "title": "Hanya nama situs, bukan halamannya",
+          "desc": "Pencocokan dengan daftar dilakukan di ponsel Anda. Jika sebuah situs perlu diperiksa lebih teliti, hanya namanya yang dikirim ke server kami: bukan tautan lengkap, bukan halaman, bukan pesan Anda."
         },
         {
-          "icon": "🧠",
-          "title": "Deteksi bertenaga ML",
-          "desc": "Model CatBoost dilatih pada ~24.000 domain (phishing dan tepercaya). Mendeteksi phishing baru yang dilewatkan sistem berbasis aturan — lihat metodologi yang kami publikasikan."
-        },
-        {
-          "icon": "⚡",
-          "title": "Perlindungan instan",
-          "desc": "Sebagian besar domain diperiksa langsung di perangkat melalui daftar aman lokal. Hanya domain yang tidak dikenal yang dikirim ke server kami — dan hanya nama domain, tidak pernah URL lengkap."
-        },
-        {
-          "icon": "📱",
-          "title": "Data Anda, perangkat Anda",
-          "desc": "Riwayat penjelajahan tidak pernah menyentuh server kami. Kami hanya melihat nama domain. Bahkan jika terjadi kebocoran, data Anda aman."
-        },
-        {
-          "icon": "📧",
-          "title": "Pemindai kotak masuk",
-          "desc": "Menemukan tautan phishing di Gmail dan Outlook yang dilewatkan peramban Anda."
+          "icon": "🆓",
+          "title": "Gratis, tanpa akun",
+          "desc": "Memblokir situs penipuan itu gratis dan berfungsi tanpa mendaftar."
         }
       ]
     },
     "how_it_works": {
-      "heading": "How Cleanway protects you",
+      "heading": "Cara mendapatkan perlindungan",
       "steps": [
         {
           "step": "1",
-          "title": "Install",
-          "desc": "Add the Chrome extension. Takes 10 seconds."
+          "title": "Unduh",
+          "desc": "Unduh Cleanway untuk Android dari situs ini. Filenya besar, jadi sebaiknya pakai Wi-Fi."
         },
         {
           "step": "2",
-          "title": "Browse",
-          "desc": "Cleanway checks every link automatically. No action needed."
+          "title": "Nyalakan perlindungan",
+          "desc": "Buka Cleanway dan ketuk \"Nyalakan perlindungan\". Android akan meminta izin satu kali."
         },
         {
           "step": "3",
-          "title": "Stay Safe",
-          "desc": "Dangerous links get red badges. Click for details."
+          "title": "Gunakan ponsel seperti biasa",
+          "desc": "Situs penipuan yang dikenal tidak akan terbuka di aplikasi mana pun. Semua yang diblokir tercatat di Riwayat aplikasi."
         }
       ]
     },
@@ -523,120 +524,45 @@
           "Parental mode"
         ],
         "cta": "Start Free Trial"
-      }
-    },
-    "comparison": {
-      "heading": "Perbandingan",
-      "headers": [
-        "Fitur",
-        "Cleanway",
-        "Guardio",
-        "NordVPN TP",
-        "Norton 360",
-        "Ekstensi gratis"
-      ],
-      "rows": [
-        [
-          "Harga",
-          "$4.99/bln",
-          "$9.99/bln",
-          "~$5/bln (dgn VPN)",
-          "$40-100/thn",
-          "Gratis"
-        ],
-        [
-          "Platform",
-          "Semua 5",
-          "Hanya Chrome",
-          "Win/Mac",
-          "Semua",
-          "Hanya peramban"
-        ],
-        [
-          "Audit privasi",
-          "✅",
-          "❌",
-          "❌",
-          "❌",
-          "❌"
-        ],
-        [
-          "Data di perangkat",
-          "✅",
-          "❌",
-          "❌",
-          "❌",
-          "❌"
-        ],
-        [
-          "Deteksi ML",
-          "✅",
-          "✅",
-          "✅",
-          "✅",
-          "❌"
-        ],
-        [
-          "Pemantauan kebocoran",
-          "✅",
-          "❌",
-          "❌",
-          "✅",
-          "❌"
-        ],
-        [
-          "Hub Keluarga",
-          "✅ (E2E)",
-          "❌",
-          "❌",
-          "✅",
-          "❌"
-        ],
-        [
-          "Simulasi phishing B2B",
-          "✅",
-          "❌",
-          "❌",
-          "❌",
-          "❌"
-        ]
-      ]
+      },
+      "free_only_heading": "Perlindungannya gratis",
+      "free_only_body": "Memblokir situs penipuan serta memeriksa tautan dan pesan tidak dipungut biaya dan tidak perlu akun. Saat ini tidak ada paket berbayar di negara Anda.",
+      "free_only_cta": "Unduh aplikasi Android"
     },
     "privacy": {
       "heading": "Privacy is not a feature. It's the architecture.",
-      "server_heading": "What our server knows",
+      "server_heading": "Yang sampai ke server kami",
       "server_items": [
-        "Your email address",
-        "Subscription status",
-        "Weekly aggregate numbers"
+        "Nama situs yang diperiksa (misalnya example.com), tidak pernah tautan lengkap atau halamannya",
+        "Alamat IP Anda, untuk membatasi berapa banyak pemeriksaan dari satu koneksi; alamat ini tidak disimpan apa adanya",
+        "Email dan paket Anda, hanya jika Anda membuat akun"
       ],
-      "server_note": "If breached: attacker gets emails + subscription. Boring.",
-      "device_heading": "What stays on your device",
+      "server_note": "Untuk menilai sebuah situs, server kami bisa menanyakan namanya ke layanan seperti Google Safe Browsing: hanya namanya, tidak pernah siapa Anda.",
+      "device_heading": "Yang tetap di ponsel Anda",
       "device_items": [
-        "Full URL check history",
-        "Privacy Audit results",
-        "Security Score breakdown",
-        "Weekly Report details",
-        "Family alert content (E2E encrypted)"
+        "Daftar situs penipuan yang dipakai perlindungan untuk mencocokkan",
+        "Riwayat pemeriksaan dan daftar yang diblokir",
+        "Teks pesan yang Anda periksa",
+        "Kunci untuk peringatan keluarga yang terenkripsi"
       ],
-      "device_note": "If device is lost: protected by OS encryption."
+      "device_note": "Anda bisa menghapus riwayat pemeriksaan di Pengaturan aplikasi."
     },
     "testimonials": {
-      "heading": "Built on principles, not promises",
+      "heading": "Komitmen kami",
       "items": [
         {
-          "q": "We send only a domain to check it — never your full URLs or page content. Privacy is the architecture, not a marketing checkbox.",
-          "n": "Server-blind by design",
+          "q": "Untuk memeriksa sebuah situs, kami hanya mengirim namanya: tidak pernah tautan lengkap, halaman, atau pesan Anda. Semua yang kami terima dijelaskan di kebijakan privasi kami.",
+          "n": "Hanya yang diperlukan",
           "r": ""
         },
         {
-          "q": "We publish our phishing-detection rate every week — the exact script, the exact dataset, side by side with Cloudflare and Google. Measured, not marketed.",
-          "n": "Open, reproducible benchmark",
+          "q": "Kami mengukur deteksi phishing kami dengan skrip terbuka yang bisa dijalankan ulang oleh siapa saja, dan kami hanya menampilkan angka jika sampelnya cukup besar untuk berarti. Diukur, bukan sekadar iklan.",
+          "n": "Pengukuran terbuka dan bisa diulang",
           "r": ""
         },
         {
-          "q": "Core link-blocking is free forever. We only charge for extras like family protection and detailed explanations — never for the protection itself.",
-          "n": "Free protection, always",
+          "q": "Memblokir situs penipuan itu gratis dan akan tetap gratis. Perlindungannya sendiri tidak pernah berbayar.",
+          "n": "Perlindungan gratis, selalu",
           "r": ""
         }
       ]
@@ -645,28 +571,32 @@
       "heading": "Pertanyaan umum",
       "items": [
         {
-          "q": "Bagaimana data saya dilindungi?",
-          "a": "Riwayat penjelajahan Anda tidak pernah meninggalkan perangkat Anda. Server kami hanya menyimpan email dan status langganan. Bahkan jika kami diretas, peretas tidak akan tahu apa-apa tentang aktivitas online Anda."
+          "q": "Apa yang diketahui Cleanway tentang saya?",
+          "a": "Situs dicocokkan dengan daftar langsung di ponsel Anda. Jika sebuah situs perlu diperiksa lebih teliti, hanya namanya (misalnya example.com) yang dikirim ke server kami, dan server bisa menanyakan nama itu ke layanan seperti Google Safe Browsing. Kami tidak menerima tautan lengkap, isi halaman, atau teks pesan, dan kami tidak mencatat situs yang Anda buka. Detailnya ada di kebijakan privasi kami."
         },
         {
-          "q": "Apakah memperlambat penjelajahan?",
-          "a": "Tidak. Sebagian besar domain diselesaikan langsung melalui daftar lokal. Hanya domain yang tidak dikenal yang dikirim ke API kami, dan kami hanya mengirim nama domain — tidak pernah URL lengkap."
+          "q": "Apakah ponsel saya jadi lebih lambat?",
+          "a": "Pencocokan dengan daftar berjalan di ponsel itu sendiri dan hanya butuh sepersekian detik. Cleanway hanya melihat nama situs yang dihubungi ponsel, bukan apa yang Anda lakukan di situs itu."
         },
         {
-          "q": "Bisakah saya menggunakannya dengan VPN?",
-          "a": "Ya! Di seluler, Cleanway mendeteksi VPN Anda secara otomatis dan beralih ke mode DNS, bekerja bersama NordVPN, ExpressVPN, atau penyedia lain mana pun."
+          "q": "Bisakah saya memakainya bersama VPN?",
+          "a": "Tidak bersamaan. Perlindungan Cleanway memakai mekanisme VPN Android untuk memeriksa nama situs di ponsel (lalu lintas Anda tidak dikirim ke mana pun melaluinya), dan Android hanya menjalankan satu layanan seperti itu dalam satu waktu. Jika Anda menyalakan VPN lain, perlindungan Cleanway akan mati. Setelah selesai, buka Cleanway dan nyalakan lagi perlindungannya. Memeriksa situs atau pesan secara manual di aplikasi tetap berfungsi."
         },
         {
           "q": "Apa bedanya dengan Google Safe Browsing?",
-          "a": "Google Safe Browsing bersifat reaktif — menangkap ancaman yang diketahui tetapi melewatkan phishing baru. Cleanway menambahkan sinyal deteksi ML, ~15 sumber intelijen ancaman lainnya, Audit Privasi, dan tidak mengirimkan data penjelajahan Anda ke Google."
+          "a": "Google Safe Browsing adalah salah satu sumber yang kami pakai. Cleanway juga memblokir situs penipuan yang dikenal di semua aplikasi ponsel, bukan hanya di browser, memeriksa pesan mencurigakan langsung di ponsel, dan menjelaskan hasilnya dengan kata-kata sederhana. Saat kami bertanya kepada Google tentang sebuah situs, kami hanya mengirim namanya, bukan siapa Anda."
         },
         {
-          "q": "Apakah ada paket gratis?",
-          "a": "Ya! Paket gratis mencakup 10 pemeriksaan API/hari untuk domain tak dikenal, pemeriksaan instan tanpa batas melalui daftar lokal, dan Privacy Audit dasar. Sebagian besar pengguna kasual tidak perlu meningkatkan."
+          "q": "Apakah gratis?",
+          "a": "Ya. Memblokir situs penipuan itu gratis dan berfungsi tanpa akun. Di tempat yang ada fitur tambahan berbayar, fitur itu tidak pernah mematikan perlindungannya sendiri."
         },
         {
-          "q": "Bagaimana cara kerja simulasi phishing?",
-          "a": "Paket Business mencakup email phishing simulasi yang dikirim ke tim Anda. Pilih template, kami kirim email uji, dan melacak siapa yang mengeklik vs siapa yang melaporkan. Untuk pelatihan, bukan hukuman."
+          "q": "Apakah Cleanway menangkap semua penipuan?",
+          "a": "Tidak, dan tidak ada yang bisa menjanjikannya dengan jujur. Cleanway memblokir situs yang sudah ada di daftar situs penipuan yang dikenal dan memeriksa situs lain secepat mungkin, tetapi situs penipuan yang benar-benar baru bisa saja terbuka sebelum ada yang mengetahuinya. Jangan pernah memasukkan data kartu atau kode dari SMS di situs yang Anda buka dari tautan dalam pesan."
+        },
+        {
+          "q": "Apakah Cleanway akan menelepon saya atau mengirim tautan lewat SMS?",
+          "a": "Tidak. Cleanway tidak pernah menelepon dan tidak pernah mengirim tautan lewat SMS. Jika ada yang menelepon atau mengirim pesan atas nama Cleanway dan meminta Anda memasang sesuatu, menyebutkan kode, atau mematikan perlindungan, itu penipuan."
         }
       ]
     },
@@ -706,17 +636,41 @@
     },
     "signup": {
       "check_inbox": "Periksa kotak masuk Anda",
-      "magic_link_sent": "Kami mengirim magic link masuk ke $EMAIL$.",
-      "magic_link_followup": "Klik tautan untuk menyelesaikan masuk. Halaman akan dilanjutkan secara otomatis.",
+      "magic_link_sent": "Kami sudah mengirim tautan masuk ke <strong>{email}</strong>.",
+      "magic_link_followup": "Buka tautan di email tersebut untuk menyelesaikan proses masuk. Jika tidak ada yang masuk dalam 10 menit, periksa folder spam.",
       "email_label": "Email",
       "email_placeholder": "kamu@contoh.com",
-      "submitting": "Mengirim magic link…",
+      "submitting": "Mengirim tautan…",
       "submit_with_plan": "Kirim tautan masuk",
       "submit_no_plan": "Lanjutkan",
       "footer_lead": "Kami akan mengirimkan tautan masuk sekali pakai. Tidak ada kata sandi untuk diingat.",
       "footer_or": "Atau",
-      "footer_install_cta": "pasang ekstensi gratis",
-      "footer_install_tail": "— pemblokiran selalu bekerja tanpa akun."
+      "footer_install_cta": "pasang aplikasinya gratis",
+      "footer_install_tail": "— pemblokiran berfungsi tanpa akun.",
+      "meta_title": "Masuk — Cleanway",
+      "meta_description": "Masuk ke Cleanway dengan tautan sekali pakai yang dikirim ke email Anda. Perlindungannya sendiri berfungsi tanpa akun.",
+      "back_to_pricing": "Kembali ke harga",
+      "heading": "Buat akun atau masuk",
+      "intro": "Anda tidak perlu akun untuk terlindungi: pemblokiran situs penipuan berfungsi tanpa akun. Akun hanya diperlukan untuk fitur keluarga dan paket berbayar.",
+      "plan_label": "Paket {plan}",
+      "interval_monthly": "bulanan",
+      "interval_yearly": "tahunan",
+      "plan_next": "Setelah masuk, kami akan membawa Anda ke pembayaran.",
+      "store_title": "Yang kami simpan",
+      "store_items": [
+        "Alamat email Anda",
+        "Paket Anda, jika punya",
+        "ID perangkat acak untuk menyinkronkan pengaturan",
+        "Penghitung: hanya angka, tanpa nama situs"
+      ],
+      "store_note": "Tautan lengkap, isi halaman, dan teks pesan tidak pernah sampai kepada kami.",
+      "store_more": "Kebijakan privasi",
+      "error_invalid_email": "Periksa lagi alamat email Anda: sepertinya belum lengkap.",
+      "error_disposable": "Alamat dari layanan email sementara ({domain}) tidak bisa dipakai. Gunakan email yang biasa Anda pakai.",
+      "error_rate_limited": "Terlalu banyak percobaan. Tunggu beberapa menit, lalu coba lagi.",
+      "error_send_failed": "Kami tidak bisa mengirim email untuk masuk. Coba lagi nanti.",
+      "error_network": "Tidak ada koneksi ke server. Periksa internet Anda, lalu coba lagi.",
+      "error_unavailable": "Saat ini belum bisa masuk. Perlindungan tetap berfungsi tanpa akun."
     },
     "pricing": {
       "page_title": "Harga",
@@ -726,24 +680,35 @@
       "interval_monthly": "Bulanan",
       "interval_yearly": "Tahunan",
       "badge_save_2_months": "Hemat 2 bulan",
-      "tier_badge": "Tingkat $TIER$ — $COUNTRY$"
+      "free_badge": "Perlindungannya gratis",
+      "free_title": "Cleanway gratis",
+      "free_subtitle": "Memblokir situs penipuan serta memeriksa tautan dan pesan tidak dipungut biaya dan tidak perlu akun. Saat ini tidak ada paket berbayar di negara Anda.",
+      "free_list_title": "Yang Anda dapatkan",
+      "free_items": [
+        "Pemblokiran situs penipuan yang dikenal di semua aplikasi ponsel",
+        "Pemeriksaan tautan yang Anda ketuk",
+        "Pemeriksaan pesan mencurigakan di ponsel",
+        "Pemeriksaan situs apa pun berdasarkan namanya",
+        "Daftar situs penipuan yang diperbarui sendiri"
+      ],
+      "free_note": "Jika suatu saat ada fitur tambahan berbayar, pemblokiran situs penipuan tetap gratis.",
+      "free_cta": "Unduh aplikasi Android",
+      "footer_cta_title": "Mulai gratis hari ini",
+      "footer_cta_body": "Tanpa kartu kredit. Tingkatkan paket hanya jika memang berguna bagi Anda."
     },
     "transparency": {
       "page_title": "Laporan transparansi",
-      "page_description": "Angka yang dipublikasikan Cleanway: total pemeriksaan, tingkat false positive, waktu respons, sumber intelijen, dan permintaan data pemerintah — diperbarui setiap kuartal.",
-      "hero_subtitle": "Apa yang Cleanway deteksi dan blokir selama $PERIOD$.",
-      "published_at": "Dipublikasikan pada $DATE$.",
-      "section_volume": "Volume",
-      "section_latency": "Waktu respons",
-      "section_sources": "Sumber intelijen aktif",
-      "section_categories": "Kategori yang paling sering diblokir",
-      "section_government": "Permintaan data pemerintah",
-      "metric_total_checks": "Total pemeriksaan",
-      "metric_dangerous": "Ancaman terkonfirmasi",
-      "metric_fp_rate": "Tingkat false positive",
-      "gov_requests": "$COUNT$ permintaan data pemerintah",
-      "court_orders": "$COUNT$ perintah pengadilan",
-      "error_unavailable": "Laporan transparansi untuk sementara tidak tersedia. Silakan muat ulang halaman beberapa menit lagi."
+      "page_description": "Apa yang sudah diukur Cleanway tentang akurasinya sendiri, dan apa yang belum.",
+      "intro": "Kami hanya memublikasikan angka tentang Cleanway jika berasal dari pengukuran nyata yang bisa diulang. Apa yang belum kami ukur tidak ada di halaman ini.",
+      "section_accuracy": "Mendeteksi phishing",
+      "recall_measured": "Pengukuran mingguan terakhir ({date}): Cleanway menandai {recall}% tautan phishing baru yang diberi putusan sebagai berbahaya ({classified} tautan).",
+      "recall_not_yet": "Belum ada angka yang bisa dipercaya. Pengukuran mingguan belum pernah dijalankan dengan sampel yang cukup besar untuk dipublikasikan: minimal {min} tautan phishing, hampir semuanya dengan putusan. Sampai saat itu, kami tidak menyebutkan tingkat deteksi.",
+      "section_fp": "Alarm palsu",
+      "fp_measured": "{fpr}% dari {count} situs sah keliru ditandai berbahaya ({date}).",
+      "fp_not_yet": "Belum diukur. Kami belum menjalankan pengukuran yang menunjukkan seberapa sering Cleanway keliru menandai situs sah, jadi kami tidak menyebutkan tingkat alarm palsu.",
+      "section_how": "Cara kami mengukur",
+      "how_body": "Skrip pengukuran, sumber datanya, dan setiap hasil mingguan terbuka untuk umum.",
+      "methodology_link": "Baca metodologinya"
     },
     "dns": {
       "page_title": "DNS pemblokir phishing — satu ketuk, tanpa aplikasi",
@@ -785,82 +750,422 @@
     "install": {
       "browser_label": "Ekstensi peramban",
       "mobile_label": "Seluler",
-      "status_in_review": "Sedang ditinjau",
-      "status_coming_this_week": "Hadir pekan ini",
-      "status_native_after_launch": "Aplikasi pasca-rilis",
-      "status_appsource_pending": "AppSource tertunda"
+      "status_appsource_pending": "AppSource tertunda",
+      "status_coming_soon": "Segera hadir"
     },
     "methodology": {
-      "page_title": "Benchmark methodology",
-      "page_description": "Cleanway's per-domain detection results vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal — measured weekly on fresh URLhaus + PhishTank URLs. Reproducible benchmark script linked.",
-      "back_to_transparency": "Back to transparency report",
-      "hero_title": "How we measure our own detection rate",
-      "hero_subtitle": "Every recall number we publish points here. The dataset, the script, and a button to clone it on GitHub.",
-      "why_heading": "Why this page exists",
-      "why_p1": "Every other anti-phishing vendor publishes glossy quarterly threat reports without their false-positive rate or per-vendor recall comparison. The numbers exist only in their internal dashboards.",
-      "why_p2": "We do the opposite: this page runs the same Python script anyone can clone, every Monday, against fresh URLhaus + PhishTank phishing URLs, and publishes the raw results. The script's output IS the marketing claim.",
-      "results_heading": "Latest results",
-      "results_unavailable": "Latest benchmark snapshot not available — re-running cron now.",
-      "results_meta": "Snapshot: $DATE$. Sample: $PHISHING$ phishing URLs, $LEGIT$ Tranco legit URLs.",
-      "phishing_table_heading": "Phishing batch (expected verdict: dangerous)",
-      "safe_table_heading": "Legit batch (FPR — false-positive rate, expected verdict: safe)",
-      "datasets_heading": "Datasets",
-      "dataset_phishing": "Phishing samples",
-      "dataset_safe": "Legit samples",
-      "verdict_mapping_heading": "How we map each resolver's response",
-      "verdict_mapping_p1": "Different vendors return different verdict shapes. We normalise to three: dangerous / safe / unknown. Unknown verdicts (rate-limited, not indexed, error) are reported separately — not counted as right or wrong.",
-      "reproduce_heading": "Reproduce these numbers",
-      "reproduce_p1": "Two commands and a Python 3 install. The script fetches the same feeds, runs the same comparisons, writes the same JSON output:",
-      "reproduce_note": "Source:",
-      "cadence_heading": "Cadence + automation",
-      "cadence_p1": "The benchmark runs every Monday at 05:15 UTC via a GitHub Actions cron. Results commit to docs/benchmarks/ in this repo. A regression-detection step opens a PR if recall drops more than 5 percentage points week-over-week.",
-      "cadence_p2": "Workflow file:",
-      "caveats_heading": "Honest caveats",
-      "caveat_1": "Cleanway uses the public /api/v1/check endpoint — same anonymous surface a regular user would see. We deliberately do NOT use a privileged path for benchmarking ourselves.",
-      "caveat_2": "PhishTank's free check API returns 'not indexed' for most fresh URLhaus URLs because their database lags by a few hours — that's why PhishTank's Recall column often shows '—' (unknown), not because it's broken.",
-      "caveat_3": "Google Safe Browsing requires an API key (GOOGLE_SAFE_BROWSING_KEY). If unset, that column shows '—' and is excluded from the comparison.",
-      "caveat_4": "Latency p50 measured from this script's host (US/EU CI runner); your latency from Asia or LATAM will differ. The relative comparison stays the same."
+      "page_title": "Metodologi pengukuran",
+      "page_description": "Cara Cleanway mengukur deteksi phishing-nya sendiri: data, skrip, dan kapan sebuah angka boleh muncul di situs.",
+      "back_to_transparency": "Kembali ke laporan transparansi",
+      "hero_title": "Cara kami mengukur tingkat deteksi kami sendiri",
+      "hero_subtitle": "Setiap angka akurasi yang kami tampilkan merujuk ke sini: data, skrip, dan cara mengulanginya sendiri.",
+      "why_heading": "Mengapa halaman ini ada",
+      "why_p1": "Tingkat deteksi hanya berarti jika terlihat bagaimana cara mengukurnya. Karena itu kami memublikasikan skrip, sumber data, dan setiap hasil mingguan.",
+      "why_p2": "Skrip dijalankan setiap Senin dengan tautan phishing baru dari sumber publik dan sampel situs sah. Hasilnya disimpan di repositori publik kami di GitHub, termasuk pada minggu-minggu ketika angkanya buruk.",
+      "results_heading": "Hasil terbaru",
+      "results_unavailable": "Saat ini belum ada pengukuran yang tersedia.",
+      "phishing_table_heading": "Tautan phishing (putusan yang diharapkan: berbahaya)",
+      "safe_table_heading": "Situs sah (putusan yang diharapkan: aman)",
+      "datasets_heading": "Data",
+      "dataset_phishing": "Tautan phishing",
+      "dataset_safe": "Situs sah",
+      "verdict_mapping_heading": "Cara jawaban setiap layanan dihitung",
+      "verdict_mapping_p1": "Setiap layanan menjawab dengan caranya sendiri. Kami menyederhanakan setiap jawaban menjadi berbahaya, aman, atau tidak diketahui. Jawaban tidak diketahui (batas permintaan, belum terindeks, galat) dihitung terpisah, tidak benar dan tidak salah.",
+      "reproduce_heading": "Ulangi sendiri",
+      "reproduce_p1": "Anda memerlukan git dan Python 3. Skrip mengunduh sumber yang sama, menjalankan perbandingan yang sama, dan menulis JSON yang sama:",
+      "reproduce_note": "Kode sumber:",
+      "cadence_heading": "Jadwal",
+      "cadence_p1": "Pengukuran dijalankan setiap Senin pukul 05.15 UTC di GitHub Actions dan menyimpan hasilnya di docs/benchmarks/. Jika tingkat deteksi turun lebih dari 5 poin persentase dibanding minggu sebelumnya, alur kerja membuka pull request yang menandainya.",
+      "cadence_p2": "File alur kerja:",
+      "caveats_heading": "Catatan jujur",
+      "results_not_publishable": "Pengukuran terakhir ({date}) terlalu kecil untuk dikutip: {phishing} tautan phishing, {classified} di antaranya mendapat putusan dari Cleanway. Kami hanya menampilkan angka jika pengukuran memiliki minimal {min_phishing} tautan phishing dan minimal {min_classified} putusan. Semua pengukuran mingguan, termasuk yang kecil, ada di repositori.",
+      "results_snapshot": "Pengukuran: {date}. Sampel: {phishing} tautan phishing, {legit} situs sah.",
+      "fp_not_measured": "Alarm palsu tidak diukur dalam pengukuran ini: terlalu sedikit situs sah yang mendapat putusan dari Cleanway.",
+      "all_runs_link": "Semua hasil mingguan di GitHub",
+      "col_service": "Layanan",
+      "col_recall": "Tingkat deteksi",
+      "col_precision": "Presisi",
+      "col_f1": "F1",
+      "col_tp": "Terdeteksi",
+      "col_fn": "Terlewat",
+      "col_unknown": "Tanpa putusan",
+      "col_latency": "Waktu median",
+      "col_fpr": "Tingkat alarm palsu",
+      "col_fp": "Alarm palsu",
+      "col_tn": "Benar",
+      "dataset_phishing_desc": "tautan baru dari sumber publik URLhaus dan PhishTank, diunduh setiap kali dijalankan dan tanpa duplikat per domain.",
+      "dataset_safe_desc": "domain acak dari daftar Tranco top-1M, peringkat 100 sampai 100.000 (peringkat teratas dilewati karena terlalu mudah), dengan seed acak tetap agar sampelnya bisa diulang.",
+      "mapping_cleanway": "Cleanway: \"berbahaya\" dihitung berbahaya, \"aman\" dihitung aman, \"hati-hati\" dihitung tidak diketahui.",
+      "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: jawaban yang diblokir (NXDOMAIN atau 0.0.0.0 / ::) dihitung berbahaya, jawaban biasa dihitung aman.",
+      "mapping_virustotal": "VirusTotal: berbahaya jika minimal 2 antivirusnya menandai tautan itu; tanda dari satu antivirus saja diabaikan karena terlalu banyak gangguan.",
+      "caveat_endpoint": "Cleanway diukur melalui pemeriksaan situs publiknya, jalur anonim yang sama dengan yang dipakai pengunjung, bukan jalur khusus.",
+      "caveat_rate_limit": "Saat ini pengukuran mingguan terhambat oleh batas permintaan pada pemeriksaan tersebut, sehingga banyak tautan tidak mendapat putusan dan sebagian besar pengukuran terlalu kecil untuk dipublikasikan.",
+      "caveat_phishtank": "Pencarian gratis PhishTank sering menjawab \"belum terindeks\" untuk tautan baru karena basis datanya tertinggal beberapa jam, sehingga kolomnya sering menampilkan \"—\".",
+      "caveat_gsb": "Google Safe Browsing memerlukan kunci API; jika tidak diatur untuk pengukuran, kolomnya menampilkan \"—\".",
+      "caveat_nxdomain": "Domain yang sudah tidak ada juga mendapat NXDOMAIN dari Cloudflare dan dihitung sebagai pemblokiran oleh Cloudflare, sehingga hasil Cloudflare terlihat lebih baik untuk domain phishing yang sudah ditutup.",
+      "caveat_latency": "Waktu respons diukur dari mesin yang menjalankan skrip (server cloud di AS atau UE); dari wilayah lain hasilnya akan berbeda."
     },
     "support": {
       "title": "Bantuan",
-      "subtitle": "Ada pertanyaan, masalah, atau situs yang terblokir keliru — kami siap membantu.",
-      "email_label": "Kirim email ke kami",
-      "email_hint": "Kami membaca setiap pesan. Sebutkan model ponsel Anda dan apa yang terjadi.",
+      "subtitle": "Jawaban atas pertanyaan umum dan apa yang harus dilakukan jika ada masalah.",
+      "email_label": "Kirim email kepada kami",
+      "email_hint": "Sebutkan model ponsel Anda dan apa yang terjadi.",
       "faq_title": "Pertanyaan umum",
       "q_vpn": "Apakah ini VPN yang menyembunyikan lalu lintas saya?",
-      "a_vpn": "Bukan. Cleanway memasang filter lokal di ponsel Anda untuk memblokir situs penipuan di semua aplikasi. Ini bukan VPN untuk menyembunyikan diri — ia tidak menyembunyikan ke mana Anda pergi dan tidak mengalirkan lalu lintas Anda lewat negara lain. Permintaan situs yang tidak diblokir diteruskan ke server publik biasa, sama seperti cara ponsel Anda bekerja selama ini.",
+      "a_vpn": "Bukan. Cleanway memakai mekanisme VPN Android hanya untuk menjalankan filter lokal di ponsel Anda yang memblokir situs penipuan di semua aplikasi. Filter ini tidak menyembunyikan ke mana Anda pergi dan tidak mengalihkan lalu lintas Anda lewat negara lain. Permintaan untuk situs yang tidak diblokir dikirim ke layanan DNS publik (Cloudflare 1.1.1.1 atau Quad9 9.9.9.9); mulai aplikasi versi 1.0.2, lebih dulu ke DNS operator seluler atau jaringan Wi-Fi Anda.",
       "q_install": "Bagaimana cara memasangnya?",
-      "a_install": "Unduh aplikasinya, buka filenya, lalu izinkan pemasangan. Saat pertama kali dijalankan, ketuk “Nyalakan perlindungan” dan izinkan koneksi yang ditanyakan Android — itu tandanya filter lokal mulai bekerja.",
+      "a_install": "Unduh aplikasinya, buka filenya, lalu izinkan pemasangan: halaman Android menjelaskan setiap peringatan yang mungkin muncul. Saat pertama kali dibuka, ketuk \"Nyalakan perlindungan\" dan izinkan koneksi yang diminta Android.",
       "q_off": "Bagaimana cara mematikannya?",
       "a_off": "Buka aplikasinya dan ketuk “Jeda perlindungan”. Anda bisa menyalakannya lagi kapan saja.",
       "q_fp": "Situs yang aman malah diblokir — saya harus bagaimana?",
-      "a_fp": "Di layar pemblokiran, ketuk “Bukan penipuan”, atau kirimkan alamatnya kepada kami. Pemblokiran yang keliru kami perbaiki dengan cepat.",
+      "a_fp": "Di layar pemblokiran, ketuk \"Bukan penipuan\". Cleanway tidak akan memblokir situs itu lagi di ponsel Anda.",
       "q_privacy": "Data apa yang kalian kumpulkan?",
-      "a_privacy": "Perisai mencocokkan nama situs di ponsel Anda — tidak ada satu pun soal situs yang Anda kunjungi yang dikirim ke kami. Rinciannya ada di halaman privasi kami."
+      "a_privacy": "Situs dicocokkan dengan daftar di ponsel Anda. Jika sebuah situs perlu diperiksa lebih teliti, hanya namanya yang dikirim ke server kami, bukan tautan lengkap atau siapa Anda. Teks pesan yang Anda periksa tidak pernah keluar dari ponsel. Semua detailnya ada di kebijakan privasi.",
+      "email_not_live_title": "Kami belum bisa menerima email",
+      "email_not_live_body": "Kotak surat dukungan kami masih disiapkan, jadi pesan ke support@cleanway.ai mungkin tidak sampai kepada kami. Untuk sementara, jangan kirim hal penting ke sana. Jawaban di bawah ini mencakup masalah yang paling sering terjadi.",
+      "q_app_vpn": "Aplikasi lain meminta saya mematikan VPN",
+      "a_app_vpn": "Beberapa aplikasi, seperti bank, aplikasi pesan, dan layanan pemerintah, tidak mau berjalan selama VPN apa pun menyala, dan bagi Android perlindungan Cleanway terlihat seperti VPN. Buka Cleanway, ketuk \"Jeda perlindungan\", gunakan aplikasi itu, lalu nyalakan lagi perlindungannya.",
+      "q_no_internet": "Internet tidak jalan setelah saya memasang Cleanway",
+      "a_no_internet": "Pertama, jeda perlindungan di Cleanway dan periksa apakah situs bisa dibuka. Jika Anda pernah mengetik dns.cleanway.ai di \"DNS Pribadi\" pada pengaturan ponsel, ubah kembali ke \"Otomatis\": dengan pengaturan itu Cleanway tidak berfungsi dan internet bisa terputus.",
+      "q_calls": "Seseorang menelepon saya dari \"dukungan Cleanway\"",
+      "a_calls": "Cleanway tidak pernah menelepon dan tidak pernah mengirim tautan lewat SMS. Jika ada yang menelepon atau mengirim pesan atas nama Cleanway dan meminta Anda memasang sesuatu, menyebutkan kode, atau mematikan perlindungan, tutup teleponnya. Itu penipuan.",
+      "privacy_link": "Kebijakan privasi",
+      "android_link": "Cleanway untuk Android: unduhan dan bantuan pemasangan"
     },
     "android": {
       "title": "Cleanway untuk Android",
-      "subtitle": "Perlindungan gratis dari tautan penipuan — di semua aplikasi di ponsel Anda.",
-      "benefit_1": "Memblokir situs penipuan yang sudah dikenal di aplikasi apa pun — peramban, aplikasi pesan, e-mail.",
-      "benefit_2": "Mengecek tautan yang Anda ketuk dan memperingatkan Anda sebelum halaman berbahaya terbuka.",
-      "benefit_3": "Gratis, bekerja tanpa internet dari daftar yang tersimpan di ponsel, tanpa embel-embel.",
+      "subtitle": "Perlindungan gratis dari situs penipuan — di semua aplikasi ponsel Anda.",
+      "benefit_1": "Memblokir situs penipuan yang dikenal di aplikasi apa pun: browser, aplikasi pesan, email.",
+      "benefit_2": "Memeriksa tautan yang Anda ketuk: situs penipuan yang dikenal tidak akan terbuka, dan situs lain diperiksa di latar belakang.",
+      "benefit_3": "Memeriksa SMS mencurigakan langsung di ponsel: teksnya tidak dikirim ke mana pun.",
       "download_cta": "Unduh aplikasinya",
-      "download_note": "Berkas .apk · Android 7 ke atas",
+      "download_note": "File .apk · Android 7 atau lebih baru · file besar, sebaiknya pakai Wi-Fi",
       "download_soon": "Tautan unduhan akan segera muncul.",
       "steps_title": "Cara memasang",
-      "step_1": "Ketuk “Unduh aplikasinya” dan tunggu sampai filenya selesai diunduh.",
-      "step_2": "Buka file yang sudah diunduh (biasanya dari panel notifikasi atau folder Download).",
-      "step_3": "Android akan meminta izin untuk memasang dari sumber ini — ketuk Izinkan, lalu Pasang.",
-      "step_4": "Buka Cleanway, ketuk “Nyalakan perlindungan”, lalu izinkan koneksi yang ditanyakan sistem.",
+      "step_1": "Ketuk \"Unduh aplikasi\" dan tunggu sampai file selesai diunduh.",
+      "step_2": "Buka file yang sudah diunduh, dari notifikasi atau dari folder Download.",
+      "step_3": "Jika Android mengatakan pemasangan dari sumber ini tidak diizinkan, ketuk \"Setelan\", nyalakan \"Izinkan dari sumber ini\", kembali, lalu ketuk \"Instal\".",
+      "step_4": "Buka Cleanway, ketuk \"Nyalakan perlindungan\", dan izinkan koneksi yang diminta Android.",
       "unknown_title": "Kenapa ponsel meminta izin?",
-      "unknown_body": "Anda memasang langsung dari situs web, bukan dari toko aplikasi, jadi Android bertanya sekali apakah Anda memercayai sumbernya. Itu wajar. Pemasangan lewat RuStore dan Google Play akan segera hadir — setelah itu langkah ini tidak diperlukan lagi.",
-      "stores_title": "Atau pasang dari toko aplikasi",
+      "unknown_body": "Anda memasang langsung dari situs kami, bukan dari toko aplikasi, jadi Android bertanya sekali apakah Anda memercayai sumbernya. Itu wajar. Kami sedang menyiapkan rilis di RuStore; setelah itu langkah ini tidak diperlukan lagi.",
+      "stores_title": "Toko aplikasi",
       "rustore": "RuStore",
-      "gplay": "Google Play",
-      "store_soon": "Segera",
+      "store_soon": "Segera hadir",
       "privacy_title": "Ini bukan “VPN untuk menyembunyikan diri”",
-      "privacy_body": "Cleanway memasang filter lokal di ponsel Anda yang memblokir situs penipuan. Ia tidak menyembunyikan ke mana Anda pergi dan tidak mengalirkan lalu lintas Anda lewat negara lain. Nama situs dicocokkan di ponsel — kami tidak tahu apa pun tentang yang Anda buka.",
-      "download_soon_note": "Tautan unduhan akan muncul di sini setelah versinya dirilis. Langkah-langkah di bawah menunjukkan proses pemasangannya."
+      "privacy_body": "Cleanway memasang filter lokal di ponsel Anda yang memblokir situs penipuan. Filter ini tidak menyembunyikan ke mana Anda pergi dan tidak mengalihkan lalu lintas Anda lewat negara lain. Situs dicocokkan dengan daftar di ponsel; jika sebuah situs perlu diperiksa lebih teliti, hanya namanya yang dikirim ke server kami, tidak pernah tautan lengkap atau siapa Anda.",
+      "download_soon_note": "Tautan unduhan akan muncul di sini setelah versinya dirilis. Langkah-langkah di bawah menunjukkan proses pemasangannya.",
+      "og_title": "Cleanway untuk Android — perlindungan gratis dari situs penipuan",
+      "og_description": "Memblokir situs penipuan dan phishing yang sudah dikenal di semua aplikasi ponsel Anda. Gratis, tanpa akun.",
+      "benefit_4": "Gratis, tanpa akun.",
+      "honesty_note": "Situs penipuan baru muncul setiap hari, dan butuh waktu sebelum masuk ke daftar mana pun. Jangan pernah memasukkan data kartu atau kode dari SMS di situs yang Anda buka dari tautan dalam pesan.",
+      "warnings_title": "Peringatan yang menakutkan di tengah jalan itu wajar",
+      "warnings_intro": "Android dan Chrome memperingatkan setiap aplikasi yang tidak berasal dari toko aplikasi. Berikut tampilan setiap peringatan dan apa yang harus diketuk.",
+      "warn_chrome_title": "Chrome: \"File ini mungkin berbahaya\"",
+      "warn_chrome_body": "Chrome menampilkan ini untuk setiap file aplikasi yang diunduh dari situs web. Ketuk \"Tetap download\" (di beberapa ponsel cukup \"Download\").",
+      "warn_samsung_title": "Samsung: \"Pemblokir Otomatis\"",
+      "warn_samsung_body": "Di ponsel Samsung yang lebih baru, Pemblokir Otomatis mencegah pemasangan aplikasi dari luar toko aplikasi. Matikan selama pemasangan: Pengaturan → Keamanan dan privasi → Pemblokir Otomatis → matikan.",
+      "warn_samsung_after": "Setelah Cleanway terpasang, nyalakan lagi Pemblokir Otomatis. Cleanway tetap berjalan, karena Pemblokir Otomatis hanya mencegah pemasangan baru. Untuk memperbarui Cleanway nanti, Anda perlu mematikannya lagi sebentar.",
+      "warn_protect_title": "Play Protect: \"Aplikasi tidak aman\"",
+      "warn_protect_body": "Google Play Protect memperingatkan aplikasi yang tidak dikenalnya dari Google Play, dan Cleanway tidak ada di Google Play. Ketuk \"Detail lainnya\", lalu \"Tetap instal\".",
+      "screenshot_alt_chrome": "Peringatan unduhan Chrome dengan tombol \"Tetap download\"",
+      "screenshot_alt_samsung": "Layar pengaturan Pemblokir Otomatis Samsung",
+      "screenshot_alt_protect": "Peringatan Play Protect dengan \"Detail lainnya\" dan \"Tetap instal\"",
+      "never_calls_title": "Cleanway tidak pernah mengirim tautan lewat SMS dan tidak pernah menelepon",
+      "never_calls_body": "Jika ada yang menelepon atau mengirim pesan atas nama Cleanway dan meminta Anda memasang sesuatu, menyebutkan kode, atau mematikan perlindungan, itu penipuan. Unduh Cleanway hanya dari situs ini, cleanway.ai.",
+      "links_privacy": "Kebijakan privasi",
+      "links_support": "Bantuan dan dukungan"
+    },
+    "meta": {
+      "title": "Cleanway — perlindungan dari situs penipuan",
+      "description": "Cleanway untuk Android memblokir situs penipuan dan phishing yang sudah dikenal di semua aplikasi ponsel Anda. Gratis, tanpa akun."
+    },
+    "check": {
+      "index_title": "Apakah situs ini aman?",
+      "index_subtitle": "Masukkan nama situs atau tautan untuk melihat apakah itu terlihat seperti penipuan.",
+      "input_placeholder": "mis. paypal-verify.com",
+      "input_label": "Situs yang akan diperiksa",
+      "submit": "Periksa",
+      "index_footer": "Kami mencocokkan nama situs dengan daftar situs penipuan yang dikenal dan tanda-tanda lain. Putusan adalah saran, bukan jaminan.",
+      "meta_title": "Apakah {domain} aman? — pemeriksaan Cleanway",
+      "meta_description": "Periksa apakah {domain} terlihat seperti situs phishing atau penipuan. Pemeriksaan gratis dengan alasan yang dijelaskan secara sederhana.",
+      "og_description": "Pemeriksaan Cleanway untuk {domain}",
+      "heading": "Apakah {domain} aman?",
+      "level_safe": "Tampak aman",
+      "level_caution": "Hati-hati",
+      "level_dangerous": "Berbahaya",
+      "risk_score": "Tingkat risiko: {score} dari 100",
+      "confidence": "Keyakinan: {pct}%",
+      "confidence_hint": "Keyakinan bergantung pada berapa banyak pemeriksaan yang berjalan dan seberapa dekat skornya dengan tingkat berikutnya. Nilainya tidak pernah 100%.",
+      "how_we_measure": "Cara kami mengukur",
+      "verdict_safe": "{domain} tampak aman.",
+      "verdict_caution": "{domain} memiliki beberapa tanda mencurigakan. Berhati-hatilah.",
+      "verdict_dangerous": "{domain} menunjukkan tanda kuat sebagai situs phishing atau penipuan. Jangan masukkan data pribadi.",
+      "check_failed": "Kami belum bisa memeriksa {domain} saat ini. Coba lagi beberapa menit lagi.",
+      "signals_heading": "Alasannya",
+      "low_confidence": "Ini pemeriksaan cepat dengan data terbatas.",
+      "cta_title": "Lindungi semua aplikasi di ponsel Anda",
+      "cta_body": "Cleanway untuk Android memblokir situs penipuan yang dikenal di semua aplikasi, gratis.",
+      "another": "Periksa situs lain:",
+      "footer_note": "Putusan adalah saran, bukan jaminan.",
+      "privacy_link": "Kebijakan privasi",
+      "share_button": "Bagikan pemeriksaan ini",
+      "share_copy": "Salin tautan",
+      "share_copied": "Tersalin!",
+      "share_email": "Email",
+      "share_text": "{verdict}: {domain} — tingkat risiko Cleanway {score}/100",
+      "share_title": "Apakah {domain} aman?"
+    },
+    "not_found": {
+      "title": "Halaman tidak ditemukan",
+      "body": "Halaman ini tidak ada, tetapi kami tetap bisa membantu Anda tetap aman.",
+      "home": "Ke beranda",
+      "check": "Periksa situs"
+    },
+    "terms": {
+      "meta_title": "Ketentuan penggunaan — Cleanway",
+      "meta_description": "Aturan penggunaan Cleanway: apa yang dijanjikan dan tidak dijanjikan layanan ini, akun, paket berbayar, dan penggunaan yang diperbolehkan.",
+      "back": "Kembali ke Cleanway",
+      "title": "Ketentuan penggunaan",
+      "updated": "Terakhir diperbarui: 26 September 2026",
+      "privacy_link": "Baca kebijakan privasi",
+      "contact_live": "Pertanyaan tentang ketentuan ini:",
+      "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Halaman bantuan menjawab pertanyaan yang umum.",
+      "support_link": "Halaman bantuan",
+      "sections": [
+        {
+          "title": "1. Apa itu Cleanway",
+          "paragraphs": [
+            "Cleanway membantu melindungi Anda dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cleanway mencocokkan nama situs dengan daftar ancaman yang dikenal dan tanda-tanda lain, lalu memberi tahu Anda apa yang ditemukannya."
+          ]
+        },
+        {
+          "title": "2. Yang tidak kami janjikan",
+          "paragraphs": [
+            "Putusan Cleanway adalah saran, bukan jaminan. Kami tidak bisa menjanjikan bahwa:"
+          ],
+          "items": [
+            "setiap situs penipuan atau phishing akan terdeteksi, karena yang baru muncul setiap hari;",
+            "situs yang aman tidak akan pernah keliru ditandai;",
+            "situs penipuan yang benar-benar baru akan diblokir begitu muncul;",
+            "Cleanway melindungi dari semua jenis penipuan; misalnya, Cleanway tidak melindungi dari panggilan telepon."
+          ],
+          "after": [
+            "Gunakan Cleanway sebagai salah satu lapis perlindungan: jangan pernah membagikan kode dari SMS, dan pastikan hal yang mendesak dengan menelepon bank Anda di nomor yang tercetak di kartu."
+          ]
+        },
+        {
+          "title": "3. Penggunaan gratis dan akun",
+          "paragraphs": [
+            "Memblokir situs penipuan itu gratis dan berfungsi tanpa akun. Akun hanya diperlukan untuk fitur keluarga dan paket berbayar. Jika Anda membuat akun, gunakan alamat email asli dan jaga aksesnya: kami memasukkan Anda dengan tautan sekali pakai yang dikirim ke sana."
+          ]
+        },
+        {
+          "title": "4. Paket berbayar",
+          "paragraphs": [
+            "Di beberapa negara, Cleanway menawarkan paket berbayar dengan fitur tambahan. Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia, pembayaran ditangani oleh Stripe, harga dan periode tagihan ditampilkan sebelum membayar, dan Anda bisa membatalkan kapan saja; paket tetap aktif sampai akhir periode yang sudah dibayar. Pengembalian dana ditangani sesuai ketentuan hukum. Memblokir situs penipuan tidak akan pernah menjadi fitur berbayar."
+          ]
+        },
+        {
+          "title": "5. Penggunaan yang diperbolehkan",
+          "paragraphs": [
+            "Mohon jangan:"
+          ],
+          "items": [
+            "menggunakan Cleanway untuk menguji atau menyempurnakan situs penipuan;",
+            "mengirim permintaan otomatis dalam jumlah besar atau mencoba menghindari batas permintaan;",
+            "menjual kembali akses ke pemeriksaan Cleanway;",
+            "mengganggu layanan atau menyerang infrastrukturnya;",
+            "menggunakan fitur keluarga untuk melecehkan atau menekan seseorang, atau menambahkan seseorang ke grup keluarga tanpa persetujuannya."
+          ],
+          "after": [
+            "Kami dapat membatasi atau menutup akses siapa pun yang melakukannya."
+          ]
+        },
+        {
+          "title": "6. Fitur keluarga",
+          "paragraphs": [
+            "Peringatan keluarga dienkripsi secara end-to-end: kami tidak bisa membacanya dan tidak bisa memulihkannya jika semua perangkat keluarga kehilangan kuncinya. Peringatan keluarga adalah pemberitahuan yang berguna, bukan pengganti untuk saling berbicara."
+          ]
+        },
+        {
+          "title": "7. Privasi",
+          "paragraphs": [
+            "Cara kami menangani data dijelaskan di kebijakan privasi."
+          ]
+        },
+        {
+          "title": "8. Kode sumber",
+          "paragraphs": [
+            "Kode sumber Cleanway dipublikasikan di GitHub dengan lisensi MIT."
+          ]
+        },
+        {
+          "title": "9. Tanggung jawab",
+          "paragraphs": [
+            "Cleanway disediakan \"sebagaimana adanya\". Sejauh diizinkan hukum, kami tidak bertanggung jawab atas kerugian tidak langsung, dan tanggung jawab total kami terbatas pada jumlah yang Anda bayarkan kepada kami dalam 12 bulan terakhir. Tidak ada dalam ketentuan ini yang membatasi hak yang menurut hukum tidak boleh dibatasi."
+          ]
+        },
+        {
+          "title": "10. Perubahan",
+          "paragraphs": [
+            "Kami dapat memperbarui ketentuan ini. Perubahan penting akan kami publikasikan di halaman ini sebelum berlaku; tanggal di bagian atas menunjukkan versi yang berlaku."
+          ]
+        },
+        {
+          "title": "11. Kontak",
+          "paragraphs": []
+        }
+      ]
+    },
+    "privacy_policy": {
+      "meta_title": "Kebijakan privasi — Cleanway",
+      "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
+      "back": "Kembali ke Cleanway",
+      "title": "Kebijakan privasi",
+      "updated": "Terakhir diperbarui: 26 September 2026",
+      "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
+      "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
+      "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Alamatnya akan muncul di bagian ini begitu berfungsi.",
+      "sections": [
+        {
+          "title": "1. Singkatnya",
+          "items": [
+            "Untuk memeriksa sebuah situs, kami hanya perlu namanya (misalnya example.com). Kami tidak menerima tautan lengkap, isi halaman, atau teks pesan Anda.",
+            "Sebagian besar pemeriksaan dilakukan di ponsel Anda, dengan daftar situs penipuan yang dikenal.",
+            "Jika sebuah situs perlu diperiksa lebih teliti, namanya dikirim ke server kami, yang bisa menanyakan nama itu ke layanan pemeriksaan lain, tidak pernah tentang Anda.",
+            "Anda tidak perlu akun untuk terlindungi. Kami tidak menampilkan iklan dan tidak menjual data."
+          ]
+        },
+        {
+          "title": "2. Siapa kami",
+          "paragraphs": [
+            "Cleanway (cleanway.ai) melindungi dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cara menghubungi kami ada di akhir kebijakan ini."
+          ]
+        },
+        {
+          "title": "3. Aplikasi Android: perlindungan di semua aplikasi",
+          "paragraphs": [
+            "Saat Anda menyalakan perlindungan, Cleanway menjalankan filter lokal menggunakan mekanisme VPN Android. Yang melewatinya hanya permintaan DNS, yaitu pertanyaan ponsel untuk mencari alamat sebuah situs, seperti \"di mana example.com?\". Isi halaman, pesan, dan panggilan Anda tidak melewati filter dan tidak dibaca.",
+            "Setiap nama situs dicocokkan dengan daftar situs penipuan yang tersimpan di ponsel. Jika ada di daftar, ponsel tidak membuka situs itu, dan sebuah catatan (nama situs, waktu, dan apa yang terjadi) disimpan di ponsel untuk Riwayat aplikasi.",
+            "Nama yang tidak ada di daftar diteruskan ke layanan DNS publik untuk mencari alamatnya; ponsel juga melakukan ini tanpa Cleanway, hanya lewat layanan yang berbeda. Di aplikasi versi 1.0.1, permintaan ini dikirim ke Cloudflare (1.1.1.1), dengan Quad9 (9.9.9.9) sebagai cadangan dan DNS-over-HTTPS terenkripsi dari Cloudflare sebagai pilihan terakhir. Mulai versi 1.0.2, permintaan ini lebih dulu dikirim ke DNS operator seluler atau jaringan Wi-Fi Anda, dan Cloudflare serta Quad9 hanya dipakai jika DNS itu tidak menjawab. Layanan-layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima dan tidak menyimpan permintaan ini."
+          ]
+        },
+        {
+          "title": "4. Daftar situs penipuan",
+          "paragraphs": [
+            "Aplikasi mengunduh daftar dari server kami (api.cleanway.ai) dan memperbaruinya kira-kira setiap 6 jam, lebih jarang saat memakai data seluler. Permintaan ini tidak memuat apa pun tentang situs yang Anda kunjungi: isinya hanya data teknis biasa dari setiap permintaan di internet, seperti alamat IP Anda, dan penanda versi daftar yang sudah ada di ponsel. Sesekali aplikasi juga menanyakan ke server kami apakah ada versi aplikasi yang lebih baru."
+          ]
+        },
+        {
+          "title": "5. Memeriksa situs dan tautan",
+          "paragraphs": [
+            "Nama sebuah situs, tanpa sisa tautannya, tanpa isi halaman, dan tanpa data akun Anda, dikirim ke server kami saat Anda memeriksa situs secara manual (di aplikasi atau di cleanway.ai/check), dan saat perlindungan menyala dan Anda membuka tautan lewat Cleanway yang tidak ada di daftar.",
+            "Untuk memutuskan apakah situs itu berbahaya, server kami dapat:"
+          ],
+          "items": [
+            "menanyakan nama itu ke layanan pemeriksaan eksternal: Google Safe Browsing, PhishTank, URLhaus, PhishStats, ThreatFox, Spamhaus DBL, SURBL, AlienVault OTX, dan IPQualityScore. Mereka hanya menerima nama situs, bukan siapa Anda;",
+            "melihat situs itu sendiri (alamat, sertifikat, dan pengaturannya) dari server kami, bukan dari ponsel Anda;",
+            "dalam kasus yang meragukan, meminta pendapat kedua dari model AI buatan Anthropic. Model ini hanya menerima tanda-tanda abstrak, tanpa nama situs."
+          ],
+          "after": [
+            "Hasilnya disimpan di cache server kami hingga 24 jam agar pemeriksaan ulang berlangsung cepat. Hasil ini terkait dengan situsnya, bukan dengan Anda.",
+            "Alamat IP Anda dipakai untuk membatasi berapa banyak pemeriksaan dari satu koneksi. Alamat ini tidak disimpan apa adanya; jika perlu dicatat, kami hanya menyimpan hash kriptografis yang dipersingkat."
+          ]
+        },
+        {
+          "title": "6. Memeriksa pesan",
+          "paragraphs": [
+            "Cleanway tidak membaca SMS Anda dengan sendirinya dan tidak meminta akses ke sana. Cleanway hanya memeriksa pesan yang Anda bagikan kepadanya atau Anda tempelkan.",
+            "Teks dianalisis di ponsel dan tidak dikirim ke mana pun, baik kepada kami maupun kepada siapa pun. Hingga tiga nama situs dari tautan di pesan dapat diperiksa di server kami seperti dijelaskan di atas, tanpa sisa tautannya. Riwayat menyimpan putusan dan nama situs, tidak pernah teksnya."
+          ]
+        },
+        {
+          "title": "7. Yang tetap di ponsel Anda",
+          "items": [
+            "daftar situs penipuan;",
+            "riwayat pemeriksaan (nama situs, putusan, alasan, dan waktu) sampai Anda menghapusnya di Pengaturan;",
+            "catatan tentang apa yang diblokir atau diperingatkan oleh perlindungan: 200 peristiwa terakhir;",
+            "situs yang Anda izinkan dengan \"Bukan penipuan\";",
+            "kunci untuk peringatan keluarga yang terenkripsi, di penyimpanan terlindungi ponsel."
+          ]
+        },
+        {
+          "title": "8. Akun dan email",
+          "paragraphs": [
+            "Akun bersifat opsional: hanya diperlukan untuk fitur keluarga dan paket berbayar. Jika Anda membuat akun, kami menyimpan alamat email Anda, paket Anda, ID perangkat acak (tidak berasal dari perangkat keras ponsel), dan pengaturan aplikasi. Anda masuk dengan tautan sekali pakai yang dikirim ke email Anda; tidak ada kata sandi.",
+            "Akun disimpan di penyedia basis data kami, Supabase."
+          ]
+        },
+        {
+          "title": "9. Keluarga",
+          "paragraphs": [
+            "Peringatan keluarga dienkripsi di perangkat pengirim dan hanya bisa dibaca di perangkat penerima. Server kami hanya menyimpan teks terenkripsi dan tidak bisa membacanya, tetapi server melihat siapa yang termasuk keluarga mana dan siapa mengirim peringatan kepada siapa, serta kapan. Peringatan disimpan hingga 30 hari. Kode undangan dan PIN hanya disimpan dalam bentuk hash."
+          ]
+        },
+        {
+          "title": "10. Situs web dan filter DNS",
+          "paragraphs": [
+            "cleanway.ai tidak memiliki iklan maupun pelacak analitik. Penyedia hosting kami, Vercel untuk situs web dan Railway untuk server, menyimpan log teknis permintaan yang biasa, yang dapat berisi alamat yang diminta dan alamat IP Anda.",
+            "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai) di iPhone, Mac, atau komputer Windows, semua permintaan DNS perangkat dikirim ke server kami. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk; untuk nama yang diblokir, log kami menyimpan paling banyak 32 karakter terakhirnya, tanpa alamat IP Anda."
+          ]
+        },
+        {
+          "title": "11. Laporan galat",
+          "paragraphs": [
+            "Aplikasi, situs web, dan server kami dapat mengirim laporan galat teknis ke Sentry agar kami bisa memperbaiki masalah. Sebelum dikirim, kami menghapus nama situs dan alamat dari laporan itu. Sentry menyimpannya hingga 90 hari."
+          ]
+        },
+        {
+          "title": "12. Pembayaran",
+          "paragraphs": [
+            "Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia, pembayaran dilakukan melalui Stripe: Stripe menerima email Anda dan paket yang dipilih serta menangani kartunya sendiri. Kami tidak pernah melihat atau menyimpan data kartu."
+          ]
+        },
+        {
+          "title": "13. Siapa yang memproses data untuk kami",
+          "items": [
+            "Railway: menjalankan server kami (api.cleanway.ai);",
+            "Vercel: menjadi hosting situs web;",
+            "Supabase: menyimpan akun dan data keluarga;",
+            "GitHub: menyimpan file aplikasi yang Anda unduh dan melihat alamat IP Anda saat mengunduh;",
+            "Cloudflare dan Quad9: DNS publik yang dipakai aplikasi, lihat bagian 3;",
+            "layanan pemeriksaan di bagian 5 dan Anthropic: hanya menerima nama situs atau tanda-tanda abstrak;",
+            "Sentry: laporan galat; Stripe: pembayaran di luar Rusia."
+          ],
+          "after": [
+            "Perusahaan-perusahaan ini berada di luar Rusia, terutama di AS dan UE, sehingga data yang mereka proses ditransfer ke luar negeri."
+          ]
+        },
+        {
+          "title": "14. Berapa lama kami menyimpan data",
+          "items": [
+            "hasil pemeriksaan di cache server: hingga 24 jam;",
+            "data akun: sampai Anda menghapus akun; setelah ada permintaan penghapusan, kami menyimpannya 30 hari lagi kalau-kalau Anda berubah pikiran, lalu menghapusnya;",
+            "log keamanan untuk tindakan akun (dengan alamat IP dalam bentuk hash): 2 tahun;",
+            "penghitung mingguan akun (hanya angka, tanpa nama situs): 1 tahun;",
+            "peringatan keluarga terenkripsi: hingga 30 hari;",
+            "data di ponsel Anda: sampai Anda menghapusnya atau mencopot aplikasinya."
+          ]
+        },
+        {
+          "title": "15. Hak Anda",
+          "paragraphs": [
+            "Anda dapat menanyakan data apa tentang Anda yang kami miliki, meminta kami memperbaiki atau menghapusnya, dan menarik persetujuan Anda. Tanpa akun, kami tidak memiliki apa pun yang dapat mengenali Anda. Untuk menghapus akun atau mengajukan permintaan, hubungi kami seperti dijelaskan di bawah. Mencopot aplikasi akan menghapus semua yang disimpannya di ponsel."
+          ]
+        },
+        {
+          "title": "16. Anak-anak",
+          "paragraphs": [
+            "Cleanway tidak ditujukan untuk dipakai sendiri oleh anak di bawah 13 tahun; fitur keluarga dikelola oleh orang dewasa."
+          ]
+        },
+        {
+          "title": "17. Perubahan dan kontak",
+          "paragraphs": [
+            "Jika kami mengubah kebijakan ini, versi baru akan kami publikasikan di halaman ini dengan tanggal baru."
+          ]
+        }
+      ]
     }
   },
   "email": {

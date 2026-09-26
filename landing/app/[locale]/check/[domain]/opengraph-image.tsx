@@ -251,7 +251,7 @@ export default async function OpenGraphImage({
               fontSize: 18,
             }}
           >
-            Add to Chrome — Free
+            cleanway.ai/check
           </div>
         </div>
       </div>

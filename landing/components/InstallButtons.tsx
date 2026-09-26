@@ -1,12 +1,13 @@
+import { useTranslations } from "next-intl";
+
 import { PLATFORMS, type Platform } from "@/lib/install-urls";
 
 /**
  * Honest multi-platform install row.
  *
  * Live platforms render as clickable green CTAs.
- * Pending platforms render as muted status pills with the queue position
- * ("In review", "Coming this week", etc.) — NEVER as dead links to a store
- * search page that doesn't have us listed yet.
+ * Pending platforms render as muted, localized status pills ("Coming soon") —
+ * NEVER as dead links to a store search page that doesn't have us listed yet.
  */
 export function InstallButtons({
   platforms = ["chrome", "firefox", "edge", "safari"] as Platform[],
@@ -15,6 +16,7 @@ export function InstallButtons({
   platforms?: Platform[];
   size?: "sm" | "md" | "lg";
 }) {
+  const t = useTranslations("Install");
   const sizeClass =
     size === "lg"
       ? "px-6 py-3 text-base"
@@ -37,16 +39,17 @@ export function InstallButtons({
             </a>
           );
         }
+        const status = info.statusKey ? t(`status_${info.statusKey}`) : undefined;
         return (
           <span
             key={p}
-            title={info.status}
+            title={status}
             className={`${sizeClass} bg-slate-800 text-slate-400 font-semibold rounded-lg border border-slate-700 cursor-not-allowed flex items-center gap-1.5`}
           >
             <span>{info.label}</span>
-            <span className="text-[10px] uppercase tracking-wide text-slate-500">
-              {info.status}
-            </span>
+            {status && (
+              <span className="text-[10px] uppercase tracking-wide text-slate-500">{status}</span>
+            )}
           </span>
         );
       })}

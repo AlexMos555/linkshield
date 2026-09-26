@@ -130,6 +130,12 @@ def namespace_for_landing(source: dict[str, Any]) -> dict[str, Any]:
     for key, value in landing_ns.items():
         target = explicit.get(key) or _camelize(key)
         out[target] = value
+    # The /check scorecard shows the same verdict reasons as the app. One set
+    # of grandma-grade labels (mobile.reason) serves both, instead of the
+    # landing printing the API's English `detail` to a Russian reader.
+    reasons = source.get("mobile", {}).get("reason")
+    if reasons:
+        out["Reasons"] = reasons
     return out
 
 

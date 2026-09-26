@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient, type PricingFor } from "@cleanway/api-client";
 import PricingClient from "./PricingClient";
+import FreePricing from "./FreePricing";
+import PricingNav from "./PricingNav";
 import { routing, type Locale } from "@/i18n/routing";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { InstallButtons } from "@/components/InstallButtons";
+import { paidPlansOffered } from "@/lib/paid-plans";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -27,10 +31,12 @@ export async function generateMetadata({
   languages["x-default"] = pricingUrlFor(routing.defaultLocale);
 
   const t = await getTranslations({ locale: safeLocale, namespace: "Pricing" });
-  const title = `${t("page_title")} — Cleanway`;
   // The hero subtitle does double duty as the meta description — same
-  // promise, same cultural register. Saves a second translation pass.
-  const description = t("hero_subtitle");
+  // promise, same cultural register. A free-only locale gets the free copy:
+  // its link preview must not talk about paying.
+  const freeOnly = !paidPlansOffered({ locale: safeLocale });
+  const title = `${freeOnly ? t("free_title") : t("page_title")} — Cleanway`;
+  const description = freeOnly ? t("free_subtitle") : t("hero_subtitle");
 
   return {
     title,
@@ -118,9 +124,13 @@ export default async function PricingPage({
   const { locale } = await params;
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  setRequestLocale(safeLocale);
+  // Vercel's edge geo header; ?cc= overrides it for testing a region.
+  const country = cc ?? (await headers()).get("x-vercel-ip-country");
+  if (!paidPlansOffered({ locale: safeLocale, country })) {
+    return <FreePricing locale={safeLocale} />;
+  }
   const t = await getTranslations({ locale: safeLocale, namespace: "Pricing" });
-  // Android-only labels for the primary install CTA (see PrimaryInstallLink).
-  const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const initial = await fetchPricing(cc);
 
@@ -159,26 +169,13 @@ export default async function PricingPage({
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="text-xl font-extrabold text-white">Cleanway</a>
-          <div className="hidden md:flex items-center gap-6">
-            <a href="/#features" className="text-sm text-slate-400 hover:text-white transition">Features</a>
-            <a href="/pricing" className="text-sm text-white font-semibold">Pricing</a>
-            <a href="/business" className="text-sm text-slate-400 hover:text-white transition">Business</a>
-            <PrimaryInstallLink androidLabel={nav("install_android")} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
-              Add to Chrome
-            </PrimaryInstallLink>
-          </div>
-        </div>
-      </nav>
+      <PricingNav locale={safeLocale} />
 
       {/* Hero */}
       <section className="pt-20 pb-12 px-6 text-center">
         <div className="max-w-3xl mx-auto">
           <span className="inline-block bg-green-500/10 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-full text-sm font-semibold mb-6">
-            Blocking is free forever
+            {t("free_badge")}
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-6">
             {t("hero_title_left")}{" "}
@@ -293,16 +290,16 @@ export default async function PricingPage({
       {/* Footer CTA */}
       <section className="py-20 px-6 text-center">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">Start free today</h2>
-          <p className="text-slate-400 mb-8">No credit card. Add to Chrome in 10 seconds. Upgrade only when it makes sense for you.</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">{t("footer_cta_title")}</h2>
+          <p className="text-slate-400 mb-8">{t("footer_cta_body")}</p>
           <PrimaryInstallLink androidLabel={hero("cta_android")} className="inline-block bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition">
-            Add to Chrome — Free
+            {hero("cta_primary")}
           </PrimaryInstallLink>
           <div className="mt-8">
-            <InstallButtons platforms={["chrome","firefox","edge","safari"]} size="sm" />
+            <InstallButtons platforms={["android","ios"]} size="sm" />
           </div>
           <div className="mt-4">
-            <InstallButtons platforms={["ios","android"]} size="sm" />
+            <InstallButtons platforms={["chrome","firefox","edge","safari"]} size="sm" />
           </div>
         </div>
       </section>

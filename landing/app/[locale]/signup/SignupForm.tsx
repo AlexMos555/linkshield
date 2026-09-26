@@ -1,11 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import TurnstileWidget, { useTurnstileToken } from "@/components/TurnstileWidget";
+import { localePath } from "@/lib/locale-path";
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
 /**
  * How long Continue waits for a Turnstile token before sending the OTP
@@ -17,6 +19,20 @@ const CAPTCHA_TOKEN_WAIT_MS = 5_000;
 interface SignupFormProps {
   planFromQuery: string | null;
   intervalFromQuery: string | null;
+}
+
+/** Which plain-language message to show for a failed OTP request. */
+type SignupErrorKey = "error_rate_limited" | "error_send_failed";
+
+/**
+ * Supabase reports throttling as HTTP 429 or an `over_*_rate_limit` code; that
+ * one deserves "wait a few minutes". Everything else gets the generic "try
+ * later" — the raw provider message ("Error sending magic link email") is
+ * English jargon that tells a person nothing they can act on.
+ */
+function signupErrorKey(error: { status?: number; code?: string }): SignupErrorKey {
+  if (error.status === 429 || (error.code ?? "").includes("rate_limit")) return "error_rate_limited";
+  return "error_send_failed";
 }
 
 /**
@@ -44,13 +60,15 @@ interface SignupFormProps {
  * if it failed to load or is slow, the request goes out without a token,
  * exactly as before.
  *
- * Fallback when NEXT_PUBLIC_SUPABASE_* env vars are absent: the form
- * sends a mailto: with the user's intent so leads aren't dropped while
- * Supabase Auth is being wired in Vercel/Railway.
+ * Fallback when NEXT_PUBLIC_SUPABASE_* env vars are absent: if the support
+ * mailbox works, the form opens a mailto: so the lead isn't lost; if it
+ * doesn't (lib/support.ts), it says plainly that signing in is unavailable
+ * rather than handing the person an email that goes nowhere.
  */
 export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupFormProps) {
   const t = useTranslations("Signup");
   const nav = useTranslations("Nav");
+  const locale = useLocale();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +79,7 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
     e.preventDefault();
     setError(null);
     if (!email || !email.includes("@")) {
-      setError("Please enter a valid email address.");
+      setError(t("error_invalid_email"));
       return;
     }
 
@@ -85,9 +103,7 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
         if (dispResp.ok) {
           const { disposable, domain } = await dispResp.json();
           if (disposable) {
-            setError(
-              `Sorry — ${domain} is a disposable / temporary email service. Please use a real address so we can deliver alerts.`,
-            );
+            setError(t("error_disposable", { domain: String(domain ?? "") }));
             return;
           }
         }
@@ -98,8 +114,12 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
         // Network failure → fail-open, see comment above.
       }
 
-      // No env config → fall back to mailto so leads are still captured.
       if (!isAuthConfigured()) {
+        if (!SUPPORT_EMAIL_LIVE) {
+          setError(t("error_unavailable"));
+          return;
+        }
+        // Auth not wired yet but the mailbox works: capture the lead by email.
         const subject = encodeURIComponent("Signup interest — Cleanway");
         const planLine = planFromQuery
           ? `Plan: ${planFromQuery}${intervalFromQuery ? ` (${intervalFromQuery})` : ""}\n`
@@ -107,7 +127,7 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
         const body = encodeURIComponent(
           `Hi Cleanway team,\n\nI'd like to sign up.\n\n${planLine}Email: ${email}\n\nPlease let me know when signup goes live.\n`
         );
-        window.location.href = `mailto:support@cleanway.ai?subject=${subject}&body=${body}`;
+        window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
         return;
       }
 
@@ -115,8 +135,8 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
       // bounces back here with #access_token=... in the URL hash. The
       // callback route exchanges it for a session cookie.
       const next = planFromQuery
-        ? `/pricing?plan=${planFromQuery}${intervalFromQuery ? `&interval=${intervalFromQuery}` : ""}`
-        : "/";
+        ? `${localePath(locale, "/pricing")}?plan=${planFromQuery}${intervalFromQuery ? `&interval=${intervalFromQuery}` : ""}`
+        : localePath(locale, "/");
       const redirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
       const supabase = getSupabaseClient();
@@ -133,13 +153,14 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
         // Tokens are single-use: whatever we just sent is spent, so the
         // next attempt needs a fresh one.
         captcha.reset();
-        setError(signInError.message);
+        setError(t(signupErrorKey(signInError)));
         return;
       }
       setSent(true);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      setError(`Couldn't send the magic link: ${msg}`);
+    } catch {
+      // signInWithOtp resolves with an error object for API failures; a throw
+      // here means the request never got an answer.
+      setError(t("error_network"));
     } finally {
       setSubmitting(false);
     }
@@ -161,18 +182,10 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
           {t("check_inbox")}
         </h2>
         <p style={{ fontSize: 14, color: "#94a3b8", margin: "0 0 6px", lineHeight: 1.6 }}>
-          {/* magic_link_sent contains a literal $EMAIL$ placeholder we
-              substitute client-side. Using inline interpolation keeps
-              the localized text formed as a single paragraph (the
-              <strong> wrapping the email is preserved). */}
-          {t("magic_link_sent").split("$EMAIL$").map((part, i, arr) => (
-            <span key={i}>
-              {part}
-              {i < arr.length - 1 && (
-                <strong style={{ color: "#f8fafc" }}>{email}</strong>
-              )}
-            </span>
-          ))}
+          {t.rich("magic_link_sent", {
+            email,
+            strong: (chunks) => <strong style={{ color: "#f8fafc" }}>{chunks}</strong>,
+          })}
         </p>
         <p style={{ fontSize: 13, color: "#94a3b8", margin: 0 }}>
           {t("magic_link_followup")}
@@ -204,10 +217,10 @@ export default function SignupForm({ planFromQuery, intervalFromQuery }: SignupF
         />
       </label>
 
-      <TurnstileWidget {...captcha.handlers} theme="dark" size="flexible" />
+      <TurnstileWidget {...captcha.handlers} theme="dark" size="flexible" skipTestKeyInProduction />
 
       {error && (
-        <div style={{ background: "#7f1d1d20", color: "#fca5a5", border: "1px solid #7f1d1d", borderRadius: 8, padding: "8px 12px", fontSize: 13 }}>
+        <div role="alert" style={{ background: "#7f1d1d20", color: "#fca5a5", border: "1px solid #7f1d1d", borderRadius: 8, padding: "8px 12px", fontSize: 13 }}>
           {error}
         </div>
       )}

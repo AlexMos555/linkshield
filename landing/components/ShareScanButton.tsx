@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 
 /**
@@ -15,40 +16,32 @@ import { useCallback, useState } from "react";
  */
 interface ShareScanButtonProps {
   domain: string;
-  level: "safe" | "caution" | "dangerous";
+  /** Localized verdict label, e.g. "Опасно" — the page already has it. */
+  verdict: string;
   score: number | string;
   url: string;
 }
 
-const LEVEL_PHRASES: Record<ShareScanButtonProps["level"], string> = {
-  safe: "Looks safe",
-  caution: "Use caution",
-  dangerous: "Flagged as dangerous",
-};
-
-function buildShareText(domain: string, level: ShareScanButtonProps["level"], score: number | string): string {
-  const phrase = LEVEL_PHRASES[level] ?? "Checked";
-  return `${phrase}: ${domain} — Cleanway score ${score}/100`;
-}
-
-export default function ShareScanButton({ domain, level, score, url }: ShareScanButtonProps) {
+export default function ShareScanButton({ domain, verdict, score, url }: ShareScanButtonProps) {
+  const t = useTranslations("Check");
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  const text = buildShareText(domain, level, score);
+  const text = t("share_text", { verdict, domain, score: String(score) });
+  const title = t("share_title", { domain });
 
   const handleNativeShare = useCallback(async () => {
     // Avoid relying on `navigator.canShare` which is not always present
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: `Is ${domain} safe?`, text, url });
+        await navigator.share({ title, text, url });
         return;
       } catch {
         // User dismissed — fall through to expanded view
       }
     }
     setExpanded((v) => !v);
-  }, [domain, text, url]);
+  }, [title, text, url]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -69,7 +62,7 @@ export default function ShareScanButton({ domain, level, score, url }: ShareScan
     { name: "Reddit", href: `https://reddit.com/submit?url=${encodedUrl}&title=${encodedText}` },
     { name: "Telegram", href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}` },
     { name: "WhatsApp", href: `https://wa.me/?text=${encodedText}%20${encodedUrl}` },
-    { name: "Email", href: `mailto:?subject=${encodedText}&body=${encodedUrl}` },
+    { name: t("share_email"), href: `mailto:?subject=${encodedText}&body=${encodedUrl}` },
   ];
 
   return (
@@ -89,7 +82,7 @@ export default function ShareScanButton({ domain, level, score, url }: ShareScan
           alignSelf: "flex-start",
         }}
       >
-        Share this scan
+        {t("share_button")}
       </button>
 
       {expanded && (
@@ -136,7 +129,7 @@ export default function ShareScanButton({ domain, level, score, url }: ShareScan
               fontWeight: 600,
             }}
           >
-            {copied ? "Copied!" : "Copy link"}
+            {copied ? t("share_copied") : t("share_copy")}
           </button>
         </div>
       )}

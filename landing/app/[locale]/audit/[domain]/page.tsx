@@ -116,7 +116,7 @@ export default async function AuditPage({ params }: Props) {
               textDecoration: "none",
             }}
           >
-            Add to Chrome
+            {nav("install")}
           </PrimaryInstallLink>
         </div>
       </nav>

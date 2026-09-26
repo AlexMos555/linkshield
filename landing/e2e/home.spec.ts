@@ -44,10 +44,7 @@ for (const locale of LOCALES) {
     }
 
     // Hero CTA must be visible and clickable
-    const cta = page.locator("a", {
-      hasText: /Chrome/,
-    }).first();
-    await expect(cta).toBeVisible();
+    await expect(page.getByTestId("primary-install-hero")).toBeVisible();
   });
 }
 
@@ -85,13 +82,17 @@ test("pricing page renders three tiers", async ({ page }) => {
 
 // ─── Section content (EN only — localized copy is tested via unit tests) ─────
 
-test("comparison table shows competitor columns", async ({ page }) => {
-  await page.goto("/en");
-  // Competitor names are brand names — identical across all locales
-  const body = page.locator("body");
-  await expect(body).toContainText("Cleanway");
-  await expect(body).toContainText("Guardio");
-  await expect(body).toContainText("Norton 360");
+// The comparison table was removed (report #11): it claimed "all 5
+// platforms" while only Android is live, and named VPNs we supposedly work
+// alongside — on Android only one VPN runs at a time.
+test("home makes no competitor or VPN-compatibility claims", async ({ page }) => {
+  for (const locale of ["en", "ru"] as const) {
+    await page.goto(`/${locale}`);
+    const body = page.locator("body");
+    await expect(body).not.toContainText("NordVPN");
+    await expect(body).not.toContainText("ExpressVPN");
+    await expect(body).not.toContainText("Guardio");
+  }
 });
 
 test("FAQ section has expandable items", async ({ page }) => {
@@ -123,10 +124,10 @@ test("desktop primary CTAs stay on /dns after hydration", async ({ page }) => {
 
   const nav = page.getByTestId("primary-install-nav");
   await expect(nav).toHaveAttribute("href", "/dns");
-  await expect(nav).toHaveText("Add to Chrome");
+  await expect(nav).toHaveText("Install");
 
   await expect(page.getByTestId("primary-install-free-card")).toHaveAttribute("href", "/dns");
   const hero = page.getByTestId("primary-install-hero");
   await expect(hero).toHaveAttribute("href", "/dns");
-  await expect(hero).toHaveText("Add to Chrome — Free");
+  await expect(hero).toHaveText("Get protected — free");
 });

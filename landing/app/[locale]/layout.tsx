@@ -2,41 +2,61 @@ import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://cleanway.ai"),
-  manifest: "/manifest.webmanifest",
-  title: "Cleanway — Protection from scam links",
-  description:
-    "Automatic scam link detection with plain-language explanations. Phishing recall published weekly under /transparency/methodology. 10 languages, your browsing data stays on your device.",
-  keywords: [
-    "phishing protection",
-    "scam detection",
-    "link checker",
-    "privacy audit",
-    "anti-fraud",
-    "browser extension",
-    "safe browsing",
-  ],
-  openGraph: {
-    title: "Cleanway — Protection from scam links",
-    description: "Your browsing data lives only on your device.",
-    siteName: "Cleanway",
-    type: "website",
-    // Per-page generateMetadata overrides url with the locale-correct canonical.
-    // Omit url here so a non-default-locale page that forgets to override
-    // doesn't inherit the apex URL and leak a wrong canonical to OG consumers.
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Cleanway — Protection from scam links",
-    description: "Phishing recall published weekly. 10 languages. Zero data stored.",
-    site: "@cleanwayai",
-  },
-};
+/**
+ * Site-wide default metadata, in the page's language.
+ *
+ * Pages without their own openGraph block (support, terms, the 404...) fall
+ * back to this, and that fallback is what Telegram and WhatsApp show when a
+ * link is shared. It used to be English everywhere and promised "your
+ * browsing data lives only on your device" — untrue, since checked site names
+ * reach our server. Keep it to what the product does today.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const safeLocale: Locale = hasLocale(routing.locales, locale) ? locale : routing.defaultLocale;
+  const t = await getTranslations({ locale: safeLocale, namespace: "Meta" });
+  const title = t("title");
+  const description = t("description");
+
+  return {
+    metadataBase: new URL("https://cleanway.ai"),
+    manifest: "/manifest.webmanifest",
+    title,
+    description,
+    keywords: [
+      "phishing protection",
+      "scam detection",
+      "link checker",
+      "anti-fraud",
+      "Android",
+      "safe browsing",
+    ],
+    openGraph: {
+      title,
+      description,
+      siteName: "Cleanway",
+      type: "website",
+      locale: safeLocale,
+      // Per-page generateMetadata overrides url with the locale-correct canonical.
+      // Omit url here so a non-default-locale page that forgets to override
+      // doesn't inherit the apex URL and leak a wrong canonical to OG consumers.
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      site: "@cleanwayai",
+    },
+  };
+}
 
 // Viewport / theme color — Next 15 wants this as a separate export so it
 // can be served as a meta tag without re-rendering the page metadata.

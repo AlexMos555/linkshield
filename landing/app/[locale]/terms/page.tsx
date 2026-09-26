@@ -1,11 +1,30 @@
+/**
+ * Terms of use, in the reader's language.
+ *
+ * The previous page was English-only and promised things the product does not
+ * do (a 14-day trial on every plan, App Store / Google Play billing, "your
+ * browsing data stays on your device"). This version states only what is
+ * true today and what we explicitly do NOT promise. A lawyer still has to
+ * review it (governing law and the operator's details are not filled in).
+ */
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-import { routing, type Locale } from "@/i18n/routing";
+import { LegalDocument, type LegalSection } from "@/components/LegalDocument";
+import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
+import { localePath } from "@/lib/locale-path";
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
 const SITE_URL = "https://cleanway.ai";
+/** Index of the "Privacy" section, which gets a link to the policy. */
+const PRIVACY_SECTION = 6;
 
 function urlFor(locale: Locale | string, path: string): string {
   return locale === routing.defaultLocale ? `${SITE_URL}${path}` : `${SITE_URL}/${locale}${path}`;
+}
+
+function resolveLocale(locale: string): Locale {
+  return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
 }
 
 export async function generateMetadata({
@@ -13,18 +32,16 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
-  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const safeLocale = resolveLocale((await params).locale);
+  const t = await getTranslations({ locale: safeLocale, namespace: "Terms" });
   const canonical = urlFor(safeLocale, "/terms");
 
   const languages: Record<string, string> = {};
   for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, "/terms");
   languages["x-default"] = urlFor(routing.defaultLocale, "/terms");
 
-  const title = "Terms of Service — Cleanway";
-  const description =
-    "Cleanway terms of service: account responsibilities, billing, acceptable use, refund policy, governing law.";
+  const title = t("meta_title");
+  const description = t("meta_description");
 
   return {
     title,
@@ -49,106 +66,44 @@ export async function generateMetadata({
   };
 }
 
-export default function Terms() {
-  return (
-    <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh" }}>
-      <main style={{ maxWidth: 760, margin: "0 auto", padding: "60px 24px" }}>
-        <a href="/" style={{ color: "#60a5fa", fontSize: 14, textDecoration: "none" }}>&larr; Back to Cleanway</a>
-        <h1 style={{ fontSize: 36, fontWeight: 800, color: "#f8fafc", margin: "24px 0 8px" }}>Terms of Service</h1>
-        <p style={{ color: "#64748b", marginBottom: 40 }}>Last updated: May 4, 2026</p>
+const linkStyle: React.CSSProperties = { color: "#60a5fa" };
 
-        <S t="1. Service Description">
-          <p>Cleanway provides phishing protection through browser extensions, mobile applications, and web APIs. The service checks domain names against threat intelligence databases and provides risk assessments.</p>
-        </S>
+export default async function Terms({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const safeLocale = resolveLocale((await params).locale);
+  const t = await getTranslations({ locale: safeLocale, namespace: "Terms" });
+  const sections = t.raw("sections") as LegalSection[];
+  const isRtl = (RTL_LOCALES as readonly string[]).includes(safeLocale);
 
-        <S t="2. Accounts">
-          <p>You must provide accurate information when creating an account. You are responsible for maintaining the security of your account credentials. One person or entity per account.</p>
-        </S>
-
-        <S t="3. Free and Paid Plans">
-          <p>Cleanway offers free and paid subscription plans. Free plans include limited API checks per day. Paid plans provide unlimited checks and additional features.</p>
-          <p>Paid subscriptions are billed monthly or annually through Stripe, Apple In-App Purchase, or Google Play Billing. All subscriptions include a 14-day free trial.</p>
-          <p>You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period. No refunds are provided for partial billing periods.</p>
-        </S>
-
-        <S t="4. Acceptable Use">
-          <p>You agree NOT to:</p>
-          <ul>
-            <li>Use the API to test or validate phishing domains for malicious purposes</li>
-            <li>Attempt to reverse-engineer the scoring algorithm or ML model</li>
-            <li>Circumvent rate limits or create multiple free accounts</li>
-            <li>Resell, redistribute, or commercially exploit API access</li>
-            <li>Use the service to generate false security reports about legitimate businesses</li>
-            <li>Submit automated bulk requests beyond your plan limits</li>
-            <li>Interfere with the service or its infrastructure</li>
-            <li>Use Family Hub to send unsolicited content, spam, or harassment to other users; the encryption is meant to protect family privacy, not to shield abusive behavior</li>
-            <li>Add a person to a Family Hub group without their consent (including dependents who can refuse — children get explicit say once they&apos;re old enough)</li>
-            <li>Attempt to break the end-to-end encryption (e.g. by deriving secret keys from public keys) or claim that you have</li>
-          </ul>
-          <p>Violation may result in immediate account suspension. We process abuse reports manually — when an alleged victim reports unwanted Family Hub messages we will revoke the inviter&apos;s ability to add new members and may terminate their account, even though we cannot read the message content itself.</p>
-        </S>
-
-        <S t="4a. Family Hub specifics">
-          <p>Family Hub is end-to-end encrypted (see <a href="/privacy-policy" style={{ color: "#60a5fa" }}>Privacy Policy §6</a> for the technical details). Practical consequences:</p>
-          <ul>
-            <li><strong>We cannot recover lost private keys.</strong> If every device in your family is wiped at the same time, past alerts addressed to those devices become permanently unreadable. We can revoke + re-issue keypairs for future alerts but the historical ciphertexts are gone.</li>
-            <li><strong>Invite codes appear once.</strong> The 4-digit PIN + invite code are shown to the inviter at creation time only. Lost them? Generate a new invite — old ones expire 7 days after creation regardless.</li>
-            <li><strong>You are responsible for who you invite.</strong> An invitee accepting your invite gains access to the encrypted alert stream of every member of that family. Pick wisely; the invariant is "people you trust to know what scams you nearly fell for."</li>
-            <li><strong>Family alerts are advisory.</strong> They tell you a scam was blocked on a relative&apos;s device. They are not a substitute for direct check-ins, conservatorship, or other legal/medical safeguards for vulnerable family members.</li>
-          </ul>
-        </S>
-
-        <S t="5. Accuracy and Limitations">
-          <p>Cleanway provides risk assessments based on multiple data sources and machine learning. These assessments are advisory and not definitive.</p>
-          <p><strong>We do not guarantee:</strong></p>
-          <ul>
-            <li>100% detection of all phishing or malicious sites</li>
-            <li>Zero false positives (safe sites incorrectly flagged)</li>
-            <li>Real-time detection of newly created phishing sites</li>
-            <li>Protection against all forms of online fraud</li>
-          </ul>
-          <p>Cleanway is one layer of protection and should be used alongside other security practices (strong passwords, 2FA, caution with suspicious emails).</p>
-        </S>
-
-        <S t="6. Privacy">
-          <p>Your use of Cleanway is governed by our <a href="/privacy-policy" style={{ color: "#60a5fa" }}>Privacy Policy</a>. In summary: your browsing data stays on your device, and our servers store only account information.</p>
-        </S>
-
-        <S t="7. Intellectual Property">
-          <p>Cleanway and its original content, features, and functionality are owned by Cleanway and protected by international copyright, trademark, and other intellectual property laws.</p>
-          <p>The browser extension client-side code is open source. The server-side scoring engine, ML models, and threat intelligence aggregation are proprietary.</p>
-        </S>
-
-        <S t="8. Limitation of Liability">
-          <p>Cleanway is provided &quot;as is&quot; without warranties of any kind. To the maximum extent permitted by law, Cleanway shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of data, loss of profits, or business interruption.</p>
-          <p>Our total liability for any claim shall not exceed the amount you paid for the service in the 12 months preceding the claim.</p>
-        </S>
-
-        <S t="9. Termination">
-          <p>We may suspend or terminate your account if you violate these terms. You may delete your account at any time from Settings. Upon termination, all server-side data is deleted within 30 days.</p>
-        </S>
-
-        <S t="10. Changes">
-          <p>We may update these terms. Material changes will be communicated via email or in-app notification at least 30 days in advance. Continued use after changes constitutes acceptance.</p>
-        </S>
-
-        <S t="11. Governing Law">
-          <p>These terms are governed by the laws of the jurisdiction in which Cleanway operates, without regard to conflict of law provisions.</p>
-        </S>
-
-        <S t="12. Contact">
-          <p>Questions about these terms: <a href="mailto:legal@cleanway.ai" style={{ color: "#60a5fa" }}>legal@cleanway.ai</a></p>
-        </S>
-      </main>
-    </div>
+  const privacyLink = (
+    <p style={{ margin: 0 }}>
+      <a href={localePath(safeLocale, "/privacy-policy")} style={linkStyle}>{t("privacy_link")}</a>
+    </p>
   );
-}
+  const contact = SUPPORT_EMAIL_LIVE ? (
+    <p style={{ margin: 0 }}>
+      {t("contact_live")}{" "}
+      <a href={`mailto:${SUPPORT_EMAIL}`} style={linkStyle}>{SUPPORT_EMAIL}</a>
+    </p>
+  ) : (
+    <p style={{ margin: 0 }}>
+      {t("contact_not_live")}{" "}
+      <a href={localePath(safeLocale, "/support")} style={linkStyle}>{t("support_link")}</a>
+    </p>
+  );
 
-function S({ t, children }: { t: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: 32 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", marginBottom: 12 }}>{t}</h2>
-      <div style={{ fontSize: 15, lineHeight: 1.8, color: "#94a3b8" }}>{children}</div>
-    </section>
+    <LegalDocument
+      backHref={localePath(safeLocale, "/")}
+      backLabel={t("back")}
+      backArrow={isRtl ? "→" : "←"}
+      title={t("title")}
+      updated={t("updated")}
+      sections={sections}
+      slots={{ [PRIVACY_SECTION]: privacyLink, [sections.length - 1]: contact }}
+    />
   );
 }

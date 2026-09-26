@@ -23,51 +23,53 @@ export interface PlatformInfo {
   href: string;
   /** True when the link resolves to a real, useful install destination — a live
    *  store listing, or our own download page which states its own status. When
-   *  false, UI renders a non-clickable status pill instead ("In review",
-   *  "Coming soon").
+   *  false, UI renders a non-clickable status pill instead ("Coming soon").
    *
    *  Android is `true` because `/android` is a real page: it explains the app,
    *  walks through the unknown-sources step, and says plainly when the build is
    *  not published yet. Sending people to a page that tells the truth beats a
    *  greyed-out pill that hides it. */
   available: boolean;
-  /** Short user-facing status when `available=false`. */
-  status?: string;
+  /** Which status pill to show when `available=false` — the text itself is
+   *  localized (landing.install.status_<key>), never hard-coded here. */
+  statusKey?: InstallStatus;
 }
 
+/** Status pills with a string in every locale (landing.install.status_*). */
+export type InstallStatus = "coming_soon" | "appsource_pending";
+
 export const PLATFORMS: Record<Platform, PlatformInfo> = {
-  // Chrome Web Store submission scheduled 2026-07-03; honest status until
-  // store listing is actually live. Don't promise approval windows we can't
-  // control.
+  // Not in the Chrome Web Store yet. "Coming soon" and nothing more specific:
+  // don't promise review windows we can't control.
   chrome: {
     label: "Chrome",
     href: "/dns",          // fallback while CWS review pending
     available: false,
-    status: "Submitting soon",
+    statusKey: "coming_soon",
   },
   firefox: {
     label: "Firefox",
     href: "/dns",
     available: false,
-    status: "Coming soon",
+    statusKey: "coming_soon",
   },
   edge: {
     label: "Edge",
     href: "/dns",
     available: false,
-    status: "Coming soon",
+    statusKey: "coming_soon",
   },
   safari: {
     label: "Safari",
     href: "/dns",
     available: false,
-    status: "Coming soon",
+    statusKey: "coming_soon",
   },
   ios: {
     label: "iOS",
     href: "/dns",                   // DoH profile install works today
     available: false,
-    status: "Native app after launch",
+    statusKey: "coming_soon",
   },
   android: {
     // The Android CTA now leads to the download/install page (/android), the
@@ -82,7 +84,7 @@ export const PLATFORMS: Record<Platform, PlatformInfo> = {
     label: "Outlook",
     href: "/dns",
     available: false,
-    status: "AppSource pending",
+    statusKey: "appsource_pending",
   },
 };
 

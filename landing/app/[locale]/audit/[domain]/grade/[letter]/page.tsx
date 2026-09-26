@@ -129,6 +129,8 @@ export default async function GradePage({ params }: Props) {
   // Android-only labels for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
+  const check = await getTranslations({ locale: safeLocale, namespace: "Check" });
+  const shareLevel = grade === "A" || grade === "B" ? "safe" : grade === "F" ? "dangerous" : "caution";
 
   // JSON-LD Review with the grade as ratingValue. Schema.org accepts
   // string ratings, but Google prefers numeric — map A=5, B=4, ..., F=1.
@@ -194,7 +196,7 @@ export default async function GradePage({ params }: Props) {
               textDecoration: "none",
             }}
           >
-            Add to Chrome
+            {nav("install")}
           </PrimaryInstallLink>
         </div>
       </nav>
@@ -245,7 +247,7 @@ export default async function GradePage({ params }: Props) {
 
           <ShareScanButton
             domain={decoded}
-            level={grade === "A" || grade === "B" ? "safe" : grade === "F" ? "dangerous" : "caution"}
+            verdict={check(`level_${shareLevel}`)}
             score={grade}
             url={canonical}
           />
@@ -280,7 +282,7 @@ export default async function GradePage({ params }: Props) {
               textDecoration: "none",
             }}
           >
-            Add to Chrome — Free
+            {hero("cta_primary")}
           </PrimaryInstallLink>
           <div style={{ marginTop: 20 }}>
             <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />

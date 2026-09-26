@@ -68,6 +68,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // mutual hreflang alternates so search engines pick the right variant.
   const staticPaths = [
     { path: "/", changeFrequency: "weekly" as const, priority: 1.0 },
+    // The Android download page is the front door of the Tele2 funnel, and
+    // /support is where its readers go when something goes wrong.
+    { path: "/android", changeFrequency: "weekly" as const, priority: 0.95 },
+    { path: "/support", changeFrequency: "monthly" as const, priority: 0.6 },
     { path: "/check", changeFrequency: "daily" as const, priority: 0.9 },
     { path: "/pricing", changeFrequency: "weekly" as const, priority: 0.85 },
     { path: "/transparency", changeFrequency: "weekly" as const, priority: 0.7 },

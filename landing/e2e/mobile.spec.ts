@@ -97,7 +97,7 @@ test.describe("primary install CTA routing", () => {
 
     const hero = page.getByTestId("primary-install-hero");
     await expect(hero).toHaveAttribute("href", "/dns");
-    await expect(hero).toHaveText("Add to Chrome — Free");
+    await expect(hero).toHaveText("Get protected — free");
     await expect(page.getByTestId("primary-install-free-card")).toHaveAttribute("href", "/dns");
   });
 });

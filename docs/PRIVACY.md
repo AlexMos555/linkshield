@@ -49,8 +49,13 @@ If you enable the webmail scanner, the extension sends the email's **subject, se
 
 ### Link guard and the "All apps" shield
 
+- **How the shield works.** The "All apps" shield is a local `VpnService` (`CleanwayVpnService`) that routes only DNS into the tunnel (`addRoute(VPN_GATEWAY_IP, 32)` — "only route DNS to us"). Page contents, messages and calls never pass through it; only the QNAME of each DNS query is parsed. A name on the on-device list is answered NXDOMAIN and logged on the phone (see the shield activity log below).
+- **Where the other lookups go.** Names that are not blocked are forwarded to a public resolver so the phone can reach the site — Cleanway does not receive or store these queries, but the resolver sees the name and the connection's IP, like any DNS resolver:
+  - **Android 1.0.1** (`CleanwayVpnService`: `UPSTREAM_DNS_HOST`, `UPSTREAM_DNS_HOST_2`, `DOH_URL`): plain UDP/53 to Cloudflare `1.1.1.1`, then Quad9 `9.9.9.9`, then Cloudflare DNS-over-HTTPS (`https://1.1.1.1/dns-query`) as the last fallback.
+  - **Android 1.0.2 and later** (planned change on the 1.0.2 track): the network's own resolver first — the mobile operator's or the Wi-Fi network's DNS — with Cloudflare and Quad9 only as fallbacks. Update this bullet with the exact code references when 1.0.2 is merged.
 - **Link guard.** When Cleanway is your default link app, a tapped link's host is checked against the list on the phone. While the "All apps" shield runs, a host that is not on the list may also be sent, host only, to the same public check in the background.
-- **Blocklist download.** The "All apps" shield downloads the blocklist from `GET /api/v1/blocklist/dns`. The download sends nothing about your browsing.
+- **Blocklist download.** The "All apps" shield downloads the blocklist from `GET /api/v1/blocklist/dns` about every 6 hours (`BlocklistSync.REFRESH_MS`; on a metered network only once the list is 24 hours old, `METERED_MIN_AGE_MS`), sending the stored ETag as `If-None-Match`. The download sends nothing about your browsing.
+- **Update check.** The app periodically calls `GET /api/v1/mobile/version` to learn whether a newer APK exists (`mobile/src/lib/update-check.ts`). It sends nothing about your browsing.
 - **Shield activity log.** What the shields blocked, warned about or let through at your request is kept on the phone (`SharedPreferences` file `cleanway_block_log`: up to 200 events with the site name, the time, what happened and which shield acted, plus lifetime counters) and shown in History.
 
 ### Retention on the phone
@@ -131,6 +136,8 @@ One more thing a check can change — **currently switched off**: when Google Sa
 
 Two operational logs can record domain names for legitimate reasons, and we disclose them rather than hide them: the ML **feature log** (off by default; see note above) and the **DoH gateway**, which logs only the last 32 characters of a blocked query name to structured logs. Neither is linked to user identity. Redis cache keys are also plaintext domain names, readable by anyone with direct Redis access — which is why that access is restricted.
 
+**Hosting request logs.** Our own request log scrubs the domain out of `/api/v1/public/check/{domain}` before it is written (`_scrub_path_for_logs` in `api/main.py`), and uvicorn's access log is silenced (`api/services/logger.py`). The hosting platforms in front of us — Railway for the API, Vercel for cleanway.ai (whose `/check/{domain}` pages carry the domain in the page URL) — keep their own HTTP request logs, which can include the requested path and the client IP. We do not control their retention; their policies apply.
+
 ## Your rights (GDPR)
 
 - **Export and deletion.** You can request account deletion; it enters a **30-day grace period** (soft-delete) before the data is permanently removed, giving you time to cancel.
@@ -141,4 +148,4 @@ If you have a privacy request or question, contact us and reference this documen
 
 ## Footer
 
-This document describes the code as of **2026-07-01** (main branch); the Android app section was added on **2026-09-25** with the on-device message check. Generated with a code-grounded workflow whose every claim was adversarially verified against the source. Retention windows, hashing choices, and data flows above are drawn directly from the source and are intended to be auditable. The detection engine is open to inspection — see the benchmark methodology and open-source plan (`docs/OPEN-SOURCE.md`) for how to verify these claims against the code and against head-to-head accuracy results. If you find any statement here that the code does not support, that is a bug in this document; please report it.
+This document describes the code as of **2026-07-01** (main branch); the Android app section was added on **2026-09-25** with the on-device message check, and the shield's DNS upstreams, blocklist cadence, update check and hosting-log note on **2026-09-26**. The public policy at cleanway.ai/privacy-policy (source: `landing.privacy_policy` in `packages/i18n-strings/src/`, all 10 languages) is the plain-language version of this document — change both together. It has not yet been reviewed by a lawyer against 152-FZ (operator details, consent, cross-border transfer, data-subject request channel). Generated with a code-grounded workflow whose every claim was adversarially verified against the source. Retention windows, hashing choices, and data flows above are drawn directly from the source and are intended to be auditable. The detection engine is open to inspection — see the benchmark methodology and open-source plan (`docs/OPEN-SOURCE.md`) for how to verify these claims against the code and against head-to-head accuracy results. If you find any statement here that the code does not support, that is a bug in this document; please report it.

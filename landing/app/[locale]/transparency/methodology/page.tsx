@@ -1,59 +1,43 @@
 /**
- * Public benchmark methodology page — credibility moat.
+ * Public benchmark methodology page.
  *
- * Reads docs/benchmarks/latest.json (auto-published weekly by
- * .github/workflows/weekly-benchmark.yml) and renders the live
- * head-to-head table: Cleanway vs Cloudflare 1.1.1.1 for Families
- * vs Google Safe Browsing vs PhishTank vs VirusTotal aggregate.
+ * Reads docs/benchmarks/latest.json (moved forward by
+ * .github/workflows/weekly-benchmark.yml only when a run clears the script's
+ * quality gate) and renders the head-to-head tables: Cleanway vs Cloudflare
+ * 1.1.1.1 for Families vs Google Safe Browsing vs PhishTank vs VirusTotal.
  *
- * Every recall claim on the landing page resolves here with the exact
- * dataset, the exact script, and a link to GitHub so anyone can reproduce
- * the number. The hero badge reads the same `latest.json` via
- * `lib/live-recall.ts` — when this page shows an updated benchmark, the
- * badge updates too on the next deploy.
- *
- * No competitor publishes this. It's the single biggest credibility
- * signal we can ship for go-to-market.
+ * The tables appear only when the snapshot clears the same gate the site uses
+ * everywhere (lib/benchmark.ts). Otherwise the page says how small the last
+ * run was and links to every raw weekly result, instead of printing a
+ * percentage from 24 links under "Snapshot: $DATE$" (report #12).
  */
 import type { Metadata } from "next";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
+import {
+  MIN_PHISHING_CLASSIFIED,
+  MIN_PHISHING_SAMPLE,
+  falsePositiveRateIsPublishable,
+  loadLatestBenchmark,
+  recallIsPublishable,
+  type BenchmarkSnapshot,
+  type ResolverStats,
+} from "@/lib/benchmark";
+import { localePath } from "@/lib/locale-path";
 
 const SITE_URL = "https://cleanway.ai";
 const REPO_URL = "https://github.com/AlexMos555/linkshield";
 
-type ResolverStats = {
-  tp: number;
-  fp: number;
-  tn: number;
-  fn: number;
-  unknown: number;
-  recall: number | null;
-  fpr: number | null;
-  precision: number | null;
-  f1: number | null;
-  latency_p50_ms: number | null;
-};
-
-type Benchmark = {
-  ts: string;
-  n_phishing: number;
-  n_safe: number;
-  sources: Record<string, string>;
-  phishing: Record<string, ResolverStats>;
-  safe: Record<string, ResolverStats>;
-};
-
 const RESOLVER_LABELS: Record<string, string> = {
-  cleanway: "Cleanway (public)",
+  cleanway: "Cleanway",
   cleanway_local: "Cleanway (full local)",
   gsb: "Google Safe Browsing",
   phishtank: "PhishTank",
   cloudflare_families: "Cloudflare 1.1.1.1 for Families",
-  virustotal: "VirusTotal (70+ vendors)",
+  virustotal: "VirusTotal",
 };
+
+type Translate = (key: string, values?: Record<string, string | number>) => string;
 
 function urlFor(locale: Locale | string): string {
   return locale === routing.defaultLocale
@@ -61,28 +45,13 @@ function urlFor(locale: Locale | string): string {
     : `${SITE_URL}/${locale}/transparency/methodology`;
 }
 
-async function loadBenchmark(): Promise<Benchmark | null> {
-  // Read the committed JSON from this repo. SSR'd, so no client
-  // fetch — the page ships the snapshot at build time. Weekly
-  // re-deploy refreshes it.
-  const candidates = [
-    path.join(process.cwd(), "..", "docs", "benchmarks", "latest.json"),
-    path.join(process.cwd(), "docs", "benchmarks", "latest.json"),
-  ];
-  for (const p of candidates) {
-    try {
-      const raw = await fs.readFile(p, "utf-8");
-      return JSON.parse(raw);
-    } catch {
-      continue;
-    }
-  }
-  return null;
+function resolveLocale(locale: string): Locale {
+  return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
 }
 
-function pct(x: number | null, digits: number = 1): string {
+function pct(x: number | null, locale: string, digits: number = 1): string {
   if (x === null || x === undefined || Number.isNaN(x)) return "—";
-  return `${(x * 100).toFixed(digits)}%`;
+  return new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: digits }).format(x);
 }
 
 function ms(x: number | null): string {
@@ -90,20 +59,20 @@ function ms(x: number | null): string {
   return `${Math.round(x)} ms`;
 }
 
+function day(iso: string, locale: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(date);
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
-  const safeLocale: Locale = isLocaleKnown
-    ? (locale as Locale)
-    : routing.defaultLocale;
-  const t = await getTranslations({
-    locale: safeLocale,
-    namespace: "Methodology",
-  });
+  const safeLocale = resolveLocale((await params).locale);
+  const t = await getTranslations({ locale: safeLocale, namespace: "Methodology" });
 
   const canonical = urlFor(safeLocale);
   const languages: Record<string, string> = {};
@@ -119,22 +88,128 @@ export async function generateMetadata({
   };
 }
 
+function rowStyle(name: string): React.CSSProperties {
+  return name.startsWith("cleanway") ? { background: "#0c4a6e1a" } : {};
+}
+
+function PhishingTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Translate; locale: string }) {
+  return (
+    <div style={{ overflowX: "auto", marginBottom: 24 }}>
+      <table style={_table}>
+        <thead>
+          <tr>
+            <th style={_th}>{t("col_service")}</th>
+            <th style={_thNum}>{t("col_recall")}</th>
+            <th style={_thNum}>{t("col_precision")}</th>
+            <th style={_thNum}>{t("col_f1")}</th>
+            <th style={_thNum}>{t("col_tp")}</th>
+            <th style={_thNum}>{t("col_fn")}</th>
+            <th style={_thNum}>{t("col_unknown")}</th>
+            <th style={_thNum}>{t("col_latency")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(data.phishing).map(([name, m]: [string, ResolverStats]) => (
+            <tr key={name} style={rowStyle(name)}>
+              <td style={_td}><strong>{RESOLVER_LABELS[name] || name}</strong></td>
+              <td style={_tdNum}>{pct(m.recall, locale)}</td>
+              <td style={_tdNum}>{pct(m.precision, locale)}</td>
+              <td style={_tdNum}>{pct(m.f1, locale)}</td>
+              <td style={_tdNum}>{m.tp}</td>
+              <td style={_tdNum}>{m.fn}</td>
+              <td style={_tdNum}>{m.unknown}</td>
+              <td style={_tdNum}>{ms(m.latency_p50_ms)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SafeTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Translate; locale: string }) {
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={_table}>
+        <thead>
+          <tr>
+            <th style={_th}>{t("col_service")}</th>
+            <th style={_thNum}>{t("col_fpr")}</th>
+            <th style={_thNum}>{t("col_fp")}</th>
+            <th style={_thNum}>{t("col_tn")}</th>
+            <th style={_thNum}>{t("col_unknown")}</th>
+            <th style={_thNum}>{t("col_latency")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(data.safe).map(([name, m]: [string, ResolverStats]) => (
+            <tr key={name} style={rowStyle(name)}>
+              <td style={_td}><strong>{RESOLVER_LABELS[name] || name}</strong></td>
+              <td style={_tdNum}>{pct(m.fpr, locale, 2)}</td>
+              <td style={_tdNum}>{m.fp}</td>
+              <td style={_tdNum}>{m.tn}</td>
+              <td style={_tdNum}>{m.unknown}</td>
+              <td style={_tdNum}>{ms(m.latency_p50_ms)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Results({ data, t, locale }: { data: BenchmarkSnapshot | null; t: Translate; locale: string }) {
+  if (!data) {
+    return <p style={{ color: "#f59e0b" }}>{t("results_unavailable")}</p>;
+  }
+  const ours = data.phishing?.cleanway;
+  if (!recallIsPublishable(data)) {
+    return (
+      <p data-testid="methodology-not-publishable" style={{ color: "#fbbf24" }}>
+        {t("results_not_publishable", {
+          date: day(data.ts, locale),
+          phishing: data.n_phishing,
+          classified: (ours?.tp ?? 0) + (ours?.fn ?? 0),
+          min_phishing: MIN_PHISHING_SAMPLE,
+          min_classified: MIN_PHISHING_CLASSIFIED,
+        })}
+      </p>
+    );
+  }
+  return (
+    <>
+      <p style={{ color: "#94a3b8", fontSize: 14, marginBottom: 16 }}>
+        {t("results_snapshot", { date: day(data.ts, locale), phishing: data.n_phishing, legit: data.n_safe })}
+      </p>
+      <h3 style={_h3}>{t("phishing_table_heading")}</h3>
+      <PhishingTable data={data} t={t} locale={locale} />
+      <h3 style={_h3}>{t("safe_table_heading")}</h3>
+      {falsePositiveRateIsPublishable(data) ? (
+        <SafeTable data={data} t={t} locale={locale} />
+      ) : (
+        <p style={{ color: "#fbbf24" }}>{t("fp_not_measured")}</p>
+      )}
+    </>
+  );
+}
+
 export default async function MethodologyPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
-  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
-  const safeLocale: Locale = isLocaleKnown
-    ? (locale as Locale)
-    : routing.defaultLocale;
-  const t = await getTranslations({
-    locale: safeLocale,
-    namespace: "Methodology",
-  });
-
-  const data = await loadBenchmark();
+  const safeLocale = resolveLocale((await params).locale);
+  const t = await getTranslations({ locale: safeLocale, namespace: "Methodology" });
+  const data = await loadLatestBenchmark();
+  const transparencyHref = localePath(safeLocale, "/transparency");
+  const caveats = [
+    t("caveat_endpoint"),
+    t("caveat_rate_limit"),
+    t("caveat_phishtank"),
+    t("caveat_gsb"),
+    t("caveat_nxdomain"),
+    t("caveat_latency"),
+  ];
 
   return (
     <main
@@ -149,7 +224,7 @@ export default async function MethodologyPage({
     >
       <header style={{ marginBottom: 36 }}>
         <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>
-          <a href="/transparency" style={{ color: "#60a5fa" }}>
+          <a href={transparencyHref} style={{ color: "#60a5fa" }}>
             ← {t("back_to_transparency")}
           </a>
         </p>
@@ -173,100 +248,15 @@ export default async function MethodologyPage({
         <p>{t("why_p2")}</p>
       </section>
 
-      {/* Live results from latest.json */}
+      {/* Results from latest.json — only when the sample means something */}
       <section style={{ marginBottom: 36 }}>
         <h2 style={_h2}>{t("results_heading")}</h2>
-        {!data ? (
-          <p style={{ color: "#f59e0b" }}>{t("results_unavailable")}</p>
-        ) : (
-          <>
-            <p style={{ color: "#94a3b8", fontSize: 14, marginBottom: 16 }}>
-              {t("results_meta", {
-                date: data.ts,
-                phishing: data.n_phishing,
-                legit: data.n_safe,
-              })}
-            </p>
-
-            <h3 style={_h3}>{t("phishing_table_heading")}</h3>
-            <div style={{ overflowX: "auto", marginBottom: 24 }}>
-              <table style={_table}>
-                <thead>
-                  <tr>
-                    <th style={_th}>Resolver</th>
-                    <th style={_thNum}>Recall</th>
-                    <th style={_thNum}>Precision</th>
-                    <th style={_thNum}>F1</th>
-                    <th style={_thNum}>TP</th>
-                    <th style={_thNum}>FN</th>
-                    <th style={_thNum}>?</th>
-                    <th style={_thNum}>p50</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(data.phishing).map(([name, m]) => (
-                    <tr
-                      key={name}
-                      style={
-                        name.startsWith("cleanway")
-                          ? { background: "#0c4a6e1a" }
-                          : {}
-                      }
-                    >
-                      <td style={_td}>
-                        <strong>{RESOLVER_LABELS[name] || name}</strong>
-                      </td>
-                      <td style={_tdNum}>{pct(m.recall)}</td>
-                      <td style={_tdNum}>{pct(m.precision)}</td>
-                      <td style={_tdNum}>{pct(m.f1)}</td>
-                      <td style={_tdNum}>{m.tp}</td>
-                      <td style={_tdNum}>{m.fn}</td>
-                      <td style={_tdNum}>{m.unknown}</td>
-                      <td style={_tdNum}>{ms(m.latency_p50_ms)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <h3 style={_h3}>{t("safe_table_heading")}</h3>
-            <div style={{ overflowX: "auto" }}>
-              <table style={_table}>
-                <thead>
-                  <tr>
-                    <th style={_th}>Resolver</th>
-                    <th style={_thNum}>FPR</th>
-                    <th style={_thNum}>FP</th>
-                    <th style={_thNum}>TN</th>
-                    <th style={_thNum}>?</th>
-                    <th style={_thNum}>p50</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(data.safe).map(([name, m]) => (
-                    <tr
-                      key={name}
-                      style={
-                        name.startsWith("cleanway")
-                          ? { background: "#0c4a6e1a" }
-                          : {}
-                      }
-                    >
-                      <td style={_td}>
-                        <strong>{RESOLVER_LABELS[name] || name}</strong>
-                      </td>
-                      <td style={_tdNum}>{pct(m.fpr, 2)}</td>
-                      <td style={_tdNum}>{m.fp}</td>
-                      <td style={_tdNum}>{m.tn}</td>
-                      <td style={_tdNum}>{m.unknown}</td>
-                      <td style={_tdNum}>{ms(m.latency_p50_ms)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+        <Results data={data} t={t} locale={safeLocale} />
+        <p style={{ marginTop: 12 }}>
+          <a href={`${REPO_URL}/tree/main/docs/benchmarks`} style={{ color: "#60a5fa" }}>
+            {t("all_runs_link")}
+          </a>
+        </p>
       </section>
 
       {/* Datasets */}
@@ -274,14 +264,10 @@ export default async function MethodologyPage({
         <h2 style={_h2}>{t("datasets_heading")}</h2>
         <ul style={_ul}>
           <li>
-            <strong>{t("dataset_phishing")}</strong>: URLhaus daily feed +
-            PhishTank online-valid dump. Both freshly fetched at each run,
-            deduplicated by registrable domain.
+            <strong>{t("dataset_phishing")}</strong>: {t("dataset_phishing_desc")}
           </li>
           <li>
-            <strong>{t("dataset_safe")}</strong>: random Tranco top-1M
-            domains, rank 100-100,000 (skipping the top-100 to avoid
-            'too easy' baseline). Random seed 42 for reproducibility.
+            <strong>{t("dataset_safe")}</strong>: {t("dataset_safe_desc")}
           </li>
         </ul>
       </section>
@@ -291,19 +277,9 @@ export default async function MethodologyPage({
         <h2 style={_h2}>{t("verdict_mapping_heading")}</h2>
         <p>{t("verdict_mapping_p1")}</p>
         <ul style={_ul}>
-          <li>
-            <strong>Cleanway</strong>: `level=dangerous` → dangerous,
-            `level=safe` → safe, anything else (`caution`) → unknown.
-          </li>
-          <li>
-            <strong>Cloudflare 1.1.1.1 for Families</strong>: NXDOMAIN or
-            sinkhole 0.0.0.0 / :: → dangerous. Normal A-record answer → safe.
-          </li>
-          <li>
-            <strong>VirusTotal aggregate</strong>: ≥2 of the 70+ vendors
-            flagging the URL → dangerous. Single-vendor flags are
-            ignored — too noisy.
-          </li>
+          <li>{t("mapping_cleanway")}</li>
+          <li>{t("mapping_cloudflare")}</li>
+          <li>{t("mapping_virustotal")}</li>
         </ul>
       </section>
 
@@ -322,7 +298,6 @@ export default async function MethodologyPage({
           >
             scripts/eval_fresh_urls.py
           </a>
-          .
         </p>
       </section>
 
@@ -338,7 +313,6 @@ export default async function MethodologyPage({
           >
             .github/workflows/weekly-benchmark.yml
           </a>
-          .
         </p>
       </section>
 
@@ -346,10 +320,7 @@ export default async function MethodologyPage({
       <section style={{ marginBottom: 36 }}>
         <h2 style={_h2}>{t("caveats_heading")}</h2>
         <ul style={_ul}>
-          <li>{t("caveat_1")}</li>
-          <li>{t("caveat_2")}</li>
-          <li>{t("caveat_3")}</li>
-          <li>{t("caveat_4")}</li>
+          {caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}
         </ul>
       </section>
 
@@ -359,9 +330,10 @@ export default async function MethodologyPage({
           fontSize: 12,
           color: "#475569",
           marginTop: 32,
+          paddingBottom: 40,
         }}
       >
-        <a href="/transparency" style={{ color: "#60a5fa" }}>
+        <a href={transparencyHref} style={{ color: "#60a5fa" }}>
           {t("back_to_transparency")}
         </a>
       </p>
@@ -384,7 +356,7 @@ const _h3: React.CSSProperties = {
 };
 
 const _ul: React.CSSProperties = {
-  paddingLeft: 22,
+  paddingInlineStart: 22,
 };
 
 const _table: React.CSSProperties = {
@@ -394,7 +366,7 @@ const _table: React.CSSProperties = {
 };
 
 const _th: React.CSSProperties = {
-  textAlign: "left",
+  textAlign: "start",
   padding: "10px 12px",
   borderBottom: "1px solid #334155",
   color: "#94a3b8",
@@ -403,7 +375,7 @@ const _th: React.CSSProperties = {
 
 const _thNum: React.CSSProperties = {
   ..._th,
-  textAlign: "right",
+  textAlign: "end",
 };
 
 const _td: React.CSSProperties = {
@@ -413,7 +385,7 @@ const _td: React.CSSProperties = {
 
 const _tdNum: React.CSSProperties = {
   ..._td,
-  textAlign: "right",
+  textAlign: "end",
   fontVariantNumeric: "tabular-nums",
 };
 
@@ -426,4 +398,5 @@ const _codeblock: React.CSSProperties = {
   fontSize: 13,
   overflowX: "auto",
   border: "1px solid #1e293b",
+  direction: "ltr",
 };

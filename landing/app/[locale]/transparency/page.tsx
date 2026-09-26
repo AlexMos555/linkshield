@@ -1,39 +1,29 @@
 /**
- * Public transparency report — Strategy doc Top-20 #16.
+ * Transparency report — only numbers we actually measured.
  *
- * Server-rendered so the published numbers ship in HTML for SEO
- * (and so Google's snippet pulls our FP rate, not a competitor's
- * unsourced "industry-low" claim). Data comes from the backend
- * /api/v1/transparency/latest endpoint, which is itself sourced
- * from a JSON file in docs/transparency/ — checked into git so
- * the audit trail is permanent.
- *
- * The page is intentionally boring. The point isn't beautiful
- * design — it's that the numbers are PUBLISHED at all. Every
- * competitor publishes glossy threat reports without their FP
- * rate. We publish ours.
+ * This page used to render the backend's /api/v1/transparency/latest, a
+ * hand-written pre-launch fixture ("1,842,630 checks", "0.08% false
+ * positives, verified by the analyst team") with literal $PERIOD$ / $DATE$
+ * placeholders on top (report #12). None of those numbers came from a
+ * measurement. Now the page reads the committed weekly benchmark
+ * (docs/benchmarks/latest.json) and shows a figure only when the sample clears
+ * the quality gate in lib/benchmark.ts; otherwise it says, in plain words,
+ * that there is no trustworthy number yet.
  */
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+
 import { routing, type Locale } from "@/i18n/routing";
+import {
+  MIN_PHISHING_SAMPLE,
+  falsePositiveRateIsPublishable,
+  loadLatestBenchmark,
+  recallIsPublishable,
+  type BenchmarkSnapshot,
+} from "@/lib/benchmark";
+import { localePath } from "@/lib/locale-path";
 
 const SITE_URL = "https://cleanway.ai";
-const DEFAULT_API_URL = "https://api.cleanway.ai";
-
-type Report = {
-  id: string;
-  period: string;
-  published_at: string;
-  checks: { total: number; free_tier: number; paid_tier: number };
-  verdicts: { safe_count: number; caution_count: number; dangerous_count: number };
-  false_positive_rate: { value: number; denominator: number; note: string };
-  latency_ms: { p50: number; p95: number; p99: number };
-  intel_sources_active: string[];
-  top_blocked_categories: { category: string; share: number }[];
-  incidents: { date: string; summary: string }[];
-  data_requests_received: { government: number; court_orders: number; note: string };
-  methodology_url?: string;
-};
 
 function urlFor(locale: Locale | string): string {
   return locale === routing.defaultLocale
@@ -41,29 +31,19 @@ function urlFor(locale: Locale | string): string {
     : `${SITE_URL}/${locale}/transparency`;
 }
 
-async function fetchReport(): Promise<Report | null> {
-  const base = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
-  try {
-    const resp = await fetch(`${base}/api/v1/transparency/latest`, {
-      // Reports update once a quarter — daily revalidation is fine.
-      next: { revalidate: 60 * 60 * 24 },
-    });
-    if (!resp.ok) return null;
-    return (await resp.json()) as Report;
-  } catch {
-    return null;
-  }
+function resolveLocale(locale: string): Locale {
+  return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
 }
 
-function fmt(n: number, locale: string): string {
-  return new Intl.NumberFormat(locale).format(n);
+function percent(fraction: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(fraction * 100);
 }
 
-function pct(value: number, locale: string, digits: number = 4): string {
-  return new Intl.NumberFormat(locale, {
-    style: "percent",
-    maximumFractionDigits: digits,
-  }).format(value);
+function day(iso: string, locale: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(date);
 }
 
 export async function generateMetadata({
@@ -71,9 +51,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
-  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Transparency" });
 
   const canonical = urlFor(safeLocale);
@@ -101,131 +79,66 @@ export async function generateMetadata({
   };
 }
 
+type Translate = (key: string, values?: Record<string, string | number>) => string;
+
+function recallText(t: Translate, snapshot: BenchmarkSnapshot | null, locale: string): string {
+  if (!snapshot || !recallIsPublishable(snapshot)) {
+    return t("recall_not_yet", { min: MIN_PHISHING_SAMPLE });
+  }
+  const ours = snapshot.phishing.cleanway;
+  return t("recall_measured", {
+    date: day(snapshot.ts, locale),
+    recall: percent(ours.recall ?? 0, locale),
+    classified: ours.tp + ours.fn,
+  });
+}
+
+function falseAlarmText(t: Translate, snapshot: BenchmarkSnapshot | null, locale: string): string {
+  if (!snapshot || !falsePositiveRateIsPublishable(snapshot)) return t("fp_not_yet");
+  const ours = snapshot.safe.cleanway;
+  return t("fp_measured", {
+    date: day(snapshot.ts, locale),
+    fpr: percent(ours.fpr ?? 0, locale),
+    count: ours.tn + ours.fp,
+  });
+}
+
+const section: React.CSSProperties = { marginBottom: 36 };
+const h2: React.CSSProperties = { color: "#f8fafc", fontSize: 22, marginBottom: 12 };
+
 export default async function TransparencyPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
-  const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
-  const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Transparency" });
-  const report = await fetchReport();
-
-  if (!report) {
-    return (
-      <main style={{ maxWidth: 720, margin: "40px auto", padding: "0 24px", color: "#cbd5e1" }}>
-        <h1 style={{ color: "#f8fafc" }}>{t("page_title")}</h1>
-        <p>{t("error_unavailable")}</p>
-      </main>
-    );
-  }
+  const snapshot = await loadLatestBenchmark();
 
   return (
-    <main style={{ maxWidth: 880, margin: "40px auto", padding: "0 24px", color: "#cbd5e1", lineHeight: 1.6 }}>
+    <main style={{ maxWidth: 760, margin: "40px auto", padding: "0 24px 80px", color: "#cbd5e1", lineHeight: 1.65 }}>
       <header style={{ marginBottom: 32 }}>
-        <h1 style={{ color: "#f8fafc", fontSize: 36, marginBottom: 8 }}>
-          {t("page_title")}
-        </h1>
-        <p style={{ color: "#94a3b8", fontSize: 16 }}>
-          {t("hero_subtitle", { period: report.period })}
-        </p>
-        <p style={{ color: "#64748b", fontSize: 13 }}>
-          {t("published_at", { date: report.published_at })}
-        </p>
+        <h1 style={{ color: "#f8fafc", fontSize: 36, marginBottom: 12 }}>{t("page_title")}</h1>
+        <p style={{ color: "#94a3b8", fontSize: 16 }}>{t("intro")}</p>
       </header>
 
-      <section style={{ marginBottom: 40 }}>
-        <h2 style={{ color: "#f8fafc", fontSize: 22, marginBottom: 16 }}>
-          {t("section_volume")}
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-          <div style={{ background: "#1e293b", padding: 16, borderRadius: 8 }}>
-            <div style={{ color: "#94a3b8", fontSize: 13 }}>{t("metric_total_checks")}</div>
-            <div style={{ color: "#f8fafc", fontSize: 26, fontWeight: 600 }}>
-              {fmt(report.checks.total, safeLocale)}
-            </div>
-          </div>
-          <div style={{ background: "#1e293b", padding: 16, borderRadius: 8 }}>
-            <div style={{ color: "#94a3b8", fontSize: 13 }}>{t("metric_dangerous")}</div>
-            <div style={{ color: "#f8fafc", fontSize: 26, fontWeight: 600 }}>
-              {fmt(report.verdicts.dangerous_count, safeLocale)}
-            </div>
-          </div>
-          <div style={{ background: "#1e293b", padding: 16, borderRadius: 8 }}>
-            <div style={{ color: "#94a3b8", fontSize: 13 }}>{t("metric_fp_rate")}</div>
-            <div style={{ color: "#86efac", fontSize: 26, fontWeight: 600 }}>
-              {pct(report.false_positive_rate.value, safeLocale)}
-            </div>
-          </div>
-        </div>
-        <p style={{ color: "#64748b", fontSize: 13, marginTop: 12 }}>
-          {report.false_positive_rate.note}
-        </p>
+      <section style={section} data-testid="transparency-recall">
+        <h2 style={h2}>{t("section_accuracy")}</h2>
+        <p>{recallText(t, snapshot, safeLocale)}</p>
       </section>
 
-      <section style={{ marginBottom: 40 }}>
-        <h2 style={{ color: "#f8fafc", fontSize: 22, marginBottom: 16 }}>
-          {t("section_latency")}
-        </h2>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <tbody>
-            <tr style={{ borderBottom: "1px solid #334155" }}>
-              <td style={{ padding: "8px 0", color: "#94a3b8" }}>p50</td>
-              <td style={{ padding: "8px 0", textAlign: "right", color: "#f8fafc" }}>{report.latency_ms.p50} ms</td>
-            </tr>
-            <tr style={{ borderBottom: "1px solid #334155" }}>
-              <td style={{ padding: "8px 0", color: "#94a3b8" }}>p95</td>
-              <td style={{ padding: "8px 0", textAlign: "right", color: "#f8fafc" }}>{report.latency_ms.p95} ms</td>
-            </tr>
-            <tr>
-              <td style={{ padding: "8px 0", color: "#94a3b8" }}>p99</td>
-              <td style={{ padding: "8px 0", textAlign: "right", color: "#f8fafc" }}>{report.latency_ms.p99} ms</td>
-            </tr>
-          </tbody>
-        </table>
+      <section style={section} data-testid="transparency-fp">
+        <h2 style={h2}>{t("section_fp")}</h2>
+        <p>{falseAlarmText(t, snapshot, safeLocale)}</p>
       </section>
 
-      <section style={{ marginBottom: 40 }}>
-        <h2 style={{ color: "#f8fafc", fontSize: 22, marginBottom: 16 }}>
-          {t("section_sources")}
-        </h2>
-        <ul style={{ listStyle: "disc", paddingLeft: 24 }}>
-          {report.intel_sources_active.map((src) => (
-            <li key={src} style={{ marginBottom: 4 }}>{src}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section style={{ marginBottom: 40 }}>
-        <h2 style={{ color: "#f8fafc", fontSize: 22, marginBottom: 16 }}>
-          {t("section_categories")}
-        </h2>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <tbody>
-            {report.top_blocked_categories.map((c) => (
-              <tr key={c.category} style={{ borderBottom: "1px solid #334155" }}>
-                <td style={{ padding: "8px 0", color: "#cbd5e1" }}>{c.category}</td>
-                <td style={{ padding: "8px 0", textAlign: "right", color: "#f8fafc" }}>
-                  {pct(c.share, safeLocale, 0)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <section style={{ marginBottom: 40 }}>
-        <h2 style={{ color: "#f8fafc", fontSize: 22, marginBottom: 16 }}>
-          {t("section_government")}
-        </h2>
+      <section style={section}>
+        <h2 style={h2}>{t("section_how")}</h2>
         <p>
-          {t("gov_requests", { count: report.data_requests_received.government })}
-          {" · "}
-          {t("court_orders", { count: report.data_requests_received.court_orders })}
-        </p>
-        <p style={{ color: "#94a3b8", fontSize: 14, marginTop: 8 }}>
-          {report.data_requests_received.note}
+          {t("how_body")}{" "}
+          <a href={localePath(safeLocale, "/transparency/methodology")} style={{ color: "#60a5fa" }}>
+            {t("methodology_link")}
+          </a>
         </p>
       </section>
     </main>
