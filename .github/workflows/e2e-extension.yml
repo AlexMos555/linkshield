@@ -1,0 +1,59 @@
+name: E2E — Extension (real Chromium)
+
+# Loads the unpacked Chrome and Safari builds into headless Chromium and
+# drives the background service worker: threat counter, Family Hub
+# fan-out + poller, the 30-day history prune, the exact-host trust list,
+# and the localized content-script warnings. See the header of
+# scripts/test-extension-sw.mjs for why this exists (the background's
+# import() calls threw in every browser and nothing noticed).
+#
+# No production traffic: the test serves a local mock API and maps
+# *.cleanway.ai to nowhere inside Chromium.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/extension-core/**"
+      - "extension/**"
+      - "extension-firefox/**"
+      - "extension-safari/**"
+      - "packages/i18n-strings/**"
+      - "scripts/build-extensions.sh"
+      - "scripts/build-i18n.py"
+      - "scripts/test-extension-*.mjs"
+      - ".github/workflows/e2e-extension.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/extension-core/**"
+      - "extension/**"
+      - "extension-safari/**"
+      - "packages/i18n-strings/**"
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Throwaway install outside the repo: the test only needs playwright +
+      # tweetnacl, and a full workspace install drags in Next.js and Expo.
+      - name: Install test dependencies
+        run: npm install --prefix "$RUNNER_TEMP/extension-e2e" --no-audit --no-fund playwright@1.62.1 tweetnacl@1.0.3
+
+      - name: Install Chromium
+        run: '"$RUNNER_TEMP/extension-e2e/node_modules/.bin/playwright" install --with-deps chromium'
+
+      - name: Static extension checks
+        run: node scripts/test-extension-core.mjs
+
+      - name: Service worker + content scripts in Chromium
+        # createRequire() in the test honours NODE_PATH.
+        run: NODE_PATH="$RUNNER_TEMP/extension-e2e/node_modules" node scripts/test-extension-sw.mjs
