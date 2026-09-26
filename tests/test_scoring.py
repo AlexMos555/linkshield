@@ -786,17 +786,20 @@ def test_idn_multichar_glyph_homoglyphs_still_fire():
 
 # ── Regression guard: ASCII scoring is byte-identical ──
 #
-# Expected values captured from main @2b4f54c BEFORE the IDN change.
-# These exercise every heuristic the change touches (entropy, special
-# chars, n-gram, vowel ratio, consonant cluster, length, typosquatting)
-# on purely ASCII names, where decoding is a no-op.
+# Expected values: the HEURISTIC score captured from main @e62d86a BEFORE
+# the IDN change, with the ML model stubbed out. These exercise every
+# heuristic the change touches (entropy, special chars, n-gram, vowel
+# ratio, consonant cluster, length, typosquatting) on purely ASCII names,
+# where decoding is a no-op. The model is stubbed because the weekly
+# retrain moves its share of the score: pinning it made this guard fail on
+# a retrain (51 → 31 on two long names) while no heuristic had changed.
 
 _ASCII_REGRESSION_BASELINE = {
     "paypal.com": 0,
     "google.com": 0,
     "sudden-random-xkcdvbn.ru": 17,
-    "my-very-long-suspicious-domain-name-here.ru": 51,
-    "this-is-a-very-long-suspicious-domain-name.com": 51,
+    "my-very-long-suspicious-domain-name-here.ru": 31,
+    "this-is-a-very-long-suspicious-domain-name.com": 31,
     "qwrtpsdfgh.ru": 22,
     "ikar.ru": 25,
     "ngpedia.ru": 25,
@@ -807,7 +810,9 @@ _ASCII_REGRESSION_BASELINE = {
 }
 
 
-def test_ascii_domain_scores_unchanged():
+def test_ascii_domain_scores_unchanged(monkeypatch):
+    import api.services.ml_scorer as ml_scorer
+    monkeypatch.setattr(ml_scorer, "ml_predict", lambda domain: None)
     for domain, expected in _ASCII_REGRESSION_BASELINE.items():
         score, _, reasons = calculate_score({"domain": domain})
         assert score == expected, (
