@@ -64,6 +64,9 @@ EXTENSION_NS_TO_FLAT_PREFIX = {
     "extension.menu": "menu_",
     "extension.commands": "command_",
     "extension.family_notify": "family_notify_",
+    # Reason lines under a link badge, keyed by reason group
+    # (content/reason-labels.js).
+    "extension.reason": "reason_",
 }
 
 # For popup namespace: keys NOT in the dict above use bare names (no prefix).

@@ -62,33 +62,66 @@ function _t(key, subs) {
   }
 }
 
-var LEVEL_LABEL_KEYS = { safe: "badge_label_safe", caution: "badge_label_caution", dangerous: "badge_label_dangerous" };
+var LEVEL_LABEL_KEYS = {
+  safe: "badge_label_safe",
+  caution: "badge_label_caution",
+  dangerous: "badge_label_dangerous",
+  user_content: "badge_label_user_content",
+};
 
 function _levelLabel(level) {
   return _t(LEVEL_LABEL_KEYS[level] || "badge_label_unknown");
 }
 
-// Pro is the only persona that sees the number (see _skillLevel above).
-function _scoreText(score) {
-  return _t("badge_score", [String(parseInt(score, 10) || 0)]);
+// Pro is the only persona that sees the number (see _skillLevel above), and
+// only when there is one: a user-content verdict is not a risk score.
+function _scoreText(result) {
+  if (_skillLevel !== "pro" || typeof result.score !== "number") return "";
+  return _t("badge_score", [String(Math.round(result.score))]);
+}
+
+// Reason lines in the browser's language (content/reason-labels.js); the
+// English detail is the fallback for a code nobody has mapped yet.
+function _reasonText(reason) {
+  var labels = window.__cleanwayReasons;
+  return labels ? labels.text(reason) : (reason && reason.detail) || "";
+}
+
+function _reasonsHtml(result) {
+  return (result.reasons || []).slice(0, 3).map(function(r) {
+    return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + _esc(_reasonText(r)) + '</div>';
+  }).join("");
 }
 
 // ═══════════════════════════════════════════════════
 // 1. SCAN LINKS
 // ═══════════════════════════════════════════════════
 
+// Where a link really goes. google.com/url?q=…, vk.com/away.php?to=… and
+// friends are unwrapped (utils/link-target.js), so the badge judges the
+// destination instead of an official wrapper. null means "nothing honest to
+// badge": not a web link, or a redirector that hides its destination.
+function _linkHost(href) {
+  var linkTarget = window.cleanwayLinkTarget;
+  if (linkTarget) {
+    var target = linkTarget.resolveLinkHost(href);
+    return target && target.host ? target.host : null;
+  }
+  try {
+    var url = new URL(href);
+    return /^https?:$/.test(url.protocol) ? url.hostname.toLowerCase() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function extractLinks() {
   var links = document.querySelectorAll("a[href]:not([" + SCANNED_ATTR + "])");
   var results = [];
   for (var i = 0; i < links.length; i++) {
-    var link = links[i];
-    try {
-      var url = new URL(link.href);
-      if (url.protocol === "javascript:" || url.protocol === "mailto:" || url.protocol === "tel:") continue;
-      if (url.hostname === window.location.hostname) continue;
-      if (!url.hostname || url.hostname.length < 4) continue;
-      results.push({ element: link, domain: url.hostname.toLowerCase() });
-    } catch (e) {}
+    var host = _linkHost(links[i].href);
+    if (!host || host.length < 4 || host === window.location.hostname) continue;
+    results.push({ element: links[i], domain: host });
   }
   return results;
 }
@@ -122,7 +155,10 @@ async function scanPage() {
   }
 }
 
-async function checkDomains(domains) {
+// `page` marks the check of the page the user is on, as opposed to links on
+// it: the background counts a dangerous link as a warning, and only a block
+// page actually shown (see _reportBlockedPage) as a blocked scam.
+async function checkDomains(domains, page) {
   var results = [];
 
   // ALWAYS score locally first — guaranteed to work
@@ -139,7 +175,7 @@ async function checkDomains(domains) {
 
   // Try to get better results from background (async, don't wait too long)
   try {
-    var response = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: domains });
+    var response = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: domains, page: page === true });
     if (response && response.results && response.results.length > 0) {
       _log("Background returned", response.results.length, "results, merging");
       // Use background results where they have higher score (more info)
@@ -148,10 +184,12 @@ async function checkDomains(domains) {
         for (var k = 0; k < results.length; k++) {
           // The backend verdict (source:"api") is authoritative — it must win in BOTH
           // directions, so it can also CORRECT a local false-positive downward
-          // (e.g. local flags a legit ccTLD bank; the API says safe). Only a real API
-          // result replaces local; the background's own local fallback (same weak
+          // (e.g. local flags a legit ccTLD bank; the API says safe). So is the
+          // user-content rule (source:"platform", background/trusted-hosts.js):
+          // on docs.google.com the offline score would call a page nobody
+          // checked "safe". The background's own local fallback (a weaker
           // scorer) is not treated as an upgrade.
-          if (results[k].domain === bgr.domain && bgr.source === "api") {
+          if (results[k].domain === bgr.domain && (bgr.source === "api" || bgr.source === "platform")) {
             results[k] = bgr;
             _log("Upgraded from background:", bgr.domain, "→ score=" + bgr.score, bgr.level);
           }
@@ -169,51 +207,46 @@ async function checkDomains(domains) {
 // 2. BADGES
 // ═══════════════════════════════════════════════════
 
+// Safe (green tick), caution (yellow triangle), dangerous (red cross) and
+// user content (neutral "i": anyone can publish on that host, so nobody
+// checked the page).
+var BADGE_STYLES = {
+  safe: { cls: "ls-safe", glyph: "\u2713", aria: "badge_aria_safe", color: "#22c55e" },
+  caution: { cls: "ls-caution", glyph: "\u26A0", aria: "badge_aria_caution", color: "#f59e0b" },
+  dangerous: { cls: "ls-dangerous", glyph: "\u2717", aria: "badge_aria_dangerous", color: "#ef4444" },
+  user_content: { cls: "ls-neutral", glyph: "i", aria: "badge_aria_user_content", color: "#94a3b8" },
+};
+
 function addBadge(linkEl, result) {
   // Already-badged check needs to look at the SIBLING after the link,
   // not inside it (we no longer inject as a child — see comment below).
   var existingNext = linkEl.nextElementSibling;
   if (existingNext && existingNext.classList && existingNext.classList.contains(BADGE_CLASS)) return;
+  // A level we have no badge for is skipped, never painted red by default.
+  var style = BADGE_STYLES[result.level];
+  if (!style) return;
   linkEl.setAttribute(SCANNED_ATTR, "true");
 
-  // Show ALL badges — safe (green), caution (yellow), dangerous (red)
   _log("Adding badge:", result.domain, "score=" + result.score, "level=" + result.level);
 
   var badge = document.createElement("span");
   badge.className = BADGE_CLASS;
-
-  if (result.level === "safe") {
-    badge.classList.add("ls-safe");
-    badge.textContent = "\u2713";
-    badge.setAttribute("aria-label", _t("badge_aria_safe"));
-  } else if (result.level === "caution") {
-    badge.classList.add("ls-caution");
-    badge.textContent = "\u26A0";
-    badge.setAttribute("aria-label", _t("badge_aria_caution"));
-  } else {
-    badge.classList.add("ls-dangerous");
-    badge.textContent = "\u2717";
-    badge.setAttribute("aria-label", _t("badge_aria_dangerous"));
-  }
-
+  badge.classList.add(style.cls);
+  badge.textContent = style.glyph;
+  badge.setAttribute("aria-label", _t(style.aria));
   badge.setAttribute("role", "img");
 
   // Tooltip
   var tooltip = document.createElement("div");
   tooltip.className = "ls-tooltip";
-  var reasons = (result.reasons || []).slice(0, 3).map(function(r) {
-    return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + _esc(r.detail) + '</div>';
-  }).join("");
-  var colors = { safe: "#22c55e", caution: "#f59e0b", dangerous: "#ef4444" };
+  var score = _scoreText(result);
   tooltip.innerHTML = '<div class="ls-tooltip-inner">' +
     '<div class="ls-tooltip-header">' +
-    '<span class="ls-dot" style="background:' + (colors[result.level] || "#666") + '"></span>' +
+    '<span class="ls-dot" style="background:' + style.color + '"></span>' +
     '<strong>' + _esc(_levelLabel(result.level)) + '</strong>' +
-    (_skillLevel === "pro"
-      ? '<span class="ls-score">' + _esc(_scoreText(result.score)) + '</span>'
-      : '') + '</div>' +
+    (score ? '<span class="ls-score">' + _esc(score) + '</span>' : '') + '</div>' +
     '<div class="ls-domain">' + _esc(result.domain) + '</div>' +
-    reasons +
+    _reasonsHtml(result) +
     '<div class="ls-footer">Cleanway</div></div>';
   badge.appendChild(tooltip);
 
@@ -258,15 +291,13 @@ function showFloatingResult(result) {
   var old = document.getElementById("ls-floating-result");
   if (old) old.remove();
 
-  var c = { safe: "#22c55e", caution: "#f59e0b", dangerous: "#ef4444" };
-  var icons = { safe: "\u2713", caution: "\u26A0", dangerous: "\u2717" };
-  var reasons = (result.reasons || []).slice(0, 3).map(function(r) {
-    return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + _esc(r.detail) + '</div>';
-  }).join("");
+  var c = { safe: "#22c55e", caution: "#f59e0b", dangerous: "#ef4444", user_content: "#94a3b8" };
+  var icons = { safe: "\u2713", caution: "\u26A0", dangerous: "\u2717", user_content: "i" };
+  var reasons = _reasonsHtml(result);
 
   var div = document.createElement("div");
   div.id = "ls-floating-result";
-  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;max-width:320px;border:1px solid ' + (c[result.level] || "#333") + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:28px;height:28px;border-radius:50%;background:' + (c[result.level] || "#333") + '20;color:' + (c[result.level] || "#999") + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + (icons[result.level] || "?") + '</span><strong style="font-size:14px;">' + _esc(_levelLabel(result.level)) +'</strong><span style="color:#9ca3af;font-size:12px;margin-left:auto;">' + (_skillLevel === "pro" ? _esc(_scoreText(result.score)) : '') + '</span><span id="ls-float-close" style="cursor:pointer;color:#6b7280;font-size:18px;margin-left:8px;">\u00D7</span></div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + _esc(result.domain) + '</div>' + reasons + '</div>';
+  div.innerHTML = '<div style="position:fixed;top:20px;right:20px;z-index:999999;background:#1f2937;border-radius:12px;padding:16px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-family:-apple-system,sans-serif;color:#f3f4f6;max-width:320px;border:1px solid ' + (c[result.level] || "#333") + '40;animation:ls-slide-in 0.3s ease-out;"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:28px;height:28px;border-radius:50%;background:' + (c[result.level] || "#333") + '20;color:' + (c[result.level] || "#999") + ';display:flex;align-items:center;justify-content:center;font-size:16px;">' + (icons[result.level] || "?") + '</span><strong style="font-size:14px;">' + _esc(_levelLabel(result.level)) +'</strong><span style="color:#9ca3af;font-size:12px;margin-left:auto;">' + _esc(_scoreText(result)) + '</span><span id="ls-float-close" style="cursor:pointer;color:#6b7280;font-size:18px;margin-left:8px;">\u00D7</span></div><div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">' + _esc(result.domain) + '</div>' + reasons + '</div>';
 
   document.body.appendChild(div);
   document.getElementById("ls-float-close").onclick = function() { div.remove(); };
@@ -369,6 +400,20 @@ chrome.runtime.onMessage.addListener(function(message) {
 // 7. INIT
 // ═══════════════════════════════════════════════════
 
+// Tell the background a block page is on screen for this page. That — not
+// a red badge on a link — is what counts as a blocked scam: the background
+// bumps the "Scams blocked" tally once per site per day, puts this tab's
+// credential guard into strict mode and, for a signed-in user and only when
+// the API itself said "dangerous", syncs the account counter and alerts the
+// family.
+function _reportBlockedPage(domain) {
+  try {
+    chrome.runtime.sendMessage({ type: "PAGE_BLOCKED", domain: domain }).catch(function() {});
+  } catch (e) {
+    _log("Could not report the block:", e);
+  }
+}
+
 _log("Content script loaded on", window.location.hostname);
 
 // Check current page first
@@ -386,7 +431,7 @@ _log("Content script loaded on", window.location.hostname);
     // affecting normal API verdicts for any other domain.
     if (domain === "cleanway.ai" || domain.endsWith(".cleanway.ai")) return;
 
-    var results = await checkDomains([domain]);
+    var results = await checkDomains([domain], true);
     if (results && results[0] && results[0].level === "dangerous") {
       // Rich overlay lives in block-page.js, which loads as a classic
       // content script before this one and publishes the renderer on the
@@ -395,6 +440,7 @@ _log("Content script loaded on", window.location.hostname);
       // also kill the link-scanning below).
       if (typeof window.__cleanwayShowBlockPage === "function") {
         window.__cleanwayShowBlockPage(results[0]);
+        _reportBlockedPage(domain);
       } else {
         _log("block-page.js not loaded — block overlay unavailable for", domain);
       }

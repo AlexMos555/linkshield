@@ -274,8 +274,19 @@
   "locked_error_network": {
     "message": "Impossibile contattare i nostri server. Controlla la connessione."
   },
+  "status_user_content_title": {
+    "message": "Qui chiunque può pubblicare una pagina"
+  },
+  "status_user_content_subtitle": {
+    "message": "Cleanway non può verificare le pagine su $DOMAIN$. Non inserire dati della carta né password se non sai chi ha creato questa pagina.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "trust_footer": {
-    "message": "I tuoi dati non lasciano mai questo dispositivo"
+    "message": "Controlliamo gli indirizzi dei siti, non i link completi né il contenuto delle pagine"
   },
   "block_title": {
     "message": "STOP"
@@ -326,7 +337,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Protetto da Cleanway. I tuoi dati restano sul tuo dispositivo."
+    "message": "Protetto da Cleanway. Non vendiamo mai i tuoi dati."
   },
   "block_voice_alert": {
     "message": "Fermati. Il sito $DOMAIN$ è pericoloso. Non digitare la tua password.",
@@ -352,10 +363,10 @@
     "message": "Ogni pagina, ogni link. Etichetta verde: sicuro. Rossa: truffa."
   },
   "welcome_step2_title": {
-    "message": "I tuoi dati restano con te"
+    "message": "Prima di tutto la privacy"
   },
   "welcome_step2_desc": {
-    "message": "Controlliamo solo i nomi dei siti. La tua cronologia non lascia mai questo dispositivo."
+    "message": "Controlliamo gli indirizzi dei siti, non i link completi né il contenuto delle pagine. Non vendiamo mai i tuoi dati."
   },
   "welcome_step3_title": {
     "message": "Nessun rallentamento"
@@ -376,7 +387,7 @@
     "message": "Salta — inizia a navigare"
   },
   "welcome_trust_footer": {
-    "message": "Il blocco è gratis per sempre. I tuoi dati non lasciano mai questo dispositivo."
+    "message": "Il blocco è gratis per sempre. Non vendiamo mai i tuoi dati."
   },
   "badge_label_safe": {
     "message": "Sicuro"
@@ -400,7 +411,7 @@
     "message": "Link pericoloso: non aprirlo"
   },
   "badge_score": {
-    "message": "Punteggio: $SCORE$/100",
+    "message": "Rischio: $SCORE$/100",
     "placeholders": {
       "score": {
         "content": "$1"
@@ -409,6 +420,15 @@
   },
   "badge_reason_official_site": {
     "message": "Sito ufficiale"
+  },
+  "badge_label_user_content": {
+    "message": "Non verificabile"
+  },
+  "badge_aria_user_content": {
+    "message": "Link a un sito dove chiunque può pubblicare una pagina — non verificato"
+  },
+  "badge_reason_user_content": {
+    "message": "Qui chiunque può pubblicare una pagina. Non inserire dati della carta né password."
   },
   "audit_title": {
     "message": "Controllo privacy"
@@ -505,7 +525,7 @@
     }
   },
   "credguard_reason_tld": {
-    "message": "Le pagine di accesso con indirizzi $TLD$ non sono quasi mai autentiche.",
+    "message": "I truffatori usano spesso indirizzi $TLD$ per false pagine di accesso.",
     "placeholders": {
       "tld": {
         "content": "$1"
@@ -519,7 +539,7 @@
     "message": "Proteggi la mia password"
   },
   "credguard_button_honeypot_hint": {
-    "message": "Cleanway invierà al suo posto una password inventata a caso. La tua vera password resta su questo dispositivo."
+    "message": "Cleanway invia con il modulo una password inventata a caso al posto della tua."
   },
   "credguard_button_override": {
     "message": "Invia comunque"
@@ -528,7 +548,19 @@
     "message": "Cleanway ha inviato una password inventata"
   },
   "credguard_toast_body": {
-    "message": "La tua vera password è rimasta su questo dispositivo. Se la pagina si rivela autentica, digita di nuovo la password: non è mai stata inviata."
+    "message": "Cleanway non ha inviato la tua vera password con questo modulo. La pagina potrebbe comunque averla letta mentre la digitavi: la cosa più sicura è cambiarla."
+  },
+  "credguard_banner_title_weak": {
+    "message": "Attenzione a questa pagina di accesso"
+  },
+  "credguard_banner_advice_weak": {
+    "message": "Se non sei sicuro che sia il sito vero, aprilo digitando tu stesso l'indirizzo."
+  },
+  "credguard_modal_title_weak": {
+    "message": "Controlla questo sito prima di inviare la password"
+  },
+  "credguard_page_flagged": {
+    "message": "Cleanway ha già riconosciuto questo sito come una truffa."
   },
   "mpg_bitb": {
     "message": "Questa pagina disegna una finta barra degli indirizzi ($FAKE$). In realtà sei su $REAL$.",
@@ -578,7 +610,100 @@
       }
     }
   },
-  "family_notify_unknown_site": {
-    "message": "un sito sconosciuto"
+  "family_notify_message_blocked_unnamed": {
+    "message": "È stato bloccato un sito truffa."
+  },
+  "family_notify_message_warned_unnamed": {
+    "message": "Un familiare è stato avvisato di un sito sospetto."
+  },
+  "reason_flagged_dangerous": {
+    "message": "Google segnala questo sito come pericoloso"
+  },
+  "reason_flagged_phishing": {
+    "message": "Segnalato come phishing"
+  },
+  "reason_on_blocklists": {
+    "message": "In elenchi affidabili di truffe e spam"
+  },
+  "reason_threat_reports": {
+    "message": "Citato in report sulle minacce"
+  },
+  "reason_spreads_malware": {
+    "message": "Noto per diffondere malware"
+  },
+  "reason_imitates_brand": {
+    "message": "Il nome imita un marchio noto"
+  },
+  "reason_lookalike_letters": {
+    "message": "Usa lettere simili per ingannarti"
+  },
+  "reason_fake_brand_address": {
+    "message": "Un nome di marca affidabile nascosto in un indirizzo falso"
+  },
+  "reason_copies_brand_icon": {
+    "message": "Copia l'icona di un marchio noto"
+  },
+  "reason_no_https": {
+    "message": "La connessione non è sicura (niente HTTPS)"
+  },
+  "reason_missing_protections": {
+    "message": "Mancano protezioni di sicurezza di base"
+  },
+  "reason_raw_ip_address": {
+    "message": "L'indirizzo è un numero, non un nome vero"
+  },
+  "reason_unusual_connection": {
+    "message": "Usa un modo insolito di connettersi"
+  },
+  "reason_hidden_destination": {
+    "message": "Nasconde dove porta davvero il link"
+  },
+  "reason_very_new_site": {
+    "message": "Questo sito è stato creato da pochissimo"
+  },
+  "reason_scam_words": {
+    "message": "L'indirizzo contiene parole tipiche delle truffe"
+  },
+  "reason_carries_personal_data": {
+    "message": "Il link porta con sé i tuoi dati personali"
+  },
+  "reason_long_complex_address": {
+    "message": "L'indirizzo è insolitamente lungo e complicato"
+  },
+  "reason_many_redirects": {
+    "message": "Il link rimbalza tra più siti"
+  },
+  "reason_risky_ending": {
+    "message": "Usa una terminazione che le truffe preferiscono"
+  },
+  "reason_risky_registrar": {
+    "message": "Registrato con un servizio usato dai truffatori"
+  },
+  "reason_random_name": {
+    "message": "Il nome sembra generato a caso"
+  },
+  "reason_detector_suspicious": {
+    "message": "Il nostro rilevatore lo ritiene sospetto"
+  },
+  "reason_well_known_site": {
+    "message": "Un sito web noto e affidabile"
+  },
+  "reason_popular_site": {
+    "message": "Un sito molto usato e popolare"
+  },
+  "reason_detector_safe": {
+    "message": "Il nostro rilevatore ritiene questo sito sicuro"
+  },
+  "reason_not_a_real_business": {
+    "message": "Non è configurato come il sito di un'azienda vera"
+  },
+  "reason_shifty_setup": {
+    "message": "Il sito cambia continuamente posizione, un trucco tipico delle truffe"
+  },
+  "reason_padded_address": {
+    "message": "L'indirizzo è gonfiato con parti in più per nascondere il nome vero"
+  },
+  "reason_shared_hosting": {
+    "message": "Ospitato su un servizio gratuito dove chiunque può creare un sito"
   }
 }

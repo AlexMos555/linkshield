@@ -17,18 +17,21 @@
  */
 
 import "./browser-compat.js"; // must stay first: aliases chrome → browser in Firefox
+import "../utils/link-target.js"; // sets self.cleanwayLinkTarget (classic UMD file)
 import { incrementThreatCounter } from "../utils/api.js";
-import { fanOutAlerts } from "../utils/family-fanout.js";
+import { clearFamilyCache, fanOutAlerts, refreshFamilyCache } from "../utils/family-fanout.js";
 import {
-  ensureFamilyPollAlarm,
   isFamilyNotificationId,
   isFamilyPollAlarm,
   pollAndNotify,
+  syncFamilyPollAlarm,
 } from "../utils/family-notifier.js";
 import { pruneOldChecks } from "../utils/storage.js";
-import { isKnownSafeHost } from "./trusted-hosts.js";
+import { blockedPageHost, claimFirstBlockToday } from "./page-blocks.js";
+import { isKnownSafeHost, isUserContentHost } from "./trusted-hosts.js";
 
 const HISTORY_PRUNE_ALARM = "cleanway_history_prune";
+const EMPTY_STATS = Object.freeze({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
 
 function _t(key, subs) {
   try {
@@ -68,9 +71,9 @@ function _log() {
  * waits for the previous critical section's promise to resolve, then
  * runs its task. The chain head is the only mutable state.
  *
- * Used by handleCheck() to guard chrome.storage.local.stats RMW so
- * concurrent CHECK_DOMAINS messages from multiple tabs can't lose
- * increments. (Audit extension-mv3 MEDIUM stats counter race.)
+ * Used by updateStats() and the blocked-page ledger (page-blocks.js) so
+ * concurrent messages from multiple tabs can't lose increments or count
+ * one block twice. (Audit extension-mv3 MEDIUM stats counter race.)
  */
 const _statsMutex = (() => {
   let chain = Promise.resolve();
@@ -202,8 +205,42 @@ function scoreLocally(domain) {
   return { domain, score: s, level: s <= 20 ? "safe" : s <= 50 ? "caution" : "dangerous", reasons: R, source: "local" };
 }
 
+// ── Verdicts that need no API call ──
+// See trusted-hosts.js for which hosts and why. A user-content host gets
+// neither green nor red: the path of the page never leaves the browser, so
+// nothing — not the API either — can tell a real form there from a scam one.
+function localVerdict(domain) {
+  if (isUserContentHost(domain)) {
+    return {
+      domain,
+      score: null,
+      level: "user_content",
+      reasons: [{ signal: "user_content", detail: _t("badge_reason_user_content"), weight: 0 }],
+      source: "platform",
+    };
+  }
+  if (isKnownSafeHost(domain)) {
+    return { domain, score: 0, level: "safe", reasons: [{signal:"known",detail:_t("badge_reason_official_site"),weight:-50}] };
+  }
+  return null;
+}
+
+// The API's English `signals` with their machine-readable `reason_codes`
+// (positionally aligned), so the badge can show each reason in the user's
+// language (content/reason-labels.js).
+function apiReasons(data) {
+  const codes = Array.isArray(data.reason_codes) ? data.reason_codes : [];
+  return (data.signals || []).map((detail, i) => ({
+    signal: typeof codes[i] === "string" ? codes[i] : "api",
+    detail,
+    weight: 10,
+  }));
+}
+
 // ── Main handler ──
-async function handleCheck(domains) {
+// `page` is true for the check of the page the user is on (content/index.js),
+// false for links on it, the popup and the context menu.
+async function handleCheck(domains, { page = false } = {}) {
   _log("Checking", domains.length, "domains");
   const results = [];
   const toCheck = [];
@@ -211,10 +248,10 @@ async function handleCheck(domains) {
   for (const domain of domains) {
     const cached = getCached(domain);
     if (cached) { results.push(cached); continue; }
-    if (isKnownSafeHost(domain)) {
-      const r = { domain, score: 0, level: "safe", reasons: [{signal:"known",detail:_t("badge_reason_official_site"),weight:-50}] };
-      setCached(domain, r);
-      results.push(r);
+    const shortcut = localVerdict(domain);
+    if (shortcut) {
+      setCached(domain, shortcut);
+      results.push(shortcut);
       continue;
     }
     toCheck.push(domain);
@@ -237,7 +274,7 @@ async function handleCheck(domains) {
           domain: data.domain || d,
           score: data.score,
           level: data.level,
-          reasons: (data.signals || []).map(s => ({signal:"api",detail:s,weight:10})),
+          reasons: apiReasons(data),
           source: "api",
         };
         _log("API:", d, "score=" + r.score, r.level);
@@ -255,64 +292,7 @@ async function handleCheck(domains) {
     results.push(lr);
   }
 
-  // Track stats — guarded by an async mutex.
-  //
-  // The MV3 service worker can dispatch multiple handleCheck() calls
-  // concurrently (one per tab message in flight). Without serialisation,
-  // two read/modify/write cycles on chrome.storage.local.stats can
-  // interleave: A reads {blocked:5}, B reads {blocked:5}, both write
-  // {blocked:6} — and one block is lost from the user's lifetime tally.
-  // (Audit extension-mv3 MEDIUM "Stats counter has an unguarded
-  // read-modify-write race in the MV3 service worker".)
-  //
-  // The mutex is a single rotating promise chain in module scope; each
-  // handleCheck appends its critical section to the chain and awaits
-  // the chain head. Under low contention this is effectively free.
-  let dangerousBlocksThisBatch = 0;
-  try {
-    await _statsMutex.runExclusive(async () => {
-      const data = await chrome.storage.local.get(["stats"]);
-      const stats = data.stats || { total_checks: 0, threats_blocked: 0, threats_warned: 0 };
-      for (const r of results) {
-        stats.total_checks++;
-        if (r.level === "dangerous") {
-          stats.threats_blocked++;
-          dangerousBlocksThisBatch++;
-        }
-        if (r.level === "caution") stats.threats_warned++;
-      }
-      await chrome.storage.local.set({ stats });
-    });
-  } catch (e) {}
-
-  // Server-side lifetime counter for the Pricing v2 freemium gating —
-  // only increment for confirmed DANGEROUS blocks (caution/warnings
-  // don't count against the threshold). Best-effort: silent on
-  // network errors and on anonymous users (no auth_token).
-  if (dangerousBlocksThisBatch > 0) {
-    try {
-      const stored = await chrome.storage.local.get(["auth_token"]);
-      if (stored && stored.auth_token) {
-        await incrementThreatCounter(stored.auth_token, dangerousBlocksThisBatch);
-
-        // Family Hub auto-fan-out: encrypt this batch of dangerous
-        // results to every sibling's pubkey (cached by options.js
-        // last time the user opened Family Hub) and POST to
-        // /family/{id}/alerts. Server stays blind — encryption
-        // happens here. Dedup window inside fanOutAlerts prevents
-        // spam from page reloads.
-        try {
-          const dangerous = results.filter(r => r.level === "dangerous");
-          await fanOutAlerts(stored.auth_token, dangerous);
-        } catch (e) {
-          // Silent — family alerts are courtesy; never block UX.
-        }
-      }
-    } catch (e) {
-      // No-op: a missed sync just means the popup nudge appears later
-      // than ideal — block UX itself is unaffected.
-    }
-  }
+  await recordCheckStats(results, page);
 
   // Badge — `action` in MV3, `browserAction` in Firefox MV2; absent on
   // mobile browsers with no toolbar.
@@ -329,6 +309,100 @@ async function handleCheck(domains) {
   return { results };
 }
 
+// ── On-device stats ──
+// Read/modify/write on chrome.storage.local.stats, serialised by the mutex:
+// the service worker handles messages from several tabs at once, and two
+// interleaved read/modify/write cycles would lose an increment. (Audit
+// extension-mv3 MEDIUM "Stats counter has an unguarded read-modify-write
+// race in the MV3 service worker".)
+function updateStats(change) {
+  return _statsMutex.runExclusive(async () => {
+    const data = await chrome.storage.local.get(["stats"]);
+    const stats = { ...EMPTY_STATS, ...(data.stats || {}) };
+    await chrome.storage.local.set({ stats: change(stats) });
+  });
+}
+
+// "Links checked" and "Warnings" in the popup. A dangerous LINK is a
+// warning — its badge turns red, nothing is blocked. The page the user is on
+// counts as a blocked scam only once its block page reports in
+// (onPageBlocked), so it is left out here rather than counted twice.
+async function recordCheckStats(results, page) {
+  const warned = results.filter((r) => r.level === "caution" || (r.level === "dangerous" && !page)).length;
+  try {
+    await updateStats((stats) => ({
+      ...stats,
+      total_checks: stats.total_checks + results.length,
+      threats_warned: stats.threats_warned + warned,
+    }));
+  } catch (e) {
+    _log("Stats update failed:", e);
+  }
+}
+
+// ── A block page is on screen ──
+// content/index.js reports it after rendering the overlay. See page-blocks.js
+// for why this, and never a link verdict, is what counts as a blocked scam.
+async function onPageBlocked(msg, sender) {
+  const host = blockedPageHost(msg, sender);
+  if (!host) return;
+  promoteCredentialGuard(sender.tab.id);
+  const firstToday = await _statsMutex.runExclusive(() => claimFirstBlockToday(host));
+  if (!firstToday) return;
+  await updateStats((stats) => ({ ...stats, threats_blocked: stats.threats_blocked + 1 }));
+  await reportBlockToAccount(host);
+}
+
+// The user may click past the block page. From then on the credential guard
+// on that tab asks before ANY password leaves the page, not only when its
+// own form checks fire (credential-guardian.js, strict mode).
+function promoteCredentialGuard(tabId) {
+  try {
+    const sent = chrome.tabs.sendMessage(tabId, { type: "CREDGUARD_STRICT" });
+    if (sent && typeof sent.catch === "function") sent.catch(() => {});
+  } catch (e) { /* tab already gone — nothing to protect */ }
+}
+
+// The account's threat counter (the freemium gate) and the family hear only
+// about blocks the API itself confirmed. The background's offline scorer is
+// a guess — weaker than the content script's; it calls eBay UK's real
+// sign-in host dangerous — and must never reach a relative as "a scam site
+// was blocked". Anonymous users send nothing.
+async function reportBlockToAccount(host) {
+  const verdict = getCached(host);
+  if (!verdict || verdict.source !== "api" || verdict.level !== "dangerous") return;
+  const stored = await chrome.storage.local.get(["auth_token"]);
+  const token = stored && stored.auth_token;
+  if (!token) return;
+  await incrementThreatCounter(token, 1);
+  try {
+    // Encrypted on this device to each relative's key; the server stays blind.
+    await fanOutAlerts(token, [verdict]);
+  } catch (e) {
+    _log("Family alert failed:", e);
+  }
+}
+
+// The right-click "check this link" judges where the link really goes
+// (utils/link-target.js). A redirector that hides its destination gets an
+// honest "unknown" instead of the wrapper's own reputation.
+async function checkLinkUrl(href) {
+  const target = self.cleanwayLinkTarget.resolveLinkHost(href);
+  if (!target) return null;
+  if (!target.host) {
+    let via = "";
+    try { via = new URL(href).hostname; } catch (e) { /* unreachable: resolveLinkHost parsed it */ }
+    return {
+      domain: via,
+      score: null,
+      level: "unknown",
+      reasons: [{ signal: "url_shortener", detail: "The link hides where it really goes", weight: 0 }],
+    };
+  }
+  const r = await handleCheck([target.host]);
+  return r.results[0] || null;
+}
+
 // ── Messages ──
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (msg.type === "CHECK_DOMAINS") {
@@ -338,35 +412,20 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
     // explicit error shape lets callers fall back to local scoring.
     // (Audit extension-mv3 MEDIUM "handleCheck(...).then(respond) has
     // no .catch() — rejection closes the message channel silently".)
-    handleCheck(msg.domains)
-      .then((results) => {
-        // Strategy #1 expansion: promote credential-guardian to
-        // strict mode in the tab that asked for the check if ANY of
-        // the returned results is dangerous. Strict mode intercepts
-        // form submit instead of just warning above it — the right
-        // posture when we already know the page is hostile.
-        try {
-          if (sender && sender.tab && sender.tab.id != null) {
-            const dangerous = Array.isArray(results)
-              ? results.some((r) => r && r.level === "dangerous")
-              : false;
-            if (dangerous) {
-              chrome.tabs
-                .sendMessage(sender.tab.id, { type: "CREDGUARD_STRICT" })
-                .catch(() => {
-                  // Content script may not be present (block-page
-                  // overlay races the SW response). Non-fatal.
-                });
-            }
-          }
-        } catch (e) { /* ignore */ }
-        respond(results);
-      })
+    // Credential-guard strict mode is NOT decided here: this message also
+    // carries every link on the page, and a page must not turn strict just
+    // for linking to a scam. It follows the page's own block (PAGE_BLOCKED).
+    handleCheck(msg.domains, { page: msg.page === true })
+      .then(respond)
       .catch((err) => {
         try { respond({ error: "background_failure", message: String(err && err.message ? err.message : err) }); }
         catch (e) { /* port closed before respond fired — nothing we can do */ }
       });
     return true;
+  }
+  if (msg.type === "PAGE_BLOCKED") {
+    onPageBlocked(msg, sender).catch((e) => _log("Block report failed:", e));
+    return false;
   }
   if (msg.type === "MODERN_PHISH_SIGNAL") {
     // Strategy #11. Modern-phish-guard reports a BitB / overlay /
@@ -463,12 +522,29 @@ function installContextMenus() {
   });
 }
 
-// Family Hub poller — fires every minute while the user is signed in +
-// has a family cached. Fan-out (background side) ensures the server has
-// the alert; this poller surfaces incoming siblings' alerts as OS
-// notifications. Armed on every SW start: alarms survive eviction, and
-// create() with the same name is idempotent.
-ensureFamilyPollAlarm(1);
+// Family Hub poller — surfaces relatives' alerts as OS notifications, every
+// minute. Armed only while there is someone to hear from: a signed-in user
+// with a family. For everyone else a 1-minute alarm would wake the worker
+// (and evaluate TweetNaCl) just to find nothing to do. Re-checked on every
+// worker start and whenever the sign-in or the family changes.
+syncFamilyPollAlarm().catch(() => {});
+
+function onFamilyStorageChanged(changes, area) {
+  if (area !== "local" || !changes) return;
+  const token = changes.auth_token;
+  if (token && !token.newValue) {
+    // Signed out: the next account must not inherit this family's keys.
+    clearFamilyCache();
+  } else if (token && token.newValue && !token.oldValue) {
+    // Signed in: learn the family now, not the next time Options is opened.
+    refreshFamilyCache(token.newValue).catch(() => {});
+  }
+  if (token || changes.family_cache) syncFamilyPollAlarm().catch(() => {});
+}
+
+try {
+  chrome.storage.onChanged.addListener(onFamilyStorageChanged);
+} catch (e) { /* storage events unavailable — the start-up sync still ran */ }
 
 // Daily history prune — Privacy Policy promises 30-day on-device
 // retention. Created only when missing: re-creating on every SW wake
@@ -530,9 +606,8 @@ if (chrome.contextMenus) {
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === "check-link" && info.linkUrl) {
       try {
-        const domain = new URL(info.linkUrl).hostname.toLowerCase();
-        const r = await handleCheck([domain]);
-        if (r.results[0]) chrome.tabs.sendMessage(tab.id, { type: "SHOW_CHECK_RESULT", result: r.results[0] });
+        const result = await checkLinkUrl(info.linkUrl);
+        if (result) chrome.tabs.sendMessage(tab.id, { type: "SHOW_CHECK_RESULT", result });
       } catch (e) {}
     }
     if (info.menuItemId === "audit-page") chrome.tabs.sendMessage(tab.id, { type: "RUN_PRIVACY_AUDIT" });

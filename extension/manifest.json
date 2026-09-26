@@ -32,6 +32,7 @@
       "matches": ["<all_urls>"],
       "js": [
         "src/utils/local-scorer.js",
+        "src/utils/link-target.js",
         "src/content/tracking-cleaner.js",
         "src/content/crypto-blocker.js",
         "src/content/weekly-report.js",
@@ -40,6 +41,7 @@
         "src/content/credential-guardian.js",
         "src/content/modern-phish-guard.js",
         "src/content/password-pwned.js",
+        "src/content/reason-labels.js",
         "src/content/block-page.js",
         "src/content/index.js"
       ],

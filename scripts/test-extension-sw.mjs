@@ -21,12 +21,20 @@
  * Unit tests could not see it: the code was fine, the runtime refused it.
  * Only a real browser can, so this test drives one.
  *
+ * Once those paths ran, they had to run for the right things. The link scan
+ * sends every link host on a page through the same check as the page itself,
+ * so "dangerous" used to mean "blocked": links grandma never opened bumped
+ * the account's threat counter and sent relatives "a scam site was blocked".
+ * The pages below separate the two — a page that only LINKS to scams, a scam
+ * page that is actually blocked, an offline guess, a stale family list.
+ *
  * NO PRODUCTION TRAFFIC
  * ---------------------
  * A local mock API answers every call (api_url is pointed at it through the
  * same chrome.storage override the Options page uses), and Chromium's host
  * resolver maps *.cleanway.ai to nowhere, so a stray request fails instead of
- * reaching production.
+ * reaching production. The test sites (*.example, *.tk, *.top) resolve to
+ * the mock too; it serves the same pages on every hostname.
  *
  * The Safari tree is loaded into Chromium too: that cannot prove Safari's
  * runtime, but it does prove the Safari manifest + module graph load and run.
@@ -49,14 +57,19 @@ const nacl = require("tweetnacl");
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TREES = process.argv.slice(2).length ? process.argv.slice(2) : ["extension", "extension-safari"];
 
-const TOKEN = "e2e-token";
 const FAMILY_ID = "fam-e2e";
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 // ── helpers ──
 
 const b64url = (bytes) => Buffer.from(bytes).toString("base64url");
 const fromB64url = (s) => new Uint8Array(Buffer.from(s, "base64url"));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Shaped like a Supabase access token: the extension reads its `sub` to know
+// which family member is "me". Nothing checks the signature here.
+const TOKEN = `e2e.${b64url(Buffer.from(JSON.stringify({ sub: "me" })))}.sig`;
 
 async function until(what, fn, timeoutMs = 10000) {
   const deadline = Date.now() + timeoutMs;
@@ -94,9 +107,22 @@ const PAGES = {
   "/orphan-password.html":
     "<!doctype html><title>Verify</title><div id=\"trap\"><input type=\"email\">" +
     "<input type=\"password\"><span>Continue</span></div>",
+  // A page someone READS: it links to scams, wrapped and unwrapped, but the
+  // user opens none of them.
+  "/links.html":
+    "<!doctype html><title>Inbox</title><p>" +
+    "<a id=\"l-scam\" href=\"http://scam-linked.example/win\">Prize</a> " +
+    "<a id=\"l-guess\" href=\"http://paypa1-login.tk/\">Account</a> " +
+    "<a id=\"l-wrapped\" href=\"https://www.google.com/url?q=http://scam-wrapped.example/&sa=D\">Search result</a> " +
+    "<a id=\"l-hidden\" href=\"https://www.linkedin.com/slink?code=e2e\">Short link</a> " +
+    "<a id=\"l-docs\" href=\"https://docs.google.com/forms/d/e/e2e/viewform\">Form</a></p>",
+  // A sign-in form that posts to its own host: nothing for the form checks.
+  "/landing.html":
+    "<!doctype html><title>Sign in</title><form action=\"/login\" method=\"post\">" +
+    "<input type=\"text\" name=\"u\"><input type=\"password\" name=\"p\"><button>Sign in</button></form>",
 };
 
-function startMockApi() {
+function startMockApi(family) {
   const calls = [];
   const state = { inbox: [] };
   const cors = {
@@ -123,10 +149,18 @@ function startMockApi() {
       const check = url.pathname.match(/^\/api\/v1\/public\/check\/(.+)$/);
       if (check) {
         const domain = decodeURIComponent(check[1]);
+        // The shared per-IP limit a Tele2 user behind CGNAT hits.
+        if (domain.includes("paypa1")) return json(429, { detail: "rate limited" });
         const scam = domain.startsWith("scam-");
-        return json(200, { domain, score: scam ? 97 : 2, level: scam ? "dangerous" : "safe", signals: [] });
+        return json(200, scam
+          ? { domain, score: 97, level: "dangerous", signals: ["Reported as phishing"], reason_codes: ["phishtank"] }
+          : { domain, score: 2, level: "safe", signals: [], reason_codes: [] });
       }
       if (url.pathname === "/api/v1/user/threats/increment") return json(200, { threats_blocked_lifetime: 1 });
+      if (url.pathname === "/api/v1/family/mine") {
+        return json(200, { families: [{ family_id: FAMILY_ID, name: "E2E", role: "member", member_count: 2 }] });
+      }
+      if (url.pathname === `/api/v1/family/${FAMILY_ID}/members`) return json(200, { members: family.members });
       if (url.pathname === `/api/v1/family/${FAMILY_ID}/alerts`) {
         if (req.method === "POST") return json(200, { accepted: body.envelopes.length });
         return json(200, { alerts: state.inbox });
@@ -157,7 +191,8 @@ async function launch(tree, lang = UI_LANG) {
       `--disable-extensions-except=${extPath}`,
       `--load-extension=${extPath}`,
       `--lang=${lang}`,
-      "--host-resolver-rules=MAP *.cleanway.ai ~NOTFOUND, MAP cleanway.ai ~NOTFOUND",
+      "--host-resolver-rules=MAP *.cleanway.ai ~NOTFOUND, MAP cleanway.ai ~NOTFOUND, " +
+        "MAP *.example 127.0.0.1, MAP *.tk 127.0.0.1, MAP *.top 127.0.0.1",
     ],
   });
   let [sw] = context.serviceWorkers();
@@ -182,6 +217,36 @@ async function activeCatalog(sw, tree) {
 
 async function sendCheck(page, domains) {
   return page.evaluate((d) => chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: d }), domains);
+}
+
+const posts = (api, path) => api.calls.filter((c) => c.method === "POST" && c.path === path);
+const INCREMENT = "/api/v1/user/threats/increment";
+const ALERTS = `/api/v1/family/${FAMILY_ID}/alerts`;
+
+async function stats(sw) {
+  const d = await sw.evaluate(() => chrome.storage.local.get("stats"));
+  return { total_checks: 0, threats_blocked: 0, threats_warned: 0, ...(d.stats || {}) };
+}
+
+async function familyCache(sw, members, cachedAt) {
+  await sw.evaluate(async (v) => {
+    await chrome.storage.local.set({ family_cache: { family_id: v.familyId, members: v.members, cached_at: v.cachedAt } });
+  }, { familyId: FAMILY_ID, members, cachedAt });
+}
+
+// The badge next to a link: its class list, or null for no badge at all.
+async function badgeOf(tab, id) {
+  return tab.evaluate((linkId) => {
+    const next = document.getElementById(linkId).nextElementSibling;
+    return next && next.classList.contains("ls-badge") ? [...next.classList] : null;
+  }, id);
+}
+
+async function openBlocked(context, url) {
+  const tab = await context.newPage();
+  await tab.goto(url);
+  await tab.waitForSelector("#ls-block-overlay", { timeout: 8000 });
+  return tab;
 }
 
 async function seedHistory(sw, rows) {
@@ -228,18 +293,22 @@ async function runTree(tree) {
     catch (err) { failures.push(name); console.error(`  FAIL  [${tree}] ${name}\n        ${err && err.message}`); }
   };
 
-  const api = await startMockApi();
   const me = nacl.box.keyPair();      // this browser's Family Hub keys
   const mom = nacl.box.keyPair();     // a relative in the same family
+  const members = [
+    { user_id: "me", public_key_b64: b64url(me.publicKey), role: "member" },
+    { user_id: "mom", public_key_b64: b64url(mom.publicKey), role: "owner" },
+  ];
+  const api = await startMockApi({ members });
   const { context, sw, extId, userDir } = await launch(tree);
 
   try {
-    await check("service worker registers both recurring alarms at install", async () => {
+    await check("an anonymous install arms the history prune, not the family poll", async () => {
       const names = await until("alarms", async () => {
         const list = await sw.evaluate(() => chrome.alarms.getAll().then((a) => a.map((x) => x.name)));
-        return list.includes("cleanway_family_poll") && list.includes("cleanway_history_prune") ? list : null;
+        return list.includes("cleanway_history_prune") ? list : null;
       }, 5000);
-      assert.ok(names.includes("cleanway_family_poll"));
+      assert.ok(!names.includes("cleanway_family_poll"), `family poll armed for an anonymous user: ${names}`);
     });
 
     await sw.evaluate(async (cfg) => {
@@ -252,6 +321,11 @@ async function runTree(tree) {
       });
     }, { base: api.base, token: TOKEN, familyId: FAMILY_ID, momPub: b64url(mom.publicKey), myPub: b64url(me.publicKey), mySec: b64url(me.secretKey) });
 
+    await check("signing in with a family arms the family poll", async () => {
+      await until("family poll alarm", () =>
+        sw.evaluate(() => chrome.alarms.get("cleanway_family_poll").then(Boolean)), 5000);
+    });
+
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extId}/src/popup/welcome.html`);
 
@@ -263,38 +337,113 @@ async function runTree(tree) {
       return api.calls.some((c) => c.path.startsWith("/api/v1/public/check/probe-"));
     });
 
-    await check("a dangerous verdict sends the threat counter", async () => {
-      const resp = await sendCheck(page, ["scam-e2e-1.example"]);
-      assert.equal(resp.results[0].level, "dangerous");
-      const call = await until("threat counter POST", async () =>
-        api.calls.find((c) => c.method === "POST" && c.path === "/api/v1/user/threats/increment"));
-      assert.deepEqual(call.body, { count: 1 });
-      assert.equal(call.auth, `Bearer ${TOKEN}`);
+    await check("each host kind is routed right, and a dangerous verdict alone is not a block", async () => {
+      const resp = await sendCheck(page, ["www.google.com", "sites.google.com", "forms.yandex.ru", "scam-e2e-2.wordpress.com"]);
+      assert.equal(resp.results.length, 4);
+      const asked = new Set(api.calls.map((c) => c.path));
+      for (const host of ["www.google.com", "sites.google.com", "forms.yandex.ru"]) {
+        assert.ok(!asked.has(`/api/v1/public/check/${host}`), `${host} should not need the API`);
+      }
+      for (const host of ["sites.google.com", "forms.yandex.ru"]) {
+        const r = resp.results.find((x) => x.domain === host);
+        assert.equal(r.level, "user_content", `${host}: anyone can publish there, so neither safe nor dangerous`);
+      }
+      const hosted = resp.results.find((r) => r.domain === "scam-e2e-2.wordpress.com");
+      assert.ok(asked.has("/api/v1/public/check/scam-e2e-2.wordpress.com"), "a per-author subdomain goes to the API");
+      assert.equal(hosted.level, "dangerous", "a scam on *.wordpress.com must not be 'known safe'");
+      await sleep(800);
+      assert.equal(posts(api, INCREMENT).length, 0, "a verdict is not a block: nothing may reach the account counter");
+      assert.equal(posts(api, ALERTS).length, 0, "a verdict is not a block: nothing may reach the family");
     });
 
-    await check("a dangerous verdict is end-to-end encrypted to the family", async () => {
-      const call = await until("family alerts POST", async () =>
-        api.calls.find((c) => c.method === "POST" && c.path === `/api/v1/family/${FAMILY_ID}/alerts`));
-      assert.equal(call.body.envelopes.length, 1);
-      const env = call.body.envelopes[0];
+    await check("a page that only LINKS to scams blocks nothing and tells nobody", async () => {
+      const reader = await context.newPage();
+      await reader.goto(`http://reader.example:${new URL(api.base).port}/links.html`);
+      for (const id of ["l-scam", "l-guess", "l-wrapped"]) {
+        const cls = await until(`badge on #${id}`, () => badgeOf(reader, id));
+        assert.ok(cls.includes("ls-dangerous"), `#${id}: ${cls}`);
+      }
+      const docs = await until("badge on #l-docs", () => badgeOf(reader, "l-docs"));
+      assert.ok(docs.includes("ls-neutral"), `docs.google.com form: ${docs}`);
+      assert.equal(await badgeOf(reader, "l-hidden"), null, "a redirector that hides its destination gets no badge");
+      const asked = new Set(api.calls.map((c) => c.path));
+      assert.ok(asked.has("/api/v1/public/check/scam-wrapped.example"), "the wrapped link is judged by its destination");
+      assert.ok(!asked.has("/api/v1/public/check/www.google.com"), "…not by the Google wrapper");
+      assert.ok(!asked.has("/api/v1/public/check/docs.google.com"), "user-content hosts are not sent to the API");
+      await sleep(1200);
+      assert.equal(posts(api, INCREMENT).length, 0, "links the user never opened reached the account counter");
+      assert.equal(posts(api, ALERTS).length, 0, "links the user never opened reached the family");
+      const st = await stats(sw);
+      assert.equal(st.threats_blocked, 0, "a red badge is a warning, not a block");
+      assert.ok(st.threats_warned >= 3, `warnings: ${st.threats_warned}`);
+      await reader.close();
+    });
+
+    const port = new URL(api.base).port;
+    let blockedTab;
+
+    await check("opening a scam page blocks it, counts it once and tells the family once", async () => {
+      blockedTab = await openBlocked(context, `http://scam-visit.example:${port}/landing.html`);
+      const inc = await until("threat counter POST", async () => posts(api, INCREMENT)[0]);
+      assert.deepEqual(inc.body, { count: 1 });
+      assert.equal(inc.auth, `Bearer ${TOKEN}`);
+      const sent = await until("family alerts POST", async () => posts(api, ALERTS)[0]);
+      assert.equal(sent.body.envelopes.length, 1);
+      const env = sent.body.envelopes[0];
       assert.equal(env.recipient_user_id, "mom");
       assert.equal(env.sender_pubkey_b64, b64url(me.publicKey));
       const alert = openFrom(env, mom);
       assert.ok(alert, "mom could not open the envelope");
-      assert.equal(alert.domain, "scam-e2e-1.example");
-      assert.ok(!JSON.stringify(call.body).includes("scam-e2e-1"), "domain must not travel in clear text");
+      assert.equal(alert.domain, "scam-visit.example");
+      assert.equal(alert.source, "api");
+      assert.equal(alert.alert_type, "block");
+      assert.ok(!JSON.stringify(sent.body).includes("scam-visit"), "domain must not travel in clear text");
+
+      await blockedTab.reload();
+      await blockedTab.waitForSelector("#ls-block-overlay", { timeout: 8000 });
+      await sleep(1200);
+      assert.equal(posts(api, INCREMENT).length, 1, "a reload is not a new blocked scam");
+      assert.equal(posts(api, ALERTS).length, 1, "a reload must not alert the family again");
+      assert.equal((await stats(sw)).threats_blocked, 1);
     });
 
-    await check("known-safe shortcut trusts exact official hosts only", async () => {
-      const resp = await sendCheck(page, ["www.google.com", "sites.google.com", "forms.yandex.ru", "scam-e2e-2.wordpress.com"]);
-      assert.equal(resp.results.length, 4);
-      const asked = new Set(api.calls.map((c) => c.path));
-      assert.ok(!asked.has("/api/v1/public/check/www.google.com"), "www.google.com should not need the API");
-      for (const host of ["sites.google.com", "forms.yandex.ru", "scam-e2e-2.wordpress.com"]) {
-        assert.ok(asked.has(`/api/v1/public/check/${host}`), `${host} must be checked by the API`);
-      }
-      const hosted = resp.results.find((r) => r.domain === "scam-e2e-2.wordpress.com");
-      assert.equal(hosted.level, "dangerous", "a scam on *.wordpress.com must not be 'known safe'");
+    await check("the blocked page's own sign-in form gets the strict credential warning", async () => {
+      const { messages } = await activeCatalog(sw, tree);
+      const banner = await (await blockedTab.waitForSelector("#ls-credguard-banner", { state: "attached", timeout: 8000 }))
+        .evaluate((el) => el.textContent);
+      assert.ok(banner.includes(messages.credguard_page_flagged.message), `banner: ${banner}`);
+      assert.ok(banner.includes(messages.credguard_banner_title.message), `full warning expected: ${banner}`);
+      await blockedTab.close();
+    });
+
+    await check("an offline guess blocks the page but reaches neither the account nor the family", async () => {
+      const tab = await openBlocked(context, `http://paypa1-login.tk:${port}/landing.html`);
+      await sleep(1500);
+      assert.equal(posts(api, INCREMENT).length, 1, "a guess from the offline scorer reached the account counter");
+      assert.equal(posts(api, ALERTS).length, 1, "a guess from the offline scorer reached the family");
+      assert.equal((await stats(sw)).threats_blocked, 2, "the block page WAS shown, so it counts on this device");
+      await tab.close();
+    });
+
+    await check("a family list older than an hour is refreshed before alerting", async () => {
+      await familyCache(sw, [], Date.now() - 2 * HOUR_MS);
+      const minesBefore = api.calls.filter((c) => c.path === "/api/v1/family/mine").length;
+      const tab = await openBlocked(context, `http://scam-stale.example:${port}/landing.html`);
+      const sent = await until("alert after refresh", async () => posts(api, ALERTS)[1]);
+      assert.ok(api.calls.filter((c) => c.path === "/api/v1/family/mine").length > minesBefore, "no refresh");
+      assert.deepEqual(sent.body.envelopes.map((e) => e.recipient_user_id), ["mom"], "only relatives, never me");
+      assert.equal(openFrom(sent.body.envelopes[0], mom).domain, "scam-stale.example");
+      await tab.close();
+    });
+
+    await check("a lone weak sign on a sign-in page gets the calm warning", async () => {
+      const { messages } = await activeCatalog(sw, tree);
+      const tab = await context.newPage();
+      await tab.goto(`http://cabinet.top:${port}/landing.html`);
+      const banner = await (await tab.waitForSelector("#ls-credguard-banner", { timeout: 8000 })).innerText();
+      assert.ok(banner.includes(messages.credguard_banner_title_weak.message), `calm title expected: ${banner}`);
+      assert.ok(!banner.includes(messages.credguard_banner_title.message), `"scam site" title on one weak sign: ${banner}`);
+      await tab.close();
     });
 
     await check("the daily prune deletes history older than 30 days and keeps the rest", async () => {
@@ -312,7 +461,9 @@ async function runTree(tree) {
       assert.deepEqual(left, ["fresh-1d.example"]);
     });
 
-    await check("the Family Hub poller decrypts a relative's alert into a notification", async () => {
+    await check("the Family Hub poller refreshes a stale family list and shows a relative's alert", async () => {
+      await familyCache(sw, [], Date.now() - 2 * HOUR_MS);
+      const minesBefore = api.calls.filter((c) => c.path === "/api/v1/family/mine").length;
       api.state.inbox = [{
         id: "alert-e2e-1",
         created_at: new Date().toISOString(),
@@ -326,6 +477,7 @@ async function runTree(tree) {
       assert.ok(shown);
       const seen = await sw.evaluate(() => chrome.storage.local.get("family_last_seen_alert_id"));
       assert.equal(seen.family_last_seen_alert_id, "alert-e2e-1");
+      assert.ok(api.calls.filter((c) => c.path === "/api/v1/family/mine").length > minesBefore, "no refresh");
     });
 
     await check("family crypto still works in extension pages (Options path)", async () => {
@@ -363,6 +515,14 @@ async function runTree(tree) {
       assert.ok(bar.includes(msg("mpg_orphan")), `[${locale}] modern-phish banner: ${bar}`);
       await tab.close();
       console.log(`        (content scripts rendered the "${locale}" catalog)`);
+    });
+
+    await check("signing out stops the family poll and forgets the family", async () => {
+      await sw.evaluate(() => chrome.storage.local.remove("auth_token"));
+      await until("family poll cleared", () =>
+        sw.evaluate(() => chrome.alarms.get("cleanway_family_poll").then((a) => !a)), 5000);
+      const left = await sw.evaluate(() => chrome.storage.local.get("family_cache"));
+      assert.equal(left.family_cache, undefined);
     });
   } finally {
     await context.close();

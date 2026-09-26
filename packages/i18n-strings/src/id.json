@@ -277,11 +277,22 @@
       },
       "locked_error_network": {
         "text": "Tidak dapat terhubung ke server kami. Periksa koneksi Anda."
+      },
+      "status_user_content_title": {
+        "text": "Siapa pun bisa membuat halaman di sini"
+      },
+      "status_user_content_subtitle": {
+        "text": "Cleanway tidak bisa memeriksa halaman di $DOMAIN$. Jangan masukkan data kartu atau kata sandi jika Anda tidak tahu siapa pembuat halaman ini.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "common": {
       "trust_footer": {
-        "text": "Data Anda tidak pernah meninggalkan perangkat ini"
+        "text": "Kami memeriksa alamat situs, bukan tautan lengkap atau isi halaman"
       }
     },
     "block_page": {
@@ -334,7 +345,7 @@
         }
       },
       "trust_footer": {
-        "text": "Dilindungi Cleanway. Data Anda tetap di perangkat ini."
+        "text": "Dilindungi oleh Cleanway. Kami tidak pernah menjual data Anda."
       },
       "voice_alert": {
         "text": "Berhenti. Situs $DOMAIN$ berbahaya. Jangan masukkan kata sandi Anda.",
@@ -362,10 +373,10 @@
         "text": "Setiap halaman, setiap tautan. Tanda hijau: aman. Merah: penipuan."
       },
       "step2_title": {
-        "text": "Data Anda tetap milik Anda"
+        "text": "Privasi yang utama"
       },
       "step2_desc": {
-        "text": "Kami hanya memeriksa nama situs. Riwayat Anda tidak pernah meninggalkan perangkat ini."
+        "text": "Kami memeriksa alamat situs, bukan tautan lengkap atau isi halaman. Kami tidak pernah menjual data Anda."
       },
       "step3_title": {
         "text": "Tanpa lambat"
@@ -386,7 +397,7 @@
         "text": "Lewati — mulai menjelajah"
       },
       "trust_footer": {
-        "text": "Pemblokiran gratis selamanya. Data Anda tidak pernah meninggalkan perangkat ini."
+        "text": "Pemblokiran gratis selamanya. Kami tidak pernah menjual data Anda."
       }
     },
     "badge": {
@@ -412,7 +423,7 @@
         "text": "Tautan berbahaya — jangan dibuka"
       },
       "score": {
-        "text": "Skor: $SCORE$/100",
+        "text": "Risiko: $SCORE$/100",
         "placeholders": {
           "score": {
             "content": "$1"
@@ -421,6 +432,15 @@
       },
       "reason_official_site": {
         "text": "Situs resmi"
+      },
+      "label_user_content": {
+        "text": "Tidak bisa diperiksa"
+      },
+      "aria_user_content": {
+        "text": "Tautan ke situs tempat siapa pun bisa membuat halaman — tidak diperiksa"
+      },
+      "reason_user_content": {
+        "text": "Siapa pun bisa membuat halaman di sini. Jangan masukkan data kartu atau kata sandi."
       }
     },
     "privacy_audit": {
@@ -521,7 +541,7 @@
         }
       },
       "reason_tld": {
-        "text": "Halaman masuk dengan alamat $TLD$ hampir tidak pernah asli.",
+        "text": "Penipu sering memakai alamat $TLD$ untuk halaman masuk palsu.",
         "placeholders": {
           "tld": {
             "content": "$1"
@@ -535,7 +555,7 @@
         "text": "Lindungi kata sandi saya"
       },
       "button_honeypot_hint": {
-        "text": "Cleanway akan mengirim kata sandi karangan acak sebagai gantinya. Kata sandi asli Anda tetap di perangkat ini."
+        "text": "Cleanway mengirim kata sandi karangan acak bersama formulir, bukan kata sandi Anda."
       },
       "button_override": {
         "text": "Tetap kirim"
@@ -544,7 +564,19 @@
         "text": "Cleanway mengirim kata sandi karangan"
       },
       "toast_body": {
-        "text": "Kata sandi asli Anda tetap di perangkat ini. Jika halaman ini ternyata asli, cukup ketik ulang kata sandi Anda — kata sandi itu tidak pernah terkirim."
+        "text": "Cleanway tidak mengirim kata sandi asli Anda dengan formulir ini. Namun halaman ini mungkin sudah membacanya saat Anda mengetik, jadi paling aman ganti kata sandi itu."
+      },
+      "banner_title_weak": {
+        "text": "Hati-hati di halaman masuk ini"
+      },
+      "banner_advice_weak": {
+        "text": "Jika Anda tidak yakin ini situs yang asli, buka dengan mengetik sendiri alamatnya."
+      },
+      "modal_title_weak": {
+        "text": "Periksa situs ini sebelum mengirim kata sandi Anda"
+      },
+      "page_flagged": {
+        "text": "Cleanway sudah mengenali situs ini sebagai penipuan."
       }
     },
     "modern_phish": {
@@ -602,8 +634,103 @@
           }
         }
       },
-      "unknown_site": {
-        "text": "situs tidak dikenal"
+      "message_blocked_unnamed": {
+        "text": "Situs penipuan diblokir."
+      },
+      "message_warned_unnamed": {
+        "text": "Anggota keluarga Anda diperingatkan tentang situs mencurigakan."
+      }
+    },
+    "reason": {
+      "flagged_dangerous": {
+        "text": "Google menandai situs ini berbahaya"
+      },
+      "flagged_phishing": {
+        "text": "Dilaporkan sebagai phishing"
+      },
+      "on_blocklists": {
+        "text": "Ada di daftar tepercaya penipuan dan spam"
+      },
+      "threat_reports": {
+        "text": "Disebut dalam laporan ancaman"
+      },
+      "spreads_malware": {
+        "text": "Dikenal menyebarkan malware"
+      },
+      "imitates_brand": {
+        "text": "Namanya meniru merek terkenal"
+      },
+      "lookalike_letters": {
+        "text": "Memakai huruf mirip untuk menipumu"
+      },
+      "fake_brand_address": {
+        "text": "Nama merek tepercaya disembunyikan dalam alamat palsu"
+      },
+      "copies_brand_icon": {
+        "text": "Menyalin ikon merek terkenal"
+      },
+      "no_https": {
+        "text": "Koneksi tidak aman (tanpa HTTPS)"
+      },
+      "missing_protections": {
+        "text": "Tidak ada perlindungan keamanan dasar"
+      },
+      "raw_ip_address": {
+        "text": "Alamatnya angka, bukan nama sungguhan"
+      },
+      "unusual_connection": {
+        "text": "Memakai cara koneksi yang tidak biasa"
+      },
+      "hidden_destination": {
+        "text": "Menyembunyikan ke mana tautan sebenarnya menuju"
+      },
+      "very_new_site": {
+        "text": "Situs ini baru dibuat"
+      },
+      "scam_words": {
+        "text": "Alamat memuat kata-kata yang sering dipakai penipu"
+      },
+      "carries_personal_data": {
+        "text": "Tautan membawa data pribadimu di dalamnya"
+      },
+      "long_complex_address": {
+        "text": "Alamatnya luar biasa panjang dan berbelit"
+      },
+      "many_redirects": {
+        "text": "Tautan memantul lewat beberapa situs"
+      },
+      "risky_ending": {
+        "text": "Memakai akhiran yang disukai penipu"
+      },
+      "risky_registrar": {
+        "text": "Didaftarkan lewat layanan yang sering dipakai penipu"
+      },
+      "random_name": {
+        "text": "Namanya tampak dibuat acak"
+      },
+      "detector_suspicious": {
+        "text": "Detektor kami menilainya mencurigakan"
+      },
+      "well_known_site": {
+        "text": "Situs web terkenal dan tepercaya"
+      },
+      "popular_site": {
+        "text": "Situs yang banyak dipakai dan populer"
+      },
+      "detector_safe": {
+        "text": "Detektor kami menilai situs ini aman"
+      },
+      "not_a_real_business": {
+        "text": "Tidak disiapkan seperti situs perusahaan asli"
+      },
+      "shifty_setup": {
+        "text": "Situs terus berpindah lokasi — trik penipuan yang umum"
+      },
+      "padded_address": {
+        "text": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
+      },
+      "shared_hosting": {
+        "text": "Di-hosting di layanan gratis tempat siapa pun bisa membuat situs"
       }
     }
   },

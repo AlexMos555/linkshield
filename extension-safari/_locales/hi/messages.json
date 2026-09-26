@@ -274,8 +274,19 @@
   "locked_error_network": {
     "message": "हम अपने सर्वर तक नहीं पहुँच सके। कृपया अपना कनेक्शन जाँचें।"
   },
+  "status_user_content_title": {
+    "message": "यहाँ कोई भी पेज बना सकता है"
+  },
+  "status_user_content_subtitle": {
+    "message": "Cleanway $DOMAIN$ पर पेज नहीं जाँच सकता। अगर आपको नहीं पता कि यह पेज किसने बनाया है, तो कार्ड की जानकारी या पासवर्ड न डालें।",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "trust_footer": {
-    "message": "आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता"
+    "message": "हम साइटों के पते जाँचते हैं, पूरे लिंक या पेज की सामग्री नहीं"
   },
   "block_title": {
     "message": "रुकें"
@@ -326,7 +337,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Cleanway से सुरक्षित। आपका डेटा इसी डिवाइस पर रहता है।"
+    "message": "Cleanway द्वारा सुरक्षित। हम आपका डेटा कभी नहीं बेचते।"
   },
   "block_voice_alert": {
     "message": "रुको। साइट $DOMAIN$ खतरनाक है। अपना पासवर्ड न डालो।",
@@ -352,10 +363,10 @@
     "message": "हर पेज, हर लिंक। हरा चिह्न मतलब सुरक्षित। लाल मतलब धोखाधड़ी।"
   },
   "welcome_step2_title": {
-    "message": "आपका डेटा आपके पास रहता है"
+    "message": "निजता सबसे पहले"
   },
   "welcome_step2_desc": {
-    "message": "हम केवल साइटों के नाम जाँचते हैं। आपका ब्राउज़िंग इतिहास कभी भी इस डिवाइस से बाहर नहीं जाता।"
+    "message": "हम साइटों के पते जाँचते हैं, पूरे लिंक या पेज की सामग्री नहीं। हम आपका डेटा कभी नहीं बेचते।"
   },
   "welcome_step3_title": {
     "message": "बिना धीमा किए"
@@ -376,7 +387,7 @@
     "message": "छोड़ें — ब्राउज़ करना शुरू करें"
   },
   "welcome_trust_footer": {
-    "message": "ब्लॉकिंग हमेशा मुफ़्त। आपका डेटा इस डिवाइस से कभी बाहर नहीं जाता।"
+    "message": "ब्लॉक करना हमेशा मुफ़्त है। हम आपका डेटा कभी नहीं बेचते।"
   },
   "badge_label_safe": {
     "message": "सुरक्षित"
@@ -400,7 +411,7 @@
     "message": "खतरनाक लिंक — इसे न खोलें"
   },
   "badge_score": {
-    "message": "स्कोर: $SCORE$/100",
+    "message": "जोखिम: $SCORE$/100",
     "placeholders": {
       "score": {
         "content": "$1"
@@ -409,6 +420,15 @@
   },
   "badge_reason_official_site": {
     "message": "आधिकारिक साइट"
+  },
+  "badge_label_user_content": {
+    "message": "जाँच संभव नहीं"
+  },
+  "badge_aria_user_content": {
+    "message": "ऐसी साइट का लिंक जहाँ कोई भी पेज बना सकता है — जाँचा नहीं गया"
+  },
+  "badge_reason_user_content": {
+    "message": "यहाँ कोई भी पेज बना सकता है। कार्ड की जानकारी या पासवर्ड न डालें।"
   },
   "audit_title": {
     "message": "निजता जाँच"
@@ -505,7 +525,7 @@
     }
   },
   "credguard_reason_tld": {
-    "message": "$TLD$ पते वाले लॉगिन पेज लगभग कभी असली नहीं होते।",
+    "message": "ठग अक्सर नकली साइन-इन पेजों के लिए $TLD$ पतों का इस्तेमाल करते हैं।",
     "placeholders": {
       "tld": {
         "content": "$1"
@@ -519,7 +539,7 @@
     "message": "मेरा पासवर्ड सुरक्षित रखें"
   },
   "credguard_button_honeypot_hint": {
-    "message": "Cleanway इसकी जगह एक बनावटी, बेतरतीब पासवर्ड भेजेगा। आपका असली पासवर्ड इसी डिवाइस पर रहेगा।"
+    "message": "Cleanway फ़ॉर्म के साथ आपके पासवर्ड की जगह एक बेतरतीब बनावटी पासवर्ड भेजेगा।"
   },
   "credguard_button_override": {
     "message": "फिर भी भेजें"
@@ -528,7 +548,19 @@
     "message": "Cleanway ने बनावटी पासवर्ड भेजा"
   },
   "credguard_toast_body": {
-    "message": "आपका असली पासवर्ड इसी डिवाइस पर रहा। अगर यह पेज असली निकले, तो बस अपना पासवर्ड दोबारा लिखें — वह कभी भेजा नहीं गया।"
+    "message": "Cleanway ने इस फ़ॉर्म के साथ आपका असली पासवर्ड नहीं भेजा। फिर भी टाइप करते समय पेज ने उसे पढ़ लिया हो सकता है, इसलिए वह पासवर्ड बदल देना सबसे सुरक्षित है।"
+  },
+  "credguard_banner_title_weak": {
+    "message": "इस साइन-इन पेज पर सावधान रहें"
+  },
+  "credguard_banner_advice_weak": {
+    "message": "अगर आपको यकीन नहीं कि यह असली साइट है, तो उसका पता खुद टाइप करके खोलें।"
+  },
+  "credguard_modal_title_weak": {
+    "message": "पासवर्ड भेजने से पहले इस साइट की जाँच करें"
+  },
+  "credguard_page_flagged": {
+    "message": "Cleanway इस साइट को पहले ही धोखाधड़ी वाली साइट के रूप में पहचान चुका है।"
   },
   "mpg_bitb": {
     "message": "यह पेज एक नकली एड्रेस बार ($FAKE$) दिखा रहा है। असल में आप $REAL$ पर हैं।",
@@ -578,7 +610,100 @@
       }
     }
   },
-  "family_notify_unknown_site": {
-    "message": "अज्ञात साइट"
+  "family_notify_message_blocked_unnamed": {
+    "message": "धोखाधड़ी वाली साइट ब्लॉक की गई।"
+  },
+  "family_notify_message_warned_unnamed": {
+    "message": "परिवार के सदस्य को एक संदिग्ध साइट के बारे में चेताया गया।"
+  },
+  "reason_flagged_dangerous": {
+    "message": "Google इस साइट को खतरनाक बताता है"
+  },
+  "reason_flagged_phishing": {
+    "message": "फ़िशिंग के रूप में रिपोर्ट किया गया"
+  },
+  "reason_on_blocklists": {
+    "message": "भरोसेमंद धोखाधड़ी और स्पैम सूचियों में"
+  },
+  "reason_threat_reports": {
+    "message": "खतरे की रिपोर्टों में उल्लेखित"
+  },
+  "reason_spreads_malware": {
+    "message": "मैलवेयर फैलाने के लिए जाना जाता है"
+  },
+  "reason_imitates_brand": {
+    "message": "नाम किसी जाने-माने ब्रांड की नकल करता है"
+  },
+  "reason_lookalike_letters": {
+    "message": "धोखा देने के लिए मिलती-जुलती अक्षरों का उपयोग"
+  },
+  "reason_fake_brand_address": {
+    "message": "एक भरोसेमंद ब्रांड नाम नकली पते में छिपा है"
+  },
+  "reason_copies_brand_icon": {
+    "message": "किसी जाने-माने ब्रांड के आइकन की नकल"
+  },
+  "reason_no_https": {
+    "message": "कनेक्शन सुरक्षित नहीं है (HTTPS नहीं)"
+  },
+  "reason_missing_protections": {
+    "message": "बुनियादी सुरक्षा सुविधाएँ नहीं हैं"
+  },
+  "reason_raw_ip_address": {
+    "message": "पता एक संख्या है, असली नाम नहीं"
+  },
+  "reason_unusual_connection": {
+    "message": "जुड़ने का असामान्य तरीका"
+  },
+  "reason_hidden_destination": {
+    "message": "लिंक वास्तव में कहाँ जाता है, यह छिपाता है"
+  },
+  "reason_very_new_site": {
+    "message": "यह साइट बहुत हाल में बनाई गई"
+  },
+  "reason_scam_words": {
+    "message": "पते में वे शब्द हैं जो धोखेबाज़ अक्सर इस्तेमाल करते हैं"
+  },
+  "reason_carries_personal_data": {
+    "message": "लिंक में आपकी निजी जानकारी है"
+  },
+  "reason_long_complex_address": {
+    "message": "पता असामान्य रूप से लंबा और उलझा हुआ है"
+  },
+  "reason_many_redirects": {
+    "message": "लिंक कई साइटों से होकर गुजरता है"
+  },
+  "reason_risky_ending": {
+    "message": "ऐसा अंत जो धोखेबाज़ पसंद करते हैं"
+  },
+  "reason_risky_registrar": {
+    "message": "धोखेबाज़ों की पसंदीदा सेवा से पंजीकृत"
+  },
+  "reason_random_name": {
+    "message": "नाम बेतरतीब बना हुआ लगता है"
+  },
+  "reason_detector_suspicious": {
+    "message": "हमारा डिटेक्टर इसे संदिग्ध पाता है"
+  },
+  "reason_well_known_site": {
+    "message": "एक जानी-मानी, भरोसेमंद वेबसाइट"
+  },
+  "reason_popular_site": {
+    "message": "एक व्यापक रूप से इस्तेमाल होने वाली लोकप्रिय वेबसाइट"
+  },
+  "reason_detector_safe": {
+    "message": "हमारा डिटेक्टर इस साइट को सुरक्षित मानता है"
+  },
+  "reason_not_a_real_business": {
+    "message": "असली कंपनी की साइट जैसा सेटअप नहीं है"
+  },
+  "reason_shifty_setup": {
+    "message": "साइट लगातार अपना पता बदलती रहती है — ठगों की आम चाल"
+  },
+  "reason_padded_address": {
+    "message": "असली नाम छिपाने के लिए पते में अतिरिक्त हिस्से जोड़े गए हैं"
+  },
+  "reason_shared_hosting": {
+    "message": "एक मुफ़्त सेवा पर होस्ट, जहाँ कोई भी साइट बना सकता है"
   }
 }

@@ -274,8 +274,19 @@
   "locked_error_network": {
     "message": "تعذر الوصول إلى خوادمنا. تحقق من اتصالك."
   },
+  "status_user_content_title": {
+    "message": "يمكن لأي شخص نشر صفحة هنا"
+  },
+  "status_user_content_subtitle": {
+    "message": "لا يستطيع Cleanway فحص الصفحات على $DOMAIN$. لا تُدخل بيانات بطاقتك أو كلمات المرور إن لم تكن تعرف من أنشأ هذه الصفحة.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "trust_footer": {
-    "message": "بياناتك لا تغادر هذا الجهاز أبدًا"
+    "message": "نفحص عناوين المواقع، لا الروابط الكاملة ولا محتوى الصفحات"
   },
   "block_title": {
     "message": "قف"
@@ -326,7 +337,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "محمي بواسطة Cleanway. بياناتك تبقى على جهازك."
+    "message": "محمي بواسطة Cleanway. لا نبيع بياناتك أبدًا."
   },
   "block_voice_alert": {
     "message": "توقف. الموقع $DOMAIN$ خطير. لا تكتب كلمة المرور.",
@@ -352,10 +363,10 @@
     "message": "كل صفحة، كل رابط. العلامة الخضراء: آمن. الحمراء: احتيال."
   },
   "welcome_step2_title": {
-    "message": "بياناتك تبقى معك"
+    "message": "الخصوصية أولًا"
   },
   "welcome_step2_desc": {
-    "message": "نفحص أسماء المواقع فقط. سجل تصفّحك لا يغادر هذا الجهاز أبدًا."
+    "message": "نفحص عناوين المواقع، لا الروابط الكاملة ولا محتوى الصفحات. لا نبيع بياناتك أبدًا."
   },
   "welcome_step3_title": {
     "message": "دون تباطؤ"
@@ -376,7 +387,7 @@
     "message": "تخطَّ — ابدأ التصفح"
   },
   "welcome_trust_footer": {
-    "message": "الحظر مجاني دائمًا. بياناتك لا تغادر هذا الجهاز أبدًا."
+    "message": "الحظر مجاني دائمًا. لا نبيع بياناتك أبدًا."
   },
   "badge_label_safe": {
     "message": "آمن"
@@ -400,7 +411,7 @@
     "message": "رابط خطير — لا تفتحه"
   },
   "badge_score": {
-    "message": "التقييم: $SCORE$/100",
+    "message": "الخطورة: $SCORE$/100",
     "placeholders": {
       "score": {
         "content": "$1"
@@ -409,6 +420,15 @@
   },
   "badge_reason_official_site": {
     "message": "موقع رسمي"
+  },
+  "badge_label_user_content": {
+    "message": "لا يمكن فحصه"
+  },
+  "badge_aria_user_content": {
+    "message": "رابط لموقع يمكن لأي شخص نشر صفحة عليه — لم يُفحص"
+  },
+  "badge_reason_user_content": {
+    "message": "يمكن لأي شخص نشر صفحة هنا. لا تُدخل بيانات بطاقتك أو كلمات المرور."
   },
   "audit_title": {
     "message": "فحص الخصوصية"
@@ -505,7 +525,7 @@
     }
   },
   "credguard_reason_tld": {
-    "message": "صفحات تسجيل الدخول على عناوين $TLD$ نادرًا جدًا ما تكون حقيقية.",
+    "message": "كثيرًا ما يستخدم المحتالون عناوين $TLD$ لصفحات تسجيل دخول مزيفة.",
     "placeholders": {
       "tld": {
         "content": "$1"
@@ -519,7 +539,7 @@
     "message": "احمِ كلمة مروري"
   },
   "credguard_button_honeypot_hint": {
-    "message": "سيرسل Cleanway بدلًا منها كلمة مرور عشوائية مختلَقة. تبقى كلمة مرورك الحقيقية على هذا الجهاز."
+    "message": "يرسل Cleanway مع النموذج كلمة مرور عشوائية مختلَقة بدلًا من كلمتك."
   },
   "credguard_button_override": {
     "message": "أرسل على أي حال"
@@ -528,7 +548,19 @@
     "message": "أرسل Cleanway كلمة مرور مختلَقة"
   },
   "credguard_toast_body": {
-    "message": "بقيت كلمة مرورك الحقيقية على هذا الجهاز. إذا تبيّن أن الصفحة حقيقية، فأعد كتابة كلمة المرور فقط — فهي لم تُرسَل أبدًا."
+    "message": "لم يرسل Cleanway كلمة مرورك الحقيقية مع هذا النموذج. لكن ربما قرأتها الصفحة أثناء كتابتك، لذا الأسلم أن تغيّر كلمة المرور هذه."
+  },
+  "credguard_banner_title_weak": {
+    "message": "توخَّ الحذر في صفحة تسجيل الدخول هذه"
+  },
+  "credguard_banner_advice_weak": {
+    "message": "إن لم تكن متأكدًا أن هذا هو الموقع الحقيقي، فافتحه بكتابة عنوانه بنفسك."
+  },
+  "credguard_modal_title_weak": {
+    "message": "تحقّق من هذا الموقع قبل إرسال كلمة المرور"
+  },
+  "credguard_page_flagged": {
+    "message": "حدّد Cleanway هذا الموقع بالفعل على أنه احتيالي."
   },
   "mpg_bitb": {
     "message": "هذه الصفحة ترسم شريط عنوان مزيفًا ($FAKE$). أنت في الحقيقة على $REAL$.",
@@ -578,7 +610,100 @@
       }
     }
   },
-  "family_notify_unknown_site": {
-    "message": "موقع غير معروف"
+  "family_notify_message_blocked_unnamed": {
+    "message": "تم حظر موقع احتيالي."
+  },
+  "family_notify_message_warned_unnamed": {
+    "message": "تم تحذير أحد أفراد عائلتك من موقع مشبوه."
+  },
+  "reason_flagged_dangerous": {
+    "message": "يصنّف Google هذا الموقع كخطير"
+  },
+  "reason_flagged_phishing": {
+    "message": "تم الإبلاغ عنه كتصيّد"
+  },
+  "reason_on_blocklists": {
+    "message": "على قوائم موثوقة للاحتيال والبريد المزعج"
+  },
+  "reason_threat_reports": {
+    "message": "مذكور في تقارير التهديدات"
+  },
+  "reason_spreads_malware": {
+    "message": "معروف بنشر البرمجيات الخبيثة"
+  },
+  "reason_imitates_brand": {
+    "message": "الاسم يقلّد علامة تجارية معروفة"
+  },
+  "reason_lookalike_letters": {
+    "message": "يستخدم حروفًا متشابهة لخداعك"
+  },
+  "reason_fake_brand_address": {
+    "message": "اسم علامة موثوقة مخفي داخل عنوان مزيّف"
+  },
+  "reason_copies_brand_icon": {
+    "message": "ينسخ أيقونة علامة تجارية معروفة"
+  },
+  "reason_no_https": {
+    "message": "الاتصال غير آمن (بدون HTTPS)"
+  },
+  "reason_missing_protections": {
+    "message": "تنقصه وسائل الحماية الأساسية"
+  },
+  "reason_raw_ip_address": {
+    "message": "العنوان رقم وليس اسمًا حقيقيًا"
+  },
+  "reason_unusual_connection": {
+    "message": "يستخدم طريقة اتصال غير معتادة"
+  },
+  "reason_hidden_destination": {
+    "message": "يخفي إلى أين يقودك الرابط فعلًا"
+  },
+  "reason_very_new_site": {
+    "message": "أُنشئ هذا الموقع حديثًا جدًا"
+  },
+  "reason_scam_words": {
+    "message": "يحتوي العنوان على كلمات يستخدمها المحتالون كثيرًا"
+  },
+  "reason_carries_personal_data": {
+    "message": "يحمل الرابط بياناتك الشخصية بداخله"
+  },
+  "reason_long_complex_address": {
+    "message": "العنوان طويل ومعقّد بشكل غير عادي"
+  },
+  "reason_many_redirects": {
+    "message": "يقفز الرابط عبر عدة مواقع"
+  },
+  "reason_risky_ending": {
+    "message": "يستخدم نهاية يفضّلها المحتالون"
+  },
+  "reason_risky_registrar": {
+    "message": "مسجَّل عبر خدمة يستخدمها المحتالون كثيرًا"
+  },
+  "reason_random_name": {
+    "message": "يبدو الاسم مولّدًا عشوائيًا"
+  },
+  "reason_detector_suspicious": {
+    "message": "يعتبره كاشفنا مريبًا"
+  },
+  "reason_well_known_site": {
+    "message": "موقع معروف وموثوق"
+  },
+  "reason_popular_site": {
+    "message": "موقع شائع وواسع الاستخدام"
+  },
+  "reason_detector_safe": {
+    "message": "يعتبر كاشفنا هذا الموقع آمنًا"
+  },
+  "reason_not_a_real_business": {
+    "message": "ليس مُعدًّا كموقع شركة حقيقية"
+  },
+  "reason_shifty_setup": {
+    "message": "يغيّر الموقع مكانه باستمرار — حيلة احتيال شائعة"
+  },
+  "reason_padded_address": {
+    "message": "العنوان محشوّ بأجزاء زائدة لإخفاء الاسم الحقيقي"
+  },
+  "reason_shared_hosting": {
+    "message": "مستضاف على خدمة مجانية يمكن لأي شخص إنشاء موقع عليها"
   }
 }

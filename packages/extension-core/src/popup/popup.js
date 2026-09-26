@@ -18,6 +18,8 @@ var FALLBACK_EN = {
   status_danger_subtitle: "$1 is pretending to be someone else to steal your information",
   status_unknown_title: "Couldn't check this page",
   status_unknown_subtitle: "Try again in a moment",
+  status_user_content_title: "Anyone can publish a page here",
+  status_user_content_subtitle: "Cleanway can't check pages on $1. Don't enter card details or passwords unless you know who made this page.",
   aha_found_scams: "I found $1 scam links your browser missed",
   upgrade_free_count: "Free: $1 of $2 checks today",
   // Pricing v2 — celebratory framing, NOT a paywall threat.
@@ -44,7 +46,7 @@ var FALLBACK_EN = {
   onboarding_welcome: "Welcome to Cleanway!",
   onboarding_tip: "I'll check every link you see. Dangerous ones get a red mark. Try right-clicking a link → \"Check with Cleanway\".",
   offline_warning: "Offline — using basic protection",
-  trust_footer: "Your data never leaves this device",
+  trust_footer: "We check site addresses, not full links or page content",
 };
 
 function interpolate(str, subs) {
@@ -90,6 +92,7 @@ var STATUS_ICONS = {
   warning: "\u26A0",   // ⚠
   danger: "\u2717",    // ✗
   unknown: "?",
+  user_content: "i",
 };
 
 // ─── Small DOM helpers ────────────────────────────────────────
@@ -135,6 +138,7 @@ function setStatus(state, title, subtitle) {
 
 function levelToState(level) {
   if (level === "safe") return "safe";
+  if (level === "user_content") return "user_content";
   if (level === "caution" || level === "suspicious") return "warning";
   if (level === "dangerous" || level === "phishing") return "danger";
   return "unknown";
@@ -176,7 +180,9 @@ async function loadPageStatus() {
   var domain = url.hostname;
 
   try {
-    var resp = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: [domain] });
+    // page: this is the tab's own page — if it is a scam, its block page
+    // already counted it; it is not a "warning" on top of that.
+    var resp = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: [domain], page: true });
     var r = resp && resp.results && resp.results[0];
     if (!r) {
       setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
@@ -193,6 +199,11 @@ async function loadPageStatus() {
     } else if (state === "danger") {
       title = t("status_danger_title");
       subtitle = t("status_danger_subtitle", [domain]);
+    } else if (state === "user_content") {
+      // docs.google.com, forms.yandex.ru…: the host says nothing about the
+      // page (background/trusted-hosts.js), so neither "safe" nor "scam".
+      title = t("status_user_content_title");
+      subtitle = t("status_user_content_subtitle", [domain]);
     } else {
       title = t("status_unknown_title");
       subtitle = t("status_unknown_subtitle");

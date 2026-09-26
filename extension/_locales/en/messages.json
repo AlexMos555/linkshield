@@ -276,8 +276,19 @@
   "family_join_paste_hint": {
     "message": "Tip: paste a Cleanway invite link in the first field — it'll fill in the PIN for you."
   },
+  "status_user_content_title": {
+    "message": "Anyone can publish a page here"
+  },
+  "status_user_content_subtitle": {
+    "message": "Cleanway can't check pages on $DOMAIN$. Don't enter card details or passwords unless you know who made this page.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "trust_footer": {
-    "message": "Your data never leaves this device"
+    "message": "We check site addresses, not full links or page content"
   },
   "block_title": {
     "message": "STOP"
@@ -328,7 +339,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Protected by Cleanway. Your data stays on your device."
+    "message": "Protected by Cleanway. We never sell your data."
   },
   "block_voice_alert": {
     "message": "Stop. The site $DOMAIN$ is dangerous. Do not type your password.",
@@ -354,10 +365,10 @@
     "message": "Every page, every link. Green badge means safe. Red means scam."
   },
   "welcome_step2_title": {
-    "message": "Your data stays with you"
+    "message": "Privacy comes first"
   },
   "welcome_step2_desc": {
-    "message": "We only check domain names. Your browsing history never leaves this device."
+    "message": "We check site addresses, not full links or page content. We never sell your data."
   },
   "welcome_step3_title": {
     "message": "No slowdown"
@@ -378,7 +389,7 @@
     "message": "Skip — start browsing"
   },
   "welcome_trust_footer": {
-    "message": "Free forever for blocking. Your data never leaves this device."
+    "message": "Blocking is free forever. We never sell your data."
   },
   "badge_label_safe": {
     "message": "Safe"
@@ -402,7 +413,7 @@
     "message": "Dangerous link — do not open"
   },
   "badge_score": {
-    "message": "Score: $SCORE$/100",
+    "message": "Risk: $SCORE$/100",
     "placeholders": {
       "score": {
         "content": "$1"
@@ -411,6 +422,15 @@
   },
   "badge_reason_official_site": {
     "message": "Official site"
+  },
+  "badge_label_user_content": {
+    "message": "Can't be checked"
+  },
+  "badge_aria_user_content": {
+    "message": "Link to a site where anyone can publish a page — not checked"
+  },
+  "badge_reason_user_content": {
+    "message": "Anyone can publish a page here. Don't enter card details or passwords."
   },
   "audit_title": {
     "message": "Privacy Audit"
@@ -507,7 +527,7 @@
     }
   },
   "credguard_reason_tld": {
-    "message": "Login pages on $TLD$ addresses are very rarely genuine.",
+    "message": "Scammers often use $TLD$ addresses for fake sign-in pages.",
     "placeholders": {
       "tld": {
         "content": "$1"
@@ -521,7 +541,7 @@
     "message": "Keep my password safe"
   },
   "credguard_button_honeypot_hint": {
-    "message": "Cleanway will send a random made-up password instead. Your real password stays on this device."
+    "message": "Cleanway sends a random made-up password with the form instead of yours."
   },
   "credguard_button_override": {
     "message": "Submit anyway"
@@ -530,7 +550,19 @@
     "message": "Cleanway sent a made-up password"
   },
   "credguard_toast_body": {
-    "message": "Your real password stayed on this device. If this page turns out to be genuine, just type your password again — it was never sent."
+    "message": "Cleanway did not send your real password with this form. The page may still have read it while you typed, so it's safest to change that password."
+  },
+  "credguard_banner_title_weak": {
+    "message": "Take care on this sign-in page"
+  },
+  "credguard_banner_advice_weak": {
+    "message": "If you're not sure this is the real site, open it by typing its address yourself."
+  },
+  "credguard_modal_title_weak": {
+    "message": "Check this site before sending your password"
+  },
+  "credguard_page_flagged": {
+    "message": "Cleanway has already identified this site as a scam."
   },
   "mpg_bitb": {
     "message": "This page is drawing a fake browser address bar ($FAKE$). You are actually on $REAL$.",
@@ -580,7 +612,100 @@
       }
     }
   },
-  "family_notify_unknown_site": {
-    "message": "an unknown site"
+  "family_notify_message_blocked_unnamed": {
+    "message": "A scam site was blocked."
+  },
+  "family_notify_message_warned_unnamed": {
+    "message": "Your family member was warned about a suspicious site."
+  },
+  "reason_flagged_dangerous": {
+    "message": "Google flags this site as dangerous"
+  },
+  "reason_flagged_phishing": {
+    "message": "Reported as phishing"
+  },
+  "reason_on_blocklists": {
+    "message": "On trusted scam and spam blocklists"
+  },
+  "reason_threat_reports": {
+    "message": "Mentioned in threat-intelligence reports"
+  },
+  "reason_spreads_malware": {
+    "message": "Known to spread malware"
+  },
+  "reason_imitates_brand": {
+    "message": "The name imitates a well-known brand"
+  },
+  "reason_lookalike_letters": {
+    "message": "Uses look-alike letters to fool you"
+  },
+  "reason_fake_brand_address": {
+    "message": "A trusted brand name is hidden inside a fake address"
+  },
+  "reason_copies_brand_icon": {
+    "message": "Copies a well-known brand's icon"
+  },
+  "reason_no_https": {
+    "message": "The connection isn't secure (no HTTPS)"
+  },
+  "reason_missing_protections": {
+    "message": "Missing basic security protections"
+  },
+  "reason_raw_ip_address": {
+    "message": "The address is a raw number, not a real name"
+  },
+  "reason_unusual_connection": {
+    "message": "Uses an unusual way to connect"
+  },
+  "reason_hidden_destination": {
+    "message": "Hides where the link really goes"
+  },
+  "reason_very_new_site": {
+    "message": "This site was created very recently"
+  },
+  "reason_scam_words": {
+    "message": "The address contains words scams often use"
+  },
+  "reason_carries_personal_data": {
+    "message": "The link carries your personal details in it"
+  },
+  "reason_long_complex_address": {
+    "message": "The address is unusually long and complex"
+  },
+  "reason_many_redirects": {
+    "message": "The link bounces through several sites"
+  },
+  "reason_risky_ending": {
+    "message": "Uses an ending that scams favor"
+  },
+  "reason_risky_registrar": {
+    "message": "Registered through a service scammers often use"
+  },
+  "reason_random_name": {
+    "message": "The name looks randomly generated"
+  },
+  "reason_detector_suspicious": {
+    "message": "Our detector finds this site suspicious"
+  },
+  "reason_well_known_site": {
+    "message": "A well-known, trusted website"
+  },
+  "reason_popular_site": {
+    "message": "A widely used, popular website"
+  },
+  "reason_detector_safe": {
+    "message": "Our detector considers this site safe"
+  },
+  "reason_not_a_real_business": {
+    "message": "Not set up like a real company's site"
+  },
+  "reason_shifty_setup": {
+    "message": "The site keeps changing where it lives — a common scam trick"
+  },
+  "reason_padded_address": {
+    "message": "The address is padded with extra parts to hide the real name"
+  },
+  "reason_shared_hosting": {
+    "message": "Hosted on a free service where anyone can make a site"
   }
 }

@@ -192,7 +192,7 @@ document.querySelectorAll("input[type=checkbox]").forEach((cb) => {
 // Clear data
 document.getElementById("clear-data").addEventListener("click", () => {
   if (confirm("Delete all local check history? This cannot be undone.")) {
-    chrome.storage.local.remove(["recent_threats", "stats", "audits"], () => {
+    chrome.storage.local.remove(["recent_threats", "stats", "audits", "blocked_pages_today"], () => {
       location.reload();
     });
   }
@@ -447,9 +447,9 @@ document.getElementById("export-data").addEventListener("click", () => {
 // token from a successful sign-in). Without it the section stays
 // hidden — sign-in flow lives in /signup on the landing page.
 //
-// Crypto: family-crypto.js + tweetnacl globals already loaded by
-// options.html. We import family-api.js + family-crypto.js as ES
-// modules so the existing chrome.runtime.getURL pattern works.
+// Modules: family-api.js, family-crypto.js and family-fanout.js are ES
+// modules, imported on demand below. family-crypto.js imports the vendored
+// TweetNaCl itself; options.html loads no crypto scripts of its own.
 
 async function lazyFamilyApi() {
   return import(chrome.runtime.getURL("src/utils/family-api.js"));
@@ -526,19 +526,13 @@ async function loadFamilyHub() {
   renderFamilyMembers(_familyState.members, stored.auth_token);
   renderFamilyAlerts(stored.auth_token, fam.family_id);
 
-  // Cache pubkeys for the background-script auto-fan-out path.
-  // Without this, background.js can't encrypt new alerts (it has no
-  // access to /family/{id}/members on every block). Re-cached on every
-  // Family Hub render so adding a new sibling propagates within minutes.
+  // Cache pubkeys for the background's auto-fan-out and poller, so a sibling
+  // added a minute ago is picked up now. The background also refreshes this
+  // cache on its own once it is an hour old (family-fanout.js).
   try {
     const fanout = await import(chrome.runtime.getURL("src/utils/family-fanout.js"));
-    // Resolve my own user_id by JWT decode — sub claim is the user id.
-    let myUid = null;
-    try {
-      const parts = stored.auth_token.split(".");
-      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-      myUid = payload.sub || null;
-    } catch { /* malformed token — leave myUid null, all members will be siblings */ }
+    // My own user_id is the token's `sub` claim; null leaves every member a sibling.
+    const myUid = fanout.userIdFromToken(stored.auth_token);
     await fanout.setFamilyCache(fam.family_id, myUid, _familyState.members);
   } catch (e) {
     console.warn("[Cleanway] family cache update failed:", e && e.message);

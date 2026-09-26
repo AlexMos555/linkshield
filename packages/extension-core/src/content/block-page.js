@@ -31,7 +31,7 @@ const BLOCK_EN = {
   block_back_button: "Go back to safety",
   block_proceed_button: "I understand the risk — open anyway",
   block_proceed_countdown: "Wait $N$ seconds…",
-  block_trust_footer: "Protected by Cleanway. Your data stays on your device.",
+  block_trust_footer: "Protected by Cleanway. We never sell your data.",
   block_voice_alert: "Stop. The site $DOMAIN$ is dangerous. Do not type your password.",
   // Strategy Top-20 #4 — Annotated Evidence cards
   block_evidence_heading: "Why we blocked this site",

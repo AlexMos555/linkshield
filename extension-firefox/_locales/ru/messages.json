@@ -274,8 +274,19 @@
   "locked_error_network": {
     "message": "Не удалось связаться с серверами. Проверьте подключение."
   },
+  "status_user_content_title": {
+    "message": "Такую страницу может создать кто угодно"
+  },
+  "status_user_content_subtitle": {
+    "message": "Cleanway не может проверить страницы на $DOMAIN$. Не вводите данные карты и пароли, если не знаете, кто создал эту страницу.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "trust_footer": {
-    "message": "Ваши данные не покидают это устройство"
+    "message": "Мы проверяем адреса сайтов, а не полные ссылки и не содержимое страниц"
   },
   "block_title": {
     "message": "СТОП"
@@ -326,7 +337,7 @@
     }
   },
   "block_trust_footer": {
-    "message": "Защищает Cleanway. Ваши данные остаются на этом устройстве."
+    "message": "Защищает Cleanway. Мы никогда не продаём ваши данные."
   },
   "block_voice_alert": {
     "message": "Стой. Сайт $DOMAIN$ опасен. Не вводи пароль.",
@@ -352,10 +363,10 @@
     "message": "Каждая страница, каждая ссылка. Зелёная отметка — безопасно. Красная — мошенники."
   },
   "welcome_step2_title": {
-    "message": "Ваши данные остаются с вами"
+    "message": "Приватность прежде всего"
   },
   "welcome_step2_desc": {
-    "message": "Мы проверяем только названия сайтов. История посещений никогда не покидает это устройство."
+    "message": "Мы проверяем адреса сайтов, а не полные ссылки и не содержимое страниц. Мы никогда не продаём ваши данные."
   },
   "welcome_step3_title": {
     "message": "Без тормозов"
@@ -376,7 +387,7 @@
     "message": "Пропустить — начать пользоваться"
   },
   "welcome_trust_footer": {
-    "message": "Блокировка бесплатна навсегда. Ваши данные не покидают это устройство."
+    "message": "Блокировка бесплатна навсегда. Мы никогда не продаём ваши данные."
   },
   "badge_label_safe": {
     "message": "Безопасно"
@@ -400,7 +411,7 @@
     "message": "Опасная ссылка — не открывайте"
   },
   "badge_score": {
-    "message": "Оценка: $SCORE$/100",
+    "message": "Риск: $SCORE$/100",
     "placeholders": {
       "score": {
         "content": "$1"
@@ -409,6 +420,15 @@
   },
   "badge_reason_official_site": {
     "message": "Официальный сайт"
+  },
+  "badge_label_user_content": {
+    "message": "Проверить нельзя"
+  },
+  "badge_aria_user_content": {
+    "message": "Ссылка на сайт, где страницу может создать кто угодно, — не проверена"
+  },
+  "badge_reason_user_content": {
+    "message": "Страницу здесь может создать кто угодно. Не вводите данные карты и пароли."
   },
   "audit_title": {
     "message": "Проверка приватности"
@@ -505,7 +525,7 @@
     }
   },
   "credguard_reason_tld": {
-    "message": "Страницы входа с адресом в зоне $TLD$ почти никогда не бывают настоящими.",
+    "message": "Мошенники часто используют адреса в зоне $TLD$ для поддельных страниц входа.",
     "placeholders": {
       "tld": {
         "content": "$1"
@@ -519,7 +539,7 @@
     "message": "Защитить мой пароль"
   },
   "credguard_button_honeypot_hint": {
-    "message": "Cleanway отправит вместо него случайный выдуманный пароль. Ваш настоящий пароль останется на этом устройстве."
+    "message": "Cleanway отправит с формой случайный выдуманный пароль вместо вашего."
   },
   "credguard_button_override": {
     "message": "Всё равно отправить"
@@ -528,7 +548,19 @@
     "message": "Cleanway отправил выдуманный пароль"
   },
   "credguard_toast_body": {
-    "message": "Ваш настоящий пароль остался на этом устройстве. Если сайт окажется настоящим, просто введите пароль ещё раз — он никуда не отправлялся."
+    "message": "Cleanway не отправил ваш настоящий пароль с этой формой. Но страница могла прочитать его, пока вы печатали, — на всякий случай смените этот пароль."
+  },
+  "credguard_banner_title_weak": {
+    "message": "Будьте внимательны на этой странице входа"
+  },
+  "credguard_banner_advice_weak": {
+    "message": "Если не уверены, что это настоящий сайт, откройте его, набрав адрес вручную."
+  },
+  "credguard_modal_title_weak": {
+    "message": "Проверьте сайт, прежде чем отправлять пароль"
+  },
+  "credguard_page_flagged": {
+    "message": "Cleanway уже определил этот сайт как мошеннический."
   },
   "mpg_bitb": {
     "message": "Эта страница рисует поддельную адресную строку ($FAKE$). На самом деле вы на сайте $REAL$.",
@@ -578,7 +610,100 @@
       }
     }
   },
-  "family_notify_unknown_site": {
-    "message": "неизвестный сайт"
+  "family_notify_message_blocked_unnamed": {
+    "message": "Заблокирован мошеннический сайт."
+  },
+  "family_notify_message_warned_unnamed": {
+    "message": "Вашего близкого предупредили о подозрительном сайте."
+  },
+  "reason_flagged_dangerous": {
+    "message": "Google помечает этот сайт как опасный"
+  },
+  "reason_flagged_phishing": {
+    "message": "Помечен как фишинг"
+  },
+  "reason_on_blocklists": {
+    "message": "В доверенных списках мошеннических и спам-сайтов"
+  },
+  "reason_threat_reports": {
+    "message": "Упоминается в отчётах об угрозах"
+  },
+  "reason_spreads_malware": {
+    "message": "Известен распространением вредоносного ПО"
+  },
+  "reason_imitates_brand": {
+    "message": "Название подделывает известный бренд"
+  },
+  "reason_lookalike_letters": {
+    "message": "Использует похожие буквы, чтобы обмануть"
+  },
+  "reason_fake_brand_address": {
+    "message": "Имя известного бренда спрятано в поддельном адресе"
+  },
+  "reason_copies_brand_icon": {
+    "message": "Копирует значок известного бренда"
+  },
+  "reason_no_https": {
+    "message": "Соединение небезопасно (нет HTTPS)"
+  },
+  "reason_missing_protections": {
+    "message": "Нет базовой защиты"
+  },
+  "reason_raw_ip_address": {
+    "message": "В адресе просто цифры, а не настоящее имя"
+  },
+  "reason_unusual_connection": {
+    "message": "Использует необычный способ подключения"
+  },
+  "reason_hidden_destination": {
+    "message": "Скрывает, куда на самом деле ведёт ссылка"
+  },
+  "reason_very_new_site": {
+    "message": "Сайт создан совсем недавно"
+  },
+  "reason_scam_words": {
+    "message": "В адресе есть слова, которые часто используют мошенники"
+  },
+  "reason_carries_personal_data": {
+    "message": "Ссылка несёт в себе ваши личные данные"
+  },
+  "reason_long_complex_address": {
+    "message": "Адрес необычно длинный и запутанный"
+  },
+  "reason_many_redirects": {
+    "message": "Ссылка прыгает через несколько сайтов"
+  },
+  "reason_risky_ending": {
+    "message": "Окончание домена, которое любят мошенники"
+  },
+  "reason_risky_registrar": {
+    "message": "Зарегистрирован через сервис, популярный у мошенников"
+  },
+  "reason_random_name": {
+    "message": "Название выглядит случайно сгенерированным"
+  },
+  "reason_detector_suspicious": {
+    "message": "Наш детектор считает этот сайт подозрительным"
+  },
+  "reason_well_known_site": {
+    "message": "Известный, надёжный сайт"
+  },
+  "reason_popular_site": {
+    "message": "Широко используемый популярный сайт"
+  },
+  "reason_detector_safe": {
+    "message": "Наш детектор считает этот сайт безопасным"
+  },
+  "reason_not_a_real_business": {
+    "message": "Не настроен как сайт настоящей компании"
+  },
+  "reason_shifty_setup": {
+    "message": "Сайт постоянно меняет адрес — частый приём мошенников"
+  },
+  "reason_padded_address": {
+    "message": "В адрес добавлены лишние части, чтобы спрятать настоящее имя"
+  },
+  "reason_shared_hosting": {
+    "message": "Размещён на бесплатном хостинге, где сайт может сделать кто угодно"
   }
 }

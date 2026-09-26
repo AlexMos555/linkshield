@@ -277,11 +277,22 @@
       },
       "locked_error_network": {
         "text": "No se pudo conectar con nuestros servidores. Comprueba tu conexión."
+      },
+      "status_user_content_title": {
+        "text": "Aquí cualquiera puede publicar una página"
+      },
+      "status_user_content_subtitle": {
+        "text": "Cleanway no puede comprobar las páginas de $DOMAIN$. No introduzcas datos de tarjeta ni contraseñas si no sabes quién creó esta página.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "common": {
       "trust_footer": {
-        "text": "Tus datos nunca salen de este dispositivo"
+        "text": "Comprobamos direcciones de sitios, no enlaces completos ni el contenido de las páginas"
       }
     },
     "block_page": {
@@ -334,7 +345,7 @@
         }
       },
       "trust_footer": {
-        "text": "Protegido por Cleanway. Tus datos quedan en tu dispositivo."
+        "text": "Protegido por Cleanway. Nunca vendemos tus datos."
       },
       "voice_alert": {
         "text": "Detente. El sitio $DOMAIN$ es peligroso. No escribas tu contraseña.",
@@ -362,10 +373,10 @@
         "text": "Cada página, cada enlace. Etiqueta verde: seguro. Roja: estafa."
       },
       "step2_title": {
-        "text": "Tus datos se quedan contigo"
+        "text": "La privacidad es lo primero"
       },
       "step2_desc": {
-        "text": "Solo revisamos nombres de sitios. Tu historial nunca sale de este dispositivo."
+        "text": "Comprobamos direcciones de sitios, no enlaces completos ni el contenido de las páginas. Nunca vendemos tus datos."
       },
       "step3_title": {
         "text": "Sin ralentizar"
@@ -386,7 +397,7 @@
         "text": "Saltar — empezar a navegar"
       },
       "trust_footer": {
-        "text": "El bloqueo siempre es gratis. Tus datos nunca salen de este dispositivo."
+        "text": "El bloqueo siempre es gratis. Nunca vendemos tus datos."
       }
     },
     "badge": {
@@ -412,7 +423,7 @@
         "text": "Enlace peligroso: no lo abras"
       },
       "score": {
-        "text": "Puntuación: $SCORE$/100",
+        "text": "Riesgo: $SCORE$/100",
         "placeholders": {
           "score": {
             "content": "$1"
@@ -421,6 +432,15 @@
       },
       "reason_official_site": {
         "text": "Sitio oficial"
+      },
+      "label_user_content": {
+        "text": "No se puede comprobar"
+      },
+      "aria_user_content": {
+        "text": "Enlace a un sitio donde cualquiera puede publicar una página — sin comprobar"
+      },
+      "reason_user_content": {
+        "text": "Aquí cualquiera puede publicar una página. No introduzcas datos de tarjeta ni contraseñas."
       }
     },
     "privacy_audit": {
@@ -521,7 +541,7 @@
         }
       },
       "reason_tld": {
-        "text": "Las páginas de inicio de sesión con direcciones $TLD$ casi nunca son auténticas.",
+        "text": "Los estafadores suelen usar direcciones $TLD$ para páginas de inicio de sesión falsas.",
         "placeholders": {
           "tld": {
             "content": "$1"
@@ -535,7 +555,7 @@
         "text": "Proteger mi contraseña"
       },
       "button_honeypot_hint": {
-        "text": "Cleanway enviará en su lugar una contraseña inventada al azar. Tu contraseña real se queda en este dispositivo."
+        "text": "Cleanway envía con el formulario una contraseña inventada al azar en lugar de la tuya."
       },
       "button_override": {
         "text": "Enviar de todos modos"
@@ -544,7 +564,19 @@
         "text": "Cleanway envió una contraseña inventada"
       },
       "toast_body": {
-        "text": "Tu contraseña real se quedó en este dispositivo. Si la página resulta ser auténtica, vuelve a escribir tu contraseña: nunca se envió."
+        "text": "Cleanway no envió tu contraseña real con este formulario. Aun así, la página pudo leerla mientras escribías, así que lo más seguro es cambiar esa contraseña."
+      },
+      "banner_title_weak": {
+        "text": "Ten cuidado en esta página de inicio de sesión"
+      },
+      "banner_advice_weak": {
+        "text": "Si no estás seguro de que sea el sitio real, ábrelo escribiendo tú mismo la dirección."
+      },
+      "modal_title_weak": {
+        "text": "Comprueba este sitio antes de enviar tu contraseña"
+      },
+      "page_flagged": {
+        "text": "Cleanway ya identificó este sitio como fraudulento."
       }
     },
     "modern_phish": {
@@ -602,8 +634,103 @@
           }
         }
       },
-      "unknown_site": {
-        "text": "un sitio desconocido"
+      "message_blocked_unnamed": {
+        "text": "Se bloqueó un sitio fraudulento."
+      },
+      "message_warned_unnamed": {
+        "text": "Se avisó a un familiar sobre un sitio sospechoso."
+      }
+    },
+    "reason": {
+      "flagged_dangerous": {
+        "text": "Google marca este sitio como peligroso"
+      },
+      "flagged_phishing": {
+        "text": "Reportado como phishing"
+      },
+      "on_blocklists": {
+        "text": "En listas fiables de estafas y spam"
+      },
+      "threat_reports": {
+        "text": "Mencionado en informes de amenazas"
+      },
+      "spreads_malware": {
+        "text": "Conocido por difundir malware"
+      },
+      "imitates_brand": {
+        "text": "El nombre imita a una marca conocida"
+      },
+      "lookalike_letters": {
+        "text": "Usa letras parecidas para engañarte"
+      },
+      "fake_brand_address": {
+        "text": "Un nombre de marca fiable oculto en una dirección falsa"
+      },
+      "copies_brand_icon": {
+        "text": "Copia el icono de una marca conocida"
+      },
+      "no_https": {
+        "text": "La conexión no es segura (sin HTTPS)"
+      },
+      "missing_protections": {
+        "text": "Le faltan protecciones básicas de seguridad"
+      },
+      "raw_ip_address": {
+        "text": "La dirección es un número, no un nombre real"
+      },
+      "unusual_connection": {
+        "text": "Usa una forma inusual de conectarse"
+      },
+      "hidden_destination": {
+        "text": "Oculta a dónde lleva realmente el enlace"
+      },
+      "very_new_site": {
+        "text": "Este sitio se creó hace muy poco"
+      },
+      "scam_words": {
+        "text": "La dirección contiene palabras típicas de estafas"
+      },
+      "carries_personal_data": {
+        "text": "El enlace lleva tus datos personales dentro"
+      },
+      "long_complex_address": {
+        "text": "La dirección es muy larga y enredada"
+      },
+      "many_redirects": {
+        "text": "El enlace rebota por varios sitios"
+      },
+      "risky_ending": {
+        "text": "Usa una terminación que prefieren las estafas"
+      },
+      "risky_registrar": {
+        "text": "Registrado con un servicio que usan los estafadores"
+      },
+      "random_name": {
+        "text": "El nombre parece generado al azar"
+      },
+      "detector_suspicious": {
+        "text": "Nuestro detector lo considera sospechoso"
+      },
+      "well_known_site": {
+        "text": "Un sitio web conocido y de confianza"
+      },
+      "popular_site": {
+        "text": "Un sitio muy usado y popular"
+      },
+      "detector_safe": {
+        "text": "Nuestro detector considera este sitio seguro"
+      },
+      "not_a_real_business": {
+        "text": "No está configurado como el sitio de una empresa real"
+      },
+      "shifty_setup": {
+        "text": "El sitio cambia constantemente de ubicación, un truco típico de estafas"
+      },
+      "padded_address": {
+        "text": "La dirección tiene partes de más para ocultar el nombre real"
+      },
+      "shared_hosting": {
+        "text": "Alojado en un servicio gratuito donde cualquiera puede crear un sitio"
       }
     }
   },
