@@ -78,10 +78,10 @@ def quick_analysis(monkeypatch):
                             verdict_basis="heuristics")
 
     async def _not_listed(d):
-        return False
+        return None
 
     monkeypatch.setattr(analyzer, "analyze_domain", _analyze)
-    monkeypatch.setattr(public_router, "is_listed", _not_listed)
+    monkeypatch.setattr(public_router, "listed_as", _not_listed)
 
 
 def _get(client, install=None, domain="obscure-shop.ru"):

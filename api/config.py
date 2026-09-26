@@ -110,6 +110,13 @@ class Settings(BaseSettings):
     public_install_rate_limit_per_window: int = 60
     public_install_ip_ceiling_per_window: int = 1500
     public_fresh_ip_ceiling_per_minute: int = 60
+    # The install id is not authenticated, so one address that rotates random
+    # ids reaches the ceilings above (1500 fresh analyses an hour instead of
+    # 60). The ceilings are that address's bound; the paid sources a fresh
+    # analysis may call are bounded for the whole service, per UTC day, by
+    # these (api/services/paid_budget.py). 0 turns the source off.
+    ipqs_daily_budget: int = 150            # the free plan is 5,000 lookups a month
+    llm_judge_daily_budget: int = 300       # live Claude calls (cache hits are free)
 
     # Wall-clock budget for ONE fresh domain analysis (all sources, the site
     # probes and the LLM judge). Checks still running at the deadline are cut

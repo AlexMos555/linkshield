@@ -2,9 +2,10 @@
   "_meta": {
     "purpose": "Shared platforms whose sites belong to their customers, not to the platform. A popular platform is NOT evidence that one customer's site is safe, so these never get the instant 'known legitimate' verdict (api/services/hosting_platforms.py, is_trusted_top_domain()).",
     "tenant_suffixes": "Every subdomain is a separate customer's site: <anything>.tw1.ru is whoever rented it. The apex itself (tw1.ru) stays trusted.",
-    "user_content_hosts": "One hostname, many users' pages at different PATHS (forms.yandex.ru/u/<id>). The public check only sees the host, so it can vouch for the service, never for the page.",
+    "user_content_hosts": "One hostname, many users' pages at different PATHS (forms.yandex.ru/u/<id>). The public check only sees the host, so it can vouch for the service, never for the page: the host itself gets the fixed 'real service, cannot vouch for the page' answer, never name/brand/ML scoring (its name is the platform's).",
+    "operator_hosts": "Subdomains of a tenant suffix that the platform runs itself (dashboards, webmail, its own site), so they are NOT customer sites. www.<suffix> is always the operator's and need not be listed. Confirmed in the 2026-09-27 review: these lost the instant-safe path and drew 'anyone can publish here' plus ML caution.",
     "sources": "Confirmed on the live /public/check on 2026-09-25 (tw1.ru x2, weebly, wpcomstaging.com, screenconnect.com all came back 'safe, 99%'), plus the registrables of the 34,193 active feed hosts that sat under a top-100k name with no tenant rule (fullcheck recheck-tenant, PhishTank + OpenPhish + URLhaus, 2026-09-25). Names already covered by data/public_suffixes_in_top.json or the scorer's hand list need not be repeated here, but a duplicate is harmless.",
-    "updated": "2026-09-26"
+    "updated": "2026-09-27"
   },
   "tenant_suffixes": {
     "ru_hosting": [
@@ -69,5 +70,11 @@
     "script.google.com", "forms.gle", "storage.googleapis.com", "firebasestorage.googleapis.com",
     "forms.office.com", "forms.microsoft.com", "onedrive.live.com", "1drv.ms",
     "dl.dropboxusercontent.com", "pastebin.com", "gist.github.com", "raw.githubusercontent.com"
+  ],
+  "operator_hosts": [
+    "app.netlify.com", "api.netlify.com", "docs.netlify.com", "answers.netlify.com",
+    "email.secureserver.net", "my.wpengine.com",
+    "admin.typeform.com", "api.typeform.com", "help.typeform.com",
+    "microsoft.sharepoint.com"
   ]
 }

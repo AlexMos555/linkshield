@@ -80,12 +80,26 @@ def no_analysis(monkeypatch):
     monkeypatch.setattr(analyzer, "analyze_domain", _boom)
 
 
+MODERN_APP = {"X-Cleanway-Install": "3f2b8c1e-7d4a-4b6e-9a0c-5e1f2d3c4b5a"}
+
+
 def test_listed_host_is_dangerous_immediately(list_redis, no_analysis):
     list_redis(listed={"gosuslugee.ru"})
-    body = TestClient(app).get("/api/v1/public/check/gosuslugee.ru").json()
+    body = TestClient(app).get("/api/v1/public/check/gosuslugee.ru", headers=MODERN_APP).json()
     assert body["level"] == "dangerous"
     assert body["reason_codes"] == ["cleanway_blocklist"]
     assert body["verdict_basis"] == "blocklist"
+
+
+def test_installed_app_gets_a_code_it_can_translate(list_redis, no_analysis):
+    """Android 1.0.1 (no install header) shows the English detail for a code
+    it does not know — on the key line of the most important card. It gets
+    one it localizes («В доверенных списках мошеннических и спам-сайтов»);
+    the basis still says 'blocklist'."""
+    list_redis(listed={"gosuslugee.ru"})
+    body = TestClient(app).get("/api/v1/public/check/gosuslugee.ru").json()
+    assert body["reason_codes"] == ["multi_blocklist"]
+    assert body["verdict_basis"] == "blocklist" and body["level"] == "dangerous"
 
 
 def test_subdomain_of_listed_name_is_covered(list_redis, no_analysis):
@@ -93,6 +107,24 @@ def test_subdomain_of_listed_name_is_covered(list_redis, no_analysis):
     list_redis(listed={"gosuslugee.ru"})
     body = TestClient(app).get("/api/v1/public/check/lk.gosuslugee.ru").json()
     assert body["verdict_basis"] == "blocklist"
+
+
+def test_match_through_a_parent_name_says_so(list_redis, no_analysis):
+    """Over-broad listings exist (report #17: whole co.pt / zoom.pl). A host
+    covered only through its parent must not read as 'this very site is
+    known phishing'."""
+    list_redis(listed={"gosuslugee.ru"})
+    body = TestClient(app).get("/api/v1/public/check/lk.gosuslugee.ru").json()
+    assert "parent address gosuslugee.ru" in body["signals"][0]
+    exact = TestClient(app).get("/api/v1/public/check/gosuslugee.ru").json()
+    assert "parent" not in exact["signals"][0]
+
+
+def test_listed_as_names_the_nearest_listed_name(list_redis):
+    list_redis(listed={"gosuslugee.ru", "lk.gosuslugee.ru"})
+    assert asyncio.run(cleanway_blocklist.listed_as("a.lk.gosuslugee.ru")) == "lk.gosuslugee.ru"
+    assert asyncio.run(cleanway_blocklist.listed_as("gosuslugee.ru")) == "gosuslugee.ru"
+    assert asyncio.run(cleanway_blocklist.listed_as("gosuslugi.ru")) is None
 
 
 def test_listing_beats_a_stale_cached_verdict(list_redis, no_analysis):

@@ -107,7 +107,7 @@ def _public(monkeypatch, domain, result=None, listed=False):
         return None
 
     async def _listed(d):
-        return listed
+        return d if listed else None
 
     async def _analyze(d, *a, **kw):
         return result
@@ -116,7 +116,7 @@ def _public(monkeypatch, domain, result=None, listed=False):
     monkeypatch.setattr(public_router, "_get_public_cache", _no_cache)
     monkeypatch.setattr(public_router, "_put_public_cache", _noop)
     monkeypatch.setattr(public_router, "_enforce_fresh_check_budget", _noop)
-    monkeypatch.setattr(public_router, "is_listed", _listed)
+    monkeypatch.setattr(public_router, "listed_as", _listed)
     monkeypatch.setattr(analyzer_mod, "analyze_domain", _analyze)
     return TestClient(app).get(f"/api/v1/public/check/{domain}")
 

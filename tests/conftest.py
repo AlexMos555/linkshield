@@ -205,6 +205,8 @@ def offline_analyzer(monkeypatch):
       hits     check name → hit value, e.g. {"urlhaus": True}
       values   check name → value, overriding the no-hit defaults above
       delays   check name (or "exists"/"resolution") → seconds before it answers
+      ranks    name → Tranco rank, for lookups outside the "tranco" check
+               (the analyzer asks for a registrable domain's rank)
     """
     import asyncio
     import socket
@@ -220,8 +222,8 @@ def offline_analyzer(monkeypatch):
             return value
         return _check
 
-    def configure(exists=True, site="unreachable", hits=None, values=None, delays=None):
-        hits, values, delays = hits or {}, values or {}, delays or {}
+    def configure(exists=True, site="unreachable", hits=None, values=None, delays=None, ranks=None):
+        hits, values, delays, ranks = hits or {}, values or {}, delays or {}, ranks or {}
 
         async def _exists(domain):
             await asyncio.sleep(delays.get("exists", 0))
@@ -230,8 +232,12 @@ def offline_analyzer(monkeypatch):
         async def _resolution(domain):
             await asyncio.sleep(delays.get("resolution", 0))
 
+        async def _rank(name):
+            return ranks.get(name)
+
         monkeypatch.setattr(analyzer, "check_domain_exists", _exists)
         monkeypatch.setattr(analyzer, "validate_domain_resolution", _resolution)
+        monkeypatch.setattr(analyzer, "get_tranco_rank", _rank)
         for name, (attr, clean) in _OFFLINE_CHECKS.items():
             value = values.get(name, hits.get(name, clean))
             monkeypatch.setattr(analyzer, attr, _fake(value, delays.get(name, 0)))
@@ -243,5 +249,52 @@ def offline_analyzer(monkeypatch):
                 raise socket.timeout("timed out from abroad")
             monkeypatch.setattr(site_probes.socket, "create_connection", _refuse)
             monkeypatch.setattr(site_probes.httpx, "AsyncClient", _UnreachableClient)
+
+    return configure
+
+
+# ─── Site probes over a table instead of the network ───────────────
+
+@pytest.fixture
+def probe_web(monkeypatch):
+    """Returns `configure(routes, unsafe=())`, which serves the HTTPS probes
+    (headers, redirect chain) from `routes` through a real httpx client on a
+    mock transport — so redirect handling, URL joining and host encoding are
+    httpx's own, not a mock's.
+
+      routes   "https://host/path" → (status, headers); anything else is 200
+      unsafe   hosts whose redirect-hop SSRF vetting fails
+
+    `configure` returns the list of (method, url) requested, in order.
+    """
+    import httpx
+
+    from api.services import site_probes
+    from api.services.domain_validator import DomainValidationError
+
+    real_client = httpx.AsyncClient
+
+    def configure(routes, unsafe=()):
+        requested = []
+
+        def _handler(request):
+            url = str(request.url)
+            requested.append((request.method, url))
+            status, headers = routes.get(url, (200, {}))
+            # Raw UTF-8 bytes, as a server sends a Location with a Unicode host.
+            raw = [(k.encode("ascii"), v.encode("utf-8")) for k, v in headers.items()]
+            return httpx.Response(status, headers=raw)
+
+        def _client(*args, **kwargs):
+            kwargs["transport"] = httpx.MockTransport(_handler)
+            return real_client(*args, **kwargs)
+
+        async def _vet(host):
+            if host in unsafe:
+                raise DomainValidationError(f"{host} resolves to a blocked network")
+
+        monkeypatch.setattr(site_probes.httpx, "AsyncClient", _client)
+        monkeypatch.setattr(site_probes, "validate_domain_resolution", _vet)
+        return requested
 
     return configure

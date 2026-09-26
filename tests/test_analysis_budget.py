@@ -63,7 +63,9 @@ def test_slow_source_is_cut_and_named(offline_analyzer):
     assert elapsed < BUDGET + SLACK
     assert {"whois", "safe_browsing"} <= set(result.checks_incomplete)
     reason = next(r for r in result.reasons if r.signal == "checks_incomplete")
-    assert reason.weight == 0 and "safe_browsing" in reason.detail
+    assert reason.weight == 0
+    # The machine names are for clients; the person reads plain words.
+    assert "safe_browsing" not in reason.detail and "did not finish in time" in reason.detail
 
 
 def test_complete_analysis_reports_nothing_missing(offline_analyzer):
@@ -128,6 +130,38 @@ def test_sources_give_up_before_the_budget(monkeypatch):
     assert len(seen) == 7 and all(t < budget for t in seen), seen
 
 
+def test_hanging_source_fails_inside_its_breaker(offline_analyzer, monkeypatch):
+    """httpx's timeout is per phase: a source that accepts the connection and
+    then trickles never times out by itself, and a check cancelled at the
+    deadline is invisible to its breaker (CancelledError is not an
+    Exception). The source's TOTAL limit fires first, as a counted failure."""
+    from api.services.circuit_breaker import CircuitState, phishstats_breaker
+
+    monkeypatch.setattr(phishstats_breaker, "_failure_count", 0)
+    monkeypatch.setattr(phishstats_breaker, "_state", CircuitState.CLOSED)
+    monkeypatch.setattr(analyzer, "SOURCE_TIMEOUT_S", 0.2)
+    offline_analyzer(site="reachable", delays={"phishstats": 30})
+    result, elapsed = _timed(analyzer.analyze_domain("obscure-shop.ru", budget_s=1.0))
+    assert elapsed < 1.0
+    assert phishstats_breaker._failure_count == 1
+
+
+def test_existence_and_ssrf_lookups_run_in_parallel(offline_analyzer):
+    """Both resolve the same name, each capped at 1.5 s: in sequence a slow
+    name server spent the whole 3 s budget before any check started."""
+    offline_analyzer(site="reachable", delays={"exists": 1.0, "resolution": 1.0})
+    result, elapsed = _timed(analyzer.analyze_domain("obscure-shop.ru", budget_s=3.0))
+    assert elapsed < 1.6
+    assert result.checks_incomplete == []
+
+
+def test_nxdomain_does_not_wait_for_the_ssrf_lookup(offline_analyzer):
+    offline_analyzer(exists=False, delays={"resolution": 10})
+    result, elapsed = _timed(analyzer.analyze_domain("sbertank.ru", budget_s=3.0))
+    assert result.exists is False
+    assert elapsed < 0.5
+
+
 def test_dns_enrichment_lookups_run_concurrently():
     def _slow_resolve(domain, rdtype):
         time.sleep(0.3)
@@ -157,11 +191,11 @@ def test_router_never_waits_past_the_backstop(monkeypatch, fake_redis):
         return None
 
     async def _not_listed(d):
-        return False
+        return None
 
     monkeypatch.setattr(analyzer, "analyze_domain", _hang)
     monkeypatch.setattr(public_router, "_enforce_fresh_check_budget", _noop)
-    monkeypatch.setattr(public_router, "is_listed", _not_listed)
+    monkeypatch.setattr(public_router, "listed_as", _not_listed)
 
     t0 = time.monotonic()
     body = TestClient(app).get("/api/v1/public/check/obscure-shop.ru").json()

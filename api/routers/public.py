@@ -21,8 +21,9 @@ from api.config import get_settings
 from api.models.schemas import ConfidenceLevel, DomainResult, RiskLevel
 from api.services import ml_scorer, public_stats
 from api.services import verdict_basis as vb
-from api.services.cleanway_blocklist import is_listed
+from api.services.cleanway_blocklist import listed_as
 from api.services.domain_validator import DomainValidationError, validate_domain
+from api.services.hosting_platforms import is_user_content_service
 from api.services.rate_limiter import rate_limit
 from api.services.rate_limiter import (
     _extract_client_ip,
@@ -58,6 +59,27 @@ _PARTIAL_CACHE_TTL_SECONDS = 60 * 60
 # catches a bug in that enforcement, so a request can never hang.
 _BACKSTOP_GRACE_SECONDS = 1.0
 _FRESH_WINDOW_SECONDS = 60
+
+# Android 1.0.1 — on phones today — localizes a reason by its code and shows
+# the English `detail` for any code it does not know, and it knows none of the
+# codes added with verdict_basis. A client that sends X-Cleanway-Install (1.0.2
+# on) knows them. For the others: our own blocklist is shown under a code they
+# DO localize («В доверенных списках мошеннических и спам-сайтов»), a broken
+# certificate under the "connection is not secure" one — what the browser
+# itself will say — and the informational reasons, which explain a verdict's
+# limits, are sent only when nothing else explains it: a Russian card with an
+# English paragraph under «Почему мы так считаем» helps no one when a
+# localized reason is there anyway.
+_LEGACY_CODE_ALIASES = {
+    vb.REASON_CLEANWAY_BLOCKLIST: "multi_blocklist",
+    "invalid_certificate": "no_https",
+}
+
+_INSTALL_URL = "https://cleanway.ai/android"
+_CTA = (
+    "Get Cleanway for Android to block known scam sites on your phone, "
+    "and see how we measure in our public transparency report."
+)
 
 logger = logging.getLogger("cleanway.public")
 
@@ -121,11 +143,14 @@ async def public_check(domain: str, request: Request):
          shared platforms — no API calls).
       2. Cleanway's own published blocklist, the list the phone blocks: a
          listed host is 'dangerous' at once (verdict_basis 'blocklist').
-      3. Per-endpoint Redis cache, in its own namespace: a day for a full
+      3. The service host of a user-content platform (disk.yandex.ru,
+         onedrive.live.com): a fixed "real service, we cannot vouch for the
+         page" caution (verdict_basis 'user_content'), no analysis.
+      4. Per-endpoint Redis cache, in its own namespace: a day for a full
          verdict, less for a not-found or partial one.
-      4. A fresh-analysis cap per minute — per IP, or per install when the
+      5. A fresh-analysis cap per minute — per IP, or per install when the
          app sends X-Cleanway-Install (CGNAT: one IP, thousands of phones).
-      5. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
+      6. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
          domain collapse to ONE analyze_domain call.
 
     Every response carries `verdict_basis`. Only 'blocklist' and
@@ -138,29 +163,35 @@ async def public_check(domain: str, request: Request):
         domain = validate_domain(domain.lower().strip())
     except DomainValidationError as e:
         raise HTTPException(400, f"Invalid domain: {e}")
+    modern = install_key(request) is not None
 
     # 2) Top-domain allowlist short-circuit (free — in-memory set lookup).
     #    NOT for subdomains of shared platforms / public suffixes / hosting
     #    (us.org, github.io, tw1.ru, forms.yandex.ru …): anyone can publish
     #    there. One rule shared with the scorer and the authed /check.
     if is_trusted_top_domain(domain):
-        return await _build_response(vb.allowlist_result(domain))
+        return await _build_response(vb.allowlist_result(domain), modern)
 
     # 3) Our own blocklist — before the cache, so a verdict cached before the
     #    host was listed cannot outlive the listing. One Redis round-trip.
-    if await is_listed(domain):
-        return _format_public_result(vb.blocklist_result(domain))
+    listed = await listed_as(domain)
+    if listed:
+        return _format_public_result(vb.blocklist_result(domain, listed), modern_client=modern)
 
-    # 4) Public-cache hit: serve previously-analysed result. Essentially
+    # 4) A user-content service host: free, fixed answer (see analyzer).
+    if is_user_content_service(domain):
+        return await _build_response(vb.user_content_result(domain), modern)
+
+    # 5) Public-cache hit: serve previously-analysed result. Essentially
     #    free (Redis GET, no fan-out, no LLM), so it does not touch the
     #    fresh-analysis cap below.
     cached = await _get_public_cache(domain)
     if cached:
-        return await _build_response(cached)
+        return await _build_response(cached, modern)
 
-    # 5) Cap the expensive fan-out, then run it once per domain.
+    # 6) Cap the expensive fan-out, then run it once per domain.
     await _enforce_fresh_check_budget(request)
-    return _format_public_result(await _analyze_once(domain))
+    return _format_public_result(await _analyze_once(domain), modern_client=modern)
 
 
 async def _enforce_fresh_check_budget(request: Request) -> None:
@@ -249,17 +280,21 @@ def _fallback_result(domain: str) -> DomainResult:
     return partial.model_copy(update={"verdict_basis": vb.derive_verdict_basis(partial)})
 
 
-def _verdict_reasons(result) -> list:
+def _verdict_reasons(result, modern_client: bool = True) -> list:
     """Top reasons whose direction matches the verdict (see _format_public_result),
     then the informational ones.
 
     Dangerous/caution → only risk-increasing signals (weight > 0). Safe → the
-    positive ones. If polarity filtering empties the list (e.g. a verdict
-    driven entirely by a hard blocklist hit with odd weights), fall back to the
-    unfiltered top-5 so the card is never reasonless. Informational reasons
-    (domain not found, site unreachable from the scanner, checks cut off,
-    shared platform — weight 0, see verdict_basis.INFORMATIONAL_REASONS) say
-    what the verdict could NOT see; they are shown whatever its direction.
+    positive ones. Informational reasons (domain not found, site unreachable
+    from the scanner, checks cut off, shared platform — weight 0, see
+    verdict_basis.INFORMATIONAL_REASONS) say what the verdict could NOT see;
+    they are shown whatever its direction. Only when neither explains the
+    verdict does the card fall back to the other direction's reasons (e.g. a
+    verdict driven by a hard listing with odd weights), so it is never
+    reasonless — but never to put "the name looks randomly generated" under
+    "appears to be safe" while an informational reason is there to say why.
+    A client that cannot localize the informational codes gets them only when
+    nothing else explains the verdict (see _LEGACY_CODE_ALIASES).
     """
     reasons = list(result.reasons or [])
     if not reasons:
@@ -268,23 +303,47 @@ def _verdict_reasons(result) -> list:
     rest = [r for r in reasons if r.signal not in vb.INFORMATIONAL_REASONS]
     is_safe = result.level == RiskLevel.safe
     matched = [r for r in rest if (r.weight <= 0) == is_safe]
-    return (matched or rest)[:5 - len(info)] + info
+    directional = matched or ([] if info else rest)
+    if directional and not modern_client:
+        return directional[:5]
+    return directional[:5 - len(info)] + info
 
 
 def _verdict_text(result: DomainResult) -> str:
+    domain = result.domain
     if result.exists is False:
-        return f"{result.domain} does not exist. Check the spelling of the address."
+        return f"{domain} does not work right now: there is no site at this address. Check the spelling of the address."
+    basis = vb.basis_of(result)
+    if basis == vb.BASIS_USER_CONTENT:
+        return (
+            f"{domain} is a real service where anyone can publish pages, scammers "
+            "included. We cannot vouch for the page itself. Do not enter passwords "
+            "or card details there unless you trust whoever sent you the link."
+        )
+    if basis == vb.BASIS_UNREACHABLE and result.level != RiskLevel.dangerous:
+        # "appears to be safe" would claim a check that never happened.
+        return {
+            "safe": f"Our scanner could not open {domain}, so the site itself was not checked. No threat list we checked flags it.",
+            "caution": f"Our scanner could not open {domain} and cannot vouch for it. Proceed with caution.",
+        }[result.level.value]
     verdicts = {
-        "safe": f"{result.domain} appears to be safe.",
-        "caution": f"{result.domain} has some suspicious characteristics. Proceed with caution.",
-        "dangerous": f"{result.domain} shows strong indicators of being a phishing or malicious site. Do not enter personal information.",
+        "safe": f"{domain} appears to be safe.",
+        "caution": f"{domain} has some suspicious characteristics. Proceed with caution.",
+        "dangerous": f"{domain} shows strong indicators of being a phishing or malicious site. Do not enter personal information.",
     }
     return verdicts.get(result.level.value, "")
+
+
+def _reason_codes(shown: list, modern_client: bool) -> list[str]:
+    if modern_client:
+        return [r.signal for r in shown]
+    return [_LEGACY_CODE_ALIASES.get(r.signal, r.signal) for r in shown]
 
 
 def _format_public_result(
     result: DomainResult,
     competitors: list[dict] | None = None,
+    modern_client: bool = True,
 ) -> dict:
     """Format result for public/SEO consumption.
 
@@ -298,12 +357,15 @@ def _format_public_result(
 
     No competitor publishes their per-domain verdict next to a
     competitor's. We do. That's the credibility moat.
+
+    `modern_client` False (no X-Cleanway-Install) adapts the reasons to
+    clients that cannot localize the newer codes (_LEGACY_CODE_ALIASES).
     """
     confidence_pct = (
         getattr(result, "confidence_pct", None)
         or calculate_confidence_pct(result.score, 0, 1)
     )
-    shown = _verdict_reasons(result)
+    shown = _verdict_reasons(result, modern_client)
 
     return {
         "domain": result.domain,
@@ -324,7 +386,7 @@ def _format_public_result(
         # the English `detail` for codes they don't map — so an Arabic or
         # Russian user stops seeing "Site does not use HTTPS encryption" in
         # English, which broke the grandma-grade promise on a 10-locale app.
-        "reason_codes": [r.signal for r in shown],
+        "reason_codes": _reason_codes(shown, modern_client),
         # What the verdict rests on. A client blocks a site ONLY when this is
         # 'blocklist' or 'threat_intel' — never on 'heuristics',
         # 'ml_and_heuristics', 'unreachable', 'not_found' or an unknown value.
@@ -337,13 +399,15 @@ def _format_public_result(
         # Side-by-side comparison — nobody else publishes this.
         # Renders as a 'vs Cloudflare' card on the landing scorecard.
         "competitors": competitors or [],
-        "cta": "Install Cleanway for real-time protection backed by 16 independent threat-intel sources and our public transparency report.",
-        "install_url": "https://chrome.google.com/webstore/detail/cleanway",
+        # No hand-kept source count (/stats says why) and only a platform
+        # that is actually installable: the Chrome listing is not live.
+        "cta": _CTA,
+        "install_url": _INSTALL_URL,
         "transparency_url": "https://cleanway.ai/transparency",
     }
 
 
-async def _build_response(result: DomainResult) -> dict:
+async def _build_response(result: DomainResult, modern_client: bool = True) -> dict:
     """Helper: assemble the final response with competitor verdicts
     fetched in parallel. Used by the cache-hit and allowlist paths.
 
@@ -360,7 +424,7 @@ async def _build_response(result: DomainResult) -> dict:
     except Exception as exc:
         logger.debug("competitor lookup failed for %s: %s", result.domain, exc)
         competitors = []
-    return _format_public_result(result, competitors=competitors)
+    return _format_public_result(result, competitors=competitors, modern_client=modern_client)
 
 
 @router.get(
@@ -391,6 +455,6 @@ async def platform_stats():
         "benchmark_measured_at": report.get("ts"),
         "blocklist_entries": await public_stats.blocklist_entries(),
         "brand_targets_monitored": public_stats.brand_targets_monitored(),
-        "notes": public_stats.NOTES,
+        "notes": public_stats.notes_for(report),
         "transparency_url": "https://cleanway.ai/transparency",
     }

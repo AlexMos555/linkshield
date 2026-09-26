@@ -27,7 +27,7 @@ from api.models.schemas import (
 )
 from api.services.analyzer import analyze_domain
 from api.services import verdict_basis as vb
-from api.services.cleanway_blocklist import is_listed
+from api.services.cleanway_blocklist import listed_as
 # /check is the most expensive auth-required endpoint — fans out to
 # Google Safe Browsing + IPQS + a half dozen other paid providers per
 # domain. Use the disposable-email-blocking variant so a sophisticated
@@ -121,8 +121,9 @@ async def check_domains(
 
         # Our own published blocklist first — the list the phone blocks — so
         # a verdict cached before the host was listed cannot outlive it.
-        if await is_listed(domain):
-            results[domain] = vb.blocklist_result(domain)
+        listed = await listed_as(domain)
+        if listed:
+            results[domain] = vb.blocklist_result(domain, listed)
             continue
 
         cached = await get_cached_result(domain)

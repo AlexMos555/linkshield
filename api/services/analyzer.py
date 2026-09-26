@@ -32,8 +32,10 @@ from typing import Any, Optional
 import httpx
 
 from api.config import get_settings
+from api.services import paid_budget
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
+from api.services.hosting_platforms import is_user_content_service
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
 )
@@ -55,14 +57,14 @@ from api.services.circuit_breaker import (
 from api.services.dns_checks import (  # noqa: F401 — re-exported
     EXISTENCE_TIMEOUT_S, check_dns, check_domain_exists,
 )
-from api.services.tranco import check_tranco_popularity
+from api.services.tranco import check_tranco_popularity, get_tranco_rank
 from api.services.favicon_hash import check_favicon_brand_clone
 from api.services.watchtower_lookup import check_typosquat_alert
 # Connection probes: re-exported here, where callers and tests have always
 # found them.
 from api.services.site_probes import (  # noqa: F401
     check_redirect_chain, check_security_headers, check_ssl,
-    first_failure, site_reachability,
+    first_failure, site_reachability, wire_host,
 )
 from api.models.schemas import DomainResult, DomainReason, RiskLevel, ConfidenceLevel
 
@@ -105,18 +107,29 @@ async def analyze_domain(
             verdict_basis=vb.BASIS_HEURISTICS,
         )
 
+    # A user-content service host (disk.yandex.ru, onedrive.live.com): its
+    # name is the platform's, so scoring it judges Yandex or Microsoft, not
+    # the page. Fixed answer, no analysis.
+    if is_user_content_service(domain):
+        return vb.user_content_result(domain)
+
     budget = get_settings().analysis_budget_seconds if budget_s is None else budget_s
     deadline = Deadline(budget)
     is_ip = _is_ip_address(domain)
 
+    # Existence and the SSRF guard both resolve the name, and each may take
+    # up to its 1.5 s cap on a slow authoritative server — in sequence they
+    # could spend the whole 3 s before any check started. So in parallel.
+    resolution = asyncio.ensure_future(_resolution_is_safe(domain, deadline))
     exists = None if is_ip else await _domain_exists_within(domain, deadline)
     if exists is False:
+        _discard(resolution)
         logger.info("analysis_not_found", extra={"domain": domain})
         return vb.not_found_result(domain)
 
-    # Resolve DNS and block internal IPs before making any requests
+    # Block internal IPs before making any requests to the site.
     try:
-        probes_allowed = await _resolution_is_safe(domain, deadline)
+        probes_allowed = await resolution
     except DomainValidationError as e:
         logger.warning("DNS resolution blocked (SSRF): %s — %s", domain, str(e))
         return DomainResult(
@@ -148,12 +161,23 @@ async def _judge(
     confidence = calculate_confidence(measured, TOTAL_CHECKS, whois_age)
 
     if confidence == ConfidenceLevel.low and level == RiskLevel.safe:
-        score = max(score, 25)
+        score = max(score, vb.CANNOT_VOUCH_SCORE)
         level = RiskLevel.caution
         reasons.append(DomainReason(
             signal="partial_analysis", weight=0,
             detail=f"Only {measured}/{TOTAL_CHECKS} checks completed — limited confidence",
         ))
+
+    # A site we could not open, whose name nothing else vouches for, gets no
+    # benefit of the doubt: no listing is not evidence of safety for a fresh,
+    # geo-fenced Госуслуги look-alike — the ML model and the brand list both
+    # miss those. Caution, never 'safe' (and 'unreachable' never blocks).
+    vouched = True
+    if signals["site_reachable"] is False:
+        vouched = await _name_is_vouched_for(domain, signals, deadline)
+        if not vouched and level == RiskLevel.safe:
+            score = max(score, vb.CANNOT_VOUCH_SCORE)
+            level = RiskLevel.caution
 
     # A verdict on a site we could not open, or on partial data near 'safe',
     # is never 'high' confidence.
@@ -165,7 +189,7 @@ async def _judge(
         reasons.append(judge_reason)
     if not judge_finished:
         unfinished = unfinished + ["llm_judge"]
-    reasons.extend(_informational_reasons(domain, outcomes, signals, unfinished))
+    reasons.extend(_informational_reasons(domain, outcomes, signals, unfinished, vouched))
 
     _log_features(domain, signals, score)
 
@@ -191,6 +215,16 @@ async def _judge(
 
 
 # ── Steps ──
+
+def _discard(task: "asyncio.Future[Any]") -> None:
+    """Drop a step whose answer is no longer needed, without leaving an
+    exception nobody retrieved."""
+    if task.done():
+        if not task.cancelled():
+            task.exception()
+    else:
+        task.cancel()
+
 
 async def _domain_exists_within(domain: str, deadline: Deadline) -> Optional[bool]:
     try:
@@ -251,10 +285,26 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
         "redirect": (redirect_breaker, check_redirect_chain),
     }
     return {
-        name: breaker.call(fn, domain)
+        name: breaker.call(fn if name in _SITE_PROBES else _within_source_timeout(fn), domain)
         for name, (breaker, fn) in plan.items()
         if probes_allowed or name not in _SITE_PROBES
     }
+
+
+def _within_source_timeout(fn: Any) -> Any:
+    """`fn` with a TOTAL time limit that raises inside the breaker.
+
+    httpx's timeout is per phase (connect, then each read), so a source that
+    accepts the connection and then answers a byte at a time never times out
+    by itself — PhishStats did roughly that, and the check was cancelled at
+    the deadline instead, which a breaker cannot count (CancelledError is not
+    an Exception). This limit fires first, as a failure the breaker counts.
+    The site probes keep their own limits: one slow SITE must not open a
+    breaker that skips the probe for everyone.
+    """
+    async def _call(domain: str) -> Any:
+        return await asyncio.wait_for(fn(domain), timeout=SOURCE_TIMEOUT_S)
+    return _call
 
 
 def _value(outcomes: dict, name: str, default: Any) -> Any:
@@ -349,6 +399,7 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict) -> di
         "is_ip_based": is_ip,
         "site_reachable": site_reachability(ssl_data, headers_data, redirect_data),
         "no_https": (not ssl_data["has_ssl"]) if "has_ssl" in ssl_data else None,
+        "certificate_problem": ssl_data.get("certificate_problem"),
         "free_ssl": ssl_data.get("is_free_ssl", False),
         "cert_age_days": ssl_data.get("cert_age_days"),
         "missing_security_headers": headers_data.get("missing"),
@@ -376,7 +427,9 @@ async def _llm_judge_within(
     vector and proposes a signed score shift capped at ±20. Returns
     (score, level, reason or None, finished). `finished` is False when the
     judge was still running at the deadline — the verdict then stands
-    without it, and says so.
+    without it, and says so. The live call itself is not lost: it finishes
+    in the background and fills the judge's cache (llm_judge._live_opinion),
+    so the next domain with the same pattern gets the answer in time.
     """
     try:
         from api.services.llm_judge import judge_ambiguous_verdict
@@ -405,15 +458,53 @@ async def _llm_judge_within(
     return score, level, reason, True
 
 
+# Second-level labels of registries only a government can register in, under
+# a country code: gov.ru is for federal bodies. Tranco ranks such a suffix as
+# one name (gov.ru, #10861) and never the sites under it (rosreestr.gov.ru),
+# so without this every federal site that refuses foreign scanners would be
+# "not a widely known site".
+_GOVERNMENT_LABELS = frozenset({"gov", "gob", "gouv", "govt", "go", "mil"})
+_VOUCH_LOOKUP_S = 0.3
+
+
+def _government_name(domain: str) -> bool:
+    parts = domain.lower().rstrip(".").split(".")
+    if parts[-1] in ("gov", "mil"):
+        return len(parts) >= 2
+    return len(parts) >= 3 and len(parts[-1]) == 2 and parts[-2] in _GOVERNMENT_LABELS
+
+
+async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -> bool:
+    """Does anything besides this analysis vouch for the NAME? It is in the
+    world's top-1M — itself, or (www.kaluga-gov.ru) its registrable domain
+    when that is not a shared platform where anyone can publish — or it sits
+    in a government-only registry."""
+    if signals.get("tranco_ranked") or _government_name(domain):
+        return True
+    from api.services.doh_gateway import _registrable_domain
+    registrable = _registrable_domain(domain)
+    if registrable == domain or is_hosting_platform_site(domain):
+        return False
+    try:
+        rank = await asyncio.wait_for(get_tranco_rank(registrable), timeout=deadline.step(_VOUCH_LOOKUP_S))
+    except asyncio.TimeoutError:
+        return False
+    return bool(rank and rank > 0)
+
+
 def _informational_reasons(
-    domain: str, outcomes: dict, signals: dict, unfinished: list[str],
+    domain: str, outcomes: dict, signals: dict, unfinished: list[str], vouched: bool,
 ) -> list[DomainReason]:
     """Zero-weight reasons that say what the verdict could NOT see."""
     out: list[DomainReason] = []
     if signals.get("site_reachable") is False:
-        out.append(vb.unreachable_reason(first_failure(
-            _value(outcomes, "ssl", {}), _value(outcomes, "headers", {}), _value(outcomes, "redirect", {}),
-        )))
+        out.append(vb.unreachable_reason(
+            first_failure(
+                _value(outcomes, "ssl", {}), _value(outcomes, "headers", {}),
+                _value(outcomes, "redirect", {}),
+            ),
+            known_site=vouched,
+        ))
     if is_hosting_platform_site(domain):
         out.append(vb.user_content_reason())
     if unfinished:
@@ -532,17 +623,46 @@ async def check_whois_age(domain: str) -> dict:
 # CHECK 9: PhishStats — aggregated phishing intelligence
 # ═══════════════════════════════════════════════════════════════
 
+# PhishStats can only search URLs by substring, so it returns every listed URL
+# that CONTAINS the name: https://bankspb.ru.secure-login.xyz/ and
+# evil.com/?r=bankspb.ru for bankspb.ru, anything under mybank.ru for bank.ru.
+# Brand impersonation produces exactly those. Ask for a page of candidates and
+# count a hit only when a listed URL's own host IS the domain (a leading www.
+# ignored on both sides).
+_PHISHSTATS_PAGE = 20
+
+
 async def check_phishstats(domain: str) -> bool:
     """Check domain against PhishStats API (free, no key, 20 req/min)."""
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.get(
-            f"https://phishstats.info:2096/api/phishing?_where=(url,like,~{domain}~)&_size=1"
+            "https://phishstats.info:2096/api/phishing"
+            f"?_where=(url,like,~{domain}~)&_size={_PHISHSTATS_PAGE}"
         )
         data = resp.json()
-        hit = isinstance(data, list) and len(data) > 0
+        hit = isinstance(data, list) and any(
+            _phishstats_row_is_host(row, domain) for row in data
+        )
         if hit:
             logger.info("phishstats_hit", extra={"domain": domain})
         return hit
+
+
+def _phishstats_row_is_host(row: Any, domain: str) -> bool:
+    if not isinstance(row, dict) or not isinstance(row.get("url"), str):
+        return False
+    url = row["url"].strip()
+    try:
+        # Wire (punycode) form, as `domain` is: a listed госуслуги.рф URL
+        # compares equal to the xn-- name we were asked about.
+        host = wire_host(httpx.URL(url if "://" in url else f"http://{url}"))
+    except Exception:
+        return False
+    return _without_www(host) == _without_www(domain.lower().rstrip("."))
+
+
+def _without_www(host: str) -> str:
+    return host[4:] if host.startswith("www.") else host
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -778,6 +898,10 @@ async def check_ipqualityscore(domain: str) -> dict:
     settings = get_settings()
     ipqs_key = getattr(settings, "ipqualityscore_key", "")
     if not ipqs_key:
+        return {}
+    # A service-wide daily cap: per-IP and per-install limits bound one
+    # caller, never the sum of all of them.
+    if not await paid_budget.take("ipqs", settings.ipqs_daily_budget):
         return {}
 
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:

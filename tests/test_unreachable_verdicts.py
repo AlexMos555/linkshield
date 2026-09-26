@@ -100,26 +100,23 @@ def test_redirect_probe_unreachable_is_neutral():
     assert out["cross_domain"] is False and out["count"] == 0
 
 
-def test_idn_site_is_not_redirected_to_its_own_unicode_spelling():
+def test_idn_site_is_not_redirected_to_its_own_unicode_spelling(probe_web):
     """httpx reports the final host decoded — 'мойбизнес.рф' for a request to
     xn--90aifddrld7a.xn--p1ai. That was scored as a cross-domain redirect."""
-    resp = MagicMock()
-    resp.history = []
-    resp.url = MagicMock()
-    resp.url.host = "мойбизнес.рф"
-    with patch.object(site_probes.httpx, "AsyncClient", return_value=_client(get=resp)):
-        out = asyncio.run(site_probes.check_redirect_chain("xn--90aifddrld7a.xn--p1ai"))
+    probe_web({
+        "https://xn--90aifddrld7a.xn--p1ai/": (301, {"location": "https://www.мойбизнес.рф/"}),
+    })
+    out = asyncio.run(site_probes.check_redirect_chain("xn--90aifddrld7a.xn--p1ai"))
     assert out["reachable"] is True
     assert out["cross_domain"] is False
+    assert out["domains_visited"] == ["www.xn--90aifddrld7a.xn--p1ai"]
 
 
-def test_idn_redirect_to_a_different_site_still_counts():
-    resp = MagicMock()
-    resp.history = []
-    resp.url = MagicMock()
-    resp.url.host = "госуслуги-вход.рф"
-    with patch.object(site_probes.httpx, "AsyncClient", return_value=_client(get=resp)):
-        out = asyncio.run(site_probes.check_redirect_chain("xn--90aifddrld7a.xn--p1ai"))
+def test_idn_redirect_to_a_different_site_still_counts(probe_web):
+    probe_web({
+        "https://xn--90aifddrld7a.xn--p1ai/": (302, {"location": "https://госуслуги-вход.рф/"}),
+    })
+    out = asyncio.run(site_probes.check_redirect_chain("xn--90aifddrld7a.xn--p1ai"))
     assert out["cross_domain"] is True
 
 
@@ -169,6 +166,89 @@ def test_rf_names_are_not_judged_by_their_punycode_spelling(domain, offline_anal
     shape = {"excessive_special_chars", "many_special_chars", "unnatural_ngram",
              "suspicious_ngram", "long_domain_name", "high_digit_ratio", "medium_entropy"}
     assert not (_codes(result) & shape), _codes(result)
+
+
+RU_BRAND_LOOKALIKES = [
+    "gosuslugi-vyplata.ru", "gosuslugl.ru", "avito-dostavka.ru",
+    "sberbank-bonus.ru", "wildberries-priz.ru", "tinkoff-vozvrat.ru",
+]
+
+
+@pytest.mark.parametrize("domain", RU_BRAND_LOOKALIKES)
+def test_unknown_site_we_could_not_open_is_never_safe(domain, offline_analyzer):
+    """Review 2026-09-27: a fresh, geo-fenced Госуслуги / Сбер / Авито
+    look-alike has no listing yet, no brand the typosquat list knows, and the
+    ML model gives it <10%. With the connection penalties gone it came back
+    'safe' — 'Выглядит безопасно' for exactly what reaches the elderly. With
+    nothing to vouch for it, it is caution (never a block: basis stays
+    'unreachable')."""
+    offline_analyzer(site="unreachable")
+    result = asyncio.run(analyze_domain(domain, budget_s=5.0))
+    assert result.level == RiskLevel.caution, (result.score, _codes(result))
+    assert result.verdict_basis == "unreachable"
+    reason = next(r for r in result.reasons if r.signal == "unreachable_from_scanner")
+    assert "not a widely known site" in reason.detail
+
+
+def _unreachable_detail(result) -> str:
+    return next(r for r in result.reasons if r.signal == "unreachable_from_scanner").detail
+
+
+def test_widely_known_site_we_could_not_open_can_still_be_safe(offline_analyzer):
+    """vologda-oblast.ru — Tranco #294,448, refuses foreign scanners — is not
+    pushed to caution by the floor."""
+    offline_analyzer(site="unreachable", values={"tranco": {
+        "ranked": True, "rank": 294448, "weight": -5, "label": "In the global top 1M",
+    }})
+    result = asyncio.run(analyze_domain("vologda-oblast.ru", budget_s=5.0))
+    assert result.level == RiskLevel.safe
+    assert "not a widely known site" not in _unreachable_detail(result)
+
+
+def test_www_of_a_known_site_is_known_too(offline_analyzer):
+    """Tranco ranks registrable domains, and the lookup is by exact host: the
+    www. spelling people paste from a letter must not lose the vouch."""
+    offline_analyzer(site="unreachable", ranks={"kaluga-gov.ru": 561507})
+    known = asyncio.run(analyze_domain("www.kaluga-gov.ru", budget_s=5.0))
+    offline_analyzer(site="unreachable")
+    unknown = asyncio.run(analyze_domain("www.kaluga-gov.ru", budget_s=5.0))
+    assert "not a widely known site" not in _unreachable_detail(known)
+    assert "not a widely known site" in _unreachable_detail(unknown)
+
+
+@pytest.mark.parametrize("domain", ["rosreestr.gov.ru", "nalog.gov.ru", "www.gov.uk"])
+def test_government_registry_vouches_for_its_names(domain, offline_analyzer):
+    """Tranco ranks gov.ru as ONE name and never rosreestr.gov.ru; only
+    federal bodies can register under it."""
+    offline_analyzer(site="unreachable")
+    result = asyncio.run(analyze_domain(domain, budget_s=5.0))
+    assert result.level == RiskLevel.safe
+    assert "not a widely known site" not in _unreachable_detail(result)
+
+
+@pytest.mark.parametrize("domain", ["gosuslugi.ru-gov.site", "x.go.com", "evil-gov.ru"])
+def test_government_lookalikes_are_not_vouched_for(domain, offline_analyzer):
+    offline_analyzer(site="unreachable")
+    result = asyncio.run(analyze_domain(domain, budget_s=5.0))
+    assert result.level != RiskLevel.safe
+
+
+def test_shared_platform_tenant_never_borrows_the_platforms_rank(offline_analyzer):
+    """321da.tw1.ru is whoever rented it; tw1.ru being popular vouches for
+    nothing (report #7)."""
+    offline_analyzer(site="unreachable", ranks={"tw1.ru": 9000})
+    result = asyncio.run(analyze_domain("321da.tw1.ru", budget_s=5.0))
+    assert result.level != RiskLevel.safe
+
+
+def test_unreachable_text_neither_reassures_nor_alarms(offline_analyzer):
+    """Phishing kits hide from foreign scanners too: "not a sign of danger"
+    was a promise the evidence does not support."""
+    offline_analyzer(site="unreachable")
+    result = asyncio.run(analyze_domain("kaluga-gov.ru", budget_s=5.0))
+    detail = next(r for r in result.reasons if r.signal == "unreachable_from_scanner").detail
+    assert "not a sign of danger" not in detail
+    assert "says nothing either way" in detail
 
 
 def test_unreachable_site_counts_as_less_evidence(offline_analyzer):

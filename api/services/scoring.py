@@ -129,6 +129,16 @@ HOSTING_PLATFORMS: frozenset[str] = frozenset({
     "docs.google.com", "forms.google.com", "sites.google.com",
 })
 
+# What a broken certificate (site_probes `certificate_problem`) means for the
+# person — the browser warning they will see.
+_CERTIFICATE_PROBLEM_TEXT: dict[str, str] = {
+    "expired": "The site's security certificate has expired, so your browser will warn that the connection is not private",
+    "not_yet_valid": "The site's security certificate is not valid yet, so your browser will warn that the connection is not private",
+    "self_signed": "The site's security certificate was not issued by a trusted authority, so your browser will warn that the connection is not private",
+    "wrong_host": "The site's security certificate belongs to a different address, so your browser will warn that the connection is not private",
+    "": "The site's security certificate is invalid, so your browser will warn that the connection is not private",
+}
+
 # Google subdomains used for phishing: never auto-safe.
 GOOGLE_ABUSED_SUBDOMAINS: frozenset[str] = frozenset({
     "docs.google.com", "forms.google.com", "sites.google.com",
@@ -834,15 +844,30 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.7 No HTTPS ──
-    # True only on positive evidence. "Our scanner could not connect" is None,
-    # never True: президент.рф, rosreestr.gov.ru and bankspb.ru refuse foreign
-    # connections, and scoring that as "no HTTPS" (+40) plus "no headers"
-    # (+15) alone crossed the 'dangerous' line (report 2026-09-25 #1).
+    # True only on positive evidence: port 443 refused us or spoke no TLS,
+    # AND port 80 served a page (site_probes). "Our scanner could not
+    # connect" is None, never True: президент.рф, rosreestr.gov.ru and
+    # bankspb.ru refuse foreign connections, and scoring that as "no HTTPS"
+    # (+40) plus "no headers" (+15) alone crossed the 'dangerous' line
+    # (report 2026-09-25 #1).
     if signals.get("no_https"):
         score += 40
         reasons.append(DomainReason(
             signal="no_https", weight=40,
             detail="Site does not use HTTPS encryption",
+        ))
+
+    # ── 3.7b Broken certificate ──
+    # Expired, self-signed or issued for another name: every browser shows a
+    # full-page warning, wherever it is opened from, so this is measured —
+    # unlike a certificate from an authority we merely do not know (the
+    # Russian national CA), which site_probes reports as "not reached".
+    cert_problem = signals.get("certificate_problem")
+    if cert_problem:
+        score += 30
+        reasons.append(DomainReason(
+            signal="invalid_certificate", weight=30,
+            detail=_CERTIFICATE_PROBLEM_TEXT.get(cert_problem, _CERTIFICATE_PROBLEM_TEXT[""]),
         ))
 
     # ── 3.8 Free SSL + new domain combo ──

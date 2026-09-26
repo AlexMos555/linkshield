@@ -504,11 +504,14 @@ export interface paths {
          *          shared platforms — no API calls).
          *       2. Cleanway's own published blocklist, the list the phone blocks: a
          *          listed host is 'dangerous' at once (verdict_basis 'blocklist').
-         *       3. Per-endpoint Redis cache, in its own namespace: a day for a full
+         *       3. The service host of a user-content platform (disk.yandex.ru,
+         *          onedrive.live.com): a fixed "real service, we cannot vouch for the
+         *          page" caution (verdict_basis 'user_content'), no analysis.
+         *       4. Per-endpoint Redis cache, in its own namespace: a day for a full
          *          verdict, less for a not-found or partial one.
-         *       4. A fresh-analysis cap per minute — per IP, or per install when the
+         *       5. A fresh-analysis cap per minute — per IP, or per install when the
          *          app sends X-Cleanway-Install (CGNAT: one IP, thousands of phones).
-         *       5. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
+         *       6. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
          *          domain collapse to ONE analyze_domain call.
          *
          *     Every response carries `verdict_basis`. Only 'blocklist' and

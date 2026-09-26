@@ -9,13 +9,20 @@ public check, the authenticated check and the scorer alike.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 
 import pytest
+from fastapi.testclient import TestClient
 
+from api.main import app  # imported before any asyncio.run(): see watchtower._throttle_lock
+from api.models.schemas import RiskLevel
 from api.routers.check import _quick_allowlist_check
 from api.services import hosting_platforms as hp
+from api.services import verdict_basis as vb
+from api.services.analyzer import analyze_domain
+from api.services.hosting_platforms import is_user_content_service
 from api.services.scoring import (
     TOP_DOMAINS,
     calculate_score,
@@ -40,11 +47,18 @@ PAGE_HOSTS = ["forms.yandex.ru", "disk.yandex.ru", "sites.google.com", "docs.goo
 def test_data_file_is_well_formed():
     with open(DATA) as f:
         data = json.load(f)
-    assert set(data) == {"_meta", "tenant_suffixes", "user_content_hosts"}
-    assert hp.TENANT_SUFFIXES and hp.USER_CONTENT_HOSTS
-    for name in hp.TENANT_SUFFIXES | hp.USER_CONTENT_HOSTS:
+    assert set(data) == {"_meta", "tenant_suffixes", "user_content_hosts", "operator_hosts"}
+    assert hp.TENANT_SUFFIXES and hp.USER_CONTENT_HOSTS and hp.OPERATOR_HOSTS
+    for name in hp.TENANT_SUFFIXES | hp.USER_CONTENT_HOSTS | hp.OPERATOR_HOSTS:
         assert name == name.lower().strip(".") and "." in name, name
         assert " " not in name and "/" not in name, name
+
+
+def test_every_operator_host_sits_under_a_tenant_suffix():
+    """An operator entry only makes sense as an exception to a tenant rule;
+    anywhere else it would be dead weight, or a typo hiding one."""
+    for host in hp.OPERATOR_HOSTS:
+        assert any(host.endswith("." + s) for s in hp.TENANT_SUFFIXES), host
 
 
 def test_data_file_never_names_a_big_org_as_a_platform():
@@ -107,7 +121,89 @@ def test_informational_reason_only_for_curated_platforms():
 
 
 def test_missing_data_file_degrades_to_hand_list(tmp_path):
-    assert hp._load(str(tmp_path / "absent.json")) == (frozenset(), frozenset())
+    assert hp._load(str(tmp_path / "absent.json")) == (frozenset(), frozenset(), frozenset())
+
+
+# ── The platforms' OWN hosts (review 2026-09-27) ──
+#
+# "Every subdomain is a customer" also swept up the operators' own
+# dashboards, webmail and sites: they lost the instant-safe path, were told
+# "anyone can publish pages on this service", and the ML model put several
+# at caution 35 — typeform's at dangerous 60.
+
+OPERATOR_OWN = [
+    "www.timeweb.cloud", "app.netlify.com", "email.secureserver.net", "www.odoo.com",
+    "www.tumblr.com", "www.typeform.com", "admin.typeform.com", "my.wpengine.com",
+    "microsoft.sharepoint.com",
+]
+
+
+@pytest.mark.parametrize("host", OPERATOR_OWN)
+def test_platform_operators_own_hosts_are_not_tenants(host):
+    assert hp.tenant_suffix_of(host) is None
+    assert not is_hosting_platform_site(host)
+    assert is_trusted_top_domain(host) is True
+
+
+@pytest.mark.parametrize("host", ["www.abc.tw1.ru", "wwwx.tumblr.com", "evil.netlify.com", "contoso.sharepoint.com"])
+def test_operator_exception_is_exact(host):
+    """Only the exact operator host is excepted — never a customer's www, a
+    look-alike label, or another tenant of the same suffix."""
+    assert is_trusted_top_domain(host) is False
+
+
+# ── The user-content SERVICE host itself (review 2026-09-27) ──
+#
+# Once these lost the allowlist, the full analyzer judged the platform's own
+# name: onedrive.live.com 'dangerous 100' ("uses the onedrive brand name in a
+# subdomain to deceive"), gist.github.com 100, forms.office.com 85,
+# disk.yandex.ru caution ("ML: 97% phishing"). Android 1.0.1 DNS-blocks any
+# host whose check says 'dangerous' — one tapped OneDrive link would have cut
+# OneDrive off.
+
+USER_CONTENT_SERVICES = [
+    "onedrive.live.com", "forms.office.com", "gist.github.com", "disk.yandex.ru",
+    "forms.yandex.ru", "sites.google.com", "docs.google.com", "telegra.ph",
+    "disk.360.yandex.ru", "yadi.sk", "raw.githubusercontent.com",
+]
+
+
+@pytest.mark.parametrize("host", USER_CONTENT_SERVICES)
+def test_user_content_service_gets_a_fixed_honest_answer(host, offline_analyzer):
+    # A reachable site "registered yesterday": none of it may matter — the
+    # name belongs to the platform, and the page is unknown.
+    offline_analyzer(site="reachable", values={"whois": {"age_days": 1}})
+    result = asyncio.run(analyze_domain(host, budget_s=5.0))
+    assert (result.level, result.score) == (RiskLevel.caution, 25)
+    assert result.verdict_basis == "user_content"
+    assert [r.signal for r in result.reasons] == ["user_content_platform"]
+
+
+@pytest.mark.parametrize("host", USER_CONTENT_SERVICES)
+def test_user_content_service_is_never_blocking(host):
+    result = vb.user_content_result(host)
+    assert result.level != RiskLevel.dangerous
+    assert vb.basis_of(result) not in vb.BLOCKING_BASES
+
+
+def test_public_check_answers_user_content_without_analysis(monkeypatch, fake_redis):
+    from api.services import analyzer as analyzer_mod
+
+    async def _boom(*a, **k):
+        raise AssertionError("a user-content service host must not be analysed")
+
+    monkeypatch.setattr(analyzer_mod, "analyze_domain", _boom)
+    body = TestClient(app).get("/api/v1/public/check/onedrive.live.com").json()
+    assert body["level"] == "caution" and body["verdict_basis"] == "user_content"
+    assert "real service" in body["verdict"]
+    assert body["reason_codes"] == ["user_content_platform"]
+
+
+@pytest.mark.parametrize("host", ["321da.tw1.ru", "secure-login.weeblysite.com", "x.forms.yandex.ru"])
+def test_tenant_pages_are_still_analysed(host):
+    """Only the service host itself gets the fixed answer; a customer's site
+    (or anything under the service host) is still judged on its evidence."""
+    assert not is_user_content_service(host)
 
 
 def test_tenant_suffix_is_longest_match():

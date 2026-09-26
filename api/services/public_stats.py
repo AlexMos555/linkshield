@@ -46,13 +46,28 @@ NOTES = {
     ),
     "false_positive_rate": (
         "Share of legitimate sites called dangerous in the weekly benchmark; null until "
-        f"a run has at least {MIN_BATCH} legitimate sites with {MIN_CLASSIFIED}+ classified. "
-        "It has not been measured yet."
+        f"a run has at least {MIN_BATCH} legitimate sites with {MIN_CLASSIFIED}+ classified."
     ),
     "ml_model_auc": "Held-out test AUC of the deployed model (data/model_meta.json).",
     "blocklist_entries": "Entries in the blocklist phones download right now; null if it is unavailable.",
     "brand_targets_monitored": "Brands in the typosquat list the scorer loads (data/typosquat_targets.json).",
 }
+
+
+_NOT_MEASURED_YET = " It has not been measured on a large enough sample yet."
+
+
+def notes_for(report: dict) -> dict:
+    """NOTES for this response: a rate that is null says it has not been
+    measured yet — and stops saying so the moment the gate lets it through."""
+    notes = dict(NOTES)
+    for key, measured in (
+        ("detection_rate", measured_detection_rate(report)),
+        ("false_positive_rate", measured_false_positive_rate(report)),
+    ):
+        if measured is None:
+            notes[key] += _NOT_MEASURED_YET
+    return notes
 
 
 def _read_json(path: str) -> Optional[dict]:

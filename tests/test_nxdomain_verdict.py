@@ -29,6 +29,7 @@ from api.routers import public as public_router
 from api.services import competitor_verdicts as cv
 from api.services import dns_checks
 from api.services.analyzer import analyze_domain
+from api.services.verdict_basis import not_found_result
 
 
 # ── The existence check: False only on a real NXDOMAIN ──
@@ -89,18 +90,32 @@ def test_public_response_for_nonexistent_domain(monkeypatch, offline_analyzer, f
         return None
 
     async def _not_listed(d):
-        return False
+        return None
 
     monkeypatch.setattr(public_router, "_enforce_fresh_check_budget", _noop)
-    monkeypatch.setattr(public_router, "is_listed", _not_listed)
+    monkeypatch.setattr(public_router, "listed_as", _not_listed)
     body = TestClient(app).get("/api/v1/public/check/sbertank.ru").json()
 
     assert body["exists"] is False
     assert body["level"] == "caution" and body["safe"] is False
     assert body["verdict_basis"] == "not_found"
     assert body["reason_codes"] == ["domain_not_found"]
-    assert "does not exist" in body["verdict"]
+    assert "does not work right now" in body["verdict"]
     assert not {"no_https", "no_mx_record", "missing_headers"} & set(body["reason_codes"])
+
+
+@pytest.mark.parametrize("text", [
+    lambda: not_found_result("sberbank-online.ru").reasons[0].detail,
+    lambda: public_router._verdict_text(not_found_result("sberbank-online.ru")),
+])
+def test_not_found_never_claims_the_name_is_unregistered(text):
+    """NXDOMAIN only says the name is not in DNS. sberbank-online.ru has been
+    REGISTERED since 2019 and is merely not delegated — the shape of a phishing
+    domain after a takedown. "Not registered" would be false; "does not work
+    right now" is true either way."""
+    words = text().lower()
+    assert "registered" not in words and "does not exist" not in words
+    assert "does not work right now" in words
 
 
 def test_not_found_is_cached_briefly():
