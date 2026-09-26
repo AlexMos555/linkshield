@@ -198,6 +198,12 @@ jobs:
         # as a scam; a slow first check is retried once, a rate limit never.
         run: node mobile/scripts/test-check-verdict.mjs
 
+      - name: Reason label table test
+        # Every reason code the app maps has its label in all 10 locales, and
+        # the codes the API's verdict_basis release adds read in Russian —
+        # not as the server's English sentence under a Russian verdict.
+        run: node mobile/scripts/test-reason-label.mjs
+
       - name: Link check hook regression test
         # useDomainCheck under real React 18: a second link shared to the open
         # /shared screen is saved and buzzed under its own name, never the

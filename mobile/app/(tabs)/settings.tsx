@@ -15,7 +15,7 @@ import { clearKeypair } from "../../src/lib/family-crypto";
 import { setAuthToken, getAccountSettings } from "../../src/services/api";
 import { allowedSites, removeAllowedSite } from "../../src/services/shield-log";
 import {
-  isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications,
+  isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
 } from "../../modules/cleanway-vpn";
 import { paidPlansVisible } from "../../src/config/market";
 
@@ -81,6 +81,9 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const [locale, setLocale] = useState<SupportedLocale>(() => (i18n.language as SupportedLocale));
   const [linkGuardOn, setLinkGuardOn] = useState(false);
+  // The link guard stops known scam sites only when a list is on the phone
+  // (the shield's, a synced copy, or the one bundled in the APK).
+  const [linkListReady, setLinkListReady] = useState(false);
   // null: this build cannot tell (then the row is not shown, never guessed "on").
   const [alertsOn, setAlertsOn] = useState<boolean | null>(() => notificationsEnabled());
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
@@ -155,6 +158,13 @@ export default function SettingsScreen() {
 
   useFocusEffect(useCallback(() => {
     try { setLinkGuardOn(isDefaultLinkHandler()); } catch { /* older native build */ }
+    let alive = true;
+    void linkListAvailable().then((ok) => {
+      if (alive) setLinkListReady(ok);
+    });
+    return () => {
+      alive = false;
+    };
   }, []));
 
   // Re-read on focus AND on return from the system settings, where the only
@@ -348,7 +358,11 @@ export default function SettingsScreen() {
           icon={linkGuardOn ? "shield-checkmark-outline" : "link-outline"}
           iconColor={linkGuardOn ? colors.green : colors.textMuted}
           label={t(linkGuardOn ? "mobile.settings.linkguard_on" : "mobile.settings.linkguard_off")}
-          desc={t(linkGuardOn ? "mobile.settings.linkguard_on_desc" : "mobile.settings.linkguard_off_desc")}
+          desc={t(
+            !linkGuardOn ? "mobile.settings.linkguard_off_desc"
+            : linkListReady ? "mobile.settings.linkguard_on_desc"
+            : "mobile.settings.linkguard_on_desc_no_list",
+          )}
           onPress={linkGuardOn ? undefined : () => void handleLinkGuard()}
           right={linkGuardOn
             ? <Ionicons name="checkmark-circle" size={22} color={colors.green} />

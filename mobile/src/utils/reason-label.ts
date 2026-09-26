@@ -16,7 +16,7 @@ import type { TFunction } from "i18next";
  * detail for anyone who wants them; the label is for deciding "do I trust
  * this?".
  */
-const CODE_TO_KEY: Record<string, string> = {
+export const CODE_TO_KEY: Readonly<Record<string, string>> = {
   // Threat-intelligence blocklists
   safe_browsing: "flagged_dangerous",
   ipqs_phishing: "flagged_phishing",
@@ -90,6 +90,20 @@ const CODE_TO_KEY: Record<string, string> = {
   known_legitimate: "well_known_site",
   tranco_popularity: "popular_site",
   ml_safe_override: "detector_safe",
+  // Lists: ours on the server (API verdict_basis "blocklist"), and the
+  // phone's own (check-verdict.ts ON_DEVICE_LIST_CODE, kept in History rows)
+  cleanway_blocklist: "on_cleanway_list",
+  on_device_list: "on_device_list",
+  // What a verdict could not see (api/services/verdict_basis.py
+  // INFORMATIONAL_REASONS) — shown on every card, whatever the verdict. The
+  // commonest is the one on Russian banks and government sites that turn
+  // away our scanner abroad; left in English under a Russian verdict, it
+  // read as one more reason to be afraid.
+  domain_not_found: "site_not_found",
+  unreachable_from_scanner: "unreachable_abroad",
+  checks_incomplete: "checks_incomplete",
+  partial_analysis: "checks_incomplete",
+  user_content_platform: "user_content_platform",
 };
 
 /**

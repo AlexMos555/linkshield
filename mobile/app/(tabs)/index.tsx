@@ -338,11 +338,13 @@ export default function HomeScreen() {
             // Live RoleManager check — green here means Cleanway really is the
             // default link handler, not a placebo. Setup offers to become one.
             state={linkGuard.on ? "on" : "setup"}
-            stateCopy={
-              linkGuard.on
-                ? t("mobile.shield.linkguard.state_on")
-                : t("mobile.shield.linkguard.state_setup")
-            }
+            // "Known scam sites won't open" only while there is a list to
+            // know them by — without one, every link opens and is checked after.
+            stateCopy={t(
+              !linkGuard.on ? "mobile.shield.linkguard.state_setup"
+              : linkListReady ? "mobile.shield.linkguard.state_on"
+              : "mobile.shield.linkguard.state_no_list",
+            )}
             onAction={() => {
               // ON is a pill, not a toggle (same contract as the network card):
               // tapping opens the system screen where the role can be handed

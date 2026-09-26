@@ -1841,7 +1841,7 @@
         "open_a11y": "{{label}} : {{value}}. Ouvre la liste dans l'historique.",
         "hint": "Touchez un nombre pour voir la liste."
       },
-      "privacy": "Le bouclier « Toutes les applis » compare les noms de sites sur votre téléphone. Seul le nom d'un site est envoyé à notre serveur — quand vous vérifiez un lien vous-même, ou que vous le touchez avec la « Vérification des liens » activée.",
+      "privacy": "Le bouclier « Toutes les applis » compare les noms de sites sur votre téléphone. Quand vous vérifiez un lien vous-même, ou que vous le touchez avec la « Vérification des liens » activée, notre serveur reçoit le nom du site et un numéro d'installation aléatoire qui change chaque jour.",
       "interrupted": "Cela arrive généralement après un redémarrage. Votre configuration est toujours là : un appui suffit.",
       "cta_turn_back_on": "Réactiver la protection"
     },
@@ -1899,9 +1899,10 @@
       "linkguard": {
         "title": "Vérification des liens",
         "desc": "Les liens que vous touchez passent d'abord par Cleanway",
-        "honesty": "Fonctionne quand Cleanway est l'appli qui ouvre vos liens. Un site frauduleux tout nouveau peut s'ouvrir d'abord — vous recevez alors un avertissement.",
+        "honesty": "Fonctionne quand Cleanway est l'appli qui ouvre vos liens. Un site frauduleux tout nouveau peut s'ouvrir d'abord. Nous le vérifions tout de suite et vous avertissons si nous trouvons un danger, mais nous ne reconnaissons pas toujours les sites tout nouveaux.",
         "state_on": "Les sites frauduleux connus ne s'ouvriront pas. Les autres liens sont vérifiés juste après leur ouverture.",
-        "state_setup": "Faites de Cleanway l'appli qui ouvre vos liens"
+        "state_setup": "Faites de Cleanway l'appli qui ouvre vos liens",
+        "state_no_list": "Les liens sont vérifiés juste après leur ouverture. La liste des sites frauduleux arrive quand vous activez la protection « Toutes les applis »."
       },
       "pause_scam_warning": "Si quelqu'un au téléphone vous demande de désactiver la protection, c'est une arnaque.",
       "pause_timed": "Pause de {{minutes}} minutes",
@@ -1952,7 +1953,7 @@
       "no_link_title": "Pas de lien dans ce code",
       "no_link_body": "Ce code QR ne contient pas de lien vers un site web, il n'y a donc rien à vérifier.",
       "scan_again": "Scanner à nouveau",
-      "privacy": "Le code est lu sur votre téléphone. Seul le nom du site web est envoyé à nos serveurs pour être vérifié."
+      "privacy": "Le code est lu sur votre téléphone. Pour la vérification, seuls le nom du site web et un numéro d'installation aléatoire qui change chaque jour partent vers nos serveurs."
     },
     "result": {
       "loading": "Vérification de {{domain}}…",
@@ -1973,10 +1974,10 @@
       "no": "Non",
       "share": "Partager le résultat",
       "share_message": "{{domain}} : {{verdict}} (score {{score}}/100). Vérifié avec Cleanway — https://cleanway.ai/check/{{domain}}",
-      "privacy": "Vérifié sur nos serveurs. Seuls le nom du site et un numéro aléatoire propre à cette installation ont été envoyés — ce numéro sert à compter la limite de vérifications. Rien sur vous.",
+      "privacy": "Vérifié sur nos serveurs. Seuls le nom du site et un numéro d'installation aléatoire qui change chaque jour ont été envoyés. Rien qui soit lié à votre nom ou à votre numéro de téléphone.",
       "error_title": "La vérification n'a pas pu aboutir",
       "error_body": "Le serveur n'a pas répondu. Vérifiez votre connexion et réessayez.",
-      "error_rate_limited": "Vous avez vérifié beaucoup de liens dans la dernière minute. Patientez un instant et réessayez.",
+      "error_rate_limited": "Trop de vérifications en ce moment — depuis ce téléphone ou depuis votre réseau. Patientez quelques minutes et réessayez.",
       "error_server": "Notre serveur a eu un problème — ce n'est pas votre connexion. Réessayez dans une minute.",
       "error_retry": "Réessayer",
       "listed_title": "Dangereux — ce site figure sur la liste des sites frauduleux",
@@ -1988,7 +1989,8 @@
       "error_slow": "Notre serveur répond lentement. Réessayez dans une minute.",
       "not_found_title": "Ce site n'existe pas — vérifiez l'adresse",
       "not_found_body": "Il y a peut-être une faute de frappe dans l'adresse, ou le site a déjà été fermé. Si le lien vous est arrivé dans un message, ne faites pas confiance à ce message.",
-      "share_message_listed": "{{domain}} : {{verdict}}. Vérifié avec Cleanway — https://cleanway.ai/check/{{domain}}"
+      "share_message_listed": "{{domain}} : {{verdict}}. Vérifié avec Cleanway — https://cleanway.ai",
+      "privacy_listed": "Trouvé dans la liste de ce téléphone. Pour les détails, nous interrogeons notre serveur, qui ne reçoit que le nom du site et un numéro d'installation aléatoire qui change chaque jour."
     },
     "shared": {
       "eyebrow": "Lien partagé",
@@ -2111,7 +2113,7 @@
       "error_title": "Impossible de vérifier le message",
       "error_failed": "Un problème est survenu. Cela ne veut pas dire que le message est sûr — réessayez.",
       "error_unsupported": "La vérification des messages n'est pas disponible sur ce téléphone. Vous pouvez quand même vérifier un lien du message : Partager → Cleanway.",
-      "privacy": "Le texte est vérifié uniquement sur ce téléphone et n'est envoyé nulle part. L'historique ne garde que le résultat et les noms des sites, jamais le texte. Pour vérifier un lien, seul le nom du site est envoyé à notre serveur.",
+      "privacy": "Le texte est vérifié uniquement sur ce téléphone et n'est envoyé nulle part. L'historique ne garde que le résultat et les noms des sites, jamais le texte. Pour vérifier un lien, seuls le nom du site et un numéro d'installation aléatoire qui change chaque jour sont envoyés à notre serveur.",
       "history_title": "Vérification de SMS"
     },
     "breach": {
@@ -2147,7 +2149,7 @@
       "empty_title": "Aucune vérification pour l'instant",
       "empty_body": "Chaque lien que vous vérifiez apparaît ici. La liste est gardée uniquement sur ce téléphone.",
       "empty_cta": "Vérifier un lien",
-      "privacy": "Cette liste reste sur votre téléphone. Quand vous vérifiez un lien, seul le nom du site web est envoyé à nos serveurs.",
+      "privacy": "Cette liste reste sur votre téléphone. Quand vous vérifiez un lien, seuls le nom du site web et un numéro d'installation aléatoire qui change chaque jour sont envoyés à nos serveurs.",
       "shield_blocked": "Bloqué par la protection",
       "shield_warned": "Avertissement à l'ouverture du lien",
       "shield_allowed": "Vous l'avez autorisé",
@@ -2286,7 +2288,7 @@
       "privacy_policy": "Politique de confidentialité",
       "terms": "Conditions d'utilisation",
       "version": "Version",
-      "privacy_note": "Votre historique de vérifications reste sur ce téléphone. Quand vous vérifiez un lien, seuls le nom du site et un numéro aléatoire propre à cette installation partent vers nos serveurs — ce numéro sert à compter la limite de vérifications.",
+      "privacy_note": "Votre historique de vérifications reste sur ce téléphone. Quand vous vérifiez un lien, seuls le nom du site et un numéro d'installation aléatoire partent vers nos serveurs. Ce numéro change chaque jour ; il sert à compter la limite de vérifications par téléphone plutôt que pour tout le réseau de l'opérateur.",
       "sync_failed_title": "Enregistré sur ce téléphone seulement",
       "sync_failed_body": "Nous n'avons pas pu joindre votre compte, donc ce changement n'apparaîtra pas encore sur vos autres appareils. Il se synchronisera la prochaine fois que vous le modifierez en ligne.",
       "clear_done_title": "Historique effacé",
@@ -2304,14 +2306,15 @@
       "language_reload_title": "Redémarrage nécessaire",
       "language_reload_body": "Fermez et rouvrez l'application pour terminer le changement de sens du texte.",
       "linkguard": "Vérification des liens",
-      "linkguard_note": "Une fois activé, les liens que vous touchez dans n'importe quelle appli passent d'abord par Cleanway. Les sites frauduleux connus ne s'ouvrent pas. Les autres s'ouvrent tout de suite, et nous vérifions le site dans la même seconde — vous êtes averti s'il s'avère dangereux.",
+      "linkguard_note": "Une fois activé, les liens que vous touchez dans la plupart des applis passent d'abord par Cleanway ; les navigateurs intégrés de Telegram et de MAX ouvrent les liens eux-mêmes, sans vérification. Les sites frauduleux connus ne s'ouvrent pas. Les autres s'ouvrent tout de suite pendant que nous vérifions le site, et vous êtes averti si la vérification trouve un danger — cela prend parfois jusqu'à une demi-minute.",
       "linkguard_on": "Cleanway vérifie vos liens",
       "linkguard_on_desc": "Les sites frauduleux connus ne s'ouvrent pas ; les autres liens sont vérifiés juste après leur ouverture.",
       "linkguard_off": "Vérifier chaque lien",
       "linkguard_off_desc": "Pour l'instant les liens s'ouvrent sans vérification. Activez pour les vérifier.",
       "linkguard_enable": "Configurer",
       "push_off_desc": "Désactivées dans les réglages du téléphone — vous ne saurez pas quand un site est bloqué. Touchez pour les activer.",
-      "push_enable": "Activer"
+      "push_enable": "Activer",
+      "linkguard_on_desc_no_list": "Les liens sont vérifiés juste après leur ouverture ; la liste des sites frauduleux arrive quand vous activez la protection « Toutes les applis »."
     },
     "family": {
       "title": "Espace famille",
@@ -2387,7 +2390,7 @@
       "s1_title": "Vérifiez tout avant d'y toucher",
       "s1_desc": "Collez un lien, scannez un code QR, ou partagez directement avec Cleanway tout ce qui vous paraît suspect. Vous recevez une réponse simple, avec les raisons qui l'expliquent.",
       "s2_title": "Pensé pour rester privé",
-      "s2_desc": "Pour vérifier un lien, seul le nom du site web est envoyé à nos serveurs — jamais vos mots de passe, vos messages ni votre historique de navigation.",
+      "s2_desc": "Pour vérifier un lien, nos serveurs reçoivent le nom du site web et un numéro d'installation aléatoire qui change chaque jour. Vos mots de passe, le texte de vos messages et les adresses complètes des pages ne quittent jamais votre téléphone.",
       "s3_title": "Un bouclier pour toutes les applis",
       "s3_desc": "Sur Android, une seule étape de réglage bloque les sites d'arnaque connus dans toutes les applis. Les arnaques toutes neuves peuvent passer à travers n'importe quelle liste de blocage — c'est à ça que sert le bouton de vérification.",
       "skip": "Passer",
@@ -2443,7 +2446,13 @@
       "detector_safe": "Notre détecteur juge ce site sûr",
       "not_a_real_business": "Pas configuré comme le site d'une vraie entreprise",
       "shifty_setup": "Le site change sans cesse d'emplacement, une astuce d'arnaque courante",
-      "padded_address": "L'adresse est gonflée de morceaux en trop pour cacher le vrai nom"
+      "padded_address": "L'adresse est gonflée de morceaux en trop pour cacher le vrai nom",
+      "site_not_found": "Cette adresse n'existe pas",
+      "on_cleanway_list": "Figure sur la liste des sites frauduleux de Cleanway",
+      "unreachable_abroad": "Notre serveur à l'étranger n'a pas pu ouvrir le site. Beaucoup de banques et de sites publics bloquent les adresses étrangères, ce n'est donc pas à lui seul un signe de danger",
+      "checks_incomplete": "Certaines vérifications n'ont pas abouti, le résultat est donc moins sûr",
+      "user_content_platform": "N'importe qui peut créer une page sur ce service — les escrocs aussi",
+      "on_device_list": "Figure sur la liste des sites frauduleux de votre téléphone"
     },
     "update": {
       "optional_title": "Mise à jour disponible",

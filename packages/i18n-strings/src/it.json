@@ -1841,7 +1841,7 @@
         "open_a11y": "{{label}}: {{value}}. Apre l'elenco nella cronologia.",
         "hint": "Tocca un numero per vedere l'elenco."
       },
-      "privacy": "Lo scudo «Ogni app» confronta i nomi dei siti direttamente sul telefono. Al nostro server arriva solo il nome di un sito: quando controlli un link tu stesso, o lo tocchi con il «Controllo dei link» attivo.",
+      "privacy": "Lo scudo «Ogni app» confronta i nomi dei siti direttamente sul telefono. Quando controlli un link tu stesso, o lo tocchi con il «Controllo dei link» attivo, al nostro server arrivano il nome del sito e un numero casuale dell'installazione che cambia ogni giorno.",
       "interrupted": "Di solito succede dopo un riavvio. La configurazione è ancora qui: basta un tocco.",
       "cta_turn_back_on": "Riattiva la protezione"
     },
@@ -1899,9 +1899,10 @@
       "linkguard": {
         "title": "Controllo dei link",
         "desc": "I link che tocchi passano prima da Cleanway",
-        "honesty": "Funziona quando Cleanway è l'app che apre i link. Un sito truffa nuovissimo può aprirsi prima: in quel caso ricevi un avviso.",
+        "honesty": "Funziona quando Cleanway è l'app che apre i link. Un sito truffa nuovissimo può aprirsi prima. Lo controlliamo subito e ti avvisiamo se troviamo un pericolo, ma non sempre riconosciamo i siti nuovissimi.",
         "state_on": "I siti truffa noti non si aprono. Gli altri link li controlliamo subito dopo l'apertura.",
-        "state_setup": "Imposta Cleanway per aprire i tuoi link"
+        "state_setup": "Imposta Cleanway per aprire i tuoi link",
+        "state_no_list": "I link li controlliamo subito dopo l'apertura. La lista dei siti truffa arriva quando attivi la protezione «Ogni app»."
       },
       "pause_scam_warning": "Se al telefono qualcuno ti chiede di disattivare la protezione, è una truffa.",
       "pause_timed": "Pausa di {{minutes}} minuti",
@@ -1952,7 +1953,7 @@
       "no_link_title": "Nessun link in questo codice",
       "no_link_body": "Questo codice QR non contiene il link a un sito, quindi non c'è nulla da controllare.",
       "scan_again": "Scansiona di nuovo",
-      "privacy": "Il codice viene letto sul tuo telefono. Ai nostri server viene inviato solo il nome del sito, per il controllo."
+      "privacy": "Il codice viene letto sul tuo telefono. Per il controllo, ai nostri server arrivano solo il nome del sito e un numero casuale dell'installazione che cambia ogni giorno."
     },
     "result": {
       "loading": "Sto controllando {{domain}}…",
@@ -1973,10 +1974,10 @@
       "no": "No",
       "share": "Condividi risultato",
       "share_message": "{{domain}} è {{verdict}} (punteggio: {{score}}/100). Controllato con Cleanway — https://cleanway.ai/check/{{domain}}",
-      "privacy": "Controllato sui nostri server. Sono stati inviati solo il nome del sito e un numero casuale di questa installazione, che serve a contare il limite di controlli. Niente su di te.",
+      "privacy": "Controllato sui nostri server. Sono stati inviati solo il nome del sito e un numero casuale dell'installazione che cambia ogni giorno. Niente di collegato al tuo nome o al tuo numero di telefono.",
       "error_title": "Non siamo riusciti a completare il controllo",
       "error_body": "Il server non ha risposto. Controlla la connessione e riprova.",
-      "error_rate_limited": "Hai controllato molti link nell'ultimo minuto. Aspetta un momento e riprova.",
+      "error_rate_limited": "Troppi controlli in questo momento, da questo telefono o dalla tua rete. Aspetta un paio di minuti e riprova.",
       "error_server": "Il problema è del nostro server, non della tua connessione. Riprova tra un minuto.",
       "error_retry": "Riprova",
       "listed_title": "Pericoloso: questo sito è nella lista dei siti truffa",
@@ -1988,7 +1989,8 @@
       "error_slow": "Il nostro server risponde lentamente. Riprova tra un minuto.",
       "not_found_title": "Questo sito non esiste: controlla l'indirizzo",
       "not_found_body": "Forse c'è un errore nell'indirizzo, o il sito è già stato chiuso. Se il link ti è arrivato in un messaggio, non fidarti di quel messaggio.",
-      "share_message_listed": "{{domain}}: {{verdict}}. Controllato con Cleanway — https://cleanway.ai/check/{{domain}}"
+      "share_message_listed": "{{domain}}: {{verdict}}. Controllato con Cleanway — https://cleanway.ai",
+      "privacy_listed": "Trovato nella lista di questo telefono. Per i dettagli chiediamo al nostro server, che riceve solo il nome del sito e un numero casuale dell'installazione che cambia ogni giorno."
     },
     "shared": {
       "eyebrow": "Link condiviso",
@@ -2111,7 +2113,7 @@
       "error_title": "Impossibile controllare il messaggio",
       "error_failed": "Qualcosa è andato storto. Non vuol dire che il messaggio sia sicuro: riprova.",
       "error_unsupported": "Su questo telefono il controllo dei messaggi non è disponibile. Puoi comunque controllare un link del messaggio: Condividi → Cleanway.",
-      "privacy": "Il testo viene controllato solo su questo telefono e non viene inviato da nessuna parte. La cronologia conserva solo il risultato e i nomi dei siti, mai il testo. Per controllare un link, al nostro server arriva solo il nome del sito.",
+      "privacy": "Il testo viene controllato solo su questo telefono e non viene inviato da nessuna parte. La cronologia conserva solo il risultato e i nomi dei siti, mai il testo. Per controllare un link, al nostro server arrivano solo il nome del sito e un numero casuale dell'installazione che cambia ogni giorno.",
       "history_title": "Controllo SMS"
     },
     "breach": {
@@ -2147,7 +2149,7 @@
       "empty_title": "Ancora nessun controllo",
       "empty_body": "Ogni link che controlli compare qui. La lista resta solo su questo telefono.",
       "empty_cta": "Controlla un link",
-      "privacy": "Questa lista resta sul tuo telefono. Quando controlli un link, ai nostri server viene inviato solo il nome del sito.",
+      "privacy": "Questa lista resta sul tuo telefono. Quando controlli un link, ai nostri server arrivano solo il nome del sito e un numero casuale dell'installazione che cambia ogni giorno.",
       "shield_blocked": "Bloccato dalla protezione",
       "shield_warned": "Avviso all'apertura del link",
       "shield_allowed": "L'hai consentito",
@@ -2286,7 +2288,7 @@
       "privacy_policy": "Informativa sulla privacy",
       "terms": "Termini di servizio",
       "version": "Versione",
-      "privacy_note": "La cronologia dei controlli resta su questo telefono. Quando controlli un link, ai nostri server arrivano solo il nome del sito e un numero casuale di questa installazione, che serve a contare il limite di controlli.",
+      "privacy_note": "La cronologia dei controlli resta su questo telefono. Quando controlli un link, ai nostri server arrivano solo il nome del sito e un numero casuale dell'installazione. Il numero cambia ogni giorno e serve a contare il limite di controlli per telefono, non per tutta la rete dell'operatore.",
       "sync_failed_title": "Salvato solo su questo telefono",
       "sync_failed_body": "Non siamo riusciti a raggiungere il tuo account, quindi per ora questa modifica non apparirà sugli altri tuoi dispositivi. Si sincronizzerà la prossima volta che la cambierai mentre sei online.",
       "clear_done_title": "Cronologia cancellata",
@@ -2304,14 +2306,15 @@
       "language_reload_title": "Riavvio necessario",
       "language_reload_body": "Chiudi e riapri l'app per completare il cambio di direzione del testo.",
       "linkguard": "Controllo dei link",
-      "linkguard_note": "Quando è attivo, i link che tocchi in qualsiasi app passano prima da Cleanway. I siti truffa noti non si aprono. Gli altri si aprono subito e controlliamo il sito nello stesso secondo: ricevi un avviso se risulta pericoloso.",
+      "linkguard_note": "Quando è attivo, i link che tocchi nella maggior parte delle app passano prima da Cleanway; i browser integrati di Telegram e MAX aprono i link da soli, senza controllo. I siti truffa noti non si aprono. Gli altri si aprono subito mentre controlliamo il sito, e ricevi un avviso se il controllo trova un pericolo: a volte ci vuole fino a mezzo minuto.",
       "linkguard_on": "Cleanway controlla i tuoi link",
       "linkguard_on_desc": "I siti truffa noti non si aprono; gli altri link li controlliamo subito dopo l'apertura.",
       "linkguard_off": "Controlla ogni link",
       "linkguard_off_desc": "Ora i link si aprono senza controllo. Attivalo per controllarli.",
       "linkguard_enable": "Configura",
       "push_off_desc": "Disattivati nelle impostazioni del telefono: non saprai dei blocchi. Tocca per attivarli.",
-      "push_enable": "Attiva"
+      "push_enable": "Attiva",
+      "linkguard_on_desc_no_list": "I link li controlliamo subito dopo l'apertura; la lista dei siti truffa arriva quando attivi la protezione «Ogni app»."
     },
     "family": {
       "title": "Spazio famiglia",
@@ -2387,7 +2390,7 @@
       "s1_title": "Controlla qualsiasi cosa prima di toccarla",
       "s1_desc": "Incolla un link, scansiona un codice QR o condividi con Cleanway qualsiasi cosa sospetta. Ricevi una risposta semplice e i motivi che ci stanno dietro.",
       "s2_title": "Privato per come è fatto",
-      "s2_desc": "Per controllare un link, ai nostri server viene inviato solo il nome del sito — mai le tue password, i tuoi messaggi o la cronologia di navigazione.",
+      "s2_desc": "Per controllare un link, i nostri server ricevono il nome del sito e un numero casuale dell'installazione che cambia ogni giorno. Le tue password, il testo dei tuoi messaggi e gli indirizzi completi delle pagine non lasciano mai il telefono.",
       "s3_title": "Uno scudo per ogni app",
       "s3_desc": "Su Android, un solo passaggio di configurazione blocca i siti truffa conosciuti in tutte le app. Le truffe appena nate possono sfuggire a qualsiasi lista di blocco — per questo c'è il pulsante di controllo.",
       "skip": "Salta",
@@ -2443,7 +2446,13 @@
       "detector_safe": "Il nostro rilevatore ritiene questo sito sicuro",
       "not_a_real_business": "Non è configurato come il sito di un'azienda vera",
       "shifty_setup": "Il sito cambia continuamente posizione, un trucco tipico delle truffe",
-      "padded_address": "L'indirizzo è gonfiato con parti in più per nascondere il nome vero"
+      "padded_address": "L'indirizzo è gonfiato con parti in più per nascondere il nome vero",
+      "site_not_found": "Questo indirizzo non esiste",
+      "on_cleanway_list": "È nella lista dei siti truffa di Cleanway",
+      "unreachable_abroad": "Il nostro server all'estero non è riuscito ad aprire il sito. Molte banche e siti pubblici bloccano gli indirizzi esteri, quindi da solo questo non è un segnale di pericolo",
+      "checks_incomplete": "Alcuni controlli non sono terminati, quindi il risultato è meno sicuro",
+      "user_content_platform": "Su questo servizio chiunque può creare una pagina, anche i truffatori",
+      "on_device_list": "È nella lista dei siti truffa sul tuo telefono"
     },
     "update": {
       "optional_title": "Aggiornamento disponibile",

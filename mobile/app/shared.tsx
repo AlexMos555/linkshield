@@ -233,7 +233,9 @@ export default function SharedScreen() {
 
       <View style={s.privacyRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
-        <Text style={s.privacy}>{t("mobile.result.privacy")}</Text>
+        {/* "Checked on our servers" only once the server has answered — a
+            listed site's verdict is the phone's own until then. */}
+        <Text style={s.privacy}>{t(result ? "mobile.result.privacy" : "mobile.result.privacy_listed")}</Text>
       </View>
     </ScrollView>
   );

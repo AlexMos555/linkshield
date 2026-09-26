@@ -1783,7 +1783,7 @@
         "open_a11y": "{{label}}: {{value}}. Opens the list in History.",
         "hint": "Tap a number to see the list."
       },
-      "privacy": "The “All apps” shield matches website names on your phone. Only a website name is sent to our server — when you check a link yourself, or tap one with “Link checking” on.",
+      "privacy": "The “All apps” shield matches website names on your phone. When you check a link yourself, or tap one with “Link checking” on, our server gets the website name and a random install number that changes every day.",
       "interrupted": "Usually this happens after a restart. Your setup is still here — one tap brings it back.",
       "cta_turn_back_on": "Turn protection back on"
     },
@@ -1841,9 +1841,10 @@
       "linkguard": {
         "title": "Link checking",
         "desc": "Links you tap go to Cleanway first",
-        "honesty": "Works when Cleanway is set as your link-opening app. A brand-new scam site may open first — then you get a warning.",
+        "honesty": "Works when Cleanway is set as your link-opening app. A brand-new scam site may open first. We check it straight away and warn you if we find a danger, but we don't always recognise brand-new sites.",
         "state_on": "Known scam sites won't open. Other links are checked right after they open.",
-        "state_setup": "Set Cleanway to open your links"
+        "state_setup": "Set Cleanway to open your links",
+        "state_no_list": "Links are checked right after they open. The list of scam sites arrives once you turn on the “All apps” shield."
       },
       "pause_scam_warning": "If someone on the phone asks you to turn off protection, it's a scam.",
       "pause_timed": "Pause for {{minutes}} minutes",
@@ -1894,7 +1895,7 @@
       "no_link_title": "No link in that code",
       "no_link_body": "This QR code does not contain a website link, so there is nothing to check.",
       "scan_again": "Scan again",
-      "privacy": "The code is read on your phone. Only the website name is sent to our servers to be checked."
+      "privacy": "The code is read on your phone. To check it, only the website name and a random install number that changes every day go to our servers."
     },
     "result": {
       "loading": "Checking {{domain}}…",
@@ -1915,10 +1916,10 @@
       "no": "No",
       "share": "Share result",
       "share_message": "{{domain}} is {{verdict}} (score: {{score}}/100). Checked with Cleanway — https://cleanway.ai/check/{{domain}}",
-      "privacy": "Checked on our servers. Only the website name and a random number for this install were sent — the number is used to count check limits. Nothing about you.",
+      "privacy": "Checked on our servers. Only the website name and a random install number that changes every day were sent. Nothing tied to your name or phone number.",
       "error_title": "Couldn't finish the check",
       "error_body": "The server didn't answer. Check your connection and try again.",
-      "error_rate_limited": "You've checked a lot of links in the last minute. Wait a moment and try again.",
+      "error_rate_limited": "Too many checks right now — from this phone or from your network. Wait a couple of minutes and try again.",
       "error_server": "Our server had a problem, not your connection. Please try again in a minute.",
       "error_retry": "Try again",
       "listed_title": "Dangerous — this site is on the list of scam sites",
@@ -1930,7 +1931,8 @@
       "error_slow": "Our server is answering slowly. Please try again in a minute.",
       "not_found_title": "This site doesn't exist — check the address",
       "not_found_body": "There may be a typo in the address, or the site has already been taken down. If the link came in a message, don't trust that message.",
-      "share_message_listed": "{{domain}}: {{verdict}}. Checked with Cleanway — https://cleanway.ai/check/{{domain}}"
+      "share_message_listed": "{{domain}}: {{verdict}}. Checked with Cleanway — https://cleanway.ai",
+      "privacy_listed": "Found in the list on this phone. For details we ask our server, which gets only the website name and a random install number that changes every day."
     },
     "shared": {
       "eyebrow": "Shared link",
@@ -2053,7 +2055,7 @@
       "error_title": "Couldn't check the message",
       "error_failed": "Something went wrong. This does not mean the message is safe — please try again.",
       "error_unsupported": "Checking messages isn't available on this phone. You can still check a link from it: Share → Cleanway.",
-      "privacy": "The text is checked on this phone only and is not sent anywhere. History keeps only the result and the website names, never the text. To check a link, only the website name goes to our server.",
+      "privacy": "The text is checked on this phone only and is not sent anywhere. History keeps only the result and the website names, never the text. To check a link, only the website name and a random install number that changes every day go to our server.",
       "history_title": "SMS check"
     },
     "breach": {
@@ -2089,7 +2091,7 @@
       "empty_title": "No checks yet",
       "empty_body": "Every link you check shows up here. The list is kept on this phone only.",
       "empty_cta": "Check a link",
-      "privacy": "This list stays on your phone. When you check a link, only the website name is sent to our servers.",
+      "privacy": "This list stays on your phone. When you check a link, only the website name and a random install number that changes every day are sent to our servers.",
       "shield_blocked": "Blocked by protection",
       "shield_warned": "Warned when the link opened",
       "shield_allowed": "You allowed this",
@@ -2228,7 +2230,7 @@
       "privacy_policy": "Privacy policy",
       "terms": "Terms of service",
       "version": "Version",
-      "privacy_note": "Your check history stays on this phone. When you check a link, only the website name and a random number for this install go to our servers — the number is used to count check limits.",
+      "privacy_note": "Your check history stays on this phone. When you check a link, only the website name and a random install number go to our servers. The number changes every day and is there so check limits can count per phone rather than per mobile network.",
       "sync_failed_title": "Saved on this phone only",
       "sync_failed_body": "We couldn't reach your account, so this change won't show on your other devices yet. It will sync next time you change it while online.",
       "clear_done_title": "History cleared",
@@ -2246,14 +2248,15 @@
       "language_reload_title": "Restart needed",
       "language_reload_body": "Please close and reopen the app to finish switching the layout direction.",
       "linkguard": "Link checking",
-      "linkguard_note": "When on, links you tap in any app go to Cleanway first. Known scam sites won't open. Other links open straight away, and we check the site that same second — you'll get a warning if it turns out to be dangerous.",
+      "linkguard_note": "When on, links you tap in most apps go to Cleanway first; the built-in browsers of Telegram and MAX open links themselves, unchecked. Known scam sites won't open. Other links open straight away while we check the site, and you'll get a warning if the check finds a danger — sometimes this takes up to half a minute.",
       "linkguard_on": "Cleanway checks your links",
       "linkguard_on_desc": "Known scam sites won't open; other links are checked right after they open.",
       "linkguard_off": "Check every link",
       "linkguard_off_desc": "Right now links open without a check. Turn this on to check them.",
       "linkguard_enable": "Set up",
       "push_off_desc": "Turned off in your phone's settings — you won't hear about blocks. Tap to turn them on.",
-      "push_enable": "Turn on"
+      "push_enable": "Turn on",
+      "linkguard_on_desc_no_list": "Links are checked right after they open; the list of scam sites arrives once you turn on the “All apps” shield."
     },
     "family": {
       "title": "Family Hub",
@@ -2329,7 +2332,7 @@
       "s1_title": "Check anything before you tap it",
       "s1_desc": "Paste a link, scan a QR code, or share anything suspicious straight to Cleanway. You get a plain answer and the reasons behind it.",
       "s2_title": "Private by design",
-      "s2_desc": "To check a link, only the website name is sent to our servers — never your passwords, messages, or browsing history.",
+      "s2_desc": "To check a link, our servers get the website name and a random install number that changes every day. Your passwords, message texts and full page addresses never leave your phone.",
       "s3_title": "A shield for every app",
       "s3_desc": "On Android, one setup step blocks known scam sites in every app. Brand-new scams can slip past any blocklist — that's what the check button is for.",
       "skip": "Skip",
@@ -2385,7 +2388,13 @@
       "detector_safe": "Our detector considers this site safe",
       "not_a_real_business": "Not set up like a real company's site",
       "shifty_setup": "The site keeps changing where it lives — a common scam trick",
-      "padded_address": "The address is padded with extra parts to hide the real name"
+      "padded_address": "The address is padded with extra parts to hide the real name",
+      "site_not_found": "This address doesn't exist",
+      "on_cleanway_list": "On Cleanway's list of scam sites",
+      "unreachable_abroad": "Our server abroad couldn't open the site. Many banks and government sites block foreign addresses, so this alone is not a sign of danger",
+      "checks_incomplete": "Some checks didn't finish, so the verdict is less certain",
+      "user_content_platform": "Anyone can make a page on this service — scammers too",
+      "on_device_list": "On the list of scam sites on your phone"
     },
     "update": {
       "optional_title": "Update available",

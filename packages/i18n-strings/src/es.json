@@ -1781,7 +1781,7 @@
         "open_a11y": "{{label}}: {{value}}. Abre la lista en el historial.",
         "hint": "Toca un número para ver la lista."
       },
-      "privacy": "El escudo «Todas las apps» compara los nombres de los sitios en tu teléfono. A nuestro servidor solo se envía el nombre de un sitio: cuando revisas un enlace tú mismo o lo tocas con la «Revisión de enlaces» activada.",
+      "privacy": "El escudo «Todas las apps» compara los nombres de los sitios en tu teléfono. Cuando revisas un enlace tú mismo o lo tocas con la «Revisión de enlaces» activada, a nuestro servidor llegan el nombre del sitio y un número aleatorio de la instalación que cambia cada día.",
       "interrupted": "Suele pasar tras un reinicio. Tu configuración sigue aquí: un toque y vuelve.",
       "cta_turn_back_on": "Volver a activar la protección"
     },
@@ -1839,9 +1839,10 @@
       "linkguard": {
         "title": "Revisión de enlaces",
         "desc": "Los enlaces que tocas pasan primero por Cleanway",
-        "honesty": "Funciona cuando Cleanway es tu app para abrir enlaces. Un sitio fraudulento muy nuevo puede llegar a abrirse; entonces recibes un aviso.",
+        "honesty": "Funciona cuando Cleanway es tu app para abrir enlaces. Un sitio fraudulento muy nuevo puede llegar a abrirse. Lo revisamos enseguida y te avisamos si encontramos un peligro, pero no siempre reconocemos los sitios muy nuevos.",
         "state_on": "Los sitios fraudulentos conocidos no se abrirán. Los demás enlaces se revisan justo después de abrirse.",
-        "state_setup": "Haz que Cleanway abra tus enlaces"
+        "state_setup": "Haz que Cleanway abra tus enlaces",
+        "state_no_list": "Los enlaces se revisan justo después de abrirse. La lista de sitios fraudulentos llega cuando activas el escudo «Todas las apps»."
       },
       "pause_scam_warning": "Si alguien por teléfono te pide desactivar la protección, es una estafa.",
       "pause_timed": "Pausar {{minutes}} minutos",
@@ -1892,7 +1893,7 @@
       "no_link_title": "Ese código no tiene enlace",
       "no_link_body": "Este código QR no contiene un enlace a un sitio web, así que no hay nada que revisar.",
       "scan_again": "Escanear de nuevo",
-      "privacy": "El código se lee en tu teléfono. Solo el nombre del sitio web se envía a nuestros servidores para revisarlo."
+      "privacy": "El código se lee en tu teléfono. Para revisarlo, a nuestros servidores solo llegan el nombre del sitio web y un número aleatorio de la instalación que cambia cada día."
     },
     "result": {
       "loading": "Revisando {{domain}}…",
@@ -1913,10 +1914,10 @@
       "no": "No",
       "share": "Compartir resultado",
       "share_message": "{{domain}}: {{verdict}} (puntaje: {{score}}/100). Revisado con Cleanway — https://cleanway.ai/check/{{domain}}",
-      "privacy": "Revisado en nuestros servidores. Solo se envió el nombre del sitio y un número aleatorio de esta instalación, que sirve para contar el límite de revisiones. Nada sobre ti.",
+      "privacy": "Revisado en nuestros servidores. Solo se enviaron el nombre del sitio y un número aleatorio de la instalación que cambia cada día. Nada vinculado a tu nombre ni a tu número de teléfono.",
       "error_title": "No pudimos terminar la revisión",
       "error_body": "El servidor no respondió. Revisa tu conexión e inténtalo de nuevo.",
-      "error_rate_limited": "Revisaste muchos enlaces en el último minuto. Espera un momento e inténtalo de nuevo.",
+      "error_rate_limited": "Hay demasiadas revisiones ahora mismo, desde este teléfono o desde tu red. Espera un par de minutos e inténtalo de nuevo.",
       "error_server": "Nuestro servidor tuvo un problema; no es tu conexión. Inténtalo de nuevo en un minuto.",
       "error_retry": "Intentar de nuevo",
       "listed_title": "Peligroso: este sitio está en la lista de sitios fraudulentos",
@@ -1928,7 +1929,8 @@
       "error_slow": "Nuestro servidor está respondiendo despacio. Inténtalo de nuevo en un minuto.",
       "not_found_title": "Este sitio no existe: revisa la dirección",
       "not_found_body": "Puede que haya un error en la dirección o que el sitio ya lo hayan cerrado. Si el enlace te llegó en un mensaje, no confíes en ese mensaje.",
-      "share_message_listed": "{{domain}}: {{verdict}}. Revisado con Cleanway — https://cleanway.ai/check/{{domain}}"
+      "share_message_listed": "{{domain}}: {{verdict}}. Revisado con Cleanway — https://cleanway.ai",
+      "privacy_listed": "Encontrado en la lista de este teléfono. Para los detalles consultamos a nuestro servidor, que solo recibe el nombre del sitio y un número aleatorio de la instalación que cambia cada día."
     },
     "shared": {
       "eyebrow": "Enlace compartido",
@@ -2051,7 +2053,7 @@
       "error_title": "No se pudo revisar el mensaje",
       "error_failed": "Algo salió mal. Eso no significa que el mensaje sea seguro: inténtalo de nuevo.",
       "error_unsupported": "En este teléfono no se pueden revisar mensajes. Aun así, puedes revisar un enlace del mensaje: Compartir → Cleanway.",
-      "privacy": "El texto se revisa solo en este teléfono y no se envía a ningún sitio. El historial guarda solo el resultado y los nombres de los sitios, nunca el texto. Para revisar un enlace, a nuestro servidor solo llega el nombre del sitio.",
+      "privacy": "El texto se revisa solo en este teléfono y no se envía a ningún sitio. El historial guarda solo el resultado y los nombres de los sitios, nunca el texto. Para revisar un enlace, a nuestro servidor solo llegan el nombre del sitio y un número aleatorio de la instalación que cambia cada día.",
       "history_title": "Revisión de SMS"
     },
     "breach": {
@@ -2087,7 +2089,7 @@
       "empty_title": "Aún no hay revisiones",
       "empty_body": "Cada enlace que revisas aparece aquí. La lista se guarda solo en este teléfono.",
       "empty_cta": "Revisar un enlace",
-      "privacy": "Esta lista se queda en tu teléfono. Cuando revisas un enlace, solo el nombre del sitio web se envía a nuestros servidores.",
+      "privacy": "Esta lista se queda en tu teléfono. Cuando revisas un enlace, a nuestros servidores solo llegan el nombre del sitio web y un número aleatorio de la instalación que cambia cada día.",
       "shield_blocked": "Bloqueado por la protección",
       "shield_warned": "Aviso al abrir el enlace",
       "shield_allowed": "Lo permitiste",
@@ -2226,7 +2228,7 @@
       "privacy_policy": "Política de privacidad",
       "terms": "Términos del servicio",
       "version": "Versión",
-      "privacy_note": "Tu historial de revisiones se queda en este teléfono. Cuando revisas un enlace, a nuestros servidores solo va el nombre del sitio y un número aleatorio de esta instalación, que sirve para contar el límite de revisiones.",
+      "privacy_note": "Tu historial de revisiones se queda en este teléfono. Cuando revisas un enlace, a nuestros servidores solo van el nombre del sitio y un número aleatorio de la instalación. El número cambia cada día y sirve para contar el límite de revisiones por teléfono y no por toda la red del operador.",
       "sync_failed_title": "Guardado solo en este teléfono",
       "sync_failed_body": "No pudimos conectar con tu cuenta, así que este cambio todavía no se verá en tus otros dispositivos. Se sincronizará la próxima vez que lo cambies estando en línea.",
       "clear_done_title": "Historial borrado",
@@ -2244,14 +2246,15 @@
       "language_reload_title": "Se necesita reiniciar",
       "language_reload_body": "Cierra y vuelve a abrir la app para terminar de cambiar la dirección del texto.",
       "linkguard": "Comprobación de enlaces",
-      "linkguard_note": "Si está activado, los enlaces que tocas en cualquier app pasan primero por Cleanway. Los sitios fraudulentos conocidos no se abren. Los demás se abren al instante y revisamos el sitio en ese mismo segundo: te avisamos si resulta peligroso.",
+      "linkguard_note": "Si está activado, los enlaces que tocas en la mayoría de las apps pasan primero por Cleanway; los navegadores integrados de Telegram y MAX abren los enlaces por su cuenta, sin revisión. Los sitios fraudulentos conocidos no se abren. Los demás se abren al instante mientras revisamos el sitio, y te avisamos si la revisión encuentra un peligro; a veces tarda hasta medio minuto.",
       "linkguard_on": "Cleanway comprueba tus enlaces",
       "linkguard_on_desc": "Los sitios fraudulentos conocidos no se abren; los demás enlaces se revisan justo después de abrirse.",
       "linkguard_off": "Comprobar cada enlace",
       "linkguard_off_desc": "Ahora los enlaces se abren sin comprobar. Actívalo para comprobarlos.",
       "linkguard_enable": "Configurar",
       "push_off_desc": "Desactivados en los ajustes del teléfono: no sabrás cuándo se bloquea algo. Toca para activarlos.",
-      "push_enable": "Activar"
+      "push_enable": "Activar",
+      "linkguard_on_desc_no_list": "Los enlaces se revisan justo después de abrirse; la lista de sitios fraudulentos llega cuando activas el escudo «Todas las apps»."
     },
     "family": {
       "title": "Espacio Familiar",
@@ -2327,7 +2330,7 @@
       "s1_title": "Revisa cualquier cosa antes de tocarla",
       "s1_desc": "Pega un enlace, escanea un código QR o comparte cualquier cosa sospechosa directamente con Cleanway. Recibes una respuesta clara y las razones detrás de ella.",
       "s2_title": "Privado por diseño",
-      "s2_desc": "Para revisar un enlace, solo se envía el nombre del sitio web a nuestros servidores; nunca tus contraseñas, tus mensajes ni tu historial de navegación.",
+      "s2_desc": "Para revisar un enlace, nuestros servidores reciben el nombre del sitio web y un número aleatorio de la instalación que cambia cada día. Tus contraseñas, el texto de tus mensajes y las direcciones completas de las páginas nunca salen del teléfono.",
       "s3_title": "Un escudo para todas las apps",
       "s3_desc": "En Android, un solo paso de configuración bloquea los sitios de estafa conocidos en todas las apps. Las estafas recién creadas pueden escaparse de cualquier lista de bloqueo; para eso está el botón de revisar.",
       "skip": "Omitir",
@@ -2383,7 +2386,13 @@
       "detector_safe": "Nuestro detector considera este sitio seguro",
       "not_a_real_business": "No está configurado como el sitio de una empresa real",
       "shifty_setup": "El sitio cambia constantemente de ubicación, un truco típico de estafas",
-      "padded_address": "La dirección tiene partes de más para ocultar el nombre real"
+      "padded_address": "La dirección tiene partes de más para ocultar el nombre real",
+      "site_not_found": "Esta dirección no existe",
+      "on_cleanway_list": "Está en la lista de sitios fraudulentos de Cleanway",
+      "unreachable_abroad": "Nuestro servidor en el extranjero no pudo abrir el sitio. Muchos bancos y sitios del gobierno bloquean las direcciones extranjeras, así que esto por sí solo no es señal de peligro",
+      "checks_incomplete": "Algunas revisiones no terminaron, así que el resultado es menos seguro",
+      "user_content_platform": "Cualquiera puede crear una página en este servicio, también los estafadores",
+      "on_device_list": "Está en la lista de sitios fraudulentos de tu teléfono"
     },
     "update": {
       "optional_title": "Actualización disponible",

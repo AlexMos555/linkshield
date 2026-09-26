@@ -1841,7 +1841,7 @@
         "open_a11y": "{{label}}: {{value}}. Öffnet die Liste im Verlauf.",
         "hint": "Tippe auf eine Zahl, um die Liste zu sehen."
       },
-      "privacy": "Der Schutz „Jede App“ gleicht Seitennamen direkt auf deinem Handy ab. An unseren Server geht nur der Name einer Seite – wenn du selbst einen Link prüfst oder ihn bei aktiver „Link-Prüfung“ antippst.",
+      "privacy": "Der Schutz „Jede App“ gleicht Seitennamen direkt auf deinem Handy ab. Wenn du selbst einen Link prüfst oder ihn bei aktiver „Link-Prüfung“ antippst, bekommt unser Server den Namen der Seite und eine zufällige Installationsnummer, die sich jeden Tag ändert.",
       "interrupted": "Passiert meist nach einem Neustart. Deine Einrichtung ist noch da – ein Tipp genügt.",
       "cta_turn_back_on": "Schutz wieder einschalten"
     },
@@ -1899,9 +1899,10 @@
       "linkguard": {
         "title": "Link-Prüfung",
         "desc": "Links, die du antippst, landen zuerst bei Cleanway",
-        "honesty": "Funktioniert, wenn Cleanway als App zum Öffnen von Links eingestellt ist. Eine ganz neue Betrugsseite kann sich zuerst öffnen – dann bekommst du eine Warnung.",
+        "honesty": "Funktioniert, wenn Cleanway als App zum Öffnen von Links eingestellt ist. Eine ganz neue Betrugsseite kann sich zuerst öffnen. Wir prüfen sie sofort und warnen dich, wenn wir eine Gefahr finden – ganz neue Seiten erkennen wir aber nicht immer.",
         "state_on": "Bekannte Betrugsseiten öffnen sich nicht. Andere Links prüfen wir direkt nach dem Öffnen.",
-        "state_setup": "Stelle Cleanway zum Öffnen deiner Links ein"
+        "state_setup": "Stelle Cleanway zum Öffnen deiner Links ein",
+        "state_no_list": "Links prüfen wir direkt nach dem Öffnen. Die Liste der Betrugsseiten kommt, sobald du den Schutz „Jede App“ einschaltest."
       },
       "pause_scam_warning": "Wenn dich jemand am Telefon bittet, den Schutz auszuschalten – das ist Betrug.",
       "pause_timed": "{{minutes}} Minuten pausieren",
@@ -1952,7 +1953,7 @@
       "no_link_title": "Kein Link in diesem Code",
       "no_link_body": "Dieser QR-Code enthält keinen Website-Link, also gibt es nichts zu prüfen.",
       "scan_again": "Noch mal scannen",
-      "privacy": "Der Code wird auf deinem Handy gelesen. Nur der Website-Name wird zur Prüfung an unsere Server geschickt."
+      "privacy": "Der Code wird auf deinem Handy gelesen. Zur Prüfung gehen nur der Website-Name und eine zufällige Installationsnummer, die sich jeden Tag ändert, an unsere Server."
     },
     "result": {
       "loading": "{{domain}} wird geprüft…",
@@ -1973,10 +1974,10 @@
       "no": "Nein",
       "share": "Ergebnis teilen",
       "share_message": "{{domain}}: {{verdict}} (Risikowert {{score}}/100). Geprüft mit Cleanway – https://cleanway.ai/check/{{domain}}",
-      "privacy": "Auf unseren Servern geprüft. Gesendet wurden nur der Name der Seite und eine Zufallsnummer dieser Installation – damit wird das Prüflimit gezählt. Nichts über dich.",
+      "privacy": "Auf unseren Servern geprüft. Gesendet wurden nur der Name der Seite und eine zufällige Installationsnummer, die sich jeden Tag ändert. Nichts, was mit deinem Namen oder deiner Telefonnummer verbunden ist.",
       "error_title": "Die Prüfung konnte nicht abgeschlossen werden",
       "error_body": "Der Server hat nicht geantwortet. Prüfe deine Verbindung und versuch es noch mal.",
-      "error_rate_limited": "Du hast in der letzten Minute viele Links geprüft. Warte kurz und versuch es noch mal.",
+      "error_rate_limited": "Gerade gibt es zu viele Prüfungen – von diesem Handy oder aus deinem Netz. Warte ein paar Minuten und versuch es noch mal.",
       "error_server": "Unser Server hatte ein Problem, nicht deine Verbindung. Bitte versuch es in einer Minute noch mal.",
       "error_retry": "Noch mal versuchen",
       "listed_title": "Gefährlich – diese Seite steht auf der Liste der Betrugsseiten",
@@ -1988,7 +1989,8 @@
       "error_slow": "Unser Server antwortet gerade langsam. Versuch es in einer Minute noch mal.",
       "not_found_title": "Diese Seite gibt es nicht – prüf die Adresse",
       "not_found_body": "Vielleicht ist in der Adresse ein Tippfehler, oder die Seite wurde schon abgeschaltet. Kam der Link in einer Nachricht, trau dieser Nachricht nicht.",
-      "share_message_listed": "{{domain}}: {{verdict}}. Geprüft mit Cleanway – https://cleanway.ai/check/{{domain}}"
+      "share_message_listed": "{{domain}}: {{verdict}}. Geprüft mit Cleanway – https://cleanway.ai",
+      "privacy_listed": "Auf der Liste auf diesem Handy gefunden. Für Details fragen wir unseren Server – er bekommt nur den Namen der Seite und eine zufällige Installationsnummer, die sich jeden Tag ändert."
     },
     "shared": {
       "eyebrow": "Geteilter Link",
@@ -2111,7 +2113,7 @@
       "error_title": "Nachricht konnte nicht geprüft werden",
       "error_failed": "Etwas ist schiefgelaufen. Das heißt nicht, dass die Nachricht sicher ist – versuch es noch einmal.",
       "error_unsupported": "Auf diesem Handy ist die Nachrichtenprüfung nicht verfügbar. Einen Link daraus kannst du trotzdem prüfen: Teilen → Cleanway.",
-      "privacy": "Der Text wird nur auf diesem Handy geprüft und nirgendwohin geschickt. Im Verlauf bleiben nur das Ergebnis und die Namen der Websites, nie der Text. Um einen Link zu prüfen, geht nur der Name der Website an unseren Server.",
+      "privacy": "Der Text wird nur auf diesem Handy geprüft und nirgendwohin geschickt. Im Verlauf bleiben nur das Ergebnis und die Namen der Websites, nie der Text. Um einen Link zu prüfen, gehen nur der Name der Website und eine zufällige Installationsnummer, die sich jeden Tag ändert, an unseren Server.",
       "history_title": "SMS-Prüfung"
     },
     "breach": {
@@ -2147,7 +2149,7 @@
       "empty_title": "Noch keine Prüfungen",
       "empty_body": "Jeder Link, den du prüfst, erscheint hier. Die Liste bleibt nur auf diesem Handy.",
       "empty_cta": "Link prüfen",
-      "privacy": "Diese Liste bleibt auf deinem Handy. Wenn du einen Link prüfst, wird nur der Website-Name an unsere Server geschickt.",
+      "privacy": "Diese Liste bleibt auf deinem Handy. Wenn du einen Link prüfst, gehen nur der Website-Name und eine zufällige Installationsnummer, die sich jeden Tag ändert, an unsere Server.",
       "shield_blocked": "Vom Schutz blockiert",
       "shield_warned": "Warnung beim Öffnen des Links",
       "shield_allowed": "Von dir zugelassen",
@@ -2286,7 +2288,7 @@
       "privacy_policy": "Datenschutzerklärung",
       "terms": "Nutzungsbedingungen",
       "version": "Version",
-      "privacy_note": "Dein Prüfverlauf bleibt auf diesem Handy. Wenn du einen Link prüfst, gehen nur der Name der Seite und eine Zufallsnummer dieser Installation an unsere Server – damit wird das Prüflimit gezählt.",
+      "privacy_note": "Dein Prüfverlauf bleibt auf diesem Handy. Wenn du einen Link prüfst, gehen nur der Name der Seite und eine zufällige Installationsnummer an unsere Server. Die Nummer ändert sich jeden Tag; sie ist dafür da, das Prüflimit pro Handy zu zählen statt für das ganze Mobilfunknetz.",
       "sync_failed_title": "Nur auf diesem Handy gespeichert",
       "sync_failed_body": "Wir konnten dein Konto nicht erreichen, deshalb erscheint diese Änderung noch nicht auf deinen anderen Geräten. Sie wird übernommen, wenn du sie das nächste Mal online änderst.",
       "clear_done_title": "Verlauf gelöscht",
@@ -2304,14 +2306,15 @@
       "language_reload_title": "Neustart nötig",
       "language_reload_body": "Schließe die App und öffne sie erneut, um die Textrichtung umzustellen.",
       "linkguard": "Link-Prüfung",
-      "linkguard_note": "Wenn aktiv, landen Links, die du in einer App antippst, zuerst bei Cleanway. Bekannte Betrugsseiten öffnen sich nicht. Andere öffnen sich sofort, und wir prüfen die Seite in derselben Sekunde – du bekommst eine Warnung, falls sie sich als gefährlich herausstellt.",
+      "linkguard_note": "Wenn aktiv, landen Links, die du in den meisten Apps antippst, zuerst bei Cleanway; die eingebauten Browser von Telegram und MAX öffnen Links selbst, ohne Prüfung. Bekannte Betrugsseiten öffnen sich nicht. Andere öffnen sich sofort, während wir die Seite prüfen, und du bekommst eine Warnung, wenn die Prüfung eine Gefahr findet – manchmal dauert das bis zu einer halben Minute.",
       "linkguard_on": "Cleanway prüft deine Links",
       "linkguard_on_desc": "Bekannte Betrugsseiten öffnen sich nicht; andere Links prüfen wir direkt nach dem Öffnen.",
       "linkguard_off": "Jeden Link prüfen",
       "linkguard_off_desc": "Derzeit öffnen Links ohne Prüfung. Aktiviere dies, um sie zu prüfen.",
       "linkguard_enable": "Einrichten",
       "push_off_desc": "In den Handy-Einstellungen ausgeschaltet – du erfährst nichts von Blockierungen. Tippe, um sie einzuschalten.",
-      "push_enable": "Einschalten"
+      "push_enable": "Einschalten",
+      "linkguard_on_desc_no_list": "Links prüfen wir direkt nach dem Öffnen; die Liste der Betrugsseiten kommt, sobald du den Schutz „Jede App“ einschaltest."
     },
     "family": {
       "title": "Familienbereich",
@@ -2387,7 +2390,7 @@
       "s1_title": "Prüfe alles, bevor du es antippst",
       "s1_desc": "Füge einen Link ein, scanne einen QR-Code oder teile alles Verdächtige direkt mit Cleanway. Du bekommst eine klare Antwort und die Gründe dahinter.",
       "s2_title": "Privat von Grund auf",
-      "s2_desc": "Um einen Link zu prüfen, wird nur der Website-Name an unsere Server geschickt – niemals deine Passwörter, Nachrichten oder dein Browserverlauf.",
+      "s2_desc": "Um einen Link zu prüfen, bekommen unsere Server den Website-Namen und eine zufällige Installationsnummer, die sich jeden Tag ändert. Deine Passwörter, der Text deiner Nachrichten und vollständige Seitenadressen verlassen dein Handy nie.",
       "s3_title": "Ein Schutzschild für jede App",
       "s3_desc": "Auf Android blockiert ein einziger Einrichtungsschritt bekannte Betrugsseiten in jeder App. Brandneue Betrugsmaschen können an jeder Sperrliste vorbeirutschen – genau dafür gibt es den Prüfen-Knopf.",
       "skip": "Überspringen",
@@ -2443,7 +2446,13 @@
       "detector_safe": "Unser Detektor hält diese Seite für sicher",
       "not_a_real_business": "Nicht wie die Seite einer echten Firma eingerichtet",
       "shifty_setup": "Die Seite wechselt ständig ihren Standort – ein typischer Betrugstrick",
-      "padded_address": "Die Adresse ist mit Zusätzen aufgebläht, um den echten Namen zu verstecken"
+      "padded_address": "Die Adresse ist mit Zusätzen aufgebläht, um den echten Namen zu verstecken",
+      "site_not_found": "Diese Adresse gibt es nicht",
+      "on_cleanway_list": "Steht auf Cleanways Liste der Betrugsseiten",
+      "unreachable_abroad": "Unser Server im Ausland konnte die Seite nicht öffnen. Viele Banken und Behördenseiten sperren ausländische Adressen – das allein ist also kein Zeichen von Gefahr",
+      "checks_incomplete": "Einige Prüfungen wurden nicht fertig, das Ergebnis ist daher weniger sicher",
+      "user_content_platform": "Auf diesem Dienst kann jeder eine Seite anlegen – auch Betrüger",
+      "on_device_list": "Steht auf der Liste der Betrugsseiten auf deinem Handy"
     },
     "update": {
       "optional_title": "Update verfügbar",
