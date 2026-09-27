@@ -27,9 +27,9 @@ interface ShieldEventSheetProps {
  *
  * The rescue ("not a scam — allow it") is here because a person who cannot
  * undo a false positive turns protection off altogether. It is the quietest
- * button on the sheet and sits behind a confirm, so the sheet never nudges
- * anyone toward opening a scam site. "Close" is the main action: for a block
- * there is nothing to do.
+ * button on the sheet and sits behind a confirm that starts with the scam
+ * warning, so the sheet never nudges anyone toward opening a scam site.
+ * "Close" is the main action: for a block there is nothing to do.
  */
 export function ShieldEventSheet({ item, onClose, onChanged, onMore }: ShieldEventSheetProps) {
   const { t, i18n } = useTranslation();
@@ -53,12 +53,18 @@ export function ShieldEventSheet({ item, onClose, onChanged, onMore }: ShieldEve
     : item.kind === "warned" ? t("mobile.history.detail.warned_advice")
     : "";
 
+  /**
+   * The one way to allow a site (the block notification has no such button
+   * since 1.0.3). It opens with the scam warning, because "press allow" is
+   * what a scammer on the phone says, and names the site in the title so
+   * nobody allows something they did not mean to.
+   */
   function confirmAllow(domain: string) {
     Alert.alert(
-      t("mobile.settings.allow_confirm_title"),
+      t("mobile.history.detail.allow_confirm_title", { domain }),
       t("mobile.history.detail.allow_confirm_body", { domain }),
       [
-        { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+        { text: t("mobile.history.detail.allow_confirm_cancel"), style: "cancel" },
         {
           text: t("mobile.history.shield_allow_action"),
           onPress: () => {

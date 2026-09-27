@@ -68,8 +68,9 @@
       ":boot" starts a bare process that only reads a flag and starts the
       service.
     -->
-    <!-- "Not a scam — allow it" from a block notification. Not exported: only
-         our own PendingIntent can fire it. -->
+    <!-- The retired "Not a scam — allow it" button of block notifications
+         posted by 1.0.2: allows nothing now, only says where allowing lives
+         (AllowReceiver). Not exported: only our own PendingIntent can fire it. -->
     <receiver
       android:name="ai.cleanway.app.AllowReceiver"
       android:enabled="true"

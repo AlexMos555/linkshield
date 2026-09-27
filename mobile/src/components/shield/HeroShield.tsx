@@ -30,6 +30,12 @@ interface HeroShieldProps {
    */
   interrupted?: boolean;
   hold?: HeroHold | null;
+  /**
+   * The main shield is up but the phone has no internet, so it cannot be
+   * proven. Not a fault and not "let's set up" — which is what 1.0.2 said
+   * over a shield that was set up and blocking from its list.
+   */
+  offline?: boolean;
 }
 
 /**
@@ -39,12 +45,14 @@ interface HeroShieldProps {
  * platform shields are verified-on; never green while the main shield is
  * paused or cannot run.
  */
-export function HeroShield({ state, verifiedCount, totalCount, attention, interrupted, hold }: HeroShieldProps) {
+export function HeroShield({ state, verifiedCount, totalCount, attention, interrupted, hold, offline }: HeroShieldProps) {
   const { t, i18n } = useTranslation();
-  const active = state !== "none" && !hold;
+  const quiet = offline && !hold;
+  const active = state !== "none" && !hold && !quiet;
   const title =
     hold?.kind === "paused" ? t("mobile.home.hero.title_paused", { time: clockTime(hold.until, i18n.language) })
     : hold?.kind === "conflict" ? t("mobile.home.hero.title_conflict")
+    : quiet ? t("mobile.home.hero.title_offline")
     : state === "all" ? t("mobile.home.hero.title_all")
     : state === "partial" ? t("mobile.home.hero.title_partial", { count: verifiedCount, total: totalCount })
     : interrupted ? t("mobile.home.hero.title_interrupted")
@@ -52,12 +60,14 @@ export function HeroShield({ state, verifiedCount, totalCount, attention, interr
   const sub =
     hold?.kind === "paused" ? t("mobile.home.hero.sub_paused")
     : hold?.kind === "conflict" ? t("mobile.home.hero.sub_conflict")
+    : quiet ? t("mobile.home.hero.sub_offline")
     : state === "all" ? t("mobile.home.hero.sub_all")
     : state === "partial" ? t("mobile.home.hero.sub_partial")
     : t("mobile.home.hero.sub_none", { count: verifiedCount });
   const icon: keyof typeof Ionicons.glyphMap =
     hold?.kind === "paused" ? "pause-circle-outline"
     : hold ? "alert-circle-outline"
+    : quiet ? "cloud-offline-outline"
     : active ? "shield-checkmark"
     : "shield-outline";
   const iconColor = hold ? colors.amber : active ? colors.green : colors.textSecondary;

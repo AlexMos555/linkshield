@@ -197,7 +197,7 @@ CLAIMS: tuple[Claim, ...] = (
         "ar": r"لا تمرّ حركة بياناتك عبرها",
     }),
     Claim("the Android app has no block screen — a DNS block shows the browser's own error page; "
-          "'Not a scam — allow it' lives in History and in the block notification", {
+          "'Not a scam — allow it' lives in History", {
               "en": r"block screen",
               "ru": r"экран\w* блокировки",
               "es": r"pantalla de bloqueo",
@@ -208,6 +208,19 @@ CLAIMS: tuple[Claim, ...] = (
               "id": r"layar pemblokiran",
               "hi": r"ब्लॉक वाली स्क्रीन",
               "ar": r"شاشة الحظر",
+          }, scope="landing.support"),
+    Claim("the block notification has no 'Not a scam' button since app 1.0.3 — one tap on a pop-up is what "
+          "a scammer on the phone asks for; a site is allowed only in History, behind a scam warning", {
+              "en": r"button[^.]{0,30}in the block notification",
+              "ru": r"кнопк\w*[^.]{0,30}в уведомлении о блокировке",
+              "es": r"bot[oó]n[^.]{0,30}en la notificaci[oó]n de bloqueo",
+              "pt": r"bot[aã]o[^.]{0,30}na notifica[cç][aã]o de bloqueio",
+              "fr": r"bouton[^.]{0,40}dans la notification de blocage",
+              "de": r"schaltfl[aä]che[^.]{0,40}in der sperr-benachrichtigung",
+              "it": r"pulsante[^.]{0,30}nella notifica di blocco",
+              "id": r"tombol[^.]{0,30}di notifikasi pemblokiran",
+              "hi": r"सूचना[^।]{0,40}बटन",
+              "ar": r"الزر[^.]{0,30}إشعار الحظر",
           }, scope="landing.support"),
     Claim("the benchmark counts the server's 'dangerous' verdicts, not blocking on the phone "
           "(the on-device list covers a fraction of fresh phishing)", {

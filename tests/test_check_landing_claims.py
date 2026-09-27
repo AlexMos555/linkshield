@@ -120,6 +120,18 @@ def test_nonexistent_block_screen_is_caught_on_support(locale: str, text: str) -
     assert _findings(locale, {"support": {"a_fp": text}})
 
 
+# The support answer as it read until app 1.0.3 removed the button.
+@pytest.mark.parametrize("locale,text", [
+    ("ru", "Такая же кнопка есть в уведомлении о блокировке, если оно появилось."),
+    ("en", "The same button is in the block notification, if one appeared."),
+    ("de", "Dieselbe Schaltfläche findest du in der Sperr-Benachrichtigung, falls eine erschienen ist."),
+    ("hi", "अगर ब्लॉक होने की सूचना आई हो, तो यही बटन उसमें भी है।"),
+    ("ar", "ويوجد الزر نفسه في إشعار الحظر إن ظهر."),
+])
+def test_allow_button_in_the_notification_is_caught_on_support(locale: str, text: str) -> None:
+    assert _findings(locale, {"support": {"a_fp": text}})
+
+
 def test_badge_may_not_call_the_server_verdict_blocking() -> None:
     assert _findings("ru", {"hero": {"badge": "{recall}% свежих фишинг-URL заблокированы (замерено)"}})
     assert _findings("en", {"hero": {"badge": "{recall}% of fresh phishing links blocked"}})

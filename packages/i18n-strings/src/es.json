@@ -1128,7 +1128,7 @@
       "q_off": "¿Cómo la desactivo?",
       "a_off": "Abre la app y toca «Pausar la protección». Puedes volver a activarla cuando quieras.",
       "q_fp": "Un sitio seguro está bloqueado, ¿qué hago?",
-      "a_fp": "Abre Cleanway, ve a la pestaña «Historial» y toca ese sitio. Luego toca «No es una estafa: permitir» y confirma. Cleanway dejará de bloquear ese sitio en tu teléfono. El mismo botón está en la notificación de bloqueo, si apareció. Permite un sitio solo si estás seguro de que es el auténtico.",
+      "a_fp": "Abre Cleanway, ve a la pestaña «Historial» y toca ese sitio. Luego toca «No es una estafa: permitir» y confirma. Cleanway dejará de bloquear ese sitio en tu teléfono. Si alguien por teléfono te pide que permitas un sitio, es un estafador. Cuelga. Permite un sitio solo si estás seguro de que es el auténtico.",
       "q_privacy": "¿Qué datos recopiláis?",
       "a_privacy": "Los sitios se comparan con la lista en tu teléfono. Cuando un sitio necesita una revisión más a fondo, solo su nombre llega a nuestro servidor, no el enlace completo ni quién eres. El texto de los mensajes que compruebas nunca sale del teléfono. Todos los detalles están en la política de privacidad.",
       "email_not_live_title": "Todavía no podemos recibir correos",
@@ -1362,7 +1362,7 @@
           "paragraphs": [
             "Cuando activas la protección, Cleanway pone en marcha un filtro local usando el mecanismo de VPN de Android. Por él solo pasan las consultas DNS, las preguntas que hace el teléfono para encontrar la dirección de un sitio, como «¿dónde está example.com?». El contenido de las páginas, tus mensajes y tus llamadas no pasan por el filtro y no se leen.",
             "Cada nombre de sitio se compara con la lista de sitios fraudulentos guardada en el teléfono. Si está en la lista, el teléfono no abre el sitio y se guarda en el teléfono una nota (el nombre del sitio, la hora y lo que pasó) para el Historial de la app.",
-            "Los nombres que no están en la lista se pasan para encontrar la dirección del sitio: primero al servidor DNS de la red a la que está conectado el teléfono —el de tu operador móvil o tu router wifi—, como sin Cleanway. Solo si no responde, van a Cloudflare (1.1.1.1), luego a Quad9 (9.9.9.9) y, como último recurso, al DNS-over-HTTPS cifrado de Cloudflare. Así funciona la versión 1.0.2 de la app; la versión 1.0.1 preguntaba primero a Cloudflare. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas.",
+            "Los nombres que no están en la lista se pasan para encontrar la dirección del sitio: primero al servidor DNS de la red a la que está conectado el teléfono —el de tu operador móvil o tu router wifi—, como sin Cleanway. Solo si no responde, van a Cloudflare (1.1.1.1), luego a Quad9 (9.9.9.9) y, como último recurso, al DNS-over-HTTPS cifrado de Cloudflare. Así funcionan las versiones 1.0.2 y 1.0.3 de la app; la versión 1.0.1 preguntaba primero a Cloudflare. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas.",
             "Desde la versión 1.0.2, la app incluye una copia de la lista de sitios fraudulentos, que se usa solo hasta que el teléfono descarga una nueva."
           ]
         },
@@ -1748,6 +1748,8 @@
         "attention": "Un escudo necesita atención",
         "a11y": "Estado de la protección: {{status}}",
         "title_interrupted": "La protección se detuvo",
+        "title_offline": "Sin internet",
+        "sub_offline": "Cleanway comprobará la protección cuando vuelva la conexión",
         "title_paused": "Protección en pausa hasta las {{time}}",
         "sub_paused": "Ahora mismo no se bloquean los sitios fraudulentos",
         "title_conflict": "La protección no está funcionando",
@@ -1784,7 +1786,9 @@
         "hint": "Toca un número para ver la lista."
       },
       "privacy": "El escudo «Todas las apps» compara los nombres de los sitios en tu teléfono. Cuando revisas un enlace tú mismo o lo tocas con la «Revisión de enlaces» activada, a nuestro servidor llegan el nombre del sitio y un número aleatorio de la instalación que cambia cada día.",
-      "interrupted": "Suele pasar tras un reinicio. Tu configuración sigue aquí: un toque y vuelve.",
+      "interrupted": "El teléfono detuvo la protección; casi siempre lo hace para ahorrar batería. Tu configuración sigue aquí: toca el botón de abajo y luego «{{button}}».",
+      "interrupted_revoked": "Android detuvo la protección: se retiró el permiso de VPN en los ajustes del teléfono u otra app de VPN ocupó su lugar. Toca el botón de abajo y luego «{{button}}». Si Android te pide permitir la conexión, toca «Aceptar». La otra app de VPN se desactivará: Android solo usa una a la vez.",
+      "interrupted_private_dns": "La protección se detuvo por el ajuste «DNS privado». Ya no estorba: toca el botón de abajo y luego «{{button}}».",
       "cta_turn_back_on": "Volver a activar la protección"
     },
     "shield": {
@@ -1798,7 +1802,8 @@
         "state_unverified": "Está en marcha, pero no pudimos confirmar que esté filtrando en este momento.",
         "state_blocked": "Esta red Wi-Fi necesita una página de inicio de sesión. Cleanway se puso en pausa y volverá a activarse automáticamente.",
         "state_checking": "Revisando la protección…",
-        "state_offline": "Ahora no hay internet. El escudo está configurado y filtrará en cuanto vuelvas a conectarte.",
+        "state_offline": "Ahora no hay internet. Los sitios de estafa conocidos siguen bloqueados: su lista está guardada en el teléfono. Se actualizará cuando vuelvas a conectarte.",
+        "state_offline_no_list": "Ahora no hay internet. La lista de sitios de estafa todavía no está en el teléfono: se descargará cuando vuelvas a conectarte.",
         "state_private_dns": "Tu teléfono tiene activado el DNS privado ({{host}}). Android no puede usarlo junto con Cleanway: con ambos activados, internet deja de funcionar. En Ajustes, pon el DNS privado en Automático y luego vuelve y activa Cleanway.",
         "private_dns_cta": "Abrir ajustes de red",
         "state_paused_until": "En pausa hasta las {{time}}; luego se vuelve a activar solo. Ahora mismo no se bloquean los sitios fraudulentos."
@@ -2139,7 +2144,9 @@
         "by_warned": "Avisó",
         "more": "Más sobre este sitio",
         "allow": "No es una estafa: permitir",
-        "allow_confirm_body": "{{domain}} dejará de bloquearse. Hazlo solo si conoces este sitio. Puedes deshacerlo en Configuración → Sitios permitidos.",
+        "allow_confirm_title": "¿Permitir {{domain}}?",
+        "allow_confirm_body": "Si alguien por teléfono te pide que permitas un sitio, es un estafador. Cuelga.\n\nPermite {{domain}} solo si tú mismo estás seguro de que es el sitio auténtico. Cleanway dejará de bloquearlo. Puedes deshacerlo en Configuración → Sitios permitidos.",
+        "allow_confirm_cancel": "No permitir",
         "block_again": "Volver a bloquear",
         "close": "Cerrar"
       },
@@ -2346,15 +2353,14 @@
       "fg_text": "Comprobando nombres de sitios en busca de estafas",
       "block_channel": "Sitios bloqueados",
       "block_channel_desc": "Te avisa cuando Cleanway bloquea un sitio peligroso",
-      "allow_channel": "Sitios permitidos",
-      "allow_channel_desc": "Confirma cuando permites un sitio que Cleanway había bloqueado",
+      "allow_channel": "Permitir sitios",
+      "allow_channel_desc": "Dónde permitir un sitio que Cleanway bloqueó",
+      "allow_moved_title": "No se permitió el sitio",
+      "allow_moved_text": "Ahora los sitios solo se permiten en la app Cleanway. Si alguien por teléfono te pide que permitas un sitio, es un estafador. Cuelga. Si tú mismo estás seguro de que {{domain}} es el sitio auténtico, toca aquí para abrir el Historial.",
       "blocked_title": "Cleanway bloqueó un sitio peligroso",
       "blocked_text": "{{domain}} está en la lista de sitios de estafa. No se abrirá.",
       "warn_title": "Este sitio parece una estafa",
       "warn_text": "{{domain}} parece peligroso. Si está abierto, ciérralo y no escribas nada.",
-      "allow_action": "No es una estafa: permitir",
-      "allowed_title": "Sitio permitido",
-      "allowed_text": "{{domain}} ahora está permitido. Puedes deshacerlo en Ajustes → Sitios permitidos.",
       "paused_title": "La protección de Cleanway está en pausa",
       "paused_text": "Se vuelve a activar sola a las {{time}}.",
       "resume_action": "Activar ahora"

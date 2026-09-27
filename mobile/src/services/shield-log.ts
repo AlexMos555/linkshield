@@ -41,7 +41,7 @@ export function allowedSites(): string[] {
   }
 }
 
-/** Mark a site as not-a-scam (from a block row / the notification action). */
+/** Mark a site as not-a-scam (History's detail sheet, behind its scam-warning confirm). */
 export function allowSite(domain: string): boolean {
   try {
     return shieldModule()?.allowDomain(domain) ?? false;

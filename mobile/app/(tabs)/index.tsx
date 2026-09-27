@@ -13,7 +13,7 @@ import { PauseSheet } from "../../src/components/shield/PauseSheet";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { ShieldCard } from "../../src/components/shield/ShieldCard";
-import { useNetworkShield, PAUSE_MINUTES } from "../../src/hooks/useNetworkShield";
+import { useNetworkShield, PAUSE_MINUTES, type ShieldStopReason } from "../../src/hooks/useNetworkShield";
 import { clockTime } from "../../src/utils/relative-time";
 import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
 import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
@@ -32,6 +32,13 @@ import type { HistoryFilter } from "../../src/utils/history-model";
  * sit in a muted "Rolling out" section. No placebo states, no passive
  * clipboard monitoring (killed by design, not restyled).
  */
+
+/** Why protection stopped by itself → what the screen says about it. */
+const INTERRUPTED_KEYS: Record<ShieldStopReason | "unknown", string> = {
+  revoked: "mobile.home.interrupted_revoked",
+  private_dns: "mobile.home.interrupted_private_dns",
+  unknown: "mobile.home.interrupted",
+};
 
 function rolloutItems(t: TFunction, platform: string, messageCheck: boolean): RolloutItem[] {
   const browser: RolloutItem = {
@@ -189,6 +196,7 @@ export default function HomeScreen() {
         attention={false}
         interrupted={needsSetup && network.interrupted}
         hold={heroHold}
+        offline={network.state === "offline"}
       />
 
       <UpdateBanner status={update} />
@@ -196,12 +204,17 @@ export default function HomeScreen() {
       {needsSetup && (
         <>
           {network.interrupted && (
-            // The user had this on and something else turned it off (reboot
-            // without always-on, a battery manager). Say so — "let's set up"
-            // would tell them their earlier setup never happened.
+            // The user had this on and something else turned it off. Say so —
+            // "let's set up" would tell them their earlier setup never
+            // happened — and say what, and the steps it really takes to come
+            // back: after a withdrawn permission Android asks again.
             <View style={s.interruptedRow}>
               <Ionicons name="alert-circle-outline" size={15} color={colors.amber} />
-              <Text style={s.interruptedText}>{t("mobile.home.interrupted")}</Text>
+              <Text style={s.interruptedText}>
+                {t(INTERRUPTED_KEYS[network.stopReason ?? "unknown"], {
+                  button: t("mobile.shield.disclosure.continue"),
+                })}
+              </Text>
             </View>
           )}
           <TouchableOpacity
@@ -236,7 +249,12 @@ export default function HomeScreen() {
               // Probe in flight: say "checking" rather than flashing the
               // negative state at someone whose protection is fine.
               : network.probing ? t("mobile.shield.network.state_checking")
-              : network.state === "offline" ? t("mobile.shield.network.state_offline")
+              // Offline, the list on the phone still blocks — say so only
+              // when there is one (no seed and no sync yet: nothing to block by).
+              : network.state === "offline"
+                ? t(network.blocklist.count > 0
+                  ? "mobile.shield.network.state_offline"
+                  : "mobile.shield.network.state_offline_no_list")
               : network.state === "unverified" ? t("mobile.shield.network.state_unverified")
               : t("mobile.shield.network.state_setup")
             }

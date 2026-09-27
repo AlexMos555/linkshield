@@ -21,8 +21,11 @@ import org.json.JSONArray
  *
  * Trade-off, deliberately taken: a scammer could coach someone into tapping
  * "Not a scam". Every filtering product carries this; the mitigations here
- * are that the entry is recorded in history, shown in Settings with a remove
- * button, and confirmed by a follow-up notification, so it is never silent.
+ * are that the only way in (since 1.0.3) is History's detail sheet, behind a
+ * confirmation that opens with "if someone on the phone asks you to allow a
+ * site, it's a scammer — hang up" and names the site — the block pop-up has
+ * no allow button (see AllowReceiver) — and that the entry is recorded in
+ * history and shown in Settings with a remove button, so it is never silent.
  */
 object UserAllow {
     private const val PREFS = "cleanway_user_allow"
