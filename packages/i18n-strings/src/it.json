@@ -1846,8 +1846,8 @@
         "hint": "Tocca un numero per vedere l'elenco."
       },
       "privacy": "Lo scudo «Ogni app» confronta i nomi dei siti direttamente sul telefono. Quando controlli un link tu stesso, o lo tocchi con il «Controllo dei link» attivo, al nostro server arrivano il nome del sito e un numero casuale dell'installazione che cambia ogni giorno.",
-      "interrupted": "Il telefono ha fermato la protezione: il più delle volte lo fa per risparmiare batteria. La configurazione è ancora qui: tocca il pulsante qui sotto, poi «{{button}}».",
-      "interrupted_revoked": "Android ha fermato la protezione: il permesso VPN è stato revocato nelle impostazioni del telefono, oppure un'altra app VPN ha preso il suo posto. Tocca il pulsante qui sotto, poi «{{button}}». Se Android chiede di consentire la connessione, tocca «OK». L'altra app VPN verrà disattivata: Android ne usa una sola alla volta.",
+      "interrupted": "Il telefono ha fermato la protezione, per esempio dopo un riavvio o per risparmiare batteria. La configurazione è ancora qui: tocca il pulsante qui sotto, poi «{{button}}».",
+      "interrupted_revoked": "Android ha fermato la protezione: il permesso VPN è stato revocato nelle impostazioni del telefono, oppure un'altra app VPN ha preso il suo posto. Tocca il pulsante qui sotto, poi «{{button}}». Se Android chiede di consentire la connessione, tocca «Ok». L'altra app VPN verrà disattivata: Android ne usa una sola alla volta.",
       "interrupted_private_dns": "La protezione si è fermata per l'impostazione «DNS privato». Ora non è più d'intralcio: tocca il pulsante qui sotto, poi «{{button}}».",
       "cta_turn_back_on": "Riattiva la protezione"
     },
@@ -1858,6 +1858,7 @@
         "honesty": "Non può fermare i siti truffa appena nati, né le app che usano un proprio DNS privato",
         "state_on": "Attivo. Sta funzionando adesso.",
         "state_setup": "Si configura una volta sola, in circa un minuto.",
+        "state_stopped": "Fermo. Per riattivarlo, tocca «{{button}}» qui sopra.",
         "state_paused": "In pausa. Tocca per riattivarlo.",
         "state_unverified": "È in funzione, ma al momento non possiamo confermare che stia filtrando.",
         "state_blocked": "Questa rete Wi-Fi richiede una pagina di accesso. Cleanway si è messo in pausa da solo e si riattiverà automaticamente.",
@@ -1882,6 +1883,7 @@
         "setup_btn": "Configura",
         "on_pill": "Attivo",
         "paused_pill": "In pausa",
+        "stopped_pill": "Fermo",
         "attention_pill": "Attenzione",
         "unverified_pill": "Non confermato",
         "rollout_pill": "In arrivo",
@@ -1899,7 +1901,7 @@
       },
       "disclosure": {
         "title": "Come funziona lo scudo",
-        "body": "Cleanway crea una VPN locale sul telefono. È l'unico modo in cui Android permette a un'app di filtrare le richieste dei siti per tutte le altre.\n\n• L'elenco dei siti truffa noti resta sul telefono. I nomi si confrontano qui, non vengono inviati a noi.\n• Le richieste che non blocchiamo vanno al server DNS della tua rete, quello dell'operatore o del router, come senza Cleanway. Se non risponde, vanno a un resolver pubblico (Cloudflare o Quad9).\n• Nessun altro traffico viene letto, registrato o reindirizzato. Non è una VPN per la privacy e non nasconde la navigazione.\n\nOra Android ti chiederà il permesso.",
+        "body": "Cleanway crea una VPN locale sul telefono. È l'unico modo in cui Android permette a un'app di filtrare le richieste dei siti per tutte le altre.\n\n• L'elenco dei siti truffa noti resta sul telefono. I nomi si confrontano qui, non vengono inviati a noi.\n• Le richieste che non blocchiamo vanno al server DNS della tua rete, quello dell'operatore o del router, come senza Cleanway. Se non risponde, vanno a un resolver pubblico (Cloudflare o Quad9).\n• Nessun altro traffico viene letto, registrato o reindirizzato. Non è una VPN per la privacy e non nasconde la navigazione.\n\nSe Android chiede di consentire la connessione, tocca «Ok».",
         "continue": "Continua",
         "cancel": "Non ora"
       },
@@ -2308,8 +2310,6 @@
       "allowed_desc": "Siti che hai contrassegnato come sicuri. Lo scudo non li blocca.",
       "allowed_remove": "Rimuovi",
       "allowed_empty": "Nessun sito consentito",
-      "allow_confirm_title": "Consenti questo sito",
-      "allow_confirm_body": "{{domain}} non verrà bloccato finché non lo rimuovi qui. Fallo solo se conosci il sito.",
       "language": "Lingua",
       "language_note": "Scegli la lingua dell'app.",
       "language_reload_title": "Riavvio necessario",

@@ -5,6 +5,12 @@ import { colors, type as typo, space, radius } from "../../utils/theme";
 
 export type ShieldState =
   | "setup"
+  /**
+   * The person turned it on and something else stopped it. Nothing needs
+   * setting up again, and the screen's own «turn back on» button is the way
+   * back — so no second, differently labelled button on the card.
+   */
+  | "stopped"
   | "on"
   | "paused"
   | "conflict"
@@ -31,7 +37,7 @@ interface ShieldCardProps {
   onPause?: () => void;
 }
 
-const AMBER_STATES: ReadonlySet<ShieldState> = new Set(["conflict", "network-blocked"]);
+const AMBER_STATES: ReadonlySet<ShieldState> = new Set(["conflict", "network-blocked", "stopped"]);
 
 /**
  * One shield, one honest state. The status control on the right is the only
@@ -99,6 +105,14 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
       >
         <Text style={s.setupLabel}>{t("mobile.shield.status.setup_btn")}</Text>
       </TouchableOpacity>
+    );
+  }
+  if (state === "stopped") {
+    return (
+      <View style={[s.pill, { backgroundColor: colors.amberWash, borderColor: colors.amberStroke }]}>
+        <Ionicons name="alert-circle" size={16} color={colors.amber} />
+        <Text style={[s.pillLabel, { color: colors.amber }]}>{t("mobile.shield.status.stopped_pill")}</Text>
+      </View>
     );
   }
   if (state === "on") {

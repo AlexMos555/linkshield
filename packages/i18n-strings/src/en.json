@@ -1788,9 +1788,9 @@
         "hint": "Tap a number to see the list."
       },
       "privacy": "The “All apps” shield matches website names on your phone. When you check a link yourself, or tap one with “Link checking” on, our server gets the website name and a random install number that changes every day.",
-      "interrupted": "Your phone stopped protection — most often it closes apps to save battery. Your setup is still here: tap the button below, then \"{{button}}\".",
+      "interrupted": "Your phone stopped protection — for example after a restart, or to save battery. Your setup is still here: tap the button below, then \"{{button}}\".",
       "interrupted_revoked": "Android stopped protection: the VPN permission was taken back in the phone's settings, or another VPN app took its place. Tap the button below, then \"{{button}}\". If Android asks you to allow the connection, tap \"OK\". The other VPN app will switch off: Android runs only one at a time.",
-      "interrupted_private_dns": "Protection stopped because of the \"Private DNS\" setting. It no longer gets in the way: tap the button below, then \"{{button}}\".",
+      "interrupted_private_dns": "Protection stopped because of the \"Private DNS\" setting. That setting no longer gets in the way: tap the button below, then \"{{button}}\".",
       "cta_turn_back_on": "Turn protection back on"
     },
     "shield": {
@@ -1800,6 +1800,7 @@
         "honesty": "Can't catch brand-new scam sites, or apps that bring their own private DNS",
         "state_on": "On. Working right now.",
         "state_setup": "One-time setup, about a minute.",
+        "state_stopped": "Stopped. To turn it back on, tap \"{{button}}\" above.",
         "state_paused": "Paused. Tap to turn back on.",
         "state_unverified": "Running, but we could not confirm it is filtering right now.",
         "state_blocked": "This Wi-Fi needs a sign-in page. Cleanway paused itself and will come back on automatically.",
@@ -1824,6 +1825,7 @@
         "setup_btn": "Set up",
         "on_pill": "On",
         "paused_pill": "Paused",
+        "stopped_pill": "Stopped",
         "attention_pill": "Attention",
         "unverified_pill": "Not confirmed",
         "rollout_pill": "Rolling out",
@@ -1841,7 +1843,7 @@
       },
       "disclosure": {
         "title": "How the shield works",
-        "body": "Cleanway sets up a local VPN on your phone. That is how Android lets an app filter website lookups for every other app.\n\n• The list of known scam sites is stored on your phone. Website names are matched here, not sent to us.\n• Lookups we don't block go to your network's own DNS server — your operator's or your router's, as they do without Cleanway. If it doesn't answer, they go to a public resolver (Cloudflare or Quad9).\n• No other traffic is read, recorded or redirected. It is not a privacy VPN and does not hide your browsing.\n\nAndroid will now ask you to allow the connection.",
+        "body": "Cleanway sets up a local VPN on your phone. That is how Android lets an app filter website lookups for every other app.\n\n• The list of known scam sites is stored on your phone. Website names are matched here, not sent to us.\n• Lookups we don't block go to your network's own DNS server — your operator's or your router's, as they do without Cleanway. If it doesn't answer, they go to a public resolver (Cloudflare or Quad9).\n• No other traffic is read, recorded or redirected. It is not a privacy VPN and does not hide your browsing.\n\nIf Android asks you to allow the connection, tap \"OK\".",
         "continue": "Continue",
         "cancel": "Not now"
       },
@@ -2250,8 +2252,6 @@
       "allowed_desc": "Sites you marked as safe. The shield does not block these.",
       "allowed_remove": "Remove",
       "allowed_empty": "No sites allowed",
-      "allow_confirm_title": "Allow this site",
-      "allow_confirm_body": "{{domain}} will not be blocked until you remove it here. Only do this if you know the site.",
       "language": "Language",
       "language_note": "Choose the language for the app.",
       "language_reload_title": "Restart needed",

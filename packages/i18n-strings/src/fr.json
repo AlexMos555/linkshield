@@ -1846,7 +1846,7 @@
         "hint": "Touchez un nombre pour voir la liste."
       },
       "privacy": "Le bouclier « Toutes les applis » compare les noms de sites sur votre téléphone. Quand vous vérifiez un lien vous-même, ou que vous le touchez avec la « Vérification des liens » activée, notre serveur reçoit le nom du site et un numéro d'installation aléatoire qui change chaque jour.",
-      "interrupted": "Le téléphone a arrêté la protection — le plus souvent pour économiser la batterie. Votre configuration est toujours là : touchez le bouton ci-dessous, puis « {{button}} ».",
+      "interrupted": "Le téléphone a arrêté la protection — par exemple après un redémarrage, ou pour économiser la batterie. Votre configuration est toujours là : touchez le bouton ci-dessous, puis « {{button}} ».",
       "interrupted_revoked": "Android a arrêté la protection : l'autorisation VPN a été retirée dans les réglages du téléphone, ou une autre appli VPN a pris sa place. Touchez le bouton ci-dessous, puis « {{button}} ». Si Android vous demande d'autoriser la connexion, touchez « OK ». L'autre appli VPN sera coupée : Android n'en fait fonctionner qu'une à la fois.",
       "interrupted_private_dns": "La protection s'est arrêtée à cause du réglage « DNS privé ». Il ne gêne plus : touchez le bouton ci-dessous, puis « {{button}} ».",
       "cta_turn_back_on": "Réactiver la protection"
@@ -1858,6 +1858,7 @@
         "honesty": "Ne peut pas attraper les sites d'arnaque tout neufs, ni les applis qui utilisent leur propre DNS privé",
         "state_on": "Activé. Il fonctionne en ce moment.",
         "state_setup": "Réglage à faire une seule fois, environ une minute.",
+        "state_stopped": "Arrêté. Pour le réactiver, touchez « {{button}} » ci-dessus.",
         "state_paused": "En pause. Touchez pour le réactiver.",
         "state_unverified": "En marche, mais nous n'avons pas pu confirmer qu'il filtre en ce moment.",
         "state_blocked": "Ce Wi-Fi demande une page de connexion. Cleanway s'est mis en pause et se réactivera automatiquement.",
@@ -1882,6 +1883,7 @@
         "setup_btn": "Configurer",
         "on_pill": "Activé",
         "paused_pill": "En pause",
+        "stopped_pill": "Arrêté",
         "attention_pill": "Attention",
         "unverified_pill": "Non confirmé",
         "rollout_pill": "En déploiement",
@@ -1899,7 +1901,7 @@
       },
       "disclosure": {
         "title": "Comment fonctionne le bouclier",
-        "body": "Cleanway installe un VPN local sur votre téléphone. C'est la seule façon dont Android permet à une appli de filtrer les requêtes de sites pour toutes les autres.\n\n• La liste des sites d'arnaque connus reste sur votre téléphone. Les noms sont comparés ici, pas envoyés chez nous.\n• Les requêtes que nous ne bloquons pas vont au serveur DNS de votre propre réseau — celui de l'opérateur ou de la box, comme sans Cleanway. S'il ne répond pas, elles vont à un résolveur public (Cloudflare ou Quad9).\n• Aucun autre trafic n'est lu, enregistré ou redirigé. Ce n'est pas un VPN de confidentialité et il ne masque pas votre navigation.\n\nAndroid va maintenant vous demander l'autorisation.",
+        "body": "Cleanway installe un VPN local sur votre téléphone. C'est la seule façon dont Android permet à une appli de filtrer les requêtes de sites pour toutes les autres.\n\n• La liste des sites d'arnaque connus reste sur votre téléphone. Les noms sont comparés ici, pas envoyés chez nous.\n• Les requêtes que nous ne bloquons pas vont au serveur DNS de votre propre réseau — celui de l'opérateur ou de la box, comme sans Cleanway. S'il ne répond pas, elles vont à un résolveur public (Cloudflare ou Quad9).\n• Aucun autre trafic n'est lu, enregistré ou redirigé. Ce n'est pas un VPN de confidentialité et il ne masque pas votre navigation.\n\nSi Android vous demande d'autoriser la connexion, touchez « OK ».",
         "continue": "Continuer",
         "cancel": "Pas maintenant"
       },
@@ -2308,8 +2310,6 @@
       "allowed_desc": "Sites que vous avez marqués comme sûrs. Le bouclier ne les bloque pas.",
       "allowed_remove": "Retirer",
       "allowed_empty": "Aucun site autorisé",
-      "allow_confirm_title": "Autoriser ce site",
-      "allow_confirm_body": "{{domain}} ne sera plus bloqué tant que vous ne le retirez pas ici. À faire seulement si vous connaissez le site.",
       "language": "Langue",
       "language_note": "Choisissez la langue de l'application.",
       "language_reload_title": "Redémarrage nécessaire",

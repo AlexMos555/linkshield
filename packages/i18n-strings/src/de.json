@@ -1846,7 +1846,7 @@
         "hint": "Tippe auf eine Zahl, um die Liste zu sehen."
       },
       "privacy": "Der Schutz „Jede App“ gleicht Seitennamen direkt auf deinem Handy ab. Wenn du selbst einen Link prüfst oder ihn bei aktiver „Link-Prüfung“ antippst, bekommt unser Server den Namen der Seite und eine zufällige Installationsnummer, die sich jeden Tag ändert.",
-      "interrupted": "Das Handy hat den Schutz beendet – meist, um Akku zu sparen. Deine Einrichtung ist noch da: Tippe unten auf die Schaltfläche und dann auf „{{button}}“.",
+      "interrupted": "Das Handy hat den Schutz beendet – zum Beispiel nach einem Neustart oder um Akku zu sparen. Deine Einrichtung ist noch da: Tippe unten auf die Schaltfläche und dann auf „{{button}}“.",
       "interrupted_revoked": "Android hat den Schutz beendet: Die VPN-Berechtigung wurde in den Handy-Einstellungen entzogen, oder eine andere VPN-App hat übernommen. Tippe unten auf die Schaltfläche und dann auf „{{button}}“. Fragt Android, ob die Verbindung erlaubt werden soll, tippe auf „OK“. Die andere VPN-App wird dabei ausgeschaltet: Android nutzt immer nur eine.",
       "interrupted_private_dns": "Der Schutz wurde wegen der Einstellung „Privates DNS“ beendet. Sie stört jetzt nicht mehr: Tippe unten auf die Schaltfläche und dann auf „{{button}}“.",
       "cta_turn_back_on": "Schutz wieder einschalten"
@@ -1858,6 +1858,7 @@
         "honesty": "Erkennt brandneue Betrugsseiten nicht und wirkt nicht in Apps, die ihr eigenes privates DNS mitbringen",
         "state_on": "An. Läuft gerade.",
         "state_setup": "Einmalige Einrichtung, dauert etwa eine Minute.",
+        "state_stopped": "Beendet. Um ihn wieder einzuschalten, tippe oben auf „{{button}}“.",
         "state_paused": "Pausiert. Tippe, um wieder einzuschalten.",
         "state_unverified": "Läuft, aber wir konnten gerade nicht bestätigen, dass wirklich gefiltert wird.",
         "state_blocked": "Dieses WLAN braucht eine Anmeldeseite. Cleanway hat sich selbst pausiert und schaltet sich automatisch wieder ein.",
@@ -1882,6 +1883,7 @@
         "setup_btn": "Einrichten",
         "on_pill": "An",
         "paused_pill": "Pausiert",
+        "stopped_pill": "Beendet",
         "attention_pill": "Achtung",
         "unverified_pill": "Nicht bestätigt",
         "rollout_pill": "In Arbeit",
@@ -1899,7 +1901,7 @@
       },
       "disclosure": {
         "title": "So funktioniert der Schutz",
-        "body": "Cleanway richtet ein lokales VPN auf deinem Handy ein. Nur so erlaubt Android einer App, Website-Abfragen für alle anderen Apps zu filtern.\n\n• Die Liste bekannter Betrugsseiten liegt auf deinem Handy. Namen werden hier abgeglichen, nicht an uns geschickt.\n• Abfragen, die wir nicht blockieren, gehen an den DNS-Server deines eigenen Netzes – den des Anbieters oder Routers, wie ohne Cleanway. Antwortet er nicht, gehen sie an einen öffentlichen Resolver (Cloudflare oder Quad9).\n• Kein anderer Datenverkehr wird gelesen, gespeichert oder umgeleitet. Es ist kein Privatsphäre-VPN und verbirgt dein Surfen nicht.\n\nAndroid fragt dich jetzt nach der Erlaubnis.",
+        "body": "Cleanway richtet ein lokales VPN auf deinem Handy ein. Nur so erlaubt Android einer App, Website-Abfragen für alle anderen Apps zu filtern.\n\n• Die Liste bekannter Betrugsseiten liegt auf deinem Handy. Namen werden hier abgeglichen, nicht an uns geschickt.\n• Abfragen, die wir nicht blockieren, gehen an den DNS-Server deines eigenen Netzes – den des Anbieters oder Routers, wie ohne Cleanway. Antwortet er nicht, gehen sie an einen öffentlichen Resolver (Cloudflare oder Quad9).\n• Kein anderer Datenverkehr wird gelesen, gespeichert oder umgeleitet. Es ist kein Privatsphäre-VPN und verbirgt dein Surfen nicht.\n\nFragt Android, ob die Verbindung erlaubt werden soll, tippe auf „OK“.",
         "continue": "Weiter",
         "cancel": "Jetzt nicht"
       },
@@ -2308,8 +2310,6 @@
       "allowed_desc": "Seiten, die du als sicher markiert hast. Der Schutz blockiert sie nicht.",
       "allowed_remove": "Entfernen",
       "allowed_empty": "Keine zugelassenen Seiten",
-      "allow_confirm_title": "Diese Seite zulassen",
-      "allow_confirm_body": "{{domain}} wird nicht mehr blockiert, bis du sie hier entfernst. Nur wenn du die Seite kennst.",
       "language": "Sprache",
       "language_note": "Wähle die Sprache der App.",
       "language_reload_title": "Neustart nötig",

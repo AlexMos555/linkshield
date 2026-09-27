@@ -1846,9 +1846,9 @@
         "hint": "Toque em um número para ver a lista."
       },
       "privacy": "A proteção “Todos os aplicativos” compara os nomes dos sites no seu celular. Quando você verifica um link ou toca nele com a “Verificação de links” ativada, o nosso servidor recebe o nome do site e um número aleatório da instalação que muda todo dia.",
-      "interrupted": "O celular parou a proteção — na maioria das vezes, para economizar bateria. Sua configuração continua aqui: toque no botão abaixo e depois em “{{button}}”.",
+      "interrupted": "O celular parou a proteção — por exemplo, ao reiniciar ou para economizar bateria. Sua configuração continua aqui: toque no botão abaixo e depois em “{{button}}”.",
       "interrupted_revoked": "O Android parou a proteção: a permissão de VPN foi retirada nas configurações do celular ou outro app de VPN tomou o lugar. Toque no botão abaixo e depois em “{{button}}”. Se o Android pedir para permitir a conexão, toque em “OK”. O outro app de VPN será desligado: o Android usa só um por vez.",
-      "interrupted_private_dns": "A proteção parou por causa da configuração “DNS privado”. Ela não atrapalha mais: toque no botão abaixo e depois em “{{button}}”.",
+      "interrupted_private_dns": "A proteção parou por causa da configuração “DNS privado”. Agora essa configuração não atrapalha mais: toque no botão abaixo e depois em “{{button}}”.",
       "cta_turn_back_on": "Ligar a proteção de novo"
     },
     "shield": {
@@ -1858,6 +1858,7 @@
         "honesty": "Não pega sites de golpe recém-criados, nem aplicativos que usam um DNS privado próprio",
         "state_on": "Ativado. Funcionando agora.",
         "state_setup": "Configuração única, leva cerca de um minuto.",
+        "state_stopped": "Parado. Para ligar de novo, toque em “{{button}}” acima.",
         "state_paused": "Pausado. Toque para reativar.",
         "state_unverified": "Em funcionamento, mas não conseguimos confirmar que está filtrando neste momento.",
         "state_blocked": "Esta rede Wi-Fi pede uma página de login. O Cleanway se pausou sozinho e volta a ligar automaticamente.",
@@ -1882,6 +1883,7 @@
         "setup_btn": "Configurar",
         "on_pill": "Ativo",
         "paused_pill": "Pausado",
+        "stopped_pill": "Parado",
         "attention_pill": "Atenção",
         "unverified_pill": "Não confirmado",
         "rollout_pill": "A caminho",
@@ -1899,7 +1901,7 @@
       },
       "disclosure": {
         "title": "Como o escudo funciona",
-        "body": "O Cleanway cria uma VPN local no seu celular. É assim que o Android permite que um app filtre as consultas de sites para todos os outros.\n\n• A lista de sites de golpe conhecidos fica no seu celular. Os nomes são comparados aqui, não enviados para nós.\n• As consultas que não bloqueamos vão para o servidor DNS da sua própria rede — da operadora ou do roteador, como sem o Cleanway. Se ele não responder, vão para um resolvedor público (Cloudflare ou Quad9).\n• Nenhum outro tráfego é lido, gravado ou redirecionado. Não é uma VPN de privacidade e não esconde sua navegação.\n\nAgora o Android vai pedir sua permissão.",
+        "body": "O Cleanway cria uma VPN local no seu celular. É assim que o Android permite que um app filtre as consultas de sites para todos os outros.\n\n• A lista de sites de golpe conhecidos fica no seu celular. Os nomes são comparados aqui, não enviados para nós.\n• As consultas que não bloqueamos vão para o servidor DNS da sua própria rede — da operadora ou do roteador, como sem o Cleanway. Se ele não responder, vão para um resolvedor público (Cloudflare ou Quad9).\n• Nenhum outro tráfego é lido, gravado ou redirecionado. Não é uma VPN de privacidade e não esconde sua navegação.\n\nSe o Android pedir para permitir a conexão, toque em “OK”.",
         "continue": "Continuar",
         "cancel": "Agora não"
       },
@@ -2308,8 +2310,6 @@
       "allowed_desc": "Sites que você marcou como seguros. O escudo não bloqueia esses.",
       "allowed_remove": "Remover",
       "allowed_empty": "Nenhum site permitido",
-      "allow_confirm_title": "Permitir este site",
-      "allow_confirm_body": "{{domain}} não será bloqueado até você removê-lo aqui. Faça isso só se conhecer o site.",
       "language": "Idioma",
       "language_note": "Escolha o idioma do app.",
       "language_reload_title": "Reinício necessário",

@@ -1846,8 +1846,8 @@
         "hint": "Ketuk angka untuk melihat daftarnya."
       },
       "privacy": "Perisai “Semua aplikasi” mencocokkan nama situs langsung di HP kamu. Saat kamu mengecek tautan sendiri, atau mengetuknya ketika “Pemeriksaan tautan” aktif, server kami menerima nama situs dan nomor acak instalasi yang berganti setiap hari.",
-      "interrupted": "Ponsel menghentikan perlindungan — biasanya untuk menghemat baterai. Pengaturan Anda masih ada: ketuk tombol di bawah, lalu \"{{button}}\".",
-      "interrupted_revoked": "Android menghentikan perlindungan: izin VPN dicabut di setelan ponsel, atau aplikasi VPN lain mengambil alih. Ketuk tombol di bawah, lalu \"{{button}}\". Jika Android meminta izin untuk koneksi, ketuk \"OK\". Aplikasi VPN lain akan mati: Android hanya menjalankan satu VPN pada satu waktu.",
+      "interrupted": "Ponsel menghentikan perlindungan — misalnya setelah dinyalakan ulang, atau untuk menghemat baterai. Pengaturan Anda masih ada: ketuk tombol di bawah, lalu \"{{button}}\".",
+      "interrupted_revoked": "Android menghentikan perlindungan: izin VPN dicabut di setelan ponsel, atau aplikasi VPN lain mengambil alih. Ketuk tombol di bawah, lalu \"{{button}}\". Jika Android meminta izin untuk koneksi, ketuk \"Oke\". Aplikasi VPN lain akan mati: Android hanya menjalankan satu VPN pada satu waktu.",
       "interrupted_private_dns": "Perlindungan berhenti karena setelan \"DNS Pribadi\". Sekarang setelan itu tidak mengganggu lagi: ketuk tombol di bawah, lalu \"{{button}}\".",
       "cta_turn_back_on": "Nyalakan perlindungan lagi"
     },
@@ -1858,6 +1858,7 @@
         "honesty": "Tidak bisa menangkap situs penipuan yang benar-benar baru, atau aplikasi yang memakai DNS privat sendiri",
         "state_on": "Aktif. Sedang bekerja sekarang.",
         "state_setup": "Penyiapan sekali saja, sekitar satu menit.",
+        "state_stopped": "Berhenti. Untuk menyalakannya lagi, ketuk \"{{button}}\" di atas.",
         "state_paused": "Dijeda. Ketuk untuk menyalakan lagi.",
         "state_unverified": "Berjalan, tapi kami belum bisa memastikan penyaringannya sedang bekerja saat ini.",
         "state_blocked": "Wi-Fi ini butuh halaman login. Cleanway menjeda dirinya sendiri dan akan menyala lagi secara otomatis.",
@@ -1882,6 +1883,7 @@
         "setup_btn": "Siapkan",
         "on_pill": "Aktif",
         "paused_pill": "Dijeda",
+        "stopped_pill": "Berhenti",
         "attention_pill": "Perhatian",
         "unverified_pill": "Belum pasti",
         "rollout_pill": "Segera hadir",
@@ -1899,7 +1901,7 @@
       },
       "disclosure": {
         "title": "Cara kerja perisai",
-        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju server DNS jaringanmu sendiri — milik operator atau router, sama seperti tanpa Cleanway. Kalau server itu tidak menjawab, permintaan menuju resolver publik (Cloudflare atau Quad9).\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nAndroid sekarang akan meminta izin.",
+        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju server DNS jaringanmu sendiri — milik operator atau router, sama seperti tanpa Cleanway. Kalau server itu tidak menjawab, permintaan menuju resolver publik (Cloudflare atau Quad9).\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nJika Android meminta izin untuk koneksi, ketuk \"Oke\".",
         "continue": "Lanjutkan",
         "cancel": "Nanti saja"
       },
@@ -2308,8 +2310,6 @@
       "allowed_desc": "Situs yang kamu tandai aman. Perisai tidak memblokirnya.",
       "allowed_remove": "Hapus",
       "allowed_empty": "Belum ada situs yang diizinkan",
-      "allow_confirm_title": "Izinkan situs ini",
-      "allow_confirm_body": "{{domain}} tidak akan diblokir sampai kamu menghapusnya di sini. Lakukan hanya jika kamu mengenal situsnya.",
       "language": "Bahasa",
       "language_note": "Pilih bahasa aplikasi.",
       "language_reload_title": "Perlu mulai ulang",

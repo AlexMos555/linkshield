@@ -33,8 +33,8 @@ interface ShieldEventSheetProps {
  */
 export function ShieldEventSheet({ item, onClose, onChanged, onMore }: ShieldEventSheetProps) {
   const { t, i18n } = useTranslation();
-  // Read when the sheet opens: the allow list can change in Settings or from
-  // a notification between two openings.
+  // Read when the sheet opens: a site can be removed from the allow list in
+  // Settings between two openings.
   const allowedNow = useMemo(
     () => (item?.kind === "allowed" ? allowedSites().includes(item.domain) : false),
     [item],

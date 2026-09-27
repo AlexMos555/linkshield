@@ -126,6 +126,8 @@ export default function HomeScreen() {
     : verifiedCount > 0 ? "partial"
     : "none";
   const needsSetup = network.available && network.state === "setup";
+  // Was on, and something else stopped it: not a first setup (ShieldState "stopped").
+  const stopped = needsSetup && network.interrupted;
   // Paused or blocked by Private DNS: whatever else is on, the hero is not green.
   const heroHold: HeroHold | null =
     network.state === "paused" ? { kind: "paused", until: network.pausedUntil }
@@ -194,7 +196,7 @@ export default function HomeScreen() {
         // competing VPN, so nothing may claim one. Unproven is shown as
         // unproven, not as a warning.
         attention={false}
-        interrupted={needsSetup && network.interrupted}
+        interrupted={stopped}
         hold={heroHold}
         offline={network.state === "offline"}
       />
@@ -203,7 +205,7 @@ export default function HomeScreen() {
 
       {needsSetup && (
         <>
-          {network.interrupted && (
+          {stopped && (
             // The user had this on and something else turned it off. Say so —
             // "let's set up" would tell them their earlier setup never
             // happened — and say what, and the steps it really takes to come
@@ -237,7 +239,7 @@ export default function HomeScreen() {
             title={t("mobile.shield.network.title")}
             description={t("mobile.shield.network.desc")}
             honesty={t("mobile.shield.network.honesty")}
-            state={network.state}
+            state={stopped ? "stopped" : network.state}
             stateCopy={
               // Strict Private DNS: the one state whose fix is a system
               // setting. Name the provider so the user recognises it.
@@ -256,6 +258,7 @@ export default function HomeScreen() {
                   ? "mobile.shield.network.state_offline"
                   : "mobile.shield.network.state_offline_no_list")
               : network.state === "unverified" ? t("mobile.shield.network.state_unverified")
+              : stopped ? t("mobile.shield.network.state_stopped", { button: t("mobile.home.cta_turn_back_on") })
               : t("mobile.shield.network.state_setup")
             }
             onAction={() => {
