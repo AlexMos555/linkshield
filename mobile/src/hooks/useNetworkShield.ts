@@ -255,8 +255,36 @@ export function useNetworkShield(): NetworkShield {
   }, [vpn, readBlocklist, proveList]);
 
   useEffect(() => {
+    // The connection came or went while the screen is open. 1.0.2 re-checked
+    // only on a foreground and kept «Нет сети» for minutes after the network
+    // was back. Event-driven, no polling — and subscribed only in the
+    // foreground: the service keeps the app's process alive all day, and a
+    // subscription left in place ran the module's network callback and a
+    // hop into JS for every change there, only for it to be dropped. The
+    // foreground re-checks anyway.
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const onNetworkChanged = () => {
+      if (settle) clearTimeout(settle);
+      settle = setTimeout(() => {
+        settle = null;
+        void sync();
+      }, NETWORK_SETTLE_MS);
+    };
+    let netSub: VpnSubscription | undefined;
+    const followNetwork = (on: boolean) => {
+      if (on) {
+        if (!netSub) netSub = vpn?.addNetworkChangedListener?.(onNetworkChanged);
+        return;
+      }
+      netSub?.remove();
+      netSub = undefined;
+      if (settle) clearTimeout(settle);
+      settle = null;
+    };
     void sync();
+    followNetwork(AppState.currentState === "active");
     const appSub = AppState.addEventListener("change", (s) => {
+      followNetwork(s === "active");
       // The OS or another VPN can tear our tunnel down while backgrounded —
       // re-verify on every foreground rather than trusting stale state.
       if (s === "active") void sync();
@@ -280,19 +308,6 @@ export function useNetworkShield(): NetworkShield {
       setPausedUntil(pausedNow ? until : 0);
       if (!pausedNow) void sync();
     });
-    // The connection came or went while the screen is open. 1.0.2 re-checked
-    // only on a foreground and kept «Нет сети» for minutes after the network
-    // was back. Event-driven, no polling; in the background a foreground
-    // re-checks anyway, so nothing runs there.
-    let settle: ReturnType<typeof setTimeout> | null = null;
-    const netSub = vpn?.addNetworkChangedListener?.(() => {
-      if (AppState.currentState !== "active") return;
-      if (settle) clearTimeout(settle);
-      settle = setTimeout(() => {
-        settle = null;
-        void sync();
-      }, NETWORK_SETTLE_MS);
-    });
     // A list lands seconds after the network comes back (the service's retry
     // on reconnect), usually with no re-check left to read it: without this
     // the screen kept «Списка ещё нет» over a phone that had one.
@@ -304,9 +319,8 @@ export function useNetworkShield(): NetworkShield {
       appSub.remove();
       stopSub?.remove();
       pauseSub?.remove();
-      netSub?.remove();
+      followNetwork(false);
       listSub?.remove();
-      if (settle) clearTimeout(settle);
     };
   }, [sync, vpn, readBlocklist, proveList]);
 

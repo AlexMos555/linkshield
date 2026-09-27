@@ -19,7 +19,9 @@ import java.util.concurrent.ConcurrentHashMap
  * it. [onChange] runs on the ConnectivityManager's thread and only when the
  * summary changes ([Level]) — never for the signal-strength updates that
  * arrive every few seconds. Registered only while the app's JS listens (the
- * module's observers); a callback costs nothing between network changes.
+ * module's per-event observers), and the home screen listens only while it
+ * is in front: the VPN service keeps the app's process alive all day, and a
+ * callback left registered woke JS for every change only to be dropped.
  */
 class NetworkPresence(context: Context, private val onChange: (Level) -> Unit) {
 

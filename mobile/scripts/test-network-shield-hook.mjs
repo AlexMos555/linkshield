@@ -16,10 +16,11 @@
  *  2. The home screen checked the connection only on opening and on a
  *     foreground: it kept «Нет сети / Активных щитов: 0» for five minutes and
  *     more after the network was back. It now re-checks on the module's
- *     connection events — once per burst, and not in the background — and
- *     re-reads the list when the service swaps one in.
+ *     connection events — once per burst, and listening only in the
+ *     foreground — and re-reads the list when the service swaps one in.
  *  3. A stopped shield said "usually after a reboot, one tap" whatever had
- *     stopped it. The hook now passes on the cause the service recorded.
+ *     stopped it. The hook now passes on the cause the service recorded, and
+ *     the module passes on only the causes the screen has words for.
  *
  * No test runner in mobile/: the hook is transpiled with the tree's
  * TypeScript and loaded with a small require that hands it its stubs; react /
@@ -303,18 +304,30 @@ const CASES = [
     { probes: 1 },
   ],
   [
-    "in the background a connection event checks nothing (the foreground will)",
+    "in the background the screen does not listen for the connection; back in front it does, and re-checks",
     async () => {
+      // The service keeps the process alive all day: a subscription left in
+      // place kept the module's network callback registered and woke JS for
+      // every change, only for the hook to drop it.
       const home = await openHome();
+      const foreground = world.listeners.network.length;
       const probesBefore = world.probes;
-      world.appState = "background";
-      await act(async () => emit("network", { online: true }));
-      await settle(NETWORK_SETTLE_MS + 100);
+      await act(async () => {
+        world.appState = "background";
+        emit("app", "background");
+      });
+      const background = world.listeners.network.length;
+      await act(async () => {
+        world.appState = "active";
+        emit("app", "active");
+      });
+      await settle();
+      const back = world.listeners.network.length;
       const probes = world.probes - probesBefore;
       await home.close();
-      return { probes };
+      return { foreground, background, back, probes, afterClose: world.listeners.network.length };
     },
-    { probes: 0 },
+    { foreground: 1, background: 0, back: 1, probes: 1, afterClose: 0 },
   ],
   [
     "a stopped shield passes on why it stopped",
@@ -337,6 +350,31 @@ const CASES = [
   ],
 ];
 
+// ── the module's side: what reaches the hook from the native call ───
+
+/**
+ * modules/cleanway-vpn/index.ts itself, over a native module that answers
+ * lastStopReason() with [answer]. The JS bundle and the native build ship
+ * separately, so anything the native side might say must come out as a
+ * cause the screen has words for, or as none.
+ */
+function moduleStopReason(answer) {
+  STUBS["./src/CleanwayVpnModule"] = {
+    lastStopReason: typeof answer === "function" ? answer : () => answer,
+  };
+  return loadTs(join(root, "modules/cleanway-vpn/index.ts")).lastStopReason();
+}
+
+const MODULE_CASES = [
+  ["«revoked» passes", "revoked", "revoked"],
+  ["«private_dns» passes", "private_dns", "private_dns"],
+  ["a cause a newer native build knows reads as none", "battery_saver", null],
+  ["nothing recorded", null, null],
+  ["not a string", 42, null],
+  ["the native call throws", () => { throw new Error("module gone"); }, null],
+  ["an older native build without the call", undefined, null],
+];
+
 let failed = 0;
 for (const [name, run, expected] of CASES) {
   resetWorld();
@@ -348,9 +386,22 @@ for (const [name, run, expected] of CASES) {
     console.log(`  FAIL  ${name}\n        ${String(e.message).split("\n").join("\n        ")}`);
   }
 }
+for (const [name, answer, expected] of MODULE_CASES) {
+  try {
+    const native = answer === undefined ? {} : null;
+    if (native) STUBS["./src/CleanwayVpnModule"] = native;
+    const got = native ? loadTs(join(root, "modules/cleanway-vpn/index.ts")).lastStopReason() : moduleStopReason(answer);
+    deepStrictEqual(got, expected);
+    console.log(`  ok    module: ${name}`);
+  } catch (e) {
+    failed += 1;
+    console.log(`  FAIL  module: ${name}\n        ${String(e.message).split("\n").join("\n        ")}`);
+  }
+}
+const total = CASES.length + MODULE_CASES.length;
 if (failed > 0) {
-  console.error(`\n${failed} of ${CASES.length} cases failed`);
+  console.error(`\n${failed} of ${total} cases failed`);
   process.exitCode = 1;
 } else {
-  console.log(`\nall ${CASES.length} cases pass`);
+  console.log(`\nall ${total} cases pass`);
 }
