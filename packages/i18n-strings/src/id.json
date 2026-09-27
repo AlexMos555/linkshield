@@ -1901,7 +1901,7 @@
       },
       "disclosure": {
         "title": "Cara kerja perisai",
-        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju server DNS jaringanmu sendiri — milik operator atau router, sama seperti tanpa Cleanway. Kalau server itu tidak menjawab, permintaan menuju resolver publik (Cloudflare atau Quad9).\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nJika Android meminta izin untuk koneksi, ketuk \"Oke\".",
+        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju server DNS jaringanmu sendiri — milik operator atau router, sama seperti tanpa Cleanway. Kalau server itu tidak menjawab, permintaan menuju resolver publik (Cloudflare atau Quad9).\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n• Aplikasi yang menolak berjalan saat VPN aktif (MAX, Gosuslugi, bank) melewati perisai. Daftarnya ada di Pengaturan, dan bisa kamu ubah di sana.\n\nJika Android meminta izin untuk koneksi, ketuk \"Oke\".",
         "continue": "Lanjutkan",
         "cancel": "Nanti saja"
       },
@@ -2323,7 +2323,34 @@
       "linkguard_enable": "Siapkan",
       "push_off_desc": "Dimatikan di setelan HP — kamu tidak akan tahu saat ada pemblokiran. Ketuk untuk menyalakan.",
       "push_enable": "Nyalakan",
-      "linkguard_on_desc_no_list": "Tautan dicek begitu terbuka; daftar situs penipuan akan tersedia setelah kamu mengaktifkan perlindungan “Semua aplikasi”."
+      "linkguard_on_desc_no_list": "Tautan dicek begitu terbuka; daftar situs penipuan akan tersedia setelah kamu mengaktifkan perlindungan “Semua aplikasi”.",
+      "bypass": "Aplikasi tanpa filter",
+      "bypass_note": "Aplikasi ini tersambung langsung, melewati perisai — kalau tidak, mereka memintamu mematikan VPN. Situs yang terbuka di dalamnya (misalnya di browser bawaan MAX atau aplikasi bank) tidak diperiksa Cleanway. Tautan yang mereka buka di browser biasamu tetap diperiksa seperti biasa. Tidak berhasil untuk semua: beberapa aplikasi tetap mendeteksi VPN. Daftar aplikasimu tidak keluar dari HP.",
+      "bypass_none": "Tidak ada aplikasi yang melewati perisai",
+      "bypass_by_cleanway": "Ditambahkan oleh Cleanway",
+      "bypass_by_you": "Ditambahkan olehmu",
+      "bypass_remove": "Filter lagi",
+      "bypass_remove_title": "Filter “{{app}}” lagi?",
+      "bypass_remove_body": "Cleanway akan memeriksa lagi situs yang dibuka aplikasi ini. Jika aplikasi ini meminta mematikan VPN lagi, tambahkan lagi di sini.",
+      "bypass_add": "Ada aplikasi yang meminta mematikan VPN?",
+      "bypass_add_desc": "Pilih aplikasinya: aplikasi akan berfungsi, dan perlindungan tetap aktif",
+      "bypass_failed": "Tidak berhasil. Coba lagi."
+    },
+    "bypass": {
+      "title": "Aplikasi tanpa filter",
+      "intro": "Ketuk aplikasi yang bertuliskan “Matikan VPN”. Aplikasi itu akan tersambung langsung, melewati perisai. Aplikasi lain tetap terlindungi.",
+      "loading": "Mencari aplikasi di HP ini…",
+      "failed": "Tidak bisa mendapatkan daftar aplikasi.",
+      "empty": "Tidak ada aplikasi lain.",
+      "suggested": "Sering meminta mematikan VPN",
+      "all": "Semua aplikasi",
+      "browser_tag": "Browser",
+      "confirm_title": "“{{app}}” tanpa filter?",
+      "confirm_body": "Cleanway tidak akan memeriksa situs yang dibuka “{{app}}” di dalam aplikasinya. Aplikasi lain tetap terlindungi. Kamu bisa menyalakan filter lagi di Pengaturan.",
+      "confirm_browser": "“{{app}}” adalah browser. Tanpa filter, Cleanway tidak akan memeriksa situs yang kamu buka di sana. Sebaiknya jangan.",
+      "confirm": "Ya, tanpa filter",
+      "cancel": "Batal",
+      "save_failed": "Tidak bisa menyimpan. Coba lagi."
     },
     "family": {
       "title": "Ruang Keluarga",

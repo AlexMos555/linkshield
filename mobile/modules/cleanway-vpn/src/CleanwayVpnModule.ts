@@ -79,6 +79,18 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   notificationsEnabled?(): boolean;
   /** Open this app's system notification settings. */
   openNotificationSettings?(): boolean;
+  /**
+   * Apps kept out of the shield's tunnel that are on this phone. Raw native
+   * rows — index.ts validates them (BypassApps.ts). Optional: older native
+   * builds lack it.
+   */
+  excludedApps?(): Promise<Record<string, unknown>[]>;
+  /** Apps the person can pick when one says "turn off the VPN" (raw rows, unsorted). */
+  pickableApps?(): Promise<Record<string, unknown>[]>;
+  /** Keep this package out of the tunnel; a running shield re-applies at once. */
+  excludeApp?(pkg: string): Promise<boolean>;
+  /** Put this package back under the filter; false when it could not be saved. */
+  includeApp?(pkg: string): Promise<boolean>;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

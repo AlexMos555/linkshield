@@ -164,3 +164,24 @@ export type MessageAnalysis = {
 export type MessageAnalysisResult =
   | ({ available: true } & MessageAnalysis)
   | { available: false; reason: 'unsupported' | 'failed' };
+
+// ── Apps without the filter (AppExclusions.kt) ────────────────────────────
+
+/**
+ * An app on this phone that runs outside the shield's tunnel, or could.
+ * Label and icon are the app's own, read on the phone; none of it leaves it.
+ */
+export type BypassApp = {
+  /** Android package name. */
+  package: string;
+  /** The name under the app's icon. */
+  label: string;
+  /** PNG data URI of the app's icon, or null when it could not be drawn. */
+  icon: string | null;
+  /** In Cleanway's list of apps known to ask for the VPN to be turned off. */
+  suggested: boolean;
+  /** Kept out by Cleanway's default list, not by the person. */
+  isDefault: boolean;
+  /** Opens ordinary web links — without the filter, browsing in it goes unchecked. */
+  isBrowser: boolean;
+};

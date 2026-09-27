@@ -14,6 +14,7 @@ const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
 import type {
   BlocklistStatus,
+  BypassApp,
   DomainBlockedPayload,
   NetworkChangedPayload,
   PauseChangedPayload,
@@ -33,9 +34,11 @@ import type {
   MessageVerdict,
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
+import { groupPickable, parseBypassApps } from './src/BypassApps';
 
 export type {
   BlocklistStatus,
+  BypassApp,
   DomainBlockedPayload,
   NetworkChangedPayload,
   PauseChangedPayload,
@@ -54,7 +57,7 @@ export type {
   MessageReason,
   MessageVerdict,
 };
-export { MESSAGE_REASONS };
+export { MESSAGE_REASONS, groupPickable };
 
 /**
  * Longest text the native check reads (MessageAnalyzer.MAX_CHARS). Longer
@@ -599,6 +602,49 @@ export async function linkListAvailable(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
   try {
     return (await CleanwayVpn.linkListAvailable?.()) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Apps on this phone that the shield keeps out of its tunnel, so they stop
+ * asking for the VPN to be turned off (AppExclusions.kt). Null where this
+ * build cannot tell (iOS, older native builds, an error) — the screen then
+ * shows nothing rather than an empty list that would read as "none".
+ */
+export async function bypassApps(): Promise<BypassApp[] | null> {
+  if (Platform.OS !== 'android' || typeof CleanwayVpn.excludedApps !== 'function') return null;
+  try {
+    return parseBypassApps(await CleanwayVpn.excludedApps());
+  } catch {
+    return null;
+  }
+}
+
+/** Apps the person can pick when one asks to turn off the VPN; null when unavailable. */
+export async function pickableBypassApps(): Promise<BypassApp[] | null> {
+  if (Platform.OS !== 'android' || typeof CleanwayVpn.pickableApps !== 'function') return null;
+  try {
+    return parseBypassApps(await CleanwayVpn.pickableApps());
+  } catch {
+    return null;
+  }
+}
+
+/** Keep an app out of the tunnel; a running shield applies it at once. False if it was not saved. */
+export async function addBypassApp(pkg: string): Promise<boolean> {
+  try {
+    return (await CleanwayVpn.excludeApp?.(pkg)) === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Put an app back under the filter. False if it was not saved. */
+export async function removeBypassApp(pkg: string): Promise<boolean> {
+  try {
+    return (await CleanwayVpn.includeApp?.(pkg)) === true;
   } catch {
     return false;
   }

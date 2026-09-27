@@ -196,6 +196,7 @@ export default function RootLayout() {
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="upgrade" options={{ title: t("mobile.nav.upgrade") }} />
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
+        <Stack.Screen name="bypass-app" options={{ title: t("mobile.bypass.title") }} />
         {/* Without an entry the header renders the raw route slug "family". */}
         <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />
         {/* Deep-link sink for the OPTIONAL captcha flow. Unreachable unless
