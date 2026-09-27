@@ -124,10 +124,18 @@
       <div class="recent-threats" id="recent-threats"></div>
 
       <!-- Extra tools -->
+      <!-- Hidden until they do something (scripts/test-extension-core.mjs
+           keeps them hidden while that is true):
+           - btn-breach: there is no email leak lookup; it only opened a
+             "not available yet" notice.
+           - btn-trust: it saves trusted_domains, which nothing reads, so
+             "Added … to trusted sites" was a promise the extension did not
+             keep. Wiring it must not let a scammer talk someone into
+             trusting a site that is on a blocklist. -->
       <div class="tool-grid">
-        <button class="tool-btn" id="btn-breach" type="button" data-i18n="action_breach">Check email leak</button>
+        <button class="tool-btn" id="btn-breach" type="button" data-i18n="action_breach" hidden>Check email leak</button>
         <button class="tool-btn" id="btn-score" type="button" data-i18n="action_score">My safety level</button>
-        <button class="tool-btn" id="btn-trust" type="button" data-i18n="action_trust">Always trust this site</button>
+        <button class="tool-btn" id="btn-trust" type="button" data-i18n="action_trust" hidden>Always trust this site</button>
         <button class="tool-btn" id="btn-report" type="button" data-i18n="action_report">Report wrong result</button>
       </div>
     </details>

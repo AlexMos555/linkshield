@@ -1,9 +1,10 @@
 /**
  * Weekly Report — 100% On-Device Generation
  *
- * Generates a weekly security report from local check history.
- * Only aggregate NUMBERS are sent to server (for percentile).
- * Full details stay on device.
+ * Generates a weekly security report from local storage. Nothing is sent
+ * anywhere: this file makes no network request, and there is no
+ * percentile. It reads `recent_threats`, which nothing writes yet, so the
+ * blocked and warning counts are zero until that list is recorded.
  */
 
 /**

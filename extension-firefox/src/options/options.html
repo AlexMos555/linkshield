@@ -342,7 +342,17 @@
     </div>
   </div>
 
-  <div class="section">
+  <!-- HIDDEN SECTIONS: Protection, Privacy, Your lists, Protection from
+       tracking and Invite a friend are stored by options.js and read by
+       NOTHING else. Every check, badge, block page, tracking-tag cleanup
+       and miner block runs whatever these switches say; the lists are
+       never consulted; no statistics are shared; the referral code is never
+       sent. Shown in Russian they read as real protection someone could
+       rely on (or switch off believing it worked). They stay in the page,
+       hidden, so wiring one is a matter of reading its setting and removing
+       its `hidden`; scripts/test-extension-core.mjs fails if a section is
+       shown while nothing reads its settings. -->
+  <div class="section" id="options-protection-section" hidden>
     <h2 data-i18n="options_protection">Protection</h2>
     <div class="row">
       <div>
@@ -367,7 +377,7 @@
     </div>
   </div>
 
-  <div class="section">
+  <div class="section" id="options-privacy-section" hidden>
     <h2 data-i18n="options_privacy">Privacy</h2>
     <div class="row">
       <div>
@@ -394,7 +404,7 @@
     </div>
   </div>
 
-  <div class="section">
+  <div class="section" id="options-lists-section" hidden>
     <h2 data-i18n="options_lists">Your lists</h2>
     <div class="row">
       <div>
@@ -413,7 +423,7 @@
     <button class="btn" id="save-lists" style="margin-top:8px;" data-i18n="options_save_lists">Save lists</button>
   </div>
 
-  <div class="section">
+  <div class="section" id="options-tracking-section" hidden>
     <h2 data-i18n="options_tracking_heading">Protection from tracking</h2>
     <div class="row">
       <div>
@@ -445,7 +455,7 @@
     </div>
   </div>
 
-  <div class="section">
+  <div class="section" id="options-referral-section" hidden>
     <h2 data-i18n="options_referral">Invite a friend</h2>
     <div class="row">
       <div>

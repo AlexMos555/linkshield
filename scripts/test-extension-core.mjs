@@ -585,6 +585,91 @@ await check("every reason group has a block-page evidence icon", () => {
   }
 });
 
+// A group is one badge line and one block-page card, and the card can be the
+// whole visible reason for a block, so its text must hold for every code in
+// it. These codes only look like their old neighbours.
+await check("codes whose claim differs from their neighbours keep their own reason group", () => {
+  const window = {};
+  const ctx = vm.createContext({ window, chrome: { i18n: { getMessage: () => "" } } });
+  vm.runInContext(readFileSync(join(ROOT, SOURCE_TREE, "src/content/reason-labels.js"), "utf8"), ctx);
+  const group = (signal) => window.__cleanwayReasons.group({ signal });
+  // A numeric IPQualityScore estimate is not "reported as phishing".
+  assert.equal(group("ipqs_high_risk"), "high_risk_score");
+  assert.equal(group("ipqs_phishing"), "flagged_phishing");
+  // A renewed certificate on an old site is not "a brand-new site".
+  assert.equal(group("new_certificate"), "new_certificate");
+  assert.equal(group("domain_new"), "very_new_site");
+  // An expired or self-signed certificate is not "no HTTPS".
+  assert.equal(group("invalid_certificate"), "broken_certificate");
+  assert.equal(group("no_https"), "no_https");
+});
+
+// «Служба безопасности (банка)» is how phone scammers open the call. Copy
+// that tells an elderly reader who to trust must not sound like them.
+await check("Russian warning copy avoids the phone scammers' «служба безопасности»", () => {
+  const SCAM_OPENER = /служб\S*\s+безопасност|специалист\S*\s+(по\s+)?безопасност/i;
+  for (const tree of BROWSER_TREES) {
+    const ru = readJson(join(tree, "_locales/ru/messages.json"));
+    const bad = Object.entries(ru)
+      .filter(([k, e]) => /^(reason_|evidence_|block_|webmail_)/.test(k) && SCAM_OPENER.test(e.message))
+      .map(([k]) => k);
+    assert.deepEqual(bad, [], `${tree}/_locales/ru`);
+  }
+});
+
+// A control is shown only if something reads what it saves. The popup's
+// "Always trust this site" confirmed "Added … to trusted sites" for a list
+// nothing reads, and half the settings page stored switches, lists and a
+// referral code for no one. When one is wired, its reader appears in
+// another file and it may be shown again.
+await check("controls whose settings nothing reads stay hidden", () => {
+  const CONTROLS = [
+    { page: "src/popup/popup.html", id: "btn-trust", writer: "src/popup/popup.js", keys: ["trusted_domains"] },
+    { page: "src/options/options.html", id: "options-protection-section", writer: "src/options/options.js",
+      keys: ["autoScan", "showBadges", "blockDangerous"] },
+    { page: "src/options/options.html", id: "options-privacy-section", writer: "src/options/options.js",
+      keys: ["autoAudit", "anonStats"] },
+    { page: "src/options/options.html", id: "options-lists-section", writer: "src/options/options.js",
+      keys: ["custom_blocklist", "custom_whitelist"] },
+    { page: "src/options/options.html", id: "options-tracking-section", writer: "src/options/options.js",
+      keys: ["cleanTracking", "blockMiners"] },
+    { page: "src/options/options.html", id: "options-referral-section", writer: "src/options/options.js",
+      keys: ["referral_code", "redeemed_code"] },
+  ];
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const sources = listJs(join(tree, "src")).map((rel) => [relative(join(ROOT, tree), join(ROOT, rel)), stripComments(readFileSync(join(ROOT, rel), "utf8"))]);
+    const readersOf = (keys, writer) => sources
+      .filter(([rel, code]) => rel !== writer && keys.some((k) => new RegExp(`\\b${k}\\b`).test(code)))
+      .map(([rel]) => rel);
+    for (const c of CONTROLS) {
+      const html = readFileSync(join(ROOT, tree, c.page), "utf8");
+      const tag = html.match(new RegExp(`<[a-z]+\\b[^>]*\\bid="${c.id}"[^>]*>`));
+      assert.ok(tag, `${tree}/${c.page}: #${c.id} not found`);
+      const hidden = /\shidden(?=[\s>=])/.test(tag[0]);
+      if (!hidden) {
+        assert.ok(readersOf(c.keys, c.writer).length > 0,
+          `${tree}/${c.page}: #${c.id} is shown, but nothing reads ${c.keys.join(", ")}`);
+      }
+    }
+    // The email leak button only opened "not available yet".
+    const breach = stripComments(readFileSync(join(ROOT, tree, "src/content/breach-check.js"), "utf8"));
+    const popup = readFileSync(join(ROOT, tree, "src/popup/popup.html"), "utf8");
+    if (!/\bfetch\(|sendMessage\(/.test(breach)) {
+      assert.match(popup, /<button[^>]*\bid="btn-breach"[^>]*\shidden[\s>]/, `${tree}: email leak button shown with no lookup`);
+    }
+    // The Grandparent voice switch is shown (by options.js), so the block
+    // page must obey it: read "off", and speak only under that check.
+    const blockPage = stripComments(readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8"));
+    assert.match(blockPage, /\bdata\.voice_alerts === false\b/, `${tree}: block-page.js does not read the voice switch`);
+    const speaks = [...blockPage.matchAll(/_speakAlert\(bt\(/g)];
+    assert.ok(speaks.length > 0, `${tree}: voice alert call not found in block-page.js`);
+    for (const m of speaks) {
+      assert.match(blockPage.slice(Math.max(0, m.index - 160), m.index), /if \(voiceOn\) \{\s*try \{\s*$/,
+        `${tree}: a voice alert is spoken without checking the voice switch`);
+    }
+  }
+});
+
 // Every reason code the API or an offline scorer can emit has a line in the
 // user's language. An unmapped code falls back to the scorer's English
 // `detail` under a Russian "Опасно" — the bug this suite exists to stop.
@@ -613,18 +698,85 @@ await check("every reason code the API and both offline scorers emit is mapped",
   assert.deepEqual(unmapped, [], "codes with no reason line (add them to content/reason-labels.js)");
 });
 
-// The webmail banner names the analyzer's first finding by its category.
-await check("every email-analyzer finding category has a webmail line", () => {
+// The webmail banner's pure text helpers (content/webmail.js publishes them
+// before its mail-host check, so a non-mail location loads them alone).
+function loadWebmail(tree) {
+  const window = {};
+  const chrome = { i18n: { getMessage: (key) => `<${key}>` } };
+  const ctx = vm.createContext({ window, chrome, location: { hostname: "example.test" } });
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/content/webmail.js"), "utf8"), ctx);
+  return window.__cleanwayWebmail;
+}
+
+// Every finding the email analyzer can produce gets a line in the reader's
+// language: by its code, or (older API) by its category.
+await check("every email-analyzer finding code and category has a webmail line", () => {
   const analyzer = readFileSync(join(ROOT, "api/services/email_analyzer.py"), "utf8");
   const categories = new Set([...analyzer.matchAll(/\bcategory\s*=\s*["']([a-z_]+)["']/g)].map((m) => m[1]));
-  assert.ok(categories.size >= 4, `only ${categories.size} categories found — did the scan break?`);
-  const webmail = readFileSync(join(ROOT, SOURCE_TREE, "src/content/webmail.js"), "utf8");
-  const en = readJson("extension/_locales/en/messages.json");
-  for (const category of categories) {
-    const key = `webmail_finding_${category}`;
-    assert.ok(webmail.includes(`${category}: "${key}"`), `webmail.js does not map ${category}`);
-    assert.ok(en[key], `${key} missing from the catalog`);
+  const codes = new Set([...analyzer.matchAll(/\bcode\s*=\s*["']([a-z_]+)["']/g)].map((m) => m[1]));
+  const authTable = analyzer.match(/^_AUTH_FAIL_CODES\s*=\s*\{([^}]*)\}/m);
+  assert.ok(authTable, "_AUTH_FAIL_CODES not found in email_analyzer.py");
+  for (const m of authTable[1].matchAll(/:\s*["']([a-z_]+)["']/g)) codes.add(m[1]);
+  const groups = analyzer.match(/^BODY_PATTERN_GROUPS\b[\s\S]*?^\)/m);
+  assert.ok(groups, "BODY_PATTERN_GROUPS not found in email_analyzer.py");
+  for (const m of groups[0].matchAll(/\(\s*["']([a-z_]+)["']\s*,\s*[A-Z_]+_PATTERNS\s*\)/g)) codes.add(m[1]);
+  assert.ok(categories.size >= 5, `only ${categories.size} categories found — did the scan break?`);
+  assert.ok(codes.size >= 14, `only ${codes.size} codes found — did the scan break?`);
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const { findingText } = loadWebmail(tree);
+    for (const code of codes) {
+      const line = findingText({ code, category: "no_such_category", message: "EN" });
+      assert.match(line, /^<webmail_finding_[a-z_]+>$/, `${tree}: no line for finding code ${code}`);
+    }
+    for (const category of categories) {
+      const line = findingText({ category, message: "EN" });
+      assert.match(line, /^<webmail_finding_[a-z_]+>$/, `${tree}: no line for finding category ${category}`);
+    }
+    assert.equal(findingText({ code: "constructor", category: "toString", message: "EN" }), "EN",
+      "prototype keys are not codes");
   }
+});
+
+// The three banners the review reproduced against the real analyzer.
+await check("webmail banner: a safe verdict names no scam trick, and the most serious finding wins", () => {
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const { describeResult } = loadWebmail(tree);
+    // A friend's «Позвони мне срочно»: safe, 15, one urgency finding. The
+    // banner said "no scam signs found" over "the text uses scam tricks".
+    const friend = describeResult({
+      level: "safe", score: 15,
+      findings: [{ category: "body_pattern", code: "urgency", severity: 15, message: "Urgency (RU)" }],
+    });
+    assert.deepEqual({ ...friend }, { level: "safe", headline: "<webmail_safe_minor>", detail: "<badge_score>" }, tree);
+    assert.equal(describeResult({ level: "safe", score: 0, findings: [] }).headline, "<webmail_safe>");
+    // A shop newsletter with a Reply-To on another domain: suspicious, 25.
+    // It read "the sender's address is disguised as someone else's".
+    const shop = describeResult({
+      level: "suspicious", score: 25,
+      findings: [{ category: "sender_spoofing", code: "reply_to_mismatch", severity: 25, message: "Reply-To…" }],
+    });
+    assert.equal(shop.detail, "<badge_score> • <webmail_finding_reply_to_mismatch>", tree);
+    // Reply-To + a known dangerous link: the analyzer lists the sender
+    // finding first, and the banner showed it instead of the link.
+    const phish = describeResult({
+      level: "dangerous", score: 75,
+      findings: [
+        { category: "sender_spoofing", code: "reply_to_mismatch", severity: 25, message: "Reply-To…" },
+        { category: "url_reputation", code: "known_dangerous_link", severity: 50, message: "Known-dangerous…" },
+      ],
+    });
+    assert.equal(phish.headline, "<webmail_dangerous>");
+    assert.equal(phish.detail, "<badge_score> • <webmail_finding_url_reputation>", tree);
+    // An API without codes gets the category line, worded for every sign in it.
+    const legacy = describeResult({
+      level: "suspicious", score: 25,
+      findings: [{ category: "sender_spoofing", severity: 25, message: "Reply-To…" }],
+    });
+    assert.equal(legacy.detail, "<badge_score> • <webmail_finding_sender_check>", tree);
+  }
+  // The accusing line is gone from the catalog, not just unused.
+  const ru = readJson("extension/_locales/ru/messages.json");
+  assert.equal(ru.webmail_finding_sender_spoofing, undefined, "the old 'disguised sender' line is back");
 });
 
 // The extension sends hostnames to the API, relatives get encrypted alerts

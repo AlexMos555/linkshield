@@ -535,11 +535,16 @@ async function runTree(tree) {
       await until("settings page translated", async () => (await opts.title()) === msg("options_page_title"), 5000);
       // The empty family-invite dialog used to cover the whole page on open.
       assert.equal(await opts.isVisible("#family-invite-modal"), false, "invite dialog shown without an invite");
+      // Switches, lists and a referral code that nothing reads are hidden,
+      // not offered as protection (scripts/test-extension-core.mjs).
+      for (const id of ["protection", "privacy", "lists", "tracking", "referral"]) {
+        assert.equal(await opts.isVisible(`#options-${id}-section`), false, `settings section "${id}" is shown`);
+      }
       const text = await opts.innerText("body");
-      for (const key of ["options_protection", "options_skill_heading", "options_data", "stats_label_blocked"]) {
+      for (const key of ["options_skill_heading", "options_stats", "options_advanced", "options_data", "stats_label_blocked"]) {
         assert.ok(text.includes(msg(key)), `[${locale}] settings page lacks ${key}`);
       }
-      assert.ok(!text.includes(english.options_auto_scan_desc.message), `English left on the settings page`);
+      assert.ok(!text.includes(english.options_skill_regular_desc.message), `English left on the settings page`);
       await opts.close();
     });
 

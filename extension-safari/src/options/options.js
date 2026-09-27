@@ -143,12 +143,15 @@ document.querySelectorAll('input[name="skill-level"]').forEach((radio) => {
   radio.addEventListener("change", async (e) => {
     const skill = e.target.value;
     applySkillUI(skill);
-    // When switching TO a mode, apply its default font/voice unless explicitly set
-    const existing = await chrome.storage.local.get(["font_scale", "voice_alerts"]);
+    // When switching TO a mode, keep a font size already chosen. Voice is
+    // the new mode's default: the block page reads voice_alerts now, and a
+    // switch through Regular stored "off", which then silenced Grandparent
+    // (whose switch is the only place to turn it back on).
+    const existing = await chrome.storage.local.get(["font_scale"]);
     const next = {
       skill_level: skill,
       font_scale: existing.font_scale ?? SKILL_DEFAULTS[skill].fontScale,
-      voice_alerts: existing.voice_alerts ?? SKILL_DEFAULTS[skill].voiceAlerts,
+      voice_alerts: SKILL_DEFAULTS[skill].voiceAlerts,
     };
     document.getElementById("font-scale").value = String(next.font_scale);
     document.getElementById("font-scale-val").textContent =

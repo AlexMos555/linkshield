@@ -432,10 +432,10 @@
         "text": "De quel type d'arnaque s'agit-il ?"
       },
       "evidence_other_title": {
-        "text": "Un autre signal d'alerte"
+        "text": "Un signal d'alerte"
       },
       "evidence_other_body": {
-        "text": "Nos vérifications ont trouvé autre chose d'inhabituel sur ce site."
+        "text": "Nos vérifications ont trouvé quelque chose d'inhabituel sur ce site."
       }
     },
     "welcome": {
@@ -797,7 +797,7 @@
         "text": "L'adresse est anormalement longue et compliquée"
       },
       "many_redirects": {
-        "text": "Le lien rebondit par plusieurs sites"
+        "text": "Le lien vous redirige vers une autre adresse"
       },
       "risky_ending": {
         "text": "Utilise une terminaison prisée des arnaques"
@@ -824,13 +824,13 @@
         "text": "Pas configuré comme le site d'une vraie entreprise"
       },
       "shifty_setup": {
-        "text": "Le site change sans cesse d'emplacement, une astuce d'arnaque courante"
+        "text": "Configuration de serveurs inhabituelle, qu'utilisent aussi les réseaux d'arnaque"
       },
       "padded_address": {
         "text": "L'adresse est gonflée de morceaux en trop pour cacher le vrai nom"
       },
       "shared_hosting": {
-        "text": "Hébergé sur un service gratuit où n'importe qui peut créer un site"
+        "text": "Hébergé sur un service où n'importe qui peut créer un site"
       },
       "invalid_address": {
         "text": "L'adresse n'est pas écrite correctement"
@@ -858,6 +858,15 @@
       },
       "user_content_platform": {
         "text": "N'importe qui peut créer une page sur ce service — les escrocs aussi"
+      },
+      "high_risk_score": {
+        "text": "Un service d'évaluation de la fraude juge ce site à haut risque"
+      },
+      "new_certificate": {
+        "text": "Le certificat de sécurité du site n'a que quelques jours"
+      },
+      "broken_certificate": {
+        "text": "Le certificat de sécurité du site n'est pas valide"
       }
     },
     "evidence": {
@@ -865,7 +874,7 @@
         "text": "Google Safe Browsing, la liste qu'utilisent Chrome, Firefox et Safari pour prévenir les internautes, signale ce site comme dangereux."
       },
       "flagged_phishing": {
-        "text": "Des services de sécurité ont reçu des signalements : ce site soutire des mots de passe ou des données de carte."
+        "text": "Ce site figure dans des bases anti-hameçonnage — des listes de sites qui soutirent des mots de passe ou des données de carte."
       },
       "on_blocklists": {
         "text": "Des chercheurs en sécurité ont déjà inscrit ce site sur des listes de sites d'arnaque et de spam."
@@ -916,7 +925,7 @@
         "text": "L'adresse est longue et embrouillée : difficile de voir où elle mène vraiment."
       },
       "many_redirects": {
-        "text": "Le lien passe par plusieurs sites avant d'arriver ici, souvent pour cacher sa vraie destination."
+        "text": "Le lien est conçu pour vous renvoyer vers une autre adresse — souvent pour cacher où il mène vraiment."
       },
       "risky_ending": {
         "text": "L'adresse se termine par une zone (comme .xyz ou .top) où les sites d'arnaque sont particulièrement nombreux."
@@ -934,13 +943,13 @@
         "text": "Le site n'a pas de messagerie qui fonctionne. Les vraies entreprises en ont presque toujours une."
       },
       "shifty_setup": {
-        "text": "Le site change sans cesse de serveurs, une ruse qui rend les sites d'arnaque difficiles à fermer."
+        "text": "L'adresse du site peut basculer très vite entre de nombreux serveurs. Les grands services le font aussi, mais les réseaux d'arnaque s'en servent pour que leurs sites soient plus difficiles à fermer."
       },
       "padded_address": {
         "text": "Des morceaux en trop sont empilés devant le vrai nom pour qu'on le repère mal."
       },
       "shared_hosting": {
-        "text": "Sur ce service gratuit, n'importe qui peut créer un site en une minute, escrocs compris."
+        "text": "Sur ce service, n'importe qui peut créer un site en quelques minutes, escrocs compris."
       },
       "on_cleanway_list": {
         "text": "La liste de Cleanway des sites d'arnaque connus contient celui-ci."
@@ -977,6 +986,15 @@
       },
       "on_your_trusted_list": {
         "text": "Vous avez vous-même ajouté ce site à vos sites fiables."
+      },
+      "high_risk_score": {
+        "text": "Un service qui évalue la fraude des sites lui attribue un score de risque élevé. C'est une estimation, pas un signalement confirmé."
+      },
+      "new_certificate": {
+        "text": "Les sites d'arnaque apparaissent souvent avec un certificat tout neuf. Mais les vrais sites renouvellent aussi le leur régulièrement : à lui seul, cela ne dit pas grand-chose."
+      },
+      "broken_certificate": {
+        "text": "Le certificat qui prouve qui gère ce site a expiré, n'a pas été émis par une autorité de confiance ou appartient à une autre adresse. Votre navigateur vous avertira aussi."
       }
     },
     "weekly": {
@@ -1145,17 +1163,50 @@
       "finding_url_reputation": {
         "text": "Un lien de cet e-mail mène à un site dangereux connu"
       },
-      "finding_sender_spoofing": {
-        "text": "L'adresse de l'expéditeur est déguisée pour ressembler à celle de quelqu'un d'autre"
-      },
       "finding_auth_fail": {
         "text": "L'e-mail a échoué aux vérifications qui confirment son véritable expéditeur"
       },
       "finding_body_pattern": {
-        "text": "Le texte utilise des ruses typiques d'arnaque : urgence, menaces ou gains"
+        "text": "Le texte contient des phrases fréquentes dans les e-mails d'arnaque"
       },
       "finding_link_text_mismatch": {
         "text": "Un lien affiche une adresse mais mène à une autre"
+      },
+      "safe_minor": {
+        "text": "Semble sûr : aucun signe sérieux d'arnaque"
+      },
+      "finding_sender_check": {
+        "text": "Vérifiez attentivement l'adresse de l'expéditeur"
+      },
+      "finding_auth_unconfirmed": {
+        "text": "L'expéditeur n'a pas pu être entièrement confirmé"
+      },
+      "finding_brand_from_freemail": {
+        "text": "Signé au nom d'une entreprise connue, mais envoyé depuis une messagerie gratuite"
+      },
+      "finding_brand_domain_mismatch": {
+        "text": "Signé au nom d'une entreprise connue, mais pas envoyé depuis son adresse"
+      },
+      "finding_sender_non_ascii": {
+        "text": "L'adresse de l'expéditeur contient des lettres non latines — vérifiez que c'est la vraie"
+      },
+      "finding_reply_to_mismatch": {
+        "text": "Les réponses à cet e-mail partent vers une autre adresse que celle de l'expéditeur"
+      },
+      "finding_spf_softfail": {
+        "text": "Le serveur de messagerie de l'expéditeur n'a pas pu être entièrement confirmé"
+      },
+      "finding_urgency": {
+        "text": "L'e-mail vous presse d'agir"
+      },
+      "finding_credential_request": {
+        "text": "L'e-mail demande un mot de passe, un code ou des données de carte"
+      },
+      "finding_money_request": {
+        "text": "L'e-mail demande de l'argent ou promet un gain"
+      },
+      "finding_account_threat": {
+        "text": "L'e-mail annonce un compte bloqué ou une connexion suspecte"
       }
     },
     "options": {

@@ -408,11 +408,9 @@ function wireButtons() {
   var trust = $("btn-trust");
   if (trust) trust.addEventListener("click", async function() {
     // Always-trust adds the domain to chrome.storage.local.trusted_domains.
-    // The scanner already short-circuits on this list (see background/
-    // index.js cache lookup) so the next visit returns safe instantly.
-    // We feed back to the user via the button label so they see the
-    // effect — silent success used to look broken (audit
-    // extension-mv3 dead-button).
+    // NOTHING READS THAT LIST YET (the background never consults it), so
+    // the button is hidden in popup.html: "Added … to trusted sites" would
+    // be a promise we do not keep. Unhide it only together with a reader.
     try {
       var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tabs[0] || !tabs[0].url) {

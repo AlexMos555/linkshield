@@ -9,10 +9,11 @@
  * detail only for a code nobody has mapped yet, so a line never renders
  * blank or as a raw key.
  *
- * The API codes and their grouping mirror mobile/src/utils/reason-label.ts,
- * and the texts are the app's own translations: a person does not need to
- * know whether malware intel came from URLhaus or ThreatFox, only that the
- * site is "known to spread malware".
+ * The API codes and most groups mirror mobile/src/utils/reason-label.ts, and
+ * many texts are the app's own translations: a person does not need to know
+ * whether malware intel came from URLhaus or ThreatFox, only that the site
+ * is "known to spread malware". Three codes have their own group here and
+ * not (yet) in the app: ipqs_high_risk, new_certificate, invalid_certificate.
  *
  * The block page (content/block-page.js) groups its evidence cards by the
  * same codes: the card title is the reason line and its body is the matching
@@ -27,11 +28,16 @@
 (function () {
   "use strict";
 
+  // A group is one badge line and one block-page card, so its text must be
+  // true of EVERY code in it: the card can be the whole visible reason for a
+  // block. When a code only resembles its neighbours (a risk score is not a
+  // report; a renewed certificate is not a new site), it gets its own group.
   var REASON_KEYS = Object.freeze({
     // Threat-intelligence blocklists (API)
     safe_browsing: "flagged_dangerous",
     ipqs_phishing: "flagged_phishing",
-    ipqs_high_risk: "flagged_phishing",
+    // A numeric IPQualityScore estimate above 75, not a report of phishing
+    ipqs_high_risk: "high_risk_score",
     phishtank: "flagged_phishing",
     phishstats: "flagged_phishing",
     surbl: "on_blocklists",
@@ -65,8 +71,10 @@
     // Freshness
     domain_new: "very_new_site",
     domain_very_new: "very_new_site",
-    new_certificate: "very_new_site",
     free_ssl_new_domain: "very_new_site",
+    // Certificate issued under 7 days ago: an old site that renewed its
+    // Let's Encrypt certificate gets this too, so it is not "a new site"
+    new_certificate: "new_certificate",
     // Address shape
     suspicious_keyword: "scam_words",
     keyword: "scam_words",
@@ -103,6 +111,7 @@
     hex_encoding: "random_name",
     // Suspicious infrastructure
     no_mx_record: "not_a_real_business",
+    // Both are also how CDNs run; the line says "scam networks ALSO use it"
     low_dns_ttl: "shifty_setup",
     many_a_records: "shifty_setup",
     excessive_subdomains: "padded_address",
@@ -119,8 +128,10 @@
     // Our own list (the API aliases it to multi_blocklist for this client,
     // api/routers/public.py _LEGACY_CODE_ALIASES, but a newer build may not)
     cleanway_blocklist: "on_cleanway_list",
-    // The API's own legacy alias for a bad certificate
-    invalid_certificate: "no_https",
+    // Expired, self-signed or issued for another name. The API sends it as
+    // no_https to clients without X-Cleanway-Install (api/routers/public.py
+    // _LEGACY_CODE_ALIASES); a site with a broken certificate still HAS https.
+    invalid_certificate: "broken_certificate",
     // What a verdict could not see (api/services/verdict_basis.py
     // INFORMATIONAL_REASONS). The public API sends one of these to this
     // client when nothing else explains the verdict.
@@ -140,11 +151,6 @@
   });
 
   /**
-   * @param {{ signal?: string, detail?: string }} reason
-   * @returns {string} the localized line, or the English detail if the code
-   *   is unmapped or the catalog lacks the key
-   */
-  /**
    * @param {{ signal?: string }} reason
    * @returns {string|null} the reason group (a key of extension.reason and
    *   extension.evidence), or null for a code nobody has mapped yet
@@ -157,6 +163,11 @@
     return REASON_KEYS[signal];
   }
 
+  /**
+   * @param {{ signal?: string, detail?: string }} reason
+   * @returns {string} the localized line, or the English detail if the code
+   *   is unmapped or the catalog lacks the key
+   */
   function reasonText(reason) {
     var detail = (reason && reason.detail) || "";
     var group = reasonGroup(reason);

@@ -424,10 +424,10 @@
     "message": "Que tipo de golpe é este?"
   },
   "block_evidence_other_title": {
-    "message": "Outro sinal de alerta"
+    "message": "Um sinal de alerta"
   },
   "block_evidence_other_body": {
-    "message": "Nossas verificações encontraram mais algo incomum neste site."
+    "message": "Nossas verificações encontraram algo incomum neste site."
   },
   "welcome_hero_title": {
     "message": "Você está protegido agora"
@@ -771,7 +771,7 @@
     "message": "O endereço é longo e confuso demais"
   },
   "reason_many_redirects": {
-    "message": "O link salta por vários sites"
+    "message": "O link redireciona você para outro endereço"
   },
   "reason_risky_ending": {
     "message": "Usa uma terminação que golpistas preferem"
@@ -798,13 +798,13 @@
     "message": "Não está configurado como o site de uma empresa real"
   },
   "reason_shifty_setup": {
-    "message": "O site fica mudando de lugar — um truque comum de golpes"
+    "message": "Configuração de servidores incomum, também usada por redes de golpe"
   },
   "reason_padded_address": {
     "message": "O endereço tem partes a mais para esconder o nome verdadeiro"
   },
   "reason_shared_hosting": {
-    "message": "Hospedado em um serviço gratuito onde qualquer pessoa pode criar um site"
+    "message": "Hospedado em um serviço onde qualquer pessoa pode criar um site"
   },
   "reason_invalid_address": {
     "message": "O endereço não está escrito corretamente"
@@ -833,11 +833,20 @@
   "reason_user_content_platform": {
     "message": "Qualquer pessoa pode criar uma página neste serviço — golpistas também"
   },
+  "reason_high_risk_score": {
+    "message": "Um serviço de avaliação de fraudes classifica este site como de alto risco"
+  },
+  "reason_new_certificate": {
+    "message": "O certificado de segurança do site tem só alguns dias"
+  },
+  "reason_broken_certificate": {
+    "message": "O certificado de segurança do site é inválido"
+  },
   "evidence_flagged_dangerous": {
     "message": "O Google Safe Browsing, a lista que Chrome, Firefox e Safari usam para alertar as pessoas, marca este site como perigoso."
   },
   "evidence_flagged_phishing": {
-    "message": "Serviços de segurança já receberam denúncias de que este site engana as pessoas para roubar senhas ou dados de cartão."
+    "message": "Este site está em bases antiphishing — listas de sites que enganam as pessoas para roubar senhas ou dados de cartão."
   },
   "evidence_on_blocklists": {
     "message": "Pesquisadores de segurança já colocaram este site em listas de sites de golpe e spam."
@@ -888,7 +897,7 @@
     "message": "O endereço é longo e confuso, assim fica difícil ver para onde ele realmente leva."
   },
   "evidence_many_redirects": {
-    "message": "O link pula por vários sites antes de chegar aqui — muitas vezes para esconder o destino real."
+    "message": "O link foi montado para levar você a outro endereço — muitas vezes para esconder aonde ele leva de verdade."
   },
   "evidence_risky_ending": {
     "message": "O endereço termina numa zona (como .xyz ou .top) onde sites de golpe são muito comuns."
@@ -906,13 +915,13 @@
     "message": "O site não tem e-mail funcionando. Empresas reais quase sempre têm."
   },
   "evidence_shifty_setup": {
-    "message": "O site vive trocando os servidores em que roda — um truque que dificulta derrubar sites de golpe."
+    "message": "O endereço do site pode alternar muito rápido entre vários servidores. Grandes serviços também fazem isso, mas redes de golpe usam o recurso para dificultar que seus sites sejam derrubados."
   },
   "evidence_padded_address": {
     "message": "Há partes a mais antes do nome real para que ele fique difícil de notar."
   },
   "evidence_shared_hosting": {
-    "message": "Neste serviço gratuito qualquer pessoa cria um site em um minuto, inclusive golpistas."
+    "message": "Neste serviço qualquer pessoa cria um site em minutos, inclusive golpistas."
   },
   "evidence_on_cleanway_list": {
     "message": "A própria lista do Cleanway de sites de golpe conhecidos inclui este."
@@ -949,6 +958,15 @@
   },
   "evidence_on_your_trusted_list": {
     "message": "Você mesmo adicionou este site aos seus sites confiáveis."
+  },
+  "evidence_high_risk_score": {
+    "message": "Um serviço que avalia sites quanto a fraude dá a este uma nota de risco alta. É uma estimativa, não uma denúncia confirmada."
+  },
+  "evidence_new_certificate": {
+    "message": "Sites de golpe costumam aparecer com um certificado novinho. Sites reais também renovam o deles com frequência, então isso sozinho diz pouco."
+  },
+  "evidence_broken_certificate": {
+    "message": "O certificado que comprova quem está por trás deste site expirou, não foi emitido por uma autoridade confiável ou pertence a outro endereço. Seu navegador também vai avisar."
   },
   "weekly_title": {
     "message": "Minha semana"
@@ -1107,17 +1125,50 @@
   "webmail_finding_url_reputation": {
     "message": "Um link deste e-mail leva a um site perigoso conhecido"
   },
-  "webmail_finding_sender_spoofing": {
-    "message": "O endereço do remetente está disfarçado para parecer de outra pessoa"
-  },
   "webmail_finding_auth_fail": {
     "message": "O e-mail não passou nas verificações que confirmam quem realmente o enviou"
   },
   "webmail_finding_body_pattern": {
-    "message": "O texto usa truques típicos de golpe: urgência, ameaças ou prêmios"
+    "message": "O texto tem frases comuns em e-mails de golpe"
   },
   "webmail_finding_link_text_mismatch": {
     "message": "Um link mostra um endereço, mas leva a outro"
+  },
+  "webmail_safe_minor": {
+    "message": "Parece seguro — nenhum sinal grave de golpe"
+  },
+  "webmail_finding_sender_check": {
+    "message": "Confira com atenção o endereço do remetente"
+  },
+  "webmail_finding_auth_unconfirmed": {
+    "message": "Não foi possível confirmar totalmente o remetente"
+  },
+  "webmail_finding_brand_from_freemail": {
+    "message": "Assinado como uma empresa conhecida, mas enviado de um e-mail gratuito"
+  },
+  "webmail_finding_brand_domain_mismatch": {
+    "message": "Assinado como uma empresa conhecida, mas não enviado do endereço dela"
+  },
+  "webmail_finding_sender_non_ascii": {
+    "message": "O endereço do remetente tem letras não latinas — confirme se é o verdadeiro"
+  },
+  "webmail_finding_reply_to_mismatch": {
+    "message": "As respostas a este e-mail vão para um endereço diferente do remetente"
+  },
+  "webmail_finding_spf_softfail": {
+    "message": "Não foi possível confirmar totalmente o servidor de e-mail do remetente"
+  },
+  "webmail_finding_urgency": {
+    "message": "O e-mail pressiona você a agir depressa"
+  },
+  "webmail_finding_credential_request": {
+    "message": "O e-mail pede uma senha, um código ou dados de cartão"
+  },
+  "webmail_finding_money_request": {
+    "message": "O e-mail pede dinheiro ou promete um prêmio"
+  },
+  "webmail_finding_account_threat": {
+    "message": "O e-mail avisa sobre uma conta bloqueada ou um acesso suspeito"
   },
   "options_page_title": {
     "message": "Configurações do Cleanway"

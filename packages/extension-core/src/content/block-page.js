@@ -37,8 +37,8 @@ const BLOCK_EN = {
   block_evidence_heading: "Why we blocked this site",
   // Strategy Top-20 #15 — Cultural scam explainer heading
   block_explainer_heading: "What kind of scam is this?",
-  block_evidence_other_title: "Another warning sign",
-  block_evidence_other_body: "Our checks found something else unusual about this site.",
+  block_evidence_other_title: "A warning sign",
+  block_evidence_other_body: "Our checks found something unusual about this site.",
   confidence_chip: "Confidence: $PCT$%",
 };
 
@@ -74,6 +74,9 @@ const EVIDENCE_ICONS = {
   unusual_connection: "🔌",
   hidden_destination: "↪️",
   very_new_site: "🐣",
+  new_certificate: "📜",
+  broken_certificate: "🔓",
+  high_risk_score: "📊",
   scam_words: "🪤",
   carries_personal_data: "🕵️",
   long_complex_address: "🧶",
@@ -168,20 +171,26 @@ function isRTL() {
 // verdict is delivered. The skill_level read is synchronous from
 // chrome.storage; we cache it so a slow storage round-trip on a
 // busy page doesn't delay the block overlay paint.
+//
+// voice_alerts is the Grandparent card's "Voice warnings" switch on the
+// settings page. It used to be stored and never read, so the alert spoke
+// whatever the switch said. Unset means the persona's default (on).
 let _cachedSkillLevel = null;
+let _cachedVoiceOn = true;
 
 function _readSkillLevel(cb) {
   if (_cachedSkillLevel !== null) {
-    cb(_cachedSkillLevel);
+    cb(_cachedSkillLevel, _cachedVoiceOn);
     return;
   }
   try {
-    chrome.storage.local.get(["skill_level"], function (data) {
+    chrome.storage.local.get(["skill_level", "voice_alerts"], function (data) {
       _cachedSkillLevel = (data && data.skill_level) || "regular";
-      cb(_cachedSkillLevel);
+      _cachedVoiceOn = !(data && data.voice_alerts === false);
+      cb(_cachedSkillLevel, _cachedVoiceOn);
     });
   } catch (_) {
-    cb("regular");
+    cb("regular", true);
   }
 }
 
@@ -327,8 +336,10 @@ function showBlockPage(result) {
   // group so we don't show two "imitates a brand" cards when the scorer
   // flagged typosquatting and combosquatting, or local + remote. Less is
   // more — 4 cards keep the block page readable without scrolling on a
-  // phone-sized viewport. The generic "another warning sign" card for an
-  // unmapped code goes last: it says the least.
+  // phone-sized viewport. The generic "a warning sign" card for an
+  // unmapped code goes last: it says the least. Its text must also stand
+  // on its own: it is the only card when no code is mapped (an API answer
+  // without reason codes, or reason-labels.js failed to load).
   const _seenGroup = new Set();
   const _groups = (reasons || [])
     .filter((r) => r && r.signal)
@@ -636,7 +647,7 @@ function showBlockPage(result) {
   //     overrides land regardless of the platform's default font
   //     size, and
   //   - kick off a voice alert in the user's UI locale.
-  _readSkillLevel(function (lvl) {
+  _readSkillLevel(function (lvl, voiceOn) {
     // Strategy doc Top-20 #9 — skill personas. Granny up-sizes
     // everything for low vision and reads aloud. Kids strips
     // away every escape hatch and shows only a giant STOP.
@@ -755,11 +766,14 @@ function showBlockPage(result) {
       }
 
       // Voice alert, in the browser's language (bt falls back to the
-      // English BLOCK_EN text only outside the extension).
-      try {
-        _speakAlert(bt("block_voice_alert", [domain]));
-      } catch (_) {
-        /* speech failure non-fatal — visual block stays. */
+      // English BLOCK_EN text only outside the extension), unless the
+      // settings page's "Voice warnings" switch is off.
+      if (voiceOn) {
+        try {
+          _speakAlert(bt("block_voice_alert", [domain]));
+        } catch (_) {
+          /* speech failure non-fatal — visual block stays. */
+        }
       }
     }
   });

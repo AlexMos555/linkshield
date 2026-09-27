@@ -432,10 +432,10 @@
         "text": "¿Qué tipo de estafa es esta?"
       },
       "evidence_other_title": {
-        "text": "Otra señal de alerta"
+        "text": "Una señal de alerta"
       },
       "evidence_other_body": {
-        "text": "Nuestras comprobaciones encontraron algo más inusual en este sitio."
+        "text": "Nuestras comprobaciones encontraron algo inusual en este sitio."
       }
     },
     "welcome": {
@@ -797,7 +797,7 @@
         "text": "La dirección es muy larga y enredada"
       },
       "many_redirects": {
-        "text": "El enlace rebota por varios sitios"
+        "text": "El enlace te redirige a otra dirección"
       },
       "risky_ending": {
         "text": "Usa una terminación que prefieren las estafas"
@@ -824,13 +824,13 @@
         "text": "No está configurado como el sitio de una empresa real"
       },
       "shifty_setup": {
-        "text": "El sitio cambia constantemente de ubicación, un truco típico de estafas"
+        "text": "Configuración de servidores inusual que también usan las redes de estafa"
       },
       "padded_address": {
         "text": "La dirección tiene partes de más para ocultar el nombre real"
       },
       "shared_hosting": {
-        "text": "Alojado en un servicio gratuito donde cualquiera puede crear un sitio"
+        "text": "Alojado en un servicio donde cualquiera puede crear un sitio"
       },
       "invalid_address": {
         "text": "La dirección no está bien escrita"
@@ -858,6 +858,15 @@
       },
       "user_content_platform": {
         "text": "Cualquiera puede crear una página en este servicio, también los estafadores"
+      },
+      "high_risk_score": {
+        "text": "Un servicio de detección de fraude califica este sitio como de alto riesgo"
+      },
+      "new_certificate": {
+        "text": "El certificado de seguridad del sitio tiene solo unos días"
+      },
+      "broken_certificate": {
+        "text": "El certificado de seguridad del sitio no es válido"
       }
     },
     "evidence": {
@@ -865,7 +874,7 @@
         "text": "Google Safe Browsing, la lista que usan Chrome, Firefox y Safari para avisar a la gente, marca este sitio como peligroso."
       },
       "flagged_phishing": {
-        "text": "Los servicios de seguridad han recibido avisos de que este sitio roba contraseñas o datos de tarjetas con engaños."
+        "text": "Este sitio figura en bases de datos antiphishing: listas de sitios que engañan a la gente para robar contraseñas o datos de tarjetas."
       },
       "on_blocklists": {
         "text": "Investigadores de seguridad ya incluyeron este sitio en listas de sitios de estafa y spam."
@@ -916,7 +925,7 @@
         "text": "La dirección es larga y enredada, así cuesta ver adónde lleva de verdad."
       },
       "many_redirects": {
-        "text": "El enlace salta por varios sitios antes de llegar aquí, a menudo para ocultar adónde va de verdad."
+        "text": "El enlace está hecho para llevarte a otra dirección, a menudo para ocultar adónde va de verdad."
       },
       "risky_ending": {
         "text": "La dirección termina en una zona (como .xyz o .top) donde abundan los sitios de estafa."
@@ -934,13 +943,13 @@
         "text": "El sitio no tiene correo que funcione. Las empresas reales casi siempre lo tienen."
       },
       "shifty_setup": {
-        "text": "El sitio cambia sin parar de servidores, un truco que dificulta cerrar los sitios de estafa."
+        "text": "La dirección del sitio puede cambiar muy rápido entre muchos servidores. Los grandes servicios también lo hacen, pero las redes de estafa lo usan para que sus sitios sean más difíciles de cerrar."
       },
       "padded_address": {
         "text": "Delante del nombre real hay partes de más para que cueste verlo."
       },
       "shared_hosting": {
-        "text": "En este servicio gratuito cualquiera puede crear un sitio en un minuto, también los estafadores."
+        "text": "En este servicio cualquiera puede crear un sitio en minutos, también los estafadores."
       },
       "on_cleanway_list": {
         "text": "La propia lista de Cleanway de sitios de estafa conocidos incluye este."
@@ -977,6 +986,15 @@
       },
       "on_your_trusted_list": {
         "text": "Tú mismo añadiste este sitio a tus sitios de confianza."
+      },
+      "high_risk_score": {
+        "text": "Un servicio que evalúa el fraude en sitios web le da a este una puntuación de riesgo alta. Es una estimación, no una denuncia confirmada."
+      },
+      "new_certificate": {
+        "text": "Los sitios de estafa suelen aparecer con un certificado recién emitido. Los sitios reales también lo renuevan con regularidad, así que por sí solo significa poco."
+      },
+      "broken_certificate": {
+        "text": "El certificado que demuestra quién está detrás de este sitio ha caducado, no lo emitió una autoridad de confianza o pertenece a otra dirección. Tu navegador también te avisará."
       }
     },
     "weekly": {
@@ -1145,17 +1163,50 @@
       "finding_url_reputation": {
         "text": "Un enlace de este correo lleva a un sitio peligroso conocido"
       },
-      "finding_sender_spoofing": {
-        "text": "La dirección del remitente está disfrazada para parecer de otra persona"
-      },
       "finding_auth_fail": {
         "text": "El correo no superó las comprobaciones que confirman quién lo envió de verdad"
       },
       "finding_body_pattern": {
-        "text": "El texto usa trucos típicos de estafa: urgencia, amenazas o premios"
+        "text": "El texto tiene frases que suelen aparecer en correos de estafa"
       },
       "finding_link_text_mismatch": {
         "text": "Un enlace muestra una dirección pero lleva a otra"
+      },
+      "safe_minor": {
+        "text": "Parece seguro: no hay señales graves de estafa"
+      },
+      "finding_sender_check": {
+        "text": "Revisa con cuidado la dirección del remitente"
+      },
+      "finding_auth_unconfirmed": {
+        "text": "No se pudo confirmar del todo quién es el remitente"
+      },
+      "finding_brand_from_freemail": {
+        "text": "Firmado como una empresa conocida, pero enviado desde un correo gratuito"
+      },
+      "finding_brand_domain_mismatch": {
+        "text": "Firmado como una empresa conocida, pero no enviado desde su dirección"
+      },
+      "finding_sender_non_ascii": {
+        "text": "La dirección del remitente tiene letras no latinas: asegúrate de que sea la verdadera"
+      },
+      "finding_reply_to_mismatch": {
+        "text": "Las respuestas a este correo van a una dirección distinta de la del remitente"
+      },
+      "finding_spf_softfail": {
+        "text": "No se pudo confirmar del todo el servidor de correo del remitente"
+      },
+      "finding_urgency": {
+        "text": "El correo te mete prisa para que actúes"
+      },
+      "finding_credential_request": {
+        "text": "El correo pide una contraseña, un código o datos de tarjeta"
+      },
+      "finding_money_request": {
+        "text": "El correo pide dinero o promete un premio"
+      },
+      "finding_account_threat": {
+        "text": "El correo avisa de una cuenta bloqueada o de un inicio de sesión sospechoso"
       }
     },
     "options": {

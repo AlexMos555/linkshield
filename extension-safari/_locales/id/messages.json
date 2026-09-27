@@ -424,10 +424,10 @@
     "message": "Penipuan jenis apa ini?"
   },
   "block_evidence_other_title": {
-    "message": "Tanda bahaya lainnya"
+    "message": "Tanda bahaya"
   },
   "block_evidence_other_body": {
-    "message": "Pemeriksaan kami menemukan hal tidak biasa lainnya pada situs ini."
+    "message": "Pemeriksaan kami menemukan hal tidak biasa pada situs ini."
   },
   "welcome_hero_title": {
     "message": "Anda sekarang terlindungi"
@@ -771,7 +771,7 @@
     "message": "Alamatnya luar biasa panjang dan berbelit"
   },
   "reason_many_redirects": {
-    "message": "Tautan memantul lewat beberapa situs"
+    "message": "Tautan ini mengalihkan Anda ke alamat lain"
   },
   "reason_risky_ending": {
     "message": "Memakai akhiran yang disukai penipu"
@@ -798,13 +798,13 @@
     "message": "Tidak disiapkan seperti situs perusahaan asli"
   },
   "reason_shifty_setup": {
-    "message": "Situs terus berpindah lokasi — trik penipuan yang umum"
+    "message": "Pengaturan server yang tidak biasa, yang juga dipakai jaringan penipu"
   },
   "reason_padded_address": {
     "message": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
   },
   "reason_shared_hosting": {
-    "message": "Di-hosting di layanan gratis tempat siapa pun bisa membuat situs"
+    "message": "Di-hosting di layanan tempat siapa pun bisa membuat situs"
   },
   "reason_invalid_address": {
     "message": "Alamatnya tidak ditulis dengan benar"
@@ -833,11 +833,20 @@
   "reason_user_content_platform": {
     "message": "Siapa pun bisa membuat halaman di layanan ini — penipu juga"
   },
+  "reason_high_risk_score": {
+    "message": "Layanan penilai penipuan menganggap situs ini berisiko tinggi"
+  },
+  "reason_new_certificate": {
+    "message": "Sertifikat keamanan situs ini baru berumur beberapa hari"
+  },
+  "reason_broken_certificate": {
+    "message": "Sertifikat keamanan situs ini tidak valid"
+  },
   "evidence_flagged_dangerous": {
     "message": "Google Safe Browsing, daftar yang dipakai Chrome, Firefox, dan Safari untuk memperingatkan pengguna, menandai situs ini berbahaya."
   },
   "evidence_flagged_phishing": {
-    "message": "Layanan keamanan sudah menerima laporan bahwa situs ini menipu orang untuk mencuri kata sandi atau data kartu."
+    "message": "Situs ini ada di basis data antiphishing — daftar situs yang menipu orang untuk mencuri kata sandi atau data kartu."
   },
   "evidence_on_blocklists": {
     "message": "Peneliti keamanan sudah memasukkan situs ini ke daftar situs penipuan dan spam."
@@ -888,7 +897,7 @@
     "message": "Alamatnya panjang dan berbelit sehingga sulit melihat ke mana sebenarnya ia mengarah."
   },
   "evidence_many_redirects": {
-    "message": "Tautan ini melompat ke beberapa situs sebelum sampai di sini — sering untuk menyembunyikan tujuan aslinya."
+    "message": "Tautan ini dibuat untuk mengarahkan Anda ke alamat lain — sering kali untuk menyembunyikan ke mana tautan itu sebenarnya menuju."
   },
   "evidence_risky_ending": {
     "message": "Alamatnya berakhiran zona (seperti .xyz atau .top) yang banyak dipakai situs penipuan."
@@ -906,13 +915,13 @@
     "message": "Situs ini tidak punya email yang berfungsi. Perusahaan asli hampir selalu punya."
   },
   "evidence_shifty_setup": {
-    "message": "Situs ini terus berganti server — trik agar situs penipuan sulit ditutup."
+    "message": "Alamat situs ini bisa berpindah sangat cepat di antara banyak server. Layanan besar juga melakukannya, tetapi jaringan penipu memakainya agar situs mereka lebih sulit ditutup."
   },
   "evidence_padded_address": {
     "message": "Ada bagian tambahan di depan nama aslinya supaya sulit terlihat."
   },
   "evidence_shared_hosting": {
-    "message": "Di layanan gratis ini siapa pun bisa membuat situs dalam semenit, termasuk penipu."
+    "message": "Di layanan ini siapa pun bisa membuat situs dalam hitungan menit, termasuk penipu."
   },
   "evidence_on_cleanway_list": {
     "message": "Daftar situs penipuan milik Cleanway sendiri mencantumkan situs ini."
@@ -949,6 +958,15 @@
   },
   "evidence_on_your_trusted_list": {
     "message": "Anda sendiri yang menambahkan situs ini ke situs tepercaya."
+  },
+  "evidence_high_risk_score": {
+    "message": "Layanan yang menilai situs dari sisi penipuan memberi situs ini skor risiko tinggi. Itu perkiraan, bukan laporan yang sudah dipastikan."
+  },
+  "evidence_new_certificate": {
+    "message": "Situs penipuan sering muncul dengan sertifikat yang masih baru. Namun situs asli juga rutin memperbaruinya, jadi hal ini sendiri tidak banyak berarti."
+  },
+  "evidence_broken_certificate": {
+    "message": "Sertifikat yang membuktikan siapa pengelola situs ini sudah kedaluwarsa, tidak diterbitkan oleh otoritas tepercaya, atau milik alamat lain. Browser Anda juga akan memperingatkannya."
   },
   "weekly_title": {
     "message": "Minggu saya"
@@ -1107,17 +1125,50 @@
   "webmail_finding_url_reputation": {
     "message": "Tautan di email ini mengarah ke situs berbahaya yang dikenal"
   },
-  "webmail_finding_sender_spoofing": {
-    "message": "Alamat pengirim disamarkan agar tampak seperti orang lain"
-  },
   "webmail_finding_auth_fail": {
     "message": "Email ini gagal dalam pemeriksaan yang memastikan pengirim sebenarnya"
   },
   "webmail_finding_body_pattern": {
-    "message": "Teksnya memakai trik penipuan yang umum: mendesak, ancaman, atau hadiah"
+    "message": "Teksnya memuat kalimat yang sering ada di email penipuan"
   },
   "webmail_finding_link_text_mismatch": {
     "message": "Tautan menampilkan satu alamat tetapi mengarah ke alamat lain"
+  },
+  "webmail_safe_minor": {
+    "message": "Tampak aman — tidak ada tanda penipuan yang serius"
+  },
+  "webmail_finding_sender_check": {
+    "message": "Periksa alamat pengirim dengan cermat"
+  },
+  "webmail_finding_auth_unconfirmed": {
+    "message": "Pengirim tidak dapat dipastikan sepenuhnya"
+  },
+  "webmail_finding_brand_from_freemail": {
+    "message": "Mengaku dari perusahaan terkenal, tetapi dikirim dari email gratis"
+  },
+  "webmail_finding_brand_domain_mismatch": {
+    "message": "Mengaku dari perusahaan terkenal, tetapi tidak dikirim dari alamatnya"
+  },
+  "webmail_finding_sender_non_ascii": {
+    "message": "Alamat pengirim memakai huruf non-Latin — pastikan alamat itu asli"
+  },
+  "webmail_finding_reply_to_mismatch": {
+    "message": "Balasan untuk email ini akan terkirim ke alamat lain, bukan ke pengirim"
+  },
+  "webmail_finding_spf_softfail": {
+    "message": "Server email pengirim tidak dapat dipastikan sepenuhnya"
+  },
+  "webmail_finding_urgency": {
+    "message": "Email ini mendesak Anda untuk segera bertindak"
+  },
+  "webmail_finding_credential_request": {
+    "message": "Email ini meminta kata sandi, kode, atau data kartu"
+  },
+  "webmail_finding_money_request": {
+    "message": "Email ini meminta uang atau menjanjikan hadiah"
+  },
+  "webmail_finding_account_threat": {
+    "message": "Email ini memperingatkan akun diblokir atau login mencurigakan"
   },
   "options_page_title": {
     "message": "Pengaturan Cleanway"

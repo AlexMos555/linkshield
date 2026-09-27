@@ -424,10 +424,10 @@
     "message": "Was für ein Betrug ist das?"
   },
   "block_evidence_other_title": {
-    "message": "Ein weiteres Warnzeichen"
+    "message": "Ein Warnzeichen"
   },
   "block_evidence_other_body": {
-    "message": "Unsere Prüfungen haben noch etwas Ungewöhnliches an dieser Seite gefunden."
+    "message": "Unsere Prüfungen haben etwas Ungewöhnliches an dieser Seite gefunden."
   },
   "welcome_hero_title": {
     "message": "Sie sind jetzt geschützt"
@@ -771,7 +771,7 @@
     "message": "Die Adresse ist ungewöhnlich lang und verworren"
   },
   "reason_many_redirects": {
-    "message": "Der Link springt über mehrere Seiten"
+    "message": "Der Link leitet Sie an eine andere Adresse weiter"
   },
   "reason_risky_ending": {
     "message": "Nutzt eine Endung, die Betrüger bevorzugen"
@@ -798,13 +798,13 @@
     "message": "Nicht wie die Seite einer echten Firma eingerichtet"
   },
   "reason_shifty_setup": {
-    "message": "Die Seite wechselt ständig ihren Standort – ein typischer Betrugstrick"
+    "message": "Ungewöhnliche Server-Einrichtung, wie sie auch Betrugsnetzwerke nutzen"
   },
   "reason_padded_address": {
     "message": "Die Adresse ist mit Zusätzen aufgebläht, um den echten Namen zu verstecken"
   },
   "reason_shared_hosting": {
-    "message": "Auf einem kostenlosen Dienst gehostet, auf dem jeder eine Website erstellen kann"
+    "message": "Auf einem Dienst gehostet, auf dem jeder eine Website erstellen kann"
   },
   "reason_invalid_address": {
     "message": "Die Adresse ist fehlerhaft"
@@ -833,11 +833,20 @@
   "reason_user_content_platform": {
     "message": "Auf diesem Dienst kann jeder eine Seite anlegen – auch Betrüger"
   },
+  "reason_high_risk_score": {
+    "message": "Ein Dienst zur Betrugsbewertung stuft diese Seite als hochriskant ein"
+  },
+  "reason_new_certificate": {
+    "message": "Das Sicherheitszertifikat der Seite ist erst wenige Tage alt"
+  },
+  "reason_broken_certificate": {
+    "message": "Das Sicherheitszertifikat der Seite ist ungültig"
+  },
   "evidence_flagged_dangerous": {
     "message": "Google Safe Browsing – die Liste, mit der Chrome, Firefox und Safari warnen – stuft diese Seite als gefährlich ein."
   },
   "evidence_flagged_phishing": {
-    "message": "Sicherheitsdienste haben Meldungen erhalten, dass diese Seite Passwörter oder Kartendaten erschleicht."
+    "message": "Diese Seite steht in Anti-Phishing-Datenbanken – Listen von Seiten, die Menschen Passwörter oder Kartendaten entlocken."
   },
   "evidence_on_blocklists": {
     "message": "Sicherheitsforscher haben diese Seite bereits auf Listen von Betrugs- und Spamseiten gesetzt."
@@ -888,7 +897,7 @@
     "message": "Die Adresse ist lang und verworren, damit man schwer erkennt, wohin sie wirklich führt."
   },
   "evidence_many_redirects": {
-    "message": "Der Link springt über mehrere Seiten, bevor er hier landet – oft, um das echte Ziel zu verbergen."
+    "message": "Der Link ist so gebaut, dass er Sie an eine andere Adresse weiterleitet – oft, um zu verbergen, wohin er wirklich führt."
   },
   "evidence_risky_ending": {
     "message": "Die Adresse endet auf eine Zone (etwa .xyz oder .top), in der Betrugsseiten besonders häufig sind."
@@ -906,13 +915,13 @@
     "message": "Die Seite hat keine funktionierende E-Mail. Echte Firmen haben fast immer eine."
   },
   "evidence_shifty_setup": {
-    "message": "Die Seite wechselt ständig ihre Server – ein Trick, der Betrugsseiten schwer abschaltbar macht."
+    "message": "Die Adresse der Seite kann sehr schnell zwischen vielen Servern wechseln. Große Dienste machen das auch, aber Betrugsnetzwerke nutzen es, damit ihre Seiten schwerer abzuschalten sind."
   },
   "evidence_padded_address": {
     "message": "Vor dem echten Namen stehen zusätzliche Teile, damit man ihn schwer erkennt."
   },
   "evidence_shared_hosting": {
-    "message": "Bei diesem kostenlosen Dienst kann jeder in einer Minute eine Seite erstellen – auch Betrüger."
+    "message": "Bei diesem Dienst kann jeder in wenigen Minuten eine Seite erstellen – auch Betrüger."
   },
   "evidence_on_cleanway_list": {
     "message": "Cleanways eigene Liste bekannter Betrugsseiten enthält diese Seite."
@@ -949,6 +958,15 @@
   },
   "evidence_on_your_trusted_list": {
     "message": "Sie haben diese Seite selbst zu Ihren vertrauenswürdigen Seiten hinzugefügt."
+  },
+  "evidence_high_risk_score": {
+    "message": "Ein Dienst, der Websites auf Betrug bewertet, gibt dieser einen hohen Risikowert. Das ist eine Schätzung, keine bestätigte Meldung."
+  },
+  "evidence_new_certificate": {
+    "message": "Betrugsseiten tauchen oft mit einem brandneuen Zertifikat auf. Echte Seiten erneuern ihres aber auch regelmäßig, daher sagt das allein wenig aus."
+  },
+  "evidence_broken_certificate": {
+    "message": "Das Zertifikat, das belegt, wer hinter dieser Seite steht, ist abgelaufen, wurde nicht von einer vertrauenswürdigen Stelle ausgestellt oder gehört zu einer anderen Adresse. Ihr Browser wird ebenfalls davor warnen."
   },
   "weekly_title": {
     "message": "Meine Woche"
@@ -1107,17 +1125,50 @@
   "webmail_finding_url_reputation": {
     "message": "Ein Link in dieser E-Mail führt zu einer bekannten gefährlichen Seite"
   },
-  "webmail_finding_sender_spoofing": {
-    "message": "Die Absenderadresse ist so getarnt, dass sie nach jemand anderem aussieht"
-  },
   "webmail_finding_auth_fail": {
     "message": "Die E-Mail hat die Prüfungen nicht bestanden, die den echten Absender bestätigen"
   },
   "webmail_finding_body_pattern": {
-    "message": "Der Text nutzt typische Betrugstricks: Zeitdruck, Drohungen oder Gewinne"
+    "message": "Der Text enthält Formulierungen, die in Betrugs-E-Mails häufig vorkommen"
   },
   "webmail_finding_link_text_mismatch": {
     "message": "Ein Link zeigt eine Adresse an, führt aber zu einer anderen"
+  },
+  "webmail_safe_minor": {
+    "message": "Sieht sicher aus – keine ernsten Anzeichen für Betrug"
+  },
+  "webmail_finding_sender_check": {
+    "message": "Prüfen Sie die Absenderadresse genau"
+  },
+  "webmail_finding_auth_unconfirmed": {
+    "message": "Der Absender konnte nicht vollständig bestätigt werden"
+  },
+  "webmail_finding_brand_from_freemail": {
+    "message": "Im Namen einer bekannten Firma unterschrieben, aber von einem kostenlosen Postfach gesendet"
+  },
+  "webmail_finding_brand_domain_mismatch": {
+    "message": "Im Namen einer bekannten Firma unterschrieben, aber nicht von deren Adresse gesendet"
+  },
+  "webmail_finding_sender_non_ascii": {
+    "message": "Die Absenderadresse enthält nicht-lateinische Buchstaben – prüfen Sie, ob sie echt ist"
+  },
+  "webmail_finding_reply_to_mismatch": {
+    "message": "Antworten auf diese E-Mail gehen an eine andere Adresse als die des Absenders"
+  },
+  "webmail_finding_spf_softfail": {
+    "message": "Der Mailserver des Absenders konnte nicht vollständig bestätigt werden"
+  },
+  "webmail_finding_urgency": {
+    "message": "Die E-Mail drängt Sie, schnell zu handeln"
+  },
+  "webmail_finding_credential_request": {
+    "message": "Die E-Mail fragt nach einem Passwort, einem Code oder Kartendaten"
+  },
+  "webmail_finding_money_request": {
+    "message": "Die E-Mail fordert Geld oder verspricht einen Gewinn"
+  },
+  "webmail_finding_account_threat": {
+    "message": "Die E-Mail warnt vor einem gesperrten Konto oder einer verdächtigen Anmeldung"
   },
   "options_page_title": {
     "message": "Cleanway-Einstellungen"

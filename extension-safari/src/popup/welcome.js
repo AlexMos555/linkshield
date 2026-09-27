@@ -117,6 +117,10 @@
           try {
             if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
               chrome.storage.local.set({ skill_level: skill });
+              // A new persona starts from its own voice default (the block
+              // page reads unset as "on" for Grandparent), not from a
+              // switch left off under another persona.
+              chrome.storage.local.remove("voice_alerts");
             }
           } catch (_) { /* storage unavailable — selection is still shown */ }
         });

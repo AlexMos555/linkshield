@@ -434,10 +434,10 @@
         "text": "What kind of scam is this?"
       },
       "evidence_other_title": {
-        "text": "Another warning sign"
+        "text": "A warning sign"
       },
       "evidence_other_body": {
-        "text": "Our checks found something else unusual about this site."
+        "text": "Our checks found something unusual about this site."
       }
     },
     "welcome": {
@@ -799,7 +799,7 @@
         "text": "The address is unusually long and complex"
       },
       "many_redirects": {
-        "text": "The link bounces through several sites"
+        "text": "The link sends you on to another address"
       },
       "risky_ending": {
         "text": "Uses an ending that scams favor"
@@ -826,13 +826,13 @@
         "text": "Not set up like a real company's site"
       },
       "shifty_setup": {
-        "text": "The site keeps changing where it lives — a common scam trick"
+        "text": "Unusual server setup that scam networks also use"
       },
       "padded_address": {
         "text": "The address is padded with extra parts to hide the real name"
       },
       "shared_hosting": {
-        "text": "Hosted on a free service where anyone can make a site"
+        "text": "Hosted on a service where anyone can make a site"
       },
       "invalid_address": {
         "text": "The address is not written correctly"
@@ -860,6 +860,15 @@
       },
       "user_content_platform": {
         "text": "Anyone can make a page on this service — scammers too"
+      },
+      "high_risk_score": {
+        "text": "A fraud-checking service rates this site as high-risk"
+      },
+      "new_certificate": {
+        "text": "The site's security certificate is only a few days old"
+      },
+      "broken_certificate": {
+        "text": "The site's security certificate is invalid"
       }
     },
     "evidence": {
@@ -867,7 +876,7 @@
         "text": "Google Safe Browsing — the list Chrome, Firefox and Safari use to warn people — marks this site as unsafe."
       },
       "flagged_phishing": {
-        "text": "Security services have received reports that this site tricks people out of passwords or card details."
+        "text": "This site is in anti-phishing databases — lists of sites that trick people out of passwords or card details."
       },
       "on_blocklists": {
         "text": "Security researchers have already put this site on lists of scam and spam sites."
@@ -918,7 +927,7 @@
         "text": "The address is long and tangled, so it's hard to see where it really leads."
       },
       "many_redirects": {
-        "text": "The link jumps through several sites before landing here — often to hide where it really goes."
+        "text": "The link is built to pass you on to another address — often a way to hide where it really goes."
       },
       "risky_ending": {
         "text": "The address ends in a zone (like .xyz or .top) where scam sites are especially common."
@@ -936,13 +945,13 @@
         "text": "The site has no working email. Real companies almost always do."
       },
       "shifty_setup": {
-        "text": "The site keeps switching the servers it runs on — a trick that makes scam sites hard to shut down."
+        "text": "The site's address can switch between many servers very quickly. Large services do this too, but scam networks use it so their sites are harder to shut down."
       },
       "padded_address": {
         "text": "Extra parts are stacked in front of the real name so it's hard to spot."
       },
       "shared_hosting": {
-        "text": "Anyone can make a site on this free service in a minute, scammers included."
+        "text": "Anyone can make a site on this service in minutes, scammers included."
       },
       "on_cleanway_list": {
         "text": "Cleanway's own list of known scam sites includes this one."
@@ -979,6 +988,15 @@
       },
       "on_your_trusted_list": {
         "text": "You added this site to your trusted sites yourself."
+      },
+      "high_risk_score": {
+        "text": "A service that rates sites for fraud gives this one a high risk score. That is an estimate, not a confirmed report."
+      },
+      "new_certificate": {
+        "text": "Scam sites often appear with a brand-new certificate. Real sites renew theirs regularly too, so on its own this means little."
+      },
+      "broken_certificate": {
+        "text": "The certificate that proves who runs this site has expired, was not issued by a trusted authority, or belongs to another address. Your browser will warn about it too."
       }
     },
     "weekly": {
@@ -1147,17 +1165,50 @@
       "finding_url_reputation": {
         "text": "A link in this email leads to a known dangerous site"
       },
-      "finding_sender_spoofing": {
-        "text": "The sender's address is disguised to look like someone else"
-      },
       "finding_auth_fail": {
         "text": "The email failed the checks that confirm who really sent it"
       },
       "finding_body_pattern": {
-        "text": "The text uses typical scam tricks: urgency, threats or prizes"
+        "text": "The text has phrases often found in scam emails"
       },
       "finding_link_text_mismatch": {
         "text": "A link shows one address but leads to another"
+      },
+      "safe_minor": {
+        "text": "Looks safe — no serious scam signs"
+      },
+      "finding_sender_check": {
+        "text": "Check the sender's address carefully"
+      },
+      "finding_auth_unconfirmed": {
+        "text": "The sender could not be fully confirmed"
+      },
+      "finding_brand_from_freemail": {
+        "text": "Signed as a well-known company but sent from a free mailbox"
+      },
+      "finding_brand_domain_mismatch": {
+        "text": "Signed as a well-known company but not sent from its address"
+      },
+      "finding_sender_non_ascii": {
+        "text": "The sender's address has non-Latin letters — make sure it is the real one"
+      },
+      "finding_reply_to_mismatch": {
+        "text": "Replies to this email go to a different address than the sender's"
+      },
+      "finding_spf_softfail": {
+        "text": "The sender's mail server could not be fully confirmed"
+      },
+      "finding_urgency": {
+        "text": "The email rushes you to act"
+      },
+      "finding_credential_request": {
+        "text": "The email asks for a password, a code or card details"
+      },
+      "finding_money_request": {
+        "text": "The email asks for money or promises a prize"
+      },
+      "finding_account_threat": {
+        "text": "The email warns of a blocked account or a suspicious sign-in"
       }
     },
     "options": {
