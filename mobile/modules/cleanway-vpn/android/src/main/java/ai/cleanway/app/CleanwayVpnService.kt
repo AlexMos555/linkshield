@@ -70,7 +70,19 @@ import androidx.core.app.NotificationCompat
 
 class CleanwayVpnService : VpnService() {
 
-    private var vpnInterface: ParcelFileDescriptor? = null
+    /** The established interface and its reader; replaced whole on a re-establish. Guarded by [tunnelLock]. */
+    private var tunnel: Tunnel? = null
+    private val tunnelLock = Any()
+
+    /**
+     * Packages the current tunnel keeps out (AppExclusions) — applied, i.e.
+     * installed. A removal of one of them re-applies the list (watchPackages).
+     */
+    @Volatile
+    private var excludedNow: List<String> = emptyList()
+
+    /** Re-applies the exclusion list when a listed app is installed or removed; null while not watching. */
+    private var packageWatch: android.content.BroadcastReceiver? = null
 
     /** Unregisters the Private DNS setting observer; null while not watching. */
     private var stopPrivateDnsWatch: (() -> Unit)? = null
@@ -234,39 +246,16 @@ class CleanwayVpnService : VpnService() {
             return
         }
 
-        val builder = Builder()
-            .setSession("Cleanway")
-            .addAddress(VPN_CLIENT_IP, 32)
-            .addDnsServer(VPN_GATEWAY_IP)
-            .addRoute(VPN_GATEWAY_IP, 32) // Only route DNS to us
-            .setMtu(1500)
-            .setBlocking(true)
-
-        // Deliberately NOT excluding our own app from the tunnel.
-        //
-        // addDisallowedApplication(packageName) used to sit here "to prevent
-        // loops", and it silently broke the shield's proof of life: the app's
-        // own canary DNS query bypassed the tunnel, so the service never saw
-        // it, the stamp never moved, and verifyFiltering() could not return
-        // true on any device — the green state was unreachable code.
-        //
-        // The loop it feared cannot happen with this routing:
-        //   - the tunnel captures ONLY traffic to VPN_GATEWAY_IP/32 (DNS);
-        //     every TCP connection to public IPs goes out the real interface
-        //   - the upstream UDP DNS socket is protect()ed (forwardOverUdp)
-        //   - the DoH fallback dials 1.1.1.1 by IP literal over TCP — no DNS
-        //     needed, and 1.1.1.1/32 is not routed into the tunnel
-        // The service's own hostname lookups (the blocklist sync's fetch of
-        // api.cleanway.ai) transit the tunnel like any other app's and are
-        // forwarded upstream on a different thread — that is the normal path,
-        // not a loop.
-
-        vpnInterface = builder.establish() ?: run {
-            // Consent was present a moment ago (prepare() said so), so this is
-            // something else: another VPN in lockdown, or the system refusing.
-            Log.e(TAG, "establish() returned null after successful prepare()")
-            stopSelf()
-            return
+        synchronized(tunnelLock) {
+            val fd = establishTunnel() ?: run {
+                // Consent was present a moment ago (prepare() said so), so this is
+                // something else: another VPN in lockdown, or the system refusing.
+                Log.e(TAG, "establish() returned null after successful prepare()")
+                stopSelf()
+                return
+            }
+            // Its reader starts below, once the list is loaded.
+            tunnel = Tunnel(fd)
         }
         running = true
         isRunning = true
@@ -300,7 +289,11 @@ class CleanwayVpnService : VpnService() {
             }
         }.also { it.start() }
 
-        Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
+        synchronized(tunnelLock) { tunnel?.start() }
+
+        // A listed app installed (or removed) while the shield runs: the
+        // tunnel's application list is fixed at establish(), so re-apply it.
+        watchPackages()
 
         // The user can switch Private DNS to strict while we run — from that
         // moment every lookup on the phone fails. Step aside immediately and
@@ -314,6 +307,133 @@ class CleanwayVpnService : VpnService() {
                 stopVpn()
             }
         }
+    }
+
+    /**
+     * Establish the tun interface: DNS only, every app inside except the ones
+     * kept out (AppExclusions). A Builder's application list cannot be edited
+     * after establish(), so a changed list means a new interface — see
+     * [reapplyExclusions]. Returns null when the system refuses.
+     */
+    private fun establishTunnel(): ParcelFileDescriptor? {
+        val builder = Builder()
+            .setSession("Cleanway")
+            .addAddress(VPN_CLIENT_IP, 32)
+            .addDnsServer(VPN_GATEWAY_IP)
+            .addRoute(VPN_GATEWAY_IP, 32) // Only route DNS to us
+            .setMtu(1500)
+            .setBlocking(true)
+
+        // Deliberately NOT excluding our own app from the tunnel.
+        //
+        // addDisallowedApplication(packageName) used to sit here "to prevent
+        // loops", and it silently broke the shield's proof of life: the app's
+        // own canary DNS query bypassed the tunnel, so the service never saw
+        // it, the stamp never moved, and verifyFiltering() could not return
+        // true on any device — the green state was unreachable code.
+        // AppExclusions refuses our own package for the same reason.
+        //
+        // The loop it feared cannot happen with this routing:
+        //   - the tunnel captures ONLY traffic to VPN_GATEWAY_IP/32 (DNS);
+        //     every TCP connection to public IPs goes out the real interface
+        //   - the upstream UDP DNS socket is protect()ed (forwardOverUdp)
+        //   - the DoH fallback dials 1.1.1.1 by IP literal over TCP — no DNS
+        //     needed, and 1.1.1.1/32 is not routed into the tunnel
+        // The service's own hostname lookups (the blocklist sync's fetch of
+        // api.cleanway.ai) transit the tunnel like any other app's and are
+        // forwarded upstream on a different thread — that is the normal path,
+        // not a loop.
+
+        // Apps that refuse to work while they see a VPN (MAX, Gosuslugi,
+        // banks) run outside the tunnel — installed ones only, never fatal
+        // (AppExclusions.applyTo). Counts only in the log: which apps a person
+        // has is nobody's business.
+        val applied = AppExclusions.applyTo(
+            AppExclusions.current(this),
+            packageName,
+            isInstalled = { pkg -> AppExclusions.isInstalled(this, pkg) },
+        ) { pkg -> builder.addDisallowedApplication(pkg) }
+        Log.i(
+            TAG,
+            "exclusions applied=${applied.excluded.size} not_installed=${applied.notInstalled.size} failed=${applied.failed.size}",
+        )
+        val fd = builder.establish() ?: return null
+        excludedNow = applied.excluded
+        return fd
+    }
+
+    /**
+     * Re-establish the tunnel with the current exclusion list: the person
+     * added or removed an app, or a listed app was installed or removed.
+     *
+     * Android hands over without a gap — the old interface is deactivated once
+     * the new one exists and routing moves to it (VpnService.Builder.establish)
+     * — so filtering never pauses. The old reader is woken and its interface
+     * closed; a lookup in flight on it at that moment goes unanswered and the
+     * app's resolver retries it. If the new interface cannot be created, the
+     * current one stays exactly as it was. Any thread.
+     */
+    fun reapplyExclusions() {
+        synchronized(tunnelLock) {
+            if (!running) return
+            val fd = try {
+                establishTunnel()
+            } catch (e: Exception) {
+                Log.w(TAG, "exclusions_reapply_error: ${e.javaClass.simpleName}")
+                null
+            } ?: run {
+                Log.w(TAG, "exclusions_reapply_failed — keeping the current tunnel")
+                return
+            }
+            val old = tunnel
+            tunnel = Tunnel(fd).also { it.start() }
+            old?.close()
+            Log.i(TAG, "tunnel_reestablished")
+        }
+    }
+
+    /**
+     * Follow installs and removals of listed apps. A newly installed MAX would
+     * otherwise sit inside the tunnel until the next restart; a removed one
+     * would leave its UID excluded — and Android reuses the UIDs of removed
+     * apps, so a later, unrelated install could inherit the bypass. Updates
+     * (EXTRA_REPLACING) keep the UID and are ignored. Only packages visible to
+     * us arrive here (package visibility), which covers the whole list.
+     */
+    private fun watchPackages() {
+        unwatchPackages()
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent == null || intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return
+                val pkg = intent.data?.schemeSpecificPart ?: return
+                // Removed: gone from the list's installed set, so ask what the tunnel holds.
+                val relevant = pkg in excludedNow || AppExclusions.concerns(this@CleanwayVpnService, pkg)
+                if (relevant) reapplyExclusions()
+            }
+        }
+        val filter = android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addDataScheme("package")
+        }
+        try {
+            androidx.core.content.ContextCompat.registerReceiver(
+                this, receiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            packageWatch = receiver
+        } catch (e: Exception) {
+            Log.w(TAG, "package_watch_error: ${e.javaClass.simpleName}")
+        }
+    }
+
+    private fun unwatchPackages() {
+        packageWatch?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (_: Exception) {
+            }
+        }
+        packageWatch = null
     }
 
     /**
@@ -367,24 +487,23 @@ class CleanwayVpnService : VpnService() {
         upstreamNetwork = null
         // The counter is monotonic and compared by delta in JS, so a value
         // from a previous tunnel cannot satisfy a new probe — no reset needed.
+        unwatchPackages()
+        excludedNow = emptyList()
         stopForegroundCompat()
-        try {
-            vpnInterface?.close()
-        } catch (e: Exception) {
-            Log.w(TAG, "vpn_close_error: ${e.message}")
+        synchronized(tunnelLock) {
+            tunnel?.close()
+            tunnel = null
         }
-        vpnInterface = null
         stopSelf()
         Log.i(TAG, "tunnel_stopped")
     }
 
-    private fun dnsProxyLoop() {
-        val vpn = vpnInterface ?: return
-        val input = FileInputStream(vpn.fileDescriptor)
-        val output = FileOutputStream(vpn.fileDescriptor)
+    private fun dnsProxyLoop(tunnel: Tunnel) {
+        val input = FileInputStream(tunnel.fd.fileDescriptor)
+        val output = FileOutputStream(tunnel.fd.fileDescriptor)
         val buffer = ByteArray(32767)
 
-        while (running) {
+        while (running && tunnel.isOpen) {
             try {
                 val length = input.read(buffer)
                 if (length <= 0) continue
@@ -441,8 +560,43 @@ class CleanwayVpnService : VpnService() {
                     DnsDecision.FORWARD -> submitForward(packet, length, output)
                 }
             } catch (e: Exception) {
-                if (!running) break
+                if (!running || !tunnel.isOpen) break
                 Log.w(TAG, "dns_loop_error: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * One established tun interface and the thread that reads it.
+     *
+     * Its own open flag is what lets the tunnel be REPLACED while the shield
+     * keeps running (a changed exclusion list): closing the fd wakes a reader
+     * blocked in read() (Android's libcore signals threads blocked on an fd it
+     * closes — the 1.0.3 reader exited on revoke without help), and the reader
+     * then sees its tunnel is closed and exits. `running` alone is still true
+     * then, and the old reader would spin on a closed fd.
+     */
+    private inner class Tunnel(val fd: ParcelFileDescriptor) {
+        @Volatile
+        var isOpen = true
+            private set
+        private var started = false
+
+        /** Start the reader. Idempotent; called under tunnelLock. */
+        fun start() {
+            if (started || !isOpen) return
+            started = true
+            Thread({ dnsProxyLoop(this) }, "Cleanway-DNS").start()
+        }
+
+        /** Stop reading and release the interface. Idempotent; called under tunnelLock. */
+        fun close() {
+            if (!isOpen) return
+            isOpen = false
+            try {
+                fd.close()
+            } catch (e: Exception) {
+                Log.w(TAG, "vpn_close_error: ${e.message}")
             }
         }
     }

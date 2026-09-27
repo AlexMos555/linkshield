@@ -404,6 +404,43 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Apps kept out of the shield's tunnel that are on this phone, in order:
+     * [{package, label, icon, suggested, isDefault, isBrowser}] (icon is a PNG
+     * data URI or null). Works with the shield off — it is what the tunnel
+     * keeps out whenever it runs. See ai.cleanway.app.AppExclusions.
+     */
+    AsyncFunction("excludedApps") {
+      ai.cleanway.app.InstalledApps.excluded(context).map { it.toWire() }
+    }
+
+    /**
+     * Apps the person can pick when one says "turn off the VPN": launcher apps
+     * plus installed apps from the shipped list, minus Cleanway and minus
+     * those already kept out. Same shape as excludedApps(); unsorted.
+     */
+    AsyncFunction("pickableApps") {
+      ai.cleanway.app.InstalledApps.pickable(context).map { it.toWire() }
+    }
+
+    /**
+     * Keep [pkg] out of the tunnel from now on. A running shield re-applies
+     * the list at once (a seamless re-establish). False for a malformed name,
+     * Cleanway itself, or a failed write.
+     */
+    AsyncFunction("excludeApp") { pkg: String ->
+      val ok = ai.cleanway.app.AppExclusions.add(context, pkg)
+      if (ok) CleanwayVpnService.instance?.reapplyExclusions()
+      ok
+    }
+
+    /** Put [pkg] back under the filter (a default or one the person added). False if not saved. */
+    AsyncFunction("includeApp") { pkg: String ->
+      val ok = ai.cleanway.app.AppExclusions.remove(context, pkg)
+      if (ok) CleanwayVpnService.instance?.reapplyExclusions()
+      ok
+    }
+
+    /**
      * What blocklist the service has loaded and how fresh it is:
      * {version, count, revoked, ageMs, stale, hasCanary, lastError, lastFetchAt}.
      * Reads the service's static snapshot; when the service is not running the
