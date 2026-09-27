@@ -1,0 +1,413 @@
+{
+  "_meta": {
+    "what": "Russian brands for the typosquat rule (api/services/scoring.py _check_typosquatting_v2), loaded by api/services/ru_brands.py. Format and fields: that module's docstring. Every domain below was checked on 2026-09-27: its name servers against the brand's own, where http:// lands, the page title, and the registry's whois or Wikidata (P856, official website) where DNS alone was not proof.",
+    "selection": "A brand is here when a 2025-26 fraud report names it, or names its category (banks, government services, telecom operators, delivery services) and it is among that category's largest in Russia. Names are the brand's Latin spelling, its short form where people use one (sber, tbank), and the Cyrillic name when that name is not an ordinary word.",
+    "sources": {
+      "cbr_2025": "Bank of Russia, 'Обзор операций, совершенных без добровольного согласия клиентов финансовых организаций', 2025 (cbr.ru/analytics/ib/operations_survey/2025/): 37,416 resources restricted on the Bank's information; 43% were phishing sites copying the names of well-known banks and investment companies; the largest thefts combined social engineering with phishing copies of commercial organisations', federal bodies' and government services' sites.",
+      "f6_h1_2025": "F6, 'Бренды под ударом' (f6.ru, 2025-09-02): retail 50% of phishing, banks and finance 32%; about 80% of fraudulent resources exploit well-known brands.",
+      "f6_h1_2026": "F6, 'Бренды под прицелом' (vedomosti.ru press release, 2026-09-16): retail 69% of phishing; the .ru share of phishing domains fell to 5%, with .shop 22%, .com 19%, .pro 10% — the brand's name under another TLD is the live shape.",
+      "cicada8_q1_2026": "CICADA8 via ru-bezh.ru (2026-05-25): phishing most often imitated Т-Банк, ВТБ, Альфа-Банк, Уралсиб, Озон Банк, Банк России, Ozon, Wildberries, Avito, СДЭК, Яндекс Маркет, RuStore, MAX, Telegram, ВКонтакте.",
+      "solar_cicada8_2026": "Rossiyskaya Gazeta (2026-09-25) citing Solar AURA (H1 2026) and CICADA8 (Q2 2026): copies of banks' log-in pages, «Госуслуги», VK ID, «Одноклассники», MAX, Telegram and telecom operators.",
+      "sber_2024": "Sber: about 19,000 phishing sites imitating the Sber brand blocked in 2024 (Sberbank Threat Intelligence, via new-retail.ru).",
+      "f6_mamont": "F6 (then Group-IB), 'Охота на «Мамонта»' (Habr, 2021-03-22): fake courier-service pages, with cdek.nu, cdek.in, cdek.at, cdek-box.ru and cdek-dostavka.info as examples; F6 via CNews (2026-08-10): Яндекс Доставка fakes spelled with typos, and about 50 brands used by the scheme, almost all Russian.",
+      "post_2026": "dp.ru (2026-02-14): messages about a parcel or letter from «Почта России» with a link to a third-party site; 56.ru (2026-08-22): copies of known delivery services' sites with track-number bots."
+    },
+    "left_out": {
+      "max (MAX messenger), mir (Мир, nspk.ru), mos (mos.ru)": "three-letter words: max.com is HBO Max's, mos.org the Museum of Science's, mir.az someone else's; 20, 9 and 6 more of the Tranco top-1M names are exact or one-letter matches.",
+      "cbr (Банк России)": "named by CICADA8, but 'cbr' is an acronym other organisations own (cbr.com, cbr.nl, cbr.de in the top-1M); with TLD confusion off only look-alikes of three letters would be left.",
+      "nalog (ФНС)": "the Russian word for 'tax', and its one-letter neighbours are ordinary names (analog, nolog, nanog, nxlog): 15 hits in the Tranco 100k-1M range. No report names it.",
+      "pochta": "the Russian word for 'mail': poczta.pl (Polish webmail), pochta.uz, pochta.tech and thepochta.ru are other owners'. Russian Post is here as 'russianpost' and 'почтароссии'.",
+      "raiffeisen": "not named in the reports, and the name is a European banking group's: raiffeisen.at, .ch, .ua and hundreds of local Raiffeisen banks.",
+      "gazprom": "F6 counts fuel-and-energy brands (22% of scam resources in H1 2026) without naming one; Gazprom's own warnings are about calls and letters, and its legitimate family is large (gazprom-neft, gazprom-media, azsgazprom …). Gazprombank is here.",
+      "yoomoney, kaspersky, boxberry, kinopoisk, halva": "no 2025-26 report found that names them.",
+      "ok (Одноклассники)": "two letters; the brand is here as 'odnoklassniki', and 'одноклассники' is the ordinary word for 'classmates'.",
+      "t2, vk (as typo targets)": "names under three letters are never compared (#61); 'vk' is kept for combos such as vk-login, 'tele2' for T2."
+    }
+  },
+  "brands": {
+    "sber": {
+      "owner": "ПАО Сбербанк (Wikidata Q205012)",
+      "fraud": {"sber_2024": "about 19,000 phishing sites imitating Sber, 2024", "cbr_2025": "banks"},
+      "names": {"sberbank": "sberbank.ru", "sber": "sber.ru", "сбербанк": "sberbank.ru"},
+      "official": {
+        "sberbank.ru": "Wikidata Q205012 P856",
+        "sber.ru": "NS ns1.sberbank.ru",
+        "sbrf.ru": "Wikidata Q205012 P856; NS ns1.sberbank.ru",
+        "sberbank.com": "Wikidata Q205012 P856",
+        "sber-bank.by": "Wikidata Q2074915 (Sber Bank, Belarus) P856",
+        "bps-sberbank.by": "Wikidata Q2074915 P856",
+        "sberbankins.ru": "serves СберСтрахование",
+        "sber.cloud": "NS ns01.sbercloud.ru",
+        "sber.insure": "NS cdns-ns01.sbercloud.ru",
+        "sber.pro": "serves СберПро, Sber's media",
+        "sberbank-cib.ru": "Wikidata Q14916073 (Sberbank CIB) P856",
+        "npfsberbanka.ru": "Wikidata Q18405438 (NPF of Sberbank) P856",
+        "sbermobile.ru": "Wikidata Q120268709 (Сбермобайл) P856",
+        "sberbusiness.live": "Wikidata Q139581464 P856"
+      },
+      "unrelated": {
+        "bser.io": "registrant organization NimbleNeuron (Eternal Return: Black Survival), whois 2026-09-27"
+      },
+      "no_fuzzy": {
+        "sber": "four letters, and sber plus one letter is a word or a name: saber, sober, siber (Turkish 'cyber'), sbert (Sentence-BERT's sbert.net)"
+      }
+    },
+    "gosuslugi": {
+      "owner": "Минцифры России (Wikidata Q4373230)",
+      "fraud": {"solar_cicada8_2026": "«Госуслуги»", "cbr_2025": "government services"},
+      "names": {"gosuslugi": "gosuslugi.ru", "госуслуги": "gosuslugi.ru"},
+      "official": {
+        "gosuslugi.ru": "Wikidata Q4373230 P856",
+        "26gosuslugi.ru": "Портал госуслуг Ставропольского края, NS ns1.cit-sk.net (the region's IT centre)",
+        "gosuslugi29.ru": "Архангельский региональный портал госуслуг, the region's ICT centre's project page ict29.ru/proekty/portal-gosuslugi29",
+        "gosuslugi71.ru": "Портал государственных услуг Тульской области, the region's project page it.tularegion.ru/projects/gosuslugi"
+      }
+    },
+    "tbank": {
+      "owner": "АО «ТБанк» (Wikidata Q4457878)",
+      "fraud": {"cicada8_q1_2026": "Т-Банк"},
+      "names": {"tbank": "tbank.ru", "tinkoff": "tinkoff.ru", "тинькофф": "tinkoff.ru"},
+      "official": {
+        "tbank.ru": "Wikidata Q4457878 P856",
+        "tinkoff.ru": "Wikidata Q4457878 P856",
+        "t-bank.ru": "name servers at tbank.ru's IPs (185.66.85.67, 178.248.236.30)",
+        "tinkoff.ai": "name servers at tbank.ru's IPs",
+        "тинькофф.рф": "name servers at tbank.ru's IPs"
+      }
+    },
+    "vtb": {
+      "owner": "Банк ВТБ (ПАО) (Wikidata Q1549389)",
+      "fraud": {"cicada8_q1_2026": "ВТБ"},
+      "names": {"vtb": "vtb.ru", "втб": "vtb.ru"},
+      "official": {
+        "vtb.ru": "NS ns1.vtb.ru",
+        "vtb.com": "Wikidata Q1549389 P856",
+        "vtb24.ru": "Wikidata Q1549389 P856; NS ns1.vtb.ru",
+        "vtb.am": "Wikidata Q85983660 (VTB Armenia) P856",
+        "vtb.az": "Wikidata Q131783858 (VTB Azerbaijan) P856",
+        "vtb.by": "whois: ЗАО Банк ВТБ (Беларусь); Wikidata Q6703916 P856",
+        "vtb-bank.by": "Wikidata Q6703916 (VTB Bank, Belarus) P856",
+        "vtb.kz": "whois: ДО АО Банк ВТБ (Казахстан)",
+        "vtbcapital.com": "Wikidata Q7907607 (VTB Capital) P856",
+        "втб.рф": "NS ns1.vtb.ru"
+      },
+      "unrelated": {
+        "vtb.no": "a Norwegian site ('VTB framside'), Cloudflare DNS",
+        "vtb.com.ua": "Wikidata Q16628820 (VTB Bank Ukraine) P856"
+      }
+    },
+    "alfabank": {
+      "owner": "АО «Альфа-Банк» (Wikidata Q1377835)",
+      "fraud": {"cicada8_q1_2026": "Альфа-Банк"},
+      "names": {"alfabank": "alfabank.ru", "альфабанк": "alfabank.ru"},
+      "official": {
+        "alfabank.ru": "Wikidata Q1377835 P856; NS ns*.beta-bank.ru",
+        "alfa-bank.ru": "NS ns4/ns5.beta-bank.ru, alfabank.ru's",
+        "alfa-bank.info": "NS ns4/ns5.beta-bank.ru",
+        "alfa-bank.net": "NS ns4/ns5.beta-bank.ru",
+        "alfabank.com": "NS ns4/ns5.beta-bank.ru",
+        "alfabank.st": "NS ns4/ns5.beta-bank.ru",
+        "alfabank.by": "Wikidata Q3919652 (Alfa-Bank, Belarus) P856; whois: ЗАО «Альфа-Банк»",
+        "alfa-bank.by": "whois: ЗАО «Альфа-Банк»",
+        "альфабанк.рф": "NS ns*.beta-bank.ru",
+        "альфа-банк.рф": "NS ns*.beta-bank.ru"
+      }
+    },
+    "uralsib": {
+      "owner": "ПАО «Банк Уралсиб» (Wikidata Q4476693)",
+      "fraud": {"cicada8_q1_2026": "Уралсиб"},
+      "names": {"uralsib": "uralsib.ru", "уралсиб": "uralsib.ru"},
+      "official": {
+        "uralsib.ru": "Wikidata Q4476693 P856",
+        "uralsib.com": "Wikidata Q4476691 P856",
+        "uralsibins.ru": "Wikidata Q4476688 (Уралсиб страхование) P856"
+      }
+    },
+    "gazprombank": {
+      "owner": "АО «Газпромбанк» (Wikidata Q1924338)",
+      "fraud": {"cbr_2025": "banks"},
+      "names": {"gazprombank": "gazprombank.ru", "газпромбанк": "gazprombank.ru"},
+      "official": {
+        "gazprombank.ru": "Wikidata Q1924338 P856",
+        "gazprombank.com": "NS ns2/ns3.gazprombank.ru",
+        "gazprombank.investments": "linked from gazprombank.ru (/login/, /offer/premium/)",
+        "gazprombank.ch": "Wikidata Q113466361 (Gazprombank Schweiz) P856",
+        "gazprombank.lu": "Wikidata Q124625409 (Bank GPB International) P856",
+        "газпромбанк.рф": "NS ns2.gazprombank.ru"
+      }
+    },
+    "pochtabank": {
+      "owner": "АО «Почта Банк» (Wikidata Q24930461)",
+      "fraud": {"cbr_2025": "banks"},
+      "names": {"pochtabank": "pochtabank.ru", "почтабанк": "pochtabank.ru"},
+      "official": {
+        "pochtabank.ru": "Wikidata Q24930461 P856"
+      }
+    },
+    "sovcombank": {
+      "owner": "ПАО «Совкомбанк» (Wikidata Q4426566)",
+      "fraud": {"cbr_2025": "banks"},
+      "names": {"sovcombank": "sovcombank.ru", "совкомбанк": "sovcombank.ru"},
+      "official": {
+        "sovcombank.ru": "Wikidata Q4426566 P856",
+        "sovcombank.com": "NS ns-a/ns-b.sovcombank.ru",
+        "sovcombank.group": "NS ns-a/ns-b.sovcombank.ru",
+        "sovcombank.business": "NS ns-a/ns-b.sovcombank.ru",
+        "sovcombank.credit": "NS ns-a/ns-b.sovcombank.ru",
+        "sovcombank.it": "NS ns-a/ns-b.sovcombank.ru (Совкомбанк Технологии)",
+        "sovkombank.ru": "NS ns-a/ns-b.sovcombank.ru",
+        "совкомбанк.рф": "NS ns-a.sovcombank.ru"
+      }
+    },
+    "ozon": {
+      "owner": "Ozon (Wikidata Q2365235)",
+      "fraud": {"cicada8_q1_2026": "Ozon, Озон Банк", "f6_h1_2026": "retail"},
+      "names": {"ozon": "ozon.ru"},
+      "official": {
+        "ozon.ru": "Wikidata Q2365235 P856",
+        "ozon.by": "NS ns1/ns2.ozon.ru",
+        "ozon.kz": "NS ns1/ns2.ozon.ru",
+        "ozon.com": "NS nsz501s1.ozon.ru",
+        "ozon.travel": "NS nsz501s1.ozon.ru",
+        "ozon.tech": "NS nsz501s1.ozon.ru",
+        "ozon.tm": "NS nsz501s1.ozon.ru",
+        "озон.рф": "NS ns1/ns2.ozon.ru"
+      },
+      "unrelated": {
+        "ozon.rs": "Ozon Media, Sremska Mitrovica (Serbia)",
+        "ozoon.eu": "Ozoon, a sportsbook under its own name"
+      },
+      "not_typos": {
+        "zoon": "Zoon.ru, a Russian business directory (zoon.ru, zoon.by, zoon.kz)"
+      },
+      "no_fuzzy": {
+        "ozon": "four letters, and ozon plus one letter is a word or a name: ozone, gozon, mozon, ozona, bozon (Tranco and Wikidata)"
+      }
+    },
+    "wildberries": {
+      "owner": "Wildberries (Wikidata Q24933714)",
+      "fraud": {"cicada8_q1_2026": "Wildberries", "f6_h1_2026": "retail"},
+      "names": {"wildberries": "wildberries.ru", "вайлдберриз": "wildberries.ru"},
+      "official": {
+        "wildberries.ru": "Wikidata Q24933714 P856",
+        "wildberries.by": "Wikidata Q24933714 P856",
+        "wildberries.ge": "Wikidata Q24933714 P856; NS ns1.wildberries.ru",
+        "wildberries.kg": "NS ns1/ns2.wildberries.ru",
+        "wildberries.am": "NS ns1/ns2.wildberries.ru",
+        "wildberries.kz": "NS ns1/ns2.wildberries.ru",
+        "wildberries.tj": "NS ns1/ns2.wildberries.ru",
+        "wildberries.uz": "NS ns1/ns2.wildberries.ru",
+        "wildberries.cn": "registrant 野果电子商务（深圳）有限公司, contact at wb.ru; serves the Wildberries seller platform",
+        "вайлдберриз.рф": "NS ns1/ns2.wildberries.ru, redirects to wildberries.ru"
+      }
+    },
+    "avito": {
+      "owner": "Avito (Wikidata Q4034642)",
+      "fraud": {"cicada8_q1_2026": "Avito", "f6_mamont": "classifieds fakes"},
+      "names": {"avito": "avito.ru", "авито": "avito.ru"},
+      "official": {
+        "avito.ru": "Wikidata Q4034642 P856",
+        "avito.com": "NS ns1.edgedns.ru (avito.ru's), redirects to avito.ru",
+        "avito.st": "redirects to avito.ru (the site's static host)",
+        "avito.tech": "NS ns1.edgedns.ru, avito.ru's (Avito.Tech)"
+      },
+      "unrelated": {
+        "avito.ma": "Wikidata Q43401548: Avito, a Moroccan classifieds site",
+        "tavito.net": "Wikidata Q7689142 (Tavito Nanao, musician) P856",
+        "aviot.jp": "AVIOT, a Japanese audio brand",
+        "avitop.com": "Avitop, Aviation Top 100",
+        "avinto.es": "Avinto, a consumer-loan company (also avinto.pl, avinto.ro)",
+        "avinto.pl": "Avinto",
+        "avinto.ro": "Avinto",
+        "avixo.co": "Avixo, clinic-management software",
+        "avwto.com": "an adult video site under its own name"
+      },
+      "not_typos": {
+        "aviso": "'notice' in Spanish, Portuguese and Italian: aviso.com (Aviso AI), aviso.ca, aviso.ua, aviso.bz, aviso.ci",
+        "avizo": "'notice' in Czech and Slovak (avizo.cz)",
+        "adito": "ADITO Software (adito.de, adito.cloud)"
+      }
+    },
+    "yandex": {
+      "owner": "МКПАО «Яндекс» (Wikidata Q5281)",
+      "fraud": {"cicada8_q1_2026": "Яндекс Маркет", "f6_mamont": "Яндекс Доставка"},
+      "names": {"yandex": "yandex.ru", "яндекс": "yandex.ru"},
+      "official": {
+        "yandex.ru": "NS ns1.yandex.ru",
+        "ya.ru": "NS ns1.yandex.ru",
+        "yandex.com": "Wikidata Q5281 P856; NS ns1.yandex.net",
+        "yandex.net": "NS ns1.yandex.net",
+        "yandex.az": "NS ns1.yandex.net",
+        "yandex.by": "NS ns1.yandex.net",
+        "yandex.kz": "NS ns1.yandex.net",
+        "yandex.uz": "NS ns1.yandex.ru",
+        "yandex.tj": "NS ns1.yandex.net",
+        "yandex.tm": "NS ns1.yandex.net",
+        "yandex.kg": "NS ns3.yandex.ru",
+        "yandex.md": "name servers at yandex.net's IPs (213.180.193.1, 93.158.134.1)",
+        "yandex.ee": "NS ns1.yandex.net",
+        "yandex.lt": "NS ns1.yandex.net",
+        "yandex.lv": "NS ns1.yandex.ru",
+        "yandex.fi": "NS ns1.yandex.net",
+        "yandex.fr": "NS ns1.yandex.ru",
+        "yandex.eu": "NS ns1.yandex.net",
+        "yandex.tr": "NS ns3.yandex.ru",
+        "yandex.pro": "NS ns3.yandex.ru",
+        "yandex.st": "NS ns1.yandex.net",
+        "yandex.cloud": "NS ns1.yandexcloud.net (Yandex Cloud)",
+        "yandex-team.ru": "NS ns1.yandex.ru",
+        "yandex-team.by": "NS ns3.yandex.ru",
+        "yandex-net.ru": "NS ns3.yandex.ru",
+        "yandexcom.net": "registered 2024-08-12 at SafeNames, a corporate brand-protection registrar",
+        "яндекс.рф": "NS ns1.yandex.ru, redirects to ya.ru"
+      },
+      "unrelated": {
+        "candex.com": "Candex, procurement software",
+        "yaldex.com": "Yaldex JavaScript Editor, on its own name servers",
+        "yande.re": "an image board under its own name"
+      }
+    },
+    "vk": {
+      "owner": "МКПАО «ВК» (Wikidata Q1885456)",
+      "fraud": {"cicada8_q1_2026": "ВКонтакте, RuStore", "solar_cicada8_2026": "VK ID, «Одноклассники»"},
+      "names": {
+        "vkontakte": "vk.com", "vk": "vk.com", "вконтакте": "vk.com",
+        "mailru": "mail.ru", "odnoklassniki": "ok.ru", "rustore": "rustore.ru"
+      },
+      "official": {
+        "vk.com": "Wikidata Q116933 P856",
+        "vk.ru": "Wikidata Q116933 P856; NS ns1.vk.ru",
+        "vk.company": "Wikidata Q1885456 P856; NS ns1.mail.ru",
+        "vkontakte.ru": "own NS, redirects to vk.ru",
+        "vkteam.ru": "NS ns1.mail.ru, redirects to team.vk.company",
+        "mail.ru": "Wikidata Q42232 P856",
+        "мэйл.рф": "Wikidata Q42232 P856; NS ns1.mail.ru",
+        "mailru.com": "NS ns1.mail.ru, redirects to account.mail.ru",
+        "smailru.net": "NS ns1.mail.ru",
+        "vmailru.net": "NS ns1.mail.ru",
+        "ok.ru": "Wikidata Q1123836 P856",
+        "odnoklassniki.ru": "NS ns1.ok.ru",
+        "odnoklassniki.am": "NS ns1.ok.ru, redirects to ok.ru",
+        "odnoklassniki.by": "redirects to ok.ru",
+        "odnoklassniki.lv": "NS ns1.ok.ru, redirects to ok.ru",
+        "odnoklassniki.tj": "NS ns1.ok.ru, redirects to ok.ru",
+        "odnoklasniki.ru": "NS ns1.ok.ru, redirects to ok.ru",
+        "odnoklasniki.by": "NS ns1.ok.ru, redirects to ok.ru",
+        "odnoklasniki.ua": "redirects to ok.ru",
+        "rustore.ru": "Wikidata Q113393136 P856"
+      },
+      "unrelated": {
+        "ruscore.ru": "football and hockey results, under its own name"
+      },
+      "not_typos": {
+        "kontakti": "'contacts' in Latvian: kontakti.lv, a classifieds site",
+        "mkontakt": "mKontakt, a dating site (mkontakt.com, mkontakt.pl)",
+        "mailu": "Mailu, a mail server (mailu.io)"
+      }
+    },
+    "mts": {
+      "owner": "ПАО «МТС» (Wikidata Q1368919)",
+      "fraud": {"solar_cicada8_2026": "telecom operators"},
+      "names": {"mts": "mts.ru"},
+      "official": {
+        "mts.ru": "Wikidata Q1368919 P856",
+        "mts.by": "Wikidata Q3920355 (MTS Belarus) P856",
+        "mymts.ru": "NS ns1.mts-ws.net, mts.ru's",
+        "mtsnet.ru": "NS ns1.mts-ws.net, mts.ru's"
+      },
+      "unrelated": {
+        "mts.ca": "Wikidata Q1890462 (Bell MTS, Manitoba) P856",
+        "mymts.net": "Bell MTS, NS dns1.mts.net",
+        "mtsmail.ca": "Bell MTS webmail",
+        "mts.com": "MTS Systems, test and simulation (US), on its own name servers",
+        "mts.rs": "mts, Telekom Srbija's brand: NS ns1.telekom.rs",
+        "mtsnet.fi": "a Finnish site on webhotellit.com"
+      },
+      "not_typos": {
+        "mt5": "MetaTrader 5 (mt5.com)"
+      },
+      "no_tld_confusion": {
+        "mts": "an acronym other companies own: mts.com, mts.net, mts.ca (Bell MTS), mts.rs (Telekom Srbija), mts.pt, mts.ro"
+      }
+    },
+    "beeline": {
+      "owner": "ПАО «ВымпелКом» (Wikidata Q402880)",
+      "fraud": {"solar_cicada8_2026": "telecom operators"},
+      "names": {"beeline": "beeline.ru", "билайн": "beeline.ru"},
+      "official": {
+        "beeline.ru": "Wikidata Q402880 P856",
+        "beeline.tv": "NS ns1.beeline.ru",
+        "билайн.рф": "NS ns1.beeline.ru"
+      },
+      "unrelated": {
+        "betline.nl": "sports-betting tips, under its own name",
+        "deeline.de": "deeLINE GmbH, online dating"
+      },
+      "no_tld_confusion": {
+        "beeline": "other companies' name: beeline.com (Beeline, workforce software, Wikidata Q21462898), beeline.co (bike navigation), and VEON's Beeline in Kazakhstan (Wikidata Q4041951), Uzbekistan and Kyrgyzstan"
+      }
+    },
+    "megafon": {
+      "owner": "ПАО «МегаФон» (Wikidata Q1720713)",
+      "fraud": {"solar_cicada8_2026": "telecom operators"},
+      "names": {"megafon": "megafon.ru"},
+      "official": {
+        "megafon.ru": "Wikidata Q1720713 P856",
+        "megafon.com": "Wikidata Q1720713 P856; NS ns1.megafon.ru",
+        "megafon.cloud": "NS ns1.megafon.ru",
+        "мегафон.рф": "NS ns1.megafon.ru"
+      },
+      "unrelated": {
+        "megabon.eu": "Megabon, hotel packages",
+        "megamon.asia": "Megamon, a card game",
+        "megaron.gr": "Megaron, the Athens Concert Hall"
+      },
+      "not_typos": {
+        "megafoni": "'megaphone' in Finnish: megafoni.org (Wikidata Q11881953 P856)"
+      },
+      "no_tld_confusion": {
+        "megafon": "'megaphone' in Danish, Norwegian and Hungarian, and other operators: megafon.dk, megafon.no (Wikidata Q11988889), megafon.hu (Q138767057), megafon.tj (MegaFon Tajikistan), megafon.tv"
+      }
+    },
+    "t2": {
+      "owner": "ООО «Т2 Мобайл» (Wikidata Q4050799)",
+      "fraud": {"solar_cicada8_2026": "telecom operators"},
+      "names": {"tele2": "t2.ru"},
+      "official": {
+        "t2.ru": "Wikidata Q4050799 P856",
+        "tele2.ru": "NS ns1.ngenix-dns.net at t2.ru's name servers' IPs"
+      },
+      "no_tld_confusion": {
+        "tele2": "Tele2 AB's name (Wikidata Q309865): tele2.com, .se, .nl, .lt, .lv, .ee, .hr, .de, and tele2.kz"
+      },
+      "no_fuzzy": {
+        "tele2": "'tele' plus one character: tele1.ch, tele3.cz, tele5.de, tele7.tv, telex.hu are other sites"
+      }
+    },
+    "russianpost": {
+      "owner": "АО «Почта России» (Wikidata Q1502763)",
+      "fraud": {"post_2026": "«Почта России»", "f6_mamont": "delivery fakes"},
+      "names": {"russianpost": "pochta.ru", "почтароссии": "pochta.ru"},
+      "official": {
+        "pochta.ru": "Wikidata Q1502763 P856",
+        "russianpost.ru": "Wikidata Q1502763 P856",
+        "почта.рф": "NS d01ns1.russianpost.ru",
+        "почтароссии.рф": "NS d02ns1.russianpost.ru",
+        "почта-россии.рф": "NS d01ns1.russianpost.ru"
+      }
+    },
+    "cdek": {
+      "owner": "СДЭК (Wikidata Q28665980)",
+      "fraud": {"cicada8_q1_2026": "СДЭК", "f6_mamont": "cdek.nu, cdek.in, cdek.at"},
+      "names": {"cdek": "cdek.ru", "сдэк": "cdek.ru"},
+      "official": {
+        "cdek.ru": "Wikidata Q28665980 P856",
+        "cdek.ge": "Wikidata Q28665980 P856",
+        "cdek.kz": "whois: CDEK Centralnaya Asia, TOO",
+        "cdek.by": "whois: ООО «СДЭК-Бел»",
+        "cdek.kg": "same IP as cdek.ge (155.212.234.107)",
+        "сдэк.рф": "NS edostavka.ru, CDEK's former domain"
+      }
+    }
+  }
+}

@@ -26,9 +26,11 @@ import os
 import re
 from collections import Counter
 from difflib import SequenceMatcher
-from typing import Optional
+from types import MappingProxyType
+from typing import Mapping, Optional
 
 from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
+from api.services import ru_brands
 from api.services.hosting_platforms import is_shared_platform_site
 
 logger = logging.getLogger("cleanway.scoring")
@@ -271,8 +273,43 @@ def _load_typosquat_targets() -> dict[str, str]:
     }
 
 
-TYPOSQUAT_TARGETS: dict[str, str] = _load_typosquat_targets()
-logger.info("Loaded %d typosquat brand targets", len(TYPOSQUAT_TARGETS))
+# The global list exactly as loaded. brand_subdomain_abuse and the ML
+# model's max_brand_similarity feature read THIS one, not the merged list
+# below: the served model was trained on these brands' similarity, and a
+# Russian brand as a subdomain label has not had its false-positive pass —
+# 'pochta' is what Russian companies call their webmail (pochta.<company>.ru),
+# and marketplace seller tools put ozon./wildberries. in front of their own
+# names.
+GLOBAL_TYPOSQUAT_TARGETS: Mapping[str, str] = MappingProxyType(_load_typosquat_targets())
+
+# Russian brands (data/typosquat_targets_ru.json, see api.services.ru_brands):
+# every official domain of the brand family, same-shaped sites of other
+# owners, words one edit from a name, and per-brand switches for TLD
+# confusion and edit distance.
+RU_BRAND_GROUPS: tuple[ru_brands.BrandGroup, ...] = ru_brands.load()
+
+# What the typosquat rule compares against: global first (so an existing
+# host keeps the brand it was reported under), then the Russian names.
+TYPOSQUAT_TARGETS: dict[str, str] = {
+    **GLOBAL_TYPOSQUAT_TARGETS,
+    **{n: d for g in RU_BRAND_GROUPS for n, d in g.names.items() if n not in GLOBAL_TYPOSQUAT_TARGETS},
+}
+logger.info("Loaded %d typosquat brand targets (%d Russian brand groups)", len(TYPOSQUAT_TARGETS), len(RU_BRAND_GROUPS))
+
+# Registrable domains that are no one's typo: a listed brand's own sites
+# (wildberries.by, yandex.kz) and verified sites of other owners with the
+# same shape (mts.ca — Manitoba's phone company). Both spellings of an IDN.
+_BRAND_LEGIT_DOMAINS: frozenset[str] = frozenset(
+    d for g in RU_BRAND_GROUPS for d in (g.official | g.unrelated)
+)
+# Per name: labels one edit away that are words or other companies (ozone).
+_BRAND_NOT_TYPOS: Mapping[str, frozenset[str]] = MappingProxyType(
+    {n: g.not_typos for g in RU_BRAND_GROUPS for n in g.names if g.not_typos}
+)
+# Names whose bare form belongs to other companies abroad (tele2.se).
+_NO_TLD_CONFUSION: frozenset[str] = frozenset(n for g in RU_BRAND_GROUPS for n in g.no_tld_confusion)
+# Names too few letters apart from other names for edit distance (tele2).
+_NO_FUZZY: frozenset[str] = frozenset(n for g in RU_BRAND_GROUPS for n in g.no_fuzzy)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1707,6 +1744,122 @@ _FUZZY_MIN_LABEL = 5
 _TWO_EDIT_MIN_LABEL = 8
 
 
+# Words a brand ends with that other names end with too. sberbank and
+# swedbank differ only in 'sber' / 'swed', tbank and mbank in one letter,
+# rustore and upstore in 'ru' / 'up': compared whole, every 'bank' and 'store'
+# of the right length is a "typo" (tbank alone matched 55 of the Tranco
+# 100k-1M names). When a name ends with the same word, only the parts before
+# it are compared, under the same length rules as a whole name: 'sber',
+# 'alfa', 't' and 'ru' get look-alikes and shapes only (altabank and oberbank
+# are other banks), 'gazprom' and 'sovcom' one edit. A typo INSIDE the word
+# (sberbamk, tbamk) leaves a name that no longer ends with it, and that name
+# is compared whole, as before.
+_GENERIC_TAILS: tuple[str, ...] = ("bank", "store", "банк")
+
+
+def _generic_tail(name: str, brand: str) -> int:
+    """Length of a _GENERIC_TAILS word both end with, each with letters
+    before it; 0 when there is none."""
+    for tail in _GENERIC_TAILS:
+        if name.endswith(tail) and brand.endswith(tail) and len(name) > len(tail) and len(brand) > len(tail):
+            return len(tail)
+    return 0
+
+
+def _edit_distance_at_most(a: str, b: str, limit: int) -> bool:
+    """True when a becomes b in at most `limit` single-letter insertions,
+    deletions, substitutions or swaps of neighbours (optimal string
+    alignment distance)."""
+    if abs(len(a) - len(b)) > limit:
+        return False
+    prev2: list[int] = []
+    prev = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        cur = [i] + [0] * len(b)
+        for j in range(1, len(b) + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+            if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                cur[j] = min(cur[j], prev2[j - 2] + 1)
+        if min(cur) > limit:
+            return False
+        prev2, prev = prev, cur
+    return prev[-1] <= limit
+
+
+def _imitation(name: str, brand: str, fuzzy: bool = True) -> Optional[str]:
+    """How `name` imitates `brand` (a different string), or None.
+
+    Look-alike characters count as the letter they imitate at any length.
+    Swaps, doubled letters, hyphens, combos and multi-char glyphs from
+    _SHAPE_MIN_LABEL. Edit distance — one substitution, the similarity ratio
+    — from _FUZZY_MIN_LABEL, and not at all when `fuzzy` is False. Two edits
+    only when both are _TWO_EDIT_MIN_LABEL long.
+    """
+    tail = _generic_tail(name, brand)
+    if tail:
+        if "-" in name and name.replace("-", "") == brand:
+            return "hyphen injection"
+        if _check_combosquat(name, brand):
+            return "combosquatting"
+        return _imitation(name[:-tail].rstrip("-"), brand[:-tail], fuzzy)
+
+    # Character substitution
+    if _check_char_substitution(name, brand, fuzzy):
+        return "character substitution"
+
+    if len(name) < _SHAPE_MIN_LABEL:
+        return None
+
+    # Multi-char ASCII glyph homoglyph (rn->m, vv->w, cl->d) — #1 tactic,
+    # not covered by single-char subs or Levenshtein<=2. When a glyph
+    # substitution actually happened (skel != name), the corruption itself
+    # signals intent, so we look past an exact match to the brand surfacing
+    # as a delimited label (rnicrosoft-login), a combosquat, or a close
+    # variant (rnicrosofts). The len(brand)>=6 guard prevents the short-name
+    # over-collapse that false-matched legit domains (clax->wix, clara->...).
+    # >=5 verified to add zero FPs on 20k legit while catching 5-char targets
+    # (gmail, apple, yahoo, venmo, zelle).
+    skel = _glyph_skeleton(name)
+    if skel != name:
+        if skel == brand:
+            return "glyph homoglyph"
+        if len(brand) >= 5 and (
+            brand in re.split(r"[-.]", skel)
+            or _check_combosquat(skel, brand)
+            or SequenceMatcher(None, skel, brand).ratio() >= 0.90
+        ):
+            return "glyph homoglyph"
+
+    # Transposition
+    if _check_transposition(name, brand):
+        return "character swap"
+
+    # Hyphen injection
+    if name.replace("-", "") == brand and "-" in name:
+        return "hyphen injection"
+
+    # Combosquatting
+    if _check_combosquat(name, brand):
+        return "combosquatting"
+
+    # SequenceMatcher fallback. The ratio alone let two edits through at any
+    # length — aviator ~ avito, kontakt ~ vkontakte, rutor ~ rustore — which
+    # _TWO_EDIT_MIN_LABEL forbids for substitutions; the edit budget holds it
+    # to the same rule.
+    if fuzzy and len(name) >= _FUZZY_MIN_LABEL and SequenceMatcher(None, name, brand).ratio() >= 0.82:
+        budget = 2 if min(len(name), len(brand)) >= _TWO_EDIT_MIN_LABEL else 1
+        if _edit_distance_at_most(name, brand, budget):
+            return "high similarity"
+
+    # One letter typed twice — what the ratio above catches from 5
+    # letters, for the 3-letter brands (dhll, upss).
+    if _check_doubled_letter(name, brand):
+        return "doubled letter"
+
+    return None
+
+
 def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
     # Under a Russian public suffix, the REGISTRABLE label — never the zone
     # label ('spb' of kvs.gov.spb.ru was "ups", 'nov' of adm.nov.ru "n26").
@@ -1717,10 +1870,13 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
     # compound-suffix names) because the allowlist looks names up by their
     # last two labels and never sees them.
     base = _ru_registrable_domain(domain) or _extract_base_domain(domain)
+    # A brand family's own site, or a verified site of another owner with the
+    # same shape (data/typosquat_targets_ru.json), imitates no one.
+    if base in _BRAND_LEGIT_DOMAINS:
+        return None
     name = base.split(".")[0].lower()
     if len(name) < _TYPOSQUAT_MIN_LABEL:
         return None
-    exact_only = len(name) < _SHAPE_MIN_LABEL
     tld = _extract_tld(domain)
     # TLD confusion is the brand's own name directly under another TLD
     # (paypal.co). A brand name registered under a Russian zone
@@ -1731,63 +1887,20 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
     for brand, legit_domain in TYPOSQUAT_TARGETS.items():
         if domain == legit_domain or base == legit_domain:
             continue
+        if name in _BRAND_NOT_TYPOS.get(brand, ()):
+            continue
 
         # TLD confusion (paypal.co vs paypal.com)
         legit_tld = _extract_tld(legit_domain)
-        if name == brand and tld != legit_tld and directly_under_tld:
+        if name == brand and tld != legit_tld and directly_under_tld and brand not in _NO_TLD_CONFUSION:
             return (legit_domain, "TLD confusion")
 
         if brand == name:
             continue
 
-        # Character substitution
-        if _check_char_substitution(name, brand):
-            return (legit_domain, "character substitution")
-
-        if exact_only:
-            continue
-
-        # Multi-char ASCII glyph homoglyph (rn->m, vv->w, cl->d) — #1 tactic,
-        # not covered by single-char subs or Levenshtein<=2. When a glyph
-        # substitution actually happened (skel != name), the corruption itself
-        # signals intent, so we look past an exact match to the brand surfacing
-        # as a delimited label (rnicrosoft-login), a combosquat, or a close
-        # variant (rnicrosofts). The len(brand)>=6 guard prevents the short-name
-        # over-collapse that false-matched legit domains (clax->wix, clara->...).
-        # >=5 verified to add zero FPs on 20k legit while catching 5-char targets
-        # (gmail, apple, yahoo, venmo, zelle).
-        skel = _glyph_skeleton(name)
-        if skel != name:
-            if skel == brand:
-                return (legit_domain, "glyph homoglyph")
-            if len(brand) >= 5 and (
-                brand in re.split(r"[-.]", skel)
-                or _check_combosquat(skel, brand)
-                or SequenceMatcher(None, skel, brand).ratio() >= 0.90
-            ):
-                return (legit_domain, "glyph homoglyph")
-
-        # Transposition
-        if _check_transposition(name, brand):
-            return (legit_domain, "character swap")
-
-        # Hyphen injection
-        if name.replace("-", "") == brand and "-" in name:
-            return (legit_domain, "hyphen injection")
-
-        # Combosquatting
-        if _check_combosquat(name, brand):
-            return (legit_domain, "combosquatting")
-
-        # SequenceMatcher fallback
-        ratio = SequenceMatcher(None, name, brand).ratio()
-        if ratio >= 0.82 and len(name) >= _FUZZY_MIN_LABEL:
-            return (legit_domain, "high similarity")
-
-        # One letter typed twice — what the ratio above catches from 5
-        # letters, for the 3-letter brands (dhll, upss).
-        if _check_doubled_letter(name, brand):
-            return (legit_domain, "doubled letter")
+        method = _imitation(name, brand, fuzzy=brand not in _NO_FUZZY)
+        if method:
+            return (legit_domain, method)
 
     return None
 
@@ -1798,14 +1911,14 @@ def _imitates(ch: str, letter: str) -> bool:
     return ch == letter or letter in _CHAR_SUBS.get(ch, "") or _CONFUSABLES.get(ch) == letter
 
 
-def _check_char_substitution(s1: str, s2: str) -> bool:
+def _check_char_substitution(s1: str, s2: str, fuzzy: bool = True) -> bool:
     if len(s1) != len(s2):
         return False
     # Look-alike characters read as the letter they imitate: they are the
     # attack, not a difference. Compared position by position, so a brand's
     # own digits (office365) stay digits.
     diffs = sum(1 for a, b in zip(s1, s2) if not _imitates(a, b))
-    if len(s1) < _FUZZY_MIN_LABEL:
+    if len(s1) < _FUZZY_MIN_LABEL or not fuzzy:
         return diffs == 0
     return diffs <= (2 if len(s1) >= _TWO_EDIT_MIN_LABEL else 1)
 
@@ -1857,9 +1970,11 @@ def _check_brand_in_subdomain(domain: str) -> Optional[str]:
     if not reg or dom == reg:
         return None
     sub = dom[: -(len(reg) + 1)]
+    # The global brands only (GLOBAL_TYPOSQUAT_TARGETS explains why); Russian
+    # ones are checked under open Russian zones by _check_brand_under_open_zone.
     for part in sub.split("."):
         part_clean = part.replace("-", "")
-        if part_clean in TYPOSQUAT_TARGETS and reg != TYPOSQUAT_TARGETS[part_clean]:
+        if part_clean in GLOBAL_TYPOSQUAT_TARGETS and reg != GLOBAL_TYPOSQUAT_TARGETS[part_clean]:
             return part_clean
     return None
 
@@ -1868,12 +1983,16 @@ def _check_brand_in_subdomain(domain: str) -> Optional[str]:
 # Russian zone (see _RU_RESTRICTED_ZONES), where a reader takes spb.ru or
 # nov.ru for the site and the brand for a section of it. The CT log for
 # nov.ru alone lists vk.nov.ru, mts.nov.ru, ok.nov.ru and kinopoisk.nov.ru.
-# Not typosquat targets: vk, ok and mts are far too short for edit distance,
-# and a name bought as-is needs none. None of the Tranco top-100k matches.
+# Separate from the typosquat targets: vk, ok and t2 are too short to be
+# compared there, and a name bought as-is needs no edit distance. The Latin
+# names of data/typosquat_targets_ru.json are here too. None of the Tranco
+# top-1M names under a Russian zone (40) matches.
 _RU_ZONE_BRANDS = frozenset({
     "sber", "sberbank", "gosuslugi", "tinkoff", "tbank", "vtb", "alfabank",
     "ozon", "wildberries", "avito", "mts", "tele2", "t2", "yandex", "vk",
     "ok", "kinopoisk", "mailru",
+    "uralsib", "gazprombank", "pochtabank", "sovcombank", "beeline", "megafon",
+    "cdek", "russianpost", "rustore", "vkontakte", "odnoklassniki",
 })
 # Shorter brands match only as a whole label or a hyphenated keyword combo
 # (vk-login): as one part of a name (ok-stroy) or glued to a word (gook) they

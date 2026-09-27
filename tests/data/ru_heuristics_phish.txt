@@ -26,6 +26,8 @@
 #                           persons' names), so vk.com.msk.ru reads as vk.com
 #            short_brand    a 3-4 letter global brand under another TLD or
 #                           with look-alike characters (control)
+#            reported       a phishing domain a fraud report names verbatim
+#                           (F6: cdek.nu …, yandex-doctavym.website …)
 #            known_miss     a typo the rule deliberately gives up — a 4-letter
 #                           omission of a 5-letter brand, two substitutions in
 #                           under 8 letters — listed so its loss is counted
@@ -172,6 +174,32 @@ dhll.com | short_brand | dhl.com | doubled letter
 1kea.com | short_brand | ikea.com | digit 1 for i
 eb4y.com | short_brand | ebay.com | digit 4 for a
 c1ti.com | short_brand | citi.com | digit 1 for i
+
+# ── Brands added with data/typosquat_targets_ru.json ──
+megaf0n.ru | homoglyph | megafon.ru | digit 0 for o
+bee1ine.ru | homoglyph | beeline.ru | digit 1 for l
+m7s.ru | homoglyph | mts.ru | digit 7 for t, a 3-letter brand
+gzprombank.ru | typosquat | gazprombank.ru | omission
+pchtabank.ru | typosquat | pochtabank.ru | omission
+sovkombank.xyz | typosquat | sovcombank.ru | k for c, risky TLD
+uralsb.ru | typosquat | uralsib.ru | omission
+rust0re.ru | homoglyph | rustore.ru | digit 0 for o
+russianpst.ru | typosquat | russianpost.ru | omission
+odnoklasniki.com | typosquat | ok.ru | omission
+wildberries.shop | short_brand | wildberries.ru | brand name under .shop (F6: 22% of H1 2026 phishing)
+ozon.pro | short_brand | ozon.ru | brand name under .pro (F6: 10%)
+xn--80abap1arsf.xn--p1acf | short_brand | sberbank.ru | сбербанк.рус, the Cyrillic name under another TLD
+
+# ── Named verbatim in fraud reports ──
+cdek.nu | reported | cdek.ru | F6, 'Охота на «Мамонта»' (2021)
+cdek.in | reported | cdek.ru | F6 (2021)
+cdek.at | reported | cdek.ru | F6 (2021)
+cdek-box.ru | reported | cdek.ru | F6 (2021)
+cdek-dostavka.info | reported | cdek.ru | F6 (2021)
+yandex-doctavym.website | reported | yandex.ru | F6 via CNews (2026-08-10), Яндекс Доставка fakes
+dostavka-y.website | reported | yandex.ru | F6 (2026)
+yandex-dostavkoy.website | reported | yandex.ru | F6 (2026)
+yandex-dostavkuy.website | reported | yandex.ru | F6 (2026)
 
 # ── Typos the rule gives up (counted, not expected to be caught) ──
 gmai.com | known_miss | gmail.com | omission: 4 letters, as dense as 'mail'
