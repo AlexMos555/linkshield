@@ -271,6 +271,14 @@ def char_diversity(s: str) -> float:
 # COMPLETE FEATURE VECTOR EXTRACTION
 # ═══════════════════════════════════════════════════════════════
 
+# Written into every logged row (log_features) and bumped whenever a
+# feature's MEANING changes, so a retrain on data/feature_log.jsonl can keep
+# the definitions apart instead of mixing them. Rows without the field are 1.
+# 2 (2026-09-27): has_fake_tld_subdomain looks left of the PSL registrable
+#    domain — 0 for kvs.gov.spb.ru and edu.gov.ru, which were 1.
+FEATURES_VERSION = 2
+
+
 def extract_features(domain: str, signals: dict) -> dict[str, float]:
     """
     Extract complete numeric feature vector from domain and signals.
@@ -407,6 +415,7 @@ def log_features(domain: str, features: dict[str, float], score: int) -> None:
         "domain": domain,
         "score": score,
         "features": features,
+        "features_version": FEATURES_VERSION,
     }
 
     log_path = os.path.join(_DATA_DIR, "feature_log.jsonl")
