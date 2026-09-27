@@ -1,0 +1,301 @@
+# LEGIT — Russian hosts the local heuristics must NOT call dangerous.
+#
+# Used by scripts/eval_ru_heuristics.py and tests/test_ru_heuristic_fps.py to
+# measure the name-only rules in api.services.scoring (typosquatting,
+# fake_tld_subdomain, excessive_subdomains …) OFFLINE: calculate_score() is
+# given the host and nothing else — no blocklists, no WHOIS, no site probes.
+#
+# Format — one host per line, fields separated by " | ":
+#   host      punycode, lowercase, no scheme / path
+#   category  gov_spb        a name under gov.spb.ru (St Petersburg government)
+#             regional_zone  a name registered under a regional or reserved
+#                            public suffix from the PSL (spb.ru, msk.ru,
+#                            nov.ru, ras.ru, org.ru, net.ru, com.ru,
+#                            vladimir.ru — anyone can register there, so every
+#                            one of these is an entity's own Wikidata-listed site)
+#             mos            a name under mos.ru (Moscow government)
+#             federal_gov    a name under gov.ru / mil.ru / ac.ru (registries
+#                            only government bodies and academia can use)
+#             regional_gov   other regional / city administrations
+#             university     universities and research institutes
+#             short_name     a 2–4 letter registrable label (companies, banks,
+#                            media, universities, public bodies)
+#   source    where the name/owner pairing comes from: a Wikidata item whose
+#             official website (P856) is this host, data/benchmark_legit_ru.txt
+#             (hand-reviewed 2026-09-27), CT logs (crt.sh) for names under a
+#             government-only registrable domain, or the production report
+#             that found the false positive
+#   name      what the site is
+#
+# Every host resolved (A/AAAA via 1.1.1.1 DoH) on 2026-09-27; a host that did
+# not was left out. Tranco top-100k membership is NOT a criterion — those hosts
+# are answered by the allowlist before any heuristic runs, so most of this
+# list deliberately sits outside it.
+# '#' starts a comment; blank lines are ignored.
+
+# ── The production false positives (2026-09-27 report) ──
+kvs.gov.spb.ru | gov_spb | report 2026-09-27; Wikidata Q656 P856 | Санкт-Петербург (официальный сайт)
+ako.ru | short_name | report 2026-09-27; Wikidata Q6076 P856 | Кемеровская область — Кузбасс
+etsp.ru | short_name | earlier FP report | ЭТСП
+ikar.ru | short_name | earlier FP report | Икар
+ugpr.ru | short_name | earlier FP report | УГПР
+ngpedia.ru | short_name | earlier FP report | Нефтегазовая энциклопедия
+
+# ── gov.spb.ru — St Petersburg government (registered 2010, own name servers) ──
+gov.spb.ru | gov_spb | Wikidata Q1993715 P856 | Правительство Санкт-Петербурга
+kgiop.gov.spb.ru | gov_spb | Wikidata Q4229724 P856 | КГИОП
+zenit.kfis.gov.spb.ru | gov_spb | Wikidata Q65156124 P856 | СШОР «Зенит» (КФКиС)
+budget.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Бюджет Санкт-Петербурга
+fincom.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Комитет финансов
+kga.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Комитет по градостроительству и архитектуре
+kis.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Комитет имущественных отношений
+kkult.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Комитет по культуре
+knvsh.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Комитет по науке и высшей школе
+kzags.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Комитет по делам ЗАГС
+rprim.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Администрация Приморского района
+tour.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Комитет по развитию туризма
+golos.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Голосование
+iss.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | ИСС
+tb.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | ТБ
+toris.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | ТОРИС
+expertiza.gov.spb.ru | gov_spb | crt.sh under gov.spb.ru | Служба госэкспертизы
+
+# ── Registrations under regional / reserved public suffixes (PSL) ──
+metro.spb.ru | regional_zone | Wikidata Q250225 P856 | Петербургский метрополитен
+vodokanal.spb.ru | regional_zone | Wikidata Q4114077 P856 | Водоканал Санкт-Петербурга
+zdrav.spb.ru | regional_zone | Wikidata Q55137297 P856 | Комитет по здравоохранению
+cedipt.spb.ru | regional_zone | Wikidata Q19909597 P856 | Комитет по экономической политике
+assembly.spb.ru | regional_zone | Wikidata Q2390550 P856 | Законодательное собрание Санкт-Петербурга
+voadm.spb.ru | regional_zone | Wikidata Q220622 P856 | Администрация Василеостровского района
+toponimika.spb.ru | regional_zone | Wikidata Q4460807 P856 | Топонимическая комиссия
+ekp.spb.ru | regional_zone | Wikidata Q112206354 P856 | Единая карта петербуржца
+avtobus.spb.ru | regional_zone | Wikidata Q4346590 P856 | Пассажиравтотранс
+electrotrans.spb.ru | regional_zone | Wikidata Q4146185 P856 | Горэлектротранс
+mo-petergof.spb.ru | regional_zone | Wikidata Q178310 P856 | Петергоф
+herzen.spb.ru | regional_zone | Wikidata Q323681 P856 | РГПУ им. Герцена
+scit.herzen.spb.ru | regional_zone | Wikidata Q108599669 P856 | Высшая школа перевода РГПУ
+eu.spb.ru | regional_zone | Wikidata Q929378 P856 | Европейский университет в Санкт-Петербурге
+lesgaft.spb.ru | regional_zone | Wikidata Q4314989 P856 | Университет им. Лесгафта
+iling.spb.ru | regional_zone | Wikidata Q4201561 P856 | Институт лингвистических исследований РАН
+influenza.spb.ru | regional_zone | Wikidata Q30296245 P856 | НИИ гриппа
+emergency.spb.ru | regional_zone | Wikidata Q21656001 P856 | НИИ скорой помощи им. Джанелидзе
+eliz.spb.ru | regional_zone | Wikidata Q50035758 P856 | Елизаветинская больница
+dgb.spb.ru | regional_zone | Wikidata Q4159414 P856 | Детская городская больница № 1
+b28.spb.ru | regional_zone | Wikidata Q16673567 P856 | Максимилиановская лечебница
+bdt.spb.ru | regional_zone | Wikidata Q1981162 P856 | БДТ им. Товстоногова
+md.spb.ru | regional_zone | Wikidata Q2487646 P856 | Музей Достоевского
+pl.spb.ru | regional_zone | Wikidata Q4504111 P856 | Библиотека им. Маяковского
+gbs.spb.ru | regional_zone | Wikidata Q55655744 P856 | Библиотека для слепых и слабовидящих
+ea.spb.ru | regional_zone | Wikidata Q16721893 P856 | Электроаппарат
+rtr.spb.ru | regional_zone | Wikidata Q4407651 P856 | Телерадиокомпания «Санкт-Петербург»
+philharmonia.spb.ru | regional_zone | Wikidata Q1852398 P856 | Филармония им. Шостаковича
+circus.spb.ru | regional_zone | Wikidata Q268839 P856 | Большой Санкт-Петербургский цирк
+lavra.spb.ru | regional_zone | Wikidata Q946428 P856 | Александро-Невская лавра
+mitropolia.spb.ru | regional_zone | Wikidata Q10861251 P856 | Санкт-Петербургская митрополия
+karavay.spb.ru | regional_zone | Wikidata Q4213614 P856 | Каравай
+nickel.spb.ru | regional_zone | Wikidata Q23069766 P856 | Гипроникель
+niikp.spb.ru | regional_zone | Wikidata Q28664337 P856 | НИИ командных приборов
+g192.spb.ru | regional_zone | Wikidata Q4097456 P856 | Брюсовская гимназия
+school30.spb.ru | regional_zone | Wikidata Q4483554 P856 | Физико-математический лицей № 30
+sc384.kirov.spb.ru | regional_zone | Wikidata Q4525064 P856 | Школа № 384
+adm.nov.ru | regional_zone | Wikidata Q2235 P856 | Администрация Великого Новгорода
+novodev.msk.ru | regional_zone | Wikidata Q270725 P856 | Новодевичий монастырь
+kerc.msk.ru | regional_zone | Wikidata Q3152107 P856 | Центр Келдыша
+ibmc.msk.ru | regional_zone | Wikidata Q19908058 P856 | Институт биомедицинской химии
+museum.vladimir.ru | regional_zone | Wikidata Q1050324 P856 | Владимиро-Суздальский музей-заповедник
+new.ras.ru | regional_zone | Wikidata Q83172 P856 | Российская академия наук
+iph.ras.ru | regional_zone | Wikidata Q4201801 P856 | Институт философии РАН
+inm.ras.ru | regional_zone | Wikidata Q4201457 P856 | ИВМ РАН
+kapitza.ras.ru | regional_zone | Wikidata Q4201800 P856 | Институт физпроблем им. Капицы
+chph.ras.ru | regional_zone | Wikidata Q4201824 P856 | Институт химической физики
+idg.chph.ras.ru | regional_zone | Wikidata Q4201496 P856 | Институт динамики геосфер РАН
+igic.ras.ru | regional_zone | Wikidata Q4201634 P856 | ИОНХ РАН
+img.ras.ru | regional_zone | Wikidata Q4201607 P856 | Институт молекулярной генетики РАН
+iam.ras.ru | regional_zone | Wikidata Q30263307 P856 | Институт прикладной механики РАН
+linux.org.ru | regional_zone | Wikidata Q4042997 P856 | Linux.org.ru
+transparency.org.ru | regional_zone | Wikidata Q20035777 P856 | Трансперенси Интернешнл — Р
+asi.org.ru | regional_zone | Wikidata Q20081323 P856 | Агентство социальной информации
+vos.org.ru | regional_zone | Wikidata Q4127575 P856 | Всероссийское общество слепых
+aist.net.ru | regional_zone | Wikidata Q4053974 P856 | АИСТ
+morion.com.ru | regional_zone | Wikidata Q132742240 P856 | Морион
+tribuna.com.ru | regional_zone | Wikidata Q28667348 P856 | Трибуна
+
+# ── mos.ru — Moscow government ──
+ag.mos.ru | mos | crt.sh under mos.ru | Активный гражданин
+dogm.mos.ru | mos | crt.sh under mos.ru | Департамент образования и науки
+duma.mos.ru | mos | crt.sh under mos.ru | Московская городская дума
+dom.mos.ru | mos | crt.sh under mos.ru | Жилищный портал
+codd.mos.ru | mos | crt.sh under mos.ru | ЦОДД
+czn.mos.ru | mos | crt.sh under mos.ru | Центр занятости
+cafap.mos.ru | mos | crt.sh under mos.ru | ЦАФАП
+bilet.mos.ru | mos | crt.sh under mos.ru | Билеты
+econom.mos.ru | mos | crt.sh under mos.ru | Департамент экономической политики
+
+# ── Federal bodies: gov.ru / mil.ru / ac.ru ──
+rosreestr.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Росреестр
+minfin.gov.ru | federal_gov | registry-restricted (gov.ru) | Минфин России
+economy.gov.ru | federal_gov | registry-restricted (gov.ru) | Минэкономразвития
+minzdrav.gov.ru | federal_gov | registry-restricted (gov.ru) | Минздрав России
+mchs.gov.ru | federal_gov | registry-restricted (gov.ru) | МЧС России
+customs.gov.ru | federal_gov | registry-restricted (gov.ru) | ФТС России
+rosstat.gov.ru | federal_gov | registry-restricted (gov.ru) | Росстат
+fas.gov.ru | federal_gov | registry-restricted (gov.ru) | ФАС России
+minjust.gov.ru | federal_gov | registry-restricted (gov.ru) | Минюст России
+mintrans.gov.ru | federal_gov | registry-restricted (gov.ru) | Минтранс России
+minpromtorg.gov.ru | federal_gov | registry-restricted (gov.ru) | Минпромторг России
+minstroyrf.gov.ru | federal_gov | registry-restricted (gov.ru) | Минстрой России
+minobrnauki.gov.ru | federal_gov | registry-restricted (gov.ru) | Минобрнауки России
+edu.gov.ru | federal_gov | registry-restricted (gov.ru) | Минпросвещения России
+digital.gov.ru | federal_gov | registry-restricted (gov.ru) | Минцифры России
+nalog.gov.ru | federal_gov | registry-restricted (gov.ru) | ФНС России
+sfr.gov.ru | federal_gov | registry-restricted (gov.ru) | Социальный фонд России
+fssp.gov.ru | federal_gov | registry-restricted (gov.ru) | ФССП России
+rkn.gov.ru | federal_gov | registry-restricted (gov.ru) | Роскомнадзор
+culture.gov.ru | federal_gov | registry-restricted (gov.ru) | Минкультуры России
+mcx.gov.ru | federal_gov | registry-restricted (gov.ru) | Минсельхоз России
+minenergo.gov.ru | federal_gov | registry-restricted (gov.ru) | Минэнерго России
+favt.gov.ru | federal_gov | registry-restricted (gov.ru) | Росавиация
+rosavtodor.gov.ru | federal_gov | registry-restricted (gov.ru) | Росавтодор
+roszdravnadzor.gov.ru | federal_gov | registry-restricted (gov.ru) | Росздравнадзор
+fsin.gov.ru | federal_gov | registry-restricted (gov.ru) | ФСИН России
+fmba.gov.ru | federal_gov | registry-restricted (gov.ru) | ФМБА России
+rospatent.gov.ru | federal_gov | registry-restricted (gov.ru) | Роспатент
+fsa.gov.ru | federal_gov | registry-restricted (gov.ru) | Росаккредитация
+rosim.gov.ru | federal_gov | registry-restricted (gov.ru) | Росимущество
+roskazna.gov.ru | federal_gov | registry-restricted (gov.ru) | Казначейство России
+rosnedra.gov.ru | federal_gov | registry-restricted (gov.ru) | Роснедра
+mintrud.gov.ru | federal_gov | registry-restricted (gov.ru) | Минтруд России
+duma.gov.ru | federal_gov | registry-restricted (gov.ru) | Государственная дума
+council.gov.ru | federal_gov | registry-restricted (gov.ru) | Совет Федерации
+ach.gov.ru | federal_gov | registry-restricted (gov.ru) | Счётная палата
+svr.gov.ru | federal_gov | registry-restricted (gov.ru) | СВР России
+fso.gov.ru | federal_gov | registry-restricted (gov.ru) | ФСО России
+rosguard.gov.ru | federal_gov | registry-restricted (gov.ru) | Росгвардия
+obrnadzor.gov.ru | federal_gov | registry-restricted (gov.ru) | Рособрнадзор
+chechnya.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Чечня
+crimea.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Республика Крым
+mari-el.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Марий Эл
+rk.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Республика Крым
+ryazan.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Рязанская область
+sakha.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Якутия
+tomsk.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Томская область
+zo.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Запорожская область
+svki.rosguard.gov.ru | federal_gov | data/benchmark_legit_ru.txt | Саратовское военное училище Росгвардии
+ens.mil.ru | federal_gov | data/benchmark_legit_ru.txt | Военная академия РХБЗ
+ivanovo.ac.ru | federal_gov | data/benchmark_legit_ru.txt | Ивановский государственный университет
+
+# ── Other regional and city administrations ──
+avo.ru | regional_gov | data/benchmark_legit_ru.txt | Владимирская область
+eao.ru | regional_gov | data/benchmark_legit_ru.txt | Еврейская автономная область
+75.ru | regional_gov | data/benchmark_legit_ru.txt | Забайкальский край
+nobl.ru | regional_gov | data/benchmark_legit_ru.txt | Нижегородская область
+adm44.ru | regional_gov | data/benchmark_legit_ru.txt | Костромская область
+glava.kbr.ru | regional_gov | data/benchmark_legit_ru.txt | Кабардино-Балкария
+adm.solkam.ru | regional_gov | data/benchmark_legit_ru.txt | Соликамск
+pkgo.ru | regional_gov | data/benchmark_legit_ru.txt | Петропавловск-Камчатский
+movp.ru | regional_gov | data/benchmark_legit_ru.txt | Верхняя Пышма
+atmr.ru | regional_gov | Wikidata Q57604906 P856 | Администрация Тюменского района
+prav.tatarstan.ru | regional_gov | tatarstan.ru government domain | Правительство Республики Татарстан
+mert.tatarstan.ru | regional_gov | tatarstan.ru government domain | Минэкономики Татарстана
+minzdrav.tatarstan.ru | regional_gov | tatarstan.ru government domain | Минздрав Татарстана
+mfc16.tatarstan.ru | regional_gov | crt.sh under tatarstan.ru | МФЦ Татарстана
+uslugi.tatarstan.ru | regional_gov | crt.sh under tatarstan.ru | Госуслуги Татарстана
+xn--b1aew.xn--p1ai | regional_gov | МВД России official | мвд.рф
+xn--90adear.xn--p1ai | regional_gov | Госавтоинспекция official | гибдд.рф
+
+# ── Universities and institutes ──
+etu.ru | university | Wikidata Q4407708 P856 | ЛЭТИ
+sut.ru | university | Wikidata Q4407705 P856 | СПбГУТ им. Бонч-Бруевича
+smtu.ru | university | Wikidata Q4407693 P856 | СПбГМТУ
+sutd.ru | university | Wikidata Q4407701 P856 | СПбГУПТД
+guap.ru | university | Wikidata Q1628751 P856 | ГУАП
+usma.ru | university | Wikidata Q4476708 P856 | УГМУ
+usue.ru | university | Wikidata Q2354119 P856 | УрГЭУ
+usla.ru | university | Wikidata Q4476714 P856 | УрГЮУ
+uust.ru | university | Wikidata Q114712246 P856 | УУНиТ
+ystu.ru | university | Wikidata Q4538874 P856 | ЯГТУ
+ysmu.ru | university | Wikidata Q4538824 P856 | ЯГМУ
+sgmu.ru | university | Wikidata Q4408455 P856 | Саратовский ГМУ
+tspu.ru | university | Wikidata Q1239515 P856 | ТГПУ
+udsu.ru | university | Wikidata Q902189 P856 | Удмуртский госуниверситет
+vvsu.ru | university | Wikidata Q4112965 P856 | ВВГУ
+bsu.ru | university | Wikidata Q1055243 P856 | Бурятский госуниверситет
+dgu.ru | university | Wikidata Q4153935 P856 | Дагестанский госуниверситет
+isu.ru | university | Wikidata Q670649 P856 | Иркутский госуниверситет
+osu.ru | university | Wikidata Q2151478 P856 | Оренбургский госуниверситет
+csu.ru | university | Wikidata Q2333300 P856 | Челябинский госуниверситет
+kbsu.ru | university | Wikidata Q4206599 P856 | КБГУ
+fa.ru | university | Wikidata Q1416632 P856 | Финансовый университет
+rea.ru | university | Wikidata Q2004114 P856 | РЭУ им. Плеханова
+guu.ru | university | Wikidata Q1131600 P856 | ГУУ
+mpei.ru | university | Wikidata Q224802 P856 | МЭИ
+miit.ru | university | Wikidata Q1477512 P856 | РУТ (МИИТ)
+istu.ru | university | Wikidata Q4198184 P856 | ИжГТУ
+ispu.ru | university | data/benchmark_legit_ru.txt | ИГЭУ
+cu.ru | university | data/benchmark_legit_ru.txt | Центральный университет
+kai.ru | university | data/benchmark_legit_ru.txt | КНИТУ-КАИ
+tgmu.ru | university | data/benchmark_legit_ru.txt | ТГМУ
+rshu.ru | university | data/benchmark_legit_ru.txt | РГГМУ
+ippe.ru | university | Wikidata Q126824 P856 | Физико-энергетический институт
+spbu.ru | university | Tranco-ranked | СПбГУ
+hse.ru | university | Tranco-ranked | НИУ ВШЭ
+mipt.ru | university | Tranco-ranked | МФТИ
+itmo.ru | university | Tranco-ranked | Университет ИТМО
+
+# ── Short registrable names (2–4 letters): business, banks, media, public bodies ──
+131.ru | short_name | Wikidata Q112687852 P856 | Банк 131
+abr.ru | short_name | Wikidata Q827011 P856 | Банк «Россия»
+itb.ru | short_name | Wikidata Q4200545 P856 | Инвестторгбанк
+bcs.ru | short_name | Wikidata Q4096843 P856 | БКС
+cbr.ru | short_name | Wikidata Q806651 P856 | Банк России
+veb.ru | short_name | Wikidata Q670084 P856 | ВЭБ.РФ
+rshb.ru | short_name | Wikidata Q3920226 P856 | Россельхозбанк
+gum.ru | short_name | Wikidata Q549498 P856 | ГУМ
+tsum.ru | short_name | Wikidata Q2020019 P856 | ЦУМ
+lomo.ru | short_name | Wikidata Q837412 P856 | ЛОМО
+zid.ru | short_name | Wikidata Q2439883 P856 | Завод им. Дегтярёва
+utz.ru | short_name | Wikidata Q4476791 P856 | Уральский турбинный завод
+umpo.ru | short_name | Wikidata Q4479133 P856 | ОДК-УМПО
+vaso.ru | short_name | Wikidata Q392451 P856 | ВАСО
+uetm.ru | short_name | Wikidata Q4476810 P856 | Уралэлектротяжмаш
+taif.ru | short_name | Wikidata Q4448860 P856 | ТАИФ
+tvel.ru | short_name | Wikidata Q2212423 P856 | ТВЭЛ
+omk.ru | short_name | Wikidata Q4087766 P856 | ОМК
+mmk.ru | short_name | Wikidata Q1884500 P856 | ММК
+croc.ru | short_name | Wikidata Q4206408 P856 | КРОК
+bork.ru | short_name | Wikidata Q4035327 P856 | Bork
+buka.ru | short_name | Wikidata Q1972036 P856 | Бука
+366.ru | short_name | Wikidata Q226889 P856 | Аптеки 36,6
+it.ru | short_name | Wikidata Q4058706 P856 | АйТи
+etk.ru | short_name | Wikidata Q4172736 P856 | ЕТК
+gtlk.ru | short_name | Wikidata Q4146653 P856 | ГТЛК
+drsk.ru | short_name | Wikidata Q4153434 P856 | ДРСК
+t8.ru | short_name | Wikidata Q16703948 P856 | Т8
+te.ru | short_name | Wikidata Q16708986 P856 | Россети Тюмень
+lgz.ru | short_name | Wikidata Q1865276 P856 | Литературная газета
+trud.ru | short_name | Wikidata Q1195809 P856 | Труд
+ng.ru | short_name | Wikidata Q946366 P856 | Независимая газета
+dp.ru | short_name | Wikidata Q4157215 P856 | Деловой Петербург
+vm.ru | short_name | Wikidata Q2614109 P856 | Вечерняя Москва
+uar.ru | short_name | Wikidata Q4430472 P856 | Союз архитекторов России
+una.ru | short_name | Wikidata Q7888339 P856 | Ассоциация содействия ООН
+feor.ru | short_name | Wikidata Q2896504 P856 | ФЕОР
+rjc.ru | short_name | Wikidata Q1959548 P856 | Российский еврейский конгресс
+oprf.ru | short_name | Wikidata Q1518687 P856 | Общественная палата РФ
+orur.ru | short_name | Wikidata Q3476392 P856 | Скауты России
+reg.ru | short_name | Wikidata Q4047834 P856 | Рег.ру
+nic.ru | short_name | Wikidata Q4048581 P856 | RU-CENTER
+akin.ru | short_name | Wikidata Q4759257 P856 | Акустический институт им. Андреева
+vti.ru | short_name | Wikidata Q16632212 P856 | ВТИ
+mts.ru | short_name | Wikidata Q1368919 P856 | МТС
+t2.ru | short_name | Wikidata Q4050799 P856 | T2 (Tele2)
+rbc.ru | short_name | Wikidata Q629733 P856 | РБК
+ria.ru | short_name | Wikidata Q821172 P856 | РИА Новости
+rg.ru | short_name | Wikidata Q1853433 P856 | Российская газета
+kp.ru | short_name | Wikidata Q849047 P856 | Комсомольская правда
+mk.ru | short_name | Wikidata Q1062623 P856 | Московский комсомолец
+iz.ru | short_name | Wikidata Q753932 P856 | Известия
+hh.ru | short_name | Wikidata Q4040469 P856 | HeadHunter
+1c.ru | short_name | Wikidata Q77202 P856 | 1С
+x5.ru | short_name | Wikidata Q258748 P856 | X5 Group
+5ka.ru | short_name | Wikidata Q1768969 P856 | Пятёрочка
