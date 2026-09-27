@@ -2256,7 +2256,8 @@
       "linkguard_enable": "Configurar",
       "push_off_desc": "Desactivados en los ajustes del teléfono: no sabrás cuándo se bloquea algo. Toca para activarlos.",
       "push_enable": "Activar",
-      "linkguard_on_desc_no_list": "Los enlaces se revisan justo después de abrirse; la lista de sitios fraudulentos llega cuando activas el escudo «Todas las apps»."
+      "linkguard_on_desc_no_list": "Los enlaces se revisan justo después de abrirse; la lista de sitios fraudulentos llega cuando activas el escudo «Todas las apps».",
+      "protection": "Protección"
     },
     "family": {
       "title": "Espacio Familiar",
@@ -2403,6 +2404,104 @@
       "required_body": "Esta versión está desactualizada. Actualiza Cleanway para que tu protección siga funcionando.",
       "action": "Actualizar",
       "later": "Más tarde"
+    },
+    "checkup": {
+      "title": "Revisión de la protección",
+      "intro": "Arriba, lo que el teléfono comprobó por sí mismo. Abajo, pasos que la familia hace una sola vez para ponérselo más difícil a los estafadores.",
+      "never_calls": "Cleanway nunca envía enlaces por SMS ni llama por teléfono.",
+      "home_desc": "Lo que el teléfono comprobó por sí mismo y lo que la familia hace una sola vez",
+      "home_progress": "Pasos en familia: {{done}} de {{total}} hechos",
+      "privacy": "Tus marcas y el número guardado se quedan solo en este teléfono. Cleanway no los envía a ninguna parte.",
+      "device": {
+        "title": "Comprobado por el teléfono",
+        "all_ok": "Todo está bien",
+        "to_fix": "Por arreglar: {{count}}",
+        "fix": "Arreglar",
+        "shield_on": "La protección «Todas las apps» está activada y funciona",
+        "shield_off": "La protección «Todas las apps» está desactivada",
+        "shield_stopped": "La protección «Todas las apps» se ha detenido",
+        "shield_paused": "Protección en pausa hasta las {{time}}",
+        "shield_conflict": "El ajuste «DNS privado» impide la protección ({{host}})",
+        "shield_checking": "Comprobando que la protección funciona…",
+        "shield_offline": "Sin internet: ahora no se puede comprobar la protección",
+        "shield_unverified": "La protección está activada, pero aún no hemos podido confirmar que funciona",
+        "links_on": "La «Revisión de enlaces» está activada",
+        "links_off": "La «Revisión de enlaces» está desactivada",
+        "alerts_on": "Los avisos de sitios bloqueados están permitidos",
+        "alerts_off": "Las notificaciones están desactivadas: no sabrás cuándo se bloquea un sitio",
+        "battery_ok": "El ahorro de batería no limita a Cleanway",
+        "battery_restricted": "El ahorro de batería restringe a Cleanway y la protección puede detenerse. En los ajustes, abre «Batería» y quita la restricción.",
+        "list_fresh": "Lista de sitios fraudulentos actualizada hace {{hours}} h",
+        "list_fresh_now": "Lista de sitios fraudulentos recién actualizada",
+        "list_stale": "La lista de sitios fraudulentos está desactualizada",
+        "list_missing": "Todavía no hay lista de sitios fraudulentos en el teléfono",
+        "list_needs_shield": "La lista de sitios fraudulentos se actualiza mientras la protección «Todas las apps» está activada"
+      },
+      "family": {
+        "title": "La familia lo hace una vez",
+        "progress": "{{done}} de {{total}} hechos",
+        "note": "Estos pasos se hacen fuera de Cleanway: en sitios web oficiales, en el banco y en los ajustes del teléfono. Es más fácil hacerlos junto con alguien cercano.",
+        "done": "Hecho",
+        "done_note": "Marcado por ti; Cleanway no lo comprueba",
+        "save_failed": "No se pudo guardar la marca. Inténtalo de nuevo.",
+        "open_gosuslugi": "Abrir Gosuslugi",
+        "open_settings": "Abrir ajustes",
+        "open_failed": "No se pudo abrir. Busca esta sección tú mismo, como se indica arriba.",
+        "unverified_badge": "Versión de revisión: nadie ha comprobado todavía este enlace"
+      },
+      "credit_ban": {
+        "title": "Prohibición de préstamos",
+        "why": "Un estafador no podrá pedir un préstamo a tu nombre: unos 30 millones de personas ya la han activado, y el peso de los préstamos en el dinero robado bajó del 37 % al 18 %.",
+        "how": "En Gosuslugi, busca «Самозапрет на кредиты» (autoprohibición de préstamos) y prohíbe todos los préstamos y créditos. Es gratis y puedes quitarla cuando quieras."
+      },
+      "sim_ban": {
+        "title": "Prohibición de nuevas tarjetas SIM",
+        "why": "Nadie podrá sacar una tarjeta SIM a tu nombre: más de 1,8 millones de personas ya la han activado.",
+        "how": "En Gosuslugi: «Профиль» (Perfil) → «SIM-карты» (Tarjetas SIM) → «Запрет на оформление договоров связи» (prohibición de contratos de telefonía) → «Установить» (Activar). Ahí también ves cuántos números hay a tu nombre."
+      },
+      "second_hand": {
+        "title": "La «segunda mano» en tu banco",
+        "why": "Una persona cercana confirma tus transferencias y, sin su permiso, el dinero no sale: más de 3,5 millones de personas ya han activado la «segunda mano».",
+        "ask": "Qué decir en tu banco (en su app, en una oficina o en el número del dorso de la tarjeta): «Actívenme la „segunda mano“ (вторая рука): una persona de confianza que confirme mis transferencias»."
+      },
+      "caller_id": {
+        "title": "Identificador de llamadas",
+        "why": "Según el Banco de Rusia, en 2025 se robaron 29 300 millones de rublos y solo se recuperó el 5,9 %: el dinero se saca con engaños, a menudo por teléfono, y el identificador marca muchas de esas llamadas antes de que contestes.",
+        "ask": "Tienen identificador, por ejemplo, Kaspersky, Sber, T-Bank y Yandex, además de muchos operadores. Elige uno y pregunta si puedes añadir a una persona cercana para que también vea las llamadas sospechosas. No recomendamos ninguna app concreta ni tenemos relación con ninguna."
+      },
+      "install_block": {
+        "title": "Impedir que la mensajería y el navegador instalen apps",
+        "why": "Los virus que roban dinero de las tarjetas se hacen pasar por programas útiles y a menudo llegan como archivo por mensajería: según F6, solo en Rusia hay unos 1,5 millones de teléfonos infectados.",
+        "how": "Se abrirá la lista «Instalar aplicaciones desconocidas». Toca uno a uno Telegram, WhatsApp, otras apps de mensajería y tus navegadores y desactiva el interruptor de cada uno. Las apps que no aparecen en la lista no pueden instalar nada de todos modos. La tienda de apps desde la que instalas puede seguir con el permiso."
+      },
+      "code_word": {
+        "title": "Palabra clave familiar",
+        "why": "Los estafadores llaman desde un número nuevo e imitan la voz de un familiar; tu familiar de verdad conoce la palabra, el estafador no.",
+        "how": "Acordad la palabra en voz alta, en persona, y no la escribáis en mensajes. Si un «familiar» pide dinero, pregúntale la palabra. Cleanway nunca pide esta palabra ni la guarda."
+      },
+      "call": {
+        "title": "Llamar a alguien cercano",
+        "why": "Si por teléfono te meten prisa, te asustan o te piden instalar algo o transferir dinero, cuelga y llama a alguien de confianza.",
+        "pick": "Elegir de los contactos",
+        "type": "Escribir el número",
+        "number_label": "Número de teléfono",
+        "name_label": "Nombre (opcional)",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "change": "Cambiar",
+        "remove": "Quitar el número",
+        "remove_title": "¿Quitar el número guardado?",
+        "remove_body": "El botón «Llamar a alguien cercano» desaparecerá de las pantallas de aviso. El contacto seguirá en tu teléfono.",
+        "saved": "Número guardado",
+        "saved_note": "El número se guarda solo en este teléfono y no se envía a ninguna parte. Cleanway no pide acceso a tus contactos ni llama por su cuenta.",
+        "invalid": "No parece un número de teléfono. Revisa las cifras.",
+        "pick_invalid": "El número de este contacto está escrito de forma que no se puede marcar. Escribe el número a mano.",
+        "save_failed": "No se pudo guardar. Inténtalo de nuevo.",
+        "dial_failed": "No se pudo abrir el marcador: marca el número tú mismo.",
+        "button": "Llamar a alguien cercano",
+        "button_named": "Llamar a {{name}}",
+        "prompt": "¿Tienes dudas? Llama a alguien cercano antes de hacer nada."
+      }
     }
   }
 }

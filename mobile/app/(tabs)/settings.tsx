@@ -312,6 +312,13 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
+      {/* First, above the account: the one screen a family goes through
+          together, and the one a person can find again on their own. */}
+      <Section title={t("mobile.settings.protection")}>
+        <Row first icon="clipboard-outline" label={t("mobile.checkup.title")} desc={t("mobile.checkup.home_desc")}
+             right={chevron} onPress={() => router.push("/checkup")} />
+      </Section>
+
       <Section title={t("mobile.settings.account")}>
         {/* The app had no signed-in state anywhere: after signing in, this row
             still said "Sign in", and no screen offered a way out. Now it shows

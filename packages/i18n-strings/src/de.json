@@ -2316,7 +2316,8 @@
       "linkguard_enable": "Einrichten",
       "push_off_desc": "In den Handy-Einstellungen ausgeschaltet – du erfährst nichts von Blockierungen. Tippe, um sie einzuschalten.",
       "push_enable": "Einschalten",
-      "linkguard_on_desc_no_list": "Links prüfen wir direkt nach dem Öffnen; die Liste der Betrugsseiten kommt, sobald du den Schutz „Jede App“ einschaltest."
+      "linkguard_on_desc_no_list": "Links prüfen wir direkt nach dem Öffnen; die Liste der Betrugsseiten kommt, sobald du den Schutz „Jede App“ einschaltest.",
+      "protection": "Schutz"
     },
     "family": {
       "title": "Familienbereich",
@@ -2463,6 +2464,104 @@
       "required_body": "Diese Version ist veraltet. Aktualisieren Sie Cleanway, damit Ihr Schutz weiter funktioniert.",
       "action": "Aktualisieren",
       "later": "Später"
+    },
+    "checkup": {
+      "title": "Schutz-Check",
+      "intro": "Oben: was das Handy selbst geprüft hat. Unten: Schritte, die eine Familie einmal erledigt, damit Betrüger es schwerer haben.",
+      "never_calls": "Cleanway schickt nie Links per SMS und ruft nie an.",
+      "home_desc": "Was das Handy selbst geprüft hat und was die Familie einmal erledigt",
+      "home_progress": "Familienschritte: {{done}} von {{total}} erledigt",
+      "privacy": "Deine Häkchen und die gespeicherte Nummer bleiben nur auf diesem Handy. Cleanway schickt sie nirgendwohin.",
+      "device": {
+        "title": "Vom Handy geprüft",
+        "all_ok": "Alles in Ordnung",
+        "to_fix": "Zu beheben: {{count}}",
+        "fix": "Beheben",
+        "shield_on": "Der Schutz „Jede App“ ist an und funktioniert",
+        "shield_off": "Der Schutz „Jede App“ ist aus",
+        "shield_stopped": "Der Schutz „Jede App“ hat angehalten",
+        "shield_paused": "Schutz pausiert bis {{time}}",
+        "shield_conflict": "Die Einstellung „Privates DNS“ blockiert den Schutz ({{host}})",
+        "shield_checking": "Wir prüfen, ob der Schutz funktioniert …",
+        "shield_offline": "Kein Internet – der Schutz lässt sich gerade nicht prüfen",
+        "shield_unverified": "Der Schutz ist an, aber wir konnten noch nicht bestätigen, dass er funktioniert",
+        "links_on": "Die „Link-Prüfung“ ist an",
+        "links_off": "Die „Link-Prüfung“ ist aus",
+        "alerts_on": "Mitteilungen zu blockierten Seiten sind erlaubt",
+        "alerts_off": "Mitteilungen sind aus – du erfährst nicht, wenn eine Seite blockiert wird",
+        "battery_ok": "Das Energiesparen schränkt Cleanway nicht ein",
+        "battery_restricted": "Das Energiesparen schränkt Cleanway ein, der Schutz kann anhalten. Öffne in den Einstellungen „Akku“ und heb die Beschränkung auf.",
+        "list_fresh": "Liste betrügerischer Seiten vor {{hours}} Std. aktualisiert",
+        "list_fresh_now": "Liste betrügerischer Seiten gerade aktualisiert",
+        "list_stale": "Die Liste betrügerischer Seiten ist veraltet",
+        "list_missing": "Noch keine Liste betrügerischer Seiten auf dem Handy",
+        "list_needs_shield": "Die Liste betrügerischer Seiten wird aktualisiert, solange der Schutz „Jede App“ an ist"
+      },
+      "family": {
+        "title": "Die Familie erledigt es einmal",
+        "progress": "{{done}} von {{total}} erledigt",
+        "note": "Diese Schritte passieren außerhalb von Cleanway: auf offiziellen Websites, bei der Bank und in den Handy-Einstellungen. Am einfachsten geht es zusammen mit einem nahestehenden Menschen.",
+        "done": "Erledigt",
+        "done_note": "Von dir abgehakt – Cleanway prüft das nicht",
+        "save_failed": "Das Häkchen konnte nicht gespeichert werden. Versuch es noch einmal.",
+        "open_gosuslugi": "Gosuslugi öffnen",
+        "open_settings": "Einstellungen öffnen",
+        "open_failed": "Konnte nicht geöffnet werden. Such den Bereich selbst, wie oben beschrieben.",
+        "unverified_badge": "Prüf-Build: Diesen Link hat noch kein Mensch geprüft"
+      },
+      "credit_ban": {
+        "title": "Kreditsperre",
+        "why": "Kein Betrüger kann einen Kredit auf deinen Namen aufnehmen: Rund 30 Millionen Menschen haben diese Sperre schon eingerichtet, und der Anteil der Kredite am gestohlenen Geld ist von 37 % auf 18 % gesunken.",
+        "how": "Such auf Gosuslugi nach „Самозапрет на кредиты“ (Selbstsperre für Kredite) und sperre alle Kredite und Darlehen. Das ist kostenlos, und die Sperre lässt sich jederzeit aufheben."
+      },
+      "sim_ban": {
+        "title": "Sperre für neue SIM-Karten",
+        "why": "Niemand kann eine SIM-Karte auf deinen Namen abschließen – über 1,8 Millionen Menschen haben diese Sperre schon eingerichtet.",
+        "how": "Auf Gosuslugi: „Профиль“ (Profil) → „SIM-карты“ (SIM-Karten) → „Запрет на оформление договоров связи“ (Sperre für Mobilfunkverträge) → „Установить“ (Einrichten). Dort siehst du auch, wie viele Nummern auf dich laufen."
+      },
+      "second_hand": {
+        "title": "„Zweite Hand“ bei deiner Bank",
+        "why": "Ein nahestehender Mensch bestätigt deine Überweisungen, und ohne seine Zustimmung geht kein Geld raus – über 3,5 Millionen Menschen haben die „zweite Hand“ schon eingeschaltet.",
+        "ask": "Was du deiner Bank sagst – in der App, in der Filiale oder unter der Nummer auf der Kartenrückseite: „Bitte schalten Sie die ‚zweite Hand‘ (вторая рука) ein – eine Vertrauensperson, die meine Überweisungen bestätigt.“"
+      },
+      "caller_id": {
+        "title": "Anruferkennung",
+        "why": "Laut der russischen Zentralbank wurden Menschen 2025 um 29,3 Milliarden Rubel bestohlen, nur 5,9 % kamen zurück – das Geld wird durch Täuschung erschlichen, oft am Telefon, und eine Anruferkennung markiert viele solcher Anrufe, bevor du rangehst.",
+        "ask": "Eine Anruferkennung gibt es zum Beispiel bei Kaspersky, Sber, T-Bank und Yandex sowie bei vielen Mobilfunkanbietern. Wähl eine aus und frag, ob du einen nahestehenden Menschen hinzufügen kannst, damit auch er verdächtige Anrufe sieht. Wir empfehlen keine bestimmte App und haben mit keiner davon zu tun."
+      },
+      "install_block": {
+        "title": "Messengern und dem Browser das Installieren von Apps verbieten",
+        "why": "Viren, die Geld von Karten stehlen, tarnen sich als nützliche Programme und kommen oft als Datei im Messenger – laut F6 sind allein in Russland etwa 1,5 Millionen Handys infiziert.",
+        "how": "Die Liste „Unbekannte Apps installieren“ öffnet sich. Tippe nacheinander auf Telegram, WhatsApp, andere Messenger und deine Browser und schalte bei jedem den Schalter aus. Was nicht in der Liste steht, darf ohnehin nichts installieren. Der App-Store, aus dem du installierst, darf die Erlaubnis behalten."
+      },
+      "code_word": {
+        "title": "Familien-Codewort",
+        "why": "Betrüger rufen von einer neuen Nummer an und ahmen die Stimme eines Angehörigen nach; dein echter Angehöriger kennt das Wort, der Betrüger nicht.",
+        "how": "Vereinbart das Wort mündlich, von Angesicht zu Angesicht, und schreibt es nie in eine Nachricht. Bittet ein „Angehöriger“ um Geld, frag nach dem Wort. Cleanway fragt nie nach diesem Wort und speichert es nicht."
+      },
+      "call": {
+        "title": "Einen nahestehenden Menschen anrufen",
+        "why": "Wenn dich jemand am Telefon drängt, dir Angst macht oder dich bittet, etwas zu installieren oder Geld zu überweisen – leg auf und ruf jemanden an, dem du vertraust.",
+        "pick": "Aus Kontakten wählen",
+        "type": "Nummer eingeben",
+        "number_label": "Telefonnummer",
+        "name_label": "Name (optional)",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "change": "Ändern",
+        "remove": "Nummer entfernen",
+        "remove_title": "Gespeicherte Nummer entfernen?",
+        "remove_body": "Die Schaltfläche „Nahestehenden anrufen“ verschwindet von den Warnbildschirmen. Der Kontakt selbst bleibt auf deinem Handy.",
+        "saved": "Nummer gespeichert",
+        "saved_note": "Die Nummer bleibt nur auf diesem Handy und wird nirgendwohin geschickt. Cleanway fragt nicht nach Zugriff auf deine Kontakte und ruft nie von selbst an.",
+        "invalid": "Das sieht nicht nach einer Telefonnummer aus. Prüf die Ziffern.",
+        "pick_invalid": "Die Nummer dieses Kontakts ist so gespeichert, dass sie sich nicht wählen lässt. Gib die Nummer selbst ein.",
+        "save_failed": "Konnte nicht gespeichert werden. Versuch es noch einmal.",
+        "dial_failed": "Die Telefon-App ließ sich nicht öffnen – wähl die Nummer selbst.",
+        "button": "Nahestehenden anrufen",
+        "button_named": "{{name}} anrufen",
+        "prompt": "Unsicher? Ruf einen nahestehenden Menschen an, bevor du irgendetwas tust."
+      }
     }
   }
 }

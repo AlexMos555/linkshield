@@ -2316,7 +2316,8 @@
       "linkguard_enable": "Configura",
       "push_off_desc": "Disattivati nelle impostazioni del telefono: non saprai dei blocchi. Tocca per attivarli.",
       "push_enable": "Attiva",
-      "linkguard_on_desc_no_list": "I link li controlliamo subito dopo l'apertura; la lista dei siti truffa arriva quando attivi la protezione «Ogni app»."
+      "linkguard_on_desc_no_list": "I link li controlliamo subito dopo l'apertura; la lista dei siti truffa arriva quando attivi la protezione «Ogni app».",
+      "protection": "Protezione"
     },
     "family": {
       "title": "Spazio famiglia",
@@ -2463,6 +2464,104 @@
       "required_body": "Questa versione è obsoleta. Aggiorna Cleanway per far funzionare la protezione.",
       "action": "Aggiorna",
       "later": "Più tardi"
+    },
+    "checkup": {
+      "title": "Controllo della protezione",
+      "intro": "In alto: cosa ha controllato il telefono da solo. In basso: i passi che una famiglia fa una volta sola per rendere la vita difficile ai truffatori.",
+      "never_calls": "Cleanway non invia mai link via SMS e non telefona mai.",
+      "home_desc": "Cosa ha controllato il telefono da solo e cosa fa la famiglia una volta sola",
+      "home_progress": "Passi in famiglia: {{done}} su {{total}} fatti",
+      "privacy": "Le tue spunte e il numero salvato restano solo su questo telefono. Cleanway non li invia da nessuna parte.",
+      "device": {
+        "title": "Controllato dal telefono",
+        "all_ok": "Tutto a posto",
+        "to_fix": "Da sistemare: {{count}}",
+        "fix": "Sistema",
+        "shield_on": "La protezione «Ogni app» è attiva e funziona",
+        "shield_off": "La protezione «Ogni app» è disattivata",
+        "shield_stopped": "La protezione «Ogni app» si è fermata",
+        "shield_paused": "Protezione in pausa fino alle {{time}}",
+        "shield_conflict": "L'impostazione «DNS privato» blocca la protezione ({{host}})",
+        "shield_checking": "Verifichiamo che la protezione funzioni…",
+        "shield_offline": "Niente internet: ora non si può verificare la protezione",
+        "shield_unverified": "La protezione è attiva, ma non siamo ancora riusciti a confermare che funzioni",
+        "links_on": "Il «Controllo dei link» è attivo",
+        "links_off": "Il «Controllo dei link» è disattivato",
+        "alerts_on": "Le notifiche dei siti bloccati sono consentite",
+        "alerts_off": "Le notifiche sono disattivate: non saprai quando un sito viene bloccato",
+        "battery_ok": "Il risparmio batteria non limita Cleanway",
+        "battery_restricted": "Il risparmio batteria limita Cleanway e la protezione può fermarsi. Nelle impostazioni apri «Batteria» e togli la limitazione.",
+        "list_fresh": "Elenco dei siti truffa aggiornato {{hours}} h fa",
+        "list_fresh_now": "Elenco dei siti truffa appena aggiornato",
+        "list_stale": "L'elenco dei siti truffa non è aggiornato",
+        "list_missing": "Sul telefono non c'è ancora l'elenco dei siti truffa",
+        "list_needs_shield": "L'elenco dei siti truffa si aggiorna finché la protezione «Ogni app» è attiva"
+      },
+      "family": {
+        "title": "La famiglia lo fa una volta",
+        "progress": "{{done}} su {{total}} fatti",
+        "note": "Questi passi si fanno fuori da Cleanway: sui siti ufficiali, in banca e nelle impostazioni del telefono. È più facile farli insieme a una persona cara.",
+        "done": "Fatto",
+        "done_note": "Segnato da te: Cleanway non lo verifica",
+        "save_failed": "Impossibile salvare la spunta. Riprova.",
+        "open_gosuslugi": "Apri Gosuslugi",
+        "open_settings": "Apri impostazioni",
+        "open_failed": "Impossibile aprire. Cerca questa sezione da solo, come descritto sopra.",
+        "unverified_badge": "Versione di revisione: nessuno ha ancora verificato questo link"
+      },
+      "credit_ban": {
+        "title": "Blocco dei prestiti",
+        "why": "Nessun truffatore potrà chiedere un prestito a tuo nome: circa 30 milioni di persone hanno già attivato questo blocco, e la quota dei prestiti sul denaro rubato è scesa dal 37% al 18%.",
+        "how": "Su Gosuslugi cerca «Самозапрет на кредиты» (autoblocco dei prestiti) e blocca tutti i prestiti e i finanziamenti. È gratuito e il blocco si può togliere in qualsiasi momento."
+      },
+      "sim_ban": {
+        "title": "Blocco delle nuove SIM",
+        "why": "Nessuno potrà intestarti una SIM: più di 1,8 milioni di persone hanno già attivato questo blocco.",
+        "how": "Su Gosuslugi: «Профиль» (Profilo) → «SIM-карты» (SIM) → «Запрет на оформление договоров связи» (blocco dei contratti telefonici) → «Установить» (Attiva). Lì vedi anche quanti numeri sono intestati a te."
+      },
+      "second_hand": {
+        "title": "La «seconda mano» nella tua banca",
+        "why": "Una persona cara conferma i tuoi bonifici e senza il suo consenso i soldi non partono: più di 3,5 milioni di persone hanno già attivato la «seconda mano».",
+        "ask": "Cosa dire alla tua banca, nell'app, in filiale o al numero sul retro della carta: «Attivatemi la „seconda mano“ (вторая рука): una persona di fiducia che confermi i miei bonifici»."
+      },
+      "caller_id": {
+        "title": "Identificativo del chiamante",
+        "why": "Secondo la Banca di Russia, nel 2025 sono stati rubati 29,3 miliardi di rubli e ne è stato restituito solo il 5,9%: i soldi vengono sottratti con l'inganno, spesso al telefono, e l'identificativo segnala molte di queste chiamate prima che tu risponda.",
+        "ask": "L'identificativo del chiamante c'è, per esempio, in Kaspersky, Sber, T-Bank e Yandex, e presso molti operatori. Scegline uno e chiedi se puoi aggiungere una persona cara, così vede anche lei le chiamate sospette. Non consigliamo nessuna app in particolare e non abbiamo legami con nessuna."
+      },
+      "install_block": {
+        "title": "Impedire a messaggistica e browser di installare app",
+        "why": "I virus che rubano soldi dalle carte si spacciano per programmi utili e arrivano spesso come file in una chat: secondo F6, solo in Russia sono infetti circa 1,5 milioni di telefoni.",
+        "how": "Si aprirà l'elenco «Installa app sconosciute». Tocca uno alla volta Telegram, WhatsApp, le altre app di messaggistica e i browser e disattiva l'interruttore di ciascuno. Le app che non sono nell'elenco non possono comunque installare nulla. Lo store da cui installi le app può mantenere il permesso."
+      },
+      "code_word": {
+        "title": "Parola d'ordine di famiglia",
+        "why": "I truffatori chiamano da un numero nuovo e imitano la voce di un parente; il tuo vero parente conosce la parola, il truffatore no.",
+        "how": "Decidete la parola a voce, di persona, e non scrivetela nei messaggi. Se un «parente» chiede soldi, chiedigli la parola. Cleanway non chiede mai questa parola e non la conserva."
+      },
+      "call": {
+        "title": "Chiama una persona cara",
+        "why": "Se qualcuno al telefono ti mette fretta, ti spaventa o ti chiede di installare qualcosa o di trasferire soldi, riattacca e chiama una persona di fiducia.",
+        "pick": "Scegli dai contatti",
+        "type": "Scrivi il numero",
+        "number_label": "Numero di telefono",
+        "name_label": "Nome (facoltativo)",
+        "save": "Salva",
+        "cancel": "Annulla",
+        "change": "Cambia",
+        "remove": "Rimuovi il numero",
+        "remove_title": "Rimuovere il numero salvato?",
+        "remove_body": "Il pulsante «Chiama una persona cara» sparirà dalle schermate di avviso. Il contatto resta sul tuo telefono.",
+        "saved": "Numero salvato",
+        "saved_note": "Il numero resta solo su questo telefono e non viene inviato da nessuna parte. Cleanway non chiede l'accesso ai tuoi contatti e non chiama mai da solo.",
+        "invalid": "Non sembra un numero di telefono. Controlla le cifre.",
+        "pick_invalid": "Il numero di questo contatto è scritto in un modo che non si può comporre. Scrivi il numero a mano.",
+        "save_failed": "Impossibile salvare. Riprova.",
+        "dial_failed": "Impossibile aprire il tastierino: componi il numero tu.",
+        "button": "Chiama una persona cara",
+        "button_named": "Chiama {{name}}",
+        "prompt": "Hai dubbi? Chiama una persona cara prima di fare qualsiasi cosa."
+      }
     }
   }
 }

@@ -15,6 +15,7 @@ import {
   type MessageCheckReason,
 } from "../../utils/message-verdict";
 import { MessageLinksCard } from "./MessageLinksCard";
+import { CallCloseOneButton } from "../checkup/CallCloseOneButton";
 
 interface Props {
   /** The checked text — shown back on this screen only, never stored. */
@@ -122,6 +123,9 @@ export function MessageResult(props: Props) {
           </View>
         ))}
       </View>
+
+      {/* A dangerous message: call the saved close one before answering it. */}
+      {verdict === "dangerous" && <CallCloseOneButton />}
 
       {analysis.truncated && <Text style={s.note}>{t("mobile.message.truncated")}</Text>}
 

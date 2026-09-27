@@ -2316,7 +2316,8 @@
       "linkguard_enable": "Configurer",
       "push_off_desc": "Désactivées dans les réglages du téléphone — vous ne saurez pas quand un site est bloqué. Touchez pour les activer.",
       "push_enable": "Activer",
-      "linkguard_on_desc_no_list": "Les liens sont vérifiés juste après leur ouverture ; la liste des sites frauduleux arrive quand vous activez la protection « Toutes les applis »."
+      "linkguard_on_desc_no_list": "Les liens sont vérifiés juste après leur ouverture ; la liste des sites frauduleux arrive quand vous activez la protection « Toutes les applis ».",
+      "protection": "Protection"
     },
     "family": {
       "title": "Espace famille",
@@ -2463,6 +2464,104 @@
       "required_body": "Cette version est obsolète. Mettez Cleanway à jour pour que votre protection continue de fonctionner.",
       "action": "Mettre à jour",
       "later": "Plus tard"
+    },
+    "checkup": {
+      "title": "Bilan de protection",
+      "intro": "En haut : ce que le téléphone a vérifié lui-même. En bas : les étapes qu'une famille fait une seule fois pour compliquer la vie des escrocs.",
+      "never_calls": "Cleanway n'envoie jamais de liens par SMS et n'appelle jamais.",
+      "home_desc": "Ce que le téléphone a vérifié lui-même et ce que la famille fait une seule fois",
+      "home_progress": "Étapes en famille : {{done}} sur {{total}} faites",
+      "privacy": "Vos coches et le numéro enregistré restent uniquement sur ce téléphone. Cleanway ne les envoie nulle part.",
+      "device": {
+        "title": "Vérifié par le téléphone",
+        "all_ok": "Tout va bien",
+        "to_fix": "À corriger : {{count}}",
+        "fix": "Corriger",
+        "shield_on": "La protection « Toutes les applis » est activée et fonctionne",
+        "shield_off": "La protection « Toutes les applis » est désactivée",
+        "shield_stopped": "La protection « Toutes les applis » s'est arrêtée",
+        "shield_paused": "Protection en pause jusqu'à {{time}}",
+        "shield_conflict": "Le réglage « DNS privé » bloque la protection ({{host}})",
+        "shield_checking": "Vérification du bon fonctionnement de la protection…",
+        "shield_offline": "Pas d'internet : impossible de vérifier la protection pour le moment",
+        "shield_unverified": "La protection est activée, mais nous n'avons pas encore pu confirmer qu'elle fonctionne",
+        "links_on": "La « Vérification des liens » est activée",
+        "links_off": "La « Vérification des liens » est désactivée",
+        "alerts_on": "Les notifications de sites bloqués sont autorisées",
+        "alerts_off": "Les notifications sont désactivées : vous ne saurez pas quand un site est bloqué",
+        "battery_ok": "L'économie de batterie ne limite pas Cleanway",
+        "battery_restricted": "L'économie de batterie restreint Cleanway, et la protection peut s'arrêter. Dans les réglages, ouvrez « Batterie » et retirez la restriction.",
+        "list_fresh": "Liste des sites frauduleux mise à jour il y a {{hours}} h",
+        "list_fresh_now": "Liste des sites frauduleux tout juste mise à jour",
+        "list_stale": "La liste des sites frauduleux est périmée",
+        "list_missing": "Pas encore de liste des sites frauduleux sur le téléphone",
+        "list_needs_shield": "La liste des sites frauduleux se met à jour tant que la protection « Toutes les applis » est activée"
+      },
+      "family": {
+        "title": "La famille le fait une fois",
+        "progress": "{{done}} sur {{total}} faites",
+        "note": "Ces étapes se font hors de Cleanway : sur des sites officiels, à la banque et dans les réglages du téléphone. Le plus simple est de les faire avec un proche.",
+        "done": "Fait",
+        "done_note": "Coché par vous — Cleanway ne le vérifie pas",
+        "save_failed": "Impossible d'enregistrer la coche. Réessayez.",
+        "open_gosuslugi": "Ouvrir Gosuslugi",
+        "open_settings": "Ouvrir les réglages",
+        "open_failed": "Impossible d'ouvrir. Cherchez cette section vous-même, comme indiqué ci-dessus.",
+        "unverified_badge": "Version de relecture : personne n'a encore vérifié ce lien"
+      },
+      "credit_ban": {
+        "title": "Interdiction des crédits",
+        "why": "Un escroc ne pourra pas emprunter à votre nom : environ 30 millions de personnes ont déjà mis cette interdiction, et la part des crédits dans l'argent volé est passée de 37 % à 18 %.",
+        "how": "Sur Gosuslugi, cherchez « Самозапрет на кредиты » (auto-interdiction de crédit) et interdisez tous les crédits et prêts. C'est gratuit, et l'interdiction peut être levée à tout moment."
+      },
+      "sim_ban": {
+        "title": "Interdiction des nouvelles cartes SIM",
+        "why": "Personne ne pourra obtenir une carte SIM à votre nom : plus de 1,8 million de personnes ont déjà mis cette interdiction.",
+        "how": "Sur Gosuslugi : « Профиль » (Profil) → « SIM-карты » (Cartes SIM) → « Запрет на оформление договоров связи » (interdiction des contrats télécoms) → « Установить » (Activer). Vous y voyez aussi combien de numéros sont à votre nom."
+      },
+      "second_hand": {
+        "title": "La « deuxième main » dans votre banque",
+        "why": "Un proche confirme vos virements, et sans son accord l'argent ne part pas : plus de 3,5 millions de personnes ont déjà activé la « deuxième main ».",
+        "ask": "Ce qu'il faut dire à votre banque — dans son appli, en agence ou au numéro au dos de la carte : « Activez la „deuxième main“ (вторая рука) : une personne de confiance qui confirmera mes virements. »"
+      },
+      "caller_id": {
+        "title": "Identification des appels",
+        "why": "Selon la Banque de Russie, 29,3 milliards de roubles ont été volés en 2025 et seulement 5,9 % ont été rendus : l'argent est obtenu par la ruse, souvent au téléphone, et l'identification signale beaucoup de ces appels avant même que vous décrochiez.",
+        "ask": "Kaspersky, Sber, T-Bank et Yandex, par exemple, proposent une identification des appels, tout comme de nombreux opérateurs. Choisissez-en une et demandez si un proche peut être ajouté pour voir lui aussi les appels suspects. Nous ne recommandons aucune appli en particulier et n'avons de lien avec aucune d'elles."
+      },
+      "install_block": {
+        "title": "Empêcher les messageries et le navigateur d'installer des applis",
+        "why": "Les virus qui volent l'argent des cartes se font passer pour des programmes utiles et arrivent souvent en fichier dans une messagerie : selon F6, environ 1,5 million de téléphones sont infectés rien qu'en Russie.",
+        "how": "La liste « Installer des applis inconnues » va s'ouvrir. Touchez tour à tour Telegram, WhatsApp, les autres messageries et vos navigateurs, et désactivez l'interrupteur de chacun. Les applis absentes de la liste ne peuvent de toute façon rien installer. La boutique d'applis que vous utilisez peut garder l'autorisation."
+      },
+      "code_word": {
+        "title": "Mot de code familial",
+        "why": "Les escrocs appellent depuis un nouveau numéro et imitent la voix d'un proche ; votre vrai proche connaît le mot, l'escroc non.",
+        "how": "Convenez du mot à voix haute, en personne, et ne l'écrivez jamais dans un message. Si un « proche » demande de l'argent, demandez-lui le mot. Cleanway ne demande jamais ce mot et ne le conserve pas."
+      },
+      "call": {
+        "title": "Appeler un proche",
+        "why": "Si quelqu'un au téléphone vous presse, vous fait peur ou vous demande d'installer quelque chose ou de virer de l'argent, raccrochez et appelez une personne de confiance.",
+        "pick": "Choisir dans les contacts",
+        "type": "Saisir le numéro",
+        "number_label": "Numéro de téléphone",
+        "name_label": "Nom (facultatif)",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "change": "Modifier",
+        "remove": "Supprimer le numéro",
+        "remove_title": "Supprimer le numéro enregistré ?",
+        "remove_body": "Le bouton « Appeler un proche » disparaîtra des écrans d'alerte. Le contact lui-même reste sur votre téléphone.",
+        "saved": "Numéro enregistré",
+        "saved_note": "Le numéro reste uniquement sur ce téléphone et n'est envoyé nulle part. Cleanway ne demande pas l'accès à vos contacts et n'appelle jamais de lui-même.",
+        "invalid": "Cela ne ressemble pas à un numéro de téléphone. Vérifiez les chiffres.",
+        "pick_invalid": "Le numéro de ce contact est écrit d'une façon qui ne peut pas être composée. Saisissez le numéro vous-même.",
+        "save_failed": "Impossible d'enregistrer. Réessayez.",
+        "dial_failed": "Impossible d'ouvrir le clavier d'appel : composez le numéro vous-même.",
+        "button": "Appeler un proche",
+        "button_named": "Appeler {{name}}",
+        "prompt": "Un doute ? Appelez un proche avant de faire quoi que ce soit."
+      }
     }
   }
 }

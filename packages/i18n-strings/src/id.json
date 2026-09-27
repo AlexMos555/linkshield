@@ -2316,7 +2316,8 @@
       "linkguard_enable": "Siapkan",
       "push_off_desc": "Dimatikan di setelan HP — kamu tidak akan tahu saat ada pemblokiran. Ketuk untuk menyalakan.",
       "push_enable": "Nyalakan",
-      "linkguard_on_desc_no_list": "Tautan dicek begitu terbuka; daftar situs penipuan akan tersedia setelah kamu mengaktifkan perlindungan “Semua aplikasi”."
+      "linkguard_on_desc_no_list": "Tautan dicek begitu terbuka; daftar situs penipuan akan tersedia setelah kamu mengaktifkan perlindungan “Semua aplikasi”.",
+      "protection": "Perlindungan"
     },
     "family": {
       "title": "Ruang Keluarga",
@@ -2463,6 +2464,104 @@
       "required_body": "Versi ini sudah usang. Perbarui Cleanway agar perlindungan Anda tetap berfungsi.",
       "action": "Perbarui",
       "later": "Nanti"
+    },
+    "checkup": {
+      "title": "Cek perlindungan",
+      "intro": "Di atas: yang diperiksa HP sendiri. Di bawah: langkah yang dilakukan keluarga sekali saja, agar penipu lebih sulit beraksi.",
+      "never_calls": "Cleanway tidak pernah mengirim tautan lewat SMS dan tidak pernah menelepon.",
+      "home_desc": "Yang diperiksa HP sendiri dan yang dilakukan keluarga sekali saja",
+      "home_progress": "Langkah keluarga: {{done}} dari {{total}} selesai",
+      "privacy": "Tanda centang dan nomor yang disimpan hanya ada di HP ini. Cleanway tidak mengirimnya ke mana pun.",
+      "device": {
+        "title": "Diperiksa oleh HP",
+        "all_ok": "Semua beres",
+        "to_fix": "Perlu diperbaiki: {{count}}",
+        "fix": "Perbaiki",
+        "shield_on": "Perlindungan “Semua aplikasi” aktif dan berjalan",
+        "shield_off": "Perlindungan “Semua aplikasi” mati",
+        "shield_stopped": "Perlindungan “Semua aplikasi” berhenti",
+        "shield_paused": "Perlindungan dijeda sampai {{time}}",
+        "shield_conflict": "Setelan “DNS Pribadi” menghalangi perlindungan ({{host}})",
+        "shield_checking": "Memeriksa apakah perlindungan berjalan…",
+        "shield_offline": "Tidak ada internet — perlindungan tidak bisa diperiksa sekarang",
+        "shield_unverified": "Perlindungan aktif, tapi kami belum bisa memastikan bahwa ia berjalan",
+        "links_on": "“Pemeriksaan tautan” aktif",
+        "links_off": "“Pemeriksaan tautan” mati",
+        "alerts_on": "Notifikasi situs yang diblokir diizinkan",
+        "alerts_off": "Notifikasi mati — kamu tidak akan tahu saat situs diblokir",
+        "battery_ok": "Penghemat baterai tidak membatasi Cleanway",
+        "battery_restricted": "Penghemat baterai membatasi Cleanway, jadi perlindungan bisa berhenti. Di setelan, buka “Baterai” dan hapus pembatasannya.",
+        "list_fresh": "Daftar situs penipuan diperbarui {{hours}} jam lalu",
+        "list_fresh_now": "Daftar situs penipuan baru saja diperbarui",
+        "list_stale": "Daftar situs penipuan sudah usang",
+        "list_missing": "Belum ada daftar situs penipuan di HP",
+        "list_needs_shield": "Daftar situs penipuan diperbarui selama perlindungan “Semua aplikasi” aktif"
+      },
+      "family": {
+        "title": "Dilakukan keluarga sekali",
+        "progress": "{{done}} dari {{total}} selesai",
+        "note": "Langkah-langkah ini dilakukan di luar Cleanway: di situs resmi, di bank, dan di setelan HP. Paling mudah dilakukan bersama orang terdekat.",
+        "done": "Selesai",
+        "done_note": "Ditandai olehmu — Cleanway tidak memeriksanya",
+        "save_failed": "Tanda tidak bisa disimpan. Coba lagi.",
+        "open_gosuslugi": "Buka Gosuslugi",
+        "open_settings": "Buka setelan",
+        "open_failed": "Tidak bisa dibuka. Cari bagian ini sendiri seperti dijelaskan di atas.",
+        "unverified_badge": "Versi untuk peninjauan: tautan ini belum diperiksa oleh siapa pun"
+      },
+      "credit_ban": {
+        "title": "Larangan pinjaman",
+        "why": "Penipu tidak akan bisa mengambil pinjaman atas namamu: sekitar 30 juta orang sudah memasang larangan ini, dan porsi pinjaman dalam uang yang dicuri turun dari 37% menjadi 18%.",
+        "how": "Di Gosuslugi, cari «Самозапрет на кредиты» (larangan pinjaman atas diri sendiri) dan pilih larangan untuk semua pinjaman. Gratis, dan larangan bisa dicabut kapan saja."
+      },
+      "sim_ban": {
+        "title": "Larangan kartu SIM baru",
+        "why": "Tidak ada yang bisa membuat kartu SIM atas namamu — lebih dari 1,8 juta orang sudah memasang larangan ini.",
+        "how": "Di Gosuslugi: «Профиль» (Profil) → «SIM-карты» (Kartu SIM) → «Запрет на оформление договоров связи» (larangan kontrak layanan seluler) → «Установить» (Pasang). Di sana juga terlihat berapa nomor yang terdaftar atas namamu."
+      },
+      "second_hand": {
+        "title": "“Tangan kedua” di bankmu",
+        "why": "Orang terdekat mengonfirmasi transfermu, dan tanpa persetujuannya uang tidak keluar — lebih dari 3,5 juta orang sudah mengaktifkan “tangan kedua”.",
+        "ask": "Yang perlu dikatakan ke bankmu — di aplikasinya, di kantor cabang, atau lewat nomor di balik kartu: “Tolong aktifkan ‘tangan kedua’ (вторая рука) — orang tepercaya yang akan mengonfirmasi transfer saya.”"
+      },
+      "caller_id": {
+        "title": "Identifikasi penelepon",
+        "why": "Menurut Bank Sentral Rusia, pada 2025 sebanyak 29,3 miliar rubel dicuri dari warga dan hanya 5,9% yang kembali — uang diambil lewat tipu daya, sering lewat telepon, dan identifikasi penelepon menandai banyak panggilan seperti itu sebelum kamu menjawab.",
+        "ask": "Identifikasi penelepon ada, misalnya, di Kaspersky, Sber, T-Bank, dan Yandex, juga di banyak operator seluler. Pilih salah satu dan tanyakan apakah orang terdekat bisa ditambahkan agar ia juga melihat panggilan mencurigakan. Kami tidak merekomendasikan aplikasi tertentu dan tidak terkait dengan satu pun."
+      },
+      "install_block": {
+        "title": "Larang aplikasi pesan dan browser memasang aplikasi",
+        "why": "Virus yang mencuri uang dari kartu menyamar sebagai program berguna dan sering datang sebagai file di aplikasi pesan — menurut F6, di Rusia saja sekitar 1,5 juta HP terinfeksi.",
+        "how": "Daftar “Instal aplikasi tak dikenal” akan terbuka. Ketuk Telegram, WhatsApp, aplikasi pesan lain, dan browser satu per satu, lalu matikan sakelarnya. Aplikasi yang tidak ada di daftar memang tidak bisa memasang apa pun. Toko aplikasi tempatmu memasang aplikasi boleh tetap diizinkan."
+      },
+      "code_word": {
+        "title": "Kata kunci keluarga",
+        "why": "Penipu menelepon dari nomor baru dan meniru suara kerabat; kerabat yang asli tahu katanya, penipu tidak.",
+        "how": "Sepakati katanya secara lisan, bertatap muka, dan jangan tulis di pesan. Kalau “kerabat” minta uang, tanyakan katanya. Cleanway tidak pernah menanyakan kata ini dan tidak menyimpannya."
+      },
+      "call": {
+        "title": "Telepon orang terdekat",
+        "why": "Kalau seseorang di telepon membuatmu terburu-buru, menakutimu, atau memintamu memasang sesuatu atau mentransfer uang — tutup teleponnya dan hubungi orang yang kamu percaya.",
+        "pick": "Pilih dari kontak",
+        "type": "Ketik nomor",
+        "number_label": "Nomor telepon",
+        "name_label": "Nama (opsional)",
+        "save": "Simpan",
+        "cancel": "Batal",
+        "change": "Ubah",
+        "remove": "Hapus nomor",
+        "remove_title": "Hapus nomor yang disimpan?",
+        "remove_body": "Tombol “Telepon orang terdekat” akan hilang dari layar peringatan. Kontaknya tetap ada di HP-mu.",
+        "saved": "Nomor tersimpan",
+        "saved_note": "Nomor hanya disimpan di HP ini dan tidak dikirim ke mana pun. Cleanway tidak meminta akses ke kontakmu dan tidak pernah menelepon sendiri.",
+        "invalid": "Sepertinya bukan nomor telepon. Periksa angkanya.",
+        "pick_invalid": "Nomor kontak ini ditulis dengan cara yang tidak bisa dihubungi. Ketik nomornya sendiri.",
+        "save_failed": "Tidak bisa disimpan. Coba lagi.",
+        "dial_failed": "Tidak bisa membuka aplikasi telepon — tekan nomornya sendiri.",
+        "button": "Telepon orang terdekat",
+        "button_named": "Telepon {{name}}",
+        "prompt": "Ragu? Telepon orang terdekat sebelum melakukan apa pun."
+      }
     }
   }
 }
