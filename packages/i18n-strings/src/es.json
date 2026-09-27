@@ -1387,7 +1387,7 @@
           "after": [
             "El resultado se guarda en la caché de nuestro servidor hasta 24 horas para que una nueva comprobación sea rápida. Está ligado al sitio, no a ti.",
             "Tu dirección IP se usa para limitar cuántas comprobaciones puede hacer una conexión. Para eso se guarda tal cual, como contador en la memoria de nuestro servidor, durante una hora como máximo, y después se borra. El registro de seguridad de las acciones de la cuenta solo guarda un hash criptográfico acortado, nunca la dirección misma.",
-            "Con cada comprobación, la versión 1.0.2 de la app también envía un número de instalación: un número aleatorio creado en el teléfono que se cambia por uno nuevo cada 24 horas. No está vinculado al teléfono, a la tarjeta SIM ni a una cuenta; nos permite limitar las comprobaciones por teléfono y no para todos los abonados que comparten la dirección IP de un operador. Nuestro servidor guarda solo un hash criptográfico, como contador, durante una hora como máximo."
+            "Desde la versión 1.0.2, con cada comprobación la app también envía un número de instalación: un número aleatorio creado en el teléfono que se cambia por uno nuevo cada 24 horas. No está vinculado al teléfono, a la tarjeta SIM ni a una cuenta; nos permite limitar las comprobaciones por teléfono y no para todos los abonados que comparten la dirección IP de un operador. Nuestro servidor guarda solo un hash criptográfico, como contador, durante una hora como máximo."
           ]
         },
         {

@@ -222,6 +222,19 @@ CLAIMS: tuple[Claim, ...] = (
               "hi": r"सूचना[^।]{0,40}बटन",
               "ar": r"الزر[^.]{0,30}إشعار الحظر",
           }, scope="landing.support"),
+    Claim("names one app version as the one that sends something — every later version sends it too, and "
+          "the policy then reads as if they did not; say 'from version X' (1.0.3 review: the install number)", {
+              "en": r"app version \d+\.\d+\.\d+ (also )?sends",
+              "ru": r"(приложение версии|версия приложения) \d+\.\d+\.\d+ (переда[её]т|отправляет)",
+              "es": r"la versi[oó]n \d+\.\d+\.\d+ de la app (tambi[eé]n )?env[ií]a",
+              "pt": r"a vers[aã]o \d+\.\d+\.\d+ do app (tamb[eé]m )?envia",
+              "fr": r"la version \d+\.\d+\.\d+ de l'appli (envoie|transmet)",
+              "de": r"(sendet|übermittelt) die App-Version \d+\.\d+\.\d+",
+              "it": r"la versione \d+\.\d+\.\d+ dell'app (invia|trasmette)",
+              "id": r"aplikasi versi \d+\.\d+\.\d+ (juga )?mengirim",
+              "hi": r"ऐप का संस्करण \d+\.\d+\.\d+[^।]{0,40}भेजता",
+              "ar": r"يرسل الإصدار \d+\.\d+\.\d+",
+          }, scope="landing.privacy_policy"),
     Claim("the benchmark counts the server's 'dangerous' verdicts, not blocking on the phone "
           "(the on-device list covers a fraction of fresh phishing)", {
               "en": r"\bblock",

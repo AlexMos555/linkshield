@@ -651,7 +651,7 @@
         "after": [
           "Il risultato resta nella cache del nostro server fino a 24 ore, così un nuovo controllo è veloce. È legato al sito, non a te.",
           "Il tuo indirizzo IP serve a limitare quanti controlli può fare una connessione. Per questo viene conservato così com'è, come contatore nella memoria del nostro server, per un'ora al massimo, e poi cancellato. Il registro di sicurezza delle azioni sull'account conserva solo un hash crittografico abbreviato, mai l'indirizzo stesso.",
-          "A ogni controllo, la versione 1.0.2 dell'app invia anche un numero di installazione: un numero casuale creato sul telefono e sostituito con uno nuovo ogni 24 ore. Non è legato al telefono, alla SIM né a un account; ci permette di limitare i controlli per telefono invece che per tutti gli abbonati che condividono l'indirizzo IP di un operatore. Il nostro server ne conserva solo un hash crittografico, come contatore, per al massimo un'ora."
+          "Dalla versione 1.0.2, a ogni controllo l'app invia anche un numero di installazione: un numero casuale creato sul telefono e sostituito con uno nuovo ogni 24 ore. Non è legato al telefono, alla SIM né a un account; ci permette di limitare i controlli per telefono invece che per tutti gli abbonati che condividono l'indirizzo IP di un operatore. Il nostro server ne conserva solo un hash crittografico, come contatore, per al massimo un'ora."
         ]
       },
       {

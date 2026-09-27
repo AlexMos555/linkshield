@@ -1387,7 +1387,7 @@
           "after": [
             "Das Ergebnis bleibt bis zu 24 Stunden im Cache unseres Servers, damit eine erneute Prüfung schnell geht. Es ist mit der Seite verknüpft, nicht mit dir.",
             "Deine IP-Adresse wird genutzt, um zu begrenzen, wie viele Prüfungen eine Verbindung machen kann. Dafür wird sie im Klartext als Zähler im Speicher unseres Servers höchstens eine Stunde lang gespeichert und dann gelöscht. Das Sicherheitsprotokoll der Kontoaktionen speichert nur einen gekürzten kryptografischen Hash, nie die Adresse selbst.",
-            "Bei jeder Prüfung sendet die App-Version 1.0.2 außerdem eine Installationsnummer: eine zufällige Zahl, die auf dem Handy erzeugt und alle 24 Stunden durch eine neue ersetzt wird. Sie ist nicht mit dem Handy, der SIM-Karte oder einem Konto verknüpft; mit ihr begrenzen wir Prüfungen pro Handy statt für alle Kunden, die sich die IP-Adresse eines Anbieters teilen. Unser Server speichert davon nur einen kryptografischen Hash, als Zähler, höchstens eine Stunde lang."
+            "Seit Version 1.0.2 sendet die App bei jeder Prüfung außerdem eine Installationsnummer: eine zufällige Zahl, die auf dem Handy erzeugt und alle 24 Stunden durch eine neue ersetzt wird. Sie ist nicht mit dem Handy, der SIM-Karte oder einem Konto verknüpft; mit ihr begrenzen wir Prüfungen pro Handy statt für alle Kunden, die sich die IP-Adresse eines Anbieters teilen. Unser Server speichert davon nur einen kryptografischen Hash, als Zähler, höchstens eine Stunde lang."
           ]
         },
         {

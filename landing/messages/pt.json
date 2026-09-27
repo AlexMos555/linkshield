@@ -651,7 +651,7 @@
         "after": [
           "O resultado fica no cache do nosso servidor por até 24 horas para que uma nova verificação seja rápida. Ele está ligado ao site, não a você.",
           "Seu endereço IP é usado para limitar quantas verificações uma conexão pode fazer. Para isso ele fica guardado como está, como contador na memória do nosso servidor, por no máximo uma hora, e depois é apagado. O registro de segurança das ações da conta guarda só um hash criptográfico encurtado, nunca o próprio endereço.",
-          "A cada verificação, a versão 1.0.2 do app também envia um número de instalação: um número aleatório criado no celular e trocado por um novo a cada 24 horas. Ele não está ligado ao celular, ao chip nem a uma conta; serve para limitarmos as verificações por celular, e não para todos os clientes que compartilham o endereço IP de uma operadora. Nosso servidor guarda só um hash criptográfico dele, como contador, por no máximo uma hora."
+          "A partir da versão 1.0.2, a cada verificação o app também envia um número de instalação: um número aleatório criado no celular e trocado por um novo a cada 24 horas. Ele não está ligado ao celular, ao chip nem a uma conta; serve para limitarmos as verificações por celular, e não para todos os clientes que compartilham o endereço IP de uma operadora. Nosso servidor guarda só um hash criptográfico dele, como contador, por no máximo uma hora."
         ]
       },
       {

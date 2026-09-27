@@ -651,7 +651,7 @@
         "after": [
           "Hasilnya disimpan di cache server kami hingga 24 jam agar pemeriksaan ulang berlangsung cepat. Hasil ini terkait dengan situsnya, bukan dengan Anda.",
           "Alamat IP Anda dipakai untuk membatasi berapa banyak pemeriksaan dari satu koneksi. Untuk itu alamat ini disimpan apa adanya, sebagai penghitung di memori server kami, paling lama satu jam, lalu dihapus. Log keamanan tindakan akun hanya menyimpan hash kriptografis yang dipersingkat, tidak pernah alamatnya sendiri.",
-          "Pada setiap pemeriksaan, aplikasi versi 1.0.2 juga mengirim nomor instalasi: angka acak yang dibuat di ponsel dan diganti dengan yang baru setiap 24 jam. Nomor ini tidak terkait dengan ponsel, kartu SIM, atau akun; dengan nomor ini kami bisa membatasi pemeriksaan per ponsel, bukan untuk semua pelanggan yang berbagi alamat IP operator. Server kami hanya menyimpan hash kriptografisnya, sebagai penghitung, paling lama satu jam."
+          "Sejak versi 1.0.2, pada setiap pemeriksaan aplikasi juga mengirim nomor instalasi: angka acak yang dibuat di ponsel dan diganti dengan yang baru setiap 24 jam. Nomor ini tidak terkait dengan ponsel, kartu SIM, atau akun; dengan nomor ini kami bisa membatasi pemeriksaan per ponsel, bukan untuk semua pelanggan yang berbagi alamat IP operator. Server kami hanya menyimpan hash kriptografisnya, sebagai penghitung, paling lama satu jam."
         ]
       },
       {

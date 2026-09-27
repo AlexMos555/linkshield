@@ -1387,7 +1387,7 @@
           "after": [
             "Le résultat est conservé dans le cache de notre serveur jusqu'à 24 heures pour qu'une nouvelle vérification soit rapide. Il est lié au site, pas à vous.",
             "Votre adresse IP sert à limiter le nombre de vérifications par connexion. Pour cela, elle est conservée telle quelle, comme compteur dans la mémoire de notre serveur, une heure au plus, puis supprimée. Le journal de sécurité des actions sur les comptes n'en garde qu'une empreinte cryptographique raccourcie, jamais l'adresse elle-même.",
-            "À chaque vérification, la version 1.0.2 de l'appli envoie aussi un numéro d'installation : un nombre aléatoire créé sur le téléphone et remplacé par un nouveau toutes les 24 heures. Il n'est lié ni au téléphone, ni à la carte SIM, ni à un compte ; il nous permet de limiter les vérifications par téléphone plutôt que pour tous les abonnés qui partagent l'adresse IP d'un opérateur. Notre serveur n'en garde qu'un hachage cryptographique, comme compteur, pendant une heure au plus."
+            "Depuis la version 1.0.2, à chaque vérification, l'appli envoie aussi un numéro d'installation : un nombre aléatoire créé sur le téléphone et remplacé par un nouveau toutes les 24 heures. Il n'est lié ni au téléphone, ni à la carte SIM, ni à un compte ; il nous permet de limiter les vérifications par téléphone plutôt que pour tous les abonnés qui partagent l'adresse IP d'un opérateur. Notre serveur n'en garde qu'un hachage cryptographique, comme compteur, pendant une heure au plus."
           ]
         },
         {

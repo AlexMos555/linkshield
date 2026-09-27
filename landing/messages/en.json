@@ -651,7 +651,7 @@
         "after": [
           "The result is kept in our server's cache for up to 24 hours so that a repeat check is fast. It is tied to the site, not to you.",
           "Your IP address is used to limit how many checks one connection can make. For that it is kept as is, as a counter in our server's memory, for up to an hour, and then deleted. The security log of account actions stores only a shortened cryptographic hash of it, never the address itself.",
-          "With every check, app version 1.0.2 also sends an install number: a random number made on the phone and replaced with a new one every 24 hours. It is not tied to the phone, the SIM card or an account; it lets us limit checks per phone rather than for all the subscribers who share a carrier's IP address. Our server keeps only a cryptographic hash of it, as a counter, for up to an hour."
+          "From version 1.0.2, the app also sends an install number with every check: a random number made on the phone and replaced with a new one every 24 hours. It is not tied to the phone, the SIM card or an account; it lets us limit checks per phone rather than for all the subscribers who share a carrier's IP address. Our server keeps only a cryptographic hash of it, as a counter, for up to an hour."
         ]
       },
       {
