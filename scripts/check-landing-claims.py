@@ -172,7 +172,8 @@ CLAIMS: tuple[Claim, ...] = (
         "hi": r"जैसा का तैसा नहीं रखा",
         "ar": r"لا يُ?حفظ كما هو",
     }),
-    Claim("Sentry is not 'stripped of site names' — API and app traces keep request URLs", {
+    Claim("Sentry is not 'stripped of site names' — the app's traces keep request URLs "
+          "(the API's are scrubbed since 2026-09-27; the app's are not yet)", {
         "en": r"remove site names",
         "ru": r"убираем из них имена сайтов",
         "es": r"quitamos de ellos los nombres de sitios",

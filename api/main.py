@@ -49,19 +49,11 @@ if _sentry_dsn:
     try:
         import sentry_sdk
 
-        from api.services.sentry_scrubber import before_breadcrumb, before_send
+        from api.services.sentry_scrubber import sentry_init_options
 
-        sentry_sdk.init(
-            dsn=_sentry_dsn,
-            traces_sample_rate=0.1,
-            environment="production" if not get_settings().debug else "development",
-            # send_default_pii is False by default in modern sentry-sdk but
-            # we set it explicitly so a future SDK version bumping the
-            # default to True doesn't silently leak.
-            send_default_pii=False,
-            before_send=before_send,
-            before_breadcrumb=before_breadcrumb,
-        )
+        # Errors, breadcrumbs AND sampled performance transactions all go
+        # through the scrubber; no trace headers leave on outgoing requests.
+        sentry_sdk.init(**sentry_init_options(_sentry_dsn, get_settings().debug))
         logger.info("Sentry initialized with PII scrubber")
     except ImportError:
         logger.debug("sentry-sdk not installed, skipping")

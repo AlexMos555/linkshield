@@ -241,3 +241,181 @@ def test_stripe_id_variants(raw, expected_marker):
     out = before_send({"extra": {"v": raw}})
     assert expected_marker in str(out)
     assert raw not in str(out)
+
+
+# ── Performance transactions (they never pass through before_send) ────────
+
+import json  # noqa: E402
+
+from api.services.sentry_scrubber import (  # noqa: E402
+    before_send_transaction,
+    sentry_init_options,
+)
+
+SITE = "evil-bank.example"
+IDN_SITE = "xn--80ak6aa92e.xn--p1ai"
+# Built at runtime so secret scanners do not flag a fixture as a live key.
+FAKE_GOOGLE_KEY = "AIza" + "Sy" + "F1XTURE" + "x" * 26
+INSTALL_ID = "3f2b8c1e-9a4d-4c7b-8e2f-1a2b3c4d5e6f"
+
+
+def _public_check_transaction() -> dict:
+    """What sentry-sdk 2.x builds for a sampled GET /api/v1/public/check/<site>
+    (FastAPI + httpx + redis integrations)."""
+    return {
+        "type": "transaction",
+        "transaction": "/api/v1/public/check/{domain}",
+        "transaction_info": {"source": "route"},
+        "request": {
+            "url": f"https://api.cleanway.ai/api/v1/public/check/{SITE}",
+            "method": "GET",
+            "query_string": "",
+            "headers": {
+                "Referer": f"https://cleanway.ai/ru/check/{SITE}",
+                "X-Cleanway-Install": INSTALL_ID,
+                "X-Cleanway-Benchmark": "weekly-benchmark-token",
+            },
+        },
+        "spans": [
+            {"op": "http.client", "description": f"GET https://{SITE}/login",
+             "data": {"url": f"https://{SITE}/login", "http.method": "GET", "http.query": "a=1"}},
+            {"op": "http.client",
+             "description": "POST https://safebrowsing.googleapis.com/v4/threatMatches:find",
+             "data": {"url": "https://safebrowsing.googleapis.com/v4/threatMatches:find",
+                      "http.query": f"key={FAKE_GOOGLE_KEY}"}},
+            {"op": "http.client",
+             "description": f"GET https://ipqualityscore.com/api/json/url/SECRETKEY123/{SITE}"},
+            {"op": "http.client", "description": f"GET https://crt.sh/?q=%25.{SITE}"},
+            {"op": "http.client", "description": f"GET https://www.virustotal.com/api/v3/domains/{SITE}"},
+            {"op": "db.redis", "description": f"GET 'public_check:v2:{SITE}'",
+             "tags": {"redis.key": f"public_check:v2:{SITE}"}},
+            {"op": "db.redis", "description": "SISMEMBER 'dangerous_domains' [Filtered]"},
+            {"op": "db.redis", "description": "redis.pipeline.execute",
+             "data": {"redis.commands": {"count": 2, "first_ten": [
+                 "SISMEMBER 'dangerous_domains' [Filtered]",
+                 f"GET 'public_check:v2:{IDN_SITE}'",
+             ]}}},
+        ],
+    }
+
+
+def test_transaction_carries_no_trace_of_the_checked_site():
+    out = before_send_transaction(_public_check_transaction())
+    flat = json.dumps(out, ensure_ascii=False)
+    for secret in (SITE, IDN_SITE, FAKE_GOOGLE_KEY, "SECRETKEY123", INSTALL_ID, "weekly-benchmark-token"):
+        assert secret not in flat, secret
+
+
+def test_transaction_keeps_what_ops_needs():
+    out = before_send_transaction(_public_check_transaction())
+    descriptions = [s["description"] for s in out["spans"]]
+    assert descriptions[0] == "GET [site]"                                    # the site itself
+    assert descriptions[1] == "POST https://safebrowsing.googleapis.com"      # which provider was slow
+    assert descriptions[2] == "GET https://ipqualityscore.com"                # key + site in the path: dropped
+    assert descriptions[3] == "GET https://crt.sh"
+    assert descriptions[4] == "GET [site]"                                    # not a provider we call
+    assert descriptions[5] == "GET 'public_check:v2:[site]'"
+    assert descriptions[6] == "SISMEMBER 'dangerous_domains' [Filtered]"      # nothing to hide, untouched
+    assert out["transaction"] == "/api/v1/public/check/[site]"
+    assert out["request"]["headers"]["Referer"] == "https://cleanway.ai/ru/check/[site]"
+    assert out["request"]["method"] == "GET"
+
+
+def test_a_unicode_site_in_a_cache_key_is_redacted():
+    """Cache keys can carry an IDN in Unicode form, not only punycode."""
+    span = {"op": "db.redis", "description": "GET 'public_check:v2:президент.рф'",
+            "tags": {"redis.key": "public_check:v2:президент.рф"}}
+    out = before_send_transaction({"type": "transaction", "spans": [span]})
+    assert "президент" not in json.dumps(out, ensure_ascii=False)
+    assert out["spans"][0]["description"] == "GET 'public_check:v2:[site]'"
+
+
+def test_doh_question_never_reaches_sentry():
+    """GET /dns-query?dns=<base64url wire> — the question IS the name being
+    resolved. The landing promises DNS queries never go to Sentry."""
+    wire = "q80BAAABAAAAAAAAB2V4YW1wbGUDY29tAAABAAE"
+    event = {
+        "type": "transaction",
+        "transaction": "/dns-query",
+        "request": {"url": "https://api.cleanway.ai/dns-query", "query_string": f"dns={wire}"},
+        "breadcrumbs": {"values": [{"message": f"GET /dns-query?dns={wire} 200"}]},
+    }
+    out = before_send_transaction(event)
+    assert wire not in json.dumps(out)
+    assert out["request"]["query_string"] == "[redacted]"
+    assert out["breadcrumbs"]["values"][0]["message"] == "GET /dns-query?dns=[query] 200"
+
+
+@pytest.mark.parametrize(
+    "path,expected",
+    [
+        (f"/ru/check/{SITE}", "/ru/check/[site]"),                       # a request that matched no route
+        (f"/audit/{SITE}/grade/F", "/audit/[site]/grade/F"),
+        (f"/api/v1/breach/domain/{SITE}", "/api/v1/breach/domain/[site]"),
+        ("/api/v1/breach/check/5BAA6", "/api/v1/breach/check/[site]"),
+        ("/api/v1/phone/lookup/ab12cd", "/api/v1/phone/lookup/[hash]"),
+        ("/api/v1/user/device/ab12cd/overrides", "/api/v1/user/device/[hash]/overrides"),
+        ("/api/v1/email/unsubscribe/tok123", "/api/v1/email/unsubscribe/[token]"),
+        ("/api/v1/public/stats", "/api/v1/public/stats"),                # nothing to hide
+    ],
+)
+def test_sensitive_route_segments_are_replaced(path, expected):
+    assert before_send_transaction({"transaction": path})["transaction"] == expected
+
+
+def test_error_events_get_the_route_rules_too():
+    out = before_send({"message": f"timeout on /api/v1/public/check/{SITE}"})
+    assert out["message"] == "timeout on /api/v1/public/check/[site]"
+
+
+def test_init_options_scrub_transactions_and_send_no_trace_headers():
+    opts = sentry_init_options("https://public@o0.ingest.sentry.io/0", debug=False)
+    assert opts["before_send"] is before_send
+    assert opts["before_send_transaction"] is before_send_transaction
+    assert opts["before_breadcrumb"] is before_breadcrumb
+    assert opts["send_default_pii"] is False
+    assert opts["trace_propagation_targets"] == []
+    assert opts["environment"] == "production"
+
+
+def test_the_real_sdk_ships_only_scrubbed_transactions():
+    """End to end through sentry-sdk itself: a sampled transaction with the
+    spans the integrations create, captured at the transport."""
+    import sentry_sdk
+    from sentry_sdk.transport import Transport
+
+    sent: list[dict] = []
+
+    class _Capture(Transport):
+        def capture_envelope(self, envelope):
+            for item in envelope.items:
+                if item.type == "transaction":
+                    sent.append(item.payload.json)
+
+    opts = {
+        **sentry_init_options("https://public@o0.ingest.sentry.io/0", debug=True),
+        "traces_sample_rate": 1.0,
+        "transport": _Capture(),
+        "default_integrations": False,
+        "auto_enabling_integrations": False,
+    }
+    sentry_sdk.init(**opts)
+    try:
+        with sentry_sdk.start_transaction(name=f"/ru/check/{SITE}", op="http.server"):
+            with sentry_sdk.start_span(op="http.client", name=f"GET https://{SITE}/") as span:
+                span.set_data("url", f"https://{SITE}/")
+                span.set_data("http.query", f"key={FAKE_GOOGLE_KEY}")
+            with sentry_sdk.start_span(op="db.redis", name=f"GET 'public_check:v2:{SITE}'") as span:
+                span.set_tag("redis.key", f"public_check:v2:{SITE}")
+        sentry_sdk.flush()
+    finally:
+        # Leave no live client behind for the rest of the suite.
+        sentry_sdk.get_client().close()
+        sentry_sdk.get_global_scope().set_client(None)
+
+    assert len(sent) == 1
+    flat = json.dumps(sent[0])
+    assert SITE not in flat
+    assert FAKE_GOOGLE_KEY not in flat
+    assert sent[0]["transaction"] == "/ru/check/[site]"
+    assert {s["description"] for s in sent[0]["spans"]} == {"GET [site]", "GET 'public_check:v2:[site]'"}
