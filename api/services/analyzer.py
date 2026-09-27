@@ -38,6 +38,7 @@ from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.hosting_platforms import is_user_content_service
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
+    is_regional_government_domain, registrable_domain,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -470,25 +471,48 @@ async def _llm_judge_within(
 # so without this every federal site that refuses foreign scanners would be
 # "not a widely known site".
 _GOVERNMENT_LABELS = frozenset({"gov", "gob", "gouv", "govt", "go", "mil"})
+# Under .ru and .su the generic rule is wrong: the only government-only
+# registries there are the cctld.ru reserved zones gov.ru and mil.ru. On
+# 2026-09-27 whois.tcinet.ru had govt.ru, gob.ru and gouv.ru held by private
+# persons and go.ru registered since 1998; gov.su is stop-listed (it cannot
+# be registered, so nothing lives under it).
+_RU_GOVERNMENT_ZONES = frozenset({"gov.ru", "mil.ru"})
+# Nor does 'gov' under a regional zone (spb.ru, msk.ru, nov.ru …) vouch for
+# anything: on 2026-09-27 whois.flexireg.net had gov.vladimir.ru,
+# gov.adygeya.ru, gov.bir.ru and gov.mytis.ru unregistered — anyone can buy
+# them — gov.msk.ru held by a private person and parked at a registrar's
+# resale shop, gov.nov.ru registered in 2023 through a retail registrar. Only
+# names checked one by one count: scoring.REGIONAL_GOVERNMENT_DOMAINS.
 _VOUCH_LOOKUP_S = 0.3
 
 
 def _government_name(domain: str) -> bool:
-    parts = domain.lower().rstrip(".").split(".")
+    name = domain.lower().rstrip(".")
+    if is_regional_government_domain(name):
+        return True
+    parts = name.split(".")
     if parts[-1] in ("gov", "mil"):
         return len(parts) >= 2
-    return len(parts) >= 3 and len(parts[-1]) == 2 and parts[-2] in _GOVERNMENT_LABELS
+    if len(parts) < 3 or len(parts[-1]) != 2 or parts[-2] not in _GOVERNMENT_LABELS:
+        return False
+    if parts[-1] in ("ru", "su"):
+        return ".".join(parts[-2:]) in _RU_GOVERNMENT_ZONES
+    return True
 
 
 async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -> bool:
     """Does anything besides this analysis vouch for the NAME? It is in the
     world's top-1M — itself, or (www.kaluga-gov.ru) its registrable domain
     when that is not a shared platform where anyone can publish — or it sits
-    in a government-only registry."""
+    in a government-only registry.
+
+    The registrable domain is PSL-aware: under a regional zone it is
+    x.spb.ru, never spb.ru. Tranco ranks spb.ru (#2605) as one name, and
+    reading that rank as a vouch for every host anyone registers under it
+    let an unreachable gosuslugi-lk.spb.ru through as 'safe'."""
     if signals.get("tranco_ranked") or _government_name(domain):
         return True
-    from api.services.doh_gateway import _registrable_domain
-    registrable = _registrable_domain(domain)
+    registrable = registrable_domain(domain)
     if registrable == domain or is_hosting_platform_site(domain):
         return False
     try:

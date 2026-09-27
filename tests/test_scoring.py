@@ -793,6 +793,13 @@ def test_idn_multichar_glyph_homoglyphs_still_fire():
 # where decoding is a no-op. The model is stubbed because the weekly
 # retrain moves its share of the score: pinning it made this guard fail on
 # a retrain (51 → 31 on two long names) while no heuristic had changed.
+#
+# Intended changes (2026-09-27, the Russian false-positive fix): the four
+# short Russian names were 25 = one 'typosquatting' hit each, and every one
+# was a false positive — ikar ~ ikea and ugpr ~ usps (two substitutions in
+# four letters), etsp ~ etsy (one in four), ngpedia ~ expedia (two in seven).
+# A 4-letter name is no longer matched by edit distance, and below 8 letters
+# only one substitution counts. Nothing else in this table moved.
 
 _ASCII_REGRESSION_BASELINE = {
     "paypal.com": 0,
@@ -801,10 +808,10 @@ _ASCII_REGRESSION_BASELINE = {
     "my-very-long-suspicious-domain-name-here.ru": 31,
     "this-is-a-very-long-suspicious-domain-name.com": 31,
     "qwrtpsdfgh.ru": 22,
-    "ikar.ru": 25,
-    "ngpedia.ru": 25,
-    "etsp.ru": 25,
-    "ugpr.ru": 25,
+    "ikar.ru": 0,
+    "ngpedia.ru": 0,
+    "etsp.ru": 0,
+    "ugpr.ru": 0,
     "rnicrosoft-login.com": 40,
     "vvhatsapp.com": 25,
 }
