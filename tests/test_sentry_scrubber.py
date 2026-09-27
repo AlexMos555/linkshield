@@ -247,6 +247,8 @@ def test_stripe_id_variants(raw, expected_marker):
 
 import json  # noqa: E402
 
+from pydantic import BaseModel  # noqa: E402
+
 from api.services.sentry_scrubber import (  # noqa: E402
     before_send_transaction,
     sentry_init_options,
@@ -375,6 +377,8 @@ def test_init_options_scrub_transactions_and_send_no_trace_headers():
     assert opts["before_breadcrumb"] is before_breadcrumb
     assert opts["send_default_pii"] is False
     assert opts["trace_propagation_targets"] == []
+    assert opts["max_request_body_size"] == "never"
+    assert opts["include_local_variables"] is False
     assert opts["environment"] == "production"
 
 
@@ -419,3 +423,123 @@ def test_the_real_sdk_ships_only_scrubbed_transactions():
     assert FAKE_GOOGLE_KEY not in flat
     assert sent[0]["transaction"] == "/ru/check/[site]"
     assert {s["description"] for s in sent[0]["spans"]} == {"GET [site]", "GET 'public_check:v2:[site]'"}
+
+
+class _Check(BaseModel):
+    domains: list[str]
+
+
+class _Email(BaseModel):
+    subject: str
+    body_text: str
+
+
+class _Accept(BaseModel):
+    code: str
+    pin: str
+
+
+def _app_with_body_routes():
+    """Built AFTER sentry_sdk.init: the integration wraps route handlers as
+    FastAPI creates them."""
+    import logging
+
+    from fastapi import FastAPI
+
+    app = FastAPI()
+
+    @app.post("/api/v1/check")
+    async def _check(req: _Check):
+        return {"ok": True}
+
+    @app.post("/api/v1/email/analyze")
+    async def _email(req: _Email):
+        return {"ok": True}
+
+    @app.post("/api/v1/family/accept")
+    async def _accept(req: _Accept):
+        return {"ok": True}
+
+    @app.post("/api/v1/boom")
+    async def _boom(req: _Check):
+        # How the API reports errors: a logger.error inside the request (the
+        # logging integration turns it into an event carrying the request).
+        try:
+            raise RuntimeError("analyzer crashed")
+        except RuntimeError:
+            logging.getLogger("api.services.analyzer").error("analysis failed", exc_info=True)
+        return {"ok": False}
+
+    return app
+
+
+def test_the_real_sdk_with_fastapi_sends_no_request_bodies():
+    """With the integrations production runs (FastAPI / Starlette, enabled by
+    default), sentry-sdk attached each JSON body to the request's transaction
+    and to any error logged inside it — the domains of POST /api/v1/check, an
+    email's subject and text, a raw family invite code — and the error's
+    stack frames carried the parsed body again as a local variable
+    (`req = _Check(domains=[...])`). Captured at the transport."""
+    import sentry_sdk
+    from fastapi.testclient import TestClient
+    from sentry_sdk.transport import Transport
+
+    sent: list[dict] = []
+
+    class _Capture(Transport):
+        def capture_envelope(self, envelope):
+            for item in envelope.items:
+                if item.type in ("transaction", "event"):
+                    sent.append(item.payload.json)
+
+    # The bodies below use the real field names; none of these strings may
+    # reach Sentry, whatever key a future schema puts them under.
+    secrets = ("grandmas-bank-login", "Sberbank card blocked", "call 8-800-555", "ABCD-EFGH-SECRET", "error-path")
+    sentry_sdk.init(**{
+        **sentry_init_options("https://public@o0.ingest.sentry.io/0", debug=True),
+        "traces_sample_rate": 1.0,
+        "transport": _Capture(),
+    })
+    try:
+        client = TestClient(_app_with_body_routes())
+        statuses = [
+            client.post("/api/v1/check", json={"domains": ["grandmas-bank-login.example"]}).status_code,
+            client.post("/api/v1/email/analyze",
+                        json={"subject": "Your Sberbank card blocked", "body_text": "call 8-800-555 now"}).status_code,
+            client.post("/api/v1/family/accept", json={"code": "ABCD-EFGH-SECRET", "pin": "1234"}).status_code,
+            client.post("/api/v1/boom", json={"domains": ["error-path.example"]}).status_code,
+        ]
+        sentry_sdk.flush()
+    finally:
+        sentry_sdk.get_client().close()
+        sentry_sdk.get_global_scope().set_client(None)
+
+    transactions = [e for e in sent if e.get("type") == "transaction"]
+    errors = [e for e in sent if e.get("type") != "transaction"]
+    assert statuses == [200, 200, 200, 200]  # every body was parsed by its route
+    assert len(transactions) == 4 and len(errors) == 1  # the integrations really ran
+    for event in sent:
+        flat = json.dumps(event, ensure_ascii=False)
+        for secret in secrets:
+            assert secret not in flat, (secret, event.get("transaction"))
+        assert not (event.get("request") or {}).get("data")
+
+
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("domains", ["grandmas-bank-login.example"]),
+        ("host", "redirect-target.example"),        # site_probes: redirect_hop_blocked
+        ("code", "REF-ABCD-1234"),                  # referral: redeem logs
+        ("subject", "Your Sberbank card blocked"),
+        ("body_text", "call 8-800-555 now"),
+        ("body_html", "<p>call 8-800-555 now</p>"),
+    ],
+)
+def test_what_a_person_sent_is_redacted_when_logged_as_extra(key, value):
+    """Log calls put these under `extra`; the logging integration forwards
+    extras to breadcrumbs and error events."""
+    out = before_send({"extra": {key: value}})
+    assert out["extra"][key] == "[redacted]"
+    crumb = before_breadcrumb({"category": "api", "data": {key: value}})
+    assert crumb["data"][key] == "[redacted]"

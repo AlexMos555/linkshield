@@ -21,7 +21,13 @@ the whole DNS question in `query_string`. `before_send_transaction` runs the
 same scrub over transactions, plus span rules (`_scrub_span`).
 
 Wired in api/main.py through `sentry_init_options()`, which also stops the
-SDK from attaching `sentry-trace` / `baggage` headers to outgoing requests.
+SDK from attaching `sentry-trace` / `baggage` headers to outgoing requests and
+from attaching request bodies at all (`max_request_body_size="never"`): the
+FastAPI integration put the JSON body of every sampled POST, and of every
+error, in `request.data` — the checked domains of POST /api/v1/check, an
+email's subject and text, a raw family invite code — under key names no
+scrub rule can list in full. For the same reason error events carry no stack
+frame local variables (`include_local_variables=False`).
 """
 from __future__ import annotations
 
@@ -139,9 +145,18 @@ _ALWAYS_REDACT_KEYS = frozenset(
         # (access-controlled, ephemeral) for ops — we only strip it from the
         # external observability sink. (2026-07-01 audit BE-4 follow-up.)
         "domain",
+        "domains",
         "raw_url",
         "url",
         "hostname",
+        "host",
+        # What a person sent us to judge or to join: an email's subject and
+        # text, a referral / family invite code. Request bodies never reach
+        # Sentry (`max_request_body_size`), but a log call's `extra` does.
+        "subject",
+        "body_text",
+        "body_html",
+        "code",
         # Query strings: the DoH GET carries the DNS question in `dns=`, and
         # outgoing spans carry the checked name (Cloudflare `?name=`, crt.sh
         # `?q=`) or an API key (Safe Browsing `?key=`). Nothing in a query
@@ -335,4 +350,14 @@ def sentry_init_options(dsn: str, debug: bool) -> dict[str, Any]:
         # scanner" (a free cloaking signal) and hands it our Sentry public
         # key and the route name. Nothing downstream of this API reads them.
         "trace_propagation_targets": [],
+        # The SDK's default ("medium") attaches the JSON body of each request
+        # to its transaction and to any error it raises. Our bodies are the
+        # checked domains, email content and invite codes; the scrubber only
+        # catches the keys it knows, so no body is sent at all.
+        "max_request_body_size": "never",
+        # Error events also carried every stack frame's local variables, by
+        # default — the parsed request model (`CheckRequest(domains=[...])`),
+        # a URL being probed, a hostname — under names like `req`, `d` or
+        # `target` that no key rule can foresee. The stack trace itself stays.
+        "include_local_variables": False,
     }
