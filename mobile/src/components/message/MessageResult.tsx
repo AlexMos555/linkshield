@@ -124,8 +124,9 @@ export function MessageResult(props: Props) {
         ))}
       </View>
 
-      {/* A dangerous message: call the saved close one before answering it. */}
-      {verdict === "dangerous" && <CallCloseOneButton />}
+      {/* Dangerous or suspicious — a "new number, lend me money" message is
+          often only "caution": call the saved close one before answering. */}
+      {verdict !== "no_signals" && <CallCloseOneButton />}
 
       {analysis.truncated && <Text style={s.note}>{t("mobile.message.truncated")}</Text>}
 
