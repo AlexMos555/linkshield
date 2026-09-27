@@ -148,12 +148,10 @@ class CleanwayVpnService : VpnService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_REFRESH_BLOCKLIST) {
-            // Woken by the wall-clock alarm: run one fetch off the DNS thread
-            // and arm the next alarm, whether or not this one succeeded.
-            blocklistSync?.let { sync ->
-                syncExecutor.execute { runCatching { sync.refreshOnce() } }
-                BlocklistAlarm.schedule(this, sync.nextDelayMs())
-            }
+            // Woken by the wall-clock alarm: run one fetch off the DNS thread.
+            // The attempt arms the next alarm from its own result (backoff
+            // after a failure) — see BlocklistSync.attempt.
+            blocklistSync?.let { sync -> syncExecutor.execute { sync.attempt() } }
             // START_STICKY without touching the tunnel: it is already up.
             return START_STICKY
         }
@@ -169,6 +167,7 @@ class CleanwayVpnService : VpnService() {
             // Explicit user request: forget the intent so we do not come back
             // on the next boot.
             ShieldPreference.setUserEnabled(this, false)
+            ShieldPreference.setStopReason(this, null)
             ShieldPreference.setPausedUntil(
                 this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STOPPED_BY_PERSON, pausedUntilMs),
             )
@@ -216,9 +215,11 @@ class CleanwayVpnService : VpnService() {
         //
         // If prepare() does return an Intent, consent is genuinely absent (the
         // user revoked it in Settings, or never granted it): stop honestly, the
-        // app shows "protection stopped" and the next tap raises the dialog.
+        // app shows "protection stopped" — and why — and the next tap raises
+        // the dialog.
         if (prepare(this) != null) {
             Log.w(TAG, "consent_missing — not establishing")
+            broadcastStopped(REASON_REVOKED)
             stopSelf()
             return
         }
@@ -272,6 +273,7 @@ class CleanwayVpnService : VpnService() {
         // Remember that protection should be on, so BootReceiver can re-arm it
         // after a reboot or an OEM force-stop.
         ShieldPreference.setUserEnabled(this, true)
+        ShieldPreference.setStopReason(this, null)
         Log.i(TAG, "tunnel_started")
 
         // A pause outlives a restart of the service (process killed, reboot):
@@ -280,15 +282,21 @@ class CleanwayVpnService : VpnService() {
 
         // Load the stored blocklist synchronously (≈30 KB, milliseconds) so
         // the very first query after start is already filtered; then keep it
-        // fresh in the background (every 2h ± jitter, backoff on failure).
+        // fresh in the background (every 6h ± jitter, backoff on failure).
         startBlocklist()
 
         // Follow the underlying network so its resolver is asked first.
         underlying?.stop()
         underlying = UnderlyingNetworks(this, TUNNEL_ADDRESSES) { network ->
+            val previous = upstreamNetwork
             upstreamNetwork = network
             breaker.reset(Transport.NETWORK)
             Log.i(TAG, "network_dns " + (network?.let { "kind=${it.kind} servers=${it.servers.size}" } ?: "none — public resolvers only"))
+            // Back online, or onto another network: a list fetch that failed
+            // for want of a connection is retried now, not hours later.
+            if (network != null && network.handle != previous?.handle) {
+                blocklistSync?.onNetworkArrived(syncExecutor)
+            }
         }.also { it.start() }
 
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
@@ -325,7 +333,13 @@ class CleanwayVpnService : VpnService() {
         super.onRevoke()
     }
 
+    /**
+     * The tunnel went down (or would not come up) for [reason]. Kept, so the
+     * app can say why even when it was closed at the time, and announced for
+     * an open one.
+     */
     private fun broadcastStopped(reason: String) {
+        ShieldPreference.setStopReason(this, reason)
         try {
             sendBroadcast(
                 Intent(ACTION_VPN_STOPPED)
@@ -342,6 +356,7 @@ class CleanwayVpnService : VpnService() {
         isRunning = false
         dynamicBlocked = emptySet()
         pausedUntilMs = 0L
+        blocklistSync?.stop()
         BlocklistAlarm.cancel(this)
         stopPrivateDnsWatch?.invoke()
         stopPrivateDnsWatch = null
@@ -787,6 +802,13 @@ class CleanwayVpnService : VpnService() {
         } catch (e: Exception) {
             Log.w(TAG, "fg_notification_update_error: ${e.javaClass.simpleName}")
         }
+        // An open app follows the pause from wherever it changed: the
+        // notification's "turn back on", the scheduled end, the app itself.
+        try {
+            sendBroadcast(Intent(ACTION_PAUSE_CHANGED).setPackage(packageName).putExtra(EXTRA_PAUSE_UNTIL, until))
+        } catch (e: Exception) {
+            Log.w(TAG, "pause_broadcast_error: ${e.javaClass.simpleName}")
+        }
         Log.i(TAG, if (until > 0L) "paused for ${(until - now + 59_999) / 60_000}min" else "protection_resumed")
     }
 
@@ -840,6 +862,10 @@ class CleanwayVpnService : VpnService() {
                         false
                     }
                 },
+                // Doze-proof recurring cadence (see BlocklistAlarm), armed from
+                // each attempt's result: 6h after a good fetch, 5/15/60 min
+                // after a failed one.
+                onAttempted = { delayMs -> if (running) BlocklistAlarm.schedule(this, delayMs) },
             )
             blocklistSync = sync
             val loaded = sync.loadFromDisk()
@@ -854,8 +880,6 @@ class CleanwayVpnService : VpnService() {
                 )?.let { seed -> sync.adoptSeed(seed.list, seed.body) }
             }
             sync.start(syncExecutor)
-            // Doze-proof recurring cadence (see BlocklistAlarm).
-            BlocklistAlarm.schedule(this, sync.nextDelayMs())
         } catch (e: Exception) {
             // Never let the list machinery take the tunnel down: no list means
             // nothing is blocked (and the card says so), not a dead DNS.
@@ -943,7 +967,7 @@ class CleanwayVpnService : VpnService() {
     fun refreshBlocklistAsync() {
         val sync = blocklistSync ?: return
         // The person tapped "update" — honour it even on a metered network.
-        syncExecutor.execute { runCatching { sync.refreshOnce(force = true) } }
+        syncExecutor.execute { sync.attempt(force = true) }
     }
 
     companion object {
@@ -991,6 +1015,8 @@ class CleanwayVpnService : VpnService() {
         const val EXTRA_PAUSE_UNTIL = "pause_until_ms"
         /** End a pause now (the app, or the notification's "turn back on"). */
         const val ACTION_RESUME = "ai.cleanway.VPN_RESUME"
+        /** Broadcast when the pause begins, ends or moves; carries [EXTRA_PAUSE_UNTIL] (0 = not paused). */
+        const val ACTION_PAUSE_CHANGED = "ai.cleanway.PAUSE_CHANGED"
         /** The longest timed pause; "until I turn it back on" is a full stop instead. */
         const val MAX_PAUSE_MS = 60L * 60_000
 

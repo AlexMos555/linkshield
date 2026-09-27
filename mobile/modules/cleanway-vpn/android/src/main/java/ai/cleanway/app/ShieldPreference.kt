@@ -81,5 +81,27 @@ internal object ShieldPreference {
     fun pauseAfter(event: PauseEvent, storedUntilMs: Long): Long =
         if (event == PauseEvent.CAME_BACK_BY_ITSELF) storedUntilMs else 0L
 
+    /**
+     * Why the tunnel last went down without the person turning it off:
+     * [CleanwayVpnService.REASON_REVOKED] or [CleanwayVpnService.REASON_PRIVATE_DNS],
+     * null when nobody told us (a killed process, a battery manager, a boot
+     * that did not bring it back). The app says what happened and what it
+     * takes to come back — 1.0.2 said "usually after a reboot, one tap" even
+     * after a Private DNS conflict or a revoked VPN permission.
+     */
+    fun setStopReason(context: Context, reason: String?) {
+        context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_STOP_REASON, reason)
+            .commit()
+    }
+
+    fun stopReason(context: Context): String? =
+        context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_STOP_REASON, null)
+
     private const val KEY_PAUSED_UNTIL = "paused_until_ms"
+    private const val KEY_STOP_REASON = "stop_reason"
 }
