@@ -101,8 +101,10 @@ function ShareIntentRouter() {
     const shared = shareIntent?.webUrl ?? text;
     const message = Boolean(text) && isMessageText(text);
     if (message && isMessageCheckSupported()) {
-      handOffMessage(text);
-      router.push({ pathname: "/message", params: { from: "share" } });
+      // The id makes this share a new route param even when the message
+      // screen is already open — see message-handoff.ts (report #5).
+      const handoff = handOffMessage(text);
+      router.push({ pathname: "/message", params: { from: "share", handoff } });
     } else if (message) {
       // No host → an empty param, which /shared answers with "no link found".
       router.push({ pathname: "/shared", params: { url: toCheckableHost(shared) ?? "" } });

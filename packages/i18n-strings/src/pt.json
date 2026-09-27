@@ -1122,7 +1122,7 @@
       "email_hint": "Informe o modelo do celular e o que aconteceu.",
       "faq_title": "Perguntas frequentes",
       "q_vpn": "Isso é uma VPN que esconde meu tráfego?",
-      "a_vpn": "Não. O Cleanway usa o mecanismo de VPN do Android só para rodar no celular um filtro local que bloqueia sites de golpe em todos os apps. Ele não esconde aonde você vai e não manda seu tráfego por outro país. Para chegar aos sites que ele não bloqueia, o celular busca os nomes deles em um serviço de DNS público — Cloudflare (1.1.1.1) ou Quad9 (9.9.9.9).",
+      "a_vpn": "Não. O Cleanway usa o mecanismo de VPN do Android só para rodar no celular um filtro local que bloqueia sites de golpe em todos os apps. Ele não esconde aonde você vai e não manda seu tráfego por outro país. Para chegar aos sites que ele não bloqueia, o celular busca os nomes deles, como sem o Cleanway, no servidor DNS da sua operadora ou do seu roteador Wi-Fi — e, só se ele não responder, no Cloudflare (1.1.1.1) ou no Quad9 (9.9.9.9).",
       "q_install": "Como eu instalo?",
       "a_install": "Baixe o app, abra o arquivo e permita a instalação: a página do Android explica cada aviso que pode aparecer no caminho. Na primeira vez, toque em “Ativar proteção” e permita a conexão que o Android pedir.",
       "q_off": "Como eu desligo?",
@@ -1362,7 +1362,8 @@
           "paragraphs": [
             "Quando você ativa a proteção, o Cleanway liga um filtro local usando o mecanismo de VPN do Android. Por ele passam só as consultas DNS — as perguntas que o celular faz para achar o endereço de um site, como “onde fica example.com?”. O conteúdo das páginas, suas mensagens e ligações não passam pelo filtro e não são lidos.",
             "Cada nome de site é comparado com a lista de sites de golpe guardada no celular. Se ele estiver na lista, o celular não abre o site e uma anotação (o nome do site, a hora e o que aconteceu) é salva no celular para o Histórico do app.",
-            "Os nomes que não estão na lista são repassados a um serviço de DNS público para achar o endereço — o celular também faz isso sem o Cleanway, só que por outro serviço. Na versão 1.0.1 do app essas consultas vão para a Cloudflare (1.1.1.1), com a Quad9 (9.9.9.9) como reserva e o DNS-over-HTTPS criptografado da Cloudflare como último recurso. Esses serviços veem o nome do site e o endereço IP da sua conexão, como qualquer serviço de DNS; valem as políticas de privacidade deles. O Cleanway não recebe nem guarda essas consultas."
+            "Os nomes que não estão na lista são repassados para achar o endereço do site: primeiro ao servidor DNS da rede em que o celular está — da sua operadora ou do seu roteador Wi-Fi —, como sem o Cleanway. Só se ele não responder, vão para o Cloudflare (1.1.1.1), depois para o Quad9 (9.9.9.9) e, em último caso, para o DNS-over-HTTPS criptografado do Cloudflare. É assim que funciona a versão 1.0.2 do app; a versão 1.0.1 perguntava primeiro ao Cloudflare. Esses serviços veem o nome do site e o endereço IP da sua conexão, como qualquer serviço de DNS; valem as políticas de privacidade deles. O Cleanway não recebe nem guarda essas consultas.",
+            "A partir da versão 1.0.2, o app traz uma cópia da lista de sites de golpe, usada só até o celular baixar uma lista nova."
           ]
         },
         {
@@ -1374,7 +1375,7 @@
         {
           "title": "5. Verificação de sites e links",
           "paragraphs": [
-            "O nome de um site — sem o resto do link, sem o conteúdo da página e sem os dados da sua conta — vai para o nosso servidor quando você verifica um site manualmente (no app ou em cleanway.ai/check) e quando a proteção está ativa e você abre pelo Cleanway um link que não está na lista.",
+            "O nome de um site — sem o resto do link, sem o conteúdo da página e sem os dados da sua conta — vai para o nosso servidor quando você verifica um site manualmente (no app ou em cleanway.ai/check) e quando você abre pelo Cleanway um link que não está na lista (a partir da versão 1.0.2, também com a proteção “Todos os aplicativos” desligada).",
             "Para decidir se o site é perigoso, nosso servidor pode:"
           ],
           "items": [
@@ -1385,7 +1386,8 @@
           ],
           "after": [
             "O resultado fica no cache do nosso servidor por até 24 horas para que uma nova verificação seja rápida. Ele está ligado ao site, não a você.",
-            "Seu endereço IP é usado para limitar quantas verificações uma conexão pode fazer. Para isso ele fica guardado como está, como contador na memória do nosso servidor, por no máximo uma hora, e depois é apagado. O registro de segurança das ações da conta guarda só um hash criptográfico encurtado, nunca o próprio endereço."
+            "Seu endereço IP é usado para limitar quantas verificações uma conexão pode fazer. Para isso ele fica guardado como está, como contador na memória do nosso servidor, por no máximo uma hora, e depois é apagado. O registro de segurança das ações da conta guarda só um hash criptográfico encurtado, nunca o próprio endereço.",
+            "A cada verificação, a versão 1.0.2 do app também envia um número de instalação: um número aleatório criado no celular e trocado por um novo a cada 24 horas. Ele não está ligado ao celular, ao chip nem a uma conta; serve para limitarmos as verificações por celular, e não para todos os clientes que compartilham o endereço IP de uma operadora. Nosso servidor guarda só um hash criptográfico dele, como contador, por no máximo uma hora."
           ]
         },
         {
@@ -1805,7 +1807,11 @@
         "sub_all": "Todos os escudos ativados e verificados",
         "attention": "Um escudo precisa de atenção",
         "a11y": "Status da proteção: {{status}}",
-        "title_interrupted": "A proteção parou"
+        "title_interrupted": "A proteção parou",
+        "title_paused": "Proteção pausada até {{time}}",
+        "sub_paused": "Agora os sites de golpe não estão sendo bloqueados",
+        "title_conflict": "A proteção não está funcionando",
+        "sub_conflict": "A configuração de DNS privado está atrapalhando — veja abaixo o que mudar"
       },
       "cta_turn_on": "Ativar proteção",
       "check": {
@@ -1825,7 +1831,7 @@
         "desc": "Recebeu um SMS suspeito? Envie para o Cleanway: toque e segure a mensagem → Compartilhar → Cleanway. Ou cole o texto.",
         "cta": "Verificar uma mensagem",
         "honesty": "O Cleanway não lê seus SMS por conta própria — verifica só a mensagem que você entrega a ele. O texto fica no seu celular.",
-        "links_on": "Os links dos SMS também são verificados quando você toca neles — a “Verificação de links” está ligada.",
+        "links_on": "Os links do SMS também são verificados quando você toca neles: sites de golpe conhecidos não abrem.",
         "links_no_list": "A “Verificação de links” está ligada, mas ainda não há com o que comparar os links dos SMS: a lista de sites de golpe é baixada enquanto a proteção “Todos os aplicativos” está ligada.",
         "links_off": "Agora os links dos SMS não são verificados quando você toca neles. Para isso, ligue acima a proteção “Verificação de links”."
       },
@@ -1837,7 +1843,7 @@
         "open_a11y": "{{label}}: {{value}}. Abre a lista no histórico.",
         "hint": "Toque em um número para ver a lista."
       },
-      "privacy": "O escudo compara nomes de sites no seu celular — nada sobre as páginas que você visita chega até nós. Quando você mesmo checa um link, só o nome do site sai do aparelho.",
+      "privacy": "A proteção “Todos os aplicativos” compara os nomes dos sites no seu celular. Quando você verifica um link ou toca nele com a “Verificação de links” ativada, o nosso servidor recebe o nome do site e um número aleatório da instalação que muda todo dia.",
       "interrupted": "Costuma acontecer após reiniciar. Sua configuração continua aqui — um toque e ela volta.",
       "cta_turn_back_on": "Ligar a proteção de novo"
     },
@@ -1854,7 +1860,8 @@
         "state_checking": "Verificando a proteção…",
         "state_offline": "Sem internet agora. O escudo está configurado e vai filtrar assim que você voltar a ficar online.",
         "state_private_dns": "Seu celular está com o DNS privado ativado ({{host}}). O Android não consegue usá-lo junto com o Cleanway — com os dois ligados, a internet para de funcionar. Nas Configurações, coloque o DNS privado em Automático, depois volte e ligue o Cleanway.",
-        "private_dns_cta": "Abrir configurações de rede"
+        "private_dns_cta": "Abrir configurações de rede",
+        "state_paused_until": "Pausado até {{time}}, depois volta sozinho. Agora os sites de golpe não estão sendo bloqueados."
       },
       "browser": {
         "title": "Seu navegador",
@@ -1878,7 +1885,7 @@
       },
       "always_on_hint": "Volta sozinho depois de reiniciar. Para começar junto com o celular, antes de qualquer app: ative a VPN sempre ativa",
       "pause_confirm_title": "Pausar a proteção?",
-      "pause_confirm_body": "Sites de golpe não serão bloqueados nos seus apps até você ligar de novo. Suas verificações salvas não mudam.",
+      "pause_confirm_body": "Enquanto a proteção estiver pausada, sites de golpe abrem em todos os aplicativos.",
       "blocklist": {
         "status": "Lista de bloqueio: {{count}} sites de golpe conhecidos · atualizada há {{hours}} h",
         "stale": "A lista está desatualizada ({{count}} sites) — toque para atualizar",
@@ -1887,17 +1894,24 @@
       },
       "disclosure": {
         "title": "Como o escudo funciona",
-        "body": "O Cleanway cria uma VPN local no seu celular. É assim que o Android permite que um app filtre as consultas de sites para todos os outros.\n\n• A lista de sites de golpe conhecidos fica no seu celular. Os nomes são comparados aqui, não enviados para nós.\n• As consultas que não bloqueamos vão para um resolvedor público (Cloudflare ou Quad9), como seu celular já faz.\n• Nenhum outro tráfego é lido, gravado ou redirecionado. Não é uma VPN de privacidade e não esconde sua navegação.\n\nAgora o Android vai pedir sua permissão.",
+        "body": "O Cleanway cria uma VPN local no seu celular. É assim que o Android permite que um app filtre as consultas de sites para todos os outros.\n\n• A lista de sites de golpe conhecidos fica no seu celular. Os nomes são comparados aqui, não enviados para nós.\n• As consultas que não bloqueamos vão para o servidor DNS da sua própria rede — da operadora ou do roteador, como sem o Cleanway. Se ele não responder, vão para um resolvedor público (Cloudflare ou Quad9).\n• Nenhum outro tráfego é lido, gravado ou redirecionado. Não é uma VPN de privacidade e não esconde sua navegação.\n\nAgora o Android vai pedir sua permissão.",
         "continue": "Continuar",
         "cancel": "Agora não"
       },
       "linkguard": {
         "title": "Verificação de links",
-        "desc": "O Cleanway abre os links primeiro e verifica antes de você entrar",
-        "honesty": "Funciona quando o Cleanway é o aplicativo que abre seus links",
-        "state_on": "Todo link é verificado antes",
-        "state_setup": "Deixe o Cleanway abrir seus links"
-      }
+        "desc": "Os links que você toca passam primeiro pelo Cleanway",
+        "honesty": "Funciona quando o Cleanway é o app que abre seus links. Um site de golpe muito novo pode chegar a abrir. Nós o verificamos na hora e avisamos se encontrarmos perigo, mas nem sempre reconhecemos sites muito novos.",
+        "state_on": "Sites de golpe conhecidos não abrem. Os outros links são verificados logo depois de abrir.",
+        "state_setup": "Deixe o Cleanway abrir seus links",
+        "state_no_list": "Os links são verificados logo depois de abrir. A lista de sites de golpe chega quando você ativa a proteção “Todos os aplicativos”."
+      },
+      "pause_scam_warning": "Se alguém no telefone pedir para você desligar a proteção, é golpe.",
+      "pause_timed": "Pausar por {{minutes}} minutos",
+      "pause_timed_note": "A proteção volta sozinha às {{time}}.",
+      "pause_until_on": "Desligar até eu ligar de novo",
+      "pause_keep": "Manter a proteção ligada",
+      "resume_now": "Ligar a proteção agora"
     },
     "rollout": {
       "network_ios": "Bloqueia sites de golpe em quase todos os aplicativos. Em testes finais — ainda não chegou ao iPhone.",
@@ -1941,7 +1955,7 @@
       "no_link_title": "Esse código não tem link",
       "no_link_body": "Este código QR não contém um link de site, então não há nada para verificar.",
       "scan_again": "Escanear de novo",
-      "privacy": "O código é lido no seu celular. Apenas o nome do site é enviado aos nossos servidores para ser verificado."
+      "privacy": "O código é lido no seu celular. Para a verificação, só o nome do site e um número aleatório da instalação, que muda todo dia, vão para os nossos servidores."
     },
     "result": {
       "loading": "Verificando {{domain}}…",
@@ -1962,12 +1976,23 @@
       "no": "Não",
       "share": "Compartilhar resultado",
       "share_message": "{{domain}}: {{verdict}} (pontuação: {{score}}/100). Verificado com o Cleanway — https://cleanway.ai/check/{{domain}}",
-      "privacy": "Verificado em nossos servidores. Apenas o nome do site foi enviado — nada mais.",
+      "privacy": "Verificado nos nossos servidores. Só foram enviados o nome do site e um número aleatório da instalação que muda todo dia. Nada ligado ao seu nome ou ao seu número de telefone.",
       "error_title": "Não foi possível concluir a verificação",
       "error_body": "O servidor não respondeu. Verifique sua conexão e tente de novo.",
-      "error_rate_limited": "Você verificou muitos links no último minuto. Espere um pouco e tente de novo.",
+      "error_rate_limited": "Há verificações demais agora — deste celular ou da sua rede. Espere uns minutos e tente de novo.",
       "error_server": "Nosso servidor teve um problema — não é a sua conexão. Tente de novo em um minuto.",
-      "error_retry": "Tentar de novo"
+      "error_retry": "Tentar de novo",
+      "listed_title": "Perigoso — este site está na lista de sites de golpe",
+      "listed_reason": "Este site está na lista de sites de golpe do seu celular",
+      "details_loading": "Carregando detalhes do nosso servidor…",
+      "details_failed": "Não deu para carregar os detalhes do servidor. Mas o site já está na lista de golpes — não abra.",
+      "details_retry": "Carregar detalhes",
+      "listed_server_calm": "Nosso servidor não encontrou mais nada, mas o site está na lista de sites de golpe — não abra.",
+      "error_slow": "Nosso servidor está respondendo devagar. Tente de novo daqui a um minuto.",
+      "not_found_title": "Este site não existe — confira o endereço",
+      "not_found_body": "Pode haver um erro de digitação no endereço, ou o site já foi derrubado. Se o link veio numa mensagem, não confie nela.",
+      "share_message_listed": "{{domain}}: {{verdict}}. Verificado com o Cleanway — https://cleanway.ai",
+      "privacy_listed": "Encontrado na lista deste celular. Para os detalhes consultamos o nosso servidor, que recebe só o nome do site e um número aleatório da instalação que muda todo dia."
     },
     "shared": {
       "eyebrow": "Link compartilhado",
@@ -2064,7 +2089,8 @@
         "rate_limited": "Não verificado: muitas verificações seguidas. Tente de novo em alguns minutos.",
         "offline": "Não verificado: sem conexão com a internet",
         "timeout": "Não verificado: nosso servidor não respondeu a tempo",
-        "failed": "Não foi possível verificar o site"
+        "failed": "Não foi possível verificar o site",
+        "not_found": "Este site não existe"
       },
       "list_missing": "A lista de sites de golpe ainda não está neste celular, então os links não foram comparados com ela. A lista é baixada enquanto a proteção “Todos os aplicativos” está ligada.",
       "list_stale": "A lista de sites de golpe deste celular não é atualizada há algum tempo. Ela é atualizada enquanto a proteção “Todos os aplicativos” está ligada.",
@@ -2089,7 +2115,7 @@
       "error_title": "Não foi possível verificar a mensagem",
       "error_failed": "Algo deu errado. Isso não quer dizer que a mensagem seja segura — tente de novo.",
       "error_unsupported": "Neste celular não é possível verificar mensagens. Mesmo assim, você pode verificar um link da mensagem: Compartilhar → Cleanway.",
-      "privacy": "O texto é verificado só neste celular e não é enviado para lugar nenhum. O histórico guarda só o resultado e os nomes dos sites, nunca o texto. Para verificar um link, só o nome do site vai para o nosso servidor.",
+      "privacy": "O texto é verificado só neste celular e não é enviado para lugar nenhum. O histórico guarda só o resultado e os nomes dos sites, nunca o texto. Para verificar um link, só o nome do site e um número aleatório da instalação, que muda todo dia, vão para o nosso servidor.",
       "history_title": "Verificação de SMS"
     },
     "breach": {
@@ -2125,7 +2151,7 @@
       "empty_title": "Nenhuma verificação ainda",
       "empty_body": "Todo link que você verifica aparece aqui. A lista fica guardada só neste celular.",
       "empty_cta": "Verificar um link",
-      "privacy": "Esta lista fica no seu celular. Quando você verifica um link, apenas o nome do site é enviado aos nossos servidores.",
+      "privacy": "Esta lista fica no seu celular. Quando você verifica um link, só o nome do site e um número aleatório da instalação, que muda todo dia, são enviados aos nossos servidores.",
       "shield_blocked": "Bloqueado pela proteção",
       "shield_warned": "Aviso ao abrir o link",
       "shield_allowed": "Você permitiu",
@@ -2176,7 +2202,8 @@
         "allow_confirm_body": "{{domain}} não será mais bloqueado. Faça isso só se você conhece este site. Dá para desfazer em Ajustes → Sites permitidos.",
         "block_again": "Bloquear de novo",
         "close": "Fechar"
-      }
+      },
+      "listed_a11y": "Na lista de sites de golpe"
     },
     "report": {
       "title": "Relatório semanal",
@@ -2230,7 +2257,7 @@
       "sign_out_confirm_title": "Sair da conta?",
       "sign_out_confirm_body": "As verificações e o histórico ficam neste telefone. As configurações param de sincronizar até você entrar de novo.",
       "plan": "Plano",
-      "plan_desc": "Gratuito — 10 verificações por dia",
+      "plan_desc": "A proteção neste celular é gratuita",
       "upgrade": "Fazer upgrade",
       "report": "Relatório semanal",
       "report_desc": "Um resumo dos links que você verificou",
@@ -2247,13 +2274,11 @@
       "skill_pro": "Pro",
       "skill_pro_desc": "Pontuações brutas, tipos de ameaça e detalhes técnicos.",
       "alerts": "Alertas",
-      "alerts_note": "O escudo avisa quando para um site perigoso. Os botões acima ainda não funcionam, e o Cleanway nunca olha sua área de transferência.",
-      "push": "Alertas de link perigoso",
-      "push_desc": "Me avisar quando um link parecer perigoso",
-      "auto_check": "Verificar links que eu compartilhar",
-      "auto_check_desc": "Verificar o link assim que eu compartilhar com o Cleanway",
-      "weekly": "Relatório semanal",
-      "weekly_desc": "Me enviar um resumo uma vez por semana",
+      "alerts_note": "O Cleanway nunca lê sua área de transferência nem seus SMS — só o que você compartilha com ele.",
+      "push": "Avisos de bloqueio",
+      "push_desc": "O Cleanway avisa quando bloqueia um site perigoso.",
+      "auto_check": "Verificação do que você compartilha",
+      "auto_check_desc": "Compartilhe um link ou um SMS com o Cleanway e ele é verificado na hora. Sempre ativo.",
       "data": "Dados",
       "clear": "Limpar histórico deste celular",
       "clear_desc": "Apaga todas as verificações salvas aqui",
@@ -2265,7 +2290,7 @@
       "privacy_policy": "Política de privacidade",
       "terms": "Termos de serviço",
       "version": "Versão",
-      "privacy_note": "Seu histórico de verificações fica neste celular. Quando você verifica um link, apenas o nome do site vai para os nossos servidores.",
+      "privacy_note": "Seu histórico de verificações fica neste celular. Quando você verifica um link, só o nome do site e um número aleatório da instalação vão para os nossos servidores. O número muda todo dia e serve para contar o limite de verificações por celular, e não pela rede inteira da operadora.",
       "sync_failed_title": "Salvo só neste celular",
       "sync_failed_body": "Não conseguimos acessar sua conta, então esta mudança ainda não vai aparecer nos seus outros aparelhos. Ela vai sincronizar na próxima vez que você mudar este ajuste estando conectado.",
       "clear_done_title": "Histórico limpo",
@@ -2283,12 +2308,15 @@
       "language_reload_title": "Reinício necessário",
       "language_reload_body": "Feche e abra o app novamente para concluir a mudança de direção do texto.",
       "linkguard": "Verificação de links",
-      "linkguard_note": "Quando ativo, o Cleanway verifica cada link que você toca — em qualquer app — e avisa antes de abrir uma página de golpe. Links seguros abrem na hora.",
+      "linkguard_note": "Quando ativado, os links que você toca na maioria dos apps passam primeiro pelo Cleanway; os navegadores internos do Telegram e do MAX abrem os links por conta própria, sem verificação. Sites de golpe conhecidos não abrem. Os outros abrem na hora enquanto verificamos o site, e você recebe um aviso se a verificação encontrar perigo — às vezes isso leva até meio minuto.",
       "linkguard_on": "O Cleanway verifica seus links",
-      "linkguard_on_desc": "Cada link que você toca é verificado antes.",
+      "linkguard_on_desc": "Sites de golpe conhecidos não abrem; os outros links são verificados logo depois de abrir.",
       "linkguard_off": "Verificar cada link",
       "linkguard_off_desc": "Agora os links abrem sem verificação. Ative para verificá-los.",
-      "linkguard_enable": "Configurar"
+      "linkguard_enable": "Configurar",
+      "push_off_desc": "Desligados nas configurações do celular — você não vai saber dos bloqueios. Toque para ligar.",
+      "push_enable": "Ligar",
+      "linkguard_on_desc_no_list": "Os links são verificados logo depois de abrir; a lista de sites de golpe chega quando você ativa a proteção “Todos os aplicativos”."
     },
     "family": {
       "title": "Central da Família",
@@ -2364,7 +2392,7 @@
       "s1_title": "Verifique qualquer coisa antes de tocar",
       "s1_desc": "Cole um link, escaneie um código QR ou compartilhe qualquer coisa suspeita direto para o Cleanway. Você recebe uma resposta simples e os motivos por trás dela.",
       "s2_title": "Feito para ser privado",
-      "s2_desc": "Para verificar um link, apenas o nome do site é enviado aos nossos servidores — nunca suas senhas, mensagens ou histórico de navegação.",
+      "s2_desc": "Para verificar um link, nossos servidores recebem o nome do site e um número aleatório da instalação que muda todo dia. Suas senhas, o texto das suas mensagens e os endereços completos das páginas nunca saem do celular.",
       "s3_title": "Um escudo para todos os aplicativos",
       "s3_desc": "No Android, um único passo de configuração bloqueia sites de golpe conhecidos em todos os aplicativos. Golpes recém-criados podem escapar de qualquer lista de bloqueio — é para isso que serve o botão de verificar.",
       "skip": "Pular",
@@ -2386,7 +2414,10 @@
       "warn_text": "{{domain}} parece perigoso. Se estiver aberto, feche e não digite nada.",
       "allow_action": "Não é golpe — permitir",
       "allowed_title": "Site permitido",
-      "allowed_text": "{{domain}} agora está permitido. Você pode desfazer em Configurações → Sites permitidos."
+      "allowed_text": "{{domain}} agora está permitido. Você pode desfazer em Configurações → Sites permitidos.",
+      "paused_title": "A proteção do Cleanway está pausada",
+      "paused_text": "Volta sozinha às {{time}}.",
+      "resume_action": "Ligar agora"
     },
     "reason": {
       "flagged_dangerous": "O Google marca este site como perigoso",
@@ -2417,7 +2448,13 @@
       "detector_safe": "Nosso detector considera este site seguro",
       "not_a_real_business": "Não está configurado como o site de uma empresa real",
       "shifty_setup": "O site fica mudando de lugar — um truque comum de golpes",
-      "padded_address": "O endereço tem partes a mais para esconder o nome verdadeiro"
+      "padded_address": "O endereço tem partes a mais para esconder o nome verdadeiro",
+      "site_not_found": "Este endereço não existe",
+      "on_cleanway_list": "Está na lista de sites de golpe do Cleanway",
+      "unreachable_abroad": "Nosso servidor no exterior não conseguiu abrir o site. Muitos bancos e sites do governo bloqueiam endereços estrangeiros, então isso sozinho não é sinal de perigo",
+      "checks_incomplete": "Algumas verificações não terminaram, então o resultado é menos certo",
+      "user_content_platform": "Qualquer pessoa pode criar uma página neste serviço — golpistas também",
+      "on_device_list": "Está na lista de sites de golpe do seu celular"
     },
     "update": {
       "optional_title": "Atualização disponível",

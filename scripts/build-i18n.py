@@ -205,7 +205,9 @@ def android_strings_xml(source: dict[str, Any]) -> str | None:
         if isinstance(value, dict):
             value = value.get("text", "")
         text = str(value)
-        for ph in ("domain",):
+        # Each native string carries at most one placeholder, so every name
+        # maps to the first positional argument.
+        for ph in ("domain", "time"):
             text = text.replace("{{" + ph + "}}", "%1$s")
         text = (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                     .replace("'", "\\'").replace('"', '\\"'))

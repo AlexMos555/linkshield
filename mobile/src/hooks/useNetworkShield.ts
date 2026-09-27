@@ -55,7 +55,13 @@ interface VpnModule {
   verifyListFiltering?(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
   openVpnSettings?(): boolean;
+  pauseProtection?(untilMs: number): void;
+  resumeProtection?(): void;
+  pausedUntil?(): number;
 }
+
+/** A timed pause, in minutes — the default, and the only length the app offers. */
+export const PAUSE_MINUTES = 15;
 
 async function hasInternet(): Promise<boolean> {
   const abort = new AbortController();
@@ -102,6 +108,16 @@ export interface NetworkShield {
    */
   offline: boolean;
   /**
+   * When a timed pause ends (epoch ms), 0 when not paused. While paused the
+   * tunnel is up but nothing is blocked, so the shield does NOT count as
+   * verified and the hero says "paused" — never a green "protected".
+   */
+  pausedUntil: number;
+  /** Pause for [minutes]; protection comes back by itself (the service keeps time, not the app). */
+  pause: (minutes: number) => void;
+  /** End a timed pause now. */
+  resume: () => void;
+  /**
    * The user had the shield ON and it is not running now — a reboot without
    * always-on, an OEM battery manager, a force-stop. Nothing turned it off on
    * purpose, so it must not read as "never set up": the hero says protection
@@ -146,6 +162,7 @@ export function useNetworkShield(): NetworkShield {
   const [interrupted, setInterrupted] = useState(false);
   const [privateDnsHost, setPrivateDnsHost] = useState<string | null>(null);
   const [blocklist, setBlocklist] = useState<BlocklistStatusLike>(NO_LIST);
+  const [pausedUntil, setPausedUntil] = useState(0);
 
   const readBlocklist = useCallback(() => {
     if (!vpn) return;
@@ -179,6 +196,7 @@ export function useNetworkShield(): NetworkShield {
     setPrivateDnsHost(vpn.privateDnsStrictHost?.() ?? null);
     const isUp = vpn.isVpnRunning();
     setRunning(isUp);
+    setPausedUntil(isUp ? readPausedUntil(vpn) : 0);
     readBlocklist();
     if (!isUp) {
       setVerified(false);
@@ -280,15 +298,42 @@ export function useNetworkShield(): NetworkShield {
     await vpn.stopVpn();
     setRunning(false);
     setVerified(false);
+    setPausedUntil(0);
     // A deliberate pause is not an interruption.
     setInterrupted(false);
   }, [vpn]);
+
+  const pause = useCallback((minutes: number) => {
+    if (!vpn?.pauseProtection) return;
+    const until = Date.now() + minutes * 60_000;
+    vpn.pauseProtection(until);
+    setPausedUntil(until);
+  }, [vpn]);
+
+  const resume = useCallback(() => {
+    vpn?.resumeProtection?.();
+    setPausedUntil(0);
+    void sync();
+  }, [vpn, sync]);
+
+  // The service ends the pause on its own; re-read then, so the card and the
+  // hero come back to "on" without the person touching anything.
+  useEffect(() => {
+    if (pausedUntil <= 0) return;
+    const timer = setTimeout(() => void sync(), Math.max(0, pausedUntil - Date.now()) + 1_000);
+    return () => clearTimeout(timer);
+  }, [pausedUntil, sync]);
+
+  const paused = running && pausedUntil > Date.now();
 
   const state: ShieldState =
     // Strict Private DNS overrides everything else: the shield cannot run
     // and the fix is a specific system setting, not anything in this app.
     privateDnsHost ? "conflict"
     : !running ? "setup"
+    // Paused: the tunnel is up and proves it, but nothing is blocked. Not
+    // "on", and not counted by the hero.
+    : paused ? "paused"
     : verified ? "on"
     // Tunnel up, probe failed, and our own API is unreachable too: the phone
     // is offline. Nothing can be filtered because nothing is flowing — that
@@ -318,7 +363,18 @@ export function useNetworkShield(): NetworkShield {
 
   return {
     available: vpn !== null,
-    state, verified, probing, offline, interrupted, privateDnsHost, blocklist,
+    state, verified: verified && !paused, probing, offline, interrupted, privateDnsHost, blocklist,
+    pausedUntil: paused ? pausedUntil : 0, pause, resume,
     turnOn, turnOff, openVpnSettings, openPrivateDnsSettings, refreshBlocklist,
   };
+}
+
+/** The pause end the service keeps, or 0 — also 0 on builds without timed pauses. */
+function readPausedUntil(vpn: VpnModule): number {
+  try {
+    const until = vpn.pausedUntil?.() ?? 0;
+    return until > Date.now() ? until : 0;
+  } catch {
+    return 0;
+  }
 }

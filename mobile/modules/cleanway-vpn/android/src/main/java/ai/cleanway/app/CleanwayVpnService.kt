@@ -2,10 +2,12 @@
  * Cleanway Android VPN Service
  *
  * DNS-only local VPN. Intercepts DNS queries, decides locally whether a
- * domain is blocked, otherwise forwards the query upstream — plain UDP/53 for
- * speed, falling back to DNS-over-HTTPS (addressed by IP literal, so it needs
- * no bootstrap lookup) when the network blocks or hijacks port 53 — and relays
- * the response back into the tunnel.
+ * domain is blocked, otherwise forwards the query upstream — first to the
+ * resolver of the network the phone is on (the operator's or the router's,
+ * see UnderlyingDns), then to public resolvers over plain UDP/53, and last to
+ * DNS-over-HTTPS (addressed by IP literal, so it needs no bootstrap lookup)
+ * when the network blocks or hijacks port 53 — and relays the response back
+ * into the tunnel.
  *
  * Design notes:
  * - Blocking is decided locally from an in-memory verdict cache; upstream is
@@ -89,20 +91,37 @@ class CleanwayVpnService : VpnService() {
     private var allowedDomains: Set<String> = emptySet()
 
     /**
-     * Hosts the link guard's full-URL check flagged as phishing after they
-     * were already opened once — novel domains not yet in the synced list.
-     * Read on the DNS thread on every query; swapped whole (copy-on-write).
-     * Session-scoped: cleared when the tunnel stops (they will re-appear from
-     * the synced list once the feeds catch up).
+     * Hosts the link guard's background check found on a threat-intel list
+     * after they were already opened once — novel domains not yet in the
+     * synced list (LinkCheckService, LinkVerdictPolicy). Read on the DNS
+     * thread on every query; swapped whole (copy-on-write). Session-scoped:
+     * cleared when the tunnel stops (they re-appear from the synced list once
+     * the feeds catch up).
      */
     @Volatile
     private var dynamicBlocked: Set<String> = emptySet()
 
-    // Full-URL checks for the link guard run here, off the DNS thread. Single
-    // thread: link taps are occasional, and the analyzer is the slow part.
-    private val urlCheckExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "Cleanway-UrlCheck").apply { isDaemon = true }
-    }
+    /**
+     * Protection is paused until this wall-clock time (0 = not paused). The
+     * tunnel stays up and forwards everything; blocking resumes by itself the
+     * moment the clock passes it — no alarm, no background start needed, so a
+     * killed app cannot turn a 15-minute pause into a permanent one.
+     */
+    @Volatile
+    private var pausedUntilMs: Long = 0L
+
+    /**
+     * The network whose own resolver gets every query first, or null when
+     * none is known (then the public resolvers alone). Set by [underlying].
+     */
+    @Volatile
+    private var upstreamNetwork: UpstreamNetwork<android.net.Network>? = null
+    private var underlying: UnderlyingNetworks? = null
+
+    /** Which transport answered last — logged only when it changes. */
+    @Volatile
+    private var lastAnswered: Transport? = null
+
     private var blocklistSync: BlocklistSync? = null
     private val syncExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "Cleanway-Blocklist").apply { isDaemon = true }
@@ -138,25 +157,45 @@ class CleanwayVpnService : VpnService() {
             // START_STICKY without touching the tunnel: it is already up.
             return START_STICKY
         }
-        if (intent?.action == ACTION_CHECK_URL) {
-            // The link guard forwarded a tapped link to the browser and asked
-            // us to check its full URL. If the analyzer calls it phishing, warn
-            // the person (it is already open) and block it from now on.
-            intent.getStringExtra(EXTRA_CHECK_HOST)?.let { checkUrlAsync(it) }
+        if (intent?.action == ACTION_PAUSE) {
+            if (running) pauseUntil(intent.getLongExtra(EXTRA_PAUSE_UNTIL, 0L))
+            return START_STICKY
+        }
+        if (intent?.action == ACTION_RESUME) {
+            if (running) pauseUntil(0L)
             return START_STICKY
         }
         if (intent?.action == ACTION_STOP) {
             // Explicit user request: forget the intent so we do not come back
             // on the next boot.
             ShieldPreference.setUserEnabled(this, false)
+            ShieldPreference.setPausedUntil(
+                this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STOPPED_BY_PERSON, pausedUntilMs),
+            )
             stopVpn()
             return START_NOT_STICKY
         }
-        if (!running) startVpn()
+        // Only the app's "Turn on" says START_BY_PERSON; a boot, Always-on VPN
+        // or a sticky restart arrives without it.
+        val byPerson = intent?.action == ACTION_START_BY_PERSON
+        if (running) {
+            if (byPerson) pauseUntil(ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STARTED_BY_PERSON, pausedUntilMs))
+        } else {
+            startVpn(byPerson)
+        }
         return START_STICKY
     }
 
-    private fun startVpn() {
+    private fun startVpn(byPerson: Boolean) {
+        // A pause survives the service coming back by itself, but not the
+        // person turning protection on — decided (and stored) before anything
+        // below can stop the start, so a failed start leaves no pause behind.
+        val pause = ShieldPreference.pauseAfter(
+            if (byPerson) ShieldPreference.PauseEvent.STARTED_BY_PERSON else ShieldPreference.PauseEvent.CAME_BACK_BY_ITSELF,
+            ShieldPreference.pausedUntil(this),
+        )
+        ShieldPreference.setPausedUntil(this, pause)
+
         // A VPN must run as a foreground service, or Android kills it when the app
         // backgrounds (and startForegroundService crashes without a prompt startForeground).
         startInForeground()
@@ -235,10 +274,22 @@ class CleanwayVpnService : VpnService() {
         ShieldPreference.setUserEnabled(this, true)
         Log.i(TAG, "tunnel_started")
 
+        // A pause outlives a restart of the service (process killed, reboot):
+        // it ends at its time, not whenever the service happens to come back.
+        pauseUntil(pause)
+
         // Load the stored blocklist synchronously (≈30 KB, milliseconds) so
         // the very first query after start is already filtered; then keep it
         // fresh in the background (every 2h ± jitter, backoff on failure).
         startBlocklist()
+
+        // Follow the underlying network so its resolver is asked first.
+        underlying?.stop()
+        underlying = UnderlyingNetworks(this, TUNNEL_ADDRESSES) { network ->
+            upstreamNetwork = network
+            breaker.reset(Transport.NETWORK)
+            Log.i(TAG, "network_dns " + (network?.let { "kind=${it.kind} servers=${it.servers.size}" } ?: "none — public resolvers only"))
+        }.also { it.start() }
 
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
 
@@ -265,6 +316,11 @@ class CleanwayVpnService : VpnService() {
      */
     override fun onRevoke() {
         Log.i(TAG, "tunnel_revoked")
+        // Whoever took the tunnel, a pause from before must not come back
+        // when the person turns protection on again.
+        ShieldPreference.setPausedUntil(
+            this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.TAKEN_AWAY, pausedUntilMs),
+        )
         broadcastStopped(REASON_REVOKED)
         super.onRevoke()
     }
@@ -285,9 +341,13 @@ class CleanwayVpnService : VpnService() {
         running = false
         isRunning = false
         dynamicBlocked = emptySet()
+        pausedUntilMs = 0L
         BlocklistAlarm.cancel(this)
         stopPrivateDnsWatch?.invoke()
         stopPrivateDnsWatch = null
+        underlying?.stop()
+        underlying = null
+        upstreamNetwork = null
         // The counter is monotonic and compared by delta in JS, so a value
         // from a previous tunnel cannot satisfy a new probe — no reset needed.
         stopForegroundCompat()
@@ -322,8 +382,9 @@ class CleanwayVpnService : VpnService() {
                 }
 
                 val normalized = domain.lowercase().trimEnd('.')
+                val paused = pausedUntilMs > System.currentTimeMillis()
 
-                when (DnsDecision.classify(normalized, blockList, allowedDomains, dynamicBlocked)) {
+                when (DnsDecision.classify(normalized, blockList, allowedDomains, dynamicBlocked, paused)) {
                     DnsDecision.CANARY -> {
                         // Silent verification probe: the app resolves a RANDOM
                         // subdomain of the canary and expects NXDOMAIN. The
@@ -370,16 +431,6 @@ class CleanwayVpnService : VpnService() {
     }
 
     /**
-     * Forward a DNS query upstream and write the answer back into the tunnel.
-     *
-     * Tries DNS-over-HTTPS first (our own RFC 8484 gateway, port 443) and falls
-     * back to plain UDP/53. DoH is the better default for a protection app:
-     * the query is encrypted, it resolves through our own gateway rather than
-     * whatever the network hands out, and it still works on networks that block
-     * or hijack port 53 — captive portals, restrictive corporate Wi-Fi, some
-     * mobile carriers. UDP stays as the fallback for when DoH is unreachable.
-     */
-    /**
      * Hand the upstream round-trip to the pool so the read loop never blocks.
      *
      * This loop carries DNS for the entire device: doing the round-trip inline
@@ -413,17 +464,22 @@ class CleanwayVpnService : VpnService() {
 
         // Blocking is decided locally before we get here, so upstream is only
         // a transport — and its latency is the whole user experience: one page
-        // pulls tens of lookups. Plain UDP/53 is the fast path (milliseconds);
-        // a second public resolver covers networks that block the first by IP;
-        // DoH covers networks that block or hijack port 53 entirely.
-        for (transport in breaker.order(now)) {
+        // pulls tens of lookups. The network's own resolver goes first (what
+        // the phone uses without us, and what keeps the operator's own
+        // filtering on); public resolvers over UDP/53 are the fallback, a
+        // second one covers networks that block the first by IP, and DoH
+        // covers networks that block or hijack port 53 entirely.
+        val network = upstreamNetwork
+        for (transport in breaker.order(now, networkDns = network != null)) {
             val ok = when (transport) {
+                Transport.NETWORK -> network != null && forwardOverNetwork(packet, length, output, network)
                 Transport.UDP_PRIMARY -> forwardOverUdp(packet, length, output, UPSTREAM_DNS_HOST)
                 Transport.UDP_SECONDARY -> forwardOverUdp(packet, length, output, UPSTREAM_DNS_HOST_2)
                 Transport.DOH -> forwardOverDoh(packet, length, output)
             }
             if (ok) {
                 breaker.onSuccess(transport)
+                noteAnswered(transport)
                 return
             }
             breaker.onFailure(transport, now)
@@ -443,6 +499,69 @@ class CleanwayVpnService : VpnService() {
             if (servfailCount % SERVFAIL_LOG_EVERY == 1L) {
                 Log.w(TAG, "servfail_written: no upstream answered (total=$servfailCount)")
             }
+        }
+    }
+
+    /** Count the answer, and log when the transport doing the work changes. */
+    private fun noteAnswered(transport: Transport) {
+        upstreamAnswerCounts.incrementAndGet(transport.ordinal)
+        if (lastAnswered != transport) {
+            lastAnswered = transport
+            Log.i(TAG, "upstream_now=$transport")
+        }
+    }
+
+    /**
+     * Ask the underlying network's own resolver — the operator's or the
+     * router's. The query goes to its servers (at most two) at once and the
+     * first answer from one of them wins. Returns true when an answer was
+     * written; a SERVFAIL or REFUSED is not one (UnderlyingDns.isUsableAnswer),
+     * so the chain moves on to the public resolvers.
+     */
+    private fun forwardOverNetwork(
+        packet: ByteArray,
+        length: Int,
+        output: FileOutputStream,
+        network: UpstreamNetwork<android.net.Network>,
+    ): Boolean {
+        val dnsStart = DnsUtil.IP_UDP_HEADER
+        val dnsLen = length - dnsStart
+        return try {
+            DatagramSocket().use { socket ->
+                // Never back into our own tunnel: unprotected, a query to a
+                // resolver on 10.0.0.1 would loop through this service.
+                if (!protect(socket)) return false
+                // Out over the network whose resolver this is: a router's DNS
+                // answers only on its own Wi-Fi.
+                network.handle.bindSocket(socket)
+                socket.soTimeout = NETWORK_DNS_TIMEOUT_MS
+                for (server in network.servers) {
+                    socket.send(DatagramPacket(packet, dnsStart, dnsLen, server, UPSTREAM_DNS_PORT))
+                }
+                val reply = DatagramPacket(ByteArray(4096), 4096)
+                val deadline = System.currentTimeMillis() + NETWORK_DNS_TIMEOUT_MS
+                socket.receive(reply)
+                // Only an answer from a server we asked counts.
+                while (reply.address !in network.servers) {
+                    val left = deadline - System.currentTimeMillis()
+                    if (left <= 0) return false
+                    socket.soTimeout = left.toInt()
+                    socket.receive(reply)
+                }
+                if (!UnderlyingDns.isUsableAnswer(reply.data, reply.offset, reply.length)) return false
+                val response = DnsUtil.wrapResponse(
+                    query = packet,
+                    queryLength = length,
+                    payload = reply.data,
+                    payloadOffset = reply.offset,
+                    payloadLength = reply.length,
+                ) ?: return false
+                writeToTunnel(output, response)
+                true
+            }
+        } catch (e: Exception) {
+            Log.v(TAG, "network_dns_error: ${e.javaClass.simpleName}")
+            false
         }
     }
 
@@ -593,6 +712,21 @@ class CleanwayVpnService : VpnService() {
                 }
             )
         }
+        val notif = foregroundNotification(pausedUntil = 0L)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIF_ID, notif)
+        }
+    }
+
+    /**
+     * The ongoing notification. While paused it says so, says when protection
+     * comes back by itself, and offers to turn it back on now — the one place
+     * a person sees the pause without opening the app.
+     */
+    private fun foregroundNotification(pausedUntil: Long): Notification {
+        val loc = LocalizedContext.of(this)
         val launch = packageManager.getLaunchIntentForPackage(packageName)
         val pending = launch?.let {
             PendingIntent.getActivity(
@@ -600,21 +734,64 @@ class CleanwayVpnService : VpnService() {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
         }
-        val notif: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(LocalizedContext.of(this).getString(expo.modules.cleanwayvpn.R.string.fg_title))
-            .setContentText(LocalizedContext.of(this).getString(expo.modules.cleanwayvpn.R.string.fg_text))
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(BlockNotifier.SMALL_ICON)
             .setColor(BlockNotifier.ACCENT_COLOR)
             .setOngoing(true)
             .setContentIntent(pending)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIF_ID, notif)
+        if (pausedUntil <= 0L) {
+            return builder
+                .setContentTitle(loc.getString(expo.modules.cleanwayvpn.R.string.fg_title))
+                .setContentText(loc.getString(expo.modules.cleanwayvpn.R.string.fg_text))
+                .build()
         }
+        val time = android.text.format.DateFormat.getTimeFormat(loc).format(java.util.Date(pausedUntil))
+        val resume = PendingIntent.getService(
+            this, 1,
+            Intent(this, CleanwayVpnService::class.java).setAction(ACTION_RESUME),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        return builder
+            .setContentTitle(loc.getString(expo.modules.cleanwayvpn.R.string.paused_title))
+            .setContentText(loc.getString(expo.modules.cleanwayvpn.R.string.paused_text, time))
+            .addAction(0, loc.getString(expo.modules.cleanwayvpn.R.string.resume_action), resume)
+            .build()
     }
+
+    /**
+     * Pause blocking until [untilMs] (wall clock), or resume with 0. The
+     * DNS loop compares the time itself on every query, so blocking returns
+     * at [untilMs] even if nothing here runs again; the scheduled task only
+     * puts the notification and the stored state back in step. Called from
+     * the main thread (the app, the notification) and the sync thread (the
+     * scheduled end), hence the lock.
+     */
+    @Synchronized
+    private fun pauseUntil(untilMs: Long) {
+        val now = System.currentTimeMillis()
+        val until = if (untilMs > now) minOf(untilMs, now + MAX_PAUSE_MS) else 0L
+        val was = pausedUntilMs
+        pausedUntilMs = until
+        ShieldPreference.setPausedUntil(this, until)
+        if (until == was) return
+        pauseEnd?.cancel(false)
+        pauseEnd = if (until > 0L) {
+            syncExecutor.schedule({ if (pausedUntilMs == until) pauseUntil(0L) }, until - now, TimeUnit.MILLISECONDS)
+        } else {
+            null
+        }
+        try {
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(NOTIF_ID, foregroundNotification(until))
+        } catch (e: Exception) {
+            Log.w(TAG, "fg_notification_update_error: ${e.javaClass.simpleName}")
+        }
+        Log.i(TAG, if (until > 0L) "paused for ${(until - now + 59_999) / 60_000}min" else "protection_resumed")
+    }
+
+    /** The scheduled end of the current pause, if any. */
+    private var pauseEnd: java.util.concurrent.ScheduledFuture<*>? = null
 
     private fun stopForegroundCompat() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -667,6 +844,15 @@ class CleanwayVpnService : VpnService() {
             blocklistSync = sync
             val loaded = sync.loadFromDisk()
             Log.i(TAG, "blocklist_disk: " + (loaded?.let { "version=${it.version} count=${it.count}" } ?: "none"))
+            // Never synced: block from the list bundled in the APK until the
+            // first download lands (SeedBlocklist). A synced list always wins.
+            if (loaded == null && SeedBlocklist.applies(store)) {
+                SeedBlocklist.load(
+                    assets, veto, shared,
+                    nowMs = System.currentTimeMillis(),
+                    elapsedMs = android.os.SystemClock.elapsedRealtime(),
+                )?.let { seed -> sync.adoptSeed(seed.list, seed.body) }
+            }
             sync.start(syncExecutor)
             // Doze-proof recurring cadence (see BlocklistAlarm).
             BlocklistAlarm.schedule(this, sync.nextDelayMs())
@@ -719,51 +905,31 @@ class CleanwayVpnService : VpnService() {
         )
     }
 
-    /** Re-read the person's allow list into the DNS thread's snapshot. */
     /**
-     * GET /api/v1/public/check/{host}. If dangerous, warn (the site is already
-     * open) and add the host to dynamicBlocked so the DNS layer blocks it next
-     * time. Runs off the DNS thread. Only the domain is sent — never the path.
+     * Block [host] for the rest of this session. Called by LinkCheckService
+     * only when the server's verdict rests on threat intel — a guess from
+     * heuristics never darkens a site (LinkVerdictPolicy).
      */
-    private fun checkUrlAsync(rawHost: String) {
-        val host = rawHost.lowercase().trimEnd('.')
-        if (host.isBlank() || host.length > 253) return
-        // Already known-bad or explicitly allowed — nothing to add.
-        if (blockList.match(host) != null || dynamicBlocked.contains(host)) return
-        if (UserAllow.covers(allowedDomains, host) != null) return
-        urlCheckExecutor.execute {
-            try {
-                val url = java.net.URL("$API_BASE/api/v1/public/check/$host")
-                val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
-                    connectTimeout = 4000
-                    readTimeout = 5000
-                    requestMethod = "GET"
-                    setRequestProperty("User-Agent", "Cleanway-Android")
-                }
-                try {
-                    if (conn.responseCode == 200) {
-                        val body = conn.inputStream.bufferedReader().use { it.readText() }
-                        val level = org.json.JSONObject(body).optString("level")
-                        if (level == "dangerous") {
-                            // Block it from here on, and tell the person now.
-                            synchronized(this) {
-                                if (!dynamicBlocked.contains(host)) {
-                                    dynamicBlocked = (dynamicBlocked + host).toHashSet()
-                                }
-                            }
-                            notifyBlocked(host, BlockLog.KIND_WARNED, BlockLog.SOURCE_LINK)
-                            Log.i(TAG, "url_check_dangerous host=$host — dynamic-blocked + warned")
-                        }
-                    }
-                } finally {
-                    conn.disconnect()
-                }
-            } catch (e: Exception) {
-                Log.v(TAG, "url_check_error: ${e.message}")
-            }
+    fun addDynamicBlock(host: String) {
+        synchronized(this) {
+            if (host !in dynamicBlocked) dynamicBlocked = (dynamicBlocked + host).toHashSet()
         }
     }
 
+    fun isDynamicBlocked(host: String): Boolean = host in dynamicBlocked
+
+    /** Answers per upstream transport since the process started, for diagnostics. */
+    fun upstreamStatus(): Map<String, Any?> {
+        val network = upstreamNetwork
+        return Transport.values().associate { it.name.lowercase() to upstreamAnswerCounts.get(it.ordinal).toDouble() } +
+            mapOf(
+                "servfail" to servfailCount.toDouble(),
+                "networkKind" to network?.kind?.name?.lowercase(),
+                "networkServers" to (network?.servers?.size ?: 0),
+            )
+    }
+
+    /** Re-read the person's allow list into the DNS thread's snapshot. */
     fun reloadAllowed() {
         allowedDomains = try {
             UserAllow.list(this).toHashSet()
@@ -816,12 +982,27 @@ class CleanwayVpnService : VpnService() {
         private const val NOTIF_ID = 4711
         private const val TAG = "CleanwayVPN"
         const val ACTION_STOP = "ai.cleanway.VPN_STOP"
+        /** The person turned protection on in the app: starts the tunnel and ends any pause. */
+        const val ACTION_START_BY_PERSON = "ai.cleanway.VPN_START_BY_PERSON"
         /** Delivered by BlocklistRefreshReceiver on the Doze-safe alarm. */
         const val ACTION_REFRESH_BLOCKLIST = "ai.cleanway.REFRESH_BLOCKLIST"
-        /** Link guard asks the (always-alive) service to check a tapped URL's host. */
-        const val ACTION_CHECK_URL = "ai.cleanway.CHECK_URL"
-        const val EXTRA_CHECK_HOST = "check_host"
-        private const val API_BASE = "https://api.cleanway.ai"
+        /** Pause blocking until [EXTRA_PAUSE_UNTIL] (epoch ms); the tunnel stays up. */
+        const val ACTION_PAUSE = "ai.cleanway.VPN_PAUSE"
+        const val EXTRA_PAUSE_UNTIL = "pause_until_ms"
+        /** End a pause now (the app, or the notification's "turn back on"). */
+        const val ACTION_RESUME = "ai.cleanway.VPN_RESUME"
+        /** The longest timed pause; "until I turn it back on" is a full stop instead. */
+        const val MAX_PAUSE_MS = 60L * 60_000
+
+        /**
+         * How long the network's own resolver gets before the public ones are
+         * tried. Shorter than the public UDP wait: when it is dead, every
+         * lookup pays this until the breaker demotes it.
+         */
+        private const val NETWORK_DNS_TIMEOUT_MS = 2_500
+
+        /** Answers per [Transport], by ordinal. */
+        private val upstreamAnswerCounts = java.util.concurrent.atomic.AtomicLongArray(Transport.values().size)
 
         /** Broadcast when the tunnel goes away without the user asking. */
         const val ACTION_VPN_STOPPED = "ai.cleanway.VPN_STOPPED"
@@ -843,6 +1024,14 @@ class CleanwayVpnService : VpnService() {
 
         private const val VPN_CLIENT_IP = "10.0.0.2"
         private const val VPN_GATEWAY_IP = "10.0.0.1"
+
+        /**
+         * Never an upstream, whatever a network reports as its DNS: our own
+         * end of the tunnel. (A router that is itself 10.0.0.1 stays usable —
+         * the forwarding socket is protected and bound to the router's
+         * network, so it cannot land back in the tunnel.)
+         */
+        private val TUNNEL_ADDRESSES: Set<InetAddress> = setOf(InetAddress.getByName(VPN_CLIENT_IP))
         private const val UPSTREAM_DNS_HOST = "1.1.1.1"
 
         /**
@@ -935,9 +1124,14 @@ enum class DnsDecision {
             list: BlockList,
             allowed: Set<String> = emptySet(),
             dynamicBlocked: Set<String> = emptySet(),
+            paused: Boolean = false,
         ): DnsDecision = when {
             normalized == CleanwayVpnService.CANARY_DOMAIN ||
                 normalized.endsWith(".${CleanwayVpnService.CANARY_DOMAIN}") -> CANARY
+            // Paused: the tunnel is up (the canary above still proves it) but
+            // nothing is blocked, and the LIST is not in force — so its canary
+            // must not answer either, or the app would call the list live.
+            paused -> FORWARD
             // Answered only when the loaded list carries the canary line —
             // that absence is exactly how the app learns "no list loaded".
             (normalized == BlockList.LIST_CANARY || normalized.endsWith(".${BlockList.LIST_CANARY}")) &&

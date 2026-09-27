@@ -1,5 +1,6 @@
 package ai.cleanway.app
 
+import android.app.NotificationManager
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -25,6 +26,20 @@ class BlockNotifierTest {
             "cleanway:///history?filter=warned&domain=xn--80ak6aa92e.com",
             BlockNotifier.historyDeepLink("xn--80ak6aa92e.com", BlockLog.KIND_WARNED),
         )
+    }
+
+    @Test
+    fun `alerts are on only when the app AND the block-alerts channel are on`() {
+        // Settings showed a green check for "Block alerts" whenever the app-wide
+        // switch was on — also with only this channel turned off, when every
+        // block happens in silence.
+        assertEquals(true, BlockNotifier.alertsAudible(true, NotificationManager.IMPORTANCE_HIGH))
+        assertEquals(true, BlockNotifier.alertsAudible(true, NotificationManager.IMPORTANCE_LOW))
+        assertEquals(false, BlockNotifier.alertsAudible(true, NotificationManager.IMPORTANCE_NONE))
+        assertEquals(false, BlockNotifier.alertsAudible(false, NotificationManager.IMPORTANCE_HIGH))
+        // No channel yet (nothing blocked so far, or Android 7): the first alert creates it switched on.
+        assertEquals(true, BlockNotifier.alertsAudible(true, null))
+        assertEquals(false, BlockNotifier.alertsAudible(false, null))
     }
 
     @Test

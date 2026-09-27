@@ -386,7 +386,7 @@
     "email_hint": "Indica il modello del telefono e cosa è successo.",
     "faq_title": "Domande frequenti",
     "q_vpn": "È una VPN che nasconde il mio traffico?",
-    "a_vpn": "No. Cleanway usa il meccanismo VPN di Android solo per far funzionare sul telefono un filtro locale che blocca i siti truffa in tutte le app. Non nasconde dove vai e non fa passare il tuo traffico da un altro paese. Per raggiungere i siti che non blocca, il telefono cerca i loro nomi presso un servizio DNS pubblico: Cloudflare (1.1.1.1) o Quad9 (9.9.9.9).",
+    "a_vpn": "No. Cleanway usa il meccanismo VPN di Android solo per far funzionare sul telefono un filtro locale che blocca i siti truffa in tutte le app. Non nasconde dove vai e non fa passare il tuo traffico da un altro paese. Per raggiungere i siti che non blocca, il telefono cerca i loro nomi, come senza Cleanway, presso il server DNS del tuo operatore mobile o del tuo router Wi-Fi e, solo se non risponde, presso Cloudflare (1.1.1.1) o Quad9 (9.9.9.9).",
     "q_install": "Come si installa?",
     "a_install": "Scarica l'app, apri il file e consenti l'installazione: la pagina Android spiega ogni avviso che può comparire lungo la strada. Al primo avvio tocca «Attiva la protezione» e consenti la connessione che chiede Android.",
     "q_off": "Come si disattiva?",
@@ -626,7 +626,8 @@
         "paragraphs": [
           "Quando attivi la protezione, Cleanway avvia un filtro locale usando il meccanismo VPN di Android. Da esso passano solo le richieste DNS, le domande che il telefono fa per trovare l'indirizzo di un sito, come «dov'è example.com?». Il contenuto delle pagine, i tuoi messaggi e le chiamate non passano dal filtro e non vengono letti.",
           "Ogni nome di sito viene confrontato con la lista dei siti truffa salvata sul telefono. Se è nella lista, il telefono non apre il sito, e sul telefono viene salvata una nota (il nome del sito, l'ora e cosa è successo) per la Cronologia dell'app.",
-          "I nomi che non sono nella lista vengono passati a un servizio DNS pubblico per trovare l'indirizzo: il telefono lo fa anche senza Cleanway, solo tramite un altro servizio. Nella versione 1.0.1 dell'app queste richieste vanno a Cloudflare (1.1.1.1), con Quad9 (9.9.9.9) come riserva e il DNS-over-HTTPS cifrato di Cloudflare come ultima risorsa. Questi servizi vedono il nome del sito e l'indirizzo IP della tua connessione, come qualsiasi servizio DNS; valgono le loro informative sulla privacy. Cleanway non riceve né conserva queste richieste."
+          "I nomi che non sono nella lista vengono passati per trovare l'indirizzo del sito: prima al server DNS della rete a cui è collegato il telefono — quello del tuo operatore mobile o del tuo router Wi-Fi —, come senza Cleanway. Solo se non risponde, vanno a Cloudflare (1.1.1.1), poi a Quad9 (9.9.9.9) e, come ultima risorsa, al DNS-over-HTTPS cifrato di Cloudflare. Così funziona la versione 1.0.2 dell'app; la versione 1.0.1 chiedeva prima a Cloudflare. Questi servizi vedono il nome del sito e l'indirizzo IP della tua connessione, come qualsiasi servizio DNS; valgono le loro informative sulla privacy. Cleanway non riceve né conserva queste richieste.",
+          "Dalla versione 1.0.2 l'app contiene una copia della lista dei siti truffa, usata solo finché il telefono non ne scarica una aggiornata."
         ]
       },
       {
@@ -638,7 +639,7 @@
       {
         "title": "5. Controllo di siti e link",
         "paragraphs": [
-          "Il nome di un sito, senza il resto del link, senza il contenuto della pagina e senza i dati del tuo account, arriva al nostro server quando controlli un sito a mano (nell'app o su cleanway.ai/check) e quando la protezione è attiva e apri tramite Cleanway un link che non è nella lista.",
+          "Il nome di un sito, senza il resto del link, senza il contenuto della pagina e senza i dati del tuo account, arriva al nostro server quando controlli un sito a mano (nell'app o su cleanway.ai/check) e quando apri tramite Cleanway un link che non è nella lista (dalla versione 1.0.2 anche con la protezione «Ogni app» disattivata).",
           "Per decidere se il sito è pericoloso, il nostro server può:"
         ],
         "items": [
@@ -649,7 +650,8 @@
         ],
         "after": [
           "Il risultato resta nella cache del nostro server fino a 24 ore, così un nuovo controllo è veloce. È legato al sito, non a te.",
-          "Il tuo indirizzo IP serve a limitare quanti controlli può fare una connessione. Per questo viene conservato così com'è, come contatore nella memoria del nostro server, per un'ora al massimo, e poi cancellato. Il registro di sicurezza delle azioni sull'account conserva solo un hash crittografico abbreviato, mai l'indirizzo stesso."
+          "Il tuo indirizzo IP serve a limitare quanti controlli può fare una connessione. Per questo viene conservato così com'è, come contatore nella memoria del nostro server, per un'ora al massimo, e poi cancellato. Il registro di sicurezza delle azioni sull'account conserva solo un hash crittografico abbreviato, mai l'indirizzo stesso.",
+          "A ogni controllo, la versione 1.0.2 dell'app invia anche un numero di installazione: un numero casuale creato sul telefono e sostituito con uno nuovo ogni 24 ore. Non è legato al telefono, alla SIM né a un account; ci permette di limitare i controlli per telefono invece che per tutti gli abbonati che condividono l'indirizzo IP di un operatore. Il nostro server ne conserva solo un hash crittografico, come contatore, per al massimo un'ora."
         ]
       },
       {
@@ -778,6 +780,12 @@
     "detector_safe": "Il nostro rilevatore ritiene questo sito sicuro",
     "not_a_real_business": "Non è configurato come il sito di un'azienda vera",
     "shifty_setup": "Il sito cambia continuamente posizione, un trucco tipico delle truffe",
-    "padded_address": "L'indirizzo è gonfiato con parti in più per nascondere il nome vero"
+    "padded_address": "L'indirizzo è gonfiato con parti in più per nascondere il nome vero",
+    "site_not_found": "Questo indirizzo non esiste",
+    "on_cleanway_list": "È nella lista dei siti truffa di Cleanway",
+    "unreachable_abroad": "Il nostro server all'estero non è riuscito ad aprire il sito. Molte banche e siti pubblici bloccano gli indirizzi esteri, quindi da solo questo non è un segnale di pericolo",
+    "checks_incomplete": "Alcuni controlli non sono terminati, quindi il risultato è meno sicuro",
+    "user_content_platform": "Su questo servizio chiunque può creare una pagina, anche i truffatori",
+    "on_device_list": "È nella lista dei siti truffa sul tuo telefono"
   }
 }

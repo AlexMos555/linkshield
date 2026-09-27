@@ -19,6 +19,8 @@ import {
   type UserSettings,
   type Result,
 } from "@cleanway/api-client";
+import { getInstallId } from "./install-id";
+import { retryOnceOnTimeout } from "../utils/check-verdict";
 
 // ─── Config ───────────────────────────────────────────────────────
 // EXPO_PUBLIC_API_URL is inlined at build time. Override per-environment
@@ -68,22 +70,48 @@ function _maybeEmitAccountLocked(error: ApiError | null): void {
   }
 }
 
-// ─── Singleton client ────────────────────────────────────────────
+// ─── Clients ─────────────────────────────────────────────────────
+const CLIENT_HEADERS = {
+  "X-Client": "mobile",
+  "X-Client-Version": Constants.expoConfig?.version ?? "0.0.0",
+};
+
 const _client: CleanwayClient = createClient({
   baseUrl: API_BASE,
   timeoutMs: 6_000,
   getAuthToken: () => _authToken,
-  defaultHeaders: {
-    "X-Client": "mobile",
-    "X-Client-Version": Constants.expoConfig?.version ?? "0.0.0",
-  },
+  defaultHeaders: CLIENT_HEADERS,
+});
+
+/**
+ * Site checks get their own client. A site's FIRST check runs the server's
+ * whole analysis and took up to 10.9 s in the field (2026-09-25), so the old
+ * shared 6 s timeout turned a working connection into "the server didn't
+ * answer". It waits ~12 s now, retries a timeout once (retryOnceOnTimeout),
+ * and says "slow" rather than "offline" when both run out.
+ */
+const CHECK_TIMEOUT_MS = 12_000;
+const INSTALL_HEADER = "X-Cleanway-Install";
+
+/** Adds the install number (src/services/install-id.ts) — what the server rate-limits by. */
+const fetchWithInstallId: typeof fetch = async (input, init) => {
+  const id = await getInstallId();
+  const headers = { ...(init?.headers as Record<string, string> | undefined), ...(id ? { [INSTALL_HEADER]: id } : {}) };
+  return fetch(input, { ...init, headers });
+};
+
+const _checkClient: CleanwayClient = createClient({
+  baseUrl: API_BASE,
+  timeoutMs: CHECK_TIMEOUT_MS,
+  defaultHeaders: CLIENT_HEADERS,
+  fetchImpl: fetchWithInstallId,
 });
 
 // ─── Public API (consumers of this file) ─────────────────────────
 // Keep the surface small — mobile UI should depend on these, not the client directly.
 
 export async function checkDomain(domain: string): Promise<Result<PublicCheckResult>> {
-  const r = await _client.check.publicDomain(domain);
+  const r = await retryOnceOnTimeout(() => _checkClient.check.publicDomain(domain));
   _maybeEmitAccountLocked(r.error);
   return r;
 }
@@ -158,7 +186,7 @@ export async function checkDomains(domains: string[]): Promise<CheckResponse> {
   const checkedAt = new Date().toISOString();
   const results = await Promise.all(
     domains.map(async (d) => {
-      const { data, error } = await _client.check.publicDomain(d);
+      const { data, error } = await _checkClient.check.publicDomain(d);
       if (data) return data;
       // Fallback so the UI doesn't crash on a failed lookup. Note the level is
       // "unknown", NOT "safe": a check we could not perform must never be
@@ -188,7 +216,7 @@ export async function checkDomains(domains: string[]): Promise<CheckResponse> {
  * All three should migrate to `checkDomain` + explicit error rendering.
  */
 export async function checkSingleDomain(domain: string): Promise<PublicCheckResult> {
-  const { data, error } = await _client.check.publicDomain(domain);
+  const { data, error } = await _checkClient.check.publicDomain(domain);
   if (data) return data;
   // Throwing preserves the old behavior so call sites work without changes.
   throw new Error(error?.message ?? "Check failed");

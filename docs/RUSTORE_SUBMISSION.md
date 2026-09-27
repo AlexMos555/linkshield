@@ -156,6 +156,14 @@ grep -n "cleanwayKeystoreProps" android/app/build.gradle
 # 3) Put the keystore where the plugin expects it (see §1) BEFORE building:
 #    $CACHE/cwmobile/android/keystore.properties + the .jks alongside it.
 
+# 4) The starter blocklist (1.0.2+): download + verify it into the module's
+#    assets, AFTER sync.sh (its rsync --delete removes the gitignored file).
+#    Without it a fresh install blocks nothing until its first sync, so the
+#    release build now refuses to start (plugins/withSeedGuard.js; skip only
+#    on purpose with -PcleanwayNoSeed).
+bash scripts/fetch-seed-blocklist.sh
+grep -n "cleanway-seed-guard" android/app/build.gradle
+
 cd android
 
 # A) Direct-download APK for the Tele2 funnel. Do NOT pass
@@ -176,6 +184,9 @@ cd android
 #    Widen with CLEANWAY_ABIS + a fresh `expo prebuild --clean` if you need them.
 ./gradlew bundleRelease
 #    → android/app/build/outputs/bundle/release/app-release.aab
+
+# The seed is inside (≈2.6 MB):
+unzip -l app/build/outputs/apk/release/app-release.apk | grep dns-blocklist-v2.seed.bin
 ```
 
 Confirm it is **release-signed, not debug**:

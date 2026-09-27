@@ -114,6 +114,23 @@ object BlockNotifier {
 
     private val throttle = Throttle()
 
+    /**
+     * Pure: will a block alert actually show? The app-wide switch can be on
+     * while the person turned off just [ALERT_CHANNEL_ID] (in Android's
+     * settings, or by long-pressing an alert) — then every block happens in
+     * silence. [channelImportance] is null while the channel does not exist
+     * yet (or before Android 8): the first alert creates it switched on.
+     */
+    fun alertsAudible(appEnabled: Boolean, channelImportance: Int?): Boolean =
+        appEnabled && channelImportance != NotificationManager.IMPORTANCE_NONE
+
+    /** The block-alerts channel's importance as the person left it; null when there is none. */
+    fun alertChannelImportance(context: Context): Int? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        return nm.getNotificationChannel(ALERT_CHANNEL_ID)?.importance
+    }
+
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

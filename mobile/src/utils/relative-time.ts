@@ -14,6 +14,17 @@ export function relativeTime(ms: number, t: TFunction, now: number = Date.now())
   return new Date(ms).toLocaleDateString();
 }
 
+/** "14:35" in the app's language — when a pause ends. Falls back to the device format. */
+export function clockTime(ms: number, language: string): string {
+  if (!Number.isFinite(ms)) return "";
+  const date = new Date(ms);
+  try {
+    return date.toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return date.toLocaleTimeString();
+  }
+}
+
 /**
  * "24 September, 14:32" in the app's language — for a detail view, where
  * "3 days ago" alone is not enough to match an event to what the person did.

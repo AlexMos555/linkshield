@@ -89,6 +89,9 @@ keystore.properties
 # must not be tracked (this is also what keeps a keystore dropped inside android/ out of git).
 /mobile/android/
 /mobile/ios/
+# The APK's starter blocklist: downloaded and verified at release-build time by
+# mobile/scripts/fetch-seed-blocklist.sh, never committed (2.6 MB, changes daily).
+/mobile/modules/cleanway-vpn/android/src/main/assets/dns-blocklist-v2.seed.bin
 
 # macOS Finder 'Copy N' duplicates — Sep 1 2026 commit ee012a6 accidentally
 # tracked 'package-lock 3.json' because only '* 2.*' was covered.

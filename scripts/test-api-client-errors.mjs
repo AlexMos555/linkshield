@@ -183,6 +183,25 @@ await test("public check: missing reason_codes leaves code undefined (older API)
   assert.equal(norm.reasons[0].code, undefined);
 });
 
+await test("public check: exists=false and verdict_basis pass through, as a list", () => {
+  const norm = normalizePublicCheck({
+    domain: "sbertank.ru", score: 53, level: "dangerous", safe: false,
+    signals: [], exists: false, verdict_basis: "heuristics",
+  });
+  assert.equal(norm.exists, false);
+  assert.deepEqual(norm.verdict_basis, ["heuristics"]);
+  const listed = normalizePublicCheck({
+    domain: "evil.tk", score: 90, level: "dangerous", safe: false, verdict_basis: ["threat_intel", 7, ""],
+  });
+  assert.deepEqual(listed.verdict_basis, ["threat_intel"]);
+});
+
+await test("public check: an older server's answer gains no invented exists/verdict_basis", () => {
+  const norm = normalizePublicCheck({ domain: "evil.tk", score: 90, level: "dangerous", safe: false });
+  assert.equal("exists" in norm, false);
+  assert.equal("verdict_basis" in norm, false);
+});
+
 await test("public check: never carries the account token", async () => {
   const seen = [];
   const client = createClient({

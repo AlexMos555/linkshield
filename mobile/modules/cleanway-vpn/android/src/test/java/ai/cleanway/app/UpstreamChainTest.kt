@@ -112,6 +112,45 @@ class UpstreamChainTest {
         assertEquals(Transport.UDP_PRIMARY, b.order(backoff + 1).first())
     }
 
+    // ── the network's own resolver first ───────────────────────────────
+
+    @Test
+    fun `with the network resolver known it goes first and the public chain follows unchanged`() {
+        val b = TransportBreaker()
+        assertEquals(
+            listOf(Transport.NETWORK, Transport.UDP_PRIMARY, Transport.UDP_SECONDARY, Transport.DOH),
+            b.order(0L, networkDns = true),
+        )
+    }
+
+    @Test
+    fun `with no network resolver known it is never offered — not even as a half-open trial`() {
+        val b = TransportBreaker()
+        for (t in Transport.values()) repeat(3) { b.onFailure(t, 0L) }
+        assertFalse(Transport.NETWORK in b.order(0L))
+        assertFalse(Transport.NETWORK in b.order(1_000L))
+    }
+
+    @Test
+    fun `a failing network resolver falls back to the public ones first`() {
+        val b = TransportBreaker()
+        repeat(3) { b.onFailure(Transport.NETWORK, 0L) }
+        val order = b.order(100L, networkDns = true)
+        assertEquals(Transport.UDP_PRIMARY, order.first())
+        // Demoted, not deleted: still tried after the public chain.
+        assertEquals(Transport.NETWORK, order.last())
+    }
+
+    @Test
+    fun `a new network resets the network resolver's record`() {
+        val b = TransportBreaker()
+        repeat(3) { b.onFailure(Transport.NETWORK, 0L) }
+        assertTrue(b.isSuppressed(Transport.NETWORK, 100L))
+        b.reset(Transport.NETWORK)
+        assertFalse(b.isSuppressed(Transport.NETWORK, 100L))
+        assertEquals(Transport.NETWORK, b.order(100L, networkDns = true).first())
+    }
+
     @Test
     fun `repeated failures lengthen the backoff, capped`() {
         val b = TransportBreaker()

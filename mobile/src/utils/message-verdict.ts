@@ -38,6 +38,8 @@ export type ServerLevel = "safe" | "caution" | "dangerous";
 export type LinkCheck =
   | { kind: "pending" }
   | { kind: "checked"; level: ServerLevel }
+  /** The server says the site does not exist. A fact about the link, not a verdict on the message. */
+  | { kind: "not_found" }
   | { kind: "failed"; why: "rate_limited" | "offline" | "timeout" | "error" }
   /** Never sent: over the per-message cap, or an IP address rather than a domain. */
   | { kind: "not_sent" };
@@ -67,6 +69,7 @@ export type LinkVerdict =
   | "dangerous"
   | "caution"
   | "clean"
+  | "not_found"
   | "not_checked"
   | "rate_limited"
   | "offline"
@@ -139,6 +142,7 @@ export function linkVerdict(link: MessageLink, checks: Readonly<Record<string, L
   if (!check || check.kind === "not_sent") return "not_checked";
   if (check.kind === "pending") return "checking";
   if (check.kind === "checked") return check.level === "safe" ? "clean" : check.level;
+  if (check.kind === "not_found") return "not_found";
   return check.why === "error" ? "failed" : check.why;
 }
 

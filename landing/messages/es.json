@@ -386,7 +386,7 @@
     "email_hint": "Indica el modelo de tu teléfono y qué ha pasado.",
     "faq_title": "Preguntas frecuentes",
     "q_vpn": "¿Es una VPN que oculta mi tráfico?",
-    "a_vpn": "No. Cleanway usa el mecanismo de VPN de Android solo para ejecutar en tu teléfono un filtro local que bloquea sitios fraudulentos en todas las aplicaciones. No oculta a dónde vas ni envía tu tráfico a través de otro país. Para llegar a los sitios que no bloquea, tu teléfono busca sus nombres en un servicio DNS público: Cloudflare (1.1.1.1) o Quad9 (9.9.9.9).",
+    "a_vpn": "No. Cleanway usa el mecanismo de VPN de Android solo para ejecutar en tu teléfono un filtro local que bloquea sitios fraudulentos en todas las aplicaciones. No oculta a dónde vas ni envía tu tráfico a través de otro país. Para llegar a los sitios que no bloquea, tu teléfono busca sus nombres, como sin Cleanway, en el servidor DNS de tu operador móvil o de tu router wifi y, solo si no responde, en Cloudflare (1.1.1.1) o Quad9 (9.9.9.9).",
     "q_install": "¿Cómo la instalo?",
     "a_install": "Descarga la app, abre el archivo y permite la instalación: la página de Android explica cada aviso que puede aparecer por el camino. La primera vez, toca «Activar la protección» y permite la conexión que pida Android.",
     "q_off": "¿Cómo la desactivo?",
@@ -626,7 +626,8 @@
         "paragraphs": [
           "Cuando activas la protección, Cleanway pone en marcha un filtro local usando el mecanismo de VPN de Android. Por él solo pasan las consultas DNS, las preguntas que hace el teléfono para encontrar la dirección de un sitio, como «¿dónde está example.com?». El contenido de las páginas, tus mensajes y tus llamadas no pasan por el filtro y no se leen.",
           "Cada nombre de sitio se compara con la lista de sitios fraudulentos guardada en el teléfono. Si está en la lista, el teléfono no abre el sitio y se guarda en el teléfono una nota (el nombre del sitio, la hora y lo que pasó) para el Historial de la app.",
-          "Los nombres que no están en la lista se pasan a un servicio DNS público para encontrar la dirección, algo que el teléfono también hace sin Cleanway, solo que a través de otro servicio. En la versión 1.0.1 de la app estas consultas van a Cloudflare (1.1.1.1), con Quad9 (9.9.9.9) como reserva y el DNS-over-HTTPS cifrado de Cloudflare como último recurso. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas."
+          "Los nombres que no están en la lista se pasan para encontrar la dirección del sitio: primero al servidor DNS de la red a la que está conectado el teléfono —el de tu operador móvil o tu router wifi—, como sin Cleanway. Solo si no responde, van a Cloudflare (1.1.1.1), luego a Quad9 (9.9.9.9) y, como último recurso, al DNS-over-HTTPS cifrado de Cloudflare. Así funciona la versión 1.0.2 de la app; la versión 1.0.1 preguntaba primero a Cloudflare. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas.",
+          "Desde la versión 1.0.2, la app incluye una copia de la lista de sitios fraudulentos, que se usa solo hasta que el teléfono descarga una nueva."
         ]
       },
       {
@@ -638,7 +639,7 @@
       {
         "title": "5. Comprobación de sitios y enlaces",
         "paragraphs": [
-          "El nombre de un sitio, sin el resto del enlace, sin el contenido de la página y sin los datos de tu cuenta, llega a nuestro servidor cuando compruebas un sitio a mano (en la app o en cleanway.ai/check) y cuando la protección está activa y abres a través de Cleanway un enlace que no está en la lista.",
+          "El nombre de un sitio, sin el resto del enlace, sin el contenido de la página y sin los datos de tu cuenta, llega a nuestro servidor cuando compruebas un sitio a mano (en la app o en cleanway.ai/check) y cuando abres a través de Cleanway un enlace que no está en la lista (desde la versión 1.0.2, también con la protección «Todas las apps» desactivada).",
           "Para decidir si el sitio es peligroso, nuestro servidor puede:"
         ],
         "items": [
@@ -649,7 +650,8 @@
         ],
         "after": [
           "El resultado se guarda en la caché de nuestro servidor hasta 24 horas para que una nueva comprobación sea rápida. Está ligado al sitio, no a ti.",
-          "Tu dirección IP se usa para limitar cuántas comprobaciones puede hacer una conexión. Para eso se guarda tal cual, como contador en la memoria de nuestro servidor, durante una hora como máximo, y después se borra. El registro de seguridad de las acciones de la cuenta solo guarda un hash criptográfico acortado, nunca la dirección misma."
+          "Tu dirección IP se usa para limitar cuántas comprobaciones puede hacer una conexión. Para eso se guarda tal cual, como contador en la memoria de nuestro servidor, durante una hora como máximo, y después se borra. El registro de seguridad de las acciones de la cuenta solo guarda un hash criptográfico acortado, nunca la dirección misma.",
+          "Con cada comprobación, la versión 1.0.2 de la app también envía un número de instalación: un número aleatorio creado en el teléfono que se cambia por uno nuevo cada 24 horas. No está vinculado al teléfono, a la tarjeta SIM ni a una cuenta; nos permite limitar las comprobaciones por teléfono y no para todos los abonados que comparten la dirección IP de un operador. Nuestro servidor guarda solo un hash criptográfico, como contador, durante una hora como máximo."
         ]
       },
       {
@@ -778,6 +780,12 @@
     "detector_safe": "Nuestro detector considera este sitio seguro",
     "not_a_real_business": "No está configurado como el sitio de una empresa real",
     "shifty_setup": "El sitio cambia constantemente de ubicación, un truco típico de estafas",
-    "padded_address": "La dirección tiene partes de más para ocultar el nombre real"
+    "padded_address": "La dirección tiene partes de más para ocultar el nombre real",
+    "site_not_found": "Esta dirección no existe",
+    "on_cleanway_list": "Está en la lista de sitios fraudulentos de Cleanway",
+    "unreachable_abroad": "Nuestro servidor en el extranjero no pudo abrir el sitio. Muchos bancos y sitios del gobierno bloquean las direcciones extranjeras, así que esto por sí solo no es señal de peligro",
+    "checks_incomplete": "Algunas revisiones no terminaron, así que el resultado es menos seguro",
+    "user_content_platform": "Cualquiera puede crear una página en este servicio, también los estafadores",
+    "on_device_list": "Está en la lista de sitios fraudulentos de tu teléfono"
   }
 }

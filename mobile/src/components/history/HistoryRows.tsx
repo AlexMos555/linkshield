@@ -131,7 +131,9 @@ const CheckRow = memo(function CheckRow({ item }: { item: CheckItem }) {
       style={s.row}
       accessible
       accessibilityLabel={[
-        item.domain, what, t("mobile.history.score_a11y", { score: item.score }), source, when,
+        item.domain, what,
+        item.listed ? t("mobile.history.listed_a11y") : t("mobile.history.score_a11y", { score: item.score }),
+        source, when,
       ].filter(Boolean).join(". ")}
     >
       <View style={[s.rowIcon, { backgroundColor: wash, borderColor: stroke }]}>
@@ -142,8 +144,12 @@ const CheckRow = memo(function CheckRow({ item }: { item: CheckItem }) {
         <Text style={[s.what, { color }]}>{what}</Text>
         <Text style={s.meta} numberOfLines={1}>{metaLine([source, when])}</Text>
       </View>
+      {/* The list decided this one: its mark, not a server score that may
+          be missing or lower than the verdict. */}
       <View style={[s.scoreChip, { backgroundColor: wash, borderColor: stroke }]}>
-        <Text style={[s.scoreValue, { color }]}>{item.score}</Text>
+        {item.listed
+          ? <Ionicons name="list" size={16} color={color} />
+          : <Text style={[s.scoreValue, { color }]}>{item.score}</Text>}
       </View>
     </View>
   );

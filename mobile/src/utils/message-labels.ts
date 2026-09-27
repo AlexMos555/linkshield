@@ -83,6 +83,7 @@ export const LINK_KEYS: Record<LinkVerdict, string> = {
   dangerous: "mobile.message.link.dangerous",
   caution: "mobile.message.link.caution",
   clean: "mobile.message.link.clean",
+  not_found: "mobile.message.link.not_found",
   not_checked: "mobile.message.link.not_checked",
   rate_limited: "mobile.message.link.rate_limited",
   offline: "mobile.message.link.offline",

@@ -192,6 +192,30 @@ jobs:
         # nothing for a site that is not in the log.
         run: node mobile/scripts/test-history-model.mjs
 
+      - name: Link check verdict table test
+        # A site on the on-device list is "dangerous" at once and no server
+        # answer can downgrade it; a name that does not exist is never scored
+        # as a scam; a slow first check is retried once, a rate limit never.
+        run: node mobile/scripts/test-check-verdict.mjs
+
+      - name: Reason label table test
+        # Every reason code the app maps has its label in all 10 locales, and
+        # the codes the API's verdict_basis release adds read in Russian —
+        # not as the server's English sentence under a Russian verdict.
+        run: node mobile/scripts/test-reason-label.mjs
+
+      - name: Link check hook regression test
+        # useDomainCheck under real React 18: a second link shared to the open
+        # /shared screen is saved and buzzed under its own name, never the
+        # previous site's; a listed site reaches History even when the screen
+        # closes before the server answers.
+        run: node mobile/scripts/test-domain-check-hook.mjs
+
+      - name: Shared message handoff regression test
+        # Report #5: a second SMS shared to an open message screen must be
+        # checked — the router reuses the screen, so each share needs its id.
+        run: node mobile/scripts/test-message-handoff.mjs
+
       - name: Captcha service unit tests
         # Pins the deep-link contract with /auth/captcha: https-only URL,
         # nonce must match, timeout/grace/cancel resolve null exactly once.

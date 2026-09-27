@@ -18,6 +18,9 @@
 
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <!-- The shield reads the underlying network's DNS servers (UnderlyingNetworks).
+       Already merged in from a library; declared here because we depend on it. -->
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <application>
     <service
       android:name="ai.cleanway.app.CleanwayVpnService"
@@ -51,6 +54,11 @@
         <data android:scheme="https" />
       </intent-filter>
     </activity>
+    <!-- Background check of a link the guard let open. Short-lived: runs only
+         while a check is in flight, with or without the VPN shield. -->
+    <service
+      android:name="ai.cleanway.app.LinkCheckService"
+      android:exported="false" />
 
     <!--
       Runs in its own lightweight process. The main process is a React Native

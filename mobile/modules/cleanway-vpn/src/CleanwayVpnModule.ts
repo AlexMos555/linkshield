@@ -63,8 +63,20 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   analyzeMessage?(text: string): Promise<Record<string, unknown>>;
   /** The blocklisted suffix covering this host (DNS rules), or null. */
   matchBlocklist?(host: string): Promise<string | null>;
-  /** A blocklist exists for the link guard: the shield's, or a synced copy on disk. */
+  /** A blocklist exists for the link guard: the shield's, a synced copy on disk, or the bundled seed. */
   linkListAvailable?(): Promise<boolean>;
+  /** Pause blocking until this epoch-ms time; the tunnel stays up and resumes by itself. */
+  pauseProtection?(untilMs: number): void;
+  /** End a timed pause now. */
+  resumeProtection?(): void;
+  /** End of the current pause (epoch ms), 0 when not paused. */
+  pausedUntil?(): number;
+  /** This install's random id, sent as X-Cleanway-Install with site checks. */
+  installId?(): string;
+  /** False when the person switched Cleanway's notifications off. */
+  notificationsEnabled?(): boolean;
+  /** Open this app's system notification settings. */
+  openNotificationSettings?(): boolean;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

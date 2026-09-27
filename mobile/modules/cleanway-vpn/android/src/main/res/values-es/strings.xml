@@ -14,6 +14,9 @@
     <string name="fg_channel_desc">Se muestra mientras la protección contra phishing está activa</string>
     <string name="fg_text">Comprobando nombres de sitios en busca de estafas</string>
     <string name="fg_title">La protección de Cleanway está activada</string>
+    <string name="paused_text">Se vuelve a activar sola a las %1$s.</string>
+    <string name="paused_title">La protección de Cleanway está en pausa</string>
+    <string name="resume_action">Activar ahora</string>
     <string name="warn_text">%1$s parece peligroso. Si está abierto, ciérralo y no escribas nada.</string>
     <string name="warn_title">Este sitio parece una estafa</string>
 </resources>

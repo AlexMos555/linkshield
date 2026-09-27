@@ -2,8 +2,20 @@ import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space } from "../../utils/theme";
+import { clockTime } from "../../utils/relative-time";
 
 export type HeroState = "none" | "partial" | "all";
+
+/**
+ * The main shield cannot protect right now, whatever else is on. Wins over
+ * the counts: with the link guard on, "partial" used to paint the hero green
+ * while every app on the phone was unfiltered (report #20).
+ */
+export type HeroHold =
+  /** Paused by the person; comes back by itself at [until]. */
+  | { kind: "paused"; until: number }
+  /** Strict Private DNS: the shield cannot run at all. */
+  | { kind: "conflict" };
 
 interface HeroShieldProps {
   state: HeroState;
@@ -17,36 +29,44 @@ interface HeroShieldProps {
    * earlier setup never happened.
    */
   interrupted?: boolean;
+  hold?: HeroHold | null;
 }
 
 /**
  * Status display, not a control — deliberately not tappable.
  * Honesty rules (docs/MOBILE_AUTO_PROTECTION.md §2): never green with
  * 0 verified shields; the absolute "You're protected" only when ALL
- * platform shields are verified-on.
+ * platform shields are verified-on; never green while the main shield is
+ * paused or cannot run.
  */
-export function HeroShield({ state, verifiedCount, totalCount, attention, interrupted }: HeroShieldProps) {
-  const { t } = useTranslation();
-  const active = state !== "none";
+export function HeroShield({ state, verifiedCount, totalCount, attention, interrupted, hold }: HeroShieldProps) {
+  const { t, i18n } = useTranslation();
+  const active = state !== "none" && !hold;
   const title =
-    state === "all" ? t("mobile.home.hero.title_all")
+    hold?.kind === "paused" ? t("mobile.home.hero.title_paused", { time: clockTime(hold.until, i18n.language) })
+    : hold?.kind === "conflict" ? t("mobile.home.hero.title_conflict")
+    : state === "all" ? t("mobile.home.hero.title_all")
     : state === "partial" ? t("mobile.home.hero.title_partial", { count: verifiedCount, total: totalCount })
     : interrupted ? t("mobile.home.hero.title_interrupted")
     : t("mobile.home.hero.title_none");
   const sub =
-    state === "all" ? t("mobile.home.hero.sub_all")
+    hold?.kind === "paused" ? t("mobile.home.hero.sub_paused")
+    : hold?.kind === "conflict" ? t("mobile.home.hero.sub_conflict")
+    : state === "all" ? t("mobile.home.hero.sub_all")
     : state === "partial" ? t("mobile.home.hero.sub_partial")
     : t("mobile.home.hero.sub_none", { count: verifiedCount });
+  const icon: keyof typeof Ionicons.glyphMap =
+    hold?.kind === "paused" ? "pause-circle-outline"
+    : hold ? "alert-circle-outline"
+    : active ? "shield-checkmark"
+    : "shield-outline";
+  const iconColor = hold ? colors.amber : active ? colors.green : colors.textSecondary;
 
   return (
     <View style={s.wrap} accessibilityRole="text" accessibilityLabel={t("mobile.home.hero.a11y", { status: title })}>
-      <View style={[s.ring, active ? s.ringActive : s.ringNeutral]}>
+      <View style={[s.ring, active ? s.ringActive : hold ? s.ringHold : s.ringNeutral]}>
         <View style={s.disc}>
-          <Ionicons
-            name={active ? "shield-checkmark" : "shield-outline"}
-            size={56}
-            color={active ? colors.green : colors.textSecondary}
-          />
+          <Ionicons name={icon} size={56} color={iconColor} />
         </View>
       </View>
       <Text style={[s.title, active && { color: colors.green }]}>{title}</Text>
@@ -65,12 +85,13 @@ const s = StyleSheet.create({
   },
   ringNeutral: { borderColor: "#22314A" },
   ringActive: { borderColor: colors.greenStroke },
+  ringHold: { borderColor: colors.amberStroke },
   disc: {
     width: 148, height: 148, borderRadius: 74,
     backgroundColor: colors.surface,
     alignItems: "center", justifyContent: "center",
   },
-  title: { ...typo.title2, color: colors.textPrimary, marginTop: space.md },
-  sub: { ...typo.body, color: colors.textSecondary, marginTop: 4 },
+  title: { ...typo.title2, color: colors.textPrimary, marginTop: space.md, textAlign: "center" },
+  sub: { ...typo.body, color: colors.textSecondary, marginTop: 4, textAlign: "center" },
   attention: { ...typo.caption, color: colors.amber, marginTop: space.sm },
 });

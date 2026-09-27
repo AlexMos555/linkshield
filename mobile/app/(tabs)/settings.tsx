@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking, I18nManager,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, I18nManager, AppState,
 } from "react-native";
+import Constants from "expo-constants";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,7 +14,10 @@ import { getSessionState, signOut } from "../../src/services/auth";
 import { clearKeypair } from "../../src/lib/family-crypto";
 import { setAuthToken, getAccountSettings } from "../../src/services/api";
 import { allowedSites, removeAllowedSite } from "../../src/services/shield-log";
-import { isDefaultLinkHandler, requestLinkHandler } from "../../modules/cleanway-vpn";
+import {
+  isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
+} from "../../modules/cleanway-vpn";
+import { paidPlansVisible } from "../../src/config/market";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -77,6 +81,11 @@ export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const [locale, setLocale] = useState<SupportedLocale>(() => (i18n.language as SupportedLocale));
   const [linkGuardOn, setLinkGuardOn] = useState(false);
+  // The link guard stops known scam sites only when a list is on the phone
+  // (the shield's, a synced copy, or the one bundled in the APK).
+  const [linkListReady, setLinkListReady] = useState(false);
+  // null: this build cannot tell (then the row is not shown, never guessed "on").
+  const [alertsOn, setAlertsOn] = useState<boolean | null>(() => notificationsEnabled());
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("regular");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   // Set the moment the user taps a skill this focus; the in-flight remote
@@ -149,7 +158,35 @@ export default function SettingsScreen() {
 
   useFocusEffect(useCallback(() => {
     try { setLinkGuardOn(isDefaultLinkHandler()); } catch { /* older native build */ }
+    let alive = true;
+    void linkListAvailable().then((ok) => {
+      if (alive) setLinkListReady(ok);
+    });
+    return () => {
+      alive = false;
+    };
   }, []));
+
+  // Re-read on focus AND on return from the system settings, where the only
+  // switch for this lives — the screen stays focused while the person is there.
+  useFocusEffect(useCallback(() => {
+    setAlertsOn(notificationsEnabled());
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active") setAlertsOn(notificationsEnabled());
+    });
+    return () => sub.remove();
+  }, []));
+
+  /**
+   * Notifications off means blocks happen in silence — the site just "does
+   * not load". Ask again where Android still allows a prompt; where it does
+   * not, open the system switch, the only place it can change. The row
+   * re-reads when the person comes back from there (AppState above).
+   */
+  async function enableAlerts(): Promise<void> {
+    await turnOnBlockNotifications();
+    setAlertsOn(notificationsEnabled());
+  }
 
   async function handleLinkGuard(): Promise<void> {
     await requestLinkHandler();
@@ -266,23 +303,12 @@ export default function SettingsScreen() {
     />
   );
   /**
-   * The Alerts switches are for features that do not exist yet — the section
-   * footnote says so in words. They used to default to `true` and paint green,
-   * so the screen showed three active-looking protections backed by nothing but
-   * local React state. Rendered off and disabled: the control now looks the way
-   * the feature actually is, and the reason travels with it for screen readers
-   * instead of living in a caption they may never reach.
+   * Alerts are live states, not switches. The old greyed-out switches sat on
+   * features that DO work (block notifications, checking what you share), so
+   * the screen told people their alerts were off (report #20). A row now
+   * says what is true on this phone, and offers the one fix that exists.
    */
-  const comingSoonToggle = (label: string) => (
-    <Switch
-      value={false}
-      disabled
-      trackColor={{ true: colors.green, false: colors.stroke }}
-      thumbColor={colors.textDisabled}
-      accessibilityLabel={label}
-      accessibilityHint={t("mobile.settings.alerts_note")}
-    />
-  );
+  const liveOn = <Ionicons name="checkmark-circle" size={22} color={colors.green} />;
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -299,9 +325,11 @@ export default function SettingsScreen() {
           <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
                right={chevron} onPress={() => router.push("/auth")} />
         )}
-        <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
-             right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
-             onPress={() => router.push("/upgrade")} />
+        {paidPlansVisible(i18n.language) && (
+          <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
+               right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
+               onPress={() => router.push("/upgrade")} />
+        )}
         <Row label={t("mobile.settings.report")} desc={t("mobile.settings.report_desc")}
              right={chevron} onPress={() => router.push("/report")} />
         <Row label={t("mobile.settings.family")} desc={t("mobile.settings.family_desc")}
@@ -330,7 +358,11 @@ export default function SettingsScreen() {
           icon={linkGuardOn ? "shield-checkmark-outline" : "link-outline"}
           iconColor={linkGuardOn ? colors.green : colors.textMuted}
           label={t(linkGuardOn ? "mobile.settings.linkguard_on" : "mobile.settings.linkguard_off")}
-          desc={t(linkGuardOn ? "mobile.settings.linkguard_on_desc" : "mobile.settings.linkguard_off_desc")}
+          desc={t(
+            !linkGuardOn ? "mobile.settings.linkguard_off_desc"
+            : linkListReady ? "mobile.settings.linkguard_on_desc"
+            : "mobile.settings.linkguard_on_desc_no_list",
+          )}
           onPress={linkGuardOn ? undefined : () => void handleLinkGuard()}
           right={linkGuardOn
             ? <Ionicons name="checkmark-circle" size={22} color={colors.green} />
@@ -352,12 +384,25 @@ export default function SettingsScreen() {
       </Section>
 
       <Section title={t("mobile.settings.alerts")} footnote={t("mobile.settings.alerts_note")}>
-        <Row first label={t("mobile.settings.push")} desc={t("mobile.settings.push_desc")}
-             right={comingSoonToggle(t("mobile.settings.push"))} />
-        <Row label={t("mobile.settings.auto_check")} desc={t("mobile.settings.auto_check_desc")}
-             right={comingSoonToggle(t("mobile.settings.auto_check"))} />
-        <Row label={t("mobile.settings.weekly")} desc={t("mobile.settings.weekly_desc")}
-             right={comingSoonToggle(t("mobile.settings.weekly"))} />
+        {alertsOn !== null && (
+          <Row
+            first
+            icon={alertsOn ? "notifications-outline" : "notifications-off-outline"}
+            iconColor={alertsOn ? colors.green : colors.amber}
+            label={t("mobile.settings.push")}
+            desc={t(alertsOn ? "mobile.settings.push_desc" : "mobile.settings.push_off_desc")}
+            onPress={alertsOn ? undefined : () => void enableAlerts()}
+            right={alertsOn ? liveOn : <Text style={s.pill}>{t("mobile.settings.push_enable")}</Text>}
+          />
+        )}
+        <Row
+          first={alertsOn === null}
+          icon="share-outline"
+          iconColor={colors.green}
+          label={t("mobile.settings.auto_check")}
+          desc={t("mobile.settings.auto_check_desc")}
+          right={liveOn}
+        />
       </Section>
 
       {allowed.length > 0 && (
@@ -397,7 +442,9 @@ export default function SettingsScreen() {
              onPress={() => void Linking.openURL("https://cleanway.ai/privacy-policy")} />
         <Row label={t("mobile.settings.terms")} right={chevron}
              onPress={() => void Linking.openURL("https://cleanway.ai/terms")} />
-        <Row label={t("mobile.settings.version")} right={<Text style={s.value}>0.1.0</Text>} />
+        {/* The version this build really is — from the app config, not a literal. */}
+        <Row label={t("mobile.settings.version")}
+             right={<Text style={s.value}>{Constants.expoConfig?.version ?? "—"}</Text>} />
       </Section>
 
       <View style={s.privacyRow}>

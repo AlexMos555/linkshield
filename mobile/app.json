@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cleanway",
     "slug": "cleanway",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cleanway",
@@ -30,7 +30,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
-      "versionCode": 101,
+      "versionCode": 102,
       "permissions": [
         "android.permission.BIND_VPN_SERVICE",
         "android.permission.FOREGROUND_SERVICE",
@@ -75,7 +75,8 @@
       ],
       "./plugins/withXcode26Patches",
       "./plugins/withReleaseSigning",
-      "./plugins/withAbiFilters"
+      "./plugins/withAbiFilters",
+      "./plugins/withSeedGuard"
     ]
   }
 }

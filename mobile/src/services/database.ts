@@ -110,6 +110,39 @@ export async function saveCheck(check: {
   return entry.id;
 }
 
+/**
+ * Rewrite one link-check row in place — a site the on-device list decided is
+ * saved at once, and filled in here when the server's score and reasons come.
+ * Keeps the row's time: the check happened when it was saved.
+ */
+export async function updateCheck(id: number, check: {
+  domain: string;
+  score: number;
+  level: string;
+  reasons?: any[];
+  confidence?: string;
+  source?: string;
+}): Promise<void> {
+  const reasons = check.reasons || [];
+  const confidence = check.confidence || "medium";
+  const source = check.source || "api";
+  const db = await getDB();
+  if (db) {
+    try {
+      await db.runAsync(
+        `UPDATE checks SET domain = ?, score = ?, level = ?, reasons = ?, confidence = ?, source = ? WHERE id = ?`,
+        [check.domain, check.score, check.level, JSON.stringify(reasons), confidence, source, id],
+      );
+      return;
+    } catch (e) {
+      console.warn("SQLite update failed:", e);
+    }
+  }
+  _memoryChecks = _memoryChecks.map((c) =>
+    c.id === id ? { ...c, domain: check.domain, score: check.score, level: check.level, reasons, confidence, source } : c,
+  );
+}
+
 /** `source` of the history rows written by the message check (app/message.tsx). */
 export { MESSAGE_CHECK_SOURCE };
 

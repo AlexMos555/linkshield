@@ -14,6 +14,9 @@
     <string name="fg_channel_desc">Ditampilkan selama perlindungan phishing aktif</string>
     <string name="fg_text">Memeriksa nama situs dari penipuan</string>
     <string name="fg_title">Perlindungan Cleanway menyala</string>
+    <string name="paused_text">Menyala lagi sendiri pukul %1$s.</string>
+    <string name="paused_title">Perlindungan Cleanway sedang dijeda</string>
+    <string name="resume_action">Nyalakan sekarang</string>
     <string name="warn_text">%1$s tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun.</string>
     <string name="warn_title">Situs ini tampak seperti penipuan</string>
 </resources>

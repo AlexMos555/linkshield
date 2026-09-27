@@ -1,31 +1,39 @@
 /**
  * Shared URL screen — opens when user shares a link TO Cleanway
- * from any app (Safari, Chrome, Messages, WhatsApp, etc.)
+ * from any app (Safari, Chrome, Messages, WhatsApp, etc.), and when the link
+ * guard stops a tapped link that is on the on-device list (via=guard).
  *
  * Flow:
  *   User in Safari → Share → Cleanway → instant result
  *   User in WhatsApp → long press link → Share → Cleanway → alert if dangerous
+ *
+ * A site on the on-device list is "Dangerous" from the first frame; the
+ * server's score and reasons fill in when they arrive and never downgrade it
+ * (src/hooks/useDomainCheck.ts).
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   colors, type as typo, space, radius, sectionHeader,
   levelColors, levelStrokes,
 } from "../src/utils/theme";
-import { checkDomain, PublicCheckResult, ApiError } from "../src/services/api";
-import { saveCheck } from "../src/services/database";
+import type { ApiError } from "../src/services/api";
 import { reasonLabel } from "../src/utils/reason-label";
 import { openInBrowser } from "../modules/cleanway-vpn";
 import { toCheckableHost } from "../src/utils/host";
+import { useDomainCheck } from "../src/hooks/useDomainCheck";
+import {
+  isNotFound, reasonsToShow, serverLevel, showScore, shownLevel, type ServerAnswer,
+} from "../src/utils/check-verdict";
+import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
 
-type ErrorKind = "no_url" | ApiError["kind"];
 type Level = keyof typeof levelColors;
 
 // Status is never colour-only (design spec §6): every verdict pairs its hue
@@ -35,6 +43,14 @@ const VERDICT_ICONS: Record<Level, keyof typeof Ionicons.glyphMap> = {
   caution: "alert-circle-outline",
   dangerous: "warning-outline",
 };
+
+/** The error body for a check that failed — a slow server is not "check your connection". */
+function errorBodyKey(error: ApiError["kind"] | null): string {
+  if (error === "rate_limited") return "mobile.result.error_rate_limited";
+  if (error === "http_5xx") return "mobile.result.error_server";
+  if (error === "timeout") return "mobile.result.error_slow";
+  return "mobile.shared.check_failed_body";
+}
 
 export default function SharedScreen() {
 
@@ -50,9 +66,6 @@ export default function SharedScreen() {
   }, [router]);
   const { t } = useTranslation();
   const { url, via } = useLocalSearchParams<{ url: string; via?: string }>();
-  const [result, setResult] = useState<PublicCheckResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ErrorKind | null>(null);
   // openInBrowser returns false when Cleanway is the only browser on the
   // phone. Closing the screen anyway made "Open anyway" a silent no-op.
   const [noBrowser, setNoBrowser] = useState(false);
@@ -63,34 +76,25 @@ export default function SharedScreen() {
   // below reachable.
   const domain = toCheckableHost(url || "");
 
-  useEffect(() => {
-    if (!domain) {
-      setError("no_url");
-      setLoading(false);
-      return;
-    }
-    // Result-based call so the error KIND survives — a rate limit told to
-    // "check your connection" retries into the rate limit and digs deeper.
-    checkDomain(domain)
-      .then(async ({ data: r, error: apiError }) => {
-        if (!r) {
-          setError(apiError?.kind ?? "network");
-          return;
-        }
-        setResult(r);
-        // A link-guard hand-off is not a check the person made: the guard
-        // already recorded the stop in the block log (History, "Blocked").
-        // Saving it here too counted every stopped link twice.
-        if (via !== "guard") await saveCheck(r);
-        if (r.level === "dangerous") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        else if (r.level === "caution") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      })
-      .catch(() => setError("network"))
-      .finally(() => setLoading(false));
-  }, [domain, via]);
+  // A link-guard hand-off is not a check the person made: the guard already
+  // recorded the stop in the block log (History, "Blocked"). Saving it here
+  // too counted every stopped link twice.
+  const { listed, result, error, pending, retry } = useDomainCheck(domain, via !== "guard");
 
-  if (loading) {
+  if (!domain) {
+    return (
+      <CenteredMessage
+        icon="link-outline"
+        title={t("mobile.shared.no_url_title")}
+        body={t("mobile.shared.no_url_body")}
+        action={t("mobile.shared.go_home")}
+        onAction={leaveShared}
+      />
+    );
+  }
+
+  // Waiting — but never for the server when the list already knows the site.
+  if (listed === undefined || (!listed && pending)) {
     return (
       <View style={s.center}>
         <ActivityIndicator size="large" color={colors.blue} />
@@ -100,44 +104,36 @@ export default function SharedScreen() {
     );
   }
 
-  if (error || !result) {
-    const noUrl = error === "no_url";
+  if (!listed && isNotFound(result)) {
     return (
-      <View style={s.center}>
-        <Ionicons
-          name={noUrl ? "link-outline" : "cloud-offline-outline"}
-          size={44}
-          color={colors.amber}
-        />
-        <Text style={s.centerTitle}>
-          {t(noUrl ? "mobile.shared.no_url_title" : "mobile.result.error_title")}
-        </Text>
-        <Text style={s.centerBody}>
-          {t(
-            noUrl ? "mobile.shared.no_url_body"
-            : error === "rate_limited" ? "mobile.result.error_rate_limited"
-            : error === "http_5xx" ? "mobile.result.error_server"
-            : "mobile.shared.check_failed_body",
-          )}
-        </Text>
-        <TouchableOpacity
-          style={s.primaryBtn}
-          onPress={() => leaveShared()}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-        >
-          <Text style={s.primaryLabel}>{t("mobile.shared.go_home")}</Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView style={s.container} contentContainerStyle={s.content}>
+        <Text style={s.eyebrow}>{t("mobile.shared.eyebrow")}</Text>
+        <NotFoundCard domain={domain} />
+        <DoneButton label={t("mobile.shared.done")} onPress={leaveShared} />
+      </ScrollView>
     );
   }
 
-  const level = (result.level in levelColors ? result.level : "caution") as Level;
+  const level = shownLevel(listed, result);
+  if (!level) {
+    return (
+      <CenteredMessage
+        icon="cloud-offline-outline"
+        title={t("mobile.result.error_title")}
+        body={t(errorBodyKey(error))}
+        action={t("mobile.shared.go_home")}
+        onAction={leaveShared}
+      />
+    );
+  }
+
   const color = levelColors[level];
-  const label = t(`mobile.result.verdict_${level}`);
-  const reasons = result.reasons ?? [];
+  const label = listed ? t("mobile.result.listed_title") : t(`mobile.result.verdict_${level}`);
+  const score = showScore(listed, result) ? result?.score : undefined;
+  const reasons = signalLines(listed, result, t);
   const shown = reasons.slice(0, 3);
   const hidden = reasons.length - shown.length;
+  const safe = level === "safe";
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -146,34 +142,50 @@ export default function SharedScreen() {
       <View
         style={[s.verdictCard, { borderColor: levelStrokes[level] }]}
         accessibilityRole="summary"
-        accessibilityLabel={t("mobile.shared.a11y_verdict", {
-          verdict: label, domain: result.domain, score: result.score,
-        })}
+        accessibilityLabel={
+          score === undefined
+            ? `${label}. ${domain}`
+            : t("mobile.shared.a11y_verdict", { verdict: label, domain, score })
+        }
       >
-        <View style={[s.ring, { borderColor: color + "66" }]}>
-          <Text style={[s.ringScore, { color }]}>{result.score}</Text>
-          <Text style={s.ringMax}>/100</Text>
-        </View>
-        <Text style={s.scoreCaption}>{t("mobile.shared.score_caption")}</Text>
+        {score === undefined ? (
+          <ListedMark size={104} />
+        ) : (
+          <>
+            <View style={[s.ring, { borderColor: color + "66" }]}>
+              <Text style={[s.ringScore, { color }]}>{score}</Text>
+              <Text style={s.ringMax}>/100</Text>
+            </View>
+            <Text style={s.scoreCaption}>{t("mobile.shared.score_caption")}</Text>
+          </>
+        )}
 
         <View style={s.verdictRow}>
           <Ionicons name={VERDICT_ICONS[level]} size={22} color={color} />
           <Text style={[s.verdictLabel, { color }]}>{label}</Text>
         </View>
-        <Text style={s.domain}>{result.domain}</Text>
+        <Text style={s.domain}>{result?.domain ?? domain}</Text>
         <Text style={s.advice}>{t(`mobile.shared.advice_${level}`)}</Text>
-        {result.confidence === "low" && (
+        {!listed && result?.confidence === "low" && (
           <Text style={s.lowConf}>{t("mobile.result.low_confidence")}</Text>
+        )}
+        {listed && (
+          <ServerDetailsNote
+            pending={pending}
+            failed={!pending && !result}
+            calm={!!result && serverLevel(result) === "safe"}
+            onRetry={retry}
+          />
         )}
       </View>
 
       {shown.length > 0 && (
         <View style={s.card}>
           <Text style={s.cardTitle}>{t("mobile.result.signals")}</Text>
-          {shown.map((r, i) => (
+          {shown.map((line, i) => (
             <View key={i} style={[s.signalRow, i > 0 && s.signalBorder]}>
               <View style={[s.signalDot, { backgroundColor: color }]} />
-              <Text style={s.signalText}>{reasonLabel(r, t)}</Text>
+              <Text style={s.signalText}>{line}</Text>
             </View>
           ))}
           {hidden > 0 && (
@@ -182,12 +194,12 @@ export default function SharedScreen() {
         </View>
       )}
 
-      {via === "guard" && result && url && (
+      {via === "guard" && url && (
         // Reached here by tapping a link (link guard), not by pasting. Let the
         // person continue to the real browser — muted "open anyway" when the
         // verdict is not safe, so it never nudges them toward a scam.
         <TouchableOpacity
-          style={result.level === "safe" ? s.primaryBtn : s.secondaryBtn}
+          style={safe ? s.primaryBtn : s.secondaryBtn}
           onPress={() => {
             if (openInBrowser(url)) leaveShared();
             else setNoBrowser(true);
@@ -195,8 +207,8 @@ export default function SharedScreen() {
           activeOpacity={0.85}
           accessibilityRole="button"
         >
-          <Text style={result.level === "safe" ? s.primaryLabel : s.secondaryLabel}>
-            {t(result.level === "safe" ? "mobile.shared.open_in_browser" : "mobile.shared.open_anyway")}
+          <Text style={safe ? s.primaryLabel : s.secondaryLabel}>
+            {t(safe ? "mobile.shared.open_in_browser" : "mobile.shared.open_anyway")}
           </Text>
         </TouchableOpacity>
       )}
@@ -206,7 +218,7 @@ export default function SharedScreen() {
       )}
 
       <TouchableOpacity
-        style={via === "guard" && result && result.level === "safe" ? s.secondaryBtn : s.primaryBtn}
+        style={via === "guard" && safe ? s.secondaryBtn : s.primaryBtn}
         onPress={() => router.push({
           pathname: "/result",
           params: via === "guard" ? { domain, from: "guard" } : { domain },
@@ -214,25 +226,60 @@ export default function SharedScreen() {
         activeOpacity={0.85}
         accessibilityRole="button"
       >
-        <Text style={via === "guard" && result && result.level === "safe" ? s.secondaryLabel : s.primaryLabel}>{t("mobile.shared.full_details")}</Text>
+        <Text style={via === "guard" && safe ? s.secondaryLabel : s.primaryLabel}>{t("mobile.shared.full_details")}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={s.secondaryBtn}
-        onPress={() => leaveShared()}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-      >
-        <Text style={s.secondaryLabel}>{t("mobile.shared.done")}</Text>
-      </TouchableOpacity>
+      <DoneButton label={t("mobile.shared.done")} onPress={leaveShared} />
 
       <View style={s.privacyRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
-        <Text style={s.privacy}>{t("mobile.result.privacy")}</Text>
+        {/* "Checked on our servers" only once the server has answered — a
+            listed site's verdict is the phone's own until then. */}
+        <Text style={s.privacy}>{t(result ? "mobile.result.privacy" : "mobile.result.privacy_listed")}</Text>
       </View>
     </ScrollView>
   );
 }
+
+/** The "why" lines: the list's own line first when it decided, then the server's. */
+function signalLines(
+  listed: string | null,
+  result: ServerAnswer | null,
+  t: TFunction,
+): string[] {
+  const server = reasonsToShow(listed, result).map((r) => reasonLabel(r, t));
+  return listed ? [t("mobile.result.listed_reason"), ...server] : server;
+}
+
+function DoneButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={s.secondaryBtn} onPress={onPress} activeOpacity={0.85} accessibilityRole="button">
+      <Text style={s.secondaryLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+interface CenteredMessageProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  body: string;
+  action: string;
+  onAction: () => void;
+}
+
+function CenteredMessage({ icon, title, body, action, onAction }: CenteredMessageProps) {
+  return (
+    <View style={s.center}>
+      <Ionicons name={icon} size={44} color={colors.amber} />
+      <Text style={s.centerTitle}>{title}</Text>
+      <Text style={s.centerBody}>{body}</Text>
+      <TouchableOpacity style={s.primaryBtn} onPress={onAction} activeOpacity={0.85} accessibilityRole="button">
+        <Text style={s.primaryLabel}>{action}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 
 
 const s = StyleSheet.create({

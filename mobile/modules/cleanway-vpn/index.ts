@@ -173,6 +173,98 @@ export function openVpnSettings(): boolean {
 }
 
 /**
+ * Pause blocking until `untilMs` (epoch ms). The tunnel stays up and blocking
+ * comes back by itself at that time — the app does not need to be alive for
+ * it, so a timed pause cannot quietly become permanent. No-op when the shield
+ * is not running or on builds without the call.
+ */
+export function pauseProtection(untilMs: number): void {
+  try {
+    CleanwayVpn.pauseProtection?.(untilMs);
+  } catch {
+    /* older native build */
+  }
+}
+
+/** End a timed pause now. */
+export function resumeProtection(): void {
+  try {
+    CleanwayVpn.resumeProtection?.();
+  } catch {
+    /* older native build */
+  }
+}
+
+/** When the current pause ends (epoch ms); 0 when not paused or unknown. */
+export function pausedUntil(): number {
+  try {
+    const until = CleanwayVpn.pausedUntil?.();
+    return typeof until === 'number' && until > Date.now() ? until : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * This install's random id (native, shared with the link guard's checks), or
+ * null on other platforms and older builds — the caller then keeps its own.
+ */
+export function nativeInstallId(): string | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    const id = CleanwayVpn.installId?.();
+    return typeof id === 'string' && id.length > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Can Cleanway show notifications? Null when this build cannot tell (iOS,
+ * older native builds) — never guessed as "on".
+ */
+export function notificationsEnabled(): boolean | null {
+  try {
+    return typeof CleanwayVpn.notificationsEnabled === 'function' ? CleanwayVpn.notificationsEnabled() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The person asked to turn block alerts on. Show Android's prompt where it can
+ * still be shown; where it cannot (refused twice on 13+, or switched off by
+ * hand on any version) open the system switch — the only place left. A "Don't
+ * allow" in the prompt itself is respected, not answered with a settings page.
+ */
+export async function turnOnBlockNotifications(): Promise<'on' | 'declined' | 'settings'> {
+  if (Platform.OS !== 'android') return 'declined';
+  try {
+    if (Platform.Version >= 33) {
+      const perm = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
+      const res = (await PermissionsAndroid.check(perm))
+        ? PermissionsAndroid.RESULTS.GRANTED
+        : await PermissionsAndroid.request(perm);
+      if (res === PermissionsAndroid.RESULTS.DENIED) return 'declined';
+      if (res !== PermissionsAndroid.RESULTS.GRANTED) return openNotificationSettings() ? 'settings' : 'declined';
+    }
+    if (notificationsEnabled() === false) return openNotificationSettings() ? 'settings' : 'declined';
+    return 'on';
+  } catch {
+    return 'declined';
+  }
+}
+
+/** Open this app's page in the system notification settings. False if none opened. */
+export function openNotificationSettings(): boolean {
+  try {
+    return typeof CleanwayVpn.openNotificationSettings === 'function' && CleanwayVpn.openNotificationSettings();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Did the user last leave the shield ON? False on older native builds, which
  * degrades to the ordinary "set up" flow.
  */
@@ -443,9 +535,10 @@ export async function matchBlocklist(host: string): Promise<string | null> {
 }
 
 /**
- * Does the link guard have a list to check tapped links with? Only the "All
- * apps" shield downloads one. False on other platforms, older native builds
- * and on error — so the app never claims links are checked when they are not.
+ * Does the link guard have a list to check tapped links with? The "All apps"
+ * shield downloads one; a build with a bundled starter list has one from
+ * install. False on other platforms, older native builds and on error — so
+ * the app never claims links are checked when they are not.
  */
 export async function linkListAvailable(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
