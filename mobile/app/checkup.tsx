@@ -9,9 +9,11 @@
  * is the person's own mark and the screen says so; the summary is "done N
  * of M", never a made-up safety score.
  *
- * Nothing on this screen leaves the phone: the marks and the saved number
+ * Nothing about the person leaves the phone: the marks and the saved number
  * live in secure storage here (services/checkup-store.ts), and an official
- * page opens in a real browser without passing through our link check.
+ * page opens in a real browser without passing through our link check. The
+ * shield row re-runs the home screen's own self-test (a canary lookup, and
+ * api.cleanway.ai/health when it fails) — see docs/PRIVACY.md.
  */
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
