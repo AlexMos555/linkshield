@@ -12,7 +12,11 @@ base ranks in Tranco, so adygeya.ru, vladimir.ru, the .su regions and the
 
 Output: sorted list of the multi-label PSL rules (ICANN and private sections)
 whose TLD is ru, su, xn--p1ai (рф) or xn--p1acf (рус), in ASCII (punycode)
-form, wildcards stripped, exception rules dropped. ~100 rules: the cctld.ru
+form. Wildcard rules keep their '*.': '*.hosting.myjino.ru' makes
+b.hosting.myjino.ru itself a public suffix, so a.b.hosting.myjino.ru is the
+registrable domain — stripping the '*.' would put it one level too high.
+Exception rules ('!') have no meaning here: the build fails if one appears
+under these TLDs (none today). ~100 rules: the cctld.ru
 reserved zones (gov.ru, mil.ru, edu.ru, ac.ru, int.ru), the FAITID regional
 zones (spb.ru, msk.ru, nov.ru, adygeya.ru, … and their .su twins), MSK-IX
 (net.ru, org.ru, pp.ru), com.ru, ras.ru, the .рус city zones, and a few
@@ -46,16 +50,23 @@ def _ascii(rule: str) -> str:
 
 
 def parse(psl_text: str) -> list[str]:
+    """The rules under TLDS, ASCII, wildcards kept as '*.<base>'. Raises
+    ValueError on an exception rule ('!') under TLDS: the scorer's lookup
+    does not implement them, and dropping one silently would mis-draw a
+    registrable boundary."""
     out: set[str] = set()
     for raw in psl_text.splitlines():
         line = raw.strip()
-        if not line or line.startswith("//") or line.startswith("!"):
+        if not line or line.startswith("//"):
             continue
-        if line.startswith("*."):
-            line = line[2:]
-        rule = _ascii(line.lower())
-        if "." in rule and rule.rsplit(".", 1)[1] in TLDS:
-            out.add(rule)
+        exception = line.startswith("!")
+        wildcard = line.startswith("*.")
+        body = _ascii(line.lstrip("!").removeprefix("*.").lower())
+        if "." not in body or body.rsplit(".", 1)[1] not in TLDS:
+            continue
+        if exception:
+            raise ValueError(f"PSL exception rule {line!r}: not supported by scoring._ru_suffix_length()")
+        out.add("*." + body if wildcard else body)
     return sorted(out)
 
 
