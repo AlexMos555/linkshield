@@ -251,3 +251,271 @@ def test_batch_cooldown_is_at_least_60s():
     generating 429s again."""
     eval_module = _load_eval_module()
     assert eval_module.CLEANWAY_BATCH_COOLDOWN_S >= 60.0
+
+
+# ─────────────────────────────────────────────────────────────────
+# The legitimate sample: real Russian sites outside the allowlist
+# ─────────────────────────────────────────────────────────────────
+
+import re  # noqa: E402
+
+import httpx  # noqa: E402
+import pytest  # noqa: E402
+
+
+def _legit():
+    _load_eval_module()  # puts scripts/ on sys.path
+    return importlib.import_module("benchmark_legit")
+
+
+def test_committed_legit_sample_is_big_sourced_and_outside_the_allowlist():
+    """The false-positive rate is only a measurement if the server really
+    analyses every legit site — none may be one it trusts on sight."""
+    from api.services.scoring import is_trusted_top_domain
+
+    legit = _legit()
+    sites = legit.load_legit_sample()
+    assert len(sites) >= legit.MIN_SITES
+    trusted = [s.host for s in sites if is_trusted_top_domain(s.host)]
+    assert trusted == [], f"auto-trusted by the server: {trusted}"
+    for s in sites:
+        assert re.fullmatch(r"Wikidata Q\d+ P856|full check 2026-09-25 #1", s.source), s
+    # Every kind of site an older person visits is represented.
+    by_category = {c: sum(1 for s in sites if s.category == c) for c in legit.CATEGORIES}
+    assert min(by_category.values()) >= 10, by_category
+    assert sum(1 for s in sites if s.host.endswith(".xn--p1ai")) >= 30  # .рф
+    # The geo-blocked case the 2026-09-25 report found called "Dangerous".
+    assert sum(1 for s in sites if s.reachability == "blocked-abroad") >= 30
+
+
+def test_the_report_s_false_alarms_are_in_the_sample():
+    hosts = {s.host for s in _legit().load_legit_sample()}
+    for named in ("bankspb.ru", "президент.рф", "мойбизнес.рф", "разговорыоважном.рф", "rosreestr.gov.ru"):
+        assert named.encode("idna").decode("ascii") in hosts, named
+
+
+@pytest.mark.parametrize(
+    "line,error",
+    [
+        ("example.ru | city | reachable-abroad | Wikidata Q1 P856", "expected"),
+        ("президент.рф | rf | reachable-abroad | Wikidata Q1 P856 | x", "punycode"),
+        ("www.example.ru | city | reachable-abroad | Wikidata Q1 P856 | x", "no www"),
+        ("https://example.ru | city | reachable-abroad | Wikidata Q1 P856 | x", "no scheme"),
+        ("example.ru | shop | reachable-abroad | Wikidata Q1 P856 | x", "unknown category"),
+        ("example.ru | city | somewhere | Wikidata Q1 P856 | x", "unknown reachability"),
+    ],
+)
+def test_malformed_legit_lines_fail_loudly(line, error):
+    with pytest.raises(ValueError, match=error):
+        _legit().parse_legit_sample(line)
+
+
+def test_a_repeated_legit_host_fails_loudly():
+    row = "example.ru | city | reachable-abroad | Wikidata Q1 P856 | x"
+    with pytest.raises(ValueError, match="twice"):
+        _legit().parse_legit_sample(f"# comment\n\n{row}\n{row}\n")
+
+
+def _sites(n: int):
+    legit = _legit()
+    return [legit.LegitSite(f"site{i}.ru", "city", "reachable-abroad", "Wikidata Q1 P856", "x") for i in range(n)]
+
+
+def test_selection_is_fixed_seed_and_drops_what_the_server_now_trusts():
+    legit = _legit()
+    sites = _sites(20)
+    first = legit.select_legit_sample(sites, 10, lambda h: h == "site3.ru")
+    again = legit.select_legit_sample(sites, 10, lambda h: h == "site3.ru")
+    assert first == again
+    assert len(first) == 10
+    assert "site3.ru" not in {s.host for s in first}
+
+
+def test_curated_run_claims_outside_allowlist_only_when_it_could_check(monkeypatch):
+    eval_module = _load_eval_module()
+    urls, sites, sources = eval_module.pick_legit("curated", 5, is_trusted=lambda _h: False)
+    assert len(urls) == 5 and all(u.startswith("https://") for u in urls)
+    assert [f"https://{s.host}" for s in sites] == urls
+    assert sources["legit_outside_allowlist"] is True
+
+    monkeypatch.setattr(_legit(), "allowlist_rule", lambda: None)
+    _, _, unverified = eval_module.pick_legit("curated", 5)
+    assert unverified["legit_outside_allowlist"] is False
+
+
+def test_tranco_run_never_claims_a_false_positive_measurement(tmp_path, monkeypatch):
+    eval_module = _load_eval_module()
+    _write_top_100k(tmp_path / "top_100k.json", ["a.com", "b.com"])
+    monkeypatch.setattr(eval_module, "DATA", tmp_path)
+    _, sites, sources = eval_module.pick_legit("tranco", 2)
+    assert sites is None
+    assert sources["legit_outside_allowlist"] is False
+
+
+def test_cleanway_answers_are_broken_down_by_slice():
+    legit = _legit()
+    sites = [
+        legit.LegitSite("a.ru", "city", "blocked-abroad", "Wikidata Q1 P856", "a"),
+        legit.LegitSite("b.ru", "city", "reachable-abroad", "Wikidata Q2 P856", "b"),
+        legit.LegitSite("c.ru", "bank", "reachable-abroad", "Wikidata Q3 P856", "c"),
+    ]
+    outcomes = [
+        legit.cleanway_outcome("dangerous", "dangerous"),
+        legit.cleanway_outcome("unknown", "caution"),
+        legit.cleanway_outcome("unknown", "rate_limited"),
+    ]
+    assert outcomes == ["dangerous", "caution", "no_answer"]
+    out = legit.legit_breakdown(outcomes, sites)
+    assert out["overall"] == {"safe": 0, "caution": 1, "dangerous": 1, "not_found": 0, "no_answer": 1}
+    assert out["by_reachability"]["blocked-abroad"]["dangerous"] == 1
+    assert out["by_category"]["city"]["caution"] == 1
+    md = "\n".join(legit.render_breakdown_md(out))
+    assert "| blocked-abroad | 0 | 0 | 1 | 0 | 0 |" in md
+
+
+# ─────────────────────────────────────────────────────────────────
+# Rate-limit identity: rotating installs under the per-IP ceiling
+# ─────────────────────────────────────────────────────────────────
+
+
+class _FakeTime:
+    def __init__(self):
+        self.now = 1000.0
+        self.sleeps: list[float] = []
+
+    def clock(self) -> float:
+        return self.now
+
+    async def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def _pool(eval_module, fake, **kw):
+    ids = iter(f"id-{i}" for i in range(1, 100))
+    return eval_module.InstallPool(clock=fake.clock, sleep=fake.sleep, new_id=lambda: next(ids), **kw)
+
+
+async def _ask(pool) -> str:
+    async with pool.identity() as headers:
+        return headers["X-Cleanway-Install"]
+
+
+@pytest.mark.asyncio
+async def test_each_install_is_paced_like_a_phone():
+    eval_module = _load_eval_module()
+    fake = _FakeTime()
+    pool = _pool(eval_module, fake, size=1, min_interval=16.0)
+    await _ask(pool)
+    await _ask(pool)
+    assert fake.sleeps == [16.0]  # 5 fresh checks a minute per install
+
+
+@pytest.mark.asyncio
+async def test_an_install_is_retired_after_its_quota():
+    eval_module = _load_eval_module()
+    fake = _FakeTime()
+    pool = _pool(eval_module, fake, size=1, per_install=2, min_interval=0.0)
+    assert [await _ask(pool) for _ in range(5)] == ["id-1", "id-1", "id-2", "id-2", "id-3"]
+    assert pool.installs_used == 3
+
+
+@pytest.mark.asyncio
+async def test_the_run_stays_under_its_hourly_budget():
+    eval_module = _load_eval_module()
+    fake = _FakeTime()
+    pool = _pool(eval_module, fake, size=1, per_install=100, min_interval=0.0, hourly_budget=3)
+    for _ in range(4):
+        await _ask(pool)
+    assert len(fake.sleeps) == 1 and fake.sleeps[0] >= 3600  # the 4th waits for the window
+
+
+@pytest.mark.asyncio
+async def test_no_more_installs_in_flight_than_the_pool_holds():
+    import asyncio
+
+    eval_module = _load_eval_module()
+    pool = eval_module.InstallPool(size=2, min_interval=0.0)
+    first, second = pool.identity(), pool.identity()
+    await first.__aenter__()
+    await second.__aenter__()
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(_ask(pool), timeout=0.05)
+    await first.__aexit__(None, None, None)
+    assert re.fullmatch(r"[0-9a-f-]{36}", await _ask(pool))
+    await second.__aexit__(None, None, None)
+
+
+def test_the_run_is_bounded_below_the_servers_per_ip_ceilings():
+    from api.config import get_settings
+
+    eval_module = _load_eval_module()
+    s = get_settings()
+    assert eval_module.IP_HOURLY_CEILING == s.public_install_ip_ceiling_per_window
+    assert eval_module.IP_HOURLY_BUDGET < s.public_install_ip_ceiling_per_window
+    assert eval_module.REQUESTS_PER_INSTALL < s.public_install_rate_limit_per_window
+    fresh_per_minute = eval_module.PARALLEL_INSTALLS * 60 / eval_module.MIN_INTERVAL_S["cleanway"]
+    assert fresh_per_minute < s.public_fresh_ip_ceiling_per_minute
+    assert 60 / eval_module.MIN_INTERVAL_S["cleanway"] < s.public_fresh_checks_per_minute
+
+
+async def _one_check(eval_module, monkeypatch, token: str) -> dict:
+    monkeypatch.setattr(eval_module, "BENCHMARK_BYPASS_TOKEN", token)
+    monkeypatch.setattr(eval_module, "_POOL", eval_module.InstallPool(size=1, min_interval=0.0))
+    seen: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(dict(request.headers))
+        return httpx.Response(200, json={"level": "safe", "score": 3})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        verdict = await eval_module.check_cleanway(client, "https://example.ru")
+    assert verdict.verdict == "safe"
+    return seen[0]
+
+
+@pytest.mark.asyncio
+async def test_without_a_token_the_benchmark_identifies_as_an_app_install(monkeypatch):
+    from api.services.rate_limiter import _INSTALL_ID_RE
+
+    headers = await _one_check(_load_eval_module(), monkeypatch, token="")
+    assert _INSTALL_ID_RE.fullmatch(headers["x-cleanway-install"])  # the server accepts it
+    assert "x-cleanway-benchmark" not in headers
+
+
+@pytest.mark.asyncio
+async def test_latency_is_the_servers_not_our_own_pacing(monkeypatch):
+    """The first smoke run reported a 14 s median: the wait for a paced
+    install was counted as Cleanway's answer time."""
+    eval_module = _load_eval_module()
+    monkeypatch.setattr(eval_module, "BENCHMARK_BYPASS_TOKEN", "")
+    monkeypatch.setattr(eval_module, "_POOL", eval_module.InstallPool(size=1, min_interval=0.3))
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"level": "safe", "score": 0})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        await eval_module.check_cleanway(client, "https://one.ru")
+        paced = await eval_module.check_cleanway(client, "https://two.ru")  # waits ~0.3 s for the install
+    assert paced.latency_ms < 150
+
+
+@pytest.mark.asyncio
+async def test_with_a_token_the_benchmark_uses_the_bypass(monkeypatch):
+    headers = await _one_check(_load_eval_module(), monkeypatch, token="tok")
+    assert headers["x-cleanway-benchmark"] == "tok"
+    assert "x-cleanway-install" not in headers
+
+
+def test_report_markdown_says_what_the_legit_sample_is():
+    eval_module = _load_eval_module()
+    report = _healthy_report()
+    for batch in ("phishing", "safe"):
+        report[batch]["cleanway"]["latency_p50_ms"] = None
+    report["sources"] = {"legit_outside_allowlist": True, "cleanway_identity": "4 rotating installs"}
+    report["cleanway_on_legit"] = _legit().legit_breakdown([], [])
+    md = eval_module.render_md(report)
+    assert "OUTSIDE the Tranco top-100k" in md
+    assert "Cleanway on the legitimate sample" in md
+    report["sources"]["legit_outside_allowlist"] = False
+    assert "NOT a measurement" in eval_module.render_md(report)

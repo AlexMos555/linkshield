@@ -11,6 +11,7 @@ DNS canary could not fail and ran every ~3.5 h instead of every 15 min.
 | `dns-canary.yml` | 4× per hour | ~1 per 3.5 h (46–47 runs in 7 days, measured 2026-09-18..25) | a must-resolve name is dark, the gateway resolves nothing, a listed name is not blocked **by us**, the phone artifact is stale/broken, `/health/deep` is degraded, or `/ru/android` is down |
 | `refresh-dangerous-domains.yml` | every 6 h | on time so far (199 of 200 runs green) | exit 2: no feed readable · 4: a gate kept the previous set · 5: post-publish check failed, rolled back · **6: published, but a feed has been down or truncated for 12 h+** |
 | `security.yml` → gitleaks | every push + weekly | on time | a committed secret — or a new false positive (see below) |
+| `weekly-benchmark.yml` | Sundays 21:15 UTC | not yet measured on the new schedule | the run crashed. A failed "Check the legitimate sample" step (the job still passes) means a site in `data/benchmark_legit_ru.txt` stopped resolving or is now auto-trusted: prune it (the run itself still counts it as no answer / drops it). A small or rate-limited run is not red — it just leaves `latest.json` alone |
 
 **GitHub scheduled workflows are best-effort.** GitHub drops scheduled runs
 under load; nothing in the repository can make the canary run every 15

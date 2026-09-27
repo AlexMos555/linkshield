@@ -16,12 +16,16 @@ name: Weekly fresh-URL benchmark (recall transparency)
 
 on:
   schedule:
-    - cron: '15 5 * * 1'   # Mondays 05:15 UTC — off-peak everywhere,
-                            # gives us the freshest Sunday-night PhishTank dump
+    # Sundays 21:15 UTC (00:15 Moscow). Each fresh check may spend one call of
+    # the service-wide daily budgets for paid sources (IPQS, LLM judge — per
+    # UTC day, api/services/paid_budget.py). Late on a UTC day the run uses up
+    # what is left of that day, which resets at 00:00 UTC, instead of starving
+    # real users for a whole Monday.
+    - cron: '15 21 * * 0'
   workflow_dispatch:
     inputs:
       sample:
-        description: 'URLs per side (phishing + legit). Wall-time ≈ 2 * sample * MIN_INTERVAL_S + cooldown. sample=100 → ~55min, sample=200 → ~110min. Match to timeout-minutes below.'
+        description: 'URLs per side (phishing + legit). Without the bypass token about 15 Cleanway checks a minute: sample=100 → ~15 min, sample=200 → ~30 min, plus the other resolvers.'
         type: number
         default: 100
 
@@ -52,7 +56,19 @@ jobs:
       - name: Install deps
         run: |
           pip install --upgrade pip
-          pip install httpx
+          # pydantic: the script imports the server's own allowlist rule
+          # (api.services.scoring.is_trusted_top_domain) to prove the legit
+          # sample sits outside it. Without it the report says
+          # legit_outside_allowlist=false and the site shows no FP rate.
+          pip install httpx==0.28.1 "pydantic>=2,<3"
+
+      - name: Check the legitimate sample
+        # Every listed site still resolves and none is auto-trusted. A red
+        # step here is a to-do (prune the list), not a reason to skip the
+        # week: a lapsed site scores `not_found`, which counts as no answer,
+        # and an auto-trusted one is dropped by the run itself.
+        continue-on-error: true
+        run: python scripts/eval_fresh_urls.py --verify-legit-sample
 
       - name: Run benchmark
         env:
@@ -60,10 +76,11 @@ jobs:
           GOOGLE_SAFE_BROWSING_KEY: ${{ secrets.GOOGLE_SAFE_BROWSING_KEY }}
           PHISHTANK_API_KEY: ${{ secrets.PHISHTANK_API_KEY }}
           VT_API_KEY: ${{ secrets.VT_API_KEY }}
-          # When set, eval_fresh_urls.py sends this as X-Cleanway-Benchmark so
-          # the server skips the 5/min IP rate-limit for the run — turning a
-          # ~110-min throttled crawl into a few minutes, which lets the weekly
-          # cron actually finish inside the timeout AND clear the quality gate.
+          # Optional. When set, eval_fresh_urls.py sends it as
+          # X-Cleanway-Benchmark and the server skips its per-IP limits.
+          # Without it the script identifies as a few rotating app installs
+          # (X-Cleanway-Install) and stays under the server's per-IP
+          # ceilings — see "Rate-limit identity" in the script.
           BENCHMARK_BYPASS_TOKEN: ${{ secrets.BENCHMARK_BYPASS_TOKEN }}
         run: |
           # We deliberately use the live PUBLIC endpoint here, not
@@ -72,19 +89,14 @@ jobs:
           # link. Public-only run keeps the benchmark anonymous,
           # exactly like a curious developer would.
           #
-          # Sample sizing:
-          #   - dispatch: honour the input.
-          #   - schedule with bypass token: 200 (fast, clears the >=100 gate).
-          #   - schedule without token: 60 — the throttled crawl still fits the
-          #     90-min timeout; the quality gate will (correctly) decline to
-          #     publish a sub-100 sample, leaving the last good latest.json in
-          #     place. So a token-less cron runs green + honest, just no refresh.
+          # Sample sizing: dispatch honours the input; the schedule runs 200
+          # per side (the gate needs >= 100 phishing). Without the token that
+          # is ~400 Cleanway checks at ~15 a minute — ~30 min, inside the
+          # 90-min timeout.
           if [ -n "${{ github.event.inputs.sample }}" ]; then
             SAMPLE="${{ github.event.inputs.sample }}"
-          elif [ -n "${BENCHMARK_BYPASS_TOKEN}" ]; then
-            SAMPLE=200
           else
-            SAMPLE=60
+            SAMPLE=200
           fi
           echo "Running benchmark with sample=$SAMPLE (bypass token $([ -n "${BENCHMARK_BYPASS_TOKEN}" ] && echo present || echo absent))"
           python scripts/eval_fresh_urls.py \

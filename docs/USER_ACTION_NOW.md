@@ -94,13 +94,12 @@
 
 ## 🟡 НЕ БЛОКЕРЫ (можно после, но полезно)
 
-### 7. BENCHMARK_BYPASS_TOKEN (включает weekly auto-refresh цифр)
-**Что:** Сгенерить `openssl rand -hex 32`, вставить ОДНО значение в два места:
-Railway env `BENCHMARK_BYPASS_TOKEN` + GitHub Actions secret `BENCHMARK_BYPASS_TOKEN`.
-**Зачем:** без него weekly-бенчмарк не может обновлять latest.json (rate-limit не даёт
-набрать выборку в timeout). С ним — цифра recall на лендинге авто-обновляется каждую неделю.
-Сейчас честный 61.5% и так стоит, просто не рефрешится.
-**Время:** 3 мин.
+### 7. BENCHMARK_BYPASS_TOKEN — больше не блокер (с 2026-09-27)
+Weekly-бенчмарк рассчитан укладываться в лимиты без токена: ходит как несколько
+установок приложения (`X-Cleanway-Install`) в пределах потолка на один IP
+(см. «Rate-limit identity» в `scripts/eval_fresh_urls.py`). Проверено на 30
+запросах к проду 2026-09-27 (ни одного 429); полный недельный прогон (~400
+запросов) ещё не шёл. Токен по-прежнему работает, если его добавить (быстрее).
 
 ### 8. Microsoft for Startups Founders Hub
 **Где:** foundershub.startups.microsoft.com/signup
