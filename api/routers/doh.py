@@ -40,6 +40,7 @@ router = APIRouter(tags=["doh"])
 async def handle_query(
     wire: bytes,
     proxy: Optional[Callable[[bytes], Awaitable[Optional[bytes]]]] = None,
+    log_block: bool = True,
 ) -> tuple[bytes, int]:
     """Core decision: block or proxy. Returns (response_wire, http_status).
 
@@ -52,6 +53,8 @@ async def handle_query(
     /health/deep self-probe passes one that never touches the network, so a
     name that is NOT blocked comes back SERVFAIL instead of costing a
     Cloudflare round-trip — the probe tests our decision, not their uptime.
+    It also passes `log_block=False`: its canary block is not a user's, and
+    one "DoH blocked qname" line per health check would bury the real ones.
     """
     if not wire:
         return b"", 400
@@ -63,10 +66,11 @@ async def handle_query(
     except Exception:
         logger.debug("DoH redis unavailable, proxying clean", exc_info=True)
     if qname and await is_blocked_redis(qname, r):
-        logger.info(
-            "DoH blocked qname",
-            extra={"qname_suffix": qname[-32:] if qname else None},
-        )
+        if log_block:
+            logger.info(
+                "DoH blocked qname",
+                extra={"qname_suffix": qname[-32:] if qname else None},
+            )
         return make_nxdomain_response(wire), 200
 
     upstream = await (proxy or proxy_to_upstream)(wire)

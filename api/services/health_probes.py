@@ -11,7 +11,7 @@ body, and in `warnings`, where a keyword monitor can alert on them.
     than MAX_HEALTHY_AGE_S (the canary's threshold).
   * doh — one query for the list canary through the gateway's real decision
     code (routers.doh.handle_query), in process, with an upstream that never
-    touches the network. Pass = NXDOMAIN carrying OUR SOA marker. If the
+    touches the network and without the gateway's per-block log line. Pass = NXDOMAIN carrying OUR SOA marker. If the
     canary is not in `dangerous_domains` (set expired, Redis down so the
     gateway fails open, publisher broken), the stub upstream answers and the
     probe sees SERVFAIL — the state in which the DNS profile blocks nothing.
@@ -96,7 +96,7 @@ async def _no_upstream(_wire: bytes) -> Optional[bytes]:
 async def _doh() -> dict:
     from api.routers.doh import handle_query
     started = time.monotonic()
-    body, status = await handle_query(_canary_query(), proxy=_no_upstream)
+    body, status = await handle_query(_canary_query(), proxy=_no_upstream, log_block=False)
     elapsed_ms = round((time.monotonic() - started) * 1000, 1)
     out = {"probe": LIST_CANARY, "elapsed_ms": elapsed_ms}
     if status != 200:
