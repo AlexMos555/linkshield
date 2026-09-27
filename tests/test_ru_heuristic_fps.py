@@ -17,6 +17,7 @@ its remaining false positives are reported, not fixed, here.
 """
 from __future__ import annotations
 
+import asyncio
 import importlib
 import json
 import sys
@@ -252,3 +253,41 @@ def test_eval_parser_rejects_bad_lines():
         ev.parse_hosts("a.ru | x | y\na.ru | x | y")
     assert [h.host for h in ev.parse_hosts("# c\n\na.ru | short_name | s | n")] == ["a.ru"]
 
+
+# ── The analyzer's vouch for a site it could not open ──
+
+def test_regional_gov_label_is_not_a_government_registry():
+    """'gov' is not reserved in the FAITID regional zones — gov.vladimir.ru
+    was unregistered on 2026-09-27 — so only named sites are vouched for."""
+    from api.services.analyzer import _government_name
+
+    assert _government_name("kvs.gov.spb.ru") and _government_name("gov.spb.ru")
+    assert _government_name("rosreestr.gov.ru")
+    for host in ("gov.vladimir.ru", "x.gov.msk.ru", "gov.nov.ru", "evilgov.spb.ru", "gov.spb.ru.evil.com"):
+        assert not _government_name(host), host
+
+
+@pytest.mark.parametrize("host, zone, rank", [
+    ("vozvrat-sredstv.msk.ru", "msk.ru", 6032),
+    ("gosuslugi-lk.spb.ru", "spb.ru", 2605),
+])
+def test_a_zones_rank_does_not_vouch_for_names_under_it(host, zone, rank, offline_analyzer, no_ml):
+    """Tranco ranks msk.ru and spb.ru as one name each. An unreachable host
+    anyone registered under them borrowed that rank and came back 'safe'."""
+    from api.services.analyzer import analyze_domain
+
+    offline_analyzer(site="unreachable", ranks={zone: rank})
+    result = asyncio.run(analyze_domain(host, budget_s=5.0))
+    assert result.level == RiskLevel.caution, (result.score, [r.signal for r in result.reasons])
+    detail = next(r for r in result.reasons if r.signal == "unreachable_from_scanner").detail
+    assert "not a widely known site" in detail
+
+
+def test_the_st_petersburg_government_is_vouched_for_when_unreachable(offline_analyzer, no_ml):
+    from api.services.analyzer import analyze_domain
+
+    offline_analyzer(site="unreachable")
+    result = asyncio.run(analyze_domain("kvs.gov.spb.ru", budget_s=5.0))
+    assert result.level == RiskLevel.safe, (result.score, [r.signal for r in result.reasons])
+    detail = next(r for r in result.reasons if r.signal == "unreachable_from_scanner").detail
+    assert "not a widely known site" not in detail
