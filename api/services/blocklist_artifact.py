@@ -49,6 +49,16 @@ REDIS_TEXT_KEY = "dangerous_domains:mobile:v1"
 REDIS_META_KEY = "dangerous_domains:mobile:v1:meta"
 FORMAT_VERSION = "v2"
 
+# How old the published artifact may get before a watcher calls the publisher
+# dead: the DNS canary and /health/deep's `blocklist` component. The publisher
+# (.github/workflows/refresh-dangerous-domains.yml) runs on cron
+# '23 */6 * * *'. GitHub cron drifts, so a threshold equal to the cadence fails
+# by construction whenever one run is late — 4 of 100 canary runs, publisher
+# 60/60 green. 13h absorbs a whole missed slot plus drift, and is still far
+# inside the 48h a phone tolerates (BlockList.kt STALE_AFTER_MS) before it
+# calls its own copy stale.
+MAX_HEALTHY_AGE_S = 13 * 60 * 60
+
 # ── v2: 48-bit hashes instead of names ──
 #
 # v1 shipped the names as text. With the feeds that give real coverage the

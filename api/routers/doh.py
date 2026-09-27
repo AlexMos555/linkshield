@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import Response as FastAPIResponse
@@ -37,13 +37,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["doh"])
 
 
-async def _handle_query(wire: bytes) -> tuple[bytes, int]:
+async def handle_query(
+    wire: bytes,
+    proxy: Optional[Callable[[bytes], Awaitable[Optional[bytes]]]] = None,
+) -> tuple[bytes, int]:
     """Core decision: block or proxy. Returns (response_wire, http_status).
 
     The blocklist check is a Redis SISMEMBER (O(1)) on the hot path —
     NOT SMEMBERS, which would pull the entire `dangerous_domains` set
     per query. Redis outage → is_blocked_redis returns False → proxy
     clean (fail-open: blocking a legit domain is worse than a miss).
+
+    `proxy` replaces the upstream call (default: proxy_to_upstream). The
+    /health/deep self-probe passes one that never touches the network, so a
+    name that is NOT blocked comes back SERVFAIL instead of costing a
+    Cloudflare round-trip — the probe tests our decision, not their uptime.
     """
     if not wire:
         return b"", 400
@@ -61,7 +69,7 @@ async def _handle_query(wire: bytes) -> tuple[bytes, int]:
         )
         return make_nxdomain_response(wire), 200
 
-    upstream = await proxy_to_upstream(wire)
+    upstream = await (proxy or proxy_to_upstream)(wire)
     if upstream is None:
         # Upstream outage — SERVFAIL, so the client retries with its
         # other resolvers instead of believing (and negatively caching)
@@ -80,7 +88,7 @@ async def doh_post(request: Request) -> Response:
     Apple's Private Relay configuration profile uses this form.
     """
     wire = await request.body()
-    body, status = await _handle_query(wire)
+    body, status = await handle_query(wire)
     return FastAPIResponse(
         content=body,
         media_type=DOH_CONTENT_TYPE,
@@ -110,7 +118,7 @@ async def doh_get(
         wire = base64.urlsafe_b64decode(padded)
     except Exception:
         return FastAPIResponse(content=b"", status_code=400)
-    body, status = await _handle_query(wire)
+    body, status = await handle_query(wire)
     return FastAPIResponse(
         content=body,
         media_type=DOH_CONTENT_TYPE,

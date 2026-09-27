@@ -26,13 +26,26 @@ minutes. Treat it as a periodic audit, not a pager.
    - `GET https://cleanway.ai/ru/android` — alert unless HTTP 200.
    Use GET, not HEAD: the API answers HEAD with 405.
 
-   **What this monitor does not see.** `/health/deep` checks only Redis and
-   Supabase. It stays green while the phone blocklist is stale or missing,
-   while the `dangerous_domains` set has expired, and while the DNS gateway
-   has stopped filtering. Those failures are caught only by the DNS canary
-   (really about once every 3.5 h, see the table) and by the refresh job's
-   own red runs. So the monitor watches the API, not grandma's protection.
-   Putting blocklist freshness into `/health/deep` is an open follow-up.
+   **Grandma's protection, too (optional third check).** Since 2026-09-27
+   `/health/deep` also reports two components that never page (never turn
+   it into a 503) but are listed in `warnings` when they fail:
+   - `blocklist` — the artifact phones sync: published, more than the list
+     canary alone, and younger than 13 h (`MAX_HEALTHY_AGE_S`, the canary's
+     threshold). `error`: `unavailable` (nothing servable in Redis),
+     `empty`, `stale`, `bad_meta`, `timeout`;
+   - `doh` — one query for `list-canary.cleanway.ai` through the gateway's
+     own decision code, in process, with a stub upstream (no network). OK =
+     our NXDOMAIN. `error: listed_name_not_blocked` means the DNS profile
+     blocks nothing right now: `dangerous_domains` expired or lost the
+     canary, or Redis is down and the gateway is failing open.
+   A keyword check on the same URL — alert unless the body contains
+   `"warnings":[]` — turns those into an alert without waking anyone for a
+   Redis-only blip. It needs no new endpoint and no secret.
+
+   **What this monitor still does not see.** The in-process DoH probe proves
+   the decision code and the Redis set, not the public path (Railway routing,
+   TLS, the `/dns-query` route, the upstream resolver); the DNS canary still
+   covers those end to end (really about once every 3.5 h, see the table).
 2. **Optional: run the DNS canary on a real clock.** An external cron (e.g.
    cron-job.org) can call GitHub's `workflow_dispatch` for `dns-canary.yml`
    every 15 minutes. It needs a fine-grained token with *Actions: read and
@@ -121,8 +134,11 @@ https://safebrowsing.google.com/safebrowsing/report_error/.
 ## When the DNS canary goes red
 
 - `LISTED NAME NOT BLOCKED` / `NOT BLOCKED BY US` — the gateway is not
-  filtering. Check `/health` (`blocklist_version`, `blocklist_age_s`) and the
-  last refresh run; the `dangerous_domains` set may have expired (3-day TTL).
+  filtering. Check `/health/deep` (`components.doh`, `components.blocklist`)
+  and the last refresh run; the `dangerous_domains` set may have expired
+  (3-day TTL). If `components.doh.ok` is true while the canary says not
+  blocked, the decision code works and the fault is on the public path
+  (routing, the `/dns-query` route, caching in front of it).
 - `BLOCKED A POPULAR NAME` — a real site is dark for everyone on the DNS
   profile. The refresh job rolls itself back when its own post-publish check
   sees one of `NEVER_BLOCK_GUARDS` dark (exit 5); a name outside that list
