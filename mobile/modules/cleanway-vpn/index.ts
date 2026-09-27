@@ -12,7 +12,7 @@ export const LIST_CANARY_DOMAIN = 'list-canary.cleanway.ai';
 /** Overall probe deadline and the poll cadence within it. */
 const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
-import type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource } from './src/CleanwayVpn.types';
+import type { BlocklistStatus, DomainBlockedPayload, PickedContact, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource } from './src/CleanwayVpn.types';
 import type {
   MessageAnalysis,
   MessageAnalysisResult,
@@ -24,7 +24,7 @@ import type {
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
 
-export type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource };
+export type { BlocklistStatus, DomainBlockedPayload, PickedContact, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource };
 export type {
   MessageAnalysis,
   MessageAnalysisResult,
@@ -544,6 +544,83 @@ export async function linkListAvailable(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
   try {
     return (await CleanwayVpn.linkListAvailable?.()) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Is Cleanway under Android's "Restricted" battery use (then the shield can
+ * stop without a word)? Null on other platforms, below Android 9 and on
+ * older native builds — never guessed either way.
+ */
+export function backgroundRestricted(): boolean | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    if (typeof CleanwayVpn.backgroundRestricted !== 'function') return null;
+    const restricted = CleanwayVpn.backgroundRestricted();
+    return typeof restricted === 'boolean' ? restricted : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Open this app's page in system settings, where "Battery" lives. False if none opened. */
+export function openAppSettings(): boolean {
+  try {
+    return typeof CleanwayVpn.openAppSettings === 'function' && CleanwayVpn.openAppSettings();
+  } catch {
+    return false;
+  }
+}
+
+/** Open the system list "Install unknown apps". False if none opened. */
+export function openUnknownAppSources(): boolean {
+  try {
+    return typeof CleanwayVpn.openUnknownAppSources === 'function' && CleanwayVpn.openUnknownAppSources();
+  } catch {
+    return false;
+  }
+}
+
+/** Can this build open the system contact picker? Android with a build that carries it. */
+export function isContactPickerSupported(): boolean {
+  try {
+    return Platform.OS === 'android' && typeof CleanwayVpn.pickContactPhone === 'function';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The system contact picker: the chosen row's name and number, or null when
+ * the person backed out. No contacts permission — the picker hands over the
+ * one row that was chosen, and nothing else is read.
+ */
+export async function pickContactPhone(): Promise<PickedContact | null> {
+  if (!isContactPickerSupported()) return null;
+  try {
+    const picked = await CleanwayVpn.pickContactPhone?.();
+    if (!picked || typeof picked !== 'object') return null;
+    return {
+      name: typeof picked.name === 'string' ? picked.name : null,
+      number: typeof picked.number === 'string' ? picked.number : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Open the dialer with [number] filled in (ACTION_DIAL): nothing is dialled
+ * until the person presses call. False on other platforms, on older native
+ * builds and for a number that is not plainly dialable — the caller then
+ * falls back to a tel: link.
+ */
+export function dialNumber(number: string): boolean {
+  if (Platform.OS !== 'android') return false;
+  try {
+    return typeof CleanwayVpn.dialNumber === 'function' && CleanwayVpn.dialNumber(number);
   } catch {
     return false;
   }

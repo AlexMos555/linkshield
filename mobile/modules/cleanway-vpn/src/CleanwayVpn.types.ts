@@ -144,3 +144,12 @@ export type MessageAnalysis = {
 export type MessageAnalysisResult =
   | ({ available: true } & MessageAnalysis)
   | { available: false; reason: 'unsupported' | 'failed' };
+
+/**
+ * One row from the system contact picker. `number` is as the address book
+ * stores it — not yet checked for being dialable.
+ */
+export type PickedContact = {
+  name: string | null;
+  number: string | null;
+};

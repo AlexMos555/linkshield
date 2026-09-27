@@ -17,6 +17,8 @@ import expo.modules.kotlin.modules.ModuleDefinition
 
 // Arbitrary request code for the system VPN-consent dialog.
 private const val VPN_CONSENT_REQUEST = 0x7A11
+// The system contact picker ("Позвонить близкому"). 0x7A12/0x7A13 are taken.
+private const val CONTACT_PICK_REQUEST = 0x7A14
 
 /**
  * JS <-> native bridge for Cleanway's local DNS-filtering VPN (Android).
@@ -29,6 +31,7 @@ class CleanwayVpnModule : Module() {
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
 
   private var pendingStart: Promise? = null
+  private var pendingContact: Promise? = null
   private var blockReceiver: BroadcastReceiver? = null
 
   override fun definition() = ModuleDefinition {
@@ -460,15 +463,82 @@ class CleanwayVpnModule : Module() {
       }
     }
 
+    /**
+     * Is Cleanway under Android's "Restricted" battery use? Null below
+     * Android 9 and on error. See ai.cleanway.app.ProtectionCheckup.
+     */
+    Function("backgroundRestricted") {
+      ai.cleanway.app.ProtectionCheckup.backgroundRestricted(context)
+    }
+
+    /** This app's page in system settings, where "Battery" lives. False if none opened. */
+    Function("openAppSettings") {
+      ai.cleanway.app.ProtectionCheckup.open(context, ai.cleanway.app.ProtectionCheckup.appDetailsIntent(context))
+    }
+
+    /** The system list "Install unknown apps". False if none opened. */
+    Function("openUnknownAppSources") {
+      ai.cleanway.app.ProtectionCheckup.open(context, ai.cleanway.app.ProtectionCheckup.unknownSourcesIntent())
+    }
+
+    /**
+     * Let the person choose one phone number in the system contact picker.
+     * Resolves {name, number} — the number as stored, unvalidated — or null
+     * when they backed out or the phone has no picker. No READ_CONTACTS: the
+     * picker grants access to the chosen row only.
+     */
+    AsyncFunction("pickContactPhone") { promise: Promise ->
+      if (pendingContact != null) {
+        promise.reject("E_PICK_IN_PROGRESS", "A contact picker is already open", null)
+        return@AsyncFunction
+      }
+      val activity = appContext.currentActivity
+      if (activity == null) {
+        promise.resolve(null)
+        return@AsyncFunction
+      }
+      try {
+        pendingContact = promise
+        activity.startActivityForResult(ai.cleanway.app.ProtectionCheckup.contactPickIntent(), CONTACT_PICK_REQUEST)
+      } catch (e: Exception) {
+        pendingContact = null
+        promise.resolve(null)
+      }
+    }
+
+    /**
+     * Open the dialer with [number] filled in (ACTION_DIAL — the person
+     * presses call). False for a number that is not plainly dialable, or
+     * when the phone has no dialer.
+     */
+    Function("dialNumber") { number: String ->
+      val intent = ai.cleanway.app.ProtectionCheckup.dialIntent(number) ?: return@Function false
+      ai.cleanway.app.ProtectionCheckup.open(context, intent)
+    }
+
     OnActivityResult { _, payload ->
-      if (payload.requestCode == VPN_CONSENT_REQUEST) {
-        val promise = pendingStart
-        pendingStart = null
-        if (payload.resultCode == Activity.RESULT_OK) {
-          startService()
-          promise?.resolve(true)
-        } else {
-          promise?.resolve(false)
+      when (payload.requestCode) {
+        VPN_CONSENT_REQUEST -> {
+          val promise = pendingStart
+          pendingStart = null
+          if (payload.resultCode == Activity.RESULT_OK) {
+            startService()
+            promise?.resolve(true)
+          } else {
+            promise?.resolve(false)
+          }
+        }
+        CONTACT_PICK_REQUEST -> {
+          val promise = pendingContact
+          pendingContact = null
+          val uri = payload.data?.data
+          promise?.resolve(
+            if (payload.resultCode == Activity.RESULT_OK && uri != null) {
+              ai.cleanway.app.ProtectionCheckup.readPickedPhone(context, uri)
+            } else {
+              null
+            }
+          )
         }
       }
     }
@@ -479,6 +549,8 @@ class CleanwayVpnModule : Module() {
       unregisterBlockReceiver()
       pendingStart?.reject("E_MODULE_DESTROYED", "VPN module destroyed before consent completed", null)
       pendingStart = null
+      pendingContact?.resolve(null)
+      pendingContact = null
     }
   }
 
