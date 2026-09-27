@@ -167,7 +167,7 @@ class CleanwayVpnService : VpnService() {
             // Explicit user request: forget the intent so we do not come back
             // on the next boot.
             ShieldPreference.setUserEnabled(this, false)
-            ShieldPreference.setStopReason(this, null)
+            ShieldPreference.noteTunnel(this, ShieldPreference.TunnelEvent.STOPPED_BY_PERSON)
             ShieldPreference.setPausedUntil(
                 this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STOPPED_BY_PERSON, pausedUntilMs),
             )
@@ -214,12 +214,12 @@ class CleanwayVpnService : VpnService() {
         // in-memory owner was.
         //
         // If prepare() does return an Intent, consent is genuinely absent (the
-        // user revoked it in Settings, or never granted it): stop honestly, the
-        // app shows "protection stopped" — and why — and the next tap raises
-        // the dialog.
+        // user revoked it in Settings, or never granted it — a phone restored
+        // from backup): stop honestly, the app shows "protection stopped" —
+        // and why, when it knows — and the next tap raises the dialog.
         if (prepare(this) != null) {
             Log.w(TAG, "consent_missing — not establishing")
-            broadcastStopped(REASON_REVOKED)
+            broadcastStopped(ShieldPreference.TunnelEvent.NO_CONSENT)
             stopSelf()
             return
         }
@@ -229,7 +229,7 @@ class CleanwayVpnService : VpnService() {
         // app explains which setting to change and deep-links there.
         PrivateDnsGuard.strictHostname(this)?.let { host ->
             Log.w(TAG, "private_dns_strict host=$host — refusing to establish")
-            broadcastStopped(REASON_PRIVATE_DNS)
+            broadcastStopped(ShieldPreference.TunnelEvent.PRIVATE_DNS)
             stopSelf()
             return
         }
@@ -273,7 +273,7 @@ class CleanwayVpnService : VpnService() {
         // Remember that protection should be on, so BootReceiver can re-arm it
         // after a reboot or an OEM force-stop.
         ShieldPreference.setUserEnabled(this, true)
-        ShieldPreference.setStopReason(this, null)
+        ShieldPreference.noteTunnel(this, ShieldPreference.TunnelEvent.CAME_UP)
         Log.i(TAG, "tunnel_started")
 
         // A pause outlives a restart of the service (process killed, reboot):
@@ -310,7 +310,7 @@ class CleanwayVpnService : VpnService() {
             if (!running) return@watch
             PrivateDnsGuard.strictHostname(this)?.let { host ->
                 Log.w(TAG, "private_dns_strict host=$host — stepping aside")
-                broadcastStopped(REASON_PRIVATE_DNS)
+                broadcastStopped(ShieldPreference.TunnelEvent.PRIVATE_DNS)
                 stopVpn()
             }
         }
@@ -330,17 +330,18 @@ class CleanwayVpnService : VpnService() {
         ShieldPreference.setPausedUntil(
             this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.TAKEN_AWAY, pausedUntilMs),
         )
-        broadcastStopped(REASON_REVOKED)
+        broadcastStopped(ShieldPreference.TunnelEvent.TAKEN_AWAY)
         super.onRevoke()
     }
 
     /**
-     * The tunnel went down (or would not come up) for [reason]. Kept, so the
-     * app can say why even when it was closed at the time, and announced for
-     * an open one.
+     * The tunnel went down (or would not come up) after [event]. Its cause is
+     * kept (ShieldPreference.stopReasonAfter), so the app can say why even
+     * when it was closed at the time, and announced for an open one.
      */
-    private fun broadcastStopped(reason: String) {
-        ShieldPreference.setStopReason(this, reason)
+    private fun broadcastStopped(event: ShieldPreference.TunnelEvent) {
+        ShieldPreference.noteTunnel(this, event)
+        val reason = ShieldPreference.stopReason(this)
         try {
             sendBroadcast(
                 Intent(ACTION_VPN_STOPPED)

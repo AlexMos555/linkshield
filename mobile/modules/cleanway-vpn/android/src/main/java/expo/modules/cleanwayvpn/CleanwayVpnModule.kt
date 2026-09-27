@@ -222,7 +222,8 @@ class CleanwayVpnModule : Module() {
      * Why protection last stopped without the person turning it off:
      * "revoked" (VPN permission withdrawn, or another VPN app took over),
      * "private_dns" (strict Private DNS), or null when not known. Cleared when
-     * the tunnel comes up or the person turns it off.
+     * the tunnel comes up or the person turns it off; never restored from a
+     * backup (ai.cleanway.app.StopReasonStore).
      */
     Function("lastStopReason") {
       ai.cleanway.app.ShieldPreference.stopReason(context)
