@@ -10,7 +10,10 @@
  *      and a page seen logged-out is not the page grandma will see);
  *   2. confirm it is the page `expect` describes, on www.gosuslugi.ru, and
  *      that it never asks for a code from an SMS;
- *   3. write the date here: verified_on: "YYYY-MM-DD".
+ *   3. on the same account, follow the card's written steps
+ *      (mobile.checkup.<id>.how) — they ship even without a button, so
+ *      they are checked even if a link is dropped;
+ *   4. write the date here: verified_on: "YYYY-MM-DD".
  *
  * Re-check every quarter, and clear the date the day a page moves. Until the
  * date is filled, the card keeps its written steps but shows no button —
@@ -39,12 +42,14 @@ export interface OfficialLink {
 export type OfficialLinkId = "credit_ban" | "sim_ban";
 
 /**
- * DRAFT REVIEW SWITCH — true on the draft branch only, so the founder and the
- * tester in Russia can tap every unverified link from the app. Set it back to
- * false before merge; after that a link is shown only once `verified_on` is
- * filled.
+ * REVIEW SWITCH — on only in an APK built with EXPO_PUBLIC_REVIEW_LINKS=1
+ * (inlined at build time), so the founder and the tester in Russia can tap
+ * every unverified link from the app. Any other build — every release — shows
+ * a link only once `verified_on` is filled. Never hard-code it: a committed
+ * `true` would ship unverified official links to everyone, and
+ * test-checkup.mjs fails CI if the switch is on without the variable.
  */
-export const REVIEW_SHOWS_UNVERIFIED_LINKS = true;
+export const REVIEW_SHOWS_UNVERIFIED_LINKS: boolean = process.env.EXPO_PUBLIC_REVIEW_LINKS === "1";
 
 export const OFFICIAL_LINKS: Readonly<Record<OfficialLinkId, OfficialLink>> = {
   credit_ban: {

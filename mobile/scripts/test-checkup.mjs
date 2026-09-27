@@ -10,9 +10,12 @@
  *    counts the call step only by a saved number, and shows the Russian
  *    steps only where they apply;
  *  - the saved number is a plain dialable one — the same table as
- *    ProtectionCheckupTest.kt, so the JS and native rules cannot drift;
- *  - no official link shows its button until a person verified it, and
- *    every one points at https://www.gosuslugi.ru.
+ *    ProtectionCheckupTest.kt. CI runs only this half, so after changing
+ *    either rule run :cleanway-vpn:testDebugUnitTest locally as well;
+ *  - no official link shows its button until a person verified it, every
+ *    one points at https://www.gosuslugi.ru, and the review switch that
+ *    shows unverified links is off unless the build sets
+ *    EXPO_PUBLIC_REVIEW_LINKS=1 — a hard-coded `true` fails here.
  * Same approach as test-check-verdict.mjs: compile with the tree's
  * TypeScript, run the table for real, exit non-zero on failure. CommonJS
  * output, because checkup.ts imports phone-number.ts at run time and an
@@ -42,6 +45,11 @@ const input = (extra = {}) => ({
 const brief = (rows) => rows.map((r) => [r.id, r.status, r.key.replace("mobile.checkup.device.", ""), r.fix ?? null]);
 const rowOf = (rows, id) => rows.find((r) => r.id === id);
 
+// Expo inlines it at build time; here it is read when the module loads.
+// Unset is what every release build sees.
+const REVIEW_VAR = "EXPO_PUBLIC_REVIEW_LINKS";
+delete process.env[REVIEW_VAR];
+
 try {
   execFileSync(
     "npx",
@@ -60,6 +68,19 @@ try {
 
   const steps = (russia, android) => m.familySteps({ russia, android }).map((s) => s.id);
   const ALL = m.FAMILY_STEPS;
+
+  /** The review switch as a build with EXPO_PUBLIC_REVIEW_LINKS=[value] would see it. */
+  const reviewSwitchWith = (value) => {
+    const path = load.resolve("./src/config/official-links.js");
+    delete load.cache[path];
+    process.env[REVIEW_VAR] = value;
+    try {
+      return load(path).REVIEW_SHOWS_UNVERIFIED_LINKS;
+    } finally {
+      delete process.env[REVIEW_VAR];
+      delete load.cache[path];
+    }
+  };
 
   const CASES = [
     // ── Part 1: only what the phone can tell ─────────────────────────
@@ -216,6 +237,11 @@ try {
       ["+79161234567", "+79161234567", "89161234567", "89161234567"],
     ],
     ["address-book separators", () => phone.normalizePhone("+7 916‑123.45.67"), "+79161234567"],
+    [
+      "Unicode spaces (thin, narrow no-break, a leading BOM) are separators too",
+      () => ["+7\u2009916\u2009123\u200945\u200967", "+7\u202F916\u202F123\u202F45\u202F67", "\uFEFF+79161234567"].map(phone.normalizePhone),
+      ["+79161234567", "+79161234567", "+79161234567"],
+    ],
     ["short service numbers", () => ["112", "900"].map(phone.normalizePhone), ["112", "900"]],
     [
       "USSD codes, extensions and pauses are refused",
@@ -294,6 +320,21 @@ try {
       [true, false],
     ],
     ["the button names the host it opens", () => links.linkHost(links.OFFICIAL_LINKS.credit_ban), "gosuslugi.ru"],
+    [
+      "the review switch is off in a release build (no EXPO_PUBLIC_REVIEW_LINKS)",
+      () => links.REVIEW_SHOWS_UNVERIFIED_LINKS,
+      false,
+    ],
+    [
+      "a release build shows a button only for a verified link",
+      () => Object.values(links.OFFICIAL_LINKS).filter((l) => links.linkButtonVisible(l)).every(links.isVerified),
+      true,
+    ],
+    [
+      "only EXPO_PUBLIC_REVIEW_LINKS=1 turns the review switch on",
+      () => ["1", "0", "true", ""].map(reviewSwitchWith),
+      [true, false, false, false],
+    ],
   ];
 
   let failed = 0;
@@ -305,11 +346,6 @@ try {
       failed += 1;
       console.log(`  FAIL  ${name}\n        ${String(e.message).split("\n").join("\n        ")}`);
     }
-  }
-  const unverified = Object.entries(links.OFFICIAL_LINKS).filter(([, l]) => !links.isVerified(l)).map(([id]) => id);
-  if (links.REVIEW_SHOWS_UNVERIFIED_LINKS && unverified.length > 0) {
-    // Not a failure — the draft needs it — but never a silent one.
-    console.log(`\n  NOTE  REVIEW_SHOWS_UNVERIFIED_LINKS is on; unverified links visible: ${unverified.join(", ")}`);
   }
   if (failed > 0) {
     console.error(`\n${failed} of ${CASES.length} cases failed`);

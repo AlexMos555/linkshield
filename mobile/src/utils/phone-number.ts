@@ -5,13 +5,16 @@
  * normalizePhone mirrors ProtectionCheckup.dialable (Kotlin): digits and one
  * leading "+", 3 to 15 digits, visual separators dropped, anything else
  * refused — "*" and "#" would make a USSD code, letters and ";" or "," an
- * extension or a pause. The two must agree; test-checkup.mjs and
- * ProtectionCheckupTest.kt run the same table.
+ * extension or a pause. The two must agree. test-checkup.mjs and
+ * ProtectionCheckupTest.kt run the same table, but CI runs only the JS one:
+ * change both rules together and run the Kotlin test locally.
  */
 
 const MIN_DIGITS = 3;
 const MAX_DIGITS = 15;
-const SEPARATORS = /[\s ‐-―\-().]/g;
+// JS's \s already covers every Unicode space (U+00A0, U+2009, U+202F, U+FEFF…);
+// Kotlin spells the same set out as \s\p{Z}\uFEFF. Plus the dashes U+2010–U+2015.
+const SEPARATORS = /[\s\u2010-\u2015\-().]/g;
 const ASCII_DIGITS = /^[0-9]+$/;
 
 /** The number as the dialer should receive it, or null when it is not a plain phone number. */
