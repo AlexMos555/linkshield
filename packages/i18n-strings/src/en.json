@@ -2431,7 +2431,7 @@
         "links_off": "“Link checking” is off",
         "alerts_on": "Notifications about blocked sites are allowed",
         "alerts_off": "Notifications are off — you won't know when a site is blocked",
-        "battery_ok": "Battery saving doesn't limit Cleanway",
+        "battery_ok": "Android doesn't restrict Cleanway in the background",
         "battery_restricted": "Battery saving restricts Cleanway, so protection can stop. In settings, open “Battery” and remove the restriction.",
         "list_fresh": "Scam-site list updated {{hours}} h ago",
         "list_fresh_now": "Scam-site list just updated",
@@ -2449,32 +2449,34 @@
         "open_gosuslugi": "Open Gosuslugi",
         "open_settings": "Open settings",
         "open_failed": "Couldn't open it. Find this section yourself, as described above.",
-        "unverified_badge": "Review build: no person has checked this link yet"
+        "unverified_badge": "Review build: no person has checked this link yet",
+        "lift_warning": "Only you can lift the ban. If anyone on the phone asks you to lift it, it's a scam. Hang up."
       },
       "credit_ban": {
         "title": "Ban on new loans",
-        "why": "No scammer can take out a loan in your name: about 30 million people have already set this ban, and loans' share of stolen money fell from 37% to 18%.",
-        "how": "On Gosuslugi, find «Самозапрет на кредиты» (self-ban on loans) and ban all loans and credit. It's free, and you can lift the ban at any time."
+        "why": "While the ban is on, banks and microlenders won't give a loan, credit or a credit card in your name (it doesn't cover mortgages, car loans or student loans). About 30 million people have already set this ban, and loans' share of stolen money fell from 37% to 18%.",
+        "how": "On the gosuslugi.ru website or in the Gosuslugi app, find «Самозапрет на кредиты» (self-ban on loans) and ban all loans and credit. It's free."
       },
       "sim_ban": {
         "title": "Ban on new SIM cards",
         "why": "No one can get a SIM card in your name — more than 1.8 million people have already set this ban.",
-        "how": "On Gosuslugi: «Профиль» (Profile) → «SIM-карты» (SIM cards) → «Запрет на оформление договоров связи» (ban on phone contracts) → «Установить» (Set). There you can also see how many numbers are registered to you."
+        "how": "On the gosuslugi.ru website or in the Gosuslugi app: «Профиль» (Profile) → «SIM-карты» (SIM cards) → «Запрет на оформление договоров связи» (ban on phone contracts) → «Установить» (Set). There you can also see how many numbers are registered to you."
       },
       "second_hand": {
         "title": "“Second hand” at your bank",
-        "why": "Someone close confirms your transfers, and without their consent the money doesn't leave — more than 3.5 million people have already turned on the “second hand”.",
-        "ask": "What to say to your bank — in its app, at a branch or on the number on the back of your card: “Please turn on the ‘second hand’ (вторая рука) — a trusted person who will confirm my transfers.”"
+        "why": "Someone close confirms the transfers you chose at your bank, and without their consent those don't go through. More than 3.5 million people have already turned on the “second hand”.",
+        "ask": "Agree with someone close from what amount they will confirm your transfers. Then tell your bank — in its app, at a branch or on the number on the back of your card: “Please turn on the ‘second hand’ (вторая рука): a trusted person should confirm all my transfers to other people from this amount.”"
       },
       "caller_id": {
         "title": "Caller ID",
         "why": "According to the Bank of Russia, 29.3 billion rubles were stolen from people in 2025 and only 5.9% came back — money is taken by deception, often over the phone, and caller ID labels many such calls before you answer.",
-        "ask": "Caller ID is offered, for example, by Kaspersky, Sber, T-Bank and Yandex, and by many mobile operators. Pick one and ask whether you can add someone close, so they see suspicious calls too. We don't recommend any particular app and have no ties to any of them."
+        "ask": "Caller ID is offered, for example, by Kaspersky, Sber, T-Bank and Yandex, and by many mobile operators. Pick one and ask whether you can add someone close, so they see suspicious calls too. These four companies are named only as examples: we don't recommend any one of them and have no ties to any of them."
       },
       "install_block": {
         "title": "Stop messengers and the browser from installing apps",
         "why": "Viruses that steal money from cards pose as useful programs and often arrive as a file in a messenger — according to F6, about 1.5 million phones are infected in Russia alone.",
-        "how": "The “Install unknown apps” list will open. Tap Telegram, WhatsApp, other messengers and your browsers one by one and turn the switch off for each. Apps missing from the list aren't allowed to install anything anyway. The app store you install apps from can stay allowed."
+        "how": "The “Install unknown apps” list will open. Turn the switch off for every app in this list — messengers, browsers, file managers — except app stores such as RuStore. When Cleanway asks to be updated, Android may ask to allow your browser: turn it on just for the update, then off again.",
+        "warning": "If anyone on the phone asks you to allow app installs, it's a scam. Hang up."
       },
       "code_word": {
         "title": "Family code word",
@@ -2498,8 +2500,13 @@
         "saved_note": "The number is kept only on this phone and sent nowhere. Cleanway doesn't ask for access to your contacts and never calls by itself.",
         "invalid": "That doesn't look like a phone number. Please check the digits.",
         "pick_invalid": "This contact's number is written in a way that can't be dialled. Please type the number instead.",
+        "pick_failed": "Couldn't get the number from your contacts. Please type it instead.",
         "save_failed": "Couldn't save. Please try again.",
         "dial_failed": "Couldn't open the dialer — please dial the number yourself.",
+        "change_warning": "Only you change this number. If anyone asks you to put a different number here, it's a scam.",
+        "change_title": "Replace the number?",
+        "change_body": "Was: {{old}}\nWill be: {{next}}\n\nIf anyone on the phone asks you to change this number, it's a scam.",
+        "change_confirm": "Replace",
         "button": "Call someone close",
         "button_named": "Call {{name}}",
         "prompt": "Not sure? Call someone close before you do anything."

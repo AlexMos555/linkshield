@@ -2489,7 +2489,7 @@
         "links_off": "La « Vérification des liens » est désactivée",
         "alerts_on": "Les notifications de sites bloqués sont autorisées",
         "alerts_off": "Les notifications sont désactivées : vous ne saurez pas quand un site est bloqué",
-        "battery_ok": "L'économie de batterie ne limite pas Cleanway",
+        "battery_ok": "Android ne restreint pas Cleanway en arrière-plan",
         "battery_restricted": "L'économie de batterie restreint Cleanway, et la protection peut s'arrêter. Dans les réglages, ouvrez « Batterie » et retirez la restriction.",
         "list_fresh": "Liste des sites frauduleux mise à jour il y a {{hours}} h",
         "list_fresh_now": "Liste des sites frauduleux tout juste mise à jour",
@@ -2507,32 +2507,34 @@
         "open_gosuslugi": "Ouvrir Gosuslugi",
         "open_settings": "Ouvrir les réglages",
         "open_failed": "Impossible d'ouvrir. Cherchez cette section vous-même, comme indiqué ci-dessus.",
-        "unverified_badge": "Version de relecture : personne n'a encore vérifié ce lien"
+        "unverified_badge": "Version de relecture : personne n'a encore vérifié ce lien",
+        "lift_warning": "Vous seul pouvez lever l'interdiction. Si quelqu'un au téléphone vous demande de la lever, c'est une arnaque. Raccrochez."
       },
       "credit_ban": {
         "title": "Interdiction des crédits",
-        "why": "Un escroc ne pourra pas emprunter à votre nom : environ 30 millions de personnes ont déjà mis cette interdiction, et la part des crédits dans l'argent volé est passée de 37 % à 18 %.",
-        "how": "Sur Gosuslugi, cherchez « Самозапрет на кредиты » (auto-interdiction de crédit) et interdisez tous les crédits et prêts. C'est gratuit, et l'interdiction peut être levée à tout moment."
+        "why": "Tant que l'interdiction est en place, banques et organismes de microcrédit n'accorderont à votre nom ni crédit, ni prêt, ni carte de crédit (elle ne couvre pas les crédits immobiliers, les crédits auto ni les prêts étudiants). Environ 30 millions de personnes l'ont déjà mise, et la part des crédits dans l'argent volé est passée de 37 % à 18 %.",
+        "how": "Sur le site gosuslugi.ru ou dans l'appli Gosuslugi, cherchez « Самозапрет на кредиты » (auto-interdiction de crédit) et interdisez tous les crédits et prêts. C'est gratuit."
       },
       "sim_ban": {
         "title": "Interdiction des nouvelles cartes SIM",
         "why": "Personne ne pourra obtenir une carte SIM à votre nom : plus de 1,8 million de personnes ont déjà mis cette interdiction.",
-        "how": "Sur Gosuslugi : « Профиль » (Profil) → « SIM-карты » (Cartes SIM) → « Запрет на оформление договоров связи » (interdiction des contrats télécoms) → « Установить » (Activer). Vous y voyez aussi combien de numéros sont à votre nom."
+        "how": "Sur le site gosuslugi.ru ou dans l'appli Gosuslugi : « Профиль » (Profil) → « SIM-карты » (Cartes SIM) → « Запрет на оформление договоров связи » (interdiction des contrats télécoms) → « Установить » (Activer). Vous y voyez aussi combien de numéros sont à votre nom."
       },
       "second_hand": {
         "title": "La « deuxième main » dans votre banque",
-        "why": "Un proche confirme vos virements, et sans son accord l'argent ne part pas : plus de 3,5 millions de personnes ont déjà activé la « deuxième main ».",
-        "ask": "Ce qu'il faut dire à votre banque — dans son appli, en agence ou au numéro au dos de la carte : « Activez la „deuxième main“ (вторая рука) : une personne de confiance qui confirmera mes virements. »"
+        "why": "Un proche confirme les virements que vous avez choisis auprès de votre banque, et sans son accord ils ne partent pas. Plus de 3,5 millions de personnes ont déjà activé la « deuxième main ».",
+        "ask": "Convenez avec ce proche du montant à partir duquel il confirmera vos virements. Puis dites à votre banque — dans son appli, en agence ou au numéro au dos de la carte : « Activez la „deuxième main“ (вторая рука) : qu'une personne de confiance confirme tous mes virements vers d'autres personnes à partir de ce montant. »"
       },
       "caller_id": {
         "title": "Identification des appels",
         "why": "Selon la Banque de Russie, 29,3 milliards de roubles ont été volés en 2025 et seulement 5,9 % ont été rendus : l'argent est obtenu par la ruse, souvent au téléphone, et l'identification signale beaucoup de ces appels avant même que vous décrochiez.",
-        "ask": "Kaspersky, Sber, T-Bank et Yandex, par exemple, proposent une identification des appels, tout comme de nombreux opérateurs. Choisissez-en une et demandez si un proche peut être ajouté pour voir lui aussi les appels suspects. Nous ne recommandons aucune appli en particulier et n'avons de lien avec aucune d'elles."
+        "ask": "Kaspersky, Sber, T-Bank et Yandex, par exemple, proposent une identification des appels, tout comme de nombreux opérateurs. Choisissez-en une et demandez si un proche peut être ajouté pour voir lui aussi les appels suspects. Ces quatre entreprises ne sont que des exemples : nous n'en recommandons aucune en particulier et n'avons de lien avec aucune d'elles."
       },
       "install_block": {
         "title": "Empêcher les messageries et le navigateur d'installer des applis",
         "why": "Les virus qui volent l'argent des cartes se font passer pour des programmes utiles et arrivent souvent en fichier dans une messagerie : selon F6, environ 1,5 million de téléphones sont infectés rien qu'en Russie.",
-        "how": "La liste « Installer des applis inconnues » va s'ouvrir. Touchez tour à tour Telegram, WhatsApp, les autres messageries et vos navigateurs, et désactivez l'interrupteur de chacun. Les applis absentes de la liste ne peuvent de toute façon rien installer. La boutique d'applis que vous utilisez peut garder l'autorisation."
+        "how": "La liste « Installer des applis inconnues » va s'ouvrir. Désactivez l'interrupteur de toutes les applis de la liste — messageries, navigateurs, gestionnaires de fichiers —, sauf les boutiques d'applis comme RuStore. Quand Cleanway demandera une mise à jour, Android pourra demander l'autorisation pour le navigateur : activez-la le temps de la mise à jour, puis désactivez-la à nouveau.",
+        "warning": "Si quelqu'un au téléphone vous demande d'autoriser l'installation d'applis, c'est une arnaque. Raccrochez."
       },
       "code_word": {
         "title": "Mot de code familial",
@@ -2556,8 +2558,13 @@
         "saved_note": "Le numéro reste uniquement sur ce téléphone et n'est envoyé nulle part. Cleanway ne demande pas l'accès à vos contacts et n'appelle jamais de lui-même.",
         "invalid": "Cela ne ressemble pas à un numéro de téléphone. Vérifiez les chiffres.",
         "pick_invalid": "Le numéro de ce contact est écrit d'une façon qui ne peut pas être composée. Saisissez le numéro vous-même.",
+        "pick_failed": "Impossible de récupérer le numéro dans vos contacts. Saisissez-le vous-même.",
         "save_failed": "Impossible d'enregistrer. Réessayez.",
         "dial_failed": "Impossible d'ouvrir le clavier d'appel : composez le numéro vous-même.",
+        "change_warning": "Vous seul changez ce numéro. Si quelqu'un vous demande d'en mettre un autre ici, c'est une arnaque.",
+        "change_title": "Remplacer le numéro ?",
+        "change_body": "Avant : {{old}}\nAprès : {{next}}\n\nSi quelqu'un au téléphone vous demande de changer ce numéro, c'est une arnaque.",
+        "change_confirm": "Remplacer",
         "button": "Appeler un proche",
         "button_named": "Appeler {{name}}",
         "prompt": "Un doute ? Appelez un proche avant de faire quoi que ce soit."

@@ -2489,7 +2489,7 @@
         "links_off": "“Pemeriksaan tautan” mati",
         "alerts_on": "Notifikasi situs yang diblokir diizinkan",
         "alerts_off": "Notifikasi mati — kamu tidak akan tahu saat situs diblokir",
-        "battery_ok": "Penghemat baterai tidak membatasi Cleanway",
+        "battery_ok": "Android tidak membatasi Cleanway di latar belakang",
         "battery_restricted": "Penghemat baterai membatasi Cleanway, jadi perlindungan bisa berhenti. Di setelan, buka “Baterai” dan hapus pembatasannya.",
         "list_fresh": "Daftar situs penipuan diperbarui {{hours}} jam lalu",
         "list_fresh_now": "Daftar situs penipuan baru saja diperbarui",
@@ -2507,32 +2507,34 @@
         "open_gosuslugi": "Buka Gosuslugi",
         "open_settings": "Buka setelan",
         "open_failed": "Tidak bisa dibuka. Cari bagian ini sendiri seperti dijelaskan di atas.",
-        "unverified_badge": "Versi untuk peninjauan: tautan ini belum diperiksa oleh siapa pun"
+        "unverified_badge": "Versi untuk peninjauan: tautan ini belum diperiksa oleh siapa pun",
+        "lift_warning": "Hanya kamu sendiri yang bisa mencabut larangan ini. Kalau ada yang memintamu lewat telepon untuk mencabutnya, itu penipuan. Tutup teleponnya."
       },
       "credit_ban": {
         "title": "Larangan pinjaman",
-        "why": "Penipu tidak akan bisa mengambil pinjaman atas namamu: sekitar 30 juta orang sudah memasang larangan ini, dan porsi pinjaman dalam uang yang dicuri turun dari 37% menjadi 18%.",
-        "how": "Di Gosuslugi, cari «Самозапрет на кредиты» (larangan pinjaman atas diri sendiri) dan pilih larangan untuk semua pinjaman. Gratis, dan larangan bisa dicabut kapan saja."
+        "why": "Selama larangan berlaku, bank dan lembaga pinjaman mikro tidak akan memberi pinjaman, kredit, atau kartu kredit atas namamu (larangan ini tidak berlaku untuk KPR, kredit mobil, dan pinjaman pendidikan). Sekitar 30 juta orang sudah memasang larangan ini, dan porsi pinjaman dalam uang yang dicuri turun dari 37% menjadi 18%.",
+        "how": "Di situs gosuslugi.ru atau aplikasi Gosuslugi, cari «Самозапрет на кредиты» (larangan pinjaman atas diri sendiri) dan pilih larangan untuk semua pinjaman. Gratis."
       },
       "sim_ban": {
         "title": "Larangan kartu SIM baru",
         "why": "Tidak ada yang bisa membuat kartu SIM atas namamu — lebih dari 1,8 juta orang sudah memasang larangan ini.",
-        "how": "Di Gosuslugi: «Профиль» (Profil) → «SIM-карты» (Kartu SIM) → «Запрет на оформление договоров связи» (larangan kontrak layanan seluler) → «Установить» (Pasang). Di sana juga terlihat berapa nomor yang terdaftar atas namamu."
+        "how": "Di situs gosuslugi.ru atau aplikasi Gosuslugi: «Профиль» (Profil) → «SIM-карты» (Kartu SIM) → «Запрет на оформление договоров связи» (larangan kontrak layanan seluler) → «Установить» (Pasang). Di sana juga terlihat berapa nomor yang terdaftar atas namamu."
       },
       "second_hand": {
         "title": "“Tangan kedua” di bankmu",
-        "why": "Orang terdekat mengonfirmasi transfermu, dan tanpa persetujuannya uang tidak keluar — lebih dari 3,5 juta orang sudah mengaktifkan “tangan kedua”.",
-        "ask": "Yang perlu dikatakan ke bankmu — di aplikasinya, di kantor cabang, atau lewat nomor di balik kartu: “Tolong aktifkan ‘tangan kedua’ (вторая рука) — orang tepercaya yang akan mengonfirmasi transfer saya.”"
+        "why": "Orang terdekat mengonfirmasi transfer yang kamu pilih di bank, dan tanpa persetujuannya transfer itu tidak keluar. Lebih dari 3,5 juta orang sudah mengaktifkan “tangan kedua”.",
+        "ask": "Sepakati dengan orang terdekat mulai jumlah berapa ia akan mengonfirmasi transfermu. Lalu katakan ke bankmu — di aplikasinya, di kantor cabang, atau lewat nomor di balik kartu: “Tolong aktifkan ‘tangan kedua’ (вторая рука): orang tepercaya mengonfirmasi semua transfer saya ke orang lain mulai jumlah ini.”"
       },
       "caller_id": {
         "title": "Identifikasi penelepon",
         "why": "Menurut Bank Sentral Rusia, pada 2025 sebanyak 29,3 miliar rubel dicuri dari warga dan hanya 5,9% yang kembali — uang diambil lewat tipu daya, sering lewat telepon, dan identifikasi penelepon menandai banyak panggilan seperti itu sebelum kamu menjawab.",
-        "ask": "Identifikasi penelepon ada, misalnya, di Kaspersky, Sber, T-Bank, dan Yandex, juga di banyak operator seluler. Pilih salah satu dan tanyakan apakah orang terdekat bisa ditambahkan agar ia juga melihat panggilan mencurigakan. Kami tidak merekomendasikan aplikasi tertentu dan tidak terkait dengan satu pun."
+        "ask": "Identifikasi penelepon ada, misalnya, di Kaspersky, Sber, T-Bank, dan Yandex, juga di banyak operator seluler. Pilih salah satu dan tanyakan apakah orang terdekat bisa ditambahkan agar ia juga melihat panggilan mencurigakan. Keempat perusahaan ini hanya contoh: kami tidak merekomendasikan salah satunya dan tidak terkait dengan satu pun dari mereka."
       },
       "install_block": {
         "title": "Larang aplikasi pesan dan browser memasang aplikasi",
         "why": "Virus yang mencuri uang dari kartu menyamar sebagai program berguna dan sering datang sebagai file di aplikasi pesan — menurut F6, di Rusia saja sekitar 1,5 juta HP terinfeksi.",
-        "how": "Daftar “Instal aplikasi tak dikenal” akan terbuka. Ketuk Telegram, WhatsApp, aplikasi pesan lain, dan browser satu per satu, lalu matikan sakelarnya. Aplikasi yang tidak ada di daftar memang tidak bisa memasang apa pun. Toko aplikasi tempatmu memasang aplikasi boleh tetap diizinkan."
+        "how": "Daftar “Instal aplikasi tak dikenal” akan terbuka. Matikan sakelar semua aplikasi di daftar itu — aplikasi pesan, browser, pengelola file — kecuali toko aplikasi seperti RuStore. Saat Cleanway meminta pembaruan, Android mungkin meminta izin untuk browser: nyalakan hanya selama pembaruan, lalu matikan lagi.",
+        "warning": "Kalau ada yang memintamu lewat telepon untuk mengizinkan pemasangan aplikasi, itu penipuan. Tutup teleponnya."
       },
       "code_word": {
         "title": "Kata kunci keluarga",
@@ -2556,8 +2558,13 @@
         "saved_note": "Nomor hanya disimpan di HP ini dan tidak dikirim ke mana pun. Cleanway tidak meminta akses ke kontakmu dan tidak pernah menelepon sendiri.",
         "invalid": "Sepertinya bukan nomor telepon. Periksa angkanya.",
         "pick_invalid": "Nomor kontak ini ditulis dengan cara yang tidak bisa dihubungi. Ketik nomornya sendiri.",
+        "pick_failed": "Nomor tidak bisa diambil dari kontak. Ketik nomornya sendiri.",
         "save_failed": "Tidak bisa disimpan. Coba lagi.",
         "dial_failed": "Tidak bisa membuka aplikasi telepon — tekan nomornya sendiri.",
+        "change_warning": "Hanya kamu yang mengganti nomor ini. Kalau ada yang memintamu memasukkan nomor lain di sini, itu penipuan.",
+        "change_title": "Ganti nomornya?",
+        "change_body": "Sebelumnya: {{old}}\nMenjadi: {{next}}\n\nKalau ada yang memintamu lewat telepon untuk mengganti nomor ini, itu penipuan.",
+        "change_confirm": "Ganti",
         "button": "Telepon orang terdekat",
         "button_named": "Telepon {{name}}",
         "prompt": "Ragu? Telepon orang terdekat sebelum melakukan apa pun."

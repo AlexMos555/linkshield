@@ -2489,7 +2489,7 @@
         "links_off": "Die „Link-Prüfung“ ist aus",
         "alerts_on": "Mitteilungen zu blockierten Seiten sind erlaubt",
         "alerts_off": "Mitteilungen sind aus – du erfährst nicht, wenn eine Seite blockiert wird",
-        "battery_ok": "Das Energiesparen schränkt Cleanway nicht ein",
+        "battery_ok": "Android schränkt Cleanway im Hintergrund nicht ein",
         "battery_restricted": "Das Energiesparen schränkt Cleanway ein, der Schutz kann anhalten. Öffne in den Einstellungen „Akku“ und heb die Beschränkung auf.",
         "list_fresh": "Liste betrügerischer Seiten vor {{hours}} Std. aktualisiert",
         "list_fresh_now": "Liste betrügerischer Seiten gerade aktualisiert",
@@ -2507,32 +2507,34 @@
         "open_gosuslugi": "Gosuslugi öffnen",
         "open_settings": "Einstellungen öffnen",
         "open_failed": "Konnte nicht geöffnet werden. Such den Bereich selbst, wie oben beschrieben.",
-        "unverified_badge": "Prüf-Build: Diesen Link hat noch kein Mensch geprüft"
+        "unverified_badge": "Prüf-Build: Diesen Link hat noch kein Mensch geprüft",
+        "lift_warning": "Die Sperre kannst nur du selbst aufheben. Wenn dich jemand am Telefon bittet, sie aufzuheben, ist es Betrug. Leg auf."
       },
       "credit_ban": {
         "title": "Kreditsperre",
-        "why": "Kein Betrüger kann einen Kredit auf deinen Namen aufnehmen: Rund 30 Millionen Menschen haben diese Sperre schon eingerichtet, und der Anteil der Kredite am gestohlenen Geld ist von 37 % auf 18 % gesunken.",
-        "how": "Such auf Gosuslugi nach „Самозапрет на кредиты“ (Selbstsperre für Kredite) und sperre alle Kredite und Darlehen. Das ist kostenlos, und die Sperre lässt sich jederzeit aufheben."
+        "why": "Solange die Sperre gilt, vergeben Banken und Mikrokreditgeber auf deinen Namen keinen Kredit, kein Darlehen und keine Kreditkarte (für Hypotheken, Autokredite und Studienkredite gilt sie nicht). Rund 30 Millionen Menschen haben diese Sperre schon eingerichtet, und der Anteil der Kredite am gestohlenen Geld ist von 37 % auf 18 % gesunken.",
+        "how": "Such auf der Website gosuslugi.ru oder in der App Gosuslugi nach „Самозапрет на кредиты“ (Selbstsperre für Kredite) und sperre alle Kredite und Darlehen. Das ist kostenlos."
       },
       "sim_ban": {
         "title": "Sperre für neue SIM-Karten",
         "why": "Niemand kann eine SIM-Karte auf deinen Namen abschließen – über 1,8 Millionen Menschen haben diese Sperre schon eingerichtet.",
-        "how": "Auf Gosuslugi: „Профиль“ (Profil) → „SIM-карты“ (SIM-Karten) → „Запрет на оформление договоров связи“ (Sperre für Mobilfunkverträge) → „Установить“ (Einrichten). Dort siehst du auch, wie viele Nummern auf dich laufen."
+        "how": "Auf der Website gosuslugi.ru oder in der App Gosuslugi: „Профиль“ (Profil) → „SIM-карты“ (SIM-Karten) → „Запрет на оформление договоров связи“ (Sperre für Mobilfunkverträge) → „Установить“ (Einrichten). Dort siehst du auch, wie viele Nummern auf dich laufen."
       },
       "second_hand": {
         "title": "„Zweite Hand“ bei deiner Bank",
-        "why": "Ein nahestehender Mensch bestätigt deine Überweisungen, und ohne seine Zustimmung geht kein Geld raus – über 3,5 Millionen Menschen haben die „zweite Hand“ schon eingeschaltet.",
-        "ask": "Was du deiner Bank sagst – in der App, in der Filiale oder unter der Nummer auf der Kartenrückseite: „Bitte schalten Sie die ‚zweite Hand‘ (вторая рука) ein – eine Vertrauensperson, die meine Überweisungen bestätigt.“"
+        "why": "Ein nahestehender Mensch bestätigt die Überweisungen, die du bei deiner Bank ausgewählt hast, und ohne seine Zustimmung gehen sie nicht raus. Über 3,5 Millionen Menschen haben die „zweite Hand“ schon eingeschaltet.",
+        "ask": "Vereinbare mit diesem Menschen, ab welchem Betrag er deine Überweisungen bestätigt. Dann sag deiner Bank – in der App, in der Filiale oder unter der Nummer auf der Kartenrückseite: „Bitte schalten Sie die ‚zweite Hand‘ (вторая рука) ein: Eine Vertrauensperson soll alle meine Überweisungen an andere Menschen ab diesem Betrag bestätigen.“"
       },
       "caller_id": {
         "title": "Anruferkennung",
         "why": "Laut der russischen Zentralbank wurden Menschen 2025 um 29,3 Milliarden Rubel bestohlen, nur 5,9 % kamen zurück – das Geld wird durch Täuschung erschlichen, oft am Telefon, und eine Anruferkennung markiert viele solcher Anrufe, bevor du rangehst.",
-        "ask": "Eine Anruferkennung gibt es zum Beispiel bei Kaspersky, Sber, T-Bank und Yandex sowie bei vielen Mobilfunkanbietern. Wähl eine aus und frag, ob du einen nahestehenden Menschen hinzufügen kannst, damit auch er verdächtige Anrufe sieht. Wir empfehlen keine bestimmte App und haben mit keiner davon zu tun."
+        "ask": "Eine Anruferkennung gibt es zum Beispiel bei Kaspersky, Sber, T-Bank und Yandex sowie bei vielen Mobilfunkanbietern. Wähl eine aus und frag, ob du einen nahestehenden Menschen hinzufügen kannst, damit auch er verdächtige Anrufe sieht. Diese vier Firmen sind nur Beispiele: Wir empfehlen keine davon besonders und haben mit keiner von ihnen zu tun."
       },
       "install_block": {
         "title": "Messengern und dem Browser das Installieren von Apps verbieten",
         "why": "Viren, die Geld von Karten stehlen, tarnen sich als nützliche Programme und kommen oft als Datei im Messenger – laut F6 sind allein in Russland etwa 1,5 Millionen Handys infiziert.",
-        "how": "Die Liste „Unbekannte Apps installieren“ öffnet sich. Tippe nacheinander auf Telegram, WhatsApp, andere Messenger und deine Browser und schalte bei jedem den Schalter aus. Was nicht in der Liste steht, darf ohnehin nichts installieren. Der App-Store, aus dem du installierst, darf die Erlaubnis behalten."
+        "how": "Die Liste „Unbekannte Apps installieren“ öffnet sich. Schalte den Schalter bei allen Apps in der Liste aus – Messenger, Browser, Dateimanager –, außer bei App-Stores wie RuStore. Wenn Cleanway um ein Update bittet, kann Android die Erlaubnis für den Browser verlangen: Schalte sie nur für das Update ein und danach wieder aus.",
+        "warning": "Wenn dich jemand am Telefon bittet, das Installieren von Apps zu erlauben, ist es Betrug. Leg auf."
       },
       "code_word": {
         "title": "Familien-Codewort",
@@ -2556,8 +2558,13 @@
         "saved_note": "Die Nummer bleibt nur auf diesem Handy und wird nirgendwohin geschickt. Cleanway fragt nicht nach Zugriff auf deine Kontakte und ruft nie von selbst an.",
         "invalid": "Das sieht nicht nach einer Telefonnummer aus. Prüf die Ziffern.",
         "pick_invalid": "Die Nummer dieses Kontakts ist so gespeichert, dass sie sich nicht wählen lässt. Gib die Nummer selbst ein.",
+        "pick_failed": "Die Nummer ließ sich nicht aus den Kontakten übernehmen. Gib sie bitte selbst ein.",
         "save_failed": "Konnte nicht gespeichert werden. Versuch es noch einmal.",
         "dial_failed": "Die Telefon-App ließ sich nicht öffnen – wähl die Nummer selbst.",
+        "change_warning": "Diese Nummer änderst nur du selbst. Wenn dich jemand bittet, hier eine andere Nummer einzutragen, ist es Betrug.",
+        "change_title": "Nummer ersetzen?",
+        "change_body": "Bisher: {{old}}\nNeu: {{next}}\n\nWenn dich jemand am Telefon bittet, diese Nummer zu ändern, ist es Betrug.",
+        "change_confirm": "Ersetzen",
         "button": "Nahestehenden anrufen",
         "button_named": "{{name}} anrufen",
         "prompt": "Unsicher? Ruf einen nahestehenden Menschen an, bevor du irgendetwas tust."

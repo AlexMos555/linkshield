@@ -2429,7 +2429,7 @@
         "links_off": "La «Revisión de enlaces» está desactivada",
         "alerts_on": "Los avisos de sitios bloqueados están permitidos",
         "alerts_off": "Las notificaciones están desactivadas: no sabrás cuándo se bloquea un sitio",
-        "battery_ok": "El ahorro de batería no limita a Cleanway",
+        "battery_ok": "Android no restringe a Cleanway en segundo plano",
         "battery_restricted": "El ahorro de batería restringe a Cleanway y la protección puede detenerse. En los ajustes, abre «Batería» y quita la restricción.",
         "list_fresh": "Lista de sitios fraudulentos actualizada hace {{hours}} h",
         "list_fresh_now": "Lista de sitios fraudulentos recién actualizada",
@@ -2447,32 +2447,34 @@
         "open_gosuslugi": "Abrir Gosuslugi",
         "open_settings": "Abrir ajustes",
         "open_failed": "No se pudo abrir. Busca esta sección tú mismo, como se indica arriba.",
-        "unverified_badge": "Versión de revisión: nadie ha comprobado todavía este enlace"
+        "unverified_badge": "Versión de revisión: nadie ha comprobado todavía este enlace",
+        "lift_warning": "Solo tú puedes quitar la prohibición. Si alguien por teléfono te pide quitarla, es una estafa. Cuelga."
       },
       "credit_ban": {
         "title": "Prohibición de préstamos",
-        "why": "Un estafador no podrá pedir un préstamo a tu nombre: unos 30 millones de personas ya la han activado, y el peso de los préstamos en el dinero robado bajó del 37 % al 18 %.",
-        "how": "En Gosuslugi, busca «Самозапрет на кредиты» (autoprohibición de préstamos) y prohíbe todos los préstamos y créditos. Es gratis y puedes quitarla cuando quieras."
+        "why": "Mientras la prohibición esté activa, los bancos y las microfinancieras no darán a tu nombre préstamos, créditos ni tarjetas de crédito (no se aplica a hipotecas, préstamos de coche ni préstamos para estudios). Unos 30 millones de personas ya la han activado, y el peso de los préstamos en el dinero robado bajó del 37 % al 18 %.",
+        "how": "En la web gosuslugi.ru o en la app Gosuslugi, busca «Самозапрет на кредиты» (autoprohibición de préstamos) y prohíbe todos los préstamos y créditos. Es gratis."
       },
       "sim_ban": {
         "title": "Prohibición de nuevas tarjetas SIM",
         "why": "Nadie podrá sacar una tarjeta SIM a tu nombre: más de 1,8 millones de personas ya la han activado.",
-        "how": "En Gosuslugi: «Профиль» (Perfil) → «SIM-карты» (Tarjetas SIM) → «Запрет на оформление договоров связи» (prohibición de contratos de telefonía) → «Установить» (Activar). Ahí también ves cuántos números hay a tu nombre."
+        "how": "En la web gosuslugi.ru o en la app Gosuslugi: «Профиль» (Perfil) → «SIM-карты» (Tarjetas SIM) → «Запрет на оформление договоров связи» (prohibición de contratos de telefonía) → «Установить» (Activar). Ahí también ves cuántos números hay a tu nombre."
       },
       "second_hand": {
         "title": "La «segunda mano» en tu banco",
-        "why": "Una persona cercana confirma tus transferencias y, sin su permiso, el dinero no sale: más de 3,5 millones de personas ya han activado la «segunda mano».",
-        "ask": "Qué decir en tu banco (en su app, en una oficina o en el número del dorso de la tarjeta): «Actívenme la „segunda mano“ (вторая рука): una persona de confianza que confirme mis transferencias»."
+        "why": "Una persona cercana confirma las transferencias que elegiste en tu banco y, sin su permiso, esas no salen. Más de 3,5 millones de personas ya han activado la «segunda mano».",
+        "ask": "Acuerda con esa persona a partir de qué importe confirmará tus transferencias. Luego dile a tu banco (en su app, en una oficina o en el número del dorso de la tarjeta): «Actívenme la „segunda mano“ (вторая рука): que una persona de confianza confirme todas mis transferencias a otras personas a partir de este importe»."
       },
       "caller_id": {
         "title": "Identificador de llamadas",
         "why": "Según el Banco de Rusia, en 2025 se robaron 29 300 millones de rublos y solo se recuperó el 5,9 %: el dinero se saca con engaños, a menudo por teléfono, y el identificador marca muchas de esas llamadas antes de que contestes.",
-        "ask": "Tienen identificador, por ejemplo, Kaspersky, Sber, T-Bank y Yandex, además de muchos operadores. Elige uno y pregunta si puedes añadir a una persona cercana para que también vea las llamadas sospechosas. No recomendamos ninguna app concreta ni tenemos relación con ninguna."
+        "ask": "Tienen identificador, por ejemplo, Kaspersky, Sber, T-Bank y Yandex, además de muchos operadores. Elige uno y pregunta si puedes añadir a una persona cercana para que también vea las llamadas sospechosas. Estas cuatro empresas son solo ejemplos: no recomendamos ninguna en concreto ni tenemos relación con ninguna de ellas."
       },
       "install_block": {
         "title": "Impedir que la mensajería y el navegador instalen apps",
         "why": "Los virus que roban dinero de las tarjetas se hacen pasar por programas útiles y a menudo llegan como archivo por mensajería: según F6, solo en Rusia hay unos 1,5 millones de teléfonos infectados.",
-        "how": "Se abrirá la lista «Instalar aplicaciones desconocidas». Toca uno a uno Telegram, WhatsApp, otras apps de mensajería y tus navegadores y desactiva el interruptor de cada uno. Las apps que no aparecen en la lista no pueden instalar nada de todos modos. La tienda de apps desde la que instalas puede seguir con el permiso."
+        "how": "Se abrirá la lista «Instalar aplicaciones desconocidas». Desactiva el interruptor de todas las apps de la lista (mensajería, navegadores, gestores de archivos), salvo las tiendas de apps como RuStore. Cuando Cleanway pida actualizarse, Android puede pedir permiso para el navegador: actívalo solo durante la actualización y luego desactívalo de nuevo.",
+        "warning": "Si alguien por teléfono te pide permitir la instalación de apps, es una estafa. Cuelga."
       },
       "code_word": {
         "title": "Palabra clave familiar",
@@ -2496,8 +2498,13 @@
         "saved_note": "El número se guarda solo en este teléfono y no se envía a ninguna parte. Cleanway no pide acceso a tus contactos ni llama por su cuenta.",
         "invalid": "No parece un número de teléfono. Revisa las cifras.",
         "pick_invalid": "El número de este contacto está escrito de forma que no se puede marcar. Escribe el número a mano.",
+        "pick_failed": "No se pudo tomar el número de tus contactos. Escríbelo a mano.",
         "save_failed": "No se pudo guardar. Inténtalo de nuevo.",
         "dial_failed": "No se pudo abrir el marcador: marca el número tú mismo.",
+        "change_warning": "Este número solo lo cambias tú. Si alguien te pide poner aquí otro número, es una estafa.",
+        "change_title": "¿Cambiar el número?",
+        "change_body": "Antes: {{old}}\nAhora: {{next}}\n\nSi alguien por teléfono te pide cambiar este número, es una estafa.",
+        "change_confirm": "Cambiar",
         "button": "Llamar a alguien cercano",
         "button_named": "Llamar a {{name}}",
         "prompt": "¿Tienes dudas? Llama a alguien cercano antes de hacer nada."

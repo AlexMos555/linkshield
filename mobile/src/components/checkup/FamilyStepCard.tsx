@@ -17,6 +17,11 @@ interface Copy {
   why: string;
   /** What to do or what to ask for — where the step itself happens. */
   how: string;
+  /**
+   * The scam aimed at this very step — a caller talking the person into
+   * undoing it — named on the card, since that call is how it gets undone.
+   */
+  warning?: string;
 }
 
 // Static keys, so scripts/check-mobile-i18n.py can see every one of them.
@@ -26,12 +31,14 @@ const COPY: Record<MarkableStep, Copy> = {
     title: "mobile.checkup.credit_ban.title",
     why: "mobile.checkup.credit_ban.why",
     how: "mobile.checkup.credit_ban.how",
+    warning: "mobile.checkup.family.lift_warning",
   },
   sim_ban: {
     icon: "phone-portrait-outline",
     title: "mobile.checkup.sim_ban.title",
     why: "mobile.checkup.sim_ban.why",
     how: "mobile.checkup.sim_ban.how",
+    warning: "mobile.checkup.family.lift_warning",
   },
   second_hand: {
     icon: "people-outline",
@@ -50,6 +57,7 @@ const COPY: Record<MarkableStep, Copy> = {
     title: "mobile.checkup.install_block.title",
     why: "mobile.checkup.install_block.why",
     how: "mobile.checkup.install_block.how",
+    warning: "mobile.checkup.install_block.warning",
   },
   code_word: {
     icon: "chatbubbles-outline",
@@ -93,6 +101,12 @@ export function FamilyStepCard({ step, done, onToggle }: Props) {
       </View>
       <Text style={s.why}>{t(copy.why)}</Text>
       <Text style={s.how}>{t(copy.how)}</Text>
+      {copy.warning && (
+        <View style={s.warningRow}>
+          <Ionicons name="alert-circle-outline" size={20} color={colors.amber} />
+          <Text style={s.warning}>{t(copy.warning)}</Text>
+        </View>
+      )}
 
       <StepAction step={step} onFailed={() => setOpenFailed(true)} />
       {openFailed && <Text style={s.failed}>{t("mobile.checkup.family.open_failed")}</Text>}
@@ -170,6 +184,8 @@ const s = StyleSheet.create({
   title: { fontSize: 19, lineHeight: 25, fontWeight: "600", color: colors.textPrimary, flex: 1 },
   why: { fontSize: 17, lineHeight: 24, color: colors.textPrimary, marginTop: space.md },
   how: { fontSize: 16, lineHeight: 23, color: colors.textSecondary, marginTop: space.sm },
+  warningRow: { flexDirection: "row", alignItems: "flex-start", gap: space.sm, marginTop: space.sm },
+  warning: { fontSize: 16, lineHeight: 23, fontWeight: "600", color: colors.textPrimary, flex: 1 },
 
   actionWrap: { marginTop: space.md },
   action: {

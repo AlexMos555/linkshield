@@ -2489,7 +2489,7 @@
         "links_off": "A “Verificação de links” está desligada",
         "alerts_on": "As notificações de sites bloqueados estão permitidas",
         "alerts_off": "As notificações estão desligadas — você não vai saber quando um site for bloqueado",
-        "battery_ok": "A economia de bateria não limita o Cleanway",
+        "battery_ok": "O Android não restringe o Cleanway em segundo plano",
         "battery_restricted": "A economia de bateria restringe o Cleanway, e a proteção pode parar. Nas configurações, abra “Bateria” e retire a restrição.",
         "list_fresh": "Lista de sites de golpe atualizada há {{hours}} h",
         "list_fresh_now": "A lista de sites de golpe acabou de ser atualizada",
@@ -2507,32 +2507,34 @@
         "open_gosuslugi": "Abrir o Gosuslugi",
         "open_settings": "Abrir configurações",
         "open_failed": "Não foi possível abrir. Procure essa seção você mesmo, como descrito acima.",
-        "unverified_badge": "Versão de revisão: ninguém verificou este link ainda"
+        "unverified_badge": "Versão de revisão: ninguém verificou este link ainda",
+        "lift_warning": "Só você pode retirar o bloqueio. Se alguém pedir por telefone para retirá-lo, é golpe. Desligue."
       },
       "credit_ban": {
         "title": "Bloqueio de empréstimos",
-        "why": "Nenhum golpista vai conseguir pegar empréstimo no seu nome: cerca de 30 milhões de pessoas já ativaram esse bloqueio, e a fatia dos empréstimos no dinheiro roubado caiu de 37% para 18%.",
-        "how": "No Gosuslugi, procure «Самозапрет на кредиты» (autobloqueio de empréstimos) e bloqueie todos os empréstimos e créditos. É grátis, e o bloqueio pode ser retirado a qualquer momento."
+        "why": "Enquanto o bloqueio estiver ativo, bancos e financeiras não vão dar empréstimo, crédito ou cartão de crédito no seu nome (ele não vale para financiamento imobiliário, de carro ou estudantil). Cerca de 30 milhões de pessoas já ativaram esse bloqueio, e a fatia dos empréstimos no dinheiro roubado caiu de 37% para 18%.",
+        "how": "No site gosuslugi.ru ou no aplicativo Gosuslugi, procure «Самозапрет на кредиты» (autobloqueio de empréstimos) e bloqueie todos os empréstimos e créditos. É grátis."
       },
       "sim_ban": {
         "title": "Bloqueio de novos chips",
         "why": "Ninguém vai conseguir habilitar um chip no seu nome — mais de 1,8 milhão de pessoas já ativaram esse bloqueio.",
-        "how": "No Gosuslugi: «Профиль» (Perfil) → «SIM-карты» (Chips) → «Запрет на оформление договоров связи» (bloqueio de contratos de telefonia) → «Установить» (Ativar). Lá também dá para ver quantos números estão no seu nome."
+        "how": "No site gosuslugi.ru ou no aplicativo Gosuslugi: «Профиль» (Perfil) → «SIM-карты» (Chips) → «Запрет на оформление договоров связи» (bloqueio de contratos de telefonia) → «Установить» (Ativar). Lá também dá para ver quantos números estão no seu nome."
       },
       "second_hand": {
         "title": "A “segunda mão” no seu banco",
-        "why": "Uma pessoa próxima confirma suas transferências, e sem o consentimento dela o dinheiro não sai — mais de 3,5 milhões de pessoas já ativaram a “segunda mão”.",
-        "ask": "O que dizer ao seu banco — no aplicativo, na agência ou no número no verso do cartão: “Ativem a ‘segunda mão’ (вторая рука) — uma pessoa de confiança que vai confirmar minhas transferências.”"
+        "why": "Uma pessoa próxima confirma as transferências que você escolheu no banco, e sem o consentimento dela essas transferências não saem. Mais de 3,5 milhões de pessoas já ativaram a “segunda mão”.",
+        "ask": "Combine com essa pessoa a partir de que valor ela vai confirmar suas transferências. Depois diga ao seu banco — no aplicativo, na agência ou no número no verso do cartão: “Ativem a ‘segunda mão’ (вторая рука): que uma pessoa de confiança confirme todas as minhas transferências para outras pessoas a partir deste valor.”"
       },
       "caller_id": {
         "title": "Identificador de chamadas",
         "why": "Segundo o Banco da Rússia, em 2025 foram roubados 29,3 bilhões de rublos das pessoas e só 5,9% voltaram — o dinheiro é tirado com enganação, muitas vezes por telefone, e o identificador marca muitas dessas ligações antes de você atender.",
-        "ask": "Há identificador de chamadas, por exemplo, no Kaspersky, Sber, T-Bank e Yandex, e em muitas operadoras. Escolha um e pergunte se dá para adicionar alguém próximo, para que essa pessoa também veja as ligações suspeitas. Não recomendamos nenhum aplicativo específico e não temos ligação com nenhum deles."
+        "ask": "Há identificador de chamadas, por exemplo, no Kaspersky, Sber, T-Bank e Yandex, e em muitas operadoras. Escolha um e pergunte se dá para adicionar alguém próximo, para que essa pessoa também veja as ligações suspeitas. Essas quatro empresas são só exemplos: não recomendamos nenhuma delas em especial e não temos ligação com nenhuma."
       },
       "install_block": {
         "title": "Proibir mensageiros e navegador de instalar aplicativos",
         "why": "Vírus que roubam dinheiro do cartão se disfarçam de programas úteis e muitas vezes chegam como arquivo num mensageiro — segundo a F6, só na Rússia cerca de 1,5 milhão de celulares estão infectados.",
-        "how": "Vai abrir a lista “Instalar apps desconhecidos”. Toque um por um em Telegram, WhatsApp, outros mensageiros e navegadores e desligue a chave de cada um. Quem não está na lista já não pode instalar nada. A loja de aplicativos de onde você instala pode continuar com a permissão."
+        "how": "Vai abrir a lista “Instalar apps desconhecidos”. Desligue a chave de todos os apps da lista — mensageiros, navegadores, gerenciadores de arquivos —, menos as lojas de aplicativos, como a RuStore. Quando o Cleanway pedir para ser atualizado, o Android pode pedir permissão para o navegador: ligue só durante a atualização e depois desligue de novo.",
+        "warning": "Se alguém pedir por telefone para permitir a instalação de apps, é golpe. Desligue."
       },
       "code_word": {
         "title": "Palavra-código da família",
@@ -2556,8 +2558,13 @@
         "saved_note": "O número fica só neste celular e não é enviado para lugar nenhum. O Cleanway não pede acesso aos seus contatos e nunca liga sozinho.",
         "invalid": "Isso não parece um número de telefone. Confira os dígitos.",
         "pick_invalid": "O número deste contato está escrito de um jeito que não dá para discar. Digite o número você mesmo.",
+        "pick_failed": "Não foi possível pegar o número dos contatos. Digite o número você mesmo.",
         "save_failed": "Não foi possível salvar. Tente de novo.",
         "dial_failed": "Não foi possível abrir o discador — disque o número você mesmo.",
+        "change_warning": "Só você troca este número. Se alguém pedir para colocar outro número aqui, é golpe.",
+        "change_title": "Trocar o número?",
+        "change_body": "Era: {{old}}\nVai ser: {{next}}\n\nSe alguém pedir por telefone para trocar este número, é golpe.",
+        "change_confirm": "Trocar",
         "button": "Ligar para alguém próximo",
         "button_named": "Ligar para {{name}}",
         "prompt": "Na dúvida? Ligue para alguém próximo antes de fazer qualquer coisa."

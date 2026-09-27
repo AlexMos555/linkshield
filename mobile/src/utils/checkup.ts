@@ -35,7 +35,10 @@ export interface DeviceCheckInput {
   linkGuard: { on: boolean } | null;
   /** Null: this build cannot tell. */
   alertsOn: boolean | null;
-  /** Null: this build or Android version cannot tell. */
+  /**
+   * Android's own "Restricted" battery setting for the app. Null: this build
+   * or Android version cannot tell.
+   */
   backgroundRestricted: boolean | null;
 }
 
@@ -118,6 +121,9 @@ export function deviceChecks(input: DeviceCheckInput): DeviceCheck[] {
       : { id: "alerts", status: "fix", key: "mobile.checkup.device.alerts_off", fix: "alerts_on" });
   }
   if (input.backgroundRestricted !== null) {
+    // Only Android's own "Restricted" switch can be read. Vendor battery
+    // managers (MIUI autostart, Samsung sleeping apps) are invisible here,
+    // so the fine row names that one switch — never "battery saving is fine".
     rows.push(input.backgroundRestricted
       ? { id: "battery", status: "fix", key: "mobile.checkup.device.battery_restricted", fix: "battery" }
       : { id: "battery", status: "ok", key: "mobile.checkup.device.battery_ok" });
