@@ -159,8 +159,8 @@ class Settings(BaseSettings):
     # signed APK is published (Railway env overrides them without a code deploy).
     # Defaults describe the latest published GitHub release, so a phone on an
     # older build is nudged to it and a phone on it sees no spurious prompt.
-    mobile_latest_version_code: int = 102
-    mobile_latest_version_name: str = "1.0.2"
+    mobile_latest_version_code: int = 103
+    mobile_latest_version_name: str = "1.0.3"
     # Below this, the app should refuse to run old/insecure builds and require
     # an update. 0 = never force. Keep <= latest.
     mobile_min_supported_version_code: int = 0
@@ -172,7 +172,7 @@ class Settings(BaseSettings):
     # /android download page.
     mobile_apk_url: str = (
         "https://github.com/AlexMos555/linkshield/releases/download/"
-        "v1.0.2/cleanway-1.0.2-102-arm.apk"
+        "v1.0.3/cleanway-1.0.3-103-arm.apk"
     )
     mobile_release_notes: str = ""
 
