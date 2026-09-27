@@ -16,7 +16,8 @@
  *  2. The home screen checked the connection only on opening and on a
  *     foreground: it kept «Нет сети / Активных щитов: 0» for five minutes and
  *     more after the network was back. It now re-checks on the module's
- *     connection events — once per burst, and not in the background.
+ *     connection events — once per burst, and not in the background — and
+ *     re-reads the list when the service swaps one in.
  *  3. A stopped shield said "usually after a reboot, one tap" whatever had
  *     stopped it. The hook now passes on the cause the service recorded.
  *
@@ -52,8 +53,9 @@ function resetWorld() {
     probeOk: true,
     internet: true,
     probes: 0,
+    listCount: 460_481,
     appState: "active",
-    listeners: { stopped: [], pause: [], network: [], app: [] },
+    listeners: { stopped: [], pause: [], list: [], network: [], app: [] },
   };
 }
 
@@ -86,9 +88,9 @@ const VPN = {
   wasUserEnabled: () => world.userEnabled,
   lastStopReason: () => world.stopReason,
   privateDnsStrictHost: () => null,
-  blocklistStatus: () => ({
-    version: 7, count: 460_481, revoked: false, ageMs: MINUTE, stale: false, hasCanary: true, lastError: null, lastFetchAt: 1,
-  }),
+  blocklistStatus: () => (world.listCount > 0
+    ? { version: 7, count: world.listCount, revoked: false, ageMs: MINUTE, stale: false, hasCanary: true, lastError: null, lastFetchAt: 1 }
+    : { version: 0, count: 0, revoked: false, ageMs: null, stale: true, hasCanary: false, lastError: null, lastFetchAt: 0 }),
   verifyFiltering: async () => {
     world.probes += 1;
     return world.probeOk;
@@ -96,6 +98,7 @@ const VPN = {
   verifyListFiltering: async () => world.probeOk,
   addVpnStoppedListener: (cb) => subscribe("stopped", cb),
   addPauseChangedListener: (cb) => subscribe("pause", cb),
+  addBlocklistChangedListener: (cb) => subscribe("list", cb),
   addNetworkChangedListener: (cb) => subscribe("network", cb),
   pauseProtection: (until) => {
     world.serviceInbox = [...world.serviceInbox, () => servicePausesUntil(until)];
@@ -183,6 +186,7 @@ async function openHome() {
       interrupted: shield.interrupted,
       stopReason: shield.stopReason,
     }),
+    listCount: () => shield.blocklist.count,
     resume: async () => {
       await act(async () => shield.resume());
       await settle();
@@ -265,6 +269,21 @@ const CASES = [
       return { on, gone };
     },
     { on: "on", gone: "offline" },
+  ],
+  [
+    "the list lands seconds after the network is back: the open screen shows it",
+    async () => {
+      world.listCount = 0;
+      const home = await openHome();
+      const before = home.listCount();
+      world.listCount = 460_481;
+      await act(async () => emit("list", {}));
+      await settle();
+      const after = home.listCount();
+      await home.close();
+      return { before, after };
+    },
+    { before: 0, after: 460_481 },
   ],
   [
     "a burst of connection events is one re-check",

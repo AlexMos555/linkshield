@@ -850,7 +850,10 @@ class CleanwayVpnService : VpnService() {
                 url = BLOCKLIST_URL,
                 nowMs = { System.currentTimeMillis() },
                 elapsedMs = { android.os.SystemClock.elapsedRealtime() },
-                onSwap = { list -> blockList = list },
+                onSwap = { list ->
+                    blockList = list
+                    announceBlocklist()
+                },
                 // ~3 MB per refresh. On a metered plan that is real money for
                 // the person we build this for, so a fresh-enough list is not
                 // re-downloaded there (BlocklistSync.SyncPolicy).
@@ -884,6 +887,19 @@ class CleanwayVpnService : VpnService() {
             // Never let the list machinery take the tunnel down: no list means
             // nothing is blocked (and the card says so), not a dead DNS.
             Log.w(TAG, "blocklist_start_error: ${e.message}")
+        }
+    }
+
+    /**
+     * A list landed (or was replaced) — often seconds after the network came
+     * back, while the home screen is open. Tell it, or it keeps saying "no
+     * list yet" over a phone that has one.
+     */
+    private fun announceBlocklist() {
+        try {
+            sendBroadcast(Intent(ACTION_BLOCKLIST_CHANGED).setPackage(packageName))
+        } catch (e: Exception) {
+            Log.w(TAG, "blocklist_broadcast_error: ${e.javaClass.simpleName}")
         }
     }
 
@@ -1017,6 +1033,8 @@ class CleanwayVpnService : VpnService() {
         const val ACTION_RESUME = "ai.cleanway.VPN_RESUME"
         /** Broadcast when the pause begins, ends or moves; carries [EXTRA_PAUSE_UNTIL] (0 = not paused). */
         const val ACTION_PAUSE_CHANGED = "ai.cleanway.PAUSE_CHANGED"
+        /** Broadcast when the list the DNS path blocks from is swapped (loaded, synced, revoked). */
+        const val ACTION_BLOCKLIST_CHANGED = "ai.cleanway.BLOCKLIST_CHANGED"
         /** The longest timed pause; "until I turn it back on" is a full stop instead. */
         const val MAX_PAUSE_MS = 60L * 60_000
 

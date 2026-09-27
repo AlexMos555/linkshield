@@ -63,6 +63,7 @@ interface VpnModule {
   verifyListFiltering?(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
   addPauseChangedListener?(cb: (p: { until: number }) => void): VpnSubscription;
+  addBlocklistChangedListener?(cb: () => void): VpnSubscription;
   addNetworkChangedListener?(cb: () => void): VpnSubscription;
   openVpnSettings?(): boolean;
   pauseProtection?(untilMs: number): void;
@@ -292,14 +293,22 @@ export function useNetworkShield(): NetworkShield {
         void sync();
       }, NETWORK_SETTLE_MS);
     });
+    // A list lands seconds after the network comes back (the service's retry
+    // on reconnect), usually with no re-check left to read it: without this
+    // the screen kept «Списка ещё нет» over a phone that had one.
+    const listSub = vpn?.addBlocklistChangedListener?.(() => {
+      readBlocklist();
+      void proveList();
+    });
     return () => {
       appSub.remove();
       stopSub?.remove();
       pauseSub?.remove();
       netSub?.remove();
+      listSub?.remove();
       if (settle) clearTimeout(settle);
     };
-  }, [sync, vpn]);
+  }, [sync, vpn, readBlocklist, proveList]);
 
   const turnOn = useCallback(async () => {
     if (!vpn) return;

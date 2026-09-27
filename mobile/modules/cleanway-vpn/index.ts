@@ -188,6 +188,11 @@ export function addPauseChangedListener(cb: (p: PauseChangedPayload) => void) {
   return CleanwayVpn.addListener('onPauseChanged', cb);
 }
 
+/** Subscribe to the shield's list being loaded, synced or revoked. */
+export function addBlocklistChangedListener(cb: () => void) {
+  return CleanwayVpn.addListener('onBlocklistChanged', cb);
+}
+
 /**
  * Subscribe to the phone's connection coming or going. Fires on the change
  * only — no polling, and nothing for signal-strength updates.

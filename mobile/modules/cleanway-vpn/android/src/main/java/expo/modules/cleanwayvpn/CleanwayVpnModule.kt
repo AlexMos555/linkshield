@@ -19,7 +19,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
 private const val VPN_CONSENT_REQUEST = 0x7A11
 
 // The events fed by the service's broadcasts (one receiver serves them all).
-private val BROADCAST_EVENTS = listOf("onDomainBlocked", "onVpnStopped", "onPauseChanged")
+private val BROADCAST_EVENTS = listOf("onDomainBlocked", "onVpnStopped", "onPauseChanged", "onBlocklistChanged")
 
 /**
  * JS <-> native bridge for Cleanway's local DNS-filtering VPN (Android).
@@ -40,7 +40,7 @@ class CleanwayVpnModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("CleanwayVpn")
 
-    Events("onDomainBlocked", "onVpnStopped", "onPauseChanged", "onNetworkChanged")
+    Events("onDomainBlocked", "onVpnStopped", "onPauseChanged", "onBlocklistChanged", "onNetworkChanged")
 
     AsyncFunction("startVpn") { promise: Promise ->
       if (pendingStart != null) {
@@ -549,12 +549,15 @@ class CleanwayVpnModule : Module() {
             val until = intent.getLongExtra(CleanwayVpnService.EXTRA_PAUSE_UNTIL, 0L)
             sendEvent("onPauseChanged", mapOf("until" to until.toDouble()))
           }
+          // A list landed — typically right after the network came back.
+          CleanwayVpnService.ACTION_BLOCKLIST_CHANGED -> sendEvent("onBlocklistChanged", emptyMap<String, Any>())
         }
       }
     }
     val filter = IntentFilter(CleanwayVpnService.ACTION_DOMAIN_BLOCKED).apply {
       addAction(CleanwayVpnService.ACTION_VPN_STOPPED)
       addAction(CleanwayVpnService.ACTION_PAUSE_CHANGED)
+      addAction(CleanwayVpnService.ACTION_BLOCKLIST_CHANGED)
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
       context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)

@@ -59,6 +59,8 @@ export type CleanwayVpnModuleEvents = {
   onDomainBlocked: (params: DomainBlockedPayload) => void;
   onVpnStopped: (params: VpnStoppedPayload) => void;
   onPauseChanged: (params: PauseChangedPayload) => void;
+  /** The list the shield blocks from was loaded, synced or revoked; read blocklistStatus() again. */
+  onBlocklistChanged: (params: Record<string, never>) => void;
   onNetworkChanged: (params: NetworkChangedPayload) => void;
 };
 
