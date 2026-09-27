@@ -1,0 +1,87 @@
+# PHISH hosts (tests/data/ru_heuristics_phish.txt) the scorer caught BEFORE
+# the Russian false-positive fix: main @ 5467846 with the ML model stubbed,
+#   python3 scripts/eval_ru_heuristics.py --no-ml --caught
+# run on that checkout. tests/test_ru_heuristic_fps.py holds the fix to this
+# list: every host here stays caught except the ones the test names, each
+# with its reason. When hosts are added to the PHISH set, regenerate this on
+# the pre-fix checkout, never on the fixed code.
+
+1kea.com
+amazom.com
+amazon-billing.com
+appl.com
+apple-account.com
+apple.com.msk.ru
+appleid.apple.com.signin-check.com
+avito-oplata.online
+avito-safe-payment.site
+c1ti.com
+dh1.com
+dhl.help
+dhll.com
+dpd.top
+eb4y.com
+esia.gosuslugi.ru.msk.ru
+esia.gosuslugi.ru.sso-auth.site
+gmai.com
+gosuslugi-lk.spb.ru
+gosuslugi-vhod.online
+gosuslugi.gov.msk.ru
+gosuslugi.nov.ru
+gosuslugi.ru.lk-vhod.xyz
+id.tbank.ru.secure-pay.online
+instagarm.com
+kinopoisk.nov.ru
+login.vk.com.account-check.xyz
+login.vk.com.msk.ru
+mailru-account-update.com
+micorsoft.com
+microsoft-verify.net
+mts.nov.ru
+netflx.com
+ok.nov.ru
+online.sberbank.ru.verify-client.top
+ozom.ru
+ozon.ru.net.spb.ru
+ozon.ru.orders-check.com
+passport.yandex.ru.auth-check.site
+paypa1.com
+paypal-login.com
+paypal-login.spb.ru
+paypal.account-verify.tk
+paypal.com.evil.xyz
+paypal.com.spb.ru
+paypall.com
+prydal.com
+qooqle.com
+rnicrosoft-login.com
+rnicrosoft.nov.ru
+sberbank.com.spb.ru
+sberbank.ru.secure-login.com
+sberbank.spb.ru
+tinkoff-bonus.nov.ru
+up5.com
+ups.top
+vk-login.nov.ru
+vk.com.spb.ru
+vk.nov.ru
+vtb-secure-account.top
+whatsap.com
+wildberries.ru.delivery-status.info
+xn--ggle-55da.com
+xn--gosuslug-0hh.ru
+xn--lfabank-1fg.ru
+xn--mil-6cd.ru
+xn--ndex-43d7i.ru
+xn--pple-43d.com
+xn--sberbnk-6fg.ru
+xn--tbnk-63d.ru
+xn--tle2-v4d.ru
+xn--tnkoff-pvf.ru
+xn--vito-43d.ru
+xn--wldberries-x2i.ru
+xn--yandx-2we.ru
+xn--ypal-43d9g.com
+xn--zon-red.ru
+yaho.com
+yahuu.com

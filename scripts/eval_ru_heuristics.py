@@ -15,9 +15,13 @@ Usage:
     python3 scripts/eval_ru_heuristics.py --no-ml          # heuristics only
     python3 scripts/eval_ru_heuristics.py --out after.json
     python3 scripts/eval_ru_heuristics.py --compare before.json after.json
+    python3 scripts/eval_ru_heuristics.py --no-ml --caught # PHISH hosts caught
 
 No network access, no API key. --compare prints the before/after table that
-goes into a PR description.
+goes into a PR description. --caught lists the PHISH hosts scored above
+'safe', one per line: run on the pre-fix code, it is the baseline that
+tests/test_ru_heuristic_fps.py holds the fix to
+(tests/data/ru_heuristics_phish_caught_before.txt).
 """
 from __future__ import annotations
 
@@ -172,11 +176,19 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--no-ml", action="store_true", help="stub the ML model out (heuristics only)")
     ap.add_argument("--out", help="write the full result as JSON")
     ap.add_argument("--compare", nargs=2, metavar=("BEFORE", "AFTER"), help="print the before/after table")
+    ap.add_argument("--caught", action="store_true", help="print the PHISH hosts caught, one per line")
     args = ap.parse_args(argv)
 
     if args.compare:
         before, after = (json.loads(Path(p).read_text()) for p in args.compare)
         _compare(before, after)
+        return 0
+    if args.caught:
+        if args.no_ml:
+            disable_ml()
+        for r in score_hosts(load(PHISH_PATH)):
+            if r["level"] != "safe":
+                print(r["host"])
         return 0
     result = run(ml=not args.no_ml)
     _print_report(result)
