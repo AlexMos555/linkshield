@@ -1,6 +1,52 @@
 // Cleanway Options Page Script
 
 // ══════════════════════════════════════════════════════════════════════
+// i18n
+// ══════════════════════════════════════════════════════════════════════
+// Every text on this page comes from the browser's language catalog
+// (_locales/<lang>/messages.json, generated from packages/i18n-strings).
+// options.html carries English defaults plus data-i18n keys; until this
+// applier existed nothing read those keys, so the whole page was English.
+// scripts/test-extension-core.mjs fails if a key used here or in the HTML
+// is missing from any locale.
+
+function t(key, subs) {
+  try {
+    return chrome.i18n.getMessage(key, subs || []) || key;
+  } catch (e) {
+    return key;
+  }
+}
+
+function applyI18n() {
+  const attrs = [
+    ["data-i18n", (el, msg) => { el.textContent = msg; }],
+    ["data-i18n-title", (el, msg) => el.setAttribute("title", msg)],
+    ["data-i18n-placeholder", (el, msg) => el.setAttribute("placeholder", msg)],
+    ["data-i18n-aria-label", (el, msg) => el.setAttribute("aria-label", msg)],
+  ];
+  for (const [attr, apply] of attrs) {
+    document.querySelectorAll(`[${attr}]`).forEach((el) => {
+      const key = el.getAttribute(attr);
+      const msg = t(key);
+      if (msg && msg !== key) apply(el, msg);
+    });
+  }
+  try {
+    document.documentElement.lang = chrome.i18n.getUILanguage();
+  } catch (e) { /* keep lang="en" */ }
+}
+
+applyI18n();
+
+// A button's label flips to a confirmation for two seconds, then back.
+function flashLabel(el, message, restoreKey) {
+  if (!el) return;
+  el.textContent = message;
+  setTimeout(() => { el.textContent = t(restoreKey); }, 2000);
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // Skill Level (Kids / Regular / Granny / Pro)
 // ══════════════════════════════════════════════════════════════════════
 // Defaults per-mode (applied only when the user hasn't customized them)
@@ -68,7 +114,7 @@ function updatePinControls(pinSet) {
   // has no parental_pin field. Saying nothing beats confirming a lock that
   // isn't there; the row description carries the honest explanation.
   status.textContent = "";
-  saveBtn.textContent = pinSet ? "Update" : "Set PIN";
+  saveBtn.textContent = t(pinSet ? "options_pin_update" : "options_pin_set");
   clearBtn.hidden = !pinSet;
 }
 
@@ -134,8 +180,7 @@ document.getElementById("save-pin").addEventListener("click", async () => {
   const input = document.getElementById("parental-pin");
   const pin = (input.value || "").trim();
   if (!/^\d{4}$/.test(pin)) {
-    document.getElementById("pin-status").textContent =
-      "PIN must be exactly 4 digits";
+    document.getElementById("pin-status").textContent = t("options_pin_invalid");
     return;
   }
   await chrome.storage.local.set({ parental_pin_set: true });
@@ -145,7 +190,7 @@ document.getElementById("save-pin").addEventListener("click", async () => {
 });
 
 document.getElementById("clear-pin").addEventListener("click", async () => {
-  if (!confirm("Clear the parental PIN?")) return;
+  if (!confirm(t("options_pin_clear_confirm"))) return;
   await chrome.storage.local.set({ parental_pin_set: false });
   await pushSkillToApi({ parental_pin: "" });
   updatePinControls(false);
@@ -191,7 +236,7 @@ document.querySelectorAll("input[type=checkbox]").forEach((cb) => {
 
 // Clear data
 document.getElementById("clear-data").addEventListener("click", () => {
-  if (confirm("Delete all local check history? This cannot be undone.")) {
+  if (confirm(t("options_clear_confirm"))) {
     chrome.storage.local.remove(["recent_threats", "stats", "audits", "blocked_pages_today"], () => {
       location.reload();
     });
@@ -210,8 +255,7 @@ document.getElementById("save-lists").addEventListener("click", () => {
     custom_blocklist: document.getElementById("custom-blocklist").value,
     custom_whitelist: document.getElementById("custom-whitelist").value,
   });
-  document.getElementById("save-lists").textContent = "Saved!";
-  setTimeout(() => document.getElementById("save-lists").textContent = "Save Lists", 2000);
+  flashLabel(document.getElementById("save-lists"), t("options_saved"), "options_save_lists");
 });
 
 // Load privacy settings
@@ -231,8 +275,7 @@ document.getElementById("save-api-url").addEventListener("click", () => {
   const url = document.getElementById("api-url-input").value.trim();
   if (url) {
     chrome.storage.local.set({ api_url: url });
-    document.getElementById("save-api-url").textContent = "Saved!";
-    setTimeout(() => document.getElementById("save-api-url").textContent = "Save", 2000);
+    flashLabel(document.getElementById("save-api-url"), t("options_saved"), "options_save");
   }
 });
 
@@ -246,8 +289,7 @@ document.getElementById("copy-referral").addEventListener("click", async () => {
   }
   const url = "https://cleanway.ai/ref/" + code;
   await navigator.clipboard.writeText(url);
-  document.getElementById("copy-referral").textContent = "Copied!";
-  setTimeout(() => document.getElementById("copy-referral").textContent = "Copy link", 2000);
+  flashLabel(document.getElementById("copy-referral"), t("options_copied"), "family_invite_link_copy_btn");
 });
 
 // Redeem referral code
@@ -255,7 +297,7 @@ document.getElementById("redeem-code").addEventListener("click", async () => {
   const code = document.getElementById("referral-input").value.trim().toUpperCase();
   if (!code) return;
   await chrome.storage.local.set({ redeemed_code: code });
-  alert("Code " + code + " saved!");
+  alert(t("options_redeem_saved", [code]));
 });
 
 // ─── Device-level override (Family Hub) ─────────────────────────
@@ -269,11 +311,12 @@ async function lazyApi() {
   return import(chrome.runtime.getURL("src/utils/api.js"));
 }
 
-const SKILL_LABELS = {
-  kids: "Kids",
-  regular: "Regular",
-  granny: "Granny",
-  pro: "Pro",
+// Same names as the skill cards above (options_skill_<level>).
+const SKILL_LABEL_KEYS = {
+  kids: "options_skill_kids",
+  regular: "options_skill_regular",
+  granny: "options_skill_granny",
+  pro: "options_skill_pro",
 };
 
 function setSkillCardActive(name, value) {
@@ -319,19 +362,21 @@ async function refreshDeviceOverridePanel() {
 
   const summary = document.getElementById("device-effective-summary");
   if (summary) {
-    const label = SKILL_LABELS[effective.skill_level] || effective.skill_level;
+    const labelKey = SKILL_LABEL_KEYS[effective.skill_level];
+    const label = labelKey ? t(labelKey) : effective.skill_level;
     summary.textContent = `${label} · ${effective.font_scale.toFixed(1)}× · ${
-      effective.voice_alerts_enabled ? "voice on" : "voice off"
+      t(effective.voice_alerts_enabled ? "options_voice_on" : "options_voice_off")
     }`;
   }
   const badge = document.getElementById("device-skill-source");
   if (badge) {
     badge.hidden = false;
     badge.setAttribute("data-source", effective.skill_source);
-    badge.textContent =
+    badge.textContent = t(
       effective.skill_source === "device_override"
-        ? "Set on this device"
-        : "From your account";
+        ? "options_source_device"
+        : "options_source_account"
+    );
   }
 
   // Reflect controls if any field already has a device-level override
@@ -516,9 +561,10 @@ async function loadFamilyHub() {
   _familyState.members = (members && members.members) || [];
 
   document.getElementById("family-active-name").textContent = fam.name;
-  document.getElementById("family-active-count").textContent = String(fam.member_count);
+  document.getElementById("family-active-count").textContent =
+    t("options_family_members_count", [String(fam.member_count)]);
   const roleBadge = document.getElementById("family-active-role");
-  roleBadge.textContent = fam.role;
+  roleBadge.textContent = familyRoleText(fam.role);
   roleBadge.setAttribute("data-source", fam.role === "owner" ? "device_override" : "user_default");
 
   document.getElementById("family-owner-controls").hidden = fam.role !== "owner";
@@ -541,6 +587,20 @@ async function loadFamilyHub() {
   showFamilyState("active");
 }
 
+// "owner" / "member" from the API, in the reader's language.
+function familyRoleText(role) {
+  if (role === "owner") return t("options_family_role_owner");
+  if (role === "member") return t("options_family_role_member");
+  return String(role || "");
+}
+
+// The level a relative's alert carries, as the badges name it.
+function familyAlertLevelText(level) {
+  if (level === "dangerous") return t("badge_label_dangerous");
+  if (level === "caution") return t("badge_label_caution");
+  return t("options_family_alert_blocked");
+}
+
 function renderFamilyMembers(members) {
   const container = document.getElementById("family-members-list");
   if (!container) return;
@@ -556,11 +616,11 @@ function renderFamilyMembers(members) {
     // We don't have email/name here — backend returns user_id only.
     // Show shortened ID + role for now; future iteration can join with
     // public.users to surface display_name.
-    label.textContent = `${m.user_id.slice(0, 8)}… (${m.role})`;
+    label.textContent = `${m.user_id.slice(0, 8)}… (${familyRoleText(m.role)})`;
     if (!m.public_key_b64) {
       const note = document.createElement("span");
       note.style.cssText = "font-size: 11px; color: #f59e0b;";
-      note.textContent = "no key yet";
+      note.textContent = t("options_family_no_key");
       row.appendChild(dot);
       row.appendChild(label);
       row.appendChild(note);
@@ -611,11 +671,11 @@ async function renderFamilyAlerts(token, familyId) {
     row.className = "family-alert-row";
     const domain = document.createElement("div");
     domain.className = "domain";
-    domain.textContent = a.domain || "(unknown domain)";
+    domain.textContent = a.domain || t("options_family_unknown_domain");
     const meta = document.createElement("div");
     meta.className = "meta";
     const when = a._at ? new Date(a._at).toLocaleString() : "";
-    meta.textContent = `${a.level || "blocked"} · ${when}`;
+    meta.textContent = `${familyAlertLevelText(a.level)} · ${when}`;
     row.appendChild(domain);
     row.appendChild(meta);
     container.appendChild(row);
@@ -628,12 +688,12 @@ document.getElementById("family-create-btn")?.addEventListener("click", async ()
   const stored = await chrome.storage.local.get(["auth_token"]);
   if (!stored.auth_token) return;
   const api = await lazyFamilyApi();
-  const created = await api.createFamily(stored.auth_token, "My Family");
+  const created = await api.createFamily(stored.auth_token, t("options_family_default_name"));
   if (created) {
     // Re-render — the keypair register + member fetch happens in loadFamilyHub.
     await loadFamilyHub();
   } else {
-    alert("Couldn't create family. Try again in a moment.");
+    alert(t("options_family_create_failed"));
   }
 });
 
@@ -669,7 +729,7 @@ document.getElementById("family-accept-btn")?.addEventListener("click", async ()
   }
   const errBox = document.getElementById("family-join-error");
   if (!code || !/^\d{4}$/.test(pin)) {
-    errBox.textContent = "Please enter a code and 4-digit PIN.";
+    errBox.textContent = t("options_family_join_invalid_input");
     errBox.hidden = false;
     return;
   }
@@ -681,7 +741,7 @@ document.getElementById("family-accept-btn")?.addEventListener("click", async ()
   if (joined) {
     await loadFamilyHub();
   } else {
-    errBox.textContent = "Invalid or expired invite.";
+    errBox.textContent = t("options_family_join_failed");
     errBox.hidden = false;
   }
 });
@@ -691,7 +751,7 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
   const api = await lazyFamilyApi();
   const invite = await api.createInvite(_familyState.token, _familyState.currentFamilyId);
   if (!invite) {
-    alert("Couldn't create invite. Try again in a moment.");
+    alert(t("options_family_invite_failed"));
     return;
   }
   // Show modal with code+PIN — appears ONCE, server keeps only hashes.
@@ -722,7 +782,7 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
       q.addData(inviteUrl);
       q.make();
       // 4-pixel module, 4-module quiet zone — scans cleanly from a phone.
-      qrEl.innerHTML = q.createImgTag(4, 4, "Cleanway family invite QR");
+      qrEl.innerHTML = q.createImgTag(4, 4, t("options_family_invite_qr_alt"));
       if (qrWrap) qrWrap.hidden = false;
     }
   } catch (e) {
@@ -740,12 +800,8 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
 
   document.getElementById("family-invite-copy-btn").onclick = async () => {
     try {
-      await navigator.clipboard.writeText(`Cleanway Family invite\nCode: ${invite.code}\nPIN: ${invite.pin}`);
-      document.getElementById("family-invite-copy-btn").textContent = "Copied ✓";
-      setTimeout(() => {
-        const btn = document.getElementById("family-invite-copy-btn");
-        if (btn) btn.textContent = "Copy both";
-      }, 2000);
+      await navigator.clipboard.writeText(t("options_family_invite_share", [invite.code, invite.pin]));
+      flashLabel(document.getElementById("family-invite-copy-btn"), t("options_copied"), "family_invite_copy_btn");
     } catch {
       // Clipboard blocked
     }
@@ -756,11 +812,7 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
     linkCopyBtn.onclick = async () => {
       try {
         await navigator.clipboard.writeText(inviteUrl);
-        linkCopyBtn.textContent = "Copied ✓";
-        setTimeout(() => {
-          const btn = document.getElementById("family-invite-link-copy-btn");
-          if (btn) btn.textContent = "Copy link";
-        }, 2000);
+        flashLabel(linkCopyBtn, t("options_copied"), "family_invite_link_copy_btn");
       } catch {
         // Clipboard blocked
       }

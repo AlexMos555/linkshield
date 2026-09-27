@@ -185,13 +185,44 @@
       const result = await resp.json();
       renderBanner(container, { state: "ready", result });
     } catch (err) {
-      renderBanner(container, { state: "error", error: err && err.message });
+      console.warn("[Cleanway] webmail analyze failed:", err && err.message);
+      renderBanner(container, { state: "error" });
     } finally {
       clearTimeout(timer);
     }
   }
 
   // ── Banner UI ────────────────────────────────────────────────────────────
+  // Text in the browser's language (packages/i18n-strings extension.webmail).
+  function t(key, subs) {
+    try {
+      return chrome.i18n.getMessage(key, subs || []) || key;
+    } catch (e) {
+      return key;
+    }
+  }
+
+  // The analyzer explains a finding in English (`message`) and files it
+  // under a `category` (api/services/email_analyzer.py). The reader gets the
+  // category in their own language; a category nobody has mapped yet keeps
+  // the English message rather than showing nothing.
+  const FINDING_KEYS = {
+    url_reputation: "webmail_finding_url_reputation",
+    sender_spoofing: "webmail_finding_sender_spoofing",
+    auth_fail: "webmail_finding_auth_fail",
+    body_pattern: "webmail_finding_body_pattern",
+    link_text_mismatch: "webmail_finding_link_text_mismatch",
+  };
+
+  function findingText(finding) {
+    if (!finding) return "";
+    const key = Object.prototype.hasOwnProperty.call(FINDING_KEYS, finding.category)
+      ? FINDING_KEYS[finding.category]
+      : null;
+    const localized = key ? t(key) : "";
+    return localized && localized !== key ? localized : String(finding.message || "");
+  }
+
   function removeBanner() {
     document.getElementById(BANNER_ID)?.remove();
   }
@@ -217,31 +248,32 @@
     let bg = "#f1f5f9", fg = "#334155", border = "#cbd5e1";
 
     if (opts.state === "scanning") {
-      icon = "🛡️"; headline = "Cleanway is scanning this email…";
+      icon = "🛡️"; headline = t("webmail_scanning");
     } else if (opts.state === "rate_limited") {
-      icon = "⏳"; headline = "Cleanway is rate-limited — please wait";
-      detail = "Too many scans from this network right now. Try again in a minute.";
+      icon = "⏳"; headline = t("webmail_rate_limited");
+      detail = t("webmail_rate_limited_detail");
       bg = "#fef3c7"; fg = "#713f12"; border = "#fcd34d";
     } else if (opts.state === "error") {
-      icon = "⚠️"; headline = "Cleanway couldn't reach the server";
-      detail = opts.error || "";
+      // The technical reason (HTTP status, timeout) goes to the console in
+      // runScan; the reader gets what to do about it.
+      icon = "⚠️"; headline = t("webmail_error");
+      detail = t("webmail_error_detail");
       bg = "#fef3c7"; fg = "#713f12"; border = "#fcd34d";
     } else if (opts.state === "ready") {
       const { level, score, findings, links } = opts.result || {};
       if (level === "dangerous") {
-        icon = "🛑"; headline = "Likely phishing — don't click any links";
+        icon = "🛑"; headline = t("webmail_dangerous");
         bg = "#fee2e2"; fg = "#7f1d1d"; border = "#fca5a5";
       } else if (level === "suspicious") {
-        icon = "⚠️"; headline = "Suspicious — verify before interacting";
+        icon = "⚠️"; headline = t("webmail_suspicious");
         bg = "#fef3c7"; fg = "#713f12"; border = "#fcd34d";
       } else {
-        icon = "✅"; headline = "Looks safe — no phishing markers found";
+        icon = "✅"; headline = t("webmail_safe");
         bg = "#dcfce7"; fg = "#14532d"; border = "#86efac";
       }
-      const topFinding = (findings && findings[0] && findings[0].message) || "";
-      detail = topFinding
-        ? `Risk score ${score}/100 • ${topFinding}`
-        : `Risk score ${score}/100`;
+      const topFinding = findingText(findings && findings[0]);
+      const scoreText = t("badge_score", [String(Math.round(Number(score) || 0))]);
+      detail = topFinding ? `${scoreText} • ${topFinding}` : scoreText;
       banner.dataset.findings = String((findings || []).length);
       banner.dataset.links = String((links || []).length);
     }
@@ -257,10 +289,10 @@
         <div style="font-size:12px;opacity:0.9"></div>
       </div>
       <button type="button"
-              aria-label="Dismiss"
               style="background:transparent;border:0;cursor:pointer;font-size:18px;line-height:1;color:inherit;padding:0 4px">×</button>
     `;
     const [iconEl, textWrap, closeBtn] = banner.children;
+    closeBtn.setAttribute("aria-label", t("webmail_dismiss"));
     iconEl.textContent = icon;
     textWrap.children[0].textContent = headline;
     textWrap.children[1].textContent = detail;

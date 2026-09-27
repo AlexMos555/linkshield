@@ -55,10 +55,17 @@ const BROWSER_TREES = ["extension", "extension-firefox", "extension-safari"];
 const LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
 
 // Namespaces added for strings that used to be hard-coded English in the
-// content scripts, the context menu, the manifest and the family notifier.
+// content scripts, the context menu, the manifest, the family notifier, the
+// block page's evidence cards, the popup's overlays, the password-leak and
+// webmail banners and the settings page.
 const NEW_KEY_PREFIXES = [
   "badge_", "audit_", "credguard_", "mpg_", "menu_", "command_", "family_notify_", "reason_",
+  "evidence_", "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_",
 ];
+
+// Reason codes whose `detail` is already in the user's language (the
+// background writes it with chrome.i18n) or that stand for "no code at all".
+const CODES_WITH_LOCALIZED_DETAIL = new Set(["known", "user_content", "api"]);
 
 let passed = 0;
 let failed = 0;
@@ -444,13 +451,44 @@ const KEY_USE_RES = [
   /chrome\.i18n\.getMessage\(\s*["']([A-Za-z0-9_]+)["']/g,
   /\b_t\(\s*["']([A-Za-z0-9_]+)["']/g,
   /\b_tHtml\(\s*["']([A-Za-z0-9_]+)["']/g,
+  // t() in the popup, settings page and webmail banner; bt() on the block
+  // page. The whole argument must be the literal: bt("reason_" + group)
+  // builds its key at run time and is checked through the group table.
+  /\bb?t\(\s*["']([A-Za-z0-9_]+)["']\s*[,)]/g,
+  // Per-file helpers in content scripts that share one global scope
+  // (_weeklyT, _scoreT, _breachT, _pwnedT)
+  /\b_[a-z]+T\(\s*["']([A-Za-z0-9_]+)["']\s*[,)]/g,
+  // Keys chosen before the call (ternaries, lookup tables): any literal in a
+  // namespace that exists only for i18n must be a real key. (Not pwned_:
+  // password-pwned.js also keeps a storage counter under that prefix.)
+  /["'`]((?:evidence|weekly|score|breach|webmail|options)_[a-z0-9_]+)["'`]/g,
 ];
+
+// Static text in the extension pages: data-i18n, -title, -placeholder,
+// -aria-label. The options page carried these keys for months with nothing
+// reading them, and half of them were never in the catalog.
+const HTML_KEY_RE = /data-i18n(?:-title|-placeholder|-aria-label)?="([A-Za-z0-9_]+)"/g;
+
+function listHtml(dir) {
+  const abs = join(ROOT, dir);
+  if (!existsSync(abs)) return [];
+  const out = [];
+  for (const name of readdirSync(abs)) {
+    const p = join(abs, name);
+    if (statSync(p).isDirectory()) out.push(...listHtml(relative(ROOT, p)));
+    else if (name.endsWith(".html")) out.push(relative(ROOT, p));
+  }
+  return out;
+}
 
 function usedKeys(tree) {
   const keys = new Set();
   for (const rel of listJs(join(tree, "src"))) {
     const code = stripComments(readFileSync(join(ROOT, rel), "utf8"));
     for (const re of KEY_USE_RES) for (const m of code.matchAll(re)) keys.add(m[1]);
+  }
+  for (const rel of listHtml(join(tree, "src"))) {
+    for (const m of readFileSync(join(ROOT, rel), "utf8").matchAll(HTML_KEY_RE)) keys.add(m[1]);
   }
   const manifest = join(ROOT, tree, "manifest.json");
   if (existsSync(manifest)) {
@@ -461,7 +499,10 @@ function usedKeys(tree) {
 
 await check("extension-core uses the new keys (sanity: the scan finds them)", () => {
   const keys = [...usedKeys(SOURCE_TREE)];
-  for (const prefix of ["credguard_", "mpg_", "badge_", "menu_", "family_notify_"]) {
+  for (const prefix of [
+    "credguard_", "mpg_", "badge_", "menu_", "family_notify_",
+    "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_", "block_evidence_",
+  ]) {
     assert.ok(keys.some((k) => k.startsWith(prefix)), `no ${prefix}* key used in extension-core`);
   }
 });
@@ -509,12 +550,80 @@ await check("every reason label the badges can show exists in every locale", () 
     assert.equal(labels.text({ signal: "typosquatting", detail: "Impersonates paypal.com" }), "<reason_imitates_brand>");
     assert.equal(labels.text({ signal: "no_such_code", detail: "English detail" }), "English detail");
     assert.equal(labels.text({ signal: "constructor", detail: "d" }), "d", "prototype keys are not codes");
+    assert.equal(labels.group({ signal: "combosquatting" }), "imitates_brand");
+    assert.equal(labels.group({ signal: "no_such_code" }), null);
+    assert.equal(labels.group({ signal: "constructor" }), null, "prototype keys are not codes");
+    assert.equal(labels.group(null), null);
     if (tree === SOURCE_TREE) continue;
-    const keys = [...new Set(Object.values(labels.keys))].map((k) => `reason_${k}`);
+    // Each group is a badge line (reason_) and a block-page card body (evidence_).
+    const groups = [...new Set(Object.values(labels.keys))];
+    const keys = groups.flatMap((g) => [`reason_${g}`, `evidence_${g}`]);
     for (const locale of LOCALES) {
       const messages = readJson(join(tree, "_locales", locale, "messages.json"));
-      assert.deepEqual(keys.filter((k) => !messages[k]), [], `${tree}/_locales/${locale} lacks reason keys`);
+      assert.deepEqual(keys.filter((k) => !messages[k]), [], `${tree}/_locales/${locale} lacks reason/evidence keys`);
     }
+  }
+});
+
+// The block page draws one card per reason group; a group without an icon
+// would still render, but a group the page never heard of means the two
+// files drifted apart.
+await check("every reason group has a block-page evidence icon", () => {
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const window = {};
+    const ctx = vm.createContext({ window, chrome: { i18n: { getMessage: () => "" } } });
+    vm.runInContext(readFileSync(join(ROOT, tree, "src/content/reason-labels.js"), "utf8"), ctx);
+    const groups = new Set(Object.values(window.__cleanwayReasons.keys));
+    const page = readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8");
+    const table = page.match(/const EVIDENCE_ICONS = \{([\s\S]*?)\n\};/);
+    assert.ok(table, `${tree}: EVIDENCE_ICONS table not found in block-page.js`);
+    const icons = new Set([...table[1].matchAll(/^\s*([a-z_]+):/gm)].map((m) => m[1]));
+    assert.deepEqual([...groups].filter((g) => !icons.has(g)), [], `${tree}: groups without an icon`);
+    assert.deepEqual([...icons].filter((g) => !groups.has(g)), [], `${tree}: icons for groups that do not exist`);
+    assert.ok(!/EVIDENCE_BOOK|Risk signal|Confidence: \$\{/.test(stripComments(page)),
+      `${tree}: English evidence text is back in block-page.js`);
+  }
+});
+
+// Every reason code the API or an offline scorer can emit has a line in the
+// user's language. An unmapped code falls back to the scorer's English
+// `detail` under a Russian "Опасно" — the bug this suite exists to stop.
+await check("every reason code the API and both offline scorers emit is mapped", () => {
+  const window = {};
+  const ctx = vm.createContext({ window, chrome: { i18n: { getMessage: () => "" } } });
+  vm.runInContext(readFileSync(join(ROOT, SOURCE_TREE, "src/content/reason-labels.js"), "utf8"), ctx);
+  const mapped = new Set(Object.keys(window.__cleanwayReasons.keys));
+  const emitted = new Map(); // code → where it came from
+  const pyFiles = (dir) => readdirSync(join(ROOT, dir)).flatMap((name) => {
+    const rel = join(dir, name);
+    if (statSync(join(ROOT, rel)).isDirectory()) return name === "__pycache__" ? [] : pyFiles(rel);
+    return name.endsWith(".py") ? [rel] : [];
+  });
+  for (const rel of pyFiles("api")) {
+    const src = readFileSync(join(ROOT, rel), "utf8");
+    for (const m of src.matchAll(/\bsignal\s*=\s*["']([a-z_]+)["']/g)) emitted.set(m[1], rel);
+    for (const m of src.matchAll(/^REASON_[A-Z_]+\s*=\s*["']([a-z_]+)["']/gm)) emitted.set(m[1], rel);
+  }
+  assert.ok(emitted.size >= 60, `only ${emitted.size} API codes found — did the scan break?`);
+  for (const rel of ["src/utils/local-scorer.js", "src/background/index.js"]) {
+    const src = readFileSync(join(ROOT, SOURCE_TREE, rel), "utf8");
+    for (const m of src.matchAll(/\bsignal\s*:\s*["']([a-z_]+)["']/g)) emitted.set(m[1], rel);
+  }
+  const unmapped = [...emitted].filter(([code]) => !mapped.has(code) && !CODES_WITH_LOCALIZED_DETAIL.has(code));
+  assert.deepEqual(unmapped, [], "codes with no reason line (add them to content/reason-labels.js)");
+});
+
+// The webmail banner names the analyzer's first finding by its category.
+await check("every email-analyzer finding category has a webmail line", () => {
+  const analyzer = readFileSync(join(ROOT, "api/services/email_analyzer.py"), "utf8");
+  const categories = new Set([...analyzer.matchAll(/\bcategory\s*=\s*["']([a-z_]+)["']/g)].map((m) => m[1]));
+  assert.ok(categories.size >= 4, `only ${categories.size} categories found — did the scan break?`);
+  const webmail = readFileSync(join(ROOT, SOURCE_TREE, "src/content/webmail.js"), "utf8");
+  const en = readJson("extension/_locales/en/messages.json");
+  for (const category of categories) {
+    const key = `webmail_finding_${category}`;
+    assert.ok(webmail.includes(`${category}: "${key}"`), `webmail.js does not map ${category}`);
+    assert.ok(en[key], `${key} missing from the catalog`);
   }
 });
 

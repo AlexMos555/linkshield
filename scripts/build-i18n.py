@@ -67,6 +67,16 @@ EXTENSION_NS_TO_FLAT_PREFIX = {
     # Reason lines under a link badge, keyed by reason group
     # (content/reason-labels.js).
     "extension.reason": "reason_",
+    # Block-page evidence card bodies, keyed by the same reason groups.
+    "extension.evidence": "evidence_",
+    # Overlays opened from the popup, the password-leak banner, the webmail
+    # banner and the settings page (all used to be hard-coded English).
+    "extension.weekly": "weekly_",
+    "extension.score": "score_",
+    "extension.breach": "breach_",
+    "extension.pwned": "pwned_",
+    "extension.webmail": "webmail_",
+    "extension.options": "options_",
 }
 
 # For popup namespace: keys NOT in the dict above use bare names (no prefix).

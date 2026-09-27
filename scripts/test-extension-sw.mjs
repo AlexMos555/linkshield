@@ -517,6 +517,32 @@ async function runTree(tree) {
       console.log(`        (content scripts rendered the "${locale}" catalog)`);
     });
 
+    await check("the block page's evidence and the settings page come from the catalog, not English", async () => {
+      const { locale, messages } = await activeCatalog(sw, tree);
+      const english = readCatalog(tree, "en");
+      const msg = (key) => messages[key].message;
+      // The mock answers "phishtank" for scam-* hosts: one flagged_phishing card.
+      const tab = await openBlocked(context, `http://scam-language.example:${port}/landing.html`);
+      const card = await tab.innerText(".ls-block-evidence");
+      assert.ok(card.includes(msg("reason_flagged_phishing")), `[${locale}] evidence title: ${card}`);
+      assert.ok(card.includes(msg("evidence_flagged_phishing")), `[${locale}] evidence body: ${card}`);
+      assert.ok(!card.includes("Reported as phishing") && !/Risk signal|PhishTank reported/.test(card),
+        `English left on the block page: ${card}`);
+      await tab.close();
+
+      const opts = await context.newPage();
+      await opts.goto(`chrome-extension://${extId}/src/options/options.html`);
+      await until("settings page translated", async () => (await opts.title()) === msg("options_page_title"), 5000);
+      // The empty family-invite dialog used to cover the whole page on open.
+      assert.equal(await opts.isVisible("#family-invite-modal"), false, "invite dialog shown without an invite");
+      const text = await opts.innerText("body");
+      for (const key of ["options_protection", "options_skill_heading", "options_data", "stats_label_blocked"]) {
+        assert.ok(text.includes(msg(key)), `[${locale}] settings page lacks ${key}`);
+      }
+      assert.ok(!text.includes(english.options_auto_scan_desc.message), `English left on the settings page`);
+      await opts.close();
+    });
+
     await check("signing out stops the family poll and forgets the family", async () => {
       await sw.evaluate(() => chrome.storage.local.remove("auth_token"));
       await until("family poll cleared", () =>

@@ -20,7 +20,7 @@ Cleanway automatically checks every link you encounter against 16 threat intelli
 - **10 active named blocklist feeds** (Google Safe Browsing, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (Tranco), visual identity (favicon brand hashes, typosquat watchtower), ML model, LLM judge, and heuristics = **16 threat-intelligence signals** total. _(PhishTank integration is present in code but dormant while Cisco keeps new-account registration closed.)_
 - **CatBoost ML model** — phishing recall published weekly at [cleanway.ai/transparency/methodology](https://cleanway.ai/transparency/methodology); reproducible via [`scripts/eval_fresh_urls.py`](./scripts/eval_fresh_urls.py) and [`docs/benchmarks/latest.json`](./docs/benchmarks/latest.json)
 - **Privacy Audit** — see what trackers, cookies, and data collection any site uses (A-F grade, on-device)
-- **Breach Check** — k-anonymity email leak detection (your email never leaves your device)
+- **Password leak warning** — a password typed into any form is checked by k-anonymity (only the first 5 hex chars of its SHA-1 are sent) and flagged if it appears in a known leak. Email leak lookup is not available yet; the extension says so instead of asking for an email.
 - **Security Score** — on-device calculation with factor breakdown
 - **Weekly Report** — generated on-device, percentile ranking
 - **Phishing Simulation** — B2B training campaigns

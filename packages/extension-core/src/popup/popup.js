@@ -47,6 +47,21 @@ var FALLBACK_EN = {
   onboarding_tip: "I'll check every link you see. Dangerous ones get a red mark. Try right-clicking a link → \"Check with Cleanway\".",
   offline_warning: "Offline — using basic protection",
   trust_footer: "We check site addresses, not full links or page content",
+  confidence_chip: "Confidence: $1%",
+  time_just_now: "just now",
+  time_minutes: "$1 min",
+  time_hours: "$1 h",
+  time_days: "$1 d",
+  action_trust_no_tab: "Open a page first",
+  action_trust_invalid: "This page can't be trusted",
+  action_trust_done: "Added $1 to trusted sites",
+  action_trust_error: "Couldn't save",
+  action_report_no_tab: "Open a page first",
+  action_report_invalid: "This page can't be reported",
+  action_report_done: "Thanks — reported",
+  action_report_throttled: "Too many reports, try later",
+  action_report_error: "Couldn't send the report",
+  tip_dismiss: "Dismiss",
 };
 
 function interpolate(str, subs) {
@@ -84,6 +99,18 @@ function applyI18n() {
     var tmsg = t(tkey);
     if (tmsg && tmsg !== tkey) titled[j].setAttribute("title", tmsg);
   }
+  var labelled = document.querySelectorAll("[data-i18n-aria-label]");
+  for (var k = 0; k < labelled.length; k++) {
+    var akey = labelled[k].getAttribute("data-i18n-aria-label");
+    var amsg = t(akey);
+    if (amsg && amsg !== akey) labelled[k].setAttribute("aria-label", amsg);
+  }
+  // Screen readers pick their voice from <html lang>.
+  try {
+    if (typeof chrome !== "undefined" && chrome.i18n && chrome.i18n.getUILanguage) {
+      document.documentElement.lang = chrome.i18n.getUILanguage();
+    }
+  } catch (e) { /* preview panel — keep lang="en" */ }
 }
 
 // ─── Icons for status states ──────────────────────────────────
@@ -105,13 +132,15 @@ function escapeHtml(s) {
   });
 }
 
+// Abbreviated units ("5 мин", "2 ч") read naturally without the plural
+// forms chrome.i18n cannot choose.
 function fmtRelative(ts) {
   if (!ts) return "";
   var diff = (Date.now() - ts) / 1000;
-  if (diff < 60) return "just now";
-  if (diff < 3600) return Math.floor(diff / 60) + "m";
-  if (diff < 86400) return Math.floor(diff / 3600) + "h";
-  return Math.floor(diff / 86400) + "d";
+  if (diff < 60) return t("time_just_now");
+  if (diff < 3600) return t("time_minutes", [String(Math.floor(diff / 60))]);
+  if (diff < 86400) return t("time_hours", [String(Math.floor(diff / 3600))]);
+  return t("time_days", [String(Math.floor(diff / 86400))]);
 }
 
 // ─── State machine: set main status card ──────────────────────
@@ -217,7 +246,7 @@ async function loadPageStatus() {
     if (typeof r.confidence_pct === "number") {
       var chip = $("confidence-chip");
       if (chip) {
-        chip.textContent = "Confidence: " + r.confidence_pct + "%";
+        chip.textContent = t("confidence_chip", [String(r.confidence_pct)]);
         chip.hidden = false;
       }
     }
@@ -242,7 +271,7 @@ async function loadRecentThreats() {
       return '<div class="threat-item">' +
         '<span style="color:var(--red-text)" aria-hidden="true">&#x26A0;</span>' +
         '<span class="threat-domain">' + escapeHtml(th.domain) + '</span>' +
-        '<span class="threat-time">' + fmtRelative(th.ts) + '</span>' +
+        '<span class="threat-time">' + escapeHtml(fmtRelative(th.ts)) + '</span>' +
         '</div>';
     }).join("");
   } catch (e) { /* storage not available */ }
@@ -387,14 +416,14 @@ function wireButtons() {
     try {
       var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tabs[0] || !tabs[0].url) {
-        _flashButton(trust, t("action_trust_no_tab") || "Open a page first");
+        _flashButton(trust, t("action_trust_no_tab"));
         return;
       }
       var url = new URL(tabs[0].url);
       // chrome:// and similar internal pages have no meaningful host
       // to whitelist; reject early.
       if (url.protocol !== "http:" && url.protocol !== "https:") {
-        _flashButton(trust, t("action_trust_invalid") || "Can't trust this URL");
+        _flashButton(trust, t("action_trust_invalid"));
         return;
       }
       var domain = url.hostname;
@@ -404,9 +433,9 @@ function wireButtons() {
         trusted.push(domain);
         await chrome.storage.local.set({ trusted_domains: trusted });
       }
-      _flashButton(trust, t("action_trust_done") || ("Trusted " + domain));
+      _flashButton(trust, t("action_trust_done", [domain]));
     } catch (e) {
-      _flashButton(trust, t("action_trust_error") || "Couldn't save");
+      _flashButton(trust, t("action_trust_error"));
     }
   });
 
@@ -421,12 +450,12 @@ function wireButtons() {
     try {
       var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tabs[0] || !tabs[0].url) {
-        _flashButton(report, t("action_report_no_tab") || "Open a page first");
+        _flashButton(report, t("action_report_no_tab"));
         return;
       }
       var url = new URL(tabs[0].url);
       if (url.protocol !== "http:" && url.protocol !== "https:") {
-        _flashButton(report, t("action_report_invalid") || "Can't report this URL");
+        _flashButton(report, t("action_report_invalid"));
         return;
       }
       var domain = url.hostname;
@@ -456,14 +485,14 @@ function wireButtons() {
       // future revision where auth+ip-throttle move into utils/api.js.
       void apiModule;
       if (resp.ok) {
-        _flashButton(report, t("action_report_done") || "Thanks — reported");
+        _flashButton(report, t("action_report_done"));
       } else if (resp.status === 429) {
-        _flashButton(report, t("action_report_throttled") || "Too many reports, try later");
+        _flashButton(report, t("action_report_throttled"));
       } else {
-        _flashButton(report, t("action_report_error") || "Couldn't send report");
+        _flashButton(report, t("action_report_error"));
       }
     } catch (e) {
-      _flashButton(report, t("action_report_error") || "Couldn't send report");
+      _flashButton(report, t("action_report_error"));
     }
   });
 }
@@ -595,8 +624,7 @@ async function checkAndRenderLockState() {
       try {
         var when = new Date(lock.locked_at);
         if (!isNaN(when.getTime())) {
-          metaEl.textContent = t("locked_meta", [when.toLocaleDateString()])
-            || ("Deletion requested on " + when.toLocaleDateString() + ". Hard delete in 30 days.");
+          metaEl.textContent = t("locked_meta", [when.toLocaleDateString()]);
         }
       } catch (e) { /* timestamp parse — non-fatal */ }
     }
@@ -617,7 +645,7 @@ async function handleRestoreClick(apiModule) {
   var errBox = $("locked-error");
   if (!btn) return;
   btn.disabled = true;
-  btn.textContent = t("locked_restoring") || "Restoring…";
+  btn.textContent = t("locked_restoring");
   if (errBox) errBox.hidden = true;
 
   try {
@@ -628,7 +656,7 @@ async function handleRestoreClick(apiModule) {
       // restore page where the user will be prompted to sign in.
       window.open("https://cleanway.ai/account/restore?reason=locked", "_blank");
       btn.disabled = false;
-      btn.textContent = t("locked_restore_cta") || "Restore my account";
+      btn.textContent = t("locked_restore_cta");
       return;
     }
 
@@ -641,18 +669,18 @@ async function handleRestoreClick(apiModule) {
     }
     if (errBox) {
       errBox.textContent = (result && result.status === 401)
-        ? (t("locked_error_session") || "Your session has expired. Please sign in again on cleanway.ai.")
-        : (t("locked_error_generic") || "Couldn't restore your account. Please try again or contact support.");
+        ? t("locked_error_session")
+        : t("locked_error_generic");
       errBox.hidden = false;
     }
   } catch (e) {
     if (errBox) {
-      errBox.textContent = t("locked_error_network") || "Couldn't reach our servers. Please check your connection.";
+      errBox.textContent = t("locked_error_network");
       errBox.hidden = false;
     }
   }
   btn.disabled = false;
-  btn.textContent = t("locked_restore_cta") || "Restore my account";
+  btn.textContent = t("locked_restore_cta");
 }
 
 // ─── Init ─────────────────────────────────────────────────────

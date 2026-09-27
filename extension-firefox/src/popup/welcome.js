@@ -1,5 +1,6 @@
 // ── Inline i18n with fallback ──
     const WELCOME_EN = {
+      welcome_page_title: "Welcome to Cleanway",
       welcome_hero_title: "You're protected now",
       welcome_hero_subtitle: "Every link you see is being checked. Dangerous ones will be blocked automatically.",
       welcome_step1_title: "Automatic scanning",

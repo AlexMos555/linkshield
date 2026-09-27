@@ -14,10 +14,15 @@
  * know whether malware intel came from URLhaus or ThreatFox, only that the
  * site is "known to spread malware".
  *
- * Classic content script (manifest content_scripts, before index.js). The
- * only thing it publishes on the shared isolated-world global is
- * window.__cleanwayReasons. scripts/test-extension-core.mjs checks that every
- * key below exists in all ten locales.
+ * The block page (content/block-page.js) groups its evidence cards by the
+ * same codes: the card title is the reason line and its body is the matching
+ * extension.evidence text.
+ *
+ * Classic content script (manifest content_scripts, before block-page.js and
+ * index.js). The only thing it publishes on the shared isolated-world global
+ * is window.__cleanwayReasons. scripts/test-extension-core.mjs checks that
+ * every key below exists in all ten locales, and that every code the API and
+ * both offline scorers can emit is mapped here.
  */
 (function () {
   "use strict";
@@ -110,6 +115,28 @@
     known_legitimate: "well_known_site",
     tranco_popularity: "popular_site",
     ml_safe_override: "detector_safe",
+    user_whitelist: "on_your_trusted_list",
+    // Our own list (the API aliases it to multi_blocklist for this client,
+    // api/routers/public.py _LEGACY_CODE_ALIASES, but a newer build may not)
+    cleanway_blocklist: "on_cleanway_list",
+    // The API's own legacy alias for a bad certificate
+    invalid_certificate: "no_https",
+    // What a verdict could not see (api/services/verdict_basis.py
+    // INFORMATIONAL_REASONS). The public API sends one of these to this
+    // client when nothing else explains the verdict.
+    domain_not_found: "site_not_found",
+    unreachable_from_scanner: "unreachable_abroad",
+    checks_incomplete: "checks_incomplete",
+    partial_analysis: "checks_incomplete",
+    analysis_error: "checks_incomplete",
+    user_content_platform: "user_content_platform",
+    // The analyzer refused the address itself
+    invalid_domain: "invalid_address",
+    invalid: "invalid_address",
+    ssrf_blocked: "private_network",
+    // The AI second opinion on a borderline verdict; its detail is the
+    // model's own English sentence, so it gets a neutral line instead
+    llm_judge: "ai_second_look",
   });
 
   /**
@@ -117,15 +144,26 @@
    * @returns {string} the localized line, or the English detail if the code
    *   is unmapped or the catalog lacks the key
    */
-  function reasonText(reason) {
-    var detail = (reason && reason.detail) || "";
+  /**
+   * @param {{ signal?: string }} reason
+   * @returns {string|null} the reason group (a key of extension.reason and
+   *   extension.evidence), or null for a code nobody has mapped yet
+   */
+  function reasonGroup(reason) {
     var signal = reason && reason.signal;
     if (typeof signal !== "string" || !Object.prototype.hasOwnProperty.call(REASON_KEYS, signal)) {
-      return detail;
+      return null;
     }
+    return REASON_KEYS[signal];
+  }
+
+  function reasonText(reason) {
+    var detail = (reason && reason.detail) || "";
+    var group = reasonGroup(reason);
+    if (!group) return detail;
     // Built at run time, so the static key scan in test-extension-core.mjs
     // cannot see it; that suite checks every REASON_KEYS value instead.
-    var messageKey = "reason_" + REASON_KEYS[signal];
+    var messageKey = "reason_" + group;
     try {
       return chrome.i18n.getMessage(messageKey) || detail;
     } catch (e) {
@@ -133,5 +171,5 @@
     }
   }
 
-  window.__cleanwayReasons = Object.freeze({ text: reasonText, keys: REASON_KEYS });
+  window.__cleanwayReasons = Object.freeze({ text: reasonText, group: reasonGroup, keys: REASON_KEYS });
 })();
