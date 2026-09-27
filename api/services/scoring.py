@@ -102,6 +102,24 @@ PUBLIC_SUFFIXES_IN_TOP: set[str] = _load_json_set("public_suffixes_in_top.json")
 if not PUBLIC_SUFFIXES_IN_TOP:
     logger.warning("public_suffixes_in_top.json missing — falling back to the hand list only")
 
+# ── Russian public suffixes (PSL) ──
+#
+# Every multi-label PSL rule under .ru / .su / .рф / .рус, in ASCII form: the
+# reserved gov.ru / mil.ru / ac.ru / edu.ru / int.ru, the regional zones
+# (spb.ru, msk.ru, nov.ru, adygeya.ru … and their .su twins), net.ru /
+# org.ru / pp.ru, com.ru, ras.ru, the .рус city zones and a few hosting
+# platforms. A name under one of them is registered AT that suffix, so it is
+# the suffix plus one label — kvs.gov.spb.ru belongs to gov.spb.ru (the
+# St Petersburg government), not to 'spb.ru'. Judging the last two labels
+# instead compared 'spb' with brand names ("Impersonates ups.com"), read 'gov'
+# as a fake TLD and counted three subdomain levels where there is one:
+# 100/dangerous in production on 2026-09-27. public_suffixes_in_top.json
+# cannot stand in: it only holds rules whose base ranks in Tranco.
+# Built by scripts/build_ru_public_suffixes.py. See registrable_domain().
+RU_PUBLIC_SUFFIXES: frozenset[str] = frozenset(_load_json_set("ru_public_suffixes.json"))
+if not RU_PUBLIC_SUFFIXES:
+    logger.warning("ru_public_suffixes.json missing — Russian regional zones read as registrable domains")
+
 # ── Shared platforms: subdomains can be anyone's ──
 # Kept in sync with ml_features.HOSTING_PLATFORMS / refresh_dangerous_domains.
 HOSTING_PLATFORMS: frozenset[str] = frozenset({
@@ -510,18 +528,18 @@ def _detect_url_pii_leak(url_or_domain: str) -> dict:
     }
 
 
+_FAKE_TLD_LABELS = frozenset({"com", "org", "net", "gov", "edu", "co", "io", "me"})
+
+
 def _has_fake_tld_in_subdomain(domain: str) -> bool:
-    """Detect paypal.com.evil.xyz pattern — real TLD used as subdomain."""
-    parts = domain.split(".")
-    if len(parts) <= 2:
-        return False
-    # Check if any subdomain part looks like a known TLD
-    real_tlds = {"com", "org", "net", "gov", "edu", "co", "io", "me"}
-    subdomain_parts = parts[:-2]  # Everything except actual base domain
-    for part in subdomain_parts:
-        if part in real_tlds:
-            return True
-    return False
+    """Detect paypal.com.evil.xyz pattern — real TLD used as subdomain.
+
+    Only labels LEFT of the registrable domain are a subdomain. In
+    kvs.gov.spb.ru the 'gov' is the registered name under the spb.ru zone,
+    and in edu.gov.ru it is part of the public suffix — neither is somebody
+    dressing a TLD up as a subdomain.
+    """
+    return any(part in _FAKE_TLD_LABELS for part in _subdomain_labels(domain))
 
 
 def _is_url_shortener(domain: str) -> bool:
@@ -907,14 +925,17 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             detail=f"Uses suspicious TLD '{tld}'",
         ))
 
-    # ── 3.11 Excessive subdomains (>3 levels) ──
+    # ── 3.11 Excessive subdomains (2+ levels above the registrable domain) ──
+    # Counted from the registrable domain, not from the TLD: www.shop.co.uk
+    # and kvs.gov.spb.ru have ONE subdomain level each, a.b.evil.com has two.
     # Either form works — decoding never adds or removes a label separator.
-    dot_count = ascii_domain.count(".")
-    if dot_count >= 3:
+    sub_levels = len(_subdomain_labels(ascii_domain))
+    if sub_levels >= 2:
+        registrable = ascii_domain.lower().strip(".").split(".", sub_levels)[-1]
         score += 15
         reasons.append(DomainReason(
             signal="excessive_subdomains", weight=15,
-            detail=f"Unusually deep subdomain nesting ({dot_count + 1} levels)",
+            detail=f"Unusually deep subdomain nesting ({sub_levels} levels above {registrable})",
         ))
 
     # ── 3.12 Suspicious keywords in domain ──
@@ -1411,6 +1432,53 @@ def _extract_base_domain(domain: str) -> str:
     return domain.lower()
 
 
+def _ascii_label(label: str) -> str:
+    """The ASCII (punycode) spelling of one label, so a decoded name can be
+    looked up in the ASCII suffix tables."""
+    if label.isascii():
+        return label
+    try:
+        return "xn--" + label.encode("punycode").decode("ascii")
+    except UnicodeError:
+        return label
+
+
+def _ru_registrable_domain(domain: str) -> Optional[str]:
+    """The registrable domain of a host under a Russian public suffix from
+    the PSL (RU_PUBLIC_SUFFIXES): that suffix plus one label, longest suffix
+    first — kvs.gov.spb.ru → gov.spb.ru, x.hosting.myjino.ru →
+    x.hosting.myjino.ru. None when no such suffix applies. Accepts the ASCII
+    or the decoded form and answers in the same form."""
+    parts = (domain or "").lower().strip(".").split(".")
+    # Every rule has 2+ labels, and a bare suffix is not under itself.
+    for k in range(len(parts) - 1, 1, -1):
+        if ".".join(_ascii_label(p) for p in parts[-k:]) in RU_PUBLIC_SUFFIXES:
+            return ".".join(parts[-(k + 1):])
+    return None
+
+
+def registrable_domain(domain: str) -> str:
+    """The registrable domain (eTLD+1) a host is judged by — PSL-aware.
+
+    Under a Russian public suffix, _ru_registrable_domain(). Everywhere else
+    the compound-ccTLD heuristic the rest of the service already uses
+    (doh_gateway._registrable_domain): login.example.co.uk → example.co.uk.
+    """
+    from api.services.doh_gateway import _registrable_domain as heuristic_registrable
+
+    dom = (domain or "").lower().strip(".")
+    return _ru_registrable_domain(dom) or heuristic_registrable(dom)
+
+
+def _subdomain_labels(domain: str) -> list[str]:
+    """Labels strictly LEFT of the registrable domain ([] for an apex)."""
+    dom = (domain or "").lower().strip(".")
+    registrable = registrable_domain(dom)
+    if dom == registrable or not dom.endswith("." + registrable):
+        return []
+    return dom[: -(len(registrable) + 1)].split(".")
+
+
 def _extract_tld(domain: str) -> str:
     parts = domain.lower().strip(".").split(".")
     return "." + parts[-1] if parts else ""
@@ -1535,10 +1603,40 @@ def _check_homograph(domain: str) -> Optional[str]:
 
 # ── Typosquatting v2 ──
 
+# How long the registrable label has to be before it is compared at all.
+# Every 3-letter string sits within two edits of some 3-letter brand: 'ako'
+# (the Kemerovo region, ako.ru) is two substitutions from 'aws', 'spb' from
+# 'ups' — both 'caution' or worse in production on 2026-09-27.
+_TYPOSQUAT_MIN_LABEL = 4
+# Edit-distance matches (substitutions, the similarity ratio) need a longer
+# label still: 4-letter names are too dense — etsp.ru is one letter from
+# 'etsy', ikar.ru two from 'ikea'. Look-alike characters (paypa1, 3bay),
+# swaps, hyphens and combos stay precise enough at 4.
+_FUZZY_MIN_LABEL = 5
+# Below this length a name may differ from the brand in ONE position: two
+# substitutions in seven letters (ngpedia → expedia) is a different word.
+_TWO_EDIT_MIN_LABEL = 8
+
+
 def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
-    base = _extract_base_domain(domain)
+    # Under a Russian public suffix, the REGISTRABLE label — never the zone
+    # label ('spb' of kvs.gov.spb.ru was "ups", 'nov' of adm.nov.ru "n26").
+    # Elsewhere the last two labels, as before: on a compound ccTLD that is
+    # the zone label ('co' of co.uk), too short to match anything. Comparing
+    # the real label there is right in principle but flags top-100k names
+    # (telegraph.co.uk → "telegram", paypay.ne.jp → "paypal": 31 of the 9,217
+    # compound-suffix names) because the allowlist looks names up by their
+    # last two labels and never sees them.
+    base = _ru_registrable_domain(domain) or _extract_base_domain(domain)
     name = base.split(".")[0].lower()
+    if len(name) < _TYPOSQUAT_MIN_LABEL:
+        return None
     tld = _extract_tld(domain)
+    # TLD confusion is the brand's own name directly under another TLD
+    # (paypal.co). A brand name registered under a Russian zone
+    # (paypal.spb.ru) was — and still is — brand_subdomain_abuse's to report:
+    # that check reads spb.ru as the registrable domain.
+    directly_under_tld = base.count(".") == 1
 
     for brand, legit_domain in TYPOSQUAT_TARGETS.items():
         if domain == legit_domain or base == legit_domain:
@@ -1546,7 +1644,7 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
 
         # TLD confusion (paypal.co vs paypal.com)
         legit_tld = _extract_tld(legit_domain)
-        if name == brand and tld != legit_tld:
+        if name == brand and tld != legit_tld and directly_under_tld:
             return (legit_domain, "TLD confusion")
 
         if brand == name:
@@ -1590,7 +1688,7 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
 
         # SequenceMatcher fallback
         ratio = SequenceMatcher(None, name, brand).ratio()
-        if ratio >= 0.82 and len(name) >= 4:
+        if ratio >= 0.82 and len(name) >= _FUZZY_MIN_LABEL:
             return (legit_domain, "high similarity")
 
     return None
@@ -1599,13 +1697,18 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
 def _check_char_substitution(s1: str, s2: str) -> bool:
     if len(s1) != len(s2):
         return False
+    # Look-alike characters — digits (paypa1) and Unicode confusables (the
+    # Cyrillic 'р' and 'а' of раypal) — read as the letter they imitate: they
+    # are the attack, not a difference.
     normalized = ""
     for ch in s1:
-        normalized += _CHAR_SUBS.get(ch, ch)
+        normalized += _CHAR_SUBS.get(ch) or _CONFUSABLES.get(ch, ch)
     if normalized == s2:
         return True
-    diffs = sum(1 for a, b in zip(s1, s2) if a != b)
-    return diffs <= 2
+    if len(s1) < _FUZZY_MIN_LABEL:
+        return False
+    diffs = sum(1 for a, b in zip(normalized, s2) if a != b)
+    return diffs <= (2 if len(s1) >= _TWO_EDIT_MIN_LABEL else 1)
 
 
 def _check_transposition(s1: str, s2: str) -> bool:
