@@ -29,15 +29,21 @@
 #      item whose site is on .рф.
 #   2. Kept hosts under .ru / .su / .рф that is_trusted_top_domain does NOT
 #      trust: 4,002 candidates. A fixed-seed sample per category was taken.
-#   3. Each host resolved (A record via 1.1.1.1) and its home page fetched.
-#   4. Reviewed by hand. Dropped every host whose page is no longer the
-#      entity's: 7 casino mirrors on lapsed domains (a town, two rural
-#      administrations, two museums, a puppet theatre, a cathedral), for-sale
-#      and parked pages,
-#      hosting placeholders, unrelated redirects, 404/5xx, "site moved" stubs.
-#      A host unreachable from abroad was kept only for a state body (region,
-#      city, municipality, university), whose domain is not left to lapse; a
-#      business that did not answer was dropped — nothing confirmed it.
+#   3. Each host resolved (A record via 1.1.1.1) and its home page fetched
+#      from outside Russia.
+#   4. Reviewed by hand — from what step 3 fetched: each page's title and
+#      final (redirected) address, not a browser visit. Dropped every host
+#      whose page is no longer the entity's: 7 casino mirrors on lapsed
+#      domains (a town, two rural administrations, two museums, a puppet
+#      theatre, a cathedral), for-sale and parked pages, hosting placeholders,
+#      unrelated redirects, 404/5xx, "site moved" stubs.
+#      A host that did not serve its page abroad (blocked-abroad below: 61 of
+#      the 271) was NEVER SEEN — it is kept on its Wikidata entry alone, and
+#      only for a state body (region, city, municipality, university), whose
+#      domain is not left to lapse. A business, bank, museum or theatre that
+#      did not answer was dropped — nothing confirmed it. (марцводы.рф, a
+#      resort museum kept by mistake under that rule on 2026-09-27, was
+#      removed the same day.)
 #   5. Added the five sites the 2026-09-25 report named (bankspb.ru,
 #      президент.рф, мойбизнес.рф, разговорыоважном.рф, rosreestr.gov.ru).
 #
@@ -189,7 +195,7 @@ uralgufk.ru | university | reachable-abroad | Wikidata Q4476757 P856 | Урал�
 urep.ru | university | reachable-abroad | Wikidata Q4476765 P856 | Уральский институт экономики, управления и права
 volsu.ru | university | reachable-abroad | Wikidata Q4122974 P856 | Волгоградский государственный университет
 
-# ── .рф sites (municipalities, churches, culture, federal projects) (44) ──
+# ── .рф sites (municipalities, churches, culture, federal projects) (43) ──
 xn-----6kcbqggkggtcllvchedg5cwa0j.xn--p1ai | rf | reachable-abroad | Wikidata Q1353643 P856 | Ласточкино гнездо (замок-ласточкино-гнездо.рф)
 xn----7sba2birl6b0d.xn--p1ai | rf | reachable-abroad | Wikidata Q28508888 P856 | Кара-Холь (кара-холь.рф)
 xn----7sbaaby0clduik6a2j.xn--p1ai | rf | blocked-abroad | Wikidata Q4414581 P856 | Сельское поселение Саранпауль (саранпауль-адм.рф)
@@ -216,7 +222,6 @@ xn--80aafj2agk3g.xn--p1ai | rf | reachable-abroad | Wikidata Q141535167 P856 | �
 xn--80abipnyt.xn--p1ai | rf | reachable-abroad | Wikidata Q107557664 P856 | Баско (идбаско.рф)
 xn--80adayfbdgycbagzjc.xn--p1ai | rf | reachable-abroad | Wikidata Q7662 P856 | Волосовский район (волосовскийрайон.рф)
 xn--80adiljlapbeasfiw.xn--p1ai | rf | reachable-abroad | Wikidata Q4303279 P856 | округ Морские ворота (моморскиеворота.рф)
-xn--80aeg3amk6b4b.xn--p1ai | rf | blocked-abroad | Wikidata Q117288279 P856 | Первый русский курорт «Марциальные воды», открытый в 1719 г. по указанию Петра I (Марциальные Воды) (марцводы.рф)
 xn--80aejrcevcz8c.xn--p1ai | rf | reachable-abroad | Wikidata Q66813564 P856 | Чкаловское сельское поселение (чкаловское.рф)
 xn--80afcdbalict6afooklqi5o.xn--p1ai | rf | reachable-abroad | Wikidata Q59307575 P856 | Фонд президентских грантов по развитию гражданского общества (президентскиегранты.рф)
 xn--80ag4abjdei4b.xn--p1ai | rf | reachable-abroad | Wikidata Q52843163 P856 | Федеральный Ростовский аграрный научный центр (ростагрнц.рф)
