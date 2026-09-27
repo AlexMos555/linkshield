@@ -33,6 +33,7 @@ import {
   isNotFound, reasonsToShow, serverLevel, showScore, shownLevel, type ServerAnswer,
 } from "../src/utils/check-verdict";
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
+import { CallCloseOneButton } from "../src/components/checkup/CallCloseOneButton";
 
 type Level = keyof typeof levelColors;
 
@@ -192,6 +193,12 @@ export default function SharedScreen() {
             <Text style={s.moreSignals}>{t("mobile.shared.more_signals", { n: hidden })}</Text>
           )}
         </View>
+      )}
+
+      {!safe && (
+        // Blocked or suspicious: before anything else, the person they trust
+        // is one tap away (only when they saved a number on the checkup screen).
+        <CallCloseOneButton />
       )}
 
       {via === "guard" && url && (

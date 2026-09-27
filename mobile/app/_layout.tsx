@@ -198,6 +198,7 @@ export default function RootLayout() {
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
         {/* Without an entry the header renders the raw route slug "family". */}
         <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />
+        <Stack.Screen name="checkup" options={{ title: t("mobile.checkup.title") }} />
         {/* Deep-link sink for the OPTIONAL captcha flow. Unreachable unless
             EXPO_PUBLIC_CAPTCHA_URL is set; it exists so the route is registered
             (and headerless) the moment it is. */}

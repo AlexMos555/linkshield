@@ -144,3 +144,21 @@ export type MessageAnalysis = {
 export type MessageAnalysisResult =
   | ({ available: true } & MessageAnalysis)
   | { available: false; reason: 'unsupported' | 'failed' };
+
+/**
+ * One row from the system contact picker. `number` is as the address book
+ * stores it — not yet checked for being dialable.
+ */
+export type PickedContact = {
+  name: string | null;
+  number: string | null;
+};
+
+/**
+ * How the contact picker ended: a row; the person backing out (nothing to
+ * say); or no number to be had — no picker, a row we may not read — which
+ * the screen says rather than treating it as backing out.
+ */
+export type PickContactResult =
+  | ({ picked: true } & PickedContact)
+  | { picked: false; reason: 'cancelled' | 'failed' };

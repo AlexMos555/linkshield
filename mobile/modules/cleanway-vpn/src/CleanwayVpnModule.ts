@@ -1,6 +1,6 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-import { BlocklistStatus, CleanwayVpnModuleEvents, ShieldBlockEntry } from './CleanwayVpn.types';
+import { BlocklistStatus, CleanwayVpnModuleEvents, PickedContact, ShieldBlockEntry } from './CleanwayVpn.types';
 
 declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   /** Requests VPN consent (once) then starts the local DNS-filter VPN. Resolves false if the user declines. */
@@ -77,6 +77,16 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   notificationsEnabled?(): boolean;
   /** Open this app's system notification settings. */
   openNotificationSettings?(): boolean;
+  /** True under Android's "Restricted" battery use; null where it cannot tell. */
+  backgroundRestricted?(): boolean | null;
+  /** Open this app's page in system settings (where "Battery" lives). */
+  openAppSettings?(): boolean;
+  /** Open the system list "Install unknown apps". */
+  openUnknownAppSources?(): boolean;
+  /** System contact picker: the chosen row's name and number, null if backed out, {error} if none could be had. */
+  pickContactPhone?(): Promise<PickedContact | { error: string } | null>;
+  /** Open the dialer with this number filled in (ACTION_DIAL). False if not dialable. */
+  dialNumber?(number: string): boolean;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

@@ -11,6 +11,7 @@ import type { ApiError } from "../src/services/api";
 import { useDomainCheck } from "../src/hooks/useDomainCheck";
 import { isNotFound, reasonsToShow, serverLevel, showScore, shownLevel } from "../src/utils/check-verdict";
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
+import { CallCloseOneButton } from "../src/components/checkup/CallCloseOneButton";
 
 /**
  * Say what actually went wrong. A rate limit, a slow server and a dead server
@@ -112,6 +113,9 @@ export default function ResultScreen() {
       <View style={s.card}>
         <Text style={s.summary}>{t(`mobile.shared.advice_${level}`)}</Text>
       </View>
+
+      {/* Not safe: the saved close one is one tap away (nothing when none is saved). */}
+      {level !== "safe" && <CallCloseOneButton />}
 
       {/* Signals — the list's own line first when it decided. */}
       {hasSignals && (

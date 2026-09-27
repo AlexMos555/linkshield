@@ -198,6 +198,17 @@ jobs:
         # as a scam; a slow first check is retried once, a rate limit never.
         run: node mobile/scripts/test-check-verdict.mjs
 
+      - name: Protection checkup table test
+        # "Проверка защиты": a phone state that cannot be read has no row,
+        # family progress is the person's own marks (never a score), the
+        # saved number is plainly dialable (the JS half of the Kotlin test's
+        # table — the Kotlin half runs only locally), and no official link
+        # shows a button until a person verified it. The review-build switch
+        # that shows unverified links must stay off unless the build sets
+        # EXPO_PUBLIC_REVIEW_LINKS=1 (a hard-coded `true` fails here), and
+        # metro.config.js must keep review and release transforms apart.
+        run: node mobile/scripts/test-checkup.mjs
+
       - name: Reason label table test
         # Every reason code the app maps has its label in all 10 locales, and
         # the codes the API's verdict_basis release adds read in Russian —

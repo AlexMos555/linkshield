@@ -20,6 +20,8 @@ import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
 import { useLinkGuard } from "../../src/hooks/useLinkGuard";
 import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
 import { MessageCheckCard } from "../../src/components/shield/MessageCheckCard";
+import { CheckupCard } from "../../src/components/shield/CheckupCard";
+import { useFamilySetup } from "../../src/hooks/useFamilySetup";
 import { isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
 import type { HistoryFilter } from "../../src/utils/history-model";
 
@@ -88,6 +90,8 @@ export default function HomeScreen() {
   // Sideloaded (Tele2 direct-APK) users have no store to push updates; offer a
   // fresher build here, and insist if the running one is below the security floor.
   const update = useUpdateCheck(i18n.language);
+  // "Done N of M" on the checkup card: the family steps as the person marked them.
+  const family = useFamilySetup();
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -366,6 +370,14 @@ export default function HomeScreen() {
           />
         </View>
       )}
+
+      <View style={s.section}>
+        <CheckupCard
+          onOpen={() => router.push("/checkup")}
+          done={family.progress.done}
+          total={family.progress.total}
+        />
+      </View>
 
       <View style={s.section}>
         <CheckAnythingCard
