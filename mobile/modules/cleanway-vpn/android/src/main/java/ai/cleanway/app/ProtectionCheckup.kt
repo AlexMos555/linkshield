@@ -27,8 +27,13 @@ object ProtectionCheckup {
     private const val MIN_DIGITS = 3
     private const val MAX_DIGITS = 15
 
-    /** What people and address books put between digits: spaces, dashes, brackets, dots. */
-    private val SEPARATORS = Regex("[\\s\\u00A0\\u2010-\\u2015\\-().]")
+    /**
+     * What people and address books put between digits: spaces, dashes,
+     * brackets, dots. Java's \s is ASCII-only, so \p{Z} and U+FEFF add the
+     * Unicode spaces (U+00A0, U+2009, U+202F…) — the same set JS's \s
+     * matches in src/utils/phone-number.ts.
+     */
+    private val SEPARATORS = Regex("[\\s\\p{Z}\\uFEFF\\u2010-\\u2015\\-().]")
 
     /**
      * Pure: the number as the dialer should receive it — digits with an
@@ -36,7 +41,8 @@ object ProtectionCheckup {
      *
      * Anything else is refused rather than cleaned up: "*" and "#" would make
      * it a USSD code, letters and ";" / "," an extension or a pause sequence.
-     * Mirrored in src/utils/phone-number.ts; the two must agree.
+     * Mirrored in src/utils/phone-number.ts; the two must agree, and only the
+     * JS table runs in CI — run this module's unit tests after a change.
      */
     fun dialable(raw: String?): String? {
         val compact = raw?.trim()?.replace(SEPARATORS, "") ?: return null
@@ -80,20 +86,28 @@ object ProtectionCheckup {
         Intent(Intent.ACTION_PICK).setType(ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE)
 
     /**
-     * The name and number of the contact row the picker returned, or null.
+     * What the picker hands back when no number came out of it: the row could
+     * not be read, or no picker could be opened. Distinct from null (the
+     * person backed out), so the screen can say so instead of doing nothing.
+     */
+    val PICK_FAILED: Map<String, String?> = mapOf("error" to "pick_failed")
+
+    /**
+     * The name and number of the contact row the picker returned, or
+     * [PICK_FAILED] — an OEM picker without a read grant, a row that is gone.
      * Read once, through the picker's temporary grant; never logged.
      */
-    fun readPickedPhone(context: Context, uri: Uri): Map<String, String?>? = try {
+    fun readPickedPhone(context: Context, uri: Uri): Map<String, String?> = try {
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.NUMBER,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
         )
         context.contentResolver.query(uri, projection, null, null, null)?.use { row ->
             if (row.moveToFirst()) mapOf("number" to row.getString(0), "name" to row.getString(1)) else null
-        }
+        } ?: PICK_FAILED
     } catch (e: Exception) {
         Log.w(TAG, "contact_read_failed: ${e.javaClass.simpleName}")
-        null
+        PICK_FAILED
     }
 
     /** The dialer with [number] filled in, or null when it is not a dialable number. */

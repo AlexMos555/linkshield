@@ -9,7 +9,8 @@ import org.junit.Test
  * from the person's own typing or address book, and it only fills the
  * dialer — but a stored "*#…#" would be a USSD code one tap away, so the
  * rule is: digits and one leading "+", nothing else. The same table runs
- * against the JS mirror in mobile/scripts/test-checkup.mjs.
+ * against the JS mirror in mobile/scripts/test-checkup.mjs — only that half
+ * runs in CI, so run this one locally whenever either rule changes.
  */
 class ProtectionCheckupTest {
 
@@ -25,6 +26,14 @@ class ProtectionCheckupTest {
     fun `address book separators are dropped`() {
         // A non-breaking space and a non-breaking hyphen, as some contacts apps store them.
         assertEquals("+79161234567", ProtectionCheckup.dialable("+7 916‑123.45.67"))
+    }
+
+    @Test
+    fun `unicode spaces are separators too`() {
+        // Java's \s alone would keep these; JS's \s drops them — the two must agree.
+        assertEquals("+79161234567", ProtectionCheckup.dialable("+7\u2009916\u2009123\u200945\u200967"))
+        assertEquals("+79161234567", ProtectionCheckup.dialable("+7\u202F916\u202F123\u202F45\u202F67"))
+        assertEquals("+79161234567", ProtectionCheckup.dialable("\uFEFF+79161234567"))
     }
 
     @Test

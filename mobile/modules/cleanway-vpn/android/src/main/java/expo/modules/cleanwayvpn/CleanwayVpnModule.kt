@@ -483,9 +483,10 @@ class CleanwayVpnModule : Module() {
 
     /**
      * Let the person choose one phone number in the system contact picker.
-     * Resolves {name, number} — the number as stored, unvalidated — or null
-     * when they backed out or the phone has no picker. No READ_CONTACTS: the
-     * picker grants access to the chosen row only.
+     * Resolves {name, number} — the number as stored, unvalidated — null
+     * when they backed out, or {error} when no number could be had (no
+     * picker on the phone, a row it would not let us read). No READ_CONTACTS:
+     * the picker grants access to the chosen row only.
      */
     AsyncFunction("pickContactPhone") { promise: Promise ->
       if (pendingContact != null) {
@@ -494,15 +495,16 @@ class CleanwayVpnModule : Module() {
       }
       val activity = appContext.currentActivity
       if (activity == null) {
-        promise.resolve(null)
+        promise.resolve(ai.cleanway.app.ProtectionCheckup.PICK_FAILED)
         return@AsyncFunction
       }
       try {
         pendingContact = promise
         activity.startActivityForResult(ai.cleanway.app.ProtectionCheckup.contactPickIntent(), CONTACT_PICK_REQUEST)
       } catch (e: Exception) {
+        android.util.Log.w("CleanwayCheckup", "pick_open_failed: ${e.javaClass.simpleName}")
         pendingContact = null
-        promise.resolve(null)
+        promise.resolve(ai.cleanway.app.ProtectionCheckup.PICK_FAILED)
       }
     }
 
@@ -533,10 +535,10 @@ class CleanwayVpnModule : Module() {
           pendingContact = null
           val uri = payload.data?.data
           promise?.resolve(
-            if (payload.resultCode == Activity.RESULT_OK && uri != null) {
-              ai.cleanway.app.ProtectionCheckup.readPickedPhone(context, uri)
-            } else {
-              null
+            when {
+              payload.resultCode != Activity.RESULT_OK -> null // backed out
+              uri == null -> ai.cleanway.app.ProtectionCheckup.PICK_FAILED
+              else -> ai.cleanway.app.ProtectionCheckup.readPickedPhone(context, uri)
             }
           )
         }
