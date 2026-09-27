@@ -15,7 +15,8 @@
  *  - no official link shows its button until a person verified it, every
  *    one points at https://www.gosuslugi.ru, and the review switch that
  *    shows unverified links is off unless the build sets
- *    EXPO_PUBLIC_REVIEW_LINKS=1 — a hard-coded `true` fails here.
+ *    EXPO_PUBLIC_REVIEW_LINKS=1 — a hard-coded `true` fails here — and
+ *    metro.config.js keeps review and release transforms in separate caches.
  * Same approach as test-check-verdict.mjs: compile with the tree's
  * TypeScript, run the table for real, exit non-zero on failure. CommonJS
  * output, because checkup.ts imports phone-number.ts at run time and an
@@ -69,18 +70,22 @@ try {
   const steps = (russia, android) => m.familySteps({ russia, android }).map((s) => s.id);
   const ALL = m.FAMILY_STEPS;
 
-  /** The review switch as a build with EXPO_PUBLIC_REVIEW_LINKS=[value] would see it. */
-  const reviewSwitchWith = (value) => {
-    const path = load.resolve("./src/config/official-links.js");
-    delete load.cache[path];
-    process.env[REVIEW_VAR] = value;
+  /** [path] loaded fresh, as a build with EXPO_PUBLIC_REVIEW_LINKS=[value] (undefined: unset) would. */
+  const loadedWith = (value, req, path) => {
+    delete req.cache[path];
+    if (value === undefined) delete process.env[REVIEW_VAR];
+    else process.env[REVIEW_VAR] = value;
     try {
-      return load(path).REVIEW_SHOWS_UNVERIFIED_LINKS;
+      return req(path);
     } finally {
       delete process.env[REVIEW_VAR];
-      delete load.cache[path];
+      delete req.cache[path];
     }
   };
+  const reviewSwitchWith = (value) =>
+    loadedWith(value, load, load.resolve("./src/config/official-links.js")).REVIEW_SHOWS_UNVERIFIED_LINKS;
+  const metroConfig = join(root, "metro.config.js");
+  const cacheVersionWith = (value) => loadedWith(value, createRequire(metroConfig), metroConfig).cacheVersion;
 
   const CASES = [
     // ── Part 1: only what the phone can tell ─────────────────────────
@@ -334,6 +339,16 @@ try {
       "only EXPO_PUBLIC_REVIEW_LINKS=1 turns the review switch on",
       () => ["1", "0", "true", ""].map(reviewSwitchWith),
       [true, false, false, false],
+    ],
+    [
+      // Babel inlines the value at transform time; if Metro's cache were not
+      // keyed on it, a release built after a review build would reuse `true`.
+      "a review and a release bundle never share Metro's cached transforms",
+      () => {
+        const release = cacheVersionWith(undefined);
+        return [release === cacheVersionWith(undefined), release === cacheVersionWith("1")];
+      },
+      [true, false],
     ],
   ];
 

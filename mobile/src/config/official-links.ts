@@ -48,6 +48,8 @@ export type OfficialLinkId = "credit_ban" | "sim_ban";
  * a link only once `verified_on` is filled. Never hard-code it: a committed
  * `true` would ship unverified official links to everyone, and
  * test-checkup.mjs fails CI if the switch is on without the variable.
+ * metro.config.js keys Metro's cache on the value, so a release built after
+ * a review build cannot reuse the review bundle's inlined `true`.
  */
 export const REVIEW_SHOWS_UNVERIFIED_LINKS: boolean = process.env.EXPO_PUBLIC_REVIEW_LINKS === "1";
 

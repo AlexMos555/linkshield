@@ -205,7 +205,8 @@ jobs:
         # table — the Kotlin half runs only locally), and no official link
         # shows a button until a person verified it. The review-build switch
         # that shows unverified links must stay off unless the build sets
-        # EXPO_PUBLIC_REVIEW_LINKS=1; a hard-coded `true` fails here.
+        # EXPO_PUBLIC_REVIEW_LINKS=1 (a hard-coded `true` fails here), and
+        # metro.config.js must keep review and release transforms apart.
         run: node mobile/scripts/test-checkup.mjs
 
       - name: Reason label table test
