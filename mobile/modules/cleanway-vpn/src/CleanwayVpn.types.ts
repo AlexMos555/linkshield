@@ -29,19 +29,37 @@ export type DomainBlockedPayload = {
  */
 export type ShieldBlockEntry = DomainBlockedPayload & { source?: ShieldBlockSource | null };
 
+/**
+ * Why protection stopped without the person turning it off.
+ * "revoked" — the VPN permission was withdrawn, or another VPN app took the
+ * tunnel away. "private_dns" — strict Private DNS is on; the service stepped
+ * aside so the phone keeps working (see PrivateDnsGuard).
+ */
+export type ShieldStopReason = 'revoked' | 'private_dns';
+
 /** Emitted when the tunnel is torn down without the user asking for it. */
 export type VpnStoppedPayload = {
-  /**
-   * "revoked" — the system or another VPN app took the tunnel away.
-   * "private_dns" — strict Private DNS is on; the service stepped aside so
-   * the phone keeps working (see PrivateDnsGuard).
-   */
+  /** A ShieldStopReason; kept as a string so a newer native reason still arrives. */
   reason: string;
+};
+
+/** Emitted when a pause begins, ends or moves — from the app, the notification or the clock. */
+export type PauseChangedPayload = {
+  /** Epoch millis when the pause ends; 0 when protection is not paused. */
+  until: number;
+};
+
+/** Emitted when the phone's connection comes or goes (not for signal-strength changes). */
+export type NetworkChangedPayload = {
+  /** Android confirmed internet on at least one network. */
+  online: boolean;
 };
 
 export type CleanwayVpnModuleEvents = {
   onDomainBlocked: (params: DomainBlockedPayload) => void;
   onVpnStopped: (params: VpnStoppedPayload) => void;
+  onPauseChanged: (params: PauseChangedPayload) => void;
+  onNetworkChanged: (params: NetworkChangedPayload) => void;
 };
 
 /** What blocklist the service has loaded and how fresh it is (BlockList.kt). */

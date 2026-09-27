@@ -211,6 +211,13 @@ jobs:
         # closes before the server answers.
         run: node mobile/scripts/test-domain-check-hook.mjs
 
+      - name: Network shield hook regression test
+        # useNetworkShield under real React 18: the home screen follows the
+        # service's pause (resume, the notification's "turn back on") and the
+        # phone's connection while it stays open — 1.0.2 kept «на паузе» and
+        # «Нет сети» long after either had changed.
+        run: node mobile/scripts/test-network-shield-hook.mjs
+
       - name: Shared message handoff regression test
         # Report #5: a second SMS shared to an open message screen must be
         # checked — the router reuses the screen, so each share needs its id.

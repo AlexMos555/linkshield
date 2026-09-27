@@ -41,11 +41,19 @@ const NO_LIST: BlocklistStatusLike = {
   version: 0, count: 0, revoked: false, ageMs: null, stale: true, hasCanary: false, lastError: null, lastFetchAt: 0,
 };
 
+/**
+ * Why protection stopped by itself (the module's ShieldStopReason): the VPN
+ * permission was withdrawn or another VPN app took over, or strict Private
+ * DNS was switched on. Null: nobody told us — a battery manager, a killed app.
+ */
+export type ShieldStopReason = "revoked" | "private_dns";
+
 interface VpnModule {
   startVpn(): Promise<boolean>;
   stopVpn(): Promise<void>;
   isVpnRunning(): boolean;
   wasUserEnabled?(): boolean;
+  lastStopReason?(): ShieldStopReason | null;
   privateDnsStrictHost?(): string | null;
   openPrivateDnsSettings?(): boolean;
   requestBlockNotificationPermission?(): Promise<boolean>;
@@ -54,6 +62,8 @@ interface VpnModule {
   verifyFiltering(): Promise<boolean>;
   verifyListFiltering?(): Promise<boolean>;
   addVpnStoppedListener?(cb: () => void): VpnSubscription;
+  addPauseChangedListener?(cb: (p: { until: number }) => void): VpnSubscription;
+  addNetworkChangedListener?(cb: () => void): VpnSubscription;
   openVpnSettings?(): boolean;
   pauseProtection?(untilMs: number): void;
   resumeProtection?(): void;
@@ -62,6 +72,13 @@ interface VpnModule {
 
 /** A timed pause, in minutes — the default, and the only length the app offers. */
 export const PAUSE_MINUTES = 15;
+
+/**
+ * How long a connection change settles before the screen re-checks. A
+ * network returning announces itself twice (connected, then confirmed by
+ * Android a few seconds later); one check per burst is enough.
+ */
+const NETWORK_SETTLE_MS = 1000;
 
 async function hasInternet(): Promise<boolean> {
   const abort = new AbortController();
@@ -119,11 +136,18 @@ export interface NetworkShield {
   resume: () => void;
   /**
    * The user had the shield ON and it is not running now — a reboot without
-   * always-on, an OEM battery manager, a force-stop. Nothing turned it off on
-   * purpose, so it must not read as "never set up": the hero says protection
-   * stopped, and one tap brings it back.
+   * always-on, an OEM battery manager, a force-stop, a withdrawn VPN
+   * permission, strict Private DNS. Nothing the person did in this app turned
+   * it off, so it must not read as "never set up": the hero says protection
+   * stopped, and the button brings it back.
    */
   interrupted: boolean;
+  /**
+   * Why it stopped, when the service knows ([ShieldStopReason]); null when
+   * nobody told it. The screen names the cause and the real steps back —
+   * 1.0.2 said "usually after a reboot, one tap" whatever had happened.
+   */
+  stopReason: ShieldStopReason | null;
   /**
    * Hostname of the phone's strict Private DNS provider, or null. Non-null
    * means the shield CANNOT run: strict DoT + our tunnel = no DNS for any
@@ -160,6 +184,7 @@ export function useNetworkShield(): NetworkShield {
   const [probing, setProbing] = useState(false);
   const [offline, setOffline] = useState(false);
   const [interrupted, setInterrupted] = useState(false);
+  const [stopReason, setStopReason] = useState<ShieldStopReason | null>(null);
   const [privateDnsHost, setPrivateDnsHost] = useState<string | null>(null);
   const [blocklist, setBlocklist] = useState<BlocklistStatusLike>(NO_LIST);
   const [pausedUntil, setPausedUntil] = useState(0);
@@ -204,9 +229,11 @@ export function useNetworkShield(): NetworkShield {
       // Not running — but did the user WANT it running? That is the difference
       // between "set up" and "it stopped; turn it back on".
       setInterrupted(vpn.wasUserEnabled?.() === true);
+      setStopReason(readStopReason(vpn));
       return;
     }
     setInterrupted(false);
+    setStopReason(null);
     // The probe takes a second or so. Without this flag the card sat in its
     // negative state for the whole window, so every single foreground flashed
     // an alarm at a user whose protection was fine.
@@ -244,9 +271,33 @@ export function useNetworkShield(): NetworkShield {
       // full sync picks up the reason (the setting) so the card can say why.
       void sync();
     });
+    // The pause can change without this screen doing anything: the
+    // notification's "turn back on", or the pause running out. Follow the
+    // service; coming back from a pause is proven again, not assumed.
+    const pauseSub = vpn?.addPauseChangedListener?.(({ until }) => {
+      const pausedNow = until > Date.now();
+      setPausedUntil(pausedNow ? until : 0);
+      if (!pausedNow) void sync();
+    });
+    // The connection came or went while the screen is open. 1.0.2 re-checked
+    // only on a foreground and kept «Нет сети» for minutes after the network
+    // was back. Event-driven, no polling; in the background a foreground
+    // re-checks anyway, so nothing runs there.
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const netSub = vpn?.addNetworkChangedListener?.(() => {
+      if (AppState.currentState !== "active") return;
+      if (settle) clearTimeout(settle);
+      settle = setTimeout(() => {
+        settle = null;
+        void sync();
+      }, NETWORK_SETTLE_MS);
+    });
     return () => {
       appSub.remove();
       stopSub?.remove();
+      pauseSub?.remove();
+      netSub?.remove();
+      if (settle) clearTimeout(settle);
     };
   }, [sync, vpn]);
 
@@ -301,6 +352,7 @@ export function useNetworkShield(): NetworkShield {
     setPausedUntil(0);
     // A deliberate pause is not an interruption.
     setInterrupted(false);
+    setStopReason(null);
   }, [vpn]);
 
   const pause = useCallback((minutes: number) => {
@@ -311,6 +363,9 @@ export function useNetworkShield(): NetworkShield {
   }, [vpn]);
 
   const resume = useCallback(() => {
+    // The module clears the stored pause before it returns, so the sync
+    // below reads the truth even though the service hears of the resume
+    // later; the service's pause event then confirms it.
     vpn?.resumeProtection?.();
     setPausedUntil(0);
     void sync();
@@ -363,10 +418,19 @@ export function useNetworkShield(): NetworkShield {
 
   return {
     available: vpn !== null,
-    state, verified: verified && !paused, probing, offline, interrupted, privateDnsHost, blocklist,
+    state, verified: verified && !paused, probing, offline, interrupted, stopReason, privateDnsHost, blocklist,
     pausedUntil: paused ? pausedUntil : 0, pause, resume,
     turnOn, turnOff, openVpnSettings, openPrivateDnsSettings, refreshBlocklist,
   };
+}
+
+/** Why the shield stopped by itself, or null — also null on builds that do not say. */
+function readStopReason(vpn: VpnModule): ShieldStopReason | null {
+  try {
+    return vpn.lastStopReason?.() ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** The pause end the service keeps, or 0 — also 0 on builds without timed pauses. */

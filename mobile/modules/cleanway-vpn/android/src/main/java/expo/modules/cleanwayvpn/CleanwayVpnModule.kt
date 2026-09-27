@@ -18,6 +18,9 @@ import expo.modules.kotlin.modules.ModuleDefinition
 // Arbitrary request code for the system VPN-consent dialog.
 private const val VPN_CONSENT_REQUEST = 0x7A11
 
+// The events fed by the service's broadcasts (one receiver serves them all).
+private val BROADCAST_EVENTS = listOf("onDomainBlocked", "onVpnStopped", "onPauseChanged")
+
 /**
  * JS <-> native bridge for Cleanway's local DNS-filtering VPN (Android).
  * Wraps the hardened CleanwayVpnService: startVpn (consent then start), stopVpn,
@@ -30,11 +33,14 @@ class CleanwayVpnModule : Module() {
 
   private var pendingStart: Promise? = null
   private var blockReceiver: BroadcastReceiver? = null
+  private var networkPresence: ai.cleanway.app.NetworkPresence? = null
+  /** The receiver-fed events JS listens to now; the receiver lives while any is. */
+  private var observedBroadcasts: Set<String> = emptySet()
 
   override fun definition() = ModuleDefinition {
     Name("CleanwayVpn")
 
-    Events("onDomainBlocked", "onVpnStopped")
+    Events("onDomainBlocked", "onVpnStopped", "onPauseChanged", "onNetworkChanged")
 
     AsyncFunction("startVpn") { promise: Promise ->
       if (pendingStart != null) {
@@ -119,9 +125,15 @@ class CleanwayVpnModule : Module() {
       Unit
     }
 
-    /** End a timed pause now. */
+    /**
+     * End a timed pause now. The stored pause is cleared here, before the
+     * service hears of it: the app re-reads it the moment this returns, while
+     * the intent reaches the service later on the main thread — and in 1.0.2
+     * the screen stayed "paused" over a shield that was already blocking.
+     */
     Function("resumeProtection") {
       if (CleanwayVpnService.isRunning) {
+        ai.cleanway.app.ShieldPreference.setPausedUntil(context, 0L)
         context.startService(
           Intent(context, CleanwayVpnService::class.java).setAction(CleanwayVpnService.ACTION_RESUME)
         )
@@ -204,6 +216,16 @@ class CleanwayVpnModule : Module() {
      */
     Function("wasUserEnabled") {
       ai.cleanway.app.ShieldPreference.isUserEnabled(context)
+    }
+
+    /**
+     * Why protection last stopped without the person turning it off:
+     * "revoked" (VPN permission withdrawn, or another VPN app took over),
+     * "private_dns" (strict Private DNS), or null when not known. Cleared when
+     * the tunnel comes up or the person turns it off.
+     */
+    Function("lastStopReason") {
+      ai.cleanway.app.ShieldPreference.stopReason(context)
     }
 
     /**
@@ -473,13 +495,27 @@ class CleanwayVpnModule : Module() {
       }
     }
 
-    OnStartObserving { registerBlockReceiver() }
-    OnStopObserving { unregisterBlockReceiver() }
+    // Per event. The unnamed OnStopObserving fires when ANY one event loses
+    // its last listener: one screen dropping onDomainBlocked unregistered
+    // the receiver that the home screen's onVpnStopped still needed.
+    for (event in BROADCAST_EVENTS) {
+      OnStartObserving(event) { observeBroadcast(event, true) }
+      OnStopObserving(event) { observeBroadcast(event, false) }
+    }
+    OnStartObserving("onNetworkChanged") { startNetworkPresence() }
+    OnStopObserving("onNetworkChanged") { stopNetworkPresence() }
     OnDestroy {
+      observedBroadcasts = emptySet()
       unregisterBlockReceiver()
+      stopNetworkPresence()
       pendingStart?.reject("E_MODULE_DESTROYED", "VPN module destroyed before consent completed", null)
       pendingStart = null
     }
+  }
+
+  private fun observeBroadcast(event: String, listening: Boolean) {
+    observedBroadcasts = if (listening) observedBroadcasts + event else observedBroadcasts - event
+    if (observedBroadcasts.isEmpty()) unregisterBlockReceiver() else registerBlockReceiver()
   }
 
   /** The person's "Turn on": the service ends any pause left from before (see ShieldPreference.pauseAfter). */
@@ -507,11 +543,18 @@ class CleanwayVpnModule : Module() {
             val kind = intent.getStringExtra(CleanwayVpnService.EXTRA_KIND) ?: ai.cleanway.app.BlockLog.KIND_BLOCKED
             sendEvent("onDomainBlocked", mapOf("domain" to domain, "ts" to ts, "kind" to kind))
           }
+          CleanwayVpnService.ACTION_PAUSE_CHANGED -> {
+            // The notification's "turn back on" or the pause running out while
+            // the app is open: the screen follows the service, not a guess.
+            val until = intent.getLongExtra(CleanwayVpnService.EXTRA_PAUSE_UNTIL, 0L)
+            sendEvent("onPauseChanged", mapOf("until" to until.toDouble()))
+          }
         }
       }
     }
     val filter = IntentFilter(CleanwayVpnService.ACTION_DOMAIN_BLOCKED).apply {
       addAction(CleanwayVpnService.ACTION_VPN_STOPPED)
+      addAction(CleanwayVpnService.ACTION_PAUSE_CHANGED)
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
       context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -527,5 +570,18 @@ class CleanwayVpnModule : Module() {
       try { context.unregisterReceiver(it) } catch (_: Exception) {}
     }
     blockReceiver = null
+  }
+
+  /** Connection came or went: an open screen re-checks the shield (ai.cleanway.app.NetworkPresence). */
+  private fun startNetworkPresence() {
+    if (networkPresence != null) return
+    networkPresence = ai.cleanway.app.NetworkPresence(context) { level ->
+      sendEvent("onNetworkChanged", mapOf("online" to (level == ai.cleanway.app.NetworkPresence.Level.ONLINE)))
+    }.also { it.start() }
+  }
+
+  private fun stopNetworkPresence() {
+    networkPresence?.stop()
+    networkPresence = null
   }
 }

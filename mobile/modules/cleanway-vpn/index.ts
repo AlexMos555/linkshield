@@ -12,7 +12,17 @@ export const LIST_CANARY_DOMAIN = 'list-canary.cleanway.ai';
 /** Overall probe deadline and the poll cadence within it. */
 const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
-import type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource } from './src/CleanwayVpn.types';
+import type {
+  BlocklistStatus,
+  DomainBlockedPayload,
+  NetworkChangedPayload,
+  PauseChangedPayload,
+  ShieldBlockEntry,
+  ShieldBlockKind,
+  ShieldBlockSource,
+  ShieldStopReason,
+  VpnStoppedPayload,
+} from './src/CleanwayVpn.types';
 import type {
   MessageAnalysis,
   MessageAnalysisResult,
@@ -24,7 +34,17 @@ import type {
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
 
-export type { BlocklistStatus, DomainBlockedPayload, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource };
+export type {
+  BlocklistStatus,
+  DomainBlockedPayload,
+  NetworkChangedPayload,
+  PauseChangedPayload,
+  ShieldBlockEntry,
+  ShieldBlockKind,
+  ShieldBlockSource,
+  ShieldStopReason,
+  VpnStoppedPayload,
+};
 export type {
   MessageAnalysis,
   MessageAnalysisResult,
@@ -161,6 +181,22 @@ export function addVpnStoppedListener(cb: (p: VpnStoppedPayload) => void) {
 }
 
 /**
+ * Subscribe to the pause beginning, ending or moving — whoever changed it:
+ * the app, the notification's "turn back on", or the clock running out.
+ */
+export function addPauseChangedListener(cb: (p: PauseChangedPayload) => void) {
+  return CleanwayVpn.addListener('onPauseChanged', cb);
+}
+
+/**
+ * Subscribe to the phone's connection coming or going. Fires on the change
+ * only — no polling, and nothing for signal-strength updates.
+ */
+export function addNetworkChangedListener(cb: (p: NetworkChangedPayload) => void) {
+  return CleanwayVpn.addListener('onNetworkChanged', cb);
+}
+
+/**
  * Open the system VPN settings so the user can enable "Always-on VPN".
  * Returns false when no such screen exists on this device.
  */
@@ -273,6 +309,20 @@ export function wasUserEnabled(): boolean {
     return typeof CleanwayVpn.wasUserEnabled === 'function' && CleanwayVpn.wasUserEnabled();
   } catch {
     return false;
+  }
+}
+
+/**
+ * Why protection last stopped without the person turning it off, or null
+ * when nobody knows (a killed app, a battery manager) and on older native
+ * builds. An unknown native value reads as null, never as a guess.
+ */
+export function lastStopReason(): ShieldStopReason | null {
+  try {
+    const reason = typeof CleanwayVpn.lastStopReason === 'function' ? CleanwayVpn.lastStopReason() : null;
+    return reason === 'revoked' || reason === 'private_dns' ? reason : null;
+  } catch {
+    return null;
   }
 }
 
