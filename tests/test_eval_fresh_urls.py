@@ -18,6 +18,8 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
 
 def _load_eval_module() -> ModuleType:
     """Import scripts/eval_fresh_urls.py as a module without making
@@ -245,12 +247,31 @@ def test_min_interval_cleanway_bumped_to_16s():
     assert eval_module.MIN_INTERVAL_S["cleanway"] >= 16.0
 
 
-def test_batch_cooldown_is_at_least_60s():
-    """The Cleanway rate-limit window is 60s; anything less would let
-    the safe batch bleed into the phishing batch's window and start
-    generating 429s again."""
+def test_both_batches_are_interleaved_for_every_resolver():
+    """Phishing first spent the day's paid-source budgets (IPQS 150, LLM
+    judge 300) before a single legit site was checked, so the false-positive
+    rate was measured mostly without them. Interleaved, both batches meet the
+    same budget state — and the same share of any quota running out."""
     eval_module = _load_eval_module()
-    assert eval_module.CLEANWAY_BATCH_COOLDOWN_S >= 60.0
+    assert eval_module.interleave_batches(["p0", "p1", "p2"], ["l0"]) == [
+        ("phishing", 0), ("legit", 0), ("phishing", 1), ("phishing", 2),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_an_interleaved_run_splits_back_into_its_batches():
+    eval_module = _load_eval_module()
+    seen: list[list[str]] = []
+
+    async def fake_run(name, urls):
+        seen.append(list(urls))
+        return [eval_module.Verdict(name, "safe", detail=u) for u in urls]
+
+    phish, legit = await eval_module.run_resolver_on_both(
+        "cleanway", ["https://p0", "https://p1"], ["https://l0", "https://l1", "https://l2"], run=fake_run)
+    assert seen == [["https://p0", "https://l0", "https://p1", "https://l1", "https://l2"]]  # one run
+    assert [v.detail for v in phish] == ["https://p0", "https://p1"]
+    assert [v.detail for v in legit] == ["https://l0", "https://l1", "https://l2"]
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -260,7 +281,6 @@ def test_batch_cooldown_is_at_least_60s():
 import re  # noqa: E402
 
 import httpx  # noqa: E402
-import pytest  # noqa: E402
 
 
 def _legit():
@@ -286,6 +306,21 @@ def test_committed_legit_sample_is_big_sourced_and_outside_the_allowlist():
     assert sum(1 for s in sites if s.host.endswith(".xn--p1ai")) >= 30  # .рф
     # The geo-blocked case the 2026-09-25 report found called "Dangerous".
     assert sum(1 for s in sites if s.reachability == "blocked-abroad") >= 30
+
+
+def test_a_site_nobody_saw_is_kept_only_for_a_state_body():
+    """A blocked-abroad host never served its page to the curator: it rests on
+    its Wikidata entry alone, which the list's header allows only for a state
+    body. A resort museum (марцводы.рф) slipped in under a blanket '.рф is
+    municipal' rule."""
+    municipal = re.compile(r"поселени|район|сельсовет|-адм|округ|администрац", re.IGNORECASE)
+    unseen = [s for s in _legit().load_legit_sample() if s.reachability == "blocked-abroad"]
+    offenders = [
+        s.host for s in unseen
+        if s.category not in {"regional_gov", "city", "university"}
+        and not (s.category == "rf" and municipal.search(s.name))
+    ]
+    assert offenders == []
 
 
 def test_the_report_s_false_alarms_are_in_the_sample():
@@ -397,8 +432,9 @@ def _pool(eval_module, fake, **kw):
 
 
 async def _ask(pool) -> str:
-    async with pool.identity() as headers:
-        return headers["X-Cleanway-Install"]
+    async with pool.identity() as lease:
+        await lease.ready()
+        return lease.headers["X-Cleanway-Install"]
 
 
 @pytest.mark.asyncio
@@ -501,6 +537,78 @@ async def test_latency_is_the_servers_not_our_own_pacing(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran(tmp_path, monkeypatch):
+    """VirusTotal alone needs ~105 min for 2 x 200 URLs; run after the others
+    it pushed the weekly job past its timeout, which writes nothing. Offline:
+    every feed and adapter is a stub."""
+    import asyncio
+
+    eval_module = _load_eval_module()
+    phishing = [f"https://phish{i}.example/login" for i in range(3)]
+    calls: list[str] = []
+
+    async def fake_feed(_limit):
+        return phishing
+
+    async def no_feed(_limit):
+        return []
+
+    def fake_adapter(name):
+        async def _check(_client, url):
+            calls.append(name)
+            await asyncio.sleep(0)  # let the other resolvers in, as real I/O would
+            return eval_module.Verdict(name, "dangerous" if "phish" in url else "safe", detail=url)
+        return _check
+
+    monkeypatch.setattr(eval_module, "fetch_urlhaus_recent", fake_feed)
+    monkeypatch.setattr(eval_module, "fetch_phishtank_recent", no_feed)
+    monkeypatch.setattr(eval_module, "VT_KEY", "stub")
+    for name in ("cleanway", "gsb", "phishtank", "cloudflare_families", "virustotal"):
+        monkeypatch.setitem(eval_module.ADAPTERS, name, fake_adapter(name))
+        monkeypatch.setitem(eval_module.MIN_INTERVAL_S, name, 0.0)
+    monkeypatch.setattr(sys, "argv", ["eval_fresh_urls.py", "--sample", "3", "--out-tag", "t",
+                                      "--out-dir", str(tmp_path)])
+
+    assert await eval_module.main() == 0
+    report = json.loads((tmp_path / "t-fresh-urls.json").read_text(encoding="utf-8"))
+
+    assert len(set(calls[:5])) > 1, calls  # not one resolver after another
+    legit = report["raw"]["legit_urls"]
+    for name in ("cleanway", "virustotal"):
+        assert [v["detail"] for v in report["raw"]["phishing"][name]] == phishing
+        assert [v["detail"] for v in report["raw"]["safe"][name]] == legit
+    assert report["phishing"]["cleanway"]["recall"] == 1.0
+    assert report["safe"]["cleanway"]["fpr"] == 0.0
+    window = report["cleanway_window_utc"]
+    assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", window["start"])
+    assert window["start"] <= window["end"]
+    assert not (tmp_path / "latest.json").exists()  # 3 URLs never pass the gate
+
+
+@pytest.mark.asyncio
+async def test_a_429_is_retried_by_the_same_install(monkeypatch):
+    """The retry after a 429 went out under the next install in the queue —
+    a per-install limit dodged by switching ids, which the script says it
+    never does."""
+    eval_module = _load_eval_module()
+    monkeypatch.setattr(eval_module, "BENCHMARK_BYPASS_TOKEN", "")
+    monkeypatch.setattr(eval_module, "_POOL", eval_module.InstallPool(size=4, min_interval=0.0))
+    ids: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        ids.append(request.headers["x-cleanway-install"])
+        if len(ids) == 1:
+            return httpx.Response(429, headers={"retry-after": "1"})
+        return httpx.Response(200, json={"level": "safe", "score": 3})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        verdict = await eval_module.check_cleanway(client, "https://example.ru")
+    assert verdict.verdict == "safe"
+    assert len(ids) == 2 and ids[0] == ids[1]
+    assert eval_module._POOL.requests == 2  # both attempts paced and counted
+
+
+@pytest.mark.asyncio
 async def test_with_a_token_the_benchmark_uses_the_bypass(monkeypatch):
     headers = await _one_check(_load_eval_module(), monkeypatch, token="tok")
     assert headers["x-cleanway-benchmark"] == "tok"
@@ -514,8 +622,10 @@ def test_report_markdown_says_what_the_legit_sample_is():
         report[batch]["cleanway"]["latency_p50_ms"] = None
     report["sources"] = {"legit_outside_allowlist": True, "cleanway_identity": "4 rotating installs"}
     report["cleanway_on_legit"] = _legit().legit_breakdown([], [])
+    report["cleanway_window_utc"] = {"start": "2026-10-04T15:16:02Z", "end": "2026-10-04T15:44:10Z"}
     md = eval_module.render_md(report)
     assert "OUTSIDE the Tranco top-100k" in md
     assert "Cleanway on the legitimate sample" in md
+    assert "The Cleanway checks ran 2026-10-04T15:16:02Z – 2026-10-04T15:44:10Z." in md
     report["sources"]["legit_outside_allowlist"] = False
     assert "NOT a measurement" in eval_module.render_md(report)

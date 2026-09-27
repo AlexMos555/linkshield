@@ -111,18 +111,29 @@ MIN_INTERVAL_S = {
     # rate-limit window, poisoning latest.json with `unknown` verdicts.
     #
     # When BENCHMARK_BYPASS_TOKEN is set the server skips the IP limit for us,
-    # so the 16s throttle + 65s cooldown are unnecessary — drop to a light
-    # 0.3s spacing (still polite, avoids hammering) so a 200-sample run fits
-    # comfortably inside the CI timeout.
+    # so the 16s throttle is unnecessary — drop to a light 0.3s spacing (still
+    # polite, avoids hammering). Without the token this is the pace of EACH
+    # virtual install (see "Rate-limit identity" below).
     "cleanway": 0.3 if BENCHMARK_BYPASS_TOKEN else 16.0,
-    "virustotal": 16.0,  # VT free tier 4 req/min
+    # VT free tier: 4 lookups a minute and 500 a day. At 16 s a lookup, VT is
+    # the slowest resolver by far — 2 x 200 URLs take ~105 min (measured
+    # 15.75 s a URL on 2026-09-21) — which is why resolvers run side by side
+    # (main) and the weekly workflow's timeout is sized for VT, not Cleanway.
+    "virustotal": 16.0,
 }
 
-# Cooldown between resolver batches (phishing → safe). The Cleanway public
-# endpoint enforces a 5/min/IP window; if we start the safe batch before the
-# window drains, we get HTTP 429 on the first ~5 URLs and record them as
-# `unknown`. 60s drains the window; +5s gives clock-skew headroom.
-CLEANWAY_BATCH_COOLDOWN_S = 65.0
+# Every resolver sees the phishing and the legitimate URLs INTERLEAVED, in one
+# run (interleave_batches). Two reasons:
+#   * A fresh Cleanway check may spend one call of the service-wide daily
+#     budgets for paid sources (IPQS 150, LLM judge 300 per UTC day). Run
+#     phishing first and it spends them, so the false-positive rate would be
+#     measured mostly without those sources. Interleaved, both batches meet
+#     the same budget state at the same moments.
+#   * The same holds for any resolver's quota running out mid-run (VT's 500
+#     lookups a day): both batches lose the same share, not the legit one.
+# The old 65 s cooldown between a phishing and a legit batch drained a 5/min
+# per-IP window; with per-install pacing (or the bypass token) there is no
+# such window, and no second batch.
 
 # ── Rate-limit identity without the bypass token ──
 #
@@ -146,15 +157,18 @@ CLEANWAY_BATCH_COOLDOWN_S = 65.0
 #     address may.
 #   * Each virtual install behaves like a phone: REQUESTS_PER_INSTALL checks
 #     (under its 60 an hour), one per MIN_INTERVAL_S (under its 5 fresh a
-#     minute), then a new id. On a 429 it waits and retries once, as before;
-#     it never switches ids to dodge a limit.
+#     minute), then a new id. On a 429 the same install waits and retries
+#     once (check_cleanway holds it through the wait): a limit is never
+#     dodged by switching ids. The other installs go on meanwhile.
 #   * It needs no secret, so anyone re-running this script measures what we
 #     measure — the point of a public benchmark.
 # Cost: a fresh analysis may spend one call of the service-wide daily budgets
 # for paid sources (api/services/paid_budget.py: IPQS 150, LLM judge 300 per
-# UTC day). The weekly workflow runs late on Sunday UTC, so it spends the tail
-# of a day's budget; checks past the cap run without those sources — exactly
-# as a user's would at that moment.
+# UTC day). The weekly workflow starts on Sunday afternoon UTC and skips a
+# start so late that these checks would reach Monday (UTC), so it spends
+# Sunday's budget, never a whole Monday's; checks past a cap run without that
+# source — exactly as a user's would at that moment. The report records when
+# the Cleanway checks ran (cleanway_window_utc).
 INSTALL_HEADER = "X-Cleanway-Install"
 PARALLEL_INSTALLS = 4
 REQUESTS_PER_INSTALL = 50
@@ -170,12 +184,38 @@ class _Install:
     last: Optional[float] = None
 
 
+class _Lease:
+    """One install, held for one URL (both attempts on a 429). `ready()` before
+    each request: the install's own pacing and the run's hourly budget."""
+
+    def __init__(self, pool: "InstallPool", inst: _Install) -> None:
+        self._pool = pool
+        self.inst = inst
+
+    @property
+    def headers(self) -> dict:
+        return {INSTALL_HEADER: self.inst.id}
+
+    async def ready(self) -> None:
+        self.inst = await self._pool._pace(self.inst)
+
+
+class _TokenLease:
+    """The bypass token: the server applies no per-IP limit, nothing to pace."""
+
+    def __init__(self, token: str) -> None:
+        self.headers = {"X-Cleanway-Benchmark": token}
+
+    async def ready(self) -> None:
+        return None
+
+
 class InstallPool:
     """Virtual app installs for the Cleanway adapter (see the block above).
 
-    `identity()` hands out one install's header, waits until that install may
-    ask again and until the run is under its hourly budget, and retires the
-    install after `per_install` checks."""
+    `identity()` lends one install (a `_Lease`); each `lease.ready()` waits
+    until that install may ask again and until the run is under its hourly
+    budget. An install is retired after `per_install` checks."""
 
     def __init__(
         self,
@@ -210,19 +250,22 @@ class InstallPool:
                     return
                 await self._sleep(_HOUR_S - (now - self._sent[0]) + 0.5)
 
+    async def _pace(self, inst: _Install) -> _Install:
+        if inst.last is not None:
+            wait = self._min_interval - (self._clock() - inst.last)
+            if wait > 0:
+                await self._sleep(wait)
+        await self._take_hourly_slot()
+        self.requests += 1
+        return replace(inst, used=inst.used + 1, last=self._clock())
+
     @asynccontextmanager
-    async def identity(self) -> AsyncIterator[dict]:
-        inst = await self._free.get()
+    async def identity(self) -> AsyncIterator[_Lease]:
+        lease = _Lease(self, await self._free.get())
         try:
-            if inst.last is not None:
-                wait = self._min_interval - (self._clock() - inst.last)
-                if wait > 0:
-                    await self._sleep(wait)
-            await self._take_hourly_slot()
-            inst = replace(inst, used=inst.used + 1, last=self._clock())
-            self.requests += 1
-            yield {INSTALL_HEADER: inst.id}
+            yield lease
         finally:
+            inst = lease.inst
             if inst.used >= self._per_install:
                 inst = _Install(self._new_id())
                 self.installs_used += 1
@@ -240,14 +283,14 @@ def _install_pool() -> InstallPool:
 
 
 @asynccontextmanager
-async def _cleanway_identity() -> AsyncIterator[dict]:
-    """Headers for one Cleanway request: the bypass token when configured,
-    otherwise one of the rotating virtual installs."""
+async def _cleanway_identity() -> AsyncIterator["_Lease | _TokenLease"]:
+    """Who asks about one URL: the bypass token when configured, otherwise
+    one of the rotating virtual installs, held until the URL is done."""
     if BENCHMARK_BYPASS_TOKEN:
-        yield {"X-Cleanway-Benchmark": BENCHMARK_BYPASS_TOKEN}
+        yield _TokenLease(BENCHMARK_BYPASS_TOKEN)
         return
-    async with _install_pool().identity() as headers:
-        yield headers
+    async with _install_pool().identity() as lease:
+        yield lease
 
 
 def cleanway_identity_note() -> str:
@@ -466,6 +509,11 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
     A single retry per URL caps the worst-case batch time at
     2 × (N × MIN_INTERVAL_S + N × 25s).
 
+    Both attempts go out under the same identity: without the token, the
+    same virtual install waits out the 429 and asks again (the other
+    installs go on meanwhile) — a per-install limit is never dodged by
+    switching ids.
+
     `latency_ms` is time spent in requests only — never our own pacing
     or a 429 wait, which say nothing about how fast Cleanway answers.
     """
@@ -475,29 +523,28 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
     spent = 0.0
     started: Optional[float] = None
     try:
-        for attempt in (1, 2):
-            # One identity per request: the bypass token, or a paced virtual
-            # install (released before any 429 wait, so the others go on).
-            async with _cleanway_identity() as headers:
+        async with _cleanway_identity() as ident:
+            for attempt in (1, 2):
+                await ident.ready()  # this install's pacing, the hourly budget
                 started = time.monotonic()
                 r = await client.get(
                     f"{CLEANWAY_API}/api/v1/public/check/{d}",
-                    headers=headers,
+                    headers=ident.headers,
                     timeout=8.0,
                 )
                 spent += time.monotonic() - started
                 started = None
-            if r.status_code == 429 and attempt == 1:
-                # Honour Retry-After if the server sent one, else
-                # default to a full 5/min window plus headroom.
-                ra = r.headers.get("retry-after")
-                try:
-                    wait_s = max(1.0, float(ra)) if ra else 25.0
-                except ValueError:
-                    wait_s = 25.0
-                await asyncio.sleep(min(wait_s, 60.0))
-                continue
-            break
+                if r.status_code == 429 and attempt == 1:
+                    # Honour Retry-After if the server sent one, else
+                    # default to a full 5/min window plus headroom.
+                    ra = r.headers.get("retry-after")
+                    try:
+                        wait_s = max(1.0, float(ra)) if ra else 25.0
+                    except ValueError:
+                        wait_s = 25.0
+                    await asyncio.sleep(min(wait_s, 60.0))
+                    continue
+                break
         elapsed = spent * 1000
         if r.status_code != 200:
             tag = "rate_limited" if r.status_code == 429 else f"status={r.status_code}"
@@ -825,6 +872,39 @@ async def run_resolver(name: str, urls: list[str]) -> list[Verdict]:
     return results
 
 
+def interleave_batches(phishing: list[str], legit: list[str]) -> list[tuple[str, int]]:
+    """The order a resolver sees both batches in: ("phishing", i) and
+    ("legit", i) alternating, the longer batch's tail at the end. Why: the
+    "INTERLEAVED" note right after MIN_INTERVAL_S."""
+    order: list[tuple[str, int]] = []
+    for i in range(max(len(phishing), len(legit))):
+        if i < len(phishing):
+            order.append(("phishing", i))
+        if i < len(legit):
+            order.append(("legit", i))
+    return order
+
+
+async def run_resolver_on_both(
+    name: str, phishing: list[str], legit: list[str],
+    run: Callable[[str, list[str]], Awaitable[list[Verdict]]] = run_resolver,
+) -> tuple[list[Verdict], list[Verdict]]:
+    """One interleaved run of `name` over both batches, split back into
+    (phishing verdicts, legit verdicts), each in its batch's order."""
+    order = interleave_batches(phishing, legit)
+    batches = {"phishing": phishing, "legit": legit}
+    verdicts = await run(name, [batches[b][i] for b, i in order])
+    by_slot = dict(zip(order, verdicts, strict=True))
+    return (
+        [by_slot[("phishing", i)] for i in range(len(phishing))],
+        [by_slot[("legit", i)] for i in range(len(legit))],
+    )
+
+
+def _utc_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
 def classify(verdicts: list[Verdict], expected: str) -> dict:
     """expected ∈ {'dangerous', 'safe'}.
 
@@ -931,10 +1011,15 @@ def render_md(report: dict) -> str:
                      "false-positive rate is NOT a measurement.")
     lines.append("- We send DOMAIN only to Cleanway (server-blind invariant). "
                  "GSB / PhishTank / VT receive the full URL.")
+    window = report.get("cleanway_window_utc") or {}
+    ran = (f" The Cleanway checks ran {window['start']} – {window['end']}."
+           if window.get("start") and window.get("end") else "")
     lines.append("- Cleanway requests identify as: "
                  f"{report.get('sources', {}).get('cleanway_identity', 'one IP')}. "
                  "Each check may use the service's daily paid-source budgets; "
-                 "checks past a cap run without that source, as a user's would.")
+                 "checks past a cap run without that source, as a user's would. "
+                 "Phishing and legitimate URLs are interleaved, so both batches "
+                 f"meet the same budget state.{ran}")
     lines.append("- 'Unknown' = the resolver didn't return a definitive verdict "
                  "(rate-limited, not indexed, error). 'Unknown' is NOT counted as "
                  "either correct or incorrect — it's reported separately.")
@@ -1171,24 +1256,21 @@ async def main() -> int:
     if VT_KEY and not args.no_virustotal:
         resolvers.append("virustotal")
 
-    phishing_results: dict[str, list[Verdict]] = {}
-    safe_results: dict[str, list[Verdict]] = {}
-    for r in resolvers:
-        phishing_results[r] = await run_resolver(r, phishing_urls)
-        _log_unknown_rate(r, "phishing", phishing_results[r])
-        # Drain the Cleanway 5/min/IP window before the safe batch. Without
-        # this cooldown the first ~5 safe URLs get HTTP 429 and are recorded
-        # as `unknown`, which nulls FPR and poisons latest.json. See
-        # 2026-06-30 audit: safe batch had 30/50 unknown, FPR=null.
-        # The cooldown only matters when we're being rate-limited. With the
-        # benchmark bypass token the server skips the IP cap entirely, so
-        # there is no window to drain — skip the 65s wait.
-        if r == "cleanway" and not BENCHMARK_BYPASS_TOKEN:
-            log.info("draining cleanway rate-limit window (%.0fs) before safe batch",
-                     CLEANWAY_BATCH_COOLDOWN_S)
-            await asyncio.sleep(CLEANWAY_BATCH_COOLDOWN_S)
-        safe_results[r] = await run_resolver(r, legit_urls)
-        _log_unknown_rate(r, "safe", safe_results[r])
+    # Resolvers run side by side: each paces itself and talks to a different
+    # service, so the run takes as long as the slowest one (VirusTotal, at
+    # 16 s a lookup) instead of the sum of all of them. Within a resolver the
+    # two batches are interleaved (interleave_batches).
+    async def _both(r: str) -> tuple[list[Verdict], list[Verdict], dict[str, str]]:
+        start = _utc_now()
+        phish, safe = await run_resolver_on_both(r, phishing_urls, legit_urls)
+        _log_unknown_rate(r, "phishing", phish)
+        _log_unknown_rate(r, "safe", safe)
+        return phish, safe, {"start": start, "end": _utc_now()}
+
+    outcomes = dict(zip(resolvers, await asyncio.gather(*[_both(r) for r in resolvers])))
+    phishing_results: dict[str, list[Verdict]] = {r: o[0] for r, o in outcomes.items()}
+    safe_results: dict[str, list[Verdict]] = {r: o[1] for r, o in outcomes.items()}
+    windows: dict[str, dict[str, str]] = {r: o[2] for r, o in outcomes.items()}
 
     # ── Classify + build report ──────────────────────────────────
     report: dict = {
@@ -1206,6 +1288,9 @@ async def main() -> int:
             "cleanway_api": CLEANWAY_API,
             "cleanway_identity": cleanway_identity_note(),
         },
+        # When the Cleanway checks ran: the UTC day whose paid-source budgets
+        # (IPQS, LLM judge) they could spend.
+        "cleanway_window_utc": windows.get("cleanway"),
         # How Cleanway answered each real site, by slice — null for a Tranco run.
         "cleanway_on_legit": (
             benchmark_legit.legit_breakdown(
