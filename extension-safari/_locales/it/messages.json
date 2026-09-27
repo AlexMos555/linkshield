@@ -285,8 +285,78 @@
       }
     }
   },
+  "time_just_now": {
+    "message": "proprio ora"
+  },
+  "time_minutes": {
+    "message": "$N$ min",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_hours": {
+    "message": "$N$ h",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_days": {
+    "message": "$N$ g",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_no_tab": {
+    "message": "Prima apri una pagina"
+  },
+  "action_trust_invalid": {
+    "message": "Questa pagina non si può aggiungere"
+  },
+  "action_trust_done": {
+    "message": "$DOMAIN$ aggiunto ai siti affidabili",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_error": {
+    "message": "Impossibile salvare"
+  },
+  "action_report_no_tab": {
+    "message": "Prima apri una pagina"
+  },
+  "action_report_invalid": {
+    "message": "Questa pagina non si può segnalare"
+  },
+  "action_report_done": {
+    "message": "Grazie, segnalato"
+  },
+  "action_report_throttled": {
+    "message": "Troppe segnalazioni, riprova più tardi"
+  },
+  "action_report_error": {
+    "message": "Impossibile inviare la segnalazione"
+  },
+  "tip_dismiss": {
+    "message": "Chiudi"
+  },
   "trust_footer": {
     "message": "Controlliamo gli indirizzi dei siti, non i link completi né il contenuto delle pagine"
+  },
+  "confidence_chip": {
+    "message": "Affidabilità: $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
   },
   "block_title": {
     "message": "STOP"
@@ -350,6 +420,15 @@
   "block_evidence_heading": {
     "message": "Perché abbiamo bloccato questo sito"
   },
+  "block_explainer_heading": {
+    "message": "Che tipo di truffa è questa?"
+  },
+  "block_evidence_other_title": {
+    "message": "Un segnale di allarme"
+  },
+  "block_evidence_other_body": {
+    "message": "I nostri controlli hanno trovato qualcosa di insolito in questo sito."
+  },
   "welcome_hero_title": {
     "message": "Ora sei protetto"
   },
@@ -388,6 +467,27 @@
   },
   "welcome_trust_footer": {
     "message": "Il blocco è gratis per sempre. Non vendiamo mai i tuoi dati."
+  },
+  "welcome_page_title": {
+    "message": "Benvenuto in Cleanway"
+  },
+  "welcome_persona_title": {
+    "message": "Chi usa di più questo dispositivo?"
+  },
+  "welcome_persona_regular": {
+    "message": "Io — modalità normale"
+  },
+  "welcome_persona_granny": {
+    "message": "Un genitore o un nonno"
+  },
+  "welcome_persona_kids": {
+    "message": "Un bambino"
+  },
+  "welcome_persona_pro": {
+    "message": "Un esperto"
+  },
+  "welcome_persona_hint": {
+    "message": "Regola come vengono spiegati gli avvisi. Puoi cambiarlo quando vuoi nelle Impostazioni."
   },
   "badge_label_safe": {
     "message": "Sicuro"
@@ -671,7 +771,7 @@
     "message": "L'indirizzo è insolitamente lungo e complicato"
   },
   "reason_many_redirects": {
-    "message": "Il link rimbalza tra più siti"
+    "message": "Il link ti reindirizza a un altro indirizzo"
   },
   "reason_risky_ending": {
     "message": "Usa una terminazione che le truffe preferiscono"
@@ -698,12 +798,655 @@
     "message": "Non è configurato come il sito di un'azienda vera"
   },
   "reason_shifty_setup": {
-    "message": "Il sito cambia continuamente posizione, un trucco tipico delle truffe"
+    "message": "Configurazione dei server insolita, usata anche dalle reti di truffatori"
   },
   "reason_padded_address": {
     "message": "L'indirizzo è gonfiato con parti in più per nascondere il nome vero"
   },
   "reason_shared_hosting": {
-    "message": "Ospitato su un servizio gratuito dove chiunque può creare un sito"
+    "message": "Ospitato su un servizio dove chiunque può creare un sito"
+  },
+  "reason_invalid_address": {
+    "message": "L'indirizzo non è scritto correttamente"
+  },
+  "reason_private_network": {
+    "message": "L'indirizzo porta a una rete privata, non a internet"
+  },
+  "reason_on_your_trusted_list": {
+    "message": "Hai contrassegnato questo sito come affidabile"
+  },
+  "reason_ai_second_look": {
+    "message": "Il nostro assistente IA ha valutato i segnali di allarme"
+  },
+  "reason_on_cleanway_list": {
+    "message": "È nella lista dei siti truffa di Cleanway"
+  },
+  "reason_site_not_found": {
+    "message": "Questo indirizzo non esiste"
+  },
+  "reason_unreachable_abroad": {
+    "message": "Il nostro server all'estero non è riuscito ad aprire il sito. Molte banche e siti pubblici bloccano gli indirizzi esteri, quindi da solo questo non è un segnale di pericolo"
+  },
+  "reason_checks_incomplete": {
+    "message": "Alcuni controlli non sono terminati, quindi il risultato è meno sicuro"
+  },
+  "reason_user_content_platform": {
+    "message": "Su questo servizio chiunque può creare una pagina, anche i truffatori"
+  },
+  "reason_high_risk_score": {
+    "message": "Un servizio di valutazione delle frodi considera questo sito ad alto rischio"
+  },
+  "reason_new_certificate": {
+    "message": "Il certificato di sicurezza del sito ha solo pochi giorni"
+  },
+  "reason_broken_certificate": {
+    "message": "Il certificato di sicurezza del sito non è valido"
+  },
+  "evidence_flagged_dangerous": {
+    "message": "Google Safe Browsing, l'elenco che Chrome, Firefox e Safari usano per avvisare le persone, segnala questo sito come pericoloso."
+  },
+  "evidence_flagged_phishing": {
+    "message": "Questo sito è nei database antiphishing: elenchi di siti che sottraggono con l'inganno password o dati della carta."
+  },
+  "evidence_on_blocklists": {
+    "message": "I ricercatori di sicurezza hanno già inserito questo sito in elenchi di siti truffa e spam."
+  },
+  "evidence_threat_reports": {
+    "message": "I ricercatori di sicurezza citano questo sito nei loro rapporti sugli attacchi."
+  },
+  "evidence_spreads_malware": {
+    "message": "Questo sito è già stato sorpreso a diffondere programmi che infettano computer e telefoni."
+  },
+  "evidence_imitates_brand": {
+    "message": "L'indirizzo somiglia a quello di un'azienda nota, ma non le appartiene."
+  },
+  "evidence_lookalike_letters": {
+    "message": "Alcune lettere dell'indirizzo sembrano solo normali. Così si nasconde l'indirizzo vero."
+  },
+  "evidence_fake_brand_address": {
+    "message": "Un nome famoso compare all'inizio dell'indirizzo, ma il sito appartiene a qualcun altro."
+  },
+  "evidence_copies_brand_icon": {
+    "message": "La pagina mostra l'icona di un'azienda vera ma si trova a un indirizzo estraneo: un trucco comune per rubare gli accessi."
+  },
+  "evidence_no_https": {
+    "message": "Tutto ciò che scrivi su questo sito viene inviato senza protezione e può essere intercettato."
+  },
+  "evidence_missing_protections": {
+    "message": "Al sito mancano protezioni di base che le aziende vere di solito attivano."
+  },
+  "evidence_raw_ip_address": {
+    "message": "Le aziende vere danno un nome ai loro siti. Le pagine truffa spesso usano solo un numero."
+  },
+  "evidence_unusual_connection": {
+    "message": "Il sito si collega in un modo insolito che i siti normali non usano quasi mai."
+  },
+  "evidence_hidden_destination": {
+    "message": "Il link nasconde l'indirizzo a cui porta davvero."
+  },
+  "evidence_very_new_site": {
+    "message": "I siti truffa di solito durano pochi giorni, quindi un indirizzo appena creato è un segnale di allarme."
+  },
+  "evidence_scam_words": {
+    "message": "L'indirizzo contiene parole come «login» o «secure», che i truffatori aggiungono per sembrare ufficiali."
+  },
+  "evidence_carries_personal_data": {
+    "message": "Il link stesso contiene la tua email o una chiave di accesso. Chiunque veda il link può usarle."
+  },
+  "evidence_long_complex_address": {
+    "message": "L'indirizzo è lungo e contorto, così è difficile capire dove porta davvero."
+  },
+  "evidence_many_redirects": {
+    "message": "Il link è fatto per mandarti a un altro indirizzo, spesso per nascondere dove porta davvero."
+  },
+  "evidence_risky_ending": {
+    "message": "L'indirizzo termina con una zona (come .xyz o .top) dove i siti truffa sono particolarmente diffusi."
+  },
+  "evidence_risky_registrar": {
+    "message": "Il sito è stato registrato tramite un servizio spesso scelto dai truffatori."
+  },
+  "evidence_random_name": {
+    "message": "Il nome sembra un miscuglio casuale, tipico dei siti creati in serie per truffe usa e getta."
+  },
+  "evidence_detector_suspicious": {
+    "message": "Il nostro rilevatore, addestrato su migliaia di siti veri e truffa, trova questo simile alle truffe."
+  },
+  "evidence_not_a_real_business": {
+    "message": "Il sito non ha un'email funzionante. Le aziende vere quasi sempre ce l'hanno."
+  },
+  "evidence_shifty_setup": {
+    "message": "L'indirizzo del sito può spostarsi molto rapidamente tra tanti server. Lo fanno anche i grandi servizi, ma le reti di truffatori lo usano per rendere i loro siti più difficili da chiudere."
+  },
+  "evidence_padded_address": {
+    "message": "Davanti al nome vero ci sono parti in più, così è difficile notarlo."
+  },
+  "evidence_shared_hosting": {
+    "message": "Su questo servizio chiunque può creare un sito in pochi minuti, anche i truffatori."
+  },
+  "evidence_on_cleanway_list": {
+    "message": "L'elenco di Cleanway dei siti truffa noti include questo."
+  },
+  "evidence_site_not_found": {
+    "message": "Al momento a questo indirizzo non c'è nessun sito attivo. Controlla come è scritto."
+  },
+  "evidence_unreachable_abroad": {
+    "message": "Il nostro server all'estero non è riuscito ad aprire questo sito, quindi la pagina in sé non è stata controllata."
+  },
+  "evidence_checks_incomplete": {
+    "message": "Non tutti i controlli sono finiti in tempo, quindi il verdetto si basa su meno segnali."
+  },
+  "evidence_user_content_platform": {
+    "message": "Su questo servizio chiunque può pubblicare pagine. Non possiamo garantire per questa pagina in particolare."
+  },
+  "evidence_invalid_address": {
+    "message": "L'indirizzo stesso è malformato. Potrebbe essere una trappola per chi copia i link."
+  },
+  "evidence_private_network": {
+    "message": "I normali siti pubblici non portano lì, quindi non l'abbiamo aperto."
+  },
+  "evidence_ai_second_look": {
+    "message": "Quando i segnali vanno in entrambe le direzioni, un modello di IA li esamina e può correggere un po' il verdetto."
+  },
+  "evidence_well_known_site": {
+    "message": "È uno dei siti noti che riconosciamo come autentici."
+  },
+  "evidence_popular_site": {
+    "message": "Questo sito è nell'elenco dei siti più visitati al mondo. Conta a suo favore, ma gli altri segnali di allarme restano importanti."
+  },
+  "evidence_detector_safe": {
+    "message": "Il nostro rilevatore, addestrato su migliaia di siti veri e truffa, trova questo simile ai siti veri."
+  },
+  "evidence_on_your_trusted_list": {
+    "message": "Hai aggiunto tu stesso questo sito ai tuoi siti affidabili."
+  },
+  "evidence_high_risk_score": {
+    "message": "Un servizio che valuta i siti per le frodi assegna a questo un punteggio di rischio alto. È una stima, non una segnalazione confermata."
+  },
+  "evidence_new_certificate": {
+    "message": "I siti truffa compaiono spesso con un certificato appena emesso. Ma anche i siti veri lo rinnovano regolarmente, quindi da solo significa poco."
+  },
+  "evidence_broken_certificate": {
+    "message": "Il certificato che dimostra chi gestisce questo sito è scaduto, non è stato emesso da un'autorità affidabile o appartiene a un altro indirizzo. Anche il tuo browser ti avviserà."
+  },
+  "weekly_title": {
+    "message": "La mia settimana"
+  },
+  "weekly_checked": {
+    "message": "Controllati"
+  },
+  "weekly_blocked": {
+    "message": "Bloccati"
+  },
+  "weekly_warnings": {
+    "message": "Avvisi"
+  },
+  "weekly_top_threats": {
+    "message": "Minacce più frequenti"
+  },
+  "weekly_no_threats": {
+    "message": "Nessun sito truffa registrato questa settimana"
+  },
+  "weekly_on_device": {
+    "message": "Report creato sul tuo dispositivo"
+  },
+  "score_title": {
+    "message": "Il mio livello di sicurezza"
+  },
+  "score_label_excellent": {
+    "message": "Ottimo"
+  },
+  "score_label_good": {
+    "message": "Buono"
+  },
+  "score_label_fair": {
+    "message": "Discreto"
+  },
+  "score_label_low": {
+    "message": "Si può migliorare"
+  },
+  "score_breakdown": {
+    "message": "Da cosa è composto il punteggio"
+  },
+  "score_on_device": {
+    "message": "Calcolato sul tuo dispositivo"
+  },
+  "score_factor_active_days": {
+    "message": "Giorni con Cleanway: $DAYS$",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_active_days_of_week": {
+    "message": "Giorni con Cleanway: $DAYS$ su 7",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_no_dangerous": {
+    "message": "Nessun sito pericoloso in 30 giorni"
+  },
+  "score_factor_dangerous_visits": {
+    "message": "Siti pericolosi aperti: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_audit_avg": {
+    "message": "Punteggio medio di privacy dei siti: $SCORE$",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_trusted_sites": {
+    "message": "Siti nel tuo elenco di fiducia: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_overrides": {
+    "message": "Avvisi ignorati: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_checks": {
+    "message": "Controlli in totale: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "breach_title": {
+    "message": "Controllo delle fughe di email"
+  },
+  "breach_not_available": {
+    "message": "Il controllo di un'email nelle fughe di dati note non è ancora disponibile. Non è stato controllato nulla e non ti chiediamo l'email."
+  },
+  "breach_works_now": {
+    "message": "Cosa funziona già: quando scrivi una password su un sito, Cleanway ti avvisa se quella password è comparsa in una fuga di dati nota."
+  },
+  "breach_close": {
+    "message": "Chiudi"
+  },
+  "pwned_title": {
+    "message": "Questa password compare in una fuga di dati nota."
+  },
+  "pwned_body": {
+    "message": "Cambiala su questo sito e non usarla altrove. Volte in cui è comparsa in fughe di dati pubbliche: $COUNT$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pwned_dismiss": {
+    "message": "Capito"
+  },
+  "webmail_scanning": {
+    "message": "Cleanway sta controllando questa email…"
+  },
+  "webmail_rate_limited": {
+    "message": "Troppi controlli, attendi"
+  },
+  "webmail_rate_limited_detail": {
+    "message": "Troppi controlli da questa rete in questo momento. Riprova tra un minuto."
+  },
+  "webmail_error": {
+    "message": "Cleanway non è riuscito a controllare questa email"
+  },
+  "webmail_error_detail": {
+    "message": "Controlla la connessione a internet e riapri l'email."
+  },
+  "webmail_dangerous": {
+    "message": "Probabile truffa: non cliccare su nessun link"
+  },
+  "webmail_suspicious": {
+    "message": "Sospetto: controlla chi l'ha inviato prima di agire"
+  },
+  "webmail_safe": {
+    "message": "Sembra sicuro: nessun segnale di truffa trovato"
+  },
+  "webmail_dismiss": {
+    "message": "Chiudi"
+  },
+  "webmail_finding_url_reputation": {
+    "message": "Un link in questa email porta a un sito pericoloso noto"
+  },
+  "webmail_finding_auth_fail": {
+    "message": "L'email non ha superato i controlli che confermano chi l'ha davvero inviata"
+  },
+  "webmail_finding_body_pattern": {
+    "message": "Il testo contiene frasi frequenti nelle email truffa"
+  },
+  "webmail_finding_link_text_mismatch": {
+    "message": "Un link mostra un indirizzo ma porta a un altro"
+  },
+  "webmail_safe_minor": {
+    "message": "Sembra sicuro: nessun segnale grave di truffa"
+  },
+  "webmail_finding_sender_check": {
+    "message": "Controlla bene l'indirizzo del mittente"
+  },
+  "webmail_finding_auth_unconfirmed": {
+    "message": "Non è stato possibile confermare del tutto il mittente"
+  },
+  "webmail_finding_brand_from_freemail": {
+    "message": "Firmato a nome di un'azienda nota, ma inviato da una casella di posta gratuita"
+  },
+  "webmail_finding_brand_domain_mismatch": {
+    "message": "Firmato a nome di un'azienda nota, ma non inviato dal suo indirizzo"
+  },
+  "webmail_finding_sender_non_ascii": {
+    "message": "L'indirizzo del mittente contiene lettere non latine: assicurati che sia quello vero"
+  },
+  "webmail_finding_reply_to_mismatch": {
+    "message": "Le risposte a questa email vanno a un indirizzo diverso da quello del mittente"
+  },
+  "webmail_finding_spf_softfail": {
+    "message": "Non è stato possibile confermare del tutto il server di posta del mittente"
+  },
+  "webmail_finding_urgency": {
+    "message": "L'email ti mette fretta per farti agire"
+  },
+  "webmail_finding_credential_request": {
+    "message": "L'email chiede una password, un codice o i dati della carta"
+  },
+  "webmail_finding_money_request": {
+    "message": "L'email chiede soldi o promette un premio"
+  },
+  "webmail_finding_account_threat": {
+    "message": "L'email avvisa di un account bloccato o di un accesso sospetto"
+  },
+  "options_page_title": {
+    "message": "Impostazioni di Cleanway"
+  },
+  "options_page_subtitle": {
+    "message": "Scegli come ti protegge Cleanway"
+  },
+  "options_skill_heading": {
+    "message": "Chi usa questo browser"
+  },
+  "options_skill_subtitle": {
+    "message": "Cleanway spiega gli avvisi in modo diverso per ciascuno. Puoi cambiarlo quando vuoi."
+  },
+  "options_skill_kids": {
+    "message": "Bambini"
+  },
+  "options_skill_kids_desc": {
+    "message": "Un grande STOP sui siti truffa, senza pulsante per aprirli comunque."
+  },
+  "options_skill_regular": {
+    "message": "Normale"
+  },
+  "options_skill_regular_desc": {
+    "message": "Adatto ai più. Avvisi chiari che spiegano perché un sito è pericoloso."
+  },
+  "options_skill_granny": {
+    "message": "Nonni"
+  },
+  "options_skill_granny_desc": {
+    "message": "Testo grande, e l'avviso viene letto ad alta voce."
+  },
+  "options_skill_pro": {
+    "message": "Esperto"
+  },
+  "options_skill_pro_desc": {
+    "message": "Mostra il punteggio di rischio e mette in primo piano i segnali di allarme."
+  },
+  "options_font_scale": {
+    "message": "Dimensione del testo"
+  },
+  "options_font_scale_desc": {
+    "message": "Testo più grande nella finestra di Cleanway"
+  },
+  "options_voice": {
+    "message": "Avvisi vocali"
+  },
+  "options_voice_desc": {
+    "message": "Leggere l'avviso ad alta voce quando Cleanway blocca un sito truffa"
+  },
+  "options_pin": {
+    "message": "PIN parentale"
+  },
+  "options_pin_desc": {
+    "message": "Non funziona ancora: la modalità Bambini si può disattivare senza PIN. Cosa fa già la modalità Bambini: una pagina bloccata non ha un pulsante per aprirla comunque."
+  },
+  "options_pin_set": {
+    "message": "Imposta PIN"
+  },
+  "options_pin_update": {
+    "message": "Cambia PIN"
+  },
+  "options_pin_clear": {
+    "message": "Cancella"
+  },
+  "options_pin_invalid": {
+    "message": "Il PIN deve avere esattamente 4 cifre"
+  },
+  "options_pin_clear_confirm": {
+    "message": "Cancellare il PIN parentale?"
+  },
+  "options_voice_on": {
+    "message": "voce attiva"
+  },
+  "options_voice_off": {
+    "message": "voce disattivata"
+  },
+  "options_source_device": {
+    "message": "Impostato su questo dispositivo"
+  },
+  "options_source_account": {
+    "message": "Dal tuo account"
+  },
+  "options_protection": {
+    "message": "Protezione"
+  },
+  "options_auto_scan": {
+    "message": "Controlla i link automaticamente"
+  },
+  "options_auto_scan_desc": {
+    "message": "Controlla ogni link su ogni pagina"
+  },
+  "options_badges": {
+    "message": "Segni accanto ai link"
+  },
+  "options_badges_desc": {
+    "message": "Mostra un segno di sicurezza accanto a ogni link"
+  },
+  "options_block": {
+    "message": "Blocca le pagine pericolose"
+  },
+  "options_block_desc": {
+    "message": "Mostra una schermata di avviso prima che si apra un sito pericoloso"
+  },
+  "options_privacy": {
+    "message": "Privacy"
+  },
+  "options_auto_audit": {
+    "message": "Controllo privacy su ogni nuovo sito"
+  },
+  "options_auto_audit_desc": {
+    "message": "Vedi cosa raccoglie su di te ogni nuovo sito"
+  },
+  "options_anon_stats": {
+    "message": "Statistiche anonime"
+  },
+  "options_anon_stats_desc": {
+    "message": "Aiuta a migliorare Cleanway condividendo totali anonimi"
+  },
+  "options_stats": {
+    "message": "Statistiche"
+  },
+  "options_lists": {
+    "message": "I tuoi elenchi"
+  },
+  "options_blocklist": {
+    "message": "Siti bloccati"
+  },
+  "options_blocklist_desc": {
+    "message": "Siti da bloccare sempre (uno per riga)"
+  },
+  "options_allowlist": {
+    "message": "Siti affidabili"
+  },
+  "options_allowlist_desc": {
+    "message": "Siti da non segnalare mai (uno per riga)"
+  },
+  "options_save_lists": {
+    "message": "Salva elenchi"
+  },
+  "options_saved": {
+    "message": "Salvato ✓"
+  },
+  "options_tracking_heading": {
+    "message": "Protezione dal tracciamento"
+  },
+  "options_clean_tracking": {
+    "message": "Rimuovi i tag di tracciamento dai link"
+  },
+  "options_clean_tracking_desc": {
+    "message": "Rimuovi automaticamente fbclid, utm_* e gclid dagli indirizzi"
+  },
+  "options_block_miners": {
+    "message": "Blocca i cryptominer"
+  },
+  "options_block_miners_desc": {
+    "message": "Impedisci ai siti di minare criptovalute sul tuo computer"
+  },
+  "options_advanced": {
+    "message": "Avanzate"
+  },
+  "options_api_server": {
+    "message": "Server API"
+  },
+  "options_api_server_desc": {
+    "message": "Per sviluppatori. Predefinito: https://api.cleanway.ai"
+  },
+  "options_save": {
+    "message": "Salva"
+  },
+  "options_referral": {
+    "message": "Invita un amico"
+  },
+  "options_referral_link": {
+    "message": "Il tuo link di invito"
+  },
+  "options_referral_link_desc": {
+    "message": "Condividilo per regalare 7 giorni gratis agli amici"
+  },
+  "options_copied": {
+    "message": "Copiato ✓"
+  },
+  "options_redeem": {
+    "message": "Inserisci un codice"
+  },
+  "options_redeem_desc": {
+    "message": "Hai ricevuto un codice da un amico? Inseriscilo qui"
+  },
+  "options_redeem_btn": {
+    "message": "Applica"
+  },
+  "options_redeem_placeholder": {
+    "message": "CODICE"
+  },
+  "options_redeem_saved": {
+    "message": "Codice $CODE$ salvato",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_data": {
+    "message": "Dati"
+  },
+  "options_clear": {
+    "message": "Cancella la cronologia su questo dispositivo"
+  },
+  "options_clear_desc": {
+    "message": "Elimina tutta la cronologia dei controlli salvata su questo dispositivo"
+  },
+  "options_clear_btn": {
+    "message": "Cancella"
+  },
+  "options_clear_confirm": {
+    "message": "Eliminare tutta la cronologia dei controlli su questo dispositivo? Non si può annullare."
+  },
+  "options_export": {
+    "message": "Esporta i miei dati"
+  },
+  "options_export_desc": {
+    "message": "Scarica tutto ciò che Cleanway conserva su questo dispositivo in un file JSON"
+  },
+  "options_export_btn": {
+    "message": "Esporta"
+  },
+  "options_settings_saved": {
+    "message": "Impostazioni salvate"
+  },
+  "options_family_default_name": {
+    "message": "La mia famiglia"
+  },
+  "options_family_role_owner": {
+    "message": "proprietario"
+  },
+  "options_family_role_member": {
+    "message": "membro"
+  },
+  "options_family_members_count": {
+    "message": "Membri: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_family_no_key": {
+    "message": "ancora nessuna chiave"
+  },
+  "options_family_unknown_domain": {
+    "message": "(sito sconosciuto)"
+  },
+  "options_family_alert_blocked": {
+    "message": "bloccato"
+  },
+  "options_family_create_failed": {
+    "message": "Impossibile creare la famiglia. Riprova tra poco."
+  },
+  "options_family_join_invalid_input": {
+    "message": "Inserisci il codice e il PIN di 4 cifre."
+  },
+  "options_family_join_failed": {
+    "message": "Questo invito non è valido o è scaduto."
+  },
+  "options_family_invite_failed": {
+    "message": "Impossibile creare l'invito. Riprova tra poco."
+  },
+  "options_family_invite_share": {
+    "message": "Invito alla famiglia Cleanway\nCodice: $CODE$\nPIN: $PIN$",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      },
+      "pin": {
+        "content": "$2"
+      }
+    }
+  },
+  "options_family_invite_qr_alt": {
+    "message": "Codice QR dell'invito alla famiglia Cleanway"
   }
 }

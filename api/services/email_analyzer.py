@@ -88,6 +88,14 @@ class Finding:
     severity: int              # 1–100 — how much it contributes to score
     message: str               # human-readable short explanation
     evidence: str = ""         # raw substring or URL that triggered this
+    # Stable machine-readable kind within the category ("reply_to_mismatch",
+    # "spf_softfail", "urgency"). `message` is English for logs; a client
+    # picks the line it shows the reader, in their language, by this code.
+    # One category mixes strong and weak signs (a brand name sent from a
+    # free mailbox and a Reply-To on another domain are both
+    # sender_spoofing), so one line per category either overstates the weak
+    # ones or understates the strong ones.
+    code: str = ""
 
 
 @dataclass(frozen=True)
@@ -107,6 +115,7 @@ class AnalysisResult:
                     "severity": f.severity,
                     "message": f.message,
                     "evidence": f.evidence,
+                    "code": f.code,
                 }
                 for f in self.findings
             ],
@@ -188,12 +197,17 @@ ACCOUNT_LOCK_PATTERNS: list[tuple[re.Pattern[str], int, str]] = [
     (re.compile(r"\b(ваш (аккаунт|счёт) (заблокирован|приостановлен))\b", re.I), 30, "Account lock (RU)"),
 ]
 
-ALL_BODY_PATTERNS = (
-    *URGENCY_PATTERNS,
-    *CREDENTIAL_ASK_PATTERNS,
-    *MONEY_PATTERNS,
-    *ACCOUNT_LOCK_PATTERNS,
+# Each group files its findings under one code (Finding.code), so a client
+# can say "the email rushes you" in the reader's language instead of showing
+# the English pattern name.
+BODY_PATTERN_GROUPS: tuple[tuple[str, list[tuple[re.Pattern[str], int, str]]], ...] = (
+    ("urgency", URGENCY_PATTERNS),
+    ("credential_request", CREDENTIAL_ASK_PATTERNS),
+    ("money_request", MONEY_PATTERNS),
+    ("account_threat", ACCOUNT_LOCK_PATTERNS),
 )
+
+ALL_BODY_PATTERNS = tuple(p for _code, patterns in BODY_PATTERN_GROUPS for p in patterns)
 
 
 # ─── Public API ───────────────────────────────────────────────────────────────
@@ -253,6 +267,7 @@ async def analyze_email(
                         severity=50,
                         message=f"Known-dangerous domain: {link.domain}",
                         evidence=link.url,
+                        code="known_dangerous_link",
                     )
                 )
 
@@ -290,6 +305,7 @@ def _analyze_sender(headers: EmailHeaders) -> list[Finding]:
                 severity=45,
                 message="Sender domain contains non-ASCII characters — possible homograph attack",
                 evidence=domain,
+                code="sender_non_ascii",
             )
         )
 
@@ -307,6 +323,7 @@ def _analyze_sender(headers: EmailHeaders) -> list[Finding]:
                             f"free-email domain ({domain})"
                         ),
                         evidence=f"{display} <{addr}>",
+                        code="brand_from_freemail",
                     )
                 )
             elif not any(domain == c or domain.endswith("." + c) for c in canonical):
@@ -319,6 +336,7 @@ def _analyze_sender(headers: EmailHeaders) -> list[Finding]:
                             f"Claims to be {brand!r} but sender domain doesn't match known domains"
                         ),
                         evidence=f"{display} <{addr}>",
+                        code="brand_domain_mismatch",
                     )
                 )
             break
@@ -336,6 +354,7 @@ def _analyze_sender(headers: EmailHeaders) -> list[Finding]:
                         severity=25,
                         message="Reply-To points to a different domain than From",
                         evidence=f"From: {domain}  Reply-To: {reply_domain}",
+                        code="reply_to_mismatch",
                     )
                 )
 
@@ -351,6 +370,8 @@ def _has_non_ascii(s: str) -> bool:
 
 
 # ─── Authentication headers ──────────────────────────────────────────────────
+
+_AUTH_FAIL_CODES = {"SPF": "spf_fail", "DKIM": "dkim_fail", "DMARC": "dmarc_fail"}
 
 
 def _analyze_auth_headers(headers: EmailHeaders) -> list[Finding]:
@@ -371,6 +392,7 @@ def _analyze_auth_headers(headers: EmailHeaders) -> list[Finding]:
                     severity=30 if name == "DMARC" else 20,
                     message=f"{name} verification failed",
                     evidence=f"{name}={norm}",
+                    code=_AUTH_FAIL_CODES[name],
                 )
             )
         elif norm == "softfail" and name == "SPF":
@@ -380,6 +402,7 @@ def _analyze_auth_headers(headers: EmailHeaders) -> list[Finding]:
                     severity=10,
                     message="SPF softfail — sender might not be authorized",
                     evidence=f"SPF={norm}",
+                    code="spf_softfail",
                 )
             )
     return out
@@ -393,17 +416,19 @@ def _scan_body_patterns(body: EmailBody) -> list[Finding]:
     if not haystack.strip():
         return []
     findings: list[Finding] = []
-    for pattern, severity, message in ALL_BODY_PATTERNS:
-        for match in pattern.finditer(haystack):
-            findings.append(
-                Finding(
-                    category="body_pattern",
-                    severity=severity,
-                    message=message,
-                    evidence=match.group(0),
+    for code, patterns in BODY_PATTERN_GROUPS:
+        for pattern, severity, message in patterns:
+            for match in pattern.finditer(haystack):
+                findings.append(
+                    Finding(
+                        category="body_pattern",
+                        severity=severity,
+                        message=message,
+                        evidence=match.group(0),
+                        code=code,
+                    )
                 )
-            )
-            break  # one finding per pattern — don't double-count
+                break  # one finding per pattern — don't double-count
     return findings
 
 
@@ -501,6 +526,7 @@ def _detect_link_text_mismatch(links: Iterable[ExtractedLink]) -> list[Finding]:
                             f"'{link.domain}'"
                         ),
                         evidence=f"text={text_domain!r} actual={link.domain!r}",
+                        code="link_text_mismatch",
                     )
                 )
     return out

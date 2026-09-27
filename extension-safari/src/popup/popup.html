@@ -14,7 +14,7 @@
         <span class="brand-logo" aria-hidden="true">&#x1F6E1;</span>
         <span class="brand-name" data-i18n="popup_brand">Cleanway</span>
       </div>
-      <button class="icon-btn" id="btn-settings" aria-label="Settings" data-i18n-title="popup_settings_title" title="Settings">
+      <button class="icon-btn" id="btn-settings" aria-label="Settings" data-i18n-aria-label="popup_settings_title" data-i18n-title="popup_settings_title" title="Settings">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </header>
@@ -124,10 +124,18 @@
       <div class="recent-threats" id="recent-threats"></div>
 
       <!-- Extra tools -->
+      <!-- Hidden until they do something (scripts/test-extension-core.mjs
+           keeps them hidden while that is true):
+           - btn-breach: there is no email leak lookup; it only opened a
+             "not available yet" notice.
+           - btn-trust: it saves trusted_domains, which nothing reads, so
+             "Added … to trusted sites" was a promise the extension did not
+             keep. Wiring it must not let a scammer talk someone into
+             trusting a site that is on a blocklist. -->
       <div class="tool-grid">
-        <button class="tool-btn" id="btn-breach" type="button" data-i18n="action_breach">Check email leak</button>
+        <button class="tool-btn" id="btn-breach" type="button" data-i18n="action_breach" hidden>Check email leak</button>
         <button class="tool-btn" id="btn-score" type="button" data-i18n="action_score">My safety level</button>
-        <button class="tool-btn" id="btn-trust" type="button" data-i18n="action_trust">Always trust this site</button>
+        <button class="tool-btn" id="btn-trust" type="button" data-i18n="action_trust" hidden>Always trust this site</button>
         <button class="tool-btn" id="btn-report" type="button" data-i18n="action_report">Report wrong result</button>
       </div>
     </details>
@@ -139,7 +147,7 @@
         <strong class="tip-title" data-i18n="onboarding_welcome">Welcome to Cleanway!</strong>
         <p class="tip-text" data-i18n="onboarding_tip">I'll check every link you see.</p>
       </div>
-      <button class="icon-btn tip-dismiss" id="dismiss-tip" aria-label="Dismiss">&times;</button>
+      <button class="icon-btn tip-dismiss" id="dismiss-tip" aria-label="Dismiss" data-i18n-aria-label="tip_dismiss">&times;</button>
     </section>
 
     <!-- Trust footer -->
