@@ -80,7 +80,7 @@ def test_every_brand_cites_a_source_and_every_exemption_its_evidence():
     for key, group in raw["brands"].items():
         cited = set(group["fraud"])
         assert cited and cited <= set(sources), (key, cited - set(sources))
-        for field in ("official", "unrelated", "not_typos", "no_fuzzy", "no_tld_confusion"):
+        for field in ("official", "unrelated", "not_typos", "no_fuzzy", "shared_name"):
             for item, why in group.get(field, {}).items():
                 assert why.strip(), (key, field, item)
 
@@ -162,11 +162,22 @@ def test_a_typo_alone_is_caution(host, no_ml):
 
 @pytest.mark.parametrize("host, why", [
     ("alfabank.kz", "parked at PS.kz on 2026-09-27"),
-    ("wildberries.au", "parked on Above.com name servers"),
     ("почтабанк.рф", "offered for sale at reg.ru — not Почта Банк's"),
     ("beellne.ru", "a copy of Beeline's page on a rented VDS"),
     ("sberbank.biz", "registered 2026-06-19 at a retail registrar, behind Cloudflare"),
     ("yandez.ru", "sends its visitors on to an affiliate"),
+    # The second pass (after PR #62's review) read every registered
+    # <brand>.<TLD> and one-edit .ru name; these were the brand's imitators.
+    ("gosuslugi.ch", "a copy titled 'Портал государственных услуг Российской Федерации' on a Swiss host"),
+    ("gosuslugiq.ru", "'Госуслуги Личный кабинет — Вход на Официальный сайт'"),
+    ("sberbanc.ru", "'СберБанк и СберБанк Онлайн' on someone else's server"),
+    ("yinkoff.ru", "titled 'Тинькофф Банк'"),
+    ("avito.site", "'AVITA - Площадка объявлений' under a TLD phishing favours"),
+    ("tinkoff.business", "sends visitors to tbank-online.com"),
+    ("yandex.ru.com", "behind Cloudflare's 'Suspected Phishing' interstitial"),
+    ("theozon.ru", "an 'Authorization' page on a Belarusian host"),
+    ("tbankapp.ru", "'T-Bank — Ввод ключа'"),
+    ("vtb-team.ru", "a copy of VTB's home page on justhost.ru"),
 ])
 def test_names_the_pass_found_not_to_be_the_brands_stay_flagged(host, why):
     assert _typo(host), why
@@ -218,6 +229,222 @@ def test_words_and_names_next_to_a_brand_are_not_typos(host):
 ])
 def test_names_other_companies_own_abroad_are_not_typos(host):
     assert _typo(host) is None
+
+
+# ── The second pass, after PR #62's review ──
+
+_BRAND_SIGNALS = {"typosquatting", "homograph_attack", "brand_subdomain_abuse"}
+
+
+def _official_and_unrelated() -> list[str]:
+    return sorted({d for g in scoring.RU_BRAND_GROUPS for d in (g.official | g.unrelated)})
+
+
+@pytest.mark.parametrize("host", _official_and_unrelated())
+def test_every_listed_domain_scores_safe_with_no_brand_signal(host, no_ml):
+    """The whole verdict, not just the typo rule: втб.рф — VTB's own domain —
+    came back 'dangerous 60' through the homograph check, which never saw the
+    list's exemptions. Both IDN spellings, apex and www."""
+    for h in (host, "www." + host):
+        score, level, reasons = calculate_score({"domain": h})
+        assert level == RiskLevel.safe, (h, score, [(r.signal, r.detail) for r in reasons])
+        assert not {r.signal for r in reasons} & _BRAND_SIGNALS, h
+
+
+@pytest.mark.parametrize("host", [
+    "xn--90ab2c.xn--p1ai", "www.xn--90ab2c.xn--p1ai", "online.xn--90ab2c.xn--p1ai", "втб.рф",
+])
+def test_vtb_s_own_cyrillic_domain_is_no_homograph(host):
+    """'р' of the .рф TLD is Cyrillic, not a disguise, and 'втб' maps to
+    itself — which is VTB's Cyrillic name on the target list."""
+    assert scoring._check_homograph(host) is None
+
+
+@pytest.mark.parametrize("host, site", [
+    ("p\u0430ypal.com", "paypal.com"), ("xn--pypal-4ve.com", "paypal.com"), ("\u0430vito.ru", "avito.ru"),
+    ("\u043ezon.ru", "ozon.ru"), ("sb\u0435rbank.ru", "sberbank.ru"),  # Cyrillic а, о, е
+])
+def test_mixed_script_look_alikes_are_still_homographs(host, site):
+    assert scoring._check_homograph(host) in (site, scoring.TYPOSQUAT_TARGETS.get(site.split(".")[0]))
+
+
+@pytest.mark.parametrize("host", [
+    # Regional portals of state services, on the regions' name servers or
+    # linked from their governments' sites (data file has the evidence).
+    "gosuslugi26.ru", "51gosuslugi.ru", "gosuslugi31.ru", "gosuslugi35.ru", "gosuslugi41.ru",
+    "gosuslugi43.ru", "44gosuslugi.ru", "gosuslugi46.ru", "gosuslugi65.ru", "gosuslugi68.ru",
+    "gosuslugi74.ru", "gosuslugi82.ru", "gosuslugi86.ru", "gosuslugi92.ru",
+])
+def test_regional_gosuslugi_portals_are_safe(host, no_ml):
+    _, level, reasons = calculate_score({"domain": host})
+    assert level == RiskLevel.safe
+    assert "typosquatting" not in {r.signal for r in reasons}
+
+
+@pytest.mark.parametrize("host", [
+    # Registered NN-gosuslugi names that are no region's: a private person's
+    # site that is down, one for sale, a private nginx, one expired.
+    "23gosuslugi.ru", "gosuslugi24.ru", "gosuslugi52.ru", "gosuslugi01.ru",
+])
+def test_other_numbered_gosuslugi_names_stay_flagged(host):
+    assert _typo(host) == ("gosuslugi.ru", "high similarity")
+
+
+@pytest.mark.parametrize("host", [
+    # A shared name under a country's or a legacy TLD is someone's own name:
+    "ozon.pl", "ozon.cz", "ozon.fr", "ozon.jp", "ozon.hu", "tbank.com", "tbank.us", "tbank.co",
+    "vtb.nl", "vtb.jp", "vtb.lv", "vtb.ge", "avito.at", "avito.pl", "avito.no", "avito.bg", "sber.fr",
+    "sber.at", "wildberries.com", "wildberries.se",
+    # … and T Bank N.A. and others under a lure TLD, listed as unrelated:
+    "tbank.pro", "tbank.info", "tbank.biz", "vtb.info", "vtb.live", "avito.biz", "tele2.biz", "tele2.info",
+    "mts.info", "megafon.biz", "megafon.live",
+    # A distinctive name's other owners, listed:
+    "sberbank.cz", "sberbank.hu", "tinkoff.ro", "tinkoff.com", "uralsib.by", "alfabank.kg",
+])
+def test_other_owners_of_a_brand_s_name_are_not_typos(host):
+    assert _typo(host) is None
+
+
+@pytest.mark.parametrize("host, site", [
+    # Under a TLD phishing favours, a shared name is still the brand's.
+    ("ozon.shop", "ozon.ru"), ("ozon.pro", "ozon.ru"), ("vtb.top", "vtb.ru"), ("avito.site", "avito.ru"),
+    ("tbank.xyz", "tbank.ru"), ("wildberries.shop", "wildberries.ru"), ("mts.top", "mts.ru"),
+    ("beeline.online", "beeline.ru"), ("sber.store", "sber.ru"),
+    # A distinctive name is reported under any other TLD.
+    ("yandex.jp", "yandex.ru"), ("gosuslugi.ch", "gosuslugi.ru"), ("cdek.nu", "cdek.ru"),
+    ("tinkoff.de", "tinkoff.ru"), ("sberbank.pl", "sberbank.ru"),
+])
+def test_tld_confusion_on_shared_and_distinctive_names(host, site):
+    assert _typo(host) == (site, "TLD confusion")
+
+
+@pytest.mark.parametrize("host", [
+    # One substitution under 8 letters that is no slip — not a neighbouring
+    # key, a look-alike, a vowel or the other spelling of a sound — is
+    # another word. Every one of these is a live business (2026-09-27).
+    "megafox.ru", "megason.ru", "megafor.ru", "tirkoff.ru", "cinkoff.ru", "avico.ru", "aviko.ru",
+    "avido.ru", "avits.ru", "bvito.ru", "beelink.ru", "beelike.ru", "keeline.ru", "uralgib.ru",
+    "uralsiz.ru", "mailgu.ru", "landex.ru", "yanhex.ru", "megafog.ru", "megafol.ru",
+])
+def test_an_odd_letter_in_a_short_russian_name_is_another_word(host):
+    assert _typo(host) is None
+
+
+@pytest.mark.parametrize("host, site", [
+    ("yandez.ru", "yandex.ru"), ("handex.ru", "yandex.ru"),  # neighbouring key
+    ("timkoff.ru", "tinkoff.ru"), ("yandcx.ru", "yandex.ru"),  # m/n, c/e look alike
+    ("magafon.ru", "megafon.ru"), ("yandax.ru", "yandex.ru"),  # a vowel for a vowel
+    ("sovkombank.xyz", "sovcombank.ru"),  # к spelled k
+    ("avlto.ru", "avito.ru"), ("sberbamk.ru", "sberbank.ru"), ("t1nkoff.ru", "tinkoff.ru"),
+    ("megfon.ru", "megafon.ru"), ("avitto.ru", "avito.ru"), ("ayndex.ru", "yandex.ru"),  # unchanged shapes
+    ("gosusluvi.ru", "gosuslugi.ru"), ("wildberrtes.ru", "wildberries.ru"),  # 8+ letters: unchanged
+])
+def test_slips_are_still_typos(host, site):
+    assert _typo(host)[0] == site
+
+
+def test_the_slip_rule_leaves_the_global_brands_alone():
+    """paypal's neighbourhood has not been measured this way."""
+    assert _typo("paypol.com") == ("paypal.com", "character substitution")
+    assert _typo("amazin.com")  # n for o: no slip, still a global brand's typo
+
+
+@pytest.mark.parametrize("a, b, slip", [
+    ("f", "t", True), ("f", "c", True), ("q", "a", True), ("n", "x", False), ("s", "f", False),
+    ("m", "n", True), ("l", "i", True), ("c", "k", True), ("o", "a", True), ("и", "я", True),
+    ("ц", "ф", True), ("я", "м", False), ("0", "o", True),
+])
+def test_is_slip(a, b, slip):
+    assert scoring._is_slip(a, b) is slip
+
+
+@pytest.mark.parametrize("host", [
+    # Words and names one edit from a brand (not_typos).
+    "megaton.ru", "megafono.it", "megafoon.nl", "berline.ru", "kontakte.de", "kontakter.no",
+    "xn--d1achkm1a.xn--p1ai",  # индекс.рф
+])
+def test_more_words_next_to_a_brand_are_not_typos(host):
+    assert _typo(host) is None
+
+
+@pytest.mark.parametrize("host", [
+    # Glued combos of names under 4 letters are other words.
+    "mtscom.ru", "vkweb.ru", "mtsweb.net", "gomts.com", "mtshelp.com", "usemts.com", "thevk.net",
+    "vtbweb.com", "myvtb.com", "vkrf.org", "dhlweb.com", "upshelp.com",
+    # Short and shared names with a generic word, abroad, are other firms.
+    "mts-team.com", "vk-net.net", "try-mts.com", "beelinesupport.com", "trybeeline.com", "thebeeline.ca",
+    "the-beeline.com", "ozonnet.com", "ozonweb.com", "trymegafon.com", "goozon.com",
+])
+def test_generic_combos_of_short_and_shared_names_abroad_are_not_typos(host):
+    assert _typo(host) is None
+
+
+@pytest.mark.parametrize("host, site", [
+    # A lure word is still the brand, at any length.
+    ("vk-login.com", "vk.com"), ("mts-secure.ru", "mts.ru"), ("vtb-verify.com", "vtb.ru"),
+    ("dhl-login.com", "dhl.com"), ("dhl-help.com", "dhl.com"), ("dhllogin.com", "dhl.com"),
+    ("vtbsecure.com", "vtb.ru"),  # a lure keyword counts glued too
+    # Under .ru a shared name means the Russian brand, generic word or not.
+    ("vtb-team.ru", "vtb.ru"), ("mts-help.ru", "mts.ru"), ("beeline-com.ru", "beeline.ru"),
+    ("theozon.ru", "ozon.ru"), ("tbankapp.ru", "tbank.ru"), ("mysber.ru", "sber.ru"),
+])
+def test_combos_that_still_count(host, site):
+    assert _typo(host) == (site, "combosquatting")
+
+
+@pytest.mark.parametrize("host, site", [
+    # The brand's .ru address with .com appended: ru.com and ru.net are
+    # zones anyone can register in (PSL private suffixes).
+    ("yandex.ru.com", "yandex.ru"), ("gosuslugi.ru.com", "gosuslugi.ru"), ("sberbank.ru.com", "sberbank.ru"),
+    ("mail.ru.com", "mail.ru"), ("vk.ru.com", "vk.ru"), ("mts.ru.net", "mts.ru"), ("ozon.ru.net", "ozon.ru"),
+    ("login.yandex.ru.com", "yandex.ru"),
+])
+def test_a_brand_s_address_under_ru_com_is_tld_confusion(host, site):
+    assert _typo(host) == (site, "TLD confusion")
+
+
+def test_ru_com_names_are_compared_like_any_name(no_ml):
+    assert _typo("yandx.ru.com") == ("yandex.ru", "high similarity")
+    # A global brand there is still brand_subdomain_abuse's, as before.
+    assert _typo("paypal.ru.com") is None
+    _, level, reasons = calculate_score({"domain": "paypal.ru.com"})
+    assert "brand_subdomain_abuse" in {r.signal for r in reasons}
+
+
+@pytest.mark.parametrize("host, site", [
+    # The brand plus its country.
+    ("avito-ru.com", "avito.ru"), ("ozon-ru.com", "ozon.ru"), ("sberbank-ru.com", "sberbank.ru"),
+    ("gosuslugi-ru.com", "gosuslugi.ru"), ("wildberries-ru.com", "wildberries.ru"),
+    ("tinkoff-ru.com", "tinkoff.ru"), ("megafon-ru.com", "megafon.ru"), ("cdek-ru.com", "cdek.ru"),
+    ("avitoru.com", "avito.ru"), ("tinkoffru.com", "tinkoff.ru"), ("cdek-russia.ru", "cdek.ru"),
+    ("vtb-ru.com", "vtb.ru"),
+])
+def test_a_brand_with_its_country_is_a_combo(host, site):
+    assert _typo(host) == (site, "combosquatting")
+
+
+@pytest.mark.parametrize("host", [
+    "vtbru.com",  # a name under 4 letters needs the hyphen
+    "vtb-russia.ru", "vtbrussia.com", "ozonru.com",  # the brands' own
+    "paypal-ru.com",  # the global brands do not get the country word
+])
+def test_country_combos_that_do_not_count(host):
+    assert _typo(host) is None
+
+
+def test_an_open_zone_name_is_reported_without_claiming_intent(no_ml):
+    """cdek.msk.ru calls itself CDEK's partner: the reason says what the name
+    does to a reader. The block page reads the brand from the quotes."""
+    _, level, reasons = calculate_score({"domain": "cdek.msk.ru"})
+    detail = next(r.detail for r in reasons if r.signal == "brand_subdomain_abuse")
+    assert level == RiskLevel.caution
+    assert "'cdek' brand" in detail and "deceive" not in detail
+
+
+def test_an_open_zone_name_the_list_vouches_for_is_not_reported(monkeypatch):
+    assert scoring._check_brand_under_open_zone("megafon.msk.ru") == "megafon"
+    monkeypatch.setattr(scoring, "_BRAND_LEGIT_DOMAINS", scoring._BRAND_LEGIT_DOMAINS | {"megafon.msk.ru"})
+    assert scoring._check_brand_under_open_zone("megafon.msk.ru") is None
 
 
 @pytest.mark.parametrize("host", [
@@ -287,8 +514,30 @@ def test_the_phish_set_catches_the_russian_brand_typos(no_ml):
     assert _CAUGHT_NOW <= caught, sorted(_CAUGHT_NOW - caught)
 
 
+# Added by the second pass: live look-alikes it found, and the ru.com and
+# country shapes the first cut missed.
+_CAUGHT_BY_THE_SECOND_PASS = {
+    "yandex.ru.com", "pochtabank.ru.com", "russianpost.ru.com", "gosuslugi.ch", "gosuslugiq.ru",
+    "gosuslugirus.ru", "sberbanc.ru", "yinkoff.ru", "thinkoff.ru", "theozon.ru", "tbankapp.ru", "vtb-team.ru", "avito.site",
+    "gosuslugi.ru.com", "sberbank.ru.com", "ozon.ru.net", "avito-ru.com", "ozon-ru.com", "sberbank-ru.com",
+    "wildberries-ru.com",
+}
+
+
+def test_the_phish_set_catches_the_second_pass_finds(no_ml):
+    ev = _eval_module()
+    rows = {r["host"]: r for r in ev.score_hosts(ev.load(ev.PHISH_PATH))}
+    assert _CAUGHT_BY_THE_SECOND_PASS <= set(rows)
+    missed = sorted(h for h in _CAUGHT_BY_THE_SECOND_PASS if rows[h]["level"] == "safe")
+    assert missed == []
+    assert all("typosquatting" in rows[h]["signals"] for h in _CAUGHT_BY_THE_SECOND_PASS)
+
+
 def test_the_russian_legit_sets_stay_clean():
-    """0 typosquat hits before, 0 after, on both Russian legit sets."""
+    """No typosquat hit on either Russian legit set — including the 40
+    hosts the second pass added: 14 regional Gosuslugi portals, brand-family
+    domains such as втб.рф, and 23 businesses one letter or a word from a
+    brand (megafox.ru, tirkoff.ru, индекс.рф …), which the first cut flagged."""
     for path in (ROOT / "tests" / "data" / "ru_heuristics_legit.txt", ROOT / "data" / "benchmark_legit_ru.txt"):
         hosts = [ln.split(" | ")[0].strip() for ln in path.read_text(encoding="utf-8").splitlines()
                  if ln.strip() and not ln.startswith("#")]

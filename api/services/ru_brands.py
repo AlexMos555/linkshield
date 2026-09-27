@@ -14,9 +14,14 @@ a name and a domain. Every exemption maps to the evidence for it:
                     Manitoba's phone company, avito.ma a Moroccan site)
   not_typos         labels one edit from a name that are words or other
                     companies' names (zoon, aviso, mt5), under any TLD
-  no_tld_confusion  names whose bare form other companies own abroad
-                    (Tele2 AB's tele2.se, mts.rs): the name under another
-                    TLD is not reported, only its look-alikes
+  shared_name       names other owners use too: abroad (Tele2 AB's
+                    tele2.se, T Bank N.A.'s tbank.com), as an acronym (vtb)
+                    or as a word (ozon, 'ozone' in Polish and Czech). The
+                    name under a country's or a legacy TLD is not reported,
+                    nor, outside Russian TLDs, with a generic word
+                    (trybeeline.com, ozonweb.com); under a TLD phishing
+                    favours (.shop, .top, .pro …) it still is, and so are
+                    its look-alikes and lure-word combos everywhere
   no_fuzzy          names with too few distinctive letters for edit
                     distance (tele2 = 'tele' + a digit, and tele5.de is a TV
                     channel; ozon + a letter is ozone, gozon, mozon):
@@ -49,7 +54,7 @@ class BrandGroup:
     official: frozenset[str]
     unrelated: frozenset[str]
     not_typos: frozenset[str]
-    no_tld_confusion: frozenset[str]
+    shared_name: frozenset[str]
     no_fuzzy: frozenset[str]
 
 
@@ -100,7 +105,7 @@ def parse_group(key: str, raw: Any) -> BrandGroup:
     official = _evidence_map(raw, "official", key)
     unrelated = _evidence_map(raw, "unrelated", key)
     not_typos = _evidence_map(raw, "not_typos", key)
-    no_tld = _evidence_map(raw, "no_tld_confusion", key)
+    shared = _evidence_map(raw, "shared_name", key)
     no_fuzzy = _evidence_map(raw, "no_fuzzy", key)
     for domain in [*official, *unrelated]:
         _require("." in domain and "/" not in domain, key, f"{domain!r} is not a registrable domain")
@@ -108,7 +113,7 @@ def parse_group(key: str, raw: Any) -> BrandGroup:
         _require("." not in label, key, f"not_typos: {label!r} must be a label, not a domain")
     _require(all(d in official for d in names.values()), key, "every name's domain must be in 'official'")
     _require(not set(official) & set(unrelated), key, "a domain is either official or unrelated")
-    _require(set(no_tld) <= set(names) and set(no_fuzzy) <= set(names), key, "switches must name a name")
+    _require(set(shared) <= set(names) and set(no_fuzzy) <= set(names), key, "switches must name a name")
     return BrandGroup(
         key=key,
         owner=str(raw.get("owner", "")),
@@ -116,7 +121,7 @@ def parse_group(key: str, raw: Any) -> BrandGroup:
         official=_all_forms(official),
         unrelated=_all_forms(unrelated),
         not_typos=frozenset(not_typos),
-        no_tld_confusion=frozenset(no_tld),
+        shared_name=frozenset(shared),
         no_fuzzy=frozenset(no_fuzzy),
     )
 

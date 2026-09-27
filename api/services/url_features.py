@@ -277,8 +277,10 @@ def char_diversity(s: str) -> float:
 # 2 (2026-09-27): has_fake_tld_subdomain looks left of the PSL registrable
 #    domain — 0 for kvs.gov.spb.ru and edu.gov.ru, which were 1.
 # 3 (2026-09-27): is_typosquat compares Russian brands too (sberbamk.ru is 1),
-#    no longer fires on other banks' and stores' names (swedbank, upstore)
-#    or on two-edit neighbours under 8 letters (aviator ~ avito). The brand
+#    no longer fires on other banks' and stores' names (swedbank, upstore),
+#    on two-edit neighbours under 8 letters (aviator ~ avito) or on glued
+#    combos of names under 4 letters (dhlweb, upshelp), and reads the name
+#    registered under ru.com / ru.net (yandex.ru.com is 1). The brand
 #    similarity and brand-in-subdomain features are unchanged.
 FEATURES_VERSION = 3
 
