@@ -13,7 +13,7 @@ import { PauseSheet } from "../../src/components/shield/PauseSheet";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { ShieldCard } from "../../src/components/shield/ShieldCard";
-import { useNetworkShield, PAUSE_MINUTES } from "../../src/hooks/useNetworkShield";
+import { useNetworkShield, PAUSE_MINUTES, type ShieldStopReason } from "../../src/hooks/useNetworkShield";
 import { clockTime } from "../../src/utils/relative-time";
 import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
 import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
@@ -32,6 +32,13 @@ import type { HistoryFilter } from "../../src/utils/history-model";
  * sit in a muted "Rolling out" section. No placebo states, no passive
  * clipboard monitoring (killed by design, not restyled).
  */
+
+/** Why protection stopped by itself → what the screen says about it. */
+const INTERRUPTED_KEYS: Record<ShieldStopReason | "unknown", string> = {
+  revoked: "mobile.home.interrupted_revoked",
+  private_dns: "mobile.home.interrupted_private_dns",
+  unknown: "mobile.home.interrupted",
+};
 
 function rolloutItems(t: TFunction, platform: string, messageCheck: boolean): RolloutItem[] {
   const browser: RolloutItem = {
@@ -119,6 +126,8 @@ export default function HomeScreen() {
     : verifiedCount > 0 ? "partial"
     : "none";
   const needsSetup = network.available && network.state === "setup";
+  // Was on, and something else stopped it: not a first setup (ShieldState "stopped").
+  const stopped = needsSetup && network.interrupted;
   // Paused or blocked by Private DNS: whatever else is on, the hero is not green.
   const heroHold: HeroHold | null =
     network.state === "paused" ? { kind: "paused", until: network.pausedUntil }
@@ -187,21 +196,27 @@ export default function HomeScreen() {
         // competing VPN, so nothing may claim one. Unproven is shown as
         // unproven, not as a warning.
         attention={false}
-        interrupted={needsSetup && network.interrupted}
+        interrupted={stopped}
         hold={heroHold}
+        offline={network.state === "offline"}
       />
 
       <UpdateBanner status={update} />
 
       {needsSetup && (
         <>
-          {network.interrupted && (
-            // The user had this on and something else turned it off (reboot
-            // without always-on, a battery manager). Say so — "let's set up"
-            // would tell them their earlier setup never happened.
+          {stopped && (
+            // The user had this on and something else turned it off. Say so —
+            // "let's set up" would tell them their earlier setup never
+            // happened — and say what, and the steps it really takes to come
+            // back: after a withdrawn permission Android asks again.
             <View style={s.interruptedRow}>
               <Ionicons name="alert-circle-outline" size={15} color={colors.amber} />
-              <Text style={s.interruptedText}>{t("mobile.home.interrupted")}</Text>
+              <Text style={s.interruptedText}>
+                {t(INTERRUPTED_KEYS[network.stopReason ?? "unknown"], {
+                  button: t("mobile.shield.disclosure.continue"),
+                })}
+              </Text>
             </View>
           )}
           <TouchableOpacity
@@ -224,7 +239,7 @@ export default function HomeScreen() {
             title={t("mobile.shield.network.title")}
             description={t("mobile.shield.network.desc")}
             honesty={t("mobile.shield.network.honesty")}
-            state={network.state}
+            state={stopped ? "stopped" : network.state}
             stateCopy={
               // Strict Private DNS: the one state whose fix is a system
               // setting. Name the provider so the user recognises it.
@@ -236,8 +251,14 @@ export default function HomeScreen() {
               // Probe in flight: say "checking" rather than flashing the
               // negative state at someone whose protection is fine.
               : network.probing ? t("mobile.shield.network.state_checking")
-              : network.state === "offline" ? t("mobile.shield.network.state_offline")
+              // Offline, the list on the phone still blocks — say so only
+              // when there is one (no seed and no sync yet: nothing to block by).
+              : network.state === "offline"
+                ? t(network.blocklist.count > 0
+                  ? "mobile.shield.network.state_offline"
+                  : "mobile.shield.network.state_offline_no_list")
               : network.state === "unverified" ? t("mobile.shield.network.state_unverified")
+              : stopped ? t("mobile.shield.network.state_stopped", { button: t("mobile.home.cta_turn_back_on") })
               : t("mobile.shield.network.state_setup")
             }
             onAction={() => {

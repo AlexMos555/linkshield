@@ -1128,7 +1128,7 @@
       "q_off": "Come si disattiva?",
       "a_off": "Apri l'app e tocca «Metti in pausa la protezione». Puoi riattivarla quando vuoi.",
       "q_fp": "Un sito sicuro è bloccato — che cosa faccio?",
-      "a_fp": "Apri Cleanway, vai alla scheda «Cronologia» e tocca quel sito. Poi tocca «Non è una truffa: consenti» e conferma. Cleanway smetterà di bloccare quel sito sul tuo telefono. Lo stesso pulsante è nella notifica di blocco, se è comparsa. Consenti un sito solo se sei sicuro che sia quello vero.",
+      "a_fp": "Apri Cleanway, vai alla scheda «Cronologia» e tocca quel sito. Poi tocca «Non è una truffa: consenti» e conferma. Cleanway smetterà di bloccare quel sito sul tuo telefono. Se qualcuno al telefono ti chiede di consentire un sito, è un truffatore. Riattacca. Consenti un sito solo se sei sicuro che sia quello vero.",
       "q_privacy": "Che cosa raccogliete?",
       "a_privacy": "I siti vengono confrontati con la lista sul tuo telefono. Quando un sito va controllato più a fondo, al nostro server arriva solo il suo nome, non il link completo né chi sei. Il testo dei messaggi che controlli non lascia mai il telefono. Tutti i dettagli sono nell'informativa sulla privacy.",
       "email_not_live_title": "Non possiamo ancora ricevere email",
@@ -1362,7 +1362,7 @@
           "paragraphs": [
             "Quando attivi la protezione, Cleanway avvia un filtro locale usando il meccanismo VPN di Android. Da esso passano solo le richieste DNS, le domande che il telefono fa per trovare l'indirizzo di un sito, come «dov'è example.com?». Il contenuto delle pagine, i tuoi messaggi e le chiamate non passano dal filtro e non vengono letti.",
             "Ogni nome di sito viene confrontato con la lista dei siti truffa salvata sul telefono. Se è nella lista, il telefono non apre il sito, e sul telefono viene salvata una nota (il nome del sito, l'ora e cosa è successo) per la Cronologia dell'app.",
-            "I nomi che non sono nella lista vengono passati per trovare l'indirizzo del sito: prima al server DNS della rete a cui è collegato il telefono — quello del tuo operatore mobile o del tuo router Wi-Fi —, come senza Cleanway. Solo se non risponde, vanno a Cloudflare (1.1.1.1), poi a Quad9 (9.9.9.9) e, come ultima risorsa, al DNS-over-HTTPS cifrato di Cloudflare. Così funziona la versione 1.0.2 dell'app; la versione 1.0.1 chiedeva prima a Cloudflare. Questi servizi vedono il nome del sito e l'indirizzo IP della tua connessione, come qualsiasi servizio DNS; valgono le loro informative sulla privacy. Cleanway non riceve né conserva queste richieste.",
+            "I nomi che non sono nella lista vengono passati per trovare l'indirizzo del sito: prima al server DNS della rete a cui è collegato il telefono — quello del tuo operatore mobile o del tuo router Wi-Fi —, come senza Cleanway. Solo se non risponde, vanno a Cloudflare (1.1.1.1), poi a Quad9 (9.9.9.9) e, come ultima risorsa, al DNS-over-HTTPS cifrato di Cloudflare. Così funzionano le versioni 1.0.2 e 1.0.3 dell'app; la versione 1.0.1 chiedeva prima a Cloudflare. Questi servizi vedono il nome del sito e l'indirizzo IP della tua connessione, come qualsiasi servizio DNS; valgono le loro informative sulla privacy. Cleanway non riceve né conserva queste richieste.",
             "Dalla versione 1.0.2 l'app contiene una copia della lista dei siti truffa, usata solo finché il telefono non ne scarica una aggiornata."
           ]
         },
@@ -1387,7 +1387,7 @@
           "after": [
             "Il risultato resta nella cache del nostro server fino a 24 ore, così un nuovo controllo è veloce. È legato al sito, non a te.",
             "Il tuo indirizzo IP serve a limitare quanti controlli può fare una connessione. Per questo viene conservato così com'è, come contatore nella memoria del nostro server, per un'ora al massimo, e poi cancellato. Il registro di sicurezza delle azioni sull'account conserva solo un hash crittografico abbreviato, mai l'indirizzo stesso.",
-            "A ogni controllo, la versione 1.0.2 dell'app invia anche un numero di installazione: un numero casuale creato sul telefono e sostituito con uno nuovo ogni 24 ore. Non è legato al telefono, alla SIM né a un account; ci permette di limitare i controlli per telefono invece che per tutti gli abbonati che condividono l'indirizzo IP di un operatore. Il nostro server ne conserva solo un hash crittografico, come contatore, per al massimo un'ora."
+            "Dalla versione 1.0.2, a ogni controllo l'app invia anche un numero di installazione: un numero casuale creato sul telefono e sostituito con uno nuovo ogni 24 ore. Non è legato al telefono, alla SIM né a un account; ci permette di limitare i controlli per telefono invece che per tutti gli abbonati che condividono l'indirizzo IP di un operatore. Il nostro server ne conserva solo un hash crittografico, come contatore, per al massimo un'ora."
           ]
         },
         {
@@ -1808,6 +1808,8 @@
         "attention": "Uno scudo ha bisogno di attenzione",
         "a11y": "Stato della protezione: {{status}}",
         "title_interrupted": "La protezione si è fermata",
+        "title_offline": "Nessuna connessione",
+        "sub_offline": "Cleanway controllerà la protezione quando tornerà la connessione",
         "title_paused": "Protezione in pausa fino alle {{time}}",
         "sub_paused": "In questo momento i siti truffa non vengono bloccati",
         "title_conflict": "La protezione non funziona",
@@ -1844,7 +1846,9 @@
         "hint": "Tocca un numero per vedere l'elenco."
       },
       "privacy": "Lo scudo «Ogni app» confronta i nomi dei siti direttamente sul telefono. Quando controlli un link tu stesso, o lo tocchi con il «Controllo dei link» attivo, al nostro server arrivano il nome del sito e un numero casuale dell'installazione che cambia ogni giorno.",
-      "interrupted": "Di solito succede dopo un riavvio. La configurazione è ancora qui: basta un tocco.",
+      "interrupted": "Il telefono ha fermato la protezione, per esempio dopo un riavvio o per risparmiare batteria. La configurazione è ancora qui: tocca il pulsante qui sotto, poi «{{button}}».",
+      "interrupted_revoked": "Android ha fermato la protezione: il permesso VPN è stato revocato nelle impostazioni del telefono, oppure un'altra app VPN ha preso il suo posto. Tocca il pulsante qui sotto, poi «{{button}}». Se Android chiede di consentire la connessione, tocca «Ok». L'altra app VPN verrà disattivata: Android ne usa una sola alla volta.",
+      "interrupted_private_dns": "La protezione si è fermata per l'impostazione «DNS privato». Ora non è più d'intralcio: tocca il pulsante qui sotto, poi «{{button}}».",
       "cta_turn_back_on": "Riattiva la protezione"
     },
     "shield": {
@@ -1854,11 +1858,13 @@
         "honesty": "Non può fermare i siti truffa appena nati, né le app che usano un proprio DNS privato",
         "state_on": "Attivo. Sta funzionando adesso.",
         "state_setup": "Si configura una volta sola, in circa un minuto.",
+        "state_stopped": "Fermo. Per riattivarlo, tocca «{{button}}» qui sopra.",
         "state_paused": "In pausa. Tocca per riattivarlo.",
         "state_unverified": "È in funzione, ma al momento non possiamo confermare che stia filtrando.",
         "state_blocked": "Questa rete Wi-Fi richiede una pagina di accesso. Cleanway si è messo in pausa da solo e si riattiverà automaticamente.",
         "state_checking": "Sto controllando la protezione…",
-        "state_offline": "Al momento non c'è internet. Lo scudo è configurato e filtrerà appena tornerai online.",
+        "state_offline": "Al momento non c'è internet. I siti truffa noti restano bloccati: il loro elenco è salvato sul telefono. Verrà aggiornato appena tornerai online.",
+        "state_offline_no_list": "Al momento non c'è internet. L'elenco dei siti truffa non è ancora sul telefono: verrà scaricato appena tornerai online.",
         "state_private_dns": "Sul telefono è attivo il DNS privato ({{host}}). Android non può usarlo insieme a Cleanway: con entrambi attivi, Internet smette di funzionare. Nelle Impostazioni imposta il DNS privato su Automatico, poi torna qui e attiva Cleanway.",
         "private_dns_cta": "Apri impostazioni di rete",
         "state_paused_until": "In pausa fino alle {{time}}, poi si riattiva da solo. In questo momento i siti truffa non vengono bloccati."
@@ -1877,6 +1883,7 @@
         "setup_btn": "Configura",
         "on_pill": "Attivo",
         "paused_pill": "In pausa",
+        "stopped_pill": "Fermo",
         "attention_pill": "Attenzione",
         "unverified_pill": "Non confermato",
         "rollout_pill": "In arrivo",
@@ -1894,7 +1901,7 @@
       },
       "disclosure": {
         "title": "Come funziona lo scudo",
-        "body": "Cleanway crea una VPN locale sul telefono. È l'unico modo in cui Android permette a un'app di filtrare le richieste dei siti per tutte le altre.\n\n• L'elenco dei siti truffa noti resta sul telefono. I nomi si confrontano qui, non vengono inviati a noi.\n• Le richieste che non blocchiamo vanno al server DNS della tua rete, quello dell'operatore o del router, come senza Cleanway. Se non risponde, vanno a un resolver pubblico (Cloudflare o Quad9).\n• Nessun altro traffico viene letto, registrato o reindirizzato. Non è una VPN per la privacy e non nasconde la navigazione.\n\nOra Android ti chiederà il permesso.",
+        "body": "Cleanway crea una VPN locale sul telefono. È l'unico modo in cui Android permette a un'app di filtrare le richieste dei siti per tutte le altre.\n\n• L'elenco dei siti truffa noti resta sul telefono. I nomi si confrontano qui, non vengono inviati a noi.\n• Le richieste che non blocchiamo vanno al server DNS della tua rete, quello dell'operatore o del router, come senza Cleanway. Se non risponde, vanno a un resolver pubblico (Cloudflare o Quad9).\n• Nessun altro traffico viene letto, registrato o reindirizzato. Non è una VPN per la privacy e non nasconde la navigazione.\n\nSe Android chiede di consentire la connessione, tocca «Ok».",
         "continue": "Continua",
         "cancel": "Non ora"
       },
@@ -2199,7 +2206,9 @@
         "by_warned": "Avviso da",
         "more": "Altro su questo sito",
         "allow": "Non è una truffa: consenti",
-        "allow_confirm_body": "{{domain}} non verrà più bloccato. Fallo solo se conosci questo sito. Puoi annullare in Impostazioni → Siti consentiti.",
+        "allow_confirm_title": "Consentire {{domain}}?",
+        "allow_confirm_body": "Se qualcuno al telefono ti chiede di consentire un sito, è un truffatore. Riattacca.\n\nConsenti {{domain}} solo se sei tu stesso sicuro che sia il sito vero. Cleanway smetterà di bloccarlo. Puoi annullare in Impostazioni → Siti consentiti.",
+        "allow_confirm_cancel": "Non consentire",
         "block_again": "Blocca di nuovo",
         "close": "Chiudi"
       },
@@ -2301,8 +2310,6 @@
       "allowed_desc": "Siti che hai contrassegnato come sicuri. Lo scudo non li blocca.",
       "allowed_remove": "Rimuovi",
       "allowed_empty": "Nessun sito consentito",
-      "allow_confirm_title": "Consenti questo sito",
-      "allow_confirm_body": "{{domain}} non verrà bloccato finché non lo rimuovi qui. Fallo solo se conosci il sito.",
       "language": "Lingua",
       "language_note": "Scegli la lingua dell'app.",
       "language_reload_title": "Riavvio necessario",
@@ -2406,15 +2413,14 @@
       "fg_text": "Controllo dei nomi dei siti contro le truffe",
       "block_channel": "Siti bloccati",
       "block_channel_desc": "Ti avvisa quando Cleanway blocca un sito pericoloso",
-      "allow_channel": "Siti consentiti",
-      "allow_channel_desc": "Conferma quando consenti un sito che Cleanway aveva bloccato",
+      "allow_channel": "Consentire i siti",
+      "allow_channel_desc": "Dove consentire un sito bloccato da Cleanway",
+      "allow_moved_title": "Il sito non è stato consentito",
+      "allow_moved_text": "Ora i siti si possono consentire solo nell'app Cleanway. Se qualcuno al telefono ti chiede di consentire un sito, è un truffatore. Riattacca. Se sei tu stesso sicuro che {{domain}} sia il sito vero, tocca qui per aprire la Cronologia.",
       "blocked_title": "Cleanway ha bloccato un sito pericoloso",
       "blocked_text": "{{domain}} è nell'elenco dei siti truffa. Non si aprirà.",
       "warn_title": "Questo sito sembra una truffa",
       "warn_text": "{{domain}} sembra pericoloso. Se è aperto, chiudilo e non digitare nulla.",
-      "allow_action": "Non è una truffa: consenti",
-      "allowed_title": "Sito consentito",
-      "allowed_text": "{{domain}} ora è consentito. Puoi annullare in Impostazioni → Siti consentiti.",
       "paused_title": "La protezione Cleanway è in pausa",
       "paused_text": "Si riattiva da sola alle {{time}}.",
       "resume_action": "Attiva ora"

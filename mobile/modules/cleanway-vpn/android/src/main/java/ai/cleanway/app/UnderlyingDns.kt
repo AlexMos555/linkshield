@@ -19,8 +19,16 @@ data class NetworkCandidate<T>(
     val sinceMs: Long,
 )
 
-/** The resolver to forward to first, and the network it must be reached over. */
-data class UpstreamNetwork<T>(val handle: T, val kind: NetKind, val servers: List<InetAddress>)
+/**
+ * The resolver to forward to first, and the network it must be reached over.
+ * [validated]: Android has confirmed this network reaches the internet.
+ */
+data class UpstreamNetwork<T>(
+    val handle: T,
+    val kind: NetKind,
+    val servers: List<InetAddress>,
+    val validated: Boolean,
+)
 
 /**
  * Which network's own DNS servers the shield forwards to first.
@@ -66,7 +74,18 @@ object UnderlyingDns {
                     .thenByDescending { (c, _) -> c.sinceMs },
             )
             .firstOrNull()
-            ?.let { (c, servers) -> UpstreamNetwork(c.handle, c.kind, servers) }
+            ?.let { (c, servers) -> UpstreamNetwork(c.handle, c.kind, servers, c.validated) }
+
+    /**
+     * Did the phone just get a connection worth retrying a failed download
+     * on? Another network, or the same one Android has now confirmed reaches
+     * the internet — a Wi-Fi after its sign-in page, a cellular link that took
+     * its time in a basement. Both arrive before they work: a network is
+     * published as soon as it has an address and DNS servers, confirmed or
+     * not, and its confirmation used to publish nothing at all.
+     */
+    fun <T> isArrival(previous: UpstreamNetwork<T>?, next: UpstreamNetwork<T>): Boolean =
+        next.handle != previous?.handle || (next.validated && previous?.validated == false)
 
     /**
      * The servers worth asking, best first: IPv4 before IPv6 (the IPv6 path

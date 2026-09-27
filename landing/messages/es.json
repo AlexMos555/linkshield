@@ -392,7 +392,7 @@
     "q_off": "¿Cómo la desactivo?",
     "a_off": "Abre la app y toca «Pausar la protección». Puedes volver a activarla cuando quieras.",
     "q_fp": "Un sitio seguro está bloqueado, ¿qué hago?",
-    "a_fp": "Abre Cleanway, ve a la pestaña «Historial» y toca ese sitio. Luego toca «No es una estafa: permitir» y confirma. Cleanway dejará de bloquear ese sitio en tu teléfono. El mismo botón está en la notificación de bloqueo, si apareció. Permite un sitio solo si estás seguro de que es el auténtico.",
+    "a_fp": "Abre Cleanway, ve a la pestaña «Historial» y toca ese sitio. Luego toca «No es una estafa: permitir» y confirma. Cleanway dejará de bloquear ese sitio en tu teléfono. Si alguien por teléfono te pide que permitas un sitio, es un estafador. Cuelga. Permite un sitio solo si estás seguro de que es el auténtico.",
     "q_privacy": "¿Qué datos recopiláis?",
     "a_privacy": "Los sitios se comparan con la lista en tu teléfono. Cuando un sitio necesita una revisión más a fondo, solo su nombre llega a nuestro servidor, no el enlace completo ni quién eres. El texto de los mensajes que compruebas nunca sale del teléfono. Todos los detalles están en la política de privacidad.",
     "email_not_live_title": "Todavía no podemos recibir correos",
@@ -626,7 +626,7 @@
         "paragraphs": [
           "Cuando activas la protección, Cleanway pone en marcha un filtro local usando el mecanismo de VPN de Android. Por él solo pasan las consultas DNS, las preguntas que hace el teléfono para encontrar la dirección de un sitio, como «¿dónde está example.com?». El contenido de las páginas, tus mensajes y tus llamadas no pasan por el filtro y no se leen.",
           "Cada nombre de sitio se compara con la lista de sitios fraudulentos guardada en el teléfono. Si está en la lista, el teléfono no abre el sitio y se guarda en el teléfono una nota (el nombre del sitio, la hora y lo que pasó) para el Historial de la app.",
-          "Los nombres que no están en la lista se pasan para encontrar la dirección del sitio: primero al servidor DNS de la red a la que está conectado el teléfono —el de tu operador móvil o tu router wifi—, como sin Cleanway. Solo si no responde, van a Cloudflare (1.1.1.1), luego a Quad9 (9.9.9.9) y, como último recurso, al DNS-over-HTTPS cifrado de Cloudflare. Así funciona la versión 1.0.2 de la app; la versión 1.0.1 preguntaba primero a Cloudflare. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas.",
+          "Los nombres que no están en la lista se pasan para encontrar la dirección del sitio: primero al servidor DNS de la red a la que está conectado el teléfono —el de tu operador móvil o tu router wifi—, como sin Cleanway. Solo si no responde, van a Cloudflare (1.1.1.1), luego a Quad9 (9.9.9.9) y, como último recurso, al DNS-over-HTTPS cifrado de Cloudflare. Así funcionan las versiones 1.0.2 y 1.0.3 de la app; la versión 1.0.1 preguntaba primero a Cloudflare. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas.",
           "Desde la versión 1.0.2, la app incluye una copia de la lista de sitios fraudulentos, que se usa solo hasta que el teléfono descarga una nueva."
         ]
       },
@@ -651,7 +651,7 @@
         "after": [
           "El resultado se guarda en la caché de nuestro servidor hasta 24 horas para que una nueva comprobación sea rápida. Está ligado al sitio, no a ti.",
           "Tu dirección IP se usa para limitar cuántas comprobaciones puede hacer una conexión. Para eso se guarda tal cual, como contador en la memoria de nuestro servidor, durante una hora como máximo, y después se borra. El registro de seguridad de las acciones de la cuenta solo guarda un hash criptográfico acortado, nunca la dirección misma.",
-          "Con cada comprobación, la versión 1.0.2 de la app también envía un número de instalación: un número aleatorio creado en el teléfono que se cambia por uno nuevo cada 24 horas. No está vinculado al teléfono, a la tarjeta SIM ni a una cuenta; nos permite limitar las comprobaciones por teléfono y no para todos los abonados que comparten la dirección IP de un operador. Nuestro servidor guarda solo un hash criptográfico, como contador, durante una hora como máximo."
+          "Desde la versión 1.0.2, con cada comprobación la app también envía un número de instalación: un número aleatorio creado en el teléfono que se cambia por uno nuevo cada 24 horas. No está vinculado al teléfono, a la tarjeta SIM ni a una cuenta; nos permite limitar las comprobaciones por teléfono y no para todos los abonados que comparten la dirección IP de un operador. Nuestro servidor guarda solo un hash criptográfico, como contador, durante una hora como máximo."
         ]
       },
       {

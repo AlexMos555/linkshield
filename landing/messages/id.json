@@ -392,7 +392,7 @@
     "q_off": "Bagaimana cara mematikannya?",
     "a_off": "Buka aplikasinya dan ketuk “Jeda perlindungan”. Anda bisa menyalakannya lagi kapan saja.",
     "q_fp": "Situs yang aman malah diblokir — saya harus bagaimana?",
-    "a_fp": "Buka Cleanway, masuk ke tab \"Riwayat\", lalu ketuk situs itu. Kemudian ketuk \"Bukan penipuan — izinkan\" dan konfirmasi. Cleanway tidak akan memblokir situs itu lagi di ponsel Anda. Tombol yang sama ada di notifikasi pemblokiran, jika notifikasi itu muncul. Izinkan situs hanya jika Anda yakin situs itu asli.",
+    "a_fp": "Buka Cleanway, masuk ke tab \"Riwayat\", lalu ketuk situs itu. Kemudian ketuk \"Bukan penipuan — izinkan\" dan konfirmasi. Cleanway tidak akan memblokir situs itu lagi di ponsel Anda. Jika seseorang di telepon meminta Anda mengizinkan sebuah situs, dia penipu. Tutup teleponnya. Izinkan situs hanya jika Anda yakin situs itu asli.",
     "q_privacy": "Data apa yang kalian kumpulkan?",
     "a_privacy": "Situs dicocokkan dengan daftar di ponsel Anda. Jika sebuah situs perlu diperiksa lebih teliti, hanya namanya yang dikirim ke server kami, bukan tautan lengkap atau siapa Anda. Teks pesan yang Anda periksa tidak pernah keluar dari ponsel. Semua detailnya ada di kebijakan privasi.",
     "email_not_live_title": "Kami belum bisa menerima email",
@@ -626,7 +626,7 @@
         "paragraphs": [
           "Saat Anda menyalakan perlindungan, Cleanway menjalankan filter lokal menggunakan mekanisme VPN Android. Yang melewatinya hanya permintaan DNS, yaitu pertanyaan ponsel untuk mencari alamat sebuah situs, seperti \"di mana example.com?\". Isi halaman, pesan, dan panggilan Anda tidak melewati filter dan tidak dibaca.",
           "Setiap nama situs dicocokkan dengan daftar situs penipuan yang tersimpan di ponsel. Jika ada di daftar, ponsel tidak membuka situs itu, dan sebuah catatan (nama situs, waktu, dan apa yang terjadi) disimpan di ponsel untuk Riwayat aplikasi.",
-          "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
+          "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2 dan 1.0.3; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
           "Sejak versi 1.0.2, aplikasi membawa salinan daftar situs penipuan, yang hanya dipakai sampai ponsel mengunduh daftar terbaru."
         ]
       },
@@ -651,7 +651,7 @@
         "after": [
           "Hasilnya disimpan di cache server kami hingga 24 jam agar pemeriksaan ulang berlangsung cepat. Hasil ini terkait dengan situsnya, bukan dengan Anda.",
           "Alamat IP Anda dipakai untuk membatasi berapa banyak pemeriksaan dari satu koneksi. Untuk itu alamat ini disimpan apa adanya, sebagai penghitung di memori server kami, paling lama satu jam, lalu dihapus. Log keamanan tindakan akun hanya menyimpan hash kriptografis yang dipersingkat, tidak pernah alamatnya sendiri.",
-          "Pada setiap pemeriksaan, aplikasi versi 1.0.2 juga mengirim nomor instalasi: angka acak yang dibuat di ponsel dan diganti dengan yang baru setiap 24 jam. Nomor ini tidak terkait dengan ponsel, kartu SIM, atau akun; dengan nomor ini kami bisa membatasi pemeriksaan per ponsel, bukan untuk semua pelanggan yang berbagi alamat IP operator. Server kami hanya menyimpan hash kriptografisnya, sebagai penghitung, paling lama satu jam."
+          "Sejak versi 1.0.2, pada setiap pemeriksaan aplikasi juga mengirim nomor instalasi: angka acak yang dibuat di ponsel dan diganti dengan yang baru setiap 24 jam. Nomor ini tidak terkait dengan ponsel, kartu SIM, atau akun; dengan nomor ini kami bisa membatasi pemeriksaan per ponsel, bukan untuk semua pelanggan yang berbagi alamat IP operator. Server kami hanya menyimpan hash kriptografisnya, sebagai penghitung, paling lama satu jam."
         ]
       },
       {

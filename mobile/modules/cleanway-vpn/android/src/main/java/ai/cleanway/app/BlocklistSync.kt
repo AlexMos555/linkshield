@@ -6,6 +6,8 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -133,6 +135,8 @@ class BlocklistStore(private val dir: File) {
  *  - steady state: every [REFRESH_MS] ± 10 % jitter (phones must not
  *    synchronise on the server)
  *  - failures: 5 → 15 → 60 min, then every 60 min
+ *  - a network coming back after a failure: once, sooner, as soon as
+ *    Android confirms it reaches the internet ([retryOnReconnect])
  */
 object SyncPolicy {
     const val REFRESH_MS = 6L * 60 * 60 * 1000
@@ -170,6 +174,41 @@ object SyncPolicy {
         val offset = (Math.floorMod(jitterSeed, 2 * spread + 1)) - spread
         return REFRESH_MS + offset
     }
+
+    /**
+     * A network just appeared, or Android just confirmed that it reaches the
+     * internet: fetch now instead of waiting out the backoff?
+     *
+     * Only when the last attempt failed BEFORE that — the phone was offline,
+     * on another network, or on this one before Android had confirmed it. A
+     * fetch that failed on this very, confirmed network says the server is
+     * out of reach from here (throttled, or blocked from Russia), and the
+     * backoff already paces that.
+     *
+     * Not while the network is unconfirmed ([networkValidated] false): a
+     * Wi-Fi still on its sign-in page, a cellular link still attaching in a
+     * basement. A fetch there fails and would spend the one retry just before
+     * the connection starts working; the confirmation is the arrival that
+     * counts. A network that is never confirmed is left to the backoff.
+     *
+     * And never more often than the backoff itself: at the edge of coverage a
+     * phone can lose and regain its network every few seconds. All times
+     * monotonic.
+     */
+    fun retryOnReconnect(
+        consecutiveFailures: Int,
+        lastFailureAtMs: Long,
+        networkSinceMs: Long,
+        networkValidated: Boolean,
+        lastReconnectRetryAtMs: Long?,
+        nowMs: Long,
+    ): Boolean {
+        if (consecutiveFailures == 0 || !networkValidated || lastFailureAtMs >= networkSinceMs) return false
+        return lastReconnectRetryAtMs == null || nowMs - lastReconnectRetryAtMs >= nextDelayMs(consecutiveFailures)
+    }
+
+    /** How long a network gets to settle (its DNS, routes) after it arrives or is confirmed, before that retry. */
+    const val RECONNECT_SETTLE_MS = 10_000L
 }
 
 /**
@@ -187,6 +226,12 @@ class BlocklistSync(
     private val onSwap: (BlockList) -> Unit,
     /** True when the active network charges for data (ConnectivityManager). */
     private val isMetered: () -> Boolean = { false },
+    /**
+     * When the next attempt is due, [delayMs] from now; the service arms its
+     * wake-up alarm here. Called around every attempt (see [attempt]) and
+     * after a start that needed none.
+     */
+    private val onNextDue: (delayMs: Long) -> Unit = {},
 ) {
     @Volatile var lastError: String? = null; private set
     @Volatile var consecutiveFailures = 0; private set
@@ -195,7 +240,13 @@ class BlocklistSync(
     /** Bytes moved by the last successful fetch — surfaced so "it eats my data" is answerable. */
     @Volatile var lastFetchBytes: Int = 0; private set
     @Volatile private var currentVersion: Long = 0L
+    /** The pending retry after a network arrived (see [onNetworkArrived]). */
     private var future: ScheduledFuture<*>? = null
+    /** Monotonic times for [SyncPolicy.retryOnReconnect]. */
+    @Volatile private var lastFailureAtMs = 0L
+    @Volatile private var networkSinceMs = 0L
+    @Volatile private var networkValidated = true
+    @Volatile private var lastReconnectRetryAtMs: Long? = null
     /** The list we hold, so a delta has something to apply to. */
     @Volatile private var currentList: BlockList? = null
     /**
@@ -317,7 +368,38 @@ class BlocklistSync(
     private fun fail(reason: String) {
         consecutiveFailures += 1
         lastError = reason
+        lastFailureAtMs = elapsedMs()
         Log.w(TAG, "blocklist_fetch_failed: $reason (fail #$consecutiveFailures)")
+    }
+
+    /**
+     * One fetch, with the wake-up for the next one armed on both sides of it.
+     * Every path that fetches goes through here — start, the alarm,
+     * pull-to-refresh, a network coming back.
+     *
+     * Before the fetch: the next failure step, so a fetch that never reports
+     * back still has a wake-up behind it. Nothing keeps the phone awake while
+     * it runs; a CPU that suspends mid-download leaves it hanging until
+     * something else wakes the phone. After the fetch: from its result — 6 h
+     * ± jitter after a good one, the next backoff step after a failed one.
+     * 1.0.2 armed it only before the queued fetch had run, from the previous
+     * attempt's failure count: a phone that started offline (or could not
+     * reach the server) waited six hours for its next try, not five minutes.
+     *
+     * Anything thrown is a failed fetch, an Error too: an OutOfMemoryError
+     * while a delta is merged into the ~2.6 MB list on a small phone would
+     * otherwise vanish inside the executor and leave no wake-up after it.
+     */
+    fun attempt(force: Boolean = false): Boolean {
+        onNextDue(SyncPolicy.nextDelayMs(consecutiveFailures + 1))
+        val ok = try {
+            refreshOnce(force)
+        } catch (e: Throwable) {
+            fail("unexpected: ${e.javaClass.simpleName}: ${e.message}")
+            false
+        }
+        onNextDue(nextDelayMs())
+        return ok
     }
 
     /**
@@ -325,18 +407,56 @@ class BlocklistSync(
      * cadence is driven by AlarmManager (BlocklistAlarm) so it survives Doze;
      * this only handles "get something fresh now that the shield came up".
      */
-    fun start(executor: ScheduledExecutorService) {
+    fun start(executor: Executor) {
         val age = if (lastFetchAtMs > 0) nowMs() - lastFetchAtMs else null
         if (SyncPolicy.shouldFetchOnStart(age)) {
-            executor.execute {
-                try { refreshOnce() } catch (e: Exception) { fail("unexpected: ${e.message}") }
-            }
+            executor.execute { attempt() }
+        } else {
+            onNextDue(nextDelayMs())
         }
+    }
+
+    /**
+     * A network appeared, the phone moved to another one, or Android has just
+     * confirmed that the network reaches the internet ([validated] — see
+     * [UnderlyingDns.isArrival]). If the last fetch failed before that, try
+     * again once the network has settled — not at the end of a backoff that
+     * was counting a dead connection. Debounced: a burst of network callbacks
+     * makes one retry.
+     */
+    @Synchronized
+    fun onNetworkArrived(
+        executor: ScheduledExecutorService,
+        validated: Boolean,
+        settleMs: Long = SyncPolicy.RECONNECT_SETTLE_MS,
+    ) {
+        networkSinceMs = elapsedMs()
+        networkValidated = validated
+        future?.cancel(false)
+        future = try {
+            executor.schedule({ retryIfReconnected() }, settleMs, TimeUnit.MILLISECONDS)
+        } catch (e: RejectedExecutionException) {
+            null // the service is shutting down
+        }
+    }
+
+    /** The settled half of [onNetworkArrived]. True when it fetched. */
+    fun retryIfReconnected(): Boolean {
+        val now = elapsedMs()
+        val retry = SyncPolicy.retryOnReconnect(
+            consecutiveFailures, lastFailureAtMs, networkSinceMs, networkValidated, lastReconnectRetryAtMs, now,
+        )
+        if (!retry) return false
+        lastReconnectRetryAtMs = now
+        Log.i(TAG, "blocklist_retry_on_reconnect after fail #$consecutiveFailures")
+        attempt()
+        return true
     }
 
     /** How long until the next scheduled refresh should fire (Doze-safe alarm). */
     fun nextDelayMs(): Long = SyncPolicy.nextDelayMs(consecutiveFailures, nowMs())
 
+    @Synchronized
     fun stop() { future?.cancel(false); future = null }
 
     companion object {

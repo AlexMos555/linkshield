@@ -7,31 +7,31 @@ import android.content.Intent
 import android.util.Log
 
 /**
- * Handles the "Not a scam — allow it" action on a block notification.
+ * The retired "Not a scam — allow it" button of a block notification.
  *
- * The notification is where the person actually is at the moment their site
- * broke, so the escape hatch lives there: one tap, the site works, the shield
- * stays on for everything else. The action is never silent — the allow is
- * recorded in history and confirmed with a follow-up notification that says
- * where to undo it.
+ * Up to 1.0.2 every block pop-up carried it: one tap, and the site opened
+ * with the shield still on. That is also exactly what a scammer on the phone
+ * says — "press allow" — while the person is looking at the pop-up. From
+ * 1.0.3 the notification has no such button (BlockNotifier.notify); a site is
+ * allowed only in History, behind a confirmation that first says a caller
+ * asking for it is a scammer.
+ *
+ * Kept for one reason: a notification posted by 1.0.2 can still be in the
+ * shade after the update, and its button still fires here. It allows NOTHING
+ * now. It removes that notification and posts one that says where allowing
+ * lives, leads with the scam warning, and opens the site's History entry.
  */
 class AllowReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_ALLOW) return
-        val domain = intent.getStringExtra(EXTRA_DOMAIN) ?: return
-        val normalized = UserAllow.normalize(domain) ?: return
-        UserAllow.add(context, normalized)
-        BlockLog.record(context, normalized, System.currentTimeMillis(), BlockLog.KIND_ALLOWED)
-        // The DNS thread reads a snapshot; refresh it now so the very next
-        // lookup of the rescued site already works.
-        CleanwayVpnService.instance?.reloadAllowed()
-        Log.i(TAG, "user_allowed=$normalized")
+        val domain = UserAllow.normalize(intent.getStringExtra(EXTRA_DOMAIN)) ?: return
+        Log.i(TAG, "legacy_allow_action — nothing allowed")
         try {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.cancel(normalized.hashCode())
+            nm.cancel(domain.hashCode())
         } catch (_: Exception) {
         }
-        BlockNotifier.notifyAllowed(context, normalized)
+        BlockNotifier.notifyAllowMoved(context, domain)
     }
 
     companion object {

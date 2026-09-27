@@ -81,5 +81,50 @@ internal object ShieldPreference {
     fun pauseAfter(event: PauseEvent, storedUntilMs: Long): Long =
         if (event == PauseEvent.CAME_BACK_BY_ITSELF) storedUntilMs else 0L
 
+    /** What happened to the tunnel, as far as the recorded stop reason is concerned. */
+    enum class TunnelEvent {
+        /** The tunnel came up, whoever started it. */
+        CAME_UP,
+        /** The person tapped "Turn off". */
+        STOPPED_BY_PERSON,
+        /** Android took the tunnel away (onRevoke): VPN access withdrawn in Settings, or another VPN app. */
+        TAKEN_AWAY,
+        /** A start found no VPN permission (prepare() would have to ask). */
+        NO_CONSENT,
+        /** Strict Private DNS: the service would not start, or stepped aside. */
+        PRIVATE_DNS,
+    }
+
+    /**
+     * Pure: why the tunnel went down without the person turning it off, after
+     * [event] — [CleanwayVpnService.REASON_REVOKED] or
+     * [CleanwayVpnService.REASON_PRIVATE_DNS], null when nobody told us (a
+     * killed process, a battery manager, a boot that did not bring it back).
+     * The app says what happened and what it takes to come back; 1.0.2 said
+     * "usually after a reboot, one tap" even after a Private DNS conflict or a
+     * withdrawn VPN permission.
+     *
+     * A start without the permission means it was withdrawn only on a phone
+     * where the tunnel has run before ([cameUpHere]). On a new phone restored
+     * from a Google backup, "protection was on" comes back but the permission
+     * does not: nothing was withdrawn there, and telling someone that a
+     * permission on her phone was switched off is the kind of scare a scam
+     * call feeds on. Then no cause is named.
+     */
+    fun stopReasonAfter(event: TunnelEvent, cameUpHere: Boolean): String? = when (event) {
+        TunnelEvent.CAME_UP, TunnelEvent.STOPPED_BY_PERSON -> null
+        TunnelEvent.TAKEN_AWAY -> CleanwayVpnService.REASON_REVOKED
+        TunnelEvent.NO_CONSENT -> if (cameUpHere) CleanwayVpnService.REASON_REVOKED else null
+        TunnelEvent.PRIVATE_DNS -> CleanwayVpnService.REASON_PRIVATE_DNS
+    }
+
+    /** Record [event] for [stopReason]. Kept outside the backed-up preferences: see [StopReasonStore]. */
+    fun noteTunnel(context: Context, event: TunnelEvent) = stopReasons(context).note(event)
+
+    /** The cause [stopReasonAfter] gave for the last stop, or null. */
+    fun stopReason(context: Context): String? = stopReasons(context).reason()
+
+    private fun stopReasons(context: Context) = StopReasonStore(context.applicationContext.noBackupFilesDir)
+
     private const val KEY_PAUSED_UNTIL = "paused_until_ms"
 }

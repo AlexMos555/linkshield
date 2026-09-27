@@ -1128,7 +1128,7 @@
       "q_off": "Wie schalte ich sie aus?",
       "a_off": "Öffne die App und tippe auf „Schutz pausieren“. Du kannst ihn jederzeit wieder einschalten.",
       "q_fp": "Eine sichere Seite wird blockiert – was tun?",
-      "a_fp": "Öffne Cleanway, geh zum Tab „Verlauf“ und tippe auf diese Seite. Tippe dann auf „Kein Betrug – zulassen“ und bestätige. Cleanway blockiert die Seite dann auf deinem Handy nicht mehr. Dieselbe Schaltfläche findest du in der Sperr-Benachrichtigung, falls eine erschienen ist. Lass eine Seite nur zu, wenn du sicher bist, dass sie echt ist.",
+      "a_fp": "Öffne Cleanway, geh zum Tab „Verlauf“ und tippe auf diese Seite. Tippe dann auf „Kein Betrug – zulassen“ und bestätige. Cleanway blockiert die Seite dann auf deinem Handy nicht mehr. Wenn dich jemand am Telefon bittet, eine Seite zuzulassen, ist das ein Betrüger. Leg auf. Lass eine Seite nur zu, wenn du sicher bist, dass sie echt ist.",
       "q_privacy": "Was sammelt ihr?",
       "a_privacy": "Seiten werden auf deinem Handy mit der Liste abgeglichen. Muss eine Seite genauer geprüft werden, geht nur ihr Name an unseren Server – nicht der ganze Link und nicht, wer du bist. Der Text der Nachrichten, die du prüfst, verlässt nie das Handy. Alle Einzelheiten stehen in der Datenschutzerklärung.",
       "email_not_live_title": "Wir können noch keine E-Mails empfangen",
@@ -1362,7 +1362,7 @@
           "paragraphs": [
             "Wenn du den Schutz einschaltest, startet Cleanway einen lokalen Filter über den VPN-Mechanismus von Android. Durch ihn laufen nur DNS-Anfragen – die Fragen, mit denen das Handy die Adresse einer Seite sucht, etwa „Wo ist example.com?“. Seiteninhalte, deine Nachrichten und Anrufe laufen nicht durch den Filter und werden nicht gelesen.",
             "Jeder Seitenname wird mit der auf dem Handy gespeicherten Liste von Betrugsseiten abgeglichen. Steht er auf der Liste, öffnet das Handy die Seite nicht, und auf dem Handy wird ein Eintrag (Name der Seite, Uhrzeit und was passiert ist) für den Verlauf der App gespeichert.",
-            "Namen, die nicht auf der Liste stehen, werden weitergegeben, um die Adresse der Seite zu finden: zuerst an den DNS-Server des Netzes, mit dem das Handy verbunden ist – den deines Mobilfunkanbieters oder deines WLAN-Routers –, wie ohne Cleanway. Nur wenn er nicht antwortet, gehen sie an Cloudflare (1.1.1.1), dann an Quad9 (9.9.9.9) und als letzter Ausweg an das verschlüsselte DNS-over-HTTPS von Cloudflare. So arbeitet die App-Version 1.0.2; Version 1.0.1 fragte zuerst Cloudflare. Diese Dienste sehen den Namen der Seite und die IP-Adresse deiner Verbindung, wie jeder DNS-Dienst; es gelten ihre eigenen Datenschutzrichtlinien. Cleanway erhält und speichert diese Anfragen nicht.",
+            "Namen, die nicht auf der Liste stehen, werden weitergegeben, um die Adresse der Seite zu finden: zuerst an den DNS-Server des Netzes, mit dem das Handy verbunden ist – den deines Mobilfunkanbieters oder deines WLAN-Routers –, wie ohne Cleanway. Nur wenn er nicht antwortet, gehen sie an Cloudflare (1.1.1.1), dann an Quad9 (9.9.9.9) und als letzter Ausweg an das verschlüsselte DNS-over-HTTPS von Cloudflare. So arbeiten die App-Versionen 1.0.2 und 1.0.3; Version 1.0.1 fragte zuerst Cloudflare. Diese Dienste sehen den Namen der Seite und die IP-Adresse deiner Verbindung, wie jeder DNS-Dienst; es gelten ihre eigenen Datenschutzrichtlinien. Cleanway erhält und speichert diese Anfragen nicht.",
             "Seit Version 1.0.2 enthält die App eine Kopie der Liste der Betrugsseiten, die nur genutzt wird, bis das Handy eine aktuelle Liste heruntergeladen hat."
           ]
         },
@@ -1387,7 +1387,7 @@
           "after": [
             "Das Ergebnis bleibt bis zu 24 Stunden im Cache unseres Servers, damit eine erneute Prüfung schnell geht. Es ist mit der Seite verknüpft, nicht mit dir.",
             "Deine IP-Adresse wird genutzt, um zu begrenzen, wie viele Prüfungen eine Verbindung machen kann. Dafür wird sie im Klartext als Zähler im Speicher unseres Servers höchstens eine Stunde lang gespeichert und dann gelöscht. Das Sicherheitsprotokoll der Kontoaktionen speichert nur einen gekürzten kryptografischen Hash, nie die Adresse selbst.",
-            "Bei jeder Prüfung sendet die App-Version 1.0.2 außerdem eine Installationsnummer: eine zufällige Zahl, die auf dem Handy erzeugt und alle 24 Stunden durch eine neue ersetzt wird. Sie ist nicht mit dem Handy, der SIM-Karte oder einem Konto verknüpft; mit ihr begrenzen wir Prüfungen pro Handy statt für alle Kunden, die sich die IP-Adresse eines Anbieters teilen. Unser Server speichert davon nur einen kryptografischen Hash, als Zähler, höchstens eine Stunde lang."
+            "Seit Version 1.0.2 sendet die App bei jeder Prüfung außerdem eine Installationsnummer: eine zufällige Zahl, die auf dem Handy erzeugt und alle 24 Stunden durch eine neue ersetzt wird. Sie ist nicht mit dem Handy, der SIM-Karte oder einem Konto verknüpft; mit ihr begrenzen wir Prüfungen pro Handy statt für alle Kunden, die sich die IP-Adresse eines Anbieters teilen. Unser Server speichert davon nur einen kryptografischen Hash, als Zähler, höchstens eine Stunde lang."
           ]
         },
         {
@@ -1808,6 +1808,8 @@
         "attention": "Ein Schutzschild braucht Aufmerksamkeit",
         "a11y": "Schutzstatus: {{status}}",
         "title_interrupted": "Schutz wurde unterbrochen",
+        "title_offline": "Kein Internet",
+        "sub_offline": "Cleanway prüft den Schutz, sobald die Verbindung zurück ist",
         "title_paused": "Schutz pausiert bis {{time}}",
         "sub_paused": "Betrugsseiten werden gerade nicht blockiert",
         "title_conflict": "Der Schutz funktioniert nicht",
@@ -1844,7 +1846,9 @@
         "hint": "Tippe auf eine Zahl, um die Liste zu sehen."
       },
       "privacy": "Der Schutz „Jede App“ gleicht Seitennamen direkt auf deinem Handy ab. Wenn du selbst einen Link prüfst oder ihn bei aktiver „Link-Prüfung“ antippst, bekommt unser Server den Namen der Seite und eine zufällige Installationsnummer, die sich jeden Tag ändert.",
-      "interrupted": "Passiert meist nach einem Neustart. Deine Einrichtung ist noch da – ein Tipp genügt.",
+      "interrupted": "Das Handy hat den Schutz beendet – zum Beispiel nach einem Neustart oder um Akku zu sparen. Deine Einrichtung ist noch da: Tippe unten auf die Schaltfläche und dann auf „{{button}}“.",
+      "interrupted_revoked": "Android hat den Schutz beendet: Die VPN-Berechtigung wurde in den Handy-Einstellungen entzogen, oder eine andere VPN-App hat übernommen. Tippe unten auf die Schaltfläche und dann auf „{{button}}“. Fragt Android, ob die Verbindung erlaubt werden soll, tippe auf „OK“. Die andere VPN-App wird dabei ausgeschaltet: Android nutzt immer nur eine.",
+      "interrupted_private_dns": "Der Schutz wurde wegen der Einstellung „Privates DNS“ beendet. Sie stört jetzt nicht mehr: Tippe unten auf die Schaltfläche und dann auf „{{button}}“.",
       "cta_turn_back_on": "Schutz wieder einschalten"
     },
     "shield": {
@@ -1854,11 +1858,13 @@
         "honesty": "Erkennt brandneue Betrugsseiten nicht und wirkt nicht in Apps, die ihr eigenes privates DNS mitbringen",
         "state_on": "An. Läuft gerade.",
         "state_setup": "Einmalige Einrichtung, dauert etwa eine Minute.",
+        "state_stopped": "Beendet. Um ihn wieder einzuschalten, tippe oben auf „{{button}}“.",
         "state_paused": "Pausiert. Tippe, um wieder einzuschalten.",
         "state_unverified": "Läuft, aber wir konnten gerade nicht bestätigen, dass wirklich gefiltert wird.",
         "state_blocked": "Dieses WLAN braucht eine Anmeldeseite. Cleanway hat sich selbst pausiert und schaltet sich automatisch wieder ein.",
         "state_checking": "Schutz wird geprüft…",
-        "state_offline": "Gerade kein Internet. Der Schutz ist eingerichtet und filtert, sobald du wieder online bist.",
+        "state_offline": "Gerade kein Internet. Bekannte Betrugsseiten bleiben trotzdem blockiert: Ihre Liste ist auf dem Handy gespeichert. Sie wird aktualisiert, sobald du wieder online bist.",
+        "state_offline_no_list": "Gerade kein Internet. Die Liste der Betrugsseiten ist noch nicht auf dem Handy – sie wird geladen, sobald du wieder online bist.",
         "state_private_dns": "Auf deinem Handy ist „Privates DNS“ aktiv ({{host}}). Android kann es nicht zusammen mit Cleanway betreiben – sind beide an, funktioniert das Internet nicht mehr. Stelle in den Einstellungen „Privates DNS“ auf „Automatisch“ und schalte Cleanway danach ein.",
         "private_dns_cta": "Netzwerkeinstellungen öffnen",
         "state_paused_until": "Pausiert bis {{time}}, danach schaltet er sich von selbst wieder ein. Betrugsseiten werden gerade nicht blockiert."
@@ -1877,6 +1883,7 @@
         "setup_btn": "Einrichten",
         "on_pill": "An",
         "paused_pill": "Pausiert",
+        "stopped_pill": "Beendet",
         "attention_pill": "Achtung",
         "unverified_pill": "Nicht bestätigt",
         "rollout_pill": "In Arbeit",
@@ -1894,7 +1901,7 @@
       },
       "disclosure": {
         "title": "So funktioniert der Schutz",
-        "body": "Cleanway richtet ein lokales VPN auf deinem Handy ein. Nur so erlaubt Android einer App, Website-Abfragen für alle anderen Apps zu filtern.\n\n• Die Liste bekannter Betrugsseiten liegt auf deinem Handy. Namen werden hier abgeglichen, nicht an uns geschickt.\n• Abfragen, die wir nicht blockieren, gehen an den DNS-Server deines eigenen Netzes – den des Anbieters oder Routers, wie ohne Cleanway. Antwortet er nicht, gehen sie an einen öffentlichen Resolver (Cloudflare oder Quad9).\n• Kein anderer Datenverkehr wird gelesen, gespeichert oder umgeleitet. Es ist kein Privatsphäre-VPN und verbirgt dein Surfen nicht.\n\nAndroid fragt dich jetzt nach der Erlaubnis.",
+        "body": "Cleanway richtet ein lokales VPN auf deinem Handy ein. Nur so erlaubt Android einer App, Website-Abfragen für alle anderen Apps zu filtern.\n\n• Die Liste bekannter Betrugsseiten liegt auf deinem Handy. Namen werden hier abgeglichen, nicht an uns geschickt.\n• Abfragen, die wir nicht blockieren, gehen an den DNS-Server deines eigenen Netzes – den des Anbieters oder Routers, wie ohne Cleanway. Antwortet er nicht, gehen sie an einen öffentlichen Resolver (Cloudflare oder Quad9).\n• Kein anderer Datenverkehr wird gelesen, gespeichert oder umgeleitet. Es ist kein Privatsphäre-VPN und verbirgt dein Surfen nicht.\n\nFragt Android, ob die Verbindung erlaubt werden soll, tippe auf „OK“.",
         "continue": "Weiter",
         "cancel": "Jetzt nicht"
       },
@@ -2199,7 +2206,9 @@
         "by_warned": "Gewarnt von",
         "more": "Mehr über diese Seite",
         "allow": "Kein Betrug – zulassen",
-        "allow_confirm_body": "{{domain}} wird nicht mehr blockiert. Tu das nur, wenn du diese Seite kennst. Rückgängig machen kannst du es unter Einstellungen → Zugelassene Seiten.",
+        "allow_confirm_title": "{{domain}} zulassen?",
+        "allow_confirm_body": "Wenn dich jemand am Telefon bittet, eine Seite zuzulassen, ist das ein Betrüger. Leg auf.\n\nLass {{domain}} nur zu, wenn du selbst sicher bist, dass es die echte Seite ist. Cleanway blockiert sie dann nicht mehr. Rückgängig machen kannst du es unter Einstellungen → Zugelassene Seiten.",
+        "allow_confirm_cancel": "Nicht zulassen",
         "block_again": "Wieder blockieren",
         "close": "Schließen"
       },
@@ -2301,8 +2310,6 @@
       "allowed_desc": "Seiten, die du als sicher markiert hast. Der Schutz blockiert sie nicht.",
       "allowed_remove": "Entfernen",
       "allowed_empty": "Keine zugelassenen Seiten",
-      "allow_confirm_title": "Diese Seite zulassen",
-      "allow_confirm_body": "{{domain}} wird nicht mehr blockiert, bis du sie hier entfernst. Nur wenn du die Seite kennst.",
       "language": "Sprache",
       "language_note": "Wähle die Sprache der App.",
       "language_reload_title": "Neustart nötig",
@@ -2406,15 +2413,14 @@
       "fg_text": "Website-Namen werden auf Betrug geprüft",
       "block_channel": "Blockierte Seiten",
       "block_channel_desc": "Meldet, wenn Cleanway eine gefährliche Seite blockiert",
-      "allow_channel": "Erlaubte Seiten",
-      "allow_channel_desc": "Bestätigt, wenn du eine von Cleanway blockierte Seite erlaubst",
+      "allow_channel": "Seiten zulassen",
+      "allow_channel_desc": "Wo du eine von Cleanway blockierte Seite zulassen kannst",
+      "allow_moved_title": "Die Seite wurde nicht zugelassen",
+      "allow_moved_text": "Seiten lassen sich jetzt nur in der Cleanway-App zulassen. Wenn dich jemand am Telefon bittet, eine Seite zuzulassen, ist das ein Betrüger. Leg auf. Wenn du selbst sicher bist, dass {{domain}} die echte Seite ist, tippe hier, um den Verlauf zu öffnen.",
       "blocked_title": "Cleanway hat eine gefährliche Seite blockiert",
       "blocked_text": "{{domain}} steht auf der Liste der Betrugsseiten. Sie wird nicht geöffnet.",
       "warn_title": "Diese Seite sieht nach Betrug aus",
       "warn_text": "{{domain}} wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben.",
-      "allow_action": "Kein Betrug – zulassen",
-      "allowed_title": "Seite zugelassen",
-      "allowed_text": "{{domain}} ist jetzt zugelassen. Rückgängig in Einstellungen → Zugelassene Seiten.",
       "paused_title": "Cleanway-Schutz ist pausiert",
       "paused_text": "Schaltet sich um {{time}} von selbst wieder ein.",
       "resume_action": "Jetzt einschalten"

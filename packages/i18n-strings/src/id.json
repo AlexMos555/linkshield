@@ -1128,7 +1128,7 @@
       "q_off": "Bagaimana cara mematikannya?",
       "a_off": "Buka aplikasinya dan ketuk “Jeda perlindungan”. Anda bisa menyalakannya lagi kapan saja.",
       "q_fp": "Situs yang aman malah diblokir — saya harus bagaimana?",
-      "a_fp": "Buka Cleanway, masuk ke tab \"Riwayat\", lalu ketuk situs itu. Kemudian ketuk \"Bukan penipuan — izinkan\" dan konfirmasi. Cleanway tidak akan memblokir situs itu lagi di ponsel Anda. Tombol yang sama ada di notifikasi pemblokiran, jika notifikasi itu muncul. Izinkan situs hanya jika Anda yakin situs itu asli.",
+      "a_fp": "Buka Cleanway, masuk ke tab \"Riwayat\", lalu ketuk situs itu. Kemudian ketuk \"Bukan penipuan — izinkan\" dan konfirmasi. Cleanway tidak akan memblokir situs itu lagi di ponsel Anda. Jika seseorang di telepon meminta Anda mengizinkan sebuah situs, dia penipu. Tutup teleponnya. Izinkan situs hanya jika Anda yakin situs itu asli.",
       "q_privacy": "Data apa yang kalian kumpulkan?",
       "a_privacy": "Situs dicocokkan dengan daftar di ponsel Anda. Jika sebuah situs perlu diperiksa lebih teliti, hanya namanya yang dikirim ke server kami, bukan tautan lengkap atau siapa Anda. Teks pesan yang Anda periksa tidak pernah keluar dari ponsel. Semua detailnya ada di kebijakan privasi.",
       "email_not_live_title": "Kami belum bisa menerima email",
@@ -1362,7 +1362,7 @@
           "paragraphs": [
             "Saat Anda menyalakan perlindungan, Cleanway menjalankan filter lokal menggunakan mekanisme VPN Android. Yang melewatinya hanya permintaan DNS, yaitu pertanyaan ponsel untuk mencari alamat sebuah situs, seperti \"di mana example.com?\". Isi halaman, pesan, dan panggilan Anda tidak melewati filter dan tidak dibaca.",
             "Setiap nama situs dicocokkan dengan daftar situs penipuan yang tersimpan di ponsel. Jika ada di daftar, ponsel tidak membuka situs itu, dan sebuah catatan (nama situs, waktu, dan apa yang terjadi) disimpan di ponsel untuk Riwayat aplikasi.",
-            "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
+            "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2 dan 1.0.3; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
             "Sejak versi 1.0.2, aplikasi membawa salinan daftar situs penipuan, yang hanya dipakai sampai ponsel mengunduh daftar terbaru."
           ]
         },
@@ -1387,7 +1387,7 @@
           "after": [
             "Hasilnya disimpan di cache server kami hingga 24 jam agar pemeriksaan ulang berlangsung cepat. Hasil ini terkait dengan situsnya, bukan dengan Anda.",
             "Alamat IP Anda dipakai untuk membatasi berapa banyak pemeriksaan dari satu koneksi. Untuk itu alamat ini disimpan apa adanya, sebagai penghitung di memori server kami, paling lama satu jam, lalu dihapus. Log keamanan tindakan akun hanya menyimpan hash kriptografis yang dipersingkat, tidak pernah alamatnya sendiri.",
-            "Pada setiap pemeriksaan, aplikasi versi 1.0.2 juga mengirim nomor instalasi: angka acak yang dibuat di ponsel dan diganti dengan yang baru setiap 24 jam. Nomor ini tidak terkait dengan ponsel, kartu SIM, atau akun; dengan nomor ini kami bisa membatasi pemeriksaan per ponsel, bukan untuk semua pelanggan yang berbagi alamat IP operator. Server kami hanya menyimpan hash kriptografisnya, sebagai penghitung, paling lama satu jam."
+            "Sejak versi 1.0.2, pada setiap pemeriksaan aplikasi juga mengirim nomor instalasi: angka acak yang dibuat di ponsel dan diganti dengan yang baru setiap 24 jam. Nomor ini tidak terkait dengan ponsel, kartu SIM, atau akun; dengan nomor ini kami bisa membatasi pemeriksaan per ponsel, bukan untuk semua pelanggan yang berbagi alamat IP operator. Server kami hanya menyimpan hash kriptografisnya, sebagai penghitung, paling lama satu jam."
           ]
         },
         {
@@ -1808,6 +1808,8 @@
         "attention": "Satu perisai butuh perhatian",
         "a11y": "Status perlindungan: {{status}}",
         "title_interrupted": "Perlindungan berhenti",
+        "title_offline": "Tidak ada internet",
+        "sub_offline": "Cleanway akan memeriksa perlindungan saat koneksi kembali",
         "title_paused": "Perlindungan dijeda sampai {{time}}",
         "sub_paused": "Situs penipuan sedang tidak diblokir",
         "title_conflict": "Perlindungan tidak bekerja",
@@ -1844,7 +1846,9 @@
         "hint": "Ketuk angka untuk melihat daftarnya."
       },
       "privacy": "Perisai “Semua aplikasi” mencocokkan nama situs langsung di HP kamu. Saat kamu mengecek tautan sendiri, atau mengetuknya ketika “Pemeriksaan tautan” aktif, server kami menerima nama situs dan nomor acak instalasi yang berganti setiap hari.",
-      "interrupted": "Biasanya terjadi setelah restart. Pengaturanmu masih ada — satu ketukan dan kembali.",
+      "interrupted": "Ponsel menghentikan perlindungan — misalnya setelah dinyalakan ulang, atau untuk menghemat baterai. Pengaturan Anda masih ada: ketuk tombol di bawah, lalu \"{{button}}\".",
+      "interrupted_revoked": "Android menghentikan perlindungan: izin VPN dicabut di setelan ponsel, atau aplikasi VPN lain mengambil alih. Ketuk tombol di bawah, lalu \"{{button}}\". Jika Android meminta izin untuk koneksi, ketuk \"Oke\". Aplikasi VPN lain akan mati: Android hanya menjalankan satu VPN pada satu waktu.",
+      "interrupted_private_dns": "Perlindungan berhenti karena setelan \"DNS Pribadi\". Sekarang setelan itu tidak mengganggu lagi: ketuk tombol di bawah, lalu \"{{button}}\".",
       "cta_turn_back_on": "Nyalakan perlindungan lagi"
     },
     "shield": {
@@ -1854,11 +1858,13 @@
         "honesty": "Tidak bisa menangkap situs penipuan yang benar-benar baru, atau aplikasi yang memakai DNS privat sendiri",
         "state_on": "Aktif. Sedang bekerja sekarang.",
         "state_setup": "Penyiapan sekali saja, sekitar satu menit.",
+        "state_stopped": "Berhenti. Untuk menyalakannya lagi, ketuk \"{{button}}\" di atas.",
         "state_paused": "Dijeda. Ketuk untuk menyalakan lagi.",
         "state_unverified": "Berjalan, tapi kami belum bisa memastikan penyaringannya sedang bekerja saat ini.",
         "state_blocked": "Wi-Fi ini butuh halaman login. Cleanway menjeda dirinya sendiri dan akan menyala lagi secara otomatis.",
         "state_checking": "Mengecek perlindungan…",
-        "state_offline": "Tidak ada internet sekarang. Perisai sudah disiapkan dan akan menyaring begitu Anda online lagi.",
+        "state_offline": "Tidak ada internet sekarang. Situs penipuan yang dikenal tetap diblokir: daftarnya tersimpan di ponsel. Daftar akan diperbarui begitu Anda online lagi.",
+        "state_offline_no_list": "Tidak ada internet sekarang. Daftar situs penipuan belum ada di ponsel — daftar akan diunduh begitu Anda online lagi.",
         "state_private_dns": "HP kamu mengaktifkan DNS Pribadi ({{host}}). Android tidak bisa menjalankannya bersama Cleanway — kalau keduanya aktif, internet berhenti bekerja. Di Setelan, ubah DNS Pribadi ke Otomatis, lalu kembali dan nyalakan Cleanway.",
         "private_dns_cta": "Buka setelan jaringan",
         "state_paused_until": "Dijeda sampai {{time}}, lalu menyala lagi sendiri. Situs penipuan sedang tidak diblokir."
@@ -1877,6 +1883,7 @@
         "setup_btn": "Siapkan",
         "on_pill": "Aktif",
         "paused_pill": "Dijeda",
+        "stopped_pill": "Berhenti",
         "attention_pill": "Perhatian",
         "unverified_pill": "Belum pasti",
         "rollout_pill": "Segera hadir",
@@ -1894,7 +1901,7 @@
       },
       "disclosure": {
         "title": "Cara kerja perisai",
-        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju server DNS jaringanmu sendiri — milik operator atau router, sama seperti tanpa Cleanway. Kalau server itu tidak menjawab, permintaan menuju resolver publik (Cloudflare atau Quad9).\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nAndroid sekarang akan meminta izin.",
+        "body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju server DNS jaringanmu sendiri — milik operator atau router, sama seperti tanpa Cleanway. Kalau server itu tidak menjawab, permintaan menuju resolver publik (Cloudflare atau Quad9).\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nJika Android meminta izin untuk koneksi, ketuk \"Oke\".",
         "continue": "Lanjutkan",
         "cancel": "Nanti saja"
       },
@@ -2199,7 +2206,9 @@
         "by_warned": "Diperingatkan oleh",
         "more": "Selengkapnya tentang situs ini",
         "allow": "Bukan penipuan — izinkan",
-        "allow_confirm_body": "{{domain}} tidak akan diblokir lagi. Lakukan ini hanya kalau kamu kenal situs ini. Bisa dibatalkan di Pengaturan → Situs yang diizinkan.",
+        "allow_confirm_title": "Izinkan {{domain}}?",
+        "allow_confirm_body": "Jika seseorang di telepon meminta Anda mengizinkan sebuah situs, dia penipu. Tutup teleponnya.\n\nIzinkan {{domain}} hanya jika Anda sendiri yakin itu situs yang asli. Cleanway tidak akan memblokirnya lagi. Bisa dibatalkan di Pengaturan → Situs yang diizinkan.",
+        "allow_confirm_cancel": "Jangan izinkan",
         "block_again": "Blokir lagi",
         "close": "Tutup"
       },
@@ -2301,8 +2310,6 @@
       "allowed_desc": "Situs yang kamu tandai aman. Perisai tidak memblokirnya.",
       "allowed_remove": "Hapus",
       "allowed_empty": "Belum ada situs yang diizinkan",
-      "allow_confirm_title": "Izinkan situs ini",
-      "allow_confirm_body": "{{domain}} tidak akan diblokir sampai kamu menghapusnya di sini. Lakukan hanya jika kamu mengenal situsnya.",
       "language": "Bahasa",
       "language_note": "Pilih bahasa aplikasi.",
       "language_reload_title": "Perlu mulai ulang",
@@ -2406,15 +2413,14 @@
       "fg_text": "Memeriksa nama situs dari penipuan",
       "block_channel": "Situs yang diblokir",
       "block_channel_desc": "Memberi tahu saat Cleanway memblokir situs berbahaya",
-      "allow_channel": "Situs yang diizinkan",
-      "allow_channel_desc": "Mengonfirmasi saat Anda mengizinkan situs yang sebelumnya diblokir Cleanway",
+      "allow_channel": "Mengizinkan situs",
+      "allow_channel_desc": "Tempat mengizinkan situs yang diblokir Cleanway",
+      "allow_moved_title": "Situs tidak diizinkan",
+      "allow_moved_text": "Sekarang situs hanya bisa diizinkan di aplikasi Cleanway. Jika seseorang di telepon meminta Anda mengizinkan sebuah situs, dia penipu. Tutup teleponnya. Jika Anda sendiri yakin {{domain}} adalah situs asli, ketuk di sini untuk membuka Riwayat.",
       "blocked_title": "Cleanway memblokir situs berbahaya",
       "blocked_text": "{{domain}} ada di daftar situs penipuan. Situs ini tidak akan terbuka.",
       "warn_title": "Situs ini tampak seperti penipuan",
       "warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun.",
-      "allow_action": "Bukan penipuan — izinkan",
-      "allowed_title": "Situs diizinkan",
-      "allowed_text": "{{domain}} sekarang diizinkan. Batalkan di Setelan → Situs yang diizinkan.",
       "paused_title": "Perlindungan Cleanway sedang dijeda",
       "paused_text": "Menyala lagi sendiri pukul {{time}}.",
       "resume_action": "Nyalakan sekarang"

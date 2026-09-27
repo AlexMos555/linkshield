@@ -28,14 +28,18 @@ import java.net.URLEncoder
  *    it must not be dressed up as a block.
  *
  * Tapping either opens History on that site's entry ([historyDeepLink]):
- * what happened, when, which shield, and the "not a scam" rescue.
+ * what happened, when, which shield, and the "not a scam" rescue — behind a
+ * confirmation that first says a caller asking for it is a scammer. The
+ * notification itself has no allow button any more (1.0.3): one tap on a
+ * pop-up is exactly what a scammer on the phone talks a person into.
  *
  * Strings come from res/values-xx/strings.xml, GENERATED from
  * packages/i18n-strings by scripts/build-i18n.py (10 locales).
  *
  * Blocks and warnings go to [ALERT_CHANNEL_ID] (high importance), so the
  * phone shows them as a pop-up at the moment the site fails to open; the
- * quieter "site allowed" confirmation stays on [CHANNEL_ID].
+ * quieter "allow it in the app" notice ([notifyAllowMoved]) stays on
+ * [CHANNEL_ID].
  *
  * Throttling (pure, JVM-tested): one notification per domain per
  * [PER_DOMAIN_WINDOW_MS], and at most [MAX_PER_MINUTE] overall — a page that
@@ -43,7 +47,7 @@ import java.net.URLEncoder
  * notifications.
  */
 object BlockNotifier {
-    /** Quiet channel: the "site allowed" confirmation. Created as the block
+    /** Quiet channel: the "allow it in the app" notice. Created as the block
      *  channel in 1.0.x, and a channel's importance can't be raised after
      *  creation — hence the separate [ALERT_CHANNEL_ID]. */
     const val CHANNEL_ID = "cleanway_blocks"
@@ -155,33 +159,45 @@ object BlockNotifier {
     }
 
     /**
-     * Confirm an allow, and say where to undo it. Never silent: an allowed
-     * site must not be something the person discovers only by noticing the
-     * shield stopped blocking it.
+     * The "allow" button of a block notification posted by 1.0.2 was tapped
+     * (see AllowReceiver). Nothing is allowed: say where allowing lives now,
+     * lead with the scam warning, and open that site's History entry on tap.
      */
-    fun notifyAllowed(context: Context, domain: String) {
+    fun notifyAllowMoved(context: Context, domain: String) {
         try {
             ensureChannel(context)
             val loc = LocalizedContext.of(context)
-            val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            val pending = launch?.let {
-                PendingIntent.getActivity(context, 2, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-            }
-            val text = loc.getString(R.string.allowed_text, domain)
+            val text = loc.getString(R.string.allow_moved_text, domain)
             val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(loc.getString(R.string.allowed_title))
+                .setContentTitle(loc.getString(R.string.allow_moved_title))
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setSmallIcon(SMALL_ICON)
                 .setColor(ACCENT_COLOR)
-                .setContentIntent(pending)
+                .setContentIntent(historyEntry(context, domain, BlockLog.KIND_BLOCKED))
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build()
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .notify(("allowed:" + domain).hashCode(), notif)
+                .notify(("allow-moved:" + domain).hashCode(), notif)
         } catch (_: Exception) {
         }
+    }
+
+    /**
+     * Opens that exact entry in History (why, when, which shield) — not a
+     * fresh server check of the site, which used to add a second "dangerous"
+     * row and inflate the Blocked counter on every tap.
+     */
+    private fun historyEntry(context: Context, domain: String, kind: String): PendingIntent {
+        val detail = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(historyDeepLink(domain, kind))).apply {
+            component = android.content.ComponentName(context.packageName, "ai.cleanway.app.MainActivity")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        return PendingIntent.getActivity(
+            context, domain.hashCode() and 0xffff, detail,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
     }
 
     /** Post the notification if throttling allows. Safe to call from any thread. */
@@ -196,42 +212,17 @@ object BlockNotifier {
                 else -> loc.getString(R.string.blocked_title) to
                     loc.getString(R.string.blocked_text, domain)
             }
-            // Tapping "Cleanway blocked X" opens that exact entry in History
-            // (why, when, which shield) — not a fresh server check of the
-            // site, which used to add a second "dangerous" row and inflate
-            // the Blocked counter on every tap.
-            val detail = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(historyDeepLink(domain, kind))).apply {
-                component = android.content.ComponentName(context.packageName, "ai.cleanway.app.MainActivity")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }
-            val pending = PendingIntent.getActivity(
-                context, domain.hashCode() and 0xffff, detail,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-            // The escape hatch, where the person actually is when their site
-            // breaks: one tap and it works again, with the shield still on.
-            // Without it the only remedy for a false positive is turning
-            // protection off — the outcome we least want.
-            val allowIntent = PendingIntent.getBroadcast(
-                context,
-                domain.hashCode(),
-                Intent(context, AllowReceiver::class.java)
-                    .setPackage(context.packageName)
-                    .setAction(AllowReceiver.ACTION_ALLOW)
-                    .putExtra(AllowReceiver.EXTRA_DOMAIN, domain),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
+            // No "not a scam — allow" button here. It was one tap on a pop-up
+            // that appears while the person is trying to open the site — the
+            // moment a scammer on the phone says "press allow". Allowing
+            // lives in History (the tap below), behind a warning.
             val notif = NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setSmallIcon(SMALL_ICON)
                 .setColor(ACCENT_COLOR)
-                .setContentIntent(pending)
-                // The chosen-locale context, like the title and text: the
-                // plain context rendered this one button in the phone's
-                // system language under a Russian notification.
-                .addAction(0, loc.getString(R.string.allow_action), allowIntent)
+                .setContentIntent(historyEntry(context, domain, kind))
                 .setAutoCancel(true)
                 // Pre-O phones have no channels; HIGH is what makes them pop up.
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

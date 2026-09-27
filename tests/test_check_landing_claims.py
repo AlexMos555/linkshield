@@ -120,6 +120,50 @@ def test_nonexistent_block_screen_is_caught_on_support(locale: str, text: str) -
     assert _findings(locale, {"support": {"a_fp": text}})
 
 
+# The support answer as it read until app 1.0.3 removed the button.
+@pytest.mark.parametrize("locale,text", [
+    ("ru", "Такая же кнопка есть в уведомлении о блокировке, если оно появилось."),
+    ("en", "The same button is in the block notification, if one appeared."),
+    ("de", "Dieselbe Schaltfläche findest du in der Sperr-Benachrichtigung, falls eine erschienen ist."),
+    ("hi", "अगर ब्लॉक होने की सूचना आई हो, तो यही बटन उसमें भी है।"),
+    ("ar", "ويوجد الزر نفسه في إشعار الحظر إن ظهر."),
+])
+def test_allow_button_in_the_notification_is_caught_on_support(locale: str, text: str) -> None:
+    assert _findings(locale, {"support": {"a_fp": text}})
+
+
+# The install-number paragraph as it read when app.json moved to 1.0.3 — and as it reads now.
+INSTALL_NUMBER = {
+    "ru": ("С каждой проверкой приложение версии 1.0.2 передаёт номер установки.",
+           "С версии 1.0.2 приложение с каждой проверкой передаёт номер установки."),
+    "en": ("With every check, app version 1.0.2 also sends an install number.",
+           "From version 1.0.2, the app also sends an install number with every check."),
+    "es": ("Con cada comprobación, la versión 1.0.2 de la app también envía un número de instalación.",
+           "Desde la versión 1.0.2, con cada comprobación la app también envía un número de instalación."),
+    "pt": ("A cada verificação, a versão 1.0.2 do app também envia um número de instalação.",
+           "A partir da versão 1.0.2, a cada verificação o app também envia um número de instalação."),
+    "fr": ("À chaque vérification, la version 1.0.2 de l'appli envoie aussi un numéro d'installation.",
+           "Depuis la version 1.0.2, à chaque vérification, l'appli envoie aussi un numéro d'installation."),
+    "de": ("Bei jeder Prüfung sendet die App-Version 1.0.2 außerdem eine Installationsnummer.",
+           "Seit Version 1.0.2 sendet die App bei jeder Prüfung außerdem eine Installationsnummer."),
+    "it": ("A ogni controllo, la versione 1.0.2 dell'app invia anche un numero di installazione.",
+           "Dalla versione 1.0.2, a ogni controllo l'app invia anche un numero di installazione."),
+    "id": ("Pada setiap pemeriksaan, aplikasi versi 1.0.2 juga mengirim nomor instalasi.",
+           "Sejak versi 1.0.2, pada setiap pemeriksaan aplikasi juga mengirim nomor instalasi."),
+    "hi": ("हर जाँच के साथ ऐप का संस्करण 1.0.2 एक इंस्टॉल नंबर भी भेजता है।",
+           "संस्करण 1.0.2 से ऐप हर जाँच के साथ एक इंस्टॉल नंबर भी भेजता है।"),
+    "ar": ("مع كل فحص، يرسل الإصدار 1.0.2 من التطبيق أيضًا رقم تثبيت.",
+           "بدءًا من الإصدار 1.0.2، يرسل التطبيق مع كل فحص أيضًا رقم تثبيت."),
+}
+
+
+@pytest.mark.parametrize("locale", sorted(INSTALL_NUMBER))
+def test_policy_may_not_pin_what_the_app_sends_to_one_version(locale: str) -> None:
+    pinned, since = INSTALL_NUMBER[locale]
+    assert _findings(locale, _policy(pinned))
+    assert not _findings(locale, _policy(since))
+
+
 def test_badge_may_not_call_the_server_verdict_blocking() -> None:
     assert _findings("ru", {"hero": {"badge": "{recall}% свежих фишинг-URL заблокированы (замерено)"}})
     assert _findings("en", {"hero": {"badge": "{recall}% of fresh phishing links blocked"}})
