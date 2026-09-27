@@ -20,6 +20,10 @@
 #             university     universities and research institutes
 #             short_name     a 2–4 letter registrable label (companies, banks,
 #                            media, universities, public bodies)
+#             brand_family   a Russian brand's own domain outside its main one
+#                            (data/typosquat_targets_ru.json 'official')
+#             brand_neighbour  a live site one letter or a word away from a
+#                            Russian brand's name, someone else's business
 #   source    where the name/owner pairing comes from: a Wikidata item whose
 #             official website (P856) is this host, data/benchmark_legit_ru.txt
 #             (hand-reviewed 2026-09-27), CT logs (crt.sh) for names under a
@@ -299,3 +303,45 @@ hh.ru | short_name | Wikidata Q4040469 P856 | HeadHunter
 1c.ru | short_name | Wikidata Q77202 P856 | 1С
 x5.ru | short_name | Wikidata Q258748 P856 | X5 Group
 5ka.ru | short_name | Wikidata Q1768969 P856 | Пятёрочка
+
+# ── Russian brands' neighbours (PR #62's second pass, 2026-09-27) ──
+gosuslugi26.ru | regional_gov | NS ns1.cit-sk.net, redirects to 26gosuslugi.ru | Портал госуслуг Ставропольского края
+51gosuslugi.ru | regional_gov | NS ns1.gov-murman.ru | Портал государственных и муниципальных услуг (Мурманская область)
+gosuslugi31.ru | regional_gov | NS ns1.belregion.ru | Региональный портал государственных и муниципальных услуг Белгородской области
+gosuslugi35.ru | regional_gov | er.gov35.ru/deyatelnost/gis/rpgu/ | Портал государственных услуг Вологодской области
+gosuslugi41.ru | regional_gov | itc.kamgov.ru/gosuslugi | Региональный портал услуг Камчатского края
+gosuslugi43.ru | regional_gov | page title | Региональный портал государственных услуг Кировской области
+44gosuslugi.ru | regional_gov | zags.adm44.ru/gosuslugi/ | Единый портал Костромской области
+gosuslugi46.ru | regional_gov | NS ns1.rkursk.ru | Региональный портал госуслуг Курской области
+gosuslugi65.ru | regional_gov | NS ns01.sakhalin.gov.ru | Портал госуслуг Сахалинской области
+gosuslugi68.ru | regional_gov | NS ns.tambov.gov.ru | Портал госуслуг Тамбовской области
+gosuslugi74.ru | regional_gov | korkino-raion.ru, regional social-security sites | ПГУ Челябинской области
+gosuslugi82.ru | regional_gov | NS ns1.krtech.ru (ГУП РК «Крымтехнологии») | Портал государственных услуг Республики Крым
+gosuslugi86.ru | regional_gov | app «Госуслуги Моя Югра» links new.gosuslugi86.ru | Портал госуслуг Югры
+gosuslugi92.ru | regional_gov | d-russia.ru | Госуслуги 92 (Севастополь)
+xn--90ab2c.xn--p1ai | brand_family | NS ns1.vtb.ru | втб.рф, Банк ВТБ
+mybeeline.ru | brand_family | NS ns1.beeline.ru | Билайн
+vtb-russia.ru | brand_family | NS ns1.vtb.ru | Банк ВТБ
+megafox.ru | brand_neighbour | page read 2026-09-27 | МегаФокс, a fur factory
+megason.ru | brand_neighbour | page read 2026-09-27 | orthopaedic mattresses
+megafor.ru | brand_neighbour | page read 2026-09-27 | exhaust systems, Yakutsk
+megafom.ru | brand_neighbour | page read 2026-09-27 | МЕГАФОМ, IT news
+tirkoff.ru | brand_neighbour | page read 2026-09-27 | furniture repair, Tyumen
+cinkoff.ru | brand_neighbour | page read 2026-09-27 | Цинкофф, roofing
+avico.ru | brand_neighbour | page read 2026-09-27 | АВИКО, 1C integrator, Volgograd
+aviko.ru | brand_neighbour | page read 2026-09-27 | Aviko Россия
+avido.ru | brand_neighbour | page read 2026-09-27 | project documentation
+avits.ru | brand_neighbour | page read 2026-09-27 | AVITS, freight
+aveto.ru | brand_neighbour | page read 2026-09-27 | Авето, shelving factory
+avisto.ru | brand_neighbour | page read 2026-09-27 | accounting services
+beelink.ru | brand_neighbour | page read 2026-09-27 | Beelink Russia, mini PCs
+bieline.ru | brand_neighbour | page read 2026-09-27 | BIE Line, sports management
+uralgib.ru | brand_neighbour | page read 2026-09-27 | Уралгиб, metalworking
+uralsi.ru | brand_neighbour | page read 2026-09-27 | industrial equipment dealer
+mallru.ru | brand_neighbour | page read 2026-09-27 | Торговые центры России
+pochtobank.ru | brand_neighbour | page read 2026-09-27 | АО АКИБ «Почтобанк»
+xn--d1achkm1a.xn--p1ai | brand_neighbour | page read 2026-09-27 | индекс.рф, Экспертный центр «ИНДЕКС»
+mtscom.ru | brand_neighbour | page read 2026-09-27 | food-industry equipment maker
+vkweb.ru | brand_neighbour | page read 2026-09-27 | VKWEB, a web studio
+tbani.ru | brand_neighbour | page read 2026-09-27 | Трехгорные Бани
+kosuslugi.ru | brand_neighbour | page read 2026-09-27 | Косуслуги, home repairs in Kostroma

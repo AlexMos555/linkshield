@@ -84,9 +84,13 @@ def test_a_rate_limited_legit_batch_publishes_nothing():
     assert public_stats.measured_false_positive_rate(report) is None
 
 
-def test_brand_count_comes_from_the_loaded_list():
-    from api.services.scoring import TYPOSQUAT_TARGETS
-    assert public_stats.brand_targets_monitored() == len(TYPOSQUAT_TARGETS)
+def test_brand_count_comes_from_the_loaded_lists():
+    """A Russian brand counts once, not once per spelling (sber, sberbank,
+    сбербанк are one bank)."""
+    from api.services.scoring import GLOBAL_TYPOSQUAT_TARGETS, RU_BRAND_GROUPS, TYPOSQUAT_TARGETS
+    assert RU_BRAND_GROUPS
+    assert public_stats.brand_targets_monitored() == len(GLOBAL_TYPOSQUAT_TARGETS) + len(RU_BRAND_GROUPS)
+    assert public_stats.brand_targets_monitored() < len(TYPOSQUAT_TARGETS)
 
 
 def test_blocklist_entries_is_read_live(stats, fake_redis):

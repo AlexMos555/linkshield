@@ -11,7 +11,8 @@
 # public suffixes — the CT log for nov.ru alone lists vk.nov.ru, mts.nov.ru,
 # ok.nov.ru and kinopoisk.nov.ru). Most do not exist; the scorer only reads
 # the name. Global brands are included as a control for the rules that
-# already know them.
+# already know them. The exceptions are 'reported' (named in a fraud
+# report) and 'observed' (found live, with what was on the page).
 #
 # Format — one host per line, fields separated by " | ":
 #   host     punycode for IDN (the scorer's input form)
@@ -26,6 +27,14 @@
 #                           persons' names), so vk.com.msk.ru reads as vk.com
 #            short_brand    a 3-4 letter global brand under another TLD or
 #                           with look-alike characters (control)
+#            reported       a phishing domain a fraud report names verbatim
+#                           (F6: cdek.nu …, yandex-doctavym.website …)
+#            observed       a live look-alike of a Russian brand found on
+#                           2026-09-27 by resolving every registered
+#                           <brand>.<TLD>, one-edit .ru and combo name; the
+#                           note says what was on it
+#            ru_com         the brand's .ru address bought under ru.com or
+#                           ru.net, zones anyone can register in
 #            known_miss     a typo the rule deliberately gives up — a 4-letter
 #                           omission of a 5-letter brand, two substitutions in
 #                           under 8 letters — listed so its loss is counted
@@ -47,7 +56,7 @@ tbamk.ru | typosquat | tbank.ru | m for n
 alfabamk.ru | typosquat | alfabank.ru | m for n
 alfabnak.ru | typosquat | alfabank.ru | transposition
 wildberies.ru | typosquat | wildberries.ru | omission
-wildberrise.ru | typosquat | wildberries.ru | transposition
+wildbreries.ru | typosquat | wildberries.ru | transposition (wildberrise.ru, listed until 2026-09-27, is WB's own)
 avitto.ru | typosquat | avito.ru | doubled letter
 yandeks.ru | typosquat | yandex.ru | phonetic
 yanbex.ru | typosquat | yandex.ru | substitution
@@ -172,6 +181,56 @@ dhll.com | short_brand | dhl.com | doubled letter
 1kea.com | short_brand | ikea.com | digit 1 for i
 eb4y.com | short_brand | ebay.com | digit 4 for a
 c1ti.com | short_brand | citi.com | digit 1 for i
+
+# ── Brands added with data/typosquat_targets_ru.json ──
+megaf0n.ru | homoglyph | megafon.ru | digit 0 for o
+bee1ine.ru | homoglyph | beeline.ru | digit 1 for l
+m7s.ru | homoglyph | mts.ru | digit 7 for t, a 3-letter brand
+gzprombank.ru | typosquat | gazprombank.ru | omission
+pchtabank.ru | typosquat | pochtabank.ru | omission
+sovkombank.xyz | typosquat | sovcombank.ru | k for c, risky TLD
+uralsb.ru | typosquat | uralsib.ru | omission
+rust0re.ru | homoglyph | rustore.ru | digit 0 for o
+russianpst.ru | typosquat | russianpost.ru | omission
+odnoklasniki.com | typosquat | ok.ru | omission
+wildberries.shop | short_brand | wildberries.ru | brand name under .shop (F6: 22% of H1 2026 phishing)
+ozon.pro | short_brand | ozon.ru | brand name under .pro (F6: 10%)
+xn--80abap1arsf.xn--p1acf | short_brand | sberbank.ru | сбербанк.рус, the Cyrillic name under another TLD
+
+# ── Named verbatim in fraud reports ──
+cdek.nu | reported | cdek.ru | F6, 'Охота на «Мамонта»' (2021)
+cdek.in | reported | cdek.ru | F6 (2021)
+cdek.at | reported | cdek.ru | F6 (2021)
+cdek-box.ru | reported | cdek.ru | F6 (2021)
+cdek-dostavka.info | reported | cdek.ru | F6 (2021)
+yandex-doctavym.website | reported | yandex.ru | F6 via CNews (2026-08-10), Яндекс Доставка fakes
+dostavka-y.website | reported | yandex.ru | F6 (2026)
+yandex-dostavkoy.website | reported | yandex.ru | F6 (2026)
+yandex-dostavkuy.website | reported | yandex.ru | F6 (2026)
+
+# ── Seen live, 2026-09-27 (PR #62's second false-positive pass) ──
+yandex.ru.com | observed | yandex.ru | behind Cloudflare's 'Suspected Phishing' interstitial
+pochtabank.ru.com | observed | pochtabank.ru | redirects to a gambling site
+russianpost.ru.com | observed | pochta.ru | redirects to a gambling site
+gosuslugi.ch | observed | gosuslugi.ru | titled 'Портал государственных услуг Российской Федерации', Swiss host
+gosuslugiq.ru | observed | gosuslugi.ru | 'Госуслуги Личный кабинет — Вход на Официальный сайт'
+gosuslugirus.ru | observed | gosuslugi.ru | the same title, behind Cloudflare
+sberbanc.ru | observed | sberbank.ru | 'СберБанк и СберБанк Онлайн'
+yinkoff.ru | observed | tinkoff.ru | 'Тинькофф Банк'
+thinkoff.ru | observed | tinkoff.ru | 'Т‑Банк — финансовые услуги для физических и юридических лиц' on shared hosting
+theozon.ru | observed | ozon.ru | an 'Authorization' page
+tbankapp.ru | observed | tbank.ru | 'T-Bank — Ввод ключа'
+vtb-team.ru | observed | vtb.ru | a copy of VTB's home page
+avito.site | observed | avito.ru | 'AVITA - Площадка объявлений'
+
+# ── The brand's .ru address under ru.com / ru.net, and the brand with its country ──
+gosuslugi.ru.com | ru_com | gosuslugi.ru | Cloudflare name servers
+sberbank.ru.com | ru_com | sberbank.ru | constructed
+ozon.ru.net | ru_com | ozon.ru | ru.net
+avito-ru.com | combosquat | avito.ru | brand + its country
+ozon-ru.com | combosquat | ozon.ru | brand + its country
+sberbank-ru.com | combosquat | sberbank.ru | brand + its country
+wildberries-ru.com | combosquat | wildberries.ru | brand + its country
 
 # ── Typos the rule gives up (counted, not expected to be caught) ──
 gmai.com | known_miss | gmail.com | omission: 4 letters, as dense as 'mail'
