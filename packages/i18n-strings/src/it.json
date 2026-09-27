@@ -1855,7 +1855,7 @@
       "network": {
         "title": "Ogni app",
         "desc": "Blocca i siti truffa conosciuti in quasi tutte le app — anche dentro WhatsApp",
-        "honesty": "Non può fermare i siti truffa appena nati, né le app che usano un proprio DNS privato",
+        "honesty": "Non può fermare i siti truffa appena nati, né le app che usano un proprio DNS privato, e non copre le app dell'elenco «App senza filtro» nelle Impostazioni",
         "state_on": "Attivo. Sta funzionando adesso.",
         "state_setup": "Si configura una volta sola, in circa un minuto.",
         "state_stopped": "Fermo. Per riattivarlo, tocca «{{button}}» qui sopra.",
@@ -1901,7 +1901,7 @@
       },
       "disclosure": {
         "title": "Come funziona lo scudo",
-        "body": "Cleanway crea una VPN locale sul telefono. È l'unico modo in cui Android permette a un'app di filtrare le richieste dei siti per tutte le altre.\n\n• L'elenco dei siti truffa noti resta sul telefono. I nomi si confrontano qui, non vengono inviati a noi.\n• Le richieste che non blocchiamo vanno al server DNS della tua rete, quello dell'operatore o del router, come senza Cleanway. Se non risponde, vanno a un resolver pubblico (Cloudflare o Quad9).\n• Nessun altro traffico viene letto, registrato o reindirizzato. Non è una VPN per la privacy e non nasconde la navigazione.\n• Le app che non funzionano con una VPN attiva (MAX, Gosuslugi, banche) passano fuori dallo scudo. L'elenco è nelle Impostazioni, dove puoi modificarlo.\n\nSe Android chiede di consentire la connessione, tocca «Ok».",
+        "body": "Cleanway crea una VPN locale sul telefono. È l'unico modo in cui Android permette a un'app di filtrare le richieste dei siti per tutte le altre.\n\n• L'elenco dei siti truffa noti resta sul telefono. I nomi si confrontano qui, non vengono inviati a noi.\n• Le richieste che non blocchiamo vanno al server DNS della tua rete, quello dell'operatore o del router, come senza Cleanway. Se non risponde, vanno a un resolver pubblico (Cloudflare o Quad9).\n• Nessun altro traffico viene letto, registrato o reindirizzato. Non è una VPN per la privacy e non nasconde la navigazione.\n• Le app che limitano il loro funzionamento con una VPN attiva, o potrebbero iniziare a farlo (MAX, Gosuslugi, banche), passano fuori dallo scudo: Cleanway non controlla i siti che si aprono al loro interno. L'elenco è nelle Impostazioni, dove puoi modificarlo.\n\nSe Android chiede di consentire la connessione, tocca «Ok».",
         "continue": "Continua",
         "cancel": "Non ora"
       },
@@ -2326,6 +2326,7 @@
       "linkguard_on_desc_no_list": "I link li controlliamo subito dopo l'apertura; la lista dei siti truffa arriva quando attivi la protezione «Ogni app».",
       "bypass": "App senza filtro",
       "bypass_note": "Queste app si collegano direttamente, senza passare dallo scudo: altrimenti ti chiedono di disattivare la VPN. Cleanway non controlla i siti che si aprono al loro interno (per esempio nel browser integrato di MAX o di una banca). I link che aprono nel tuo browser normale vengono controllati come sempre. Non funziona con tutte: alcune app notano comunque la VPN. L'elenco delle tue app non lascia il telefono.",
+      "bypass_note_empty": "Se un'app ti chiede di disattivare la VPN, puoi toglierla dallo scudo: Cleanway allora non controllerà i siti che si aprono al suo interno. L'elenco delle tue app non lascia il telefono.",
       "bypass_none": "Nessuna app passa fuori dallo scudo",
       "bypass_by_cleanway": "Aggiunta da Cleanway",
       "bypass_by_you": "Aggiunta da te",
@@ -2333,12 +2334,13 @@
       "bypass_remove_title": "Filtrare di nuovo «{{app}}»?",
       "bypass_remove_body": "Cleanway tornerà a controllare i siti che questa app apre. Se ti chiede di nuovo di disattivare la VPN, aggiungila di nuovo qui.",
       "bypass_add": "Un'app ti chiede di disattivare la VPN?",
-      "bypass_add_desc": "Sceglila: funzionerà e la protezione resta attiva",
+      "bypass_add_desc": "Sceglila: di solito basta. Le altre app restano protette",
       "bypass_failed": "Non è andata. Riprova."
     },
     "bypass": {
       "title": "App senza filtro",
-      "intro": "Tocca l'app che dice «Disattiva la VPN». Si collegherà direttamente, senza passare dallo scudo. Le altre app restano protette.",
+      "intro": "Tocca l'app che dice «Disattiva la VPN». Si collegherà direttamente, senza passare dallo scudo: di solito basta, ma non con tutte le app. Le altre app restano protette.",
+      "scam_warning": "Se al telefono qualcuno ti chiede di farlo, è una truffa. Scegli un'app solo se è lei stessa a dire «Disattiva la VPN».",
       "loading": "Cerco le app su questo telefono…",
       "failed": "Impossibile ottenere l'elenco delle app.",
       "empty": "Nessun'altra app trovata.",
@@ -2347,7 +2349,9 @@
       "browser_tag": "Browser",
       "confirm_title": "«{{app}}» senza filtro?",
       "confirm_body": "Cleanway non controllerà i siti che «{{app}}» apre al suo interno. Le altre app restano protette. Puoi riattivare il filtro nelle Impostazioni.",
-      "confirm_browser": "«{{app}}» è un browser. Senza filtro, Cleanway non controllerà i siti che apri al suo interno. Meglio di no.",
+      "browser_title": "«{{app}}» è un browser",
+      "browser_body": "Un browser non si può togliere dallo scudo: Cleanway non controllerebbe più i siti che apri al suo interno. Se al telefono qualcuno ti chiede di farlo, è una truffa. Se è il browser stesso a chiederti di disattivare la VPN, tocca «{{pause}}» nella scheda «{{tab}}»: una breve pausa finisce da sola.",
+      "browser_ok": "Ho capito",
       "confirm": "Sì, senza filtro",
       "cancel": "Annulla",
       "save_failed": "Impossibile salvare. Riprova."

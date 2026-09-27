@@ -182,6 +182,6 @@ export type BypassApp = {
   suggested: boolean;
   /** Kept out by Cleanway's default list, not by the person. */
   isDefault: boolean;
-  /** Opens ordinary web links — without the filter, browsing in it goes unchecked. */
+  /** Opens ordinary web links. Without the filter, browsing in it would go unchecked, so it is never taken off (canBypass). */
   isBrowser: boolean;
 };

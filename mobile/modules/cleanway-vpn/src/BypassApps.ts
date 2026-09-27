@@ -26,11 +26,22 @@ export function parseBypassApps(raw: unknown): BypassApp[] {
       icon: typeof r.icon === 'string' && r.icon.startsWith('data:image/') ? r.icon : null,
       suggested: r.suggested === true,
       isDefault: r.isDefault === true,
-      // Unknown means "treat as a browser": the warning is the safe side.
+      // Unknown means "treat as a browser": refusing it is the safe side (canBypass).
       isBrowser: r.isBrowser !== false,
     });
   }
   return out;
+}
+
+/**
+ * Can the person take [app] off the shield? Never a browser. Without the
+ * filter, every site opened in it would go unchecked. "Take Chrome off the
+ * protection" is also exactly what a scammer on the phone would ask for. An
+ * unknown flag already reads as "browser" (parseBypassApps), so doubt means
+ * no. The native excludeApp refuses browsers too.
+ */
+export function canBypass(app: BypassApp): boolean {
+  return !app.isBrowser;
 }
 
 /**

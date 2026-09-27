@@ -1855,7 +1855,7 @@
       "network": {
         "title": "Jede App",
         "desc": "Blockiert bekannte Betrugsseiten in fast jeder App – sogar in WhatsApp",
-        "honesty": "Erkennt brandneue Betrugsseiten nicht und wirkt nicht in Apps, die ihr eigenes privates DNS mitbringen",
+        "honesty": "Erkennt brandneue Betrugsseiten nicht, wirkt nicht in Apps, die ihr eigenes privates DNS mitbringen, und nicht in den Apps der Liste „Apps ohne Filter“ in den Einstellungen",
         "state_on": "An. Läuft gerade.",
         "state_setup": "Einmalige Einrichtung, dauert etwa eine Minute.",
         "state_stopped": "Beendet. Um ihn wieder einzuschalten, tippe oben auf „{{button}}“.",
@@ -1901,7 +1901,7 @@
       },
       "disclosure": {
         "title": "So funktioniert der Schutz",
-        "body": "Cleanway richtet ein lokales VPN auf deinem Handy ein. Nur so erlaubt Android einer App, Website-Abfragen für alle anderen Apps zu filtern.\n\n• Die Liste bekannter Betrugsseiten liegt auf deinem Handy. Namen werden hier abgeglichen, nicht an uns geschickt.\n• Abfragen, die wir nicht blockieren, gehen an den DNS-Server deines eigenen Netzes – den des Anbieters oder Routers, wie ohne Cleanway. Antwortet er nicht, gehen sie an einen öffentlichen Resolver (Cloudflare oder Quad9).\n• Kein anderer Datenverkehr wird gelesen, gespeichert oder umgeleitet. Es ist kein Privatsphäre-VPN und verbirgt dein Surfen nicht.\n• Apps, die mit eingeschaltetem VPN nicht funktionieren (MAX, Gosuslugi, Banken), laufen am Schutz vorbei. Die Liste steht in den Einstellungen, dort kannst du sie ändern.\n\nFragt Android, ob die Verbindung erlaubt werden soll, tippe auf „OK“.",
+        "body": "Cleanway richtet ein lokales VPN auf deinem Handy ein. Nur so erlaubt Android einer App, Website-Abfragen für alle anderen Apps zu filtern.\n\n• Die Liste bekannter Betrugsseiten liegt auf deinem Handy. Namen werden hier abgeglichen, nicht an uns geschickt.\n• Abfragen, die wir nicht blockieren, gehen an den DNS-Server deines eigenen Netzes – den des Anbieters oder Routers, wie ohne Cleanway. Antwortet er nicht, gehen sie an einen öffentlichen Resolver (Cloudflare oder Quad9).\n• Kein anderer Datenverkehr wird gelesen, gespeichert oder umgeleitet. Es ist kein Privatsphäre-VPN und verbirgt dein Surfen nicht.\n• Apps, die mit eingeschaltetem VPN nur eingeschränkt funktionieren oder das bald tun könnten (MAX, Gosuslugi, Banken), laufen am Schutz vorbei: Seiten, die sich in ihnen öffnen, prüft Cleanway nicht. Die Liste steht in den Einstellungen, dort kannst du sie ändern.\n\nFragt Android, ob die Verbindung erlaubt werden soll, tippe auf „OK“.",
         "continue": "Weiter",
         "cancel": "Jetzt nicht"
       },
@@ -2326,6 +2326,7 @@
       "linkguard_on_desc_no_list": "Links prüfen wir direkt nach dem Öffnen; die Liste der Betrugsseiten kommt, sobald du den Schutz „Jede App“ einschaltest.",
       "bypass": "Apps ohne Filter",
       "bypass_note": "Diese Apps verbinden sich direkt, am Schutz vorbei – sonst verlangen sie, dass du das VPN ausschaltest. Seiten, die sich in ihnen öffnen (zum Beispiel im eingebauten Browser von MAX oder einer Bank), prüft Cleanway nicht. Links, die sie in deinem normalen Browser öffnen, werden wie immer geprüft. Das hilft nicht bei jeder App: manche bemerken das VPN trotzdem. Die Liste deiner Apps verlässt das Handy nicht.",
+      "bypass_note_empty": "Wenn eine App verlangt, das VPN auszuschalten, kannst du sie vom Schutz ausnehmen: Seiten, die sich in ihr öffnen, prüft Cleanway dann nicht. Die Liste deiner Apps verlässt das Handy nicht.",
       "bypass_none": "Keine App läuft am Schutz vorbei",
       "bypass_by_cleanway": "Von Cleanway hinzugefügt",
       "bypass_by_you": "Von dir hinzugefügt",
@@ -2333,12 +2334,13 @@
       "bypass_remove_title": "„{{app}}“ wieder filtern?",
       "bypass_remove_body": "Cleanway prüft wieder die Seiten, die diese App öffnet. Wenn sie erneut verlangt, das VPN auszuschalten, füge sie hier wieder hinzu.",
       "bypass_add": "Eine App verlangt, das VPN auszuschalten?",
-      "bypass_add_desc": "Wähle sie aus: Sie funktioniert, und der Schutz bleibt an",
+      "bypass_add_desc": "Wähle sie aus – meistens hilft das. Alle anderen Apps bleiben geschützt",
       "bypass_failed": "Das hat nicht geklappt. Bitte versuche es noch einmal."
     },
     "bypass": {
       "title": "Apps ohne Filter",
-      "intro": "Tippe auf die App, die „Schalte das VPN aus“ anzeigt. Sie verbindet sich dann direkt, am Schutz vorbei. Alle anderen Apps bleiben geschützt.",
+      "intro": "Tippe auf die App, die „Schalte das VPN aus“ anzeigt. Sie verbindet sich dann direkt, am Schutz vorbei – meistens hilft das, aber nicht bei jeder App. Alle anderen Apps bleiben geschützt.",
+      "scam_warning": "Wenn dich jemand am Telefon darum bittet – das ist Betrug. Wähle eine App nur, wenn sie selbst „Schalte das VPN aus“ anzeigt.",
       "loading": "Apps auf diesem Handy werden gesucht…",
       "failed": "Die Liste der Apps konnte nicht geladen werden.",
       "empty": "Keine weiteren Apps gefunden.",
@@ -2347,7 +2349,9 @@
       "browser_tag": "Browser",
       "confirm_title": "„{{app}}“ ohne Filter?",
       "confirm_body": "Cleanway prüft die Seiten nicht, die „{{app}}“ in sich selbst öffnet. Alle anderen Apps bleiben geschützt. Den Filter kannst du in den Einstellungen wieder einschalten.",
-      "confirm_browser": "„{{app}}“ ist ein Browser. Ohne Filter prüft Cleanway die Seiten nicht, die du darin öffnest. Besser nicht.",
+      "browser_title": "„{{app}}“ ist ein Browser",
+      "browser_body": "Einen Browser kann man nicht vom Schutz ausnehmen: Sonst würde Cleanway die Seiten nicht prüfen, die du darin öffnest. Wenn dich jemand am Telefon darum bittet – das ist Betrug. Wenn der Browser selbst verlangt, das VPN auszuschalten, tippe im Tab „{{tab}}“ auf „{{pause}}“ – eine kurze Pause endet von selbst.",
+      "browser_ok": "Verstanden",
       "confirm": "Ja, ohne Filter",
       "cancel": "Abbrechen",
       "save_failed": "Speichern fehlgeschlagen. Bitte versuche es noch einmal."

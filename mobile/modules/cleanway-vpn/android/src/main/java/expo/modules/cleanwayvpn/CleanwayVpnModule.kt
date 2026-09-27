@@ -424,13 +424,23 @@ class CleanwayVpnModule : Module() {
 
     /**
      * Keep [pkg] out of the tunnel from now on. A running shield re-applies
-     * the list at once (a seamless re-establish). False for a malformed name,
-     * Cleanway itself, or a failed write.
+     * the list at once. That is a new VPN network, not a handover: the other
+     * apps are unfiltered for a few hundred ms
+     * (CleanwayVpnService.reapplyExclusions). False for a malformed name,
+     * Cleanway itself, a browser, or a failed write.
+     *
+     * A browser is refused here as well as in the picker. Without the filter,
+     * every site opened in it would go unchecked. "Take Chrome off the
+     * protection" is also exactly what a scammer on the phone would ask for.
      */
     AsyncFunction("excludeApp") { pkg: String ->
-      val ok = ai.cleanway.app.AppExclusions.add(context, pkg)
-      if (ok) CleanwayVpnService.instance?.reapplyExclusions()
-      ok
+      if (ai.cleanway.app.InstalledApps.isBrowser(context, pkg)) {
+        false
+      } else {
+        val ok = ai.cleanway.app.AppExclusions.add(context, pkg)
+        if (ok) CleanwayVpnService.instance?.reapplyExclusions()
+        ok
+      }
     }
 
     /** Put [pkg] back under the filter (a default or one the person added). False if not saved. */

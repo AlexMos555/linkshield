@@ -81,6 +81,13 @@ object InstalledApps {
             .map { describe(pm, it, known = it.packageName in known, isDefault = false, browsers = browsers) }
     }
 
+    /**
+     * Would excluding [pkg] unfilter browsing? The picker refuses these, and
+     * so does excludeApp: every site opened in a browser outside the tunnel
+     * would go unchecked.
+     */
+    fun isBrowser(context: Context, pkg: String): Boolean = pkg in browsers(context)
+
     private fun info(pm: PackageManager, pkg: String): ApplicationInfo? = try {
         pm.getApplicationInfo(pkg, 0)
     } catch (_: PackageManager.NameNotFoundException) {

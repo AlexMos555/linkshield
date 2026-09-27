@@ -412,8 +412,12 @@ export default function SettingsScreen() {
         // shield. The cost is said plainly: what they open inside themselves
         // is not checked. The last row is the way out when another app
         // complains — without it, the only fix a person finds is "turn
-        // Cleanway off".
-        <Section title={t("mobile.settings.bypass")} footnote={t("mobile.settings.bypass_note")}>
+        // Cleanway off". With nothing listed, the note says what the row
+        // would do instead of describing apps that are not there.
+        <Section
+          title={t("mobile.settings.bypass")}
+          footnote={t(bypass.length > 0 ? "mobile.settings.bypass_note" : "mobile.settings.bypass_note_empty")}
+        >
           {bypass.length === 0 ? (
             <Row first icon="shield-checkmark-outline" iconColor={colors.green} label={t("mobile.settings.bypass_none")} />
           ) : (

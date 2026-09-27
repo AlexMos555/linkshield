@@ -179,10 +179,11 @@ jobs:
 
       - name: Apps-without-the-filter row table test
         # Settings renders the native excludedApps()/pickableApps() rows: a
-        # row without a name must never be pickable blind, an unknown browser
-        # flag gets the stronger warning, and the picker never suggests a
-        # browser. The shipped list ↔ manifest <queries> pin is Kotlin
-        # (AppExclusionsTest), which runs in the dev sandbox, not here.
+        # row without a name must never be pickable blind, a browser (or an
+        # unknown browser flag) can never be taken off the shield, and the
+        # picker never suggests one. It also pins the shipped list against
+        # the manifest <queries>, here in CI; AppExclusionsTest (Kotlin) pins
+        # that and the rest of the native side in the dev sandbox.
         run: node mobile/scripts/test-bypass-apps.mjs
 
       - name: Message check verdict table test

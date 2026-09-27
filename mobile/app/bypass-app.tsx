@@ -6,7 +6,9 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
-import { pickableBypassApps, addBypassApp, groupPickable, type BypassApp } from "../modules/cleanway-vpn";
+import {
+  pickableBypassApps, addBypassApp, groupPickable, canBypass, type BypassApp,
+} from "../modules/cleanway-vpn";
 
 /**
  * "An app asks me to turn off the VPN" — pick it, and it runs outside the
@@ -14,9 +16,14 @@ import { pickableBypassApps, addBypassApp, groupPickable, type BypassApp } from 
  *
  * Apps known to ask come first; that is nearly always the one. The list is
  * the apps on this phone's home screen, read on the phone and never sent
- * anywhere. Choosing is behind a confirmation that says what it costs; a
- * browser gets a stronger one, because without the filter everything opened
- * in it goes unchecked.
+ * anywhere. Choosing is behind a confirmation that says what it costs.
+ *
+ * This is also a way to switch protection off, so it carries the pause
+ * sheet's warning: a request on the phone to do this IS the scam. A browser
+ * is refused outright (canBypass; the native excludeApp refuses it too).
+ * Without the filter, everything opened in it would go unchecked, and
+ * "take Chrome off the protection" is the scammer's version of this screen.
+ * The refusal points to the short pause instead, which ends by itself.
  */
 export default function BypassAppScreen() {
   const router = useRouter();
@@ -45,16 +52,23 @@ export default function BypassAppScreen() {
   }, [apps, i18n.language, t]);
 
   function confirm(app: BypassApp) {
+    if (!canBypass(app)) {
+      Alert.alert(
+        t("mobile.bypass.browser_title", { app: app.label }),
+        t("mobile.bypass.browser_body", {
+          pause: t("mobile.shield.status.pause_action"),
+          tab: t("mobile.tabs.shield"),
+        }),
+        [{ text: t("mobile.bypass.browser_ok") }],
+      );
+      return;
+    }
     Alert.alert(
       t("mobile.bypass.confirm_title", { app: app.label }),
-      t(app.isBrowser ? "mobile.bypass.confirm_browser" : "mobile.bypass.confirm_body", { app: app.label }),
+      t("mobile.bypass.confirm_body", { app: app.label }),
       [
         { text: t("mobile.bypass.cancel"), style: "cancel" },
-        {
-          text: t("mobile.bypass.confirm"),
-          style: app.isBrowser ? "destructive" : "default",
-          onPress: () => void save(app),
-        },
+        { text: t("mobile.bypass.confirm"), onPress: () => void save(app) },
       ],
     );
   }
@@ -87,7 +101,15 @@ export default function BypassAppScreen() {
       sections={sections}
       keyExtractor={(item) => item.package}
       stickySectionHeadersEnabled={false}
-      ListHeaderComponent={<Text style={s.intro}>{t("mobile.bypass.intro")}</Text>}
+      ListHeaderComponent={
+        <>
+          <View style={s.warning}>
+            <Ionicons name="call-outline" size={20} color={colors.amber} />
+            <Text style={s.warningText}>{t("mobile.bypass.scam_warning")}</Text>
+          </View>
+          <Text style={s.intro}>{t("mobile.bypass.intro")}</Text>
+        </>
+      }
       ListEmptyComponent={
         <Text style={s.muted}>{t(apps === null ? "mobile.bypass.failed" : "mobile.bypass.empty")}</Text>
       }
@@ -120,6 +142,13 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: "center", justifyContent: "center", gap: space.md },
   content: { paddingHorizontal: space.xl, paddingTop: space.lg, paddingBottom: 100 },
+  // Same look as the pause sheet's warning: the same scam, the same words.
+  warning: {
+    flexDirection: "row", alignItems: "flex-start", gap: space.sm,
+    backgroundColor: colors.amberWash, borderWidth: 1, borderColor: colors.amberStroke,
+    borderRadius: radius.control, padding: space.md, marginBottom: space.lg,
+  },
+  warningText: { fontSize: 17, lineHeight: 24, fontWeight: "600", color: colors.amber, flex: 1 },
   intro: { ...typo.body, color: colors.textPrimary, marginBottom: space.sm },
   muted: { ...typo.body, color: colors.textSecondary, marginTop: space.lg, textAlign: "center" },
   sectionTitle: { ...sectionHeader, marginTop: space.xxl, marginBottom: space.sm, marginLeft: space.xs },

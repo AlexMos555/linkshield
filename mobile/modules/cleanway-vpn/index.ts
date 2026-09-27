@@ -34,7 +34,7 @@ import type {
   MessageVerdict,
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
-import { groupPickable, parseBypassApps } from './src/BypassApps';
+import { canBypass, groupPickable, parseBypassApps } from './src/BypassApps';
 
 export type {
   BlocklistStatus,
@@ -57,7 +57,7 @@ export type {
   MessageReason,
   MessageVerdict,
 };
-export { MESSAGE_REASONS, groupPickable };
+export { MESSAGE_REASONS, canBypass, groupPickable };
 
 /**
  * Longest text the native check reads (MessageAnalyzer.MAX_CHARS). Longer
@@ -632,7 +632,10 @@ export async function pickableBypassApps(): Promise<BypassApp[] | null> {
   }
 }
 
-/** Keep an app out of the tunnel; a running shield applies it at once. False if it was not saved. */
+/**
+ * Keep an app out of the tunnel; a running shield applies it at once. False
+ * if it was not saved — the native side also refuses a browser (canBypass).
+ */
 export async function addBypassApp(pkg: string): Promise<boolean> {
   try {
     return (await CleanwayVpn.excludeApp?.(pkg)) === true;

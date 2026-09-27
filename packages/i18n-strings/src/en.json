@@ -1797,7 +1797,7 @@
       "network": {
         "title": "Every app",
         "desc": "Blocks known scam sites in almost every app — even inside WhatsApp",
-        "honesty": "Can't catch brand-new scam sites, or apps that bring their own private DNS",
+        "honesty": "Can't catch brand-new scam sites, or apps that bring their own private DNS, and doesn't cover apps on the “Apps without the filter” list in Settings",
         "state_on": "On. Working right now.",
         "state_setup": "One-time setup, about a minute.",
         "state_stopped": "Stopped. To turn it back on, tap \"{{button}}\" above.",
@@ -1843,7 +1843,7 @@
       },
       "disclosure": {
         "title": "How the shield works",
-        "body": "Cleanway sets up a local VPN on your phone. That is how Android lets an app filter website lookups for every other app.\n\n• The list of known scam sites is stored on your phone. Website names are matched here, not sent to us.\n• Lookups we don't block go to your network's own DNS server — your operator's or your router's, as they do without Cleanway. If it doesn't answer, they go to a public resolver (Cloudflare or Quad9).\n• No other traffic is read, recorded or redirected. It is not a privacy VPN and does not hide your browsing.\n• Apps that refuse to work while a VPN is on (MAX, Gosuslugi, banks) run past the shield. The list is in Settings, where you can change it.\n\nIf Android asks you to allow the connection, tap \"OK\".",
+        "body": "Cleanway sets up a local VPN on your phone. That is how Android lets an app filter website lookups for every other app.\n\n• The list of known scam sites is stored on your phone. Website names are matched here, not sent to us.\n• Lookups we don't block go to your network's own DNS server — your operator's or your router's, as they do without Cleanway. If it doesn't answer, they go to a public resolver (Cloudflare or Quad9).\n• No other traffic is read, recorded or redirected. It is not a privacy VPN and does not hide your browsing.\n• Apps that limit what you can do while a VPN is on, or may start to (MAX, Gosuslugi, banks), run past the shield: Cleanway doesn't check the sites that open inside them. The list is in Settings, where you can change it.\n\nIf Android asks you to allow the connection, tap \"OK\".",
         "continue": "Continue",
         "cancel": "Not now"
       },
@@ -2268,6 +2268,7 @@
       "linkguard_on_desc_no_list": "Links are checked right after they open; the list of scam sites arrives once you turn on the “All apps” shield.",
       "bypass": "Apps without the filter",
       "bypass_note": "These apps connect directly, past the shield — otherwise they ask you to turn off the VPN. Sites that open inside them (for example in MAX's or a bank's built-in browser) are not checked by Cleanway. Links they open in your normal browser are checked as usual. It doesn't help with every app: some still notice the VPN. The list of your apps never leaves the phone.",
+      "bypass_note_empty": "If an app asks you to turn off the VPN, you can take it off the shield: Cleanway then won't check the sites that open inside it. The list of your apps never leaves the phone.",
       "bypass_none": "No app runs past the shield",
       "bypass_by_cleanway": "Added by Cleanway",
       "bypass_by_you": "Added by you",
@@ -2275,12 +2276,13 @@
       "bypass_remove_title": "Filter “{{app}}” again?",
       "bypass_remove_body": "Cleanway will check the sites this app opens again. If it asks you to turn off the VPN again, add it back here.",
       "bypass_add": "An app asks you to turn off the VPN?",
-      "bypass_add_desc": "Pick it: it will work, and protection stays on",
+      "bypass_add_desc": "Pick it — it usually helps. Other apps stay protected",
       "bypass_failed": "That didn't work. Please try again."
     },
     "bypass": {
       "title": "Apps without the filter",
-      "intro": "Tap the app that says “Turn off the VPN”. It will connect directly, past the shield. All other apps stay protected.",
+      "intro": "Tap the app that says “Turn off the VPN”. It will connect directly, past the shield — that usually helps, but not with every app. All other apps stay protected.",
+      "scam_warning": "If someone on the phone asks you to do this, it's a scam. Only pick an app that itself says “Turn off the VPN”.",
       "loading": "Looking for apps on this phone…",
       "failed": "Couldn't get the list of apps.",
       "empty": "No other apps found.",
@@ -2289,7 +2291,9 @@
       "browser_tag": "Browser",
       "confirm_title": "“{{app}}” without the filter?",
       "confirm_body": "Cleanway won't check the sites “{{app}}” opens inside itself. All other apps stay protected. You can turn the filter back on in Settings.",
-      "confirm_browser": "“{{app}}” is a browser. Without the filter, Cleanway won't check the sites you open in it. Better not to.",
+      "browser_title": "“{{app}}” is a browser",
+      "browser_body": "A browser can't be taken off the shield: Cleanway would then not check the sites you open in it. If someone on the phone asks you to do this, it's a scam. If the browser itself asks you to turn off the VPN, tap “{{pause}}” on the {{tab}} tab — a short pause ends by itself.",
+      "browser_ok": "Got it",
       "confirm": "Yes, no filter",
       "cancel": "Cancel",
       "save_failed": "Couldn't save. Please try again."

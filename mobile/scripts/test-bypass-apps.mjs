@@ -6,9 +6,10 @@
  * "Apps without the filter" shows native rows the JS never made (the bundle
  * and the APK ship separately). Pinned here: a row without a package or a
  * name is dropped rather than shown as a blank the person could pick blindly;
- * an unknown browser flag reads as "browser" so the stronger warning is the
- * default; a non-image icon is not rendered; and the picker lists apps known
- * to ask for the VPN to be turned off first — but never a browser there.
+ * an unknown browser flag reads as "browser", so doubt means refusal; a
+ * browser can never be taken off the shield; a non-image icon is not
+ * rendered; and the picker lists apps known to ask for the VPN to be turned
+ * off first — but never a browser there.
  * Same approach as test-message-analysis.mjs: compile the one file with the
  * tree's TypeScript and run the table for real.
  */
@@ -33,7 +34,7 @@ try {
     { cwd: resolve(here, ".."), stdio: "inherit" },
   );
 
-  const { parseBypassApps, groupPickable } = await import(pathToFileURL(join(out, "BypassApps.js")).href);
+  const { parseBypassApps, groupPickable, canBypass } = await import(pathToFileURL(join(out, "BypassApps.js")).href);
 
   const PARSE = [
     ["a complete row passes through", [max], [max]],
@@ -44,7 +45,7 @@ try {
     ["a repeated package appears once", [max, { ...max, label: "MAX copy" }], [max]],
     ["a non-image icon is not rendered", [{ ...max, icon: "https://evil.example/x.png" }], [{ ...max, icon: null }]],
     [
-      "an unknown browser flag reads as a browser (the stronger warning)",
+      "an unknown browser flag reads as a browser (refused)",
       [{ package: "com.example.app", label: "App" }],
       [{ package: "com.example.app", label: "App", icon: null, suggested: false, isDefault: false, isBrowser: true }],
     ],
@@ -76,6 +77,13 @@ try {
     ["nothing known installed: one plain list", [calc, bank], "ru", { suggested: [], others: [bank, calc] }],
   ];
 
+  const CAN = [
+    ["an ordinary app can be taken off the shield", ozon, true],
+    ["a browser never can", chrome, false],
+    ["nor a browser that is on the suggestion list", yabro, false],
+    ["nor an app whose browser flag the native side did not send", parseBypassApps([{ package: "com.example.app", label: "App" }])[0], false],
+  ];
+
   let failed = 0;
   const check = (name, got, want) => {
     let ok = true;
@@ -89,6 +97,7 @@ try {
   };
   for (const [name, input, want] of PARSE) check(name, parseBypassApps(input), want);
   for (const [name, input, locale, want] of GROUP) check(name, groupPickable(input, locale), want);
+  for (const [name, input, want] of CAN) check(name, canBypass(input), want);
 
   // The shipped list (a hand-edited asset) and the manifest's <queries> must
   // name the same packages: a package the shield cannot see reads as "not
@@ -115,7 +124,7 @@ try {
   ];
   for (const [name, got, want] of DATA) check(name, got, want);
 
-  const total = PARSE.length + GROUP.length + DATA.length;
+  const total = PARSE.length + GROUP.length + CAN.length + DATA.length;
   console.log(failed === 0 ? `\nall ${total} cases pass` : `\n${failed} FAILED`);
   process.exit(failed === 0 ? 0 : 1);
 } finally {
