@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "what": "Russian brands for the typosquat rule (api/services/scoring.py _check_typosquatting_v2), loaded by api/services/ru_brands.py. Format and fields: that module's docstring. Every domain below was checked on 2026-09-27 (the second pass after PR #62's review too): its name servers against the brand's own, where http:// lands, the page title, and the registry's whois or Wikidata (P856, official website) where DNS alone was not proof.",
+    "what": "Russian brands for the typosquat rule (api/services/scoring.py _check_typosquatting_v2), loaded by api/services/ru_brands.py. Format and fields: that module's docstring. Every domain below was checked on 2026-09-27 (the second pass after PR #62's review too): its name servers against the brand's own, where http:// lands, the page title, and the registry's whois or Wikidata (P856, official website) where DNS alone was not proof. Typo-shaped domains a brand holds (yandx.ru, wildberrise.ru) are listed only on the brand's own name servers, and are the first to recheck: a lapsed one is a squatter's.",
     "selection": "A brand is here when a 2025-26 fraud report names it, or names its category (banks, government services, telecom operators, delivery services) and it is among that category's largest in Russia. Names are the brand's Latin spelling, its short form where people use one (sber, tbank), and the Cyrillic name when that name is not an ordinary word.",
     "sources": {
       "cbr_2025": "Bank of Russia, 'Обзор операций, совершенных без добровольного согласия клиентов финансовых организаций', 2025 (cbr.ru/analytics/ib/operations_survey/2025/): 37,416 resources restricted on the Bank's information; 43% were phishing sites copying the names of well-known banks and investment companies; the largest thefts combined social engineering with phishing copies of commercial organisations', federal bodies' and government services' sites.",
@@ -47,7 +47,8 @@
         "sber.com": "NS ns1.sberbank.ru",
         "sber.me": "NS ns1.sberbank.ru",
         "sber.cn": "NS ns1.sberbank.ru",
-        "sberbank.su": "NS ns1.sberbank.ru"
+        "sberbank.su": "NS ns1.sberbank.ru",
+        "sberbank1.ru": "NS ns1.sberbank.ru"
       },
       "unrelated": {
         "bser.io": "registrant organization NimbleNeuron (Eternal Return: Black Survival), whois 2026-09-27",
@@ -245,7 +246,8 @@
         "sovcombank.it": "NS ns-a/ns-b.sovcombank.ru (Совкомбанк Технологии)",
         "sovkombank.ru": "NS ns-a/ns-b.sovcombank.ru",
         "совкомбанк.рф": "NS ns-a.sovcombank.ru",
-        "sovcombank.info": "NS ns-a.sovcombank.ru"
+        "sovcombank.info": "NS ns-a.sovcombank.ru",
+        "sovcombnk.ru": "NS ns-a.sovcombank.ru (a typo Sovcombank holds)"
       }
     },
     "ozon": {
@@ -274,7 +276,7 @@
         "ozon.tj": "NS ns1.ozon.ru / nsz501s1.ozon.ru",
         "ozon.uz": "NS ns1.ozon.ru / nsz501s1.ozon.ru",
         "ozonru.com": "NS ns1.ozon.ru / nsz501s1.ozon.ru",
-      "ozonru.me": "NS nsz501s1.ozon.ru (Tranco top-100k)",
+        "ozonru.me": "NS nsz501s1.ozon.ru (Tranco top-100k)",
         "ozonteam.ru": "NS nsz501s1.ozon.ru"
       },
       "unrelated": {
@@ -323,7 +325,12 @@
         "wildberries.pl": "NS ns1.wildberries.ru",
         "wildberries.si": "NS ns1.wildberries.ru",
         "wildberries.su": "NS ns1.wildberries.ru",
-        "wildberries.tm": "NS ns1.wildberries.ru"
+        "wildberries.tm": "NS ns1.wildberries.ru",
+        "weildberries.ru": "NS ns1.wildberries.ru (a typo WB holds)",
+        "wildbarries.ru": "NS ns1.wildberries.ru (a typo WB holds)",
+        "wildbeeries.ru": "NS ns1.wildberries.ru (a typo WB holds)",
+        "wildberriess.ru": "NS ns1.wildberries.ru (a typo WB holds)",
+        "wildberrise.ru": "NS ns1.wildberries.ru (a typo WB holds)"
       },
       "shared_name": {
         "wildberries": "an English phrase: wildberries.com (a US grocer since 1996, Tranco #584,858), wildberries.se, wildberries.no, wildberries.dk"
@@ -432,7 +439,11 @@
         "yandex.tech": "NS ns3.yandex.ru",
         "yandex.travel": "NS ns3.yandex.ru, redirects to travel.yandex.ru",
         "yandex.app": "registered at SafeNames, the corporate registrar yandex.net itself is held at; the page is SafeNames' holding page",
-        "яндекс.дети": "NS ns1.yandex.ru"
+        "яндекс.дети": "NS ns1.yandex.ru",
+        "2yandex.ru": "NS ns1.yandex.net (a typo Yandex holds)",
+        "yandes.ru": "NS ns1.yandex.ru (a typo Yandex holds)",
+        "yandfex.ru": "NS ns1.yandex.ru (a typo Yandex holds)",
+        "yandx.ru": "NS ns1.yandex.ru (a typo Yandex holds)"
       },
       "unrelated": {
         "candex.com": "Candex, procurement software",
@@ -484,7 +495,10 @@
         "mailru.su": "NS ns1.mail.ru",
         "vkontakte.ua": "NS ns1.vkontakte.ru",
         "vkontakte.com": "NS ns1.vkontakte.ru",
-        "vkteam.com": "NS ns1.mail.ru"
+        "vkteam.com": "NS ns1.mail.ru",
+        "smailru.ru": "NS ns1.mail.ru",
+        "vcontakte.ru": "NS ns1.vkontakte.ru (a typo VK holds)",
+        "vkontacte.ru": "NS ns1.vkontakte.ru (a typo VK holds)"
       },
       "unrelated": {
         "ruscore.ru": "football and hockey results, under its own name",

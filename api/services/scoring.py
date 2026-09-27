@@ -2062,12 +2062,13 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
     if base in _BRAND_LEGIT_DOMAINS:
         return None
     name = base.split(".")[0].lower()
-    # A listed brand's own .ru address with .com after it: yandex.ru.com,
-    # mail.ru.com, vk.ru.com (a name too short for the rest of the rule).
-    if zone_name and f"{name}.ru" in _BRAND_OFFICIAL_DOMAINS:
-        return (f"{name}.ru", "TLD confusion")
+    # A brand's own .ru address with .com after it: yandex.ru.com,
+    # mail.ru.com, vk.ru.com (vk: too short for the rest of the rule). Reported
+    # when the name imitates no brand itself — yandx.ru is Yandex's typo
+    # registration, and yandx.ru.com a typo of yandex.ru.
+    zone_site = (f"{name}.ru", "TLD confusion") if zone_name and f"{name}.ru" in _BRAND_OFFICIAL_DOMAINS else None
     if len(name) < _TYPOSQUAT_MIN_LABEL:
-        return None
+        return zone_site
     tld = _extract_tld(domain)
     # TLD confusion is the brand's own name directly under another TLD
     # (paypal.co). A brand name registered under a Russian zone
@@ -2096,7 +2097,7 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
         if method:
             return (legit_domain, method)
 
-    return None
+    return zone_site
 
 
 def _imitates(ch: str, letter: str) -> bool:

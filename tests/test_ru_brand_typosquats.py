@@ -397,13 +397,14 @@ def test_combos_that_still_count(host, site):
     # zones anyone can register in (PSL private suffixes).
     ("yandex.ru.com", "yandex.ru"), ("gosuslugi.ru.com", "gosuslugi.ru"), ("sberbank.ru.com", "sberbank.ru"),
     ("mail.ru.com", "mail.ru"), ("vk.ru.com", "vk.ru"), ("mts.ru.net", "mts.ru"), ("ozon.ru.net", "ozon.ru"),
-    ("login.yandex.ru.com", "yandex.ru"),
+    ("login.yandex.ru.com", "yandex.ru"), ("ya.ru.net", "ya.ru"),
 ])
 def test_a_brand_s_address_under_ru_com_is_tld_confusion(host, site):
     assert _typo(host) == (site, "TLD confusion")
 
 
 def test_ru_com_names_are_compared_like_any_name(no_ml):
+    # yandx.ru is a typo Yandex holds; under ru.com the name is a typo of yandex.ru.
     assert _typo("yandx.ru.com") == ("yandex.ru", "high similarity")
     # A global brand there is still brand_subdomain_abuse's, as before.
     assert _typo("paypal.ru.com") is None
@@ -499,7 +500,7 @@ def _eval_module():
 _CAUGHT_NOW = {
     "sberbamk.ru", "sbrebank.ru", "sberbnk.ru", "gosuslgi.ru", "gossuslugi.ru", "gosuslugii.ru",
     "gosusluga.ru", "tinkof.ru", "tinkkoff.ru", "tbamk.ru", "alfabamk.ru", "alfabnak.ru",
-    "wildberies.ru", "wildberrise.ru", "avitto.ru", "yanbex.ru", "g0suslugi.ru", "t1nkoff.ru",
+    "wildberies.ru", "wildbreries.ru", "avitto.ru", "yanbex.ru", "g0suslugi.ru", "t1nkoff.ru",
     "0zon.ru", "av1to.ru", "wi1dberries.ru", "vvildberries.ru", "gosuslugi-verify.com",
     "tbank-login.ru", "alfabank-secure.net", "megaf0n.ru", "bee1ine.ru", "m7s.ru", "gzprombank.ru",
     "pchtabank.ru", "uralsb.ru", "rust0re.ru", "russianpst.ru", "odnoklasniki.com",
