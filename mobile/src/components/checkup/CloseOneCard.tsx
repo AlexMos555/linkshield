@@ -18,6 +18,10 @@ import { CallButton } from "./CallCloseOneButton";
  * The number stays in this phone's secure storage and goes nowhere. This is
  * the one family step the app can see, so its "done" is the saved number
  * itself rather than a mark.
+ *
+ * The warning screens send the person to this number, so "save my number as
+ * your grandson's" is a scam worth guarding against: replacing a saved
+ * number needs a confirm that shows the old and the new one side by side.
  */
 export function CloseOneCard({ state }: { state: CloseOneState }) {
   const { t } = useTranslation();
@@ -25,7 +29,7 @@ export function CloseOneCard({ state }: { state: CloseOneState }) {
   const [error, setError] = useState<string | null>(null);
   const saved = state.contact;
 
-  async function persist(contact: CloseOne): Promise<void> {
+  async function save(contact: CloseOne): Promise<void> {
     if (await state.save(contact)) {
       setEditing(false);
       setError(null);
@@ -34,11 +38,34 @@ export function CloseOneCard({ state }: { state: CloseOneState }) {
     }
   }
 
+  function persist(contact: CloseOne): void {
+    if (!saved || saved.number === contact.number) {
+      void save(contact);
+      return;
+    }
+    Alert.alert(
+      t("mobile.checkup.call.change_title"),
+      t("mobile.checkup.call.change_body", { old: describe(saved), next: describe(contact) }),
+      [
+        { text: t("mobile.checkup.call.cancel"), style: "cancel" },
+        { text: t("mobile.checkup.call.change_confirm"), onPress: () => void save(contact) },
+      ],
+    );
+  }
+
   async function pick(): Promise<void> {
-    const picked = await pickContactPhone();
-    if (!picked) return; // backed out of the picker — nothing to say
-    const contact = makeCloseOne(picked.name, picked.number);
-    if (contact) await persist(contact);
+    const result = await pickContactPhone();
+    if (!result.picked) {
+      // Backed out: nothing to say. No number to be had: say so, and open
+      // the form so it can be typed straight away.
+      if (result.reason === "failed") {
+        setEditing(true);
+        setError("mobile.checkup.call.pick_failed");
+      }
+      return;
+    }
+    const contact = makeCloseOne(result.name, result.number);
+    if (contact) persist(contact);
     else setError("mobile.checkup.call.pick_invalid");
   }
 
@@ -69,7 +96,7 @@ export function CloseOneCard({ state }: { state: CloseOneState }) {
         <TypedNumberForm
           initial={saved}
           onPick={isContactPickerSupported() ? () => void pick() : undefined}
-          onSave={(contact) => void persist(contact)}
+          onSave={persist}
           onInvalid={() => setError("mobile.checkup.call.invalid")}
           onCancel={() => { setEditing(false); setError(null); }}
         />
@@ -129,6 +156,7 @@ function TypedNumberForm({ initial, onPick, onSave, onInvalid, onCancel }: FormP
 
   return (
     <View style={s.block}>
+      {initial && <Text style={s.warning}>{t("mobile.checkup.call.change_warning")}</Text>}
       {onPick && <Button label={t("mobile.checkup.call.pick")} icon="person-circle-outline" onPress={onPick} />}
       <Text style={s.fieldLabel}>{t("mobile.checkup.call.number_label")}</Text>
       <TextInput
@@ -153,6 +181,12 @@ function TypedNumberForm({ initial, onPick, onSave, onInvalid, onCancel }: FormP
       <Button label={t("mobile.checkup.call.cancel")} onPress={onCancel} />
     </View>
   );
+}
+
+/** The contact as the "replace it?" question names it: "Саша, +7 916 123-45-67". */
+function describe(contact: CloseOne): string {
+  const number = formatPhone(contact.number);
+  return contact.name ? `${contact.name}, ${number}` : number;
 }
 
 interface ButtonProps {
@@ -226,6 +260,7 @@ const s = StyleSheet.create({
   },
   secondaryLabel: { fontSize: 17, fontWeight: "600", color: colors.textPrimary, textAlign: "center" },
 
+  warning: { fontSize: 15, lineHeight: 21, fontWeight: "600", color: colors.amber, marginBottom: space.xs },
   error: { fontSize: 15, lineHeight: 21, color: colors.amber, marginTop: space.sm },
   noteRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: space.md },
   note: { fontSize: 13, lineHeight: 18, color: colors.textSecondary, flex: 1 },

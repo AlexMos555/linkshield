@@ -12,7 +12,7 @@ export const LIST_CANARY_DOMAIN = 'list-canary.cleanway.ai';
 /** Overall probe deadline and the poll cadence within it. */
 const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
-import type { BlocklistStatus, DomainBlockedPayload, PickedContact, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource } from './src/CleanwayVpn.types';
+import type { BlocklistStatus, DomainBlockedPayload, PickContactResult, PickedContact, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource } from './src/CleanwayVpn.types';
 import type {
   MessageAnalysis,
   MessageAnalysisResult,
@@ -24,7 +24,7 @@ import type {
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
 
-export type { BlocklistStatus, DomainBlockedPayload, PickedContact, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource };
+export type { BlocklistStatus, DomainBlockedPayload, PickContactResult, PickedContact, VpnStoppedPayload, ShieldBlockEntry, ShieldBlockKind, ShieldBlockSource };
 export type {
   MessageAnalysis,
   MessageAnalysisResult,
@@ -592,23 +592,33 @@ export function isContactPickerSupported(): boolean {
   }
 }
 
+const PICK_CANCELLED: PickContactResult = { picked: false, reason: 'cancelled' };
+const PICK_FAILED: PickContactResult = { picked: false, reason: 'failed' };
+
 /**
- * The system contact picker: the chosen row's name and number, or null when
- * the person backed out. No contacts permission — the picker hands over the
- * one row that was chosen, and nothing else is read.
+ * The system contact picker: the chosen row's name and number; "cancelled"
+ * when the person backed out; "failed" when no number could be had (no
+ * picker, a row the picker would not let us read) — which the screen says,
+ * instead of treating it as backing out. No contacts permission — the picker
+ * hands over the one row that was chosen, and nothing else is read.
  */
-export async function pickContactPhone(): Promise<PickedContact | null> {
-  if (!isContactPickerSupported()) return null;
+export async function pickContactPhone(): Promise<PickContactResult> {
+  if (!isContactPickerSupported()) return PICK_FAILED;
+  let raw: unknown;
   try {
-    const picked = await CleanwayVpn.pickContactPhone?.();
-    if (!picked || typeof picked !== 'object') return null;
-    return {
-      name: typeof picked.name === 'string' ? picked.name : null,
-      number: typeof picked.number === 'string' ? picked.number : null,
-    };
-  } catch {
-    return null;
+    raw = await CleanwayVpn.pickContactPhone?.();
+  } catch (e) {
+    // A second tap while the picker is open: the first call will answer.
+    return (e as { code?: unknown } | null)?.code === 'E_PICK_IN_PROGRESS' ? PICK_CANCELLED : PICK_FAILED;
   }
+  if (raw === null || raw === undefined) return PICK_CANCELLED;
+  if (typeof raw !== 'object' || 'error' in raw) return PICK_FAILED;
+  const { name, number } = raw as { name?: unknown; number?: unknown };
+  return {
+    picked: true,
+    name: typeof name === 'string' ? name : null,
+    number: typeof number === 'string' ? number : null,
+  };
 }
 
 /**

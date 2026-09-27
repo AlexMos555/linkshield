@@ -83,8 +83,8 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   openAppSettings?(): boolean;
   /** Open the system list "Install unknown apps". */
   openUnknownAppSources?(): boolean;
-  /** System contact picker: the chosen row's name and number, or null. */
-  pickContactPhone?(): Promise<PickedContact | null>;
+  /** System contact picker: the chosen row's name and number, null if backed out, {error} if none could be had. */
+  pickContactPhone?(): Promise<PickedContact | { error: string } | null>;
   /** Open the dialer with this number filled in (ACTION_DIAL). False if not dialable. */
   dialNumber?(number: string): boolean;
 }
