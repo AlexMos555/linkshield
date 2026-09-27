@@ -21,7 +21,8 @@ import java.util.concurrent.ConcurrentHashMap
  * tunnel runs over.
  *
  * [onChange] runs on the ConnectivityManager's thread, only when the answer
- * actually changes (another network, or other servers).
+ * actually changes: another network, other servers, or Android confirming
+ * (or no longer confirming) that the network reaches the internet.
  */
 class UnderlyingNetworks(
     context: Context,

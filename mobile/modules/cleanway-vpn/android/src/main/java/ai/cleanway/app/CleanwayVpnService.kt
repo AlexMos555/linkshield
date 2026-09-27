@@ -291,11 +291,12 @@ class CleanwayVpnService : VpnService() {
             val previous = upstreamNetwork
             upstreamNetwork = network
             breaker.reset(Transport.NETWORK)
-            Log.i(TAG, "network_dns " + (network?.let { "kind=${it.kind} servers=${it.servers.size}" } ?: "none — public resolvers only"))
-            // Back online, or onto another network: a list fetch that failed
-            // for want of a connection is retried now, not hours later.
-            if (network != null && network.handle != previous?.handle) {
-                blocklistSync?.onNetworkArrived(syncExecutor)
+            Log.i(TAG, "network_dns " + (network?.let { "kind=${it.kind} servers=${it.servers.size} validated=${it.validated}" } ?: "none — public resolvers only"))
+            // Back online, onto another network, or the network has just been
+            // confirmed to reach the internet: a list fetch that failed for
+            // want of a connection is retried now, not hours later.
+            if (network != null && UnderlyingDns.isArrival(previous, network)) {
+                blocklistSync?.onNetworkArrived(syncExecutor, network.validated)
             }
         }.also { it.start() }
 
@@ -865,10 +866,10 @@ class CleanwayVpnService : VpnService() {
                         false
                     }
                 },
-                // Doze-proof recurring cadence (see BlocklistAlarm), armed from
-                // each attempt's result: 6h after a good fetch, 5/15/60 min
-                // after a failed one.
-                onAttempted = { delayMs -> if (running) BlocklistAlarm.schedule(this, delayMs) },
+                // Doze-proof recurring cadence (see BlocklistAlarm), armed around
+                // each attempt: the failure step while it runs, then from its
+                // result — 6h after a good fetch, 5/15/60 min after a failed one.
+                onNextDue = { delayMs -> if (running) BlocklistAlarm.schedule(this, delayMs) },
             )
             blocklistSync = sync
             val loaded = sync.loadFromDisk()
