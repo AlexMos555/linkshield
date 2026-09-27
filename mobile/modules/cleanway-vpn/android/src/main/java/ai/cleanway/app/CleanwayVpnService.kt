@@ -366,12 +366,25 @@ class CleanwayVpnService : VpnService() {
      * Re-establish the tunnel with the current exclusion list: the person
      * added or removed an app, or a listed app was installed or removed.
      *
-     * Android hands over without a gap — the old interface is deactivated once
-     * the new one exists and routing moves to it (VpnService.Builder.establish)
-     * — so filtering never pauses. The old reader is woken and its interface
-     * closed; a lookup in flight on it at that moment goes unanswered and the
-     * app's resolver retries it. If the new interface cannot be created, the
-     * current one stays exactly as it was. Any thread.
+     * This is NOT a seamless handover. Android can hand a VPN network over in
+     * place only when the allowed/disallowed apps stay the same; here they
+     * change by definition ("Vpn: Handover not possible due to changes to
+     * allowed/denied apps"). So the system registers a new VPN network and
+     * tears the old one down first. Measured on the Android 15 emulator
+     * (2026-09-27), five re-establishes, from netd removing the old network's
+     * UID ranges to adding the new one's: 150–440 ms. In that window:
+     *  - apps that stay inside the tunnel have no VPN network, and their
+     *    lookups go to the underlying network, unfiltered;
+     *  - every app gets a VPN "lost" then "available" callback, and a
+     *    DISCONNECTED broadcast for TYPE_VPN goes out;
+     *  - the system destroys the live TCP sockets of the in-tunnel UIDs
+     *    ("Destroyed live tcp sockets for uids=…"), so their long-lived
+     *    connections reset and reconnect.
+     * We accept it because it happens only when the person changes the list,
+     * or when a listed app is installed or removed. The old reader is woken
+     * and its interface closed; a lookup in flight on it at that moment goes
+     * unanswered, and the app's resolver retries it. If the new interface
+     * cannot be created, the current one stays exactly as it was. Any thread.
      */
     fun reapplyExclusions() {
         synchronized(tunnelLock) {
@@ -393,12 +406,22 @@ class CleanwayVpnService : VpnService() {
     }
 
     /**
-     * Follow installs and removals of listed apps. A newly installed MAX would
-     * otherwise sit inside the tunnel until the next restart; a removed one
-     * would leave its UID excluded — and Android reuses the UIDs of removed
-     * apps, so a later, unrelated install could inherit the bypass. Updates
-     * (EXTRA_REPLACING) keep the UID and are ignored. Only packages visible to
-     * us arrive here (package visibility), which covers the whole list.
+     * Follow installs and removals of listed apps. Without this, a newly
+     * installed MAX would sit inside the tunnel until the next restart.
+     *
+     * A removed app would leave its UID excluded until then. We did not see
+     * Android hand that UID to a new install within the same boot: on the
+     * emulator, 10224 was removed and the next installs got 10225 and 10226.
+     * After a reboot the tunnel is rebuilt and UIDs are looked up again.
+     * Re-applying on removal is housekeeping: the tunnel keeps out exactly
+     * what Settings lists. It also defends against any Android version that
+     * does reuse a freed UID sooner. Each re-apply briefly unfilters the
+     * other apps (see [reapplyExclusions]), and it happens only for listed
+     * apps.
+     *
+     * Updates (EXTRA_REPLACING) keep the UID and are ignored. Only packages
+     * visible to us arrive here (package visibility), and that covers the
+     * whole list.
      */
     private fun watchPackages() {
         unwatchPackages()
