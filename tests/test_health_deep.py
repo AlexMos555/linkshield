@@ -235,3 +235,209 @@ def test_a_dead_ml_model_does_not_page(client, configured_settings, monkeypatch)
     body = resp.json()
     assert body["status"] == "ok"
     assert body["components"]["ml"]["loaded"] is False
+
+
+# ── Grandma's protection: blocklist + DoH (visible, never paging) ─────────
+
+import base64 as _b64  # noqa: E402
+import time as _time  # noqa: E402
+
+from api.services import health_probes  # noqa: E402
+from api.services.blocklist_artifact import (  # noqa: E402
+    LIST_CANARY,
+    MAX_HEALTHY_AGE_S,
+    REDIS_META_KEY,
+    REDIS_TEXT_KEY,
+    meta_for_v2,
+    render_artifact_v2,
+)
+
+
+class _ProtectionRedis(_FakeRedis):
+    """Serves one published artifact and a `dangerous_domains` set — the two
+    things the new components read."""
+
+    def __init__(self, age_s: int = 3600, names=("phish.example",), gateway_set=(LIST_CANARY,)):
+        super().__init__()
+        blob = render_artifact_v2(list(names), generated=int(_time.time()) - age_s)
+        self.meta = meta_for_v2(blob)
+        self.text = _b64.b64encode(blob).decode("ascii")
+        self.gateway_set = set(gateway_set)
+
+    async def hgetall(self, key):
+        return dict(self.meta) if key == REDIS_META_KEY else {}
+
+    async def get(self, key):
+        return self.text if key == REDIS_TEXT_KEY else None
+
+    def pipeline(self):
+        outer = self
+
+        class _Pipe:
+            def __init__(self):
+                self.asked = []
+
+            def sismember(self, _key, member):
+                self.asked.append(member)
+                return self
+
+            async def execute(self):
+                return [m in outer.gateway_set for m in self.asked]
+
+        return _Pipe()
+
+
+def _serve(monkeypatch, fake):
+    async def _get_redis():
+        return fake
+
+    monkeypatch.setattr("api.main.get_redis", _get_redis)
+    monkeypatch.setattr("api.services.cache.get_redis", _get_redis)
+
+    async def _never(_wire):
+        raise AssertionError("the health probe must never call the real upstream")
+
+    monkeypatch.setattr("api.routers.doh.proxy_to_upstream", _never)
+
+
+def test_deep_reports_a_fresh_blocklist_and_a_blocking_gateway(client, configured_settings, monkeypatch):
+    _serve(monkeypatch, _ProtectionRedis(age_s=3600))
+    _patch_httpx(monkeypatch, status_code=200)
+    resp = client.get("/health/deep")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["warnings"] == []
+    bl = body["components"]["blocklist"]
+    assert bl["ok"] is True
+    assert bl["count"] == 2  # phish.example + the list canary
+    assert 3500 <= bl["age_s"] <= 3700
+    assert bl["max_age_s"] == MAX_HEALTHY_AGE_S
+    doh = body["components"]["doh"]
+    assert (doh["ok"], doh["rcode"], doh["probe"]) == (True, 3, LIST_CANARY)
+
+
+def test_the_probe_does_not_log_a_block_a_real_query_does(client, configured_settings, monkeypatch, caplog):
+    """The probe's canary block is ours, not a user's: with a monitor polling
+    /health/deep it would add hundreds of "DoH blocked qname" lines a day,
+    indistinguishable from real blocks."""
+    import asyncio
+    import logging
+
+    from api.routers.doh import handle_query
+    from api.services.health_probes import _canary_query
+
+    _serve(monkeypatch, _ProtectionRedis(age_s=3600))
+    _patch_httpx(monkeypatch, status_code=200)
+    with caplog.at_level(logging.INFO, logger="api.routers.doh"):
+        assert client.get("/health/deep").json()["components"]["doh"]["ok"] is True
+    assert not [r for r in caplog.records if r.getMessage() == "DoH blocked qname"]
+
+    with caplog.at_level(logging.INFO, logger="api.routers.doh"):
+        _body, status = asyncio.run(handle_query(_canary_query()))
+    assert status == 200
+    assert [r.getMessage() for r in caplog.records].count("DoH blocked qname") == 1
+
+
+def test_a_stale_blocklist_is_a_warning_not_a_page(client, configured_settings, monkeypatch):
+    """The cron died: phones keep an ageing list. Visible and alertable, but
+    Redis and Supabase are fine, so no 503."""
+    _serve(monkeypatch, _ProtectionRedis(age_s=MAX_HEALTHY_AGE_S + 600))
+    _patch_httpx(monkeypatch, status_code=200)
+    resp = client.get("/health/deep")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["warnings"] == ["blocklist"]
+    assert body["components"]["blocklist"]["ok"] is False
+    assert body["components"]["blocklist"]["error"] == "stale"
+
+
+def test_a_gateway_that_stopped_filtering_is_a_warning_not_a_page(client, configured_settings, monkeypatch):
+    """`dangerous_domains` expired (or lost the canary): the DNS profile blocks
+    nothing. The in-process probe sees SERVFAIL from its stub upstream."""
+    _serve(monkeypatch, _ProtectionRedis(gateway_set=()))
+    _patch_httpx(monkeypatch, status_code=200)
+    resp = client.get("/health/deep")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["warnings"] == ["doh"]
+    doh = body["components"]["doh"]
+    assert doh["ok"] is False
+    assert doh["error"] == "listed_name_not_blocked"
+    assert doh["rcode"] == 2
+
+
+def test_no_published_blocklist_is_reported(client, configured_settings, monkeypatch):
+    _patch_redis(monkeypatch, fail=False)  # answers PING, holds nothing
+    _patch_httpx(monkeypatch, status_code=200)
+    resp = client.get("/health/deep")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["components"]["blocklist"]["ok"] is False
+    assert set(body["warnings"]) == {"blocklist", "doh"}
+
+
+def test_redis_down_pages_and_still_names_the_protection_checks(client, configured_settings, monkeypatch):
+    _patch_redis(monkeypatch, fail=True)
+    _patch_httpx(monkeypatch, status_code=200)
+    resp = client.get("/health/deep")
+    assert resp.status_code == 503
+    body = resp.json()
+    assert body["components"]["blocklist"]["ok"] is False
+    assert body["components"]["doh"]["ok"] is False
+
+
+@pytest.mark.parametrize(
+    "meta,error",
+    [
+        (None, "unavailable"),
+        ({"generated_at": "x", "count": "5"}, "bad_meta"),
+        ({"generated_at": "1000", "count": "1", "version": "1000"}, "empty"),   # the canary alone
+        ({"generated_at": "1000", "count": "0", "version": "1000"}, "empty"),   # revoked
+    ],
+)
+def test_blocklist_verdict_failures(meta, error):
+    out = health_probes.blocklist_verdict(meta, now=2000)
+    assert out["ok"] is False
+    assert out["error"] == error
+
+
+def test_blocklist_verdict_threshold_is_the_canarys():
+    fresh = {"generated_at": "0", "count": "428612", "version": "0"}
+    assert health_probes.blocklist_verdict(fresh, now=MAX_HEALTHY_AGE_S)["ok"] is True
+    assert health_probes.blocklist_verdict(fresh, now=MAX_HEALTHY_AGE_S + 1)["error"] == "stale"
+
+
+def test_the_canary_and_the_health_check_share_one_freshness_threshold():
+    import importlib
+    import sys
+    from pathlib import Path
+
+    scripts = str(Path(__file__).resolve().parents[1] / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    canary = importlib.import_module("dns_canary")
+    assert canary.MAX_ARTIFACT_AGE_S == MAX_HEALTHY_AGE_S
+
+
+@pytest.mark.asyncio
+async def test_a_hung_probe_is_cut_off(monkeypatch):
+    import asyncio
+
+    monkeypatch.setattr(health_probes, "PROBE_TIMEOUT_S", 0.05)
+
+    async def _hang():
+        await asyncio.sleep(5)
+        return {"ok": True}
+
+    assert await health_probes._bounded(_hang) == {"ok": False, "error": "timeout"}
+
+
+@pytest.mark.asyncio
+async def test_a_crashing_probe_reports_instead_of_raising():
+    async def _boom():
+        raise KeyError("sha256")
+
+    assert await health_probes._bounded(_boom) == {"ok": False, "error": "KeyError"}

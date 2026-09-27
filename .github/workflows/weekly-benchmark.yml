@@ -16,12 +16,27 @@ name: Weekly fresh-URL benchmark (recall transparency)
 
 on:
   schedule:
-    - cron: '15 5 * * 1'   # Mondays 05:15 UTC — off-peak everywhere,
-                            # gives us the freshest Sunday-night PhishTank dump
+    # Sundays 15:15 UTC (18:15 Moscow). Each fresh Cleanway check may spend one
+    # call of the service-wide daily budgets for paid sources (IPQS 150, LLM
+    # judge 300 — per UTC day, api/services/paid_budget.py), and the run's
+    # ~400 checks can use a whole day's IPQS. They must land on Sunday (UTC),
+    # never on Monday, when Russian users need them all day.
+    #
+    # GitHub starts scheduled runs late: this workflow's last five started
+    # 0.5 to 6.3 h after their cron time (Aug–Sep 2026), so a 21:15 start
+    # reached Monday in 4 of 5 weeks. 15:15 leaves 7 h 45 min before the
+    # `window` job's cut-off (23:00 UTC Sunday); a start later than that is
+    # skipped for the week rather than spend Monday's budget. The Cleanway
+    # checks fill the first ~30 min of the run (all resolvers start together),
+    # so a start just before the cut-off still ends them by ~23:30 UTC.
+    # The cost, when on time: the run may use up what is left of Sunday's
+    # IPQS budget by ~18:45 Moscow, and users' checks then go without IPQS
+    # until the 03:00 Moscow reset — a Sunday evening instead of a Monday.
+    - cron: '15 15 * * 0'
   workflow_dispatch:
     inputs:
       sample:
-        description: 'URLs per side (phishing + legit). Wall-time ≈ 2 * sample * MIN_INTERVAL_S + cooldown. sample=100 → ~55min, sample=200 → ~110min. Match to timeout-minutes below.'
+        description: 'URLs per side (phishing + legit). Resolvers run side by side; VirusTotal (16 s a lookup) is the slowest: sample=100 → ~55 min, sample=200 → ~110 min. Above 200 VirusTotal is skipped (free tier: 500 lookups a day, and the timeout).'
         type: number
         default: 100
 
@@ -30,12 +45,42 @@ permissions:
   pull-requests: write  # raise a PR on recall regression
 
 jobs:
-  benchmark:
+  window:
+    # A scheduled run that GitHub starts too late would spend Monday's
+    # paid-source budgets (see the cron comment). A dispatched run always goes:
+    # whoever starts it by hand has chosen the time.
     runs-on: ubuntu-latest
-    # 90 minutes covers sample=100 comfortably (est ~55 min with 16s
-    # min-interval + 65s inter-batch cooldown). Bumped from 20 on
-    # 2026-07-01 after a dispatched sample=200 run hit the ceiling at 20m14s.
-    timeout-minutes: 90
+    timeout-minutes: 5
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+    steps:
+      - id: check
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          weekday=$(date -u +%u)   # 7 = Sunday
+          hour=$(date -u +%H)
+          if [ "$EVENT" != "schedule" ] || { [ "$weekday" = 7 ] && [ "$hour" -lt 23 ]; }; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Scheduled benchmark started $(date -u '+%a %H:%M') UTC, past the Sunday 23:00 UTC cut-off: its Cleanway checks would spend Monday's paid-source budgets. Skipped this week; dispatch it by hand if it matters."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  benchmark:
+    needs: window
+    if: needs.window.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    # Sized for VirusTotal, the slowest resolver: 16 s a lookup, measured
+    # 15.75 s a URL (run 35589801520, 2026-09-21), so 2 x 200 URLs ≈ 105 min.
+    # The resolvers run side by side, so the run takes about as long as VT
+    # (Cleanway's 400 checks at ~15 a minute take ~27 min meanwhile), plus
+    # ~5 min of setup and the legit-sample check: ~110 min at sample=200.
+    # A cancelled run writes nothing — no dated file, no latest.json, no
+    # commit — so the ceiling keeps ~40 min of headroom. (90 min, the old
+    # value, cancelled every VT run above sample≈130: the resolvers used to
+    # run one after another.)
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,7 +97,19 @@ jobs:
       - name: Install deps
         run: |
           pip install --upgrade pip
-          pip install httpx
+          # pydantic: the script imports the server's own allowlist rule
+          # (api.services.scoring.is_trusted_top_domain) to prove the legit
+          # sample sits outside it. Without it the report says
+          # legit_outside_allowlist=false and the site shows no FP rate.
+          pip install httpx==0.28.1 "pydantic>=2,<3"
+
+      - name: Check the legitimate sample
+        # Every listed site still resolves and none is auto-trusted. A red
+        # step here is a to-do (prune the list), not a reason to skip the
+        # week: a lapsed site scores `not_found`, which counts as no answer,
+        # and an auto-trusted one is dropped by the run itself.
+        continue-on-error: true
+        run: python scripts/eval_fresh_urls.py --verify-legit-sample
 
       - name: Run benchmark
         env:
@@ -60,10 +117,11 @@ jobs:
           GOOGLE_SAFE_BROWSING_KEY: ${{ secrets.GOOGLE_SAFE_BROWSING_KEY }}
           PHISHTANK_API_KEY: ${{ secrets.PHISHTANK_API_KEY }}
           VT_API_KEY: ${{ secrets.VT_API_KEY }}
-          # When set, eval_fresh_urls.py sends this as X-Cleanway-Benchmark so
-          # the server skips the 5/min IP rate-limit for the run — turning a
-          # ~110-min throttled crawl into a few minutes, which lets the weekly
-          # cron actually finish inside the timeout AND clear the quality gate.
+          # Optional. When set, eval_fresh_urls.py sends it as
+          # X-Cleanway-Benchmark and the server skips its per-IP limits.
+          # Without it the script identifies as a few rotating app installs
+          # (X-Cleanway-Install) and stays under the server's per-IP
+          # ceilings — see "Rate-limit identity" in the script.
           BENCHMARK_BYPASS_TOKEN: ${{ secrets.BENCHMARK_BYPASS_TOKEN }}
         run: |
           # We deliberately use the live PUBLIC endpoint here, not
@@ -72,23 +130,26 @@ jobs:
           # link. Public-only run keeps the benchmark anonymous,
           # exactly like a curious developer would.
           #
-          # Sample sizing:
-          #   - dispatch: honour the input.
-          #   - schedule with bypass token: 200 (fast, clears the >=100 gate).
-          #   - schedule without token: 60 — the throttled crawl still fits the
-          #     90-min timeout; the quality gate will (correctly) decline to
-          #     publish a sub-100 sample, leaving the last good latest.json in
-          #     place. So a token-less cron runs green + honest, just no refresh.
+          # Sample sizing: dispatch honours the input; the schedule runs 200
+          # per side (the gate needs >= 100 phishing). Without the token that
+          # is ~400 Cleanway checks at ~15 a minute (~27 min); VirusTotal, run
+          # alongside, sets the wall time: ~105 min for 400 lookups (see
+          # timeout-minutes). Above 200 per side VT is skipped: 2 x sample
+          # lookups would pass both its 500-a-day free quota and the timeout.
           if [ -n "${{ github.event.inputs.sample }}" ]; then
             SAMPLE="${{ github.event.inputs.sample }}"
-          elif [ -n "${BENCHMARK_BYPASS_TOKEN}" ]; then
-            SAMPLE=200
           else
-            SAMPLE=60
+            SAMPLE=200
+          fi
+          VT_FLAG=""
+          if [ "$SAMPLE" -gt 200 ]; then
+            VT_FLAG="--no-virustotal"
+            echo "::notice::sample=$SAMPLE > 200: VirusTotal skipped (500 lookups a day, 16 s each)."
           fi
           echo "Running benchmark with sample=$SAMPLE (bypass token $([ -n "${BENCHMARK_BYPASS_TOKEN}" ] && echo present || echo absent))"
           python scripts/eval_fresh_urls.py \
             --sample "$SAMPLE" \
+            $VT_FLAG \
             --out-tag "$(date -u +%Y-%m-%d)"
 
       - name: Show latest pointer state

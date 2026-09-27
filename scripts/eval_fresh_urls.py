@@ -21,6 +21,9 @@ Usage:
     # Small smoke run (50 URLs each side):
     python3 scripts/eval_fresh_urls.py --sample 50
 
+    # Re-check the curated legitimate sample (resolves, outside the allowlist):
+    python3 scripts/eval_fresh_urls.py --verify-legit-sample
+
 Each competitor is wrapped in a small async adapter that returns
 {"verdict": "safe"|"dangerous"|"unknown", "latency_ms": float}.
 Adapters fail open — if a service errors out we record "unknown"
@@ -45,13 +48,20 @@ import random
 import statistics
 import sys
 import time
+import uuid
 import zipfile
-from dataclasses import asdict, dataclass, field
+from collections import deque
+from contextlib import asynccontextmanager
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
-from typing import Optional
+from typing import AsyncIterator, Awaitable, Callable, Optional
 from urllib.parse import urlparse
 
 import httpx
+
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+import benchmark_legit  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs" / "benchmarks"
@@ -101,18 +111,194 @@ MIN_INTERVAL_S = {
     # rate-limit window, poisoning latest.json with `unknown` verdicts.
     #
     # When BENCHMARK_BYPASS_TOKEN is set the server skips the IP limit for us,
-    # so the 16s throttle + 65s cooldown are unnecessary — drop to a light
-    # 0.3s spacing (still polite, avoids hammering) so a 200-sample run fits
-    # comfortably inside the CI timeout.
+    # so the 16s throttle is unnecessary — drop to a light 0.3s spacing (still
+    # polite, avoids hammering). Without the token this is the pace of EACH
+    # virtual install (see "Rate-limit identity" below).
     "cleanway": 0.3 if BENCHMARK_BYPASS_TOKEN else 16.0,
-    "virustotal": 16.0,  # VT free tier 4 req/min
+    # VT free tier: 4 lookups a minute and 500 a day. At 16 s a lookup, VT is
+    # the slowest resolver by far — 2 x 200 URLs take ~105 min (measured
+    # 15.75 s a URL on 2026-09-21) — which is why resolvers run side by side
+    # (main) and the weekly workflow's timeout is sized for VT, not Cleanway.
+    "virustotal": 16.0,
 }
 
-# Cooldown between resolver batches (phishing → safe). The Cleanway public
-# endpoint enforces a 5/min/IP window; if we start the safe batch before the
-# window drains, we get HTTP 429 on the first ~5 URLs and record them as
-# `unknown`. 60s drains the window; +5s gives clock-skew headroom.
-CLEANWAY_BATCH_COOLDOWN_S = 65.0
+# Every resolver sees the phishing and the legitimate URLs INTERLEAVED, in one
+# run (interleave_batches). Two reasons:
+#   * A fresh Cleanway check may spend one call of the service-wide daily
+#     budgets for paid sources (IPQS 150, LLM judge 300 per UTC day). Run
+#     phishing first and it spends them, so the false-positive rate would be
+#     measured mostly without those sources. Interleaved, both batches meet
+#     the same budget state at the same moments.
+#   * The same holds for any resolver's quota running out mid-run (VT's 500
+#     lookups a day): both batches lose the same share, not the legit one.
+# The old 65 s cooldown between a phishing and a legit batch drained a 5/min
+# per-IP window; with per-install pacing (or the bypass token) there is no
+# such window, and no second batch.
+
+# ── Rate-limit identity without the bypass token ──
+#
+# Without BENCHMARK_BYPASS_TOKEN the run is one IP: 60 public checks an hour
+# and 5 fresh ones a minute. A 200 + 200 benchmark cannot fit — the legit
+# half of every run came back `rate_limited`, so the false-positive rate was
+# never measured. The public check also takes the header the Android app
+# sends, X-Cleanway-Install: a random per-install UUID
+# (api/services/rate_limiter.install_key). Limits then apply per install —
+# 60 checks an hour, 5 fresh a minute — under a per-IP ceiling of 1,500
+# checks an hour and 60 fresh a minute (api/config.py).
+#
+# Why this is legitimate for our own benchmark:
+#   * The id is unauthenticated and random by design; the server keeps only
+#     its hash, as a rate-limit key that expires with its window.
+#   * The per-IP ceilings are the server's explicit bound for ONE address that
+#     presents many ids — a Tele2 CGNAT gateway, or this runner. The run stays
+#     under them: at most IP_HOURLY_BUDGET checks an hour, and
+#     PARALLEL_INSTALLS installs each paced at MIN_INTERVAL_S["cleanway"]
+#     (15 a minute, against 60). It never gets more than one busy carrier
+#     address may.
+#   * Each virtual install behaves like a phone: REQUESTS_PER_INSTALL checks
+#     (under its 60 an hour), one per MIN_INTERVAL_S (under its 5 fresh a
+#     minute), then a new id. On a 429 the same install waits and retries
+#     once (check_cleanway holds it through the wait): a limit is never
+#     dodged by switching ids. The other installs go on meanwhile.
+#   * It needs no secret, so anyone re-running this script measures what we
+#     measure — the point of a public benchmark.
+# Cost: a fresh analysis may spend one call of the service-wide daily budgets
+# for paid sources (api/services/paid_budget.py: IPQS 150, LLM judge 300 per
+# UTC day). The weekly workflow starts on Sunday afternoon UTC and skips a
+# start so late that these checks would reach Monday (UTC), so it spends
+# Sunday's budget, never a whole Monday's; checks past a cap run without that
+# source — exactly as a user's would at that moment. The report records when
+# the Cleanway checks ran (cleanway_window_utc).
+INSTALL_HEADER = "X-Cleanway-Install"
+PARALLEL_INSTALLS = 4
+REQUESTS_PER_INSTALL = 50
+IP_HOURLY_CEILING = 1500   # api/config.py public_install_ip_ceiling_per_window
+IP_HOURLY_BUDGET = 1400    # what one run allows itself, under that ceiling
+_HOUR_S = 3600.0
+
+
+@dataclass(frozen=True)
+class _Install:
+    id: str
+    used: int = 0
+    last: Optional[float] = None
+
+
+class _Lease:
+    """One install, held for one URL (both attempts on a 429). `ready()` before
+    each request: the install's own pacing and the run's hourly budget."""
+
+    def __init__(self, pool: "InstallPool", inst: _Install) -> None:
+        self._pool = pool
+        self.inst = inst
+
+    @property
+    def headers(self) -> dict:
+        return {INSTALL_HEADER: self.inst.id}
+
+    async def ready(self) -> None:
+        self.inst = await self._pool._pace(self.inst)
+
+
+class _TokenLease:
+    """The bypass token: the server applies no per-IP limit, nothing to pace."""
+
+    def __init__(self, token: str) -> None:
+        self.headers = {"X-Cleanway-Benchmark": token}
+
+    async def ready(self) -> None:
+        return None
+
+
+class InstallPool:
+    """Virtual app installs for the Cleanway adapter (see the block above).
+
+    `identity()` lends one install (a `_Lease`); each `lease.ready()` waits
+    until that install may ask again and until the run is under its hourly
+    budget. An install is retired after `per_install` checks."""
+
+    def __init__(
+        self,
+        size: int = PARALLEL_INSTALLS,
+        per_install: int = REQUESTS_PER_INSTALL,
+        min_interval: Optional[float] = None,
+        hourly_budget: int = IP_HOURLY_BUDGET,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        new_id: Callable[[], str] = lambda: str(uuid.uuid4()),
+    ) -> None:
+        self._per_install = per_install
+        self._min_interval = MIN_INTERVAL_S["cleanway"] if min_interval is None else min_interval
+        self._hourly_budget = hourly_budget
+        self._clock, self._sleep, self._new_id = clock, sleep, new_id
+        self._free: asyncio.Queue = asyncio.Queue()
+        for _ in range(size):
+            self._free.put_nowait(_Install(new_id()))
+        self._sent: deque = deque()
+        self._budget_lock = asyncio.Lock()
+        self.installs_used = size
+        self.requests = 0
+
+    async def _take_hourly_slot(self) -> None:
+        async with self._budget_lock:
+            while True:
+                now = self._clock()
+                while self._sent and now - self._sent[0] >= _HOUR_S:
+                    self._sent.popleft()
+                if len(self._sent) < self._hourly_budget:
+                    self._sent.append(now)
+                    return
+                await self._sleep(_HOUR_S - (now - self._sent[0]) + 0.5)
+
+    async def _pace(self, inst: _Install) -> _Install:
+        if inst.last is not None:
+            wait = self._min_interval - (self._clock() - inst.last)
+            if wait > 0:
+                await self._sleep(wait)
+        await self._take_hourly_slot()
+        self.requests += 1
+        return replace(inst, used=inst.used + 1, last=self._clock())
+
+    @asynccontextmanager
+    async def identity(self) -> AsyncIterator[_Lease]:
+        lease = _Lease(self, await self._free.get())
+        try:
+            yield lease
+        finally:
+            inst = lease.inst
+            if inst.used >= self._per_install:
+                inst = _Install(self._new_id())
+                self.installs_used += 1
+            self._free.put_nowait(inst)
+
+
+_POOL: Optional[InstallPool] = None
+
+
+def _install_pool() -> InstallPool:
+    global _POOL
+    if _POOL is None:
+        _POOL = InstallPool()
+    return _POOL
+
+
+@asynccontextmanager
+async def _cleanway_identity() -> AsyncIterator["_Lease | _TokenLease"]:
+    """Who asks about one URL: the bypass token when configured, otherwise
+    one of the rotating virtual installs, held until the URL is done."""
+    if BENCHMARK_BYPASS_TOKEN:
+        yield _TokenLease(BENCHMARK_BYPASS_TOKEN)
+        return
+    async with _install_pool().identity() as lease:
+        yield lease
+
+
+def cleanway_identity_note() -> str:
+    if BENCHMARK_BYPASS_TOKEN:
+        return "benchmark bypass token (X-Cleanway-Benchmark)"
+    return (f"{PARALLEL_INSTALLS} rotating installs (X-Cleanway-Install), a new id every "
+            f"{REQUESTS_PER_INSTALL} checks, one check per install every "
+            f"{MIN_INTERVAL_S['cleanway']:.0f}s, at most {IP_HOURLY_BUDGET} an hour from one IP")
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -263,6 +449,41 @@ def fetch_tranco_legit(limit: int) -> list[str]:
     return out
 
 
+def pick_legit(
+    source: str,
+    limit: int,
+    path: Optional[Path] = None,
+    is_trusted: Optional[Callable[[str], bool]] = None,
+) -> tuple[list[str], Optional[list["benchmark_legit.LegitSite"]], dict]:
+    """(urls, sites or None, report `sources` fields) for the legit batch.
+
+    `legit_outside_allowlist` is True only for the curated list AND only when
+    the server's own allowlist rule was available to prove it — the landing
+    shows a false-positive rate on nothing less. `is_trusted` defaults to
+    that rule (benchmark_legit.allowlist_rule)."""
+    if source == "tranco":
+        urls = fetch_tranco_legit(limit)
+        return urls, None, {
+            "legit": "Tranco top-1M rank 100-100000, random sample (seed=42).",
+            # The public check answers every Tranco top-100k domain "safe"
+            # without analysing it (is_trusted_top_domain): no FP measurement.
+            "legit_outside_allowlist": False,
+        }
+    sites = benchmark_legit.load_legit_sample(path or benchmark_legit.LEGIT_SAMPLE_PATH)
+    rule = is_trusted if is_trusted is not None else benchmark_legit.allowlist_rule()
+    picked = benchmark_legit.select_legit_sample(sites, limit, rule)
+    blocked = sum(1 for s in picked if s.reachability == "blocked-abroad")
+    log.info("curated legit: %d of %d sites (%d unreachable from abroad)", len(picked), len(sites), blocked)
+    return [f"https://{s.host}" for s in picked], picked, {
+        "legit": (f"data/benchmark_legit_ru.txt: {len(picked)} of {len(sites)} real Russian sites "
+                  "outside the Tranco top-100k (regional and city government, universities, .рф, "
+                  "small banks and businesses, museums, theatres), random sample "
+                  f"(seed={benchmark_legit.SAMPLE_SEED}); {blocked} were unreachable from outside "
+                  "Russia when listed."),
+        "legit_outside_allowlist": rule is not None,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────
 # Competitor adapters
 # ─────────────────────────────────────────────────────────────────
@@ -287,37 +508,44 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
     affected URLs as 'unknown', which artificially deflates recall.
     A single retry per URL caps the worst-case batch time at
     2 × (N × MIN_INTERVAL_S + N × 25s).
+
+    Both attempts go out under the same identity: without the token, the
+    same virtual install waits out the 429 and asks again (the other
+    installs go on meanwhile) — a per-install limit is never dodged by
+    switching ids.
+
+    `latency_ms` is time spent in requests only — never our own pacing
+    or a 429 wait, which say nothing about how fast Cleanway answers.
     """
     d = domain_of(url)
     if not d:
         return Verdict("cleanway", "unknown", detail="bad_domain")
-    t0 = time.monotonic()
-    last_status: int | None = None
+    spent = 0.0
+    started: Optional[float] = None
     try:
-        headers = (
-            {"X-Cleanway-Benchmark": BENCHMARK_BYPASS_TOKEN}
-            if BENCHMARK_BYPASS_TOKEN
-            else None
-        )
-        for attempt in (1, 2):
-            r = await client.get(
-                f"{CLEANWAY_API}/api/v1/public/check/{d}",
-                headers=headers,
-                timeout=8.0,
-            )
-            last_status = r.status_code
-            if r.status_code == 429 and attempt == 1:
-                # Honour Retry-After if the server sent one, else
-                # default to a full 5/min window plus headroom.
-                ra = r.headers.get("retry-after")
-                try:
-                    wait_s = max(1.0, float(ra)) if ra else 25.0
-                except ValueError:
-                    wait_s = 25.0
-                await asyncio.sleep(min(wait_s, 60.0))
-                continue
-            break
-        elapsed = (time.monotonic() - t0) * 1000
+        async with _cleanway_identity() as ident:
+            for attempt in (1, 2):
+                await ident.ready()  # this install's pacing, the hourly budget
+                started = time.monotonic()
+                r = await client.get(
+                    f"{CLEANWAY_API}/api/v1/public/check/{d}",
+                    headers=ident.headers,
+                    timeout=8.0,
+                )
+                spent += time.monotonic() - started
+                started = None
+                if r.status_code == 429 and attempt == 1:
+                    # Honour Retry-After if the server sent one, else
+                    # default to a full 5/min window plus headroom.
+                    ra = r.headers.get("retry-after")
+                    try:
+                        wait_s = max(1.0, float(ra)) if ra else 25.0
+                    except ValueError:
+                        wait_s = 25.0
+                    await asyncio.sleep(min(wait_s, 60.0))
+                    continue
+                break
+        elapsed = spent * 1000
         if r.status_code != 200:
             tag = "rate_limited" if r.status_code == 429 else f"status={r.status_code}"
             return Verdict("cleanway", "unknown", latency_ms=elapsed, detail=tag)
@@ -334,8 +562,9 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
         return Verdict("cleanway", v, score=score,
                        latency_ms=elapsed, detail=level)
     except Exception as exc:
-        return Verdict("cleanway", "unknown",
-                       latency_ms=(time.monotonic() - t0) * 1000,
+        if started is not None:  # the request itself failed (timeout, reset)
+            spent += time.monotonic() - started
+        return Verdict("cleanway", "unknown", latency_ms=spent * 1000,
                        detail=f"err:{exc}")
 
 
@@ -616,8 +845,13 @@ async def run_resolver(name: str, urls: list[str]) -> list[Verdict]:
     limit AND the per-resolver MIN_INTERVAL_S throttle. Returns a
     Verdict per URL, same order as the input list."""
     adapter = ADAPTERS[name]
-    sem = asyncio.Semaphore(CONCURRENCY[name])
+    concurrency = CONCURRENCY[name]
     min_interval = MIN_INTERVAL_S.get(name, 0.0)
+    if name == "cleanway" and not BENCHMARK_BYPASS_TOKEN:
+        # The install pool paces each virtual install itself; a run-wide
+        # throttle on top would serialise them back into one IP's pace.
+        concurrency, min_interval = PARALLEL_INSTALLS, 0.0
+    sem = asyncio.Semaphore(concurrency)
     last_call_at = [0.0]  # mutable closure cell
     lock = asyncio.Lock()
     async with httpx.AsyncClient() as client:
@@ -632,10 +866,43 @@ async def run_resolver(name: str, urls: list[str]) -> list[Verdict]:
                 return await adapter(client, u)
         log.info(
             "running %s on %d URLs (concurrency=%d, min_interval=%.1fs) …",
-            name, len(urls), CONCURRENCY[name], min_interval,
+            name, len(urls), concurrency, min_interval,
         )
         results = await asyncio.gather(*[_one(u) for u in urls])
     return results
+
+
+def interleave_batches(phishing: list[str], legit: list[str]) -> list[tuple[str, int]]:
+    """The order a resolver sees both batches in: ("phishing", i) and
+    ("legit", i) alternating, the longer batch's tail at the end. Why: the
+    "INTERLEAVED" note right after MIN_INTERVAL_S."""
+    order: list[tuple[str, int]] = []
+    for i in range(max(len(phishing), len(legit))):
+        if i < len(phishing):
+            order.append(("phishing", i))
+        if i < len(legit):
+            order.append(("legit", i))
+    return order
+
+
+async def run_resolver_on_both(
+    name: str, phishing: list[str], legit: list[str],
+    run: Callable[[str, list[str]], Awaitable[list[Verdict]]] = run_resolver,
+) -> tuple[list[Verdict], list[Verdict]]:
+    """One interleaved run of `name` over both batches, split back into
+    (phishing verdicts, legit verdicts), each in its batch's order."""
+    order = interleave_batches(phishing, legit)
+    batches = {"phishing": phishing, "legit": legit}
+    verdicts = await run(name, [batches[b][i] for b, i in order])
+    by_slot = dict(zip(order, verdicts, strict=True))
+    return (
+        [by_slot[("phishing", i)] for i in range(len(phishing))],
+        [by_slot[("legit", i)] for i in range(len(legit))],
+    )
+
+
+def _utc_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
 def classify(verdicts: list[Verdict], expected: str) -> dict:
@@ -726,14 +993,33 @@ def render_md(report: dict) -> str:
             f"| {m['unknown']} | {_n(m['latency_p50_ms'])} |"
         )
     lines.append("")
+    if report.get("cleanway_on_legit"):
+        lines += benchmark_legit.render_breakdown_md(report["cleanway_on_legit"])
     lines.append("## Methodology")
     lines.append("")
     lines.append("- Phishing samples are fresh URLhaus + PhishTank entries; "
                  "the Cleanway ML model has NOT been trained on these specific URLs.")
-    lines.append("- Legit samples are random Tranco top-100k entries (rank 100-100000), "
-                 "skipping the top-100 to avoid 'too easy' baseline reputation.")
+    if report.get("sources", {}).get("legit_outside_allowlist"):
+        lines.append("- Legit samples are real Russian sites OUTSIDE the Tranco top-100k — "
+                     "regional and city government, universities, .рф, small banks and "
+                     "businesses, museums, theatres (data/benchmark_legit_ru.txt, each "
+                     "with its source). The server analyses every one of them; none gets "
+                     "the instant 'safe' popular sites get.")
+    else:
+        lines.append("- Legit samples are random Tranco top-100k entries (rank 100-100000). "
+                     "The server answers those 'safe' without analysis, so this run's "
+                     "false-positive rate is NOT a measurement.")
     lines.append("- We send DOMAIN only to Cleanway (server-blind invariant). "
                  "GSB / PhishTank / VT receive the full URL.")
+    window = report.get("cleanway_window_utc") or {}
+    ran = (f" The Cleanway checks ran {window['start']} – {window['end']}."
+           if window.get("start") and window.get("end") else "")
+    lines.append("- Cleanway requests identify as: "
+                 f"{report.get('sources', {}).get('cleanway_identity', 'one IP')}. "
+                 "Each check may use the service's daily paid-source budgets; "
+                 "checks past a cap run without that source, as a user's would. "
+                 "Phishing and legitimate URLs are interleaved, so both batches "
+                 f"meet the same budget state.{ran}")
     lines.append("- 'Unknown' = the resolver didn't return a definitive verdict "
                  "(rate-limited, not indexed, error). 'Unknown' is NOT counted as "
                  "either correct or incorrect — it's reported separately.")
@@ -922,9 +1208,24 @@ async def main() -> int:
                    help="Skip the pre-publish quality gate — always flip "
                         "latest.json to today's run. Useful for local smoke "
                         "runs where you don't care about the pointer.")
+    p.add_argument("--legit-source", choices=("curated", "tranco"), default="curated",
+                   help="Legitimate sample: 'curated' (default) = real Russian sites "
+                        "outside our allowlist, data/benchmark_legit_ru.txt — the only "
+                        "source that can measure false positives; 'tranco' = the old "
+                        "Tranco sample the server answers without analysis.")
+    p.add_argument("--verify-legit-sample", action="store_true",
+                   help="Only re-check data/benchmark_legit_ru.txt (parses, big enough, "
+                        "outside the allowlist, every host resolves) and exit.")
+    p.add_argument("--out-dir", type=Path, default=DOCS,
+                   help="Where the dated JSON+MD (and, if the gate passes, latest.json) "
+                        "go. Default docs/benchmarks; point a local smoke run elsewhere.")
     args = p.parse_args()
 
-    DOCS.mkdir(parents=True, exist_ok=True)
+    if args.verify_legit_sample:
+        return await benchmark_legit.verify_legit_sample()
+
+    out_dir: Path = args.out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     # ── Fetch samples ────────────────────────────────────────────
     try:
@@ -938,7 +1239,7 @@ async def main() -> int:
         log.error("PhishTank fetch failed: %s", exc)
         phishtank = []
     phishing_urls = dedup_urls(urlhaus + phishtank)[:args.sample]
-    legit_urls = fetch_tranco_legit(args.sample)
+    legit_urls, legit_sites, legit_sources = pick_legit(args.legit_source, args.sample)
 
     if not phishing_urls or not legit_urls:
         log.error("not enough samples to benchmark (phish=%d legit=%d)",
@@ -955,24 +1256,21 @@ async def main() -> int:
     if VT_KEY and not args.no_virustotal:
         resolvers.append("virustotal")
 
-    phishing_results: dict[str, list[Verdict]] = {}
-    safe_results: dict[str, list[Verdict]] = {}
-    for r in resolvers:
-        phishing_results[r] = await run_resolver(r, phishing_urls)
-        _log_unknown_rate(r, "phishing", phishing_results[r])
-        # Drain the Cleanway 5/min/IP window before the safe batch. Without
-        # this cooldown the first ~5 safe URLs get HTTP 429 and are recorded
-        # as `unknown`, which nulls FPR and poisons latest.json. See
-        # 2026-06-30 audit: safe batch had 30/50 unknown, FPR=null.
-        # The cooldown only matters when we're being rate-limited. With the
-        # benchmark bypass token the server skips the IP cap entirely, so
-        # there is no window to drain — skip the 65s wait.
-        if r == "cleanway" and not BENCHMARK_BYPASS_TOKEN:
-            log.info("draining cleanway rate-limit window (%.0fs) before safe batch",
-                     CLEANWAY_BATCH_COOLDOWN_S)
-            await asyncio.sleep(CLEANWAY_BATCH_COOLDOWN_S)
-        safe_results[r] = await run_resolver(r, legit_urls)
-        _log_unknown_rate(r, "safe", safe_results[r])
+    # Resolvers run side by side: each paces itself and talks to a different
+    # service, so the run takes as long as the slowest one (VirusTotal, at
+    # 16 s a lookup) instead of the sum of all of them. Within a resolver the
+    # two batches are interleaved (interleave_batches).
+    async def _both(r: str) -> tuple[list[Verdict], list[Verdict], dict[str, str]]:
+        start = _utc_now()
+        phish, safe = await run_resolver_on_both(r, phishing_urls, legit_urls)
+        _log_unknown_rate(r, "phishing", phish)
+        _log_unknown_rate(r, "safe", safe)
+        return phish, safe, {"start": start, "end": _utc_now()}
+
+    outcomes = dict(zip(resolvers, await asyncio.gather(*[_both(r) for r in resolvers])))
+    phishing_results: dict[str, list[Verdict]] = {r: o[0] for r, o in outcomes.items()}
+    safe_results: dict[str, list[Verdict]] = {r: o[1] for r, o in outcomes.items()}
+    windows: dict[str, dict[str, str]] = {r: o[2] for r, o in outcomes.items()}
 
     # ── Classify + build report ──────────────────────────────────
     report: dict = {
@@ -983,17 +1281,24 @@ async def main() -> int:
             "phishing": f"URLhaus daily feed ({len(urlhaus)} URLs) + "
                         f"PhishTank online-valid ({len(phishtank)} URLs), "
                         "deduplicated by registrable domain.",
-            "legit": f"Tranco top-1M rank 100-100000, "
-                     f"random sample (seed=42).",
-            # The public check answers every Tranco top-100k domain "safe"
-            # without analysing it (is_trusted_top_domain), so this sample
-            # cannot measure false positives. The landing publishes a
-            # false-positive rate only when this is True
-            # (landing/lib/benchmark.ts falsePositiveRateIsPublishable) — set
-            # it only once the legit sample comes from outside that list.
-            "legit_outside_allowlist": False,
+            # `legit` and `legit_outside_allowlist`: see pick_legit. The
+            # landing publishes a false-positive rate only when the latter is
+            # True (landing/lib/benchmark.ts falsePositiveRateIsPublishable).
+            **legit_sources,
             "cleanway_api": CLEANWAY_API,
+            "cleanway_identity": cleanway_identity_note(),
         },
+        # When the Cleanway checks ran: the UTC day whose paid-source budgets
+        # (IPQS, LLM judge) they could spend.
+        "cleanway_window_utc": windows.get("cleanway"),
+        # How Cleanway answered each real site, by slice — null for a Tranco run.
+        "cleanway_on_legit": (
+            benchmark_legit.legit_breakdown(
+                [benchmark_legit.cleanway_outcome(v.verdict, v.detail) for v in safe_results["cleanway"]],
+                legit_sites,
+            )
+            if legit_sites is not None else None
+        ),
         "phishing": {
             r: classify(phishing_results[r], "dangerous") for r in resolvers
         },
@@ -1013,8 +1318,8 @@ async def main() -> int:
     }
 
     tag = args.out_tag or time.strftime("%Y-%m-%d", time.gmtime())
-    json_out = DOCS / f"{tag}-fresh-urls.json"
-    md_out = DOCS / f"{tag}-fresh-urls.md"
+    json_out = out_dir / f"{tag}-fresh-urls.json"
+    md_out = out_dir / f"{tag}-fresh-urls.md"
     with open(json_out, "w") as f:
         json.dump(report, f, indent=2)
     with open(md_out, "w") as f:
@@ -1037,12 +1342,12 @@ async def main() -> int:
             gate.passed,
         )
         _update_latest_pointer(json_out)
-        log.info("updated %s → %s", DOCS / "latest.json", json_out.name)
+        log.info("updated %s → %s", out_dir / "latest.json", json_out.name)
     elif gate.passed:
         _update_latest_pointer(json_out)
         log.info(
             "quality gate PASSED — updated %s → %s",
-            DOCS / "latest.json", json_out.name,
+            out_dir / "latest.json", json_out.name,
         )
         print(f"QUALITY_GATE=pass json={json_out.name}")
     else:

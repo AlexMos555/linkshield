@@ -49,13 +49,11 @@ import base64
 import hashlib
 import json
 import os
-import struct
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import NamedTuple, Optional
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,10 +62,6 @@ DEFAULT_LANDING_BASE = "https://cleanway.ai"
 LANDING_PATH = "/ru/android"
 USER_AGENT = "cleanway-dns-canary"
 
-# The SOA MNAME in every NXDOMAIN the gateway synthesises
-# (api/services/doh_gateway.py _SOA_MNAME; a test pins the two together —
-# this script runs on a bare runner without the API's dependencies).
-BLOCK_SOA_MNAME = "blocked.cleanway.ai"
 # Live phishing hosts to probe: Phishunt's hourly feed, CC0 1.0 ("released
 # into the public domain", terms §7). Empty string disables the live probe.
 DEFAULT_LIVE_SOURCE = "https://phishunt.io/feed.txt"
@@ -79,73 +73,24 @@ MAX_LIVE_PROBES = 3
 
 sys.path.insert(0, str(ROOT))
 from api.services.blocklist_artifact import (  # noqa: E402
-    LIST_CANARY, NEVER_BLOCK_GUARDS, name_hash, parse_artifact_v2,
+    LIST_CANARY, MAX_HEALTHY_AGE_S, NEVER_BLOCK_GUARDS, name_hash, parse_artifact_v2,
 )
+# The gateway's NXDOMAIN marker and the response reader: standard library only,
+# so this script still runs on a bare runner without the API's dependencies.
+from api.services.dns_wire import BLOCK_SOA_MNAME, DnsAnswer, parse_response  # noqa: E402
 
 # Curated names that must resolve; merged with NEVER_BLOCK_GUARDS at run time.
 MUST_RESOLVE_PATH = ROOT / "data" / "canary_must_resolve.txt"
 
-# The publisher (.github/workflows/refresh-dangerous-domains.yml) runs on
-# cron '23 */6 * * *'. GitHub cron drifts, so a threshold equal to the cadence
-# fails by construction whenever one run is late — 4 of 100 runs, publisher
-# 60/60 green. 13h absorbs a whole missed slot plus drift, and is still far
-# inside the 48h a phone tolerates (BlockList.kt STALE_AFTER_MS) before it
-# calls its own copy stale.
-MAX_ARTIFACT_AGE_S = 13 * 60 * 60
+# How old the phone artifact may get before the canary calls the cron dead —
+# shared with /health/deep (see api.services.blocklist_artifact).
+MAX_ARTIFACT_AGE_S = MAX_HEALTHY_AGE_S
 
 
 def wire_query(name: str) -> bytes:
     """A minimal A query with a random transaction id (so no cache answers it)."""
     labels = b"".join(bytes([len(label)]) + label.encode("ascii") for label in name.split(".")) + b"\x00"
     return os.urandom(2) + b"\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + labels + b"\x00\x01\x00\x01"
-
-
-class DnsAnswer(NamedTuple):
-    rcode: int
-    answers: int
-    soa_mname: Optional[str]  # MNAME of the first SOA in the authority section
-
-
-def _read_name(buf: bytes, pos: int) -> tuple[str, int]:
-    """A (possibly compressed) domain name at `pos`: (name, offset after it)."""
-    labels: list[str] = []
-    after: Optional[int] = None
-    for _ in range(128):  # bounded: a pointer loop must not hang the canary
-        if pos >= len(buf):
-            raise ValueError("name runs past the end of the message")
-        length = buf[pos]
-        if length & 0xC0 == 0xC0:
-            if pos + 1 >= len(buf):
-                raise ValueError("truncated compression pointer")
-            after = pos + 2 if after is None else after
-            pos = ((length & 0x3F) << 8) | buf[pos + 1]
-            continue
-        if length == 0:
-            return ".".join(labels), (pos + 1 if after is None else after)
-        labels.append(buf[pos + 1:pos + 1 + length].decode("ascii", "replace").lower())
-        pos += 1 + length
-    raise ValueError("name too long or a compression loop")
-
-
-def parse_response(body: bytes) -> DnsAnswer:
-    """RCODE, answer count and the authority SOA's MNAME of a DNS response."""
-    if len(body) < 12:
-        raise ValueError(f"short DNS response: {len(body)} bytes")
-    qdcount, ancount, nscount, _ = struct.unpack("!HHHH", body[4:12])
-    pos = 12
-    for _ in range(qdcount):
-        pos = _read_name(body, pos)[1] + 4          # QTYPE + QCLASS
-    for _ in range(ancount):
-        pos = _read_name(body, pos)[1]
-        pos += 10 + struct.unpack("!H", body[pos + 8:pos + 10])[0]
-    soa: Optional[str] = None
-    for _ in range(nscount):
-        pos = _read_name(body, pos)[1]
-        rtype, _cls, _ttl, rdlength = struct.unpack("!HHIH", body[pos:pos + 10])
-        if rtype == 6 and soa is None:
-            soa = _read_name(body, pos + 10)[0]
-        pos += 10 + rdlength
-    return DnsAnswer(body[3] & 0x0F, ancount, soa)
 
 
 def doh(base: str, name: str, timeout: float = 10.0) -> DnsAnswer:

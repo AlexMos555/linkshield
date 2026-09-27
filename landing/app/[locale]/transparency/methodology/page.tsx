@@ -202,10 +202,14 @@ export default async function MethodologyPage({
   const t = await getTranslations({ locale: safeLocale, namespace: "Methodology" });
   const data = await loadLatestBenchmark();
   const transparencyHref = localePath(safeLocale, "/transparency");
+  // Describe the legit sample the published snapshot actually used: real
+  // sites outside our allowlist (data/benchmark_legit_ru.txt, run without
+  // the rate-limit starvation) or the old Tranco sample.
+  const curatedLegit = data?.sources?.legit_outside_allowlist === true;
   const caveats = [
     t("caveat_endpoint"),
-    t("caveat_allowlist"),
-    t("caveat_rate_limit"),
+    t(curatedLegit ? "caveat_allowlist_curated" : "caveat_allowlist"),
+    ...(curatedLegit ? [] : [t("caveat_rate_limit")]),
     t("caveat_phishtank"),
     t("caveat_gsb"),
     t("caveat_nxdomain"),
@@ -268,7 +272,7 @@ export default async function MethodologyPage({
             <strong>{t("dataset_phishing")}</strong>: {t("dataset_phishing_desc")}
           </li>
           <li>
-            <strong>{t("dataset_safe")}</strong>: {t("dataset_safe_desc")}
+            <strong>{t("dataset_safe")}</strong>: {t(curatedLegit ? "dataset_safe_desc_curated" : "dataset_safe_desc")}
           </li>
         </ul>
       </section>

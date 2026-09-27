@@ -1,0 +1,341 @@
+# Real Russian sites OUTSIDE our allowlist: the weekly benchmark's
+# false-positive sample (scripts/eval_fresh_urls.py, the default legit source).
+#
+# Why a hand-built list: the public check answers every Tranco top-100k domain
+# "safe" without analysing it (api.services.scoring.is_trusted_top_domain), so
+# a legitimate sample drawn from Tranco measures nothing — the benchmark never
+# published a false-positive rate for that reason. The people we protect visit
+# their region's and city's administration, a university, a local bank, shop,
+# museum or church, a .рф municipal page: sites no global top list ranks. The
+# 2026-09-25 full check found 6 of 12 such sites called "Dangerous".
+#
+# Format — one site per line, fields separated by " | ":
+#   host          punycode, no "www." — exactly what the benchmark sends
+#   category      regional_gov, city, university, rf, bank, business, museum, theatre
+#   reachability  from outside Russia on 2026-09-27: reachable-abroad (served
+#                 its own page) or blocked-abroad (timeout, 403 or an anti-bot
+#                 wall). Our server is abroad too; blocked-abroad is the case
+#                 the report found scored as "no HTTPS" → "Dangerous".
+#   source        the Wikidata item whose official website (P856) is this host
+#                 (Wikidata is CC0), or the report that named the site
+#   name          the item's label (and the Unicode form of a .рф host)
+# '#' starts a comment; blank lines are ignored.
+#
+# How it was built (2026-09-27):
+#   1. Wikidata SPARQL, official websites (P856) of: federal subjects of Russia
+#      (Q43263), towns/cities in Russia over 50,000 people (Q7930989), Russian
+#      universities (Q3918), banks (Q22687) and businesses (Q4830453) not
+#      marked dissolved, museums (Q33506), theatres (Q24354), and any Russian
+#      item whose site is on .рф.
+#   2. Kept hosts under .ru / .su / .рф that is_trusted_top_domain does NOT
+#      trust: 4,002 candidates. A fixed-seed sample per category was taken.
+#   3. Each host resolved (A record via 1.1.1.1) and its home page fetched
+#      from outside Russia.
+#   4. Reviewed by hand — from what step 3 fetched: each page's title and
+#      final (redirected) address, not a browser visit. Dropped every host
+#      whose page is no longer the entity's: 7 casino mirrors on lapsed
+#      domains (a town, two rural administrations, two museums, a puppet
+#      theatre, a cathedral), for-sale and parked pages, hosting placeholders,
+#      unrelated redirects, 404/5xx, "site moved" stubs.
+#      A host that did not serve its page abroad (blocked-abroad below: 61 of
+#      the 271) was NEVER SEEN — it is kept on its Wikidata entry alone, and
+#      only for a state body (region, city, municipality, university), whose
+#      domain is not left to lapse. A business, bank, museum or theatre that
+#      did not answer was dropped — nothing confirmed it. (марцводы.рф, a
+#      resort museum kept by mistake under that rule on 2026-09-27, was
+#      removed the same day.)
+#   5. Added the five sites the 2026-09-25 report named (bankspb.ru,
+#      президент.рф, мойбизнес.рф, разговорыоважном.рф, rosreestr.gov.ru).
+#
+# Re-check before trusting a refresh: python3 scripts/eval_fresh_urls.py
+# --verify-legit-sample (every host resolves and is outside the allowlist).
+# tests/test_eval_fresh_urls.py pins the format, the size, and the allowlist
+# rule in CI. Remove a site that stops being its entity; never add one
+# because it scores well.
+
+# ── Government: federal subjects and federal bodies (46) ──
+49gov.ru | regional_gov | blocked-abroad | Wikidata Q7971 P856 | Магаданская область
+75.ru | regional_gov | reachable-abroad | Wikidata Q6838 P856 | Забайкальский край
+adm44.ru | regional_gov | reachable-abroad | Wikidata Q2596 P856 | Костромская область
+admlip.ru | regional_gov | blocked-abroad | Wikidata Q3510 P856 | Липецкая область
+admtyumen.ru | regional_gov | blocked-abroad | Wikidata Q5824 P856 | Тюменская область
+adygheya.ru | regional_gov | blocked-abroad | Wikidata Q3734 P856 | Адыгея
+ako.ru | regional_gov | blocked-abroad | Wikidata Q6076 P856 | Кемеровская область
+altai-republic.ru | regional_gov | reachable-abroad | Wikidata Q5971 P856 | Республика Алтай
+altairegion22.ru | regional_gov | blocked-abroad | Wikidata Q5942 P856 | Алтайский край
+avo.ru | regional_gov | blocked-abroad | Wikidata Q2702 P856 | Владимирская область
+bryanskobl.ru | regional_gov | reachable-abroad | Wikidata Q2810 P856 | Брянская область
+chechnya.gov.ru | regional_gov | blocked-abroad | Wikidata Q5187 P856 | Чечня
+crimea.gov.ru | regional_gov | reachable-abroad | Wikidata Q15966495 P856 | Республика Крым
+dvinaland.ru | regional_gov | blocked-abroad | Wikidata Q1875 P856 | Архангельская область
+eao.ru | regional_gov | blocked-abroad | Wikidata Q7730 P856 | Еврейская автономная область
+egov-buryatia.ru | regional_gov | reachable-abroad | Wikidata Q6809 P856 | Бурятия
+glava.kbr.ru | regional_gov | blocked-abroad | Wikidata Q5267 P856 | Кабардино-Балкария
+ingushetia.ru | regional_gov | reachable-abroad | Wikidata Q5219 P856 | Ингушетия
+irkobl.ru | regional_gov | blocked-abroad | Wikidata Q6585 P856 | Иркутская область
+ivanovoobl.ru | regional_gov | reachable-abroad | Wikidata Q2654 P856 | Ивановская область
+kamgov.ru | regional_gov | blocked-abroad | Wikidata Q7948 P856 | Камчатский край
+khabkrai.ru | regional_gov | blocked-abroad | Wikidata Q7788 P856 | Хабаровский край
+khogov.ru | regional_gov | reachable-abroad | Wikidata Q114331288 P856 | Херсонская область
+kirovreg.ru | regional_gov | blocked-abroad | Wikidata Q5387 P856 | Кировская область
+kvs.gov.spb.ru | regional_gov | reachable-abroad | Wikidata Q656 P856 | Санкт-Петербург
+mari-el.gov.ru | regional_gov | blocked-abroad | Wikidata Q5446 P856 | Марий Эл
+nobl.ru | regional_gov | reachable-abroad | Wikidata Q2246 P856 | Нижегородская область
+orel-region.ru | regional_gov | blocked-abroad | Wikidata Q3129 P856 | Орловская область
+orenburg-gov.ru | regional_gov | blocked-abroad | Wikidata Q5338 P856 | Оренбургская область
+pravmin74.ru | regional_gov | blocked-abroad | Wikidata Q5714 P856 | Челябинская область
+rk.gov.ru | regional_gov | reachable-abroad | Wikidata Q15966495 P856 | Республика Крым
+rkursk.ru | regional_gov | reachable-abroad | Wikidata Q3178 P856 | Курская область
+rosreestr.gov.ru | regional_gov | blocked-abroad | full check 2026-09-25 #1 | Росреестр
+rso-a.ru | regional_gov | blocked-abroad | Wikidata Q5237 P856 | Северная Осетия — Алания
+ryazan.gov.ru | regional_gov | blocked-abroad | Wikidata Q2753 P856 | Рязанская область
+sakha.gov.ru | regional_gov | blocked-abroad | Wikidata Q6605 P856 | Якутия
+sakhalin.gov.ru | regional_gov | blocked-abroad | Wikidata Q7797 P856 | Сахалинская область
+stavkray.ru | regional_gov | blocked-abroad | Wikidata Q5207 P856 | Ставропольский край
+tambov.gov.ru | regional_gov | blocked-abroad | Wikidata Q3550 P856 | Тамбовская область
+tomsk.gov.ru | regional_gov | reachable-abroad | Wikidata Q5884 P856 | Томская область
+volgograd.ru | regional_gov | blocked-abroad | Wikidata Q3819 P856 | Волгоградская область
+vologda-oblast.ru | regional_gov | blocked-abroad | Wikidata Q2015 P856 | Вологодская область
+xn--80aafc4bdoy.xn--p1ai | regional_gov | blocked-abroad | Wikidata Q16746854 P856 | Луганская Народная Республика (главалнр.рф)
+xn--80aealotwbjpid2k.xn--80aze9d.xn--p1ai | regional_gov | blocked-abroad | Wikidata Q6407 P856 | Ямало-Ненецкий автономный округ (правительство.янао.рф)
+xn--80atapud1a.xn--p1ai | regional_gov | reachable-abroad | Wikidata Q7984 P856 | Чукотский автономный округ (чукотка.рф)
+zo.gov.ru | regional_gov | reachable-abroad | Wikidata Q114333615 P856 | Запорожская область
+
+# ── City and municipal administrations (45) ──
+adm.solkam.ru | city | blocked-abroad | Wikidata Q196384 P856 | Соликамск
+admbal.ru | city | reachable-abroad | Wikidata Q104560 P856 | Балаково
+admkogalym.ru | city | reachable-abroad | Wikidata Q154630 P856 | Когалым
+admugansk.ru | city | reachable-abroad | Wikidata Q172616 P856 | Нефтеюганск
+angarsk-goradm.ru | city | reachable-abroad | Wikidata Q103565 P856 | Ангарск
+asbestadm.ru | city | reachable-abroad | Wikidata Q104059 P856 | Асбест
+astrgorod.ru | city | reachable-abroad | Wikidata Q3927 P856 | Астрахань
+balashiha.ru | city | blocked-abroad | Wikidata Q104557 P856 | Балашиха
+beladm.ru | city | blocked-abroad | Wikidata Q3323 P856 | Белгород
+bga32.ru | city | reachable-abroad | Wikidata Q2801 P856 | Брянск
+blagduma.ru | city | reachable-abroad | Wikidata Q6934 P856 | Благовещенск
+citymurmansk.ru | city | reachable-abroad | Wikidata Q1763 P856 | Мурманск
+glazov-gov.ru | city | reachable-abroad | Wikidata Q134433 P856 | Глазов
+gorodperm.ru | city | reachable-abroad | Wikidata Q915 P856 | Пермь
+gubkinadm.ru | city | blocked-abroad | Wikidata Q134679 P856 | Губкин
+kaluga-gov.ru | city | blocked-abroad | Wikidata Q2837 P856 | Калуга
+khabarovskadm.ru | city | blocked-abroad | Wikidata Q4454 P856 | Хабаровск
+kmscity.ru | city | blocked-abroad | Wikidata Q154801 P856 | Комсомольск-на-Амуре
+kotelniki.ru | city | blocked-abroad | Wikidata Q155405 P856 | Котельники
+kovrov-gorod.ru | city | reachable-abroad | Wikidata Q102445 P856 | Ковров
+krasnogorsk-adm.ru | city | reachable-abroad | Wikidata Q155569 P856 | Красногорск
+labinsk.ru | city | reachable-abroad | Wikidata Q16985 P856 | Лабинск
+magadangorod.ru | city | reachable-abroad | Wikidata Q7968 P856 | Магадан
+magnitogorsk.ru | city | reachable-abroad | Wikidata Q95449 P856 | Магнитогорск
+mkyzyl.ru | city | reachable-abroad | Wikidata Q6049 P856 | Кызыл
+movp.ru | city | reachable-abroad | Wikidata Q133037 P856 | Верхняя Пышма
+orel-adm.ru | city | reachable-abroad | Wikidata Q3118 P856 | Орёл
+pavpos.ru | city | reachable-abroad | Wikidata Q177908 P856 | Павловский Посад
+pkgo.ru | city | blocked-abroad | Wikidata Q7951 P856 | Петропавловск-Камчатский
+prvadm.ru | city | reachable-abroad | Wikidata Q19157 P856 | Первоуральск
+pskovgorod.ru | city | blocked-abroad | Wikidata Q2214 P856 | Псков
+ryazantourism.ru | city | reachable-abroad | Wikidata Q2746 P856 | Рязань
+rybinsk.ru | city | reachable-abroad | Wikidata Q193413 P856 | Рыбинск
+salavatsovet.ru | city | reachable-abroad | Wikidata Q193443 P856 | Салават
+saratovmer.ru | city | reachable-abroad | Wikidata Q5332 P856 | Саратов
+sergiev-posad.ru | city | reachable-abroad | Wikidata Q193722 P856 | Сергиев Посад
+shahty.ru | city | reachable-abroad | Wikidata Q198206 P856 | Шахты
+sochi.ru | city | blocked-abroad | Wikidata Q39420 P856 | Сочи
+syktyvkar-sovet.ru | city | reachable-abroad | Wikidata Q2143 P856 | Сыктывкар
+vgv33.ru | city | reachable-abroad | Wikidata Q2684 P856 | Владимир
+xn----8sbalgtaqconcpuji4ai0e.xn--p1ai | city | blocked-abroad | Wikidata Q159124 P856 | Мичуринск (мичуринск-наукоград.рф)
+xn----ftbdvalramfg2j.xn--p1ai | city | reachable-abroad | Wikidata Q16978 P856 | Крымск (крымск-город.рф)
+xn--80ae1alafffj1i.xn--p1ai | city | reachable-abroad | Wikidata Q5206 P856 | Ставрополь (ставрополь.рф)
+xn--90aciakhhg8arp.xn--p1ai | city | reachable-abroad | Wikidata Q105023 P856 | Берёзовский (березовский.рф)
+zarechny.zato.ru | city | reachable-abroad | Wikidata Q136715 P856 | Заречный
+
+# ── Universities and institutes (45) ──
+astu.secna.ru | university | reachable-abroad | Wikidata Q3701429 P856 | Алтайский государственный технический университет имени И. И. Ползунова
+brgu.ru | university | reachable-abroad | Wikidata Q4097540 P856 | Брянский государственный университет имени академика И. Г. Петровского
+chitgma.ru | university | reachable-abroad | Wikidata Q2907816 P856 | Читинская государственная медицинская академия
+cu.ru | university | reachable-abroad | Wikidata Q140812516 P856 | Центральный университет
+dalgau.ru | university | reachable-abroad | Wikidata Q4154233 P856 | Дальневосточный государственный аграрный университет
+elsu.ru | university | reachable-abroad | Wikidata Q4174759 P856 | Елецкий государственный университет имени И. А. Бунина
+ens.mil.ru | university | blocked-abroad | Wikidata Q4114347 P856 | Военная академия РХБЗ и инженерных войск
+gasu.ru | university | reachable-abroad | Wikidata Q4144551 P856 | Горно-Алтайский государственный университет
+ggtu.ru | university | reachable-abroad | Wikidata Q4273359 P856 | Государственный гуманитарно-технологический университет
+guz.ru | university | reachable-abroad | Wikidata Q4146979 P856 | Государственный университет по землеустройству
+irkgmu.ru | university | blocked-abroad | Wikidata Q4203305 P856 | Иркутский государственный медицинский университет
+ispu.ru | university | reachable-abroad | Wikidata Q4196665 P856 | Ивановский государственный энергетический университет
+ivanovo.ac.ru | university | reachable-abroad | Wikidata Q4196668 P856 | Ивановский государственный университет
+kai.ru | university | reachable-abroad | Wikidata Q4207816 P856 | Казанский национальный исследовательский технический университет имени А. Н. Туполева
+kamchatgtu.ru | university | reachable-abroad | Wikidata Q30257472 P856 | Камчатский государственный технический университет
+kamgu.ru | university | reachable-abroad | Wikidata Q4211795 P856 | Камчатский государственный университет
+kazanriu.ru | university | reachable-abroad | Wikidata Q4398087 P856 | Российский исламский институт (Казань)
+kgau.ru | university | reachable-abroad | Wikidata Q4239242 P856 | Красноярский государственный аграрный университет
+kgufkst.ru | university | reachable-abroad | Wikidata Q4243511 P856 | Кубанский государственный университет физической культуры, спорта и туризма
+krasgmu.ru | university | reachable-abroad | Wikidata Q4239243 P856 | Красноярский государственный медицинский университет имени профессора В. Ф. Войно-Ясенецкого
+kuzstu.ru | university | reachable-abroad | Wikidata Q4244744 P856 | Кузбасский государственный технический университет
+kvvu.mil.ru | university | blocked-abroad | Wikidata Q24932362 P856 | Краснодарское высшее военное училище имени генерала армии С. М. Штеменко
+mkpu.ru | university | blocked-abroad | Wikidata Q4304386 P856 | Московское высшее военное командное училище
+mosgu.ru | university | reachable-abroad | Wikidata Q277872 P856 | Московский гуманитарный университет
+nvvku.mil.ru | university | blocked-abroad | Wikidata Q4325494 P856 | Новосибирское высшее военное командное училище
+omgtu.ru | university | blocked-abroad | Wikidata Q257249 P856 | Омский государственный технический университет
+omgups.ru | university | blocked-abroad | Wikidata Q4334723 P856 | Омский государственный университет путей сообщения
+rpu-rf.ru | university | reachable-abroad | Wikidata Q4398112 P856 | Российский православный университет
+rshu.ru | university | reachable-abroad | Wikidata Q4398064 P856 | Российский государственный гидрометеорологический университет
+samgups.ru | university | reachable-abroad | Wikidata Q4406404 P856 | Приволжский государственный университет путей сообщения
+samsu.ru | university | reachable-abroad | Wikidata Q4406409 P856 | Самарский государственный университет
+sechenov.ru | university | reachable-abroad | Wikidata Q1962613 P856 | Сеченовский университет
+sfu.ru | university | reachable-abroad | Wikidata Q2382644 P856 | Сибирский федеральный университет
+sibupk.su | university | reachable-abroad | Wikidata Q4418318 P856 | Сибирский университет потребительской кооперации
+spbguga.ru | university | reachable-abroad | Wikidata Q4407700 P856 | Санкт-Петербургский государственный университет гражданской авиации
+surgpu.ru | university | blocked-abroad | Wikidata Q4446468 P856 | Сургутский государственный педагогический университет
+svgu.ru | university | blocked-abroad | Wikidata Q4412445 P856 | Северо-Восточный государственный университет
+svki.rosguard.gov.ru | university | reachable-abroad | Wikidata Q60829463 P856 | Саратовское высшее военное командное Краснознаменное училище внутренних войск МВД СССР имени Ф. Э. Дзержинского
+swsu.ru | university | blocked-abroad | Wikidata Q4533671 P856 | Юго-Западный государственный университет
+tgmu.ru | university | reachable-abroad | Wikidata Q2324453 P856 | Тихоокеанский государственный медицинский университет
+togudv.ru | university | blocked-abroad | Wikidata Q1051345 P856 | Тихоокеанский государственный университет
+ulspu.ru | university | reachable-abroad | Wikidata Q982376 P856 | Ульяновский государственный педагогический университет имени И. Н. Ульянова
+uralgufk.ru | university | reachable-abroad | Wikidata Q4476757 P856 | Уральский государственный университет физической культуры
+urep.ru | university | reachable-abroad | Wikidata Q4476765 P856 | Уральский институт экономики, управления и права
+volsu.ru | university | reachable-abroad | Wikidata Q4122974 P856 | Волгоградский государственный университет
+
+# ── .рф sites (municipalities, churches, culture, federal projects) (43) ──
+xn-----6kcbqggkggtcllvchedg5cwa0j.xn--p1ai | rf | reachable-abroad | Wikidata Q1353643 P856 | Ласточкино гнездо (замок-ласточкино-гнездо.рф)
+xn----7sba2birl6b0d.xn--p1ai | rf | reachable-abroad | Wikidata Q28508888 P856 | Кара-Холь (кара-холь.рф)
+xn----7sbaaby0clduik6a2j.xn--p1ai | rf | blocked-abroad | Wikidata Q4414581 P856 | Сельское поселение Саранпауль (саранпауль-адм.рф)
+xn----7sbak0acafxlcd8athibacq3n.xn--p1ai | rf | reachable-abroad | Wikidata Q30257171 P856 | Московский гуманитарный институт (гуманитарный-институт.рф)
+xn----7sbb0cbhgkft0a6f.xn--p1ai | rf | reachable-abroad | Wikidata Q123172249 P856 | Церковь Матроны Московской в Европее (храм-матроны.рф)
+xn----7sbb4aagcd0agkcogk9b.xn--p1ai | rf | blocked-abroad | Wikidata Q2629427 P856 | Парфинский район (парфинский-район.рф)
+xn----7sbbdfk8blvof8au.xn--p1ai | rf | reachable-abroad | Wikidata Q4505298 P856 | Церковь иконы Божией Матери «Взыскание погибших» (Дубровка) (храм-дубровка.рф)
+xn----7sbblipqjntkm6b.xn--p1ai | rf | reachable-abroad | Wikidata Q3518123 P856 | клуб настольного тенниса «Факел-Газпром» (факел-газпром.рф)
+xn----7sbbqh3afce9l.xn--p1ai | rf | blocked-abroad | Wikidata Q157961 P856 | Малмыж (малмыж-адм.рф)
+xn----8sbbihcb3bgbrodc7b3gzc.xn--p1ai | rf | reachable-abroad | Wikidata Q4091984 P856 | Большелогское сельское поселение (большелогское-адм.рф)
+xn----8sbbpcw1a2apcc2c1c.xn--p1ai | rf | reachable-abroad | Wikidata Q4479358 P856 | Учебный театр «На Моховой» (учебный-театр.рф)
+xn----8sbeefyhce0ajccahxgn.xn--p1ai | rf | blocked-abroad | Wikidata Q2610877 P856 | Новгородский район (новгородский-район.рф)
+xn----8sbehdcbewkj3agi3audo.xn--p1ai | rf | blocked-abroad | Wikidata Q17506296 P856 | Рождественский сельсовет (рождественский-адм.рф)
+xn----8sbgalwhgh0aefdlxg.xn--p1ai | rf | reachable-abroad | Wikidata Q28465105 P856 | Петропавловская церковь (Старочеркасская) (петро-павловский.рф)
+xn----etbgnjdogfk9a8gl.xn--p1ai | rf | reachable-abroad | Wikidata Q1305638 P856 | Угольные Копи (угольные-копи.рф)
+xn----gtbzajlun1a.xn--p1ai | rf | reachable-abroad | Wikidata Q135398990 P856 | Муромская художественная школа (дхш-муром.рф)
+xn----itbbeichgewgelouf6o.xn--p1ai | rf | reachable-abroad | Wikidata Q111867135 P856 | Клубный отель "Прионежский" (отель-прионежский.рф)
+xn----jtbalgbx7av.xn--p1ai | rf | reachable-abroad | Wikidata Q546034 P856 | Енисей (фк-енисей.рф)
+xn--130-qddohl3g.xn--80acgfbsl1azdqr.xn--p1ai | rf | reachable-abroad | Wikidata Q4264330 P856 | Лицей № 130 (Екатеринбург) (лицей130.екатеринбург.рф)
+xn--67-6kcaapbk8ac7bje9a.xn--p1ai | rf | reachable-abroad | Wikidata Q1983158 P856 | Гагаринский район (гагаринадмин67.рф)
+xn--73-9kceenvihixhb0cxo.xn--p1ai | rf | reachable-abroad | Wikidata Q122899852 P856 | Богоявленский храм (Старая Майна) (богоявленский73.рф)
+xn--80aafadvc9bifbaeqg0p.xn--p1ai | rf | reachable-abroad | full check 2026-09-25 #1 | Разговоры о важном (Минпросвещения) (разговорыоважном.рф)
+xn--80aafj2agk3g.xn--p1ai | rf | reachable-abroad | Wikidata Q141535167 P856 | Наш вклад (нашвклад.рф)
+xn--80abipnyt.xn--p1ai | rf | reachable-abroad | Wikidata Q107557664 P856 | Баско (идбаско.рф)
+xn--80adayfbdgycbagzjc.xn--p1ai | rf | reachable-abroad | Wikidata Q7662 P856 | Волосовский район (волосовскийрайон.рф)
+xn--80adiljlapbeasfiw.xn--p1ai | rf | reachable-abroad | Wikidata Q4303279 P856 | округ Морские ворота (моморскиеворота.рф)
+xn--80aejrcevcz8c.xn--p1ai | rf | reachable-abroad | Wikidata Q66813564 P856 | Чкаловское сельское поселение (чкаловское.рф)
+xn--80afcdbalict6afooklqi5o.xn--p1ai | rf | reachable-abroad | Wikidata Q59307575 P856 | Фонд президентских грантов по развитию гражданского общества (президентскиегранты.рф)
+xn--80ag4abjdei4b.xn--p1ai | rf | reachable-abroad | Wikidata Q52843163 P856 | Федеральный Ростовский аграрный научный центр (ростагрнц.рф)
+xn--80agtpq3a.xn--p1ai | rf | reachable-abroad | Wikidata Q86679725 P856 | Областной комплексный центр социальной адаптации граждан (окцсаг.рф)
+xn--80aik0ba.xn--p1ai | rf | reachable-abroad | Wikidata Q14489243 P856 | Иссадское сельское поселение (иссад.рф)
+xn--80ajngi4c7b.xn--p1ai | rf | reachable-abroad | Wikidata Q4316807 P856 | сельское поселение Нельхай (нельхай.рф)
+xn--80apjc1byb8ak.xn--p1ai | rf | reachable-abroad | Wikidata Q1993098 P856 | Церковь Милующей Божией Матери (милующая.рф)
+xn--80aqaedff6b6c2b.xn--p1ai | rf | blocked-abroad | Wikidata Q1438511 P856 | Шамильский район (шамильский.рф)
+xn--80axgjn3ab0a.xn--p1ai | rf | reachable-abroad | Wikidata Q2667658 P856 | Шушары (мошушары.рф)
+xn--90acc3adqbbzd.xn--p1ai | rf | reachable-abroad | Wikidata Q19907989 P856 | Введенский собор (богословск.рф)
+xn--90aifddrld7a.xn--p1ai | rf | reachable-abroad | full check 2026-09-25 #1 | Мой бизнес (федеральная платформа МСП) (мойбизнес.рф)
+xn--b1ag1aaicmw.xn--p1ai | rf | blocked-abroad | Wikidata Q4109189 P856 | Верхоторский сельсовет (верхотор.рф)
+xn--c1atg1d.xn--p1ai | rf | reachable-abroad | Wikidata Q4327850 P856 | Ноябрьская парогазовая электростанция (нпгэ.рф)
+xn--d1abbgf6aiiy.xn--p1ai | rf | reachable-abroad | full check 2026-09-25 #1 | Президент России (президент.рф)
+xn--d1acc2adacm.xn--p1ai | rf | reachable-abroad | Wikidata Q4166884 P856 | Дорожное радио (дорожное.рф)
+xn--h1aadcdlcf4a.xn--p1ai | rf | blocked-abroad | Wikidata Q2631532 P856 | Нолинский район (нолинский.рф)
+xn--h1aax.xn--p1ai | rf | reachable-abroad | Wikidata Q108523446 P856 | Институт развития интернета (ири.рф)
+
+# ── Regional and small banks (20) ──
+abr.ru | bank | reachable-abroad | Wikidata Q827011 P856 | Акционерный банк Россия
+bank-alemar.ru | bank | reachable-abroad | Wikidata Q4062086 P856 | Алемар
+bank-peresvet.ru | bank | reachable-abroad | Wikidata Q97162135 P856 | Пересвет
+bankspb.ru | bank | reachable-abroad | full check 2026-09-25 #1 | Банк «Санкт-Петербург»
+centrinvest.ru | bank | reachable-abroad | Wikidata Q4503942 P856 | Центр-инвест
+chelindbank.ru | bank | reachable-abroad | Wikidata Q4508399 P856 | Челиндбанк
+dvbank.ru | bank | reachable-abroad | Wikidata Q4154232 P856 | Дальневосточный банк
+exiar.ru | bank | reachable-abroad | Wikidata Q4398227 P856 | Российское агентство по страхованию экспортных кредитов и инвестиций
+finbank.ru | bank | reachable-abroad | Wikidata Q106507720 P856 | Первый инвестиционный банк
+finsb.ru | bank | reachable-abroad | Wikidata Q21644992 P856 | Финсервис
+itb.ru | bank | reachable-abroad | Wikidata Q4200545 P856 | Инвестторгбанк
+kuzbank.ru | bank | reachable-abroad | Wikidata Q129318939 P856 | Банк Кузнецкий
+mfk-bank.ru | bank | reachable-abroad | Wikidata Q4288603 P856 | Международный финансовый клуб
+moskb.ru | bank | reachable-abroad | Wikidata Q4304430 P856 | Москоммерцбанк
+nskbl.ru | bank | reachable-abroad | Wikidata Q126728003 P856 | Bank Levoberezhny
+primbank.ru | bank | reachable-abroad | Wikidata Q128749900 P856 | Приморье
+rencapbank.ru | bank | reachable-abroad | Wikidata Q4421076 P856 | РенКап Банк
+rosinkas.ru | bank | reachable-abroad | Wikidata Q4397761 P856 | Росинкас
+sbibankllc.ru | bank | reachable-abroad | Wikidata Q118521640 P856 | Эс-Би-Ай Банк
+vikingbank.ru | bank | reachable-abroad | Wikidata Q37650790 P856 | Банк Викинг
+
+# ── Small and regional businesses (40) ──
+aerosila.ru | business | reachable-abroad | Wikidata Q18212267 P856 | Аэросила
+analytic.ru | business | reachable-abroad | Wikidata Q4064745 P856 | Аналитик-ТС
+armz.ru | business | reachable-abroad | Wikidata Q4072227 P856 | Атомредметзолото
+chlmz.ru | business | reachable-abroad | Wikidata Q4512930 P856 | Череповецкий литейно-механический завод
+cognitive.ru | business | reachable-abroad | Wikidata Q4036375 P856 | Cognitive Technologies
+cytomed.ru | business | reachable-abroad | Wikidata Q18405798 P856 | Цитомед
+dobryninsky.ru | business | reachable-abroad | Wikidata Q138642615 P856 | Добрынинский
+edurussia.ru | business | reachable-abroad | Wikidata Q140310206 P856 | РАКУС ГРУПП
+elion.ru | business | reachable-abroad | Wikidata Q4531237 P856 | Элион (компания)
+evotren.ru | business | reachable-abroad | Wikidata Q138716245 P856 | Evotren
+felix.ru | business | reachable-abroad | Wikidata Q4482445 P856 | Феликс
+gipromez-mg.ru | business | reachable-abroad | Wikidata Q52846882 P856 | ОАО "МАГНИТОГОРСКИЙ ГИПРОМЕЗ"
+goodel.ru | business | reachable-abroad | Wikidata Q4519377 P856 | Шадринский электродный завод
+istmz.ru | business | reachable-abroad | Wikidata Q4205144 P856 | Истьинский машиностроительный завод
+jagannath.ru | business | reachable-abroad | Wikidata Q64007125 P856 | Джаганнат
+karavay.spb.ru | business | reachable-abroad | Wikidata Q4213614 P856 | Каравай
+mapm.ru | business | reachable-abroad | Wikidata Q4334851 P856 | Онега (порт)
+masterminutka.ru | business | reachable-abroad | Wikidata Q127774789 P856 | Мастер Минутка
+mkm.ru | business | reachable-abroad | Wikidata Q4303613 P856 | Москабельмет (группа компаний)
+nmz-k.ru | business | reachable-abroad | Wikidata Q4325474 P856 | Новосибирский металлургический завод имени Кузьмина
+nznp.ru | business | reachable-abroad | Wikidata Q4326245 P856 | Новошахтинский завод нефтепродуктов
+pharmenterprises.ru | business | reachable-abroad | Wikidata Q140045346 P856 | PHARMENTERPRISES LLC (Russia)
+polartv.ru | business | reachable-abroad | Wikidata Q4047158 P856 | Polar
+primkon.ru | business | reachable-abroad | Wikidata Q8308333 P856 | Приморский кондитер
+reanimedia.ru | business | reachable-abroad | Wikidata Q4048075 P856 | Reanimedia
+reklab.ru | business | reachable-abroad | Wikidata Q141420946 P856 | РЕКЛАБ
+ripol.ru | business | reachable-abroad | Wikidata Q4394764 P856 | Рипол-классик
+rmk-group.ru | business | reachable-abroad | Wikidata Q4400487 P856 | Русская медная компания
+rp-net.ru | business | reachable-abroad | Wikidata Q4400827 P856 | Русский путь (издательство)
+s7em.ru | business | reachable-abroad | Wikidata Q140263337 P856 | S7EM – решения на базе ИИ/LLM для бизнеса
+scarlett.ru | business | reachable-abroad | Wikidata Q4049114 P856 | Scarlett
+schoolkarta.ru | business | reachable-abroad | Wikidata Q141534955 P856 | Школьная карта
+simaz-bus.ru | business | reachable-abroad | Wikidata Q4034671 P856 | СИМАЗ
+sodis.ru | business | reachable-abroad | Wikidata Q18400981 P856 | Содис
+solbum.ru | business | reachable-abroad | Wikidata Q4427724 P856 | Соликамскбумпром
+tinso.ru | business | reachable-abroad | Wikidata Q4461990 P856 | Трансинжстрой
+tztu.ru | business | reachable-abroad | Wikidata Q4465013 P856 | Туймазытехуглерод
+uralniti.ru | business | reachable-abroad | Wikidata Q52847059 P856 | УралНИТИ
+vrpp.ru | business | reachable-abroad | Wikidata Q4131805 P856 | Газпромтрубинвест
+xn--80aadbki6adhshb.xn--p1ai | business | reachable-abroad | Wikidata Q16630813 P856 | Водоканал (водоканалекб.рф)
+
+# ── Regional museums (18) ──
+adyg-museum.ru | museum | reachable-abroad | Wikidata Q16679937 P856 | Национальный музей Республики Адыгея
+azovmuseum.ru | museum | reachable-abroad | Wikidata Q16487835 P856 | Азовский историко-археологический и палеонтологический музей-заповедник
+domrz.ru | museum | reachable-abroad | Wikidata Q4165574 P856 | Дом русского зарубежья имени Александра Солженицына
+felicina.ru | museum | reachable-abroad | Wikidata Q16666886 P856 | Краснодарский государственный историко-археологический музей-заповедник имени Е.Д. Фелицына
+gvtm.ru | museum | reachable-abroad | Wikidata Q108527192 P856 | Государственный военно-технический музей
+mkram.ru | museum | reachable-abroad | Wikidata Q4125421 P856 | Воронежский областной художественный музей им. И. Н. Крамского
+museum-ufa.ru | museum | reachable-abroad | Wikidata Q94531725 P856 | Музей истории города Уфы
+muzei-paleh.ru | museum | reachable-abroad | Wikidata Q4165214 P856 | Дом-музей П. Д. Корина в Палехе
+mvms.ru | museum | reachable-abroad | Wikidata Q129059154 P856 | Музей военно-морской славы
+myagkm.ru | museum | reachable-abroad | Wikidata Q4062928 P856 | Алтайский государственный краеведческий музей
+mytyshimuseum.ru | museum | reachable-abroad | Wikidata Q4309603 P856 | Мытищинский историко-художественный музей
+ognimos.ru | museum | reachable-abroad | Wikidata Q4306082 P856 | Музей «Огни Москвы»
+podzemnayamoskva.ru | museum | reachable-abroad | Wikidata Q125122513 P856 | Бомбоубежище завода им. Мантулина
+talci-irkutsk.ru | museum | reachable-abroad | Wikidata Q2391061 P856 | Тальцы (музей)
+thm-museum.ru | museum | reachable-abroad | Wikidata Q4460104 P856 | Тольяттинский художественный музей
+tiam-museum.ru | museum | reachable-abroad | Wikidata Q4114352 P856 | Военная горка
+vologdamuseum.ru | museum | reachable-abroad | Wikidata Q4306070 P856 | Музей «Вологодская ссылка»
+zapoved-mordovia.ru | museum | reachable-abroad | Wikidata Q94552598 P856 | Музей природы Мордовского природного заповедника имени П.Г. Смидовича
+
+# ── Regional theatres (14) ──
+ekvus-kirov.ru | theatre | reachable-abroad | Wikidata Q4453487 P856 | Театр на Спасской
+kukfo.ru | theatre | reachable-abroad | Wikidata Q123679560 P856 | театр «Кукольный формат»
+mari-tuz.ru | theatre | reachable-abroad | Wikidata Q24932611 P856 | Марийский республиканский театр-центр для детей и молодёжи
+moscowtyz.ru | theatre | reachable-abroad | Wikidata Q4304294 P856 | Московский театр юного зрителя
+rusdramtheatre.ru | theatre | reachable-abroad | Wikidata Q4059185 P856 | Академический русский театр драмы имени Георгия Константинова
+rznpuppet.ru | theatre | reachable-abroad | Wikidata Q4402648 P856 | Рязанский государственный областной театр кукол
+sarapultheatre.ru | theatre | reachable-abroad | Wikidata Q4408381 P856 | Сарапульский драматический театр
+tagildrama.ru | theatre | reachable-abroad | Wikidata Q4318945 P856 | Нижнетагильский драматический театр имени Д. Мамина-Сибиряка
+teatr-kukol.ru | theatre | reachable-abroad | Wikidata Q123669654 P856 | Оренбургский государственный областной театр кукол
+teatrkukol-orel.ru | theatre | reachable-abroad | Wikidata Q48948881 P856 | Орловский театр кукол
+teatrpushkin.ru | theatre | reachable-abroad | Wikidata Q4304132 P856 | здание Московского драматического театра имени А. С. Пушкина
+vakhtangov.ru | theatre | reachable-abroad | Wikidata Q1186561 P856 | Государственный академический театр имени Е. Вахтангова
+xn----7sbbrnkv3apccm2i.xn--p1ai | theatre | reachable-abroad | Wikidata Q4465016 P856 | Туймазинский государственный татарский драматический театр (театр-туймазы.рф)
+xn--80aaaaac5a4dzaeeiic.xn--p1ai | theatre | reachable-abroad | Wikidata Q123597269 P856 | Государственный Табасаранский драматический театр (табасарантеатр.рф)

@@ -368,6 +368,7 @@
     "col_tn": "Corretos",
     "dataset_phishing_desc": "links recentes das fontes públicas URLhaus e PhishTank, baixados a cada execução e sem duplicatas por domínio.",
     "dataset_safe_desc": "domínios aleatórios da lista Tranco top-1M, das posições 100 a 100.000, com uma semente aleatória fixa para que a amostra possa ser reproduzida.",
+    "dataset_safe_desc_curated": "sites russos reais fora do top 100.000 da Tranco — administrações regionais e municipais, universidades, sites .рф, pequenos bancos e empresas, museus e teatros — de uma lista publicada que indica a fonte de cada site, com uma semente aleatória fixa.",
     "mapping_cleanway": "Cleanway: “perigoso” conta como perigoso, “seguro” como seguro, “cuidado” como desconhecido.",
     "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: uma resposta bloqueada (NXDOMAIN ou 0.0.0.0 / ::) conta como perigoso; uma resposta normal, como seguro.",
     "mapping_virustotal": "VirusTotal: perigoso quando pelo menos 2 dos seus antivírus marcam o link; a marcação de um só é ignorada por ser ruidosa demais.",
@@ -377,7 +378,8 @@
     "caveat_gsb": "O Google Safe Browsing precisa de uma chave de API; quando nenhuma está configurada para a execução, a coluna dele mostra “—”.",
     "caveat_nxdomain": "Um domínio que não existe mais também recebe NXDOMAIN da Cloudflare e é contado como bloqueio da Cloudflare, o que favorece a Cloudflare em domínios de phishing que já foram derrubados.",
     "caveat_latency": "Os tempos de resposta são medidos a partir da máquina que roda o script (um servidor na nuvem nos EUA ou na UE); de outras regiões eles serão diferentes.",
-    "caveat_allowlist": "Nosso servidor considera seguros, sem analisá-los, os sites do top 100.000 da Tranco, e a amostra de sites reais acima vem dessa mesma faixa. Por isso ela não mostra com que frequência o Cleanway chama por engano de perigoso um site real menos conhecido, e não publicamos taxa de alarmes falsos com base nela. Vamos publicar quando a amostra incluir sites reais fora dessa lista."
+    "caveat_allowlist": "Nosso servidor considera seguros, sem analisá-los, os sites do top 100.000 da Tranco, e a amostra de sites reais acima vem dessa mesma faixa. Por isso ela não mostra com que frequência o Cleanway chama por engano de perigoso um site real menos conhecido, e não publicamos taxa de alarmes falsos com base nela. Vamos publicar quando a amostra incluir sites reais fora dessa lista.",
+    "caveat_allowlist_curated": "Nosso servidor considera seguros, sem analisá-los, os sites do top 100.000 da Tranco, por isso a amostra de sites reais acima vem de fora dessa lista: cada um deles é realmente analisado. Nosso servidor fica fora da Rússia, e alguns desses sites não respondem a visitantes estrangeiros; os resultados semanais no GitHub mostram à parte os alarmes falsos nesses sites."
   },
   "Support": {
     "title": "Suporte",

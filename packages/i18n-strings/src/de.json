@@ -1104,6 +1104,7 @@
       "col_tn": "Richtig",
       "dataset_phishing_desc": "frische Links aus den öffentlichen Quellen URLhaus und PhishTank, bei jedem Lauf neu geladen und nach Domain entdoppelt.",
       "dataset_safe_desc": "zufällige Domains aus der Liste Tranco top-1M, Rang 100 bis 100.000, mit festem Zufallsstartwert, damit sich die Stichprobe reproduzieren lässt.",
+      "dataset_safe_desc_curated": "echte russische Seiten außerhalb der Tranco-Top-100.000 – Regional- und Stadtverwaltungen, Hochschulen, .рф-Seiten, kleine Banken und Firmen, Museen und Theater – aus einer veröffentlichten Liste mit der Quelle jeder Seite, gezogen mit festem Zufallsstartwert.",
       "mapping_cleanway": "Cleanway: „gefährlich“ zählt als gefährlich, „sicher“ als sicher, „Vorsicht“ als unbekannt.",
       "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: Eine blockierte Antwort (NXDOMAIN oder 0.0.0.0 / ::) zählt als gefährlich, eine normale Antwort als sicher.",
       "mapping_virustotal": "VirusTotal: gefährlich, wenn mindestens 2 seiner Virenscanner den Link markieren; die Markierung eines einzelnen wird als zu unzuverlässig ignoriert.",
@@ -1113,7 +1114,8 @@
       "caveat_gsb": "Google Safe Browsing braucht einen API-Schlüssel; ist für den Lauf keiner eingerichtet, zeigt die Spalte „—“.",
       "caveat_nxdomain": "Eine Domain, die nicht mehr existiert, bekommt von Cloudflare ebenfalls NXDOMAIN und wird als Blockierung durch Cloudflare gezählt – das schönt das Ergebnis von Cloudflare bei bereits abgeschalteten Phishing-Domains.",
       "caveat_latency": "Antwortzeiten werden von dem Rechner aus gemessen, auf dem das Skript läuft (ein Cloud-Server in den USA oder der EU); aus anderen Regionen sehen sie anders aus.",
-      "caveat_allowlist": "Unser Server behandelt Seiten aus den Tranco-Top-100.000 ohne Analyse als sicher, und die Stichprobe echter Seiten oben stammt aus genau diesem Bereich. Sie kann also nicht zeigen, wie oft Cleanway eine weniger bekannte echte Seite fälschlich für gefährlich hält, und wir veröffentlichen daraus keine Fehlalarmrate. Das tun wir, sobald die Stichprobe echte Seiten außerhalb dieser Liste enthält."
+      "caveat_allowlist": "Unser Server behandelt Seiten aus den Tranco-Top-100.000 ohne Analyse als sicher, und die Stichprobe echter Seiten oben stammt aus genau diesem Bereich. Sie kann also nicht zeigen, wie oft Cleanway eine weniger bekannte echte Seite fälschlich für gefährlich hält, und wir veröffentlichen daraus keine Fehlalarmrate. Das tun wir, sobald die Stichprobe echte Seiten außerhalb dieser Liste enthält.",
+      "caveat_allowlist_curated": "Unser Server behandelt Seiten aus den Tranco-Top-100.000 ohne Analyse als sicher, deshalb stammt die Stichprobe echter Seiten oben von außerhalb dieser Liste: Jede davon wird wirklich analysiert. Unser Server steht außerhalb Russlands, und manche dieser Seiten antworten ausländischen Besuchern nicht; die wöchentlichen Ergebnisse auf GitHub weisen die Fehlalarme auf diesen Seiten gesondert aus."
     },
     "support": {
       "title": "Hilfe",

@@ -45,6 +45,8 @@ from typing import Iterable, Optional
 
 import httpx
 
+from api.services.dns_wire import BLOCK_SOA_MNAME
+
 logger = logging.getLogger(__name__)
 
 CLOUDFLARE_DOH_URL = "https://cloudflare-dns.com/dns-query"
@@ -158,7 +160,7 @@ def _registrable_domain(qname: str) -> str:
 # an SOA in the authority section; without one, netd re-asked on every retry
 # and one blocked page became a burst of identical queries.
 NEGATIVE_TTL_S = 60
-_SOA_MNAME = "blocked.cleanway.ai"
+_SOA_MNAME = BLOCK_SOA_MNAME
 _SOA_RNAME = "hostmaster.cleanway.ai"
 
 
