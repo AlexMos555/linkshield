@@ -273,10 +273,10 @@ def _load_typosquat_targets() -> dict[str, str]:
     }
 
 
-# The global list exactly as loaded. brand_subdomain_abuse and the ML
-# model's max_brand_similarity feature read THIS one, not the merged list
-# below: the served model was trained on these brands' similarity, and a
-# Russian brand as a subdomain label has not had its false-positive pass —
+# The global list exactly as loaded. brand_subdomain_abuse reads THIS one,
+# not the merged list below (the ML model's max_brand_similarity reads the
+# merged one since features_version 4, when the model was retrained on it):
+# a Russian brand as a subdomain label has not had its false-positive pass —
 # 'pochta' is what Russian companies call their webmail (pochta.<company>.ru),
 # and marketplace seller tools put ozon./wildberries. in front of their own
 # names.

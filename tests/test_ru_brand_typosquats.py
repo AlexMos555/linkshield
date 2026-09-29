@@ -592,12 +592,14 @@ def test_brand_subdomain_abuse_keeps_to_the_global_brands():
     assert _check_brand_in_subdomain("paypal.evil.com") == "paypal"
 
 
-def test_the_ml_similarity_feature_reads_the_global_brands_only():
-    """The served model was trained on this feature over the global list."""
+def test_the_ml_similarity_feature_reads_the_russian_brands_too():
+    """features_version 4: the model was retrained with this feature over the
+    global and the Russian names (tests/test_ml_feature_parity.py)."""
     from difflib import SequenceMatcher
 
     from api.services.url_features import _max_brand_similarity
 
     for name in ("sberbank-ast", "wildberies", "mtsbank"):
-        expected = max(SequenceMatcher(None, name, b).ratio() for b in GLOBAL_TYPOSQUAT_TARGETS if b != name)
-        assert _max_brand_similarity(name) == round(expected, 3)
+        expected = max(SequenceMatcher(None, name, b).ratio() for b in TYPOSQUAT_TARGETS if b != name)
+        global_only = max(SequenceMatcher(None, name, b).ratio() for b in GLOBAL_TYPOSQUAT_TARGETS if b != name)
+        assert _max_brand_similarity(name) == round(expected, 3) > round(global_only, 3)

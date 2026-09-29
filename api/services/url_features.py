@@ -282,7 +282,16 @@ def char_diversity(s: str) -> float:
 #    combos of names under 4 letters (dhlweb, upshelp), and reads the name
 #    registered under ru.com / ru.net (yandex.ru.com is 1). The brand
 #    similarity and brand-in-subdomain features are unchanged.
-FEATURES_VERSION = 3
+# 4 (2026-09-29): the structure is read against the public suffix list
+#    (ml_features.host_shape) — name, name_length, dot_count,
+#    subdomain_depth and in_top_domains count from the registrable domain:
+#    kvs.gov.spb.ru is name 'gov', 2 dots, depth 1 (was 'spb', 3, 2) and no
+#    longer borrows spb.ru's Tranco rank; bbc.co.uk is name 'bbc', 1 dot,
+#    depth 0. max_brand_similarity reads the Russian brands too and decodes
+#    punycode first. The model's has_suspicious_keyword (not logged here)
+#    reads the registered name as well: paypal-login.spb.ru is 1, was 0.
+#    The ML model was retrained on these definitions.
+FEATURES_VERSION = 4
 
 
 def extract_features(domain: str, signals: dict) -> dict[str, float]:
@@ -291,16 +300,18 @@ def extract_features(domain: str, signals: dict) -> dict[str, float]:
     Returns dict of feature_name → numeric_value.
     Ready for ML model input or logging.
     """
+    from api.services.ml_features import host_shape
     from api.services.scoring import (
-        _extract_base_domain, _extract_tld, _shannon_entropy,
+        _extract_tld, _shannon_entropy,
         _digit_ratio, _special_char_count, _has_at_symbol,
         _has_double_slash_redirect, _has_hex_encoding,
         _has_fake_tld_in_subdomain, _is_url_shortener,
         TOP_DOMAINS, HIGH_RISK_TLDS, MEDIUM_RISK_TLDS,
     )
 
-    base = _extract_base_domain(domain)
-    name = base.split(".")[0] if "." in base else base
+    # The same PSL-aware reading of the host as the model's features, so
+    # a logged dot_count or subdomain_depth means what the model's does.
+    base, name, sub_labels = host_shape(domain)
     tld = _extract_tld(domain)
     raw_url = signals.get("raw_url", domain)
 
@@ -310,7 +321,7 @@ def extract_features(domain: str, signals: dict) -> dict[str, float]:
     features["domain_length"] = len(domain)
     features["name_length"] = len(name)
     features["url_length"] = len(raw_url)
-    features["dot_count"] = domain.count(".")
+    features["dot_count"] = len(sub_labels) + (1 if "." in base else 0)
     features["hyphen_count"] = domain.count("-")
     features["digit_count"] = sum(c.isdigit() for c in name)
     features["digit_ratio"] = _digit_ratio(name)
@@ -326,7 +337,7 @@ def extract_features(domain: str, signals: dict) -> dict[str, float]:
     features["char_diversity"] = char_diversity(name)
 
     # ── Structural ──
-    features["subdomain_depth"] = max(0, domain.count(".") - 1)
+    features["subdomain_depth"] = len(sub_labels)
     features["is_ip"] = 1.0 if signals.get("is_ip_based") else 0.0
     features["has_at_symbol"] = 1.0 if _has_at_symbol(raw_url) else 0.0
     features["has_double_slash"] = 1.0 if _has_double_slash_redirect(raw_url) else 0.0
@@ -369,14 +380,18 @@ def extract_features(domain: str, signals: dict) -> dict[str, float]:
 def _max_brand_similarity(name: str) -> float:
     """Find the highest SequenceMatcher similarity to any typosquat target brand.
 
-    The global brands only: the served model was trained on this feature
-    over them. Adding the Russian brands would move it for every Russian
-    name without a retrain (scoring.GLOBAL_TYPOSQUAT_TARGETS).
+    Global and Russian brands (scoring.TYPOSQUAT_TARGETS), since
+    features_version 4 — the model was retrained on this definition. A
+    punycode name is decoded first, so 'xn--...' for сбербанк is compared
+    with 'сбербанк' rather than scored on the encoder's letters; a Latin
+    name gets 0 from a Cyrillic brand and the reverse, which leaves the
+    maximum to the brands in its own script.
     """
-    from api.services.scoring import GLOBAL_TYPOSQUAT_TARGETS
+    from api.services.scoring import TYPOSQUAT_TARGETS, _decode_idn
 
+    name = _decode_idn(name).lower()
     max_sim = 0.0
-    for brand in GLOBAL_TYPOSQUAT_TARGETS:
+    for brand in TYPOSQUAT_TARGETS:
         if brand == name:
             continue  # Exact match = legitimate, not a feature
         sim = SequenceMatcher(None, name, brand).ratio()

@@ -67,11 +67,39 @@ jobs:
           bad = {d: ml_predict(d)["phishing_probability"] for d in legit
                  if ml_predict(d)["phishing_probability"] >= 0.5}
           assert not bad, f"::error::FP REGRESSION — retrained model over-flags legit: {bad}"
+          # Subdomain guard: a subdomain is not phishing by itself. Before the
+          # host-shape stratum (ml/train_model.load_benign_domains) the model
+          # scored www.example.com 0.98 and docs.google.com 0.91.
+          shapes = ["www.example.com", "docs.google.com", "mail.yandex.ru", "online.sberbank.ru"]
+          bad = {d: ml_predict(d)["phishing_probability"] for d in shapes
+                 if ml_predict(d)["phishing_probability"] >= 0.5}
+          assert not bad, f"::error::FP REGRESSION — retrained model flags subdomains: {bad}"
           # Recall guard: obvious brand-subdomain / structural phishing must fire.
           for d in ("paypal.account-verify.tk", "apple-id-locked-verify.xyz"):
               p = ml_predict(d)["phishing_probability"]
               assert p > 0.6, f"::error::RECALL REGRESSION — {d}={p} (obvious phishing missed)"
           print("regression gate OK — FP clean + obvious phishing caught")
+          PY
+
+      - name: Held-out Russian gate (the model must not be what flags a legit Russian site)
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          # tests/data/ru_heuristics_*.txt are held out of training
+          # (ml/train_model.HELD_OUT_FILES). The name heuristics alone leave
+          # 0 dangerous / 1 caution on LEGIT; the 2026-09-28 model added 21
+          # cautions and a dangerous one (*.gov.spb.ru, 'ml_high_risk').
+          import sys
+          sys.path.insert(0, "scripts")
+          from eval_ru_heuristics import run
+          r = run(ml=True)
+          legit = r["legit"]["summary"]["levels"]
+          by_ml = [row["host"] for row in r["legit"]["rows"]
+                   if row["level"] != "safe" and any(s.startswith("ml_") for s in row["signals"])]
+          phish = r["phish"]["summary"]["levels"]
+          print(f"LEGIT {legit}  flagged with an ML signal: {by_ml}")
+          print(f"PHISH caught {phish['caution'] + phish['dangerous']} of {r['phish']['summary']['n']}")
+          assert legit["dangerous"] == 0, "::error::a held-out legitimate Russian site is dangerous"
+          assert len(by_ml) <= 3, f"::error::FP REGRESSION — the model flags {len(by_ml)} held-out Russian sites"
           PY
 
       - name: Commit new model if changed
