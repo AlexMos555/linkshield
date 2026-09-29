@@ -955,7 +955,7 @@
   "mobile.shield.sms_auto.battery_steps": "Buka setelan aplikasi → “Baterai” → “Tidak dibatasi”.",
   "mobile.shield.sms_auto.denied_restricted_hint": "Jika menu ⋮ di kanan atas punya “Izinkan setelan terbatas”, pilih itu dulu.",
   "mobile.shield.sms_auto.state_blocked": "Tidak ada akses SMS, dan Android tidak lagi menanyakannya. Izinkan di setelan aplikasi.",
-  "mobile.shield.sms_auto.blocked_steps": "Buka setelan aplikasi → “Izin” → “SMS” → “Izinkan” → kembali dan ketuk “Nyalakan”. Jika “Izinkan” tidak bisa dipilih, Android tidak memberi Cleanway akses SMS di HP ini — perlindungan lainnya tetap berjalan.",
+  "mobile.shield.sms_auto.blocked_steps": "Buka setelan aplikasi → “Izin” → “SMS” → “Izinkan” → kembali dan ketuk “Nyalakan”. Jika “Izinkan” tidak bisa dipilih: ketuk ⋮ di kanan atas → “Izinkan setelan yang dibatasi”, lalu “Izin” → “SMS” lagi. Jika pilihan itu juga tidak ada, Android tidak memberi Cleanway akses SMS di HP ini — perlindungan lainnya tetap berjalan.",
   "mobile.rollout.network_ios": "Memblokir situs penipuan di hampir semua aplikasi. Sedang tahap uji akhir — belum tersedia di iPhone.",
   "mobile.rollout.browser_ios": "Memperingatkan Anda langsung di halaman saat memakai Safari. Segera menyusul.",
   "mobile.rollout.messages_ios": "Menyaring SMS penipuan. Masih direncanakan — dan tidak akan pernah bisa melihat iMessage.",

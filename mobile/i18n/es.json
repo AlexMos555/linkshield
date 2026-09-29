@@ -955,7 +955,7 @@
   "mobile.shield.sms_auto.battery_steps": "Abre los ajustes de la app → «Batería» → «Sin restricciones».",
   "mobile.shield.sms_auto.denied_restricted_hint": "Si el menú ⋮ de arriba a la derecha tiene «Permitir ajustes restringidos», elígelo primero.",
   "mobile.shield.sms_auto.state_blocked": "No hay acceso a los SMS y Android ya no pregunta por él. Permítelo en los ajustes de la app.",
-  "mobile.shield.sms_auto.blocked_steps": "Abre los ajustes de la app → «Permisos» → «SMS» → «Permitir» → vuelve y toca «Activar». Si «Permitir» no se activa, Android no deja a Cleanway acceder a los SMS en este teléfono; el resto de la protección sigue funcionando.",
+  "mobile.shield.sms_auto.blocked_steps": "Abre los ajustes de la app → «Permisos» → «SMS» → «Permitir» → vuelve y toca «Activar». Si «Permitir» no se activa: toca ⋮ arriba a la derecha → «Permitir ajustes restringidos» y luego otra vez «Permisos» → «SMS». Si tampoco existe esa opción, Android no deja a Cleanway acceder a los SMS en este teléfono; el resto de la protección sigue funcionando.",
   "mobile.rollout.network_ios": "Bloquea sitios de estafa en casi todas las apps. Está en pruebas finales; todavía no llega al iPhone.",
   "mobile.rollout.browser_ios": "Te avisa directamente en la página, en Safari. Es lo próximo que llega.",
   "mobile.rollout.messages_ios": "Filtra mensajes de estafa (SMS). Está en los planes; nunca podrá ver iMessage.",

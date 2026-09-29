@@ -955,7 +955,7 @@
   "mobile.shield.sms_auto.battery_steps": "Abra as configurações do app → “Bateria” → “Sem restrições”.",
   "mobile.shield.sms_auto.denied_restricted_hint": "Se o menu ⋮ no canto superior direito tiver “Permitir configurações restritas”, escolha essa opção primeiro.",
   "mobile.shield.sms_auto.state_blocked": "Sem acesso aos SMS, e o Android não pergunta mais. Permita nas configurações do app.",
-  "mobile.shield.sms_auto.blocked_steps": "Abra as configurações do app → “Permissões” → “SMS” → “Permitir” → volte e toque em “Ligar”. Se “Permitir” não ativar, o Android não deixa o Cleanway acessar os SMS neste celular — o resto da proteção continua funcionando.",
+  "mobile.shield.sms_auto.blocked_steps": "Abra as configurações do app → “Permissões” → “SMS” → “Permitir” → volte e toque em “Ligar”. Se “Permitir” não ativar: toque em ⋮ no canto superior direito → “Permitir configurações restritas” e depois de novo em “Permissões” → “SMS”. Se essa opção também não existir, o Android não deixa o Cleanway acessar os SMS neste celular — o resto da proteção continua funcionando.",
   "mobile.rollout.network_ios": "Bloqueia sites de golpe em quase todos os aplicativos. Em testes finais — ainda não chegou ao iPhone.",
   "mobile.rollout.browser_ios": "Avisa você direto na página, no Safari. É o próximo a chegar.",
   "mobile.rollout.messages_ios": "Filtra mensagens de golpe (SMS). Planejado — ele nunca vai conseguir ver o iMessage.",

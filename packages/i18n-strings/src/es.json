@@ -2655,7 +2655,7 @@
         "battery_steps": "Abre los ajustes de la app → «Batería» → «Sin restricciones».",
         "denied_restricted_hint": "Si el menú ⋮ de arriba a la derecha tiene «Permitir ajustes restringidos», elígelo primero.",
         "state_blocked": "No hay acceso a los SMS y Android ya no pregunta por él. Permítelo en los ajustes de la app.",
-        "blocked_steps": "Abre los ajustes de la app → «Permisos» → «SMS» → «Permitir» → vuelve y toca «Activar». Si «Permitir» no se activa, Android no deja a Cleanway acceder a los SMS en este teléfono; el resto de la protección sigue funcionando."
+        "blocked_steps": "Abre los ajustes de la app → «Permisos» → «SMS» → «Permitir» → vuelve y toca «Activar». Si «Permitir» no se activa: toca ⋮ arriba a la derecha → «Permitir ajustes restringidos» y luego otra vez «Permisos» → «SMS». Si tampoco existe esa opción, Android no deja a Cleanway acceder a los SMS en este teléfono; el resto de la protección sigue funcionando."
       }
     },
     "rollout": {

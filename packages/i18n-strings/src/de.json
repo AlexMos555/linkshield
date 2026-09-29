@@ -2715,7 +2715,7 @@
         "battery_steps": "Öffne die App-Einstellungen → „Akku“ → „Nicht eingeschränkt“.",
         "denied_restricted_hint": "Steht im Menü ⋮ oben rechts „Eingeschränkte Einstellungen zulassen“, wähle das zuerst.",
         "state_blocked": "Kein Zugriff auf SMS, und Android fragt nicht mehr danach. Erlaube ihn in den App-Einstellungen.",
-        "blocked_steps": "Öffne die App-Einstellungen → „Berechtigungen“ → „SMS“ → „Zulassen“ → komm zurück und tippe auf „Einschalten“. Lässt sich „Zulassen“ nicht wählen, gibt Android Cleanway auf diesem Handy keinen Zugriff auf SMS – der übrige Schutz funktioniert weiter."
+        "blocked_steps": "Öffne die App-Einstellungen → „Berechtigungen“ → „SMS“ → „Zulassen“ → komm zurück und tippe auf „Einschalten“. Lässt sich „Zulassen“ nicht wählen: tippe oben rechts auf ⋮ → „Eingeschränkte Einstellungen zulassen“, dann noch einmal „Berechtigungen“ → „SMS“. Gibt es auch diesen Punkt nicht, gibt Android Cleanway auf diesem Handy keinen Zugriff auf SMS – der übrige Schutz funktioniert weiter."
       }
     },
     "rollout": {

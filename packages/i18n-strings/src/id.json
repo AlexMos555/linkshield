@@ -2715,7 +2715,7 @@
         "battery_steps": "Buka setelan aplikasi → “Baterai” → “Tidak dibatasi”.",
         "denied_restricted_hint": "Jika menu ⋮ di kanan atas punya “Izinkan setelan terbatas”, pilih itu dulu.",
         "state_blocked": "Tidak ada akses SMS, dan Android tidak lagi menanyakannya. Izinkan di setelan aplikasi.",
-        "blocked_steps": "Buka setelan aplikasi → “Izin” → “SMS” → “Izinkan” → kembali dan ketuk “Nyalakan”. Jika “Izinkan” tidak bisa dipilih, Android tidak memberi Cleanway akses SMS di HP ini — perlindungan lainnya tetap berjalan."
+        "blocked_steps": "Buka setelan aplikasi → “Izin” → “SMS” → “Izinkan” → kembali dan ketuk “Nyalakan”. Jika “Izinkan” tidak bisa dipilih: ketuk ⋮ di kanan atas → “Izinkan setelan yang dibatasi”, lalu “Izin” → “SMS” lagi. Jika pilihan itu juga tidak ada, Android tidak memberi Cleanway akses SMS di HP ini — perlindungan lainnya tetap berjalan."
       }
     },
     "rollout": {
