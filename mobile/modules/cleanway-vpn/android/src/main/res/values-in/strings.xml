@@ -22,6 +22,8 @@
     <string name="sms_alert_unknown_sender">pengirim tak dikenal</string>
     <string name="sms_channel">SMS berbahaya</string>
     <string name="sms_channel_desc">Memberi tahu Anda saat SMS yang masuk tampak seperti penipuan</string>
+    <string name="sms_quiet_channel">SMS mencurigakan, tanpa suara</string>
+    <string name="sms_quiet_channel_desc">Peringatan «Hati-hati» dan ringkasan sisanya — tanpa suara</string>
     <string name="sms_reason_bait">menjanjikan pencairan dana atau hadiah</string>
     <string name="sms_reason_call">meminta Anda menelepon nomor tidak resmi</string>
     <string name="sms_reason_code">meminta Anda memberikan kode dari SMS</string>
@@ -39,6 +41,8 @@
     <string name="sms_reason_sender">pengirimnya bukan pihak yang diakuinya</string>
     <string name="sms_reason_sms_command">meminta Anda mengirim SMS perintah transfer uang</string>
     <string name="sms_reason_threat">berusaha menakut-nakuti atau membuat Anda terburu-buru</string>
+    <string name="sms_summary_text">Dalam 24 jam terakhir: %1$s. Jangan hubungi nomor dalam pesan-pesan itu dan jangan buka tautannya. Buka Cleanway untuk melihatnya.</string>
+    <string name="sms_summary_title">SMS mencurigakan lainnya</string>
     <string name="warn_text">%1$s tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun.</string>
     <string name="warn_title">Situs ini tampak seperti penipuan</string>
 </resources>

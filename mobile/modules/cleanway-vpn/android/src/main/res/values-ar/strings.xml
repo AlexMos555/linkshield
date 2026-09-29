@@ -22,6 +22,8 @@
     <string name="sms_alert_unknown_sender">مرسل غير معروف</string>
     <string name="sms_channel">رسائل SMS خطرة</string>
     <string name="sms_channel_desc">ينبّهك عندما تبدو رسالة SMS واردة احتيالية</string>
+    <string name="sms_quiet_channel">رسائل SMS مشبوهة، بهدوء</string>
+    <string name="sms_quiet_channel_desc">تنبيهات «كن حذرًا» وملخّص البقية — بدون صوت</string>
     <string name="sms_reason_bait">تعد بمبلغ مالي أو جائزة</string>
     <string name="sms_reason_call">تطلب منك الاتصال برقم غير رسمي</string>
     <string name="sms_reason_code">تطلب منك مشاركة رمز وصلك في رسالة SMS</string>
@@ -39,6 +41,8 @@
     <string name="sms_reason_sender">المرسل ليس من يدّعي أنه هو</string>
     <string name="sms_reason_sms_command">تطلب منك إرسال رسالة SMS تحوّل المال</string>
     <string name="sms_reason_threat">تحاول تخويفك أو استعجالك</string>
+    <string name="sms_summary_text">خلال آخر 24 ساعة: %1$s. لا تتصل بالأرقام الواردة في تلك الرسائل ولا تفتح روابطها. افتح Cleanway لعرضها.</string>
+    <string name="sms_summary_title">المزيد من رسائل SMS المشبوهة</string>
     <string name="warn_text">يبدو %1$s خطيرًا. إذا كان مفتوحًا فأغلقه ولا تكتب أي شيء.</string>
     <string name="warn_title">هذا الموقع يبدو احتياليًا</string>
 </resources>

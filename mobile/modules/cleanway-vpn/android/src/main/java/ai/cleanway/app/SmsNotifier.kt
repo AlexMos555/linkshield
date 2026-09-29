@@ -1,6 +1,7 @@
 package ai.cleanway.app
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -91,6 +92,9 @@ object SmsAlertText {
      */
     fun historyDeepLink(id: String): String =
         "cleanway:///history?filter=sms&sms=" + URLEncoder.encode(id, "UTF-8")
+
+    /** Pure: where the collapsed "more suspicious SMS" notification lands — History on the SMS filter. */
+    const val HISTORY_SMS_LINK = "cleanway:///history?filter=sms"
 }
 
 /**
@@ -105,14 +109,21 @@ object SmsAlertText {
  * word of the message text. On the lock screen only the title shows (the
  * public version), so a phone left on a table does not show who wrote.
  *
- * Channel [CHANNEL_ID], high importance: a warning that sits silently in the
- * shade until after the person has called back is no warning. Strings come
- * from res/values-xx/strings.xml, generated from packages/i18n-strings.
+ * Two channels (NotificationCaps decides which): [CHANNEL_ID], high
+ * importance, for a dangerous message within the limits — a warning that
+ * sits silently in the shade until after the person has called back is no
+ * warning; and [QUIET_CHANNEL_ID], low importance, for "be careful" and for
+ * the one collapsed notification that counts everything past the limits.
+ * Strings come from res/values-xx/strings.xml, generated from
+ * packages/i18n-strings.
  */
 object SmsNotifier {
     const val CHANNEL_ID = "cleanway_sms_alerts"
+    const val QUIET_CHANNEL_ID = "cleanway_sms_quiet"
     /** Own tag: an SMS id can never replace a block alert that hashed to the same number. */
     private const val NOTIFICATION_TAG = "cleanway_sms"
+    /** The collapsed notification: one, replaced in place as its count grows. */
+    private const val SUMMARY_ID = 0x5A11
     private const val TAG = "CleanwaySms"
 
     fun ensureChannel(context: Context) {
@@ -128,72 +139,122 @@ object SmsNotifier {
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply { description = loc.getString(R.string.sms_channel_desc) }
         )
+        nm.createNotificationChannel(
+            NotificationChannel(
+                QUIET_CHANNEL_ID,
+                loc.getString(R.string.sms_quiet_channel),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply { description = loc.getString(R.string.sms_quiet_channel_desc) }
+        )
     }
 
-    /**
-     * Can a warning reach the person right now? The app switch, and on 13+
-     * the runtime permission; and our channel, if the person turned it off.
-     */
-    fun canNotify(context: Context): Boolean {
+    /** The app may post at all: its switch, and on 13+ the runtime permission. */
+    private fun appCanNotify(context: Context): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             return false
         }
-        val nm = NotificationManagerCompat.from(context)
-        if (!nm.areNotificationsEnabled()) return false
+        return NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    /**
+     * Can a warning reach the person right now? The app switch, and on 13+
+     * the runtime permission; and the loud channel, if the person turned it
+     * off — that is the one a dangerous message needs.
+     */
+    fun canNotify(context: Context): Boolean {
+        if (!appCanNotify(context)) return false
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
-        val channel = nm.getNotificationChannel(CHANNEL_ID) ?: return true
+        val channel = NotificationManagerCompat.from(context).getNotificationChannel(CHANNEL_ID) ?: return true
         return channel.importance != NotificationManager.IMPORTANCE_NONE
     }
 
-    /** Post the warning for [event]. Never throws; a failure only loses the pop-up, the event is recorded. */
-    fun notify(context: Context, event: SmsEvent) {
+    /**
+     * Post the warning for [event] the way [decision] says (NotificationCaps).
+     * Never throws; a failure only loses the pop-up, the event is recorded.
+     */
+    fun notify(context: Context, event: SmsEvent, decision: NotificationCaps.Decision) {
         try {
-            if (!canNotify(context)) return
+            if (!appCanNotify(context)) return
             ensureChannel(context)
-            val loc = LocalizedContext.of(context, fresh = true)
-            val copy = SmsAlertText.copyFor(event)
-            val title = loc.getString(if (copy.dangerous) R.string.sms_alert_title_dangerous else R.string.sms_alert_title_caution)
-            // A Latin number or alpha id inside an Arabic sentence must not
-            // reorder it: wrap it for the notification's own language.
-            val locale = ConfigurationCompat.getLocales(loc.resources.configuration)[0] ?: Locale.getDefault()
-            val sender = copy.sender?.let { BidiFormatter.getInstance(locale).unicodeWrap(it) }
-                ?: loc.getString(R.string.sms_alert_unknown_sender)
-            val text = loc.getString(R.string.sms_alert_text, sender, loc.getString(reasonText(copy.reason)))
-            val open = Intent(Intent.ACTION_VIEW, Uri.parse(SmsAlertText.historyDeepLink(event.id))).apply {
-                component = ComponentName(context.packageName, "ai.cleanway.app.MainActivity")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            when (decision) {
+                is NotificationCaps.Decision.Folded -> nm.notify(NOTIFICATION_TAG, SUMMARY_ID, summary(context, decision.count))
+                else -> nm.notify(NOTIFICATION_TAG, event.id.hashCode(), warning(context, event, decision))
             }
-            val pending = PendingIntent.getActivity(
-                context, event.id.hashCode(), open,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-            // The lock screen gets the title only: who wrote stays private.
-            val public = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(title)
-                .setSmallIcon(BlockNotifier.SMALL_ICON)
-                .setColor(BlockNotifier.ACCENT_COLOR)
-                .build()
-            val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-                .setSmallIcon(BlockNotifier.SMALL_ICON)
-                .setColor(BlockNotifier.ACCENT_COLOR)
-                .setContentIntent(pending)
-                .setAutoCancel(true)
-                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-                .setPublicVersion(public)
-                // Pre-O phones have no channels; HIGH is what makes them pop up.
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .build()
-            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .notify(NOTIFICATION_TAG, event.id.hashCode(), notif)
         } catch (e: Exception) {
             // The class name only: a message could carry anything.
             Log.w(TAG, "sms_alert_failed: ${e.javaClass.simpleName}")
         }
+    }
+
+    /** The warning itself: loud on [CHANNEL_ID], or the same words quietly on [QUIET_CHANNEL_ID]. */
+    private fun warning(context: Context, event: SmsEvent, decision: NotificationCaps.Decision): Notification {
+        val loud = decision.kind == NotificationCaps.Kind.LOUD
+        val channel = if (loud) CHANNEL_ID else QUIET_CHANNEL_ID
+        val loc = LocalizedContext.of(context, fresh = true)
+        val copy = SmsAlertText.copyFor(event)
+        val title = loc.getString(if (copy.dangerous) R.string.sms_alert_title_dangerous else R.string.sms_alert_title_caution)
+        // A Latin number or alpha id inside an Arabic sentence must not
+        // reorder it: wrap it for the notification's own language.
+        val locale = ConfigurationCompat.getLocales(loc.resources.configuration)[0] ?: Locale.getDefault()
+        val sender = copy.sender?.let { BidiFormatter.getInstance(locale).unicodeWrap(it) }
+            ?: loc.getString(R.string.sms_alert_unknown_sender)
+        val text = loc.getString(R.string.sms_alert_text, sender, loc.getString(reasonText(copy.reason)))
+        // The lock screen gets the title only: who wrote stays private.
+        val public = NotificationCompat.Builder(context, channel)
+            .setContentTitle(title)
+            .setSmallIcon(BlockNotifier.SMALL_ICON)
+            .setColor(BlockNotifier.ACCENT_COLOR)
+            .build()
+        return NotificationCompat.Builder(context, channel)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSmallIcon(BlockNotifier.SMALL_ICON)
+            .setColor(BlockNotifier.ACCENT_COLOR)
+            .setContentIntent(open(context, SmsAlertText.historyDeepLink(event.id), event.id.hashCode()))
+            .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(public)
+            // Pre-O phones have no channels: the priority is what pops up, or not.
+            .setPriority(if (loud) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_LOW)
+            .setSilent(!loud)
+            .build()
+    }
+
+    /**
+     * The one collapsed notification for everything past the caps: how many
+     * in the last 24 hours, the two things not to do, and where to look. It
+     * names no sender — the count is the point — and opens History's SMS list.
+     */
+    private fun summary(context: Context, count: Int): Notification {
+        val loc = LocalizedContext.of(context, fresh = true)
+        val text = loc.getString(R.string.sms_summary_text, count.toString())
+        return NotificationCompat.Builder(context, QUIET_CHANNEL_ID)
+            .setContentTitle(loc.getString(R.string.sms_summary_title))
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSmallIcon(BlockNotifier.SMALL_ICON)
+            .setColor(BlockNotifier.ACCENT_COLOR)
+            .setContentIntent(open(context, SmsAlertText.HISTORY_SMS_LINK, SUMMARY_ID))
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
+            .build()
+    }
+
+    private fun open(context: Context, link: String, requestCode: Int): PendingIntent {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link)).apply {
+            component = ComponentName(context.packageName, "ai.cleanway.app.MainActivity")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        return PendingIntent.getActivity(
+            context, requestCode, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
     }
 
     /** The phrase for each reason. Internal: SmsNotifierTest pins it to the string of the same name. */

@@ -22,6 +22,8 @@
     <string name="sms_alert_unknown_sender">um remetente desconhecido</string>
     <string name="sms_channel">SMS perigosos</string>
     <string name="sms_channel_desc">Avisa quando um SMS recebido parece golpe</string>
+    <string name="sms_quiet_channel">SMS suspeitos, em silêncio</string>
+    <string name="sms_quiet_channel_desc">Avisos «Cuidado» e o resumo dos restantes, sem som</string>
     <string name="sms_reason_bait">promete um pagamento ou prêmio</string>
     <string name="sms_reason_call">pede que você ligue para um número não oficial</string>
     <string name="sms_reason_code">pede que você informe um código recebido por SMS</string>
@@ -39,6 +41,8 @@
     <string name="sms_reason_sender">o remetente não é quem diz ser</string>
     <string name="sms_reason_sms_command">pede que você envie um SMS que transfere dinheiro</string>
     <string name="sms_reason_threat">tenta assustar ou apressar você</string>
+    <string name="sms_summary_text">Nas últimas 24 horas: %1$s. Não ligue para os números dessas mensagens nem abra os links. Abra o Cleanway para vê-los.</string>
+    <string name="sms_summary_title">Mais SMS suspeitos</string>
     <string name="warn_text">%1$s parece perigoso. Se estiver aberto, feche e não digite nada.</string>
     <string name="warn_title">Este site parece golpe</string>
 </resources>

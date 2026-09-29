@@ -95,6 +95,19 @@ export const PLATFORMS: Record<Platform, PlatformInfo> = {
  *  conflicts with the app's VPN shield, so /dns is the wrong door for them. */
 export const PRIMARY_INSTALL_HREF = "/dns";
 
+/**
+ * App-store listings that are not a platform CTA of their own. The RuStore
+ * build is the Android app plus the automatic SMS check (the APK from
+ * `/android` never asks for SMS access, so that check exists only there —
+ * see docs/RUSTORE_SUBMISSION.md). Nothing on the site mentions it while
+ * `available` is false: no "coming to RuStore", no promise of a date. When
+ * the listing is live, set `available: true` and its https rustore.ru page
+ * — the same flip as `mobile/src/config/stores.ts`.
+ */
+export const STORES = {
+  rustore: { available: false, href: "" },
+} as const;
+
 export function isLive(platform: Platform): boolean {
   return PLATFORMS[platform].available;
 }

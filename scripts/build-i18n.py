@@ -40,7 +40,7 @@ ANDROID_LOCALE_DIR = {"en": "values", "id": "values-in"}
 # passes them: getString(id, domain) for the block/allow strings,
 # getString(id, sender, reason) for the SMS warning (SmsNotifier.kt).
 # Positional, so a translation may put them in any order.
-ANDROID_PLACEHOLDERS = {"domain": "%1$s", "time": "%1$s", "sender": "%1$s", "reason": "%2$s"}
+ANDROID_PLACEHOLDERS = {"domain": "%1$s", "time": "%1$s", "sender": "%1$s", "reason": "%2$s", "count": "%1$s"}
 
 
 # Extension namespaces that get flattened back to chrome.i18n format.

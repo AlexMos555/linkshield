@@ -63,6 +63,8 @@ class SmsNotifierTest {
         assertEquals("cleanway:///history?filter=sms&sms=00ff00ff00ff00ff", SmsAlertText.historyDeepLink("00ff00ff00ff00ff"))
         // Encoded: an id can never add parameters to the route.
         assertEquals("cleanway:///history?filter=sms&sms=a%26filter%3Dall", SmsAlertText.historyDeepLink("a&filter=all"))
+        // The collapsed notification names no message: it opens the list.
+        assertEquals("cleanway:///history?filter=sms", SmsAlertText.HISTORY_SMS_LINK)
     }
 
     private fun event(verdict: String, sender: String?, vararg reasons: String) = SmsEvent(
@@ -128,6 +130,17 @@ class SmsNotifierTest {
     }
 
     @Test
+    fun `the Russian collapsed notification counts, forbids the two things, and names no sender`() {
+        val strings = strings("values-ru")
+        assertEquals("Ещё подозрительные SMS", strings.getValue("sms_summary_title"))
+        assertEquals(
+            "За последние сутки: 4. Не звоните по номерам из этих сообщений и не переходите по ссылкам. Откройте Cleanway, чтобы посмотреть.",
+            String.format(strings.getValue("sms_summary_text"), "4"),
+        )
+        assertEquals("Подозрительные SMS — тихо", strings.getValue("sms_quiet_channel"))
+    }
+
+    @Test
     fun `the English warning names the sender and the reason`() {
         val (title, text) = render("values", event("dangerous", "Sber", "link_blocklisted"))
         assertEquals("This SMS looks like a scam", title)
@@ -151,6 +164,12 @@ class SmsNotifierTest {
             val text = Regex("<string name=\"sms_alert_text\">([^<]*)</string>").find(xml)?.groupValues?.get(1)
             assertTrue("${dir.name}: sms_alert_text", text != null && "%1\$s" in text && "%2\$s" in text)
             for (p in phrases) assertTrue("${dir.name}: $p", xml.contains("<string name=\"$p\">"))
+            // The collapsed notification carries the count and nothing else that varies.
+            val summary = Regex("<string name=\"sms_summary_text\">([^<]*)</string>").find(xml)?.groupValues?.get(1)
+            assertTrue("${dir.name}: sms_summary_text", summary != null && "%1\$s" in summary && "%2\$s" !in summary)
+            for (p in listOf("sms_summary_title", "sms_quiet_channel", "sms_quiet_channel_desc")) {
+                assertTrue("${dir.name}: $p", xml.contains("<string name=\"$p\">"))
+            }
         }
     }
 }
