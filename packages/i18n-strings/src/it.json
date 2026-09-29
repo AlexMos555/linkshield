@@ -2715,7 +2715,7 @@
         "battery_steps": "Apri le impostazioni dell'app → «Batteria» → «Senza restrizioni».",
         "denied_restricted_hint": "Se nel menu ⋮ in alto a destra c'è «Consenti impostazioni con limitazioni», sceglilo prima.",
         "state_blocked": "Nessun accesso agli SMS e Android non lo chiede più. Consentilo nelle impostazioni dell'app.",
-        "blocked_steps": "Apri le impostazioni dell'app → «Autorizzazioni» → «SMS» → «Consenti» → torna qui e tocca «Attiva». Se «Consenti» non si attiva, Android non lascia a Cleanway l'accesso agli SMS su questo telefono: il resto della protezione funziona."
+        "blocked_steps": "Apri le impostazioni dell'app → «Autorizzazioni» → «SMS» → «Consenti» → torna qui e tocca «Attiva». Se «Consenti» non si attiva: tocca ⋮ in alto a destra → «Consenti impostazioni con limitazioni», poi di nuovo «Autorizzazioni» → «SMS». Se non c'è nemmeno quella voce, Android non lascia a Cleanway l'accesso agli SMS su questo telefono: il resto della protezione funziona."
       }
     },
     "rollout": {
