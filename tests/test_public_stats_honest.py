@@ -60,9 +60,12 @@ def test_every_null_is_explained(stats):
             assert key in body["notes"], key
 
 
-def test_false_positive_rate_is_null_until_measured(stats):
-    """The committed benchmark has 50 legit sites, all 'unknown' — nothing
-    was measured, so nothing is published."""
+def test_false_positive_rate_is_null_until_measured(stats, monkeypatch):
+    """A benchmark with 50 legit sites, all 'unknown' — nothing was measured,
+    so nothing is published. Given as a report, not read from the committed
+    docs/benchmarks/latest.json: the weekly run of 2026-09-27 measured 130
+    sites, and the rate it published is right to be there."""
+    monkeypatch.setattr(public_stats, "benchmark", lambda: _report())
     assert stats()["false_positive_rate"] is None
 
 
