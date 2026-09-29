@@ -70,6 +70,21 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Google Web Risk (Lookup API). Set: the analyzer asks Web Risk instead of
+    # Safe Browsing v4 — Safe Browsing's terms bar commercial use without a
+    # separate agreement, Web Risk is Google's commercial product for the
+    # same lookup (api/services/web_risk.py, docs/THIRD_PARTY_FEEDS.md).
+    # Unset (default): Safe Browsing v4 as before.
+    web_risk_api_key: str = ""
+
+    # Which threat-intel lookups the analyzer consults (api/services/
+    # licensed_intel.py). "all" (default) — every source, today's behaviour.
+    # "licensed" — without SURBL, the Spamhaus DBL public mirror, ThreatFox,
+    # MalwareBazaar and Feodo Tracker, whose free tiers are for
+    # non-commercial use. A switched-off source is not consulted at all and
+    # leaves the check total, so confidence figures stay honest.
+    licensed_intel: Literal["all", "licensed"] = "all"
+
     # PhishTank (no key needed for free tier, but optional)
     phishtank_api_key: str = ""
 
@@ -387,9 +402,12 @@ def validate_settings(settings: "Settings") -> None:
             )
 
     # 6) Soft warnings (not fatal)
-    if env != "development" and not _is_safe_nonempty(settings.google_safe_browsing_key):
+    if env != "development" and not (
+        _is_safe_nonempty(settings.google_safe_browsing_key) or _is_safe_nonempty(settings.web_risk_api_key)
+    ):
         logger.warning(
-            "google_safe_browsing_key not set in environment=%s — detection quality degraded", env
+            "neither google_safe_browsing_key nor web_risk_api_key set in environment=%s — "
+            "detection quality degraded", env
         )
 
     logger.info(

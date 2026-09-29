@@ -9,12 +9,17 @@ Before anything else, two cheap questions:
 
 Then 19 checks run in parallel via circuit breakers, inside ONE time budget
 (config.analysis_budget_seconds):
-  threat intel (11)  Google Safe Browsing, PhishTank, URLhaus, PhishStats,
-                     ThreatFox, Spamhaus DBL, SURBL, AlienVault OTX,
-                     IPQualityScore, MalwareBazaar, Feodo Tracker
+  threat intel (11)  Google Safe Browsing (or Web Risk), PhishTank, URLhaus,
+                     PhishStats, ThreatFox, Spamhaus DBL, SURBL, AlienVault
+                     OTX, IPQualityScore, MalwareBazaar, Feodo Tracker
   reputation (3)     Tranco popularity, favicon brand clone, typosquat watchtower
   enrichment (5)     WHOIS/RDAP age, TLS certificate, security headers, DNS,
                      redirect chain (the connection probes live in site_probes)
+
+With LICENSED_INTEL=licensed (api/services/licensed_intel) the five sources
+whose free tiers are non-commercial — ThreatFox, Spamhaus DBL, SURBL,
+MalwareBazaar, Feodo Tracker — are not consulted: they leave the plan and
+the total, so an analysis is 14 checks of 14, not 14 of 19.
 
 A check still running at the deadline is cancelled and named in
 `checks_incomplete`; the LLM judge only gets whatever budget is left.
@@ -32,7 +37,7 @@ from typing import Any, Optional
 import httpx
 
 from api.config import get_settings
-from api.services import paid_budget
+from api.services import licensed_intel, paid_budget
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.hosting_platforms import is_user_content_service
@@ -59,6 +64,9 @@ from api.services.dns_checks import (  # noqa: F401 — re-exported
     EXISTENCE_TIMEOUT_S, check_dns, check_domain_exists,
 )
 from api.services.confirmed_threats import record_if_confirmed
+# The DNSBL lookups (Spamhaus DBL, SURBL) live in dnsbl_checks; re-exported
+# here, where the breaker wiring and the tests have always found them.
+from api.services.dnsbl_checks import check_spamhaus_dbl, check_surbl  # noqa: F401
 from api.services.tranco import check_tranco_popularity, get_tranco_rank
 from api.services.favicon_hash import check_favicon_brand_clone
 from api.services.watchtower_lookup import check_typosquat_alert
@@ -72,6 +80,9 @@ from api.models.schemas import DomainResult, DomainReason, RiskLevel, Confidence
 
 logger = logging.getLogger("cleanway.analyzer")
 
+# Every check the analyzer knows. The number a verdict is measured against
+# is licensed_intel.total_checks(TOTAL_CHECKS): fewer when sources are
+# switched off for their licence.
 TOTAL_CHECKS = 19
 # The checks that connect to the site itself. They are skipped when the SSRF
 # guard could not finish (we would not know where we are connecting), and an
@@ -154,20 +165,21 @@ async def _judge(
 ) -> DomainResult:
     """Score the gathered evidence, let the LLM judge use what budget is left,
     and assemble the result."""
-    signals = _build_signals(domain, raw_url, is_ip, outcomes)
+    total = licensed_intel.total_checks(TOTAL_CHECKS)
+    signals = _build_signals(domain, raw_url, is_ip, outcomes, total)
     whois_age = signals["domain_age_days"]
     measured = _measured_checks(outcomes, signals["site_reachable"])
     signals["checks_succeeded"] = measured
 
     score, level, reasons = calculate_score(signals)
-    confidence = calculate_confidence(measured, TOTAL_CHECKS, whois_age)
+    confidence = calculate_confidence(measured, total, whois_age)
 
     if confidence == ConfidenceLevel.low and level == RiskLevel.safe:
         score = max(score, vb.CANNOT_VOUCH_SCORE)
         level = RiskLevel.caution
         reasons.append(DomainReason(
             signal="partial_analysis", weight=0,
-            detail=f"Only {measured}/{TOTAL_CHECKS} checks completed — limited confidence",
+            detail=f"Only {measured}/{total} checks completed — limited confidence",
         ))
 
     # A site we could not open, whose name nothing else vouches for, gets no
@@ -183,7 +195,7 @@ async def _judge(
 
     # A verdict on a site we could not open, or on partial data near 'safe',
     # is never 'high' confidence.
-    if (measured < TOTAL_CHECKS and score < 20) or signals["site_reachable"] is False:
+    if (measured < total and score < 20) or signals["site_reachable"] is False:
         confidence = _at_most(confidence, ConfidenceLevel.medium)
 
     score, level, judge_reason, judge_finished = await _llm_judge_within(signals, score, level, deadline)
@@ -201,7 +213,7 @@ async def _judge(
     await record_if_confirmed(domain, level.value, signals)
 
     # Strategy doc #12 — numeric confidence band per verdict.
-    confidence_pct = calculate_confidence_pct(score, measured, TOTAL_CHECKS)
+    confidence_pct = calculate_confidence_pct(score, measured, total)
     result = DomainResult(
         domain=domain, score=score, level=level, confidence=confidence,
         confidence_pct=confidence_pct,
@@ -262,11 +274,14 @@ async def _resolution_is_safe(domain: str, deadline: Deadline) -> bool:
 
 
 def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
-    """Every check, by name, as a not-yet-awaited breaker call.
+    """Every check this deployment consults, by name, as a not-yet-awaited
+    breaker call. A source switched off for its licence (licensed_intel) is
+    not in the plan at all.
 
     Built per call rather than at import so a monkeypatched check function
     is the one that runs.
     """
+    skipped = licensed_intel.skipped_checks()
     plan = {
         # Blocklist sources (11)
         "safe_browsing": (safe_browsing_breaker, check_safe_browsing),
@@ -294,7 +309,7 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
     return {
         name: breaker.call(fn if name in _SITE_PROBES else _within_source_timeout(fn), domain)
         for name, (breaker, fn) in plan.items()
-        if probes_allowed or name not in _SITE_PROBES
+        if (probes_allowed or name not in _SITE_PROBES) and name not in skipped
     }
 
 
@@ -346,8 +361,11 @@ def _at_most(confidence: ConfidenceLevel, cap: ConfidenceLevel) -> ConfidenceLev
     return confidence if _CONFIDENCE_RANK[confidence] <= _CONFIDENCE_RANK[cap] else cap
 
 
-def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict) -> dict:
-    """The scorer's input — all 42+ signals, from the gathered outcomes."""
+def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
+                   total_checks: int = TOTAL_CHECKS) -> dict:
+    """The scorer's input — all 42+ signals, from the gathered outcomes. A
+    source that was not consulted is simply absent from `outcomes`, so its
+    hit reads False and it is not counted as measured."""
     alienvault_data = _value(outcomes, "alienvault", {})
     ipqs_data = _value(outcomes, "ipqs", {})
     tranco_result = _value(outcomes, "tranco", {"ranked": False, "rank": None, "weight": 0, "label": ""})
@@ -420,7 +438,7 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict) -> di
         "redirect_cross_domain": redirect_data.get("cross_domain", False),
         # Meta (checks_succeeded is filled in by the caller)
         "checks_succeeded": 0,
-        "total_checks": TOTAL_CHECKS,
+        "total_checks": total_checks,
     }
 
 
@@ -818,76 +836,6 @@ async def check_feodo_tracker(domain: str) -> bool:
     if hit:
         logger.info("feodo_hit", extra={"domain": domain})
     return hit
-
-
-# ═══════════════════════════════════════════════════════════════
-# CHECK 11: Spamhaus DBL — domain blocklist via DNS
-# ═══════════════════════════════════════════════════════════════
-
-async def check_spamhaus_dbl(domain: str) -> bool:
-    """
-    Check domain against Spamhaus DBL via DNS lookup.
-    Free for low-volume non-commercial use.
-    Returns True if domain is listed (spam/phishing/malware).
-    """
-    import dns.resolver as dns_resolver
-
-    resolver = dns_resolver.Resolver()
-    resolver.timeout = SOURCE_TIMEOUT_S
-    resolver.lifetime = SOURCE_TIMEOUT_S
-
-    query = f"{domain}.dbl.spamhaus.org"
-    try:
-        answers = await asyncio.to_thread(resolver.resolve, query, "A")
-        for answer in answers:
-            ip = str(answer)
-            # 127.0.1.2 = spam domain
-            # 127.0.1.4 = phishing domain
-            # 127.0.1.5 = malware domain
-            # 127.0.1.6 = botnet C&C domain
-            if ip.startswith("127.0.1."):
-                logger.info("spamhaus_hit", extra={"domain": domain, "result": ip})
-                return True
-        return False
-    except (dns_resolver.NXDOMAIN, dns_resolver.NoAnswer, dns_resolver.NoNameservers):
-        return False  # Not listed
-    except Exception:
-        return False
-
-
-# ═══════════════════════════════════════════════════════════════
-# CHECK 12: SURBL — URI blocklist via DNS
-# ═══════════════════════════════════════════════════════════════
-
-async def check_surbl(domain: str) -> bool:
-    """
-    Check domain against SURBL multi list via DNS lookup.
-    Free for low-volume non-commercial use.
-    """
-    import dns.resolver as dns_resolver
-
-    # SURBL expects base domain (no subdomains for most queries)
-    from api.services.scoring import _extract_base_domain
-    base = _extract_base_domain(domain)
-
-    resolver = dns_resolver.Resolver()
-    resolver.timeout = SOURCE_TIMEOUT_S
-    resolver.lifetime = SOURCE_TIMEOUT_S
-
-    query = f"{base}.multi.surbl.org"
-    try:
-        answers = await asyncio.to_thread(resolver.resolve, query, "A")
-        for answer in answers:
-            ip = str(answer)
-            # Any 127.0.0.x response = listed
-            if ip.startswith("127."):
-                logger.info("surbl_hit", extra={"domain": domain, "result": ip})
-                return True
-        return False
-    except (dns_resolver.NXDOMAIN, dns_resolver.NoAnswer, dns_resolver.NoNameservers):
-        return False
-    except Exception:
-        return False
 
 
 # ═══════════════════════════════════════════════════════════════
