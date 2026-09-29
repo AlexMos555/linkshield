@@ -8,22 +8,19 @@ _COMBOSQUAT_KEYWORDS) is English — login, verify, account — so after PR #62
 on the name alone were a brand plus a Russian word, transliterated or in
 Cyrillic.
 
-A word here is what a scam promises or threatens, taken from the 2025-26
-reports behind data/typosquat_targets_ru.json:
+A word here is what a scam's name promises or threatens. F6's «Мамонт»
+report names the delivery fakes (cdek-dostavka.info,
+yandex-doctavym.website); the reports behind data/typosquat_targets_ru.json
+name copies of banks' and Gosuslugi's log-in pages; the rest are the
+payout, giveaway, safe-deal and blocked-account lures of the same schemes:
 
   money and prizes   бонус, приз, подарок, выплата, компенсация, кешбэк,
-                     выигрыш, розыгрыш, промокод, акция — "Госуслуги"
-                     payouts, marketplace and operator giveaways
-  delivery           доставка (and its inflections: доставкой, доставим) —
-                     F6's "Мамонт" courier fakes (cdek-dostavka.info,
-                     yandex-doctavym.website)
-  payment            оплата, возврат, сделка, безопасная (сделка) — Avito's
-                     "safe deal" and refund lures
-  log-in             лк (личный кабинет), кабинет, вход, войти, авторизация,
-                     подтвердить, верификация, проверка — the bank and
-                     Gosuslugi log-in copies
-  threats            блокировка, разблокировка, защита, гарантия — "your
-                     account will be blocked"
+                     выигрыш, розыгрыш, промокод, акция
+  delivery           доставка (and its inflections: доставкой, доставим)
+  payment            оплата, возврат, сделка, безопасная (сделка)
+  log-in             лк (личный кабинет), кабинет, вход, войти, аккаунт,
+                     авторизация, подтвердить, верификация, проверка
+  threats            блокировка, разблокировка, защита, гарантия
 
 A word is matched on a SKELETON of its spelling, so the transliterations of
 one Russian word are one entry: компенсация, kompensaciya, kompensatsiya and
