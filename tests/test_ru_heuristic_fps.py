@@ -415,18 +415,21 @@ def test_other_countries_government_registries_are_still_vouched_for(host):
     assert _government_name(host)
 
 
-@pytest.mark.parametrize("host, zone, rank", [
-    ("vozvrat-sredstv.msk.ru", "msk.ru", 6032),
-    ("gosuslugi-lk.spb.ru", "spb.ru", 2605),
+@pytest.mark.parametrize("host, zone, rank, level", [
+    ("vozvrat-sredstv.msk.ru", "msk.ru", 6032, RiskLevel.caution),
+    # Gosuslugi's name with 'лк' (personal cabinet): brand_subdomain_abuse,
+    # and since the Russian lure words the typosquat rule's combo too, as
+    # vk-login.nov.ru already had with an English one.
+    ("gosuslugi-lk.spb.ru", "spb.ru", 2605, RiskLevel.dangerous),
 ])
-def test_a_zones_rank_does_not_vouch_for_names_under_it(host, zone, rank, offline_analyzer, no_ml):
+def test_a_zones_rank_does_not_vouch_for_names_under_it(host, zone, rank, level, offline_analyzer, no_ml):
     """Tranco ranks msk.ru and spb.ru as one name each. An unreachable host
     anyone registered under them borrowed that rank and came back 'safe'."""
     from api.services.analyzer import analyze_domain
 
     offline_analyzer(site="unreachable", ranks={zone: rank})
     result = asyncio.run(analyze_domain(host, budget_s=5.0))
-    assert result.level == RiskLevel.caution, (result.score, [r.signal for r in result.reasons])
+    assert result.level == level, (result.score, [r.signal for r in result.reasons])
     detail = next(r for r in result.reasons if r.signal == "unreachable_from_scanner").detail
     assert "not a widely known site" in detail
 

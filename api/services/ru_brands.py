@@ -26,6 +26,10 @@ a name and a domain. Every exemption maps to the evidence for it:
                     distance (tele2 = 'tele' + a digit, and tele5.de is a TV
                     channel; ozon + a letter is ozone, gozon, mozon):
                     look-alikes, swaps, hyphens and combos still count
+  lure_words        words that lure only next to this brand, because they
+                    name its own product: 'online' for СберБанк Онлайн and
+                    ВТБ Онлайн (sberbank-online, втб-онлайн). The lure words
+                    every brand shares are in api.services.ru_lures
 
 Why each brand is in or out is written in the file's _meta. A malformed
 file is logged and yields no brands; the global list keeps working.
@@ -56,6 +60,7 @@ class BrandGroup:
     not_typos: frozenset[str]
     shared_name: frozenset[str]
     no_fuzzy: frozenset[str]
+    lure_words: frozenset[str] = frozenset()
 
 
 def idn_forms(domain: str) -> frozenset[str]:
@@ -107,10 +112,13 @@ def parse_group(key: str, raw: Any) -> BrandGroup:
     not_typos = _evidence_map(raw, "not_typos", key)
     shared = _evidence_map(raw, "shared_name", key)
     no_fuzzy = _evidence_map(raw, "no_fuzzy", key)
+    lure_words = _evidence_map(raw, "lure_words", key)
     for domain in [*official, *unrelated]:
         _require("." in domain and "/" not in domain, key, f"{domain!r} is not a registrable domain")
     for label in not_typos:
         _require("." not in label, key, f"not_typos: {label!r} must be a label, not a domain")
+    for word in lure_words:
+        _require(bool(word) and not set(word) & set(".-"), key, f"lure_words: {word!r} must be one word")
     _require(all(d in official for d in names.values()), key, "every name's domain must be in 'official'")
     _require(not set(official) & set(unrelated), key, "a domain is either official or unrelated")
     _require(set(shared) <= set(names) and set(no_fuzzy) <= set(names), key, "switches must name a name")
@@ -123,6 +131,7 @@ def parse_group(key: str, raw: Any) -> BrandGroup:
         not_typos=frozenset(not_typos),
         shared_name=frozenset(shared),
         no_fuzzy=frozenset(no_fuzzy),
+        lure_words=frozenset(lure_words),
     )
 
 
