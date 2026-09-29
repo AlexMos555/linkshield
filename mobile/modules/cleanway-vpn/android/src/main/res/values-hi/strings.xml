@@ -22,6 +22,8 @@
     <string name="sms_alert_unknown_sender">अज्ञात भेजने वाले</string>
     <string name="sms_channel">ख़तरनाक SMS</string>
     <string name="sms_channel_desc">आने वाला SMS धोखाधड़ी जैसा लगे तो आपको चेतावनी देता है</string>
+    <string name="sms_quiet_channel">संदिग्ध SMS, बिना आवाज़</string>
+    <string name="sms_quiet_channel_desc">«सावधान रहें» चेतावनियाँ और बाक़ी का सारांश — बिना आवाज़</string>
     <string name="sms_reason_bait">पैसे या इनाम का वादा किया गया है</string>
     <string name="sms_reason_call">किसी अनौपचारिक नंबर पर कॉल करने को कहा गया है</string>
     <string name="sms_reason_code">SMS में आया कोड बताने को कहा गया है</string>
@@ -39,6 +41,8 @@
     <string name="sms_reason_sender">भेजने वाला वह नहीं है जो होने का दावा करता है</string>
     <string name="sms_reason_sms_command">पैसे ट्रांसफ़र करने वाला SMS भेजने को कहा गया है</string>
     <string name="sms_reason_threat">डराने या जल्दबाज़ी कराने की कोशिश की गई है</string>
+    <string name="sms_summary_text">पिछले 24 घंटों में: %1$s। उन संदेशों के नंबरों पर कॉल न करें और उनके लिंक न खोलें। देखने के लिए Cleanway खोलें।</string>
+    <string name="sms_summary_title">और संदिग्ध SMS</string>
     <string name="warn_text">%1$s खतरनाक लगती है। अगर खुली है तो बंद करें और कुछ भी न लिखें।</string>
     <string name="warn_title">यह साइट धोखाधड़ी जैसी लगती है</string>
 </resources>

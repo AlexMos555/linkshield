@@ -1,7 +1,6 @@
 package ai.cleanway.app
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -65,7 +64,7 @@ class IncomingSmsTest {
             val sms = IncomingSmsParts.group(parts).single()
             val event = SmsEvents.eventFor(sms, analyzer.analyze(sms.text, sms.sender), now = 2_000L + it)
             assertNotNull(event)
-            store.record(2_000L + it, event)
+            store.record(2_000L + it, event).isNew
         }
         assertEquals(1, alerts)
         val log = store.read(now = 3_000L)
@@ -79,7 +78,7 @@ class IncomingSmsTest {
         val analyzer = MessageTestSupport.analyzer()
         val sms = IncomingSmsParts.group(listOf(SmsPart("Tele2", "Ваш баланс 120 руб.", 1L))).single()
         val store = SmsEventLog.of(tmp.newFolder())
-        assertFalse(store.record(5L, SmsEvents.eventFor(sms, analyzer.analyze(sms.text, sms.sender), 5L)))
+        assertEquals(Recorded(isNew = false, decision = null), store.record(5L, SmsEvents.eventFor(sms, analyzer.analyze(sms.text, sms.sender), 5L)))
         val log = store.read(now = 5L)
         assertEquals(1L, log.checked)
         assertEquals(5L, log.lastCheckedAt)

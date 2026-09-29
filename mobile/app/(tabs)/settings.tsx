@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, I18nManager, AppState,
+  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking, I18nManager, AppState,
 } from "react-native";
 import Constants from "expo-constants";
 import { useRouter, useFocusEffect } from "expo-router";

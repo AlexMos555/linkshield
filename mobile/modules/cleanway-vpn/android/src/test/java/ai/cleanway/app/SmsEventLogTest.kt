@@ -120,8 +120,43 @@ class SmsEventLogTest {
 
     @Test
     fun `render and parse round-trip`() {
-        val log = SmsEvents.record(SmsLog.EMPTY, 42L, event(id(9), 42L)).first
+        val recorded = SmsEvents.record(SmsLog.EMPTY, 42L, event(id(9), 42L)).first
+        val (log, decision) = SmsEvents.decideAlert(recorded, event(id(9), 42L), 42L)
+        assertEquals(NotificationCaps.Decision.Loud, decision)
+        assertEquals(1, log.shown.size)
         assertEquals(log, SmsEvents.parse(SmsEvents.render(log)))
+    }
+
+    // ── the warning budget (pure) ───────────────────────────────────────
+
+    @Test
+    fun `a new event is judged against the warnings that went out, and remembered`() {
+        var log = SmsLog.EMPTY
+        val decisions = mutableListOf<NotificationCaps.Decision>()
+        // Four dangerous messages from four senders within minutes: three pop up, the fourth folds.
+        for (i in 1..4) {
+            val e = event(id(i), i * 60_000L).copy(sender = "sender-$i")
+            val (next, decision) = SmsEvents.decideAlert(SmsEvents.record(log, i * 60_000L, e).first, e, i * 60_000L)
+            log = next
+            decisions += decision
+        }
+        assertEquals(
+            listOf(NotificationCaps.Decision.Loud, NotificationCaps.Decision.Loud, NotificationCaps.Decision.Loud, NotificationCaps.Decision.Folded(1)),
+            decisions,
+        )
+        assertEquals(listOf("loud", "loud", "loud", "folded"), log.shown.map { it.kind.wire })
+        assertEquals(listOf("sender-1", "sender-2", "sender-3", "sender-4"), log.shown.map { it.sender })
+        // The same sender again, quietly flagged this time: one warning per sender in six hours.
+        val again = event(id(5), 70 * 60_000L, "caution").copy(sender = "sender-2")
+        assertEquals(NotificationCaps.Decision.Folded(2), SmsEvents.decideAlert(log, again, 70 * 60_000L).second)
+    }
+
+    @Test
+    fun `warnings older than a day are dropped when the next one is decided`() {
+        val old = SmsLog.EMPTY.copy(shown = listOf(NotificationCaps.Shown(0L, NotificationCaps.Kind.LOUD, "900")))
+        val (log, decision) = SmsEvents.decideAlert(old, event(id(1), 2 * day), 2 * day)
+        assertEquals(NotificationCaps.Decision.Loud, decision)
+        assertEquals(listOf(2 * day), log.shown.map { it.ts })
     }
 
     @Test
@@ -152,6 +187,29 @@ class SmsEventLogTest {
         assertEquals(listOf("asks_for_code"), log.events[0].reasons)
         assertNull(log.events[1].sender)
         assertEquals(emptyList<String>(), log.events[1].hosts)
+        // No "alerts" at all (the first build of the format): nothing went out.
+        assertEquals(emptyList<NotificationCaps.Shown>(), log.shown)
+    }
+
+    @Test
+    fun `warnings from another build keep what this one understands`() {
+        val json = """
+            {"v":1,"alerts":[
+              {"t":5,"k":"loud","s":"900"},
+              {"t":6,"k":"quiet"},
+              {"t":7,"k":"shout","s":"x"},
+              {"k":"loud","s":"no-time"},
+              {"t":"8","k":"folded"},
+              7
+            ]}
+        """.trimIndent()
+        assertEquals(
+            listOf(
+                NotificationCaps.Shown(5L, NotificationCaps.Kind.LOUD, "900"),
+                NotificationCaps.Shown(6L, NotificationCaps.Kind.QUIET, null),
+            ),
+            SmsEvents.parse(json).shown,
+        )
     }
 
     @Test
@@ -159,11 +217,20 @@ class SmsEventLogTest {
         val log = SmsLog(checked = 3, lastCheckedAt = 9, dangerous = 1, caution = 0, events = listOf(event(id(1), 9)))
         val o = JSONObject(SmsEvents.render(log))
         assertEquals(1, o.getInt("v"))
-        assertEquals(setOf("v", "checked", "lastCheckedAt", "dangerous", "caution", "events"), o.keySet())
+        assertEquals(setOf("v", "checked", "lastCheckedAt", "dangerous", "caution", "events", "alerts"), o.keySet())
         val e = o.getJSONArray("events").getJSONObject(0)
         assertEquals(setOf("id", "t", "s", "v", "r", "h"), e.keySet())
         assertEquals("0000000000000001", e.getString("id"))
         assertEquals("900", e.getString("s"))
+        val shown = SmsEvents.render(log.copy(shown = listOf(
+            NotificationCaps.Shown(9L, NotificationCaps.Kind.FOLDED, "900"),
+            NotificationCaps.Shown(10L, NotificationCaps.Kind.QUIET, null),
+        )))
+        val a = JSONObject(shown).getJSONArray("alerts")
+        assertEquals(setOf("t", "k", "s"), a.getJSONObject(0).keySet())
+        assertEquals("folded", a.getJSONObject(0).getString("k"))
+        // A warning for a message without a sender writes no "s" rather than a null.
+        assertEquals(setOf("t", "k"), a.getJSONObject(1).keySet())
         // An event without a sender writes no "s" rather than a null.
         val anonymous = JSONObject(SmsEvents.render(log.copy(events = listOf(event(id(2), 9).copy(sender = null)))))
         assertFalse(anonymous.getJSONArray("events").getJSONObject(0).has("s"))
@@ -175,12 +242,16 @@ class SmsEventLogTest {
     fun `the store records and reads back, and leaves no temp file`() {
         val filesDir = tempDir()
         val store = SmsEventLog.of(filesDir)
-        assertTrue(store.record(1_000L, event(id(1), 1_000L)))
-        assertFalse(store.record(2_000L, event(id(1), 2_000L)))
-        store.record(3_000L, null)
-        val log = store.read(now = 3_000L)
-        assertEquals(3L, log.checked)
-        assertEquals(listOf(id(1)), log.events.map { it.id })
+        assertEquals(Recorded(isNew = true, decision = NotificationCaps.Decision.Loud), store.record(1_000L, event(id(1), 1_000L)))
+        // Delivered again: not new, and nothing more to decide.
+        assertEquals(Recorded(isNew = false, decision = null), store.record(2_000L, event(id(1), 2_000L)))
+        assertEquals(Recorded(isNew = false, decision = null), store.record(3_000L, null))
+        // Same sender within six hours: folded, and the store remembers both.
+        assertEquals(Recorded(isNew = true, decision = NotificationCaps.Decision.Folded(1)), store.record(4_000L, event(id(2), 4_000L)))
+        val log = store.read(now = 4_000L)
+        assertEquals(4L, log.checked)
+        assertEquals(listOf(id(2), id(1)), log.events.map { it.id })
+        assertEquals(listOf(NotificationCaps.Kind.LOUD, NotificationCaps.Kind.FOLDED), log.shown.map { it.kind })
         val dir = BlocklistStore.dirFor(filesDir)
         assertEquals(setOf("sms-events.json", "sms-events.lock"), dir.list()?.toSet())
     }
@@ -192,7 +263,7 @@ class SmsEventLogTest {
         File(dir, "sms-events.json").writeText("\u0000\u0000garbage{")
         val store = SmsEventLog.of(filesDir)
         assertEquals(SmsLog.EMPTY, store.read())
-        assertTrue(store.record(10L, event(id(3), 10L)))
+        assertTrue(store.record(10L, event(id(3), 10L)).isNew)
         assertEquals(1L, store.read(now = 10L).checked)
     }
 

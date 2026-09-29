@@ -22,6 +22,8 @@
     <string name="sms_alert_unknown_sender">einem unbekannten Absender</string>
     <string name="sms_channel">Gefährliche SMS</string>
     <string name="sms_channel_desc">Warnt Sie, wenn eine eingehende SMS nach Betrug aussieht</string>
+    <string name="sms_quiet_channel">Verdächtige SMS, leise</string>
+    <string name="sms_quiet_channel_desc">„Vorsicht“-Warnungen und die Zusammenfassung der übrigen – ohne Ton</string>
     <string name="sms_reason_bait">Es wird eine Auszahlung oder ein Gewinn versprochen</string>
     <string name="sms_reason_call">Sie sollen eine inoffizielle Nummer anrufen</string>
     <string name="sms_reason_code">Sie sollen einen Code aus einer SMS weitergeben</string>
@@ -39,6 +41,8 @@
     <string name="sms_reason_sender">Der Absender ist nicht, wer er vorgibt zu sein</string>
     <string name="sms_reason_sms_command">Sie sollen eine SMS senden, die Geld überweist</string>
     <string name="sms_reason_threat">Man will Sie erschrecken oder drängen</string>
+    <string name="sms_summary_text">In den letzten 24 Stunden: %1$s. Rufen Sie die Nummern aus diesen Nachrichten nicht an und öffnen Sie ihre Links nicht. Öffnen Sie Cleanway, um sie zu sehen.</string>
+    <string name="sms_summary_title">Weitere verdächtige SMS</string>
     <string name="warn_text">%1$s wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben.</string>
     <string name="warn_title">Diese Seite sieht nach Betrug aus</string>
 </resources>

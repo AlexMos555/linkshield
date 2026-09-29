@@ -32,7 +32,10 @@ data class SmsEvent(
     )
 }
 
-/** Everything the store holds: counters for every checked SMS, events for the flagged ones. */
+/**
+ * Everything the store holds: counters for every checked SMS, events for the
+ * flagged ones, and the warnings that went out in the last 24 hours.
+ */
 data class SmsLog(
     /** Every SMS checked, benign included — only ever a number: the proof the check runs. */
     val checked: Long,
@@ -42,6 +45,12 @@ data class SmsLog(
     val caution: Long,
     /** Newest first. */
     val events: List<SmsEvent>,
+    /**
+     * Warnings shown in the last 24 hours, oldest first — what NotificationCaps
+     * decides by. The ":sms" process that shows them is short-lived, so its
+     * memory of them has to live here.
+     */
+    val shown: List<NotificationCaps.Shown> = emptyList(),
 ) {
     val flagged: Long get() = dangerous + caution
 
@@ -56,10 +65,13 @@ data class SmsLog(
  *
  * File format, version [VERSION] (JSON):
  *   {"v":1,"checked":N,"lastCheckedAt":ms,"dangerous":N,"caution":N,
- *    "events":[{"id":"…","t":ms,"s":"900","v":"dangerous","r":["…"],"h":["…"]}]}
+ *    "events":[{"id":"…","t":ms,"s":"900","v":"dangerous","r":["…"],"h":["…"]}],
+ *    "alerts":[{"t":ms,"k":"loud","s":"900"}]}
  * Readers skip what they do not know: an unknown field is ignored, an event
- * with an unknown verdict or no id is dropped, a missing counter reads as 0.
- * A newer build may add fields; this one keeps working on its file.
+ * with an unknown verdict or no id is dropped, a missing counter reads as 0,
+ * a warning of an unknown kind is dropped. A newer build may add fields;
+ * this one keeps working on its file (the "alerts" list itself was added
+ * after the first build of the format, under the same version).
  */
 object SmsEvents {
     const val VERSION = 1
@@ -126,6 +138,25 @@ object SmsEvents {
     }
 
     /**
+     * For an event [record] found new: how to warn about it, under the caps
+     * (NotificationCaps), and the log that remembers the warning went out —
+     * so the next message is judged against this one too. Decided and
+     * written in the same locked read-modify-write as the event (see
+     * SmsEventLog.record), or two messages arriving together would both
+     * find the budget untouched.
+     */
+    fun decideAlert(log: SmsLog, event: SmsEvent, now: Long): Pair<SmsLog, NotificationCaps.Decision> {
+        val shown = NotificationCaps.prune(log.shown, now)
+        val decision = NotificationCaps.decide(
+            dangerous = event.verdict == MessageVerdict.DANGEROUS.wire,
+            sender = event.sender,
+            shown = shown,
+            now = now,
+        )
+        return log.copy(shown = shown + NotificationCaps.Shown(now, decision.kind, event.sender)) to decision
+    }
+
+    /**
      * Events older than [maxAgeMs] go, then all past [cap]. An event stamped
      * in the future (the clock was stepped back since) is kept: dropping it
      * would lose a real warning over a clock.
@@ -144,9 +175,24 @@ object SmsEvents {
                 dangerous = o.optLong("dangerous", 0L).coerceAtLeast(0L),
                 caution = o.optLong("caution", 0L).coerceAtLeast(0L),
                 events = parseEvents(o.optJSONArray("events")),
+                shown = parseShown(o.optJSONArray("alerts")),
             )
         } catch (_: Exception) {
             SmsLog.EMPTY
+        }
+    }
+
+    private fun parseShown(arr: JSONArray?): List<NotificationCaps.Shown> {
+        if (arr == null) return emptyList()
+        return (0 until arr.length()).mapNotNull { i ->
+            val o = arr.optJSONObject(i) ?: return@mapNotNull null
+            val kind = NotificationCaps.Kind.ofWire(o.opt("k") as? String) ?: return@mapNotNull null
+            if (!o.has("t") || o.opt("t") !is Number) return@mapNotNull null
+            NotificationCaps.Shown(
+                ts = o.optLong("t", 0L),
+                kind = kind,
+                sender = (o.opt("s") as? String)?.takeIf { it.isNotBlank() },
+            )
         }
     }
 
@@ -185,6 +231,12 @@ object SmsEvents {
             if (e.sender != null) o.put("s", e.sender)
             events.put(o)
         }
+        val alerts = JSONArray()
+        log.shown.forEach { a ->
+            val o = JSONObject().put("t", a.ts).put("k", a.kind.wire)
+            if (a.sender != null) o.put("s", a.sender)
+            alerts.put(o)
+        }
         return JSONObject()
             .put("v", VERSION)
             .put("checked", log.checked)
@@ -192,14 +244,19 @@ object SmsEvents {
             .put("dangerous", log.dangerous)
             .put("caution", log.caution)
             .put("events", events)
+            .put("alerts", alerts)
             .toString()
     }
 }
 
+/** What [SmsEventLog.record] found: whether the event was new, and — then — how to warn about it. */
+data class Recorded(val isNew: Boolean, val decision: NotificationCaps.Decision?)
+
 /**
  * What the automatic SMS check leaves behind: a counter for every checked
- * message, and for a flagged one only time, sender, verdict, reason codes
- * and link hosts. Never the text.
+ * message, for a flagged one only time, sender, verdict, reason codes and
+ * link hosts, and which warnings went out in the last 24 hours (time, kind,
+ * sender). Never the text.
  *
  * Why a file and not SharedPreferences like BlockLog: the receiver runs in
  * the ":sms" process (see SmsReceiver) and the app reads from the main one.
@@ -232,11 +289,17 @@ class SmsEventLog(private val dir: File) {
         return log.copy(events = SmsEvents.prune(log.events, now))
     }
 
-    /** Count one checked message and add [event] if new. Returns true when [event] was new. */
-    fun record(now: Long, event: SmsEvent?): Boolean = locked {
-        val (next, isNew) = SmsEvents.record(SmsEvents.parse(readText()), now, event)
+    /**
+     * Count one checked message and add [event] if new — and, for a new one,
+     * decide how it is warned about and remember that (SmsEvents.decideAlert),
+     * all under the one lock, so two messages arriving together are judged
+     * against each other.
+     */
+    fun record(now: Long, event: SmsEvent?): Recorded = locked {
+        val (recorded, isNew) = SmsEvents.record(SmsEvents.parse(readText()), now, event)
+        val (next, decision) = if (isNew && event != null) SmsEvents.decideAlert(recorded, event, now) else recorded to null
         writeAtomic(SmsEvents.render(next))
-        isNew
+        Recorded(isNew, decision)
     }
 
     private fun readText(): String? = try {

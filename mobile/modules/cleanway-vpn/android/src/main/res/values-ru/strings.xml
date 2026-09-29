@@ -22,6 +22,8 @@
     <string name="sms_alert_unknown_sender">неизвестного отправителя</string>
     <string name="sms_channel">Опасные SMS</string>
     <string name="sms_channel_desc">Предупреждает, когда пришедшее SMS похоже на мошенническое</string>
+    <string name="sms_quiet_channel">Подозрительные SMS — тихо</string>
+    <string name="sms_quiet_channel_desc">Предупреждения «Будьте осторожны» и сводка остальных — без звука</string>
     <string name="sms_reason_bait">обещают выплату или приз</string>
     <string name="sms_reason_call">просят позвонить на неофициальный номер</string>
     <string name="sms_reason_code">просят назвать код из SMS</string>
@@ -39,6 +41,8 @@
     <string name="sms_reason_sender">отправитель не тот, за кого себя выдаёт</string>
     <string name="sms_reason_sms_command">просят отправить SMS-команду для перевода денег</string>
     <string name="sms_reason_threat">пугают или торопят</string>
+    <string name="sms_summary_text">За последние сутки: %1$s. Не звоните по номерам из этих сообщений и не переходите по ссылкам. Откройте Cleanway, чтобы посмотреть.</string>
+    <string name="sms_summary_title">Ещё подозрительные SMS</string>
     <string name="warn_text">%1$s выглядит опасным. Если он открыт — закройте его и ничего не вводите.</string>
     <string name="warn_title">Этот сайт похож на мошеннический</string>
 </resources>

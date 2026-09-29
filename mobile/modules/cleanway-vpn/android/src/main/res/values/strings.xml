@@ -22,6 +22,8 @@
     <string name="sms_alert_unknown_sender">an unknown sender</string>
     <string name="sms_channel">Scam SMS warnings</string>
     <string name="sms_channel_desc">Warns you when an incoming SMS looks like a scam</string>
+    <string name="sms_quiet_channel">Suspicious SMS, quietly</string>
+    <string name="sms_quiet_channel_desc">“Be careful” warnings and the summary of the rest — no sound</string>
     <string name="sms_reason_bait">it promises a payout or a prize</string>
     <string name="sms_reason_call">it asks you to call an unofficial number</string>
     <string name="sms_reason_code">it asks you to share a code from an SMS</string>
@@ -39,6 +41,8 @@
     <string name="sms_reason_sender">the sender isn’t who they claim to be</string>
     <string name="sms_reason_sms_command">it asks you to send an SMS command that moves money</string>
     <string name="sms_reason_threat">it tries to scare or rush you</string>
+    <string name="sms_summary_text">In the last 24 hours: %1$s. Don’t call the numbers in those messages and don’t open their links. Open Cleanway to see them.</string>
+    <string name="sms_summary_title">More suspicious SMS</string>
     <string name="warn_text">%1$s looks dangerous. If it is open, close it and don\'t type anything.</string>
     <string name="warn_title">This site looks like a scam</string>
 </resources>

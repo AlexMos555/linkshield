@@ -36,7 +36,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  *  - nothing leaves the phone at all — links are judged by the on-device
  *    list and the rules, no domain lookup;
  *  - a flagged message leaves time, sender, verdict, reason codes and link
- *    hosts (SmsEventLog); any other message only bumps a counter.
+ *    hosts (SmsEventLog); any other message only bumps a counter;
+ *  - a warning goes out under NotificationCaps: at most a few loud ones an
+ *    hour, ten a day, one per sender in six hours; the rest fold into one.
  */
 class SmsReceiver : BroadcastReceiver() {
 
@@ -113,14 +115,22 @@ internal object SmsCheck {
             val analysis = MessageCheck.analyzeIncoming(context, sms.text, sms.sender)
             val now = System.currentTimeMillis()
             val event = SmsEvents.eventFor(sms, analysis, now)
-            val isNew = try {
+            val recorded = try {
                 log.record(now, event)
             } catch (e: Exception) {
-                // Unrecorded is still worth a warning; History just cannot open it.
+                // Unrecorded is still worth a warning; History just cannot
+                // open it, and with no memory of earlier warnings the caps
+                // judge it on its own.
                 Log.w(TAG, "sms_record_failed: ${e.javaClass.simpleName}")
-                true
+                Recorded(
+                    isNew = true,
+                    decision = event?.let {
+                        NotificationCaps.decide(it.verdict == MessageVerdict.DANGEROUS.wire, it.sender, emptyList(), now)
+                    },
+                )
             }
-            if (event != null && isNew) SmsNotifier.notify(context, event)
+            val decision = recorded.decision
+            if (event != null && recorded.isNew && decision != null) SmsNotifier.notify(context, event, decision)
         }
     }
 }
