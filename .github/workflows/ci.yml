@@ -80,8 +80,12 @@ jobs:
         # any backend verdict, so it is a fork of api/services/scoring.py that
         # has drifted before (2026-07-20 QA: brand-subdomain and glyph bugs
         # the backend had already fixed). This table pins the punycode/IDN
-        # decisions against the Python implementation, and runs against all
-        # four extension trees, so a hand-edit to a generated copy fails too.
+        # decisions against the Python implementation, and holds the ported
+        # name rules (src/utils/name-rules.js) to the server's answers on
+        # every row of tests/data/extension_name_rules_parity.tsv (generated,
+        # and kept current by tests/test_extension_scorer_data.py). It runs
+        # against all four extension trees, so a hand-edit to a generated
+        # copy fails too.
         run: node scripts/test-local-scorer.mjs
 
       - name: Extension static checks (trust list, SW module graph, i18n keys)
