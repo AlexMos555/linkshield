@@ -235,7 +235,7 @@ wildberries-ru.com | combosquat | wildberries.ru | brand + its country
 
 # ── Seen live, 2026-09-29: brand + lure-word names ──
 # Every <brand>-<word>, <word>-<brand> and <brand><word> for 31 brand
-# spellings and 55 words under 12 TLDs, and the Cyrillic names under 6, was
+# spellings and 56 words under 12 TLDs, and the Cyrillic names under 6, was
 # resolved; these were on the 815 registered names.
 vk-vhod.ru | observed | vk.com | 'ВКонтакте | Официальный сайт — Вход и регистрация в ВК' on shared hosting
 lk-sberbank.ru | observed | sberbank.ru | 'Личный кабинет Сбербанк — Не официальный сайт'
