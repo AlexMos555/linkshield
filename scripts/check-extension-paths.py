@@ -12,7 +12,10 @@ The 2026-07-01 pre-launch audit found that:
     no icon-192.png ever existed — notifications rendered a blank tile.
 
 Grep would have caught all three in seconds, but nothing in CI grepped.
-This script fills that gap.
+This script fills that gap. It also checks every file a browser tree's
+manifest.json loads — content scripts, their CSS and the background — since
+a content script listed but missing makes the browser refuse the whole
+extension (the offline scorer is three files that must all be there).
 
 Exit 0 = all paths resolve, exit 1 = at least one broken.
 
@@ -30,6 +33,7 @@ copies from these trees, so fixing the source auto-fixes the artifact.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -87,7 +91,26 @@ def audit_tree(root: Path) -> list[str]:
                     f"{html_rel}: <script src='{src}'> → {target} (missing)"
                 )
 
+    missing.extend(audit_manifest(root))
     return missing
+
+
+def audit_manifest(root: Path) -> list[str]:
+    """Every script and stylesheet the tree's manifest.json loads exists."""
+    manifest_path = root / "manifest.json"
+    if not manifest_path.exists():
+        return []  # packages/extension-core has no manifest of its own
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    listed: list[str] = []
+    for entry in manifest.get("content_scripts", []):
+        listed.extend(entry.get("js", []))
+        listed.extend(entry.get("css", []))
+    background = manifest.get("background", {})
+    listed.extend(background.get("scripts", []))
+    if background.get("service_worker"):
+        listed.append(background["service_worker"])
+    rel = manifest_path.relative_to(REPO_ROOT)
+    return [f"{rel}: '{path}' (missing)" for path in listed if not (root / path).is_file()]
 
 
 def main() -> int:
