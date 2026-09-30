@@ -20,9 +20,9 @@ once in FETCH_INTERVAL_SECONDS, send If-None-Match / If-Modified-Since when
 we do, and honour a longer Cache-Control max-age if one is ever sent. The
 parsed hostnames are kept in one Redis hash (CACHE_KEY, zlib-packed, a few
 hundred KB) so the four daily cron runs share one download. A failed
-download uses the cached hosts for up to STALE_MAX_SECONDS; past that the
-source is reported down and the outage guard carries its names (see
-blocklist_feed_health).
+download — a non-200 answer or a raised connection error alike — uses the
+cached hosts for up to STALE_MAX_SECONDS; past that the source is reported
+down and the outage guard carries its names (see blocklist_feed_health).
 
 The key never appears in a log line or an exception: the URL that carries
 it is built in `feed_url` and passed only to the fetcher.
@@ -186,7 +186,17 @@ async def fetch_hosts(r, key: str, now: float, fetch: Fetcher, dry_run: bool = F
                     _utc(cached.fetched_at), len(cached.hosts), _utc(cached.next_fetch_at()))
         return list(cached.hosts)
 
-    status, headers, body = await fetch(feed_url(key), conditional_headers(cached))
+    try:
+        status, headers, body = await fetch(feed_url(key), conditional_headers(cached))
+    except Exception as e:  # noqa: BLE001
+        # A timeout or a refused connection is no different from a throttled
+        # answer: the cached dump carries the day while it is usable. Only
+        # the exception's type is logged — its message may quote the URL.
+        if cached is not None and cached.usable_at(now):
+            logger.warning("PhishTank: download failed (%s) — using the cached dump from %s",
+                           type(e).__name__, _utc(cached.fetched_at))
+            return list(cached.hosts)
+        raise
     lower = {str(k).lower(): str(v) for k, v in dict(headers).items()}
     if status == 304 and cached is not None:
         fresh = replace(cached, fetched_at=now, max_age=parse_max_age(lower.get("cache-control")))

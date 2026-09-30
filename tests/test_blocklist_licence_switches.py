@@ -21,6 +21,7 @@ from test_refresh_dangerous_domains import (
     BASE, DAY, T0, _FakeRedis, _phone_blocks, _published, _stub_world, rdd,
 )
 
+from api.services import blocklist_feed_backing as feed_backing
 from api.services import blocklist_feed_health as feed_health
 from api.services import blocklist_retention as retention
 from api.services import phishtank_feed
@@ -188,6 +189,85 @@ async def test_excluded_feed_names_leave_at_once_while_ordinary_departures_are_r
     assert "165 published names only phishing.army backed leave with this publish" in caplog.text
 
 
+async def _phishunt_down(monkeypatch) -> None:
+    """Phishunt fails to download; every other feed answers as before."""
+    healthy = rdd._fetch
+
+    async def _down(url):
+        if url == rdd.PHISHUNT_FEED:
+            raise ConnectionError("phishunt down")
+        return await healthy(url)
+
+    monkeypatch.setattr(rdd, "_fetch", _down)
+
+
+@pytest.mark.asyncio
+async def test_a_blind_outage_of_another_feed_does_not_carry_the_leaving_names_back(monkeypatch, caplog):
+    """A degraded source with no backing record makes the outage guard keep
+    every published name no live source lists (plan_carry, blind). The names
+    the switched-off feed backed must not ride back in on that."""
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    extra = {rdd.PHISHING_ARMY: "\n".join(ARMY), rdd.PHISHUNT_FEED: "https://phishunt-phish.com/x"}
+    assert await _refresh(monkeypatch, fake, T0, extra=extra) == 0
+    assert set(ARMY) <= _published(fake)
+
+    # Phishunt goes down on the run that switches phishing.army off, and its
+    # backing record is gone — the carry is blind.
+    await fake.hdel(feed_backing.BACKING_KEY, "Phishunt")
+    _world(monkeypatch, fake, extra=extra, env={rdd.LICENSED_ONLY_ENV: "1"})
+    await _phishunt_down(monkeypatch)
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600, force=True) == 0
+    assert "Phishunt: no record of which names it backed" in caplog.text
+    assert "165 published names only phishing.army backed leave with this publish" in caplog.text
+    assert "phishunt-phish.com" in _published(fake), "the blind carry keeps what no live source lists"
+    assert not set(ARMY) & _published(fake), "…but not the switched-off feed's names"
+    assert not _phone_blocks(fake, ARMY[0])
+    assert not set(ARMY) & set(fake.data.get(retention.LAST_SEEN_KEY, {}))
+
+
+@pytest.mark.asyncio
+async def test_a_name_a_degraded_live_feed_also_backed_stays_carried(monkeypatch, caplog):
+    """What leaves with the switched-off feed is what only it backed: a name
+    a degraded live feed's record also holds is that feed's to carry."""
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    shared = "shared-phish.com"
+    army = ARMY + [shared]
+    extra = {rdd.PHISHING_ARMY: "\n".join(army), rdd.PHISHUNT_FEED: f"https://{shared}/x"}
+    assert await _refresh(monkeypatch, fake, T0, extra=extra) == 0
+    assert set(army) <= _published(fake)
+
+    _world(monkeypatch, fake, extra=extra, env={rdd.LICENSED_ONLY_ENV: "1"})
+    await _phishunt_down(monkeypatch)
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600, force=True) == 0
+    assert "outage guard: keeping 1 published names Phishunt backed" in caplog.text
+    assert shared in _published(fake), "carried for Phishunt, whatever phishing.army's record says"
+    assert not set(ARMY) & _published(fake)
+    assert "165 published names only phishing.army backed leave with this publish" in caplog.text
+
+
+def test_run_sources_says_what_a_run_fetches_without_fetching():
+    without_tank = rdd.FEED_NAMES - {phishtank_feed.SOURCE_NAME}
+    assert rdd.run_sources(frozenset(), {}) == without_tank
+    assert rdd.run_sources(rdd.NON_COMMERCIAL_FEEDS, {}) == without_tank - rdd.NON_COMMERCIAL_FEEDS
+    with_key = {phishtank_feed.KEY_ENV: "k3y"}
+    assert rdd.run_sources(frozenset(), with_key) == rdd.FEED_NAMES
+    assert phishtank_feed.SOURCE_NAME not in rdd.run_sources(frozenset({phishtank_feed.SOURCE_NAME}), with_key)
+
+
+@pytest.mark.asyncio
+async def test_run_sources_matches_the_sources_fetch_feeds_has(monkeypatch):
+    fake = _FakeRedis()
+    env = {phishtank_feed.KEY_ENV: "k3y", rdd.LICENSED_ONLY_ENV: "1"}
+    _world(monkeypatch, fake, env=env)
+    _tank(monkeypatch, (200, {}))
+    excluded = rdd.excluded_feeds()
+    run = await rdd._fetch_feeds(fake, excluded, T0, dry_run=True)
+    assert set(run.fetched) == rdd.run_sources(excluded)
+    assert phishtank_feed.SOURCE_NAME in run.fetched and "OpenPhish" not in run.fetched
+
+
 def test_plan_retention_lets_leaving_names_go_without_a_window():
     stored = {"old-army.top": T0 - DAY, "old-phishunt.top": T0 - DAY}
     previous = {"old-army.top", "old-phishunt.top", "army-now.top", "phishunt-now.top", "still.top"}
@@ -297,6 +377,44 @@ async def test_phishtank_throttle_uses_the_cache_for_three_days_then_is_an_outag
     assert await _refresh(monkeypatch, fake, T0 + 4 * DAY, env=env) == 0
     assert "FEED DEGRADED: PhishTank" in caplog.text
     assert "www.tank-phish.com" in _published(fake)
+
+
+@pytest.mark.asyncio
+async def test_a_failed_phishtank_download_uses_the_usable_cache_and_never_logs_the_key(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    env = {phishtank_feed.KEY_ENV: "k3y"}
+    _tank(monkeypatch, (200, {}))
+    assert await _refresh(monkeypatch, fake, T0, env=env) == 0
+
+    async def _refused(url, headers):
+        raise ConnectionError(f"connection refused for {url}")
+
+    monkeypatch.setattr(rdd, "_fetch_conditional", _refused)
+    # A day later the download raises instead of answering: the cached dump
+    # carries the day, like a throttled 404 does.
+    assert await _refresh(monkeypatch, fake, T0 + DAY + 60, env=env) == 0
+    assert "PhishTank: download failed (ConnectionError) — using the cached dump" in caplog.text
+    assert "FEED DEGRADED" not in caplog.text
+    assert "www.tank-phish.com" in _published(fake)
+    assert "k3y" not in caplog.text
+    # Past the stale window it is an outage — and the key stays out of the
+    # log even though the client's message quotes the URL.
+    caplog.clear()
+    assert await _refresh(monkeypatch, fake, T0 + 4 * DAY, env=env) == 0
+    assert "FEED DEGRADED: PhishTank" in caplog.text
+    assert "PhishTank fetch failed: connection refused for " + phishtank_feed.feed_url("<key>") in caplog.text
+    assert "k3y" not in caplog.text
+    assert "www.tank-phish.com" in _published(fake), "the outage guard carries what it backed"
+
+
+@pytest.mark.asyncio
+async def test_a_failed_phishtank_download_without_a_usable_cache_is_raised():
+    async def _refused(url, headers):
+        raise ConnectionError("refused")
+
+    with pytest.raises(ConnectionError):
+        await phishtank_feed.fetch_hosts(None, "k3y", T0, _refused)
 
 
 @pytest.mark.asyncio

@@ -277,6 +277,17 @@ def excluded_feeds(environ=None) -> frozenset[str]:
 def phishtank_key(environ=None) -> str:
     return (os.environ if environ is None else environ).get(phishtank_feed.KEY_ENV, "").strip()
 
+
+def run_sources(excluded: frozenset = frozenset(), environ=None) -> frozenset[str]:
+    """The sources a run with these exclusions has: every feed but the
+    excluded ones, PhishTank only with a key. What _fetch_feeds fetches, said
+    without fetching — the day-one benchmark records it per build so a
+    PhishTank number is marked circular the day the key makes it a source."""
+    out = set(FEED_NAMES) - set(excluded)
+    if not phishtank_key(environ):
+        out.discard(phishtank_feed.SOURCE_NAME)
+    return frozenset(out)
+
 # Registrables we must NEVER add (blocking these blocks legit infra). Shared
 # hosting / URL platforms where phishing lives on subdomains/paths.
 HOSTING_PLATFORMS = frozenset({
@@ -1042,7 +1053,9 @@ async def _fetch_feeds(r=None, excluded: frozenset = frozenset(), now: float | N
             logger.info("%s: +%d host entries (%d distinct so far)", name, len(parsed),
                         len(set(hosts) | set(exact_hosts)))
         except Exception as e:  # noqa: BLE001
-            logger.warning("%s fetch failed: %s (continuing)", name, e)
+            # An HTTP client's message can carry the URL, and the URL carries
+            # the key.
+            logger.warning("%s fetch failed: %s (continuing)", name, str(e).replace(key, "<key>"))
             fetched[name] = None
     return FeedFetch(hosts=hosts, exact_hosts=exact_hosts, fetched=fetched, by_feed=by_feed,
                      exact_feeds=frozenset(exact_feeds))
@@ -1260,8 +1273,10 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
         return 4
     # The names a source left out this run backed go with it: neither
     # carried (it is not down) nor held in retention (see _names_leaving).
+    # One a degraded live source also backed is that source's to carry, not
+    # the switched-off feed's to take.
     leaving_by_source = _names_leaving(previous, backing, excluded)
-    leaving = set().union(*leaving_by_source.values()) - listed
+    leaving = set().union(*leaving_by_source.values()) - listed - carry.backed
     if leaving:
         logger.warning("licence switch: %d published names only %s backed leave with this publish",
                        len(leaving), ", ".join(s for s, names in leaving_by_source.items() if names - listed))
@@ -1276,7 +1291,10 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     # veto, tenant rules, zones) judges them afresh. None of them promotes a
     # registrable: nothing in a current feed vouches for it, and a registrable
     # that WAS published comes back through its own entry, not through promotion.
-    extra = retained | set(carry.carried) | active
+    # A blind carry (a degraded source with no backing record) keeps every
+    # unlisted published name — the leaving ones must not ride back in on it.
+    carried = set(carry.carried) - leaving
+    extra = retained | carried | active
     exact_only |= {_norm_host(n) for n in extra} - promoting
     exact_only.discard("")
     candidate_hosts = feed_hosts + sorted(extra)
@@ -1287,7 +1305,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
                 "%d exact-only; %d retained, %d carried through an outage, %d server-confirmed — "
                 "%d of those passed the guards)",
                 len(blockset), len(feed_hosts), len(set(feed_hosts)), len(exact_only),
-                len(retained), len(carry.carried), len(active), len(extra & blockset))
+                len(retained), len(carried), len(active), len(extra & blockset))
     shared_all = default_shared_suffixes()
     ok, why = publish_gate(blockset, previous, top_100k | (public_suffixes or set()), shared_all, force=force)
     if not ok:

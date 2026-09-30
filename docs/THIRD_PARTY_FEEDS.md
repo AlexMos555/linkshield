@@ -66,7 +66,10 @@ Every coverage number needs a sample the list was *not* built from.
 * **PhishTank** is that sample today (`scripts/eval_blocklist_coverage.py`,
   `scripts/eval_day_one_coverage.py`). The day `PHISHTANK_API_KEY` reaches
   the refresh job, PhishTank is a source and every PhishTank number becomes
-  circular — the day-one report marks it `circular: true` automatically.
+  circular. The day-one report builds with whatever the key adds (each
+  build's `feeds` is what it was really made from, `run_sources`), marks
+  such numbers `circular: true` and drops them from `headline` — with the
+  key set, the report has no PhishTank headline at all.
 * **TweetFeed** has been a source since 2026-09-26 (#47). Its "independent
   30-day sample" (report of 2026-09-25) is honest only against a list built
   without it; the day-one report builds such variants.

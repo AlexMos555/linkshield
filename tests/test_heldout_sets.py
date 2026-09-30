@@ -168,6 +168,60 @@ def test_variants_are_the_four_licence_builds():
     assert names["licensed-minus-tweetfeed"] == rdd.NON_COMMERCIAL_FEEDS | {"TweetFeed"}
 
 
+def _stub_refresh(monkeypatch, rdd) -> None:
+    """rdd.refresh that writes a one-name artifact instead of building."""
+    async def _refresh(redis_url, dry_run, artifact_out=None, excluded=None, **_):
+        Path(artifact_out).write_bytes(render_artifact_v2({"evil-bank.xyz"}))
+        return 0
+
+    monkeypatch.setattr(rdd, "refresh", _refresh)
+
+
+def test_build_variants_record_the_sources_each_build_really_had(tmp_path, monkeypatch):
+    import asyncio
+
+    rdd = d1._load_refresh_module()
+    _stub_refresh(monkeypatch, rdd)
+    monkeypatch.delenv(rdd.phishtank_feed.KEY_ENV, raising=False)
+    builds = asyncio.run(d1.build_variants(rdd, d1.Snapshot(tmp_path / "no-key"), {"all": frozenset()}))
+    assert "PhishTank" not in builds["all"]["feeds"] and "TweetFeed" in builds["all"]["feeds"]
+
+    # With the key the refresh job ingests PhishTank, so the build says so —
+    # and the PhishTank sample is circular for it, out of the headline.
+    monkeypatch.setenv(rdd.phishtank_feed.KEY_ENV, "k3y")
+    builds = asyncio.run(d1.build_variants(rdd, d1.Snapshot(tmp_path / "key"),
+                                           {"all": frozenset(), "licensed": rdd.NON_COMMERCIAL_FEEDS}))
+    assert "PhishTank" in builds["all"]["feeds"] and "PhishTank" in builds["licensed"]["feeds"]
+    assert "OpenPhish" not in builds["licensed"]["feeds"]
+    assert builds["all"]["hashes"] == {name_hash("evil-bank.xyz")}
+    held_out = d1.score(builds, {"phishtank": ho.phishtank_reports(PHISHTANK)}, (1,), set(),
+                        {"phishtank": "PhishTank"})
+    assert held_out["phishtank"]["windows"]["1"]["coverage"]["all"]["circular"] is True
+    assert d1.headline(held_out) == {}
+
+
+def test_the_keyed_phishtank_dump_is_fetched_once_and_its_url_never_written(tmp_path):
+    import asyncio
+
+    calls = []
+    answers = [(404, {}, b""), (200, {"ETag": '"x"'}, b"phish_id,url\n1,https://a.example/\n")]
+
+    async def _real(url, headers):
+        calls.append(url)
+        return answers.pop(0)
+
+    snap = d1.Snapshot(tmp_path)
+    fetch = snap.conditional_fetcher(_real)
+    url = "https://data.phishtank.com/data/k3y/online-valid.csv.gz"
+    assert asyncio.run(fetch(url, {}))[0] == 404, "a throttled answer is passed through, not kept"
+    assert asyncio.run(fetch(url, {}))[0] == 200
+    assert asyncio.run(fetch(url, {"If-None-Match": '"x"'})) == (200, {}, b"phish_id,url\n1,https://a.example/\n")
+    assert calls == [url, url]
+    assert (tmp_path / d1.PHISHTANK_KEYED_DUMP).exists()
+    assert all(b"k3y" not in p.read_bytes() for p in tmp_path.iterdir())
+    assert d1.snapshot_fingerprint(snap)["bodies"] == 1
+
+
 def test_snapshot_serves_a_cached_body_without_fetching_again(tmp_path):
     import asyncio
 

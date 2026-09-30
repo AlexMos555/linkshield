@@ -75,6 +75,11 @@ SCHEMA = "cleanway.day-one-coverage/1"
 OUT_DIR = ROOT / "docs" / "benchmarks"
 DEFAULT_DAYS = (1, 7, 30)
 PHISHTANK_DUMP = "phishtank-online-valid.csv.gz"
+# The dump the refresh job downloads with PHISHTANK_API_KEY, when the key is
+# set for the benchmark too: one download for every build, kept under a
+# fixed name because the URL that fetched it carries the key.
+PHISHTANK_KEYED_DUMP = "phishtank-keyed-online-valid.csv.gz"
+SNAPSHOT_EXTRAS = frozenset({PHISHTANK_DUMP, PHISHTANK_KEYED_DUMP})
 QUESTION = ("Of the phishing hosts a held-out source first reported within the last N days, what share does "
             "the phone's blocklist block on that day? A listed name blocks itself and every subdomain; "
             "IP-literal URLs and one tenant's page on shared hosting cannot be blocked by a domain list and "
@@ -141,14 +146,38 @@ class Snapshot:
         log.info("snapshot: fetched the PhishTank dump (%d bytes)", len(r.content))
         return r.content
 
+    def conditional_fetcher(self, real: Callable) -> Callable:
+        """The refresh job's conditional GET (its keyed PhishTank download)
+        through the snapshot: one download, every build reads the same
+        bytes. Only the body touches the disk — the URL carries the key, so
+        it is neither indexed nor logged."""
+        path = self.dir / PHISHTANK_KEYED_DUMP
+
+        async def _fetch(url: str, headers) -> tuple[int, dict, bytes]:
+            if path.exists():
+                return 200, {}, path.read_bytes()
+            status, resp_headers, body = await real(url, headers)
+            if status == 200 and body:
+                path.write_bytes(body)
+                log.info("snapshot: fetched the keyed PhishTank dump (%d bytes)", len(body))
+            return status, dict(resp_headers), body
+        return _fetch
+
 
 # ── Builds ───────────────────────────────────────────────────────────────────
 
 
 async def build_variants(rdd, snapshot: Snapshot, names: dict[str, frozenset]) -> dict[str, dict]:
-    """name -> {excluded_feeds, feeds, names, artifact_bytes, sha256, hashes}."""
+    """name -> {excluded_feeds, feeds, names, artifact_bytes, sha256, hashes}.
+    `feeds` is what the build was made from (rdd.run_sources): with
+    PHISHTANK_API_KEY set, PhishTank is in it and score() marks the PhishTank
+    numbers circular."""
     rdd._fetch = snapshot.fetcher(rdd._fetch)
     rdd.MISP_EVENT_PAUSE = 0
+    if rdd.phishtank_key():
+        rdd._fetch_conditional = snapshot.conditional_fetcher(rdd._fetch_conditional)
+        log.warning("%s is set: PhishTank is a source of every build here, so its sample is circular "
+                    "(held_out.phishtank.*.circular) and leaves the headline", rdd.phishtank_feed.KEY_ENV)
     out: dict[str, dict] = {}
     for name, excluded in names.items():
         path = snapshot.dir / f"artifact-{name}.bin"
@@ -160,7 +189,7 @@ async def build_variants(rdd, snapshot: Snapshot, names: dict[str, frozenset]) -
         hashes = ho.load_artifact(path)
         out[name] = {
             "excluded_feeds": sorted(excluded),
-            "feeds": sorted(rdd.FEED_NAMES - excluded - {rdd.phishtank_feed.SOURCE_NAME}),
+            "feeds": sorted(rdd.run_sources(excluded)),
             "names": len(hashes),
             "artifact_bytes": len(blob),
             "sha256": hashlib.sha256(blob).hexdigest(),
@@ -231,7 +260,7 @@ def snapshot_fingerprint(snapshot: "Snapshot") -> dict:
     """Which bytes were scored: a digest over every cached body, so two
     reports from the same snapshot can be told from two snapshots."""
     digest = hashlib.sha256()
-    bodies = sorted(p for p in snapshot.dir.iterdir() if p.suffix == ".body" or p.name == PHISHTANK_DUMP)
+    bodies = sorted(p for p in snapshot.dir.iterdir() if p.suffix == ".body" or p.name in SNAPSHOT_EXTRAS)
     for path in bodies:
         digest.update(path.name.encode("ascii"))
         digest.update(hashlib.sha256(path.read_bytes()).digest())
