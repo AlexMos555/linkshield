@@ -161,10 +161,13 @@ def _extract_domain_from_url(url: str) -> str:
 # ─── Cache layer ──────────────────────────────────────────────────────────────
 
 
-async def _cache_get(domain: str) -> Optional[CheckResult]:
+async def _cache_get(domain: str, prefix: str = CACHE_PREFIX) -> Optional[CheckResult]:
+    """`prefix` keeps each backend's answers apart (web_risk uses its own):
+    a Web Risk verdict must never be served as a Safe Browsing one, or the
+    other way round, across a backend switch."""
     try:
         r = await get_redis()
-        raw = await r.get(f"{CACHE_PREFIX}{domain}")
+        raw = await r.get(f"{prefix}{domain}")
     except Exception as e:  # Redis unreachable — skip cache
         logger.debug("gsb_cache_get_failed", extra={"error": str(e), "domain": domain})
         return None
@@ -178,17 +181,15 @@ async def _cache_get(domain: str) -> Optional[CheckResult]:
         return None
 
 
-async def _cache_set(domain: str, result: CheckResult) -> None:
-    if result.status == CheckStatus.threat:
-        # Use API-supplied cacheDuration if any match provided it, else default
-        ttl = _positive_ttl(result)
-    elif result.status == CheckStatus.safe:
-        ttl = NEGATIVE_CACHE_TTL
-    else:
-        ttl = UNAVAILABLE_CACHE_TTL
+async def _cache_set(domain: str, result: CheckResult, prefix: str = CACHE_PREFIX,
+                     ttl: Optional[int] = None) -> None:
+    """`ttl` overrides the status-based default (Web Risk caches a match
+    until Google's expireTime)."""
+    if ttl is None:
+        ttl = _default_ttl(result)
     try:
         r = await get_redis()
-        await r.setex(f"{CACHE_PREFIX}{domain}", ttl, json.dumps(result.to_dict()))
+        await r.setex(f"{prefix}{domain}", ttl, json.dumps(result.to_dict()))
     except Exception as e:
         logger.debug("gsb_cache_set_failed", extra={"error": str(e), "domain": domain})
 
@@ -199,6 +200,15 @@ def _positive_ttl(result: CheckResult) -> int:
     if durations:
         return max(60, min(durations))
     return POSITIVE_CACHE_TTL
+
+
+def _default_ttl(result: CheckResult) -> int:
+    if result.status == CheckStatus.threat:
+        # Use API-supplied cacheDuration if any match provided it, else default
+        return _positive_ttl(result)
+    if result.status == CheckStatus.safe:
+        return NEGATIVE_CACHE_TTL
+    return UNAVAILABLE_CACHE_TTL
 
 
 # ─── HTTP call + retry ────────────────────────────────────────────────────────
@@ -441,17 +451,26 @@ class SafeBrowsingClient:
 # ─── Module-level convenience ─────────────────────────────────────────────────
 
 
-_singleton: Optional[SafeBrowsingClient] = None
+_singleton: Optional[object] = None
 
 
-def get_client() -> SafeBrowsingClient:
+def get_client():
     """
-    Returns a process-wide client. Rebuilt whenever the API key changes (eg.
-    when tests override settings).
+    Returns a process-wide client: Google Web Risk (api/services/web_risk)
+    when WEB_RISK_API_KEY is set — the commercial lookup, a licence decision
+    — else Safe Browsing v4 as always. Rebuilt whenever the key changes (eg.
+    when tests override settings). Both clients answer `check` and
+    `check_batch` with the same CheckResult.
     """
     global _singleton
     settings = get_settings()
-    if _singleton is None or _singleton._api_key != settings.google_safe_browsing_key:
+    if settings.web_risk_api_key:
+        from api.services.web_risk import WebRiskClient
+
+        if not isinstance(_singleton, WebRiskClient) or _singleton._api_key != settings.web_risk_api_key:
+            _singleton = WebRiskClient(api_key=settings.web_risk_api_key)
+        return _singleton
+    if not isinstance(_singleton, SafeBrowsingClient) or _singleton._api_key != settings.google_safe_browsing_key:
         _singleton = SafeBrowsingClient(api_key=settings.google_safe_browsing_key)
     return _singleton
 
@@ -466,7 +485,8 @@ def reset_client() -> None:
 async def check_safe_browsing(domain: str) -> bool:
     """
     Legacy boolean interface. ``True`` if the domain is a known threat,
-    ``False`` if safe, no API key, or the API is unavailable.
+    ``False`` if safe, no API key, or the API is unavailable. Asks Web Risk
+    when WEB_RISK_API_KEY is set (get_client), Safe Browsing v4 otherwise.
 
     New code should use ``get_client().check(domain)`` for full status.
     """

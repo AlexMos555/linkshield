@@ -183,3 +183,18 @@ async def save_state(r, health: FeedHealth) -> None:
     pipe.expire(FEED_COUNTS_KEY, STATE_TTL_SECONDS)
     pipe.expire(FEED_DOWN_SINCE_KEY, STATE_TTL_SECONDS)
     await pipe.execute()
+
+
+async def forget(r, feeds) -> None:
+    """Drop the stored state of sources this run does not have — a feed
+    switched off (the licence switch in the refresh job, a key removed). A
+    source that is not consulted is not down: its old outage must not carry
+    its names or turn the run red, and if it is ever switched back on it
+    starts with no baseline, like a new feed."""
+    names = sorted(set(feeds))
+    if not names:
+        return
+    pipe = r.pipeline(transaction=True)
+    pipe.hdel(FEED_COUNTS_KEY, *names)
+    pipe.hdel(FEED_DOWN_SINCE_KEY, *names)
+    await pipe.execute()

@@ -177,6 +177,9 @@ _ALWAYS_REDACT_KEYS = frozenset(
 _UPSTREAM_HOSTS = frozenset(
     {
         "safebrowsing.googleapis.com",
+        "webrisk.googleapis.com",
+        "data.phishtank.com",
+        "cdn.phishtank.com",
         "urlhaus-api.abuse.ch",
         "threatfox-api.abuse.ch",
         "mb-api.abuse.ch",

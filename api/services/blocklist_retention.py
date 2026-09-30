@@ -85,7 +85,8 @@ def retain_days_from_env(raw: Optional[str]) -> int:
 
 def plan_retention(stored: Mapping[str, float], previous: set, present: set,
                    now: float, window_seconds: int, record_departures: bool = True,
-                   max_departures: int = MAX_DEPARTURES_PER_RUN) -> RetentionPlan:
+                   max_departures: int = MAX_DEPARTURES_PER_RUN,
+                   leaving: set = frozenset()) -> RetentionPlan:
     """Decide what to keep, record, forget and prune — no I/O.
 
     `stored` is the sorted set as read; `previous` the live published set;
@@ -98,17 +99,25 @@ def plan_retention(stored: Mapping[str, float], previous: set, present: set,
     vanish at once: in both cases "absent from the feeds" means "we could not
     see the feed", not "the feed dropped it". Names already stored are still
     kept, so an outage never un-blocks what retention was already holding.
+
+    `leaving` are names that go now whatever the feeds say: the names a
+    source switched off for its licence backed. The window exists for feeds
+    that forget a live phishing site, not for data we may no longer ship, so
+    they are neither recorded as departures nor kept, and one already stored
+    is forgotten. A name a live feed still lists is unaffected — it is built
+    from that feed.
     """
     cutoff = int(now) - window_seconds
-    candidates = set(previous) - set(present) - set(stored) - {LIST_CANARY}
+    gone = set(leaving) - set(present)
+    candidates = set(previous) - set(present) - set(stored) - {LIST_CANARY} - gone
     skipped = ""
     if not record_departures:
         skipped = "a feed failed to download"
     elif len(candidates) > max_departures:
         skipped = f"departure spike ({len(candidates)} > {max_departures}) — a feed or parser is probably broken"
     departed = set() if skipped else candidates
-    returned = set(stored) & set(present)
-    kept = {name for name, seen in stored.items() if seen >= cutoff and name not in present}
+    returned = (set(stored) & set(present)) | (set(stored) & gone)
+    kept = {name for name, seen in stored.items() if seen >= cutoff and name not in present and name not in gone}
     return RetentionPlan(
         retained=frozenset(kept | departed),
         departed=frozenset(departed),

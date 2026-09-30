@@ -6,18 +6,31 @@ empty set and blocked nothing (a dead feature). This job aggregates fresh
 phishing/malware hosts from free bulk feeds and rebuilds the set on a schedule,
 so DNS-level blocking actually works.
 
-Sources (free, no API key, bulk). Every one of them is redistributable — the
-licence is quoted beside its URL constant below, and a source whose terms do
-not clearly allow shipping the names inside a paid product does not belong
-here no matter how good the data is:
-  * URLhaus          — abuse.ch online URL CSV
-  * OpenPhish        — community phishing feed (feed.txt)
+Sources (bulk, no API key unless said). The licence of each is quoted beside
+its URL constant below and in docs/THIRD_PARTY_FEEDS.md:
+  * URLhaus          — abuse.ch online URL CSV        (non-commercial terms)
+  * OpenPhish        — community phishing feed          (non-commercial terms)
   * Phishing.Database — mitchellkrogza phishing-domains-ACTIVE (MIT)
-  * phishing.army    — extended blocklist
+  * phishing.army    — extended blocklist               (CC BY-NC 4.0)
   * Phishunt.io      — hourly phishing URL feed (CC0 1.0)
   * TweetFeed.live   — 365-day OSINT window from reporting accounts (CC0 1.0)
   * CERT Polska      — Lista Ostrzeżeń, hole.cert.pl (unrestricted processing)
   * CSIRT Italia/ACN — public MISP feed, TLP:CLEAR events only
+  * PhishTank        — verified-online dump, ONLY with PHISHTANK_API_KEY
+                       (api/services/phishtank_feed.py: one download a day)
+
+Licence switch (docs/THIRD_PARTY_FEEDS.md): the three feeds marked
+non-commercial were fine while the product was free and are not once it
+charges. BLOCKLIST_LICENSED_ONLY=1 leaves them out of the build entirely —
+not downloaded, not consulted, so they are not an outage either: their
+stored health state is forgotten, nothing is carried for them, and the
+published names only they backed leave with that run instead of lingering
+in retention. Default off: with it unset the build is today's, byte for
+byte. BLOCKLIST_EXCLUDE_FEEDS names further feeds to leave out (comma
+separated, by the names above) — for measurements such as
+scripts/eval_day_one_coverage.py, never for production. Flipping either
+changes the set by more than the churn gate allows: publish once with
+--force.
 
 Exact-host-only sources: CERT Polska and CSIRT Italia name the precise host
 and say so — CERT Polska's API spec is explicit that listing `a.example.com`
@@ -71,6 +84,9 @@ Env:
     REDIS_URL                  — connection string (required unless --dry-run)
     BLOCKLIST_RETAIN_DAYS      — retention window in days, 0 disables (default 14)
     PUBLISH_CONFIRMED_THREATS  — 1/true to publish server-confirmed hosts (default off)
+    BLOCKLIST_LICENSED_ONLY    — 1/true to leave out URLhaus, OpenPhish, phishing.army (default off)
+    BLOCKLIST_EXCLUDE_FEEDS    — comma-separated feed names to leave out (measurements only)
+    PHISHTANK_API_KEY          — set: PhishTank joins the feeds, one cached download a day
 """
 from __future__ import annotations
 
@@ -98,6 +114,7 @@ from api.services import blocklist_feed_backing as feed_backing  # noqa: E402
 from api.services import blocklist_feed_health as feed_health  # noqa: E402
 from api.services import blocklist_retention as retention  # noqa: E402
 from api.services import confirmed_threats  # noqa: E402
+from api.services import phishtank_feed  # noqa: E402
 
 API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
 # The analyzer's Safe-Browsing-confirmed hosts, one more source when
@@ -211,6 +228,65 @@ CSIRT_IT_MANIFEST = "https://www.csirt.gov.it/feed-misp/manifest.json"
 BATCH = 5_000
 SET_KEY = "dangerous_domains"
 TTL_SECONDS = 60 * 60 * 24 * 3  # 3-day safety TTL: if the cron dies, the set expires
+
+# ── Licence switch (docs/THIRD_PARTY_FEEDS.md) ──
+#
+# Sources whose terms bar shipping their names inside a paid product, read
+# 2026-09-21 and 2026-09-29: OpenPhish (openphish.com/terms.html — no
+# commercial use "including … customer protection", no redistribution),
+# phishing.army (its own file header: CC BY-NC 4.0), URLhaus (abuse.ch
+# terms of use, 2025-11-04: not-for-profit only, no derivative works; the
+# commercial route is a Spamhaus subscription). BLOCKLIST_LICENSED_ONLY=1
+# leaves all three out; unset, they are built in exactly as before.
+NON_COMMERCIAL_FEEDS = frozenset({"URLhaus", "OpenPhish", "phishing.army"})
+LICENSED_ONLY_ENV = "BLOCKLIST_LICENSED_ONLY"
+EXCLUDE_FEEDS_ENV = "BLOCKLIST_EXCLUDE_FEEDS"
+# Every source name a run can have, for validating BLOCKLIST_EXCLUDE_FEEDS.
+FEED_NAMES = frozenset({"URLhaus", "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt",
+                        "TweetFeed", "CERT Polska", "CSIRT Italia", phishtank_feed.SOURCE_NAME})
+
+
+def _env_flag(name: str, environ=None) -> bool:
+    raw = (os.environ if environ is None else environ).get(name, "")
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def licensed_only(environ=None) -> bool:
+    """True when BLOCKLIST_LICENSED_ONLY is 1/true/yes/on."""
+    return _env_flag(LICENSED_ONLY_ENV, environ)
+
+
+def excluded_feeds(environ=None) -> frozenset[str]:
+    """The sources this run leaves out entirely: the non-commercial three
+    under the licence switch, plus any named in BLOCKLIST_EXCLUDE_FEEDS. A
+    name that is not a source is ignored with a warning, never guessed at."""
+    env = os.environ if environ is None else environ
+    out = set(NON_COMMERCIAL_FEEDS) if licensed_only(env) else set()
+    for raw in env.get(EXCLUDE_FEEDS_ENV, "").split(","):
+        name = raw.strip()
+        if not name:
+            continue
+        if name in FEED_NAMES:
+            out.add(name)
+        else:
+            logger.warning("%s: %r is not a feed name (known: %s) — ignored", EXCLUDE_FEEDS_ENV, name,
+                           ", ".join(sorted(FEED_NAMES)))
+    return frozenset(out)
+
+
+def phishtank_key(environ=None) -> str:
+    return (os.environ if environ is None else environ).get(phishtank_feed.KEY_ENV, "").strip()
+
+
+def run_sources(excluded: frozenset = frozenset(), environ=None) -> frozenset[str]:
+    """The sources a run with these exclusions has: every feed but the
+    excluded ones, PhishTank only with a key. What _fetch_feeds fetches, said
+    without fetching — the day-one benchmark records it per build so a
+    PhishTank number is marked circular the day the key makes it a source."""
+    out = set(FEED_NAMES) - set(excluded)
+    if not phishtank_key(environ):
+        out.discard(phishtank_feed.SOURCE_NAME)
+    return frozenset(out)
 
 # Registrables we must NEVER add (blocking these blocks legit infra). Shared
 # hosting / URL platforms where phishing lives on subdomains/paths.
@@ -416,6 +492,15 @@ async def _fetch(url: str) -> str:
         # glues itself to the first line's scheme, urlparse() then finds no
         # host, and the feed loses its first entry without a word.
         return r.text.lstrip("\ufeff")
+
+
+async def _fetch_conditional(url: str, headers) -> tuple[int, dict, bytes]:
+    """(status, headers, body) for a GET that may answer 304: the PhishTank
+    dump's fetcher. Nothing is raised for a non-2xx status \u2014 the caller
+    decides what a 404 (PhishTank's throttle) or a 5xx means for the cache."""
+    async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as c:
+        r = await c.get(url, headers=dict(headers))
+        return r.status_code, dict(r.headers), r.content
 
 
 def _hosts_from_urlhaus(text: str):
@@ -843,13 +928,15 @@ async def _tranco_guard(r, hosts, public_suffixes: set[str] | None):
 
 
 async def _retained_names(r, previous: set[str] | None, present: set[str], now: float, dry_run: bool,
-                          feeds_failed: tuple[str, ...] = ()) -> set[str]:
+                          feeds_failed: tuple[str, ...] = (), leaving: set[str] = frozenset()) -> set[str]:
     """Names to keep although no feed lists them now (blocklist_retention).
     `present` is every name a current source backs (present_names plus the
-    server-confirmed hosts). Never raises and never blocks a publish: if the
-    retention set cannot be read or written, the set is built from the feeds
-    alone. A plan that was not recorded is not used — an unrecorded departure
-    would be re-stamped 'just left' on every run and never age out."""
+    server-confirmed hosts); `leaving` the names a switched-off source
+    backed, which go now rather than through the window. Never raises and
+    never blocks a publish: if the retention set cannot be read or written,
+    the set is built from the feeds alone. A plan that was not recorded is
+    not used — an unrecorded departure would be re-stamped 'just left' on
+    every run and never age out."""
     days = retention.retain_days_from_env(os.environ.get(retention.RETAIN_DAYS_ENV))
     if days == 0:
         logger.info("retention disabled (%s=0) — publishing from the feeds alone", retention.RETAIN_DAYS_ENV)
@@ -864,7 +951,7 @@ async def _retained_names(r, previous: set[str] | None, present: set[str], now: 
         logger.warning("retention read failed (%s) — publishing from the feeds alone", e)
         return set()
     plan = retention.plan_retention(stored, previous or set(), present, now, window,
-                                    record_departures=not feeds_failed)
+                                    record_departures=not feeds_failed, leaving=leaving)
     if plan.skipped:
         failed = f" ({', '.join(feeds_failed)})" if feeds_failed else ""
         logger.warning("retention: not recording departures this run — %s%s; names already retained are kept",
@@ -883,10 +970,12 @@ async def _retained_names(r, previous: set[str] | None, present: set[str], now: 
     return set(plan.retained)
 
 
-def _feed_specs() -> tuple:
-    """(name, url, parser, promotes) per bulk feed. Built per call so a test
-    that swaps a URL constant is honoured."""
-    return (
+def _feed_specs(excluded: frozenset = frozenset()) -> tuple:
+    """(name, url, parser, promotes) per single-GET bulk feed, minus
+    `excluded` (see excluded_feeds). Built per call so a test that swaps a
+    URL constant is honoured. CSIRT Italia (a MISP manifest) and PhishTank
+    (a cached daily download) are fetched by _fetch_feeds itself."""
+    specs = (
         ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus, True),
         ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish, True),
         ("Phishing.Database", PHISHING_DATABASE, _hosts_from_domain_list, True),
@@ -895,6 +984,7 @@ def _feed_specs() -> tuple:
         ("TweetFeed", TWEETFEED_YEAR, _hosts_from_tweetfeed, True),
         ("CERT Polska", CERT_PL_DOMAINS, _hosts_from_domain_list, False),
     )
+    return tuple(spec for spec in specs if spec[0] not in excluded)
 
 
 class FeedFetch(NamedTuple):
@@ -910,13 +1000,18 @@ class FeedFetch(NamedTuple):
     exact_feeds: frozenset
 
 
-async def _fetch_feeds() -> FeedFetch:
+async def _fetch_feeds(r=None, excluded: frozenset = frozenset(), now: float | None = None,
+                       dry_run: bool = False) -> FeedFetch:
+    """Every source of this run. An excluded source is not fetched and not
+    in `fetched` at all — so it is never judged degraded, never carried."""
     hosts: list[str] = []
     exact_hosts: list[str] = []
     fetched: dict[str, int | None] = {}
     by_feed: dict[str, set[str]] = {}
     exact_feeds = {"CSIRT Italia"}
-    for name, url, parser, promote in _feed_specs():
+    if excluded:
+        logger.info("licence switch: leaving out %s", ", ".join(sorted(excluded)))
+    for name, url, parser, promote in _feed_specs(excluded):
         if not promote:
             exact_feeds.add(name)
         try:
@@ -933,15 +1028,35 @@ async def _fetch_feeds() -> FeedFetch:
     # A MISP feed is a manifest plus one GET per event, so it cannot ride the
     # loop above — but it must fail the same way: logged, skipped, and counted
     # as an outage so its absence is never read as a mass departure.
-    try:
-        parsed = await _fetch_misp_feed(CSIRT_IT_MANIFEST)
-        exact_hosts.extend(parsed)
-        by_feed["CSIRT Italia"] = {_norm_host(h) for h in parsed} - {""}
-        fetched["CSIRT Italia"] = len(set(parsed))
-        logger.info("CSIRT Italia: +%d host entries (exact-only)", len(parsed))
-    except Exception as e:  # noqa: BLE001
-        logger.warning("CSIRT Italia fetch failed: %s (continuing)", e)
-        fetched["CSIRT Italia"] = None
+    if "CSIRT Italia" not in excluded:
+        try:
+            parsed = await _fetch_misp_feed(CSIRT_IT_MANIFEST)
+            exact_hosts.extend(parsed)
+            by_feed["CSIRT Italia"] = {_norm_host(h) for h in parsed} - {""}
+            fetched["CSIRT Italia"] = len(set(parsed))
+            logger.info("CSIRT Italia: +%d host entries (exact-only)", len(parsed))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("CSIRT Italia fetch failed: %s (continuing)", e)
+            fetched["CSIRT Italia"] = None
+    # PhishTank: a source only with a key, one cached download a day
+    # (phishtank_feed). Same failure shape as the others. A URL feed, so it
+    # promotes registrables like OpenPhish.
+    key = phishtank_key()
+    if key and phishtank_feed.SOURCE_NAME not in excluded:
+        name = phishtank_feed.SOURCE_NAME
+        try:
+            parsed = await phishtank_feed.fetch_hosts(r, key, time.time() if now is None else now,
+                                                     _fetch_conditional, dry_run=dry_run)
+            hosts.extend(parsed)
+            by_feed[name] = {_norm_host(h) for h in parsed} - {""}
+            fetched[name] = len(set(parsed))
+            logger.info("%s: +%d host entries (%d distinct so far)", name, len(parsed),
+                        len(set(hosts) | set(exact_hosts)))
+        except Exception as e:  # noqa: BLE001
+            # An HTTP client's message can carry the URL, and the URL carries
+            # the key.
+            logger.warning("%s fetch failed: %s (continuing)", name, str(e).replace(key, "<key>"))
+            fetched[name] = None
     return FeedFetch(hosts=hosts, exact_hosts=exact_hosts, fetched=fetched, by_feed=by_feed,
                      exact_feeds=frozenset(exact_feeds))
 
@@ -966,9 +1081,17 @@ async def _feed_health(r, fetched: dict[str, int | None], now: float, dry_run: b
                                 unsized=frozenset({CONFIRMED_SOURCE}))
     for feed, why in sorted(health.degraded.items()):
         logger.error("FEED DEGRADED: %s — %s (down since %s)", feed, why, _utc(health.down_since[feed]))
+    # A source this run does not have (switched off, or its key removed) is
+    # not down: its stored state goes, so an old outage of it cannot carry
+    # its names or turn the run red.
+    stale = (set(baselines) | set(down_since)) - set(fetched)
+    if stale:
+        logger.info("feed health: %s not a source this run — forgetting %s state",
+                    ", ".join(sorted(stale)), "its" if len(stale) == 1 else "their")
     if r is not None and not dry_run:
         try:
             await feed_health.save_state(r, health)
+            await feed_health.forget(r, stale)
         except Exception as e:  # noqa: BLE001
             logger.warning("feed health state not saved (%s)", e)
     return health
@@ -1025,8 +1148,21 @@ def _log_carry(plan: feed_health.CarryPlan, carrying: list[str], down_since: dic
         logger.warning("outage guard: keeping %d published names %s backed", len(plan.carried), ", ".join(carrying))
 
 
+def _names_leaving(previous: set[str] | None, backing: dict, excluded: frozenset) -> dict[str, set[str]]:
+    """Per source left out this run, the published names it backed on its
+    last healthy run (blocklist_feed_backing) — they leave with this publish
+    (see blocklist_retention.plan_retention, `leaving`). Without a record
+    for a source nothing can be told apart, and its names go through
+    ordinary retention. A name a live feed still lists is built from that
+    feed regardless."""
+    if not previous:
+        return {}
+    return {source: {name for name in previous if name in backing[source]}
+            for source in sorted(excluded) if source in backing}
+
+
 async def _plan_carry(r, previous: set[str] | None, listed: set[str], health: feed_health.FeedHealth,
-                      now: float, dry_run: bool) -> feed_health.CarryPlan | None:
+                      now: float, dry_run: bool, backing: dict | None = None) -> feed_health.CarryPlan | None:
     """What the outage guard keeps this run (blocklist_feed_health.plan_carry).
     None means: do not publish at all — a carried source is down and the live
     set is unreadable, so we cannot tell what we would lose."""
@@ -1046,7 +1182,9 @@ async def _plan_carry(r, previous: set[str] | None, listed: set[str], health: fe
         logger.error("%s degraded and the live set is unreadable — cannot keep what it backed; "
                      "refusing to publish. Previous set stays live.", feeds)
         return None
-    plan = feed_health.plan_carry(previous, listed, down_since, now, await _load_backing(r, now),
+    if backing is None:
+        backing = await _load_backing(r, now)
+    plan = feed_health.plan_carry(previous, listed, down_since, now, backing,
                                   uncarried=frozenset({CONFIRMED_SOURCE}), protected=frozenset({LIST_CANARY}))
     _log_carry(plan, carrying, down_since, now)
     return plan
@@ -1082,10 +1220,17 @@ async def _prune_confirmed(r, now: float) -> None:
 
 
 async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
-                  now: float | None = None, artifact_out: str | None = None) -> int:
+                  now: float | None = None, artifact_out: str | None = None,
+                  excluded: frozenset | None = None) -> int:
+    """One run. `excluded` names the sources to leave out; None reads the
+    environment (excluded_feeds) — a measurement passes the set itself."""
     now = time.time() if now is None else now
+    excluded = excluded_feeds() if excluded is None else frozenset(excluded)
     top_100k = _load_top_100k()
-    run = await _fetch_feeds()
+    # from_url does not connect, so the client can exist before the feeds
+    # are fetched: PhishTank's daily cache lives in Redis.
+    r = _open_redis(redis_url)
+    run = await _fetch_feeds(r, excluded, now, dry_run)
     hosts, exact_hosts = run.hosts, run.exact_hosts
 
     if not hosts and not exact_hosts:
@@ -1103,7 +1248,6 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
         return 4
     logger.info("PSL loaded: %d rules", len(public_suffixes))
 
-    r = _open_redis(redis_url)
     previous = await _read_previous(r)
     publish_confirmed = confirmed_threats.enabled()
     confirmed = await _confirmed_hosts(r, now, publish_confirmed)
@@ -1123,21 +1267,34 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     # last healthy run — registrables included: one the missing feed promoted
     # may not reach PROMOTE_MIN_SUBDOMAINS on the healthy feeds alone.
     listed = {_norm_host(h) for h in feed_hosts} | active | expired
-    carry = await _plan_carry(r, previous, listed, health, now, dry_run)
+    backing = await _load_backing(r, now) if r is not None else {}
+    carry = await _plan_carry(r, previous, listed, health, now, dry_run, backing)
     if carry is None:
         return 4
+    # The names a source left out this run backed go with it: neither
+    # carried (it is not down) nor held in retention (see _names_leaving).
+    # One a degraded live source also backed is that source's to carry, not
+    # the switched-off feed's to take.
+    leaving_by_source = _names_leaving(previous, backing, excluded)
+    leaving = set().union(*leaving_by_source.values()) - listed - carry.backed
+    if leaving:
+        logger.warning("licence switch: %d published names only %s backed leave with this publish",
+                       len(leaving), ", ".join(s for s, names in leaving_by_source.items() if names - listed))
     # An expired confirmation counts as present so retention does not hold it
     # for another window: the confirmation window already was its retention.
     # So does a name a degraded source backed: it has not left, we just
     # cannot see it this run. Everything else that left is a real departure.
     present = present_names(feed_hosts, public_suffixes, exact_only) | active | expired | carry.backed
-    retained = await _retained_names(r, previous, present, now, dry_run, carry.blind)
+    retained = await _retained_names(r, previous, present, now, dry_run, carry.blind, leaving)
     # Retained, carried and server-confirmed names join the feed hosts BEFORE
     # the build, so every guard below (Tranco and top-100k veto, brand-owned
     # veto, tenant rules, zones) judges them afresh. None of them promotes a
     # registrable: nothing in a current feed vouches for it, and a registrable
     # that WAS published comes back through its own entry, not through promotion.
-    extra = retained | set(carry.carried) | active
+    # A blind carry (a degraded source with no backing record) keeps every
+    # unlisted published name — the leaving ones must not ride back in on it.
+    carried = set(carry.carried) - leaving
+    extra = retained | carried | active
     exact_only |= {_norm_host(n) for n in extra} - promoting
     exact_only.discard("")
     candidate_hosts = feed_hosts + sorted(extra)
@@ -1148,7 +1305,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
                 "%d exact-only; %d retained, %d carried through an outage, %d server-confirmed — "
                 "%d of those passed the guards)",
                 len(blockset), len(feed_hosts), len(set(feed_hosts)), len(exact_only),
-                len(retained), len(carry.carried), len(active), len(extra & blockset))
+                len(retained), len(carried), len(active), len(extra & blockset))
     shared_all = default_shared_suffixes()
     ok, why = publish_gate(blockset, previous, top_100k | (public_suffixes or set()), shared_all, force=force)
     if not ok:
