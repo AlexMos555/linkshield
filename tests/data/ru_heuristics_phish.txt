@@ -37,7 +37,8 @@
 #                           ru.net, zones anyone can register in
 #            known_miss     a typo the rule deliberately gives up — a 4-letter
 #                           omission of a 5-letter brand, two substitutions in
-#                           under 8 letters — listed so its loss is counted
+#                           under 8 letters, a word api/services/ru_lures.py
+#                           leaves out — listed so its loss is counted
 #   target   the brand's real domain
 #   note     Unicode form of an IDN, or what the pattern does
 # '#' starts a comment; blank lines are ignored.
@@ -112,7 +113,7 @@ wildberries-promo.shop | combosquat | wildberries.ru | lure: promo, risky TLD
 avito-dostavka.ru | combosquat | avito.ru | lure: delivery
 avito-oplata.online | combosquat | avito.ru | lure: payment, risky TLD
 avito-safe-payment.site | combosquat | avito.ru | lure: payment, risky TLD
-mts-bonus.ru | combosquat | mts.ru | lure: bonus
+mts-podarok.ru | combosquat | mts.ru | lure: gift (mts-bonus.ru, listed until 2026-09-29, is on MTS's name servers since 2009)
 tele2-podarok.ru | combosquat | tele2.ru | lure: gift
 t2-bonus.online | combosquat | t2.ru | lure: bonus, risky TLD
 yandex-pay-login.com | combosquat | yandex.ru | lure: pay login
@@ -232,6 +233,22 @@ ozon-ru.com | combosquat | ozon.ru | brand + its country
 sberbank-ru.com | combosquat | sberbank.ru | brand + its country
 wildberries-ru.com | combosquat | wildberries.ru | brand + its country
 
+# ── Seen live, 2026-09-29: brand + lure-word names ──
+# Every <brand>-<word>, <word>-<brand> and <brand><word> for 31 brand
+# spellings and 56 words under 12 TLDs, and the Cyrillic names under 6, was
+# resolved; these were on the 815 registered names.
+vk-vhod.ru | observed | vk.com | 'ВКонтакте | Официальный сайт — Вход и регистрация в ВК' on shared hosting
+lk-sberbank.ru | observed | sberbank.ru | 'Личный кабинет Сбербанк — Не официальный сайт'
+gosuslugi-lk.ru | observed | gosuslugi.ru | 'Личный кабинет госуслуги | Вход, регистрация | ЕСИА'
+lk-tele2.ru | observed | t2.ru | 'Личный кабинет Теле2 — Вход по номеру телефона, без пароля'
+cdek-podarok.ru | observed | cdek.ru | a Phishman (phishing-simulation) log-in page
+lk-yandex.ru | observed | yandex.ru | a Phishman (phishing-simulation) log-in page
+avito-kabinet.ru | observed | avito.ru | an online casino
+kabinet-mts.ru | observed | mts.ru | an online casino
+vtbcashback.ru | observed | vtb.ru | an online casino
+sberbankonline.com | observed | sberbank.ru | registered 2026-03-29 behind a privacy service; forwards to online.sberbank.ru
+prize-wildberries.online | observed | wildberries.ru | in the Tranco top-1M of 2026-04 (#108,838), gone (NXDOMAIN) by 2026-09-29
+
 # ── Typos the rule gives up (counted, not expected to be caught) ──
 gmai.com | known_miss | gmail.com | omission: 4 letters, as dense as 'mail'
 appl.com | known_miss | apple.com | omission: 4 letters
@@ -239,3 +256,4 @@ yaho.com | known_miss | yahoo.com | omission: 4 letters
 qooqle.com | known_miss | google.com | two substitutions in 6 letters
 prydal.com | known_miss | paypal.com | two substitutions in 6 letters
 yahuu.com | known_miss | yahoo.com | two substitutions in 5 letters
+avitoonline.ru | known_miss | avito.ru | 'Авторизация Avito' (2026-09-29); 'online' lures only for Sber and VTB, whose banks are called 'Онлайн'

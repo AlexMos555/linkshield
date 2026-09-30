@@ -282,7 +282,10 @@ def char_diversity(s: str) -> float:
 #    combos of names under 4 letters (dhlweb, upshelp), and reads the name
 #    registered under ru.com / ru.net (yandex.ru.com is 1). The brand
 #    similarity and brand-in-subdomain features are unchanged.
-FEATURES_VERSION = 3
+# 4 (2026-09-29): is_typosquat is 1 for a Russian brand next to a Russian or
+#    transliterated lure word (sberbank-bonus, ozon-priz, госуслуги-лк,
+#    yandex-pay-login): see api/services/ru_lures.py.
+FEATURES_VERSION = 4
 
 
 def extract_features(domain: str, signals: dict) -> dict[str, float]:
