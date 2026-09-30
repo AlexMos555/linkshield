@@ -14,19 +14,41 @@ interface MessageCheckCardProps {
    * downloads one; without it every tapped link opens unchecked.
    */
   linkListReady: boolean;
+  /**
+   * The automatic SMS check (RuStore build only): "listening" while it reads
+   * incoming SMS, "off" while it does not. Omitted where the build has no
+   * automatic check — then "Cleanway does not read your SMS" is the truth.
+   */
+  autoSms?: "listening" | "off";
+  /**
+   * Opens the RuStore listing, for the one line the website APK may say about
+   * the automatic check. Omitted until that listing is live (config/stores.ts).
+   */
+  onOpenStore?: () => void;
 }
+
+/** The lock line: what Cleanway reads by itself, which differs by build and by switch. */
+const HONESTY_KEYS = {
+  none: "mobile.home.sms_check.honesty",
+  listening: "mobile.home.sms_check.honesty_auto_on",
+  off: "mobile.home.sms_check.honesty_auto_off",
+} as const;
 
 /**
  * The SMS check (Android). A TOOL, not a shield: it checks the message the
  * person hands it, and nothing on its own — so it has a button instead of a
  * status pill, and it is never counted in the hero's shield totals.
  *
- * Two honest lines under it: Cleanway does not read incoming SMS by itself,
- * and links inside SMS are checked on tap only while the link guard is on
- * AND has a list to check with. The lines are statements, not buttons: the
- * "Link checking" card above is where that shield is set up.
+ * Two honest lines under it: whether Cleanway reads incoming SMS by itself
+ * (never in the website APK; in the RuStore build only while its "SMS
+ * messages" shield runs), and that links inside SMS are checked on tap only
+ * while the link guard is on AND has a list to check with. The lines are
+ * statements, not buttons: the cards above are where those shields are set
+ * up. The card stays in the RuStore build too — it is how a message from a
+ * messenger, which no SMS permission reaches, gets checked.
  */
-export function MessageCheckCard({ onOpen, linkGuardAvailable, linkGuardOn, linkListReady }: MessageCheckCardProps) {
+export function MessageCheckCard(props: MessageCheckCardProps) {
+  const { onOpen, linkGuardAvailable, linkGuardOn, linkListReady, autoSms, onOpenStore } = props;
   const { t } = useTranslation();
   const linksChecked = linkGuardOn && linkListReady;
   return (
@@ -47,7 +69,7 @@ export function MessageCheckCard({ onOpen, linkGuardAvailable, linkGuardOn, link
 
       <View style={s.lineRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textSecondary} />
-        <Text style={s.line}>{t("mobile.home.sms_check.honesty")}</Text>
+        <Text style={s.line}>{t(HONESTY_KEYS[autoSms ?? "none"])}</Text>
       </View>
 
       {linkGuardAvailable && (
@@ -63,6 +85,19 @@ export function MessageCheckCard({ onOpen, linkGuardAvailable, linkGuardOn, link
               : linkGuardOn ? "mobile.home.sms_check.links_no_list" : "mobile.home.sms_check.links_off")}
           </Text>
         </View>
+      )}
+
+      {onOpenStore && (
+        <TouchableOpacity
+          style={s.lineRow}
+          onPress={onOpenStore}
+          activeOpacity={0.7}
+          accessibilityRole="link"
+        >
+          <Ionicons name="storefront-outline" size={13} color={colors.blue} />
+          <Text style={[s.line, { color: colors.blue }]}>{t("mobile.home.sms_check.store_offer")}</Text>
+          <Ionicons name="open-outline" size={13} color={colors.blue} />
+        </TouchableOpacity>
       )}
     </View>
   );

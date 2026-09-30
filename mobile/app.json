@@ -76,7 +76,8 @@
       "./plugins/withXcode26Patches",
       "./plugins/withReleaseSigning",
       "./plugins/withAbiFilters",
-      "./plugins/withSeedGuard"
+      "./plugins/withSeedGuard",
+      "./plugins/withRustoreVariant"
     ]
   }
 }
