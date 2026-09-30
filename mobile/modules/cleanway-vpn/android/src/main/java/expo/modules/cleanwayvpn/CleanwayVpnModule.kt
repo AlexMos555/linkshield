@@ -404,6 +404,53 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Apps kept out of the shield's tunnel that are on this phone, in order:
+     * [{package, label, icon, suggested, isDefault, isBrowser}] (icon is a PNG
+     * data URI or null). Works with the shield off — it is what the tunnel
+     * keeps out whenever it runs. See ai.cleanway.app.AppExclusions.
+     */
+    AsyncFunction("excludedApps") {
+      ai.cleanway.app.InstalledApps.excluded(context).map { it.toWire() }
+    }
+
+    /**
+     * Apps the person can pick when one says "turn off the VPN": launcher apps
+     * plus installed apps from the shipped list, minus Cleanway and minus
+     * those already kept out. Same shape as excludedApps(); unsorted.
+     */
+    AsyncFunction("pickableApps") {
+      ai.cleanway.app.InstalledApps.pickable(context).map { it.toWire() }
+    }
+
+    /**
+     * Keep [pkg] out of the tunnel from now on. A running shield re-applies
+     * the list at once. That is a new VPN network, not a handover: the other
+     * apps are unfiltered for a few hundred ms
+     * (CleanwayVpnService.reapplyExclusions). False for a malformed name,
+     * Cleanway itself, a browser, or a failed write.
+     *
+     * A browser is refused here as well as in the picker. Without the filter,
+     * every site opened in it would go unchecked. "Take Chrome off the
+     * protection" is also exactly what a scammer on the phone would ask for.
+     */
+    AsyncFunction("excludeApp") { pkg: String ->
+      if (ai.cleanway.app.InstalledApps.isBrowser(context, pkg)) {
+        false
+      } else {
+        val ok = ai.cleanway.app.AppExclusions.add(context, pkg)
+        if (ok) CleanwayVpnService.instance?.reapplyExclusions()
+        ok
+      }
+    }
+
+    /** Put [pkg] back under the filter (a default or one the person added). False if not saved. */
+    AsyncFunction("includeApp") { pkg: String ->
+      val ok = ai.cleanway.app.AppExclusions.remove(context, pkg)
+      if (ok) CleanwayVpnService.instance?.reapplyExclusions()
+      ok
+    }
+
+    /**
      * What blocklist the service has loaded and how fresh it is:
      * {version, count, revoked, ageMs, stale, hasCanary, lastError, lastFetchAt}.
      * Reads the service's static snapshot; when the service is not running the

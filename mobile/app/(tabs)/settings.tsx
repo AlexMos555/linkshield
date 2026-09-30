@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, I18nManager, AppState,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, I18nManager, AppState, Image,
 } from "react-native";
 import Constants from "expo-constants";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -16,6 +16,7 @@ import { setAuthToken, getAccountSettings } from "../../src/services/api";
 import { allowedSites, removeAllowedSite } from "../../src/services/shield-log";
 import {
   isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
+  bypassApps, removeBypassApp, type BypassApp,
 } from "../../modules/cleanway-vpn";
 import { paidPlansVisible } from "../../src/config/market";
 
@@ -100,6 +101,42 @@ export default function SettingsScreen() {
   useFocusEffect(useCallback(() => {
     setAllowed(allowedSites());
   }, []));
+
+  // Apps kept out of the shield's tunnel. null: this build cannot tell (iOS,
+  // an older native build) — the section is then not shown at all. Re-read on
+  // focus: the person comes back here from the picker.
+  const [bypass, setBypass] = useState<BypassApp[] | null>(null);
+  const reloadBypass = useCallback(() => {
+    let alive = true;
+    void bypassApps().then((apps) => {
+      if (alive) setBypass(apps);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  useFocusEffect(reloadBypass);
+
+  function confirmRemoveBypass(app: BypassApp) {
+    Alert.alert(
+      t("mobile.settings.bypass_remove_title", { app: app.label }),
+      t("mobile.settings.bypass_remove_body"),
+      [
+        { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+        {
+          text: t("mobile.settings.bypass_remove"),
+          onPress: () => {
+            void (async () => {
+              if (!(await removeBypassApp(app.package))) {
+                Alert.alert(t("mobile.settings.bypass_failed"));
+              }
+              reloadBypass();
+            })();
+          },
+        },
+      ],
+    );
+  }
 
   function confirmRemoveAllowed(domain: string) {
     Alert.alert(
@@ -370,6 +407,51 @@ export default function SettingsScreen() {
         />
       </Section>
 
+      {bypass !== null && (
+        // Apps that refuse to work while they see a VPN run outside the
+        // shield. The cost is said plainly: what they open inside themselves
+        // is not checked. The last row is the way out when another app
+        // complains — without it, the only fix a person finds is "turn
+        // Cleanway off". With nothing listed, the note says what the row
+        // would do instead of describing apps that are not there.
+        <Section
+          title={t("mobile.settings.bypass")}
+          footnote={t(bypass.length > 0 ? "mobile.settings.bypass_note" : "mobile.settings.bypass_note_empty")}
+        >
+          {bypass.length === 0 ? (
+            <Row first icon="shield-checkmark-outline" iconColor={colors.green} label={t("mobile.settings.bypass_none")} />
+          ) : (
+            bypass.map((app, i) => (
+              <Row
+                key={app.package}
+                first={i === 0}
+                image={app.icon}
+                label={app.label}
+                desc={t(app.isDefault ? "mobile.settings.bypass_by_cleanway" : "mobile.settings.bypass_by_you")}
+                right={
+                  <TouchableOpacity
+                    onPress={() => confirmRemoveBypass(app)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t("mobile.settings.bypass_remove")}: ${app.label}`}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Text style={s.actionLabel}>{t("mobile.settings.bypass_remove")}</Text>
+                  </TouchableOpacity>
+                }
+              />
+            ))
+          )}
+          <Row
+            icon="add-circle-outline"
+            iconColor={colors.blue}
+            label={t("mobile.settings.bypass_add")}
+            desc={t("mobile.settings.bypass_add_desc")}
+            right={chevron}
+            onPress={() => router.push("/bypass-app")}
+          />
+        </Section>
+      )}
+
       <Section title={t("mobile.settings.language")} footnote={t("mobile.settings.language_note")}>
         {SUPPORTED_LOCALES.map((code, i) => {
           const on = locale === code;
@@ -476,14 +558,22 @@ type RowProps = {
   label: string; desc?: string; right?: ReactNode; onPress?: () => void;
   first?: boolean; icon?: IconName; iconColor?: string; tint?: string;
   role?: "button" | "radio"; selected?: boolean; a11yLabel?: string;
+  /** An app's own icon (data URI); null draws a neutral app glyph. Wins over `icon`. */
+  image?: string | null;
 };
 
 function Row({
-  label, desc, right, onPress, first, icon, iconColor, tint, role, selected, a11yLabel,
+  label, desc, right, onPress, first, icon, iconColor, tint, role, selected, a11yLabel, image,
 }: RowProps) {
   const inner = (
     <>
-      {icon ? <Ionicons name={icon} size={18} color={iconColor ?? colors.textSecondary} /> : null}
+      {image !== undefined ? (
+        image ? (
+          <Image source={{ uri: image }} style={s.appIcon} accessibilityIgnoresInvertColors />
+        ) : (
+          <Ionicons name="apps-outline" size={22} color={colors.textSecondary} />
+        )
+      ) : icon ? <Ionicons name={icon} size={18} color={iconColor ?? colors.textSecondary} /> : null}
       <View style={s.rowText}>
         <Text style={[s.rowLabel, tint ? { color: tint } : null]}>{label}</Text>
         {desc ? <Text style={s.rowDesc}>{desc}</Text> : null}
@@ -528,6 +618,8 @@ const s = StyleSheet.create({
   rowDesc: { ...typo.caption, color: colors.textSecondary, marginTop: 2 },
   value: { ...typo.body, color: colors.textMuted },
   removeLabel: { ...typo.body, color: colors.danger },
+  actionLabel: { ...typo.body, fontWeight: "600", color: colors.blue },
+  appIcon: { width: 32, height: 32, borderRadius: 8 },
   pill: {
     backgroundColor: colors.blue, color: "#FFFFFF", overflow: "hidden",
     borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: 6,
