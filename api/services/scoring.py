@@ -156,7 +156,8 @@ def is_regional_government_domain(domain: str) -> bool:
     return any(name == g or name.endswith("." + g) for g in REGIONAL_GOVERNMENT_DOMAINS)
 
 # ── Shared platforms: subdomains can be anyone's ──
-# Kept in sync with ml_features.HOSTING_PLATFORMS / refresh_dangerous_domains.
+# Kept in sync with refresh_dangerous_domains. The ML model's tenant feature
+# (ml_features.shared_tenant) reads this list through _SCORER_SHARED_SUFFIXES.
 HOSTING_PLATFORMS: frozenset[str] = frozenset({
     # CDN / Cloud hosting
     "pages.dev", "workers.dev", "r2.dev",                   # Cloudflare

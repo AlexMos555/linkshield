@@ -1,4 +1,4 @@
-"""The model is served the vector it was trained on — features_version 4.
+"""The model is served the vector it was trained on — features_version 5.
 
 Training (ml/train_model.py) and serving (api.services.ml_scorer) both call
 api.services.ml_features.extract_ml_features, but "both call the same
@@ -12,8 +12,11 @@ They also pin what version 4 changed: dot_count, subdomain_depth,
 name_length, in_top_domains and the name the lexical features read are
 counted from the PSL registrable domain (kvs.gov.spb.ru was three levels
 under 'spb', and borrowed spb.ru's Tranco rank), and max_brand_similarity
-reads the Russian brands. And they pin the training data rules: names before
-IP literals, the host-shape stratum, and the evaluation sets held out.
+reads the Russian brands. And what version 5 changed: a tenant of any shared
+suffix the scorer knows (ledgerlogin-home.wasmer.app, abc.tw1.ru) is read by
+the tenant's own label, where version 4 knew 26 platforms. And they pin the
+training data rules: names before IP literals, the host-shape stratum with
+its tenants, and the evaluation sets held out.
 
 catboost and scikit-learn are not installed in CI; ml/train_model.py
 imports them inside train(), so everything here runs without them.
@@ -29,7 +32,7 @@ from pathlib import Path
 import pytest
 
 import api.services.ml_scorer as ml_scorer
-from api.services.ml_features import FEATURE_NAMES, extract_ml_features, host_shape
+from api.services.ml_features import FEATURE_NAMES, extract_ml_features, host_shape, shared_tenant
 from api.services.scoring import TYPOSQUAT_TARGETS, registrable_domain
 from api.services.url_features import FEATURES_VERSION, _max_brand_similarity, extract_features
 
@@ -41,6 +44,9 @@ HOSTS = [
     "idg.chph.ras.ru", "bbc.co.uk", "www.bbc.co.uk", "example.com", "www.example.com",
     "paypal.account-verify.tk", "sberbamk.ru", "xn--80aswg.xn--p1ai", "foo.github.io",
     "94.183.174.80", "login.microsoftonline.com.evil.xyz", "localhost",
+    # tenants of shared suffixes outside the 26 platforms version 4 knew
+    "ledgerlogin-home.wasmer.app", "www.robinhoodlogin.webador.com", "facebook.github.io",
+    "abc.tw1.ru", "evil.s3.amazonaws.com",
 ]
 
 
@@ -83,7 +89,7 @@ def test_training_and_serving_import_one_extractor(train_model):
 def test_shipped_model_metadata_matches_the_extractor():
     assert META["feature_names"] == FEATURE_NAMES
     assert META["n_features"] == len(FEATURE_NAMES) == 27
-    assert META["features_version"] == FEATURES_VERSION == 4
+    assert META["features_version"] == FEATURES_VERSION == 5
 
 
 def test_onnx_input_is_as_wide_as_the_feature_vector():
@@ -93,7 +99,8 @@ def test_onnx_input_is_as_wide_as_the_feature_vector():
 
 
 # The logged row keeps its own lexical features (on the registered name, not
-# a hosting tenant's label), so only the ones defined identically are held.
+# a hosting tenant's label), so only the ones defined identically are held;
+# for a tenant that leaves out max_brand_similarity too.
 _SHARED_WITH_THE_LOG = (
     "domain_length", "name_length", "dot_count", "hyphen_count", "special_char_count",
     "subdomain_depth", "has_fake_tld_subdomain", "is_url_shortener", "tld_high_risk",
@@ -101,11 +108,14 @@ _SHARED_WITH_THE_LOG = (
 )
 
 
-@pytest.mark.parametrize("host", [h for h in HOSTS if not h.endswith(".github.io")])
+@pytest.mark.parametrize("host", HOSTS)
 def test_logged_structure_is_the_models_structure(host):
     model = extract_ml_features(host)
     logged = extract_features(host, {"domain": host})
+    tenant = shared_tenant(host)[0] is not None
     for key in _SHARED_WITH_THE_LOG:
+        if tenant and key == "max_brand_similarity":
+            continue
         assert logged[key] == model[key], (host, key)
 
 
@@ -179,7 +189,73 @@ def test_hosting_tenants_still_read_the_tenants_label():
     f = extract_ml_features("paypal-login.github.io")
     assert f["is_hosting_subdomain"] == 1.0
     assert f["user_part_length"] == len("paypal-login")
+    assert f["has_suspicious_keyword"] == 1.0   # was 0: version 4 read 'github'
     assert f["in_top_domains"] == 0.0
+
+
+# ── features_version 5: a tenant of any shared suffix the scorer knows ──
+
+@pytest.mark.parametrize("host, suffix, label", [
+    ("ledgerlogin-home.wasmer.app", "wasmer.app", "ledgerlogin-home"),   # a PSL suffix in the Tranco top-100k
+    ("www.robinhoodlogin.webador.com", "webador.com", "robinhoodlogin"),  # the label under the suffix, not 'www'
+    ("abc.tw1.ru", "tw1.ru", "abc"),                                    # data/hosting_platforms.json
+    ("evil.s3.amazonaws.com", "s3.amazonaws.com", "evil"),              # a three-label platform (version 4 read 'amazonaws')
+    ("x.blob.core.windows.net", "blob.core.windows.net", "x"),
+    ("foo.github.io", "github.io", "foo"),
+    ("www.foo.github.io", "github.io", "foo"),
+    ("gwcu.us.org", "us.org", "gwcu"),
+])
+def test_a_tenant_is_read_by_its_own_label(host, suffix, label):
+    assert shared_tenant(host) == (suffix, label)
+    f = extract_ml_features(host)
+    assert f["is_hosting_subdomain"] == 1.0
+    assert f["user_part_length"] == len(label)
+    assert f["in_top_domains"] == 0.0
+
+
+@pytest.mark.parametrize("host", [
+    "kvs.gov.spb.ru", "herzen.spb.ru",        # spb.ru is a registry zone registrable_domain() reads
+    "a.hosting.myjino.ru",                    # a PSL wildcard rule, read by host_shape
+    "bbc.co.uk", "www.bbc.co.uk", "amazon.co.jp",
+    "github.io", "www.github.io", "app.netlify.com",   # the platform's own hosts
+    "docs.google.com", "forms.yandex.ru",     # user-content services: the name is the service's
+    "www.example.com", "login.microsoftonline.com.evil.xyz", "paypal.account-verify.tk",
+    "94.183.174.80", "localhost",
+])
+def test_a_registered_name_or_its_subdomain_is_not_a_tenant(host):
+    assert shared_tenant(host) == (None, None)
+    assert extract_ml_features(host)["is_hosting_subdomain"] == 0.0
+
+
+def test_the_tenant_feature_knows_every_suffix_the_scorer_does():
+    from api.services.hosting_platforms import TENANT_SUFFIXES
+    from api.services.scoring import HOSTING_PLATFORMS, PUBLIC_SUFFIXES_IN_TOP, _SCORER_SHARED_SUFFIXES
+
+    assert HOSTING_PLATFORMS <= _SCORER_SHARED_SUFFIXES
+    assert set(PUBLIC_SUFFIXES_IN_TOP) <= _SCORER_SHARED_SUFFIXES
+    assert len(_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES) == META["shared_suffixes"]
+    for suffix in sorted(HOSTING_PLATFORMS | TENANT_SUFFIXES):
+        if suffix.startswith("www.") or suffix in {"docs.google.com", "forms.google.com", "sites.google.com"}:
+            continue  # operator and user-content hosts are not tenant suffixes
+        assert shared_tenant(f"tenant-name.{suffix}")[0] == suffix, suffix
+
+
+def test_the_lexical_features_read_the_tenants_label():
+    """'wasmer' was the name of every site on wasmer.app; now each tenant has
+    its own entropy, bigram score and brand similarity."""
+    a, b = extract_ml_features("ledgerlogin-home.wasmer.app"), extract_ml_features("sberbank-online.wasmer.app")
+    assert a["shannon_entropy"] != b["shannon_entropy"]
+    assert b["max_brand_similarity"] == _max_brand_similarity("sberbank-online")
+    assert extract_ml_features("secure-login.wasmer.app")["has_suspicious_keyword"] == 1.0
+    assert extract_ml_features("wasmer.app")["has_suspicious_keyword"] == 0.0
+
+
+def test_the_logged_row_does_not_give_a_tenant_its_platforms_rank():
+    from api.services.scoring import TOP_DOMAINS
+
+    assert "github.io" in TOP_DOMAINS
+    assert extract_features("facebook.github.io", {})["in_top_domains"] == 0.0
+    assert extract_features("github.io", {})["in_top_domains"] == 1.0
 
 
 # ── max_brand_similarity reads the Russian brands ──
@@ -238,9 +314,18 @@ def data_dir(tmp_path, train_model, monkeypatch):
             "202,a.b.c.deep.com",             # three levels under deep.com
             "203,budget.gov.spb.ru",          # held out with kvs.gov.spb.ru
             "204,site1.com",                  # an apex, not a subdomain shape
+            "205,malsup.github.io",           # tenants of the curated platforms
+            "206,www.foo.github.io",          # two labels under the suffix: allowed
+            "207,blog.wordpress.com",
+            "208,a.b.foo.github.io",          # three labels under the suffix
+            "209,forms.yandex.ru",            # a user-content host, not a tenant
+            "210,x.wasmer.app",               # a PSL suffix, not a curated platform
         ]
     ) + "\n")
     return tmp_path
+
+
+TENANT_FIXTURES = {"someone.github.io", "malsup.github.io", "www.foo.github.io", "blog.wordpress.com"}
 
 
 def test_phishing_names_come_before_ip_literals(train_model, data_dir):
@@ -266,8 +351,28 @@ def test_the_benign_class_has_host_shapes(train_model, data_dir):
     assert len(shapes) == int(40 * train_model.SHAPE_SHARE)
     zone = [d for d in shapes if d.endswith(".spb.ru")]
     assert 1 <= len(zone) <= int(len(shapes) * train_model.RU_ZONE_SHARE_OF_SHAPES)
-    for bad in ("1.2.3.4.in-addr.arpa", "someone.github.io", "a.b.c.deep.com", "budget.gov.spb.ru", "site1.com"):
+    tenants = [d for d in benign if d in TENANT_FIXTURES]
+    assert len(tenants) == int(40 * train_model.TENANT_SHARE)   # on top of the shapes
+    for bad in ("1.2.3.4.in-addr.arpa", "a.b.c.deep.com", "budget.gov.spb.ru", "site1.com",
+                "a.b.foo.github.io", "forms.yandex.ru", "x.wasmer.app"):
         assert bad not in benign
+
+
+def test_the_tenant_pool_is_capped_per_platform(train_model, data_dir):
+    import random
+
+    _, _, tenants = train_model._shape_pool(
+        train_model._read_tranco(str(data_dir / "top-1m-subdomains.csv")), set(), frozenset())
+    assert set(tenants) == TENANT_FIXTURES
+    pool = train_model._cap_per_platform(tenants, random.Random(0))
+    assert sorted(pool) == sorted(tenants)   # under the cap, every tenant is in the pool
+    cap = train_model.TENANTS_PER_PLATFORM
+    train_model.TENANTS_PER_PLATFORM = 1
+    try:
+        pool = train_model._cap_per_platform(tenants, random.Random(0))
+    finally:
+        train_model.TENANTS_PER_PLATFORM = cap
+    assert len(pool) == 2 and "blog.wordpress.com" in pool and sum(h.endswith(".github.io") for h in pool) == 1
 
 
 def test_a_retrain_without_the_subdomain_list_stops(train_model, data_dir):

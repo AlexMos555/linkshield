@@ -291,7 +291,21 @@ def char_diversity(s: str) -> float:
 #    punycode first. The model's has_suspicious_keyword (not logged here)
 #    reads the registered name as well: paypal-login.spb.ru is 1, was 0.
 #    The ML model was retrained on these definitions.
-FEATURES_VERSION = 4
+# 5 (2026-10-04): a tenant of a shared hosting suffix is recognised by every
+#    suffix the scorer knows (ml_features.shared_tenant: the hand list, the
+#    curated hosting_platforms.json and the public suffixes in the Tranco
+#    top-100k — 1,700 names, where version 4 had a copy of 26). The model's
+#    is_hosting_subdomain is 1 for ledgerlogin-home.wasmer.app,
+#    x.webador.com, evil.s3.amazonaws.com and abc.tw1.ru (all 0 before), its
+#    lexical features, has_suspicious_keyword and max_brand_similarity read
+#    the tenant's label ('ledgerlogin-home', not 'wasmer'), and in_top_domains
+#    — here and in the model — is 0 for a tenant, whose platform's rank is
+#    not its own. A registry zone that registrable_domain() already reads
+#    (spb.ru, co.uk) is not a hosting suffix: kvs.gov.spb.ru is unchanged.
+#    The benign class gained tenants of the curated platforms
+#    (ml/train_model.py); the version 4 model had never seen one and scored
+#    facebook.github.io and blog.wordpress.com 0.98. Retrained.
+FEATURES_VERSION = 5
 
 
 def extract_features(domain: str, signals: dict) -> dict[str, float]:
@@ -300,7 +314,7 @@ def extract_features(domain: str, signals: dict) -> dict[str, float]:
     Returns dict of feature_name → numeric_value.
     Ready for ML model input or logging.
     """
-    from api.services.ml_features import host_shape
+    from api.services.ml_features import host_shape, shared_tenant
     from api.services.scoring import (
         _extract_tld, _shannon_entropy,
         _digit_ratio, _special_char_count, _has_at_symbol,
@@ -348,7 +362,9 @@ def extract_features(domain: str, signals: dict) -> dict[str, float]:
     # ── TLD risk ──
     features["tld_high_risk"] = 1.0 if tld in HIGH_RISK_TLDS else 0.0
     features["tld_medium_risk"] = 1.0 if tld in MEDIUM_RISK_TLDS else 0.0
-    features["in_top_domains"] = 1.0 if base in TOP_DOMAINS else 0.0
+    # A tenant's site (foo.github.io) does not have its platform's rank —
+    # the model's in_top_domains says the same.
+    features["in_top_domains"] = 1.0 if base in TOP_DOMAINS and shared_tenant(domain)[0] is None else 0.0
 
     # ── Brand similarity (max similarity to any typosquat target) ──
     features["max_brand_similarity"] = _max_brand_similarity(name)

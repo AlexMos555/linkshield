@@ -42,9 +42,20 @@ def test_legit_longtail_not_flagged(domain):
     assert prob < 0.6, f"{domain} should read benign, got {prob:.3f}"
 
 
-@pytest.mark.parametrize("domain", ["paypal.account-verify.tk", "track.safeinflow.com"])
+@pytest.mark.parametrize("domain", ["paypal.account-verify.tk", "apple-id-locked-verify.xyz",
+                                    "gosuslugi-vhod.netlify.app"])
 def test_obvious_phish_flagged(domain):
     assert ml_predict(domain)["phishing_probability"] > 0.8
+
+
+def test_a_subdomain_of_an_unknown_name_is_suspicious_not_obvious():
+    """track.safeinflow.com was in the list above with > 0.8. The model of
+    2026-09-28 gave it 0.96 and its apex safeinflow.com 0.09: the whole margin
+    was 'has a subdomain', the shortcut that also scored www.dropbox.com 0.98
+    and every *.gov.spb.ru host 0.92-0.99. The name itself has no lure in it,
+    so since features_version 5 it clears the ml_suspicious threshold, not
+    the ml_high_risk one."""
+    assert 0.6 < ml_predict("track.safeinflow.com")["phishing_probability"] < 0.9
 
 
 def test_onnx_matches_catboost_when_both_present():

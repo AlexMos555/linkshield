@@ -74,8 +74,21 @@ jobs:
           bad = {d: ml_predict(d)["phishing_probability"] for d in shapes
                  if ml_predict(d)["phishing_probability"] >= 0.5}
           assert not bad, f"::error::FP REGRESSION — retrained model flags subdomains: {bad}"
-          # Recall guard: obvious brand-subdomain / structural phishing must fire.
-          for d in ("paypal.account-verify.tk", "apple-id-locked-verify.xyz"):
+          # Tenant guard: a site on a hosting platform is judged by its own
+          # name. Until the tenant stratum (2026-10-04) the benign class had no
+          # tenant at all and the model scored facebook.github.io 0.96 and
+          # blog.wordpress.com 0.95 — every GitHub Pages, WordPress.com and
+          # Shopify site was 'ml_high_risk'.
+          tenants = ["facebook.github.io", "malsup.github.io", "blog.wordpress.com",
+                     "official-shop.myshopify.com", "myshop.tw1.ru", "metamask.github.io"]
+          bad = {d: ml_predict(d)["phishing_probability"] for d in tenants
+                 if ml_predict(d)["phishing_probability"] >= 0.5}
+          assert not bad, f"::error::FP REGRESSION — retrained model flags hosting tenants: {bad}"
+          # Recall guard: obvious brand-subdomain / structural phishing must fire,
+          # and so must a lure name on a hosting platform (the tenant's label is
+          # what the model reads).
+          for d in ("paypal.account-verify.tk", "apple-id-locked-verify.xyz",
+                    "gosuslugi-vhod.netlify.app", "secure-login.wasmer.app", "sberbank-online.pages.dev"):
               p = ml_predict(d)["phishing_probability"]
               assert p > 0.6, f"::error::RECALL REGRESSION — {d}={p} (obvious phishing missed)"
           print("regression gate OK — FP clean + obvious phishing caught")
@@ -87,7 +100,8 @@ jobs:
           # tests/data/ru_heuristics_*.txt are held out of training
           # (ml/train_model.HELD_OUT_FILES). The name heuristics alone leave
           # 0 dangerous / 1 caution on LEGIT; the 2026-09-28 model added 21
-          # cautions and a dangerous one (*.gov.spb.ru, 'ml_high_risk').
+          # cautions and a dangerous one (*.gov.spb.ru, 'ml_high_risk'); the
+          # 2026-10-04 model (features_version 5) adds none and PHISH is 147/174.
           import sys
           sys.path.insert(0, "scripts")
           from eval_ru_heuristics import run

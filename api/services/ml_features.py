@@ -12,7 +12,11 @@ from here, guaranteeing the feature contract stays in sync.
 """
 from __future__ import annotations
 
+from typing import Optional
+
+from api.services.hosting_platforms import tenant_suffix_of
 from api.services.scoring import (
+    _SCORER_SHARED_SUFFIXES,
     _check_brand_in_subdomain,
     _check_homograph,
     _check_typosquatting_v2,
@@ -38,20 +42,6 @@ from api.services.url_features import (
     vowel_consonant_ratio,
 )
 
-# Known hosting platforms where subdomains can be anyone's — kept in sync
-# with ml/train_model.py's HOSTING_PLATFORMS so training and inference agree.
-HOSTING_PLATFORMS: frozenset[str] = frozenset(
-    {
-        "pages.dev", "workers.dev", "netlify.app", "vercel.app",
-        "herokuapp.com", "github.io", "gitlab.io", "web.app",
-        "firebaseapp.com", "appspot.com", "azurewebsites.net",
-        "cloudfront.net", "s3.amazonaws.com", "blob.core.windows.net",
-        "onrender.com", "fly.dev", "railway.app", "deno.dev",
-        "blogspot.com", "wordpress.com", "wixsite.com", "weebly.com",
-        "myshopify.com", "square.site", "carrd.co", "notion.site",
-    }
-)
-
 
 def host_shape(domain: str) -> tuple[str, str, list[str]]:
     """(registrable domain, registered name, labels left of it) — PSL-aware.
@@ -67,6 +57,32 @@ def host_shape(domain: str) -> tuple[str, str, list[str]]:
     base = registrable_domain(domain)
     name = base.split(".")[0] if "." in base else base
     return base, name, _subdomain_labels(domain)
+
+
+def shared_tenant(domain: str) -> tuple[Optional[str], Optional[str]]:
+    """(the shared suffix `domain` is a tenant of, the tenant's own label),
+    or (None, None) when the host is a registered name or a subdomain of one.
+
+    The suffixes are every one the scorer itself knows to be shared
+    (scoring._SCORER_SHARED_SUFFIXES: the hand list, the curated
+    data/hosting_platforms.json and the public suffixes found in the Tranco
+    top-100k), so ledgerlogin-home.wasmer.app, x.webador.com, foo.work.gd
+    and evil.s3.amazonaws.com are tenants, not subdomains of the platform's
+    own name — features_version 4 knew 26 platforms and read 'wasmer' as the
+    name of every site on wasmer.app. The tenant's label is the one directly
+    left of the suffix: www.robinhoodlogin.webador.com is 'robinhoodlogin'.
+
+    A suffix that registrable_domain() already reads as public is a
+    REGISTRY, not a platform: kvs.gov.spb.ru is a name under the spb.ru
+    zone and bbc.co.uk is a name under co.uk, and both stay what host_shape
+    says they are. The platform's own hosts (github.io, www.github.io,
+    app.netlify.com — hosting_platforms.OPERATOR_HOSTS) are not tenants.
+    """
+    dom = (domain or "").lower().strip(".")
+    suffix = tenant_suffix_of(dom, _SCORER_SHARED_SUFFIXES)
+    if suffix is None or registrable_domain(dom).endswith("." + suffix):
+        return None, None
+    return suffix, dom[: -(len(suffix) + 1)].split(".")[-1]
 
 
 def has_suspicious_keyword(name: str) -> bool:
@@ -85,16 +101,20 @@ def extract_ml_features(domain: str) -> dict[str, float]:
     Structure is read against the public suffix list (host_shape):
     dot_count, subdomain_depth, name_length, in_top_domains,
     has_suspicious_keyword and the name the lexical features read
-    (user_part) count from the registrable domain.
-    features_version 4 (api.services.url_features.FEATURES_VERSION).
+    (user_part) count from the registrable domain. On a shared hosting
+    suffix (shared_tenant) the lexical features read the tenant's label and
+    the suffix's popularity is not the tenant's.
+    features_version 5 (api.services.url_features.FEATURES_VERSION).
     """
     base, name, sub_labels = host_shape(domain)
     tld = _extract_tld(domain)
 
-    # Check if this is a subdomain on a hosting platform
-    is_hosting_subdomain = base in HOSTING_PLATFORMS
-    parts = domain.split(".")
-    user_part = parts[0] if len(parts) > 2 and is_hosting_subdomain else name
+    # A tenant's site on a hosting platform: the name someone chose is the
+    # label under the shared suffix, and the platform's rank says nothing
+    # about it.
+    tenant_suffix, tenant = shared_tenant(domain)
+    is_hosting_subdomain = tenant_suffix is not None
+    user_part = tenant if is_hosting_subdomain else name
 
     f: dict[str, float] = {}
 
@@ -136,7 +156,7 @@ def extract_ml_features(domain: str) -> dict[str, float]:
     f["is_typosquat"] = 1.0 if typo else 0.0
     f["brand_in_subdomain"] = 1.0 if _check_brand_in_subdomain(domain) else 0.0
     f["is_homograph"] = 1.0 if _check_homograph(domain) else 0.0
-    f["has_suspicious_keyword"] = 1.0 if has_suspicious_keyword(name) else 0.0
+    f["has_suspicious_keyword"] = 1.0 if has_suspicious_keyword(user_part) else 0.0
     f["is_url_shortener"] = 1.0 if _is_url_shortener(domain) else 0.0
 
     # ── Max brand similarity (global and Russian brands) ──

@@ -53,9 +53,10 @@ _INFLIGHT: dict[str, asyncio.Future] = {}
 # v4 (2026-09-27): Russian brand typos (sberbamk.ru, t1nkoff.ru) cached as
 # 'safe' under v3, and names the typosquat rule no longer flags (other
 # banks' and stores' names, two-edit neighbours of short brands).
-# v5 (2026-09-29): the ML model retrained on PSL-aware features and with
-# subdomain-shaped benign hosts (features_version 4): *.gov.spb.ru and other
-# hosts cached with 'ml_high_risk' under v4.
+# v5 (2026-10-04): the ML model retrained on PSL-aware features, with
+# subdomain-shaped benign hosts and hosting tenants (features_version 5):
+# *.gov.spb.ru, facebook.github.io and other hosts cached with
+# 'ml_high_risk' under v4.
 _PUBLIC_CACHE_PREFIX = "public_check:v5:"
 _PUBLIC_CACHE_TTL_SECONDS = 24 * 60 * 60
 # A name that does not exist can be registered at any moment, and a verdict

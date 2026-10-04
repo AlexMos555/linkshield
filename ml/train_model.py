@@ -6,7 +6,9 @@ Data sources (refreshed by scripts/refresh_training_feeds.py, weekly in
   - Positive (phishing): data/phishtank.csv — URLhaus full dump + OpenPhish
   - Negative (benign):   data/top-1m.csv — Tranco top-1M registrable domains
                          data/top-1m-subdomains.csv — Tranco top-1M with
-                         subdomains, for the host-shape stratum (see
+                         subdomains, for the host-shape stratum: names under
+                         Russian zones, subdomains of registered sites and
+                         tenants of the curated hosting platforms (see
                          load_benign_domains)
   - Held out: every host in HELD_OUT_FILES, by registrable domain, is kept
     out of BOTH classes, so those sets stay an honest evaluation.
@@ -37,12 +39,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # Feature extraction is shared with inference — single source of truth.
 # See api/services/ml_features.py. Training-only code below adds sklearn
 # bits; inference never has to import sklearn.
-from api.services.ml_features import (  # noqa: E402,F401 — re-exported for back-compat
-    HOSTING_PLATFORMS,
+from api.services.hosting_platforms import TENANT_SUFFIXES, is_user_content_host  # noqa: E402
+from api.services.ml_features import (  # noqa: E402
     extract_ml_features,
+    shared_tenant,
     FEATURE_NAMES,
 )
 from api.services.scoring import (  # noqa: E402
+    _SCORER_SHARED_SUFFIXES,
     _is_under_shared_suffix,
     _ru_registrable_domain,
     _subdomain_labels,
@@ -73,8 +77,23 @@ HELD_OUT_FILES = (
 # under Russian public suffixes.
 SHAPE_SHARE = 0.25
 RU_ZONE_SHARE_OF_SHAPES = 0.25
-# Subdomain levels (left of the registrable domain) a host-shape sample may
-# have: www.example.com and kvs.gov.spb.ru are 1, zenit.kfis.gov.spb.ru 2.
+# Share of the benign class that is tenants of the curated hosting
+# platforms — on top of the shape stratum, out of the registrable-domain
+# strata, which have 9,000 samples to spare: taken out of the shapes, the
+# subdomain stratum lost a third and the model flagged twice as many
+# www.<site> hosts.
+TENANT_SHARE = 0.05
+# Tenants per platform in the pool the tenant stratum is drawn from. Of the
+# 4,895 tenants of the curated platforms in the 2026-10-04 list, 2,280 were
+# CloudFront distributions and 1,046 SharePoint hosts, machine-named
+# (d25mc9onekmja4.cloudfront.net); a plain sample would teach the model that
+# a random label under a platform is benign and never show it the 71 GitHub
+# Pages sites, 88 Blogspot blogs or 40 pages.dev sites, which carry the
+# names people give their sites.
+TENANTS_PER_PLATFORM = 20
+# Subdomain levels (left of the registrable domain, or of the shared suffix
+# for a tenant) a host-shape sample may have: www.example.com,
+# kvs.gov.spb.ru and foo.github.io are 1, zenit.kfis.gov.spb.ru 2.
 MAX_SHAPE_DEPTH = 2
 
 
@@ -150,18 +169,31 @@ def load_phishing_domains(max_n: int = 12000, held_out: frozenset[str] = frozens
     return (names + ips)[:max_n]
 
 
+def _tenant_depth(host: str, suffix: str) -> int:
+    """Labels between the tenant's host and its shared suffix: foo.github.io
+    is 1, www.foo.github.io 2."""
+    return len(host[: -(len(suffix) + 1)].split("."))
+
+
 def _shape_pool(ranked: list[tuple[int, str]], exclude: set[str],
-                held_out: frozenset[str]) -> tuple[list[str], list[str]]:
-    """(names under a Russian public suffix, subdomains of registered sites)."""
+                held_out: frozenset[str]) -> tuple[list[str], list[str], list[str]]:
+    """(names under a Russian public suffix, subdomains of registered sites,
+    tenants of the curated hosting platforms)."""
     ru_zone: list[str] = []
     subdomains: list[str] = []
+    tenants: list[str] = []
     for _, host in ranked:
         if host in exclude or host.endswith(".arpa") or registrable_domain(host) in held_out:
             continue
-        # A hosting tenant (foo.github.io, bar.duckdns.org) is someone's own
-        # NAME under a shared suffix, not a subdomain of a registered site:
-        # its popularity says nothing about the next tenant's.
+        # A hosting tenant (foo.github.io, bar.tw1.ru) is someone's own NAME
+        # under a shared suffix, not a subdomain of a registered site: its
+        # popularity says nothing about the next tenant's, so it is its own
+        # stratum, from the curated platforms only (is_hosting_platform_site),
+        # never a page on a user-content host (forms.yandex.ru).
         if is_hosting_platform_site(host):
+            suffix, _ = shared_tenant(host)
+            if suffix and not is_user_content_host(host) and _tenant_depth(host, suffix) <= MAX_SHAPE_DEPTH:
+                tenants.append(host)
             continue
         depth = len(_subdomain_labels(host))
         if _ru_registrable_domain(host):
@@ -169,7 +201,20 @@ def _shape_pool(ranked: list[tuple[int, str]], exclude: set[str],
                 ru_zone.append(host)
         elif 1 <= depth <= MAX_SHAPE_DEPTH and not _is_under_shared_suffix(host):
             subdomains.append(host)
-    return ru_zone, subdomains
+    return ru_zone, subdomains, tenants
+
+
+def _cap_per_platform(tenants: list[str], rng: random.Random) -> list[str]:
+    """At most TENANTS_PER_PLATFORM tenants of each suffix, platforms in a
+    fixed order so the pool is reproducible for a seed."""
+    by_suffix: dict[str, list[str]] = {}
+    for host in tenants:
+        by_suffix.setdefault(shared_tenant(host)[0] or "", []).append(host)
+    pool: list[str] = []
+    for suffix in sorted(by_suffix):
+        hosts = by_suffix[suffix]
+        pool += rng.sample(hosts, min(len(hosts), TENANTS_PER_PLATFORM))
+    return pool
 
 
 def load_benign_domains(max_n: int = 12000, exclude: Iterable[str] = (),
@@ -199,9 +244,18 @@ def load_benign_domains(max_n: int = 12000, exclude: Iterable[str] = (),
     herzen.spb.ru). So SHAPE_SHARE of the class comes from the same
     provider's list WITH subdomains: names under Russian public suffixes
     (up to RU_ZONE_SHARE_OF_SHAPES of the stratum) and hosts one or two
-    levels under a registered site. Hosting tenants and reverse-DNS names
-    are left out, and so is every host whose registrable domain is held out
-    (HELD_OUT_FILES) — the shapes, never the evaluation hosts themselves.
+    levels under a registered site; and, on top of it, TENANT_SHARE of the
+    class from tenants of the curated hosting platforms (at most
+    TENANTS_PER_PLATFORM of each). Reverse-DNS names and tenants of suffixes
+    outside the curated lists are left out, and so is every host whose
+    registrable domain is held out (HELD_OUT_FILES) — the shapes, never the
+    evaluation hosts themselves.
+
+    Tenants (2026-10-04): the 2026-09-29 model had no benign tenant at all
+    (the stratum excluded them), so is_hosting_subdomain was a phishing-only
+    feature and it scored facebook.github.io 0.98, blog.wordpress.com 0.98
+    and tailwindcss.netlify.app 1.00. Popular tenants are real sites with
+    the names real people give them (malsup.github.io, canoninc-my.sharepoint.com).
     """
     rng = random.Random(42)
     exclude = set(exclude)
@@ -220,11 +274,13 @@ def load_benign_domains(max_n: int = 12000, exclude: Iterable[str] = (),
             "Without it the benign class has no subdomain shapes and the model "
             "flags almost every host with a subdomain."
         )
-    ru_zone, subdomains = _shape_pool(_read_tranco(subdomain_path), exclude, held_out)
+    ru_zone, subdomains, tenants = _shape_pool(_read_tranco(subdomain_path), exclude, held_out)
     n_shape = int(max_n * SHAPE_SHARE)
     n_ru = min(len(ru_zone), int(n_shape * RU_ZONE_SHARE_OF_SHAPES))
     shapes = rng.sample(ru_zone, n_ru)
     shapes += rng.sample(subdomains, min(len(subdomains), n_shape - n_ru))
+    tenant_pool = _cap_per_platform(tenants, rng)
+    shapes += rng.sample(tenant_pool, min(len(tenant_pool), int(max_n * TENANT_SHARE)))
     taken = set(shapes)
     head = [d for d in head if d not in taken]
     tail = [d for d in tail if d not in taken]
@@ -289,9 +345,10 @@ def train():
     benign = load_benign_domains(12000, exclude=phishing, held_out=held_out)
     n_ips = sum(_is_ip_literal(d) for d in phishing)
     n_shapes = sum(bool(_subdomain_labels(d)) or bool(_ru_registrable_domain(d)) for d in benign)
+    n_tenants = sum(shared_tenant(d)[0] is not None for d in benign)
     print(f"  Held out:         {len(held_out)} registrable domains (evaluation sets)")
     print(f"  Phishing domains: {len(phishing)} ({len(phishing) - n_ips} names, {n_ips} IPs)")
-    print(f"  Benign domains:   {len(benign)} ({n_shapes} host shapes)")
+    print(f"  Benign domains:   {len(benign)} ({n_shapes} host shapes, {n_tenants} of them hosting tenants)")
 
     # ── Extract features ──
     print("\nExtracting features...")
@@ -395,8 +452,10 @@ def train():
             "phishing_names": len(phishing) - n_ips,
             "phishing_ips": n_ips,
             "benign_host_shapes": n_shapes,
+            "benign_tenants": n_tenants,
             "held_out_registrable_domains": len(held_out),
-            "hosting_platforms": list(HOSTING_PLATFORMS),
+            # The suffixes the tenant feature knows (ml_features.shared_tenant).
+            "shared_suffixes": len(_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES),
         }, f, indent=2)
     print(f"Metadata saved to: {meta_path}")
 
