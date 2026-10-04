@@ -17,6 +17,9 @@
  *   8. Every client component's messages reach the browser — and only those.
  *   9. Legal documents attach links by section id, the same in every locale.
  *  10. Sentry never receives the site name from a /check or /audit page URL.
+ *  11. The operator-billed subscription (Russia) is sold only behind its flag,
+ *      at prices that come from settings, with the same ICU arguments in every
+ *      language — and the legal pages swap their payment section by id.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -36,6 +39,23 @@ import { hostFromSegment, toCheckHost } from "../landing/lib/check-host.ts";
 import { CLIENT_NAMESPACES, pickClientMessages } from "../landing/lib/client-messages.ts";
 import { displayHost } from "../landing/lib/display-host.ts";
 import { installScreenshotSrc } from "../landing/lib/install-screenshots.ts";
+import {
+  DEFAULT_GRACE_DAYS,
+  DEFAULT_PRICES_RUB,
+  DEFAULT_TRIAL_DAYS,
+  billingMessageArgs,
+  billingTermsFromEnv,
+  formatPhone,
+  parseLapsePolicy,
+  parsePositiveInt,
+  pricePerDevice,
+  pricingVariant,
+  replaceSection,
+  sellerFromEnv,
+  sellerIsComplete,
+  stopNumberFromEnv,
+  supportPhoneFromEnv,
+} from "../landing/lib/billing.ts";
 import { paidPlansOffered } from "../landing/lib/paid-plans.ts";
 import { REASON_CODE_TO_KEY, reasonLabelKey, reasonLines } from "../landing/lib/reason-label.ts";
 import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
@@ -293,14 +313,14 @@ check("legal text, methodology and the rest stay on the server", () => {
   const messages = JSON.parse(fs.readFileSync(path.join(ROOT, "landing", "messages", "ru.json"), "utf-8"));
   const picked = pickClientMessages(messages);
   assert.deepEqual(Object.keys(picked).sort(), [...CLIENT_NAMESPACES].filter((ns) => ns in messages).sort());
-  for (const heavy of ["PrivacyPolicy", "Terms", "Methodology", "Transparency", "Support", "Android"]) {
+  for (const heavy of ["PrivacyPolicy", "Terms", "Methodology", "Transparency", "Support", "Android", "Billing", "Cancel"]) {
     assert.ok(!(heavy in picked), `${heavy} would ride on every page`);
   }
   assert.ok(JSON.stringify(picked).length < JSON.stringify(messages).length / 3);
 });
 
 console.log("legal documents (links attach by section id)");
-const LEGAL_IDS = { privacy_policy: ["contact"], terms: ["privacy", "contact"] };
+const LEGAL_IDS = { privacy_policy: ["payments", "contact"], terms: ["payments", "privacy", "contact"] };
 check("every locale has the same sections, and the ids the pages attach links to", () => {
   const reference = landingSource("en");
   for (const [doc, required] of Object.entries(LEGAL_IDS)) {
@@ -309,6 +329,156 @@ check("every locale has the same sections, and the ids the pages attach links to
     for (const locale of LOCALES) {
       const ids = landingSource(locale)[doc].sections.map((section) => section.id ?? null);
       assert.deepEqual(ids, refIds, `${locale} ${doc}: sections differ from en (count or ids)`);
+    }
+  }
+});
+
+console.log("operator-billed subscription (lib/billing.ts)");
+check("defaults are the founder's numbers: 99 / 270 / 399 ₽, 14-day trial, 7-day grace, basic lapse", () => {
+  const terms = billingTermsFromEnv({});
+  assert.deepEqual(terms.plans.map((p) => [p.code, p.devices, p.priceRub]), [["solo", 1, 99], ["family3", 3, 270], ["family5", 5, 399]]);
+  assert.deepEqual(DEFAULT_PRICES_RUB, { solo: 99, family3: 270, family5: 399 });
+  assert.equal(terms.trialDays, DEFAULT_TRIAL_DAYS);
+  assert.equal(terms.trialDays, 14);
+  assert.equal(terms.graceDays, DEFAULT_GRACE_DAYS);
+  assert.equal(terms.graceDays, 7);
+  assert.equal(terms.lapsePolicy, "basic");
+});
+check("every number comes from its env setting; a malformed value falls back instead of selling a typo", () => {
+  const terms = billingTermsFromEnv({
+    NEXT_PUBLIC_BILLING_PRICE_SOLO_RUB: "149",
+    NEXT_PUBLIC_BILLING_PRICE_FAMILY3_RUB: " 300 ",
+    NEXT_PUBLIC_BILLING_PRICE_FAMILY5_RUB: "4.99",
+    NEXT_PUBLIC_BILLING_TRIAL_DAYS: "30",
+    NEXT_PUBLIC_BILLING_GRACE_DAYS: "-3",
+    NEXT_PUBLIC_BILLING_LAPSE_POLICY: "OFF",
+  });
+  assert.deepEqual(terms.plans.map((p) => p.priceRub), [149, 300, 399]);
+  assert.equal(terms.trialDays, 30);
+  assert.equal(terms.graceDays, 7);
+  assert.equal(terms.lapsePolicy, "off");
+});
+check("parsePositiveInt / parseLapsePolicy edge cases", () => {
+  for (const bad of [undefined, null, "", "0", "abc", "1e3", "1234567", "12 3"]) {
+    assert.equal(parsePositiveInt(bad, 5), 5, `accepted ${JSON.stringify(bad)}`);
+  }
+  assert.equal(parsePositiveInt("007", 5), 7);
+  assert.equal(parseLapsePolicy(undefined), "basic");
+  assert.equal(parseLapsePolicy("basic"), "basic");
+  assert.equal(parseLapsePolicy("anything-else"), "basic");
+  assert.equal(parseLapsePolicy(" off "), "off");
+});
+check("per-phone price rounds to whole rubles; the message arguments carry prices as text and day counts as numbers", () => {
+  const terms = billingTermsFromEnv({});
+  assert.deepEqual(terms.plans.map(pricePerDevice), [99, 90, 80]);
+  assert.deepEqual(billingMessageArgs(terms), { solo: "99", family3: "270", family5: "399", days: 14, grace: 7 });
+});
+check("pricingVariant: Russian visitors get the free page today and the operator page only with the flag on", () => {
+  const stripe = (visitor) => paidPlansOffered(visitor);
+  assert.equal(pricingVariant(stripe({ locale: "ru" }), false), "free");
+  assert.equal(pricingVariant(stripe({ locale: "ru" }), true), "operator");
+  assert.equal(pricingVariant(stripe({ locale: "en", country: "RU" }), false), "free");
+  assert.equal(pricingVariant(stripe({ locale: "en", country: "RU" }), true), "operator");
+  // Stripe where it is sold — the flag does not touch those visitors.
+  assert.equal(pricingVariant(stripe({ locale: "en", country: null }), true), "stripe");
+  assert.equal(pricingVariant(stripe({ locale: "de", country: "DE" }), false), "stripe");
+});
+check("seller requisites: present only when every field is well-formed", () => {
+  const complete = sellerFromEnv({
+    NEXT_PUBLIC_BILLING_SELLER_NAME: "ИП Иванов Иван Иванович",
+    NEXT_PUBLIC_BILLING_SELLER_INN: "123456789012",
+    NEXT_PUBLIC_BILLING_SELLER_OGRNIP: "123456789012345",
+  });
+  assert.equal(sellerIsComplete(complete), true);
+  const typo = sellerFromEnv({
+    NEXT_PUBLIC_BILLING_SELLER_NAME: "ИП Иванов",
+    NEXT_PUBLIC_BILLING_SELLER_INN: "1234567890",
+    NEXT_PUBLIC_BILLING_SELLER_OGRNIP: "123456789012345",
+  });
+  assert.equal(typo.inn, null);
+  assert.equal(sellerIsComplete(typo), false);
+  assert.deepEqual(sellerFromEnv({}), { name: null, inn: null, ogrnip: null });
+  assert.equal(sellerIsComplete(sellerFromEnv({})), false);
+});
+check("STOP short number and support phone are shown only when set and well-formed", () => {
+  assert.equal(stopNumberFromEnv({}), null);
+  assert.equal(stopNumberFromEnv({ NEXT_PUBLIC_BILLING_STOP_NUMBER: "1234" }), "1234");
+  assert.equal(stopNumberFromEnv({ NEXT_PUBLIC_BILLING_STOP_NUMBER: "+79991234567" }), null);
+  assert.equal(supportPhoneFromEnv({}), null);
+  assert.equal(supportPhoneFromEnv({ NEXT_PUBLIC_SUPPORT_PHONE: "+79991234567" }), "+79991234567");
+  assert.equal(supportPhoneFromEnv({ NEXT_PUBLIC_SUPPORT_PHONE: "8 999 123 45 67" }), null);
+  assert.equal(formatPhone("+79991234567"), "+7 999 123-45-67");
+  assert.equal(formatPhone("+442071234567"), "+442071234567");
+});
+check("replaceSection swaps exactly the section with that id and returns a new array", () => {
+  const sections = [{ id: "a", title: "A" }, { id: "payments", title: "P" }, { title: "no id" }];
+  const swapped = replaceSection(sections, "payments", { id: "billing", title: "B" });
+  assert.deepEqual(swapped.map((s) => s.title), ["A", "B", "no id"]);
+  assert.notEqual(swapped, sections);
+  assert.equal(sections[1].title, "P");
+  assert.deepEqual(replaceSection(sections, "missing", { id: "x", title: "X" }), sections);
+});
+
+console.log("billing strings (behind NEXT_PUBLIC_BILLING_ENABLED, all 10 languages)");
+// The strings the flag reveals. Each key must exist in every language with
+// the same ICU arguments as English: a dropped {days} or {solo} renders a
+// sentence about a trial with no length, or a price with no number.
+const BILLING_STRING_PATHS = [
+  ["billing"],
+  ["cancel"],
+  ["terms", "billing"],
+  ["privacy_policy", "billing"],
+  ["pricing_teaser", "operator"],
+];
+function stringLeaves(node, prefix = "") {
+  if (typeof node === "string") return [[prefix, node]];
+  if (Array.isArray(node)) return node.flatMap((v, i) => stringLeaves(v, `${prefix}[${i}]`));
+  if (node && typeof node === "object") return Object.entries(node).flatMap(([k, v]) => stringLeaves(v, prefix ? `${prefix}.${k}` : k));
+  return [];
+}
+function icuArgs(text) {
+  return [...text.matchAll(/\{([a-z][a-z0-9_]*)/g)].map((m) => m[1]).sort();
+}
+function pick(root, pathParts) {
+  return pathParts.reduce((node, part) => (node == null ? undefined : node[part]), root);
+}
+check("every billing key exists in every language, with English's ICU arguments", () => {
+  const en = landingSource("en");
+  for (const pathParts of BILLING_STRING_PATHS) {
+    const reference = pick(en, pathParts);
+    assert.ok(reference && typeof reference === "object", `en: landing.${pathParts.join(".")} missing`);
+    const refLeaves = new Map(stringLeaves(reference));
+    assert.ok(refLeaves.size > 0, `en: landing.${pathParts.join(".")} is empty`);
+    for (const locale of LOCALES) {
+      const leaves = new Map(stringLeaves(pick(landingSource(locale), pathParts)));
+      assert.deepEqual([...leaves.keys()], [...refLeaves.keys()], `${locale}: landing.${pathParts.join(".")} keys differ from en`);
+      for (const [key, text] of refLeaves) {
+        assert.deepEqual(icuArgs(leaves.get(key)), icuArgs(text), `${locale}: landing.${pathParts.join(".")}.${key} ICU arguments differ`);
+        assert.ok(leaves.get(key).trim().length > 0, `${locale}: landing.${pathParts.join(".")}.${key} is blank`);
+      }
+    }
+  }
+});
+check("the billing sections of the terms and the policy carry id 'billing', the ones they replace 'payments'", () => {
+  for (const locale of LOCALES) {
+    const landing = landingSource(locale);
+    for (const doc of ["terms", "privacy_policy"]) {
+      assert.equal(landing[doc].billing.section.id, "billing", `${locale} ${doc}.billing.section.id`);
+      assert.equal(landing[doc].sections.filter((s) => s.id === "payments").length, 1, `${locale} ${doc}: exactly one 'payments' section`);
+    }
+  }
+});
+check("both lapse policies have their sentence, and prices are never written into a billing string", () => {
+  for (const locale of LOCALES) {
+    const landing = landingSource(locale);
+    for (const policy of ["basic", "off"]) {
+      assert.equal(typeof landing.billing[`lapse_${policy}`], "string", `${locale}: billing.lapse_${policy}`);
+      assert.equal(typeof landing.terms.billing[`lapse_${policy}`], "string", `${locale}: terms.billing.lapse_${policy}`);
+    }
+    for (const pathParts of BILLING_STRING_PATHS) {
+      for (const [key, text] of stringLeaves(pick(landing, pathParts))) {
+        assert.doesNotMatch(text, /\b(99|270|399)\s?(₽|руб|RUB)/i, `${locale}: landing.${pathParts.join(".")}.${key} hard-codes a price`);
+      }
     }
   }
 });

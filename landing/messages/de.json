@@ -98,7 +98,12 @@
     "free_only_body": "Betrugsseiten blockieren sowie Links und Nachrichten prüfen kostet nichts und braucht kein Konto. In deinem Land gibt es derzeit keine kostenpflichtigen Tarife.",
     "free_only_cta": "Android-App herunterladen",
     "free_body_with_plans": "Betrugsseiten blockieren sowie Links und Nachrichten prüfen kostet nichts und braucht kein Konto. Kostenpflichtige Tarife sind freiwillig und schalten den Schutz selbst nie ab.",
-    "plans_link": "Kostenpflichtige Tarife ansehen"
+    "plans_link": "Kostenpflichtige Tarife ansehen",
+    "operator": {
+      "heading": "Ein Abo, das über die Handyrechnung läuft",
+      "body": "In den ersten {days, plural, one {# Tag} other {# Tage}} läuft der Schutz ohne jede Abbuchung. Danach ist es ein Abo ab {solo} ₽ im Monat, abgebucht vom Mobilfunkkonto, ohne Bankkarte. Jederzeit kündbar.",
+      "plans_link": "Preise und Leistungen"
+    }
   },
   "Privacy": {
     "heading": "Privacy is not a feature. It's the architecture.",
@@ -268,6 +273,98 @@
     "free_cta": "Android-App herunterladen",
     "footer_cta_title": "Starte heute kostenlos",
     "footer_cta_body": "Ohne Kreditkarte. Wechsle nur dann zu einem Tarif, wenn es für dich Sinn ergibt."
+  },
+  "Billing": {
+    "meta_title": "Cleanway-Abo — Preise und Bedingungen",
+    "meta_description": "Schutz vor Betrugsseiten im Abo: {solo} ₽ im Monat für ein Telefon, {family3} ₽ für drei, {family5} ₽ für fünf. Abbuchung vom Mobilfunkkonto; in den ersten {days, plural, one {# Tag} other {# Tage}} wird nichts abgebucht.",
+    "badge": "Abbuchung über das Mobilfunkkonto",
+    "title": "Schutz vor Betrügern — für Sie und für Ihre Eltern",
+    "subtitle": "Cleanway blockiert Betrugsseiten in jeder App des Telefons und prüft Links aus SMS und Messengern. Die ersten {days, plural, one {# Tag} other {# Tage}} sind eine Probezeit: Es wird nichts abgebucht. Danach ist es ein Abo zu den Preisen unten, jederzeit kündbar.",
+    "trial_note": "Die ersten {days, plural, one {# Tag} other {# Tage}}: keine Abbuchung, keine Telefonnummer und keine Karte einzugeben.",
+    "plans_title": "Pakete",
+    "per_month": "{price} ₽ im Monat",
+    "per_device": "≈ {price} ₽ pro Telefon",
+    "best_value": "Am günstigsten",
+    "plan_solo_name": "Ein Telefon",
+    "plan_solo_for": "Für Sie",
+    "plan_family3_name": "Drei Telefone",
+    "plan_family3_for": "Für Sie und Ihre Eltern",
+    "plan_family5_name": "Fünf Telefone",
+    "plan_family5_for": "Für die ganze Familie",
+    "plan_cta": "App laden und ausprobieren",
+    "plan_cta_hint": "Das Abo wird in der App abgeschlossen — nach der Probezeit und nur mit Ihrer Bestätigung.",
+    "included_title": "Was jedes Paket enthält",
+    "included_items": [
+      "Blockieren bekannter Betrugsseiten in jeder App des Telefons — Browser, Messenger, E-Mail",
+      "Prüfung von Links aus SMS und Messengern, bevor sie sich öffnen",
+      "Prüfung verdächtiger Nachrichten direkt auf dem Telefon",
+      "Die Liste der Betrugsseiten wird mehrmals täglich aktualisiert",
+      "Bei den Paketen für drei und fünf Telefone zahlt eine Person, und alle Telefone des Pakets sind geschützt",
+      "Support auf Russisch"
+    ],
+    "how_title": "So funktioniert es",
+    "how_1_title": "App installieren",
+    "how_1_body": "Laden Sie Cleanway für Android und schalten Sie den Schutz ein. {days, plural, one {# Tag} other {# Tage}} lang läuft er ohne jede Abbuchung; es ist keine Telefonnummer und keine Karte einzugeben.",
+    "how_2_title": "Abo in der App abschließen",
+    "how_2_body": "Wählen Sie ein Paket, geben Sie Ihre Telefonnummer ein und bestätigen Sie mit dem SMS-Code. Preis und Abbuchungsdatum werden vor der Bestätigung angezeigt.",
+    "how_3_title": "Abbuchung über das Mobilfunkkonto",
+    "how_3_body": "Ihr Mobilfunkanbieter bucht {solo}, {family3} oder {family5} ₽ einmal im Monat vom Konto Ihrer Nummer ab. Eine Bankkarte ist nicht nötig, und ihre Daten erhalten wir nie.",
+    "how_4_title": "Kündigung in einem Schritt",
+    "how_4_body": "Kündigen Sie in der App, per SMS oder über den Support. Nach der Kündigung wird nichts mehr abgebucht, der Schutz läuft bis zum Ende des bezahlten Monats weiter.",
+    "faq_title": "Häufige Fragen",
+    "faq_auto_q": "Wird nach der Probezeit automatisch abgebucht?",
+    "faq_auto_a": "Nein. Wenn die {days, plural, one {# Tag} other {# Tage}} Probezeit vorbei sind, wird nichts abgebucht, bis Sie selbst in der App ein Paket wählen und es mit einem SMS-Code bestätigen. Ohne Ihre Bestätigung gibt es keine Zahlung.",
+    "faq_cancel_q": "Wie kündige ich?",
+    "faq_cancel_a": "In der App: „Abo“ → „Abo kündigen“. Oder senden Sie eine SMS mit dem Wort СТОП an die Kurznummer, die in der App und auf der Kündigungsseite steht. Nach der Kündigung wird nichts mehr abgebucht; der Schutz läuft bis zum Ende des bezahlten Monats weiter.",
+    "faq_nomoney_q": "Was passiert, wenn kein Guthaben auf dem Konto ist?",
+    "faq_nomoney_a": "Wir buchen nie ins Minus ab und lassen keine Schulden entstehen. Reicht das Guthaben am Abbuchungstag nicht, versucht es der Anbieter in den folgenden {grace, plural, one {# Tag} other {# Tage}} noch einige Male, und der Schutz läuft die ganze Zeit vollständig weiter. Geht die Zahlung weiterhin nicht durch, {lapse}",
+    "lapse_basic": "wird das Abo pausiert, aber das Basis-Blockieren nach der Liste der Betrugsseiten läuft ohne Abbuchung weiter: Die Liste wird einmal pro Woche aktualisiert, und das Schild in der App wird gelb. Sie können das Abo jederzeit wieder abschließen.",
+    "lapse_off": "wird das Abo pausiert und der Schutz bis zur nächsten Zahlung abgeschaltet. Sie können das Abo jederzeit wieder abschließen.",
+    "faq_network_q": "Funktioniert es über WLAN und bei einem anderen Anbieter?",
+    "faq_network_a": "Ja. Der Schutz funktioniert in jedem Netz — über WLAN, im Roaming und auf einem Telefon mit der SIM eines anderen Anbieters. Abgebucht wird vom Konto der Nummer, mit der Sie das Abo abgeschlossen haben. Die Abbuchung über das Mobilfunkkonto gibt es bei den großen russischen Anbietern; unterstützt Ihrer sie nicht, sagt die App das vor der Bestätigung.",
+    "faq_number_q": "Wer erfährt sonst noch meine Telefonnummer?",
+    "faq_number_a": "Die Nummer wird nur für die Abbuchung gebraucht: Ihr Mobilfunkanbieter und der Zahlungsaggregator, die die Zahlung abwickeln, erhalten sie. Wir speichern sie verschlüsselt in einer separaten Datenbank in Russland und verkaufen sie nie. Einzelheiten stehen in der Datenschutzerklärung.",
+    "faq_refund_q": "Bekomme ich mein Geld zurück?",
+    "faq_refund_a": "Ja — wenn der Schutz durch unser Verschulden nicht funktioniert hat oder nach Ihrer Kündigung noch abgebucht wurde. Schreiben Sie dem Support, und wir erstatten diesen Monat. Einzelheiten auf der Seite zu Kündigung und Erstattung.",
+    "requisites_title": "Wer die Leistung erbringt",
+    "requisites_name": "Anbieter: {name}",
+    "requisites_inn": "INN (Steuernummer) {inn}",
+    "requisites_ogrnip": "OGRNIP (Registernummer) {ogrnip}",
+    "requisites_pending": "Die Angaben zum Anbieter (Einzelunternehmer, INN, OGRNIP) werden hier und in der App veröffentlicht, bevor ein Abo abgeschlossen werden kann.",
+    "requisites_note": "Ein Abo beginnt erst, nachdem Sie den Preis gesehen und per SMS-Code bestätigt haben. Der Preis eines laufenden Abos ändert sich nicht: Neue Preise gelten nur für neue Abos.",
+    "support_title": "Support",
+    "support_body": "Fragen zu Abo, Abbuchungen und Erstattungen — schreiben Sie uns. Nennen Sie die Telefonnummer des Abos und das Datum der Abbuchung.",
+    "support_phone": "Support-Telefon: {phone}",
+    "link_cancel": "So kündigen Sie und erhalten eine Erstattung",
+    "link_terms": "Nutzungsbedingungen",
+    "link_privacy": "Datenschutzerklärung"
+  },
+  "Cancel": {
+    "meta_title": "Cleanway-Abo kündigen und Erstattungen",
+    "meta_description": "Kündigen in der App, per SMS oder über den Support. Nach der Kündigung wird nichts abgebucht. Erstattung, wenn der Schutz durch unser Verschulden ausfiel oder nach der Kündigung abgebucht wurde.",
+    "back": "Zurück zu den Preisen",
+    "title": "Abo kündigen und Erstattungen",
+    "intro": "Sie können jederzeit auf einem der folgenden Wege kündigen. Nach der Kündigung wird nichts mehr abgebucht, und der Schutz läuft bis zum Ende des bereits bezahlten Monats weiter.",
+    "ways_title": "So kündigen Sie",
+    "way_app_title": "In der App — ein Schritt",
+    "way_app_body": "Öffnen Sie Cleanway → „Abo“ → „Abo kündigen“ und bestätigen Sie. Ein SMS-Code ist nicht nötig.",
+    "way_sms_title": "Per SMS",
+    "way_sms_body": "Senden Sie das Wort СТОП an die Nummer {number} von dem Telefon, auf dem das Abo läuft. Eine Antwort-SMS bestätigt die Kündigung.",
+    "way_sms_pending": "Die Kurznummer für SMS erscheint hier, sobald der Anbieter sie zugeteilt hat. Bis dahin kündigen Sie in der App oder über den Support.",
+    "way_support_title": "Über den Support",
+    "way_support_body": "Schreiben Sie uns mit der Telefonnummer des Abos. Wir kündigen es noch am selben Werktag und bestätigen das per Nachricht.",
+    "way_operator_title": "Bei Ihrem Anbieter",
+    "way_operator_body": "Abos, die über das Mobilfunkkonto laufen, stehen im Kundenbereich und in der App Ihres Anbieters — dort können Sie sie ebenfalls abschalten.",
+    "after_title": "Was nach der Kündigung passiert",
+    "after_1": "Keine Abbuchungen mehr — weder in diesem Monat noch später.",
+    "after_2": "Der Schutz läuft bis zum Ende des bezahlten Monats weiter.",
+    "after_3": "Danach {lapse}",
+    "after_4": "Sie können das Abo jederzeit wieder abschließen; die Probezeit gibt es kein zweites Mal.",
+    "refund_title": "Erstattungen",
+    "refund_body": "Wir erstatten den Monat, wenn der Schutz durch unser Verschulden nicht funktioniert hat oder nach Ihrer Kündigung noch abgebucht wurde. Schreiben Sie dem Support mit der Telefonnummer und dem Datum der Abbuchung. Das Geld geht zurück auf das Mobilfunkkonto oder auf dem Weg, den Ihr Anbieter anbietet — in der Regel innerhalb von 10 Werktagen.",
+    "refund_law": "Ihre Rechte nach dem Verbraucherschutzrecht bleiben davon unberührt.",
+    "contact_title": "Support",
+    "contact_pending": "Das Support-Postfach wird noch eingerichtet; die Adresse erscheint hier, sobald es funktioniert. Bis dahin kündigen Sie in der App."
   },
   "Transparency": {
     "page_title": "Transparenzbericht",
@@ -539,6 +636,7 @@
         ]
       },
       {
+        "id": "payments",
         "title": "4. Kostenpflichtige Tarife",
         "paragraphs": [
           "In einigen Ländern bietet Cleanway kostenpflichtige Tarife mit Extras an. In Russland werden keine kostenpflichtigen Tarife angeboten. Wo es sie gibt, wickelt Stripe die Zahlung ab, Preis und Abrechnungszeitraum werden vor der Zahlung angezeigt, und du kannst jederzeit kündigen – der Tarif bleibt bis zum Ende des bezahlten Zeitraums aktiv. Erstattungen erfolgen nach den gesetzlichen Vorgaben. Das Blockieren von Betrugsseiten wird nie kostenpflichtig."
@@ -596,7 +694,20 @@
         "title": "11. Kontakt",
         "paragraphs": []
       }
-    ]
+    ],
+    "billing": {
+      "section": {
+        "id": "billing",
+        "title": "4. Abo und Bezahlung",
+        "paragraphs": [
+          "In Russland ist Cleanway ein Abo, das über Ihren Mobilfunkanbieter und einen Zahlungsaggregator vom Mobilfunkkonto abgebucht wird. Preis des Pakets und Abbuchungsdatum werden vor der Bestätigung angezeigt; das Abo beginnt erst, nachdem Sie es mit einem SMS-Code von Ihrer Nummer bestätigt haben. Die ersten Tage nach der Installation sind eine Probezeit ohne Abbuchung; ihre Dauer und die Preise stehen auf der Preisseite.",
+          "Das Abo verlängert sich jeden Monat, bis Sie kündigen. Kündigen können Sie in der App, per SMS oder über den Support — nach der Kündigung wird nichts mehr abgebucht, und der Schutz läuft bis zum Ende des bezahlten Monats weiter. Wir buchen nie ins Minus ab und lassen keine Schulden entstehen. Hat der Schutz durch unser Verschulden nicht funktioniert oder wurde nach der Kündigung abgebucht, erstatten wir diesen Monat; Ihre gesetzlichen Rechte bleiben unberührt.",
+          "Preise können sich nur für neue Abos ändern: Ein laufendes Abo behält den Preis, zu dem es begonnen hat. In anderen Ländern werden bezahlte Tarife per Bankkarte über Stripe bezahlt — auch dort werden Preis und Laufzeit vor der Zahlung angezeigt, und das Abo ist jederzeit kündbar."
+        ]
+      },
+      "lapse_basic": "Schlägt eine Zahlung auch nach den weiteren Versuchen fehl, wird das Abo pausiert, aber das Basis-Blockieren bekannter Betrugsseiten läuft ohne Abbuchung weiter — die Liste wird einmal pro Woche aktualisiert.",
+      "lapse_off": "Schlägt eine Zahlung auch nach den weiteren Versuchen fehl, wird das Abo pausiert und der Schutz bis zur nächsten Zahlung abgeschaltet."
+    }
   },
   "PrivacyPolicy": {
     "meta_title": "Datenschutzerklärung – Cleanway",
@@ -700,6 +811,7 @@
         ]
       },
       {
+        "id": "payments",
         "title": "12. Zahlungen",
         "paragraphs": [
           "In Russland werden keine kostenpflichtigen Tarife angeboten. Wo es sie gibt, läuft die Zahlung über Stripe: Stripe erhält deine E-Mail-Adresse und den gewählten Tarif und verarbeitet die Karte selbst. Kartendaten sehen und speichern wir nie."
@@ -751,7 +863,19 @@
           "Wenn wir diese Erklärung ändern, veröffentlichen wir die neue Fassung mit neuem Datum auf dieser Seite."
         ]
       }
-    ]
+    ],
+    "billing": {
+      "section": {
+        "id": "billing",
+        "title": "12. Bezahlung des Abos",
+        "paragraphs": [
+          "In Russland wird das Abo vom Mobilfunkkonto abgebucht. Dafür geben Sie beim Abschluss eine Telefonnummer an — Ihre eigene oder die des Angehörigen, der zahlt. Die Probezeit braucht keine Nummer.",
+          "Telefonnummer, Paket, Daten und die Abbuchungshistorie liegen in einer separaten Datenbank in Russland, getrennt von den übrigen Daten von Cleanway. Die Nummer wird verschlüsselt gespeichert; in Protokollen, Fehlerberichten und auf Bildschirmen erscheint sie nur teilweise. Bankkartendaten haben wir keine: An dieser Zahlung ist keine Karte beteiligt.",
+          "Ihr Mobilfunkanbieter und der Zahlungsaggregator, die die Abbuchung abwickeln, erhalten Nummer und Betrag — sie verarbeiten diese Daten nach ihren eigenen Regeln. Außerdem halten wir die Einwilligung fest: welchen Text und welchen Preis Sie gesehen und wie Sie bestätigt haben.",
+          "Zahlungs- und Einwilligungsdaten werden so lange aufbewahrt, wie Buchhaltungs- und Steuervorschriften es verlangen — bis zu fünf Jahre; nach dem Ende des Abos und Ablauf dieser Frist wird die Telefonnummer aus der Datenbank gelöscht. In anderen Ländern läuft die Zahlung über Stripe: Stripe erhält Ihre E-Mail-Adresse und den gewählten Tarif und verarbeitet die Karte selbst; Kartendaten sehen und speichern wir nie."
+        ]
+      }
+    }
   },
   "Reasons": {
     "flagged_dangerous": "Google stuft diese Seite als gefährlich ein",

@@ -1591,7 +1591,12 @@
       "free_only_body": "Memblokir situs penipuan serta memeriksa tautan dan pesan tidak dipungut biaya dan tidak perlu akun. Saat ini tidak ada paket berbayar di negara Anda.",
       "free_only_cta": "Unduh aplikasi Android",
       "free_body_with_plans": "Memblokir situs penipuan serta memeriksa tautan dan pesan tidak dipungut biaya dan tidak perlu akun. Paket berbayar bersifat opsional dan tidak pernah mematikan perlindungannya.",
-      "plans_link": "Lihat paket berbayar"
+      "plans_link": "Lihat paket berbayar",
+      "operator": {
+        "heading": "Langganan yang ditagihkan ke pulsa",
+        "body": "Selama {days} hari pertama perlindungan berjalan tanpa tagihan apa pun. Setelah itu berupa langganan mulai {solo} ₽ per bulan, ditagihkan ke pulsa ponsel, tanpa kartu bank. Bisa dibatalkan kapan saja.",
+        "plans_link": "Harga dan isi paket"
+      }
     },
     "privacy": {
       "heading": "Privacy is not a feature. It's the architecture.",
@@ -1761,6 +1766,98 @@
       "free_cta": "Unduh aplikasi Android",
       "footer_cta_title": "Mulai gratis hari ini",
       "footer_cta_body": "Tanpa kartu kredit. Tingkatkan paket hanya jika memang berguna bagi Anda."
+    },
+    "billing": {
+      "meta_title": "Langganan Cleanway — harga dan ketentuan",
+      "meta_description": "Perlindungan dari situs penipuan dengan langganan: {solo} ₽ per bulan untuk satu ponsel, {family3} ₽ untuk tiga, {family5} ₽ untuk lima. Ditagihkan ke pulsa; tidak ada tagihan selama {days} hari pertama.",
+      "badge": "Ditagihkan ke pulsa",
+      "title": "Perlindungan dari penipu — untuk Anda dan orang tua Anda",
+      "subtitle": "Cleanway memblokir situs penipuan di semua aplikasi ponsel dan memeriksa tautan dari SMS dan aplikasi pesan. {days} hari pertama adalah masa percobaan: tidak ada yang ditagihkan. Setelah itu berupa langganan dengan harga di bawah; bisa dibatalkan kapan saja.",
+      "trial_note": "{days} hari pertama: tanpa tagihan, tanpa memasukkan nomor telepon atau kartu.",
+      "plans_title": "Paket",
+      "per_month": "{price} ₽ per bulan",
+      "per_device": "≈ {price} ₽ per ponsel",
+      "best_value": "Paling hemat",
+      "plan_solo_name": "Satu ponsel",
+      "plan_solo_for": "Untuk Anda",
+      "plan_family3_name": "Tiga ponsel",
+      "plan_family3_for": "Untuk Anda dan orang tua",
+      "plan_family5_name": "Lima ponsel",
+      "plan_family5_for": "Untuk seluruh keluarga",
+      "plan_cta": "Unduh aplikasi dan coba",
+      "plan_cta_hint": "Langganan diaktifkan di aplikasi — setelah masa percobaan dan hanya dengan konfirmasi Anda.",
+      "included_title": "Isi setiap paket",
+      "included_items": [
+        "Memblokir situs penipuan yang dikenal di semua aplikasi ponsel — peramban, aplikasi pesan, email",
+        "Memeriksa tautan dari SMS dan aplikasi pesan sebelum terbuka",
+        "Memeriksa pesan mencurigakan langsung di ponsel",
+        "Daftar situs penipuan diperbarui beberapa kali sehari",
+        "Pada paket tiga dan lima ponsel, satu orang membayar dan semua ponsel dalam paket terlindungi",
+        "Dukungan dalam bahasa Rusia"
+      ],
+      "how_title": "Cara kerjanya",
+      "how_1_title": "Pasang aplikasinya",
+      "how_1_body": "Unduh Cleanway untuk Android dan nyalakan perlindungan. Selama {days} hari ia berjalan tanpa tagihan apa pun; tidak perlu memasukkan nomor telepon atau kartu.",
+      "how_2_title": "Aktifkan langganan di aplikasi",
+      "how_2_body": "Pilih paket, masukkan nomor telepon Anda, dan konfirmasi dengan kode SMS. Harga dan tanggal penagihan ditampilkan sebelum Anda mengonfirmasi.",
+      "how_3_title": "Tagihan masuk ke pulsa",
+      "how_3_body": "Operator Anda menagih {solo}, {family3}, atau {family5} ₽ sekali sebulan dari pulsa nomor Anda. Tidak perlu kartu bank, dan kami tidak pernah menerima data kartu.",
+      "how_4_title": "Batalkan dalam satu langkah",
+      "how_4_body": "Batalkan di aplikasi, lewat SMS, atau melalui dukungan. Setelah dibatalkan tidak ada lagi tagihan, dan perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
+      "faq_title": "Pertanyaan umum",
+      "faq_auto_q": "Apakah akan ditagih otomatis setelah masa percobaan?",
+      "faq_auto_a": "Tidak. Setelah {days} hari masa percobaan berakhir, tidak ada yang ditagihkan sampai Anda sendiri memilih paket di aplikasi dan mengonfirmasinya dengan kode SMS. Tanpa konfirmasi Anda tidak ada pembayaran.",
+      "faq_cancel_q": "Bagaimana cara membatalkan?",
+      "faq_cancel_a": "Di aplikasi: “Langganan” → “Batalkan langganan”. Atau kirim SMS berisi kata СТОП ke nomor singkat yang tertera di aplikasi dan di halaman pembatalan. Setelah dibatalkan tidak ada lagi tagihan; perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
+      "faq_nomoney_q": "Bagaimana jika pulsa tidak cukup?",
+      "faq_nomoney_a": "Kami tidak pernah menagih sampai saldo minus dan tidak pernah membuat utang. Jika pada hari penagihan pulsa tidak cukup, operator mencoba lagi beberapa kali selama {grace} hari berikutnya, dan selama itu perlindungan tetap berjalan penuh. Jika pembayaran tetap gagal, {lapse}",
+      "lapse_basic": "langganan dijeda, tetapi pemblokiran dasar berdasarkan daftar situs penipuan tetap berjalan tanpa tagihan: daftar diperbarui seminggu sekali dan perisai di aplikasi berubah kuning. Anda bisa berlangganan lagi kapan saja.",
+      "lapse_off": "langganan dijeda dan perlindungan dimatikan sampai pembayaran berikutnya. Anda bisa berlangganan lagi kapan saja.",
+      "faq_network_q": "Apakah berfungsi lewat Wi-Fi dan dengan operator lain?",
+      "faq_network_a": "Ya. Perlindungan berfungsi di jaringan apa pun — Wi-Fi, roaming, atau ponsel dengan SIM operator lain. Tagihan masuk ke pulsa nomor yang Anda pakai untuk berlangganan. Penagihan ke pulsa tersedia di operator besar Rusia; jika operator Anda tidak mendukungnya, aplikasi memberi tahu sebelum konfirmasi.",
+      "faq_number_q": "Siapa lagi yang mengetahui nomor telepon saya?",
+      "faq_number_a": "Nomor hanya diperlukan untuk penagihan: operator Anda dan agregator pembayaran yang memproses pembayaran menerimanya. Kami menyimpannya terenkripsi di basis data terpisah di Rusia dan tidak pernah menjualnya. Rinciannya ada di kebijakan privasi.",
+      "faq_refund_q": "Bisakah uang saya dikembalikan?",
+      "faq_refund_a": "Ya — jika perlindungan tidak berfungsi karena kesalahan kami, atau tagihan terjadi setelah Anda membatalkan. Hubungi dukungan dan kami mengembalikan biaya bulan itu. Rinciannya ada di halaman pembatalan dan pengembalian dana.",
+      "requisites_title": "Siapa penyedia layanan",
+      "requisites_name": "Penyedia: {name}",
+      "requisites_inn": "INN (nomor pajak) {inn}",
+      "requisites_ogrnip": "OGRNIP (nomor registrasi) {ogrnip}",
+      "requisites_pending": "Data penyedia (pengusaha perorangan, INN, OGRNIP) dipublikasikan di sini dan di aplikasi sebelum langganan bisa diaktifkan.",
+      "requisites_note": "Langganan dimulai hanya setelah Anda melihat harga dan mengonfirmasinya dengan kode SMS. Harga langganan yang sedang berjalan tidak berubah: harga baru hanya berlaku untuk langganan baru.",
+      "support_title": "Dukungan",
+      "support_body": "Pertanyaan tentang langganan, tagihan, dan pengembalian dana — hubungi kami. Sebutkan nomor telepon langganan dan tanggal penagihan.",
+      "support_phone": "Telepon dukungan: {phone}",
+      "link_cancel": "Cara membatalkan dan mendapat pengembalian dana",
+      "link_terms": "Ketentuan penggunaan",
+      "link_privacy": "Kebijakan privasi"
+    },
+    "cancel": {
+      "meta_title": "Membatalkan langganan Cleanway dan pengembalian dana",
+      "meta_description": "Batalkan di aplikasi, lewat SMS, atau melalui dukungan. Setelah dibatalkan tidak ada tagihan. Pengembalian dana jika perlindungan gagal karena kesalahan kami atau tagihan terjadi setelah pembatalan.",
+      "back": "Kembali ke harga",
+      "title": "Membatalkan langganan dan pengembalian dana",
+      "intro": "Anda bisa membatalkan kapan saja dengan salah satu cara di bawah. Setelah dibatalkan tidak ada lagi tagihan, dan perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
+      "ways_title": "Cara membatalkan",
+      "way_app_title": "Di aplikasi — satu langkah",
+      "way_app_body": "Buka Cleanway → “Langganan” → “Batalkan langganan” dan konfirmasi. Tidak perlu kode SMS.",
+      "way_sms_title": "Lewat SMS",
+      "way_sms_body": "Kirim kata СТОП ke nomor {number} dari ponsel yang berlangganan. SMS balasan mengonfirmasi pembatalan.",
+      "way_sms_pending": "Nomor singkat untuk SMS akan muncul di sini setelah operator menetapkannya. Sementara itu, batalkan di aplikasi atau melalui dukungan.",
+      "way_support_title": "Melalui dukungan",
+      "way_support_body": "Hubungi kami dengan menyebutkan nomor telepon langganan. Kami membatalkannya pada hari kerja yang sama dan mengonfirmasi lewat pesan.",
+      "way_operator_title": "Di operator Anda",
+      "way_operator_body": "Langganan yang ditagihkan ke pulsa tercantum di area pelanggan dan aplikasi operator Anda — di sana juga bisa dimatikan.",
+      "after_title": "Apa yang terjadi setelah pembatalan",
+      "after_1": "Tidak ada tagihan lagi — tidak bulan ini, tidak nanti.",
+      "after_2": "Perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
+      "after_3": "Setelah itu, {lapse}",
+      "after_4": "Anda bisa berlangganan lagi kapan saja; masa percobaan tidak diberikan untuk kedua kalinya.",
+      "refund_title": "Pengembalian dana",
+      "refund_body": "Kami mengembalikan biaya bulan itu jika perlindungan tidak berfungsi karena kesalahan kami, atau tagihan terjadi setelah Anda membatalkan. Hubungi dukungan dengan nomor telepon dan tanggal penagihan. Uang dikembalikan ke pulsa atau dengan cara yang ditawarkan operator Anda — biasanya dalam 10 hari kerja.",
+      "refund_law": "Ini tidak membatasi hak Anda menurut undang-undang perlindungan konsumen.",
+      "contact_title": "Dukungan",
+      "contact_pending": "Kotak surat dukungan masih disiapkan; alamatnya akan muncul di sini begitu berfungsi. Sementara itu, batalkan di aplikasi."
     },
     "transparency": {
       "page_title": "Laporan transparansi",
@@ -2032,6 +2129,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "4. Paket berbayar",
           "paragraphs": [
             "Di beberapa negara, Cleanway menawarkan paket berbayar dengan fitur tambahan. Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia, pembayaran ditangani oleh Stripe, harga dan periode tagihan ditampilkan sebelum membayar, dan Anda bisa membatalkan kapan saja; paket tetap aktif sampai akhir periode yang sudah dibayar. Pengembalian dana ditangani sesuai ketentuan hukum. Memblokir situs penipuan tidak akan pernah menjadi fitur berbayar."
@@ -2089,7 +2187,20 @@
           "title": "11. Kontak",
           "paragraphs": []
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "4. Langganan dan pembayaran",
+          "paragraphs": [
+            "Di Rusia Cleanway adalah langganan yang ditagihkan ke pulsa ponsel melalui operator Anda dan agregator pembayaran. Harga paket dan tanggal penagihan ditampilkan sebelum konfirmasi; langganan dimulai hanya setelah Anda mengonfirmasinya dengan kode SMS dari nomor Anda. Hari-hari pertama setelah pemasangan adalah masa percobaan tanpa tagihan; lamanya dan harganya ada di halaman harga.",
+            "Langganan diperpanjang setiap bulan sampai Anda membatalkannya. Anda bisa membatalkan di aplikasi, lewat SMS, atau melalui dukungan — setelah dibatalkan tidak ada lagi tagihan, dan perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar. Kami tidak pernah menagih sampai saldo minus dan tidak pernah membuat utang. Jika perlindungan tidak berfungsi karena kesalahan kami, atau tagihan terjadi setelah pembatalan, kami mengembalikan biaya bulan itu; ini tidak membatasi hak hukum Anda.",
+            "Harga hanya bisa berubah untuk langganan baru: langganan yang sedang berjalan mempertahankan harga awalnya. Di negara lain paket berbayar dibayar dengan kartu bank melalui Stripe — di sana pun harga dan periode ditampilkan sebelum pembayaran, dan Anda bisa membatalkan kapan saja."
+          ]
+        },
+        "lapse_basic": "Jika pembayaran tetap gagal setelah percobaan ulang, langganan dijeda, tetapi pemblokiran dasar situs penipuan yang dikenal tetap berjalan tanpa tagihan — daftar diperbarui seminggu sekali.",
+        "lapse_off": "Jika pembayaran tetap gagal setelah percobaan ulang, langganan dijeda dan perlindungan dimatikan sampai pembayaran berikutnya."
+      }
     },
     "privacy_policy": {
       "meta_title": "Kebijakan privasi — Cleanway",
@@ -2193,6 +2304,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "12. Pembayaran",
           "paragraphs": [
             "Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia, pembayaran dilakukan melalui Stripe: Stripe menerima email Anda dan paket yang dipilih serta menangani kartunya sendiri. Kami tidak pernah melihat atau menyimpan data kartu."
@@ -2244,7 +2356,19 @@
             "Jika kami mengubah kebijakan ini, versi baru akan kami publikasikan di halaman ini dengan tanggal baru."
           ]
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "12. Pembayaran langganan",
+          "paragraphs": [
+            "Di Rusia langganan ditagihkan ke pulsa ponsel. Untuk mengaktifkannya Anda memasukkan nomor telepon — milik Anda sendiri atau milik kerabat yang membayar. Masa percobaan tidak memerlukan nomor.",
+            "Nomor telepon, paket, tanggal, dan riwayat tagihan disimpan di basis data terpisah yang berada di Rusia, terpisah dari data Cleanway lainnya. Nomor disimpan terenkripsi; di log, laporan kesalahan, dan layar ia hanya ditampilkan sebagian. Kami tidak memiliki data kartu bank: tidak ada kartu yang terlibat dalam pembayaran ini.",
+            "Operator Anda dan agregator pembayaran yang memproses tagihan menerima nomor dan jumlahnya — mereka menangani data itu menurut aturan mereka sendiri. Kami juga menyimpan catatan persetujuan: teks dan harga apa yang Anda lihat dan bagaimana Anda mengonfirmasi.",
+            "Catatan pembayaran dan persetujuan disimpan selama diwajibkan aturan akuntansi dan pajak — hingga lima tahun; setelah langganan berakhir dan masa itu lewat, nomor telepon dihapus dari basis data. Di negara lain pembayaran melalui Stripe: Stripe menerima email Anda dan paket yang dipilih serta menangani kartunya sendiri; kami tidak pernah melihat atau menyimpan data kartu."
+          ]
+        }
+      }
     }
   },
   "email": {

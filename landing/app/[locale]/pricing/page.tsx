@@ -4,11 +4,13 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { createClient, type PricingFor } from "@cleanway/api-client";
 import PricingClient from "./PricingClient";
 import FreePricing from "./FreePricing";
+import OperatorPricing from "./OperatorPricing";
 import PricingNav from "./PricingNav";
 import { routing, type Locale } from "@/i18n/routing";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { InstallButtons } from "@/components/InstallButtons";
-import { paidPlansOffered } from "@/lib/paid-plans";
+import { billingMessageArgs } from "@/lib/billing";
+import { BILLING_TERMS, SELLER, SUPPORT_PHONE, pricingVariantFor } from "@/lib/billing-config";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -33,10 +35,15 @@ export async function generateMetadata({
   const t = await getTranslations({ locale: safeLocale, namespace: "Pricing" });
   // The hero subtitle does double duty as the meta description — same
   // promise, same cultural register. A free-only locale gets the free copy:
-  // its link preview must not talk about paying.
-  const freeOnly = !paidPlansOffered({ locale: safeLocale });
-  const title = `${freeOnly ? t("free_title") : t("page_title")} — Cleanway`;
-  const description = freeOnly ? t("free_subtitle") : t("hero_subtitle");
+  // its link preview must not talk about paying; with the operator-billed
+  // subscription switched on, the preview names the subscription instead.
+  const variant = pricingVariantFor({ locale: safeLocale });
+  const billing = await getTranslations({ locale: safeLocale, namespace: "Billing" });
+  const title = `${variant === "free" ? t("free_title") : variant === "operator" ? billing("meta_title") : t("page_title")} — Cleanway`;
+  const description =
+    variant === "free" ? t("free_subtitle")
+    : variant === "operator" ? billing("meta_description", billingMessageArgs(BILLING_TERMS))
+    : t("hero_subtitle");
 
   return {
     title,
@@ -127,8 +134,12 @@ export default async function PricingPage({
   setRequestLocale(safeLocale);
   // Vercel's edge geo header; ?cc= overrides it for testing a region.
   const country = cc ?? (await headers()).get("x-vercel-ip-country");
-  if (!paidPlansOffered({ locale: safeLocale, country })) {
+  const variant = pricingVariantFor({ locale: safeLocale, country });
+  if (variant === "free") {
     return <FreePricing locale={safeLocale} />;
+  }
+  if (variant === "operator") {
+    return <OperatorPricing locale={safeLocale} terms={BILLING_TERMS} seller={SELLER} supportPhone={SUPPORT_PHONE} />;
   }
   const t = await getTranslations({ locale: safeLocale, namespace: "Pricing" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });

@@ -12,6 +12,8 @@ import { getTranslations } from "next-intl/server";
 
 import { LegalDocument, type LegalSection } from "@/components/LegalDocument";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
+import { replaceSection } from "@/lib/billing";
+import { BILLING_ENABLED, BILLING_TERMS } from "@/lib/billing-config";
 import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
@@ -66,6 +68,11 @@ export async function generateMetadata({
 
 const linkStyle: React.CSSProperties = { color: "#60a5fa" };
 
+/** The subscription section with the lapse-policy sentence as its last paragraph. */
+function billingSection(section: LegalSection, lapseSentence: string): LegalSection {
+  return { ...section, paragraphs: [...(section.paragraphs ?? []), lapseSentence] };
+}
+
 export default async function Terms({
   params,
 }: {
@@ -73,7 +80,13 @@ export default async function Terms({
 }) {
   const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Terms" });
-  const sections = t.raw("sections") as LegalSection[];
+  const currentSections = t.raw("sections") as LegalSection[];
+  // With the operator-billed subscription on, the "no paid plans in Russia,
+  // Stripe elsewhere" section gives way to the subscription terms; what
+  // happens after a failed payment follows the configured lapse policy.
+  const sections = BILLING_ENABLED
+    ? replaceSection(currentSections, "payments", billingSection(t.raw("billing.section") as LegalSection, t(`billing.lapse_${BILLING_TERMS.lapsePolicy}`)))
+    : currentSections;
   const isRtl = (RTL_LOCALES as readonly string[]).includes(safeLocale);
 
   const privacyLink = (

@@ -1,5 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 
+import { BILLING_ON } from "./billing-flag";
+
 /**
  * Smoke tests for the marketing home page.
  *
@@ -107,8 +109,10 @@ test("home pricing block is free-first; plans only via a link, never in Russia",
     await expect(page.getByTestId("free-only-android")).toHaveAttribute("href", `/${locale === "en" ? "" : `${locale}/`}android`);
     await expect(page.getByTestId("home-plans-link")).toBeVisible();
   }
+  // Russia gets no link to plans it cannot buy — until the operator-billed
+  // subscription is on, when the link leads to that (billing.spec.ts).
   await page.goto("/ru");
-  await expect(page.getByTestId("home-plans-link")).toHaveCount(0);
+  await expect(page.getByTestId("home-plans-link")).toHaveCount(BILLING_ON ? 1 : 0);
 });
 
 test("home privacy section names the public DNS the shield uses", async ({ page }) => {

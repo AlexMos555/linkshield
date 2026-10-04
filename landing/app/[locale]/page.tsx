@@ -6,7 +6,8 @@ import { InstallButtons } from "@/components/InstallButtons";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { loadLiveRecall } from "@/lib/live-recall";
 import { localePath } from "@/lib/locale-path";
-import { paidPlansOffered } from "@/lib/paid-plans";
+import { billingMessageArgs } from "@/lib/billing";
+import { BILLING_TERMS, pricingVariantFor } from "@/lib/billing-config";
 import { routing, type Locale } from "@/i18n/routing";
 
 const SITE_URL = "https://cleanway.ai";
@@ -117,8 +118,18 @@ export default async function Home({ params }: HomeProps) {
   // what is free — everywhere. The old plan cards sold extension features
   // (link badges, "10 API checks/day") and a 14-day trial nobody on Android
   // can get. Where paid plans exist at all, a link leads to /pricing; Russian
-  // visitors cannot buy them (Stripe) and get no link.
-  const showPlansLink = paidPlansOffered({ locale });
+  // visitors cannot buy them (Stripe) and get no link — until the operator-
+  // billed subscription is switched on, when the block names it instead.
+  const pricingVariant = pricingVariantFor({ locale });
+  const showPlansLink = pricingVariant !== "free";
+  const teaser = {
+    heading: pricingVariant === "operator" ? pricing("operator.heading") : pricing("free_only_heading"),
+    body:
+      pricingVariant === "operator" ? pricing("operator.body", billingMessageArgs(BILLING_TERMS))
+      : pricingVariant === "stripe" ? pricing("free_body_with_plans")
+      : pricing("free_only_body"),
+    plansLink: pricingVariant === "operator" ? pricing("operator.plans_link") : pricing("plans_link"),
+  };
   const href = (path: string) => localePath(locale, path);
 
   const featureItems = features.raw("items") as FeatureItem[];
@@ -224,17 +235,15 @@ export default async function Home({ params }: HomeProps) {
       {/* Pricing */}
       <section id="pricing" className="py-20 px-6">
         <div className="max-w-2xl mx-auto text-center bg-slate-800/50 rounded-2xl p-8">
-          <h2 className="text-3xl font-extrabold text-white mb-4">{pricing("free_only_heading")}</h2>
-          <p className="text-slate-400 leading-relaxed mb-8">
-            {showPlansLink ? pricing("free_body_with_plans") : pricing("free_only_body")}
-          </p>
+          <h2 className="text-3xl font-extrabold text-white mb-4">{teaser.heading}</h2>
+          <p className="text-slate-400 leading-relaxed mb-8">{teaser.body}</p>
           <a data-testid="free-only-android" href={href("/android")} className="inline-block bg-green-500 text-green-950 px-8 py-3 rounded-xl font-bold hover:bg-green-400 transition">
             {pricing("free_only_cta")}
           </a>
           {showPlansLink && (
             <p className="mt-6">
               <a data-testid="home-plans-link" href={href("/pricing")} className="text-sm text-green-400 hover:text-green-300 underline">
-                {pricing("plans_link")}
+                {teaser.plansLink}
               </a>
             </p>
           )}

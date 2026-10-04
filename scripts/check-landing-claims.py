@@ -22,8 +22,21 @@ languages, not just the two someone happened to read. It scans:
     strings still live in code, and
   * the app version the privacy policy describes, against mobile/app.json.
 
+It also holds the operator-billed subscription's copy (landing.billing,
+landing.cancel, the billing sections of the terms and the policy, the home
+teaser's operator variant — all rendered only with NEXT_PUBLIC_BILLING_ENABLED
+on) to a paid product's truth: nothing "free", no Stripe or dollar prices where
+the operator bills the phone account, and no hand-written price (prices are
+settings, passed as ICU arguments — landing/lib/billing.ts).
+
 Usage:
   python3 scripts/check-landing-claims.py
+  python3 scripts/check-landing-claims.py --billing-on
+
+`--billing-on` is the review before the founder flips the flag: it applies the
+"free" rules to every landing string a Russian visitor will still see with the
+subscription on, and lists what must be re-worded or consciously kept. It is
+advisory and not part of CI while the flag is off.
 
 Exits 0 when clean, 1 with one line per finding otherwise.
 """
@@ -266,7 +279,73 @@ CHROME_CTA: Claim = Claim("Chrome listing is not live (install-urls.ts)", {
     "ar": r"إضافة إلى chrome",
 })
 
-STRING_RULES: tuple[Rule, ...] = GLOBAL_RULES + tuple(rule for claim in CLAIMS for rule in localized(claim))
+# ---- The operator-billed subscription (behind NEXT_PUBLIC_BILLING_ENABLED) ----
+# The strings the flag reveals. The trial is "без оплаты" / "nothing charged" —
+# a window, not a price — so none of them may call the product free.
+BILLING_SCOPES: tuple[str, ...] = (
+    "landing.billing",
+    "landing.cancel",
+    "landing.terms.billing",
+    "landing.privacy_policy.billing",
+    "landing.pricing_teaser.operator",
+)
+# The pages that sell: the operator bills the phone account in rubles, so
+# Stripe and dollar prices have no place on them (the legal sections may still
+# describe Stripe for other countries).
+BILLING_SALES_SCOPES: tuple[str, ...] = ("landing.billing", "landing.cancel", "landing.pricing_teaser.operator")
+
+FREE_WORDS: Mapping[str, str] = {
+    "en": r"\bfree\b",
+    "ru": r"бесплат",
+    "es": r"\bgratis\b|gratuit",
+    "pt": r"gr[aá]tis|gratuit",
+    "fr": r"gratuit",
+    "de": r"kostenlos|\bgratis\b|umsonst",
+    "it": r"\bgratis\b|gratuit",
+    "id": r"\bgratis\b|cuma-cuma",
+    "hi": r"मुफ़्त|मुफ्त|निःशुल्क|फ़्री|फ्री",
+    "ar": r"مجان",
+}
+FREE_WHY = ("calls the subscription free — only the trial window is without charge; say "
+            "'без оплаты' / 'nothing charged', never 'free'")
+HARDCODED_PRICE = re.compile(r"\b(99|270|399)\s?(₽|руб|rub\b)", re.IGNORECASE)
+STRIPE_OR_DOLLARS = re.compile(r"stripe|\$\s?\d|\bUSD\b", re.IGNORECASE)
+
+
+def billing_rules() -> tuple[Rule, ...]:
+    rules: list[Rule] = []
+    for scope in BILLING_SCOPES:
+        rules.extend(localized(Claim(FREE_WHY, FREE_WORDS, scope=scope)))
+        rules.append(Rule(HARDCODED_PRICE, "hard-codes a price — prices are settings (landing/lib/billing.ts) "
+                                           "passed as ICU arguments", scope))
+    for scope in BILLING_SALES_SCOPES:
+        rules.append(Rule(STRIPE_OR_DOLLARS, "names Stripe or a dollar price on the operator-billing pages — "
+                                             "the operator bills the phone account in rubles", scope))
+    return tuple(rules)
+
+
+# Strings a Russian visitor no longer sees once the flag is on: the free-only
+# /pricing and the free-only teaser are replaced by the operator variants.
+BILLING_ON_EXEMPT: tuple[str, ...] = (
+    "landing.pricing.free_",
+    "landing.pricing_teaser.free_only",
+    "landing.pricing_teaser.free_body_with_plans",
+    "landing.pricing_teaser.plans_link",
+)
+
+
+def billing_on_review_rules() -> tuple[Rule, ...]:
+    """With the subscription on, 'free' anywhere on the Russian landing needs a second look."""
+    return tuple(Rule(re.compile(pattern, re.IGNORECASE),
+                      "BILLING ON: says 'free' on a page a paying Russian visitor sees — re-word, or keep knowingly "
+                      "(the install and the trial are without charge; the product is not)",
+                      "landing", (locale,), BILLING_ON_EXEMPT + BILLING_SCOPES)
+                 for locale, pattern in FREE_WORDS.items())
+
+
+STRING_RULES: tuple[Rule, ...] = (GLOBAL_RULES
+                                  + tuple(rule for claim in CLAIMS for rule in localized(claim))
+                                  + billing_rules())
 CHROME_CTA_RULES: tuple[Rule, ...] = localized(CHROME_CTA)
 
 CODE_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
@@ -387,16 +466,20 @@ def check_code(chrome_live: bool) -> list[str]:
     return findings
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    billing_on = "--billing-on" in args
     chrome_live = chrome_is_live()
     string_rules = STRING_RULES if chrome_live else (*STRING_RULES, *CHROME_CTA_RULES)
+    if billing_on:
+        string_rules = (*string_rules, *billing_on_review_rules())
     sources = load_sources()
     findings = (check_strings(string_rules, sources)
                 + check_app_version(sources, released_app_version())
                 + check_code(chrome_live))
     if not findings:
         print(f"OK: no known-false landing claims ({len(string_rules)} string rules, {len(sources)} locales, "
-              f"chrome live={chrome_live}).")
+              f"chrome live={chrome_live}, billing-on review={billing_on}).")
         return 0
     print("LANDING CLAIMS FAIL — the site promises something the product does not do:", file=sys.stderr)
     for finding in findings:

@@ -1,0 +1,181 @@
+import { test, expect } from "@playwright/test";
+
+import { BILLING_ON } from "./billing-flag";
+
+/**
+ * The operator-billed subscription (docs/BILLING.md) on the landing, in both
+ * flag states. NEXT_PUBLIC_BILLING_ENABLED is inlined at build time, so one
+ * server is one state: the CI matrix in .github/workflows/e2e-landing.yml
+ * builds and runs both, and each half here skips when the other is live.
+ *
+ * Flag OFF is today's site and must stay exactly that: the free-only
+ * /ru/pricing, no /cancel, the current payment sections in the terms and the
+ * policy, the free-only home teaser. Flag ON is what the founder's flip ships:
+ * the configured prices (99 / 270 / 399 ₽ by default — lib/billing.ts), the
+ * trial, the four FAQ answers, the requisites block, and copy that is true for
+ * a paid product (no "free forever", no Stripe, no dollars).
+ */
+const PRICES_RUB = ["99", "270", "399"];
+const TODAYS_RU_TERMS_PAYMENTS = "В России платных тарифов нет";
+const TODAYS_RU_TEASER = "Платных тарифов в России сейчас нет";
+
+test.describe("billing flag off — today's site", () => {
+  test.skip(BILLING_ON, "NEXT_PUBLIC_BILLING_ENABLED is on");
+
+  test("/ru/pricing is still the free-only page with no subscription copy", async ({ page }) => {
+    await page.goto("/ru/pricing");
+    await expect(page.getByTestId("free-pricing")).toBeVisible();
+    await expect(page.getByTestId("operator-pricing")).toHaveCount(0);
+    const body = page.locator("body");
+    await expect(body).not.toContainText("₽");
+    await expect(body).not.toContainText("подписк");
+    await expect(body).toContainText("Платных тарифов в России сейчас нет");
+  });
+
+  test("/ru/cancel does not exist", async ({ page }) => {
+    const response = await page.goto("/ru/cancel");
+    expect(response?.status()).toBe(404);
+    await expect(page.locator("h1")).toHaveText("Страница не найдена");
+  });
+
+  test("the terms and the policy keep today's payment sections", async ({ page }) => {
+    await page.goto("/ru/terms");
+    await expect(page.locator("section#payments")).toContainText(TODAYS_RU_TERMS_PAYMENTS);
+    await expect(page.locator("section#billing")).toHaveCount(0);
+    await page.goto("/ru/privacy-policy");
+    await expect(page.locator("section#payments")).toContainText("Stripe");
+    await expect(page.locator("body")).not.toContainText("со счёта мобильного телефона");
+  });
+
+  test("the home teaser is free-only, with no plans link", async ({ page }) => {
+    await page.goto("/ru");
+    await expect(page.locator("#pricing")).toContainText(TODAYS_RU_TEASER);
+    await expect(page.getByTestId("home-plans-link")).toHaveCount(0);
+  });
+
+  test("the sitemap has no cancel page", async ({ request }) => {
+    const xml = await (await request.get("/sitemap.xml")).text();
+    expect(xml).not.toContain("/cancel");
+  });
+});
+
+test.describe("billing flag on — the operator-billed subscription", () => {
+  test.skip(!BILLING_ON, "NEXT_PUBLIC_BILLING_ENABLED is off");
+
+  test("/ru/pricing sells the subscription at the configured prices, in Russian", async ({ page }) => {
+    await page.goto("/ru/pricing");
+    await expect(page.getByTestId("operator-pricing")).toBeVisible();
+    await expect(page.getByTestId("free-pricing")).toHaveCount(0);
+    await expect(page.locator("h1")).toContainText("Защита от мошенников");
+
+    for (const [code, price] of [["solo", "99"], ["family3", "270"], ["family5", "399"]] as const) {
+      await expect(page.getByTestId(`plan-card-${code}`)).toContainText(`${price} ₽ в месяц`);
+    }
+    await expect(page.getByTestId("plan-card-family5")).toContainText("80 ₽ за телефон");
+    await expect(page.getByTestId("operator-trial")).toContainText("14 дней");
+
+    const body = page.locator("body");
+    await expect(body).not.toContainText("$");
+    await expect(body).not.toContainText("Stripe");
+    await expect(body).not.toContainText("бесплатно навсегда");
+    await expect(body).not.toContainText("Платных тарифов в России");
+  });
+
+  test("/ru/pricing answers the four questions, names the seller block and links the documents", async ({ page }) => {
+    await page.goto("/ru/pricing");
+    const faq = page.getByTestId("operator-faq");
+    for (const question of [
+      "Спишется ли само после пробного периода?",
+      "Как отменить подписку?",
+      "Что будет, если на счёте нет денег?",
+      "Работает ли по Wi-Fi и с другим оператором?",
+    ]) {
+      await expect(faq).toContainText(question);
+    }
+    // The default lapse policy ("basic") keeps list blocking after a failed payment.
+    await expect(faq).toContainText("базовая блокировка");
+    await expect(faq).toContainText("7 дней");
+
+    // Requisites are not configured in CI: the block says so instead of printing blanks.
+    await expect(page.getByTestId("requisites")).toBeVisible();
+    await expect(page.getByTestId("requisites-pending")).toContainText("ИНН, ОГРНИП");
+    await expect(page.getByTestId("operator-support")).toBeVisible();
+
+    await expect(page.locator('a[href="/ru/cancel"]')).toBeVisible();
+    await expect(page.locator('a[href="/ru/terms"]')).toBeVisible();
+    await expect(page.locator('a[href="/ru/privacy-policy"]')).toBeVisible();
+  });
+
+  test("/ru/pricing link preview names the subscription and its prices", async ({ page }) => {
+    await page.goto("/ru/pricing");
+    const ogDescription = await page.locator('meta[property="og:description"]').getAttribute("content");
+    for (const price of PRICES_RUB) expect(ogDescription).toContain(`${price} ₽`);
+    expect(ogDescription).not.toMatch(/бесплат/);
+  });
+
+  test("/pricing for a visitor from Russia gets the subscription in the page's language", async ({ page }) => {
+    await page.setExtraHTTPHeaders({ "x-vercel-ip-country": "RU" });
+    await page.goto("/pricing");
+    await expect(page.getByTestId("operator-pricing")).toBeVisible();
+    await expect(page.getByTestId("plan-card-solo")).toContainText("99 ₽ a month");
+    await expect(page.locator("body")).not.toContainText("$4.99");
+  });
+
+  test("/de/pricing without a Russian country stays on Stripe plans", async ({ page }) => {
+    await page.goto("/de/pricing");
+    await expect(page.getByTestId("operator-pricing")).toHaveCount(0);
+    await expect(page.getByTestId("free-pricing")).toHaveCount(0);
+  });
+
+  test("/ru/cancel explains the four channels, what follows, and refunds", async ({ page }) => {
+    const response = await page.goto("/ru/cancel");
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("h1")).toHaveText("Отмена подписки и возврат денег");
+    for (const way of ["app", "sms", "support", "operator"]) {
+      await expect(page.getByTestId(`cancel-way-${way}`)).toBeVisible();
+    }
+    // No short number is configured in CI: the SMS channel says so, not a blank number.
+    await expect(page.getByTestId("cancel-way-sms")).toContainText("появится здесь");
+    await expect(page.getByTestId("cancel-after")).toContainText("Списаний больше нет");
+    await expect(page.getByTestId("cancel-after")).toContainText("базовая блокировка");
+    await expect(page.getByTestId("cancel-refund")).toContainText("вернём оплату за месяц");
+    await expect(page.locator('a[href="/ru/pricing"]')).toBeVisible();
+    await expect(page.locator("body")).not.toContainText("бесплат");
+  });
+
+  test("the terms and the policy describe the operator billing in place of today's payment sections", async ({ page }) => {
+    await page.goto("/ru/terms");
+    const terms = page.locator("section#billing");
+    await expect(terms).toContainText("4. Подписка и оплата");
+    await expect(terms).toContainText("со счёта мобильного телефона");
+    await expect(terms).toContainText("базовая блокировка");
+    await expect(page.locator("section#payments")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText(TODAYS_RU_TERMS_PAYMENTS);
+    // The sections around it did not move.
+    await expect(page.locator("section#privacy")).toContainText("7. Конфиденциальность");
+
+    await page.goto("/ru/privacy-policy");
+    const policy = page.locator("section#billing");
+    await expect(policy).toContainText("12. Оплата подписки");
+    await expect(policy).toContainText("отдельной базе данных на территории России");
+    await expect(policy).toContainText("зашифрованном виде");
+    await expect(page.locator("section#payments")).toHaveCount(0);
+    await expect(page.locator("section#contact [data-testid=privacy-contact-not-live]")).toBeVisible();
+  });
+
+  test("the home teaser names the subscription and links /ru/pricing", async ({ page }) => {
+    await page.goto("/ru");
+    const teaser = page.locator("#pricing");
+    await expect(teaser).toContainText("Подписка со счёта телефона");
+    await expect(teaser).toContainText("14 дней");
+    await expect(teaser).toContainText("от 99 ₽ в месяц");
+    await expect(teaser).not.toContainText(TODAYS_RU_TEASER);
+    await expect(page.getByTestId("home-plans-link")).toHaveAttribute("href", "/ru/pricing");
+  });
+
+  test("the sitemap lists the cancel page in every language", async ({ request }) => {
+    const xml = await (await request.get("/sitemap.xml")).text();
+    expect(xml).toContain("https://cleanway.ai/ru/cancel");
+    expect(xml).toContain("https://cleanway.ai/cancel");
+  });
+});

@@ -1591,7 +1591,12 @@
       "free_only_body": "Bloquear sitios fraudulentos y comprobar enlaces y mensajes no cuesta nada ni requiere cuenta. En tu país no hay planes de pago por ahora.",
       "free_only_cta": "Descargar la app para Android",
       "free_body_with_plans": "Bloquear sitios fraudulentos y comprobar enlaces y mensajes no cuesta nada ni requiere cuenta. Los planes de pago son opcionales y nunca desactivan la protección en sí.",
-      "plans_link": "Ver planes de pago"
+      "plans_link": "Ver planes de pago",
+      "operator": {
+        "heading": "Suscripción con cargo a la cuenta del teléfono",
+        "body": "Durante los primeros {days, plural, one {# día} other {# días}} la protección funciona sin ningún cargo. Después es una suscripción desde {solo} ₽ al mes, con cargo a la cuenta del móvil, sin tarjeta bancaria. Puedes cancelar cuando quieras.",
+        "plans_link": "Precios y qué incluye"
+      }
     },
     "privacy": {
       "heading": "La privacidad no es una función. Es la arquitectura.",
@@ -1761,6 +1766,98 @@
       "free_cta": "Descargar la app para Android",
       "footer_cta_title": "Empieza gratis hoy",
       "footer_cta_body": "Sin tarjeta. Mejora tu plan solo cuando tenga sentido para ti."
+    },
+    "billing": {
+      "meta_title": "Suscripción a Cleanway: precios y condiciones",
+      "meta_description": "Protección contra sitios fraudulentos por suscripción: {solo} ₽ al mes por un teléfono, {family3} ₽ por tres, {family5} ₽ por cinco. Cargo a la cuenta del móvil; sin cargos durante los primeros {days, plural, one {# día} other {# días}}.",
+      "badge": "Cargo a la cuenta del teléfono",
+      "title": "Protección contra estafadores, para ti y para tus padres",
+      "subtitle": "Cleanway bloquea los sitios fraudulentos en todas las apps del teléfono y revisa los enlaces de SMS y mensajería. Los primeros {days, plural, one {# día} other {# días}} son de prueba: no se cobra nada. Después es una suscripción a los precios de abajo; puedes cancelar cuando quieras.",
+      "trial_note": "Primeros {days, plural, one {# día} other {# días}}: sin cargos, sin introducir número de teléfono ni tarjeta.",
+      "plans_title": "Planes",
+      "per_month": "{price} ₽ al mes",
+      "per_device": "≈ {price} ₽ por teléfono",
+      "best_value": "El más conveniente",
+      "plan_solo_name": "Un teléfono",
+      "plan_solo_for": "Para ti",
+      "plan_family3_name": "Tres teléfonos",
+      "plan_family3_for": "Para ti y tus padres",
+      "plan_family5_name": "Cinco teléfonos",
+      "plan_family5_for": "Para toda la familia",
+      "plan_cta": "Descargar la app y probar",
+      "plan_cta_hint": "La suscripción se activa en la app, después del periodo de prueba y solo con tu confirmación.",
+      "included_title": "Qué incluye cada plan",
+      "included_items": [
+        "Bloqueo de sitios fraudulentos conocidos en todas las apps del teléfono: navegador, mensajería, correo",
+        "Revisión de los enlaces de SMS y mensajería antes de que se abran",
+        "Revisión de mensajes sospechosos en el propio teléfono",
+        "La lista de sitios fraudulentos se actualiza varias veces al día",
+        "En los planes de tres y cinco teléfonos paga una persona y todos los teléfonos del plan quedan protegidos",
+        "Soporte en ruso"
+      ],
+      "how_title": "Cómo funciona",
+      "how_1_title": "Instala la app",
+      "how_1_body": "Descarga Cleanway para Android y activa la protección. Durante {days, plural, one {# día} other {# días}} funciona sin ningún cargo; no hay que introducir número de teléfono ni tarjeta.",
+      "how_2_title": "Activa la suscripción en la app",
+      "how_2_body": "Elige un plan, indica tu número de teléfono y confirma con el código SMS. El precio y la fecha del cargo se muestran antes de confirmar.",
+      "how_3_title": "El cargo va a la cuenta del teléfono",
+      "how_3_body": "Tu operador cobra {solo}, {family3} o {family5} ₽ una vez al mes de la cuenta de tu número. No hace falta tarjeta bancaria y nunca recibimos sus datos.",
+      "how_4_title": "Cancelar en un paso",
+      "how_4_body": "Cancela en la app, por SMS o a través del soporte. Tras cancelar no se cobra nada más y la protección sigue hasta el final del mes pagado.",
+      "faq_title": "Preguntas frecuentes",
+      "faq_auto_q": "¿Se cobrará solo al terminar la prueba?",
+      "faq_auto_a": "No. Cuando terminen los {days, plural, one {# día} other {# días}} de prueba no se cobra nada hasta que tú mismo elijas un plan en la app y lo confirmes con un código SMS. Sin tu confirmación no hay pago.",
+      "faq_cancel_q": "¿Cómo cancelo?",
+      "faq_cancel_a": "En la app: «Suscripción» → «Cancelar suscripción». O envía un SMS con la palabra СТОП al número corto que aparece en la app y en la página de cancelación. Tras cancelar no se cobra nada más; la protección sigue hasta el final del mes pagado.",
+      "faq_nomoney_q": "¿Qué pasa si no hay saldo en la cuenta?",
+      "faq_nomoney_a": "Nunca dejamos la cuenta en negativo ni generamos deuda. Si el día del cobro no hay saldo suficiente, el operador lo reintenta varias veces durante los {grace, plural, one {# día} other {# días}} siguientes, y la protección sigue funcionando por completo todo ese tiempo. Si el pago sigue sin realizarse, {lapse}",
+      "lapse_basic": "la suscripción se pausa, pero el bloqueo básico según la lista de sitios fraudulentos sigue funcionando sin cargo: la lista se actualiza una vez por semana y el escudo de la app se pone amarillo. Puedes volver a suscribirte cuando quieras.",
+      "lapse_off": "la suscripción se pausa y la protección se desactiva hasta el siguiente pago. Puedes volver a suscribirte cuando quieras.",
+      "faq_network_q": "¿Funciona por Wi-Fi y con otro operador?",
+      "faq_network_a": "Sí. La protección funciona en cualquier red: Wi-Fi, itinerancia o un teléfono con la SIM de otro operador. El cargo va a la cuenta del número con el que te suscribiste. El cargo a la cuenta del teléfono está disponible con los grandes operadores rusos; si el tuyo no lo admite, la app lo indica antes de confirmar.",
+      "faq_number_q": "¿Quién más conoce mi número de teléfono?",
+      "faq_number_a": "El número solo hace falta para el cobro: lo reciben tu operador y el agregador de pagos que procesan el pago. Lo guardamos cifrado en una base de datos separada en Rusia y nunca lo vendemos. Los detalles están en la política de privacidad.",
+      "faq_refund_q": "¿Puedo recuperar mi dinero?",
+      "faq_refund_a": "Sí, si la protección no funcionó por culpa nuestra o si se realizó un cargo después de que cancelaras. Escribe al soporte y te devolvemos ese mes. Los detalles están en la página de cancelación y reembolso.",
+      "requisites_title": "Quién presta el servicio",
+      "requisites_name": "Prestador: {name}",
+      "requisites_inn": "INN (número fiscal) {inn}",
+      "requisites_ogrnip": "OGRNIP (número de registro) {ogrnip}",
+      "requisites_pending": "Los datos del prestador (empresario individual, INN, OGRNIP) se publican aquí y en la app antes de que se pueda activar una suscripción.",
+      "requisites_note": "La suscripción empieza solo después de que veas el precio y lo confirmes con un código SMS. El precio de una suscripción activa no cambia: los precios nuevos solo se aplican a suscripciones nuevas.",
+      "support_title": "Soporte",
+      "support_body": "Preguntas sobre la suscripción, los cargos y los reembolsos: escríbenos. Indica el número de teléfono de la suscripción y la fecha del cargo.",
+      "support_phone": "Teléfono de soporte: {phone}",
+      "link_cancel": "Cómo cancelar y obtener un reembolso",
+      "link_terms": "Condiciones de uso",
+      "link_privacy": "Política de privacidad"
+    },
+    "cancel": {
+      "meta_title": "Cancelar la suscripción a Cleanway y reembolsos",
+      "meta_description": "Cancela en la app, por SMS o a través del soporte. Tras cancelar no se cobra nada. Reembolso si la protección falló por culpa nuestra o se cobró después de cancelar.",
+      "back": "Volver a los precios",
+      "title": "Cancelar la suscripción y reembolsos",
+      "intro": "Puedes cancelar cuando quieras de cualquiera de las formas de abajo. Tras cancelar no se cobra nada más y la protección sigue hasta el final del mes ya pagado.",
+      "ways_title": "Cómo cancelar",
+      "way_app_title": "En la app, en un paso",
+      "way_app_body": "Abre Cleanway → «Suscripción» → «Cancelar suscripción» y confirma. No hace falta código SMS.",
+      "way_sms_title": "Por SMS",
+      "way_sms_body": "Envía la palabra СТОП al número {number} desde el teléfono de la suscripción. Un SMS de respuesta confirma la cancelación.",
+      "way_sms_pending": "El número corto para SMS aparecerá aquí cuando el operador lo asigne. Hasta entonces, cancela en la app o a través del soporte.",
+      "way_support_title": "A través del soporte",
+      "way_support_body": "Escríbenos indicando el número de teléfono de la suscripción. La cancelamos el mismo día laborable y lo confirmamos por mensaje.",
+      "way_operator_title": "Con tu operador",
+      "way_operator_body": "Las suscripciones con cargo a la cuenta del teléfono aparecen en el área de cliente y la app de tu operador; allí también puedes desactivarlas.",
+      "after_title": "Qué pasa después de cancelar",
+      "after_1": "No hay más cargos, ni este mes ni después.",
+      "after_2": "La protección sigue hasta el final del mes pagado.",
+      "after_3": "Después, {lapse}",
+      "after_4": "Puedes volver a suscribirte cuando quieras; el periodo de prueba no se ofrece una segunda vez.",
+      "refund_title": "Reembolsos",
+      "refund_body": "Devolvemos el mes si la protección no funcionó por culpa nuestra o si se realizó un cargo después de que cancelaras. Escribe al soporte con el número de teléfono y la fecha del cargo. El dinero vuelve a la cuenta del teléfono o de la forma que ofrezca tu operador, normalmente en un plazo de 10 días laborables.",
+      "refund_law": "Esto no limita tus derechos según la legislación de protección al consumidor.",
+      "contact_title": "Soporte",
+      "contact_pending": "El buzón de soporte aún se está configurando; la dirección aparecerá aquí en cuanto funcione. Hasta entonces, cancela en la app."
     },
     "transparency": {
       "page_title": "Informe de transparencia",
@@ -2032,6 +2129,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "4. Planes de pago",
           "paragraphs": [
             "En algunos países Cleanway ofrece planes de pago con extras. En Rusia no se ofrecen planes de pago. Donde existen, el pago lo gestiona Stripe, el precio y el periodo se muestran antes de pagar y puedes cancelar en cualquier momento: el plan sigue activo hasta el final del periodo pagado. Los reembolsos se tramitan según exija la ley. Bloquear sitios fraudulentos nunca será una función de pago."
@@ -2089,7 +2187,20 @@
           "title": "11. Contacto",
           "paragraphs": []
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "4. Suscripción y pago",
+          "paragraphs": [
+            "En Rusia Cleanway es una suscripción con cargo a la cuenta del móvil a través de tu operador y de un agregador de pagos. El precio del plan y la fecha del cargo se muestran antes de confirmar; la suscripción empieza solo después de que la confirmes con un código SMS desde tu número. Los primeros días tras la instalación son un periodo de prueba sin cargo; su duración y los precios están en la página de precios.",
+            "La suscripción se renueva cada mes hasta que la canceles. Puedes cancelar en la app, por SMS o a través del soporte; tras cancelar no se cobra nada más y la protección sigue hasta el final del mes pagado. Nunca dejamos la cuenta en negativo ni generamos deuda. Si la protección no funcionó por culpa nuestra o se cobró después de cancelar, devolvemos ese mes; esto no limita tus derechos legales.",
+            "Los precios solo pueden cambiar para suscripciones nuevas: una suscripción activa mantiene el precio con el que se inició. En otros países los planes de pago se abonan con tarjeta bancaria a través de Stripe; allí también se muestran el precio y el periodo antes de pagar, y puedes cancelar cuando quieras."
+          ]
+        },
+        "lapse_basic": "Si un pago sigue fallando tras los reintentos, la suscripción se pausa, pero el bloqueo básico de los sitios fraudulentos conocidos sigue funcionando sin cargo; la lista se actualiza una vez por semana.",
+        "lapse_off": "Si un pago sigue fallando tras los reintentos, la suscripción se pausa y la protección se desactiva hasta el siguiente pago."
+      }
     },
     "privacy_policy": {
       "meta_title": "Política de privacidad — Cleanway",
@@ -2193,6 +2304,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "12. Pagos",
           "paragraphs": [
             "En Rusia no se ofrecen planes de pago. Donde existen, el pago se hace a través de Stripe: Stripe recibe tu correo y el plan elegido y gestiona la tarjeta por su cuenta. Nunca vemos ni guardamos los datos de la tarjeta."
@@ -2244,7 +2356,19 @@
             "Si cambiamos esta política, publicaremos la nueva versión en esta página con una fecha nueva."
           ]
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "12. Pago de la suscripción",
+          "paragraphs": [
+            "En Rusia la suscripción se cobra a la cuenta del móvil. Para activarla indicas un número de teléfono: el tuyo o el del familiar que paga. El periodo de prueba no necesita número.",
+            "El número de teléfono, el plan, las fechas y el historial de cargos se guardan en una base de datos separada ubicada en Rusia, aparte del resto de los datos de Cleanway. El número se almacena cifrado; en registros, informes de errores y pantallas se muestra solo en parte. No tenemos datos de tarjetas bancarias: en este pago no interviene ninguna tarjeta.",
+            "Tu operador y el agregador de pagos que procesan el cargo reciben el número y el importe; tratan esos datos según sus propias normas. También guardamos la constancia del consentimiento: qué texto y qué precio viste y cómo confirmaste.",
+            "Los registros de pagos y consentimientos se conservan el tiempo que exigen las normas contables y fiscales, hasta cinco años; terminada la suscripción y pasado ese plazo, el número de teléfono se elimina de la base de datos. En otros países el pago se realiza a través de Stripe: Stripe recibe tu correo y el plan elegido y gestiona la tarjeta por sí mismo; nunca vemos ni guardamos los datos de la tarjeta."
+          ]
+        }
+      }
     }
   },
   "email": {
