@@ -1,6 +1,6 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-import { BlocklistStatus, CleanwayVpnModuleEvents, ShieldBlockEntry } from './CleanwayVpn.types';
+import { BlocklistStatus, CallStatePayload, CleanwayVpnModuleEvents, ShieldBlockEntry } from './CleanwayVpn.types';
 
 declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   /** Requests VPN consent (once) then starts the local DNS-filter VPN. Resolves false if the user declines. */
@@ -79,6 +79,18 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   notificationsEnabled?(): boolean;
   /** Open this app's system notification settings. */
   openNotificationSettings?(): boolean;
+  /** Is the person on the phone, and when did the last call end? Optional: older native builds lack it. */
+  callState?(): CallStatePayload;
+  /** The app saw something the after-call notice should name (CallGuard.kt). */
+  noteCallEvent?(kind: string): void;
+  /** Bring the phone app (its in-call screen) to the front. */
+  showInCallScreen?(): boolean;
+  /** The saved "close one" number, or null. Kept on the phone only. */
+  closeContactPhone?(): string | null;
+  /** Save (or clear with null) the "close one" number; false when not dialable. */
+  setCloseContactPhone?(phone: string | null): boolean;
+  /** Open the phone app on the saved number; false when none is saved. */
+  dialCloseContact?(): boolean;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

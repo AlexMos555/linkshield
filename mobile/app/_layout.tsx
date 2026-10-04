@@ -21,6 +21,7 @@ import { restoreSavedLocale } from "../src/i18n";
 // zero-cost import in those environments.
 import "../src/lib/sentry";
 import { AccountLockedModal } from "../src/components/AccountLockedModal";
+import { CallGuardProvider } from "../src/components/call/CallGuardProvider";
 import { isMessageCheckSupported } from "../modules/cleanway-vpn";
 import { handOffMessage } from "../src/services/message-handoff";
 import { isMessageText } from "../src/utils/message-verdict";
@@ -172,6 +173,7 @@ export default function RootLayout() {
 
   return (
     <ShareIntentProvider options={{ resetOnBackground: true }}>
+    <CallGuardProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -202,12 +204,15 @@ export default function RootLayout() {
             EXPO_PUBLIC_CAPTCHA_URL is set; it exists so the route is registered
             (and headerless) the moment it is. */}
         <Stack.Screen name="captcha-return" options={{ headerShown: false }} />
+        {/* The stop screen on demand ("I'm being called"); also where the after-call notice lands. */}
+        <Stack.Screen name="call-guard" options={{ title: t("mobile.call_guard.nav_title") }} />
       </Stack>
       {/* Global overlay — subscribes to accountLockedEvents and renders
           the restore CTA whenever any authed call returns 410 Gone. */}
       <ShareIntentRouter />
       <OnboardingGate />
       <AccountLockedModal />
+    </CallGuardProvider>
     </ShareIntentProvider>
   );
 }

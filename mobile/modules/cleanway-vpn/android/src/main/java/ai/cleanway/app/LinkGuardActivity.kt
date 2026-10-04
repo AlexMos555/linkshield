@@ -75,7 +75,12 @@ class LinkGuardActivity : Activity() {
      */
     private fun recordStopped(listed: String) {
         try {
-            BlockLog.record(this, listed, System.currentTimeMillis(), BlockLog.KIND_BLOCKED, BlockLog.SOURCE_LINK)
+            val now = System.currentTimeMillis()
+            // A link tapped during (or right after) a phone call is what the
+            // after-call notice is about (CallGuard); a repeat is not a new event.
+            if (BlockLog.record(this, listed, now, BlockLog.KIND_BLOCKED, BlockLog.SOURCE_LINK)) {
+                CallGuard.noteEvent(this, CallGuard.EVENT_SITE_BLOCKED, now)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "block_log_error: ${e.javaClass.simpleName}")
         }

@@ -75,6 +75,9 @@ class CleanwayVpnService : VpnService() {
     /** Unregisters the Private DNS setting observer; null while not watching. */
     private var stopPrivateDnsWatch: (() -> Unit)? = null
 
+    /** This service holds the call watcher (CallState) while the tunnel is up. */
+    private var callWatched = false
+
     @Volatile
     private var running = false
 
@@ -302,6 +305,11 @@ class CleanwayVpnService : VpnService() {
 
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
 
+        // While the tunnel is up, follow the phone's calls (no permission: the
+        // audio mode) so a block during a call can be named after it.
+        CallState.acquire(this)
+        callWatched = true
+
         // The user can switch Private DNS to strict while we run — from that
         // moment every lookup on the phone fails. Step aside immediately and
         // say why, rather than leaving a green shield over a dead internet.
@@ -356,6 +364,10 @@ class CleanwayVpnService : VpnService() {
     private fun stopVpn() {
         running = false
         isRunning = false
+        if (callWatched) {
+            callWatched = false
+            CallState.release(this)
+        }
         dynamicBlocked = emptySet()
         pausedUntilMs = 0L
         blocklistSync?.stop()
@@ -704,6 +716,9 @@ class CleanwayVpnService : VpnService() {
         // only make an open History re-read the log on every packet of an app
         // that keeps polling a blocked host.
         if (!isNew) return
+        // A stop during or right after a phone call is what the after-call
+        // notice is about (CallGuard); a repeat is not a new event there either.
+        CallGuard.noteEvent(this, if (kind == BlockLog.KIND_WARNED) CallGuard.EVENT_SITE_WARNED else CallGuard.EVENT_SITE_BLOCKED, now)
         sendBroadcast(
             Intent(ACTION_DOMAIN_BLOCKED).apply {
                 setPackage(packageName)

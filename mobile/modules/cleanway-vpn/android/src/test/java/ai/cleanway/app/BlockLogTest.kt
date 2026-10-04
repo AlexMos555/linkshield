@@ -225,43 +225,54 @@ class BlockLogTest {
         assertEquals(BlockLog.parse(recorded), BlockLog.coalesce(raw))
     }
 
+    // The notification throttle moved to AlertBudget (plan №7): the four
+    // cases below keep the history of WHY each rule exists; AlertBudgetTest
+    // has the caps themselves.
+
     @Test
-    fun `notify dedupe - same domain within window is suppressed, others pass`() {
-        val w = BlockNotifier.PER_DOMAIN_WINDOW_MS
-        val t = BlockNotifier.Throttle()
-        assertTrue(t.shouldNotify("a.example", now = 0L))
-        assertFalse(t.shouldNotify("a.example", now = w - 1L))
-        assertTrue(t.shouldNotify("b.example", now = w - 1L))
-        // The window restarted at w - 1 (the suppressed lookup), not at 0.
-        assertFalse(t.shouldNotify("a.example", now = w + 1L))
-        assertTrue(t.shouldNotify("a.example", now = 3 * w))
+    fun `notify dedupe - same domain within the burst window is dropped, others pass`() {
+        val w = AlertBudget.BURST_WINDOW_MS
+        val b = AlertBudget()
+        val danger = AlertBudget.Severity.DANGER
+        assertEquals(AlertBudget.Verdict.HEADS_UP, b.decide(danger, "a.example", now = 0L))
+        assertEquals(AlertBudget.Verdict.DROP, b.decide(danger, "a.example", now = w - 1L))
+        assertEquals(AlertBudget.Verdict.HEADS_UP, b.decide(danger, "b.example", now = w - 1L))
+        // The window restarted at w - 1 (the dropped lookup), not at 0.
+        assertEquals(AlertBudget.Verdict.DROP, b.decide(danger, "a.example", now = w + 1L))
+        // A new try after the window is shown again — silently, inside the
+        // site's six-hour pop-up window — never dropped.
+        assertEquals(AlertBudget.Verdict.SILENT, b.decide(danger, "a.example", now = 3 * w))
     }
 
     @Test
-    fun `notify - an app polling a blocked host alerts a few times an hour, not every minute`() {
-        val t = BlockNotifier.Throttle()
-        val alerts = (0 until 60).count { t.shouldNotify("beacon.example", now = it * 60_000L) }
-        assertEquals(BlockNotifier.MAX_PER_DOMAIN_PER_HOUR, alerts)
-        // An hour after the first alert the budget frees up again.
-        assertTrue(t.shouldNotify("beacon.example", now = 61 * 60_000L))
+    fun `notify - an app polling a blocked host pops up once in six hours, not every minute`() {
+        val b = AlertBudget()
+        val verdicts = (0 until 60).map { b.decide(AlertBudget.Severity.DANGER, "beacon.example", now = it * 60_000L) }
+        assertEquals(1, verdicts.count { it == AlertBudget.Verdict.HEADS_UP })
+        // Every later poll refreshes the same notification without a sound.
+        assertEquals(59, verdicts.count { it == AlertBudget.Verdict.SILENT })
+        // Six hours after the pop-up the site may pop up again.
+        assertEquals(AlertBudget.Verdict.HEADS_UP, b.decide(AlertBudget.Severity.DANGER, "beacon.example", now = 6 * 60 * 60_000L + 60_000L))
     }
 
     @Test
-    fun `notify - one attempt's lookup burst and auto-reloads alert once, a new attempt alerts again`() {
-        val t = BlockNotifier.Throttle()
+    fun `notify - one attempt's lookup burst and auto-reloads alert once, a new attempt is shown again`() {
+        val b = AlertBudget()
         // A, AAAA, HTTPS record, then the browser's 1 s / 5 s / 30 s reloads.
         val burst = listOf(0L, 15L, 40L, 1_000L, 6_000L, 36_000L)
-        assertEquals(1, burst.count { t.shouldNotify("scam.example", now = it) })
-        // The person tries the site again a minute later: it must pop up again.
-        assertTrue(t.shouldNotify("scam.example", now = 96_000L))
+        assertEquals(1, burst.count { b.decide(AlertBudget.Severity.DANGER, "scam.example", now = it) != AlertBudget.Verdict.DROP })
+        // The person tries the site again a minute later: the notification is
+        // refreshed (1.0.3: a second try must not look like the shield did
+        // nothing) — without a second pop-up (plan №7: one per site in 6 h).
+        assertEquals(AlertBudget.Verdict.SILENT, b.decide(AlertBudget.Severity.DANGER, "scam.example", now = 96_000L))
     }
 
     @Test
-    fun `notify storm guard - at most N notifications per minute`() {
-        val t = BlockNotifier.Throttle()
-        var shown = 0
-        for (i in 0 until 20) if (t.shouldNotify("d$i.example", now = i * 100L)) shown++
-        assertEquals(BlockNotifier.MAX_PER_MINUTE, shown)
+    fun `notify storm guard - at most three pop-ups an hour, the rest collapse into one summary`() {
+        val b = AlertBudget()
+        val verdicts = (0 until 20).map { b.decide(AlertBudget.Severity.DANGER, "d$it.example", now = it * 100L) }
+        assertEquals(AlertBudget.MAX_HEADS_UP_PER_HOUR, verdicts.count { it == AlertBudget.Verdict.HEADS_UP })
+        assertEquals(AlertBudget.Verdict.SUMMARY(17), verdicts.last())
     }
 }
 

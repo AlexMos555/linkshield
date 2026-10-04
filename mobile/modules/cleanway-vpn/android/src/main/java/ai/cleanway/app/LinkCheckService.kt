@@ -90,10 +90,10 @@ object LinkCheck {
             val answer = LinkCheckRunner.run(host, fetcher) ?: return
             when (LinkVerdictPolicy.decide(answer)) {
                 LinkAction.NONE -> Unit
-                LinkAction.WARN -> warn(context, host)
+                LinkAction.WARN -> warn(context, host, answer.level)
                 LinkAction.WARN_AND_BLOCK -> {
                     CleanwayVpnService.instance?.takeIf { CleanwayVpnService.isRunning }?.addDynamicBlock(host)
-                    warn(context, host)
+                    warn(context, host, answer.level)
                 }
             }
         } catch (e: Exception) {
@@ -112,9 +112,11 @@ object LinkCheck {
 
     /**
      * The site is (probably) open already: say so now, and keep it in History
-     * — a notification can be swiped away, the History entry stays.
+     * — a notification can be swiped away, the History entry stays. How loud
+     * follows the server's [level]: "dangerous" pops up, "caution" waits in
+     * the shade (BlockNotifier.severityOf).
      */
-    private fun warn(context: Context, host: String) {
+    private fun warn(context: Context, host: String, level: String) {
         val now = System.currentTimeMillis()
         val isNew = try {
             BlockLog.record(context, host, now, BlockLog.KIND_WARNED, BlockLog.SOURCE_LINK)
@@ -122,9 +124,12 @@ object LinkCheck {
             Log.w(TAG, "block_log_error: ${e.javaClass.simpleName}")
             true
         }
-        BlockNotifier.notify(context, host, BlockLog.KIND_WARNED, now)
+        BlockNotifier.notify(
+            context, host, BlockLog.KIND_WARNED, now, BlockNotifier.severityOf(BlockLog.KIND_WARNED, level),
+        )
         Log.i(TAG, "link_check_warned")
         if (!isNew) return
+        CallGuard.noteEvent(context, CallGuard.EVENT_SITE_WARNED, now)
         try {
             context.sendBroadcast(
                 Intent(CleanwayVpnService.ACTION_DOMAIN_BLOCKED)

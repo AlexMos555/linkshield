@@ -20,7 +20,9 @@ import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
 import { useLinkGuard } from "../../src/hooks/useLinkGuard";
 import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
 import { MessageCheckCard } from "../../src/components/shield/MessageCheckCard";
-import { isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
+import { callState, isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
+import { CallHelpButton } from "../../src/components/call/CallHelpButton";
+import { useCallGuard } from "../../src/components/call/CallGuardProvider";
 import type { HistoryFilter } from "../../src/utils/history-model";
 
 /**
@@ -77,6 +79,13 @@ export default function HomeScreen() {
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [pauseSheetVisible, setPauseSheetVisible] = useState(false);
   const network = useNetworkShield();
+  // The stop screen: a pause asked for during (or right after) a phone call
+  // is what a scammer asks for, so it goes through the guard first.
+  const callGuard = useCallGuard();
+  // "I'm being called" only where the phone's calls can be seen at all
+  // (Android with the native module); elsewhere the button would open a
+  // screen about calls the app knows nothing of.
+  const [callHelp] = useState(() => callState() !== null);
   // The link guard (Android): when Cleanway is the default link handler, tapped
   // links are checked before they open — the exact SMS-phishing defense.
   const linkGuard = useLinkGuard();
@@ -183,7 +192,7 @@ export default function HomeScreen() {
    * second, and "keep protection" the most prominent choice.
    */
   function confirmPause() {
-    setPauseSheetVisible(true);
+    callGuard.guard("pause", () => setPauseSheetVisible(true));
   }
 
   return (
@@ -202,6 +211,12 @@ export default function HomeScreen() {
       />
 
       <UpdateBanner status={update} />
+
+      {callHelp && (
+        <View style={s.section}>
+          <CallHelpButton onPress={() => router.push("/call-guard")} />
+        </View>
+      )}
 
       {needsSetup && (
         <>

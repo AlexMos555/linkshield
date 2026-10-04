@@ -38,8 +38,14 @@ object MessageCheck {
         val allowed = BlocklistHolder.allowed(context)
         val analyzer = MessageAnalyzer(rules(context)) { host -> LinkPolicy.classify(host, list, allowed) }
         val usable = list != null && !list.revoked && list.count > 0
+        val analysis = analyzer.analyze(text)
+        // Only the verdict leaves this function for the after-call notice
+        // (CallGuard) — never the text, never the links.
+        if (analysis.verdict == MessageVerdict.DANGEROUS) {
+            CallGuard.noteEvent(context, CallGuard.EVENT_MESSAGE_DANGEROUS)
+        }
         return Result(
-            analysis = analyzer.analyze(text),
+            analysis = analysis,
             listAvailable = usable,
             listStale = usable && isStale(list),
         )
