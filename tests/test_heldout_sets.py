@@ -243,6 +243,49 @@ def test_snapshot_serves_a_cached_body_without_fetching_again(tmp_path):
     }
 
 
+def test_main_writes_the_dated_report_and_latest_from_one_snapshot(tmp_path, monkeypatch, caplog):
+    """The command line end to end: four stubbed builds, a canned PhishTank
+    dump and a TweetFeed body already in the snapshot, --days, --out and
+    --latest honoured, and the table logged with its circularity marks."""
+    import asyncio
+    import gzip
+    import logging
+
+    rdd = d1._load_refresh_module()
+    _stub_refresh(monkeypatch, rdd)
+    monkeypatch.setattr(d1, "_load_refresh_module", lambda: rdd)
+    monkeypatch.delenv(rdd.phishtank_feed.KEY_ENV, raising=False)
+    snap_dir = tmp_path / "snap"
+    d1.Snapshot(snap_dir).path_for(rdd.TWEETFEED_YEAR).write_text(TWEETFEED, encoding="utf-8")
+
+    async def _dump(self):
+        return gzip.compress(PHISHTANK.encode("utf-8"))
+
+    monkeypatch.setattr(d1.Snapshot, "phishtank_dump", _dump)
+    out = tmp_path / "reports" / "day-one.json"
+    out.parent.mkdir()
+    monkeypatch.setattr(sys, "argv", ["eval_day_one_coverage.py", "--snapshot-dir", str(snap_dir),
+                                      "--days", "1,30", "--out", str(out), "--latest"])
+
+    with caplog.at_level(logging.INFO, logger="day-one-coverage"):
+        assert asyncio.run(d1.main()) == 0
+
+    report = json.loads(out.read_text())
+    assert report == json.loads((out.parent / "day-one-coverage-latest.json").read_text())
+    assert report["freshness_days"] == [1, 30]
+    assert set(report["variants"]) == {"all", "licensed", "all-minus-tweetfeed", "licensed-minus-tweetfeed"}
+    assert report["variants"]["all"]["false_positives_top10k"] == 0
+    assert "hashes" not in json.dumps(report)
+    # evil-bank.xyz is the one listed name: of the three fresh PhishTank
+    # hosts (www.evil-bank.xyz, 203.0.113.9, evil-bank.xyz) it covers two.
+    assert report["headline"]["phishtank"]["coverage_all_pct"]["all"] == 66.7
+    assert set(report["headline"]["tweetfeed"]["coverage_all_pct"]) == {"all-minus-tweetfeed",
+                                                                        "licensed-minus-tweetfeed"}
+    table = [r.getMessage() for r in caplog.records if r.getMessage().startswith(("phishtank", "tweetfeed"))]
+    assert len(table) == 4
+    assert any("tweetfeed" in line and "all=0.0%*" in line for line in table), "a source's sample is marked"
+
+
 @pytest.mark.parametrize("value,host", [
     ("https://A.Example.com/x", "a.example.com"),
     ("Example.com.", "example.com"),
