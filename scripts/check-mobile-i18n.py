@@ -19,6 +19,12 @@ Three invariants, each of which has been violated for real:
    pins compatibilityJSON v3, so an unresolved plural suffix falls back to
    the base key).
 
+4. NO LINKS, NO PHONE NUMBERS IN OUR OWN NOTIFICATIONS — the
+   `mobile.android_native.*` strings are what the service posts (block
+   alerts, the after-call notice). A link or a number in a notification is
+   exactly what a scam notification looks like, and the person must never
+   learn to tap one of ours; the site name stays plain text.
+
 Dynamic template-literal keys (`mobile.result.verdict_${level}`) cannot be
 checked statically and are intentionally out of scope here.
 """
@@ -32,6 +38,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GEN = os.path.join(ROOT, "mobile", "i18n")
 PH = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 KEY_REF = re.compile(r'["`](mobile\.[a-z0-9_.]+)["`]')
+NATIVE_PREFIX = "mobile.android_native."
+LINK = re.compile(r"https?://|www\.|tel:", re.IGNORECASE)
+PHONE = re.compile(r"\+?\d[\d\s\-()]{6,}\d")
 
 failures = []
 
@@ -62,6 +71,12 @@ for code, flat in sorted(locales.items()):
         failures.append(f"{code}: placeholder mismatch in {ph_bad[:8]}")
     if empty:
         failures.append(f"{code}: empty values {empty[:5]}")
+    tappable = [
+        k for k, v in flat.items()
+        if k.startswith(NATIVE_PREFIX) and (LINK.search(str(v)) or PHONE.search(str(v)))
+    ]
+    if tappable:
+        failures.append(f"{code}: notification strings carry a link or a phone number {tappable[:5]}")
 
 used = set()
 for pattern in ("mobile/app/**/*.tsx", "mobile/src/**/*.ts", "mobile/src/**/*.tsx"):

@@ -223,6 +223,27 @@ jobs:
         # checked — the router reuses the screen, so each share needs its id.
         run: node mobile/scripts/test-message-handoff.mjs
 
+      - name: Android permission guard
+        # The browser-downloaded APK never asks for SMS, phone-state,
+        # call-log, call-answering, call-screening, notification-listener,
+        # accessibility or overlay permissions — call awareness is the audio
+        # mode alone (CallState.kt). Checks app.json, the native module's
+        # manifest and Kotlin, and the config plugins. The Kotlin twin
+        # (PolicyGuardTest) runs only in the local build sandbox.
+        run: node mobile/scripts/check-android-permissions.mjs
+
+      - name: Call stop-screen table test
+        # When the stop screen applies (in a call, 30 minutes after one, and
+        # never on a build that cannot see calls), the 5-second slow path a
+        # clock step cannot shorten, and merging the module's call events.
+        run: node mobile/scripts/test-call-guard.mjs
+
+      - name: Call state hook regression test
+        # useCallState under real React 18: a call already going on is seen
+        # at open, the window after a call closes by itself, the foreground
+        # re-reads the phone, and nothing is claimed where calls cannot be seen.
+        run: node mobile/scripts/test-call-state-hook.mjs
+
       - name: Captcha service unit tests
         # Pins the deep-link contract with /auth/captcha: https-only URL,
         # nonce must match, timeout/grace/cancel resolve null exactly once.
