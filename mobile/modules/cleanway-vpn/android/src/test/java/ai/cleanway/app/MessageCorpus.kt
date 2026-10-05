@@ -525,6 +525,10 @@ internal object MessageCorpus {
      * messages that use the same words: "недействителен", "прекратит действие",
      * an unpaid delivery, a login from a new device, a criminal case, a fine,
      * USSR deposits, Пятёрочка and Магнит, a job at Ozon or Wildberries.
+     * First pass on the unchanged rules (2026-10-05): 0/25 of the first list
+     * dangerous (22 caution, 3 no signals), 0/27 legit flagged. The three
+     * magnet / school-mark / Магнитогорск probes were added while writing the
+     * rules, to pin that a bare "магнит" or "пятёрочка" names no shop.
      */
 
     /** Must be DANGEROUS. */
@@ -600,6 +604,10 @@ internal object MessageCorpus {
         "Магнит: дарим 300 бонусов на покупки до 15.10! Подробнее в приложении или на magnit.ru",
         "Пятёрочка: доставка продуктов за 30 минут. Закажите в приложении: 5ka.ru",
         "Купил тебе магнит на холодильник в Казани, привезу в субботу",
+        // added while writing the rules: a magnet, a school mark and a city next to a foreign link
+        "Купить магнит на холодильник можно на сайте suvenir-shop.ru",
+        "Сегодня у Вани пятёрочка по русскому! Фото в родительском чате: t.me/class5b",
+        "Погода в Магнитогорске на выходные: magnitogorsk-pogoda.ru",
         // a real marketplace job, and a job with no brand
         "Ozon: приглашаем на работу в пункт выдачи рядом с домом, без опыта. Подробнее: job.ozon.ru",
         "Wildberries ищет кладовщиков, график 2/2, без опыта. Анкета: wb.ru/job",

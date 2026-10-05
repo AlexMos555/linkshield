@@ -119,8 +119,12 @@ class MessageHeldOutTest {
         // blind-spot families (tuned on new MessageCorpus phrasings, not on this
         // set): 0 false alarms, 60/60 flagged, 45/60 dangerous. The false-alarm
         // cap stays 0 — a hard requirement, not a floor to trade against.
+        // Raised again 2026-10-05 by the commit that upgraded the ten caution-only
+        // families of docs/EVALUATION_2026-10.md §3.5 (tuned on new MessageCorpus
+        // phrasings, SCAM_2026_10_UPGRADES): 0 false alarms, 60/60 flagged, 55/60
+        // dangerous. The five left at caution are caution by design (§3.7).
         const val MAX_FALSE_ALARMS = 0
         const val MIN_FLAGGED = 60
-        const val MIN_DANGEROUS = 45
+        const val MIN_DANGEROUS = 55
     }
 }

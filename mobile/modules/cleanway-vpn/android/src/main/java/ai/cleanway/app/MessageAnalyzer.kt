@@ -73,7 +73,10 @@ data class MessageAnalysis(
  * DANGEROUS: a blocklisted link; A+B+call back; A+B+foreign link; A+fee+
  * foreign link; a code asked for a person; a safe-account instruction; a
  * relative with a new number asking for money; a photo/app lure with a
- * foreign link or an .apk; bait plus a fee; an SMS-banking transfer command.
+ * foreign link or an .apk; bait plus a fee; an SMS-banking transfer command;
+ * a fine through a site named after a state body; a bank's payout through a
+ * foreign link; a marketplace job through a chat; the police with a criminal
+ * case, a coming call and orders to obey.
  * CAUTION: the partial combinations (A + foreign link; an authority + an
  * unknown number; pressure + a hidden link; a look-alike link; with no
  * organisation named, a fine, fee or payout through an unknown site…).
@@ -138,17 +141,20 @@ class MessageAnalyzer(
 
     private fun facts(link: FoundLink): LinkFacts {
         val official = rules.isOfficial(link.host)
+        val imitated = if (official) emptyList() else imitated(link.host)
         return LinkFacts(
             found = link,
             status = linkStatus(link.host),
             shortener = HostNames.under(link.host, rules.shorteners),
             messenger = HostNames.under(link.host, rules.messengers),
             official = official,
-            imitatesBrand = !official && imitatesBrand(link.host),
+            imitatesBrand = imitated.isNotEmpty(),
+            imitatesState = imitated.any { it.kind == MessageRules.Kind.GOV || it.kind == MessageRules.Kind.SECURITY },
         )
     }
 
     /**
+     * The organisations whose brand a non-official host carries.
      * "sberbank-bonus.ru", "gosuslugi-help.ru", "t2-gosuslugi.ru": a brand in a
      * name that is not the brand's. A short brand must stand as its own token
      * — "apple" inside goldapple.ru is a cosmetics shop, not Apple — and only
@@ -158,9 +164,9 @@ class MessageAnalyzer(
      * A Cyrillic name ("госуслуги-выплаты.рф") is read as written, not as its
      * punycode.
      */
-    private fun imitatesBrand(host: String): Boolean {
+    private fun imitated(host: String): List<MessageRules.Organisation> {
         val tokens = (hostTokens(host) + hostTokens(unicode(host))).distinct()
-        return rules.organisations.any { org ->
+        return rules.organisations.filter { org ->
             org.domainTokens.any { brand ->
                 tokens.any { t ->
                     t == brand || (brand.length >= 6 && (t.startsWith(brand) || t.endsWith(brand))) ||
@@ -235,9 +241,23 @@ class MessageAnalyzer(
         if (s.namesKnownBody && s.fee && foreign.isNotEmpty()) {
             out += listOf(R_ORGANISATION, R_PAYMENT) + linkReasons(foreign)
         }
-        // The state and the police do not pay out through a foreign link.
-        if (s.namesState && s.bait && foreign.isNotEmpty()) {
+        // The state and the police do not pay out through a foreign link, and
+        // neither does a bank we know by name ("компенсация по вкладам СССР").
+        if ((s.namesState && s.bait || s.namesBankByName && s.payout) && foreign.isNotEmpty()) {
             out += listOf(R_ORGANISATION, R_BAIT) + linkReasons(foreign)
+        }
+        // "Штраф 3 000 ₽, оплатите: parkovka-shtraf.ru": nobody named in words, but
+        // the site wears a state body's name, and the state collects on its own site.
+        val stateLookalike = foreign.filter { it.imitatesState }
+        if (s.threat && s.payAsked && stateLookalike.isNotEmpty()) {
+            out += listOf(R_THREAT, R_PAYMENT) + linkReasons(stateLookalike)
+        }
+        // "Подработка на Ozon: оценка товаров, пишите t.me/…": a marketplace does not
+        // hire for paid reviews through a Telegram or WhatsApp chat. A gig at a
+        // shop down the road may well be passed on that way, so only marketplaces.
+        val chats = foreign.filter { it.messenger }
+        if (s.namesMarketplace && s.jobOffer && chats.isNotEmpty()) {
+            out += listOf(R_ORGANISATION, R_BAIT) + linkReasons(chats)
         }
         if (s.codeAsked) out += if (s.namesAnyBody) listOf(R_CODE, R_ORGANISATION) else listOf(R_CODE)
         if (s.safeAccount && (s.moneyMove || s.namesAuthority || s.callbackStrong)) out += R_SAFE_ACCOUNT
@@ -245,6 +265,9 @@ class MessageAnalyzer(
         // FakeBoss: "это ваш руководитель — вам позвонит куратор из ФСБ, никому не
         // говорите". A real boss may pass on a police visit, never one to keep secret.
         if (s.boss && s.namesSecurity && s.callComing && s.secrecy) out += listOf(R_ORGANISATION, R_THREAT)
+        // "Возбуждено уголовное дело по ст. 275… следователь свяжется, выполняйте его
+        // указания": a real investigator summons, he does not order obedience by SMS.
+        if (s.namesSecurity && s.threatWords && s.callComing && s.obey) out += listOf(R_ORGANISATION, R_THREAT)
         if (s.malwareLure && foreign.isNotEmpty()) out += listOf(R_MALWARE_LURE) + linkReasons(foreign)
         if (s.install && foreign.any { it.suspicious || s.namesKnownBody }) out += listOf(R_INSTALL) + linkReasons(foreign)
         if (s.apkLinks.isNotEmpty()) out += listOf(R_INSTALL) + linkReasons(s.apkLinks)

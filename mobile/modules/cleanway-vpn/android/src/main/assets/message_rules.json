@@ -19,6 +19,8 @@
       "допрос*", "доверенност*", "выполнен* вход*",
       "долг", "долга", "долгу", "долгом", "долге", "долги", "долгов", "долгам", "будет заморож*", "будут заморож*",
       "заморож* счет*", "заморож* карт*", "заморож* средств*", "заморозк* счет*", "заморозк* средств*",
+      "по заявлени* треть* лиц*", "карт* для треть* лиц*", "выдан* треть* лиц*", "с нов* устройств*",
+      "с неизвестн* устройств*",
       "suspended", "locked", "blocked", "unusual activity", "suspicious", "unauthori*", "compromised",
       "overdue", "unpaid", "outstanding", "on hold", "legal action", "arrest*", "penalty", "fraud*",
       "could not be delivered", "couldnt be delivered", "undeliverable"
@@ -26,7 +28,8 @@
     "urgency": [
       "срочно", "немедленно", "незамедлительно", "как можно скорее", "в кратчайш*", "последн* предупрежд*",
       "истека*", "истек", "приостановлен*", "ограничен*", "отключ*", "до завтра", "до конца дня", "до конца суток",
-      "до полуноч*", "в течение суток", "в течение часа",
+      "до полуноч*", "в течение суток", "в течение часа", "недействител*", "прекратится", "прекратятся", "прекратит",
+      "прекратят", "прекращается", "прекращаются", "будет прекращ*", "будут прекращ*", "прекращен*",
       "urgent*", "immediately", "asap", "right away", "final notice", "last warning", "expire*", "before midnight",
       "by midnight", "today"
     ],
@@ -86,7 +89,7 @@
     ],
     "obey": [
       "не кладите трубк*", "выполня* указани*", "выполня* инструкци*", "следу* указани*", "следу* инструкци*", "сотрудничайте",
-      "сотрудничай",
+      "сотрудничай", "выполня* все* указани*", "не прерыва* разговор*",
       "follow his instructions", "follow their instructions", "do not hang up", "dont hang up"
     ],
     "call_coming": [
@@ -128,6 +131,11 @@
     "fee_word": [
       "пошлин*", "комисси*", "доставк*", "страховк*", "сбор*", "таможен*", "налог*",
       "fee*", "customs", "duty", "shipping", "delivery", "redelivery", "postage"
+    ],
+    "fee_unpaid": ["не оплачен*", "неоплачен*", "not paid"],
+    "job_offer": [
+      "подработк*", "удаленк*", "работ* на дому", "оценк* товар*", "выкуп* товар*", "отзыв* о товар*", "за отзыв*",
+      "лайк* за деньг*"
     ],
 
     "install": [
@@ -403,6 +411,20 @@
         "microsoft.com"
       ],
       "domain_tokens": ["gazprom", "stoloto", "netflix", "amazon", "apple", "microsoft", "газпром", "столото"]
+    },
+    {
+      "_comment": "Пятёрочка and Магнит, whose names scammers put on prize draws. A bare 'пятёрочка' is also a school mark ('у Вани пятёрочка по русскому'), a bare 'магнит' a fridge magnet, and 'магнит*' starts 'магнитный' and 'Магнитогорск' — so, as for MAX, only phrases that can mean the store. No 'magnit' domain token: at six letters it would mark every magnitogorsk-… site as a look-alike. A catch-all like 'банк*': shops run promo sites and channels we cannot list, so a bare 'до 20.10' — how every sale ends — is not pressure enough for a foreign link.",
+      "id": "retail", "kind": "company", "catch_all": true,
+      "names": [
+        "в пятерочке", "магазин* пятерочк*", "сет* пятерочк*", "акци* пятерочк*", "карт* пятерочк*", "пятерочка ваш*",
+        "пятерочка вы", "пятерочка вам", "пятерочка дар*", "пятерочка поздравля*", "пятерочка разыгрыва*",
+        "пятерочка провод*", "пятерочка доставк*", "x5 клуб*", "х5 клуб*",
+        "в магните", "магазин* магнит", "сет* магнит", "магнит ваш*", "магнит дар*", "магнит поздравля*",
+        "магнит разыгрыва*", "магнит косметик*", "магнит аптек*", "магнит семейн*", "магнит у дома", "карт* магнит",
+        "бонус* магнит"
+      ],
+      "domains": ["5ka.ru", "x5.ru", "x5club.ru", "magnit.ru", "magnit.com"],
+      "domain_tokens": ["5ka", "pyaterochka", "пятерочка"]
     },
     {
       "id": "housing", "kind": "service",
