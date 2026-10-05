@@ -4,10 +4,14 @@ The names come from Certificate Transparency (api/services/ct_tiles.py);
 whether a name imitates a Russian brand is decided by the SAME functions the
 /check verdict uses — _check_typosquatting_v2, _check_homograph,
 _check_brand_under_open_zone in api/services/scoring.py, over
-data/typosquat_targets_ru.json and, once PR #64 lands, its Russian lure
-vocabulary (api/services/ru_lures.py). There is no second list of brands or
-rules here: a false positive fixed in the scorer is fixed in the generator,
-and a lure word added there is matched here on the next run.
+data/typosquat_targets_ru.json and the Russian lure vocabulary of PR #64
+(api/services/ru_lures.py: sberbank-bonus, ozon-priz, госуслуги-лк.рф). Each
+rule gets the name in the form the scorer hands it: the typosquat rule the
+DECODED name (a Cyrillic .рф name is compared as Cyrillic, never as
+punycode), the homograph and open-zone rules the wire form. There is no
+second list of brands or rules here: a false positive fixed in the scorer is
+fixed in the generator, and a lure word added there is matched here on the
+next run.
 
 Why the Watchtower did not cover this: it scans the brands USERS add to a
 watchlist (a per-account product feature, Supabase `brand_watchlist`), via a
@@ -24,16 +28,35 @@ publisher's false-positive gates pass (scripts/refresh_dangerous_domains.py:
 top-100k and Tranco veto, brand-owned exclusions, shared suffixes, zones —
 every own-source host goes through build_blockset like a feed host, so the
 gates are not re-implemented here) and (b) at least one INDEPENDENT signal
-says the site is live phishing, not just a name:
+says the site is live phishing, not just a name — evidence we gather
+ourselves:
 
-  listed        a feed we ship already lists the host (then there is
-                nothing to add — counted, for the measurement)
-  blocklist /   the analyzer's verdict_basis: a Safe Browsing / PhishTank /
-  threat_intel  URLhaus … hit, or our own list
   credential_form
                 the site serves a password form that names the brand
                 (fetched from the server, through the analyzer's SSRF
-                guard, 256 KB cap, three redirect hops at most)
+                guard, 256 KB cap, three redirect hops at most; a redirect
+                to the brand's own site ends the fetch with nothing)
+
+Recorded with the evidence, shown to a reviewer, but NOT a reason to publish:
+
+  threat_intel  the analyzer's verdict is 'dangerous' on a hard listing of
+                this host by an external source (verdict_basis.py's
+                THREAT_INTEL_REASONS: Safe Browsing, PhishTank, URLhaus …).
+                Publishing a host BECAUSE one of them lists it would make
+                this list derived from theirs — the licence problem this
+                source exists to avoid (docs/runbooks/monitoring.md: Safe
+                Browsing's terms bar commercial redistribution, abuse.ch's
+                bar derivative works; PUBLISH_CONFIRMED_THREATS stays off for
+                the same reason). Whether it may count is a licence decision.
+
+Two more answers say the host is ALREADY covered — nothing to add, and no
+evidence either, because the list they read carries our own sources:
+
+  listed        the published list (a feed we ship, or one of our own sets)
+                covers the host — counted, for the measurement
+  blocklist     the analyzer's verdict_basis says the same: the host is on
+                our own published list. Counting it as a reason to publish
+                would let a host confirm itself.
 
 Everything runs behind LOOKALIKE_GENERATOR_ENABLED (api/services/own_sources.py).
 """
@@ -51,14 +74,16 @@ from typing import Iterable, Mapping, Optional
 
 import httpx
 
-from api.services import ru_brands
+from api.services import ru_brands, ru_lures
 from api.services.scoring import (
     RU_BRAND_GROUPS,
     _BRAND_LEGIT_DOMAINS,
     _BRAND_OFFICIAL_DOMAINS,
     _check_brand_under_open_zone,
     _check_homograph,
+    _check_lure_combo,
     _check_typosquatting_v2,
+    _decode_idn,
     _extract_base_domain,
     _lookalike_zone_name,
     _ru_registrable_domain,
@@ -73,9 +98,18 @@ SIGNAL_LISTED = "listed"
 SIGNAL_BLOCKLIST = "blocklist"
 SIGNAL_THREAT_INTEL = "threat_intel"
 SIGNAL_CREDENTIAL_FORM = "credential_form"
-# The analyzer bases that count as an independent signal: evidence a client
-# may block on (verdict_basis.BLOCKING_BASES), never a heuristic.
+# The analyzer bases worth recording: evidence a client may block on
+# (verdict_basis.BLOCKING_BASES), never a heuristic.
 VERDICT_SIGNALS = MappingProxyType({"blocklist": SIGNAL_BLOCKLIST, "threat_intel": SIGNAL_THREAT_INTEL})
+# What may PROMOTE a host: evidence we gathered ourselves. Not threat_intel
+# (a third party's listing — publishing on it derives our list from theirs,
+# see the module docstring), nor 'listed' / 'blocklist', which read the
+# published list that carries our own sources: "already covered", never
+# "confirmed".
+PROMOTING_SIGNALS = frozenset({SIGNAL_CREDENTIAL_FORM})
+COVERED_SIGNALS = frozenset({SIGNAL_LISTED, SIGNAL_BLOCKLIST})
+# Appended to the scorer's method when a combo's extra word is a Russian lure.
+LURE_METHOD = "lure word"
 
 PAGE_MAX_BYTES = 256 * 1024
 PAGE_TIMEOUT_S = 5.0
@@ -98,7 +132,8 @@ class Match:
     host: str      # punycode wire form, lowercase
     brand: str     # brand group key (sber, gosuslugi …)
     imitates: str  # the brand's domain the name is told to imitate
-    method: str    # the scorer's own wording: "character substitution", "TLD confusion" …
+    method: str    # the scorer's own wording: "character substitution", "TLD confusion" …,
+                   # plus ", lure word" when a combo's extra word is a Russian lure
 
 
 # ── Names ──
@@ -106,7 +141,8 @@ class Match:
 def normalise(name: str) -> Optional[str]:
     """A certificate name as a DNS host: wildcard prefix dropped (the cert
     covers the base too), lowercase, trailing dot off, IDN labels in
-    punycode (the scorer's input form). None for anything that is not a
+    punycode (the wire form the blocklist stores; `match` decodes where the
+    scorer does). None for anything that is not a
     host name (an IP, an email, a name with spaces)."""
     raw = (name or "").strip().lower().rstrip(".")
     if raw.startswith("*."):
@@ -155,15 +191,46 @@ def comparison_base(host: str) -> str:
     """The name _check_typosquatting_v2 actually compares for `host` — the
     registrable name under a Russian public suffix, the name registered
     under ru.com / ru.net, else the last two labels — derived with the
-    scorer's own helpers. The rule's answer depends on nothing else, so one
-    answer serves www.x.ru, mail.x.ru and x.ru (the certificates of one
-    site carry all three)."""
-    return _lookalike_zone_name(host) or _ru_registrable_domain(host) or _extract_base_domain(host)
+    scorer's own helpers, on the decoded name the scorer hands the rule
+    (госуслуги-лк.рф, not xn----etbaulcdt1aavc.xn--p1ai: compared as
+    punycode, no Cyrillic name matches anything). The rule's answer depends
+    on nothing else, so one answer serves www.x.ru, mail.x.ru and x.ru (the
+    certificates of one site carry all three)."""
+    name = _decode_idn(host)
+    return _lookalike_zone_name(name) or _ru_registrable_domain(name) or _extract_base_domain(name)
 
 
 @lru_cache(maxsize=262_144)
 def _typosquat_of(base: str) -> Optional[tuple[str, str]]:
     return _check_typosquatting_v2(base)
+
+
+def _words_beside(label: str, name: str) -> list[str]:
+    """The words next to `name` in `label`: its other hyphenated words, and
+    what is glued to the name (sberbankbonus → bonus)."""
+    words = [w for w in label.split("-") if w and w != name]
+    glued = [w[len(name):] if w.startswith(name) else w[:-len(name)] for w in words
+             if len(w) > len(name) and (w.startswith(name) or w.endswith(name))]
+    return words + glued
+
+
+def lure_combo(host: str, brand: str) -> bool:
+    """`host` carries one of `brand`'s names next to a Russian lure word
+    (sberbank-bonus, госуслуги-лк.рф, mts-bonus.spb.ru) by the scorer's own
+    combo rule — so the evidence can say which kind of combo it was. An
+    English keyword (sberbank-login) is the scorer's older combo, not this."""
+    group = _GROUPS.get(brand)
+    if group is None:
+        return False
+    labels = _decode_idn(host).split(".")[:-1]
+    return any(
+        _check_lure_combo(label, name) and any(ru_lures.is_lure(w) for w in _words_beside(label, name))
+        for label in labels for name in group.names if name in label
+    )
+
+
+def _with_lure(host: str, brand: str, method: str) -> str:
+    return f"{method}, {LURE_METHOD}" if lure_combo(host, brand) else method
 
 
 def match(host: str) -> Optional[Match]:
@@ -175,12 +242,15 @@ def match(host: str) -> Optional[Match]:
         return Match(host, _group_key(imitated), imitated, "homograph")
     typo = _typosquat_of(comparison_base(host))
     if typo and _russian(typo[0]):
-        return Match(host, _group_key(typo[0]), typo[0], typo[1])
+        key = _group_key(typo[0])
+        method = _with_lure(host, key, typo[1]) if typo[1] == "combosquatting" else typo[1]
+        return Match(host, key, typo[0], method)
     zone_brand = _check_brand_under_open_zone(host)
     if zone_brand:
         group = _GROUP_BY_NAME.get(zone_brand)
         imitates = group.names[zone_brand] if group else f"{zone_brand}.ru"
-        return Match(host, group.key if group else zone_brand, imitates, "brand under open zone")
+        key = group.key if group else zone_brand
+        return Match(host, key, imitates, _with_lure(host, key, "brand under open zone"))
     return None
 
 
@@ -239,7 +309,12 @@ async def fetch_page(host: str, http: httpx.AsyncClient) -> Optional[str]:
     """GET https://<host>/ from the server, the analyzer's way: the host and
     every redirect hop resolved and checked against the SSRF guard before
     being contacted, PAGE_MAX_HOPS hops, PAGE_MAX_BYTES of body, HTML only.
-    None when anything stops it; never raises."""
+    None when anything stops it; never raises.
+
+    A redirect to the brand's own site or a popular one (skip_reason) ends
+    it too: the log-in form found there is the brand's, not an imitation —
+    a defensive registration that forwards to sberbank.ru must never be
+    'confirmed' by Sber's own password field."""
     if not await _hop_is_safe(host):
         return None
     url = f"https://{host}/"
@@ -250,7 +325,9 @@ async def fetch_page(host: str, http: httpx.AsyncClient) -> Optional[str]:
                 if resp.status_code in _REDIRECT_CODES and location:
                     target = httpx.URL(url).join(location)
                     next_host = wire_host(target)
-                    if target.scheme not in ("http", "https") or not await _hop_is_safe(next_host):
+                    if target.scheme not in ("http", "https") or not next_host or skip_reason(next_host):
+                        return None
+                    if not await _hop_is_safe(next_host):
                         return None
                     url = str(target)
                     continue
@@ -285,7 +362,8 @@ def page_client() -> httpx.AsyncClient:
 
 def signals(match: Match, *, listed: Optional[str], level: Optional[str], verdict_basis: Optional[str],
             page_html: Optional[str]) -> tuple[str, ...]:
-    """Every independent signal present, in a fixed order."""
+    """Every signal present, in a fixed order — the covering ones too
+    (`covered` and `publishable` tell them apart)."""
     out: list[str] = []
     if listed:
         out.append(SIGNAL_LISTED)
@@ -297,6 +375,14 @@ def signals(match: Match, *, listed: Optional[str], level: Optional[str], verdic
     return tuple(out)
 
 
+def covered(found: tuple[str, ...]) -> bool:
+    """The published list already covers the host: nothing to add."""
+    return bool(COVERED_SIGNALS.intersection(found))
+
+
 def publishable(found: tuple[str, ...]) -> bool:
-    """One independent signal is enough; the publisher's gates still apply."""
-    return bool(found)
+    """An independent signal of our own (a password form naming the brand)
+    is enough; the publisher's gates still apply. A third party's listing
+    (threat_intel) is recorded, never published on; 'listed' and
+    'blocklist' are no evidence: they read our own published list."""
+    return bool(PROMOTING_SIGNALS.intersection(found))

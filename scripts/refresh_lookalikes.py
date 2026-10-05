@@ -11,10 +11,12 @@ What one run does (api/services/lookalike_generator.py has the rules):
              own rules say imitate a Russian brand. Those are CANDIDATES
              (lookalike:candidates), with evidence.
   2. Verify  For up to --max-verify pending candidates: is the host already
-             on our list; what does the analyzer say (verdict_basis); does
-             the page serve a password form naming the brand (fetched from
-             the server through the SSRF guard). One independent signal
-             promotes the host into dangerous_domains:lookalike.
+             on our list (then: status 'listed', nothing to add); what does
+             the analyzer say (verdict_basis, recorded); does the page serve
+             a password form naming the brand (fetched from the server
+             through the SSRF guard). That evidence of our own promotes the
+             host into dangerous_domains:lookalike; a third party's listing
+             alone does not (lookalike_generator: a licence question).
   3. Reports Hosts people reported in the app (reports:queue, filled by
              POST /api/v1/feedback/report) go through the same verification
              and, when confirmed, into dangerous_domains:reports.
@@ -25,7 +27,13 @@ The blocklist refresh (scripts/refresh_dangerous_domains.py) publishes both
 sets to the phones through every false-positive gate a feed host passes —
 only while LOOKALIKE_GENERATOR_ENABLED is set there too. Off (the default),
 this job promotes nothing and exits 0 after saying so; --dry-run runs the
-whole pipeline against a state file and writes a JSON report instead.
+whole pipeline against a state file and writes a JSON report instead. A dry
+run writes to no store but its own files: it never opens Redis (every
+in-process get_redis raises, and the analyzer fails open), never asks the
+production API, and adds to the report what the publisher's gates would keep
+(`publisher_gates`, `would_publish`). With `--verify none --max-fetch 0` it
+contacts no suspected site either: only the CT logs, Google's log list and
+the PSL.
 
 Usage:
     python scripts/refresh_lookalikes.py                       # needs REDIS_URL and the switch
@@ -38,7 +46,8 @@ Env:
     LOOKALIKE_GENERATOR_ENABLED   1/true to promote (default off)
     LOOKALIKE_CT_OPERATORS        comma-separated log operators (default "Let's Encrypt")
     CLEANWAY_API_BASE             with BENCHMARK_BYPASS_TOKEN: verify through the
-                                  production /public/check (the full verdict)
+                                  production /public/check (the full verdict;
+                                  never in --dry-run)
     BENCHMARK_BYPASS_TOKEN        optional, see above
 
 Exit codes: 0 done (or switched off); 2 no CT log readable; 3 lock held.
@@ -344,16 +353,27 @@ async def verify_host(host: str, brand: str, imitates: str, method: str, *, veri
                       pages: httpx.AsyncClient, fetch_budget: list[int], counters: Counters) -> Verification:
     already = await listed(host)
     level, basis = await verifier(host)
+    match = lg.Match(host, brand, imitates, method)
+    found = lg.signals(match, listed=already, level=level, verdict_basis=basis, page_html=None)
     html = None
     fetched = False
-    if not already and fetch_budget[0] > 0:
+    # The page is fetched only when it can still decide: not for a host the
+    # list already covers, nor for one threat intel already confirmed.
+    if not lg.covered(found) and not lg.publishable(found) and fetch_budget[0] > 0:
         fetch_budget[0] -= 1
         html = await lg.fetch_page(host, pages)
         fetched = True
         counters.pages_fetched += 1
-    match = lg.Match(host, brand, imitates, method)
-    found = lg.signals(match, listed=already, level=level, verdict_basis=basis, page_html=html)
+        found = lg.signals(match, listed=already, level=level, verdict_basis=basis, page_html=html)
     return Verification(host, found, already, level, basis, fetched)
+
+
+def decide(found: tuple) -> own_sources.Status:
+    """Covered by the published list → nothing to add; an independent
+    signal → promoted; otherwise rejected (re-checked when seen again)."""
+    if lg.covered(found):
+        return own_sources.Status.listed
+    return own_sources.Status.promoted if lg.publishable(found) else own_sources.Status.rejected
 
 
 async def verify_candidates(r, state: FileState, now: float, *, verifier: Verifier, listed: Listed,
@@ -368,10 +388,10 @@ async def verify_candidates(r, state: FileState, now: float, *, verifier: Verifi
             v = await verify_host(host, record["brand"], record["imitates"], record["method"], verifier=verifier,
                                   listed=listed, pages=pages, fetch_budget=fetch_budget, counters=counters)
             counters.verified += 1
-            if v.listed:
+            status = decide(v.signals)
+            if status is own_sources.Status.listed:
                 counters.already_listed += 1
-            status = own_sources.Status.promoted if lg.publishable(v.signals) else own_sources.Status.rejected
-            if status is own_sources.Status.promoted:
+            elif status is own_sources.Status.promoted:
                 counters.promoted += 1
                 evidence = {"brand": record["brand"], "imitates": record["imitates"], "method": record["method"],
                             "signals": list(v.signals), "level": v.level, "verdict_basis": v.verdict_basis,
@@ -400,8 +420,9 @@ async def process_reports(r, now: float, *, verifier: Verifier, listed: Listed, 
     counters.reports_taken = len(taken)
     fetch_budget = [max_fetch]
     async with lg.page_client() as pages:
-        for host, first_reported in taken:
-            if lg.skip_reason(host):
+        for reported, first_reported in taken:
+            host = lg.normalise(reported)
+            if not host or lg.skip_reason(host):
                 continue
             match = lg.match(host)
             brand = match.brand if match else ""
@@ -409,13 +430,14 @@ async def process_reports(r, now: float, *, verifier: Verifier, listed: Listed, 
             method = match.method if match else "reported"
             v = await verify_host(host, brand, imitates, method, verifier=verifier, listed=listed, pages=pages,
                                   fetch_budget=fetch_budget, counters=counters)
-            # A report alone is one person's word; it needs the same independent
-            # evidence as a certificate name. The brand-page signal needs a brand.
-            if not lg.publishable(v.signals) or v.listed:
+            # A report is one person's word, and so are a hundred: it is never
+            # a signal. It needs the same independent evidence as a
+            # certificate name; the brand-page signal needs a brand.
+            if decide(v.signals) is not own_sources.Status.promoted:
                 continue
             counters.reports_promoted += 1
             if promote:
-                votes = await own_sources.report_votes(r, host)
+                votes = await own_sources.report_votes(r, reported)
                 await own_sources.promote(r, "reports", host, now, {
                     "brand": brand, "imitates": imitates, "method": method, "signals": list(v.signals),
                     "level": v.level, "verdict_basis": v.verdict_basis, "votes": votes,
@@ -436,8 +458,14 @@ def summarize(candidates: dict[str, dict], now: float) -> dict:
 
 # ── Main ──
 
-def _pick_verifier(mode: str) -> Verifier:
+def _pick_verifier(mode: str, dry_run: bool = False) -> Verifier:
     api_base, token = os.environ.get("CLEANWAY_API_BASE", ""), os.environ.get("BENCHMARK_BYPASS_TOKEN", "")
+    if dry_run and (mode == "api" or (mode == "auto" and api_base and token)):
+        # The production check caches its verdicts and may record confirmed
+        # threats: a dry run writes to no production store, so it never asks.
+        logger.warning("--dry-run never verifies through the production API — %s",
+                       "verifying with nothing" if mode == "api" else "verifying in-process")
+        return verify_none if mode == "api" else verify_local
     if mode == "api" or (mode == "auto" and api_base and token):
         if not (api_base and token):
             logger.error("--verify api needs CLEANWAY_API_BASE and BENCHMARK_BYPASS_TOKEN")
@@ -456,6 +484,62 @@ async def _open_redis(redis_url: Optional[str]):
     return redis.from_url(redis_url, decode_responses=True)
 
 
+class DryRunRedisError(ConnectionError):
+    """What every Redis access raises during --dry-run."""
+
+
+async def _no_redis():
+    raise DryRunRedisError("--dry-run: no Redis")
+
+
+def isolate_from_redis() -> None:
+    """--dry-run: no code path of this process may reach Redis. The job's own
+    stages already take `r=None`; this covers the in-process analyzer
+    (verify_local), whose caches and confirmed-threat records would otherwise
+    go to whatever REDIS_URL the shell has. Every loaded module's reference
+    to api.services.cache.get_redis is replaced — modules imported later bind
+    the replacement — and the cached client is dropped. They all fail open."""
+    from api.services import cache
+    original = cache.get_redis
+    if original is _no_redis:
+        return
+    for module in list(sys.modules.values()):
+        if getattr(module, "get_redis", None) is original:
+            setattr(module, "get_redis", _no_redis)
+    cache.get_redis = _no_redis
+    if hasattr(cache, "_redis_client"):
+        cache._redis_client = None
+
+
+# ── Dry run: the publisher's gates on every match ──
+
+def _publisher():
+    """scripts/refresh_dangerous_domains.py, for its build_blockset — the
+    gates every own-source host meets at publish time."""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "refresh_dangerous_domains.py")
+    spec = importlib.util.spec_from_file_location("refresh_dangerous_domains", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+async def publisher_gate_pass(hosts: list[str], public_suffixes: Optional[set[str]] = None,
+                              publisher=None) -> set[str]:
+    """The hosts that would survive the blocklist publisher's guards as own-
+    source hosts (exact, never promoting a registrable): shared and path-
+    shared hosts, hosting-platform apexes, operator suffixes, zones, the
+    bundled top-100k and the brand-owned veto. Tranco-1M needs prod Redis
+    and is not applied here — the publisher applies it on top."""
+    rdd = publisher or _publisher()
+    if public_suffixes is None:
+        public_suffixes = await rdd._fetch_psl()
+    names = sorted({rdd._norm_host(h) for h in hosts} - {""})
+    kept = rdd.build_blockset(names, rdd._load_top_100k(), public_suffixes=public_suffixes,
+                              exact_only=set(names))
+    return kept & set(names)
+
+
 async def run(args: argparse.Namespace) -> int:
     now = time.time()
     switched_on = own_sources.enabled()
@@ -466,13 +550,18 @@ async def run(args: argparse.Namespace) -> int:
     if not args.dry_run and not redis_url:
         logger.error("REDIS_URL not set")
         return 1
+    if args.dry_run:
+        isolate_from_redis()
     r = await _open_redis(redis_url)
     state = FileState(args.state_file)
     counters = Counters()
+    locked = False
     try:
-        if r is not None and not await r.set(LOCK_KEY, "1", nx=True, ex=LOCK_TTL_SECONDS):
-            logger.warning("another run holds the lock — exiting %d", EXIT_LOCKED)
-            return EXIT_LOCKED
+        if r is not None:
+            locked = bool(await r.set(LOCK_KEY, "1", nx=True, ex=LOCK_TTL_SECONDS))
+            if not locked:
+                logger.warning("another run holds the lock — exiting %d", EXIT_LOCKED)
+                return EXIT_LOCKED
         operators = [o.strip() for o in os.environ.get("LOOKALIKE_CT_OPERATORS", "").split(",") if o.strip()]
         async with ct_tiles.client() as http:
             log_list = await ct_tiles.fetch_log_list(http)
@@ -488,7 +577,7 @@ async def run(args: argparse.Namespace) -> int:
             logger.error("no CT log answered — exit %d", EXIT_NO_LOG)
             return EXIT_NO_LOG
         await record_candidates(matched, r, state, now, counters)
-        verifier = _pick_verifier(args.verify)
+        verifier = _pick_verifier(args.verify, dry_run=args.dry_run)
         listed = listed_in_artifact(args.artifact) if args.artifact else (listed_in_redis() if r is not None else not_listed)
         promote = switched_on and not args.dry_run
         outcomes = await verify_candidates(r, state, now, verifier=verifier, listed=listed, max_verify=args.max_verify,
@@ -502,15 +591,25 @@ async def run(args: argparse.Namespace) -> int:
         logger.info("daily summary: %s", json.dumps(summary, ensure_ascii=False, sort_keys=True))
         state.save()
         if args.report_json:
+            report = {**summary, "outcomes": outcomes, "matched": [asdict(m) for m in matched.values()]}
+            if args.dry_run:
+                # What the publisher would do with these names: its gates on
+                # every match, and the promoted ones that pass them.
+                gated = await publisher_gate_pass(list(matched))
+                promoted = {o["host"] for o in outcomes if o["status"] == own_sources.Status.promoted.value}
+                report["publisher_gates"] = {"passed": len(gated), "vetoed": sorted(set(matched) - gated)}
+                report["would_publish"] = sorted(promoted & gated)
+                for row in report["matched"]:
+                    row["passes_publisher_gates"] = row["host"] in gated
             with open(args.report_json, "w", encoding="utf-8") as f:
-                json.dump({**summary, "outcomes": outcomes,
-                           "matched": [asdict(m) for m in matched.values()]}, f, ensure_ascii=False, indent=1)
+                json.dump(report, f, ensure_ascii=False, indent=1)
             logger.info("report written to %s", args.report_json)
         return 0
     finally:
         if r is not None:
             try:
-                await r.delete(LOCK_KEY)
+                if locked:
+                    await r.delete(LOCK_KEY)
                 await r.aclose()
             except Exception:  # noqa: BLE001
                 pass

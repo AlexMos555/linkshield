@@ -32,8 +32,14 @@ Beside them:
   reports:install:<key>:<day>   per-install counter (abuse limit)
   reports:day:<day>             global counter (abuse limit)
 
-No user, IP or URL is stored anywhere here: a report keeps the host and a
-hashed, daily-rotating install number (api/services/rate_limiter.install_key).
+No user, IP or URL is stored anywhere here: a report keeps the host and the
+hashed install number (api/services/rate_limiter.install_key — a truncated
+SHA-256 of the install id, never the id), in keys that expire within two days.
+
+A report is never evidence. However many installs report a host, it is only
+queued: the job publishes it only when it finds the same evidence of its own
+a lookalike needs (lookalike_generator.PROMOTING_SIGNALS: a password form
+that names the brand the host imitates).
 """
 from __future__ import annotations
 
@@ -44,6 +50,7 @@ import time
 from enum import Enum
 from types import MappingProxyType
 from typing import Any, Mapping, Optional
+from urllib.parse import urlsplit
 
 logger = logging.getLogger("cleanway.own_sources")
 
@@ -79,6 +86,7 @@ class Status(str, Enum):
     new = "new"            # matched, not verified yet
     promoted = "promoted"  # verified with an independent signal → in a published set
     rejected = "rejected"  # verified, no independent signal (re-checked when seen again)
+    listed = "listed"      # the published list already covers it: nothing to add (re-checked when seen again)
     skipped = "skipped"    # a pre-gate said never (brand-owned, popular)
 
 
@@ -99,6 +107,27 @@ def enabled(environ: Optional[Mapping[str, str]] = None) -> bool:
 
 def normalize_host(host: str) -> str:
     return (host or "").strip().lower().rstrip(".")
+
+
+_NOT_IN_A_HOST = frozenset("/\\@:?#%&=;,'\"<>[]{}|`^~!$*()+ \t\r\n")
+
+
+def report_host(raw: str) -> Optional[str]:
+    """The host of a reported site — from a bare host or a pasted URL — or
+    None when it is not a host name. Only the host is ever queued: a path or
+    a query string can carry a person's token or e-mail address."""
+    text = (raw or "").strip()
+    if "://" in text:
+        try:
+            text = urlsplit(text).hostname or ""
+        except ValueError:
+            return None
+    name = normalize_host(text)
+    if not name or "." not in name or len(name) > 253 or ".." in name:
+        return None
+    if _NOT_IN_A_HOST.intersection(name):
+        return None
+    return name
 
 
 def _forget_before(now: float) -> str:
@@ -189,13 +218,16 @@ async def all_candidates(r) -> dict[str, dict]:
 
 
 def pending(candidates: Mapping[str, dict], limit: int) -> list[str]:
-    """Hosts still to verify, oldest first: new ones, then rejected ones
-    seen again since their last check."""
+    """Hosts still to verify, oldest first: new ones, then rejected or
+    already-listed ones seen again since their last check (a feed may have
+    dropped a listed one since)."""
+    recheck = {Status.rejected.value, Status.listed.value}
+
     def due(rec: dict) -> bool:
         status = rec.get("status")
         if status == Status.new.value:
             return True
-        return status == Status.rejected.value and float(rec.get("last_seen", 0)) > float(rec.get("checked_at", 0))
+        return status in recheck and float(rec.get("last_seen", 0)) > float(rec.get("checked_at", 0))
 
     rows = [(float(rec.get("first_seen", 0)), host) for host, rec in candidates.items() if due(rec)]
     return [host for _, host in sorted(rows)[:limit]]
@@ -238,8 +270,8 @@ async def enqueue_report(r, host: str, install: Optional[str], now: float) -> Re
     """Queue `host` for verification. Limits per install and per day; a
     repeat from the same install does not count twice. The caller has
     already decided the switch is on."""
-    name = normalize_host(host)
-    if not name or "." not in name or len(name) > 253:
+    name = report_host(host)
+    if name is None:
         return ReportOutcome.invalid
     day = _day(now)
     global_count = await r.incr(f"reports:day:{day}")
