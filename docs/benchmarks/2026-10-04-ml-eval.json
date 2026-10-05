@@ -18,7 +18,7 @@
   },
   "tranco_10k_100k": {
    "pool": 90000,
-   "note": "allowlisted in production; in_top_domains=1 for the model — not held-out"
+   "note": "rank 10k–100k of the 2026-10-04 snapshot; 689 of the 1000 are in the shipped allowlist (trusted=true: in_top_domains=1, not held-out), 311 are not (corrected after the run; newer runs split them into tranco_10k_100k_unlisted)"
   },
   "tranco_100k_1m": {
    "pool": 900000,

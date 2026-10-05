@@ -27,11 +27,12 @@ Sets (each a held-out set for the model unless noted):
   tests/data/ru_heuristics_legit.txt     Russian sites that must stay safe
   tests/data/ru_heuristics_phish.txt     constructed Russian look-alikes
   data/benchmark_legit_ru.txt            the weekly benchmark's RU legit sample
-  Tranco top-1M (--tranco)               three samples: rank 10k–100k (these
-                                         are allowlisted in production and the
-                                         model sees in_top_domains=1 — NOT
-                                         held-out, reported for completeness),
-                                         rank 100k–1M, and the same tail
+  Tranco top-1M (--tranco)               four samples: rank 10k–100k split by
+                                         the shipped allowlist (data/top_100k.json
+                                         is another snapshot): the allowlisted
+                                         part (in_top_domains=1 for the model —
+                                         NOT held-out, reported for completeness)
+                                         and the rest; rank 100k–1M; the same tail
                                          restricted to .ru/.su/.рф. Training
                                          draws its benign half from this list,
                                          so a tail sample overlaps training by
@@ -62,6 +63,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import encodings.idna
 import gzip
 import ipaddress
 import json
@@ -103,6 +105,17 @@ def _host_of(url: str) -> Optional[str]:
         return None
     if not host or "." not in host:
         return None
+    if not host.isascii():
+        # TweetFeed ships raw Unicode ('автозаим.рф'); the model, the scorer and
+        # the blocklist hashes all see the punycode wire form, as production's
+        # feed parser does (scripts/refresh_dangerous_domains._to_punycode).
+        try:
+            host = ".".join(
+                label if label.isascii() else encodings.idna.ToASCII(label).decode("ascii")
+                for label in host.split(".")
+            )
+        except (UnicodeError, ValueError):
+            return None
     try:
         ipaddress.ip_address(host)
         return None  # the model is a name model; IP literals are reported apart
@@ -172,11 +185,17 @@ def tweetfeed_week(path: Path) -> tuple[list[str], dict]:
     return unique, {"rows_total": rows, "unique_hosts": len(unique)}
 
 
-def tranco_samples(path: Path, n: int, seed: int = SAMPLE_SEED) -> dict[str, tuple[list[str], dict]]:
+def tranco_samples(path: Path, n: int, seed: int = SAMPLE_SEED,
+                   allowlisted: Optional[Callable[[str], bool]] = None) -> dict[str, tuple[list[str], dict]]:
+    """`allowlisted` decides the head split; default: the production allowlist
+    (data/top_100k.json), which is a different Tranco snapshot than the file."""
+    if allowlisted is None:
+        from api.services.scoring import is_trusted_top_domain as allowlisted
     with zipfile.ZipFile(path) as zf:
         member = next(m for m in zf.namelist() if m.endswith(".csv"))
         text = zf.read(member).decode("utf-8", "ignore")
     head: list[str] = []
+    head_unlisted: list[str] = []
     tail: list[str] = []
     tail_ru: list[str] = []
     for line in text.splitlines():
@@ -189,7 +208,7 @@ def tranco_samples(path: Path, n: int, seed: int = SAMPLE_SEED) -> dict[str, tup
             continue
         dom = parts[1].lower()
         if 10_000 < rank <= 100_000:
-            head.append(dom)
+            (head if allowlisted(dom) else head_unlisted).append(dom)
         elif rank > 100_000:
             tail.append(dom)
             if dom.rsplit(".", 1)[-1] in TLD_RU:
@@ -201,6 +220,7 @@ def tranco_samples(path: Path, n: int, seed: int = SAMPLE_SEED) -> dict[str, tup
 
     return {
         "tranco_10k_100k": (pick(head), {"pool": len(head), "note": "allowlisted in production; in_top_domains=1 for the model — not held-out"}),
+        "tranco_10k_100k_unlisted": (pick(head_unlisted), {"pool": len(head_unlisted), "note": "rank 10k–100k in this snapshot but not in the shipped allowlist — scored like the long tail"}),
         "tranco_100k_1m": (pick(tail), {"pool": len(tail), "note": "training samples its benign half from this range (~1% overlap)"}),
         "tranco_100k_1m_ru": (pick(tail_ru), {"pool": len(tail_ru), "note": ".ru/.su/.рф names below the allowlist — the Russian long tail"}),
     }
