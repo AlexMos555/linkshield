@@ -62,7 +62,29 @@ export type CleanwayVpnModuleEvents = {
   /** The list the shield blocks from was loaded, synced or revoked; read blocklistStatus() again. */
   onBlocklistChanged: (params: Record<string, never>) => void;
   onNetworkChanged: (params: NetworkChangedPayload) => void;
+  /** A call began or ended (CallState.kt) — the stop screen and the home button follow it. */
+  onCallStateChanged: (params: CallStatePayload) => void;
 };
+
+/**
+ * Is the person on the phone (CallState.kt)? Read from the audio mode — no
+ * permission, no number, no audio. Times are epoch ms, 0 = never.
+ */
+export type CallStatePayload = {
+  /** A SIM call or a messenger call is going on. */
+  inCall: boolean;
+  /** The phone is ringing (not yet a call). */
+  ringing: boolean;
+  callStartedAt: number;
+  callEndedAt: number;
+  /** When the 30-minute window after the last call closes; 0 when no call ended yet. */
+  windowEndsAt: number;
+  /** In a call, or within 30 minutes after one: the stop screen applies. */
+  guardActive: boolean;
+};
+
+/** What the after-call notice may be about (CallGuard.kt). */
+export type CallEventKind = 'site_blocked' | 'site_warned' | 'message_dangerous' | 'protection_off_asked';
 
 /** What blocklist the service has loaded and how fresh it is (BlockList.kt). */
 export type BlocklistStatus = {
