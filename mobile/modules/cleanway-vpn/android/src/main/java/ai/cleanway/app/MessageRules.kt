@@ -20,7 +20,11 @@ class MessageRules internal constructor(
     val messengers: Set<String>,
     /** App stores and public bodies whose links never count as "not the brand's". */
     val trustedDomains: Set<String>,
-    /** TLDs a bare (scheme-less) name may end in: every country code plus the generic ones scams use. */
+    /**
+     * TLDs a bare (scheme-less) name may end in: the whole IANA root zone
+     * (root_zone_tlds.txt, see [RootZone]) plus the asset's own bare_tlds and
+     * country_tlds, which alone stand in if the root zone failed to load.
+     */
     val bareTlds: Set<String>,
     /**
      * Hosts under an official domain where anyone can upload (disk.yandex.ru,
@@ -164,8 +168,11 @@ class MessageRules internal constructor(
             emptyMap(), emptyList(), emptySet(), emptySet(), emptySet(), emptySet(), emptySet(), emptySet(), emptySet(), emptySet(),
         )
 
-        /** Parse the asset. Throws on malformed JSON so a broken ship is caught by the tests. */
-        fun parse(json: String): MessageRules {
+        /**
+         * Parse the asset. Throws on malformed JSON so a broken ship is caught by the tests.
+         * [rootZone] is [RootZone.parse] of the shipped TLD list.
+         */
+        fun parse(json: String, rootZone: Set<String> = emptySet()): MessageRules {
             val root = JSONObject(json)
             val groupsJson = root.optJSONObject("groups") ?: JSONObject()
             val groups = groupsJson.keys().asSequence().associateWith { key ->
@@ -181,7 +188,7 @@ class MessageRules internal constructor(
                 shorteners = hosts(root.optJSONArray("shorteners")),
                 messengers = hosts(root.optJSONArray("messengers")),
                 trustedDomains = hosts(root.optJSONArray("trusted_domains")),
-                bareTlds = words(root.optJSONArray("bare_tlds")) + words(root.optJSONArray("country_tlds")),
+                bareTlds = words(root.optJSONArray("bare_tlds")) + words(root.optJSONArray("country_tlds")) + rootZone,
                 userContentHosts = hosts(root.optJSONArray("user_content_hosts")),
                 appStores = hosts(root.optJSONArray("app_stores")),
                 translitMarkers = words(root.optJSONArray("translit_markers")),

@@ -73,8 +73,17 @@ object MessageCheck {
         synchronized(lock) {
             rules?.let { return it }
             val parsed = try {
-                val json = context.applicationContext.assets.open(RULES_ASSET).bufferedReader().use { it.readText() }
-                MessageRules.parse(json)
+                val assets = context.applicationContext.assets
+                val json = assets.open(RULES_ASSET).bufferedReader().use { it.readText() }
+                // Without the root zone, bare links fall back to the asset's
+                // own bare_tlds/country_tlds: fewer TLDs, never no check.
+                val rootZone = try {
+                    RootZone.parse(assets.open(RootZone.ASSET).bufferedReader().use { it.readText() })
+                } catch (e: Exception) {
+                    Log.w(TAG, "root_zone_unavailable: ${e.javaClass.simpleName}")
+                    emptySet()
+                }
+                MessageRules.parse(json, rootZone)
             } catch (e: Exception) {
                 // A broken asset is a shipping bug: MessageAnalyzerTest and CI's
                 // mobile/scripts/check-message-rules.mjs guard it.

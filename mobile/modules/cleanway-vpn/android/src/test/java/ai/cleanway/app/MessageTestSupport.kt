@@ -6,19 +6,18 @@ import java.io.File
 internal object MessageTestSupport {
 
     /**
-     * The SHIPPED vocabulary, read from the module asset — the tests must
-     * judge what goes into the APK, not a copy. Gradle runs unit tests with
-     * the module's project dir (android/) as the working directory.
+     * The SHIPPED vocabulary and root zone, read from the module assets — the
+     * tests must judge what goes into the APK, not a copy. Gradle runs unit
+     * tests with the module's project dir (android/) as the working directory.
      */
-    val rules: MessageRules by lazy {
-        val candidates = listOf(
-            File("src/main/assets/message_rules.json"),
-            File("android/src/main/assets/message_rules.json"),
-        )
-        val file = candidates.firstOrNull { it.exists() }
-            ?: error("message_rules.json not found from ${File(".").absolutePath}")
-        MessageRules.parse(file.readText())
-    }
+    val rules: MessageRules by lazy { MessageRules.parse(asset("message_rules.json").readText(), rootZone) }
+
+    /** The shipped IANA root zone (root_zone_tlds.txt), as MessageCheck loads it. */
+    val rootZone: Set<String> by lazy { RootZone.parse(asset(RootZone.ASSET).readText()) }
+
+    private fun asset(name: String): File =
+        listOf(File("src/main/assets/$name"), File("android/src/main/assets/$name")).firstOrNull { it.exists() }
+            ?: error("$name not found from ${File(".").absolutePath}")
 
     /** A v2 list the way the publisher renders it (same helper as DnsDecisionTest). */
     fun list(vararg names: String): BlockList {
