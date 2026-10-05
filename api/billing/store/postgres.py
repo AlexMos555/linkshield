@@ -353,15 +353,18 @@ class PostgresTx:
         except asyncpg.UniqueViolationError as e:
             raise ConflictError("claim code collision") from e
 
-    async def get_claim_code(self, code_hmac: str) -> Optional[ClaimCode]:
-        r = await self._c.fetchrow("SELECT * FROM claim_codes WHERE code_hmac = $1", code_hmac)
+    async def get_claim_code(self, code_hmac: str, *, for_update: bool = False) -> Optional[ClaimCode]:
+        suffix = " FOR UPDATE" if for_update else ""
+        r = await self._c.fetchrow(f"SELECT * FROM claim_codes WHERE code_hmac = $1{suffix}", code_hmac)
         return _code(r) if r else None
 
-    async def redeem_claim_code(self, code_id: str, *, device_id: str, redeemed_at: datetime) -> None:
-        await self._c.execute(
-            "UPDATE claim_codes SET redeemed_at = $2, redeemed_by_device = $3 WHERE id = $1",
+    async def redeem_claim_code(self, code_id: str, *, device_id: str, redeemed_at: datetime) -> bool:
+        r = await self._c.fetchrow(
+            "UPDATE claim_codes SET redeemed_at = $2, redeemed_by_device = $3 WHERE id = $1 AND redeemed_at IS NULL "
+            "RETURNING id",
             uuid.UUID(code_id), redeemed_at, uuid.UUID(device_id),
         )
+        return r is not None
 
     # ── payments ──
 

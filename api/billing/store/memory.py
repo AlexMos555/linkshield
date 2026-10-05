@@ -241,14 +241,17 @@ class MemoryTx:
             raise ConflictError("claim code collision")
         self._t.claim_codes[code.code_hmac] = code
 
-    async def get_claim_code(self, code_hmac: str) -> Optional[ClaimCode]:
+    async def get_claim_code(self, code_hmac: str, *, for_update: bool = False) -> Optional[ClaimCode]:
         return self._t.claim_codes.get(code_hmac)
 
-    async def redeem_claim_code(self, code_id: str, *, device_id: str, redeemed_at: datetime) -> None:
+    async def redeem_claim_code(self, code_id: str, *, device_id: str, redeemed_at: datetime) -> bool:
         for key, code in self._t.claim_codes.items():
             if code.id == code_id:
+                if code.redeemed_at is not None:
+                    return False
                 self._t.claim_codes[key] = replace(code, redeemed_at=redeemed_at, redeemed_by_device=device_id)
-                return
+                return True
+        return False
 
     # ── payments ──
 

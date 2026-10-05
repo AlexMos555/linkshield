@@ -66,7 +66,8 @@ async def redeem_claim_code(ctx: BillingContext, device: Device, *, code: str) -
         raise Invalid("a code is 6 digits", code="code_format")
     now = ctx.now()
     async with ctx.store.transaction() as tx:
-        claim = await tx.get_claim_code(ctx.hasher.claim_code(code))
+        # Locked: a concurrent redeemer of the same code waits here and then sees it redeemed.
+        claim = await tx.get_claim_code(ctx.hasher.claim_code(code), for_update=True)
         if claim is None or claim.redeemed_at is not None or claim.expires_at <= now:
             raise NotFound("this code is not valid", code="code_invalid")
         sub = await tx.get_subscription(claim.subscription_id, for_update=True)
@@ -87,7 +88,8 @@ async def redeem_claim_code(ctx: BillingContext, device: Device, *, code: str) -
         await tx.add_seat(Seat(subscription_id=sub.id, device_id=device.id, role=role, claimed_at=now))
         if role is SeatRole.OWNER:
             sub = await tx.update_subscription(replace(sub, payer_account_id=device.account_id), expected_version=sub.row_version)
-        await tx.redeem_claim_code(claim.id, device_id=device.id, redeemed_at=now)
+        if not await tx.redeem_claim_code(claim.id, device_id=device.id, redeemed_at=now):
+            raise NotFound("this code is not valid", code="code_invalid")   # used meanwhile; rolls the seat back
         await tx.add_audit(actor=device_actor(device), action="seat.claimed", target=sub_target(sub.id),
                            meta={"role": role.value, "purpose": claim.purpose.value})
         seats = await tx.list_seats(sub.id)
