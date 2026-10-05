@@ -10,14 +10,16 @@ User feedback endpoints.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Optional
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from api.services import own_sources
 from api.services.auth import get_current_user, get_optional_user
-from api.services.rate_limiter import rate_limit
+from api.services.rate_limiter import install_key, rate_limit
 from api.models.schemas import AuthUser
 from api.config import get_settings
 
@@ -37,9 +39,29 @@ class WhitelistRequest(BaseModel):
     domain: str
 
 
+async def _queue_for_verification(request: ReportRequest, http_request: Request) -> None:
+    """A 'phishing not caught' report also goes to the verification queue
+    (api/services/own_sources.py) — only while LOOKALIKE_GENERATOR_ENABLED is
+    set, with per-install and per-day limits, and never with anything but
+    the host and the hashed daily install number. The queue is advice to a
+    job that gathers its own evidence; a report never blocks a site by itself.
+    Best effort: a Redis blip must not fail the report."""
+    if request.report_type != "false_negative" or not own_sources.enabled():
+        return
+    try:
+        from api.services.cache import get_redis
+        outcome = await own_sources.enqueue_report(
+            await get_redis(), request.domain, install_key(http_request), time.time(),
+        )
+        logger.info("report_queued", extra={"outcome": outcome.value})
+    except Exception:  # noqa: BLE001
+        logger.warning("report_queue_error", exc_info=True)
+
+
 @router.post("/report", dependencies=[Depends(rate_limit(mode="ip", category="feedback_report"))])
 async def report_domain(
     request: ReportRequest,
+    http_request: Request,
     # Anonymous reports allowed: the Outlook add-in (and any future
     # surface that runs without a Cleanway session) needs to submit
     # phishing reports too. user_id is NULLABLE in feedback_reports
@@ -64,6 +86,7 @@ async def report_domain(
         "score": request.current_score,
         "user_id": user.id if user else None,
     })
+    await _queue_for_verification(request, http_request)
 
     if settings.supabase_url and settings.supabase_service_key:
         try:
