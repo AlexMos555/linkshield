@@ -98,7 +98,12 @@
     "free_only_body": "Bloquer les sites d'arnaque et vérifier liens et messages ne coûte rien et ne demande aucun compte. Il n'y a pas d'offre payante dans votre pays pour le moment.",
     "free_only_cta": "Télécharger l'appli Android",
     "free_body_with_plans": "Bloquer les sites d'arnaque et vérifier liens et messages ne coûte rien et ne demande aucun compte. Les offres payantes sont facultatives et ne coupent jamais la protection elle-même.",
-    "plans_link": "Voir les offres payantes"
+    "plans_link": "Voir les offres payantes",
+    "operator": {
+      "heading": "Un abonnement prélevé sur le compte du téléphone",
+      "body": "Pendant les {days, plural, one {# jour} other {# jours}} qui suivent l'installation, la protection fonctionne sans aucun prélèvement. Ensuite, c'est un abonnement à partir de {solo} ₽ par mois, prélevé sur le compte mobile, sans carte bancaire. Résiliable à tout moment.",
+      "plans_link": "Tarifs et contenu"
+    }
   },
   "Privacy": {
     "heading": "Privacy is not a feature. It's the architecture.",
@@ -268,6 +273,99 @@
     "free_cta": "Télécharger l'appli Android",
     "footer_cta_title": "Commencez gratuitement dès aujourd'hui",
     "footer_cta_body": "Sans carte bancaire. Passez à une offre payante uniquement si c'est utile pour vous."
+  },
+  "Billing": {
+    "meta_title": "Abonnement Cleanway — tarifs et conditions",
+    "meta_description": "Protection contre les sites frauduleux par abonnement : {solo} ₽ par mois pour un téléphone, {family3} ₽ pour trois, {family5} ₽ pour cinq. Prélèvement sur le compte mobile ; aucun prélèvement pendant les {days, plural, one {# jour} other {# jours}} qui suivent l'installation.",
+    "badge": "Prélevé sur le compte du téléphone",
+    "title": "Une protection contre les escrocs — pour vous et pour vos parents",
+    "subtitle": "Cleanway bloque les sites frauduleux dans toutes les applications du téléphone et vérifie les liens reçus par SMS et messageries. Les {days, plural, one {# jour} other {# jours}} qui suivent l'installation sont une période d'essai : rien n'est prélevé. Ensuite, c'est un abonnement aux tarifs ci-dessous, résiliable à tout moment.",
+    "trial_note": "Les {days, plural, one {# jour} other {# jours}} qui suivent l'installation : aucun prélèvement, ni numéro de téléphone ni carte à saisir.",
+    "plans_title": "Formules",
+    "per_month": "{price} ₽ par mois",
+    "per_device": "≈ {price} ₽ par téléphone",
+    "best_value": "La plus avantageuse",
+    "plan_solo_name": "Un téléphone",
+    "plan_solo_for": "Pour vous",
+    "plan_family3_name": "Trois téléphones",
+    "plan_family3_for": "Pour vous et vos parents",
+    "plan_family5_name": "Cinq téléphones",
+    "plan_family5_for": "Pour toute la famille",
+    "plan_cta": "Télécharger l'application et essayer",
+    "plan_cta_hint": "L'abonnement s'active dans l'application — après la période d'essai, et uniquement sur votre confirmation.",
+    "included_title": "Ce que comprend chaque formule",
+    "included_items": [
+      "Blocage des sites frauduleux connus dans toutes les applications du téléphone — navigateur, messageries, courrier",
+      "Vérification des liens reçus par SMS et messageries avant leur ouverture",
+      "Vérification des messages suspects directement sur le téléphone",
+      "La liste des sites frauduleux est mise à jour plusieurs fois par jour",
+      "Avec les formules à trois et cinq téléphones, une seule personne paie et tous les téléphones de la formule sont protégés",
+      "Assistance en russe"
+    ],
+    "how_title": "Comment ça marche",
+    "how_1_title": "Installez l'application",
+    "how_1_body": "Téléchargez Cleanway pour Android et activez la protection. Pendant {days, plural, one {# jour} other {# jours}}, elle fonctionne sans aucun prélèvement ; aucun numéro de téléphone ni carte à saisir.",
+    "how_2_title": "Activez l'abonnement dans l'application",
+    "how_2_body": "Choisissez une formule, indiquez votre numéro de téléphone et confirmez avec le code SMS. Le prix et la date du prélèvement sont affichés avant la confirmation.",
+    "how_3_title": "Le prélèvement se fait sur le compte du téléphone",
+    "how_3_body": "Votre opérateur prélève {solo}, {family3} ou {family5} ₽ une fois par mois sur le compte de votre numéro. Aucune carte bancaire n'est nécessaire et nous n'en recevons jamais les données.",
+    "how_4_title": "Résiliation en une étape",
+    "how_4_body": "Résiliez dans l'application, par SMS ou via l'assistance. Après la résiliation, plus rien n'est prélevé et la protection reste active jusqu'à la fin du mois payé.",
+    "faq_title": "Questions fréquentes",
+    "faq_auto_q": "Le prélèvement se fera-t-il tout seul après l'essai ?",
+    "faq_auto_a": "Non. À la fin des {days, plural, one {# jour} other {# jours}} d'essai, rien n'est prélevé tant que vous n'avez pas vous-même choisi une formule dans l'application et confirmé par code SMS. Sans votre confirmation, il n'y a pas de paiement.",
+    "faq_cancel_q": "Comment résilier ?",
+    "faq_cancel_a": "Dans l'application : « Abonnement » → « Résilier l'abonnement ». Ou envoyez un SMS avec le mot СТОП au numéro court indiqué dans l'application et sur la page de résiliation. Après la résiliation, plus rien n'est prélevé ; la protection reste active jusqu'à la fin du mois payé.",
+    "faq_nomoney_q": "Et s'il n'y a pas d'argent sur le compte ?",
+    "faq_nomoney_a": "Nous ne mettons jamais le compte en négatif et ne créons jamais de dette. S'il n'y a pas assez d'argent le jour du prélèvement, l'opérateur réessaie plusieurs fois pendant les {grace, plural, one {# jour} other {# jours}} qui suivent, et la protection continue de fonctionner pleinement pendant tout ce temps. Si le paiement n'aboutit toujours pas, {lapse}",
+    "lapse_basic": "l'abonnement est suspendu, mais le blocage de base d'après la liste des sites frauduleux continue de fonctionner sans prélèvement : la liste est actualisée une fois par semaine et le bouclier de l'application passe au jaune. Vous pouvez vous réabonner à tout moment.",
+    "lapse_off": "l'abonnement est suspendu et la protection est désactivée jusqu'au paiement suivant. Vous pouvez vous réabonner à tout moment.",
+    "faq_network_q": "Ça marche en Wi-Fi et avec un autre opérateur ?",
+    "faq_network_a": "Oui. La protection fonctionne sur n'importe quel réseau — Wi-Fi, itinérance ou téléphone avec la carte SIM d'un autre opérateur. Le prélèvement se fait sur le compte du numéro avec lequel vous vous êtes abonné. Le prélèvement sur le compte du téléphone est proposé chez les grands opérateurs russes ; si le vôtre ne le prend pas en charge, l'application le signale avant la confirmation.",
+    "faq_number_q": "Qui d'autre connaît mon numéro de téléphone ?",
+    "faq_number_a": "Le numéro ne sert qu'au prélèvement : il est transmis à votre opérateur et à l'agrégateur de paiement qui traitent le paiement. Nous le conservons chiffré dans une base de données séparée en Russie et ne le vendons jamais. Les détails sont dans la politique de confidentialité.",
+    "faq_refund_q": "Puis-je être remboursé ?",
+    "faq_refund_a": "Oui — si la protection n'a pas fonctionné par notre faute ou si un prélèvement a eu lieu après votre résiliation. Écrivez à l'assistance et nous remboursons ce mois. Les détails sont sur la page de résiliation et de remboursement.",
+    "requisites_title": "Qui fournit le service",
+    "requisites_name": "Prestataire : {name}",
+    "requisites_inn": "INN (numéro fiscal) {inn}",
+    "requisites_ogrnip": "OGRNIP (numéro d'enregistrement) {ogrnip}",
+    "requisites_pending": "Les coordonnées du prestataire (entrepreneur individuel, INN, OGRNIP) sont publiées ici et dans l'application avant qu'un abonnement puisse être activé.",
+    "requisites_note": "L'abonnement ne démarre qu'après que vous avez vu le prix et l'avez confirmé par code SMS. Le prix d'un abonnement en cours ne change pas : les nouveaux tarifs ne s'appliquent qu'aux nouveaux abonnements.",
+    "support_title": "Assistance",
+    "support_body": "Questions sur l'abonnement, les prélèvements et les remboursements : écrivez-nous. Indiquez le numéro de téléphone de l'abonnement et la date du prélèvement.",
+    "support_phone": "Téléphone de l'assistance : {phone}",
+    "link_cancel": "Comment résilier et se faire rembourser",
+    "link_terms": "Conditions d'utilisation",
+    "link_privacy": "Politique de confidentialité"
+  },
+  "Cancel": {
+    "meta_title": "Résilier l'abonnement Cleanway et remboursements",
+    "meta_description": "Résiliez dans l'application, par SMS ou via l'assistance. Après la résiliation, rien n'est prélevé. Remboursement si la protection a échoué par notre faute ou si un prélèvement a eu lieu après la résiliation.",
+    "back": "Retour aux tarifs",
+    "title": "Résilier l'abonnement et remboursements",
+    "intro": "Vous pouvez résilier à tout moment par l'un des moyens ci-dessous. Après la résiliation, plus rien n'est prélevé et la protection reste active jusqu'à la fin du mois déjà payé.",
+    "ways_title": "Comment résilier",
+    "way_app_title": "Dans l'application — une étape",
+    "way_app_body": "Ouvrez Cleanway → « Abonnement » → « Résilier l'abonnement » et confirmez. Aucun code SMS n'est nécessaire.",
+    "way_sms_title": "Par SMS",
+    "way_sms_body": "Envoyez le mot СТОП au numéro {number} depuis le téléphone de l'abonnement. Un SMS de réponse confirme la résiliation.",
+    "way_sms_pending": "Le numéro court pour les SMS apparaîtra ici dès que l'opérateur l'aura attribué. D'ici là, résiliez dans l'application ou chez votre opérateur.",
+    "way_support_title": "Via l'assistance",
+    "way_support_body": "Écrivez-nous en indiquant le numéro de téléphone de l'abonnement. Nous le résilions le jour ouvré même et le confirmons par message.",
+    "way_support_pending": "La boîte de l'assistance est encore en cours de mise en place : ce moyen sera disponible dès que l'adresse apparaîtra. D'ici là, résiliez dans l'application ou chez votre opérateur.",
+    "way_operator_title": "Chez votre opérateur",
+    "way_operator_body": "Les abonnements prélevés sur le compte du téléphone figurent dans l'espace client et l'application de votre opérateur — vous pouvez aussi les désactiver là.",
+    "after_title": "Ce qui se passe après la résiliation",
+    "after_1": "Plus aucun prélèvement — ni ce mois-ci, ni plus tard.",
+    "after_2": "La protection reste active jusqu'à la fin du mois payé.",
+    "after_3": "Ensuite, {lapse}",
+    "after_4": "Vous pouvez vous réabonner à tout moment ; la période d'essai n'est pas proposée une seconde fois.",
+    "refund_title": "Remboursements",
+    "refund_body": "Nous remboursons le mois si la protection n'a pas fonctionné par notre faute ou si un prélèvement a eu lieu après votre résiliation. Écrivez à l'assistance en indiquant le numéro de téléphone et la date du prélèvement. L'argent revient sur le compte du téléphone ou par le moyen que propose votre opérateur — en général sous 10 jours ouvrés.",
+    "refund_law": "Cela ne limite pas vos droits au titre du droit de la consommation.",
+    "contact_title": "Assistance",
+    "contact_pending": "La boîte de l'assistance est encore en cours de mise en place ; l'adresse apparaîtra ici dès qu'elle fonctionnera. D'ici là, résiliez dans l'application."
   },
   "Transparency": {
     "page_title": "Rapport de transparence",
@@ -539,6 +637,7 @@
         ]
       },
       {
+        "id": "payments",
         "title": "4. Offres payantes",
         "paragraphs": [
           "Dans certains pays, Cleanway propose des offres payantes avec des options supplémentaires. Aucune offre payante n'est proposée en Russie. Là où elles existent, le paiement est géré par Stripe, le prix et la période de facturation sont indiqués avant le paiement, et vous pouvez résilier à tout moment — l'offre reste active jusqu'à la fin de la période payée. Les remboursements sont traités conformément à la loi. Le blocage des sites d'arnaque ne deviendra jamais payant."
@@ -596,7 +695,20 @@
         "title": "11. Contact",
         "paragraphs": []
       }
-    ]
+    ],
+    "billing": {
+      "section": {
+        "id": "billing",
+        "title": "4. Abonnement et paiement",
+        "paragraphs": [
+          "En Russie, Cleanway est un abonnement prélevé sur le compte mobile via votre opérateur et un agrégateur de paiement. Le prix de la formule et la date du prélèvement sont affichés avant la confirmation ; l'abonnement ne démarre qu'après votre confirmation par code SMS depuis votre numéro. Les premiers jours après l'installation sont une période d'essai sans prélèvement ; sa durée et les tarifs figurent sur la page des tarifs.",
+          "L'abonnement se renouvelle chaque mois jusqu'à votre résiliation. Vous pouvez résilier dans l'application, par SMS ou via l'assistance — après la résiliation, plus rien n'est prélevé et la protection reste active jusqu'à la fin du mois payé. Nous ne mettons jamais un compte en négatif et ne créons jamais de dette. Si la protection n'a pas fonctionné par notre faute ou si un prélèvement a eu lieu après la résiliation, nous remboursons ce mois ; cela ne limite pas vos droits légaux.",
+          "Les tarifs ne peuvent changer que pour les nouveaux abonnements : un abonnement en cours conserve le prix auquel il a démarré. Dans les autres pays, les formules payantes se règlent par carte bancaire via Stripe — là aussi, le prix et la durée sont affichés avant le paiement et la résiliation est possible à tout moment."
+        ]
+      },
+      "lapse_basic": "Si un paiement échoue encore après les nouvelles tentatives, l'abonnement est suspendu, mais le blocage de base des sites frauduleux connus continue de fonctionner sans prélèvement — la liste est actualisée une fois par semaine.",
+      "lapse_off": "Si un paiement échoue encore après les nouvelles tentatives, l'abonnement est suspendu et la protection est désactivée jusqu'au paiement suivant."
+    }
   },
   "PrivacyPolicy": {
     "meta_title": "Politique de confidentialité — Cleanway",
@@ -700,6 +812,7 @@
         ]
       },
       {
+        "id": "payments",
         "title": "12. Paiements",
         "paragraphs": [
           "Aucune offre payante n'est proposée en Russie. Là où elles existent, le paiement passe par Stripe : Stripe reçoit votre e-mail et l'offre choisie et gère la carte lui-même. Nous ne voyons ni ne conservons jamais les données de carte."
@@ -751,7 +864,19 @@
           "Si nous modifions cette politique, nous publierons la nouvelle version sur cette page avec une nouvelle date."
         ]
       }
-    ]
+    ],
+    "billing": {
+      "section": {
+        "id": "billing",
+        "title": "12. Paiement de l'abonnement",
+        "paragraphs": [
+          "En Russie, l'abonnement est prélevé sur un compte mobile. Pour l'activer, vous indiquez un numéro de téléphone — le vôtre ou celui du proche qui paie. La période d'essai ne demande aucun numéro.",
+          "Le numéro de téléphone, la formule, les dates et l'historique des prélèvements sont conservés dans une base de données séparée située en Russie, à l'écart des autres données de Cleanway. Le numéro est stocké chiffré ; dans les journaux, les rapports d'erreur et à l'écran, il n'apparaît qu'en partie. Nous ne détenons aucune donnée de carte bancaire : aucune carte n'intervient dans ce paiement.",
+          "Votre opérateur et l'agrégateur de paiement qui traitent le prélèvement reçoivent le numéro et le montant — ils traitent ces données selon leurs propres règles. Nous conservons aussi la trace du consentement : quel texte et quel prix vous avez vus, et comment vous avez confirmé.",
+          "Les enregistrements de paiement et de consentement sont conservés aussi longtemps que l'exigent les règles comptables et fiscales — jusqu'à cinq ans ; une fois l'abonnement terminé et ce délai écoulé, le numéro de téléphone est supprimé de la base. Dans les autres pays, le paiement passe par Stripe : Stripe reçoit votre adresse e-mail et la formule choisie et traite lui-même la carte ; nous ne voyons ni ne conservons jamais les données de carte."
+        ]
+      }
+    }
   },
   "Reasons": {
     "flagged_dangerous": "Google signale ce site comme dangereux",

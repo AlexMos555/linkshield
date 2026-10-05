@@ -8,10 +8,13 @@
  * review it (governing law and the operator's details are not filled in).
  */
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
 
 import { LegalDocument, type LegalSection } from "@/components/LegalDocument";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
+import { replaceSection } from "@/lib/billing";
+import { BILLING_ENABLED, BILLING_TERMS, pricingVariantFor } from "@/lib/billing-config";
 import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
@@ -66,14 +69,35 @@ export async function generateMetadata({
 
 const linkStyle: React.CSSProperties = { color: "#60a5fa" };
 
+/** The subscription section with the lapse-policy sentence as its last paragraph. */
+function billingSection(section: LegalSection, lapseSentence: string): LegalSection {
+  return { ...section, paragraphs: [...(section.paragraphs ?? []), lapseSentence] };
+}
+
 export default async function Terms({
+  searchParams,
   params,
 }: {
+  searchParams: Promise<{ cc?: string }>;
   params: Promise<{ locale: string }>;
 }) {
   const safeLocale = resolveLocale((await params).locale);
+  // The same visitor test as /pricing (edge geo header, ?cc= override): only
+  // a visitor who is sold the operator subscription gets its terms; everyone
+  // else keeps the Stripe section and its promises. With the flag off nothing
+  // request-specific is read, so the page stays statically rendered.
+  const operator = BILLING_ENABLED && pricingVariantFor({
+    locale: safeLocale,
+    country: (await searchParams).cc ?? (await headers()).get("x-vercel-ip-country"),
+  }) === "operator";
   const t = await getTranslations({ locale: safeLocale, namespace: "Terms" });
-  const sections = t.raw("sections") as LegalSection[];
+  const currentSections = t.raw("sections") as LegalSection[];
+  // With the operator-billed subscription on, a Russian visitor's "no paid
+  // plans in Russia, Stripe elsewhere" section gives way to the subscription
+  // terms; what happens after a failed payment follows the lapse policy.
+  const sections = operator
+    ? replaceSection(currentSections, "payments", billingSection(t.raw("billing.section") as LegalSection, t(`billing.lapse_${BILLING_TERMS.lapsePolicy}`)))
+    : currentSections;
   const isRtl = (RTL_LOCALES as readonly string[]).includes(safeLocale);
 
   const privacyLink = (

@@ -1593,7 +1593,12 @@
       "free_only_body": "Blocking scam sites and checking links and messages cost nothing and need no account. There are no paid plans in your country right now.",
       "free_only_cta": "Get the Android app",
       "free_body_with_plans": "Blocking scam sites and checking links and messages cost nothing and need no account. Paid plans are optional and never switch the protection itself off.",
-      "plans_link": "See paid plans"
+      "plans_link": "See paid plans",
+      "operator": {
+        "heading": "A subscription billed to your phone account",
+        "body": "For the first {days, plural, one {# day} other {# days}} protection runs with nothing charged. After that it is a subscription from {solo} ₽ a month, billed to your mobile phone account — no bank card. Cancel at any time.",
+        "plans_link": "Prices and what is included"
+      }
     },
     "privacy": {
       "heading": "Privacy is not a feature. It's the architecture.",
@@ -1763,6 +1768,99 @@
       "free_cta": "Get the Android app",
       "footer_cta_title": "Start free today",
       "footer_cta_body": "No credit card. Upgrade only when it makes sense for you."
+    },
+    "billing": {
+      "meta_title": "Cleanway subscription — prices and terms",
+      "meta_description": "Protection from scam sites by subscription: {solo} ₽ a month for one phone, {family3} ₽ for three, {family5} ₽ for five. Billed to your mobile phone account; nothing is charged for the first {days, plural, one {# day} other {# days}}.",
+      "badge": "Billed to your phone account",
+      "title": "Protection from scammers — for you and for your parents",
+      "subtitle": "Cleanway blocks scam sites in every app on the phone and checks links from SMS and messengers. The first {days, plural, one {# day} other {# days}} are a trial: nothing is charged. After that it is a subscription at the prices below; cancel at any time.",
+      "trial_note": "The first {days, plural, one {# day} other {# days}}: nothing charged, no phone number or card to enter.",
+      "plans_title": "Plans",
+      "per_month": "{price} ₽ a month",
+      "per_device": "≈ {price} ₽ per phone",
+      "best_value": "Best value",
+      "plan_solo_name": "One phone",
+      "plan_solo_for": "For you",
+      "plan_family3_name": "Three phones",
+      "plan_family3_for": "For you and your parents",
+      "plan_family5_name": "Five phones",
+      "plan_family5_for": "For the whole family",
+      "plan_cta": "Get the app and try it",
+      "plan_cta_hint": "The subscription is set up in the app — after the trial, and only when you confirm it.",
+      "included_title": "What every plan includes",
+      "included_items": [
+        "Blocks known scam sites in every app on the phone — browser, messengers, mail",
+        "Checks links from SMS and messengers before they open",
+        "Checks suspicious messages on the phone itself",
+        "The list of scam sites is updated several times a day",
+        "On the three- and five-phone plans one person pays and every phone in the plan is protected",
+        "Support in Russian"
+      ],
+      "how_title": "How it works",
+      "how_1_title": "Install the app",
+      "how_1_body": "Get Cleanway for Android and switch protection on. For {days, plural, one {# day} other {# days}} it runs with nothing charged; there is no phone number or card to enter.",
+      "how_2_title": "Set up the subscription in the app",
+      "how_2_body": "Pick a plan, enter your phone number and confirm with the SMS code. The price and the charge date are shown before you confirm.",
+      "how_3_title": "Billed to your phone account",
+      "how_3_body": "Your mobile operator charges {solo}, {family3} or {family5} ₽ once a month to the account of your number. No bank card is needed and we never receive card details.",
+      "how_4_title": "Cancel in one step",
+      "how_4_body": "Cancel in the app, by SMS or through support. After cancelling nothing more is charged, and protection runs until the end of the paid month.",
+      "faq_title": "Common questions",
+      "faq_auto_q": "Will I be charged automatically after the trial?",
+      "faq_auto_a": "No. When the {days, plural, one {# day} other {# days}} of the trial are over nothing is charged until you pick a plan in the app yourself and confirm it with an SMS code. Without your confirmation there is no payment.",
+      "faq_cancel_q": "How do I cancel?",
+      "faq_cancel_a": "In the app: “Subscription” → “Cancel subscription”. Or send an SMS with the word СТОП to the short number shown in the app and on the cancellation page. After cancelling nothing more is charged; protection runs until the end of the paid month.",
+      "faq_nomoney_q": "What if there is no money on the account?",
+      "faq_nomoney_a": "We never charge your account into the negative and never create a debt. If there is not enough money on the charge day, the operator retries a few times over the next {grace, plural, one {# day} other {# days}}, and protection keeps running in full the whole time. If the payment still does not go through, {lapse}",
+      "lapse_basic": "the subscription is paused, but basic blocking from the list of scam sites keeps working at no charge: the list is refreshed once a week and the shield in the app turns yellow. You can subscribe again at any time.",
+      "lapse_off": "the subscription is paused and protection switches off until the next payment. You can subscribe again at any time.",
+      "faq_network_q": "Does it work on Wi-Fi and with another operator?",
+      "faq_network_a": "Yes. Protection works on any network — Wi-Fi, roaming, or a phone with another operator's SIM. The charge goes to the account of the number you subscribed with. Billing to the phone account is available with the big Russian operators; if yours does not support it, the app says so before you confirm.",
+      "faq_number_q": "Who else learns my phone number?",
+      "faq_number_a": "The number is needed only for the charge: your mobile operator and the payment aggregator that process the payment receive it. We keep it encrypted in a separate database in Russia and never sell it. Details are in the privacy policy.",
+      "faq_refund_q": "Can I get my money back?",
+      "faq_refund_a": "Yes — if protection did not work through our fault, or a charge went through after you cancelled. Write to support and we refund that month. Details are on the cancellation and refund page.",
+      "requisites_title": "Who provides the service",
+      "requisites_name": "Provider: {name}",
+      "requisites_inn": "INN (tax number) {inn}",
+      "requisites_ogrnip": "OGRNIP (registration number) {ogrnip}",
+      "requisites_pending": "The provider's details (sole proprietor, INN, OGRNIP) are published here and in the app before a subscription can be set up.",
+      "requisites_note": "A subscription starts only after you have seen the price and confirmed it with an SMS code. The price of a running subscription does not change: new prices apply to new subscriptions only.",
+      "support_title": "Support",
+      "support_body": "Questions about the subscription, charges and refunds — write to us. Include the phone number the subscription is on and the date of the charge.",
+      "support_phone": "Support phone: {phone}",
+      "link_cancel": "How to cancel and get a refund",
+      "link_terms": "Terms of use",
+      "link_privacy": "Privacy policy"
+    },
+    "cancel": {
+      "meta_title": "Cancelling a Cleanway subscription and refunds",
+      "meta_description": "Cancel in the app, by SMS or through support. After cancelling nothing is charged. Refunds when protection failed through our fault or a charge went through after cancellation.",
+      "back": "Back to prices",
+      "title": "Cancelling the subscription and refunds",
+      "intro": "You can cancel at any time in any of the ways below. After cancelling nothing more is charged, and protection runs until the end of the month already paid for.",
+      "ways_title": "How to cancel",
+      "way_app_title": "In the app — one step",
+      "way_app_body": "Open Cleanway → “Subscription” → “Cancel subscription” and confirm. No SMS code is needed.",
+      "way_sms_title": "By SMS",
+      "way_sms_body": "Send the word СТОП to the number {number} from the phone the subscription is on. A reply SMS confirms the cancellation.",
+      "way_sms_pending": "The short number for SMS appears here once the operator assigns it. Until then, cancel in the app or with your operator.",
+      "way_support_title": "Through support",
+      "way_support_body": "Write to us with the phone number the subscription is on. We cancel it the same working day and confirm by message.",
+      "way_support_pending": "The support mailbox is still being set up: this way opens as soon as its address appears. Until then, cancel in the app or with your operator.",
+      "way_operator_title": "With your operator",
+      "way_operator_body": "Subscriptions billed to the phone account are listed in your mobile operator's account area and app — you can switch them off there too.",
+      "after_title": "What happens after cancelling",
+      "after_1": "No more charges — not this month, not later.",
+      "after_2": "Protection runs until the end of the paid month.",
+      "after_3": "After that, {lapse}",
+      "after_4": "You can subscribe again at any time; the trial is not offered a second time.",
+      "refund_title": "Refunds",
+      "refund_body": "We refund the month if protection did not work through our fault, or a charge went through after you cancelled. Write to support with the phone number and the date of the charge. The money goes back to the phone account or in the way your operator offers — usually within 10 working days.",
+      "refund_law": "This does not limit your rights under consumer-protection law.",
+      "contact_title": "Support",
+      "contact_pending": "The support mailbox is still being set up; the address appears here as soon as it works. Until then, cancel in the app."
     },
     "transparency": {
       "page_title": "Transparency report",
@@ -2034,6 +2132,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "4. Paid plans",
           "paragraphs": [
             "In some countries Cleanway offers paid plans with extras. Paid plans are not offered in Russia. Where they are offered, payment is handled by Stripe, the price and billing period are shown before you pay, and you can cancel at any time — the plan stays active until the end of the paid period. Refunds are handled as the law requires. Blocking scam sites never becomes a paid feature."
@@ -2091,7 +2190,20 @@
           "title": "11. Contact",
           "paragraphs": []
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "4. Subscription and payment",
+          "paragraphs": [
+            "In Russia Cleanway is a subscription billed to your mobile phone account through your mobile operator and a payment aggregator. The plan's price and the charge date are shown before you confirm; the subscription starts only after you confirm it with an SMS code from your number. The first days after installation are a trial with nothing charged; its length and the prices are on the Pricing page.",
+            "The subscription renews every month until you cancel. You can cancel in the app, by SMS or through support — after cancelling nothing more is charged, and protection runs until the end of the paid month. We never charge an account into the negative and never create a debt. If protection did not work through our fault, or a charge went through after cancellation, we refund that month; this does not limit your statutory rights.",
+            "Prices can change for new subscriptions only: a running subscription keeps the price it was started at. In other countries paid plans are paid by bank card through Stripe — there too the price and period are shown before you pay, and you can cancel at any time."
+          ]
+        },
+        "lapse_basic": "If a payment still fails after the retries, the subscription is paused, but basic blocking of known scam sites keeps working at no charge — the list is refreshed once a week.",
+        "lapse_off": "If a payment still fails after the retries, the subscription is paused and protection switches off until the next payment."
+      }
     },
     "privacy_policy": {
       "meta_title": "Privacy policy — Cleanway",
@@ -2195,6 +2307,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "12. Payments",
           "paragraphs": [
             "Paid plans are not offered in Russia. Where they are offered, payment goes through Stripe: Stripe receives your email and the chosen plan and handles the card itself. We never see or store card details."
@@ -2246,7 +2359,19 @@
             "If we change this policy, we will publish the new version on this page with a new date."
           ]
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "12. Paying for the subscription",
+          "paragraphs": [
+            "In Russia the subscription is billed to a mobile phone account. To set it up you enter a phone number — your own, or that of the relative who pays. The trial needs no number.",
+            "The phone number, the plan, the dates and the history of charges are kept in a separate database located in Russia, apart from the rest of Cleanway's data. The number is stored encrypted; in logs, error reports and on screens it is shown only in part. We hold no bank-card data: no card is involved in this payment.",
+            "Your mobile operator and the payment aggregator that process the charge receive the number and the amount — they handle that data under their own rules. We also keep a record of consent: which text and which price you saw and how you confirmed.",
+            "Payment and consent records are kept as long as accounting and tax rules require — up to five years; once the subscription is over and that period has passed, the phone number is deleted from the database. In other countries payment goes through Stripe: Stripe receives your email and the chosen plan and handles the card itself; we never see or store card details."
+          ]
+        }
+      }
     }
   },
   "email": {

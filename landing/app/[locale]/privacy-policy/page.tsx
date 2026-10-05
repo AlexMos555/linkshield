@@ -17,6 +17,8 @@ import { getTranslations } from "next-intl/server";
 
 import { LegalDocument, type LegalSection } from "@/components/LegalDocument";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
+import { replaceSection } from "@/lib/billing";
+import { BILLING_ENABLED } from "@/lib/billing-config";
 import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
@@ -76,7 +78,13 @@ export default async function PrivacyPolicy({
 }) {
   const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "PrivacyPolicy" });
-  const sections = t.raw("sections") as LegalSection[];
+  const currentSections = t.raw("sections") as LegalSection[];
+  // With the operator-billed subscription on, the payments section describes
+  // the phone number, the separate database in Russia and who else sees the
+  // number (docs/PRIVACY.md, "Subscription billing for Russia").
+  const sections = BILLING_ENABLED
+    ? replaceSection(currentSections, "payments", t.raw("billing.section") as LegalSection)
+    : currentSections;
   const isRtl = (RTL_LOCALES as readonly string[]).includes(safeLocale);
 
   const contact = SUPPORT_EMAIL_LIVE ? (
