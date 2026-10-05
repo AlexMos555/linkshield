@@ -32,6 +32,8 @@ import { useLinkGuard } from "../../src/hooks/useLinkGuard";
 import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
 import { FREEMIUM } from "../../src/services/freemium";
 import { selfUpdateAllowed } from "../../src/utils/freemium";
+import { BillingCard } from "../../src/components/billing/BillingCard";
+import { useBilling } from "../../src/hooks/useBilling";
 import { MessageCheckCard } from "../../src/components/shield/MessageCheckCard";
 import { KeepAliveCard } from "../../src/components/shield/KeepAliveCard";
 import { useKeepAlive } from "../../src/hooks/useKeepAlive";
@@ -126,6 +128,9 @@ export default function HomeScreen() {
   // iPhone: DNS protection (NEDNSSettingsManager), live from iOS. Inert elsewhere.
   const iosDns = useIosDnsProtection();
   const [dnsSheetVisible, setDnsSheetVisible] = useState(false);
+  // The subscription (billing plan A.10) — hidden entirely while the build's
+  // switch is off; with it on, a lapsed phone's hero says "basic" or "off".
+  const subscription = useBilling();
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -168,6 +173,10 @@ export default function HomeScreen() {
   const heroHold: HeroHold | null =
     network.state === "paused" ? { kind: "paused", until: network.pausedUntil }
     : network.state === "conflict" ? { kind: "conflict" }
+    // A lapsed subscription: the tunnel may be green, but a weekly list is not
+    // "protected", and an OFF mode blocks nothing — never a green hero over either.
+    : subscription.enabled && subscription.mode === "off" ? { kind: "lapsed_off" }
+    : subscription.enabled && subscription.mode === "basic" ? { kind: "basic" }
     : null;
 
   const rollout = rolloutItems(t, Platform.OS, messageCheck);
@@ -260,6 +269,12 @@ export default function HomeScreen() {
       {callHelp && (
         <View style={s.section}>
           <CallHelpButton onPress={() => router.push("/call-guard")} />
+        </View>
+      )}
+
+      {subscription.enabled && (
+        <View style={s.section}>
+          <BillingCard view={subscription.view} mode={subscription.mode} onOpen={() => router.push("/subscription")} />
         </View>
       )}
 
