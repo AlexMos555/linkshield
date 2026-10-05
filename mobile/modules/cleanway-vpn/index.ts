@@ -246,6 +246,51 @@ export function pausedUntil(): number {
   }
 }
 
+/** The native shield's protection mode (ProtectionPolicy.kt): full as shipped; basic / off after a lapse. */
+export type NativeProtectionMode = 'full' | 'basic' | 'off';
+const NATIVE_MODES: readonly NativeProtectionMode[] = ['full', 'basic', 'off'];
+
+/**
+ * Hands the native shield the device pass the app verified (its claims as
+ * JSON), or null to forget it. The service follows the pass on its own from
+ * then on — the mode, the weekly list cadence of "basic", the notification —
+ * with no JS alive. False when this build cannot (iOS, an older native
+ * build): the app then says the subscription could not be applied here
+ * rather than showing a yellow shield over a tunnel that still runs in full.
+ */
+export function setProtectionPass(claimsJson: string | null): boolean {
+  if (Platform.OS !== 'android') return false;
+  try {
+    if (typeof CleanwayVpn.setProtectionPass !== 'function') return false;
+    CleanwayVpn.setProtectionPass(claimsJson);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The mode the native shield is in right now, or null when this build cannot say. */
+export function nativeProtectionMode(): NativeProtectionMode | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    const mode = CleanwayVpn.protectionMode?.();
+    return (NATIVE_MODES as readonly string[]).includes(mode as string) ? (mode as NativeProtectionMode) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** What the free trial is keyed on (TrialFingerprint.kt), or null — the app then keys it on its install id. */
+export function trialFingerprint(): string | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    const fp = CleanwayVpn.trialFingerprint?.();
+    return typeof fp === 'string' && fp.length > 0 ? fp : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * This install's random id (native, shared with the link guard's checks), or
  * null on other platforms and older builds — the caller then keeps its own.

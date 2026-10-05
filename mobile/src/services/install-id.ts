@@ -40,8 +40,8 @@ export async function getInstallId(): Promise<string | null> {
   }
 }
 
-/** RFC 4122 version-4 UUID from the platform's secure random source. */
-function randomUuid(): string {
+/** RFC 4122 version-4 UUID from the platform's secure random source (also the billing client's idempotency keys). */
+export function randomUuid(): string {
   const b = new Uint8Array(16);
   crypto.getRandomValues(b);
   b[6] = (b[6] & 0x0f) | 0x40;

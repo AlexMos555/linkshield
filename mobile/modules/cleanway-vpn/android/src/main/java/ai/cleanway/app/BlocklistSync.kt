@@ -154,7 +154,7 @@ object SyncPolicy {
 
     private val BACKOFF_MS = longArrayOf(5L * 60_000, 15L * 60_000, 60L * 60_000)
 
-    fun shouldFetchOnStart(storedAgeMs: Long?): Boolean = storedAgeMs == null || storedAgeMs > REFRESH_MS / 2
+    fun shouldFetchOnStart(storedAgeMs: Long?, refreshMs: Long = REFRESH_MS): Boolean = storedAgeMs == null || storedAgeMs > refreshMs / 2
 
     /**
      * Is this fetch worth the person's data right now? Always yes with no
@@ -167,12 +167,13 @@ object SyncPolicy {
         return storedAgeMs >= METERED_MIN_AGE_MS
     }
 
-    fun nextDelayMs(consecutiveFailures: Int, jitterSeed: Long = 0L): Long {
+    /** [refreshMs] is the steady-state cadence: 6 h as shipped, a week in the shield's BASIC mode. Failures back off the same way. */
+    fun nextDelayMs(consecutiveFailures: Int, jitterSeed: Long = 0L, refreshMs: Long = REFRESH_MS): Long {
         if (consecutiveFailures > 0) return BACKOFF_MS[minOf(consecutiveFailures, BACKOFF_MS.size) - 1]
         // ±10 % deterministic jitter from the seed (tests pass a fixed seed).
-        val spread = REFRESH_MS / 10
+        val spread = refreshMs / 10
         val offset = (Math.floorMod(jitterSeed, 2 * spread + 1)) - spread
-        return REFRESH_MS + offset
+        return refreshMs + offset
     }
 
     /**
@@ -232,6 +233,12 @@ class BlocklistSync(
      * after a start that needed none.
      */
     private val onNextDue: (delayMs: Long) -> Unit = {},
+    /**
+     * The steady-state cadence right now: 6 h as shipped, a week in the
+     * shield's BASIC mode (ProtectionPolicy.refreshMs). Read at every
+     * scheduling decision, so a mode change takes effect at the next one.
+     */
+    private val refreshMs: () -> Long = { SyncPolicy.REFRESH_MS },
 ) {
     @Volatile var lastError: String? = null; private set
     @Volatile var consecutiveFailures = 0; private set
@@ -409,7 +416,7 @@ class BlocklistSync(
      */
     fun start(executor: Executor) {
         val age = if (lastFetchAtMs > 0) nowMs() - lastFetchAtMs else null
-        if (SyncPolicy.shouldFetchOnStart(age)) {
+        if (SyncPolicy.shouldFetchOnStart(age, refreshMs())) {
             executor.execute { attempt() }
         } else {
             onNextDue(nextDelayMs())
@@ -454,7 +461,7 @@ class BlocklistSync(
     }
 
     /** How long until the next scheduled refresh should fire (Doze-safe alarm). */
-    fun nextDelayMs(): Long = SyncPolicy.nextDelayMs(consecutiveFailures, nowMs())
+    fun nextDelayMs(): Long = SyncPolicy.nextDelayMs(consecutiveFailures, nowMs(), refreshMs())
 
     @Synchronized
     fun stop() { future?.cancel(false); future = null }

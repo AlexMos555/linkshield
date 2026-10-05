@@ -12,7 +12,11 @@
     <string name="fg_channel">Protezione Cleanway</string>
     <string name="fg_channel_desc">Mostrata mentre la protezione anti-phishing è attiva</string>
     <string name="fg_text">Controllo dei nomi dei siti contro le truffe</string>
+    <string name="fg_text_basic">L\'elenco dei siti si aggiorna una volta a settimana: l\'abbonamento non è pagato</string>
+    <string name="fg_text_off">L\'abbonamento è finito: i siti non vengono bloccati</string>
     <string name="fg_title">La protezione Cleanway è attiva</string>
+    <string name="fg_title_basic">Protezione di base Cleanway</string>
+    <string name="fg_title_off">La protezione Cleanway è spenta</string>
     <string name="paused_text">Si riattiva da sola alle %1$s.</string>
     <string name="paused_title">La protezione Cleanway è in pausa</string>
     <string name="resume_action">Attiva ora</string>

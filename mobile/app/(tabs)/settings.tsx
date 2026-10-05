@@ -18,6 +18,7 @@ import {
   isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
 } from "../../modules/cleanway-vpn";
 import { paidPlansVisible } from "../../src/config/market";
+import { billingEnabled } from "../../src/config/billing";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -324,6 +325,10 @@ export default function SettingsScreen() {
         ) : (
           <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
                right={chevron} onPress={() => router.push("/auth")} />
+        )}
+        {billingEnabled() && (
+          <Row label={t("mobile.settings.subscription")} desc={t("mobile.settings.subscription_desc")}
+               right={chevron} onPress={() => router.push("/subscription")} />
         )}
         {paidPlansVisible(i18n.language) && (
           <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}

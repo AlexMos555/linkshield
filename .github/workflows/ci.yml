@@ -223,6 +223,33 @@ jobs:
         # checked — the router reuses the screen, so each share needs its id.
         run: node mobile/scripts/test-message-handoff.mjs
 
+      - name: Device pass table test (billing)
+        # The JS port of the server's pass rules (tests/billing/test_entitlement.py):
+        # EdDSA verification, every rejection reason, key rotation, and the
+        # offline rule — a clock turned back extends nothing, a trial has no grace.
+        run: node mobile/scripts/test-entitlement.mjs
+
+      - name: Subscription state → screen table test (billing)
+        # Flag off hides everything; the pass's clock outranks a stale server
+        # snapshot; cancel says when protection changes and into what; only
+        # the payer sees seats and cancel. Also the phone-number and copy helpers.
+        run: node mobile/scripts/test-billing-view.mjs
+
+      - name: Subscription reminders table test (billing)
+        # Days 1/3/5/7 of grace at most, two never closer than the gap, one
+        # lapse notice — and no link in any reminder, in any of the 10 locales.
+        run: node mobile/scripts/test-billing-reminders.mjs
+
+      - name: Billing API client table test
+        # Bearer device secret, idempotency keys, the envelope, and the three
+        # failures a screen tells apart; a phone number never leaves the body.
+        run: node mobile/scripts/test-billing-api.mjs
+
+      - name: QR encoder read-back test
+        # Every symbol is read back by an independent reader (format, unmask,
+        # Reed–Solomon syndromes, payload) — the claim code must scan.
+        run: node mobile/scripts/test-qr.mjs
+
       - name: Captcha service unit tests
         # Pins the deep-link contract with /auth/captcha: https-only URL,
         # nonce must match, timeout/grace/cancel resolve null exactly once.

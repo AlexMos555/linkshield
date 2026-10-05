@@ -12,7 +12,11 @@
     <string name="fg_channel">حماية Cleanway</string>
     <string name="fg_channel_desc">يظهر أثناء تشغيل الحماية من التصيّد</string>
     <string name="fg_text">نتحقق من أسماء المواقع بحثًا عن الاحتيال</string>
+    <string name="fg_text_basic">تُحدَّث قائمة المواقع مرة في الأسبوع — الاشتراك غير مدفوع</string>
+    <string name="fg_text_off">انتهى الاشتراك: المواقع لا تُحجب</string>
     <string name="fg_title">حماية Cleanway مفعّلة</string>
+    <string name="fg_title_basic">حماية Cleanway الأساسية</string>
+    <string name="fg_title_off">حماية Cleanway متوقفة</string>
     <string name="paused_text">تعود تلقائيًا الساعة %1$s.</string>
     <string name="paused_title">حماية Cleanway متوقفة مؤقتًا</string>
     <string name="resume_action">تشغيل الآن</string>

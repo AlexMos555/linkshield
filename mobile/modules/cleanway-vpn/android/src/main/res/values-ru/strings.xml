@@ -12,7 +12,11 @@
     <string name="fg_channel">Защита Cleanway</string>
     <string name="fg_channel_desc">Показывается, пока работает защита от фишинга</string>
     <string name="fg_text">Проверяем адреса сайтов на мошенничество</string>
+    <string name="fg_text_basic">Список сайтов обновляется раз в неделю — подписка не оплачена</string>
+    <string name="fg_text_off">Подписка закончилась: сайты не блокируются</string>
     <string name="fg_title">Защита Cleanway включена</string>
+    <string name="fg_title_basic">Базовая защита Cleanway</string>
+    <string name="fg_title_off">Защита Cleanway выключена</string>
     <string name="paused_text">Включится сама в %1$s.</string>
     <string name="paused_title">Защита Cleanway на паузе</string>
     <string name="resume_action">Включить сейчас</string>

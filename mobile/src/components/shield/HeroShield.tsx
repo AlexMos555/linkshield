@@ -15,7 +15,11 @@ export type HeroHold =
   /** Paused by the person; comes back by itself at [until]. */
   | { kind: "paused"; until: number }
   /** Strict Private DNS: the shield cannot run at all. */
-  | { kind: "conflict" };
+  | { kind: "conflict" }
+  /** The subscription lapsed to basic: blocking continues from a weekly list — the "yellow shield" (billing plan A.10). */
+  | { kind: "basic" }
+  /** The subscription lapsed to off: the tunnel runs, nothing is blocked. */
+  | { kind: "lapsed_off" };
 
 interface HeroShieldProps {
   state: HeroState;
@@ -52,6 +56,8 @@ export function HeroShield({ state, verifiedCount, totalCount, attention, interr
   const title =
     hold?.kind === "paused" ? t("mobile.home.hero.title_paused", { time: clockTime(hold.until, i18n.language) })
     : hold?.kind === "conflict" ? t("mobile.home.hero.title_conflict")
+    : hold?.kind === "basic" ? t("mobile.home.hero.title_basic")
+    : hold?.kind === "lapsed_off" ? t("mobile.home.hero.title_lapsed_off")
     : quiet ? t("mobile.home.hero.title_offline")
     : state === "all" ? t("mobile.home.hero.title_all")
     : state === "partial" ? t("mobile.home.hero.title_partial", { count: verifiedCount, total: totalCount })
@@ -60,21 +66,25 @@ export function HeroShield({ state, verifiedCount, totalCount, attention, interr
   const sub =
     hold?.kind === "paused" ? t("mobile.home.hero.sub_paused")
     : hold?.kind === "conflict" ? t("mobile.home.hero.sub_conflict")
+    : hold?.kind === "basic" ? t("mobile.home.hero.sub_basic")
+    : hold?.kind === "lapsed_off" ? t("mobile.home.hero.sub_lapsed_off")
     : quiet ? t("mobile.home.hero.sub_offline")
     : state === "all" ? t("mobile.home.hero.sub_all")
     : state === "partial" ? t("mobile.home.hero.sub_partial")
     : t("mobile.home.hero.sub_none", { count: verifiedCount });
   const icon: keyof typeof Ionicons.glyphMap =
     hold?.kind === "paused" ? "pause-circle-outline"
+    : hold?.kind === "basic" ? "shield-half-outline"
+    : hold?.kind === "lapsed_off" ? "shield-outline"
     : hold ? "alert-circle-outline"
     : quiet ? "cloud-offline-outline"
     : active ? "shield-checkmark"
     : "shield-outline";
-  const iconColor = hold ? colors.amber : active ? colors.green : colors.textSecondary;
+  const iconColor = hold?.kind === "lapsed_off" ? colors.danger : hold ? colors.amber : active ? colors.green : colors.textSecondary;
 
   return (
     <View style={s.wrap} accessibilityRole="text" accessibilityLabel={t("mobile.home.hero.a11y", { status: title })}>
-      <View style={[s.ring, active ? s.ringActive : hold ? s.ringHold : s.ringNeutral]}>
+      <View style={[s.ring, active ? s.ringActive : hold?.kind === "lapsed_off" ? s.ringDanger : hold ? s.ringHold : s.ringNeutral]}>
         <View style={s.disc}>
           <Ionicons name={icon} size={56} color={iconColor} />
         </View>
@@ -96,6 +106,7 @@ const s = StyleSheet.create({
   ringNeutral: { borderColor: "#22314A" },
   ringActive: { borderColor: colors.greenStroke },
   ringHold: { borderColor: colors.amberStroke },
+  ringDanger: { borderColor: colors.dangerStroke },
   disc: {
     width: 148, height: 148, borderRadius: 74,
     backgroundColor: colors.surface,

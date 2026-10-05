@@ -79,6 +79,16 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   notificationsEnabled?(): boolean;
   /** Open this app's system notification settings. */
   openNotificationSettings?(): boolean;
+  /**
+   * Hand the shield the device pass the app verified (its claims as JSON), or
+   * null to forget it. Optional: older native builds lack it (then the shield
+   * stays in its full mode and the app says it cannot apply the subscription).
+   */
+  setProtectionPass?(claimsJson: string | null): void;
+  /** The mode the stored pass entitles this phone to now: "full" | "basic" | "off". */
+  protectionMode?(): string;
+  /** What the free trial is keyed on (a labelled SHA-256 of ANDROID_ID), or null. */
+  trialFingerprint?(): string | null;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');
