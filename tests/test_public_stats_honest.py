@@ -60,10 +60,33 @@ def test_every_null_is_explained(stats):
             assert key in body["notes"], key
 
 
-def test_false_positive_rate_is_null_until_measured(stats):
-    """The committed benchmark has 50 legit sites, all 'unknown' — nothing
-    was measured, so nothing is published."""
-    assert stats()["false_positive_rate"] is None
+def _committed_benchmark() -> dict:
+    import json
+    from pathlib import Path
+    return json.loads((Path(__file__).resolve().parents[1] / "docs" / "benchmarks" / "latest.json").read_text())
+
+
+def test_committed_false_positive_rate_follows_its_own_numbers(stats):
+    """The weekly benchmark rewrites latest.json, so the endpoint is pinned to
+    the GATE, not to one snapshot: a rate appears only when the committed run
+    has at least MIN_BATCH legitimate sites with MIN_CLASSIFIED+ classified,
+    and then it is exactly the measured share — never a hand-written number."""
+    report = _committed_benchmark()
+    ours = (report.get("safe") or {}).get("cleanway") or {}
+    classified = (ours.get("fp") or 0) + (ours.get("tn") or 0)
+    measured = ours.get("fpr")
+    published = stats()["false_positive_rate"]
+    if (
+        measured is None
+        or (report.get("n_safe") or 0) < public_stats.MIN_BATCH
+        or classified < public_stats.MIN_CLASSIFIED
+    ):
+        assert published is None
+    else:
+        assert published == round(measured, 4)
+        # A published rate must rest on sites the analyzer really judged, not on
+        # the popularity allowlist's automatic "safe".
+        assert (report.get("sources") or {}).get("legit_outside_allowlist") is True
 
 
 def test_small_samples_are_not_published():
