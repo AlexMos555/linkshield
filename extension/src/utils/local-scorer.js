@@ -297,12 +297,17 @@ function localScore(domain) {
   //    ASCII suffix tables.
   var brandSub = rules ? rules.brandInSubdomain(asciiDomain) : null;
   var zoneBrand = rules && !brandSub ? rules.brandUnderOpenZone(asciiDomain) : null;
+  var tenantBrand = rules && !brandSub && !zoneBrand && rules.brandOnHostingTenant
+    ? rules.brandOnHostingTenant(asciiDomain) : null;
   if (brandSub) {
     score += 30;
     reasons.push({signal:"brand_subdomain", detail:"Uses '" + brandSub + "' brand as subdomain", weight:30});
   } else if (zoneBrand) {
     score += 30;
     reasons.push({signal:"brand_subdomain", detail:"Uses the '" + zoneBrand + "' brand name as its own name under a zone anyone can register in", weight:30});
+  } else if (tenantBrand) {
+    score += 30;
+    reasons.push({signal:"brand_subdomain", detail:"Uses the '" + tenantBrand + "' brand name in the name of a site on a hosting platform anyone can publish to", weight:30});
   }
 
   // 4. Fake TLD in subdomain (paypal.com.evil.xyz) — ASCII. Only labels left

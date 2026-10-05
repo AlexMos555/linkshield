@@ -90,6 +90,14 @@ EDGE_CASES = (
     "login.microsoftonline.com.evil.tk", "sub.domain.example.co.uk", "www.shop.co.uk",
     "xn--pypal-4ve.com", "xn--80ak6aa92e.com", "paypal.xn--80abap1arsf.xn--p1ai",
     "secure-login-paypal-verify.tk", "google.ru", "amazon.de", "yandex.kz",
+    # #80: a brand with a lure word as a site on a hosting platform
+    "sberbank-online.pages.dev", "gosuslugi-vhod.netlify.app", "ozon-priz.vercel.app",
+    "lk-gosuslugi.web.app", "sberbank.tw1.ru", "gosuslugi.netlify.app", "vtb-login.pages.dev",
+    "paypal-login.netlify.app", "zoom-sign-in.vercel.app", "adobesignin.netlify.app",
+    "apple-id-verify.web.app", "netflix-clone.vercel.app", "sber-hackathon.github.io",
+    "vkusvill-bonus.netlify.app", "mtsdelivery.vercel.app", "vk.github.io", "sber.bank.in",
+    "app.netlify.com", "www.netlify.app", "netlify.app", "a.b.sberbank-bonus.vercel.app",
+    "xn--c1aapkosapc-lk.netlify.app", "sberbank-bonus.tw1.ru",
     # malformed / degenerate input must not crash either side
     "a", "xn--", "xn---.com", "xn--a.com", "....xn--p1ai", "ru.com", "a.ru.com",
     # astral-plane letters: one character to Python, two UTF-16 units to JS
@@ -160,6 +168,7 @@ def server_verdict(host: str) -> list[str]:
         "1" if scoring._has_fake_tld_in_subdomain(host) else "0",
         str(scoring._apparent_subdomain_levels(host)),
         scoring.registrable_domain(host),
+        scoring._check_brand_on_hosting_tenant(host) or "-",
     ]
 
 
@@ -168,7 +177,7 @@ PARITY_HEADER = (
     "# The server's name rules on each host; scripts/test-local-scorer.mjs holds the extension's\n"
     "# port (packages/extension-core/src/utils/name-rules.js) to every row.\n"
     "# host\ttyposquat (legit|method)\tbrand_in_subdomain\tbrand_under_open_zone\tfake_tld\t"
-    "subdomain_levels\tregistrable_domain\n"
+    "subdomain_levels\tregistrable_domain\tbrand_on_hosting_tenant\n"
 )
 
 
@@ -188,7 +197,7 @@ def _flags(rule) -> str:
 
 def scorer_data() -> dict:
     """The name-rule data the extension needs, from the server's module."""
-    from api.services import doh_gateway, ru_lures, scoring
+    from api.services import doh_gateway, hosting_platforms, ru_lures, scoring
 
     targets = list(scoring.TYPOSQUAT_TARGETS.items())
     global_names = list(scoring.GLOBAL_TYPOSQUAT_TARGETS)
@@ -232,6 +241,13 @@ def scorer_data() -> dict:
         # Russian lure words (ru_lures) as skeletons, and the tables the
         # skeleton is built from, so the port folds spellings exactly as the
         # server does instead of keeping its own copy of them.
+        # _check_brand_on_hosting_tenant: every suffix tenant_suffix_of() is
+        # given by the scorer, the platforms' own hosts, the zones it skips
+        # and the brands it looks for, in the server's order.
+        "hostingTenantSuffixes": _sorted(scoring._SCORER_SHARED_SUFFIXES | hosting_platforms.TENANT_SUFFIXES),
+        "operatorHosts": _sorted(hosting_platforms.OPERATOR_HOSTS),
+        "registryOnlyZones": _sorted(scoring._REGISTRY_ONLY_ZONES),
+        "hostingTenantBrands": list(scoring._HOSTING_TENANT_BRANDS),
         "lureWords": _sorted(ru_lures.LURE_WORDS),
         "lureStems": list(ru_lures.LURE_STEMS),
         "brandLureWords": {n: _sorted(v) for n, v in sorted(scoring._BRAND_LURE_WORDS.items())},
