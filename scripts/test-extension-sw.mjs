@@ -48,6 +48,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 // createRequire honours NODE_PATH, which CI uses to point at a throwaway install.
 const require = createRequire(import.meta.url);
@@ -112,7 +113,11 @@ const PAGES = {
   "/links.html":
     "<!doctype html><title>Inbox</title><p>" +
     "<a id=\"l-scam\" href=\"http://scam-linked.example/win\">Prize</a> " +
-    "<a id=\"l-guess\" href=\"http://paypa1-login.tk/\">Account</a> " +
+    // The offline scorer's own verdict: the mock API rate-limits every
+    // "paypa1" host. paypa1-login.tk used to be it, but the server's name
+    // rules (which the extension now runs) do not read a look-alike glued to
+    // a lure word, so that one scores 30/caution offline.
+    "<a id=\"l-guess\" href=\"http://login.paypa1.tk/\">Account</a> " +
     "<a id=\"l-wrapped\" href=\"https://www.google.com/url?q=http://scam-wrapped.example/&sa=D\">Search result</a> " +
     "<a id=\"l-hidden\" href=\"https://www.linkedin.com/slink?code=e2e\">Short link</a> " +
     "<a id=\"l-docs\" href=\"https://docs.google.com/forms/d/e/e2e/viewform\">Form</a></p>",
@@ -213,6 +218,15 @@ async function activeCatalog(sw, tree) {
   const base = exact.split("_")[0];
   const locale = existsSync(resolve(ROOT, tree, "_locales", exact)) ? exact : base;
   return { locale, messages: readCatalog(tree, locale) };
+}
+
+// The content script's offline scorer, loaded the way the manifest loads it.
+function offlineScorer(tree) {
+  const ctx = vm.createContext({});
+  for (const rel of ["src/utils/scorer-data.js", "src/utils/name-rules.js", "src/utils/local-scorer.js"]) {
+    vm.runInContext(readFileSync(join(ROOT, tree, rel), "utf8"), ctx);
+  }
+  return ctx;
 }
 
 async function sendCheck(page, domains) {
@@ -356,6 +370,22 @@ async function runTree(tree) {
       assert.equal(posts(api, ALERTS).length, 0, "a verdict is not a block: nothing may reach the family");
     });
 
+    await check("with no API answer, the background gives the content script's offline verdict", async () => {
+      // The mock rate-limits every "paypa1" host, so these are offline
+      // verdicts, as the popup and the context menu show them. The background
+      // used to run its own weaker scorer, which read paypa1-login.tk as
+      // PayPal (70, dangerous) while the badge on the same link said caution.
+      const hosts = ["login.paypa1.tk", "paypa1-login.tk"];
+      const resp = await sendCheck(page, hosts);
+      const scorer = offlineScorer(tree);
+      for (const host of hosts) {
+        const r = resp.results.find((x) => x.domain === host);
+        assert.equal(r.source, "local", `${host}: expected the offline verdict`);
+        assert.equal(JSON.stringify(r), JSON.stringify(scorer.localScore(host)), host);
+      }
+      assert.deepEqual(hosts.map((h) => resp.results.find((x) => x.domain === h).level), ["dangerous", "caution"]);
+    });
+
     await check("a page that only LINKS to scams blocks nothing and tells nobody", async () => {
       const reader = await context.newPage();
       await reader.goto(`http://reader.example:${new URL(api.base).port}/links.html`);
@@ -417,7 +447,7 @@ async function runTree(tree) {
     });
 
     await check("an offline guess blocks the page but reaches neither the account nor the family", async () => {
-      const tab = await openBlocked(context, `http://paypa1-login.tk:${port}/landing.html`);
+      const tab = await openBlocked(context, `http://login.paypa1.tk:${port}/landing.html`);
       await sleep(1500);
       assert.equal(posts(api, INCREMENT).length, 1, "a guess from the offline scorer reached the account counter");
       assert.equal(posts(api, ALERTS).length, 1, "a guess from the offline scorer reached the family");

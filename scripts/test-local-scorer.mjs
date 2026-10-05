@@ -39,6 +39,16 @@
  * `api.services.scoring._decode_idn`, so the JS decoder is pinned to the
  * Python one rather than to my reading of the RFC. The Unicode -> punycode
  * direction was independently confirmed with Chrome's own IDN encoder.
+ *
+ * THE NAME RULES ARE THE SERVER'S
+ * -------------------------------
+ * Typosquatting, a brand as a subdomain or under an open Russian zone, fake
+ * TLDs and subdomain depth come from src/utils/name-rules.js, a port of the
+ * server's rules (PRs #61, #62) over data generated from the server
+ * (src/utils/scorer-data.js). Group 9 holds the port to the server's own
+ * answers on every row of tests/data/extension_name_rules_parity.tsv, which
+ * scripts/build_extension_scorer_data.py generates from api/services/scoring.py
+ * (and tests/test_extension_scorer_data.py keeps current).
  */
 import assert from "node:assert";
 import { readFileSync } from "node:fs";
@@ -54,23 +64,33 @@ const ROOT = resolve(here, "..");
 // table against all four is a second drift guard: if someone hand-edits a
 // generated copy, or edits the source and forgets to rebuild, this fails.
 const TREES = [
-  ["extension-core (source)", "packages/extension-core/src/utils/local-scorer.js"],
-  ["extension (chrome)", "extension/src/utils/local-scorer.js"],
-  ["extension-firefox", "extension-firefox/src/utils/local-scorer.js"],
-  ["extension-safari", "extension-safari/src/utils/local-scorer.js"],
+  ["extension-core (source)", "packages/extension-core"],
+  ["extension (chrome)", "extension"],
+  ["extension-firefox", "extension-firefox"],
+  ["extension-safari", "extension-safari"],
 ];
 
+// The scorer's files, in the order every manifest's content_scripts list and
+// the background's imports load them: the data generated from the server
+// (scripts/build_extension_scorer_data.py), the server's name rules ported
+// to JavaScript, then the scorer.
+const SCORER_FILES = ["src/utils/scorer-data.js", "src/utils/name-rules.js", "src/utils/local-scorer.js"];
+
 /**
- * The scorer is a CLASSIC content script, not a module: the manifest lists it
- * under content_scripts.js, and it declares `localScore` and friends as plain
- * globals. A bare vm context is the closest honest model of how the browser
- * actually loads it — no module wrapper, no injected globals, no DOM. That
- * also proves the file does not secretly depend on `window` or `chrome`.
+ * The scorer is CLASSIC content scripts, not modules: the manifest lists them
+ * under content_scripts.js, and local-scorer.js declares `localScore` and
+ * friends as plain globals. A bare vm context is the closest honest model of
+ * how the browser actually loads them — no module wrapper, no injected
+ * globals, no DOM. That also proves the files do not secretly depend on
+ * `window` or `chrome`. `strict` prepends a "use strict" directive: the
+ * background imports the same files as ES modules, which are always strict.
  */
-function loadScorer(relPath) {
-  const src = readFileSync(join(ROOT, relPath), "utf8");
+function loadScorer(tree, { files = SCORER_FILES, strict = false } = {}) {
   const ctx = vm.createContext({});
-  vm.runInContext(src, ctx);
+  for (const rel of files) {
+    const src = readFileSync(join(ROOT, tree, rel), "utf8");
+    vm.runInContext((strict ? '"use strict";\n' : "") + src, ctx, { filename: join(tree, rel) });
+  }
   return ctx;
 }
 
@@ -141,11 +161,22 @@ const DECODE_CASES = [
 // scored 15-45 with many_hyphens / medium_entropy / long_domain attached.
 const RF_CLEAN = [
   "xn----7sbnackuskv0m.xn--p1ai", // экзамен-пдд.рф        — was 25 caution
-  "xn--80abap1arsf.xn--p1ai", // сбербанк.рф           — was 15 safe + many_hyphens
   "xn--d1abbgf6aiiy.xn--p1ai", // президент.рф          — was 15 safe + many_hyphens
   "xn--80adxhks.xn--p1ai", // москва.рф             — was 15 safe + many_hyphens
-  "xn--c1aapkosapc.xn--p1ai", // госуслуги.рф          — was 15 safe + many_hyphens
   "xn----8sbnapgcdijslcphl1j5bv.xn--p1ai", // перемышльский-район.рф — was 45 caution
+  "xn--90ab2c.xn--p1ai", // втб.рф — VTB's own (NS ns1.vtb.ru), listed official
+  "xn--d1acpjx3f.xn--p1ai", // яндекс.рф — Yandex's own, listed official
+];
+
+// A Russian brand's name under .рф that the brand data does NOT list gets
+// exactly the server's verdict: the brand's name under another TLD, and no
+// punycode artefact on top. сбербанк.рф and госуслуги.рф were in the list
+// above until the scorer learned Russian brands. The .рф registry
+// (whois.tcinet.ru, 2026-09-29) has госуслуги.рф held by a private person
+// and neither name delegated, so nothing there is the brand's site.
+const RF_BRAND_NAMES = [
+  ["xn--80abap1arsf.xn--p1ai", "sberbank.ru"], // сбербанк.рф
+  ["xn--c1aapkosapc.xn--p1ai", "gosuslugi.ru"], // госуслуги.рф
 ];
 
 // ── Group 3: Latin domains must score EXACTLY as before ──
@@ -189,9 +220,129 @@ const MALFORMED_UNCHANGED = [
   [`xn--${"a".repeat(120)}.com`, 10, "safe", "long_domain"],
 ];
 
-for (const [treeName, relPath] of TREES) {
-  console.log(`\n${treeName}  (${relPath})`);
-  const ctx = loadScorer(relPath);
+// ── Group 8: Russian names, whole verdicts (PRs #61 and #62, now offline) ──
+// The comment is this scorer's answer before the port, where it differed.
+// The reasons are the ones the server's name rules give (tests/data/
+// extension_name_rules_parity.tsv holds the rules themselves to the server).
+const RUSSIAN_NAMES = [
+  // A name under a Russian zone is judged under that zone (#61). The St
+  // Petersburg government was "caution" for a fake 'gov' TLD and 4 levels.
+  ["kvs.gov.spb.ru", 0, "safe", ""], // was 50 caution [fake_tld|deep_subdomains]
+  ["zenit.kfis.gov.spb.ru", 15, "safe", "deep_subdomains"], // was 50 caution
+  ["www.shop.co.uk", 0, "safe", ""], // was 15 [deep_subdomains]
+  ["signin.ebay.co.uk", 10, "safe", "suspicious_keyword"], // was 25 caution; the background's own scorer said 55 dangerous
+  // Short names are compared exactly only (#61). The old 50-brand list had
+  // no aws, etsy or ikea; with the server's 125 these stay clear because of
+  // the length rules, not because the brand is missing.
+  ["ako.ru", 0, "safe", ""],
+  ["etsp.ru", 0, "safe", ""],
+  ["ikar.ru", 0, "safe", ""],
+  ["dhl.top", 50, "caution", "typosquatting|risky_tld"],
+  // A TLD bought as the name under an open zone reads as the brand's site.
+  ["vk.com.msk.ru", 80, "dangerous", "brand_subdomain|fake_tld|deep_subdomains"], // was 50 caution
+  ["paypal.com.spb.ru", 80, "dangerous", "brand_subdomain|fake_tld|deep_subdomains"],
+  ["sberbank.spb.ru", 30, "caution", "brand_subdomain"], // was 0
+  ["gosuslugi-lk.spb.ru", 60, "dangerous", "typosquatting|brand_subdomain"], // was 0; 30 before the lure words (#64)
+  // Russian lure words (#64): the brand spelled right plus the scam word.
+  ["sberbank-bonus.ru", 30, "caution", "typosquatting"], // was 0
+  ["sber-vozvrat.site", 50, "caution", "typosquatting|risky_tld"], // was 0
+  ["ozonpriz.ru", 30, "caution", "typosquatting"], // was 0
+  ["vkusvill-bonus.ru", 0, "safe", ""], // VkusVill, not VK: the brand must be a whole word
+  ["edu.gov.ru", 0, "safe", ""], // was 35 caution [fake_tld]: the Ministry of Education's zone
+  // Russian brands (#62): typos, look-alikes, zones, combos — all 0 before.
+  ["sberbamk.ru", 30, "caution", "typosquatting"],
+  ["t1nkoff.ru", 30, "caution", "typosquatting"],
+  ["gosuslugl.ru", 30, "caution", "typosquatting"],
+  ["0zon.ru", 30, "caution", "typosquatting"],
+  ["wildberies.ru", 30, "caution", "typosquatting"],
+  ["avlto.ru", 30, "caution", "typosquatting"],
+  ["yandex.ru.com", 30, "caution", "typosquatting"],
+  ["avito-ru.com", 30, "caution", "typosquatting"],
+  ["ozon.shop", 30, "caution", "typosquatting"], // a shared name under a lure TLD
+  ["xn--80aesyt.xn--p1ai", 30, "caution", "typosquatting"], // авито.рф, not Avito's NS
+  // …and the other owners and words #62 cleared, which stay clear.
+  ["megafox.ru", 0, "safe", ""], // a fur factory: not a slip of megafon
+  ["tirkoff.ru", 0, "safe", ""],
+  ["mtscom.ru", 0, "safe", ""],
+  ["vkweb.ru", 0, "safe", ""],
+  ["ozon.pl", 0, "safe", ""], // a shared name abroad
+  ["tbank.com", 0, "safe", ""], // T Bank, N.A. (Dallas)
+  ["mts.ca", 0, "safe", ""], // Bell MTS
+  ["51gosuslugi.ru", 0, "safe", ""], // Murmansk's regional portal, listed official
+  ["www.xn--90ab2c.xn--p1ai", 0, "safe", ""], // www.втб.рф
+  ["yandex.kz", 0, "safe", ""], // Yandex's own, listed official
+];
+
+const PARITY_TSV = "tests/data/extension_name_rules_parity.tsv";
+
+/** The server's answers, generated by scripts/build_extension_scorer_data.py. */
+function parityRows() {
+  return readFileSync(join(ROOT, PARITY_TSV), "utf8").split("\n")
+    .filter((line) => line && !line.startsWith("#"))
+    .map((line) => line.split("\t"));
+}
+
+/** The same six columns, from the extension's port. */
+function portVerdict(ctx, host) {
+  const rules = ctx.cleanwayNameRules;
+  const typo = rules.typosquat(host, ctx.decodeIDN(host));
+  return [
+    host,
+    typo ? `${typo.brand}|${typo.method}` : "-",
+    rules.brandInSubdomain(host) || "-",
+    rules.brandUnderOpenZone(host) || "-",
+    rules.hasFakeTldInSubdomain(host) ? "1" : "0",
+    String(rules.apparentSubdomainLevels(host)),
+    rules.registrableDomain(host),
+  ];
+}
+
+const PARITY = parityRows();
+
+for (const [treeName, tree] of TREES) {
+  console.log(`\n${treeName}  (${tree})`);
+  const ctx = loadScorer(tree);
+
+  // ── Group 9: the port answers exactly what the server's rules answer ──
+  // Every row: typosquat (brand and method), brand as a subdomain, brand
+  // under an open zone, fake TLD, subdomain levels, registrable domain. A
+  // server rule change that is not ported, or a data file that was not
+  // regenerated, fails here.
+  check(`name rules agree with the server on all ${PARITY.length} hosts of ${PARITY_TSV}`, () => {
+    assert.ok(PARITY.length > 5000, `only ${PARITY.length} rows — was the table truncated?`);
+    assert.strictEqual(ctx.cleanwayNameRules.available, true, "scorer-data.js did not load");
+    const wrong = [];
+    for (const row of PARITY) {
+      const got = portVerdict(ctx, row[0]);
+      if (got.join("\t") !== row.join("\t")) wrong.push(`${row.join(" ")}\n          port: ${got.join(" ")}`);
+    }
+    assert.strictEqual(wrong.length, 0, `${wrong.length} differ, e.g.\n        ${wrong.slice(0, 5).join("\n        ")}`);
+  });
+
+  check("loads in strict mode, as the background's ES module import does", () => {
+    const strict = loadScorer(tree, { strict: true });
+    for (const d of ["sberbamk.ru", "kvs.gov.spb.ru", "xn--pypal-4ve.com", "vk.com.msk.ru"]) {
+      assert.strictEqual(JSON.stringify(strict.localScore(d)), JSON.stringify(ctx.localScore(d)), d);
+    }
+  });
+
+  check("publishes the scorer for the background module", () => {
+    assert.strictEqual(ctx.cleanwayLocalScorer.localScore, ctx.localScore);
+    assert.strictEqual(ctx.cleanwayLocalScorer.decodeIDN, ctx.decodeIDN);
+  });
+
+  check("without scorer-data.js the name rules stand down instead of throwing", () => {
+    const bare = loadScorer(tree, { files: SCORER_FILES.slice(1) });
+    assert.strictEqual(bare.cleanwayNameRules.available, false);
+    const r = bare.localScore("sberbamk.xyz");
+    assert.strictEqual(r.reasons.map((x) => x.signal).join("|"), "risky_tld");
+  });
+
+  check("an astral-plane letter counts as one character, as on the server", () => {
+    // p𝐚ypal.com: a mathematical bold 'a' is one substitution in six letters.
+    const r = ctx.localScore("xn--pypal-cl00d.com");
+    assert.strictEqual(r.reasons[0].detail, "Impersonates paypal.com (character substitution)");
+  });
 
   check("exposes localScore and decodeIDN as content-script globals", () => {
     assert.strictEqual(typeof ctx.localScore, "function");
@@ -220,7 +371,15 @@ for (const [treeName, relPath] of TREES) {
     });
   }
 
-  for (const [d, score, level, sigs] of [...LATIN_UNCHANGED, ...MALFORMED_UNCHANGED]) {
+  for (const [d, legit] of RF_BRAND_NAMES) {
+    check(`${d} is the brand's name under another TLD, and nothing else`, () => {
+      const r = ctx.localScore(d);
+      assert.strictEqual(r.reasons.map((x) => x.signal).join("|"), "typosquatting");
+      assert.strictEqual(r.reasons[0].detail, `Impersonates ${legit} (TLD confusion)`);
+    });
+  }
+
+  for (const [d, score, level, sigs] of [...LATIN_UNCHANGED, ...MALFORMED_UNCHANGED, ...RUSSIAN_NAMES]) {
     check(`${d} -> ${score}/${level} [${sigs}]`, () => {
       const r = ctx.localScore(d);
       assert.strictEqual(r.score, score, `score ${r.score} != ${score}`);
