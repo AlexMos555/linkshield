@@ -1449,7 +1449,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         from api.services.ml_scorer import ml_predict
         # ASCII form: the model's features were extracted from ASCII domains,
         # so the wire form is what keeps inference consistent with training.
-        ml_result = ml_predict(ascii_domain)
+        # A known shortener's name says nothing about the destination, and the
+        # url_shortener rule above already says so. The feeds are full of
+        # shortened lures, so the model scores the shortener itself as phishing;
+        # letting it add weight would mark every bit.ly link "caution".
+        ml_result = None if _is_url_shortener(ascii_domain) else ml_predict(ascii_domain)
         if ml_result:
             ml_prob = ml_result["phishing_probability"]
             ml_confidence = ml_result["confidence"]
