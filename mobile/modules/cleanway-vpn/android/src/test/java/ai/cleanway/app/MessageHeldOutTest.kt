@@ -37,7 +37,8 @@ class MessageHeldOutTest {
         assertEquals(cases.size, cases.map { it.text }.toSet().size, "duplicate message in the held-out set")
         val corpus = (MessageCorpus.SCAMS_RU + MessageCorpus.SCAMS_EN + MessageCorpus.SCAM_VARIANTS +
             MessageCorpus.SCAM_REVIEW + MessageCorpus.LEGIT_RU + MessageCorpus.LEGIT_EN + MessageCorpus.LEGIT_VARIANTS +
-            MessageCorpus.SCAM_2026_10_DANGEROUS + MessageCorpus.SCAM_2026_10_CAUTION + MessageCorpus.LEGIT_2026_10).toSet()
+            MessageCorpus.SCAM_2026_10_DANGEROUS + MessageCorpus.SCAM_2026_10_CAUTION + MessageCorpus.LEGIT_2026_10 +
+            MessageCorpus.SCAM_2026_10_UPGRADES + MessageCorpus.LEGIT_2026_10_UPGRADES).toSet()
         assertEquals(emptyList(), cases.map { it.text }.filter { it in corpus }, "held-out message also in MessageCorpus")
         assertTrue(cases.map { it.family }.toSet().size >= 20, "families")
     }
