@@ -180,9 +180,13 @@ async def test_claim_codes(store):
         assert await tx.get_claim_code("d" * 64) is None
         with pytest.raises(ConflictError):
             await tx.create_claim_code(code)
-        await tx.redeem_claim_code(code.id, device_id=device.id, redeemed_at=NOW)
+        assert (await tx.get_claim_code("c" * 64, for_update=True)).redeemed_at is None
+        assert await tx.redeem_claim_code(code.id, device_id=device.id, redeemed_at=NOW) is True
         redeemed = await tx.get_claim_code("c" * 64)
         assert redeemed.redeemed_at == NOW and redeemed.redeemed_by_device == device.id
+        # Single use: a second redemption (e.g. by a transaction holding a stale copy) changes nothing.
+        assert await tx.redeem_claim_code(code.id, device_id=device.id, redeemed_at=NOW + timedelta(minutes=1)) is False
+        assert (await tx.get_claim_code("c" * 64)).redeemed_at == NOW
 
 
 @pytest.mark.asyncio
@@ -234,6 +238,33 @@ async def test_events_consents_audit_idempotency(store):
         await tx.put_idempotent_response(IdempotentResponse(scope="dev", key="k1", status_code=500, body={}, created_at=NOW))
         assert (await tx.get_idempotent_response("dev", "k1")).status_code == 200
         assert await tx.get_idempotent_response("dev", "k2") is None
+
+
+@pytest.mark.asyncio
+async def test_idempotency_key_reservation(store):
+    stale_before = NOW - timedelta(minutes=5)
+    async with store.transaction() as tx:
+        # First caller reserves; a contender sees the in-progress row.
+        assert await tx.reserve_idempotency_key("dev", "k", now=NOW, stale_before=stale_before) is None
+        held = await tx.reserve_idempotency_key("dev", "k", now=NOW, stale_before=stale_before)
+        assert held is not None and held.in_progress
+        # Completing it stores the answer; a later reservation replays it.
+        await tx.put_idempotent_response(IdempotentResponse(scope="dev", key="k", status_code=201, body={"ok": True},
+                                                            created_at=NOW))
+        done = await tx.reserve_idempotency_key("dev", "k", now=NOW + timedelta(hours=1), stale_before=NOW + timedelta(minutes=55))
+        assert done is not None and not done.in_progress and done.status_code == 201 and dict(done.body) == {"ok": True}
+        # A completed answer is never released.
+        await tx.release_idempotency_key("dev", "k")
+        assert (await tx.get_idempotent_response("dev", "k")).status_code == 201
+
+        # A failed attempt releases its reservation; the key is free again.
+        assert await tx.reserve_idempotency_key("dev", "k2", now=NOW, stale_before=stale_before) is None
+        await tx.release_idempotency_key("dev", "k2")
+        assert await tx.get_idempotent_response("dev", "k2") is None
+        assert await tx.reserve_idempotency_key("dev", "k2", now=NOW, stale_before=stale_before) is None
+        # An abandoned reservation (older than stale_before) is taken over.
+        later = NOW + timedelta(minutes=10)
+        assert await tx.reserve_idempotency_key("dev", "k2", now=later, stale_before=later - timedelta(minutes=5)) is None
 
 
 @pytest.mark.asyncio

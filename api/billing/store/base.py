@@ -102,7 +102,13 @@ class Tx(Protocol):
 
     # idempotent API responses
     async def get_idempotent_response(self, scope: str, key: str) -> Optional[IdempotentResponse]: ...
-    async def put_idempotent_response(self, response: IdempotentResponse) -> None: ...
+    async def reserve_idempotency_key(
+        self, scope: str, key: str, *, now: datetime, stale_before: datetime,
+    ) -> Optional[IdempotentResponse]: ...
+    # ↑ None = the caller now holds the key (new, or an in-progress reservation older than
+    #   stale_before taken over); otherwise the existing row, completed or still in progress.
+    async def put_idempotent_response(self, response: IdempotentResponse) -> None: ...   # completes a reservation; never overwrites an answer
+    async def release_idempotency_key(self, scope: str, key: str) -> None: ...   # drops an in-progress reservation only
 
 
 class BillingStore(Protocol):

@@ -243,11 +243,22 @@ class AuditRow:
     meta: Mapping[str, Any] = field(default_factory=dict)
 
 
+IDEMPOTENCY_IN_PROGRESS = 0   # status_code of a reserved key whose request is still running
+
+
 @dataclass(frozen=True)
 class IdempotentResponse:
-    """A stored API response, replayed for a repeated Idempotency-Key."""
+    """A stored API response, replayed for a repeated Idempotency-Key.
+
+    The row is written (reserved) before the request's side effects run, with
+    status_code IDEMPOTENCY_IN_PROGRESS, and completed with the answer after.
+    """
     scope: str
     key: str
     status_code: int
     body: Mapping[str, Any]
     created_at: datetime
+
+    @property
+    def in_progress(self) -> bool:
+        return self.status_code == IDEMPOTENCY_IN_PROGRESS

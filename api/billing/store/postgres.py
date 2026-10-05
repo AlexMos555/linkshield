@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Any, Mapping, Optional, Sequence
 
 from api.billing.models import (
+    IDEMPOTENCY_IN_PROGRESS,
     AuditRow,
     CancelChannel,
     ClaimCode,
@@ -469,11 +470,37 @@ class PostgresTx:
         return IdempotentResponse(scope=r["scope"], key=r["key"], status_code=r["status_code"], body=r["body"],
                                   created_at=r["created_at"])
 
+    async def reserve_idempotency_key(self, scope: str, key: str, *, now: datetime,
+                                      stale_before: datetime) -> Optional[IdempotentResponse]:
+        # A concurrent INSERT of the same key waits on the unique index until this
+        # transaction commits, then takes the conflict branch: exactly one caller wins.
+        won = await self._c.fetchrow(
+            "INSERT INTO idempotency_keys (scope, key, status_code, body, created_at) VALUES ($1, $2, $3, $4, $5) "
+            "ON CONFLICT (scope, key) DO UPDATE SET created_at = EXCLUDED.created_at "
+            "WHERE idempotency_keys.status_code = $3 AND idempotency_keys.created_at < $6 "
+            "RETURNING key",
+            scope, key, IDEMPOTENCY_IN_PROGRESS, {}, now, stale_before,
+        )
+        if won is not None:
+            return None
+        existing = await self.get_idempotent_response(scope, key)
+        # Released between the two statements: report it as busy, the caller asks again.
+        return existing or IdempotentResponse(scope=scope, key=key, status_code=IDEMPOTENCY_IN_PROGRESS, body={},
+                                              created_at=now)
+
     async def put_idempotent_response(self, response: IdempotentResponse) -> None:
         await self._c.execute(
             "INSERT INTO idempotency_keys (scope, key, status_code, body, created_at) VALUES ($1, $2, $3, $4, $5) "
-            "ON CONFLICT (scope, key) DO NOTHING",
+            "ON CONFLICT (scope, key) DO UPDATE SET status_code = EXCLUDED.status_code, body = EXCLUDED.body "
+            "WHERE idempotency_keys.status_code = $6",
             response.scope, response.key, response.status_code, dict(response.body), response.created_at,
+            IDEMPOTENCY_IN_PROGRESS,
+        )
+
+    async def release_idempotency_key(self, scope: str, key: str) -> None:
+        await self._c.execute(
+            "DELETE FROM idempotency_keys WHERE scope = $1 AND key = $2 AND status_code = $3",
+            scope, key, IDEMPOTENCY_IN_PROGRESS,
         )
 
 

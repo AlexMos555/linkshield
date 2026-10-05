@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from api.billing.models import (
+    IDEMPOTENCY_IN_PROGRESS,
     AuditRow,
     ClaimCode,
     Consent,
@@ -327,5 +328,22 @@ class MemoryTx:
     async def get_idempotent_response(self, scope: str, key: str) -> Optional[IdempotentResponse]:
         return self._t.idempotent.get((scope, key))
 
+    async def reserve_idempotency_key(self, scope: str, key: str, *, now: datetime,
+                                      stale_before: datetime) -> Optional[IdempotentResponse]:
+        existing = self._t.idempotent.get((scope, key))
+        if existing is not None and not (existing.in_progress and existing.created_at < stale_before):
+            return existing
+        self._t.idempotent[(scope, key)] = IdempotentResponse(
+            scope=scope, key=key, status_code=IDEMPOTENCY_IN_PROGRESS, body={}, created_at=now,
+        )
+        return None
+
     async def put_idempotent_response(self, response: IdempotentResponse) -> None:
-        self._t.idempotent.setdefault((response.scope, response.key), response)
+        existing = self._t.idempotent.get((response.scope, response.key))
+        if existing is None or existing.in_progress:
+            self._t.idempotent[(response.scope, response.key)] = response
+
+    async def release_idempotency_key(self, scope: str, key: str) -> None:
+        existing = self._t.idempotent.get((scope, key))
+        if existing is not None and existing.in_progress:
+            del self._t.idempotent[(scope, key)]
