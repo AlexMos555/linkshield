@@ -406,13 +406,19 @@ def _max_brand_similarity(name: str) -> float:
     with 'сбербанк' rather than scored on the encoder's letters; a Latin
     name gets 0 from a Cyrillic brand and the reverse, which leaves the
     maximum to the brands in its own script.
+
+    Brands added after the served model was trained (the 'not_in_model'
+    names of data/typosquat_targets.json: allegro, olx, xfinity … on
+    2026-10-05) are left out until a retrain: the model learned this
+    feature over the list it was trained with, and a new name moves the
+    value for every host that resembles it, phishing or not.
     """
-    from api.services.scoring import TYPOSQUAT_TARGETS, _decode_idn
+    from api.services.scoring import _NOT_IN_MODEL, TYPOSQUAT_TARGETS, _decode_idn
 
     name = _decode_idn(name).lower()
     max_sim = 0.0
     for brand in TYPOSQUAT_TARGETS:
-        if brand == name:
+        if brand == name or brand in _NOT_IN_MODEL:
             continue  # Exact match = legitimate, not a feature
         sim = SequenceMatcher(None, name, brand).ratio()
         max_sim = max(max_sim, sim)

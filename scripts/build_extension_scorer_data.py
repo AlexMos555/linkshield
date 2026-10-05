@@ -98,6 +98,12 @@ EDGE_CASES = (
     "vkusvill-bonus.netlify.app", "mtsdelivery.vercel.app", "vk.github.io", "sber.bank.in",
     "app.netlify.com", "www.netlify.app", "netlify.app", "a.b.sberbank-bonus.vercel.app",
     "xn--c1aapkosapc-lk.netlify.app", "sberbank-bonus.tw1.ru",
+    # 2026-10-05: global brands with a measured false-positive pass (slip
+    # rule, official/unrelated lists, trezor as a shared name)
+    "allegro.pl-dyu8h.sbs", "allegrolokalnie.oferta-0295748.cfd", "olx.pl-dyu8h.sbs", "mbway.online",
+    "att-sign-in-1c41ac.webflow.io", "my-xfinitysignin.weebly.com", "novobanco.novoalerta.com",
+    "nfinity.com", "myway.com", "comcash.com", "dfinity.org", "trezor.cz", "trezor.top", "olx.ua",
+    "att.net", "bellmouth.com", "xfimity.com", "allegrro.pl",
     # malformed / degenerate input must not crash either side
     "a", "xn--", "xn---.com", "xn--a.com", "....xn--p1ai", "ru.com", "a.ru.com",
     # astral-plane letters: one character to Python, two UTF-16 units to JS

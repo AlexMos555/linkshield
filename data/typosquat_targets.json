@@ -126,6 +126,258 @@
     "lyft": "lyft.com",
     "airbnb": "airbnb.com",
     "booking": "booking.com",
-    "expedia": "expedia.com"
+    "expedia": "expedia.com",
+    "allegro": "allegro.pl",
+    "allegrolokalnie": "allegrolokalnie.pl",
+    "olx": "olx.pl",
+    "xfinity": "xfinity.com",
+    "comcast": "comcast.com",
+    "att": "att.com",
+    "bellsouth": "att.com",
+    "nubank": "nubank.com.br",
+    "correios": "correios.com.br",
+    "pichincha": "pichincha.com",
+    "novobanco": "novobanco.pt",
+    "mbway": "mbway.pt",
+    "kucoin": "kucoin.com",
+    "trezor": "trezor.io"
+  },
+  "not_in_model": {
+    "_why": "Names the served ML model (data/model_meta.json, features_version 6) was not trained with. url_features._max_brand_similarity leaves them out, so a new brand does not move that feature for every host resembling it; is_typosquat and brand_in_subdomain do fire on its look-alikes, as they mean to. Empty this list when the model is retrained.",
+    "names": [
+      "allegro",
+      "allegrolokalnie",
+      "olx",
+      "xfinity",
+      "comcast",
+      "att",
+      "bellsouth",
+      "nubank",
+      "correios",
+      "pichincha",
+      "novobanco",
+      "mbway",
+      "kucoin",
+      "trezor"
+    ]
+  },
+  "measured": {
+    "_about": "Global brands added with a measured false-positive pass, one entry per owner, in data/typosquat_targets_ru.json's format (api/services/ru_brands.py parses each entry; api/services/scoring.py _load_measured_global_groups). Their names are also in 'brands'. They are compared under the slip rule (scoring._rule_for): under 8 letters one substitution has to be a slip of the hand. Every domain was checked on 2026-10-05 — name servers, where http:// lands, the page title, whois where DNS alone was not proof. The pass and every hit it found: docs/benchmarks/2026-10-05-global-brands.md.",
+    "_selection": "A brand is here when the PhishTank and TweetFeed week sampled in docs/benchmarks/2026-10-04-ml-eval.json has hosts imitating it AND its false positives on the Tranco top-1M (with and without subdomains), the macOS dictionary as <word>.com and the Russian legit sets are explained below. Considered and left out (same document): tmobile ('t' + the word mobile: 335 mobile.de hosts), sharepoint (share/point compounds: chargepoint.com), aruba (a country; ariba.com), interbank (inter + a word: 18 top-1M neighbours), raiffeisen (a cooperative movement's name, hundreds of independent banks), caixa (Portuguese 'box'; caixa.cv), sunrise and kleinanzeigen (ordinary words), inpost and verizon (no host in the week; inpost has 9 other owners one edit away).",
+    "_sources": {
+      "phishtank_2026_10": "PhishTank verified-online submissions, the 612 hosts of 2026-09-28..10-04 in docs/benchmarks/2026-10-04-ml-eval.json rows['phishtank_recent']",
+      "tweetfeed_2026_10": "TweetFeed's week to 2026-10-04, 207 hosts, rows['tweetfeed_week'] of the same file"
+    },
+    "allegro": {
+      "owner": "Allegro.eu SA (Poland)",
+      "fraud": {
+        "phishtank_2026_10": "162 of 612 hosts: allegro.<random>.<tld> (allegro.pl-dyu8h.sbs, allegro.oferty24.sbs) and allegrolokalnie.<random>.<tld> with typos of it (allegrolokainie, allegrolokalne, allegro-lokalnie): the largest family of the week",
+        "tweetfeed_2026_10": "1 host"
+      },
+      "names": {
+        "allegro": "allegro.pl",
+        "allegrolokalnie": "allegrolokalnie.pl"
+      },
+      "official": {
+        "allegro.pl": "NS dns1-4.allegro.pl, title 'allegro.pl'",
+        "allegrolokalnie.pl": "NS dns1-4.allegro.pl, title 'Allegro Lokalnie'",
+        "allegro.com": "NS dns1-4.allegro.pl, title 'allegro.pl'",
+        "allegro.cz": "NS dns1-4.allegro.pl",
+        "allegro.sk": "NS dns1-4.allegro.pl, title 'allegro.sk'",
+        "allegro.hu": "NS dns1-4.allegro.pl, title 'allegro.hu'",
+        "allegro.eu": "NS dns1-4.allegro.pl, redirects to about.allegro.eu ('About - Allegro')",
+        "allegro.tech": "NS dns1-4.allegro.pl, title 'Allegro Tech'"
+      },
+      "unrelated": {
+        "allegro.cc": "the Allegro game-programming library's community site (www.allegro.cc), AWS DNS",
+        "allegrologin.com": "nCino Indirect Lending's log-in (title), AWS DNS",
+        "allego.com": "Allego, sales-enablement software (title), AWS DNS",
+        "allego.eu": "Allego, an EV-charging operator (title 'Home | Allego'), NS nexthost.nl",
+        "allegra.com": "Allegra, an allergy-medicine brand (country chooser), Azure DNS",
+        "alegro.pt": "Alegro, a Portuguese shopping-centre chain (title), CSC DNS"
+      }
+    },
+    "olx": {
+      "owner": "OLX Group (Prosus)",
+      "fraud": {
+        "phishtank_2026_10": "5 hosts: olx.<random>.<tld> next to the allegro family (olx.pl-dyu8h.sbs, olx.lokalna-ofeta893724781.cfd)"
+      },
+      "names": {
+        "olx": "olx.pl"
+      },
+      "official": {
+        "olx.pl": "NS ns1-4.olx.pl",
+        "olx.ua": "NS ns1-4.olx.ua, the olx.pl pattern",
+        "olx.ro": "NS ns1-4.olx.ro, the olx.pl pattern",
+        "olx.pt": "NS ns1-4.olx.pt, the olx.pl pattern",
+        "olx.bg": "NS ns1-4.olx.bg, the olx.pl pattern",
+        "olx.kz": "NS ns1-4.olx.kz, the olx.pl pattern",
+        "olx.uz": "NS ns1-4.olx.uz, the olx.pl pattern",
+        "olx.in": "registrant organization OLX India B.V., title 'OLX - Free classifieds in India'",
+        "olx.com": "registrar CSC Corporate Domains (a brand-protection registrar), NS shared with olx.io",
+        "olx.io": "NS identical to olx.com's",
+        "olx.org": "registrar CSC Corporate Domains; baxter.olx.org and eu.olx.org are OLX's ad and API hosts in the Tranco subdomain list"
+      },
+      "unrelated": {
+        "olx.ba": "serves PIK.ba, a Bosnian classifieds site (title 'PIK.ba početna'), not OLX"
+      }
+    },
+    "comcast": {
+      "owner": "Comcast Corporation (Xfinity)",
+      "fraud": {
+        "phishtank_2026_10": "10 hosts, all on site builders: my-xfinitysignin.weebly.com, xfinity-security-update.webflow.io, supportxfinty.square.site, xlnfinity.weebly.com, comcastcommunicationslogin.weebly.com, membercomcast.weebly.com",
+        "tweetfeed_2026_10": "1 host"
+      },
+      "names": {
+        "xfinity": "xfinity.com",
+        "comcast": "comcast.com"
+      },
+      "official": {
+        "xfinity.com": "NS dns101-105.comcast.net",
+        "comcast.com": "NS dns101-105.comcast.net",
+        "comcast.net": "NS dns101-105.comcast.net"
+      },
+      "unrelated": {
+        "dfinity.org": "the DFINITY Foundation (Internet Computer), title; Cloudflare DNS. d and x are neighbouring keys, so the slip rule alone does not clear it",
+        "dfinity.network": "same Cloudflare name servers as dfinity.org"
+      },
+      "not_typos": {
+        "finity": "an English word (macOS dictionary); finity.com was xfinity's one dictionary hit"
+      }
+    },
+    "att": {
+      "owner": "AT&T Inc. (BellSouth is AT&T's since 2006)",
+      "fraud": {
+        "phishtank_2026_10": "3 hosts, all on Webflow: att-sign-in-1c41ac.webflow.io, sbc-att-verifier-sign-in-45a7a5.webflow.io, bellsouth-verifier-sign-in-17cc27.webflow.io"
+      },
+      "names": {
+        "att": "att.com",
+        "bellsouth": "att.com"
+      },
+      "official": {
+        "att.com": "Akamai NS, title 'AT&T Official Site'",
+        "att.net": "NS *.els-gms.att.net",
+        "att.jobs": "title 'AT&T Careers'; .jobs registers only the employer's own name",
+        "att-mail.com": "registrar CSC Corporate Domains, Akamai NS identical to bellsouth.com's",
+        "bellsouth.net": "NS ns1-4.attdns.com",
+        "bellsouth.com": "registrar CSC Corporate Domains, Akamai NS identical to att-mail.com's"
+      },
+      "unrelated": {
+        "allsouth.org": "AllSouth Federal Credit Union (title), two edits from bellsouth"
+      },
+      "not_typos": {
+        "bellmouth": "an English word, a flared pipe mouth (macOS dictionary)"
+      }
+    },
+    "nubank": {
+      "owner": "Nu Pagamentos S.A. (Nu Holdings)",
+      "fraud": {
+        "phishtank_2026_10": "1 host: nubanksaldo2.vercel.app"
+      },
+      "names": {
+        "nubank": "nubank.com.br"
+      },
+      "official": {
+        "nubank.com.br": "registro.br owner NU PAGAMENTOS SA",
+        "nubank.com": "registrant organization Nu Pagamentos SA, title 'About Nu'"
+      }
+    },
+    "correios": {
+      "owner": "Empresa Brasileira de Correios e Telégrafos",
+      "fraud": {
+        "phishtank_2026_10": "1 host: correiosapool0gin-correiopt.netlify.app"
+      },
+      "names": {
+        "correios": "correios.com.br"
+      },
+      "official": {
+        "correios.com.br": "NS ns1-4.correios.com.br, title 'Correios'"
+      },
+      "unrelated": {
+        "correos.es": "Correos, Spain's postal service; NS ns3-4.correos.es",
+        "correos.com": "Correos (Spain): NS ns3-4.correos.es, title 'Página principal - Correos'",
+        "correos.cl": "Correos de Chile (title 'Home - Correos')"
+      },
+      "not_typos": {
+        "corresol": "a word in the macOS dictionary, two edits from correios"
+      }
+    },
+    "pichincha": {
+      "owner": "Banco Pichincha C.A. (Ecuador)",
+      "fraud": {
+        "phishtank_2026_10": "4 hosts, all on Replit: pichincha--credito2020.replit.app, credito-pichincha-12--prestamoubiii.replit.app, …--pichincha2026.replit.app"
+      },
+      "names": {
+        "pichincha": "pichincha.com"
+      },
+      "official": {
+        "pichincha.com": "Akamai NS, title 'Banco Pichincha'",
+        "pichincha.pe": "NIC.PE whois: registrant Banco Financiero del Perú, admin Banco Pichincha (licenciasbp@pichincha.pe)"
+      }
+    },
+    "novobanco": {
+      "owner": "Novo Banco, S.A. (Portugal)",
+      "fraud": {
+        "phishtank_2026_10": "2 hosts: novobanco.novoalerta.com, alertas-novobanco.ph"
+      },
+      "names": {
+        "novobanco": "novobanco.pt"
+      },
+      "official": {
+        "novobanco.pt": "NS ns1-3.novobanco.pt, title 'Particulares | novobanco'"
+      }
+    },
+    "mbway": {
+      "owner": "SIBS (MB WAY)",
+      "fraud": {
+        "phishtank_2026_10": "2 hosts: mbway.online, mbway.site"
+      },
+      "names": {
+        "mbway": "mbway.pt"
+      },
+      "official": {
+        "mbway.pt": "MB WAY's own address (SIBS); AWS and Azure DNS, answered 403 from outside Portugal on 2026-10-05"
+      }
+    },
+    "kucoin": {
+      "owner": "KuCoin (Mek Global Limited)",
+      "fraud": {
+        "phishtank_2026_10": "1 host: kucoxen-login-1.gitbook.io"
+      },
+      "names": {
+        "kucoin": "kucoin.com"
+      },
+      "official": {
+        "kucoin.com": "title 'Crypto Exchange | … | KuCoin'",
+        "kucoin.plus": "listed in SAFE_WEB_DOMAIN on www.kucoin.com's own page (2026-10-05)",
+        "kucoin.cloud": "listed in SAFE_WEB_DOMAIN on www.kucoin.com's own page (2026-10-05)",
+        "kucoin.biz": "listed in SAFE_WEB_DOMAIN on www.kucoin.com's own page (2026-10-05)",
+        "kucoin.top": "listed in SAFE_WEB_DOMAIN on www.kucoin.com's own page (2026-10-05)",
+        "kucoin.work": "listed in SAFE_WEB_DOMAIN on www.kucoin.com's own page (2026-10-05)"
+      },
+      "unrelated": {
+        "ucoin.net": "uCoin, a coin collectors' catalogue (en./ru./es. subdomains), Cloudflare DNS"
+      }
+    },
+    "trezor": {
+      "owner": "Trezor Company s.r.o. (SatoshiLabs)",
+      "fraud": {
+        "phishtank_2026_10": "2 hosts spelling it with typos: terezerwallet.webflow.io, trzer-briedge-io.framer.website",
+        "tweetfeed_2026_10": "1 host: begin-io-trzzer-web.typedream.app"
+      },
+      "names": {
+        "trezor": "trezor.io"
+      },
+      "official": {
+        "trezor.io": "title 'Trezor Hardware Wallet (Official)'"
+      },
+      "unrelated": {
+        "trezor.cz": "Trezor s.r.o. sells safes (title 'Trezory, sejfy'), CZ.NIC whois registrant Trezor s.r.o.",
+        "trezlor.com": "Trezlor, salon software (title), Wix DNS"
+      },
+      "shared_name": {
+        "trezor": "the Czech, Slovak and Croatian word for a safe or treasury (trezor.cz sells safes): its name under a country's TLD is someone's own"
+      }
+    }
   }
 }
