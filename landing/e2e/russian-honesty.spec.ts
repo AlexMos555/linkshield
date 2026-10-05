@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "@playwright/test";
+import {
+  type BenchmarkSnapshot,
+  falsePositiveRateIsPublishable,
+  recallIsPublishable,
+} from "../lib/benchmark";
 
 // The Android version that ships — the same source check-landing-claims.py
 // reads, so this test follows each release instead of pinning one.
@@ -8,6 +13,13 @@ const RELEASED_APP: string = JSON.parse(
   readFileSync(join(__dirname, "..", "..", "mobile", "app.json"), "utf-8"),
 ).expo.version;
 const NEXT_PATCH = RELEASED_APP.replace(/\d+$/, (n) => String(Number(n) + 1));
+
+// The committed weekly benchmark the transparency pages render. Each run can move
+// a figure across the publishability gate, so the tests ask the same gate the
+// pages use which branch must show, instead of pinning one.
+const BENCHMARK: BenchmarkSnapshot = JSON.parse(
+  readFileSync(join(__dirname, "..", "..", "docs", "benchmarks", "latest.json"), "utf-8"),
+);
 
 /**
  * The Russian pages a Tele2 subscriber actually lands on must be in Russian
@@ -63,18 +75,26 @@ test("/ru/transparency shows no hand-written numbers or raw placeholders", async
   for (const text of ["1 842 630", "1,842,630", "0,08", "$PERIOD$", "$DATE$", "$COUNT$", "аналитик"]) {
     await expect(body).not.toContainText(text);
   }
-  // The weekly benchmark publishes a measured false-alarm rate once the sample is big
-  // enough, so the section shows either the honest "not measured" line or a measured
-  // figure with its sample size and date. Pinning one of them breaks on the next run.
-  await expect(page.getByTestId("transparency-fp")).toContainText(
-    /Пока не измеряли|\d+(?:[.,]\d+)?\s?% из \d[\d\s\u00a0]* настоящ\S* сайт\S* ошибочно названы опасными \(\d/,
-  );
+  const fp = page.getByTestId("transparency-fp");
+  if (falsePositiveRateIsPublishable(BENCHMARK)) {
+    await expect(fp).toContainText("ошибочно названы опасными");
+    await expect(fp).not.toContainText("Пока не измеряли");
+  } else {
+    await expect(fp).toContainText("Пока не измеряли");
+  }
+  await expect(fp).not.toContainText("{");
 });
 
-test("/ru/transparency/methodology is Russian and hides a too-small sample", async ({ page }) => {
+test("/ru/transparency/methodology is Russian and shows results only for a big enough sample", async ({ page }) => {
   await page.goto("/ru/transparency/methodology");
   await expect(page.locator("h1")).toContainText("Как мы измеряем");
-  await expect(page.getByTestId("methodology-not-publishable")).toBeVisible();
+  const notPublishable = page.getByTestId("methodology-not-publishable");
+  if (recallIsPublishable(BENCHMARK)) {
+    await expect(notPublishable).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /Фишинговые ссылки/ })).toBeVisible();
+  } else {
+    await expect(notPublishable).toBeVisible();
+  }
   await expect(page.locator("body")).not.toContainText("$DATE$");
 });
 
