@@ -1,5 +1,8 @@
 package ai.cleanway.app
 
+import org.json.JSONArray
+import org.json.JSONObject
+
 /**
  * How many pop-ups a person gets — fewer, louder, clearer.
  *
@@ -23,7 +26,10 @@ package ai.cleanway.app
  *    one attempt and are [Verdict.DROP]ped after the first.
  *
  * Pure, one instance per process, JVM-tested (AlertBudgetTest). Time is
- * passed in, never read here.
+ * passed in, never read here. Android restarts the sticky VPN service
+ * whenever it likes, so the caller saves [toJson] after every pop-up or
+ * summary and [restore]s it into the next process (BlockNotifier) — the caps
+ * are per person, not per process.
  */
 class AlertBudget {
     enum class Severity { DANGER, CAUTION }
@@ -66,6 +72,50 @@ class AlertBudget {
         headsUps.addLast(now)
         lastHeadsUp[key] = now
         return Verdict.HEADS_UP
+    }
+
+    /**
+     * What a restarted process needs to keep the caps: the heads-ups of the
+     * last day, the per-key pop-ups of the last six hours and the summary
+     * count. The 45-second burst window is not kept — a restart takes longer.
+     */
+    @Synchronized
+    fun toJson(): String {
+        val keys = JSONObject()
+        lastHeadsUp.forEach { (k, t) -> keys.put(k, t) }
+        return JSONObject()
+            .put("h", JSONArray().apply { headsUps.forEach { put(it) } })
+            .put("k", keys)
+            .put("s", summarised)
+            .toString()
+    }
+
+    /**
+     * Load what [toJson] saved, keeping only what can still matter at [now]
+     * (nothing from the future: a clock stepped back must not tighten the
+     * caps). Garbage is ignored — a budget that forgot is the worst case.
+     */
+    @Synchronized
+    fun restore(json: String?, now: Long) {
+        if (json.isNullOrBlank()) return
+        try {
+            val o = JSONObject(json)
+            o.optJSONArray("h")?.let { arr ->
+                val kept = (0 until arr.length()).map { arr.optLong(it, -1L) }
+                    .filter { it in 0..now && now - it < DAY_MS }
+                    .sorted()
+                headsUps.clear()
+                headsUps.addAll(kept)
+            }
+            o.optJSONObject("k")?.let { keys ->
+                keys.keys().forEach { k ->
+                    val t = keys.optLong(k, -1L)
+                    if (t in 0..now && now - t < PER_KEY_HEADS_UP_WINDOW_MS) lastHeadsUp[k] = t
+                }
+            }
+            summarised = o.optInt("s", 0).coerceAtLeast(0)
+        } catch (_: Exception) {
+        }
     }
 
     /** Keep the maps from growing forever on a long session. */

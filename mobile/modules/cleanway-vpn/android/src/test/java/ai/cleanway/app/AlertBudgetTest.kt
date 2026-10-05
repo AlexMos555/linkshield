@@ -116,4 +116,49 @@ class AlertBudgetTest {
         assertEquals(Severity.CAUTION, BlockNotifier.severityOf(BlockLog.KIND_WARNED, "caution"))
         assertEquals("no level known: careful", Severity.CAUTION, BlockNotifier.severityOf(BlockLog.KIND_WARNED))
     }
+
+    @Test
+    fun `the hourly cap survives a process restart`() {
+        val before = AlertBudget()
+        for (i in 1..3) assertEquals(Verdict.HEADS_UP, before.decide(Severity.DANGER, "site$i.example", t0 + i * minute))
+        // Android kills and restarts the sticky VPN service: a fresh object,
+        // restored from what the first one saved, must not pop up a fourth time.
+        val after = AlertBudget()
+        after.restore(before.toJson(), t0 + 10 * minute)
+        assertEquals(Verdict.SUMMARY(1), after.decide(Severity.DANGER, "site4.example", t0 + 10 * minute))
+        // The hour still slides from the original pop-ups.
+        assertEquals(Verdict.HEADS_UP, after.decide(Severity.DANGER, "site5.example", t0 + hour + 2 * minute))
+    }
+
+    @Test
+    fun `the daily cap, the per-site silence and the summary count survive a restart`() {
+        val before = AlertBudget()
+        var t = t0
+        for (i in 1..10) {
+            t += 25 * minute
+            assertEquals(Verdict.HEADS_UP, before.decide(Severity.DANGER, "site$i.example", t))
+        }
+        assertEquals(Verdict.SUMMARY(1), before.decide(Severity.DANGER, "site11.example", t + minute))
+        val after = AlertBudget()
+        after.restore(before.toJson(), t + 2 * hour)
+        // Still ten in the last day: the cap holds and "N more" keeps counting.
+        assertEquals(Verdict.SUMMARY(2), after.decide(Severity.DANGER, "site12.example", t + 2 * hour))
+        // A site that popped up less than six hours ago is still a silent refresh.
+        assertEquals(Verdict.SILENT, after.decide(Severity.DANGER, "site10.example", t + 2 * hour + minute))
+    }
+
+    @Test
+    fun `a restore keeps only what can still matter and shrugs off garbage`() {
+        val before = AlertBudget()
+        assertEquals(Verdict.HEADS_UP, before.decide(Severity.DANGER, "evil.example", t0))
+        val after = AlertBudget()
+        after.restore(before.toJson(), t0 + 25 * hour)
+        // A day later nothing of it counts: a pop-up again, for the same site too.
+        assertEquals(Verdict.HEADS_UP, after.decide(Severity.DANGER, "evil.example", t0 + 25 * hour))
+        for (junk in listOf(null, "", "not json", "[]", """{"h":"x","k":[],"s":"y"}""")) {
+            val b = AlertBudget()
+            b.restore(junk, t0)
+            assertEquals("restore($junk)", Verdict.HEADS_UP, b.decide(Severity.DANGER, "evil.example", t0))
+        }
+    }
 }

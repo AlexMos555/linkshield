@@ -111,6 +111,47 @@ object CallGuard {
         return Decision.Alert(reason)
     }
 
+    /**
+     * Pure: does an event of [kind] tell [decide] anything it does not know
+     * yet? Not when one of the same kind is already stored since the call
+     * began and since the last notice — then storing a repeat (an app polling
+     * a blocked host, one per lookup) changes nothing. Asked here, not of
+     * BlockLog's "is it new": BlockLog coalesces a site tried again within
+     * ten minutes, and a site first stopped just BEFORE the call and tried
+     * again during it is new for the call.
+     */
+    fun isNewForCall(events: List<Event>, kind: String, alertedAt: Long, callStartedAt: Long): Boolean =
+        kind in EVENTS && events.none { it.kind == kind && it.ts > alertedAt && it.ts >= callStartedAt }
+
+    /**
+     * Pure: after a process restart, when to run the after-call check the
+     * hang-up scheduled ([AFTER_CALL_DELAY_MS] after it) — that runnable died
+     * with the process. Null when there is nothing to pick up: on the phone
+     * (the hang-up will schedule it), no ended call in the stored state, or
+     * its window is over. 0 = at once. Running it twice is harmless:
+     * [decide] allows one notice per call.
+     */
+    fun resumeDelay(call: CallState.Snapshot, now: Long): Long? {
+        if (call.inCall || call.callEndedAt <= 0L || call.callEndedAt < call.callStartedAt) return null
+        if (!call.inAfterCallWindow(now)) return null
+        return maxOf(0L, call.callEndedAt + AFTER_CALL_DELAY_MS - now)
+    }
+
+    /** How the notice goes out under the budget's verdict ([route], pure). */
+    enum class Route { HEADS_UP, SILENT, SUMMARY, NONE }
+
+    /**
+     * Pure. Over the cap the after-call notice is one more "N more
+     * suspicious" in the single collapsed summary, like any other danger —
+     * not a second full notice beside it.
+     */
+    fun route(verdict: AlertBudget.Verdict): Route = when (verdict) {
+        AlertBudget.Verdict.HEADS_UP -> Route.HEADS_UP
+        AlertBudget.Verdict.SILENT -> Route.SILENT
+        is AlertBudget.Verdict.SUMMARY -> Route.SUMMARY
+        AlertBudget.Verdict.DROP -> Route.NONE
+    }
+
     /** Pure: the budget key of the notice for the call that began at [callStartedAt]. */
     fun budgetKey(callStartedAt: Long): String = "$ALERT_KEY:$callStartedAt"
 
@@ -170,21 +211,41 @@ object CallGuard {
                 main.postDelayed({ evaluate(app) }, AFTER_CALL_DELAY_MS)
             }
         }
+        // A restart between a hang-up and that check lost the runnable, and
+        // the watcher's first read is no transition: pick it up from the
+        // stored end. Outside [lock] (snapshot takes CallState's lock).
+        try {
+            resumeDelay(CallState.snapshot(app), System.currentTimeMillis())?.let { delay ->
+                main.postDelayed({ evaluate(app) }, delay)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "resume_error: ${e.javaClass.simpleName}")
+        }
     }
 
     /**
      * Record that Cleanway saw [kind] at [now], and post the notice if this is
-     * the moment for it. Safe from any thread; never throws into a caller.
+     * the moment for it. Callers report every occurrence — this decides what
+     * is new for the call ([isNewForCall]), so a repeat costs one read and no
+     * write. Safe from any thread; never throws into a caller.
      */
     fun noteEvent(context: Context, kind: String, now: Long = System.currentTimeMillis()) {
         if (kind !in EVENTS) return
         val app = context.applicationContext
         try {
             val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            synchronized(lock) {
-                prefs.edit().putString(KEY_EVENTS, appendJson(prefs.getString(KEY_EVENTS, null), Event(kind, now))).apply()
+            // Before [lock]: lock order is CallState → CallGuard (see evaluate).
+            val call = CallState.snapshot(app)
+            val stored = synchronized(lock) {
+                val json = prefs.getString(KEY_EVENTS, null)
+                if (!isNewForCall(parseEvents(json), kind, prefs.getLong(KEY_ALERTED_AT, 0L), call.callStartedAt)) {
+                    false
+                } else {
+                    prefs.edit().putString(KEY_EVENTS, appendJson(json, Event(kind, now))).apply()
+                    true
+                }
             }
-            evaluate(app, now)
+            if (stored) evaluate(app, now)
         } catch (e: Exception) {
             Log.w(TAG, "note_event_error: ${e.javaClass.simpleName}")
         }
@@ -210,10 +271,17 @@ object CallGuard {
         }
     }
 
-    /** The notice itself. Goes through the same budget as block alerts (AlertBudget), under [key]. */
+    /** The notice itself. Goes through the same budget as block alerts (AlertBudget), under [key]; over the cap it is counted in the one summary. */
     fun notify(context: Context, reason: String, now: Long = System.currentTimeMillis(), key: String = ALERT_KEY) {
-        val verdict = BlockNotifier.budget.decide(AlertBudget.Severity.DANGER, key, now)
-        if (verdict == AlertBudget.Verdict.DROP) return
+        val verdict = BlockNotifier.decide(context, AlertBudget.Severity.DANGER, key, now)
+        when (route(verdict)) {
+            Route.NONE -> return
+            Route.SUMMARY -> {
+                BlockNotifier.notifySummary(context, (verdict as AlertBudget.Verdict.SUMMARY).count)
+                return
+            }
+            Route.HEADS_UP, Route.SILENT -> Unit
+        }
         try {
             BlockNotifier.ensureChannel(context)
             val loc = LocalizedContext.of(context)

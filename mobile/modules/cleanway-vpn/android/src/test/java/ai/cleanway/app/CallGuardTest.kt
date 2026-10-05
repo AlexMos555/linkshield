@@ -5,6 +5,8 @@ import ai.cleanway.app.CallGuard.Event
 import ai.cleanway.app.CallState.Phase
 import ai.cleanway.app.CallState.Snapshot
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -119,5 +121,51 @@ class CallGuardTest {
     fun `every event kind has its reason line`() {
         val lines = CallGuard.EVENTS.map { CallGuard.reasonRes(it) }
         assertEquals("distinct resources", lines.size, lines.toSet().size)
+    }
+
+    @Test
+    fun `a site blocked just before the call still counts when it is tried again during it`() {
+        // BlockLog coalesced the in-call attempt with the one at t0-5min, so
+        // the shield's own "is it new" says no. For the call it IS new.
+        val before = Event(CallGuard.EVENT_SITE_BLOCKED, t0 - 5 * minute)
+        assertTrue(CallGuard.isNewForCall(listOf(before), CallGuard.EVENT_SITE_BLOCKED, 0L, t0))
+        val json = CallGuard.appendJson(CallGuard.appendJson(null, before), Event(CallGuard.EVENT_SITE_BLOCKED, t0 + minute))
+        val call = ended(t0, t0 + 3 * minute)
+        assertEquals(Decision.Alert(CallGuard.EVENT_SITE_BLOCKED), CallGuard.decide(CallGuard.parseEvents(json), 0L, call, t0 + 4 * minute))
+    }
+
+    @Test
+    fun `a site an app keeps polling is stored once per call, not once per lookup`() {
+        val during = listOf(Event(CallGuard.EVENT_SITE_BLOCKED, t0 + minute))
+        assertFalse(CallGuard.isNewForCall(during, CallGuard.EVENT_SITE_BLOCKED, 0L, t0))
+        // A different kind in the same call is new.
+        assertTrue(CallGuard.isNewForCall(during, CallGuard.EVENT_SITE_WARNED, 0L, t0))
+        // After the notice consumed it, the next one is new again (for the next notice).
+        assertTrue(CallGuard.isNewForCall(during, CallGuard.EVENT_SITE_BLOCKED, t0 + 4 * minute, t0))
+        // So is one in the next call.
+        assertTrue(CallGuard.isNewForCall(during, CallGuard.EVENT_SITE_BLOCKED, 0L, t0 + 10 * minute))
+        assertFalse("unknown kinds are never stored", CallGuard.isNewForCall(emptyList(), "exploded", 0L, t0))
+    }
+
+    @Test
+    fun `after a restart the pending after-call check is picked up from the stored end`() {
+        // The call ended at t0+3min; the process died before the one-minute check ran.
+        val call = ended(t0, t0 + 3 * minute)
+        assertEquals("restarted 20 s after the hang-up: wait out the rest of the minute",
+            40_000L, CallGuard.resumeDelay(call, t0 + 3 * minute + 20_000L))
+        assertEquals("restarted later in the window: check at once", 0L, CallGuard.resumeDelay(call, t0 + 10 * minute))
+        assertNull("the window is over", CallGuard.resumeDelay(call, t0 + 34 * minute))
+        assertNull("still on the phone: the hang-up schedules it", CallGuard.resumeDelay(inCall(t0), t0 + minute))
+        assertNull("stored start after the stored end: that call never ended here",
+            CallGuard.resumeDelay(ended(t0 + 5 * minute, t0 + 3 * minute), t0 + 6 * minute))
+        assertNull("no call ever", CallGuard.resumeDelay(Snapshot(Phase.IDLE, 0L, 0L), t0))
+    }
+
+    @Test
+    fun `an after-call notice over the budget joins the one summary`() {
+        assertEquals(CallGuard.Route.HEADS_UP, CallGuard.route(AlertBudget.Verdict.HEADS_UP))
+        assertEquals(CallGuard.Route.SILENT, CallGuard.route(AlertBudget.Verdict.SILENT))
+        assertEquals(CallGuard.Route.SUMMARY, CallGuard.route(AlertBudget.Verdict.SUMMARY(4)))
+        assertEquals(CallGuard.Route.NONE, CallGuard.route(AlertBudget.Verdict.DROP))
     }
 }

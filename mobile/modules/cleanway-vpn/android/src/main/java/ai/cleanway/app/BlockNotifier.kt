@@ -82,8 +82,39 @@ object BlockNotifier {
         return "cleanway:///history?filter=$filter&domain=" + URLEncoder.encode(domain, "UTF-8")
     }
 
-    /** The process-wide pop-up budget (AlertBudget); the after-call notice shares it. */
-    val budget = AlertBudget()
+    /** The process-wide pop-up budget (AlertBudget); the after-call notice shares it. Use [decide]. */
+    private val budget = AlertBudget()
+    private val budgetLock = Any()
+    private var budgetLoaded = false
+    private const val BUDGET_PREFS = "cleanway_alert_budget"
+    private const val KEY_BUDGET = "budget"
+
+    /**
+     * Ask the budget, persisted: the first call in a process restores what
+     * the last one saved, and every pop-up or summary is saved — so a
+     * restarted service cannot pop up another three this hour (AlertBudget).
+     * SILENT and DROP change nothing worth keeping. Never throws; without
+     * storage it still answers from memory.
+     */
+    fun decide(context: Context, severity: AlertBudget.Severity, key: String, now: Long): AlertBudget.Verdict {
+        val prefs = try {
+            context.applicationContext.getSharedPreferences(BUDGET_PREFS, Context.MODE_PRIVATE)
+        } catch (_: Exception) {
+            null
+        }
+        // One lock around load, decide and save, so saves land in decision order.
+        synchronized(budgetLock) {
+            if (!budgetLoaded && prefs != null) {
+                try { budget.restore(prefs.getString(KEY_BUDGET, null), now) } catch (_: Exception) {}
+                budgetLoaded = true
+            }
+            val verdict = budget.decide(severity, key, now)
+            if (prefs != null && (verdict == AlertBudget.Verdict.HEADS_UP || verdict is AlertBudget.Verdict.SUMMARY)) {
+                try { prefs.edit().putString(KEY_BUDGET, budget.toJson()).apply() } catch (_: Exception) {}
+            }
+            return verdict
+        }
+    }
 
     /**
      * Pure: how loud an event may be. A block is "Dangerous" (the site was
@@ -201,7 +232,7 @@ object BlockNotifier {
         now: Long = System.currentTimeMillis(),
         severity: AlertBudget.Severity = severityOf(kind),
     ) {
-        when (val verdict = budget.decide(severity, domain, now)) {
+        when (val verdict = decide(context, severity, domain, now)) {
             AlertBudget.Verdict.DROP -> return
             AlertBudget.Verdict.HEADS_UP -> post(context, domain, kind, headsUp = true)
             AlertBudget.Verdict.SILENT -> post(context, domain, kind, headsUp = false)
@@ -248,7 +279,7 @@ object BlockNotifier {
      * Over the cap: one collapsed, silent notice, updated in place with the
      * count. It names no site — the sites are in History, where the tap lands.
      */
-    private fun notifySummary(context: Context, count: Int) {
+    internal fun notifySummary(context: Context, count: Int) {
         try {
             ensureChannel(context)
             val loc = LocalizedContext.of(context)

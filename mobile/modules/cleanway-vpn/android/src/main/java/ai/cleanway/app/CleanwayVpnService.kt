@@ -712,13 +712,15 @@ class CleanwayVpnService : VpnService() {
         }
         // Throttled per site on its own; never throws.
         BlockNotifier.notify(this, domain, kind, now)
+        // A stop during or right after a phone call is what the after-call
+        // notice is about (CallGuard). Told even when BlockLog coalesced it: a
+        // site stopped minutes before the call and tried again during it is
+        // new for the call. CallGuard drops repeats within a call itself.
+        CallGuard.noteEvent(this, if (kind == BlockLog.KIND_WARNED) CallGuard.EVENT_SITE_WARNED else CallGuard.EVENT_SITE_BLOCKED, now)
         // A repeat of a recent event changes no count. Announcing it would
         // only make an open History re-read the log on every packet of an app
         // that keeps polling a blocked host.
         if (!isNew) return
-        // A stop during or right after a phone call is what the after-call
-        // notice is about (CallGuard); a repeat is not a new event there either.
-        CallGuard.noteEvent(this, if (kind == BlockLog.KIND_WARNED) CallGuard.EVENT_SITE_WARNED else CallGuard.EVENT_SITE_BLOCKED, now)
         sendBroadcast(
             Intent(ACTION_DOMAIN_BLOCKED).apply {
                 setPackage(packageName)

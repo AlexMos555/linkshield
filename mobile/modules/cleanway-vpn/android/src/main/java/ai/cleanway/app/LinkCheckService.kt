@@ -128,8 +128,9 @@ object LinkCheck {
             context, host, BlockLog.KIND_WARNED, now, BlockNotifier.severityOf(BlockLog.KIND_WARNED, level),
         )
         Log.i(TAG, "link_check_warned")
-        if (!isNew) return
+        // Even when BlockLog coalesced it: new for a call that began since (CallGuard dedups).
         CallGuard.noteEvent(context, CallGuard.EVENT_SITE_WARNED, now)
+        if (!isNew) return
         try {
             context.sendBroadcast(
                 Intent(CleanwayVpnService.ACTION_DOMAIN_BLOCKED)
