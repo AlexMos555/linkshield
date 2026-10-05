@@ -29,6 +29,8 @@ import {
   MIN_PHISHING_SAMPLE,
   falsePositiveRateIsPublishable,
   recallIsPublishable,
+  MIN_SAFE_CLASSIFIED,
+  MAX_UNKNOWN_RATE,
 } from "../landing/lib/benchmark.ts";
 import { hostFromSegment, toCheckHost } from "../landing/lib/check-host.ts";
 import { CLIENT_NAMESPACES, pickClientMessages } from "../landing/lib/client-messages.ts";
@@ -93,9 +95,18 @@ check("zero or null recall → hidden", () => {
   assert.equal(recallIsPublishable(snapshot({ phishing: { tp: 0, fn: 90, unknown: 10, recall: 0 } })), false);
   assert.equal(recallIsPublishable(snapshot({ phishing: { tp: 80, fn: 20, recall: null } })), false);
 });
-check("committed latest.json (n=24) stays hidden", () => {
+check("committed latest.json: recall is shown only by its own numbers", () => {
+  // The weekly benchmark rewrites latest.json; pin the gate, not one snapshot.
   const committed = JSON.parse(fs.readFileSync(LATEST, "utf-8"));
-  assert.equal(recallIsPublishable(committed), false);
+  const ours = committed.phishing?.cleanway ?? {};
+  const answered = (ours.tp ?? 0) + (ours.fn ?? 0);
+  const unknown = ours.unknown ?? 0;
+  const expected =
+    typeof ours.recall === "number" && ours.recall > 0 &&
+    (committed.n_phishing ?? 0) >= MIN_PHISHING_SAMPLE &&
+    answered >= MIN_PHISHING_CLASSIFIED &&
+    unknown / (answered + unknown) <= MAX_UNKNOWN_RATE;
+  assert.equal(recallIsPublishable(committed), expected);
 });
 
 console.log("falsePositiveRateIsPublishable");
@@ -115,9 +126,18 @@ check("legit sample our server auto-trusts (Tranco top 100k) → hidden, however
   delete unstated.sources;
   assert.equal(falsePositiveRateIsPublishable(unstated), false);
 });
-check("committed latest.json never measured false positives", () => {
+check("committed latest.json: false-positive rate is shown only by its own numbers", () => {
   const committed = JSON.parse(fs.readFileSync(LATEST, "utf-8"));
-  assert.equal(falsePositiveRateIsPublishable(committed), false);
+  const ours = committed.safe?.cleanway ?? {};
+  const expected =
+    committed.sources?.legit_outside_allowlist === true &&
+    typeof ours.fpr === "number" &&
+    (ours.tn ?? 0) + (ours.fp ?? 0) >= MIN_SAFE_CLASSIFIED;
+  assert.equal(falsePositiveRateIsPublishable(committed), expected);
+  if (expected) {
+    // A shown rate rests on a stated, allowlist-free sample.
+    assert.equal(typeof committed.sources.legit, "string");
+  }
 });
 
 console.log("paidPlansOffered");
