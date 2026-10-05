@@ -33,6 +33,8 @@ class MessageRules internal constructor(
     val userContentHosts: Set<String>,
     /** Where an .apk link is expected: app stores. Anywhere else sideloading is the harm. */
     val appStores: Set<String>,
+    /** Words only Russian typed in Latin letters uses ("vash", "srochno"): see [MessageText.index]. */
+    val translitMarkers: Set<String> = emptySet(),
 ) {
     /** Kind of body a message claims to come from; decides which rules apply. */
     enum class Kind { GOV, SECURITY, BANK, OPERATOR, DELIVERY, MESSENGER, COMPANY, SERVICE }
@@ -121,6 +123,33 @@ class MessageRules internal constructor(
         const val VOTE = "vote"
         const val FEE_UNPAID = "fee_unpaid"
         const val JOB_OFFER = "job_offer"
+        const val LEAK_THREAT = "leak_threat"
+        const val INTIMATE = "intimate"
+        const val DATING = "dating"
+        const val TICKET_BUY = "ticket_buy"
+        const val MULE_OFFER = "mule_offer"
+        const val MULE_REWARD = "mule_reward"
+        const val LEGAL_WARNING = "legal_warning"
+        const val CASH_JOB = "cash_job"
+        const val HIRE = "hire"
+        const val LISTING = "listing"
+        const val RECEIVE_MONEY = "receive_money"
+        const val SAFE_DEAL = "safe_deal"
+        const val CHAT_MOVE = "chat_move"
+        const val REMOTE_APP = "remote_app"
+        const val INSTALL_VERB = "install_verb"
+        const val NFC_TAP = "nfc_tap"
+        const val REFUND = "refund"
+        const val APK_WORD = "apk_word"
+        const val MONEY_CONTEXT = "money_context"
+        const val CASH_HANDOVER = "cash_handover"
+        const val WRONG_NUMBER = "wrong_number"
+        const val LAW_PRETEXT = "law_pretext"
+        const val PASSPORT = "passport"
+        const val SUMMONS = "summons"
+        const val ORGANS = "organs"
+        const val ORGANS_VAGUE = "organs_vague"
+        const val PROBE = "probe"
 
         val REQUIRED_GROUPS = listOf(
             THREAT, URGENCY, CONFIRM_DATA, BAIT, CALL, CODE_VERB, CODE_DICTATE, CODE_WORD, CODE_TARGET, CALL_CONTEXT,
@@ -128,7 +157,10 @@ class MessageRules internal constructor(
             PAY_VERB, FEE_WORD, INSTALL, MALWARE_LURE, KIN, NEW_NUMBER, EMERGENCY, SECRECY, AWARENESS,
             CODE_LABEL, CODE_DISCLAIMER, PAYMENT_OP, BALANCE_WORD, CURRENCY, PICKUP, PUBLIC_ALERT, SMS_COMMAND,
             PAYOUT, CODE_INCOMING, CODE_PRONOUN, CODE_EXCEPT, CODE_HOUSEHOLD, SCAM_LABEL, OBEY, CALL_COMING,
-            CODE_INFINITIVE, CODE_REQUEST, MONEY_PLEA, BOSS, VOTE, FEE_UNPAID, JOB_OFFER,
+            CODE_INFINITIVE, CODE_REQUEST, MONEY_PLEA, BOSS, VOTE, FEE_UNPAID, JOB_OFFER, LEAK_THREAT, INTIMATE,
+            DATING, TICKET_BUY, MULE_OFFER, MULE_REWARD, LEGAL_WARNING, CASH_JOB, HIRE, LISTING, RECEIVE_MONEY, SAFE_DEAL,
+            CHAT_MOVE, REMOTE_APP, INSTALL_VERB, NFC_TAP, REFUND, APK_WORD, MONEY_CONTEXT, CASH_HANDOVER, WRONG_NUMBER,
+            LAW_PRETEXT, PASSPORT, SUMMONS, ORGANS, ORGANS_VAGUE, PROBE,
         )
 
         /** No vocabulary at all: links are still checked against the blocklist. */
@@ -159,6 +191,7 @@ class MessageRules internal constructor(
                 bareTlds = words(root.optJSONArray("bare_tlds")) + words(root.optJSONArray("country_tlds")) + rootZone,
                 userContentHosts = hosts(root.optJSONArray("user_content_hosts")),
                 appStores = hosts(root.optJSONArray("app_stores")),
+                translitMarkers = words(root.optJSONArray("translit_markers")),
             )
         }
 

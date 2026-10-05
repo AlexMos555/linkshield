@@ -17,7 +17,10 @@ import java.util.Locale
  *  - apostrophes inside a word are dropped ("don't" → "dont");
  *  - a word that mixes Latin and Cyrillic letters is folded both ways
  *    ("Гoсуслуги" with a Latin o reads as "госуслуги"). Scammers mix
- *    scripts to slip past operator filters; a real sender never does.
+ *    scripts to slip past operator filters; a real sender never does;
+ *  - in a message written wholly in Latin letters that reads as Russian
+ *    ("vash akkaunt vzloman, srochno pozvonite"), each Latin word also gets
+ *    its Cyrillic readings ([Translit]), so the Russian vocabulary applies.
  *
  * Pure Kotlin: no Android types, JVM-testable.
  */
@@ -29,12 +32,19 @@ internal data class Word(
     val isNumber: Boolean,
     /** Mixed Latin/Cyrillic that folds into one script — a disguised word. */
     val disguised: Boolean,
+    /** Russian typed in Latin letters: [forms] carry its Cyrillic readings, which have no soft or hard sign. */
+    val translit: Boolean = false,
 )
 
 /** One stem of a phrase: a prefix ("госуслуг*") or an exact word ("тел"). */
 internal data class Stem(val text: String, val prefix: Boolean) {
+    /** The stem as a Latin-typed word reads back: "деньг" from "dengi" (the apostrophe of "den'gi" is dropped). */
+    private val hard = text.filterNot { it == 'ь' || it == 'ъ' }
+
     fun matches(word: Word): Boolean =
-        word.forms.any { if (prefix) it.startsWith(text) else it == text }
+        word.forms.any { matches(it, text) } || (word.translit && hard != text && word.forms.any { matches(it, hard) })
+
+    private fun matches(form: String, stem: String): Boolean = if (prefix) form.startsWith(stem) else form == stem
 }
 
 /** A vocabulary entry: stems that must appear in order, at most [MAX_GAP] words apart. */
@@ -152,8 +162,31 @@ internal object MessageText {
      * Split [text] into words. Characters inside [masked] (the links, already
      * judged on their own) are read as spaces: "…/login-verify" must not
      * count as a message asking the reader to log in.
+     *
+     * A message with no Cyrillic letter and at least [TRANSLIT_MIN_MARKERS]
+     * distinct words from [translitMarkers] ("vash", "srochno", "dlya"…) is
+     * Russian typed in Latin letters: its Latin words also get their Cyrillic
+     * readings. English never reaches that many of them, so an English
+     * message is read exactly as before.
      */
-    fun index(text: String, masked: List<IntRange> = emptyList()): WordIndex {
+    fun index(text: String, masked: List<IntRange> = emptyList(), translitMarkers: Set<String> = emptySet()): WordIndex {
+        val words = split(text, masked)
+        if (translitMarkers.isEmpty() || text.any { isCyrillic(it) }) return WordIndex(words)
+        val markers = words.mapNotNullTo(HashSet()) { w -> w.forms[0].takeIf { it in translitMarkers } }
+        if (markers.size < TRANSLIT_MIN_MARKERS) return WordIndex(words)
+        return WordIndex(
+            words.map { w ->
+                val latin = w.forms[0]
+                if (w.isNumber || latin.any { it !in 'a'..'z' }) w
+                else w.copy(forms = (w.forms + Translit.readings(latin)).distinct(), translit = true)
+            },
+        )
+    }
+
+    /** Distinct Russian-in-Latin function words a message needs before it is read as Russian. */
+    const val TRANSLIT_MIN_MARKERS = 2
+
+    private fun split(text: String, masked: List<IntRange>): List<Word> {
         val words = ArrayList<Word>(text.length / 5 + 1)
         var sentence = 0
         var clause = 0
@@ -186,7 +219,7 @@ internal object MessageText {
             }
         }
         flush()
-        return WordIndex(words)
+        return words
     }
 
     private fun isSpacedDash(text: String, i: Int): Boolean =
@@ -207,4 +240,69 @@ internal object MessageText {
     }
 
     fun isCyrillic(c: Char): Boolean = c in 'Ѐ'..'ӿ'
+}
+
+/**
+ * Russian typed in Latin letters, read back into Cyrillic: "vzloman" →
+ * "взломан", "soobshchayte" → "сообщайте", "den'gi" → "денги".
+ *
+ * People type it by ear, so a few spellings are ambiguous and each gets
+ * both readings: "sh" is ш or щ ("soobshite"), "sch" сч or щ ("schet",
+ * "soobschite"), "ts" ц or тс ("otsenka", "svyazhetsya"), a first "e" е or э
+ * ("eto"). A choice is made once per word, so a word has at most a handful
+ * of readings. "y" is й after a vowel ("moy", "pozhaluysta") and ы elsewhere
+ * ("vy", "nuzhny"); the soft sign is never typed, so a stem is compared
+ * without it ([Stem]).
+ */
+internal object Translit {
+    private const val MAX_LENGTH = 32
+    private const val VOWELS = "аеиоуыэюя"
+
+    /** Longest first, so "shch" wins over "sh" and "sh" over "s". */
+    private val TABLE: List<Pair<String, List<String>>> = listOf(
+        "shch" to listOf("щ"), "sch" to listOf("сч", "щ"),
+        "zh" to listOf("ж"), "kh" to listOf("х"), "ch" to listOf("ч"), "sh" to listOf("ш", "щ"),
+        "ts" to listOf("ц", "тс"), "tz" to listOf("ц"),
+        "yu" to listOf("ю"), "ju" to listOf("ю"), "ya" to listOf("я"), "ja" to listOf("я"),
+        "yo" to listOf("е"), "jo" to listOf("е"), "ye" to listOf("е"), "je" to listOf("е"),
+        "ck" to listOf("к"), "ph" to listOf("ф"),
+        "a" to listOf("а"), "b" to listOf("б"), "c" to listOf("ц"), "d" to listOf("д"), "e" to listOf("е"),
+        "f" to listOf("ф"), "g" to listOf("г"), "h" to listOf("х"), "i" to listOf("и"), "j" to listOf("й"),
+        "k" to listOf("к"), "l" to listOf("л"), "m" to listOf("м"), "n" to listOf("н"), "o" to listOf("о"),
+        "p" to listOf("п"), "q" to listOf("к"), "r" to listOf("р"), "s" to listOf("с"), "t" to listOf("т"),
+        "u" to listOf("у"), "v" to listOf("в"), "w" to listOf("в"), "x" to listOf("кс"), "z" to listOf("з"),
+    )
+
+    /** The Cyrillic readings of a lowercase Latin word; empty for anything else. */
+    fun readings(word: String): List<String> {
+        if (word.isEmpty() || word.length > MAX_LENGTH || word.any { it !in 'a'..'z' }) return emptyList()
+        // Split into table keys; "y" is decided by what comes before it.
+        val keys = ArrayList<String>(word.length)
+        var i = 0
+        while (i < word.length) {
+            val key = TABLE.firstOrNull { word.startsWith(it.first, i) }?.first ?: word[i].toString()
+            keys += key
+            i += key.length
+        }
+        val ambiguous = keys.filter { k -> TABLE.firstOrNull { it.first == k }?.second.orEmpty().size > 1 }.distinct()
+        val firstE = keys.first() == "e"
+        val out = LinkedHashSet<String>()
+        val combos = 1 shl (ambiguous.size + if (firstE) 1 else 0)
+        for (mask in 0 until combos) {
+            val sb = StringBuilder(word.length + 4)
+            for ((n, k) in keys.withIndex()) {
+                when {
+                    n == 0 && firstE -> sb.append(if (mask and 1 == 0) 'е' else 'э')
+                    k == "y" -> sb.append(if (sb.lastOrNull()?.let { it in VOWELS } == true) 'й' else 'ы')
+                    else -> {
+                        val options = TABLE.first { it.first == k }.second
+                        val bit = ambiguous.indexOf(k).takeIf { it >= 0 }?.let { it + if (firstE) 1 else 0 }
+                        sb.append(if (bit == null || mask and (1 shl bit) == 0) options[0] else options[1])
+                    }
+                }
+            }
+            out += sb.toString()
+        }
+        return out.toList()
+    }
 }

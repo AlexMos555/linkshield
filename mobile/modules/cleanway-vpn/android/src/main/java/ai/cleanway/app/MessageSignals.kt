@@ -75,6 +75,8 @@ internal class MessageSignals(
     val namesMarketplace: Boolean get() = organisations.any { it.kind == Kind.DELIVERY }
     /** Only a catch-all ("Банк Уралсиб" → "банк*"): its real site may simply be one we do not know. */
     val namesOnlyCatchAll: Boolean get() = organisations.isNotEmpty() && organisations.all { it.catchAll }
+    /** Only a messenger ("напишите нам в WhatsApp"): named to say where its chat link leads. */
+    val namesOnlyMessenger: Boolean get() = organisations.isNotEmpty() && organisations.all { it.kind == Kind.MESSENGER }
 
     // ── pressure and bait ─────────────────────────────────────────────────
 
@@ -171,6 +173,87 @@ internal class MessageSignals(
         hits(G.CODE_WORD).any { c -> hits(G.CODE_HOUSEHOLD).none { follows(c, it, 2) } }
     }
 
+    // ── the 2026-10 schemes ───────────────────────────────────────────────
+
+    /** "Иначе разошлю всем твоим контактам", "видео увидят все": a leak, threatened. */
+    val leakThreat: Boolean by lazy { has(G.LEAK_THREAT) }
+    /** Intimate material — "интимные фото", "сайты для взрослых", "компромат". */
+    val intimate: Boolean by lazy { has(G.INTIMATE) }
+    /**
+     * Money demanded at all: a sum, a card, a pay or transfer verb — even
+     * under "если не оплатите", since a blackmailer's condition is the demand.
+     */
+    val moneyDemand: Boolean by lazy {
+        amount() || cardNumber || has(G.PAY_VERB) || has(G.MONEY_VERB) || has(G.MONEY_INFINITIVE)
+    }
+    /** A dating site or app — the fake date's opening. */
+    val dating: Boolean by lazy { has(G.DATING) }
+    /** "Купи билеты тут", "забронируй столик": the fake date's payment. */
+    val ticketBuy: Boolean by lazy { hits(G.TICKET_BUY).any { active(it) } }
+
+    /**
+     * The reader recruited as a drop: "сдай карту в аренду", "принимай переводы
+     * на свою карту и переводи дальше", "нужны дропы" — with a cut for it. A
+     * warning that names the same offer names the crime too ("уголовное").
+     */
+    val muleOffer: Boolean by lazy {
+        hits(G.MULE_OFFER).any { active(it) } && (has(G.MULE_REWARD) || PERCENT_CUT.containsMatchIn(text)) &&
+            !has(G.LEGAL_WARNING) && !safetyNotice
+    }
+    /** "Требуются курьеры: забирать наличные у клиентов" — the cash courier of the safe-account scams. */
+    val cashJob: Boolean by lazy {
+        hits(G.CASH_JOB).any { active(it) } && (has(G.HIRE) || jobOffer) && !has(G.LEGAL_WARNING) && !safetyNotice
+    }
+
+    /** A classified ad, its buyer or its seller. */
+    val listing: Boolean by lazy { has(G.LISTING) }
+    /** "Получите деньги", "для получения средств": money said to wait for the reader. */
+    val receiveMoney: Boolean by lazy { hits(G.RECEIVE_MONEY).any { active(it) } }
+    /** "Безопасная сделка", "Авито Доставка": the marketplace's own feature, offered by a stranger. */
+    val safeDeal: Boolean by lazy { has(G.SAFE_DEAL) }
+    /** "Давайте продолжим в WhatsApp", "напишите в телеграм". */
+    val chatMove: Boolean by lazy { has(G.CHAT_MOVE) }
+
+    /** "Установите", "скачайте": an install verb, live. */
+    val installVerb: Boolean by lazy { hits(G.INSTALL_VERB).any { active(it) } }
+    /** "Установите RustDesk", "скачайте AnyDesk": a remote-access app the reader is told to put on the phone. */
+    val remoteAsked: Boolean by lazy { has(G.REMOTE_APP) && installVerb }
+    /** "Приложите карту к задней панели телефона": the NFC relay that copies the card. */
+    val nfcTap: Boolean by lazy { hits(G.NFC_TAP).any { active(it) } }
+    /** "Для возврата средств", "для защиты сбережений": the pretext of the relay and remote-access apps. */
+    val refund: Boolean by lazy { has(G.REFUND) }
+    /** "Файл vozvrat.apk": an app package named in words, with no link to check. */
+    val apkNamed: Boolean by lazy { has(G.APK_WORD) }
+    /** The message is about the reader's money at all. */
+    val moneyContext: Boolean by lazy { has(G.MONEY_CONTEXT) || refund }
+
+    /** "Снимите наличные и передайте курьеру / инкассатору": cash handed to a stranger at the door. */
+    val cashHandover: Boolean by lazy { hits(G.CASH_HANDOVER).any { active(it) && !conditional(it.start) } }
+
+    /** "Ошибся номером", "указал ваш номер по ошибке": the pretext for "send me my code". */
+    val wrongNumber: Boolean by lazy { has(G.WRONG_NUMBER) }
+
+    /** "По новому закону", "перерегистрация": the SIM re-registration pretext. */
+    val lawPretext: Boolean by lazy { has(G.LAW_PRETEXT) }
+    /** "Пришлите фото паспорта": a passport or СНИЛС sent to whoever wrote. */
+    val passportAsked: Boolean by lazy {
+        hits(G.CODE_VERB).any { v -> active(v) && hits(G.PASSPORT).any { follows(v, it, 4) } }
+    }
+
+    /** "Вы вызываетесь в качестве свидетеля", "судебное уведомление", "подан иск". */
+    val summons: Boolean by lazy { hits(G.SUMMONS).any { active(it) } }
+    /** "По делу № 12-4471/2026", "ст. 159 УК РФ": a case or an article cited. */
+    val caseCited: Boolean by lazy { CASE_NUMBER.containsMatchIn(text) || ARTICLE.containsMatchIn(text) }
+
+    /** "Из органов", "из компетентных органов": the security services, left unnamed. */
+    val organs: Boolean by lazy { has(G.ORGANS) }
+    /**
+     * "Куратор", "из ведомства" — vague on their own (a project has a
+     * curator too), so only next to what they would be investigating:
+     * "проверка", "утечка", "дело".
+     */
+    val organsVague: Boolean by lazy { has(G.ORGANS_VAGUE) && has(G.PROBE) }
+
     /**
      * .apk links. Sideloading is the harm itself, so only an app store or the
      * named organisation's own site is expected to hand one out: a file on
@@ -262,10 +345,11 @@ internal class MessageSignals(
         if (hits(G.CODE_DICTATE).any { v -> active(v) && takesCode(v) }) return true
         // "Мастер позвонит и попросит назвать код", "нужно будет сообщить ему код":
         // the infinitive is an instruction once something asks for it.
-        val infinitive = hits(G.CODE_INFINITIVE).any { v -> active(v) && codeRequested(v) && takesCode(v) }
+        // "Ошибся номером… можете отправить его?": the stranger's plea is the request.
+        val infinitive = hits(G.CODE_INFINITIVE).any { v -> active(v) && (codeRequested(v) || wrongNumber) && takesCode(v) }
         val asked = infinitive || hits(G.CODE_VERB).any { v -> active(v) && takesCode(v) }
         // "…назовите код из СМС": a real code SMS never asks to pass on another one.
-        if (asked && (has(G.CODE_TARGET) || has(G.CALL_CONTEXT) || has(G.CODE_INCOMING))) return true
+        if (asked && (has(G.CODE_TARGET) || has(G.CALL_CONTEXT) || has(G.CODE_INCOMING) || wrongNumber)) return true
         return hits(G.CODE_VERB).any { v -> negated(v.start) && takesCode(v) && exceptListener(v) }
     }
 
@@ -345,8 +429,11 @@ internal class MessageSignals(
     /** "в течение 24 часов", "через 2 часа". */
     private fun within(): Boolean = WITHIN.containsMatchIn(text)
 
-    /** "до 23:59", "до 30.09" — a deadline, not a time range ("с 10:00 до 14:00"). */
-    private fun dateDeadline(): Boolean = DEADLINE.findAll(text).any { m ->
+    /** Russian typed in Latin letters (see [MessageText.index]). */
+    private val translit: Boolean by lazy { index.words.any { it.translit } }
+
+    /** "до 23:59", "до 30.09" ("do 30.09" in Latin letters) — a deadline, not a time range ("с 10:00 до 14:00"). */
+    private fun dateDeadline(): Boolean = (if (translit) DEADLINE_LATIN else DEADLINE).findAll(text).any { m ->
         val before = text.substring(maxOf(0, m.range.first - 16), m.range.first)
         !RANGE_START.containsMatchIn(before)
     }
@@ -366,7 +453,16 @@ internal class MessageSignals(
         )
         val GLUED_AMOUNT = Regex("""^\d+(?:р|руб\p{L}*|rub|rur)$""")
         val DEADLINE = Regex("""(?<![\p{L}\p{N}])до\s+\d{1,2}[.:]\d{2}(?!\d)""", RegexOption.IGNORE_CASE)
-        val RANGE_START = Regex("""(?<!\p{L})[сc]\s*\d{1,2}[.:]\d{2}\s*[-–—]?\s*$""", RegexOption.IGNORE_CASE)
+        val DEADLINE_LATIN = Regex("""(?<![\p{L}\p{N}])do\s+\d{1,2}[.:]\d{2}(?!\d)""", RegexOption.IGNORE_CASE)
+        val RANGE_START = Regex("""(?<!\p{L})[сcs]\s*\d{1,2}[.:]\d{2}\s*[-–—]?\s*$""", RegexOption.IGNORE_CASE)
+        /** "10% от суммы", "5% тебе": the drop's cut. */
+        val PERCENT_CUT = Regex("""\d{1,2}\s?%\s*(?:от|с|тебе|твои|твоих|себе|вам|ваши|за)(?!\p{L})""")
+        /** "По делу № 12-4471/2026", "дело №1-245". */
+        val CASE_NUMBER = Regex("""(?<!\p{L})дел[оауе]?\s*(?:№|n|номер)\s*\d""")
+        /** "Ст. 159 УК РФ", "статья 395 ГК", "ст. 12.9 ч. 2 КоАП". */
+        val ARTICLE = Regex(
+            """(?<!\p{L})(?:ст\.?|стать\p{L}*)\s*\d{1,3}(?:\.\d{1,2})?(?:\s*ч\.?\s*\d)?\s*(?:ук|гк|коап|упк|гпк|апк)(?!\p{L})""",
+        )
         val WITHIN = Regex(
             """(?<![\p{L}\p{N}])(?:(?:в\s+течение|within)\s+\d{1,3}\s*(?:час|мин|сут|дн|день|дня|hour|minute|day)|(?:через|in)\s+\d{1,3}\s*(?:час|сут|дн|день|дня|hour|day))""",
             RegexOption.IGNORE_CASE,
