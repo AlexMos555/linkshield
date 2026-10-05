@@ -2614,7 +2614,7 @@
       "network": {
         "title": "Toutes les applis",
         "desc": "Bloque les sites d'arnaque connus dans presque toutes les applis — même dans WhatsApp",
-        "honesty": "Ne peut pas attraper les sites d'arnaque tout neufs, ni les applis qui utilisent leur propre DNS privé",
+        "honesty": "Ne peut pas attraper les sites d'arnaque tout neufs, ni les applis qui utilisent leur propre DNS privé, et ne couvre pas les applis de la liste « Applis sans filtre » dans les Réglages",
         "state_on": "Activé. Il fonctionne en ce moment.",
         "state_setup": "Réglage à faire une seule fois, environ une minute.",
         "state_stopped": "Arrêté. Pour le réactiver, touchez « {{button}} » ci-dessus.",
@@ -2660,7 +2660,7 @@
       },
       "disclosure": {
         "title": "Comment fonctionne le bouclier",
-        "body": "Cleanway installe un VPN local sur votre téléphone. C'est la seule façon dont Android permet à une appli de filtrer les requêtes de sites pour toutes les autres.\n\n• La liste des sites d'arnaque connus reste sur votre téléphone. Les noms sont comparés ici, pas envoyés chez nous.\n• Les requêtes que nous ne bloquons pas vont au serveur DNS de votre propre réseau — celui de l'opérateur ou de la box, comme sans Cleanway. S'il ne répond pas, elles vont à un résolveur public (Cloudflare ou Quad9).\n• Aucun autre trafic n'est lu, enregistré ou redirigé. Ce n'est pas un VPN de confidentialité et il ne masque pas votre navigation.\n\nSi Android vous demande d'autoriser la connexion, touchez « OK ».",
+        "body": "Cleanway installe un VPN local sur votre téléphone. C'est la seule façon dont Android permet à une appli de filtrer les requêtes de sites pour toutes les autres.\n\n• La liste des sites d'arnaque connus reste sur votre téléphone. Les noms sont comparés ici, pas envoyés chez nous.\n• Les requêtes que nous ne bloquons pas vont au serveur DNS de votre propre réseau — celui de l'opérateur ou de la box, comme sans Cleanway. S'il ne répond pas, elles vont à un résolveur public (Cloudflare ou Quad9).\n• Aucun autre trafic n'est lu, enregistré ou redirigé. Ce n'est pas un VPN de confidentialité et il ne masque pas votre navigation.\n• Les applis qui limitent leur fonctionnement avec un VPN actif, ou pourraient commencer à le faire (MAX, Gosuslugi, banques), passent à côté du bouclier : Cleanway ne vérifie pas les sites qui s'ouvrent à l'intérieur. La liste est dans les Réglages, où vous pouvez la modifier.\n\nSi Android vous demande d'autoriser la connexion, touchez « OK ».",
         "continue": "Continuer",
         "cancel": "Pas maintenant"
       },
@@ -3082,7 +3082,38 @@
       "linkguard_enable": "Configurer",
       "push_off_desc": "Désactivées dans les réglages du téléphone — vous ne saurez pas quand un site est bloqué. Touchez pour les activer.",
       "push_enable": "Activer",
-      "linkguard_on_desc_no_list": "Les liens sont vérifiés juste après leur ouverture ; la liste des sites frauduleux arrive quand vous activez la protection « Toutes les applis »."
+      "linkguard_on_desc_no_list": "Les liens sont vérifiés juste après leur ouverture ; la liste des sites frauduleux arrive quand vous activez la protection « Toutes les applis ».",
+      "bypass": "Applis sans filtre",
+      "bypass_note": "Ces applis se connectent directement, sans passer par le bouclier — sinon elles vous demandent de couper le VPN. Cleanway ne vérifie pas les sites qui s'ouvrent à l'intérieur (par exemple dans le navigateur intégré de MAX ou d'une banque). Les liens qu'elles ouvrent dans votre navigateur habituel sont vérifiés comme d'habitude. Cela ne marche pas avec toutes : certaines applis remarquent quand même le VPN. La liste de vos applis ne quitte pas le téléphone.",
+      "bypass_note_empty": "Si une appli vous demande de couper le VPN, vous pouvez la sortir du bouclier : Cleanway ne vérifiera alors pas les sites qui s'ouvrent à l'intérieur. La liste de vos applis ne quitte pas le téléphone.",
+      "bypass_none": "Aucune appli ne passe à côté du bouclier",
+      "bypass_by_cleanway": "Ajoutée par Cleanway",
+      "bypass_by_you": "Ajoutée par vous",
+      "bypass_remove": "Filtrer à nouveau",
+      "bypass_remove_title": "Filtrer à nouveau « {{app}} » ?",
+      "bypass_remove_body": "Cleanway vérifiera de nouveau les sites que cette appli ouvre. Si elle vous redemande de couper le VPN, ajoutez-la ici de nouveau.",
+      "bypass_add": "Une appli vous demande de couper le VPN ?",
+      "bypass_add_desc": "Choisissez-la : en général, ça règle le problème. Les autres applis restent protégées",
+      "bypass_failed": "Cela n'a pas marché. Réessayez."
+    },
+    "bypass": {
+      "title": "Applis sans filtre",
+      "intro": "Touchez l'appli qui affiche « Coupez le VPN ». Elle se connectera directement, sans passer par le bouclier — en général ça suffit, mais pas avec toutes les applis. Les autres applis restent protégées.",
+      "scam_warning": "Si quelqu'un au téléphone vous demande de faire cela, c'est une arnaque. Ne choisissez une appli que si elle affiche elle-même « Coupez le VPN ».",
+      "loading": "Recherche des applis de ce téléphone…",
+      "failed": "Impossible d'obtenir la liste des applis.",
+      "empty": "Aucune autre appli trouvée.",
+      "suggested": "Demandent souvent de couper le VPN",
+      "all": "Toutes les applis",
+      "browser_tag": "Navigateur",
+      "confirm_title": "« {{app}} » sans filtre ?",
+      "confirm_body": "Cleanway ne vérifiera pas les sites que « {{app}} » ouvre à l'intérieur. Les autres applis restent protégées. Vous pourrez remettre le filtre dans les Réglages.",
+      "browser_title": "« {{app}} » est un navigateur",
+      "browser_body": "Un navigateur ne peut pas être sorti du bouclier : Cleanway ne vérifierait plus les sites que vous y ouvrez. Si quelqu'un au téléphone vous le demande, c'est une arnaque. Si le navigateur lui-même vous demande de couper le VPN, touchez « {{pause}} » dans l'onglet « {{tab}} » : une courte pause se termine toute seule.",
+      "browser_ok": "Compris",
+      "confirm": "Oui, sans filtre",
+      "cancel": "Annuler",
+      "save_failed": "Impossible d'enregistrer. Réessayez."
     },
     "family": {
       "title": "Espace famille",
