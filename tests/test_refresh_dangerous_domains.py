@@ -1683,3 +1683,92 @@ async def test_rollback_removes_the_delta_that_leads_to_the_bad_list(monkeypatch
     assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600) == 5
     assert int(fake.data[REDIS_META_KEY]["generated_at"]) == good_gen
     assert delta_key(good_gen) not in fake.data, "phones on the restored list would fetch the bad one"
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 2026-10-05: Cleanway's own sources — CT lookalikes and verified in-app
+# reports (api/services/own_sources.py) — reach the phones exactly like a
+# server-confirmed host: exact names, through every guard, only while
+# LOOKALIKE_GENERATOR_ENABLED is on (off by default).
+# ══════════════════════════════════════════════════════════════════════════
+
+from api.services import own_sources  # noqa: E402
+
+
+def _own(fake, source, host, at):
+    fake.data.setdefault(own_sources.SOURCE_KEYS[source], {})[host] = float(at)
+
+
+@pytest.fixture
+def own_sources_on(monkeypatch):
+    monkeypatch.setenv(own_sources.ENABLE_ENV, "1")
+
+
+@pytest.mark.asyncio
+async def test_with_the_switch_off_own_source_hosts_are_never_published(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    monkeypatch.delenv(own_sources.ENABLE_ENV, raising=False)
+    fake = _FakeRedis()
+    _own(fake, "lookalike", "sberbank-bonus.xyz", T0 - 3600)
+    _own(fake, "reports", "gosuslugi-lk.xyz", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    assert "sberbank-bonus.xyz" not in _published(fake)
+    assert "gosuslugi-lk.xyz" not in _published(fake)
+    assert "publishing is off" in caplog.text
+    # …and no retention tail keeps them for later.
+    assert "sberbank-bonus.xyz" not in fake.data.get(retention.LAST_SEEN_KEY, {})
+
+
+@pytest.mark.asyncio
+async def test_own_source_hosts_are_published_exactly(monkeypatch, own_sources_on):
+    fake = _FakeRedis()
+    _own(fake, "lookalike", "login.sberbank-bonus.xyz", T0 - 3600)
+    _own(fake, "reports", "gosuslugi-lk.xyz", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    published = _published(fake)
+    assert {"login.sberbank-bonus.xyz", "gosuslugi-lk.xyz"} <= published
+    assert _phone_blocks(fake, "login.sberbank-bonus.xyz")
+    # One confirmed host never darkens its registrable.
+    assert "sberbank-bonus.xyz" not in published
+
+
+@pytest.mark.asyncio
+async def test_own_source_hosts_meet_every_false_positive_guard(monkeypatch, own_sources_on):
+    fake = _FakeRedis()
+    for host in ("sberbank.com", "walmart.com.br", "americanexpress.io", "vercel.app", "github.com", "co.pt",
+                 "tenant-sber.vercel.app"):
+        _own(fake, "lookalike", host, T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0, top={"sberbank.com"}) == 0
+    published = _published(fake)
+    assert "sberbank.com" not in published           # a top domain (top-100k veto)
+    assert "walmart.com.br" not in published         # data/brand_owned_hosts.txt
+    assert "americanexpress.io" not in published     # data/brand_owned_hosts.txt
+    assert "vercel.app" not in published             # a hosting platform's apex
+    assert "github.com" not in published             # a path-shared host
+    assert "co.pt" not in published                  # a national zone
+    assert "tenant-sber.vercel.app" in published     # one tenant, exactly
+
+
+@pytest.mark.asyncio
+async def test_switching_off_takes_published_own_hosts_off_at_once(monkeypatch, own_sources_on):
+    fake = _FakeRedis()
+    _own(fake, "lookalike", "sberbank-bonus.xyz", T0 - 3600)
+    assert await _run(monkeypatch, fake, [], now=T0) == 0
+    assert "sberbank-bonus.xyz" in _published(fake)
+    monkeypatch.delenv(own_sources.ENABLE_ENV)
+    assert await _run(monkeypatch, fake, [], now=T0 + 6 * 3600) == 0
+    assert "sberbank-bonus.xyz" not in _published(fake)
+    assert "sberbank-bonus.xyz" not in fake.data.get(retention.LAST_SEEN_KEY, {})
+
+
+@pytest.mark.asyncio
+async def test_an_own_confirmation_expires_after_its_window(monkeypatch, own_sources_on):
+    fake = _FakeRedis()
+    _own(fake, "lookalike", "sberbank-bonus.xyz", T0 - 3600)
+    await _run(monkeypatch, fake, [], now=T0)
+    after = T0 - 3600 + own_sources.WINDOW_SECONDS + 3600
+    assert await _run(monkeypatch, fake, [], now=after) == 0
+    assert "sberbank-bonus.xyz" not in _published(fake)
+    assert "sberbank-bonus.xyz" not in fake.data.get(retention.LAST_SEEN_KEY, {})
+    await _run(monkeypatch, fake, [], now=after + own_sources.EXPIRED_GRACE_SECONDS + DAY)
+    assert "sberbank-bonus.xyz" not in fake.data.get(own_sources.LOOKALIKE_KEY, {})
