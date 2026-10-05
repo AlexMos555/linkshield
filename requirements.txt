@@ -10,6 +10,14 @@ stripe==11.0.0
 sentry-sdk[fastapi]==2.19.0
 bcrypt==4.2.1
 
+# ── Operator-billed subscriptions (api/billing, docs/BILLING.md) ──
+# cryptography: Ed25519 device passes + AES-256-GCM for phone numbers at rest.
+# asyncpg: the SEPARATE Russian billing database (DATABASE_URL_BILLING). Both
+# are imported lazily; the api role loads neither unless BILLING_ENABLED=true
+# and ROLE=billing.
+cryptography==50.0.1
+asyncpg==0.31.0
+
 # Anthropic SDK for LLM Judge (#21) + Cultural Explainer (#15).
 # Late-imported in api/services/llm_judge.py + scam_explainer.py, so
 # missing package = graceful fallback to template-only verdict.
