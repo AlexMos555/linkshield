@@ -128,7 +128,8 @@ class BlockList private constructor(
         return maxOf(wall, mono, generated)
     }
 
-    fun isStale(nowMs: Long, elapsedMs: Long): Boolean = ageMs(nowMs, elapsedMs) > STALE_AFTER_MS
+    /** Older than [staleAfterMs]: 48 h as shipped, a week and a day in the shield's BASIC mode (ProtectionPolicy.staleAfterMs). */
+    fun isStale(nowMs: Long, elapsedMs: Long, staleAfterMs: Long = STALE_AFTER_MS): Boolean = ageMs(nowMs, elapsedMs) > staleAfterMs
 
     companion object {
         const val LIST_CANARY = "list-canary.cleanway.ai"

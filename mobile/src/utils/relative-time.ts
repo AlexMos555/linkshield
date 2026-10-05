@@ -39,3 +39,17 @@ export function absoluteTime(ms: number, language: string): string {
     return date.toLocaleString();
   }
 }
+
+/**
+ * "24 сентября" in the app's language — a date a person can plan around (the
+ * end of a period, the next charge). Falls back to the device format.
+ */
+export function calendarDate(ms: number, language: string): string {
+  if (!Number.isFinite(ms)) return "";
+  const date = new Date(ms);
+  try {
+    return date.toLocaleDateString(language, { day: "numeric", month: "long" });
+  } catch {
+    return date.toLocaleDateString();
+  }
+}

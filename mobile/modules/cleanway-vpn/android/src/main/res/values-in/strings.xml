@@ -12,7 +12,11 @@
     <string name="fg_channel">Perlindungan Cleanway</string>
     <string name="fg_channel_desc">Ditampilkan selama perlindungan phishing aktif</string>
     <string name="fg_text">Memeriksa nama situs dari penipuan</string>
+    <string name="fg_text_basic">Daftar situs diperbarui seminggu sekali — langganan belum dibayar</string>
+    <string name="fg_text_off">Langganan telah berakhir: situs tidak diblokir</string>
     <string name="fg_title">Perlindungan Cleanway menyala</string>
+    <string name="fg_title_basic">Perlindungan dasar Cleanway</string>
+    <string name="fg_title_off">Perlindungan Cleanway mati</string>
     <string name="paused_text">Menyala lagi sendiri pukul %1$s.</string>
     <string name="paused_title">Perlindungan Cleanway sedang dijeda</string>
     <string name="resume_action">Nyalakan sekarang</string>

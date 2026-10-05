@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { colors, spacing, fontSize } from "../src/utils/theme";
 import { setSetting } from "../src/services/database";
+import { billingEnabled } from "../src/config/billing";
 
 const { width } = Dimensions.get("window");
 
@@ -43,6 +44,13 @@ export default function OnboardingScreen() {
     await setSetting("onboarding_done", "true");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace("/(tabs)");
+  }
+
+  /** A relative set the subscription up and sent a code: straight to the code screen (billing plan §2.4). */
+  async function haveCode() {
+    await setSetting("onboarding_done", "true");
+    router.replace("/(tabs)");
+    router.push({ pathname: "/subscription/join", params: { from: "onboarding" } });
   }
 
   function next() {
@@ -83,9 +91,16 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           </>
         ) : (
-          <TouchableOpacity style={[styles.nextBtn, styles.startBtn]} onPress={finish}>
-            <Text style={styles.nextBtnText}>{t("mobile.onboarding.start")}</Text>
-          </TouchableOpacity>
+          <View style={styles.lastSlide}>
+            <TouchableOpacity style={[styles.nextBtn, styles.startBtn]} onPress={finish} accessibilityRole="button">
+              <Text style={styles.nextBtnText}>{t("mobile.onboarding.start")}</Text>
+            </TouchableOpacity>
+            {billingEnabled() && (
+              <TouchableOpacity style={styles.codeBtn} onPress={() => void haveCode()} accessibilityRole="button">
+                <Text style={styles.codeText}>{t("mobile.onboarding.have_code")}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     </View>
@@ -114,5 +129,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   startBtn: { flex: 1, alignItems: "center" },
+  lastSlide: { flex: 1, gap: spacing.sm },
+  codeBtn: { minHeight: 52, alignItems: "center", justifyContent: "center" },
+  codeText: { color: colors.textSecondary, fontSize: fontSize.lg, fontWeight: "600" },
   nextBtnText: { color: "#0B1220", fontWeight: "700", fontSize: fontSize.lg },
 });

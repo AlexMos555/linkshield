@@ -148,6 +148,34 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * The device pass the app verified (src/lib/entitlement.ts), as the
+     * server's claims JSON — or null to forget it. Stored for the service and
+     * the ":boot" process; a running service re-reads it at once. With the
+     * billing switch off the app never calls this and the shield stays FULL.
+     */
+    Function("setProtectionPass") { json: String? ->
+      ai.cleanway.app.ProtectionPassStore.write(context, ai.cleanway.app.ProtectionPolicy.parse(json))
+      if (CleanwayVpnService.isRunning) {
+        context.startService(
+          Intent(context, CleanwayVpnService::class.java).setAction(CleanwayVpnService.ACTION_PROTECTION_CHANGED)
+        )
+      }
+      Unit
+    }
+
+    /** The protection mode the stored pass entitles this phone to right now: "full" | "basic" | "off". */
+    Function("protectionMode") {
+      ai.cleanway.app.ProtectionPolicy.effectiveMode(
+        ai.cleanway.app.ProtectionPassStore.read(context), System.currentTimeMillis() / 1000,
+      ).wire
+    }
+
+    /** What the trial is keyed on (ai.cleanway.app.TrialFingerprint); null when the phone has no ANDROID_ID. */
+    Function("trialFingerprint") {
+      ai.cleanway.app.TrialFingerprint.of(context)
+    }
+
+    /**
      * This install's random number (ai.cleanway.app.InstallId), sent with
      * every site check so the server can rate-limit per phone instead of per
      * carrier-NAT address. The same value the link guard sends; renewed

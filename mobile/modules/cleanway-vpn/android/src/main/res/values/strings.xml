@@ -12,7 +12,11 @@
     <string name="fg_channel">Cleanway protection</string>
     <string name="fg_channel_desc">Shown while phishing protection is active</string>
     <string name="fg_text">Checking website names for scams</string>
+    <string name="fg_text_basic">The list of sites is refreshed once a week — the subscription is unpaid</string>
+    <string name="fg_text_off">The subscription has ended: sites are not blocked</string>
     <string name="fg_title">Cleanway protection is on</string>
+    <string name="fg_title_basic">Cleanway basic protection</string>
+    <string name="fg_title_off">Cleanway protection is off</string>
     <string name="paused_text">Turns back on by itself at %1$s.</string>
     <string name="paused_title">Cleanway protection is paused</string>
     <string name="resume_action">Turn on now</string>

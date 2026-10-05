@@ -111,6 +111,15 @@ class CleanwayVpnService : VpnService() {
     private var pausedUntilMs: Long = 0L
 
     /**
+     * The last device pass the app handed over (ProtectionPassStore): null
+     * until billing exists on this phone, and then the mode is FULL. The DNS
+     * loop reads the mode per query through [currentMode], so a trial that
+     * ends at 03:00 ends at 03:00 with no JS alive.
+     */
+    @Volatile
+    private var protectionPass: StoredPass? = null
+
+    /**
      * The network whose own resolver gets every query first, or null when
      * none is known (then the public resolvers alone). Set by [underlying].
      */
@@ -155,6 +164,12 @@ class CleanwayVpnService : VpnService() {
             // START_STICKY without touching the tunnel: it is already up.
             return START_STICKY
         }
+        if (intent?.action == ACTION_PROTECTION_CHANGED) {
+            // The app stored a new pass (or forgot it); a service that is not
+            // running reads the store when it starts.
+            if (running) onProtectionPassChanged()
+            return START_STICKY
+        }
         if (intent?.action == ACTION_PAUSE) {
             if (running) pauseUntil(intent.getLongExtra(EXTRA_PAUSE_UNTIL, 0L))
             return START_STICKY
@@ -194,6 +209,12 @@ class CleanwayVpnService : VpnService() {
             ShieldPreference.pausedUntil(this),
         )
         ShieldPreference.setPausedUntil(this, pause)
+
+        // The protection mode this phone is entitled to (billing plan A.10):
+        // read before the notification is built, so a phone in BASIC comes up
+        // with the yellow-shield words and not a flash of "protection is on".
+        protectionPass = ProtectionPassStore.read(this)
+        if (protectionPass != null) Log.i(TAG, "protection_pass src=${protectionPass?.source} mode=${currentMode().wire}")
 
         // A VPN must run as a foreground service, or Android kills it when the app
         // backgrounds (and startForegroundService crashes without a prompt startForeground).
@@ -279,6 +300,7 @@ class CleanwayVpnService : VpnService() {
         // A pause outlives a restart of the service (process killed, reboot):
         // it ends at its time, not whenever the service happens to come back.
         pauseUntil(pause)
+        scheduleModeChange()
 
         // Load the stored blocklist synchronously (≈30 KB, milliseconds) so
         // the very first query after start is already filtered; then keep it
@@ -358,6 +380,8 @@ class CleanwayVpnService : VpnService() {
         isRunning = false
         dynamicBlocked = emptySet()
         pausedUntilMs = 0L
+        modeChange?.cancel(false)
+        modeChange = null
         blocklistSync?.stop()
         BlocklistAlarm.cancel(this)
         stopPrivateDnsWatch?.invoke()
@@ -399,7 +423,10 @@ class CleanwayVpnService : VpnService() {
                 }
 
                 val normalized = domain.lowercase().trimEnd('.')
-                val paused = pausedUntilMs > System.currentTimeMillis()
+                val nowMs = System.currentTimeMillis()
+                // A pause, or a mode that blocks nothing (OFF after a lapse):
+                // the tunnel stays up and everything is forwarded.
+                val paused = pausedUntilMs > nowMs || !ProtectionPolicy.blocks(currentMode(nowMs))
 
                 when (DnsDecision.classify(normalized, blockList, allowedDomains, dynamicBlocked, paused)) {
                     DnsDecision.CANARY -> {
@@ -758,9 +785,10 @@ class CleanwayVpnService : VpnService() {
             .setContentIntent(pending)
             .setPriority(NotificationCompat.PRIORITY_LOW)
         if (pausedUntil <= 0L) {
+            val (title, text) = foregroundCopy(currentMode())
             return builder
-                .setContentTitle(loc.getString(expo.modules.cleanwayvpn.R.string.fg_title))
-                .setContentText(loc.getString(expo.modules.cleanwayvpn.R.string.fg_text))
+                .setContentTitle(loc.getString(title))
+                .setContentText(loc.getString(text))
                 .build()
         }
         val time = android.text.format.DateFormat.getTimeFormat(loc).format(java.util.Date(pausedUntil))
@@ -817,6 +845,83 @@ class CleanwayVpnService : VpnService() {
     /** The scheduled end of the current pause, if any. */
     private var pauseEnd: java.util.concurrent.ScheduledFuture<*>? = null
 
+    // ── Protection mode (billing plan A.10) ──────────────────────────────
+
+    /** The scheduled moment the pass's own rule changes the mode (end of a period, end of grace). */
+    private var modeChange: java.util.concurrent.ScheduledFuture<*>? = null
+
+    /** The protection mode this phone is entitled to at [nowMs] (ProtectionPolicy.effectiveMode); FULL without a pass. */
+    fun currentMode(nowMs: Long = System.currentTimeMillis()): ProtectionMode =
+        ProtectionPolicy.effectiveMode(protectionPass, nowMs / 1000)
+
+    /**
+     * The ongoing notification's words per mode. BASIC is the "yellow shield":
+     * it says blocking continues and the list comes once a week; OFF says
+     * nothing is blocked. Neither hides behind "protection is on".
+     */
+    private fun foregroundCopy(mode: ProtectionMode): Pair<Int, Int> = when (mode) {
+        ProtectionMode.FULL -> expo.modules.cleanwayvpn.R.string.fg_title to expo.modules.cleanwayvpn.R.string.fg_text
+        ProtectionMode.BASIC -> expo.modules.cleanwayvpn.R.string.fg_title_basic to expo.modules.cleanwayvpn.R.string.fg_text_basic
+        ProtectionMode.OFF -> expo.modules.cleanwayvpn.R.string.fg_title_off to expo.modules.cleanwayvpn.R.string.fg_text_off
+    }
+
+    /** Re-posts the ongoing notification for the current pause and mode. */
+    private fun refreshForegroundNotification() {
+        val paused = pausedUntilMs.takeIf { it > System.currentTimeMillis() } ?: 0L
+        try {
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(NOTIF_ID, foregroundNotification(paused))
+        } catch (e: Exception) {
+            Log.w(TAG, "fg_notification_update_error: ${e.javaClass.simpleName}")
+        }
+    }
+
+    /** The app stored a new pass (or none): re-read it, follow the mode, arm the next change. */
+    private fun onProtectionPassChanged() {
+        val before = currentMode()
+        protectionPass = ProtectionPassStore.read(this)
+        val after = currentMode()
+        Log.i(TAG, "protection_pass src=${protectionPass?.source ?: "none"} mode=${after.wire}")
+        if (after != before) onModeChanged()
+        scheduleModeChange()
+    }
+
+    /**
+     * The mode changed — by a new pass or by the clock. The notification
+     * follows, and the list schedule is re-decided on the new cadence: a
+     * phone paid again after a week in BASIC fetches now rather than waiting
+     * out the weekly alarm; a phone that lapsed keeps its 6 h alarm until it
+     * fires once, then settles on weekly.
+     */
+    private fun onModeChanged() {
+        refreshForegroundNotification()
+        blocklistSync?.let { sync -> if (running) sync.start(syncExecutor) }
+    }
+
+    /**
+     * Arms a wake-up at the moment the pass's own rule changes the mode, so
+     * the notification turns yellow (or says "off") when the period ends —
+     * the person may not open the app for weeks. Measured on the executor's
+     * clock like the pause end: fine for a boundary days away, and the DNS
+     * loop applies the real mode per query regardless.
+     */
+    @Synchronized
+    private fun scheduleModeChange() {
+        modeChange?.cancel(false)
+        modeChange = null
+        val now = System.currentTimeMillis()
+        val atSec = ProtectionPolicy.nextChangeSec(protectionPass, now / 1000) ?: return
+        val delay = (atSec * 1000 - now).coerceAtLeast(1_000L)
+        modeChange = try {
+            syncExecutor.schedule({
+                onModeChanged()
+                scheduleModeChange()
+            }, delay, TimeUnit.MILLISECONDS)
+        } catch (e: Exception) {
+            null // the service is shutting down
+        }
+    }
+
     private fun stopForegroundCompat() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -871,6 +976,8 @@ class CleanwayVpnService : VpnService() {
                 // each attempt: the failure step while it runs, then from its
                 // result — 6h after a good fetch, 5/15/60 min after a failed one.
                 onNextDue = { delayMs -> if (running) BlocklistAlarm.schedule(this, delayMs) },
+                // Weekly in BASIC/OFF (billing plan A.10), 6 h as shipped otherwise.
+                refreshMs = { ProtectionPolicy.refreshMs(currentMode()) },
             )
             blocklistSync = sync
             val loaded = sync.loadFromDisk()
@@ -940,7 +1047,8 @@ class CleanwayVpnService : VpnService() {
             "count" to l.count,
             "revoked" to l.revoked,
             "ageMs" to (if (l.count > 0 || l.revoked) l.ageMs(now, elapsed).toDouble() else null),
-            "stale" to (l.count == 0 || l.isStale(now, elapsed)),
+            "stale" to (l.count == 0 || l.isStale(now, elapsed, ProtectionPolicy.staleAfterMs(currentMode(now)))),
+            "mode" to currentMode(now).wire,
             "hasCanary" to l.hasListCanary(),
             "lastError" to blocklistSync?.lastError,
             "lastFetchAt" to (blocklistSync?.lastFetchAtMs ?: 0L).toDouble(),
@@ -1033,6 +1141,8 @@ class CleanwayVpnService : VpnService() {
         const val EXTRA_PAUSE_UNTIL = "pause_until_ms"
         /** End a pause now (the app, or the notification's "turn back on"). */
         const val ACTION_RESUME = "ai.cleanway.VPN_RESUME"
+        /** The app stored a new device pass (ProtectionPassStore): re-read the protection mode. */
+        const val ACTION_PROTECTION_CHANGED = "ai.cleanway.PROTECTION_CHANGED"
         /** Broadcast when the pause begins, ends or moves; carries [EXTRA_PAUSE_UNTIL] (0 = not paused). */
         const val ACTION_PAUSE_CHANGED = "ai.cleanway.PAUSE_CHANGED"
         /** Broadcast when the list the DNS path blocks from is swapped (loaded, synced, revoked). */

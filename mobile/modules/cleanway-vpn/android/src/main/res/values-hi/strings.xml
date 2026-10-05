@@ -12,7 +12,11 @@
     <string name="fg_channel">Cleanway सुरक्षा</string>
     <string name="fg_channel_desc">फ़िशिंग सुरक्षा चालू रहने पर दिखता है</string>
     <string name="fg_text">वेबसाइट के नाम धोखाधड़ी के लिए जाँचे जा रहे हैं</string>
+    <string name="fg_text_basic">साइटों की सूची हफ़्ते में एक बार अपडेट होती है — सदस्यता का भुगतान नहीं हुआ</string>
+    <string name="fg_text_off">सदस्यता खत्म हो गई: साइटें ब्लॉक नहीं होतीं</string>
     <string name="fg_title">Cleanway सुरक्षा चालू है</string>
+    <string name="fg_title_basic">Cleanway बुनियादी सुरक्षा</string>
+    <string name="fg_title_off">Cleanway सुरक्षा बंद है</string>
     <string name="paused_text">%1$s पर अपने-आप फिर चालू होगी।</string>
     <string name="paused_title">Cleanway सुरक्षा रुकी हुई है</string>
     <string name="resume_action">अभी चालू करें</string>
