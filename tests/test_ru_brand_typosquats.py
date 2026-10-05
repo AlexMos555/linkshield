@@ -600,8 +600,9 @@ def test_the_ml_similarity_feature_reads_the_russian_brands_too():
     from api.services.url_features import _max_brand_similarity
 
     for name in ("sberbank-ast", "wildberies", "mtsbank"):
-        expected = max(SequenceMatcher(None, name, b).ratio() for b in TYPOSQUAT_TARGETS if b != name)
-        global_only = max(SequenceMatcher(None, name, b).ratio() for b in GLOBAL_TYPOSQUAT_TARGETS if b != name)
+        trained = [b for b in TYPOSQUAT_TARGETS if b != name and b not in scoring._NOT_IN_MODEL]
+        expected = max(SequenceMatcher(None, name, b).ratio() for b in trained)
+        global_only = max(SequenceMatcher(None, name, b).ratio() for b in GLOBAL_TYPOSQUAT_TARGETS if b in trained)
         assert _max_brand_similarity(name) == round(expected, 3) > round(global_only, 3)
 
 

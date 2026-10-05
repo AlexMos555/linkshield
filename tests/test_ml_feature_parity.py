@@ -260,9 +260,15 @@ def test_the_logged_row_does_not_give_a_tenant_its_platforms_rank():
 
 # ── max_brand_similarity reads the Russian brands ──
 
-@pytest.mark.parametrize("name", ["sberbamk", "wildberies", "gosuslugl", "tinkof", "paypa1", "example"])
+@pytest.mark.parametrize("name", ["sberbamk", "wildberies", "gosuslugl", "tinkof", "paypa1", "example", "allegr0"])
 def test_brand_similarity_is_the_best_ratio_over_every_brand(name):
-    expected = max(SequenceMatcher(None, name, b).ratio() for b in TYPOSQUAT_TARGETS if b != name)
+    """Every brand the model was trained with: names added since
+    (scoring._NOT_IN_MODEL, allegro … on 2026-10-05) wait for a retrain."""
+    from api.services.scoring import _NOT_IN_MODEL
+
+    expected = max(
+        SequenceMatcher(None, name, b).ratio() for b in TYPOSQUAT_TARGETS if b != name and b not in _NOT_IN_MODEL
+    )
     assert _max_brand_similarity(name) == round(expected, 3)
 
 

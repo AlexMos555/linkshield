@@ -59,7 +59,10 @@ _INFLIGHT: dict[str, asyncio.Future] = {}
 # subdomain-shaped benign hosts and hosting tenants (features_version 6):
 # *.gov.spb.ru, facebook.github.io and other hosts cached with
 # 'ml_high_risk' under v5.
-_PUBLIC_CACHE_PREFIX = "public_check:v6:"
+# v7 (2026-10-05): 14 global brands added (allegro, olx, xfinity, att, mbway
+# …): allegrolokalnie.<random>.cfd, mbway.online cached as 'safe' under v6,
+# and olx.ua, att.net listed as the brands' own.
+_PUBLIC_CACHE_PREFIX = "public_check:v7:"
 _PUBLIC_CACHE_TTL_SECONDS = 24 * 60 * 60
 # A name that does not exist can be registered at any moment, and a verdict
 # the scanner could not complete may be better next time — neither is kept
