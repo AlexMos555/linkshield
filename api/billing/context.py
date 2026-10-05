@@ -17,8 +17,8 @@ from api.billing.providers.base import BillingProvider
 from api.billing.settings import BillingSettings, decode_key
 from api.billing.state_machine import Policy
 from api.billing.store.base import BillingStore
+from api.config import ConfigError
 
-PLAN_VERSION = 1
 _SEATS = {PlanCode.SOLO: 1, PlanCode.FAMILY3: 3, PlanCode.FAMILY5: 5}
 
 
@@ -27,9 +27,10 @@ def utc_now() -> datetime:
 
 
 def plan_catalog(settings: BillingSettings) -> Tuple[Plan, ...]:
-    """The RU catalogue from settings: solo / family3 / family5, version 1."""
+    """The RU catalogue new sales use: solo / family3 / family5 at BILLING_PLAN_VERSION."""
     return tuple(
-        Plan(code=code, version=PLAN_VERSION, seats=seats, price_kopecks=settings.price_kopecks(code.value))
+        Plan(code=code, version=settings.billing_plan_version, seats=seats,
+             price_kopecks=settings.price_kopecks(code.value))
         for code, seats in _SEATS.items()
     )
 
@@ -77,7 +78,18 @@ def build_context(settings: BillingSettings, store: BillingStore, providers: Map
 
 
 async def ensure_plans(ctx: BillingContext) -> None:
-    """Write the catalogue rows so subscriptions can reference them."""
+    """Write the catalogue rows so subscriptions can reference them.
+
+    A stored version is immutable: renewals charge its price, so a price
+    change under the same version would silently reprice every running
+    subscription. That is refused; bump BILLING_PLAN_VERSION instead.
+    """
     async with ctx.store.transaction() as tx:
         for plan in ctx.plans():
+            stored = await tx.get_plan(plan.code.value, plan.version)
+            if stored is not None and (stored.price_kopecks, stored.seats) != (plan.price_kopecks, plan.seats):
+                raise ConfigError(
+                    f"Plan {plan.code.value} v{plan.version} is stored at {stored.price_kopecks} kopecks; "
+                    f"a new price needs a new BILLING_PLAN_VERSION (running subscriptions keep their price)."
+                )
             await tx.upsert_plan(plan)

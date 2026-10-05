@@ -92,7 +92,12 @@ async def _charge(ctx: BillingContext, tx, sub: Subscription, provider, now: dat
     charge = next((e for e in transition.effects if isinstance(e, Charge)), None)
     if charge is None:
         return False
-    plan = ctx.plan(sub.plan_code)
+    # The price the subscriber agreed to: their plan version, never today's catalogue.
+    plan = await tx.get_plan(sub.plan_code.value, sub.plan_version)
+    if plan is None:
+        await tx.add_audit(actor=_ACTOR, action="charge.plan_missing", target=sub_target(sub.id),
+                           meta={"plan": sub.plan_code.value, "version": sub.plan_version})
+        return False
     payment = await tx.create_payment(Payment(
         id=str(uuid.uuid4()), subscription_id=sub.id, provider=sub.provider, idempotency_key=charge.idempotency_key,
         amount_kopecks=plan.price_kopecks, status=PaymentStatus.PENDING, created_at=now, period_start=charge.period_start,

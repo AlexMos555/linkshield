@@ -53,6 +53,10 @@ class BillingSettings(BaseSettings):
     billing_price_solo_rub: int = 99
     billing_price_family3_rub: int = 270
     billing_price_family5_rub: int = 399
+    # The catalogue version new sales are made at. A price change is a NEW
+    # version (bump this with the prices); running subscriptions keep being
+    # charged the price of the version they signed up for.
+    billing_plan_version: int = 1
     billing_trial_days: int = 14
     billing_grace_days: int = 7
     # What a phone keeps after the grace period: `basic` = blocking stays,
@@ -162,6 +166,8 @@ def validate_billing_settings(settings: BillingSettings) -> None:
     for code in ("solo", "family3", "family5"):
         if settings.price_kopecks(code) <= 0:
             raise ConfigError(f"Price for plan {code} must be positive.")
+    if settings.billing_plan_version < 1:
+        raise ConfigError("BILLING_PLAN_VERSION must be >= 1.")
     if not settings.retry_days():
         raise ConfigError("BILLING_RETRY_DAYS must list at least one day.")
     logger.info(

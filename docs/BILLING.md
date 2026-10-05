@@ -146,6 +146,7 @@ the flag is on**; nothing calls it today.
 | `ROLE` | `api` | `billing` mounts the routes |
 | `DATABASE_URL_BILLING` | — | the Russian Postgres; `memory://` for a local demo |
 | `BILLING_PRICE_SOLO_RUB` / `_FAMILY3_RUB` / `_FAMILY5_RUB` | 99 / 270 / 399 | prices (a change never touches running subscriptions: plans are versioned) |
+| `BILLING_PLAN_VERSION` | `1` | catalogue version for new sales; bump it with any price change (startup refuses a new price under a stored version); renewals charge the subscription's own version |
 | `BILLING_TRIAL_DAYS` / `BILLING_GRACE_DAYS` | 14 / 7 | |
 | `BILLING_LAPSE_POLICY` | `basic` | `basic` or `off` |
 | `BILLING_RETRY_DAYS` | `1,3,5,7` | days after period end |
