@@ -42,12 +42,28 @@ _ACTOR = "system"
 
 
 async def run_pending_timeouts(ctx: BillingContext, now: Optional[datetime] = None) -> int:
-    """Checkouts nobody confirmed: gone after `billing_pending_timeout_minutes`."""
+    """Checkouts nobody confirmed: gone after `billing_pending_timeout_minutes`.
+
+    Deleting a checkout cascades to its payment row, so the provider is asked
+    first: a payment that went through while its webhook was lost is applied,
+    not thrown away, and a checkout whose status the provider cannot report
+    right now waits for the next pass.
+    """
     now = now or ctx.now()
     cutoff = now - timedelta(minutes=ctx.settings.billing_pending_timeout_minutes)
-    removed = 0
     async with ctx.store.transaction() as tx:
-        for sub in await tx.list_pending_older_than(cutoff=cutoff):
+        candidates = list(await tx.list_pending_older_than(cutoff=cutoff))
+    removed = 0
+    for candidate in candidates:
+        async with ctx.store.transaction() as tx:
+            payment = await tx.get_payment_by_idempotency_key(checkout_key(candidate.id))
+        if payment is not None and payment.status is PaymentStatus.PENDING:
+            if await _reconcile_one(ctx, payment) in (_SETTLED, _UNKNOWN):
+                continue
+        async with ctx.store.transaction() as tx:
+            sub = await tx.get_subscription(candidate.id, for_update=True)
+            if sub is None or sub.status is not SubscriptionStatus.PENDING:
+                continue
             transition = apply(sub_state(sub), PendingTimeout(), now, ctx.policy())
             if transition.state.status is not None:
                 continue
@@ -126,47 +142,55 @@ async def run_reconciliation(ctx: BillingContext, now: Optional[datetime] = None
     async with ctx.store.transaction() as tx:
         pending = list(await tx.list_pending_payments_older_than(cutoff=cutoff))
     for payment in pending:
-        if await _reconcile_one(ctx, payment):
+        if await _reconcile_one(ctx, payment) == _SETTLED:
             settled += 1
     return settled
 
 
-async def _reconcile_one(ctx: BillingContext, payment: Payment) -> bool:
+# What asking the provider about one payment found out.
+_SETTLED = "settled"    # the provider's answer was applied
+_PENDING = "pending"    # no final answer yet (or nothing to ask about)
+_UNKNOWN = "unknown"    # the provider could not be asked right now
+
+
+async def _reconcile_one(ctx: BillingContext, payment: Payment) -> str:
     provider = ctx.providers.get(payment.provider.value)
     if provider is None:
-        return False
+        return _PENDING
     async with ctx.store.transaction() as tx:
         sub = await tx.get_subscription(payment.subscription_id)
         if sub is None:
-            return False
+            return _PENDING
         ref = payment.provider_payment_id or (sub.provider_subscription_id if payment.idempotency_key == checkout_key(sub.id) else None)
         if not ref:
-            return False
+            return _PENDING
         try:
             event = await provider.fetch_status(provider_ref=ref)
         except ProviderError as e:
             await tx.add_audit(actor=_ACTOR, action="reconcile.provider_error", target=sub_target(sub.id),
                                meta={"error": type(e).__name__})
-            return False
+            return _UNKNOWN
         if event is None or event.kind.value == "payment_pending":
-            return False
+            return _PENDING
         event_id = await tx.insert_event(provider=event.provider, provider_event_id=f"reconcile:{event.provider_event_id}",
                                          signature_ok=True, payload_ciphertext=ctx.cipher.encrypt_bytes(b"reconciliation"))
         if event_id is None:
-            return False
+            return _PENDING
         _, outcome = await apply_provider_event(ctx, tx, event, actor=_ACTOR)
         await tx.mark_event_processed(event_id, processed_at=ctx.now(), outcome=outcome)
-        return outcome in ("applied", "deleted")
+        return _SETTLED if outcome in ("applied", "deleted") else _PENDING
 
 
 async def run_once(ctx: BillingContext, now: Optional[datetime] = None) -> Dict[str, int]:
-    """One scheduler pass. Order matters: timeouts, then charges, then expiries, then reconciliation."""
+    """One scheduler pass. Order matters: reconciliation first (a lost webhook must not
+    let the timeout delete a paid checkout), then timeouts, charges and expiries."""
     now = now or ctx.now()
+    reconciled = await run_reconciliation(ctx, now)
     counts = {
         "pending_timeouts": await run_pending_timeouts(ctx, now),
         "renewals": await run_renewals(ctx, now),
         "expiries": await run_expiries(ctx, now),
-        "reconciled": await run_reconciliation(ctx, now),
+        "reconciled": reconciled,
     }
     logger.info("billing.scheduler.pass", extra=counts)
     return counts
