@@ -34,7 +34,7 @@ class MessageCorpusTest {
     fun `zero warnings on the legitimate corpus`() {
         assertTrue(MessageCorpus.LEGIT_RU.size >= 40, "the Russian legit corpus must stay at 40+ messages")
         val legit = MessageCorpus.LEGIT_RU + MessageCorpus.LEGIT_EN + MessageCorpus.LEGIT_VARIANTS + MessageCorpus.LEGIT_2026_10 +
-            MessageCorpus.LEGIT_2026_10_UPGRADES
+            MessageCorpus.LEGIT_2026_10_UPGRADES + MessageSchemeCorpus.LEGIT
         val flagged = legit.map { it to analyzer.analyze(it) }.filter { it.second.verdict != MessageVerdict.NO_SIGNALS }
         flagged.forEach { (text, r) -> println("LEGIT FLAGGED ${r.verdict} ${r.reasons}: $text") }
         println("MESSAGE_CORPUS legit: ${legit.size - flagged.size}/${legit.size} with no signals")
@@ -82,6 +82,24 @@ class MessageCorpusTest {
         assertEquals(emptyList(), notDangerous.map { it.first }, "2026-10 upgraded scams that must be dangerous")
     }
 
+    @Test
+    fun `the 2026-10 new schemes are caught at their level`() {
+        // Families the rules had no vocabulary for (MessageSchemeCorpus;
+        // docs/EVALUATION_2026-10.md §3.10).
+        val notDangerous = MessageSchemeCorpus.SCAM_DANGEROUS.map { it to analyzer.analyze(it) }
+            .filter { it.second.verdict != MessageVerdict.DANGEROUS }
+        val missed = MessageSchemeCorpus.SCAM_CAUTION.map { it to analyzer.analyze(it) }
+            .filter { it.second.verdict == MessageVerdict.NO_SIGNALS }
+        (notDangerous + missed).forEach { (text, r) -> println("SCAM[schemes] ${r.verdict} ${r.reasons}: $text") }
+        println(
+            "MESSAGE_CORPUS schemes: dangerous ${MessageSchemeCorpus.SCAM_DANGEROUS.size - notDangerous.size}/" +
+                "${MessageSchemeCorpus.SCAM_DANGEROUS.size}, flagged ${MessageSchemeCorpus.SCAM_CAUTION.size - missed.size}/" +
+                "${MessageSchemeCorpus.SCAM_CAUTION.size}",
+        )
+        assertEquals(emptyList(), notDangerous.map { it.first }, "new-scheme scams that must be dangerous")
+        assertEquals(emptyList(), missed.map { it.first }, "new-scheme scams that must be flagged")
+    }
+
     private data class Recall(val flagged: Int, val dangerous: Int, val total: Int)
 
     private fun recall(label: String, scams: List<String>): Recall {
@@ -101,7 +119,8 @@ class MessageCorpusTest {
     @Test
     fun `every scam warning carries reasons the UI knows`() {
         val all = MessageCorpus.SCAMS_RU + MessageCorpus.SCAMS_EN + MessageCorpus.SCAM_VARIANTS + MessageCorpus.SCAM_REVIEW +
-            MessageCorpus.SCAM_2026_10_DANGEROUS + MessageCorpus.SCAM_2026_10_CAUTION + MessageCorpus.SCAM_2026_10_UPGRADES
+            MessageCorpus.SCAM_2026_10_DANGEROUS + MessageCorpus.SCAM_2026_10_CAUTION + MessageCorpus.SCAM_2026_10_UPGRADES +
+            MessageSchemeCorpus.SCAM_DANGEROUS + MessageSchemeCorpus.SCAM_CAUTION
         for (text in all) {
             val r = analyzer.analyze(text)
             if (r.verdict == MessageVerdict.NO_SIGNALS) continue
