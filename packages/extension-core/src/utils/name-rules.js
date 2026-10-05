@@ -95,6 +95,11 @@
   var COMBO_PREFIXES = set(D && D.comboGenericPrefixes);
   var COMBO_COUNTRY = set(D && D.comboCountrySuffixes);
   // ru_lures: Russian lure words matched on a spelling skeleton.
+  // _check_brand_on_hosting_tenant
+  var TENANT_SUFFIXES = set(D && D.hostingTenantSuffixes);
+  var OPERATOR_HOSTS = set(D && D.operatorHosts);
+  var REGISTRY_ONLY_ZONES = set(D && D.registryOnlyZones);
+  var TENANT_BRANDS = D && D.hostingTenantBrands ? D.hostingTenantBrands : [];
   var LURE_WORDS = set(D && D.lureWords);
   var LURE_STEMS = D && D.lureStems ? D.lureStems : [];
   var BRAND_LURE_WORDS = new Map();
@@ -231,6 +236,56 @@
           if (pieces.indexOf(b) !== -1 || checkCombosquat(label, b, ZONE_RULE)) return b;
         } else if (pieces.indexOf(b) !== -1 && checkCombosquat(label, b, ZONE_RULE)) {
           return b;
+        }
+      }
+    }
+    return null;
+  }
+
+  // hosting_platforms.tenant_suffix_of(domain, _SCORER_SHARED_SUFFIXES)
+  function tenantSuffixOf(d) {
+    var parts = d.split(".");
+    for (var k = parts.length - 1; k > 1; k--) {
+      var suffix = parts.slice(-k).join(".");
+      if (TENANT_SUFFIXES.has(suffix)) {
+        return d === "www." + suffix || OPERATOR_HOSTS.has(d) ? null : suffix;
+      }
+    }
+    return null;
+  }
+
+  // _check_brand_on_hosting_tenant: a brand with a lure word (or a Russian
+  // brand as the whole name) as a customer's site on a hosting platform.
+  function brandOnHostingTenant(asciiDomain) {
+    var d = clean(asciiDomain);
+    var suffix = tenantSuffixOf(d);
+    if (!suffix || RU_PSL.has(suffix) || RU_RESTRICTED.has(suffix)) return null;
+    if (RU_LOOKALIKE_ZONES.has(suffix) || REGISTRY_ONLY_ZONES.has(suffix)) return null;
+    var base = lastTwo(d.split("."));
+    if (!(suffix === base || endsWith(suffix, "." + base))) return null;
+    if (LEGIT.has(d)) return null;
+    var labels = d.slice(0, d.length - suffix.length - 1).split(".");
+    for (var i = 0; i < labels.length; i++) {
+      var label = labels[i];
+      var whole = label.replace(/-/g, "");
+      if (whole.length >= ZONE_BRAND_PART_MIN && ZONE_BRAND_SET.has(whole)) return whole;
+      var words = label.split("-");
+      var pairs = [];
+      for (var p = 0; p + 1 < words.length; p++) pairs.push(words[p] + words[p + 1]);
+      var candidates = words.concat(pairs);
+      for (var b = 0; b < TENANT_BRANDS.length; b++) {
+        var brand = TENANT_BRANDS[b];
+        if (words.indexOf(brand) !== -1) {
+          for (var c = 0; c < candidates.length; c++) {
+            if (candidates[c] !== brand && isLureWord(candidates[c], brand)) return brand;
+          }
+        } else if (brand.length >= ZONE_BRAND_PART_MIN) {
+          for (var w = 0; w < words.length; w++) {
+            var word = words[w];
+            var glued = startsWith(word, brand) ? word.slice(brand.length)
+              : endsWith(word, brand) ? word.slice(0, word.length - brand.length) : "";
+            if (glued && glued !== word && isLureWord(glued, brand)) return brand;
+          }
         }
       }
     }
@@ -614,6 +669,7 @@
     typosquat: typosquat,
     brandInSubdomain: brandInSubdomain,
     brandUnderOpenZone: brandUnderOpenZone,
+    brandOnHostingTenant: brandOnHostingTenant,
     hasFakeTldInSubdomain: hasFakeTldInSubdomain,
     apparentSubdomainLevels: apparentSubdomainLevels,
     // Exposed for the table tests.

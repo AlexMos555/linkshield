@@ -80,12 +80,14 @@ def test_parity_table_covers_the_labelled_sets_and_the_reported_hosts():
     ]
     by_host = {r[0]: r for r in rows}
     assert len(rows) > 5000
-    assert all(len(r) == 7 for r in rows)
+    assert all(len(r) == 8 for r in rows)
     build = _builder()
     for host in build._labelled_hosts():
         assert host in by_host, host
     # The rows the port has to get right, whatever else changes.
-    assert by_host["kvs.gov.spb.ru"][1:] == ["-", "-", "-", "0", "1", "gov.spb.ru"]
+    assert by_host["kvs.gov.spb.ru"][1:] == ["-", "-", "-", "0", "1", "gov.spb.ru", "-"]
+    assert by_host["sberbank-online.pages.dev"][7] == "sberbank"
+    assert by_host["netflix-clone.vercel.app"][7] == "-"
     assert by_host["sberbamk.ru"][1].startswith("sberbank.ru|")
     assert by_host["vk.com.msk.ru"][3:6] == ["vk", "1", "2"]
     assert by_host["xn--90ab2c.xn--p1ai"][1] == "-"  # втб.рф is VTB's own

@@ -248,6 +248,12 @@ const RUSSIAN_NAMES = [
   ["sber-vozvrat.site", 50, "caution", "typosquatting|risky_tld"], // was 0
   ["ozonpriz.ru", 30, "caution", "typosquatting"], // was 0
   ["vkusvill-bonus.ru", 0, "safe", ""], // VkusVill, not VK: the brand must be a whole word
+  // A brand with a lure word as a site on a hosting platform (#80): the customer's
+  // own name, which the typosquat rule never reads (it reads pages.dev).
+  ["sberbank-online.pages.dev", 40, "caution", "brand_subdomain|hosting_platform"], // was 10
+  ["paypal-login.netlify.app", 50, "caution", "brand_subdomain|suspicious_keyword|hosting_platform"], // was 20
+  ["sberbank.tw1.ru", 30, "caution", "brand_subdomain"], // was 0
+  ["netflix-clone.vercel.app", 10, "safe", "hosting_platform"], // a student clone stays safe
   ["edu.gov.ru", 0, "safe", ""], // was 35 caution [fake_tld]: the Ministry of Education's zone
   // Russian brands (#62): typos, look-alikes, zones, combos — all 0 before.
   ["sberbamk.ru", 30, "caution", "typosquatting"],
@@ -282,7 +288,7 @@ function parityRows() {
     .map((line) => line.split("\t"));
 }
 
-/** The same six columns, from the extension's port. */
+/** The same seven columns, from the extension's port. */
 function portVerdict(ctx, host) {
   const rules = ctx.cleanwayNameRules;
   const typo = rules.typosquat(host, ctx.decodeIDN(host));
@@ -294,6 +300,7 @@ function portVerdict(ctx, host) {
     rules.hasFakeTldInSubdomain(host) ? "1" : "0",
     String(rules.apparentSubdomainLevels(host)),
     rules.registrableDomain(host),
+    rules.brandOnHostingTenant(host) || "-",
   ];
 }
 
