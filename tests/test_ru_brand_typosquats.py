@@ -603,3 +603,16 @@ def test_the_ml_similarity_feature_reads_the_russian_brands_too():
         expected = max(SequenceMatcher(None, name, b).ratio() for b in TYPOSQUAT_TARGETS if b != name)
         global_only = max(SequenceMatcher(None, name, b).ratio() for b in GLOBAL_TYPOSQUAT_TARGETS if b != name)
         assert _max_brand_similarity(name) == round(expected, 3) > round(global_only, 3)
+
+
+@pytest.mark.parametrize("host", ["thank.miami", "thank.com", "megaron.com"])
+def test_english_words_one_slip_from_a_brand_are_not_typos(host):
+    """The 2026-10-05 dictionary pass: of 195,575 macOS dictionary words, 6
+    read as a Russian brand's typo; 'thank' (tbank) and 'megaron' (megafon)
+    are ordinary words and listed as not_typos."""
+    assert scoring._check_typosquatting_v2(host) is None
+
+
+@pytest.mark.parametrize("host", ["tbamk.ru", "tbanc.ru", "megafin.ru"])
+def test_the_brands_real_typos_still_are(host):
+    assert scoring._check_typosquatting_v2(host) is not None

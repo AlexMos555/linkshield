@@ -131,6 +131,9 @@
         "tinkoff.com": "Adam Tinkoff's personal page (bio.site)",
         "tbani.ru": "«Трехгорные Бани», a bathhouse in Moscow",
         "tbanks.ru": "«ТопБэнкс», a bank-rating site under its own name"
+      },
+      "not_typos": {
+        "thank": "an English word (thank.miami and thank-you pages), one keyboard slip from tbank: 1 of 6 Russian-brand hits in the 195,575-word macOS dictionary (2026-10-05)"
       }
     },
     "vtb": {
@@ -611,7 +614,8 @@
         "megafoni": "'megaphone' in Finnish: megafoni.org (Wikidata Q11881953 P856)",
         "megaton": "a word in English and Russian (мегатонна)",
         "megafono": "'megaphone' in Italian and Spanish: megafono.it, a press-release site",
-        "megafoon": "'megaphone' in Dutch: megafoon.nl redirects to megafoons.nl, a megaphone shop"
+        "megafoon": "'megaphone' in Dutch: megafoon.nl redirects to megafoons.nl, a megaphone shop",
+        "megaron": "an English word (the hall of a Greek palace) and a company name: the same dictionary pass (2026-10-05)"
       },
       "shared_name": {
         "megafon": "'megaphone' in Danish, Norwegian and Hungarian, and other operators: megafon.dk, megafon.no (Wikidata Q11988889), megafon.hu (Q138767057), megafon.tj (MegaFon Tajikistan), megafon.tv; trymegafon.com redirects to megafon.ca, Megafon Productions"
