@@ -39,7 +39,8 @@ export async function generateMetadata({
 }
 
 type Props = {
-  searchParams: Promise<{ plan?: string; interval?: string }>;
+  /** `error` is the stable code /auth/callback leaves when a link failed. */
+  searchParams: Promise<{ plan?: string; interval?: string; error?: string }>;
   params: Promise<{ locale: string }>;
 };
 
@@ -124,7 +125,7 @@ export default async function SignupPage({ searchParams, params }: Props) {
           </div>
         )}
 
-        <SignupForm planFromQuery={plan} intervalFromQuery={interval} />
+        <SignupForm planFromQuery={plan} intervalFromQuery={interval} errorFromQuery={sp.error ?? null} />
 
         {/* Privacy reassurance */}
         <div style={{ marginTop: 28, padding: "16px 18px", background: "#1e293b80", borderRadius: 10, border: "1px solid #1e293b" }}>

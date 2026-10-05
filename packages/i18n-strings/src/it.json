@@ -1701,20 +1701,17 @@
       "reference_label": "Riferimento"
     },
     "signup": {
-      "check_inbox": "Controlla la tua casella di posta",
-      "magic_link_sent": "Abbiamo inviato un link di accesso a <strong>{email}</strong>.",
-      "magic_link_followup": "Apri il link in quell'email per completare l'accesso. Se non arriva nulla entro 10 minuti, controlla la cartella dello spam.",
       "email_label": "E-mail",
       "email_placeholder": "tu@esempio.com",
-      "submitting": "Invio del link…",
-      "submit_with_plan": "Inviami il link di accesso",
+      "submitting": "Invio del codice…",
+      "submit_with_plan": "Inviami un codice di accesso",
       "submit_no_plan": "Continua",
-      "footer_lead": "Ti invieremo un link di accesso monouso. Nessuna password da ricordare.",
+      "footer_lead": "Ti invieremo via e-mail un codice di accesso monouso. Nessuna password da ricordare.",
       "footer_or": "Oppure",
       "footer_install_cta": "installa l'app gratis",
       "footer_install_tail": "— il blocco funziona senza account.",
       "meta_title": "Accedi — Cleanway",
-      "meta_description": "Accedi a Cleanway con un link monouso inviato alla tua email. La protezione funziona anche senza account.",
+      "meta_description": "Accedi a Cleanway con un codice monouso inviato alla tua e-mail. La protezione funziona anche senza account.",
       "back_to_pricing": "Torna ai prezzi",
       "heading": "Crea un account o accedi",
       "intro": "Non ti serve un account per essere protetto: il blocco dei siti truffa funziona anche senza. L'account serve solo per le funzioni per la famiglia e i piani a pagamento.",
@@ -1736,7 +1733,21 @@
       "error_rate_limited": "Troppi tentativi. Aspetta qualche minuto e riprova.",
       "error_send_failed": "Non siamo riusciti a inviare l'email di accesso. Riprova più tardi.",
       "error_network": "Nessuna connessione al server. Controlla internet e riprova.",
-      "error_unavailable": "L'accesso al momento non è disponibile. La protezione funziona senza account."
+      "error_unavailable": "L'accesso al momento non è disponibile. La protezione funziona senza account.",
+      "code_heading": "Inserisci il codice ricevuto via e-mail",
+      "code_sent_to": "Abbiamo inviato un codice a 6 cifre a <strong>{email}</strong>.",
+      "code_label": "Codice ricevuto via e-mail",
+      "code_submit": "Accedi",
+      "code_submitting": "Verifica del codice…",
+      "code_valid_for": "Il codice è valido per 1 ora.",
+      "code_spam_hint": "Nessuna e-mail? Attendi un minuto e controlla la cartella Spam. Il mittente è Cleanway.",
+      "code_resend": "Invia di nuovo il codice",
+      "code_resend_in": "Reinvia tra {seconds} s",
+      "code_change_email": "Cambia e-mail",
+      "error_code_incomplete": "Inserisci le 6 cifre dell'e-mail.",
+      "error_code_wrong": "Codice errato o scaduto. Controlla le cifre o richiedi un nuovo codice.",
+      "error_link_expired": "Il link di accesso è scaduto. Richiedi un nuovo codice.",
+      "error_link_failed": "Il link di accesso non ha funzionato. Inserisci qui il codice dell'e-mail o richiedine uno nuovo."
     },
     "pricing": {
       "page_title": "Prezzi",
@@ -3152,7 +3163,9 @@
       "err_rate_limited": "Troppe richieste di codice. Attendi un momento e riprova.",
       "err_captcha": "Il controllo di sicurezza non è stato completato. Riprova.",
       "err_captcha_update": "Per accedere serve una versione più recente di Cleanway. Aggiorna l'app e riprova.",
-      "captcha_wait": "Completamento del controllo di sicurezza…"
+      "captcha_wait": "Completamento del controllo di sicurezza…",
+      "code_valid_for": "Il codice è valido per 1 ora.",
+      "code_spam_hint": "Nessuna e-mail? Attendi un minuto e controlla la cartella Spam. Il mittente è Cleanway."
     },
     "onboarding": {
       "s1_title": "Controlla qualsiasi cosa prima di toccarla",

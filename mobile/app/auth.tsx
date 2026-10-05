@@ -13,9 +13,9 @@ import {
   validateEmail,
   isValidOtpCode,
   OTP_CODE_LEN,
-  AuthError,
 } from "../src/services/auth";
 import { isSupabaseConfigured } from "../src/services/supabase";
+import { authFailure, otpSendErrorKey, otpVerifyErrorKey } from "../src/utils/auth-error-key";
 import {
   isCaptchaRequired,
   requestCaptchaToken,

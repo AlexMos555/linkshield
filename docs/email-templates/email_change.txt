@@ -1,0 +1,17 @@
+Cleanway
+
+Подтвердите новый адрес почты
+
+Для аккаунта Cleanway {{ .Email }} запрошена смена адреса на {{ .NewEmail }}.
+
+Если это вы, подтвердите по ссылке:
+{{ .ConfirmationURL }}
+
+Ссылка действует 1 час. Пока вы её не откроете, адрес не изменится.
+
+Если вы ничего не меняли, просто удалите это письмо — адрес останется прежним. Никому не пересылайте это письмо.
+
+--
+Письмо отправлено автоматически, отвечать на него не нужно. Помощь — раздел «Поддержка» на сайте cleanway.ai.
+
+A change of the Cleanway sign-in email from {{ .Email }} to {{ .NewEmail }} was requested. If it was you, open the link above (valid 1 hour). Otherwise delete this email.

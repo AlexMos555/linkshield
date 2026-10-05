@@ -12,9 +12,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { routing, type Locale } from "@/i18n/routing";
+import { callbackPrecheck, signupErrorPath, type CallbackErrorCode } from "@/lib/signup-flow";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
 const DEFAULT_LOCALE: Locale = "en";
+
+/**
+ * Back to /signup in the reader's locale with a stable error code that the
+ * form turns into a sentence («Ссылка для входа устарела…»). Never Supabase's
+ * raw message: those strings carry operational details that the Referer
+ * header would then leak to every third party the page fetches.
+ */
+function signupError(origin: string, next: string, code: CallbackErrorCode): NextResponse {
+  return NextResponse.redirect(`${origin}${signupErrorPath(next, code, routing.locales, routing.defaultLocale)}`);
+}
 
 /**
  * Same-origin redirect guard.
@@ -71,24 +82,24 @@ export async function GET(request: NextRequest) {
   const rawNext = searchParams.get("next") ?? "/";
   const next = safeRedirectPath(rawNext, origin);
 
-  if (!code) {
-    return NextResponse.redirect(`${origin}/signup?error=missing_code`);
+  // An expired or already-used link arrives from Supabase as
+  // ?error=access_denied&error_code=otp_expired with no code at all.
+  const precheck = callbackPrecheck(searchParams);
+  if (precheck || !code) {
+    return signupError(origin, next, precheck ?? "missing_code");
   }
 
   const supabase = await getSupabaseServer();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    // Don't echo Supabase's raw error message in the URL — those
-    // strings sometimes contain operational details (provider names,
-    // internal IDs, debugging hints) that the Referer header would
-    // then leak to every third-party fetched by the /signup page.
-    // Use a stable code instead; /signup maps it to user-friendly
-    // copy. The real error is logged server-side for debugging.
-    // (Audit landing-security LOW "Supabase auth error.message
-    // reflected verbatim into URL query string, leaking internal
-    // error details via Referer".)
+    // Typical cause: the link was opened in a different browser than the
+    // one that asked for it (PKCE verifier lives in that browser's cookie).
+    // The form's copy for exchange_failed says to type the code instead.
+    // The real error is logged server-side for debugging. (Audit
+    // landing-security LOW "Supabase auth error.message reflected verbatim
+    // into URL query string, leaking internal error details via Referer".)
     console.error("[auth/callback] exchangeCodeForSession failed:", error.message);
-    return NextResponse.redirect(`${origin}/signup?error=exchange_failed`);
+    return signupError(origin, next, "exchange_failed");
   }
 
   const accessToken = data.session?.access_token;
