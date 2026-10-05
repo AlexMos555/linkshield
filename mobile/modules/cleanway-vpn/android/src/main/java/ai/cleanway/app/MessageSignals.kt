@@ -96,8 +96,16 @@ internal class MessageSignals(
     }
     /** Call an 8-800 number that is not on our official list — weaker: scammers rarely rent them. */
     val callbackWeak: Boolean by lazy { callAsked && !callbackStrong && unofficialPhones.isNotEmpty() }
-    /** "Вам позвонит следователь", "ожидайте звонка": a call to the reader is coming. */
-    val callComing: Boolean by lazy { has(G.CALL_COMING) }
+    /**
+     * "Вам позвонит следователь", "ожидайте звонка": a call to the reader is
+     * coming. Not "если вам позвонит «следователь»…" — the police warning
+     * about that call — and not "вам не позвонят".
+     */
+    val callComing: Boolean by lazy {
+        hits(G.CALL_COMING).any { h ->
+            active(h) && !conditional(h.start) && (h.start..h.end).none { index.isWord(it, rules.negators) }
+        }
+    }
 
     val codeAsked: Boolean by lazy { codeToPerson() || flashCallDigits() }
     /** Live instructions to move money: an imperative, or an infinitive after "необходимо". */
@@ -105,7 +113,16 @@ internal class MessageSignals(
         hits(G.MONEY_VERB).filter { active(it) } + hits(G.MONEY_REQUEST).filter { active(it) } +
             hits(G.MONEY_INFINITIVE).filter { active(it) && directiveBefore(it) }
     }
-    val moneyMove: Boolean get() = liveMoneyVerbs.isNotEmpty()
+    /**
+     * "Выручи" moves money only next to a card number or a sum: "мам, выручи,
+     * забери Сашу из садика" asks for no money at all.
+     */
+    private val moneyPlea: Boolean by lazy {
+        (cardNumber || amount()) && hits(G.MONEY_PLEA).any { active(it) }
+    }
+    val moneyMove: Boolean get() = liveMoneyVerbs.isNotEmpty() || moneyPlea
+    /** A full card number written out: where the money is to go. */
+    val cardNumber: Boolean by lazy { CARD_NUMBER.containsMatchIn(text) }
     val safeAccount: Boolean by lazy { hits(G.SAFE_ACCOUNT).any { safeAccountActive(it) } }
     val payAsked: Boolean by lazy { hits(G.PAY_VERB).any { active(it) } }
     /** Pay a fee, duty or delivery charge — "оплатите без комиссии" is the opposite. */
@@ -128,6 +145,17 @@ internal class MessageSignals(
     val secrecy: Boolean by lazy { has(G.SECRECY) }
 
     val disguised: Boolean get() = index.disguised || hiddenInWord
+
+    // ── the boss and the vote ─────────────────────────────────────────────
+
+    /** "Ваш руководитель", "это директор": FakeBoss relays a call from the security services. */
+    val boss: Boolean by lazy { has(G.BOSS) }
+    /** "Проголосуй за мою племянницу": the vote that needs "a code from the SMS" takes over the account. */
+    val vote: Boolean by lazy { hits(G.VOTE).any { active(it) } }
+    /** The message talks about a code at all (not a door code, not the bank's code word). */
+    val codeMentioned: Boolean by lazy {
+        hits(G.CODE_WORD).any { c -> hits(G.CODE_HOUSEHOLD).none { follows(c, it, 2) } }
+    }
 
     /**
      * .apk links. Sideloading is the harm itself, so only an app store or the
@@ -182,6 +210,25 @@ internal class MessageSignals(
     private fun aware(i: Int): Boolean =
         hits(G.AWARENESS).any { it.end < i && i - it.end <= AWARE_WINDOW && index.sameSentence(it.end, i) }
 
+    /**
+     * "…попросит назвать", "необходимо сообщить": a live request right before the
+     * infinitive. Not "банк не попросит вас назвать", not "если сотрудник
+     * попросит назвать код — это мошенники".
+     */
+    private fun codeRequested(h: Hit): Boolean = (hits(G.DIRECTIVE) + hits(G.CODE_REQUEST)).any { d ->
+        d.end < h.start && h.start - d.end <= 2 && index.sameClause(d.end, h.start) && active(d) && !conditional(d.start)
+    }
+
+    /** An "если"/"if" earlier in the same clause: the sentence describes a case, it does not instruct. */
+    private fun conditional(i: Int): Boolean {
+        var j = i - 1
+        while (j >= 0 && index.sameClause(j, i)) {
+            if (index.isWord(j, IF)) return true
+            j--
+        }
+        return false
+    }
+
     private fun directiveBefore(h: Hit): Boolean =
         hits(G.DIRECTIVE).any { d -> d.end < h.start && h.start - d.end <= 2 && index.sameClause(d.end, h.start) }
 
@@ -199,7 +246,10 @@ internal class MessageSignals(
         if (pickupHandover()) return false
         // "Продиктуйте код" needs no listener named: one only dictates to a person.
         if (hits(G.CODE_DICTATE).any { v -> active(v) && takesCode(v) }) return true
-        val asked = hits(G.CODE_VERB).any { v -> active(v) && takesCode(v) }
+        // "Мастер позвонит и попросит назвать код", "нужно будет сообщить ему код":
+        // the infinitive is an instruction once something asks for it.
+        val infinitive = hits(G.CODE_INFINITIVE).any { v -> active(v) && codeRequested(v) && takesCode(v) }
+        val asked = infinitive || hits(G.CODE_VERB).any { v -> active(v) && takesCode(v) }
         // "…назовите код из СМС": a real code SMS never asks to pass on another one.
         if (asked && (has(G.CODE_TARGET) || has(G.CALL_CONTEXT) || has(G.CODE_INCOMING))) return true
         return hits(G.CODE_VERB).any { v -> negated(v.start) && takesCode(v) && exceptListener(v) }
@@ -292,6 +342,9 @@ internal class MessageSignals(
         const val AWARE_WINDOW = 5
         const val LABEL_WINDOW = 4
         val WITHOUT = setOf("без", "no", "without")
+        val IF = setOf("если", "if")
+        /** 16 digits in fours with a Mir, Visa, Mastercard or UnionPay first digit. */
+        val CARD_NUMBER = Regex("""(?<![\p{N}])[2-6]\d{3}(?:[ -]?\d{4}){3}(?![\p{N}])""")
 
         val CARD_MASK = Regex(
             """(?:[*•]{1,4}|[xх]{2,4})\s?\d{4}(?!\d)|(?<!\p{L})(?:mir|visa|ecmc|mc|maestro|мир|сч[её]т|сч|карт\p{L}{0,2}|card)\s?[-*•.]{0,4}\s?\d{4}(?!\d)""",

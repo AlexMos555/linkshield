@@ -414,7 +414,9 @@ internal object MessageCorpus {
      * together with legitimate messages that use the same words innocently.
      * First pass on the unchanged rules (2026-10-05): 0/16 of the first list
      * dangerous (4 drew a caution), 0/15 of the second flagged, 0/31 legit
-     * flagged.
+     * flagged. The six legit "request described, not made" probes were added
+     * while writing the rules, to pin what the new code-request and
+     * coming-call rules must not read as an instruction.
      */
 
     /** Must be DANGEROUS. */
@@ -506,6 +508,13 @@ internal object MessageCorpus {
         "Ivi: не удалось продлить подписку. Обновите данные карты до 10.10, иначе подписка будет приостановлена: ivi.ru/profile",
         "Яндекс Плюс: подписка будет приостановлена, если не обновить данные карты. Сделать это можно в профиле: plus.yandex.ru",
         "Пятёрочка: скидка 30% на замороженные овощи до 12.10! Подробнее: 5ka.ru",
+        // the request described, not made: "если … попросит", "не попросит вас"; a director passing on a police visit
+        "Если сотрудник банка попросит перевести деньги на безопасный счёт — это мошенники. Положите трубку",
+        "Если сотрудник банка попросит назвать код из SMS, положите трубку: так говорят только мошенники",
+        "Банк никогда не попросит вас назвать код из SMS",
+        "МВД: если сотрудник ФСБ вам позвонит и попросит никому не говорить о разговоре — это мошенники",
+        "Директор: коллеги, по поводу кражи в офисе с вами свяжется сотрудник полиции, окажите содействие",
+        "Бабушка, выручи, пожалуйста, 300 ₽ на проезд, карта 2202 2033 1122 4455",
         "Сбербанк: ваша заявка на кредит одобрена. Подтвердите данные в СберБанк Онлайн: sberbank.ru",
     )
 }

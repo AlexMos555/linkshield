@@ -110,6 +110,11 @@ class MessageRules internal constructor(
         const val SCAM_LABEL = "scam_label"
         const val OBEY = "obey"
         const val CALL_COMING = "call_coming"
+        const val CODE_INFINITIVE = "code_infinitive"
+        const val CODE_REQUEST = "code_request"
+        const val MONEY_PLEA = "money_plea"
+        const val BOSS = "boss"
+        const val VOTE = "vote"
 
         val REQUIRED_GROUPS = listOf(
             THREAT, URGENCY, CONFIRM_DATA, BAIT, CALL, CODE_VERB, CODE_DICTATE, CODE_WORD, CODE_TARGET, CALL_CONTEXT,
@@ -117,6 +122,7 @@ class MessageRules internal constructor(
             PAY_VERB, FEE_WORD, INSTALL, MALWARE_LURE, KIN, NEW_NUMBER, EMERGENCY, SECRECY, AWARENESS,
             CODE_LABEL, CODE_DISCLAIMER, PAYMENT_OP, BALANCE_WORD, CURRENCY, PICKUP, PUBLIC_ALERT, SMS_COMMAND,
             PAYOUT, CODE_INCOMING, CODE_PRONOUN, CODE_EXCEPT, CODE_HOUSEHOLD, SCAM_LABEL, OBEY, CALL_COMING,
+            CODE_INFINITIVE, CODE_REQUEST, MONEY_PLEA, BOSS, VOTE,
         )
 
         /** No vocabulary at all: links are still checked against the blocklist. */

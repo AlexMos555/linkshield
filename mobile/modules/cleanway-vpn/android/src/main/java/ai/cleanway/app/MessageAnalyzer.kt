@@ -152,7 +152,9 @@ class MessageAnalyzer(
      * "sberbank-bonus.ru", "gosuslugi-help.ru", "t2-gosuslugi.ru": a brand in a
      * name that is not the brand's. A short brand must stand as its own token
      * — "apple" inside goldapple.ru is a cosmetics shop, not Apple — and only
-     * a long, distinctive one ("sberbank") may hide inside a longer word.
+     * a long, distinctive one ("sberbank") may hide inside a longer word. A
+     * five-letter Latin one may start one ("nalog" in nalogvozvrat.online);
+     * the Cyrillic "альфа" may not, it starts too many ordinary names.
      * A Cyrillic name ("госуслуги-выплаты.рф") is read as written, not as its
      * punycode.
      */
@@ -162,6 +164,7 @@ class MessageAnalyzer(
             org.domainTokens.any { brand ->
                 tokens.any { t ->
                     t == brand || (brand.length >= 6 && (t.startsWith(brand) || t.endsWith(brand))) ||
+                        (brand.length == 5 && brand.all { it in 'a'..'z' || it in '0'..'9' } && t.startsWith(brand)) ||
                         (brand.length >= 8 && t.contains(brand))
                 }
             }
@@ -239,6 +242,9 @@ class MessageAnalyzer(
         if (s.codeAsked) out += if (s.namesAnyBody) listOf(R_CODE, R_ORGANISATION) else listOf(R_CODE)
         if (s.safeAccount && (s.moneyMove || s.namesAuthority || s.callbackStrong)) out += R_SAFE_ACCOUNT
         if (s.kin && s.moneyMove && (s.newNumber || s.emergency)) out += R_RELATIVE
+        // FakeBoss: "это ваш руководитель — вам позвонит куратор из ФСБ, никому не
+        // говорите". A real boss may pass on a police visit, never one to keep secret.
+        if (s.boss && s.namesSecurity && s.callComing && s.secrecy) out += listOf(R_ORGANISATION, R_THREAT)
         if (s.malwareLure && foreign.isNotEmpty()) out += listOf(R_MALWARE_LURE) + linkReasons(foreign)
         if (s.install && foreign.any { it.suspicious || s.namesKnownBody }) out += listOf(R_INSTALL) + linkReasons(foreign)
         if (s.apkLinks.isNotEmpty()) out += listOf(R_INSTALL) + linkReasons(s.apkLinks)
@@ -280,9 +286,12 @@ class MessageAnalyzer(
         if (s.kin && s.moneyMove && (s.secrecy || s.urgency)) out += R_RELATIVE
         // "Это Серёга, пишу с нового номера, займи 5000 срочно": the same family without "мама".
         if (s.newNumber && s.moneyMove && (s.secrecy || s.urgency)) out += R_RELATIVE
-        // "МВД: ожидайте звонка следователя, не кладите трубку": the coming call is the scam.
-        // A police warning ABOUT such calls names no call to the reader and gives no orders.
-        if (s.namesSecurity && s.callComing && s.obey) out += listOf(R_ORGANISATION, R_THREAT)
+        // "МВД: ожидайте звонка следователя, не кладите трубку / никому не сообщайте":
+        // the coming call is the scam. A police warning ABOUT such calls names no
+        // call to the reader ("если вам позвонят…") and gives no orders.
+        if (s.namesSecurity && s.callComing && (s.obey || s.secrecy)) out += listOf(R_ORGANISATION, R_THREAT)
+        // "Проголосуй за мою племянницу: golos-deti.site, подтверди кодом": the vote is the account takeover.
+        if (s.vote && s.codeMentioned && foreign.isNotEmpty()) out += listOf(R_CODE) + linkReasons(foreign)
         nobodyNamed(s, foreign, out)
         if (s.install && foreign.isNotEmpty() && s.pressure) out += listOf(R_INSTALL) + linkReasons(foreign)
         if (s.namesKnownBody && s.senderPersonal) out += listOf(R_ORGANISATION, R_SENDER_PERSONAL)
@@ -290,13 +299,16 @@ class MessageAnalyzer(
     }
 
     /**
-     * Nobody named, so no site to compare the link with — but a fine, a fee
-     * or a payout through an unknown site is the scam family itself
-     * ("Штраф 1500 р… оплатите: oplata-pdd.ru", "положена доплата… до 01.10").
+     * Nobody named, so no site to compare the link with — but a fine, a fee,
+     * a payout or "confirm your card or the account is frozen" through an
+     * unknown site is the scam family itself ("Штраф 1500 р… оплатите:
+     * oplata-pdd.ru", "положена доплата… до 01.10").
      */
     private fun nobodyNamed(s: MessageSignals, foreign: List<LinkFacts>, out: MutableSet<String>) {
         if (s.namesAnyBody || foreign.isEmpty()) return
         if (s.threat && s.payAsked) out += listOf(R_THREAT, R_PAYMENT) + linkReasons(foreign)
+        // "Счёт будет заморожен — подтвердите данные карты: karta-zashita.ru".
+        if (s.threat && s.confirmData) out += pressureReasons(s) + linkReasons(foreign)
         if (s.fee) out += listOf(R_PAYMENT) + linkReasons(foreign)
         if (s.payout && (s.urgency || s.confirmData)) out += pressureReasons(s) + R_BAIT + linkReasons(foreign)
     }

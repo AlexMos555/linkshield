@@ -114,8 +114,12 @@ class MessageHeldOutTest {
     private companion object {
         const val FILE = "message_heldout_2026-10.tsv"
         // First pass, 2026-10-04: 0 false alarms, 50/60 scams flagged, 40/60 dangerous.
+        // Raised 2026-10-05 by the commit that changed the rules for the ten
+        // blind-spot families (tuned on new MessageCorpus phrasings, not on this
+        // set): 0 false alarms, 60/60 flagged, 45/60 dangerous. The false-alarm
+        // cap stays 0 — a hard requirement, not a floor to trade against.
         const val MAX_FALSE_ALARMS = 0
-        const val MIN_FLAGGED = 50
-        const val MIN_DANGEROUS = 40
+        const val MIN_FLAGGED = 60
+        const val MIN_DANGEROUS = 45
     }
 }
