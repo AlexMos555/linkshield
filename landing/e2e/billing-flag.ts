@@ -8,3 +8,8 @@
 export const BILLING_ON: boolean = ["1", "true", "yes", "on"].includes(
   (process.env.NEXT_PUBLIC_BILLING_ENABLED ?? "").trim().toLowerCase(),
 );
+
+/** NEXT_PUBLIC_SUPPORT_EMAIL_LIVE, read the same way (off in CI). */
+export const SUPPORT_LIVE: boolean = ["1", "true", "yes", "on"].includes(
+  (process.env.NEXT_PUBLIC_SUPPORT_EMAIL_LIVE ?? "").trim().toLowerCase(),
+);

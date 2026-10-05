@@ -5,8 +5,8 @@
  * like any unknown path). The law behind the page: 376-ФЗ — a cancel means
  * not one more charge; ст. 32 ЗоЗПП — the right to withdraw at any time. The
  * four channels are the ones docs/BILLING.md implements: one tap in the app,
- * SMS «СТОП» to a short number (shown once the operator assigns it), support,
- * and the operator's own account area.
+ * SMS «СТОП» to a short number (shown once the operator assigns it), support
+ * (marked pending until its mailbox is live), and the operator's own account area.
  */
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -71,7 +71,11 @@ export default async function CancelPage({
     STOP_NUMBER
       ? { key: "sms", title: t("way_sms_title"), body: t("way_sms_body", { number: STOP_NUMBER }) }
       : { key: "sms", title: t("way_sms_title"), body: t("way_sms_pending"), pending: true },
-    { key: "support", title: t("way_support_title"), body: t("way_support_body") },
+    // Support is a way to cancel only once its mailbox works; until then the
+    // card says so instead of promising a same-day reply nobody can ask for.
+    SUPPORT_EMAIL_LIVE
+      ? { key: "support", title: t("way_support_title"), body: t("way_support_body") }
+      : { key: "support", title: t("way_support_title"), body: t("way_support_pending"), pending: true },
     { key: "operator", title: t("way_operator_title"), body: t("way_operator_body") },
   ];
   const after = [t("after_1"), t("after_2"), t("after_3", { lapse }), t("after_4")];

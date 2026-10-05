@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { BILLING_ON } from "./billing-flag";
+import { BILLING_ON, SUPPORT_LIVE } from "./billing-flag";
 
 /**
  * The operator-billed subscription (docs/BILLING.md) on the landing, in both
@@ -161,6 +161,32 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await expect(policy).toContainText("зашифрованном виде");
     await expect(page.locator("section#payments")).toHaveCount(0);
     await expect(page.locator("section#contact [data-testid=privacy-contact-not-live]")).toBeVisible();
+  });
+
+  test("terms outside Russia keep the Stripe payment section and no lapse policy", async ({ page }) => {
+    for (const path of ["/terms", "/de/terms"]) {
+      await page.goto(path);
+      await expect(page.locator("section#payments")).toContainText("Stripe");
+      await expect(page.locator("section#billing")).toHaveCount(0);
+    }
+    await expect(page.locator("section#payments")).toContainText("Das Blockieren von Betrugsseiten wird nie kostenpflichtig");
+  });
+
+  test("/terms for a visitor from Russia gets the subscription terms in the page's language", async ({ page }) => {
+    await page.setExtraHTTPHeaders({ "x-vercel-ip-country": "RU" });
+    await page.goto("/terms");
+    await expect(page.locator("section#billing")).toBeVisible();
+    await expect(page.locator("section#payments")).toHaveCount(0);
+  });
+
+  test("/ru/cancel does not offer support as a way to cancel while the mailbox is not live", async ({ page }) => {
+    test.skip(SUPPORT_LIVE, "NEXT_PUBLIC_SUPPORT_EMAIL_LIVE is on");
+    await page.goto("/ru/cancel");
+    const support = page.getByTestId("cancel-way-support");
+    await expect(support).toContainText("ещё настраивается");
+    await expect(support).not.toContainText("в тот же рабочий день");
+    await expect(page.getByTestId("cancel-way-sms")).not.toContainText("через поддержку");
+    await expect(page.getByTestId("cancel-contact-pending")).toBeVisible();
   });
 
   test("the home teaser names the subscription and links /ru/pricing", async ({ page }) => {
