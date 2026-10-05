@@ -108,7 +108,8 @@ async def start_checkout(ctx: BillingContext, device: Device, *, plan_code: str,
         await tx.add_seat(Seat(subscription_id=sub.id, device_id=device.id, role=SeatRole.OWNER, claimed_at=now))
         consent = ConsentInfo(doc=doc, plan=plan, ip_hmac=ctx.hasher.ip(ip) if ip else None)
         await run_effects(ctx, tx, sub, transition.effects, actor=device_actor(device), consent=consent)
-        start = await _provider_start(provider, provider_code, plan, number, sub)
+        start = await _provider_start(provider, provider_code, plan, number, sub,
+                                      return_url=ctx.settings.billing_mixplat_return_url)
         sub = await tx.update_subscription(replace(sub, provider_subscription_id=start.provider_ref),
                                            expected_version=sub.row_version)
         await tx.create_payment(Payment(
@@ -122,12 +123,13 @@ async def start_checkout(ctx: BillingContext, device: Device, *, plan_code: str,
             "status": sub.status.value, "provider": provider_code}
 
 
-async def _provider_start(provider, provider_code: str, plan: Plan, number: Optional[str], sub: Subscription):
+async def _provider_start(provider, provider_code: str, plan: Plan, number: Optional[str], sub: Subscription,
+                          *, return_url: str):
     try:
         return await provider.start_checkout(
             plan_product_id=plan.provider_product_ids.get(provider_code, plan.code.value),
             amount_kopecks=plan.price_kopecks, msisdn=number, idempotency_key=checkout_key(sub.id),
-            return_url="",
+            return_url=return_url,
         )
     except NotConfiguredError as e:
         raise NotConfigured(str(e)) from e
