@@ -53,7 +53,9 @@ _INFLIGHT: dict[str, asyncio.Future] = {}
 # v4 (2026-09-27): Russian brand typos (sberbamk.ru, t1nkoff.ru) cached as
 # 'safe' under v3, and names the typosquat rule no longer flags (other
 # banks' and stores' names, two-edit neighbours of short brands).
-_PUBLIC_CACHE_PREFIX = "public_check:v4:"
+# v5 (2026-09-29): Russian brands with a lure word (sberbank-bonus.ru,
+# ozon-priz.ru, госуслуги-лк.рф) cached as 'safe' under v4.
+_PUBLIC_CACHE_PREFIX = "public_check:v5:"
 _PUBLIC_CACHE_TTL_SECONDS = 24 * 60 * 60
 # A name that does not exist can be registered at any moment, and a verdict
 # the scanner could not complete may be better next time — neither is kept

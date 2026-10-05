@@ -63,6 +63,10 @@
       },
       "shared_name": {
         "sber": "four letters other owners use: sber.fr (SBER, a waterproofing firm in Rennes), sber.at (a Vienna web agency), sber.us"
+      },
+      "lure_words": {
+        "online": "СберБанк Онлайн, Sber's internet bank: online.sberbank.ru, titled 'СберБанк Онлайн' (2026-09-29)",
+        "онлайн": "СберБанк Онлайн, as above"
       }
     },
     "gosuslugi": {
@@ -157,6 +161,10 @@
       },
       "shared_name": {
         "vtb": "an acronym: vtb.nl (Vereniging Transport Begeleiders), vtb.jp (VTB協同組合, Osaka), vtb.lv (VitroBalt), vtb.dk, vtb.rs (Vector Threat Behaviour), vtb.info (a German engineering site), vtb.live (a Chinese VTuber directory)"
+      },
+      "lure_words": {
+        "online": "ВТБ Онлайн, VTB's internet bank: online.vtb.ru, titled 'Интернет-банк ВТБ Онлайн' (2026-09-29)",
+        "онлайн": "ВТБ Онлайн, as above"
       }
     },
     "alfabank": {
@@ -277,7 +285,10 @@
         "ozon.uz": "NS ns1.ozon.ru / nsz501s1.ozon.ru",
         "ozonru.com": "NS ns1.ozon.ru / nsz501s1.ozon.ru",
         "ozonru.me": "NS nsz501s1.ozon.ru (Tranco top-100k)",
-        "ozonteam.ru": "NS nsz501s1.ozon.ru"
+        "ozonteam.ru": "NS nsz501s1.ozon.ru",
+        "ozon-dostavka.ru": "NS nsz501s1/nsz502s1/nsz503s1.ozon.ru, registered 2016-04-05 at REGRU (whois 2026-09-29); Tranco #52,895",
+        "ozondostavka.ru": "NS nsz501s1/nsz502s1/nsz503s1.ozon.ru, registered with ozon-dostavka.ru (whois 2026-09-29)",
+        "ozonbonus.ru": "NS ns1/ns2.ozon.ru and ns3.ozon.com, registered 2012-08-22 (whois 2026-09-29)"
       },
       "unrelated": {
         "ozon.rs": "Ozon Media, Sremska Mitrovica (Serbia)",
@@ -531,7 +542,10 @@
         "mtsmail.ru": "NS ns1.mts-ws.net, mts.ru's",
         "mts-mail.ru": "NS ns1.mts-ws.net, mts.ru's",
         "my-mts.ru": "NS ns1.mts-ws.net, mts.ru's",
-        "mts.live": "NS ns1.mts-ws.net, mts.ru's"
+        "mts.live": "NS ns1.mts-ws.net, mts.ru's",
+        "mts-bonus.ru": "NS ns1.mts-ws.net, ns2/ns3.mts.ru, registered 2009-04-19 at RU-CENTER (whois 2026-09-29)",
+        "mtsbonus.com": "NS ns1.mts-ws.net, ns2/ns3.mts.ru, registered 2009-04-20 at RU-CENTER (whois 2026-09-29)",
+        "mtscashback.ru": "NS ns1.mts-ws.net, ns2/ns3.mts.ru, registered 2017-08-01 at RU-CENTER (whois 2026-09-29)"
       },
       "unrelated": {
         "mts.ca": "Wikidata Q1890462 (Bell MTS, Manitoba) P856",

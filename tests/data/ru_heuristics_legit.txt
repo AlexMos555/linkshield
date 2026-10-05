@@ -345,3 +345,14 @@ mtscom.ru | brand_neighbour | page read 2026-09-27 | food-industry equipment mak
 vkweb.ru | brand_neighbour | page read 2026-09-27 | VKWEB, a web studio
 tbani.ru | brand_neighbour | page read 2026-09-27 | Трехгорные Бани
 kosuslugi.ru | brand_neighbour | page read 2026-09-27 | Косуслуги, home repairs in Kostroma
+
+# ── Brand + lure-word names that are the brand's own, or no lure (2026-09-29) ──
+mts-bonus.ru | brand_family | NS ns1.mts-ws.net, ns2.mts.ru since 2009 (whois) | МТС
+mtsbonus.com | brand_family | NS ns1.mts-ws.net, ns2.mts.ru since 2009 (whois) | МТС
+vk-online.ru | brand_neighbour | page read 2026-09-29 | ИА «Верхнекамье» — ВК is the region, not VK
+mts-online.com | brand_neighbour | page read 2026-09-29 | mtsonline, a German digital-marketing agency for hotels ("Booking Performance")
+beeline-online.info | brand_neighbour | page read 2026-09-29 | 'Kuchnia i Kulinaria', a Polish food blog
+t2gift.com | brand_neighbour | page read 2026-09-29 | T2Gift, a URL shortener (Arsenal Profi)
+wbkabinet.ru | brand_neighbour | page read 2026-09-29 | Metrisell, finance for Wildberries and Ozon sellers
+wbdostavka.ru | brand_neighbour | page read 2026-09-29 | freight to Wildberries, Ozon and Yandex Market warehouses
+xn--80aabfif2b3aqhfm.xn--p1ai | brand_neighbour | page read 2026-09-29 | сбердоставка.рф, ММ Мастер Мозаик (mosaic panels)
