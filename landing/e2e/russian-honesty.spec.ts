@@ -63,7 +63,12 @@ test("/ru/transparency shows no hand-written numbers or raw placeholders", async
   for (const text of ["1 842 630", "1,842,630", "0,08", "$PERIOD$", "$DATE$", "$COUNT$", "аналитик"]) {
     await expect(body).not.toContainText(text);
   }
-  await expect(page.getByTestId("transparency-fp")).toContainText("Пока не измеряли");
+  // The weekly benchmark publishes a measured false-alarm rate once the sample is big
+  // enough, so the section shows either the honest "not measured" line or a measured
+  // figure with its sample size and date. Pinning one of them breaks on the next run.
+  await expect(page.getByTestId("transparency-fp")).toContainText(
+    /Пока не измеряли|\d+(?:[.,]\d+)?\s?% из \d[\d\s\u00a0]* настоящ\S* сайт\S* ошибочно названы опасными \(\d/,
+  );
 });
 
 test("/ru/transparency/methodology is Russian and hides a too-small sample", async ({ page }) => {
