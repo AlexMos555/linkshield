@@ -60,7 +60,10 @@
     }
   }
   // _DEFAULT_NAME_RULE: never used for a listed name, kept for parity.
-  var DEFAULT_RULE = { fuzzy: true, slips_only: false, generic_combos: true, hyphen_combos_only: false, country_combos: false };
+  var DEFAULT_RULE = { fuzzy: true, slips_only: false, generic_combos: true, hyphen_combos_only: false, country_combos: false, lure_words: false };
+  // _ZONE_NAME_RULE: a brand under an open zone (mts-bonus.spb.ru) takes the
+  // Russian lure words too.
+  var ZONE_RULE = { fuzzy: true, slips_only: false, generic_combos: true, hyphen_combos_only: false, country_combos: false, lure_words: true };
 
   var OFFICIAL = set(D && D.officialDomains);
   var LEGIT = set(D && D.officialDomains.concat(D.unrelatedDomains));
@@ -91,6 +94,14 @@
   var COMBO_SUFFIXES = set(D && D.comboGenericSuffixes);
   var COMBO_PREFIXES = set(D && D.comboGenericPrefixes);
   var COMBO_COUNTRY = set(D && D.comboCountrySuffixes);
+  // ru_lures: Russian lure words matched on a spelling skeleton.
+  var LURE_WORDS = set(D && D.lureWords);
+  var LURE_STEMS = D && D.lureStems ? D.lureStems : [];
+  var BRAND_LURE_WORDS = new Map();
+  if (D && D.brandLureWords) for (var lb in D.brandLureWords) BRAND_LURE_WORDS.set(lb, set(D.brandLureWords[lb]));
+  var SKEL_CYRILLIC = new Map(D && D.skeletonCyrillic ? Object.entries(D.skeletonCyrillic) : []);
+  var SKEL_FOLDS = D && D.skeletonFolds ? D.skeletonFolds : [];
+  var SKEL_DIGITS = new Map(D && D.skeletonDigits ? Object.entries(D.skeletonDigits) : []);
   var TYPOSQUAT_MIN = D ? D.typosquatMinLabel : 3;
   var SHAPE_MIN = D ? D.shapeMinLabel : 4;
   var FUZZY_MIN = D ? D.fuzzyMinLabel : 5;
@@ -217,8 +228,8 @@
       for (var j = 0; j < ZONE_BRANDS.length; j++) {
         var b = ZONE_BRANDS[j];
         if (b.length >= ZONE_BRAND_PART_MIN) {
-          if (pieces.indexOf(b) !== -1 || checkCombosquat(label, b, DEFAULT_RULE)) return b;
-        } else if (pieces.indexOf(b) !== -1 && checkCombosquat(label, b, DEFAULT_RULE)) {
+          if (pieces.indexOf(b) !== -1 || checkCombosquat(label, b, ZONE_RULE)) return b;
+        } else if (pieces.indexOf(b) !== -1 && checkCombosquat(label, b, ZONE_RULE)) {
           return b;
         }
       }
@@ -424,6 +435,57 @@
     return parts;
   }
 
+  // ru_lures.skeleton: Cyrillic transliterated, Latin spellings of one sound
+  // folded, 0/3 read as o/e, doubled letters collapsed.
+  function lureSkeleton(word) {
+    var lower = String(word).toLowerCase(), s = "";
+    for (var i = 0; i < lower.length; i++) {
+      var ch = lower.charAt(i);
+      s += SKEL_CYRILLIC.has(ch) ? SKEL_CYRILLIC.get(ch) : ch;
+    }
+    var digits = "";
+    for (var k = 0; k < s.length; k++) {
+      var c = s.charAt(k);
+      digits += SKEL_DIGITS.has(c) ? SKEL_DIGITS.get(c) : c;
+    }
+    s = digits;
+    for (var f = 0; f < SKEL_FOLDS.length; f++) s = s.split(SKEL_FOLDS[f][0]).join(SKEL_FOLDS[f][1]);
+    return s.replace(/(.)\1+/g, "$1");
+  }
+
+  // ru_lures.is_lure
+  function isRuLure(word) {
+    if (!word) return false;
+    var s = lureSkeleton(word);
+    if (LURE_WORDS.has(s)) return true;
+    for (var i = 0; i < LURE_STEMS.length; i++) if (startsWith(s, LURE_STEMS[i])) return true;
+    return false;
+  }
+
+  // _is_lure_word
+  function isLureWord(word, brand) {
+    if (COMBO_KEYWORDS.has(word) || isRuLure(word)) return true;
+    var own = BRAND_LURE_WORDS.get(brand);
+    return !!own && own.has(lureSkeleton(word));
+  }
+
+  // _check_lure_combo: the brand as one whole word plus a lure word, glued
+  // to it or among the hyphenated words around it.
+  function checkLureCombo(name, brand) {
+    var words = name.split("-");
+    for (var i = 0; i < words.length; i++) {
+      var word = words[i];
+      if (word === brand) {
+        for (var j = 0; j < words.length; j++) if (j !== i && isLureWord(words[j], brand)) return true;
+      } else if (word.length > brand.length) {
+        var glued = startsWith(word, brand) ? word.slice(brand.length)
+          : endsWith(word, brand) ? word.slice(0, word.length - brand.length) : "";
+        if (glued && isLureWord(glued, brand)) return true;
+      }
+    }
+    return false;
+  }
+
   function checkCombosquat(name, brand, rule) {
     var parts = comboParts(name, brand);
     for (var i = 0; i < parts.length; i++) {
@@ -433,7 +495,7 @@
       if (rule.generic_combos && (after ? COMBO_SUFFIXES : COMBO_PREFIXES).has(word)) return true;
       if (rule.country_combos && after && COMBO_COUNTRY.has(word)) return true;
     }
-    return false;
+    return !!rule.lure_words && checkLureCombo(name, brand);
   }
 
   function withRule(rule, changes) {

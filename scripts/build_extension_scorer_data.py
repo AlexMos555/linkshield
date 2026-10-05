@@ -188,7 +188,7 @@ def _flags(rule) -> str:
 
 def scorer_data() -> dict:
     """The name-rule data the extension needs, from the server's module."""
-    from api.services import doh_gateway, scoring
+    from api.services import doh_gateway, ru_lures, scoring
 
     targets = list(scoring.TYPOSQUAT_TARGETS.items())
     global_names = list(scoring.GLOBAL_TYPOSQUAT_TARGETS)
@@ -229,6 +229,15 @@ def scorer_data() -> dict:
         "comboGenericSuffixes": _sorted(scoring._COMBO_GENERIC_SUFFIXES),
         "comboGenericPrefixes": _sorted(scoring._COMBO_GENERIC_PREFIXES),
         "comboCountrySuffixes": _sorted(scoring._COMBO_COUNTRY_SUFFIXES),
+        # Russian lure words (ru_lures) as skeletons, and the tables the
+        # skeleton is built from, so the port folds spellings exactly as the
+        # server does instead of keeping its own copy of them.
+        "lureWords": _sorted(ru_lures.LURE_WORDS),
+        "lureStems": list(ru_lures.LURE_STEMS),
+        "brandLureWords": {n: _sorted(v) for n, v in sorted(scoring._BRAND_LURE_WORDS.items())},
+        "skeletonCyrillic": dict(ru_lures._CYRILLIC_TO_LATIN),
+        "skeletonFolds": [list(pair) for pair in ru_lures._LATIN_FOLDS],
+        "skeletonDigits": {chr(k): v for k, v in sorted(ru_lures._DIGIT_LETTERS.items())},
         "typosquatMinLabel": scoring._TYPOSQUAT_MIN_LABEL,
         "shapeMinLabel": scoring._SHAPE_MIN_LABEL,
         "fuzzyMinLabel": scoring._FUZZY_MIN_LABEL,

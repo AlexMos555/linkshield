@@ -242,7 +242,12 @@ const RUSSIAN_NAMES = [
   ["vk.com.msk.ru", 80, "dangerous", "brand_subdomain|fake_tld|deep_subdomains"], // was 50 caution
   ["paypal.com.spb.ru", 80, "dangerous", "brand_subdomain|fake_tld|deep_subdomains"],
   ["sberbank.spb.ru", 30, "caution", "brand_subdomain"], // was 0
-  ["gosuslugi-lk.spb.ru", 30, "caution", "brand_subdomain"], // was 0
+  ["gosuslugi-lk.spb.ru", 60, "dangerous", "typosquatting|brand_subdomain"], // was 0; 30 before the lure words (#64)
+  // Russian lure words (#64): the brand spelled right plus the scam word.
+  ["sberbank-bonus.ru", 30, "caution", "typosquatting"], // was 0
+  ["sber-vozvrat.site", 50, "caution", "typosquatting|risky_tld"], // was 0
+  ["ozonpriz.ru", 30, "caution", "typosquatting"], // was 0
+  ["vkusvill-bonus.ru", 0, "safe", ""], // VkusVill, not VK: the brand must be a whole word
   ["edu.gov.ru", 0, "safe", ""], // was 35 caution [fake_tld]: the Ministry of Education's zone
   // Russian brands (#62): typos, look-alikes, zones, combos — all 0 before.
   ["sberbamk.ru", 30, "caution", "typosquatting"],

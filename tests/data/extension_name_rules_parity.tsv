@@ -35,7 +35,7 @@ office365.com	-	-	-	0	0	office365.com
 0ffice365.com	office.com|character substitution	-	-	0	0	0ffice365.com
 sberbank.spb.ru	-	-	sberbank	0	0	sberbank.spb.ru
 vk.nov.ru	-	-	vk	0	0	vk.nov.ru
-gosuslugi-lk.spb.ru	-	-	gosuslugi	0	0	gosuslugi-lk.spb.ru
+gosuslugi-lk.spb.ru	gosuslugi.ru|combosquatting	-	gosuslugi	0	0	gosuslugi-lk.spb.ru
 vk-login.nov.ru	vk.com|combosquatting	-	vk	0	0	vk-login.nov.ru
 ok-stroy.spb.ru	-	-	-	0	0	ok-stroy.spb.ru
 gook.spb.ru	-	-	-	0	0	gook.spb.ru
@@ -416,6 +416,15 @@ pochtobank.ru	-	-	-	0	0	pochtobank.ru
 xn--d1achkm1a.xn--p1ai	-	-	-	0	0	xn--d1achkm1a.xn--p1ai
 tbani.ru	-	-	-	0	0	tbani.ru
 kosuslugi.ru	-	-	-	0	0	kosuslugi.ru
+mts-bonus.ru	-	-	-	0	0	mts-bonus.ru
+mtsbonus.com	-	-	-	0	0	mtsbonus.com
+vk-online.ru	-	-	-	0	0	vk-online.ru
+mts-online.com	-	-	-	0	0	mts-online.com
+beeline-online.info	-	-	-	0	0	beeline-online.info
+t2gift.com	-	-	-	0	0	t2gift.com
+wbkabinet.ru	-	-	-	0	0	wbkabinet.ru
+wbdostavka.ru	-	-	-	0	0	wbdostavka.ru
+xn--80aabfif2b3aqhfm.xn--p1ai	-	-	-	0	0	xn--80aabfif2b3aqhfm.xn--p1ai
 sbrebank.ru	sberbank.ru|character swap	-	-	0	0	sbrebank.ru
 sberbnk.ru	sberbank.ru|high similarity	-	-	0	0	sberbnk.ru
 gosuslgi.ru	gosuslugi.ru|high similarity	-	-	0	0	gosuslgi.ru
@@ -440,7 +449,7 @@ micorsoft.com	microsoft.com|character substitution	-	-	0	0	micorsoft.com
 instagarm.com	instagram.com|character substitution	-	-	0	0	instagarm.com
 whatsap.com	whatsapp.com|high similarity	-	-	0	0	whatsap.com
 g0suslugi.ru	gosuslugi.ru|character substitution	-	-	0	0	g0suslugi.ru
-sberbank0nline.ru	-	-	-	0	0	sberbank0nline.ru
+sberbank0nline.ru	sberbank.ru|combosquatting	-	-	0	0	sberbank0nline.ru
 av1to.ru	avito.ru|character substitution	-	-	0	0	av1to.ru
 wi1dberries.ru	wildberries.ru|character substitution	-	-	0	0	wi1dberries.ru
 vvildberries.ru	wildberries.ru|glyph homoglyph	-	-	0	0	vvildberries.ru
@@ -460,32 +469,32 @@ xn--ypal-43d9g.com	paypal.com|character substitution	-	-	0	0	xn--ypal-43d9g.com
 xn--pple-43d.com	apple.com|character substitution	-	-	0	0	xn--pple-43d.com
 xn--ggle-55da.com	google.com|character substitution	-	-	0	0	xn--ggle-55da.com
 rnicrosoft-login.com	microsoft.com|glyph homoglyph	-	-	0	0	rnicrosoft-login.com
-sberbank-bonus.ru	-	-	-	0	0	sberbank-bonus.ru
-sberbank-online-login.ru	-	-	-	0	0	sberbank-online-login.ru
-sber-vozvrat.site	-	-	-	0	0	sber-vozvrat.site
-gosuslugi-lk.help	-	-	-	0	0	gosuslugi-lk.help
-gosuslugi-vhod.online	-	-	-	0	0	gosuslugi-vhod.online
+sberbank-bonus.ru	sberbank.ru|combosquatting	-	-	0	0	sberbank-bonus.ru
+sberbank-online-login.ru	sberbank.ru|combosquatting	-	-	0	0	sberbank-online-login.ru
+sber-vozvrat.site	sber.ru|combosquatting	-	-	0	0	sber-vozvrat.site
+gosuslugi-lk.help	gosuslugi.ru|combosquatting	-	-	0	0	gosuslugi-lk.help
+gosuslugi-vhod.online	gosuslugi.ru|combosquatting	-	-	0	0	gosuslugi-vhod.online
 gosuslugi-verify.com	gosuslugi.ru|combosquatting	-	-	0	0	gosuslugi-verify.com
-tinkoff-bonus.xyz	-	-	-	0	0	tinkoff-bonus.xyz
+tinkoff-bonus.xyz	tinkoff.ru|combosquatting	-	-	0	0	tinkoff-bonus.xyz
 tbank-login.ru	tbank.ru|combosquatting	-	-	0	0	tbank-login.ru
-vtb-online-bank.com	-	-	-	0	0	vtb-online-bank.com
-vtb-secure-account.top	-	-	-	0	0	vtb-secure-account.top
+vtb-online-bank.com	vtb.ru|combosquatting	-	-	0	0	vtb-online-bank.com
+vtb-secure-account.top	vtb.ru|combosquatting	-	-	0	0	vtb-secure-account.top
 alfabank-secure.net	alfabank.ru|combosquatting	-	-	0	0	alfabank-secure.net
-ozon-priz.ru	-	-	-	0	0	ozon-priz.ru
-wildberries-promo.shop	-	-	-	0	0	wildberries-promo.shop
-avito-dostavka.ru	-	-	-	0	0	avito-dostavka.ru
-avito-oplata.online	-	-	-	0	0	avito-oplata.online
-avito-safe-payment.site	-	-	-	0	0	avito-safe-payment.site
-mts-bonus.ru	-	-	-	0	0	mts-bonus.ru
-tele2-podarok.ru	-	-	-	0	0	tele2-podarok.ru
+ozon-priz.ru	ozon.ru|combosquatting	-	-	0	0	ozon-priz.ru
+wildberries-promo.shop	wildberries.ru|combosquatting	-	-	0	0	wildberries-promo.shop
+avito-dostavka.ru	avito.ru|combosquatting	-	-	0	0	avito-dostavka.ru
+avito-oplata.online	avito.ru|combosquatting	-	-	0	0	avito-oplata.online
+avito-safe-payment.site	avito.ru|combosquatting	-	-	0	0	avito-safe-payment.site
+mts-podarok.ru	mts.ru|combosquatting	-	-	0	0	mts-podarok.ru
+tele2-podarok.ru	t2.ru|combosquatting	-	-	0	0	tele2-podarok.ru
 t2-bonus.online	-	-	-	0	0	t2-bonus.online
-yandex-pay-login.com	-	-	-	0	0	yandex-pay-login.com
-vk-login-verify.com	-	-	-	0	0	vk-login-verify.com
-mailru-account-update.com	-	-	-	0	0	mailru-account-update.com
-xn----etbaulcdt1aavc.xn--p1ai	-	-	-	0	0	xn----etbaulcdt1aavc.xn--p1ai
-xn----7sbbbax6afkrcdiwm.xn--p1ai	-	-	-	0	0	xn----7sbbbax6afkrcdiwm.xn--p1ai
-xn----dtbbahvtxfyaxc6a.xn--p1ai	-	-	-	0	0	xn----dtbbahvtxfyaxc6a.xn--p1ai
-xn----btbtiodec2abtha2i.xn--p1ai	-	-	-	0	0	xn----btbtiodec2abtha2i.xn--p1ai
+yandex-pay-login.com	yandex.ru|combosquatting	-	-	0	0	yandex-pay-login.com
+vk-login-verify.com	vk.com|combosquatting	-	-	0	0	vk-login-verify.com
+mailru-account-update.com	mail.ru|combosquatting	-	-	0	0	mailru-account-update.com
+xn----etbaulcdt1aavc.xn--p1ai	gosuslugi.ru|combosquatting	-	-	0	0	xn----etbaulcdt1aavc.xn--p1ai
+xn----7sbbbax6afkrcdiwm.xn--p1ai	sberbank.ru|combosquatting	-	-	0	0	xn----7sbbbax6afkrcdiwm.xn--p1ai
+xn----dtbbahvtxfyaxc6a.xn--p1ai	gosuslugi.ru|combosquatting	-	-	0	0	xn----dtbbahvtxfyaxc6a.xn--p1ai
+xn----btbtiodec2abtha2i.xn--p1ai	tinkoff.ru|combosquatting	-	-	0	0	xn----btbtiodec2abtha2i.xn--p1ai
 paypal-login.com	paypal.com|combosquatting	-	-	0	0	paypal-login.com
 apple-account.com	apple.com|combosquatting	-	-	0	0	apple-account.com
 amazon-billing.com	amazon.com|combosquatting	-	-	0	0	amazon-billing.com
@@ -501,8 +510,8 @@ ozon.ru.orders-check.com	-	-	-	0	2	orders-check.com
 wildberries.ru.delivery-status.info	-	-	-	0	2	delivery-status.info
 paypal.account-verify.tk	-	paypal	-	0	1	account-verify.tk
 appleid.apple.com.signin-check.com	-	apple	-	1	3	signin-check.com
-sberbank-online.msk.ru	-	-	sberbank	0	0	sberbank-online.msk.ru
-tinkoff-bonus.nov.ru	-	-	tinkoff	0	0	tinkoff-bonus.nov.ru
+sberbank-online.msk.ru	sberbank.ru|combosquatting	-	sberbank	0	0	sberbank-online.msk.ru
+tinkoff-bonus.nov.ru	tinkoff.ru|combosquatting	-	tinkoff	0	0	tinkoff-bonus.nov.ru
 secure-login-account.com.ru	-	-	-	0	0	secure-login-account.com.ru
 paypal-login.spb.ru	paypal.com|combosquatting	-	-	0	0	paypal-login.spb.ru
 paypa1.msk.ru	paypal.com|character substitution	-	-	0	0	paypa1.msk.ru
@@ -540,11 +549,11 @@ cdek.nu	cdek.ru|TLD confusion	-	-	0	0	cdek.nu
 cdek.in	cdek.ru|TLD confusion	-	-	0	0	cdek.in
 cdek.at	cdek.ru|TLD confusion	-	-	0	0	cdek.at
 cdek-box.ru	-	-	-	0	0	cdek-box.ru
-cdek-dostavka.info	-	-	-	0	0	cdek-dostavka.info
-yandex-doctavym.website	-	-	-	0	0	yandex-doctavym.website
+cdek-dostavka.info	cdek.ru|combosquatting	-	-	0	0	cdek-dostavka.info
+yandex-doctavym.website	yandex.ru|combosquatting	-	-	0	0	yandex-doctavym.website
 dostavka-y.website	-	-	-	0	0	dostavka-y.website
-yandex-dostavkoy.website	-	-	-	0	0	yandex-dostavkoy.website
-yandex-dostavkuy.website	-	-	-	0	0	yandex-dostavkuy.website
+yandex-dostavkoy.website	yandex.ru|combosquatting	-	-	0	0	yandex-dostavkoy.website
+yandex-dostavkuy.website	yandex.ru|combosquatting	-	-	0	0	yandex-dostavkuy.website
 pochtabank.ru.com	pochtabank.ru|TLD confusion	-	-	0	1	ru.com
 russianpost.ru.com	russianpost.ru|TLD confusion	-	-	0	1	ru.com
 gosuslugi.ch	gosuslugi.ru|TLD confusion	-	-	0	0	gosuslugi.ch
@@ -558,12 +567,24 @@ sberbank.ru.com	sberbank.ru|TLD confusion	-	-	0	1	ru.com
 ozon.ru.net	ozon.ru|TLD confusion	-	-	0	1	ru.net
 ozon-ru.com	ozon.ru|combosquatting	-	-	0	0	ozon-ru.com
 wildberries-ru.com	wildberries.ru|combosquatting	-	-	0	0	wildberries-ru.com
+vk-vhod.ru	vk.com|combosquatting	-	-	0	0	vk-vhod.ru
+lk-sberbank.ru	sberbank.ru|combosquatting	-	-	0	0	lk-sberbank.ru
+gosuslugi-lk.ru	gosuslugi.ru|combosquatting	-	-	0	0	gosuslugi-lk.ru
+lk-tele2.ru	t2.ru|combosquatting	-	-	0	0	lk-tele2.ru
+cdek-podarok.ru	cdek.ru|combosquatting	-	-	0	0	cdek-podarok.ru
+lk-yandex.ru	yandex.ru|combosquatting	-	-	0	0	lk-yandex.ru
+avito-kabinet.ru	avito.ru|combosquatting	-	-	0	0	avito-kabinet.ru
+kabinet-mts.ru	mts.ru|combosquatting	-	-	0	0	kabinet-mts.ru
+vtbcashback.ru	vtb.ru|combosquatting	-	-	0	0	vtbcashback.ru
+sberbankonline.com	sberbank.ru|combosquatting	-	-	0	0	sberbankonline.com
+prize-wildberries.online	wildberries.ru|combosquatting	-	-	0	0	prize-wildberries.online
 gmai.com	-	-	-	0	0	gmai.com
 appl.com	-	-	-	0	0	appl.com
 yaho.com	-	-	-	0	0	yaho.com
 qooqle.com	-	-	-	0	0	qooqle.com
 prydal.com	-	-	-	0	0	prydal.com
 yahuu.com	-	-	-	0	0	yahuu.com
+avitoonline.ru	-	-	-	0	0	avitoonline.ru
 49gov.ru	-	-	-	0	0	49gov.ru
 admlip.ru	-	-	-	0	0	admlip.ru
 admtyumen.ru	-	-	-	0	0	admtyumen.ru
@@ -889,6 +910,7 @@ mts.com	-	-	-	0	0	mts.com
 mts.info	-	-	-	0	0	mts.info
 mts.live	-	-	-	0	0	mts.live
 mts.rs	-	-	-	0	0	mts.rs
+mtscashback.ru	-	-	-	0	0	mtscashback.ru
 mtsmail.ca	-	-	-	0	0	mtsmail.ca
 mtsmail.ru	-	-	-	0	0	mtsmail.ru
 mtsnet.fi	-	-	-	0	0	mtsnet.fi
@@ -906,6 +928,7 @@ odnoklassniki.lv	-	-	-	0	0	odnoklassniki.lv
 odnoklassniki.ru	-	-	-	0	0	odnoklassniki.ru
 odnoklassniki.tj	-	-	-	0	0	odnoklassniki.tj
 ok.ru	-	-	-	0	0	ok.ru
+ozon-dostavka.ru	-	-	-	0	0	ozon-dostavka.ru
 ozon.agency	-	-	-	0	0	ozon.agency
 ozon.am	-	-	-	0	0	ozon.am
 ozon.by	-	-	-	0	0	ozon.by
@@ -926,6 +949,8 @@ ozon.tj	-	-	-	0	0	ozon.tj
 ozon.tm	-	-	-	0	0	ozon.tm
 ozon.travel	-	-	-	0	0	ozon.travel
 ozon.uz	-	-	-	0	0	ozon.uz
+ozonbonus.ru	-	-	-	0	0	ozonbonus.ru
+ozondostavka.ru	-	-	-	0	0	ozondostavka.ru
 ozonru.com	-	-	-	0	0	ozonru.com
 ozonru.me	-	-	-	0	0	ozonru.me
 ozonteam.ru	-	-	-	0	0	ozonteam.ru
@@ -1243,6 +1268,7 @@ www.megafon.ru	-	-	-	0	1	megafon.ru
 www.megamon.asia	-	-	-	0	1	megamon.asia
 www.megaron.gr	-	-	-	0	1	megaron.gr
 www.milru.ru	-	-	-	0	1	milru.ru
+www.mts-bonus.ru	-	-	-	0	1	mts-bonus.ru
 www.mts-mail.ru	-	-	-	0	1	mts-mail.ru
 www.mts.biz	-	-	-	0	1	mts.biz
 www.mts.by	-	-	-	0	1	mts.by
@@ -1254,6 +1280,8 @@ www.mts.info	-	-	-	0	1	mts.info
 www.mts.live	-	-	-	0	1	mts.live
 www.mts.rs	-	-	-	0	1	mts.rs
 www.mts.ru	-	-	-	0	1	mts.ru
+www.mtsbonus.com	-	-	-	0	1	mtsbonus.com
+www.mtscashback.ru	-	-	-	0	1	mtscashback.ru
 www.mtsmail.ca	-	-	-	0	1	mtsmail.ca
 www.mtsmail.ru	-	-	-	0	1	mtsmail.ru
 www.mtsnet.fi	-	-	-	0	1	mtsnet.fi
@@ -1272,6 +1300,7 @@ www.odnoklassniki.lv	-	-	-	0	1	odnoklassniki.lv
 www.odnoklassniki.ru	-	-	-	0	1	odnoklassniki.ru
 www.odnoklassniki.tj	-	-	-	0	1	odnoklassniki.tj
 www.ok.ru	-	-	-	0	1	ok.ru
+www.ozon-dostavka.ru	-	-	-	0	1	ozon-dostavka.ru
 www.ozon.agency	-	-	-	0	1	ozon.agency
 www.ozon.am	-	-	-	0	1	ozon.am
 www.ozon.by	-	-	-	0	1	ozon.by
@@ -1292,6 +1321,8 @@ www.ozon.tj	-	-	-	0	1	ozon.tj
 www.ozon.tm	-	-	-	0	1	ozon.tm
 www.ozon.travel	-	-	-	0	1	ozon.travel
 www.ozon.uz	-	-	-	0	1	ozon.uz
+www.ozonbonus.ru	-	-	-	0	1	ozonbonus.ru
+www.ozondostavka.ru	-	-	-	0	1	ozondostavka.ru
 www.ozonru.com	-	-	-	0	1	ozonru.com
 www.ozonru.me	-	-	-	0	1	ozonru.me
 www.ozonteam.ru	-	-	-	0	1	ozonteam.ru
