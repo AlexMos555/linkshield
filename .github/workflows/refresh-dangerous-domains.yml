@@ -47,6 +47,10 @@ jobs:
           # licence decision — see docs/runbooks/monitoring.md before setting
           # this repository variable (and the same one on the API).
           PUBLISH_CONFIRMED_THREATS: ${{ vars.PUBLISH_CONFIRMED_THREATS }}
+          # Unset = off. Cleanway's own sources (CT lookalikes, verified in-app
+          # reports — scripts/refresh_lookalikes.py); off, any stored host
+          # leaves the list at once. See docs/runbooks/monitoring.md.
+          LOOKALIKE_GENERATOR_ENABLED: ${{ vars.LOOKALIKE_GENERATOR_ENABLED }}
         run: |
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             python scripts/refresh_dangerous_domains.py ${{ inputs.force && '--force' || '' }} --dry-run
