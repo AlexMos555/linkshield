@@ -1,4 +1,5 @@
-import type { CheckLevel, HistoryFilter, ShieldKind, ShieldSource } from "./history-model";
+import type { TFunction } from "i18next";
+import type { CheckLevel, HistoryFilter, ShieldKind, ShieldSource, SmsAlertItem } from "./history-model";
 
 /**
  * i18n keys for the History tab.
@@ -25,6 +26,42 @@ export const FILTER_HINT_KEYS: Record<HistoryFilter, string> = {
   checked: "mobile.history.filter_hint.checked",
   sms: "mobile.history.filter_hint.sms",
 };
+
+/**
+ * The SMS chip's hint where the automatic SMS check exists (RuStore build):
+ * the chip then lists its warnings too, not only messages checked by hand.
+ */
+export const SMS_AUTO_FILTER_HINT_KEY = "mobile.history.filter_hint.sms_auto";
+
+/** Who warned about a flagged SMS: the automatic check, by the name its home card has. */
+export const SMS_ALERT_SOURCE_KEY = "mobile.history.source.sms_auto";
+
+/** A flagged SMS row's "how": nobody handed it over — "Checked automatically". */
+export const SMS_ALERT_ROW_META_KEY = "mobile.history.sms_alert.checked_auto";
+
+/**
+ * The Warned chip's hint where the automatic SMS check exists: that chip then
+ * lists its warnings too (history-model.ts).
+ */
+export const WARNED_SMS_AUTO_FILTER_HINT_KEY = "mobile.history.filter_hint.warned_sms_auto";
+
+/**
+ * The hint under the chips. Where SMS warnings can exist (the RuStore build,
+ * or warnings already stored), the SMS and Warned chips list them too, and
+ * their hints say so.
+ */
+export function filterHintKey(filter: HistoryFilter, smsWarnings: boolean): string {
+  if (smsWarnings && filter === "sms") return SMS_AUTO_FILTER_HINT_KEY;
+  if (smsWarnings && filter === "warned") return WARNED_SMS_AUTO_FILTER_HINT_KEY;
+  return FILTER_HINT_KEYS[filter];
+}
+
+/** "SMS from 900", or "SMS from an unknown sender" — the row and sheet title of a flagged SMS. */
+export function smsAlertTitle(item: Pick<SmsAlertItem, "sender">, t: TFunction): string {
+  return item.sender
+    ? t("mobile.history.sms_alert.row_title", { sender: item.sender })
+    : t("mobile.history.sms_alert.row_title_unknown");
+}
 
 /** What happened, in plain words. "warned" is never worded as a block. */
 export const SHIELD_KIND_KEYS: Record<ShieldKind, string> = {
