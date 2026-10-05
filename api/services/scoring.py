@@ -156,7 +156,8 @@ def is_regional_government_domain(domain: str) -> bool:
     return any(name == g or name.endswith("." + g) for g in REGIONAL_GOVERNMENT_DOMAINS)
 
 # ── Shared platforms: subdomains can be anyone's ──
-# Kept in sync with ml_features.HOSTING_PLATFORMS / refresh_dangerous_domains.
+# Kept in sync with refresh_dangerous_domains. The ML model's tenant feature
+# (ml_features.shared_tenant) reads this list through _SCORER_SHARED_SUFFIXES.
 HOSTING_PLATFORMS: frozenset[str] = frozenset({
     # CDN / Cloud hosting
     "pages.dev", "workers.dev", "r2.dev",                   # Cloudflare
@@ -273,10 +274,10 @@ def _load_typosquat_targets() -> dict[str, str]:
     }
 
 
-# The global list exactly as loaded. brand_subdomain_abuse and the ML
-# model's max_brand_similarity feature read THIS one, not the merged list
-# below: the served model was trained on these brands' similarity, and a
-# Russian brand as a subdomain label has not had its false-positive pass —
+# The global list exactly as loaded. brand_subdomain_abuse reads THIS one,
+# not the merged list below (the ML model's max_brand_similarity reads the
+# merged one since features_version 4, when the model was retrained on it):
+# a Russian brand as a subdomain label has not had its false-positive pass —
 # 'pochta' is what Russian companies call their webmail (pochta.<company>.ru),
 # and marketplace seller tools put ozon./wildberries. in front of their own
 # names.
@@ -1454,7 +1455,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         from api.services.ml_scorer import ml_predict
         # ASCII form: the model's features were extracted from ASCII domains,
         # so the wire form is what keeps inference consistent with training.
-        ml_result = ml_predict(ascii_domain)
+        # A known shortener's name says nothing about the destination, and the
+        # url_shortener rule above already says so. The feeds are full of
+        # shortened lures, so the model scores the shortener itself as phishing;
+        # letting it add weight would mark every bit.ly link "caution".
+        ml_result = None if _is_url_shortener(ascii_domain) else ml_predict(ascii_domain)
         if ml_result:
             ml_prob = ml_result["phishing_probability"]
             ml_confidence = ml_result["confidence"]

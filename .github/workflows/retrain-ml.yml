@@ -67,11 +67,63 @@ jobs:
           bad = {d: ml_predict(d)["phishing_probability"] for d in legit
                  if ml_predict(d)["phishing_probability"] >= 0.5}
           assert not bad, f"::error::FP REGRESSION — retrained model over-flags legit: {bad}"
-          # Recall guard: obvious brand-subdomain / structural phishing must fire.
-          for d in ("paypal.account-verify.tk", "apple-id-locked-verify.xyz"):
+          # Subdomain guard: a subdomain is not phishing by itself. Before the
+          # host-shape stratum (ml/train_model.load_benign_domains) the model
+          # scored www.example.com 0.98 and docs.google.com 0.91.
+          shapes = ["www.example.com", "docs.google.com", "mail.yandex.ru", "online.sberbank.ru"]
+          bad = {d: ml_predict(d)["phishing_probability"] for d in shapes
+                 if ml_predict(d)["phishing_probability"] >= 0.5}
+          assert not bad, f"::error::FP REGRESSION — retrained model flags subdomains: {bad}"
+          # Tenant guard: a site on a hosting platform is judged by its own
+          # name. Until the tenant stratum (2026-10-04) the benign class had no
+          # tenant at all and the model scored facebook.github.io 0.96 and
+          # blog.wordpress.com 0.95 — every GitHub Pages, WordPress.com and
+          # Shopify site was 'ml_high_risk'.
+          tenants = ["malsup.github.io", "blog.wordpress.com",
+                     "official-shop.myshopify.com", "myshop.tw1.ru"]
+          bad = {d: ml_predict(d)["phishing_probability"] for d in tenants
+                 if ml_predict(d)["phishing_probability"] >= 0.5}
+          assert not bad, f"::error::FP REGRESSION — retrained model flags hosting tenants: {bad}"
+          # A brand's own name as the tenant (facebook.github.io) is the shape of
+          # paypal.github.io phishing; only the owner makes it legitimate, and the
+          # name rules already answer it. The model must not call it obvious
+          # phishing (the old 0.96), but 0.5 here measured whether that day's
+          # Tranco list happened to carry the host: facebook.github.io was in the
+          # 2026-10-04 list (0.4 after training) and not in 2026-10-05's (0.63).
+          brand_tenants = ["facebook.github.io", "metamask.github.io"]
+          bad = {d: ml_predict(d)["phishing_probability"] for d in brand_tenants
+                 if ml_predict(d)["phishing_probability"] >= 0.85}
+          assert not bad, f"::error::FP REGRESSION — retrained model calls brand-named tenants obvious phishing: {bad}"
+          # Recall guard: obvious brand-subdomain / structural phishing must fire,
+          # and so must a lure name on a hosting platform (the tenant's label is
+          # what the model reads).
+          for d in ("paypal.account-verify.tk", "apple-id-locked-verify.xyz",
+                    "gosuslugi-vhod.netlify.app", "secure-login.wasmer.app", "sberbank-online.pages.dev"):
               p = ml_predict(d)["phishing_probability"]
               assert p > 0.6, f"::error::RECALL REGRESSION — {d}={p} (obvious phishing missed)"
           print("regression gate OK — FP clean + obvious phishing caught")
+          PY
+
+      - name: Held-out Russian gate (the model must not be what flags a legit Russian site)
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          # tests/data/ru_heuristics_*.txt are held out of training
+          # (ml/train_model.HELD_OUT_FILES). The name heuristics alone leave
+          # 0 dangerous / 1 caution on LEGIT; the 2026-09-28 model added 21
+          # cautions and a dangerous one (*.gov.spb.ru, 'ml_high_risk'); the
+          # 2026-10-04 model (features_version 5) adds none and PHISH is 147/174.
+          import sys
+          sys.path.insert(0, "scripts")
+          from eval_ru_heuristics import run
+          r = run(ml=True)
+          legit = r["legit"]["summary"]["levels"]
+          by_ml = [row["host"] for row in r["legit"]["rows"]
+                   if row["level"] != "safe" and any(s.startswith("ml_") for s in row["signals"])]
+          phish = r["phish"]["summary"]["levels"]
+          print(f"LEGIT {legit}  flagged with an ML signal: {by_ml}")
+          print(f"PHISH caught {phish['caution'] + phish['dangerous']} of {r['phish']['summary']['n']}")
+          assert legit["dangerous"] == 0, "::error::a held-out legitimate Russian site is dangerous"
+          assert len(by_ml) <= 3, f"::error::FP REGRESSION — the model flags {len(by_ml)} held-out Russian sites"
           PY
 
       - name: Commit new model if changed
