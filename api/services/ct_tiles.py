@@ -27,8 +27,9 @@ What this module knows:
                         found by walking the DER by hand (no `cryptography`
                         dependency in requirements.txt, and a precert's TBS
                         is not a certificate that library would load anyway)
-  * select_tiled_logs() the logs to read today from Google's log list, so a
-                        shard roll-over (2026h2 → 2027h1) needs no deploy
+  * select_tiled_logs() the logs to read today from Google's log list — every
+                        shard a certificate issued now can land in (they
+                        are split by expiry), so a roll-over needs no deploy
 
 Nothing here decides what a name means; api/services/lookalike_generator.py
 does that with the scorer's own rules.
@@ -37,7 +38,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, Iterator, Optional
 
 import httpx
@@ -54,6 +55,9 @@ DEFAULT_OPERATORS = ("Let's Encrypt",)
 TILE_TIMEOUT_S = 20.0
 # A log that cannot be reached is skipped for the run; the position is kept.
 CHECKPOINT_TIMEOUT_S = 10.0
+# The longest a publicly trusted TLS certificate may be valid (CA/Browser
+# Forum: 398 days) — the furthest shard a certificate issued today reaches.
+MAX_CERT_VALIDITY = timedelta(days=398)
 
 X509_ENTRY = 0
 PRECERT_ENTRY = 1
@@ -266,11 +270,20 @@ def leaf_names(leaves: Iterable[TileLeaf]) -> Iterator[tuple[TileLeaf, str]]:
 
 def select_tiled_logs(log_list: dict, operators: Iterable[str] = DEFAULT_OPERATORS,
                       now: Optional[datetime] = None) -> list[TiledLog]:
-    """The usable tiled logs of `operators` whose temporal interval covers
-    `now`, from a Google log_list.json v3 document. A log whose shard ended
-    yesterday is not read; the next shard is, with no code change."""
+    """The usable tiled logs of `operators` that can receive a certificate
+    issued `now`, from a Google log_list.json v3 document.
+
+    A log is sharded by the certificate's EXPIRY (notAfter), not by when it
+    was issued: a 90-day certificate issued on 2026-10-05 expires in January
+    and goes to the 2027h1 shard, not to 2026h2. So every shard whose
+    interval overlaps (now, now + MAX_CERT_VALIDITY] is read. Measured
+    2026-10-05: Sycamore2026h2 grew ~94k leaves an hour (short-lived
+    certificates only), Sycamore2027h1 ~570k — reading the shard that covers
+    `now` alone saw a seventh of Let's Encrypt's issuance. A shard whose
+    interval has ended is not read; a new one is, with no code change."""
     wanted = {op.casefold() for op in operators}
     moment = now or datetime.now(timezone.utc)
+    horizon = moment + MAX_CERT_VALIDITY
     out: list[TiledLog] = []
     for operator in log_list.get("operators", []):
         if str(operator.get("name", "")).casefold() not in wanted:
@@ -286,7 +299,7 @@ def select_tiled_logs(log_list: dict, operators: Iterable[str] = DEFAULT_OPERATO
             except (KeyError, ValueError):
                 continue
             url = str(log.get("monitoring_url", ""))
-            if start <= moment < end and url.startswith("https://"):
+            if start <= horizon and end > moment and url.startswith("https://"):
                 out.append(TiledLog(name=str(log.get("description", url)), monitoring_url=url.rstrip("/") + "/"))
     return out
 

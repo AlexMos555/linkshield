@@ -193,17 +193,31 @@ def test_oid_bytes_inside_other_data_are_not_taken_for_the_extension():
 
 # ── Which logs ──
 
-def test_the_current_shards_are_selected_from_the_recorded_log_list():
+def test_every_shard_a_certificate_issued_now_can_land_in_is_selected():
+    # Shards split by EXPIRY: today's 90-day certificates go to 2027h1, which
+    # took ~570k leaves an hour on 2026-10-05 against 2026h2's ~94k.
     on = datetime(2026, 10, 5, tzinfo=timezone.utc)
     logs = ct_tiles.select_tiled_logs(LOG_LIST, now=on)
-    assert [log.name for log in logs] == ["Let's Encrypt 'Sycamore2026h2'", "Let's Encrypt 'Willow2026h2'"]
+    assert [log.name for log in logs] == [
+        "Let's Encrypt 'Sycamore2026h2'", "Let's Encrypt 'Sycamore2027h1'", "Let's Encrypt 'Sycamore2027h2'",
+        "Let's Encrypt 'Willow2026h2'", "Let's Encrypt 'Willow2027h1'", "Let's Encrypt 'Willow2027h2'"]
     assert all(log.monitoring_url.endswith("/") for log in logs)
 
 
 def test_a_shard_roll_over_needs_no_deploy():
     after = datetime(2027, 1, 2, tzinfo=timezone.utc)
     names = [log.name for log in ct_tiles.select_tiled_logs(LOG_LIST, now=after)]
-    assert names == ["Let's Encrypt 'Sycamore2027h1'", "Let's Encrypt 'Willow2027h1'"]
+    assert names == ["Let's Encrypt 'Sycamore2027h1'", "Let's Encrypt 'Sycamore2027h2'",
+                     "Let's Encrypt 'Willow2027h1'", "Let's Encrypt 'Willow2027h2'"]
+
+
+def test_a_shard_beyond_the_longest_certificate_is_not_read_yet():
+    # 2027h2 starts 2027-06-18: out of reach of a 398-day certificate issued
+    # before 2026-05-16.
+    early = datetime(2026, 5, 1, tzinfo=timezone.utc)
+    names = [log.name for log in ct_tiles.select_tiled_logs(LOG_LIST, now=early)]
+    assert "Let's Encrypt 'Sycamore2027h2'" not in names
+    assert "Let's Encrypt 'Sycamore2027h1'" in names
 
 
 def test_other_operators_and_unusable_logs_are_not_selected():

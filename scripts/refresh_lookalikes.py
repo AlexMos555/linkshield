@@ -77,11 +77,12 @@ logger = logging.getLogger("lookalikes")
 
 LOCK_KEY = "lock:lookalike_refresh"
 LOCK_TTL_SECONDS = 50 * 60
-# Let's Encrypt wrote ~380k leaves an hour to each of its logs on 2026-10-04
-# (992M leaves in 108 days). Used only to pick a starting point on a log we
-# have never read; from then on the stored position is the truth.
-LEAVES_PER_HOUR_ESTIMATE = 400_000
-DEFAULT_MAX_TILES = 1_600   # ≈ 410k leaves ≈ one hour of one Let's Encrypt log
+# Let's Encrypt's busiest shard (Sycamore/Willow 2027h1, where today's 90-day
+# certificates land) grew ~570k leaves an hour on 2026-10-05; the 2026h2
+# shards ~94k. Used only to pick a starting point on a log we have never
+# read; from then on the stored position is the truth.
+LEAVES_PER_HOUR_ESTIMATE = 600_000
+DEFAULT_MAX_TILES = 2_600   # ≈ 665k leaves ≈ one hour of the busiest shard, with room
 TILE_CONCURRENCY = 8
 DEFAULT_MAX_VERIFY = 60
 DEFAULT_MAX_FETCH = 40
