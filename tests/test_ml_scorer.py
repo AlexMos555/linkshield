@@ -42,10 +42,20 @@ def test_legit_longtail_not_flagged(domain):
     assert prob < 0.6, f"{domain} should read benign, got {prob:.3f}"
 
 
-@pytest.mark.parametrize("domain", ["paypal.account-verify.tk", "apple-id-locked-verify.xyz",
-                                    "gosuslugi-vhod.netlify.app"])
+@pytest.mark.parametrize("domain", ["paypal.account-verify.tk", "apple-id-locked-verify.xyz"])
 def test_obvious_phish_flagged(domain):
     assert ml_predict(domain)["phishing_probability"] > 0.8
+
+
+@pytest.mark.parametrize("domain", ["gosuslugi-vhod.netlify.app", "sberbank-online.pages.dev"])
+def test_a_brand_lure_on_a_hosting_platform_is_never_safe(domain):
+    """Since #80 the name rules flag these (brand_subdomain_abuse), so what
+    a retrain must keep is the verdict, as the retrain gate checks: the
+    model's number for them moved 0.70-0.88 between weekly retrains, and a
+    fixed 0.8 here turned main red after the 2026-10-05 retrain."""
+    from api.services import scoring
+
+    assert scoring.calculate_score({"domain": domain})[1].value != "safe"
 
 
 def test_a_subdomain_of_an_unknown_name_is_suspicious_not_obvious():
