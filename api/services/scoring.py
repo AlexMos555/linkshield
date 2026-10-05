@@ -971,7 +971,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # (sberbank.spb.ru, vk.nov.ru): the same deception, one level down.
     brand_sub = _check_brand_in_subdomain(ascii_domain)
     zone_brand = None if brand_sub else _check_brand_under_open_zone(ascii_domain)
-    if brand_sub or zone_brand:
+    tenant_brand = None if (brand_sub or zone_brand) else _check_brand_on_hosting_tenant(ascii_domain)
+    if brand_sub or zone_brand or tenant_brand:
         score += 30
         # Under an open zone the name may be a dealer's or a partner's
         # (cdek.msk.ru calls itself CDEK's partner): the reason says what the
@@ -979,7 +980,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         detail = (
             f"Uses '{brand_sub}' brand name in subdomain to deceive" if brand_sub else
             f"Uses the '{zone_brand}' brand name as its own name under a zone anyone can register in, "
-            f"so it reads as the brand's site"
+            f"so it reads as the brand's site" if zone_brand else
+            f"Uses the '{tenant_brand}' brand name in the name of a site on a hosting platform "
+            f"anyone can publish to"
         )
         reasons.append(DomainReason(signal="brand_subdomain_abuse", weight=30, detail=detail))
 
@@ -2259,6 +2262,12 @@ _RU_ZONE_BRAND_PART_MIN = 4
 # mts-bonus, ok-podarok): see ru_lures.
 _ZONE_NAME_RULE = _NameRule(lure_words=True)
 _RU_ZONE_BRANDS_LONGEST_FIRST = tuple(sorted(_RU_ZONE_BRANDS, key=lambda b: (-len(b), b)))
+# Brands looked for in a hosting customer's name: the Russian ones above and
+# the global typosquat targets, longest first (sberbank before sber).
+_HOSTING_TENANT_BRANDS = tuple(sorted(_RU_ZONE_BRANDS | set(GLOBAL_TYPOSQUAT_TARGETS), key=lambda b: (-len(b), b)))
+# Zones only a licensed bank may register in: sber.bank.in is Sberbank's
+# Indian branch, not a customer of a hosting platform.
+_REGISTRY_ONLY_ZONES = frozenset({"bank.in"})
 
 
 def _check_brand_under_open_zone(domain: str) -> Optional[str]:
@@ -2290,6 +2299,56 @@ def _check_brand_under_open_zone(domain: str) -> Optional[str]:
                     return brand
             elif brand in pieces and _check_combosquat(label, brand, _ZONE_NAME_RULE):
                 return brand
+    return None
+
+
+def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
+    """A brand in the name a customer gave its site on a hosting platform:
+    sberbank-online.pages.dev, gosuslugi-vhod.netlify.app,
+    paypal-login.netlify.app, sberbank.tw1.ru.
+
+    The typosquat rule reads the registrable domain, which for these hosts is
+    the platform (pages.dev), so the customer's own name was never compared.
+    Fresh phishing lives exactly here (docs/EVALUATION_2026-10.md §1.2), and
+    so do student clones and fan pages (netflix-clone.vercel.app,
+    sber-hackathon.github.io). So the rule is narrow: a Russian brand of four
+    letters or more as the whole name, or any brand next to a lure word — an
+    English combo keyword or a Russian lure (ru_lures), hyphenated, or glued
+    for brands of four letters or more. Russian zones (spb.ru) are
+    _check_brand_under_open_zone's; a name directly under a country's zone
+    (paypal-login.com.br) is the typosquat rule's."""
+    from api.services.hosting_platforms import tenant_suffix_of
+
+    d = (domain or "").lower().strip(".")
+    suffix = tenant_suffix_of(d, _SCORER_SHARED_SUFFIXES)
+    if not suffix or suffix in RU_PUBLIC_SUFFIXES or suffix in _RU_RESTRICTED_ZONES:
+        return None
+    # ru.com / ru.net names are the typosquat rule's (yandex.ru.com), and a
+    # registry zone only banks may register in is not a hosting platform.
+    if suffix in _RU_LOOKALIKE_ZONES or suffix in _REGISTRY_ONLY_ZONES:
+        return None
+    base = _extract_base_domain(d)
+    # Only where the typosquat rule read the platform, not the customer's name.
+    if not (suffix == base or suffix.endswith("." + base)):
+        return None
+    if d in _BRAND_LEGIT_DOMAINS:
+        return None
+    for label in d[: -(len(suffix) + 1)].split("."):
+        whole = label.replace("-", "")
+        if len(whole) >= _RU_ZONE_BRAND_PART_MIN and whole in _RU_ZONE_BRANDS:
+            return whole
+        words = label.split("-")
+        # Two-word lures written with a hyphen: sign-in, log-in.
+        pairs = [a + b for a, b in zip(words, words[1:])]
+        for brand in _HOSTING_TENANT_BRANDS:
+            if brand in words:
+                if any(_is_lure_word(w, brand) for w in words + pairs if w != brand):
+                    return brand
+            elif len(brand) >= _RU_ZONE_BRAND_PART_MIN:
+                for w in words:
+                    glued = w[len(brand):] if w.startswith(brand) else w[: -len(brand)] if w.endswith(brand) else ""
+                    if glued and glued != w and _is_lure_word(glued, brand):
+                        return brand
     return None
 
 
