@@ -76,10 +76,15 @@ data class MessageAnalysis(
  * foreign link or an .apk; bait plus a fee; an SMS-banking transfer command;
  * a fine through a site named after a state body; a bank's payout through a
  * foreign link; a marketplace job through a chat; the police with a criminal
- * case, a coming call and orders to obey.
+ * case, a coming call and orders to obey; and the 2026-10 schemes (see
+ * [newSchemes]): intimate blackmail, recruiting a drop, a buyer's payment
+ * behind a link, NFC relay and remote-access apps, cash for a courier, SIM
+ * re-registration "by the new law", a summons with an article number,
+ * FakeBoss with "из органов".
  * CAUTION: the partial combinations (A + foreign link; an authority + an
  * unknown number; pressure + a hidden link; a look-alike link; with no
- * organisation named, a fine, fee or payout through an unknown site…).
+ * organisation named, a fine, fee or payout through an unknown site; a fake
+ * date's ticket link; a summons or the SIM law with a call still to come…).
  *
  * ## Legitimate shapes are excluded first
  *
@@ -105,7 +110,7 @@ class MessageAnalyzer(
         val phones = PhoneExtractor.extract(blank(cleaned.text, found.map { it.span }))
         val signals = MessageSignals(
             rules = rules,
-            index = MessageText.index(cleaned.text, found.map { it.span }),
+            index = MessageText.index(cleaned.text, found.map { it.span }, rules.translitMarkers),
             text = MessageText.normalizeWord(cleaned.text),
             hiddenInWord = cleaned.hiddenInWord,
             links = links,
@@ -273,6 +278,65 @@ class MessageAnalyzer(
         if (s.apkLinks.isNotEmpty()) out += listOf(R_INSTALL) + linkReasons(s.apkLinks)
         if (s.bait && s.fee) out += listOf(R_BAIT, R_PAYMENT)
         if (s.smsTransferCommand) out += R_SMS_COMMAND
+        newSchemes(s, foreign, out)
+    }
+
+    /**
+     * The 2026-10 schemes the rules had no vocabulary for. Each needs the
+     * scheme's own move, not its words: an intimate leak AND money; a drop
+     * offer AND a cut; a buyer AND money waiting behind a link; a remote or
+     * NFC app AND a bank or money; cash AND a stranger to hand it to.
+     */
+    private fun newSchemes(s: MessageSignals, foreign: List<LinkFacts>, out: MutableSet<String>) {
+        val named = if (s.namesAnyBody) listOf(R_ORGANISATION) else emptyList()
+        // "Переведи 20 000, иначе твои интимные фото увидят все": sextortion.
+        if (s.leakThreat && s.intimate && (s.moneyDemand || foreign.isNotEmpty())) {
+            out += listOf(R_THREAT, R_PAYMENT) + linkReasons(foreign)
+        }
+        // "Сдай карту в аренду, 5 000 ₽ в неделю", "принимай переводы и переводи
+        // дальше за 10%", "требуются курьеры забирать наличные": the reader made a drop.
+        if (s.muleOffer || s.cashJob) out += listOf(R_BAIT) + linkReasons(foreign)
+        // "Покупатель оплатил ваш товар, получите деньги: avito-pay.site", "давайте в
+        // WhatsApp, скину ссылку на безопасную сделку": a buyer never pays through a link.
+        val sites = foreign.filter { !it.messenger }
+        val chats = foreign.filter { it.messenger }
+        if (s.listing && sites.isNotEmpty() && (s.receiveMoney || s.safeDeal || s.confirmData)) {
+            out += listOf(R_PAYMENT) + linkReasons(sites)
+        }
+        if (s.listing && chats.isNotEmpty() && (s.receiveMoney || s.safeDeal)) out += listOf(R_PAYMENT) + linkReasons(chats)
+        // "Приложите карту к задней панели телефона": NFC relay — with an app from a link or a
+        // file, or a refund pretext. A wallet from the store may ask the same tap.
+        if (s.nfcTap && (s.apkNamed || s.apkLinks.isNotEmpty() || foreign.isNotEmpty() || s.refund || s.payout)) {
+            out += named + R_INSTALL + linkReasons(foreign)
+        }
+        // "Сбербанк: установите RustDesk", "скачайте AnyDesk, чтобы вернуть деньги".
+        // An IT department installing AnyDesk on a work laptop names neither.
+        if (s.remoteAsked && (s.namesKnownBody || s.moneyContext)) out += named + R_INSTALL + linkReasons(foreign)
+        // "Установите приложение по ссылке, чтобы получить компенсацию / вернуть деньги".
+        if (s.install && foreign.isNotEmpty() && (s.refund || s.payout || s.safeAccount)) out += listOf(R_INSTALL) + linkReasons(foreign)
+        // "Файл vozvrat.apk — установите": a package handed over in words.
+        if (s.apkNamed && (s.install || s.installVerb) && (s.namesKnownBody || s.moneyContext || s.pressure)) {
+            out += named + R_INSTALL
+        }
+        // "Снимите наличные и передайте инкассатору / курьеру ЦБ": a bank never collects at the door.
+        if (s.cashHandover && (s.namesAuthority || s.safeAccount || s.callComing || s.secrecy || s.obey)) {
+            out += named + R_SAFE_ACCOUNT
+        }
+        // "По новому закону номер будет заблокирован — подтвердите паспорт: …", with a
+        // link, a call-back, a passport photo or a code. Operators ask in the salon or on Госуслуги.
+        if (s.lawPretext && (s.threat || s.urgency) &&
+            (foreign.isNotEmpty() || s.callbackStrong || s.passportAsked || s.codeAsked)
+        ) {
+            out += pressureReasons(s) + (if (s.callbackStrong) listOf(R_CALL_UNKNOWN) else emptyList()) + linkReasons(foreign)
+        }
+        if (s.lawPretext && s.passportAsked) out += listOf(R_CONFIRM_DATA) + pressureReasons(s)
+        // "Вы вызываетесь свидетелем по делу № …, ст. 159 УК — позвоните +7 9…". A court
+        // does text hearings, with its own city number; never a mobile one or a site of its own.
+        if (s.summons && s.caseCited && (s.callbackPersonal || foreign.isNotEmpty())) {
+            out += named + R_THREAT + (if (s.callbackPersonal) listOf(R_CALL_UNKNOWN) else emptyList()) + linkReasons(foreign)
+        }
+        // FakeBoss without the FSB's name: "вам позвонят из органов… никому не говорите".
+        if (s.boss && s.callComing && (s.secrecy || s.obey) && (s.organs || s.organsVague)) out += listOf(R_ORGANISATION, R_THREAT)
     }
 
     private fun cautious(s: MessageSignals, out: MutableSet<String>) {
@@ -281,7 +345,10 @@ class MessageAnalyzer(
         // Shops put "кешбэк до 30.09" behind clck.ru every day; a short link
         // earns caution only next to a threat or a request for data.
         val hiddenBeyondShortener = hidden.filter { !it.shortener || it.found.isApk || it.imitatesBrand }
-        if (s.namesKnownBody && foreign.isNotEmpty()) {
+        // "Вопросы? Напишите нам в WhatsApp: wa.me/…" names the messenger only to say
+        // where its own chat link goes.
+        val chatInvite = s.namesOnlyMessenger && foreign.all { it.messenger }
+        if (s.namesKnownBody && foreign.isNotEmpty() && !chatInvite) {
             out += listOf(R_ORGANISATION) + (if (s.bait) listOf(R_BAIT) else emptyList()) + linkReasons(foreign)
         }
         // A regional МФЦ or bailiffs' office does give its city number ("справки
@@ -316,6 +383,15 @@ class MessageAnalyzer(
         // "Проголосуй за мою племянницу: golos-deti.site, подтверди кодом": the vote is the account takeover.
         if (s.vote && s.codeMentioned && foreign.isNotEmpty()) out += listOf(R_CODE) + linkReasons(foreign)
         nobodyNamed(s, foreign, out)
+        // Partial schemes: blackmail before the price, the fake date's ticket site, a buyer
+        // moving to a chat for "the money", a summons or the SIM law with the call still to come.
+        if (s.leakThreat && s.intimate) out += R_THREAT
+        if (s.dating && s.ticketBuy && foreign.isNotEmpty()) out += listOf(R_PAYMENT) + linkReasons(foreign)
+        if (s.listing && s.chatMove && (s.receiveMoney || s.safeDeal)) out += listOf(R_PAYMENT) + linkReasons(foreign)
+        if (s.summons && s.caseCited && (s.callComing || s.callbackWeak)) {
+            out += (if (s.namesAnyBody) listOf(R_ORGANISATION) else emptyList()) + R_THREAT
+        }
+        if (s.lawPretext && (s.threat || s.urgency) && s.callComing) out += pressureReasons(s)
         if (s.install && foreign.isNotEmpty() && s.pressure) out += listOf(R_INSTALL) + linkReasons(foreign)
         if (s.namesKnownBody && s.senderPersonal) out += listOf(R_ORGANISATION, R_SENDER_PERSONAL)
         if (s.senderMismatch) out += listOf(R_ORGANISATION, R_SENDER_MISMATCH)

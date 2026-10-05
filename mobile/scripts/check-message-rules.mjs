@@ -13,7 +13,8 @@
  *  - it is strict JSON (JSON.parse is stricter than Android's org.json);
  *  - every group the analyzer reads (MessageRules.REQUIRED_GROUPS, read from
  *    the Kotlin source so the two cannot drift) is present and non-empty;
- *  - every organisation has an id, a known kind and at least one name.
+ *  - every organisation has an id, a known kind and at least one name;
+ *  - the plain word lists, translit_markers included, are present and non-empty.
  */
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -64,7 +65,9 @@ if (rules) {
     if (!kinds.includes(String(org?.kind))) errors.push(`organisation ${label}: unknown kind "${org?.kind}"`);
     if (!nonEmptyStrings(org?.names)) errors.push(`organisation ${label}: no names`);
   }
-  for (const list of ["negators", "shorteners", "messengers", "trusted_domains", "bare_tlds", "country_tlds", "app_stores"]) {
+  for (const list of [
+    "negators", "shorteners", "messengers", "trusted_domains", "bare_tlds", "country_tlds", "app_stores", "translit_markers",
+  ]) {
     if (!nonEmptyStrings(rules[list])) errors.push(`list "${list}" is missing or empty`);
   }
 }

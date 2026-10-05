@@ -30,6 +30,35 @@ class MessageAnalyzerTest {
         assertTrue("рф" in rules.bareTlds)
     }
 
+    // ── Russian typed in Latin letters ────────────────────────────────────
+
+    @Test
+    fun `a Latin-typed Russian word gets its Cyrillic readings`() {
+        assertTrue("взломан" in Translit.readings("vzloman"))
+        assertTrue("сообщайте" in Translit.readings("soobshchayte"))
+        // "sh" and "sch" are typed for щ too; "ts" is ц or тс.
+        assertTrue("сообщите" in Translit.readings("soobshite"))
+        assertTrue("счет" in Translit.readings("schet"))
+        assertTrue("свяжется" in Translit.readings("svyazhetsya"))
+        assertTrue("компенсация" in Translit.readings("kompensatsiya"))
+        assertTrue("пожалуйста" in Translit.readings("pozhaluysta"))
+        assertTrue("это" in Translit.readings("eto"))
+        assertEquals(emptyList(), Translit.readings("код"))
+    }
+
+    @Test
+    fun `only a message that reads as Russian is transliterated`() {
+        val markers = MessageTestSupport.rules.translitMarkers
+        fun translit(text: String) = MessageText.index(text, translitMarkers = markers).words.any { it.translit }
+        assertTrue(translit("Vash akkaunt vzloman, srochno pozvonite"))
+        assertFalse(translit("Do not share this code with anyone. Call us on 0800 123 456"))
+        assertFalse(translit("Twoja paczka czeka na odbior. Kod odbioru: 123456. Do 12.10"))
+        // One Cyrillic letter: the message is not Latin-typed Russian.
+        assertFalse(translit("Vash kod dlya vhoda — код 4821"))
+        assertEquals(MessageVerdict.DANGEROUS, verdict("Gosuslugi: vash akkaunt vzloman. Srochno pozvonite +7 916 482-15-37"))
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Vash kod dlya vhoda: 4821. Nikomu ne soobshchayte etot kod"))
+    }
+
     @Test
     fun `reason codes and shapes match the TypeScript contract`() {
         // The UI translates these codes; a code missing on either side is a
