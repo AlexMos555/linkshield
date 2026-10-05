@@ -527,3 +527,126 @@ async def test_provider_initiated_renewals_are_left_to_the_provider(ctx, clock):
                                                    consent_doc_version=CONSENT, allow_grant=True)
     clock.now = (await _sub(ctx, result["checkout_id"])).current_period_end + timedelta(days=1)
     assert await scheduler.run_renewals(ctx, clock.now) == 0
+
+
+# ── Review fixes (PR #65) ──
+
+
+@pytest.mark.asyncio
+async def test_lost_webhook_checkout_is_reconciled_not_timed_out(ctx, fake, clock):
+    """The provider took the money but the webhook never came: the pass must reconcile, not delete."""
+    device, _ = await _device(ctx)
+    result = await checkout_service.start_checkout(ctx, device, plan_code="solo", provider_code="fake",
+                                                   msisdn=SUCCESS_NUMBER, consent_doc_version=CONSENT)
+    clock.advance(minutes=31)
+    counts = await scheduler.run_once(ctx, clock.now)
+    assert counts["pending_timeouts"] == 0 and counts["reconciled"] == 1
+    sub = await _sub(ctx, result["checkout_id"])
+    assert sub is not None and sub.status is S.ACTIVE
+    async with ctx.store.transaction() as tx:
+        payments = await tx.list_payments(sub.id)
+    assert [p.status for p in payments] == [PaymentStatus.SUCCEEDED]
+
+
+@pytest.mark.asyncio
+async def test_pending_timeout_asks_the_provider_before_closing(ctx, fake, clock):
+    """Even on its own (a timeout shorter than the reconciliation delay), the timeout pass reconciles first."""
+    device, _ = await _device(ctx)
+    result = await checkout_service.start_checkout(ctx, device, plan_code="solo", provider_code="fake",
+                                                   msisdn=SUCCESS_NUMBER, consent_doc_version=CONSENT)
+    clock.advance(minutes=30)
+    assert await scheduler.run_pending_timeouts(ctx, clock.now) == 0
+    assert (await _sub(ctx, result["checkout_id"])).status is S.ACTIVE
+
+
+@pytest.mark.asyncio
+async def test_pending_timeout_keeps_the_checkout_while_the_provider_is_unreachable(ctx, fake, clock):
+    from api.billing.providers.base import ProviderUnavailable
+
+    device, _ = await _device(ctx)
+    result = await checkout_service.start_checkout(ctx, device, plan_code="solo", provider_code="fake",
+                                                   msisdn=SUCCESS_NUMBER, consent_doc_version=CONSENT)
+
+    async def down(**kwargs):
+        raise ProviderUnavailable("down")
+
+    fake.fetch_status = down
+    clock.advance(minutes=31)
+    assert await scheduler.run_pending_timeouts(ctx, clock.now) == 0
+    assert (await _sub(ctx, result["checkout_id"])).status is S.PENDING
+
+
+@pytest.mark.asyncio
+async def test_renewal_charges_the_subscribed_plan_version_not_the_new_price(ctx, fake, clock):
+    from dataclasses import replace
+
+    from api.billing.context import ensure_plans
+    from api.billing.models import PlanCode
+
+    device, _ = await _device(ctx)
+    sub_id = await _subscribe(ctx, fake, device, plan="solo")              # 99 ₽, plan version 1
+    repriced = replace(ctx, settings=ctx.settings.model_copy(
+        update={"billing_price_solo_rub": 149, "billing_plan_version": 2}))
+    await ensure_plans(repriced)
+    assert repriced.plan(PlanCode.SOLO).version == 2 and repriced.plan(PlanCode.SOLO).price_kopecks == 14900
+    assert (await compute_entitlement(repriced, device)).status["subscription"]["price_kopecks"] == 9900
+    clock.now = (await _sub(ctx, sub_id)).current_period_end
+    assert await scheduler.run_renewals(repriced, clock.now) == 1
+    assert fake.renewals[-1]["amount_kopecks"] == 9900
+    async with ctx.store.transaction() as tx:
+        renewal = [p for p in await tx.list_payments(sub_id) if p.period_start is not None][-1]
+    assert renewal.amount_kopecks == 9900
+
+
+@pytest.mark.asyncio
+async def test_a_price_change_without_a_new_plan_version_is_refused(ctx):
+    from dataclasses import replace
+
+    from api.billing.context import ensure_plans
+    from api.config import ConfigError
+
+    repriced = replace(ctx, settings=ctx.settings.model_copy(update={"billing_price_solo_rub": 149}))
+    with pytest.raises(ConfigError, match="BILLING_PLAN_VERSION"):
+        await ensure_plans(repriced)
+
+
+@pytest.mark.asyncio
+async def test_checkout_passes_the_configured_return_url(ctx, fake):
+    seen = {}
+    original = fake.start_checkout
+
+    async def recording(**kwargs):
+        seen.update(kwargs)
+        return await original(**kwargs)
+
+    fake.start_checkout = recording
+    device, _ = await _device(ctx)
+    await checkout_service.start_checkout(ctx, device, plan_code="solo", provider_code="fake", msisdn=SUCCESS_NUMBER,
+                                          consent_doc_version=CONSENT)
+    assert seen["return_url"] == ctx.settings.billing_mixplat_return_url != ""
+
+
+@pytest.mark.asyncio
+async def test_a_claim_code_read_before_a_concurrent_redemption_cannot_be_used_twice(ctx, fake, monkeypatch):
+    """Postgres READ COMMITTED: the second redeemer may hold a stale, still-unredeemed copy of the code."""
+    from dataclasses import replace
+
+    from api.billing.store.memory import MemoryTx
+
+    owner, _ = await _device(ctx)
+    await _subscribe(ctx, fake, owner, plan="family5")
+    code = (await seat_service.create_claim_code(ctx, owner))["code"]
+    first, second = (await _device(ctx))[0], (await _device(ctx))[0]
+    await seat_service.redeem_claim_code(ctx, first, code=code)
+
+    real_get = MemoryTx.get_claim_code
+
+    async def stale_get(self, code_hmac, **kwargs):
+        claim = await real_get(self, code_hmac, **kwargs)
+        return replace(claim, redeemed_at=None, redeemed_by_device=None) if claim else None
+
+    monkeypatch.setattr(MemoryTx, "get_claim_code", stale_get)
+    with pytest.raises(NotFound, match="not valid"):
+        await seat_service.redeem_claim_code(ctx, second, code=code)
+    monkeypatch.setattr(MemoryTx, "get_claim_code", real_get)
+    assert (await seat_service.list_devices(ctx, owner))["seats_used"] == 2
