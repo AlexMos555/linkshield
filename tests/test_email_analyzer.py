@@ -334,6 +334,100 @@ async def test_domain_checker_errors_are_swallowed():
     assert all(f.category != "url_reputation" for f in result.findings)
 
 
+# ─── Finding codes (what a client localizes by) ──────────────────────────────
+#
+# The webmail banner shows the reader one line in their language. It used to
+# pick it by category, and one category mixes strong and weak signs: a Reply-To
+# on another domain (common in shop newsletters) read as "the sender's address
+# is disguised as someone else's". Each finding now carries a stable code.
+
+
+@pytest.mark.asyncio
+async def test_every_finding_carries_a_code():
+    async def checker(domain: str) -> bool:
+        return domain == "evil.test"
+
+    result = await analyze_email(
+        EmailHeaders(
+            from_address="security@gmail.com",
+            from_display="PayPal Security",
+            reply_to="collect@evil.test",
+            spf="softfail",
+            dkim="fail",
+            dmarc="fail",
+        ),
+        EmailBody(
+            text=(
+                "Urgent! Your account has been locked. Verify your password now. "
+                "Send us the money by wire transfer. Срочно введите пароль."
+            ),
+            html='<a href="https://evil.test/login">https://paypal.com/login</a>',
+        ),
+        checker,
+    )
+    codes = [f.code for f in result.findings]
+    assert all(codes), f"finding without a code: {result.findings}"
+    assert set(codes) >= {
+        "brand_from_freemail",
+        "reply_to_mismatch",
+        "spf_softfail",
+        "dkim_fail",
+        "dmarc_fail",
+        "urgency",
+        "credential_request",
+        "money_request",
+        "account_threat",
+        "known_dangerous_link",
+        "link_text_mismatch",
+    }
+    assert all("code" in f for f in result.to_dict()["findings"])
+
+
+def test_weak_and_strong_sender_signs_have_their_own_codes():
+    reply_only = _analyze_sender(
+        EmailHeaders(from_address="news@shop.ru", reply_to="help@helpdesk-shop.com")
+    )
+    assert [(f.category, f.code) for f in reply_only] == [("sender_spoofing", "reply_to_mismatch")]
+    brand = _analyze_sender(
+        EmailHeaders(from_address="info@chase-verify.xyz", from_display="Chase Bank")
+    )
+    assert [f.code for f in brand] == ["brand_domain_mismatch"]
+    idn = _analyze_sender(EmailHeaders(from_address="info@магазин.рф"))
+    assert [f.code for f in idn] == ["sender_non_ascii"]
+
+
+def test_spf_softfail_is_not_coded_as_a_failure():
+    soft = _analyze_auth_headers(EmailHeaders(spf="softfail"))
+    hard = _analyze_auth_headers(EmailHeaders(spf="fail", dmarc="fail"))
+    assert [f.code for f in soft] == ["spf_softfail"]
+    assert [f.code for f in hard] == ["spf_fail", "dmarc_fail"]
+
+
+def test_body_pattern_codes_follow_their_group():
+    found = _scan_body_patterns(EmailBody(text="Позвони мне срочно, пожалуйста"))
+    assert [(f.category, f.code, f.severity) for f in found] == [("body_pattern", "urgency", 15)]
+
+
+def test_scam_router_patterns_unchanged_by_grouping():
+    """api/routers/scam.py iterates ALL_BODY_PATTERNS as (regex, severity,
+    message) triples; grouping them under codes must not change that."""
+    from api.services.email_analyzer import (
+        ACCOUNT_LOCK_PATTERNS,
+        ALL_BODY_PATTERNS,
+        CREDENTIAL_ASK_PATTERNS,
+        MONEY_PATTERNS,
+        URGENCY_PATTERNS,
+    )
+
+    assert list(ALL_BODY_PATTERNS) == [
+        *URGENCY_PATTERNS,
+        *CREDENTIAL_ASK_PATTERNS,
+        *MONEY_PATTERNS,
+        *ACCOUNT_LOCK_PATTERNS,
+    ]
+    assert all(len(p) == 3 for p in ALL_BODY_PATTERNS)
+
+
 # ─── HTTP integration ─────────────────────────────────────────────────────────
 
 

@@ -49,19 +49,11 @@ if _sentry_dsn:
     try:
         import sentry_sdk
 
-        from api.services.sentry_scrubber import before_breadcrumb, before_send
+        from api.services.sentry_scrubber import sentry_init_options
 
-        sentry_sdk.init(
-            dsn=_sentry_dsn,
-            traces_sample_rate=0.1,
-            environment="production" if not get_settings().debug else "development",
-            # send_default_pii is False by default in modern sentry-sdk but
-            # we set it explicitly so a future SDK version bumping the
-            # default to True doesn't silently leak.
-            send_default_pii=False,
-            before_send=before_send,
-            before_breadcrumb=before_breadcrumb,
-        )
+        # Errors, breadcrumbs AND sampled performance transactions all go
+        # through the scrubber; no trace headers leave on outgoing requests.
+        sentry_sdk.init(**sentry_init_options(_sentry_dsn, get_settings().debug))
         logger.info("Sentry initialized with PII scrubber")
     except ImportError:
         logger.debug("sentry-sdk not installed, skipping")
@@ -323,6 +315,11 @@ async def health_deep_check():
     Per-component results in the body even on the failure path so a human
     debugging the 503 sees instantly which one broke.
     """
+    # (Kept out of the docstring, which is the published OpenAPI description.)
+    # Also in the body, never paging: `blocklist` (the artifact phones sync —
+    # published, non-empty, under 13 h old) and `doh` (the list canary through
+    # the gateway's decision code, in process → our NXDOMAIN), both listed in
+    # `warnings` when not ok; `ml` (model loaded), informational.
     settings = get_settings()
     components: dict[str, dict] = {}
 
@@ -383,10 +380,25 @@ async def health_deep_check():
     except Exception as e:  # noqa: BLE001
         components["ml"] = {"loaded": False, "error": type(e).__name__}
 
-    # Only these can page. Anything else in `components` is informational.
+    # Grandma's protection, not the API: the list phones sync, and the DoH
+    # gateway's own block decision. Visible, never paging — each has a watcher
+    # that runs the whole path from outside (the DNS canary, the refresh job).
+    # See api/services/health_probes.py.
+    from api.services.health_probes import blocklist_component, doh_component
+
+    components["blocklist"], components["doh"] = await asyncio.gather(
+        blocklist_component(), doh_component(),
+    )
+
+    # Only these can page. Anything else in `components` is informational;
+    # the non-paging checks that failed are listed in `warnings`, so a keyword
+    # monitor can alert on protection without paging on it
+    # (docs/runbooks/monitoring.md).
     PAGING_COMPONENTS = ("redis", "supabase")
+    WARNING_COMPONENTS = ("blocklist", "doh")
     all_ok = all(components[name].get("ok") for name in PAGING_COMPONENTS)
-    body = {"status": "ok" if all_ok else "degraded", "components": components}
+    warnings = [name for name in WARNING_COMPONENTS if not components[name].get("ok")]
+    body = {"status": "ok" if all_ok else "degraded", "warnings": warnings, "components": components}
     if all_ok:
         return body
     # Fail HARD on degraded so external monitors page someone.

@@ -241,3 +241,305 @@ def test_stripe_id_variants(raw, expected_marker):
     out = before_send({"extra": {"v": raw}})
     assert expected_marker in str(out)
     assert raw not in str(out)
+
+
+# ── Performance transactions (they never pass through before_send) ────────
+
+import json  # noqa: E402
+
+from pydantic import BaseModel  # noqa: E402
+
+from api.services.sentry_scrubber import (  # noqa: E402
+    before_send_transaction,
+    sentry_init_options,
+)
+
+SITE = "evil-bank.example"
+IDN_SITE = "xn--80ak6aa92e.xn--p1ai"
+# Built at runtime so secret scanners do not flag a fixture as a live key.
+FAKE_GOOGLE_KEY = "AIza" + "Sy" + "F1XTURE" + "x" * 26
+INSTALL_ID = "3f2b8c1e-9a4d-4c7b-8e2f-1a2b3c4d5e6f"
+
+
+def _public_check_transaction() -> dict:
+    """What sentry-sdk 2.x builds for a sampled GET /api/v1/public/check/<site>
+    (FastAPI + httpx + redis integrations)."""
+    return {
+        "type": "transaction",
+        "transaction": "/api/v1/public/check/{domain}",
+        "transaction_info": {"source": "route"},
+        "request": {
+            "url": f"https://api.cleanway.ai/api/v1/public/check/{SITE}",
+            "method": "GET",
+            "query_string": "",
+            "headers": {
+                "Referer": f"https://cleanway.ai/ru/check/{SITE}",
+                "X-Cleanway-Install": INSTALL_ID,
+                "X-Cleanway-Benchmark": "weekly-benchmark-token",
+            },
+        },
+        "spans": [
+            {"op": "http.client", "description": f"GET https://{SITE}/login",
+             "data": {"url": f"https://{SITE}/login", "http.method": "GET", "http.query": "a=1"}},
+            {"op": "http.client",
+             "description": "POST https://safebrowsing.googleapis.com/v4/threatMatches:find",
+             "data": {"url": "https://safebrowsing.googleapis.com/v4/threatMatches:find",
+                      "http.query": f"key={FAKE_GOOGLE_KEY}"}},
+            {"op": "http.client",
+             "description": f"GET https://ipqualityscore.com/api/json/url/SECRETKEY123/{SITE}"},
+            {"op": "http.client", "description": f"GET https://crt.sh/?q=%25.{SITE}"},
+            {"op": "http.client", "description": f"GET https://www.virustotal.com/api/v3/domains/{SITE}"},
+            {"op": "db.redis", "description": f"GET 'public_check:v2:{SITE}'",
+             "tags": {"redis.key": f"public_check:v2:{SITE}"}},
+            {"op": "db.redis", "description": "SISMEMBER 'dangerous_domains' [Filtered]"},
+            {"op": "db.redis", "description": "redis.pipeline.execute",
+             "data": {"redis.commands": {"count": 2, "first_ten": [
+                 "SISMEMBER 'dangerous_domains' [Filtered]",
+                 f"GET 'public_check:v2:{IDN_SITE}'",
+             ]}}},
+        ],
+    }
+
+
+def test_transaction_carries_no_trace_of_the_checked_site():
+    out = before_send_transaction(_public_check_transaction())
+    flat = json.dumps(out, ensure_ascii=False)
+    for secret in (SITE, IDN_SITE, FAKE_GOOGLE_KEY, "SECRETKEY123", INSTALL_ID, "weekly-benchmark-token"):
+        assert secret not in flat, secret
+
+
+def test_transaction_keeps_what_ops_needs():
+    out = before_send_transaction(_public_check_transaction())
+    descriptions = [s["description"] for s in out["spans"]]
+    assert descriptions[0] == "GET [site]"                                    # the site itself
+    assert descriptions[1] == "POST https://safebrowsing.googleapis.com"      # which provider was slow
+    assert descriptions[2] == "GET https://ipqualityscore.com"                # key + site in the path: dropped
+    assert descriptions[3] == "GET https://crt.sh"
+    assert descriptions[4] == "GET [site]"                                    # not a provider we call
+    assert descriptions[5] == "GET 'public_check:v2:[site]'"
+    assert descriptions[6] == "SISMEMBER 'dangerous_domains' [Filtered]"      # nothing to hide, untouched
+    assert out["transaction"] == "/api/v1/public/check/[site]"
+    assert out["request"]["headers"]["Referer"] == "https://cleanway.ai/ru/check/[site]"
+    assert out["request"]["method"] == "GET"
+
+
+def test_a_unicode_site_in_a_cache_key_is_redacted():
+    """Cache keys can carry an IDN in Unicode form, not only punycode."""
+    span = {"op": "db.redis", "description": "GET 'public_check:v2:президент.рф'",
+            "tags": {"redis.key": "public_check:v2:президент.рф"}}
+    out = before_send_transaction({"type": "transaction", "spans": [span]})
+    assert "президент" not in json.dumps(out, ensure_ascii=False)
+    assert out["spans"][0]["description"] == "GET 'public_check:v2:[site]'"
+
+
+def test_doh_question_never_reaches_sentry():
+    """GET /dns-query?dns=<base64url wire> — the question IS the name being
+    resolved. The landing promises DNS queries never go to Sentry."""
+    wire = "q80BAAABAAAAAAAAB2V4YW1wbGUDY29tAAABAAE"
+    event = {
+        "type": "transaction",
+        "transaction": "/dns-query",
+        "request": {"url": "https://api.cleanway.ai/dns-query", "query_string": f"dns={wire}"},
+        "breadcrumbs": {"values": [{"message": f"GET /dns-query?dns={wire} 200"}]},
+    }
+    out = before_send_transaction(event)
+    assert wire not in json.dumps(out)
+    assert out["request"]["query_string"] == "[redacted]"
+    assert out["breadcrumbs"]["values"][0]["message"] == "GET /dns-query?dns=[query] 200"
+
+
+@pytest.mark.parametrize(
+    "path,expected",
+    [
+        (f"/ru/check/{SITE}", "/ru/check/[site]"),                       # a request that matched no route
+        (f"/audit/{SITE}/grade/F", "/audit/[site]/grade/F"),
+        (f"/api/v1/breach/domain/{SITE}", "/api/v1/breach/domain/[site]"),
+        ("/api/v1/breach/check/5BAA6", "/api/v1/breach/check/[site]"),
+        ("/api/v1/phone/lookup/ab12cd", "/api/v1/phone/lookup/[hash]"),
+        ("/api/v1/user/device/ab12cd/overrides", "/api/v1/user/device/[hash]/overrides"),
+        ("/api/v1/email/unsubscribe/tok123", "/api/v1/email/unsubscribe/[token]"),
+        ("/api/v1/public/stats", "/api/v1/public/stats"),                # nothing to hide
+    ],
+)
+def test_sensitive_route_segments_are_replaced(path, expected):
+    assert before_send_transaction({"transaction": path})["transaction"] == expected
+
+
+def test_error_events_get_the_route_rules_too():
+    out = before_send({"message": f"timeout on /api/v1/public/check/{SITE}"})
+    assert out["message"] == "timeout on /api/v1/public/check/[site]"
+
+
+def test_init_options_scrub_transactions_and_send_no_trace_headers():
+    opts = sentry_init_options("https://public@o0.ingest.sentry.io/0", debug=False)
+    assert opts["before_send"] is before_send
+    assert opts["before_send_transaction"] is before_send_transaction
+    assert opts["before_breadcrumb"] is before_breadcrumb
+    assert opts["send_default_pii"] is False
+    assert opts["trace_propagation_targets"] == []
+    assert opts["max_request_body_size"] == "never"
+    assert opts["include_local_variables"] is False
+    assert opts["environment"] == "production"
+
+
+def test_the_real_sdk_ships_only_scrubbed_transactions():
+    """End to end through sentry-sdk itself: a sampled transaction with the
+    spans the integrations create, captured at the transport."""
+    import sentry_sdk
+    from sentry_sdk.transport import Transport
+
+    sent: list[dict] = []
+
+    class _Capture(Transport):
+        def capture_envelope(self, envelope):
+            for item in envelope.items:
+                if item.type == "transaction":
+                    sent.append(item.payload.json)
+
+    opts = {
+        **sentry_init_options("https://public@o0.ingest.sentry.io/0", debug=True),
+        "traces_sample_rate": 1.0,
+        "transport": _Capture(),
+        "default_integrations": False,
+        "auto_enabling_integrations": False,
+    }
+    sentry_sdk.init(**opts)
+    try:
+        with sentry_sdk.start_transaction(name=f"/ru/check/{SITE}", op="http.server"):
+            with sentry_sdk.start_span(op="http.client", name=f"GET https://{SITE}/") as span:
+                span.set_data("url", f"https://{SITE}/")
+                span.set_data("http.query", f"key={FAKE_GOOGLE_KEY}")
+            with sentry_sdk.start_span(op="db.redis", name=f"GET 'public_check:v2:{SITE}'") as span:
+                span.set_tag("redis.key", f"public_check:v2:{SITE}")
+        sentry_sdk.flush()
+    finally:
+        # Leave no live client behind for the rest of the suite.
+        sentry_sdk.get_client().close()
+        sentry_sdk.get_global_scope().set_client(None)
+
+    assert len(sent) == 1
+    flat = json.dumps(sent[0])
+    assert SITE not in flat
+    assert FAKE_GOOGLE_KEY not in flat
+    assert sent[0]["transaction"] == "/ru/check/[site]"
+    assert {s["description"] for s in sent[0]["spans"]} == {"GET [site]", "GET 'public_check:v2:[site]'"}
+
+
+class _Check(BaseModel):
+    domains: list[str]
+
+
+class _Email(BaseModel):
+    subject: str
+    body_text: str
+
+
+class _Accept(BaseModel):
+    code: str
+    pin: str
+
+
+def _app_with_body_routes():
+    """Built AFTER sentry_sdk.init: the integration wraps route handlers as
+    FastAPI creates them."""
+    import logging
+
+    from fastapi import FastAPI
+
+    app = FastAPI()
+
+    @app.post("/api/v1/check")
+    async def _check(req: _Check):
+        return {"ok": True}
+
+    @app.post("/api/v1/email/analyze")
+    async def _email(req: _Email):
+        return {"ok": True}
+
+    @app.post("/api/v1/family/accept")
+    async def _accept(req: _Accept):
+        return {"ok": True}
+
+    @app.post("/api/v1/boom")
+    async def _boom(req: _Check):
+        # How the API reports errors: a logger.error inside the request (the
+        # logging integration turns it into an event carrying the request).
+        try:
+            raise RuntimeError("analyzer crashed")
+        except RuntimeError:
+            logging.getLogger("api.services.analyzer").error("analysis failed", exc_info=True)
+        return {"ok": False}
+
+    return app
+
+
+def test_the_real_sdk_with_fastapi_sends_no_request_bodies():
+    """With the integrations production runs (FastAPI / Starlette, enabled by
+    default), sentry-sdk attached each JSON body to the request's transaction
+    and to any error logged inside it — the domains of POST /api/v1/check, an
+    email's subject and text, a raw family invite code — and the error's
+    stack frames carried the parsed body again as a local variable
+    (`req = _Check(domains=[...])`). Captured at the transport."""
+    import sentry_sdk
+    from fastapi.testclient import TestClient
+    from sentry_sdk.transport import Transport
+
+    sent: list[dict] = []
+
+    class _Capture(Transport):
+        def capture_envelope(self, envelope):
+            for item in envelope.items:
+                if item.type in ("transaction", "event"):
+                    sent.append(item.payload.json)
+
+    # The bodies below use the real field names; none of these strings may
+    # reach Sentry, whatever key a future schema puts them under.
+    secrets = ("grandmas-bank-login", "Sberbank card blocked", "call 8-800-555", "ABCD-EFGH-SECRET", "error-path")
+    sentry_sdk.init(**{
+        **sentry_init_options("https://public@o0.ingest.sentry.io/0", debug=True),
+        "traces_sample_rate": 1.0,
+        "transport": _Capture(),
+    })
+    try:
+        client = TestClient(_app_with_body_routes())
+        statuses = [
+            client.post("/api/v1/check", json={"domains": ["grandmas-bank-login.example"]}).status_code,
+            client.post("/api/v1/email/analyze",
+                        json={"subject": "Your Sberbank card blocked", "body_text": "call 8-800-555 now"}).status_code,
+            client.post("/api/v1/family/accept", json={"code": "ABCD-EFGH-SECRET", "pin": "1234"}).status_code,
+            client.post("/api/v1/boom", json={"domains": ["error-path.example"]}).status_code,
+        ]
+        sentry_sdk.flush()
+    finally:
+        sentry_sdk.get_client().close()
+        sentry_sdk.get_global_scope().set_client(None)
+
+    transactions = [e for e in sent if e.get("type") == "transaction"]
+    errors = [e for e in sent if e.get("type") != "transaction"]
+    assert statuses == [200, 200, 200, 200]  # every body was parsed by its route
+    assert len(transactions) == 4 and len(errors) == 1  # the integrations really ran
+    for event in sent:
+        flat = json.dumps(event, ensure_ascii=False)
+        for secret in secrets:
+            assert secret not in flat, (secret, event.get("transaction"))
+        assert not (event.get("request") or {}).get("data")
+
+
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("domains", ["grandmas-bank-login.example"]),
+        ("host", "redirect-target.example"),        # site_probes: redirect_hop_blocked
+        ("code", "REF-ABCD-1234"),                  # referral: redeem logs
+        ("subject", "Your Sberbank card blocked"),
+        ("body_text", "call 8-800-555 now"),
+        ("body_html", "<p>call 8-800-555 now</p>"),
+    ],
+)
+def test_what_a_person_sent_is_redacted_when_logged_as_extra(key, value):
+    """Log calls put these under `extra`; the logging integration forwards
+    extras to breadcrumbs and error events."""
+    out = before_send({"extra": {key: value}})
+    assert out["extra"][key] == "[redacted]"
+    crumb = before_breadcrumb({"category": "api", "data": {key: value}})
+    assert crumb["data"][key] == "[redacted]"

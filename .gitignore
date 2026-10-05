@@ -43,6 +43,8 @@ catboost_info/
 
 # Node
 node_modules/
+# a symlink named node_modules is not a directory: the line above misses it
+node_modules
 landing/.next/
 landing/out/
 

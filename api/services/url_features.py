@@ -271,6 +271,20 @@ def char_diversity(s: str) -> float:
 # COMPLETE FEATURE VECTOR EXTRACTION
 # ═══════════════════════════════════════════════════════════════
 
+# Written into every logged row (log_features) and bumped whenever a
+# feature's MEANING changes, so a retrain on data/feature_log.jsonl can keep
+# the definitions apart instead of mixing them. Rows without the field are 1.
+# 2 (2026-09-27): has_fake_tld_subdomain looks left of the PSL registrable
+#    domain — 0 for kvs.gov.spb.ru and edu.gov.ru, which were 1.
+# 3 (2026-09-27): is_typosquat compares Russian brands too (sberbamk.ru is 1),
+#    no longer fires on other banks' and stores' names (swedbank, upstore),
+#    on two-edit neighbours under 8 letters (aviator ~ avito) or on glued
+#    combos of names under 4 letters (dhlweb, upshelp), and reads the name
+#    registered under ru.com / ru.net (yandex.ru.com is 1). The brand
+#    similarity and brand-in-subdomain features are unchanged.
+FEATURES_VERSION = 3
+
+
 def extract_features(domain: str, signals: dict) -> dict[str, float]:
     """
     Extract complete numeric feature vector from domain and signals.
@@ -353,11 +367,16 @@ def extract_features(domain: str, signals: dict) -> dict[str, float]:
 
 
 def _max_brand_similarity(name: str) -> float:
-    """Find the highest SequenceMatcher similarity to any typosquat target brand."""
-    from api.services.scoring import TYPOSQUAT_TARGETS
+    """Find the highest SequenceMatcher similarity to any typosquat target brand.
+
+    The global brands only: the served model was trained on this feature
+    over them. Adding the Russian brands would move it for every Russian
+    name without a retrain (scoring.GLOBAL_TYPOSQUAT_TARGETS).
+    """
+    from api.services.scoring import GLOBAL_TYPOSQUAT_TARGETS
 
     max_sim = 0.0
-    for brand in TYPOSQUAT_TARGETS:
+    for brand in GLOBAL_TYPOSQUAT_TARGETS:
         if brand == name:
             continue  # Exact match = legitimate, not a feature
         sim = SequenceMatcher(None, name, brand).ratio()
@@ -407,6 +426,7 @@ def log_features(domain: str, features: dict[str, float], score: int) -> None:
         "domain": domain,
         "score": score,
         "features": features,
+        "features_version": FEATURES_VERSION,
     }
 
     log_path = os.path.join(_DATA_DIR, "feature_log.jsonl")

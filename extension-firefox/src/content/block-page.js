@@ -37,163 +37,93 @@ const BLOCK_EN = {
   block_evidence_heading: "Why we blocked this site",
   // Strategy Top-20 #15 — Cultural scam explainer heading
   block_explainer_heading: "What kind of scam is this?",
+  block_evidence_other_title: "A warning sign",
+  block_evidence_other_body: "Our checks found something unusual about this site.",
+  confidence_chip: "Confidence: $PCT$%",
 };
 
-// Per-signal evidence cards. The block page renders the top 4 of
-// these matching the verdict's reasons array — the user sees the
-// concrete signals that fired with plain-language explanations they
-// can act on. Anything not in this map falls back to the raw
-// `reason.detail` string from the backend.
+// Evidence cards. The block page renders up to 4 of them for the verdict's
+// reasons, so the user sees the concrete signs that fired, explained in
+// plain words they can act on.
 //
-// Each row: {
-//   icon: emoji or unicode glyph (rendered aria-hidden),
-//   title: short headline (≤ 3 words),
-//   body:  one-sentence explanation calibrated for non-technical
-//          users — describe WHAT it means, not WHY the algorithm
-//          fired.
-// }
-// All English; locale extension happens via the i18n keys above. The
-// signal keys here mirror the analyzer's reason.signal field.
-const EVIDENCE_BOOK = {
-  blocklist: {
-    icon: "⛔",
-    title: "Reported to global blocklists",
-    body: "Security researchers have already flagged this site for phishing or malware.",
-  },
-  safe_browsing: {
-    icon: "🔎",
-    title: "Google flagged it",
-    body: "Google Safe Browsing — used by Chrome/Firefox/Safari — marks this site as unsafe.",
-  },
-  phishtank: {
-    icon: "🎣",
-    title: "PhishTank reported it",
-    body: "The community-run PhishTank database has matching phishing reports.",
-  },
-  urlhaus: {
-    icon: "💀",
-    title: "URLhaus malware host",
-    body: "abuse.ch URLhaus has this host on its malware-distribution list.",
-  },
-  threatfox: {
-    icon: "🦊",
-    title: "ThreatFox IOC match",
-    body: "abuse.ch ThreatFox links this host to an active threat indicator.",
-  },
-  spamhaus_dbl: {
-    icon: "📧",
-    title: "Spamhaus DBL listed",
-    body: "Spamhaus' domain blocklist — used by email providers worldwide — has this host.",
-  },
-  surbl: {
-    icon: "🔗",
-    title: "SURBL URI blocklist",
-    body: "SURBL flags this host as appearing in unsolicited mail.",
-  },
-  alienvault: {
-    icon: "👽",
-    title: "OTX threat pulse",
-    body: "AlienVault OTX has open threat pulses referencing this host.",
-  },
-  ipqs: {
-    icon: "📊",
-    title: "IPQS risk score high",
-    body: "IPQualityScore rates this host as high-risk for phishing.",
-  },
-  typosquatting: {
-    icon: "✏️",
-    title: "Imitates a real brand",
-    body: "The address looks like a well-known brand — but it isn't owned by them.",
-  },
-  brand_impersonation: {
-    icon: "🎭",
-    title: "Brand impersonation",
-    body: "Page content imitates a known brand's login or checkout flow.",
-  },
-  suspicious_tld: {
-    icon: "🌐",
-    title: "Disposable domain",
-    body: "This TLD (.tk, .xyz, etc.) is often abused for one-off phishing pages.",
-  },
-  homograph: {
-    icon: "🔠",
-    title: "Look-alike letters",
-    body: "Some characters are visual swaps (1→l, 0→o) hiding the real address.",
-  },
-  no_https: {
-    icon: "🔓",
-    title: "No HTTPS",
-    body: "The site uses plain HTTP — anything you type is sent unencrypted.",
-  },
-  free_ssl: {
-    icon: "🪪",
-    title: "Throwaway certificate",
-    body: "The SSL certificate is from a free issuer often used by short-lived sites.",
-  },
-  young_domain: {
-    icon: "🐣",
-    title: "Brand-new domain",
-    body: "The site was registered very recently — a strong phishing signal.",
-  },
-  fast_flux: {
-    icon: "🌀",
-    title: "Fast-flux hosting",
-    body: "DNS records change rapidly — characteristic of bulletproof hosting.",
-  },
-  redirect_chain: {
-    icon: "↪️",
-    title: "Suspicious redirect chain",
-    body: "Multiple hops before landing here — often used to hide the real destination.",
-  },
-  url_pii_leak: {
-    icon: "🕵️",
-    title: "Leaks private data in URL",
-    body: "The address itself carries your email or auth token — anyone who can see the link can grab them.",
-  },
-  malware_bazaar: {
-    icon: "🦠",
-    title: "Distributes malware",
-    body: "abuse.ch MalwareBazaar has seen this host shipping known malware samples.",
-  },
-  feodo: {
-    icon: "📡",
-    title: "Active botnet C2 server",
-    body: "abuse.ch Feodo Tracker confirms this host is currently controlling a botnet.",
-  },
-  favicon_brand_clone: {
-    icon: "🎭",
-    title: "Brand-clone phishing",
-    body: "This page serves a real brand's favicon but is hosted on an unrelated domain — a classic credential-theft signature.",
-  },
-  tranco_popularity: {
-    icon: "✅",
-    title: "Among the most-visited sites",
-    body: "This domain is in the worldwide top sites — counted as a trust signal here, but other risks above still apply.",
-  },
-  watchtower_typosquat: {
-    icon: "🕵️‍♂️",
-    title: "Cousin-domain of a brand you watch",
-    body: "Cleanway Watchtower spotted this newly-registered domain in Certificate Transparency logs — it looks dangerously close to a brand on your watchlist.",
-  },
-  invalid: {
-    icon: "❌",
-    title: "Invalid address",
-    body: "The address itself is malformed; it might be a copy-paste trap.",
-  },
+// A card is keyed by reason GROUP (content/reason-labels.js), not by the raw
+// code: the scorers emit several codes for one idea (typosquatting,
+// combosquatting and watchtower_typosquat all mean "imitates a brand"), and
+// a person needs one card for it, not three. The title is the same reason
+// line the link badges show (extension.reason) and the body explains it
+// (extension.evidence), both in the browser's language. The English
+// `detail` from the scorer never reaches this page: a code nobody has mapped
+// yet gets a generic card in the user's language instead.
+//
+// scripts/test-extension-core.mjs checks that every group has an icon here
+// and a reason_/evidence_ text in all ten locales.
+const EVIDENCE_ICONS = {
+  flagged_dangerous: "🔎",
+  flagged_phishing: "🎣",
+  on_blocklists: "⛔",
+  on_cleanway_list: "⛔",
+  threat_reports: "📡",
+  spreads_malware: "🦠",
+  imitates_brand: "✏️",
+  lookalike_letters: "🔠",
+  fake_brand_address: "🎭",
+  copies_brand_icon: "🎭",
+  no_https: "🔓",
+  missing_protections: "🧱",
+  raw_ip_address: "🔢",
+  unusual_connection: "🔌",
+  hidden_destination: "↪️",
+  very_new_site: "🐣",
+  new_certificate: "📜",
+  broken_certificate: "🔓",
+  high_risk_score: "📊",
+  scam_words: "🪤",
+  carries_personal_data: "🕵️",
+  long_complex_address: "🧶",
+  many_redirects: "↪️",
+  risky_ending: "🌐",
+  risky_registrar: "📝",
+  random_name: "🎲",
+  detector_suspicious: "🤖",
+  not_a_real_business: "📭",
+  shifty_setup: "🌀",
+  padded_address: "🧩",
+  shared_hosting: "🏚️",
+  site_not_found: "❓",
+  unreachable_abroad: "🌍",
+  checks_incomplete: "⏳",
+  user_content_platform: "📄",
+  invalid_address: "❌",
+  private_network: "🚧",
+  ai_second_look: "🤖",
+  well_known_site: "✅",
+  popular_site: "✅",
+  detector_safe: "✅",
+  on_your_trusted_list: "✅",
 };
 
-function _evidenceCardFor(reason) {
-  if (!reason) return null;
-  var key = reason.signal || "";
-  var card = EVIDENCE_BOOK[key];
-  if (card) {
-    return { icon: card.icon, title: card.title, body: card.body };
+// The reason group of one verdict reason, or "other" for a code the label
+// table has not mapped yet (or when reason-labels.js did not load).
+function _evidenceGroup(reason) {
+  var labels = window.__cleanwayReasons;
+  var group = labels && typeof labels.group === "function" ? labels.group(reason) : null;
+  return group || "other";
+}
+
+function _evidenceCardFor(group) {
+  if (group === "other") {
+    return {
+      icon: "⚠️",
+      title: bt("block_evidence_other_title"),
+      body: bt("block_evidence_other_body"),
+    };
   }
-  // Unknown signal: use raw detail as body, generic icon.
+  // Built at run time: the static key scan cannot see these, so the test
+  // suite checks every group's reason_/evidence_ key in every locale instead.
   return {
-    icon: "⚠️",
-    title: "Risk signal",
-    body: String(reason.detail || "Detected by Cleanway's scoring engine."),
+    icon: EVIDENCE_ICONS[group] || "⚠️",
+    title: bt("reason_" + group),
+    body: bt("evidence_" + group),
   };
 }
 
@@ -211,7 +141,7 @@ function bt(key, subs) {
     // version fed subs[0] into every token, so a string combining
     // $DOMAIN$ and $BRAND$ would have rendered the same value twice.
     let i = 0;
-    out = out.replace(/\$(DOMAIN|BRAND|N)\$/g, () => {
+    out = out.replace(/\$(DOMAIN|BRAND|N|PCT)\$/g, () => {
       const v = i < subs.length ? subs[i] : subs[subs.length - 1];
       i += 1;
       return String(v);
@@ -241,20 +171,26 @@ function isRTL() {
 // verdict is delivered. The skill_level read is synchronous from
 // chrome.storage; we cache it so a slow storage round-trip on a
 // busy page doesn't delay the block overlay paint.
+//
+// voice_alerts is the Grandparent card's "Voice warnings" switch on the
+// settings page. It used to be stored and never read, so the alert spoke
+// whatever the switch said. Unset means the persona's default (on).
 let _cachedSkillLevel = null;
+let _cachedVoiceOn = true;
 
 function _readSkillLevel(cb) {
   if (_cachedSkillLevel !== null) {
-    cb(_cachedSkillLevel);
+    cb(_cachedSkillLevel, _cachedVoiceOn);
     return;
   }
   try {
-    chrome.storage.local.get(["skill_level"], function (data) {
+    chrome.storage.local.get(["skill_level", "voice_alerts"], function (data) {
       _cachedSkillLevel = (data && data.skill_level) || "regular";
-      cb(_cachedSkillLevel);
+      _cachedVoiceOn = !(data && data.voice_alerts === false);
+      cb(_cachedSkillLevel, _cachedVoiceOn);
     });
   } catch (_) {
-    cb("regular");
+    cb("regular", true);
   }
 }
 
@@ -378,9 +314,7 @@ function showBlockPage(result) {
   // Missing field → no chip; we never invent a number.
   const confidenceChipHTML = (typeof confidence_pct === "number"
     && confidence_pct >= 50 && confidence_pct <= 99)
-    ? `<div class="ls-block-confidence" aria-label="Confidence">
-         Confidence: ${confidence_pct}%
-       </div>`
+    ? `<div class="ls-block-confidence">${e(bt("confidence_chip", [String(confidence_pct)]))}</div>`
     : "";
   const rtl = isRTL();
 
@@ -397,17 +331,25 @@ function showBlockPage(result) {
 
   // Strategy Top-20 #4 — Annotated Evidence Cards.
   //
-  // Pick the top 4 distinct signals from the verdict's reasons array
-  // (the scorer already ranks them by weight). De-duplicate by signal
-  // so we don't show two "typosquatting" cards if the scorer flagged
-  // it twice (e.g. local + remote). Less is more — 4 cards keep the
-  // block page readable without scrolling on a phone-sized viewport.
-  const _seenSig = new Set();
-  const evidenceCards = (reasons || [])
-    .filter((r) => r && r.signal && !_seenSig.has(r.signal) && _seenSig.add(r.signal))
+  // Pick the top 4 distinct reason groups from the verdict's reasons
+  // array (the scorer already ranks them by weight). De-duplicate by
+  // group so we don't show two "imitates a brand" cards when the scorer
+  // flagged typosquatting and combosquatting, or local + remote. Less is
+  // more — 4 cards keep the block page readable without scrolling on a
+  // phone-sized viewport. The generic "a warning sign" card for an
+  // unmapped code goes last: it says the least. Its text must also stand
+  // on its own: it is the only card when no code is mapped (an API answer
+  // without reason codes, or reason-labels.js failed to load).
+  const _seenGroup = new Set();
+  const _groups = (reasons || [])
+    .filter((r) => r && r.signal)
+    .map((r) => _evidenceGroup(r))
+    .filter((g) => !_seenGroup.has(g) && _seenGroup.add(g));
+  const evidenceCards = _groups
+    .filter((g) => g !== "other")
+    .concat(_groups.filter((g) => g === "other"))
     .slice(0, 4)
-    .map((r) => _evidenceCardFor(r))
-    .filter(Boolean);
+    .map((g) => _evidenceCardFor(g));
   const evidenceHTML = evidenceCards.length
     ? `<div class="ls-block-evidence" aria-label="${e(bt("block_evidence_heading"))}">
          <h2 class="ls-block-evidence-heading">${e(bt("block_evidence_heading"))}</h2>
@@ -705,7 +647,7 @@ function showBlockPage(result) {
   //     overrides land regardless of the platform's default font
   //     size, and
   //   - kick off a voice alert in the user's UI locale.
-  _readSkillLevel(function (lvl) {
+  _readSkillLevel(function (lvl, voiceOn) {
     // Strategy doc Top-20 #9 — skill personas. Granny up-sizes
     // everything for low vision and reads aloud. Kids strips
     // away every escape hatch and shows only a giant STOP.
@@ -823,18 +765,15 @@ function showBlockPage(result) {
         grannyChip.style.padding = "6px 14px";
       }
 
-      // Voice alert.
-      try {
-        var voiceMsg = bt("block_voice_alert", [domain]);
-        if (!voiceMsg || voiceMsg.indexOf("Cleanway blocked") !== -1
-            || /^block_voice_alert/.test(voiceMsg)) {
-          // Fallback to a hardcoded short phrase if the locale key
-          // isn't there yet — we'll add it in i18n-strings shortly.
-          voiceMsg = "Stop. This site is dangerous. Do not type your password.";
+      // Voice alert, in the browser's language (bt falls back to the
+      // English BLOCK_EN text only outside the extension), unless the
+      // settings page's "Voice warnings" switch is off.
+      if (voiceOn) {
+        try {
+          _speakAlert(bt("block_voice_alert", [domain]));
+        } catch (_) {
+          /* speech failure non-fatal — visual block stays. */
         }
-        _speakAlert(voiceMsg);
-      } catch (_) {
-        /* speech failure non-fatal — visual block stays. */
       }
     }
   });
@@ -923,7 +862,7 @@ function showBlockPage(result) {
 // dynamic import() of it would 404 from a content script anyway. The
 // working mechanism is exactly what local-scorer.js uses: assign to a
 // global that the later-loaded index.js reads. The IIFE wrapper (top of
-// file) keeps every internal helper (e, bt, EVIDENCE_BOOK, extractBrand,
+// file) keeps every internal helper (e, bt, EVIDENCE_ICONS, extractBrand,
 // …) private so they can't collide with the other content scripts'
 // top-level declarations — only this one namespaced entry point leaks.
 if (typeof window !== "undefined") {

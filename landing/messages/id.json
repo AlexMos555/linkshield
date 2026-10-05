@@ -368,6 +368,7 @@
     "col_tn": "Benar",
     "dataset_phishing_desc": "tautan baru dari sumber publik URLhaus dan PhishTank, diunduh setiap kali dijalankan dan tanpa duplikat per domain.",
     "dataset_safe_desc": "domain acak dari daftar Tranco top-1M, peringkat 100 sampai 100.000, dengan seed acak tetap agar sampelnya bisa diulang.",
+    "dataset_safe_desc_curated": "situs Rusia asli di luar 100.000 teratas Tranco — pemerintah daerah dan kota, universitas, situs .рф, bank dan usaha kecil, museum, dan teater — dari daftar terbuka yang mencantumkan sumber setiap situs, diambil dengan seed acak tetap.",
     "mapping_cleanway": "Cleanway: \"berbahaya\" dihitung berbahaya, \"aman\" dihitung aman, \"hati-hati\" dihitung tidak diketahui.",
     "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: jawaban yang diblokir (NXDOMAIN atau 0.0.0.0 / ::) dihitung berbahaya, jawaban biasa dihitung aman.",
     "mapping_virustotal": "VirusTotal: berbahaya jika minimal 2 antivirusnya menandai tautan itu; tanda dari satu antivirus saja diabaikan karena terlalu banyak gangguan.",
@@ -377,7 +378,8 @@
     "caveat_gsb": "Google Safe Browsing memerlukan kunci API; jika tidak diatur untuk pengukuran, kolomnya menampilkan \"—\".",
     "caveat_nxdomain": "Domain yang sudah tidak ada juga mendapat NXDOMAIN dari Cloudflare dan dihitung sebagai pemblokiran oleh Cloudflare, sehingga hasil Cloudflare terlihat lebih baik untuk domain phishing yang sudah ditutup.",
     "caveat_latency": "Waktu respons diukur dari mesin yang menjalankan skrip (server cloud di AS atau UE); dari wilayah lain hasilnya akan berbeda.",
-    "caveat_allowlist": "Server kami menganggap aman situs di 100.000 teratas Tranco tanpa menganalisisnya, dan sampel situs asli di atas diambil dari rentang yang sama. Karena itu, sampel ini tidak bisa menunjukkan seberapa sering Cleanway keliru menyebut situs asli yang kurang terkenal sebagai berbahaya, dan kami tidak menerbitkan tingkat alarm palsu darinya. Kami akan menerbitkannya setelah sampel mencakup situs asli di luar daftar itu."
+    "caveat_allowlist": "Server kami menganggap aman situs di 100.000 teratas Tranco tanpa menganalisisnya, dan sampel situs asli di atas diambil dari rentang yang sama. Karena itu, sampel ini tidak bisa menunjukkan seberapa sering Cleanway keliru menyebut situs asli yang kurang terkenal sebagai berbahaya, dan kami tidak menerbitkan tingkat alarm palsu darinya. Kami akan menerbitkannya setelah sampel mencakup situs asli di luar daftar itu.",
+    "caveat_allowlist_curated": "Server kami menganggap aman situs di 100.000 teratas Tranco tanpa menganalisisnya, jadi sampel situs asli di atas diambil dari luar daftar itu: setiap situsnya benar-benar dianalisis. Server kami berada di luar Rusia, dan sebagian situs ini tidak melayani pengunjung dari luar negeri; hasil mingguan di GitHub menampilkan alarm palsu pada situs-situs itu secara terpisah."
   },
   "Support": {
     "title": "Bantuan",

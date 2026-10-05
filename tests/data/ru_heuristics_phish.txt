@@ -1,0 +1,241 @@
+# PHISH — look-alike hosts the local heuristics must keep catching.
+#
+# The counterpart of ru_heuristics_legit.txt: the same offline scoring
+# (calculate_score() on the bare host), used to prove a false-positive fix
+# does not cost detections. "Caught" = the host scores above 'safe'.
+#
+# These hosts are CONSTRUCTED, not harvested: each follows a pattern from
+# live Russian-language phishing (brand typos, digit / Cyrillic homoglyphs,
+# brand + lure-word combos on cheap TLDs, the brand's real domain used as a
+# subdomain of the attacker's, and brand names registered under regional
+# public suffixes — the CT log for nov.ru alone lists vk.nov.ru, mts.nov.ru,
+# ok.nov.ru and kinopoisk.nov.ru). Most do not exist; the scorer only reads
+# the name. Global brands are included as a control for the rules that
+# already know them. The exceptions are 'reported' (named in a fraud
+# report) and 'observed' (found live, with what was on the page).
+#
+# Format — one host per line, fields separated by " | ":
+#   host     punycode for IDN (the scorer's input form)
+#   pattern  typosquat      character-level typo of the brand's name
+#            homoglyph      digit / Cyrillic / multi-glyph look-alike
+#            combosquat     brand + lure word, often on a cheap TLD
+#            subdomain      brand's real domain as a subdomain of another
+#            zone           brand look-alike registered under a regional
+#                           public suffix (spb.ru, msk.ru, nov.ru, com.ru …)
+#            fake_tld       a TLD bought as the name under an open zone
+#                           (com.msk.ru, ru.msk.ru, gov.msk.ru are private
+#                           persons' names), so vk.com.msk.ru reads as vk.com
+#            short_brand    a 3-4 letter global brand under another TLD or
+#                           with look-alike characters (control)
+#            reported       a phishing domain a fraud report names verbatim
+#                           (F6: cdek.nu …, yandex-doctavym.website …)
+#            observed       a live look-alike of a Russian brand found on
+#                           2026-09-27 by resolving every registered
+#                           <brand>.<TLD>, one-edit .ru and combo name; the
+#                           note says what was on it
+#            ru_com         the brand's .ru address bought under ru.com or
+#                           ru.net, zones anyone can register in
+#            known_miss     a typo the rule deliberately gives up — a 4-letter
+#                           omission of a 5-letter brand, two substitutions in
+#                           under 8 letters — listed so its loss is counted
+#   target   the brand's real domain
+#   note     Unicode form of an IDN, or what the pattern does
+# '#' starts a comment; blank lines are ignored.
+
+# ── Typosquats ──
+sberbamk.ru | typosquat | sberbank.ru | m for n
+sbrebank.ru | typosquat | sberbank.ru | transposition
+sberbnk.ru | typosquat | sberbank.ru | omission
+gosuslgi.ru | typosquat | gosuslugi.ru | omission
+gossuslugi.ru | typosquat | gosuslugi.ru | doubled letter
+gosuslugii.ru | typosquat | gosuslugi.ru | doubled letter
+gosusluga.ru | typosquat | gosuslugi.ru | substitution
+tinkof.ru | typosquat | tinkoff.ru | omission
+tinkkoff.ru | typosquat | tinkoff.ru | doubled letter
+tbamk.ru | typosquat | tbank.ru | m for n
+alfabamk.ru | typosquat | alfabank.ru | m for n
+alfabnak.ru | typosquat | alfabank.ru | transposition
+wildberies.ru | typosquat | wildberries.ru | omission
+wildbreries.ru | typosquat | wildberries.ru | transposition (wildberrise.ru, listed until 2026-09-27, is WB's own)
+avitto.ru | typosquat | avito.ru | doubled letter
+yandeks.ru | typosquat | yandex.ru | phonetic
+yanbex.ru | typosquat | yandex.ru | substitution
+ozom.ru | typosquat | ozon.ru | m for n
+vkk.com | typosquat | vk.com | doubled letter
+paypall.com | typosquat | paypal.com | control: doubled letter
+amazom.com | typosquat | amazon.com | control: m for n
+netflx.com | typosquat | netflix.com | control: omission
+micorsoft.com | typosquat | microsoft.com | control: transposition
+instagarm.com | typosquat | instagram.com | control: transposition
+whatsap.com | typosquat | whatsapp.com | control: omission
+
+# ── Homoglyphs ──
+g0suslugi.ru | homoglyph | gosuslugi.ru | digit 0 for o
+sberbank0nline.ru | homoglyph | sberbank.ru | digit 0 for o
+t1nkoff.ru | homoglyph | tinkoff.ru | digit 1 for i
+0zon.ru | homoglyph | ozon.ru | digit 0 for o
+av1to.ru | homoglyph | avito.ru | digit 1 for i
+wi1dberries.ru | homoglyph | wildberries.ru | digit 1 for l
+vvildberries.ru | homoglyph | wildberries.ru | vv for w
+xn--sberbnk-6fg.ru | homoglyph | sberbank.ru | sberbаnk.ru (Cyrillic а)
+xn--gosuslug-0hh.ru | homoglyph | gosuslugi.ru | gosuslugі.ru (Ukrainian і)
+xn--tnkoff-pvf.ru | homoglyph | tinkoff.ru | tіnkoff.ru (Ukrainian і)
+xn--ndex-43d7i.ru | homoglyph | yandex.ru | уаndex.ru (Cyrillic у а)
+xn--yandx-2we.ru | homoglyph | yandex.ru | yandеx.ru (Cyrillic е)
+xn--vito-43d.ru | homoglyph | avito.ru | аvito.ru (Cyrillic а)
+xn--zon-red.ru | homoglyph | ozon.ru | оzon.ru (Cyrillic о)
+xn--wldberries-x2i.ru | homoglyph | wildberries.ru | wіldberries.ru (Ukrainian і)
+xn--lfabank-1fg.ru | homoglyph | alfabank.ru | аlfabank.ru (Cyrillic а)
+xn--tbnk-63d.ru | homoglyph | tbank.ru | tbаnk.ru (Cyrillic а)
+xn--tle2-v4d.ru | homoglyph | tele2.ru | tеle2.ru (Cyrillic е)
+xn--mil-6cd.ru | homoglyph | mail.ru | mаil.ru (Cyrillic а)
+xn--ypal-43d9g.com | homoglyph | paypal.com | control: раypal.com (Cyrillic р а)
+xn--pple-43d.com | homoglyph | apple.com | control: аpple.com (Cyrillic а)
+xn--ggle-55da.com | homoglyph | google.com | control: gооgle.com (Cyrillic о о)
+rnicrosoft-login.com | homoglyph | microsoft.com | control: rn for m
+paypa1.com | homoglyph | paypal.com | control: digit 1 for l
+
+# ── Combosquats ──
+sberbank-bonus.ru | combosquat | sberbank.ru | lure: bonus
+sberbank-online-login.ru | combosquat | sberbank.ru | lure: online login
+sber-vozvrat.site | combosquat | sber.ru | lure: refund, risky TLD
+gosuslugi-lk.help | combosquat | gosuslugi.ru | lure: personal cabinet
+gosuslugi-vhod.online | combosquat | gosuslugi.ru | lure: sign-in, risky TLD
+gosuslugi-verify.com | combosquat | gosuslugi.ru | lure: verify
+tinkoff-bonus.xyz | combosquat | tinkoff.ru | lure: bonus, risky TLD
+tbank-login.ru | combosquat | tbank.ru | lure: login
+vtb-online-bank.com | combosquat | vtb.ru | lure: online bank
+vtb-secure-account.top | combosquat | vtb.ru | lure: secure account, risky TLD
+alfabank-secure.net | combosquat | alfabank.ru | lure: secure
+ozon-priz.ru | combosquat | ozon.ru | lure: prize
+wildberries-promo.shop | combosquat | wildberries.ru | lure: promo, risky TLD
+avito-dostavka.ru | combosquat | avito.ru | lure: delivery
+avito-oplata.online | combosquat | avito.ru | lure: payment, risky TLD
+avito-safe-payment.site | combosquat | avito.ru | lure: payment, risky TLD
+mts-bonus.ru | combosquat | mts.ru | lure: bonus
+tele2-podarok.ru | combosquat | tele2.ru | lure: gift
+t2-bonus.online | combosquat | t2.ru | lure: bonus, risky TLD
+yandex-pay-login.com | combosquat | yandex.ru | lure: pay login
+vk-login-verify.com | combosquat | vk.com | lure: login verify
+mailru-account-update.com | combosquat | mail.ru | lure: account update
+xn----etbaulcdt1aavc.xn--p1ai | combosquat | gosuslugi.ru | госуслуги-лк.рф
+xn----7sbbbax6afkrcdiwm.xn--p1ai | combosquat | sberbank.ru | сбербанк-онлайн.рф
+xn----dtbbahvtxfyaxc6a.xn--p1ai | combosquat | gosuslugi.ru | госуслуги-вход.рф
+xn----btbtiodec2abtha2i.xn--p1ai | combosquat | tinkoff.ru | тинькофф-бонус.рф
+paypal-login.com | combosquat | paypal.com | control
+apple-account.com | combosquat | apple.com | control
+amazon-billing.com | combosquat | amazon.com | control
+microsoft-verify.net | combosquat | microsoft.com | control
+
+# ── The brand's real domain as a subdomain ──
+sberbank.ru.secure-login.com | subdomain | sberbank.ru | brand domain + lure registrable
+online.sberbank.ru.verify-client.top | subdomain | sberbank.ru | brand domain, risky TLD
+gosuslugi.ru.lk-vhod.xyz | subdomain | gosuslugi.ru | brand domain, risky TLD
+esia.gosuslugi.ru.sso-auth.site | subdomain | gosuslugi.ru | brand login host
+id.tbank.ru.secure-pay.online | subdomain | tbank.ru | brand login host
+login.vk.com.account-check.xyz | subdomain | vk.com | brand login host
+passport.yandex.ru.auth-check.site | subdomain | yandex.ru | brand login host
+ozon.ru.orders-check.com | subdomain | ozon.ru | brand domain
+wildberries.ru.delivery-status.info | subdomain | wildberries.ru | brand domain
+paypal.com.evil.xyz | subdomain | paypal.com | control
+paypal.account-verify.tk | subdomain | paypal.com | control
+appleid.apple.com.signin-check.com | subdomain | apple.com | control
+
+# ── Brand look-alikes registered under regional public suffixes ──
+gosuslugi-lk.spb.ru | zone | gosuslugi.ru | combosquat under spb.ru
+sberbank-online.msk.ru | zone | sberbank.ru | combosquat under msk.ru
+tinkoff-bonus.nov.ru | zone | tinkoff.ru | combosquat under nov.ru
+vk-login.nov.ru | zone | vk.com | combosquat under nov.ru
+secure-login-account.com.ru | zone | — | lure words under com.ru
+paypal-login.spb.ru | zone | paypal.com | control: combosquat under spb.ru
+paypa1.msk.ru | zone | paypal.com | control: homoglyph under msk.ru
+rnicrosoft.nov.ru | zone | microsoft.com | control: glyph homoglyph under nov.ru
+netflix-billing.com.ru | zone | netflix.com | control: combosquat under com.ru
+apple-verify.pp.ru | zone | apple.com | control: combosquat under pp.ru
+gosuslugi.nov.ru | zone | gosuslugi.ru | exact brand name under nov.ru
+sberbank.spb.ru | zone | sberbank.ru | exact brand name under spb.ru
+vk.nov.ru | zone | vk.com | exact brand name under nov.ru (CT log)
+mts.nov.ru | zone | mts.ru | exact brand name under nov.ru (CT log)
+ok.nov.ru | zone | ok.ru | exact brand name under nov.ru (CT log)
+kinopoisk.nov.ru | zone | kinopoisk.ru | exact brand name under nov.ru (CT log)
+avito.com.ru | zone | avito.ru | exact brand name under com.ru
+
+# ── A TLD bought as the registered name under an open zone ──
+vk.com.spb.ru | fake_tld | vk.com | com.spb.ru
+sberbank.com.spb.ru | fake_tld | sberbank.ru | com.spb.ru
+gosuslugi.gov.msk.ru | fake_tld | gosuslugi.ru | gov.msk.ru (a private person's name)
+login.vk.com.msk.ru | fake_tld | vk.com | com.msk.ru, login host
+sberbank.ru.msk.ru | fake_tld | sberbank.ru | ru.msk.ru reads as sberbank.ru
+esia.gosuslugi.ru.msk.ru | fake_tld | gosuslugi.ru | ru.msk.ru, brand login host
+ozon.ru.net.spb.ru | fake_tld | ozon.ru | net.spb.ru
+paypal.com.spb.ru | fake_tld | paypal.com | control: com.spb.ru
+apple.com.msk.ru | fake_tld | apple.com | control: com.msk.ru
+
+# ── Short global brands (controls) ──
+dpd.top | short_brand | dpd.com | brand name under a risky TLD
+dhl.help | short_brand | dhl.com | brand name under another TLD
+ups.top | short_brand | ups.com | brand name under a risky TLD
+dh1.com | short_brand | dhl.com | digit 1 for l
+up5.com | short_brand | ups.com | digit 5 for s
+dhll.com | short_brand | dhl.com | doubled letter
+1kea.com | short_brand | ikea.com | digit 1 for i
+eb4y.com | short_brand | ebay.com | digit 4 for a
+c1ti.com | short_brand | citi.com | digit 1 for i
+
+# ── Brands added with data/typosquat_targets_ru.json ──
+megaf0n.ru | homoglyph | megafon.ru | digit 0 for o
+bee1ine.ru | homoglyph | beeline.ru | digit 1 for l
+m7s.ru | homoglyph | mts.ru | digit 7 for t, a 3-letter brand
+gzprombank.ru | typosquat | gazprombank.ru | omission
+pchtabank.ru | typosquat | pochtabank.ru | omission
+sovkombank.xyz | typosquat | sovcombank.ru | k for c, risky TLD
+uralsb.ru | typosquat | uralsib.ru | omission
+rust0re.ru | homoglyph | rustore.ru | digit 0 for o
+russianpst.ru | typosquat | russianpost.ru | omission
+odnoklasniki.com | typosquat | ok.ru | omission
+wildberries.shop | short_brand | wildberries.ru | brand name under .shop (F6: 22% of H1 2026 phishing)
+ozon.pro | short_brand | ozon.ru | brand name under .pro (F6: 10%)
+xn--80abap1arsf.xn--p1acf | short_brand | sberbank.ru | сбербанк.рус, the Cyrillic name under another TLD
+
+# ── Named verbatim in fraud reports ──
+cdek.nu | reported | cdek.ru | F6, 'Охота на «Мамонта»' (2021)
+cdek.in | reported | cdek.ru | F6 (2021)
+cdek.at | reported | cdek.ru | F6 (2021)
+cdek-box.ru | reported | cdek.ru | F6 (2021)
+cdek-dostavka.info | reported | cdek.ru | F6 (2021)
+yandex-doctavym.website | reported | yandex.ru | F6 via CNews (2026-08-10), Яндекс Доставка fakes
+dostavka-y.website | reported | yandex.ru | F6 (2026)
+yandex-dostavkoy.website | reported | yandex.ru | F6 (2026)
+yandex-dostavkuy.website | reported | yandex.ru | F6 (2026)
+
+# ── Seen live, 2026-09-27 (PR #62's second false-positive pass) ──
+yandex.ru.com | observed | yandex.ru | behind Cloudflare's 'Suspected Phishing' interstitial
+pochtabank.ru.com | observed | pochtabank.ru | redirects to a gambling site
+russianpost.ru.com | observed | pochta.ru | redirects to a gambling site
+gosuslugi.ch | observed | gosuslugi.ru | titled 'Портал государственных услуг Российской Федерации', Swiss host
+gosuslugiq.ru | observed | gosuslugi.ru | 'Госуслуги Личный кабинет — Вход на Официальный сайт'
+gosuslugirus.ru | observed | gosuslugi.ru | the same title, behind Cloudflare
+sberbanc.ru | observed | sberbank.ru | 'СберБанк и СберБанк Онлайн'
+yinkoff.ru | observed | tinkoff.ru | 'Тинькофф Банк'
+thinkoff.ru | observed | tinkoff.ru | 'Т‑Банк — финансовые услуги для физических и юридических лиц' on shared hosting
+theozon.ru | observed | ozon.ru | an 'Authorization' page
+tbankapp.ru | observed | tbank.ru | 'T-Bank — Ввод ключа'
+vtb-team.ru | observed | vtb.ru | a copy of VTB's home page
+avito.site | observed | avito.ru | 'AVITA - Площадка объявлений'
+
+# ── The brand's .ru address under ru.com / ru.net, and the brand with its country ──
+gosuslugi.ru.com | ru_com | gosuslugi.ru | Cloudflare name servers
+sberbank.ru.com | ru_com | sberbank.ru | constructed
+ozon.ru.net | ru_com | ozon.ru | ru.net
+avito-ru.com | combosquat | avito.ru | brand + its country
+ozon-ru.com | combosquat | ozon.ru | brand + its country
+sberbank-ru.com | combosquat | sberbank.ru | brand + its country
+wildberries-ru.com | combosquat | wildberries.ru | brand + its country
+
+# ── Typos the rule gives up (counted, not expected to be caught) ──
+gmai.com | known_miss | gmail.com | omission: 4 letters, as dense as 'mail'
+appl.com | known_miss | apple.com | omission: 4 letters
+yaho.com | known_miss | yahoo.com | omission: 4 letters
+qooqle.com | known_miss | google.com | two substitutions in 6 letters
+prydal.com | known_miss | paypal.com | two substitutions in 6 letters
+yahuu.com | known_miss | yahoo.com | two substitutions in 5 letters

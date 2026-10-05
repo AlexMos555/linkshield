@@ -50,7 +50,11 @@ NOTES = {
     ),
     "ml_model_auc": "Held-out test AUC of the deployed model (data/model_meta.json).",
     "blocklist_entries": "Entries in the blocklist phones download right now; null if it is unavailable.",
-    "brand_targets_monitored": "Brands in the typosquat list the scorer loads (data/typosquat_targets.json).",
+    "brand_targets_monitored": (
+        "Brands the typosquat rule compares names against: the global list's entries "
+        "(data/typosquat_targets.json) plus the Russian brand groups (data/typosquat_targets_ru.json), "
+        "each group counted once however many spellings it lists (sber, sberbank, сбербанк)."
+    ),
 }
 
 
@@ -120,9 +124,13 @@ def measured_false_positive_rate(report: Optional[dict] = None) -> Optional[floa
 
 
 def brand_targets_monitored() -> Optional[int]:
+    """Global entries plus Russian brand groups — not TYPOSQUAT_TARGETS,
+    which also holds every other spelling of a Russian brand (sber,
+    sberbank, сбербанк; tinkoff, tbank, тинькофф) and would count one bank
+    three times."""
     try:
-        from api.services.scoring import TYPOSQUAT_TARGETS
-        return len(TYPOSQUAT_TARGETS) or None
+        from api.services.scoring import GLOBAL_TYPOSQUAT_TARGETS, RU_BRAND_GROUPS
+        return (len(GLOBAL_TYPOSQUAT_TARGETS) + len(RU_BRAND_GROUPS)) or None
     except Exception:
         return None
 

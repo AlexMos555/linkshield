@@ -9,24 +9,35 @@
  * detail only for a code nobody has mapped yet, so a line never renders
  * blank or as a raw key.
  *
- * The API codes and their grouping mirror mobile/src/utils/reason-label.ts,
- * and the texts are the app's own translations: a person does not need to
- * know whether malware intel came from URLhaus or ThreatFox, only that the
- * site is "known to spread malware".
+ * The API codes and most groups mirror mobile/src/utils/reason-label.ts, and
+ * many texts are the app's own translations: a person does not need to know
+ * whether malware intel came from URLhaus or ThreatFox, only that the site
+ * is "known to spread malware". Three codes have their own group here and
+ * not (yet) in the app: ipqs_high_risk, new_certificate, invalid_certificate.
  *
- * Classic content script (manifest content_scripts, before index.js). The
- * only thing it publishes on the shared isolated-world global is
- * window.__cleanwayReasons. scripts/test-extension-core.mjs checks that every
- * key below exists in all ten locales.
+ * The block page (content/block-page.js) groups its evidence cards by the
+ * same codes: the card title is the reason line and its body is the matching
+ * extension.evidence text.
+ *
+ * Classic content script (manifest content_scripts, before block-page.js and
+ * index.js). The only thing it publishes on the shared isolated-world global
+ * is window.__cleanwayReasons. scripts/test-extension-core.mjs checks that
+ * every key below exists in all ten locales, and that every code the API and
+ * both offline scorers can emit is mapped here.
  */
 (function () {
   "use strict";
 
+  // A group is one badge line and one block-page card, so its text must be
+  // true of EVERY code in it: the card can be the whole visible reason for a
+  // block. When a code only resembles its neighbours (a risk score is not a
+  // report; a renewed certificate is not a new site), it gets its own group.
   var REASON_KEYS = Object.freeze({
     // Threat-intelligence blocklists (API)
     safe_browsing: "flagged_dangerous",
     ipqs_phishing: "flagged_phishing",
-    ipqs_high_risk: "flagged_phishing",
+    // A numeric IPQualityScore estimate above 75, not a report of phishing
+    ipqs_high_risk: "high_risk_score",
     phishtank: "flagged_phishing",
     phishstats: "flagged_phishing",
     surbl: "on_blocklists",
@@ -60,8 +71,10 @@
     // Freshness
     domain_new: "very_new_site",
     domain_very_new: "very_new_site",
-    new_certificate: "very_new_site",
     free_ssl_new_domain: "very_new_site",
+    // Certificate issued under 7 days ago: an old site that renewed its
+    // Let's Encrypt certificate gets this too, so it is not "a new site"
+    new_certificate: "new_certificate",
     // Address shape
     suspicious_keyword: "scam_words",
     keyword: "scam_words",
@@ -98,6 +111,7 @@
     hex_encoding: "random_name",
     // Suspicious infrastructure
     no_mx_record: "not_a_real_business",
+    // Both are also how CDNs run; the line says "scam networks ALSO use it"
     low_dns_ttl: "shifty_setup",
     many_a_records: "shifty_setup",
     excessive_subdomains: "padded_address",
@@ -110,7 +124,44 @@
     known_legitimate: "well_known_site",
     tranco_popularity: "popular_site",
     ml_safe_override: "detector_safe",
+    user_whitelist: "on_your_trusted_list",
+    // Our own list (the API aliases it to multi_blocklist for this client,
+    // api/routers/public.py _LEGACY_CODE_ALIASES, but a newer build may not)
+    cleanway_blocklist: "on_cleanway_list",
+    // Expired, self-signed or issued for another name. The API sends it as
+    // no_https to clients without X-Cleanway-Install (api/routers/public.py
+    // _LEGACY_CODE_ALIASES); a site with a broken certificate still HAS https.
+    invalid_certificate: "broken_certificate",
+    // What a verdict could not see (api/services/verdict_basis.py
+    // INFORMATIONAL_REASONS). The public API sends one of these to this
+    // client when nothing else explains the verdict.
+    domain_not_found: "site_not_found",
+    unreachable_from_scanner: "unreachable_abroad",
+    checks_incomplete: "checks_incomplete",
+    partial_analysis: "checks_incomplete",
+    analysis_error: "checks_incomplete",
+    user_content_platform: "user_content_platform",
+    // The analyzer refused the address itself
+    invalid_domain: "invalid_address",
+    invalid: "invalid_address",
+    ssrf_blocked: "private_network",
+    // The AI second opinion on a borderline verdict; its detail is the
+    // model's own English sentence, so it gets a neutral line instead
+    llm_judge: "ai_second_look",
   });
+
+  /**
+   * @param {{ signal?: string }} reason
+   * @returns {string|null} the reason group (a key of extension.reason and
+   *   extension.evidence), or null for a code nobody has mapped yet
+   */
+  function reasonGroup(reason) {
+    var signal = reason && reason.signal;
+    if (typeof signal !== "string" || !Object.prototype.hasOwnProperty.call(REASON_KEYS, signal)) {
+      return null;
+    }
+    return REASON_KEYS[signal];
+  }
 
   /**
    * @param {{ signal?: string, detail?: string }} reason
@@ -119,13 +170,11 @@
    */
   function reasonText(reason) {
     var detail = (reason && reason.detail) || "";
-    var signal = reason && reason.signal;
-    if (typeof signal !== "string" || !Object.prototype.hasOwnProperty.call(REASON_KEYS, signal)) {
-      return detail;
-    }
+    var group = reasonGroup(reason);
+    if (!group) return detail;
     // Built at run time, so the static key scan in test-extension-core.mjs
     // cannot see it; that suite checks every REASON_KEYS value instead.
-    var messageKey = "reason_" + REASON_KEYS[signal];
+    var messageKey = "reason_" + group;
     try {
       return chrome.i18n.getMessage(messageKey) || detail;
     } catch (e) {
@@ -133,5 +182,5 @@
     }
   }
 
-  window.__cleanwayReasons = Object.freeze({ text: reasonText, keys: REASON_KEYS });
+  window.__cleanwayReasons = Object.freeze({ text: reasonText, group: reasonGroup, keys: REASON_KEYS });
 })();

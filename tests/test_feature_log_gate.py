@@ -41,6 +41,8 @@ def test_feature_log_writes_when_enabled(tmp_path, monkeypatch):
     assert row["domain"] == "phish.example.com"
     assert row["score"] == 80
     assert row["features"]["entropy"] == 3.1
+    # Tells a retrain which feature definitions the row was computed with.
+    assert row["features_version"] == uf.FEATURES_VERSION
 
 
 def test_feature_log_rotates_at_size_cap(tmp_path, monkeypatch):

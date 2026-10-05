@@ -29,7 +29,7 @@
     "message": "Некоторые ссылки подозрительные"
   },
   "status_warning_subtitle": {
-    "message": "На странице $N$ ссылок, которые стоит проверить внимательнее",
+    "message": "Ссылок на странице, которые стоит проверить внимательнее: $N$",
     "placeholders": {
       "n": {
         "content": "$1"
@@ -110,10 +110,10 @@
     "message": "Привет! Я Cleanway."
   },
   "onboarding_tip": {
-    "message": "Я проверяю каждую ссылку на странице. Опасные подсвечиваю красным. Если сомневаешься — правый клик → \"Проверить через Cleanway\"."
+    "message": "Я проверяю каждую ссылку на странице и отмечаю опасные красным. Если сомневаетесь, нажмите на ссылку правой кнопкой мыши и выберите «Проверить ссылку в Cleanway»."
   },
   "aha_found_scams": {
-    "message": "Нашёл $N$ мошеннических ссылок, которые пропустил браузер",
+    "message": "Мошеннических ссылок, которые пропустил браузер: $N$",
     "placeholders": {
       "n": {
         "content": "$1"
@@ -285,8 +285,78 @@
       }
     }
   },
+  "time_just_now": {
+    "message": "только что"
+  },
+  "time_minutes": {
+    "message": "$N$ мин",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_hours": {
+    "message": "$N$ ч",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_days": {
+    "message": "$N$ дн.",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_no_tab": {
+    "message": "Сначала откройте страницу"
+  },
+  "action_trust_invalid": {
+    "message": "Эту страницу нельзя добавить"
+  },
+  "action_trust_done": {
+    "message": "$DOMAIN$ добавлен в надёжные сайты",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_error": {
+    "message": "Не удалось сохранить"
+  },
+  "action_report_no_tab": {
+    "message": "Сначала откройте страницу"
+  },
+  "action_report_invalid": {
+    "message": "Об этой странице нельзя сообщить"
+  },
+  "action_report_done": {
+    "message": "Спасибо, сообщение отправлено"
+  },
+  "action_report_throttled": {
+    "message": "Слишком много сообщений, попробуйте позже"
+  },
+  "action_report_error": {
+    "message": "Не удалось отправить сообщение"
+  },
+  "tip_dismiss": {
+    "message": "Скрыть"
+  },
   "trust_footer": {
     "message": "Мы проверяем адреса сайтов, а не полные ссылки и не содержимое страниц"
+  },
+  "confidence_chip": {
+    "message": "Уверенность: $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
   },
   "block_title": {
     "message": "СТОП"
@@ -303,7 +373,7 @@
     }
   },
   "block_brand_impersonation": {
-    "message": "Этот сайт притворяется $BRAND$",
+    "message": "Этот сайт выдаёт себя за $BRAND$",
     "placeholders": {
       "brand": {
         "content": "$1"
@@ -320,16 +390,16 @@
     "message": "Мошенник украдёт всё, что вы введёте"
   },
   "block_scheme_step3": {
-    "message": "С вашего счёта снимут деньги или украдут личность"
+    "message": "С вашего счёта спишут деньги или воспользуются вашими данными"
   },
   "block_back_button": {
-    "message": "Вернуться в безопасность"
+    "message": "Уйти с этого сайта"
   },
   "block_proceed_button": {
     "message": "Я понимаю риск — открыть всё равно"
   },
   "block_proceed_countdown": {
-    "message": "Подождите $N$ секунд…",
+    "message": "Подождите $N$ сек…",
     "placeholders": {
       "n": {
         "content": "$1"
@@ -340,7 +410,7 @@
     "message": "Защищает Cleanway. Мы никогда не продаём ваши данные."
   },
   "block_voice_alert": {
-    "message": "Стой. Сайт $DOMAIN$ опасен. Не вводи пароль.",
+    "message": "Стоп. Сайт $DOMAIN$ опасен. Не вводите пароль.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -349,6 +419,15 @@
   },
   "block_evidence_heading": {
     "message": "Почему мы заблокировали этот сайт"
+  },
+  "block_explainer_heading": {
+    "message": "Что это за мошенничество?"
+  },
+  "block_evidence_other_title": {
+    "message": "Тревожный признак"
+  },
+  "block_evidence_other_body": {
+    "message": "Наши проверки нашли у этого сайта кое-что необычное."
   },
   "welcome_hero_title": {
     "message": "Вы под защитой"
@@ -388,6 +467,27 @@
   },
   "welcome_trust_footer": {
     "message": "Блокировка бесплатна навсегда. Мы никогда не продаём ваши данные."
+  },
+  "welcome_page_title": {
+    "message": "Добро пожаловать в Cleanway"
+  },
+  "welcome_persona_title": {
+    "message": "Кто чаще всего пользуется этим устройством?"
+  },
+  "welcome_persona_regular": {
+    "message": "Я — обычный режим"
+  },
+  "welcome_persona_granny": {
+    "message": "Мама, папа, бабушка или дедушка"
+  },
+  "welcome_persona_kids": {
+    "message": "Ребёнок"
+  },
+  "welcome_persona_pro": {
+    "message": "Специалист"
+  },
+  "welcome_persona_hint": {
+    "message": "От этого зависит, как Cleanway объясняет предупреждения. Поменять можно в настройках."
   },
   "badge_label_safe": {
     "message": "Безопасно"
@@ -671,7 +771,7 @@
     "message": "Адрес необычно длинный и запутанный"
   },
   "reason_many_redirects": {
-    "message": "Ссылка прыгает через несколько сайтов"
+    "message": "Ссылка перенаправляет на другой адрес"
   },
   "reason_risky_ending": {
     "message": "Окончание домена, которое любят мошенники"
@@ -698,12 +798,655 @@
     "message": "Не настроен как сайт настоящей компании"
   },
   "reason_shifty_setup": {
-    "message": "Сайт постоянно меняет адрес — частый приём мошенников"
+    "message": "Необычная настройка серверов — такую используют и мошеннические сети"
   },
   "reason_padded_address": {
     "message": "В адрес добавлены лишние части, чтобы спрятать настоящее имя"
   },
   "reason_shared_hosting": {
-    "message": "Размещён на бесплатном хостинге, где сайт может сделать кто угодно"
+    "message": "Размещён на сервисе, где сайт может сделать кто угодно"
+  },
+  "reason_invalid_address": {
+    "message": "Адрес записан неправильно"
+  },
+  "reason_private_network": {
+    "message": "Адрес ведёт во внутреннюю сеть, а не в открытый интернет"
+  },
+  "reason_on_your_trusted_list": {
+    "message": "Вы сами отметили этот сайт как надёжный"
+  },
+  "reason_ai_second_look": {
+    "message": "Наш ИИ-помощник взвесил признаки угрозы"
+  },
+  "reason_on_cleanway_list": {
+    "message": "Есть в списке мошеннических сайтов Cleanway"
+  },
+  "reason_site_not_found": {
+    "message": "Такого адреса не существует"
+  },
+  "reason_unreachable_abroad": {
+    "message": "Наш сервер за границей не смог открыть сайт. Многие банки и госсайты не пускают зарубежные адреса, так что само по себе это не признак опасности"
+  },
+  "reason_checks_incomplete": {
+    "message": "Часть проверок не успела завершиться, поэтому вывод менее точный"
+  },
+  "reason_user_content_platform": {
+    "message": "Здесь любой может сделать свою страницу — и мошенники тоже"
+  },
+  "reason_high_risk_score": {
+    "message": "Сервис проверки на мошенничество оценивает этот сайт как очень рискованный"
+  },
+  "reason_new_certificate": {
+    "message": "Сертификату безопасности сайта всего несколько дней"
+  },
+  "reason_broken_certificate": {
+    "message": "Сертификат безопасности сайта недействителен"
+  },
+  "evidence_flagged_dangerous": {
+    "message": "Google Safe Browsing — список, по которому Chrome, Firefox и Safari предупреждают людей, — отмечает этот сайт как опасный."
+  },
+  "evidence_flagged_phishing": {
+    "message": "Этот сайт есть в антифишинговых базах — списках сайтов, которые выманивают пароли или данные карт."
+  },
+  "evidence_on_blocklists": {
+    "message": "Этот сайт уже внесён в общедоступные списки мошеннических и спам-сайтов."
+  },
+  "evidence_threat_reports": {
+    "message": "Этот сайт упоминается в открытых отчётах об интернет-атаках."
+  },
+  "evidence_spreads_malware": {
+    "message": "Этот сайт уже замечали за распространением программ, которые заражают компьютеры и телефоны."
+  },
+  "evidence_imitates_brand": {
+    "message": "Адрес похож на адрес известной компании, но ей не принадлежит."
+  },
+  "evidence_lookalike_letters": {
+    "message": "Некоторые буквы в адресе только похожи на обычные. Так прячут настоящий адрес."
+  },
+  "evidence_fake_brand_address": {
+    "message": "Известное название стоит в начале адреса, но сам сайт принадлежит кому-то другому."
+  },
+  "evidence_copies_brand_icon": {
+    "message": "Страница показывает значок настоящей компании, но находится по чужому адресу — частый приём для кражи паролей."
+  },
+  "evidence_no_https": {
+    "message": "Всё, что вы вводите на этом сайте, передаётся без защиты, и это могут перехватить."
+  },
+  "evidence_missing_protections": {
+    "message": "На сайте нет базовой защиты, которую обычно ставят настоящие компании."
+  },
+  "evidence_raw_ip_address": {
+    "message": "Настоящие компании дают сайтам имя. Мошеннические страницы часто обходятся набором цифр."
+  },
+  "evidence_unusual_connection": {
+    "message": "Сайт подключается необычным способом, который обычным сайтам почти не нужен."
+  },
+  "evidence_hidden_destination": {
+    "message": "Ссылка прячет адрес, куда она на самом деле ведёт."
+  },
+  "evidence_very_new_site": {
+    "message": "Мошеннические сайты обычно живут всего несколько дней, поэтому совсем новый адрес настораживает."
+  },
+  "evidence_scam_words": {
+    "message": "В адресе есть слова вроде «login» или «secure» — мошенники добавляют их, чтобы выглядеть официально."
+  },
+  "evidence_carries_personal_data": {
+    "message": "Сама ссылка содержит ваш email или ключ для входа. Любой, кто увидит ссылку, сможет ими воспользоваться."
+  },
+  "evidence_long_complex_address": {
+    "message": "Адрес длинный и запутанный — так труднее понять, куда он на самом деле ведёт."
+  },
+  "evidence_many_redirects": {
+    "message": "Ссылка устроена так, чтобы перенаправить вас на другой адрес, — так часто скрывают, куда она ведёт на самом деле."
+  },
+  "evidence_risky_ending": {
+    "message": "Адрес заканчивается на зону (например, .xyz или .top), где особенно много мошеннических сайтов."
+  },
+  "evidence_risky_registrar": {
+    "message": "Сайт зарегистрирован через сервис, который часто выбирают мошенники."
+  },
+  "evidence_random_name": {
+    "message": "Название похоже на случайный набор букв — так выглядят сайты, которые мошенники штампуют на один раз."
+  },
+  "evidence_detector_suspicious": {
+    "message": "Наш детектор, обученный на тысячах настоящих и мошеннических сайтов, находит этот похожим на мошеннические."
+  },
+  "evidence_not_a_real_business": {
+    "message": "У сайта нет рабочей почты, а у настоящих компаний она почти всегда есть."
+  },
+  "evidence_shifty_setup": {
+    "message": "Адрес сайта может очень быстро переключаться между многими серверами. Так делают и крупные сервисы, но мошенники — чтобы их сайты было труднее закрыть."
+  },
+  "evidence_padded_address": {
+    "message": "Перед настоящим именем сайта нагромождены лишние части, чтобы его было трудно заметить."
+  },
+  "evidence_shared_hosting": {
+    "message": "На этом сервисе любой может за несколько минут сделать сайт — и мошенники тоже."
+  },
+  "evidence_on_cleanway_list": {
+    "message": "Этот сайт есть в собственном списке известных мошеннических сайтов Cleanway."
+  },
+  "evidence_site_not_found": {
+    "message": "Сейчас по этому адресу нет работающего сайта. Проверьте, правильно ли написан адрес."
+  },
+  "evidence_unreachable_abroad": {
+    "message": "Наш сервер за границей не смог открыть этот сайт, поэтому саму страницу мы не проверили."
+  },
+  "evidence_checks_incomplete": {
+    "message": "Не все проверки успели завершиться, поэтому вывод основан на меньшем числе признаков."
+  },
+  "evidence_user_content_platform": {
+    "message": "На этом сервисе любой может публиковать страницы. За эту конкретную страницу мы поручиться не можем."
+  },
+  "evidence_invalid_address": {
+    "message": "Сам адрес составлен неправильно. Это может быть ловушка для тех, кто копирует ссылки."
+  },
+  "evidence_private_network": {
+    "message": "Обычные открытые сайты туда не ведут, поэтому мы его не открывали."
+  },
+  "evidence_ai_second_look": {
+    "message": "Когда признаки противоречат друг другу, их разбирает ИИ-модель и может немного поправить вывод."
+  },
+  "evidence_well_known_site": {
+    "message": "Это один из известных сайтов, которые мы знаем как настоящие."
+  },
+  "evidence_popular_site": {
+    "message": "Этот сайт входит в список самых посещаемых сайтов мира. Это говорит в его пользу, но другие тревожные признаки всё равно важны."
+  },
+  "evidence_detector_safe": {
+    "message": "Наш детектор, обученный на тысячах настоящих и мошеннических сайтов, находит этот похожим на настоящие."
+  },
+  "evidence_on_your_trusted_list": {
+    "message": "Вы сами добавили этот сайт в надёжные."
+  },
+  "evidence_high_risk_score": {
+    "message": "Сервис, который оценивает сайты на мошенничество, поставил этому сайту высокую оценку риска. Это расчёт, а не подтверждённая жалоба."
+  },
+  "evidence_new_certificate": {
+    "message": "Мошеннические сайты часто появляются с совсем свежим сертификатом. Но и настоящие сайты регулярно его обновляют, так что само по себе это мало что значит."
+  },
+  "evidence_broken_certificate": {
+    "message": "Сертификат, который подтверждает, кто стоит за сайтом, просрочен, выдан не доверенным центром или принадлежит другому адресу. Браузер тоже предупредит об этом."
+  },
+  "weekly_title": {
+    "message": "Моя неделя"
+  },
+  "weekly_checked": {
+    "message": "Проверено"
+  },
+  "weekly_blocked": {
+    "message": "Заблокировано"
+  },
+  "weekly_warnings": {
+    "message": "Предупреждения"
+  },
+  "weekly_top_threats": {
+    "message": "Самые частые угрозы"
+  },
+  "weekly_no_threats": {
+    "message": "На этой неделе мошеннических сайтов не отмечено"
+  },
+  "weekly_on_device": {
+    "message": "Отчёт составлен на вашем устройстве"
+  },
+  "score_title": {
+    "message": "Мой уровень защиты"
+  },
+  "score_label_excellent": {
+    "message": "Отлично"
+  },
+  "score_label_good": {
+    "message": "Хорошо"
+  },
+  "score_label_fair": {
+    "message": "Средне"
+  },
+  "score_label_low": {
+    "message": "Есть над чем поработать"
+  },
+  "score_breakdown": {
+    "message": "Из чего складывается оценка"
+  },
+  "score_on_device": {
+    "message": "Посчитано на вашем устройстве"
+  },
+  "score_factor_active_days": {
+    "message": "Дней с Cleanway: $DAYS$",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_active_days_of_week": {
+    "message": "Дней с Cleanway: $DAYS$ из 7",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_no_dangerous": {
+    "message": "Ни одного опасного сайта за 30 дней"
+  },
+  "score_factor_dangerous_visits": {
+    "message": "Открыто опасных сайтов: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_audit_avg": {
+    "message": "Средняя оценка приватности сайтов: $SCORE$",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_trusted_sites": {
+    "message": "Сайтов в вашем списке надёжных: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_overrides": {
+    "message": "Сколько раз вы прошли мимо предупреждения: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_checks": {
+    "message": "Всего проверок: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "breach_title": {
+    "message": "Проверка утечки email"
+  },
+  "breach_not_available": {
+    "message": "Проверка email по известным утечкам пока недоступна. Мы ничего не проверяли и не просим ваш email."
+  },
+  "breach_works_now": {
+    "message": "Что уже работает: когда вы вводите пароль на любом сайте, Cleanway предупредит, если этот пароль уже попадал в известные утечки."
+  },
+  "breach_close": {
+    "message": "Закрыть"
+  },
+  "pwned_title": {
+    "message": "Этот пароль есть в известной утечке данных."
+  },
+  "pwned_body": {
+    "message": "Смените его на этом сайте и больше нигде не используйте. Сколько раз он встречался в публичных утечках: $COUNT$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pwned_dismiss": {
+    "message": "Понятно"
+  },
+  "webmail_scanning": {
+    "message": "Cleanway проверяет это письмо…"
+  },
+  "webmail_rate_limited": {
+    "message": "Слишком много проверок — подождите"
+  },
+  "webmail_rate_limited_detail": {
+    "message": "Сейчас из этой сети слишком много проверок. Попробуйте через минуту."
+  },
+  "webmail_error": {
+    "message": "Cleanway не смог проверить это письмо"
+  },
+  "webmail_error_detail": {
+    "message": "Проверьте подключение к интернету и откройте письмо ещё раз."
+  },
+  "webmail_dangerous": {
+    "message": "Похоже на мошенничество — не нажимайте на ссылки"
+  },
+  "webmail_suspicious": {
+    "message": "Подозрительно — прежде чем что-то делать, проверьте отправителя"
+  },
+  "webmail_safe": {
+    "message": "Выглядит безопасно — признаков мошенничества не найдено"
+  },
+  "webmail_dismiss": {
+    "message": "Закрыть"
+  },
+  "webmail_finding_url_reputation": {
+    "message": "Ссылка в письме ведёт на известный опасный сайт"
+  },
+  "webmail_finding_auth_fail": {
+    "message": "Письмо не прошло проверку, которая подтверждает настоящего отправителя"
+  },
+  "webmail_finding_body_pattern": {
+    "message": "В тексте есть фразы, которые часто встречаются в письмах мошенников"
+  },
+  "webmail_finding_link_text_mismatch": {
+    "message": "Ссылка показывает один адрес, а ведёт на другой"
+  },
+  "webmail_safe_minor": {
+    "message": "Выглядит безопасно — серьёзных признаков мошенничества нет"
+  },
+  "webmail_finding_sender_check": {
+    "message": "Внимательно проверьте адрес отправителя"
+  },
+  "webmail_finding_auth_unconfirmed": {
+    "message": "Отправителя не удалось полностью подтвердить"
+  },
+  "webmail_finding_brand_from_freemail": {
+    "message": "Письмо подписано именем известной компании, но отправлено с бесплатной почты"
+  },
+  "webmail_finding_brand_domain_mismatch": {
+    "message": "Письмо подписано именем известной компании, но пришло не с её адреса"
+  },
+  "webmail_finding_sender_non_ascii": {
+    "message": "В адресе отправителя есть нелатинские буквы — убедитесь, что адрес настоящий"
+  },
+  "webmail_finding_reply_to_mismatch": {
+    "message": "Ответ на это письмо уйдёт не отправителю, а на другой адрес"
+  },
+  "webmail_finding_spf_softfail": {
+    "message": "Почтовый сервер отправителя подтверждён не полностью"
+  },
+  "webmail_finding_urgency": {
+    "message": "Письмо торопит вас что-то сделать"
+  },
+  "webmail_finding_credential_request": {
+    "message": "Письмо просит пароль, код или данные карты"
+  },
+  "webmail_finding_money_request": {
+    "message": "Письмо просит денег или обещает выигрыш"
+  },
+  "webmail_finding_account_threat": {
+    "message": "Письмо сообщает о блокировке аккаунта или подозрительном входе"
+  },
+  "options_page_title": {
+    "message": "Настройки Cleanway"
+  },
+  "options_page_subtitle": {
+    "message": "Выберите, как Cleanway вас защищает"
+  },
+  "options_skill_heading": {
+    "message": "Кто пользуется этим браузером"
+  },
+  "options_skill_subtitle": {
+    "message": "Для каждого Cleanway объясняет предупреждения по-своему. Поменять можно в любой момент."
+  },
+  "options_skill_kids": {
+    "message": "Ребёнок"
+  },
+  "options_skill_kids_desc": {
+    "message": "Большой знак «СТОП» на мошеннических сайтах — без кнопки «всё равно открыть»."
+  },
+  "options_skill_regular": {
+    "message": "Обычный"
+  },
+  "options_skill_regular_desc": {
+    "message": "Подходит большинству. Понятные предупреждения с объяснением, чем опасен сайт."
+  },
+  "options_skill_granny": {
+    "message": "Бабушка или дедушка"
+  },
+  "options_skill_granny_desc": {
+    "message": "Крупный текст, а предупреждение читается вслух."
+  },
+  "options_skill_pro": {
+    "message": "Специалист"
+  },
+  "options_skill_pro_desc": {
+    "message": "Показывает оценку риска и ставит признаки угрозы на первое место."
+  },
+  "options_font_scale": {
+    "message": "Размер текста"
+  },
+  "options_font_scale_desc": {
+    "message": "Крупнее текст в окне Cleanway"
+  },
+  "options_voice": {
+    "message": "Голосовые предупреждения"
+  },
+  "options_voice_desc": {
+    "message": "Читать предупреждение вслух, когда Cleanway блокирует мошеннический сайт"
+  },
+  "options_pin": {
+    "message": "Родительский PIN-код"
+  },
+  "options_pin_desc": {
+    "message": "Пока не работает: режим «Ребёнок» можно выключить без PIN-кода. Что режим «Ребёнок» уже делает: на заблокированной странице нет кнопки «всё равно открыть»."
+  },
+  "options_pin_set": {
+    "message": "Задать PIN"
+  },
+  "options_pin_update": {
+    "message": "Сменить PIN"
+  },
+  "options_pin_clear": {
+    "message": "Сбросить"
+  },
+  "options_pin_invalid": {
+    "message": "PIN-код — ровно 4 цифры"
+  },
+  "options_pin_clear_confirm": {
+    "message": "Сбросить родительский PIN-код?"
+  },
+  "options_voice_on": {
+    "message": "голос вкл."
+  },
+  "options_voice_off": {
+    "message": "голос выкл."
+  },
+  "options_source_device": {
+    "message": "Задано на этом устройстве"
+  },
+  "options_source_account": {
+    "message": "Из вашего аккаунта"
+  },
+  "options_protection": {
+    "message": "Защита"
+  },
+  "options_auto_scan": {
+    "message": "Проверять ссылки автоматически"
+  },
+  "options_auto_scan_desc": {
+    "message": "Проверять все ссылки на каждой странице"
+  },
+  "options_badges": {
+    "message": "Значки у ссылок"
+  },
+  "options_badges_desc": {
+    "message": "Показывать рядом с каждой ссылкой, безопасна ли она"
+  },
+  "options_block": {
+    "message": "Блокировать опасные страницы"
+  },
+  "options_block_desc": {
+    "message": "Показывать предупреждение, прежде чем откроется опасный сайт"
+  },
+  "options_privacy": {
+    "message": "Приватность"
+  },
+  "options_auto_audit": {
+    "message": "Проверка приватности на каждом новом сайте"
+  },
+  "options_auto_audit_desc": {
+    "message": "Показывать, что каждый новый сайт собирает о вас"
+  },
+  "options_anon_stats": {
+    "message": "Анонимная статистика"
+  },
+  "options_anon_stats_desc": {
+    "message": "Помогать улучшать Cleanway, отправляя обезличенные итоговые цифры"
+  },
+  "options_stats": {
+    "message": "Статистика"
+  },
+  "options_lists": {
+    "message": "Ваши списки"
+  },
+  "options_blocklist": {
+    "message": "Заблокированные сайты"
+  },
+  "options_blocklist_desc": {
+    "message": "Сайты, которые нужно всегда блокировать (по одному в строке)"
+  },
+  "options_allowlist": {
+    "message": "Надёжные сайты"
+  },
+  "options_allowlist_desc": {
+    "message": "Сайты, которые никогда не нужно помечать (по одному в строке)"
+  },
+  "options_save_lists": {
+    "message": "Сохранить списки"
+  },
+  "options_saved": {
+    "message": "Сохранено ✓"
+  },
+  "options_tracking_heading": {
+    "message": "Защита от слежки"
+  },
+  "options_clean_tracking": {
+    "message": "Убирать метки слежки из ссылок"
+  },
+  "options_clean_tracking_desc": {
+    "message": "Автоматически убирать fbclid, utm_* и gclid из адресов"
+  },
+  "options_block_miners": {
+    "message": "Блокировать криптомайнеры"
+  },
+  "options_block_miners_desc": {
+    "message": "Не давать сайтам добывать криптовалюту на вашем компьютере"
+  },
+  "options_advanced": {
+    "message": "Дополнительно"
+  },
+  "options_api_server": {
+    "message": "Сервер API"
+  },
+  "options_api_server_desc": {
+    "message": "Для разработчиков. По умолчанию: https://api.cleanway.ai"
+  },
+  "options_save": {
+    "message": "Сохранить"
+  },
+  "options_referral": {
+    "message": "Пригласить друга"
+  },
+  "options_referral_link": {
+    "message": "Ваша ссылка-приглашение"
+  },
+  "options_referral_link_desc": {
+    "message": "Поделитесь ею — друзья получат 7 дней бесплатно"
+  },
+  "options_copied": {
+    "message": "Скопировано ✓"
+  },
+  "options_redeem": {
+    "message": "Ввести код"
+  },
+  "options_redeem_desc": {
+    "message": "Получили код от друга? Введите его здесь"
+  },
+  "options_redeem_btn": {
+    "message": "Применить"
+  },
+  "options_redeem_placeholder": {
+    "message": "КОД"
+  },
+  "options_redeem_saved": {
+    "message": "Код $CODE$ сохранён",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_data": {
+    "message": "Данные"
+  },
+  "options_clear": {
+    "message": "Очистить историю на этом устройстве"
+  },
+  "options_clear_desc": {
+    "message": "Удалить всю историю проверок, которая хранится на этом устройстве"
+  },
+  "options_clear_btn": {
+    "message": "Очистить"
+  },
+  "options_clear_confirm": {
+    "message": "Удалить всю историю проверок на этом устройстве? Отменить это нельзя."
+  },
+  "options_export": {
+    "message": "Выгрузить мои данные"
+  },
+  "options_export_desc": {
+    "message": "Скачать всё, что Cleanway хранит на этом устройстве, файлом JSON"
+  },
+  "options_export_btn": {
+    "message": "Выгрузить"
+  },
+  "options_settings_saved": {
+    "message": "Настройки сохранены"
+  },
+  "options_family_default_name": {
+    "message": "Моя семья"
+  },
+  "options_family_role_owner": {
+    "message": "владелец"
+  },
+  "options_family_role_member": {
+    "message": "участник"
+  },
+  "options_family_members_count": {
+    "message": "Участников: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_family_no_key": {
+    "message": "ключа пока нет"
+  },
+  "options_family_unknown_domain": {
+    "message": "(сайт неизвестен)"
+  },
+  "options_family_alert_blocked": {
+    "message": "заблокирован"
+  },
+  "options_family_create_failed": {
+    "message": "Не удалось создать семью. Попробуйте чуть позже."
+  },
+  "options_family_join_invalid_input": {
+    "message": "Введите код и PIN-код из 4 цифр."
+  },
+  "options_family_join_failed": {
+    "message": "Приглашение неверное или устарело."
+  },
+  "options_family_invite_failed": {
+    "message": "Не удалось создать приглашение. Попробуйте чуть позже."
+  },
+  "options_family_invite_share": {
+    "message": "Приглашение в семью Cleanway\nКод: $CODE$\nPIN: $PIN$",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      },
+      "pin": {
+        "content": "$2"
+      }
+    }
+  },
+  "options_family_invite_qr_alt": {
+    "message": "QR-код приглашения в семью Cleanway"
   }
 }

@@ -285,8 +285,78 @@
       }
     }
   },
+  "time_just_now": {
+    "message": "الآن"
+  },
+  "time_minutes": {
+    "message": "$N$ دقيقة",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_hours": {
+    "message": "$N$ ساعة",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_days": {
+    "message": "$N$ يوم",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_no_tab": {
+    "message": "افتح صفحة أولًا"
+  },
+  "action_trust_invalid": {
+    "message": "لا يمكن إضافة هذه الصفحة"
+  },
+  "action_trust_done": {
+    "message": "تمت إضافة $DOMAIN$ إلى المواقع الموثوقة",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_error": {
+    "message": "تعذّر الحفظ"
+  },
+  "action_report_no_tab": {
+    "message": "افتح صفحة أولًا"
+  },
+  "action_report_invalid": {
+    "message": "لا يمكن الإبلاغ عن هذه الصفحة"
+  },
+  "action_report_done": {
+    "message": "شكرًا، تم الإبلاغ"
+  },
+  "action_report_throttled": {
+    "message": "بلاغات كثيرة جدًا، حاول لاحقًا"
+  },
+  "action_report_error": {
+    "message": "تعذّر إرسال البلاغ"
+  },
+  "tip_dismiss": {
+    "message": "إغلاق"
+  },
   "trust_footer": {
     "message": "نفحص عناوين المواقع، لا الروابط الكاملة ولا محتوى الصفحات"
+  },
+  "confidence_chip": {
+    "message": "الثقة: $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
   },
   "block_title": {
     "message": "قف"
@@ -350,6 +420,15 @@
   "block_evidence_heading": {
     "message": "لماذا حظرنا هذا الموقع"
   },
+  "block_explainer_heading": {
+    "message": "ما نوع هذا الاحتيال؟"
+  },
+  "block_evidence_other_title": {
+    "message": "علامة تحذير"
+  },
+  "block_evidence_other_body": {
+    "message": "وجدت فحوصاتنا شيئًا غير معتاد في هذا الموقع."
+  },
   "welcome_hero_title": {
     "message": "أنت محمي الآن"
   },
@@ -388,6 +467,27 @@
   },
   "welcome_trust_footer": {
     "message": "الحظر مجاني دائمًا. لا نبيع بياناتك أبدًا."
+  },
+  "welcome_page_title": {
+    "message": "مرحبًا بك في Cleanway"
+  },
+  "welcome_persona_title": {
+    "message": "من يستخدم هذا الجهاز غالبًا؟"
+  },
+  "welcome_persona_regular": {
+    "message": "أنا — الوضع العادي"
+  },
+  "welcome_persona_granny": {
+    "message": "أحد الوالدين أو الأجداد"
+  },
+  "welcome_persona_kids": {
+    "message": "طفل"
+  },
+  "welcome_persona_pro": {
+    "message": "مستخدم خبير"
+  },
+  "welcome_persona_hint": {
+    "message": "يحدد طريقة شرح التحذيرات. يمكنك تغييره في أي وقت من الإعدادات."
   },
   "badge_label_safe": {
     "message": "آمن"
@@ -671,7 +771,7 @@
     "message": "العنوان طويل ومعقّد بشكل غير عادي"
   },
   "reason_many_redirects": {
-    "message": "يقفز الرابط عبر عدة مواقع"
+    "message": "الرابط يحوّلك إلى عنوان آخر"
   },
   "reason_risky_ending": {
     "message": "يستخدم نهاية يفضّلها المحتالون"
@@ -698,12 +798,655 @@
     "message": "ليس مُعدًّا كموقع شركة حقيقية"
   },
   "reason_shifty_setup": {
-    "message": "يغيّر الموقع مكانه باستمرار — حيلة احتيال شائعة"
+    "message": "إعداد خوادم غير معتاد تستخدمه شبكات الاحتيال أيضًا"
   },
   "reason_padded_address": {
     "message": "العنوان محشوّ بأجزاء زائدة لإخفاء الاسم الحقيقي"
   },
   "reason_shared_hosting": {
-    "message": "مستضاف على خدمة مجانية يمكن لأي شخص إنشاء موقع عليها"
+    "message": "مستضاف على خدمة يمكن لأي شخص إنشاء موقع عليها"
+  },
+  "reason_invalid_address": {
+    "message": "العنوان غير مكتوب بشكل صحيح"
+  },
+  "reason_private_network": {
+    "message": "العنوان يقود إلى شبكة خاصة وليس إلى الإنترنت المفتوح"
+  },
+  "reason_on_your_trusted_list": {
+    "message": "وضعتَ علامة على هذا الموقع بأنه موثوق"
+  },
+  "reason_ai_second_look": {
+    "message": "قيّم مساعدنا بالذكاء الاصطناعي علامات الخطر"
+  },
+  "reason_on_cleanway_list": {
+    "message": "موجود في قائمة Cleanway للمواقع الاحتيالية"
+  },
+  "reason_site_not_found": {
+    "message": "هذا العنوان غير موجود"
+  },
+  "reason_unreachable_abroad": {
+    "message": "لم يتمكن خادمنا في الخارج من فتح الموقع. كثير من البنوك والمواقع الحكومية تحجب العناوين الأجنبية، لذلك لا يُعدّ هذا وحده علامة خطر"
+  },
+  "reason_checks_incomplete": {
+    "message": "لم تكتمل بعض الفحوصات، لذلك النتيجة أقل يقينًا"
+  },
+  "reason_user_content_platform": {
+    "message": "يمكن لأي شخص إنشاء صفحة على هذه الخدمة — والمحتالون أيضًا"
+  },
+  "reason_high_risk_score": {
+    "message": "خدمة لتقييم الاحتيال تصنّف هذا الموقع عالي الخطورة"
+  },
+  "reason_new_certificate": {
+    "message": "عمر شهادة الأمان لهذا الموقع أيام قليلة فقط"
+  },
+  "reason_broken_certificate": {
+    "message": "شهادة الأمان لهذا الموقع غير صالحة"
+  },
+  "evidence_flagged_dangerous": {
+    "message": "تصنّف Google Safe Browsing، وهي القائمة التي تستخدمها Chrome وFirefox وSafari لتحذير الناس، هذا الموقع على أنه خطير."
+  },
+  "evidence_flagged_phishing": {
+    "message": "هذا الموقع مدرج في قواعد بيانات مكافحة التصيّد — قوائم بمواقع تخدع الناس لسرقة كلمات المرور أو بيانات البطاقات."
+  },
+  "evidence_on_blocklists": {
+    "message": "أدرج باحثو الأمان هذا الموقع بالفعل في قوائم مواقع الاحتيال والرسائل المزعجة."
+  },
+  "evidence_threat_reports": {
+    "message": "يذكر باحثو الأمان هذا الموقع في تقاريرهم عن الهجمات."
+  },
+  "evidence_spreads_malware": {
+    "message": "ضُبط هذا الموقع من قبل وهو ينشر برامج تُصيب أجهزة الكمبيوتر والهواتف."
+  },
+  "evidence_imitates_brand": {
+    "message": "يشبه العنوان عنوان شركة معروفة، لكنه لا يخصها."
+  },
+  "evidence_lookalike_letters": {
+    "message": "بعض الحروف في العنوان تبدو فقط كالحروف العادية. هكذا يُخفى العنوان الحقيقي."
+  },
+  "evidence_fake_brand_address": {
+    "message": "يظهر اسم مشهور في بداية العنوان، لكن الموقع نفسه يخص شخصًا آخر."
+  },
+  "evidence_copies_brand_icon": {
+    "message": "تعرض الصفحة أيقونة شركة حقيقية لكنها موجودة على عنوان لا علاقة له بها، وهي حيلة شائعة لسرقة بيانات الدخول."
+  },
+  "evidence_no_https": {
+    "message": "كل ما تكتبه في هذا الموقع يُرسل دون حماية ويمكن اعتراضه."
+  },
+  "evidence_missing_protections": {
+    "message": "يفتقر الموقع إلى وسائل حماية أساسية تضعها الشركات الحقيقية عادةً."
+  },
+  "evidence_raw_ip_address": {
+    "message": "تمنح الشركات الحقيقية مواقعها اسمًا. أما صفحات الاحتيال فتكتفي غالبًا برقم."
+  },
+  "evidence_unusual_connection": {
+    "message": "يتصل الموقع بطريقة غير معتادة نادرًا ما تحتاجها المواقع العادية."
+  },
+  "evidence_hidden_destination": {
+    "message": "يُخفي الرابط العنوان الذي يقود إليه فعلًا."
+  },
+  "evidence_very_new_site": {
+    "message": "عادةً لا تدوم مواقع الاحتيال سوى أيام قليلة، لذلك يُعد العنوان الجديد تمامًا علامة تحذير."
+  },
+  "evidence_scam_words": {
+    "message": "يحتوي العنوان على كلمات مثل «login» أو «secure» يضيفها المحتالون ليبدو رسميًا."
+  },
+  "evidence_carries_personal_data": {
+    "message": "يحمل الرابط نفسه بريدك الإلكتروني أو مفتاح دخول. يمكن لأي شخص يرى الرابط أن يستخدمهما."
+  },
+  "evidence_long_complex_address": {
+    "message": "العنوان طويل ومعقّد، فيصعب معرفة المكان الذي يقود إليه فعلًا."
+  },
+  "evidence_many_redirects": {
+    "message": "الرابط مصمَّم لينقلك إلى عنوان آخر — وغالبًا ما يكون ذلك لإخفاء وجهته الحقيقية."
+  },
+  "evidence_risky_ending": {
+    "message": "ينتهي العنوان بنطاق (مثل .xyz أو .top) تكثر فيه مواقع الاحتيال بشكل خاص."
+  },
+  "evidence_risky_registrar": {
+    "message": "سُجّل الموقع عبر خدمة يختارها المحتالون كثيرًا."
+  },
+  "evidence_random_name": {
+    "message": "يبدو الاسم خليطًا عشوائيًا من الحروف، وهذا معتاد في المواقع التي تُصنع بالجملة لعملية احتيال واحدة."
+  },
+  "evidence_detector_suspicious": {
+    "message": "يرى كاشفنا، المدرَّب على آلاف المواقع الحقيقية والاحتيالية، أن هذا الموقع يشبه مواقع الاحتيال."
+  },
+  "evidence_not_a_real_business": {
+    "message": "ليس للموقع بريد إلكتروني يعمل، بينما تملكه الشركات الحقيقية دائمًا تقريبًا."
+  },
+  "evidence_shifty_setup": {
+    "message": "يمكن لعنوان الموقع أن ينتقل بسرعة كبيرة بين خوادم كثيرة. تفعل الخدمات الكبيرة ذلك أيضًا، لكن شبكات الاحتيال تستخدمه ليصعب إغلاق مواقعها."
+  },
+  "evidence_padded_address": {
+    "message": "أُضيفت أجزاء زائدة قبل الاسم الحقيقي ليصعب ملاحظته."
+  },
+  "evidence_shared_hosting": {
+    "message": "على هذه الخدمة يمكن لأي شخص إنشاء موقع في دقائق، بمن فيهم المحتالون."
+  },
+  "evidence_on_cleanway_list": {
+    "message": "هذا الموقع موجود في قائمة Cleanway الخاصة بمواقع الاحتيال المعروفة."
+  },
+  "evidence_site_not_found": {
+    "message": "لا يوجد حاليًا موقع يعمل على هذا العنوان. تحقّق من كتابته."
+  },
+  "evidence_unreachable_abroad": {
+    "message": "لم يتمكن خادمنا في الخارج من فتح هذا الموقع، لذلك لم تُفحص الصفحة نفسها."
+  },
+  "evidence_checks_incomplete": {
+    "message": "لم تكتمل كل الفحوصات في الوقت المحدد، لذا يستند هذا الحكم إلى علامات أقل."
+  },
+  "evidence_user_content_platform": {
+    "message": "يمكن لأي شخص نشر صفحات على هذه الخدمة. لا يمكننا أن نضمن هذه الصفحة بالذات."
+  },
+  "evidence_invalid_address": {
+    "message": "العنوان نفسه مكتوب بشكل خاطئ. قد يكون فخًا لمن ينسخون الروابط."
+  },
+  "evidence_private_network": {
+    "message": "المواقع العامة العادية لا تقود إلى هناك، لذا لم نفتحه."
+  },
+  "evidence_ai_second_look": {
+    "message": "عندما تشير العلامات في الاتجاهين، يراجعها نموذج ذكاء اصطناعي وقد يعدّل الحكم قليلًا."
+  },
+  "evidence_well_known_site": {
+    "message": "هذا أحد المواقع المعروفة التي نعرف أنها أصلية."
+  },
+  "evidence_popular_site": {
+    "message": "هذا الموقع ضمن قائمة أكثر المواقع زيارةً في العالم. هذا في صالحه، لكن علامات التحذير الأخرى تبقى مهمة."
+  },
+  "evidence_detector_safe": {
+    "message": "يرى كاشفنا، المدرَّب على آلاف المواقع الحقيقية والاحتيالية، أن هذا الموقع يشبه المواقع الحقيقية."
+  },
+  "evidence_on_your_trusted_list": {
+    "message": "أنت من أضاف هذا الموقع إلى مواقعك الموثوقة."
+  },
+  "evidence_high_risk_score": {
+    "message": "أعطت خدمة تقيّم المواقع من حيث الاحتيال هذا الموقع درجة خطورة عالية. هذا تقدير، وليس بلاغًا مؤكدًا."
+  },
+  "evidence_new_certificate": {
+    "message": "كثيرًا ما تظهر مواقع الاحتيال بشهادة جديدة تمامًا. لكن المواقع الحقيقية تجدّد شهاداتها بانتظام أيضًا، لذا فهذا وحده لا يعني الكثير."
+  },
+  "evidence_broken_certificate": {
+    "message": "الشهادة التي تثبت من يدير هذا الموقع منتهية الصلاحية، أو لم تصدرها جهة موثوقة، أو تخص عنوانًا آخر. سيحذّرك متصفحك من ذلك أيضًا."
+  },
+  "weekly_title": {
+    "message": "أسبوعي"
+  },
+  "weekly_checked": {
+    "message": "تم فحصها"
+  },
+  "weekly_blocked": {
+    "message": "تم حظرها"
+  },
+  "weekly_warnings": {
+    "message": "تحذيرات"
+  },
+  "weekly_top_threats": {
+    "message": "أكثر التهديدات تكرارًا"
+  },
+  "weekly_no_threats": {
+    "message": "لم تُسجَّل مواقع احتيال هذا الأسبوع"
+  },
+  "weekly_on_device": {
+    "message": "أُعدّ التقرير على جهازك"
+  },
+  "score_title": {
+    "message": "مستوى حمايتي"
+  },
+  "score_label_excellent": {
+    "message": "ممتاز"
+  },
+  "score_label_good": {
+    "message": "جيد"
+  },
+  "score_label_fair": {
+    "message": "مقبول"
+  },
+  "score_label_low": {
+    "message": "يمكن تحسينه"
+  },
+  "score_breakdown": {
+    "message": "مما تتكوّن النتيجة"
+  },
+  "score_on_device": {
+    "message": "حُسب على جهازك"
+  },
+  "score_factor_active_days": {
+    "message": "أيام مع Cleanway: $DAYS$",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_active_days_of_week": {
+    "message": "أيام مع Cleanway: $DAYS$ من 7",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_no_dangerous": {
+    "message": "لا مواقع خطيرة خلال 30 يومًا"
+  },
+  "score_factor_dangerous_visits": {
+    "message": "مواقع خطيرة تم فتحها: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_audit_avg": {
+    "message": "متوسط درجة خصوصية المواقع: $SCORE$",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_trusted_sites": {
+    "message": "مواقع في قائمتك الموثوقة: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_overrides": {
+    "message": "عدد المرات التي تجاهلت فيها تحذيرًا: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_checks": {
+    "message": "إجمالي الفحوصات: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "breach_title": {
+    "message": "فحص تسرّب البريد الإلكتروني"
+  },
+  "breach_not_available": {
+    "message": "فحص البريد الإلكتروني في التسريبات المعروفة غير متاح بعد. لم يُفحص شيء، ولا نطلب بريدك الإلكتروني."
+  },
+  "breach_works_now": {
+    "message": "ما يعمل الآن: عندما تكتب كلمة مرور في أي موقع، ينبّهك Cleanway إن كانت قد ظهرت في تسريب معروف."
+  },
+  "breach_close": {
+    "message": "إغلاق"
+  },
+  "pwned_title": {
+    "message": "كلمة المرور هذه موجودة في تسريب بيانات معروف."
+  },
+  "pwned_body": {
+    "message": "غيّرها في هذا الموقع ولا تستخدمها في أي مكان آخر. عدد مرات ظهورها في تسريبات عامة: $COUNT$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pwned_dismiss": {
+    "message": "حسنًا"
+  },
+  "webmail_scanning": {
+    "message": "يفحص Cleanway هذه الرسالة…"
+  },
+  "webmail_rate_limited": {
+    "message": "فحوصات كثيرة جدًا، يُرجى الانتظار"
+  },
+  "webmail_rate_limited_detail": {
+    "message": "هناك فحوصات كثيرة جدًا من هذه الشبكة الآن. حاول مرة أخرى بعد دقيقة."
+  },
+  "webmail_error": {
+    "message": "لم يتمكن Cleanway من فحص هذه الرسالة"
+  },
+  "webmail_error_detail": {
+    "message": "تحقّق من اتصالك بالإنترنت وافتح الرسالة مرة أخرى."
+  },
+  "webmail_dangerous": {
+    "message": "على الأرجح احتيال — لا تنقر على أي رابط"
+  },
+  "webmail_suspicious": {
+    "message": "مريب — تحقّق من المرسل قبل أن تفعل أي شيء"
+  },
+  "webmail_safe": {
+    "message": "يبدو آمنًا — لم نجد علامات احتيال"
+  },
+  "webmail_dismiss": {
+    "message": "إغلاق"
+  },
+  "webmail_finding_url_reputation": {
+    "message": "رابط في هذه الرسالة يقود إلى موقع خطير معروف"
+  },
+  "webmail_finding_auth_fail": {
+    "message": "فشلت الرسالة في الفحوصات التي تؤكد مرسلها الحقيقي"
+  },
+  "webmail_finding_body_pattern": {
+    "message": "يحتوي النص على عبارات شائعة في رسائل الاحتيال"
+  },
+  "webmail_finding_link_text_mismatch": {
+    "message": "يعرض رابط عنوانًا لكنه يقود إلى عنوان آخر"
+  },
+  "webmail_safe_minor": {
+    "message": "يبدو آمنًا — لا علامات احتيال جدية"
+  },
+  "webmail_finding_sender_check": {
+    "message": "تحقّق بعناية من عنوان المرسل"
+  },
+  "webmail_finding_auth_unconfirmed": {
+    "message": "تعذّر التأكد تمامًا من هوية المرسل"
+  },
+  "webmail_finding_brand_from_freemail": {
+    "message": "موقّعة باسم شركة معروفة لكنها مُرسلة من بريد مجاني"
+  },
+  "webmail_finding_brand_domain_mismatch": {
+    "message": "موقّعة باسم شركة معروفة لكنها لم تُرسل من عنوانها"
+  },
+  "webmail_finding_sender_non_ascii": {
+    "message": "يحتوي عنوان المرسل على حروف غير لاتينية — تأكّد من أنه العنوان الحقيقي"
+  },
+  "webmail_finding_reply_to_mismatch": {
+    "message": "الردود على هذه الرسالة تذهب إلى عنوان غير عنوان المرسل"
+  },
+  "webmail_finding_spf_softfail": {
+    "message": "تعذّر التأكد تمامًا من خادم البريد لدى المرسل"
+  },
+  "webmail_finding_urgency": {
+    "message": "الرسالة تستعجلك لتتصرف"
+  },
+  "webmail_finding_credential_request": {
+    "message": "الرسالة تطلب كلمة مرور أو رمزًا أو بيانات بطاقة"
+  },
+  "webmail_finding_money_request": {
+    "message": "الرسالة تطلب مالًا أو تعد بجائزة"
+  },
+  "webmail_finding_account_threat": {
+    "message": "الرسالة تحذّر من حساب محظور أو تسجيل دخول مريب"
+  },
+  "options_page_title": {
+    "message": "إعدادات Cleanway"
+  },
+  "options_page_subtitle": {
+    "message": "اختر كيف يحميك Cleanway"
+  },
+  "options_skill_heading": {
+    "message": "من يستخدم هذا المتصفح"
+  },
+  "options_skill_subtitle": {
+    "message": "يشرح Cleanway تحذيراته بشكل مختلف لكل شخص. يمكنك تغيير ذلك في أي وقت."
+  },
+  "options_skill_kids": {
+    "message": "الأطفال"
+  },
+  "options_skill_kids_desc": {
+    "message": "علامة «قف» كبيرة على مواقع الاحتيال، دون زر لفتحها رغم ذلك."
+  },
+  "options_skill_regular": {
+    "message": "عادي"
+  },
+  "options_skill_regular_desc": {
+    "message": "مناسب لمعظم الناس. تحذيرات واضحة تشرح سبب خطورة الموقع."
+  },
+  "options_skill_granny": {
+    "message": "الأجداد"
+  },
+  "options_skill_granny_desc": {
+    "message": "خط كبير، ويُقرأ التحذير بصوت عالٍ."
+  },
+  "options_skill_pro": {
+    "message": "خبير"
+  },
+  "options_skill_pro_desc": {
+    "message": "يعرض درجة الخطر ويضع علامات التحذير أولًا."
+  },
+  "options_font_scale": {
+    "message": "حجم النص"
+  },
+  "options_font_scale_desc": {
+    "message": "نص أكبر في نافذة Cleanway"
+  },
+  "options_voice": {
+    "message": "تحذيرات صوتية"
+  },
+  "options_voice_desc": {
+    "message": "قراءة التحذير بصوت عالٍ عندما يحظر Cleanway موقع احتيال"
+  },
+  "options_pin": {
+    "message": "رمز PIN للوالدين"
+  },
+  "options_pin_desc": {
+    "message": "لا يعمل بعد — يمكن إيقاف وضع الأطفال دون رمز PIN. ما يفعله وضع الأطفال الآن: الصفحة المحظورة لا تحتوي على زر لفتحها رغم ذلك."
+  },
+  "options_pin_set": {
+    "message": "تعيين PIN"
+  },
+  "options_pin_update": {
+    "message": "تغيير PIN"
+  },
+  "options_pin_clear": {
+    "message": "مسح"
+  },
+  "options_pin_invalid": {
+    "message": "يجب أن يتكون PIN من 4 أرقام بالضبط"
+  },
+  "options_pin_clear_confirm": {
+    "message": "مسح رمز PIN للوالدين؟"
+  },
+  "options_voice_on": {
+    "message": "الصوت مفعّل"
+  },
+  "options_voice_off": {
+    "message": "الصوت متوقف"
+  },
+  "options_source_device": {
+    "message": "مضبوط على هذا الجهاز"
+  },
+  "options_source_account": {
+    "message": "من حسابك"
+  },
+  "options_protection": {
+    "message": "الحماية"
+  },
+  "options_auto_scan": {
+    "message": "فحص الروابط تلقائيًا"
+  },
+  "options_auto_scan_desc": {
+    "message": "فحص كل رابط في كل صفحة"
+  },
+  "options_badges": {
+    "message": "علامات بجانب الروابط"
+  },
+  "options_badges_desc": {
+    "message": "إظهار علامة أمان بجانب كل رابط"
+  },
+  "options_block": {
+    "message": "حظر الصفحات الخطيرة"
+  },
+  "options_block_desc": {
+    "message": "إظهار شاشة تحذير قبل فتح موقع خطير"
+  },
+  "options_privacy": {
+    "message": "الخصوصية"
+  },
+  "options_auto_audit": {
+    "message": "فحص الخصوصية في كل موقع جديد"
+  },
+  "options_auto_audit_desc": {
+    "message": "اعرف ما يجمعه كل موقع جديد عنك"
+  },
+  "options_anon_stats": {
+    "message": "إحصاءات مجهولة الهوية"
+  },
+  "options_anon_stats_desc": {
+    "message": "ساعد في تحسين Cleanway بمشاركة إجماليات مجهولة الهوية"
+  },
+  "options_stats": {
+    "message": "الإحصاءات"
+  },
+  "options_lists": {
+    "message": "قوائمك"
+  },
+  "options_blocklist": {
+    "message": "المواقع المحظورة"
+  },
+  "options_blocklist_desc": {
+    "message": "مواقع تُحظر دائمًا (موقع في كل سطر)"
+  },
+  "options_allowlist": {
+    "message": "المواقع الموثوقة"
+  },
+  "options_allowlist_desc": {
+    "message": "مواقع لا يُنبَّه عليها أبدًا (موقع في كل سطر)"
+  },
+  "options_save_lists": {
+    "message": "حفظ القوائم"
+  },
+  "options_saved": {
+    "message": "تم الحفظ ✓"
+  },
+  "options_tracking_heading": {
+    "message": "الحماية من التتبّع"
+  },
+  "options_clean_tracking": {
+    "message": "إزالة وسوم التتبّع من الروابط"
+  },
+  "options_clean_tracking_desc": {
+    "message": "إزالة fbclid وutm_* وgclid من العناوين تلقائيًا"
+  },
+  "options_block_miners": {
+    "message": "حظر معدّني العملات المشفرة"
+  },
+  "options_block_miners_desc": {
+    "message": "منع المواقع من تعدين العملات المشفرة على جهازك"
+  },
+  "options_advanced": {
+    "message": "متقدم"
+  },
+  "options_api_server": {
+    "message": "خادم API"
+  },
+  "options_api_server_desc": {
+    "message": "للمطوّرين. الافتراضي: https://api.cleanway.ai"
+  },
+  "options_save": {
+    "message": "حفظ"
+  },
+  "options_referral": {
+    "message": "ادعُ صديقًا"
+  },
+  "options_referral_link": {
+    "message": "رابط دعوتك"
+  },
+  "options_referral_link_desc": {
+    "message": "شاركه ليحصل أصدقاؤك على 7 أيام مجانًا"
+  },
+  "options_copied": {
+    "message": "تم النسخ ✓"
+  },
+  "options_redeem": {
+    "message": "أدخل رمزًا"
+  },
+  "options_redeem_desc": {
+    "message": "حصلت على رمز من صديق؟ أدخله هنا"
+  },
+  "options_redeem_btn": {
+    "message": "تطبيق"
+  },
+  "options_redeem_placeholder": {
+    "message": "الرمز"
+  },
+  "options_redeem_saved": {
+    "message": "تم حفظ الرمز $CODE$",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_data": {
+    "message": "البيانات"
+  },
+  "options_clear": {
+    "message": "مسح السجل على هذا الجهاز"
+  },
+  "options_clear_desc": {
+    "message": "حذف كل سجل الفحوصات المحفوظ على هذا الجهاز"
+  },
+  "options_clear_btn": {
+    "message": "مسح"
+  },
+  "options_clear_confirm": {
+    "message": "حذف كل سجل الفحوصات على هذا الجهاز؟ لا يمكن التراجع عن ذلك."
+  },
+  "options_export": {
+    "message": "تصدير بياناتي"
+  },
+  "options_export_desc": {
+    "message": "تنزيل كل ما يحفظه Cleanway على هذا الجهاز في ملف JSON"
+  },
+  "options_export_btn": {
+    "message": "تصدير"
+  },
+  "options_settings_saved": {
+    "message": "تم حفظ الإعدادات"
+  },
+  "options_family_default_name": {
+    "message": "عائلتي"
+  },
+  "options_family_role_owner": {
+    "message": "المالك"
+  },
+  "options_family_role_member": {
+    "message": "عضو"
+  },
+  "options_family_members_count": {
+    "message": "الأعضاء: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_family_no_key": {
+    "message": "لا يوجد مفتاح بعد"
+  },
+  "options_family_unknown_domain": {
+    "message": "(موقع غير معروف)"
+  },
+  "options_family_alert_blocked": {
+    "message": "محظور"
+  },
+  "options_family_create_failed": {
+    "message": "تعذّر إنشاء العائلة. حاول مرة أخرى بعد قليل."
+  },
+  "options_family_join_invalid_input": {
+    "message": "أدخل الرمز ورمز PIN المكوّن من 4 أرقام."
+  },
+  "options_family_join_failed": {
+    "message": "هذه الدعوة غير صحيحة أو منتهية الصلاحية."
+  },
+  "options_family_invite_failed": {
+    "message": "تعذّر إنشاء الدعوة. حاول مرة أخرى بعد قليل."
+  },
+  "options_family_invite_share": {
+    "message": "دعوة إلى عائلة Cleanway\nالرمز: $CODE$\nPIN: $PIN$",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      },
+      "pin": {
+        "content": "$2"
+      }
+    }
+  },
+  "options_family_invite_qr_alt": {
+    "message": "رمز QR لدعوة عائلة Cleanway"
   }
 }

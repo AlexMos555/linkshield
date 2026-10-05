@@ -55,10 +55,17 @@ const BROWSER_TREES = ["extension", "extension-firefox", "extension-safari"];
 const LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
 
 // Namespaces added for strings that used to be hard-coded English in the
-// content scripts, the context menu, the manifest and the family notifier.
+// content scripts, the context menu, the manifest, the family notifier, the
+// block page's evidence cards, the popup's overlays, the password-leak and
+// webmail banners and the settings page.
 const NEW_KEY_PREFIXES = [
   "badge_", "audit_", "credguard_", "mpg_", "menu_", "command_", "family_notify_", "reason_",
+  "evidence_", "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_",
 ];
+
+// Reason codes whose `detail` is already in the user's language (the
+// background writes it with chrome.i18n) or that stand for "no code at all".
+const CODES_WITH_LOCALIZED_DETAIL = new Set(["known", "user_content", "api"]);
 
 let passed = 0;
 let failed = 0;
@@ -444,13 +451,44 @@ const KEY_USE_RES = [
   /chrome\.i18n\.getMessage\(\s*["']([A-Za-z0-9_]+)["']/g,
   /\b_t\(\s*["']([A-Za-z0-9_]+)["']/g,
   /\b_tHtml\(\s*["']([A-Za-z0-9_]+)["']/g,
+  // t() in the popup, settings page and webmail banner; bt() on the block
+  // page. The whole argument must be the literal: bt("reason_" + group)
+  // builds its key at run time and is checked through the group table.
+  /\bb?t\(\s*["']([A-Za-z0-9_]+)["']\s*[,)]/g,
+  // Per-file helpers in content scripts that share one global scope
+  // (_weeklyT, _scoreT, _breachT, _pwnedT)
+  /\b_[a-z]+T\(\s*["']([A-Za-z0-9_]+)["']\s*[,)]/g,
+  // Keys chosen before the call (ternaries, lookup tables): any literal in a
+  // namespace that exists only for i18n must be a real key. (Not pwned_:
+  // password-pwned.js also keeps a storage counter under that prefix.)
+  /["'`]((?:evidence|weekly|score|breach|webmail|options)_[a-z0-9_]+)["'`]/g,
 ];
+
+// Static text in the extension pages: data-i18n, -title, -placeholder,
+// -aria-label. The options page carried these keys for months with nothing
+// reading them, and half of them were never in the catalog.
+const HTML_KEY_RE = /data-i18n(?:-title|-placeholder|-aria-label)?="([A-Za-z0-9_]+)"/g;
+
+function listHtml(dir) {
+  const abs = join(ROOT, dir);
+  if (!existsSync(abs)) return [];
+  const out = [];
+  for (const name of readdirSync(abs)) {
+    const p = join(abs, name);
+    if (statSync(p).isDirectory()) out.push(...listHtml(relative(ROOT, p)));
+    else if (name.endsWith(".html")) out.push(relative(ROOT, p));
+  }
+  return out;
+}
 
 function usedKeys(tree) {
   const keys = new Set();
   for (const rel of listJs(join(tree, "src"))) {
     const code = stripComments(readFileSync(join(ROOT, rel), "utf8"));
     for (const re of KEY_USE_RES) for (const m of code.matchAll(re)) keys.add(m[1]);
+  }
+  for (const rel of listHtml(join(tree, "src"))) {
+    for (const m of readFileSync(join(ROOT, rel), "utf8").matchAll(HTML_KEY_RE)) keys.add(m[1]);
   }
   const manifest = join(ROOT, tree, "manifest.json");
   if (existsSync(manifest)) {
@@ -461,7 +499,10 @@ function usedKeys(tree) {
 
 await check("extension-core uses the new keys (sanity: the scan finds them)", () => {
   const keys = [...usedKeys(SOURCE_TREE)];
-  for (const prefix of ["credguard_", "mpg_", "badge_", "menu_", "family_notify_"]) {
+  for (const prefix of [
+    "credguard_", "mpg_", "badge_", "menu_", "family_notify_",
+    "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_", "block_evidence_",
+  ]) {
     assert.ok(keys.some((k) => k.startsWith(prefix)), `no ${prefix}* key used in extension-core`);
   }
 });
@@ -509,13 +550,233 @@ await check("every reason label the badges can show exists in every locale", () 
     assert.equal(labels.text({ signal: "typosquatting", detail: "Impersonates paypal.com" }), "<reason_imitates_brand>");
     assert.equal(labels.text({ signal: "no_such_code", detail: "English detail" }), "English detail");
     assert.equal(labels.text({ signal: "constructor", detail: "d" }), "d", "prototype keys are not codes");
+    assert.equal(labels.group({ signal: "combosquatting" }), "imitates_brand");
+    assert.equal(labels.group({ signal: "no_such_code" }), null);
+    assert.equal(labels.group({ signal: "constructor" }), null, "prototype keys are not codes");
+    assert.equal(labels.group(null), null);
     if (tree === SOURCE_TREE) continue;
-    const keys = [...new Set(Object.values(labels.keys))].map((k) => `reason_${k}`);
+    // Each group is a badge line (reason_) and a block-page card body (evidence_).
+    const groups = [...new Set(Object.values(labels.keys))];
+    const keys = groups.flatMap((g) => [`reason_${g}`, `evidence_${g}`]);
     for (const locale of LOCALES) {
       const messages = readJson(join(tree, "_locales", locale, "messages.json"));
-      assert.deepEqual(keys.filter((k) => !messages[k]), [], `${tree}/_locales/${locale} lacks reason keys`);
+      assert.deepEqual(keys.filter((k) => !messages[k]), [], `${tree}/_locales/${locale} lacks reason/evidence keys`);
     }
   }
+});
+
+// The block page draws one card per reason group; a group without an icon
+// would still render, but a group the page never heard of means the two
+// files drifted apart.
+await check("every reason group has a block-page evidence icon", () => {
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const window = {};
+    const ctx = vm.createContext({ window, chrome: { i18n: { getMessage: () => "" } } });
+    vm.runInContext(readFileSync(join(ROOT, tree, "src/content/reason-labels.js"), "utf8"), ctx);
+    const groups = new Set(Object.values(window.__cleanwayReasons.keys));
+    const page = readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8");
+    const table = page.match(/const EVIDENCE_ICONS = \{([\s\S]*?)\n\};/);
+    assert.ok(table, `${tree}: EVIDENCE_ICONS table not found in block-page.js`);
+    const icons = new Set([...table[1].matchAll(/^\s*([a-z_]+):/gm)].map((m) => m[1]));
+    assert.deepEqual([...groups].filter((g) => !icons.has(g)), [], `${tree}: groups without an icon`);
+    assert.deepEqual([...icons].filter((g) => !groups.has(g)), [], `${tree}: icons for groups that do not exist`);
+    assert.ok(!/EVIDENCE_BOOK|Risk signal|Confidence: \$\{/.test(stripComments(page)),
+      `${tree}: English evidence text is back in block-page.js`);
+  }
+});
+
+// A group is one badge line and one block-page card, and the card can be the
+// whole visible reason for a block, so its text must hold for every code in
+// it. These codes only look like their old neighbours.
+await check("codes whose claim differs from their neighbours keep their own reason group", () => {
+  const window = {};
+  const ctx = vm.createContext({ window, chrome: { i18n: { getMessage: () => "" } } });
+  vm.runInContext(readFileSync(join(ROOT, SOURCE_TREE, "src/content/reason-labels.js"), "utf8"), ctx);
+  const group = (signal) => window.__cleanwayReasons.group({ signal });
+  // A numeric IPQualityScore estimate is not "reported as phishing".
+  assert.equal(group("ipqs_high_risk"), "high_risk_score");
+  assert.equal(group("ipqs_phishing"), "flagged_phishing");
+  // A renewed certificate on an old site is not "a brand-new site".
+  assert.equal(group("new_certificate"), "new_certificate");
+  assert.equal(group("domain_new"), "very_new_site");
+  // An expired or self-signed certificate is not "no HTTPS".
+  assert.equal(group("invalid_certificate"), "broken_certificate");
+  assert.equal(group("no_https"), "no_https");
+});
+
+// «Служба безопасности (банка)» is how phone scammers open the call. Copy
+// that tells an elderly reader who to trust must not sound like them.
+await check("Russian warning copy avoids the phone scammers' «служба безопасности»", () => {
+  const SCAM_OPENER = /служб\S*\s+безопасност|специалист\S*\s+(по\s+)?безопасност/i;
+  for (const tree of BROWSER_TREES) {
+    const ru = readJson(join(tree, "_locales/ru/messages.json"));
+    const bad = Object.entries(ru)
+      .filter(([k, e]) => /^(reason_|evidence_|block_|webmail_)/.test(k) && SCAM_OPENER.test(e.message))
+      .map(([k]) => k);
+    assert.deepEqual(bad, [], `${tree}/_locales/ru`);
+  }
+});
+
+// A control is shown only if something reads what it saves. The popup's
+// "Always trust this site" confirmed "Added … to trusted sites" for a list
+// nothing reads, and half the settings page stored switches, lists and a
+// referral code for no one. When one is wired, its reader appears in
+// another file and it may be shown again.
+await check("controls whose settings nothing reads stay hidden", () => {
+  const CONTROLS = [
+    { page: "src/popup/popup.html", id: "btn-trust", writer: "src/popup/popup.js", keys: ["trusted_domains"] },
+    { page: "src/options/options.html", id: "options-protection-section", writer: "src/options/options.js",
+      keys: ["autoScan", "showBadges", "blockDangerous"] },
+    { page: "src/options/options.html", id: "options-privacy-section", writer: "src/options/options.js",
+      keys: ["autoAudit", "anonStats"] },
+    { page: "src/options/options.html", id: "options-lists-section", writer: "src/options/options.js",
+      keys: ["custom_blocklist", "custom_whitelist"] },
+    { page: "src/options/options.html", id: "options-tracking-section", writer: "src/options/options.js",
+      keys: ["cleanTracking", "blockMiners"] },
+    { page: "src/options/options.html", id: "options-referral-section", writer: "src/options/options.js",
+      keys: ["referral_code", "redeemed_code"] },
+  ];
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const sources = listJs(join(tree, "src")).map((rel) => [relative(join(ROOT, tree), join(ROOT, rel)), stripComments(readFileSync(join(ROOT, rel), "utf8"))]);
+    const readersOf = (keys, writer) => sources
+      .filter(([rel, code]) => rel !== writer && keys.some((k) => new RegExp(`\\b${k}\\b`).test(code)))
+      .map(([rel]) => rel);
+    for (const c of CONTROLS) {
+      const html = readFileSync(join(ROOT, tree, c.page), "utf8");
+      const tag = html.match(new RegExp(`<[a-z]+\\b[^>]*\\bid="${c.id}"[^>]*>`));
+      assert.ok(tag, `${tree}/${c.page}: #${c.id} not found`);
+      const hidden = /\shidden(?=[\s>=])/.test(tag[0]);
+      if (!hidden) {
+        assert.ok(readersOf(c.keys, c.writer).length > 0,
+          `${tree}/${c.page}: #${c.id} is shown, but nothing reads ${c.keys.join(", ")}`);
+      }
+    }
+    // The email leak button only opened "not available yet".
+    const breach = stripComments(readFileSync(join(ROOT, tree, "src/content/breach-check.js"), "utf8"));
+    const popup = readFileSync(join(ROOT, tree, "src/popup/popup.html"), "utf8");
+    if (!/\bfetch\(|sendMessage\(/.test(breach)) {
+      assert.match(popup, /<button[^>]*\bid="btn-breach"[^>]*\shidden[\s>]/, `${tree}: email leak button shown with no lookup`);
+    }
+    // The Grandparent voice switch is shown (by options.js), so the block
+    // page must obey it: read "off", and speak only under that check.
+    const blockPage = stripComments(readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8"));
+    assert.match(blockPage, /\bdata\.voice_alerts === false\b/, `${tree}: block-page.js does not read the voice switch`);
+    const speaks = [...blockPage.matchAll(/_speakAlert\(bt\(/g)];
+    assert.ok(speaks.length > 0, `${tree}: voice alert call not found in block-page.js`);
+    for (const m of speaks) {
+      assert.match(blockPage.slice(Math.max(0, m.index - 160), m.index), /if \(voiceOn\) \{\s*try \{\s*$/,
+        `${tree}: a voice alert is spoken without checking the voice switch`);
+    }
+  }
+});
+
+// Every reason code the API or an offline scorer can emit has a line in the
+// user's language. An unmapped code falls back to the scorer's English
+// `detail` under a Russian "Опасно" — the bug this suite exists to stop.
+await check("every reason code the API and both offline scorers emit is mapped", () => {
+  const window = {};
+  const ctx = vm.createContext({ window, chrome: { i18n: { getMessage: () => "" } } });
+  vm.runInContext(readFileSync(join(ROOT, SOURCE_TREE, "src/content/reason-labels.js"), "utf8"), ctx);
+  const mapped = new Set(Object.keys(window.__cleanwayReasons.keys));
+  const emitted = new Map(); // code → where it came from
+  const pyFiles = (dir) => readdirSync(join(ROOT, dir)).flatMap((name) => {
+    const rel = join(dir, name);
+    if (statSync(join(ROOT, rel)).isDirectory()) return name === "__pycache__" ? [] : pyFiles(rel);
+    return name.endsWith(".py") ? [rel] : [];
+  });
+  for (const rel of pyFiles("api")) {
+    const src = readFileSync(join(ROOT, rel), "utf8");
+    for (const m of src.matchAll(/\bsignal\s*=\s*["']([a-z_]+)["']/g)) emitted.set(m[1], rel);
+    for (const m of src.matchAll(/^REASON_[A-Z_]+\s*=\s*["']([a-z_]+)["']/gm)) emitted.set(m[1], rel);
+  }
+  assert.ok(emitted.size >= 60, `only ${emitted.size} API codes found — did the scan break?`);
+  for (const rel of ["src/utils/local-scorer.js", "src/background/index.js"]) {
+    const src = readFileSync(join(ROOT, SOURCE_TREE, rel), "utf8");
+    for (const m of src.matchAll(/\bsignal\s*:\s*["']([a-z_]+)["']/g)) emitted.set(m[1], rel);
+  }
+  const unmapped = [...emitted].filter(([code]) => !mapped.has(code) && !CODES_WITH_LOCALIZED_DETAIL.has(code));
+  assert.deepEqual(unmapped, [], "codes with no reason line (add them to content/reason-labels.js)");
+});
+
+// The webmail banner's pure text helpers (content/webmail.js publishes them
+// before its mail-host check, so a non-mail location loads them alone).
+function loadWebmail(tree) {
+  const window = {};
+  const chrome = { i18n: { getMessage: (key) => `<${key}>` } };
+  const ctx = vm.createContext({ window, chrome, location: { hostname: "example.test" } });
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/content/webmail.js"), "utf8"), ctx);
+  return window.__cleanwayWebmail;
+}
+
+// Every finding the email analyzer can produce gets a line in the reader's
+// language: by its code, or (older API) by its category.
+await check("every email-analyzer finding code and category has a webmail line", () => {
+  const analyzer = readFileSync(join(ROOT, "api/services/email_analyzer.py"), "utf8");
+  const categories = new Set([...analyzer.matchAll(/\bcategory\s*=\s*["']([a-z_]+)["']/g)].map((m) => m[1]));
+  const codes = new Set([...analyzer.matchAll(/\bcode\s*=\s*["']([a-z_]+)["']/g)].map((m) => m[1]));
+  const authTable = analyzer.match(/^_AUTH_FAIL_CODES\s*=\s*\{([^}]*)\}/m);
+  assert.ok(authTable, "_AUTH_FAIL_CODES not found in email_analyzer.py");
+  for (const m of authTable[1].matchAll(/:\s*["']([a-z_]+)["']/g)) codes.add(m[1]);
+  const groups = analyzer.match(/^BODY_PATTERN_GROUPS\b[\s\S]*?^\)/m);
+  assert.ok(groups, "BODY_PATTERN_GROUPS not found in email_analyzer.py");
+  for (const m of groups[0].matchAll(/\(\s*["']([a-z_]+)["']\s*,\s*[A-Z_]+_PATTERNS\s*\)/g)) codes.add(m[1]);
+  assert.ok(categories.size >= 5, `only ${categories.size} categories found — did the scan break?`);
+  assert.ok(codes.size >= 14, `only ${codes.size} codes found — did the scan break?`);
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const { findingText } = loadWebmail(tree);
+    for (const code of codes) {
+      const line = findingText({ code, category: "no_such_category", message: "EN" });
+      assert.match(line, /^<webmail_finding_[a-z_]+>$/, `${tree}: no line for finding code ${code}`);
+    }
+    for (const category of categories) {
+      const line = findingText({ category, message: "EN" });
+      assert.match(line, /^<webmail_finding_[a-z_]+>$/, `${tree}: no line for finding category ${category}`);
+    }
+    assert.equal(findingText({ code: "constructor", category: "toString", message: "EN" }), "EN",
+      "prototype keys are not codes");
+  }
+});
+
+// The three banners the review reproduced against the real analyzer.
+await check("webmail banner: a safe verdict names no scam trick, and the most serious finding wins", () => {
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const { describeResult } = loadWebmail(tree);
+    // A friend's «Позвони мне срочно»: safe, 15, one urgency finding. The
+    // banner said "no scam signs found" over "the text uses scam tricks".
+    const friend = describeResult({
+      level: "safe", score: 15,
+      findings: [{ category: "body_pattern", code: "urgency", severity: 15, message: "Urgency (RU)" }],
+    });
+    assert.deepEqual({ ...friend }, { level: "safe", headline: "<webmail_safe_minor>", detail: "<badge_score>" }, tree);
+    assert.equal(describeResult({ level: "safe", score: 0, findings: [] }).headline, "<webmail_safe>");
+    // A shop newsletter with a Reply-To on another domain: suspicious, 25.
+    // It read "the sender's address is disguised as someone else's".
+    const shop = describeResult({
+      level: "suspicious", score: 25,
+      findings: [{ category: "sender_spoofing", code: "reply_to_mismatch", severity: 25, message: "Reply-To…" }],
+    });
+    assert.equal(shop.detail, "<badge_score> • <webmail_finding_reply_to_mismatch>", tree);
+    // Reply-To + a known dangerous link: the analyzer lists the sender
+    // finding first, and the banner showed it instead of the link.
+    const phish = describeResult({
+      level: "dangerous", score: 75,
+      findings: [
+        { category: "sender_spoofing", code: "reply_to_mismatch", severity: 25, message: "Reply-To…" },
+        { category: "url_reputation", code: "known_dangerous_link", severity: 50, message: "Known-dangerous…" },
+      ],
+    });
+    assert.equal(phish.headline, "<webmail_dangerous>");
+    assert.equal(phish.detail, "<badge_score> • <webmail_finding_url_reputation>", tree);
+    // An API without codes gets the category line, worded for every sign in it.
+    const legacy = describeResult({
+      level: "suspicious", score: 25,
+      findings: [{ category: "sender_spoofing", severity: 25, message: "Reply-To…" }],
+    });
+    assert.equal(legacy.detail, "<badge_score> • <webmail_finding_sender_check>", tree);
+  }
+  // The accusing line is gone from the catalog, not just unused.
+  const ru = readJson("extension/_locales/ru/messages.json");
+  assert.equal(ru.webmail_finding_sender_spoofing, undefined, "the old 'disguised sender' line is back");
 });
 
 // The extension sends hostnames to the API, relatives get encrypted alerts

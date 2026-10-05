@@ -39,6 +39,14 @@
   var _lastValueByInput = new WeakMap();
   var _scanInFlight = false;
 
+  function _pwnedT(key, subs) {
+    try {
+      return chrome.i18n.getMessage(key, subs || []) || key;
+    } catch (_e) {
+      return key;
+    }
+  }
+
   function _apiBase() {
     return (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
       ? window.CLEANWAY_API_BASE
@@ -113,12 +121,22 @@
       "max-width:480px",
     ].join(";");
 
-    bar.innerHTML =
-      "<strong>⚠️ This password is in a known data breach.</strong>" +
-      "<div style=\"margin-top:6px;color:#fed7aa;\">Cleanway found this exact password in " +
-      String(count).replace(/[^0-9]/g, "") +
-      " public leaks. Change it before re-using it anywhere.</div>" +
-      "<button id=\"ls-pwned-dismiss\" style=\"background:transparent;color:#fff7ed;border:1px solid #c2410c;border-radius:6px;padding:4px 10px;margin-top:8px;cursor:pointer;font-size:12px;\">Got it</button>";
+    // Text in the browser's language (extension.pwned), set through
+    // textContent — nothing here is HTML. The count goes last in the
+    // sentence so no language needs a plural form chrome.i18n cannot pick.
+    var title = document.createElement("strong");
+    title.textContent = "⚠️ " + _pwnedT("pwned_title");
+    var body = document.createElement("div");
+    body.style.cssText = "margin-top:6px;color:#fed7aa;";
+    body.textContent = _pwnedT("pwned_body", [String(count).replace(/[^0-9]/g, "")]);
+    var dismissBtn = document.createElement("button");
+    dismissBtn.id = "ls-pwned-dismiss";
+    dismissBtn.type = "button";
+    dismissBtn.style.cssText = "background:transparent;color:#fff7ed;border:1px solid #c2410c;border-radius:6px;padding:4px 10px;margin-top:8px;cursor:pointer;font-size:12px;";
+    dismissBtn.textContent = _pwnedT("pwned_dismiss");
+    bar.appendChild(title);
+    bar.appendChild(body);
+    bar.appendChild(dismissBtn);
 
     try {
       anchor.appendChild(bar);

@@ -290,11 +290,81 @@
             "content": "$1"
           }
         }
+      },
+      "time_just_now": {
+        "text": "just now"
+      },
+      "time_minutes": {
+        "text": "$N$ min",
+        "placeholders": {
+          "n": {
+            "content": "$1"
+          }
+        }
+      },
+      "time_hours": {
+        "text": "$N$ h",
+        "placeholders": {
+          "n": {
+            "content": "$1"
+          }
+        }
+      },
+      "time_days": {
+        "text": "$N$ d",
+        "placeholders": {
+          "n": {
+            "content": "$1"
+          }
+        }
+      },
+      "action_trust_no_tab": {
+        "text": "Open a page first"
+      },
+      "action_trust_invalid": {
+        "text": "This page can't be added"
+      },
+      "action_trust_done": {
+        "text": "Added $DOMAIN$ to trusted sites",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "action_trust_error": {
+        "text": "Couldn't save"
+      },
+      "action_report_no_tab": {
+        "text": "Open a page first"
+      },
+      "action_report_invalid": {
+        "text": "This page can't be reported"
+      },
+      "action_report_done": {
+        "text": "Thanks — reported"
+      },
+      "action_report_throttled": {
+        "text": "Too many reports — try later"
+      },
+      "action_report_error": {
+        "text": "Couldn't send the report"
+      },
+      "tip_dismiss": {
+        "text": "Dismiss"
       }
     },
     "common": {
       "trust_footer": {
         "text": "We check site addresses, not full links or page content"
+      },
+      "confidence_chip": {
+        "text": "Confidence: $PCT$%",
+        "placeholders": {
+          "pct": {
+            "content": "$1"
+          }
+        }
       }
     },
     "block_page": {
@@ -359,6 +429,15 @@
       },
       "evidence_heading": {
         "text": "Why we blocked this site"
+      },
+      "explainer_heading": {
+        "text": "What kind of scam is this?"
+      },
+      "evidence_other_title": {
+        "text": "A warning sign"
+      },
+      "evidence_other_body": {
+        "text": "Our checks found something unusual about this site."
       }
     },
     "welcome": {
@@ -400,6 +479,27 @@
       },
       "trust_footer": {
         "text": "Blocking is free forever. We never sell your data."
+      },
+      "page_title": {
+        "text": "Welcome to Cleanway"
+      },
+      "persona_title": {
+        "text": "Who mostly uses this device?"
+      },
+      "persona_regular": {
+        "text": "Me — regular"
+      },
+      "persona_granny": {
+        "text": "A parent / grandparent"
+      },
+      "persona_kids": {
+        "text": "A child"
+      },
+      "persona_pro": {
+        "text": "A pro / power user"
+      },
+      "persona_hint": {
+        "text": "Tunes how warnings are explained. Change any time in Settings."
       }
     },
     "badge": {
@@ -699,7 +799,7 @@
         "text": "The address is unusually long and complex"
       },
       "many_redirects": {
-        "text": "The link bounces through several sites"
+        "text": "The link sends you on to another address"
       },
       "risky_ending": {
         "text": "Uses an ending that scams favor"
@@ -726,13 +826,670 @@
         "text": "Not set up like a real company's site"
       },
       "shifty_setup": {
-        "text": "The site keeps changing where it lives — a common scam trick"
+        "text": "Unusual server setup that scam networks also use"
       },
       "padded_address": {
         "text": "The address is padded with extra parts to hide the real name"
       },
       "shared_hosting": {
-        "text": "Hosted on a free service where anyone can make a site"
+        "text": "Hosted on a service where anyone can make a site"
+      },
+      "invalid_address": {
+        "text": "The address is not written correctly"
+      },
+      "private_network": {
+        "text": "The address leads into a private network, not the open internet"
+      },
+      "on_your_trusted_list": {
+        "text": "You marked this site as trusted"
+      },
+      "ai_second_look": {
+        "text": "Our AI assistant weighed the warning signs"
+      },
+      "on_cleanway_list": {
+        "text": "On Cleanway's list of scam sites"
+      },
+      "site_not_found": {
+        "text": "This address doesn't exist"
+      },
+      "unreachable_abroad": {
+        "text": "Our server abroad couldn't open the site. Many banks and government sites block foreign addresses, so this alone is not a sign of danger"
+      },
+      "checks_incomplete": {
+        "text": "Some checks didn't finish, so the verdict is less certain"
+      },
+      "user_content_platform": {
+        "text": "Anyone can make a page on this service — scammers too"
+      },
+      "high_risk_score": {
+        "text": "A fraud-checking service rates this site as high-risk"
+      },
+      "new_certificate": {
+        "text": "The site's security certificate is only a few days old"
+      },
+      "broken_certificate": {
+        "text": "The site's security certificate is invalid"
+      }
+    },
+    "evidence": {
+      "flagged_dangerous": {
+        "text": "Google Safe Browsing — the list Chrome, Firefox and Safari use to warn people — marks this site as unsafe."
+      },
+      "flagged_phishing": {
+        "text": "This site is in anti-phishing databases — lists of sites that trick people out of passwords or card details."
+      },
+      "on_blocklists": {
+        "text": "Security researchers have already put this site on lists of scam and spam sites."
+      },
+      "threat_reports": {
+        "text": "Security researchers mention this site in their reports about attacks."
+      },
+      "spreads_malware": {
+        "text": "This site has been caught spreading programs that infect computers and phones."
+      },
+      "imitates_brand": {
+        "text": "The address looks like a well-known company's, but it doesn't belong to that company."
+      },
+      "lookalike_letters": {
+        "text": "Some letters in the address only look like ordinary ones. That is how the real address is hidden."
+      },
+      "fake_brand_address": {
+        "text": "A famous name sits at the start of the address, but the site itself belongs to someone else."
+      },
+      "copies_brand_icon": {
+        "text": "The page shows a real company's icon but lives at an unrelated address — a common trick for stealing logins."
+      },
+      "no_https": {
+        "text": "Anything you type on this site is sent without protection and can be intercepted."
+      },
+      "missing_protections": {
+        "text": "The site skips basic protections that real companies normally set up."
+      },
+      "raw_ip_address": {
+        "text": "Real companies give their sites a name. Scam pages often use a bare number instead."
+      },
+      "unusual_connection": {
+        "text": "The site uses an unusual way to connect that ordinary websites rarely need."
+      },
+      "hidden_destination": {
+        "text": "The link hides the address it really leads to."
+      },
+      "very_new_site": {
+        "text": "Scam sites usually live just a few days, so a brand-new address is a warning sign."
+      },
+      "scam_words": {
+        "text": "The address contains words like “login” or “secure” that scammers add to look official."
+      },
+      "carries_personal_data": {
+        "text": "The link itself carries your email or a sign-in key. Anyone who sees the link can take them."
+      },
+      "long_complex_address": {
+        "text": "The address is long and tangled, so it's hard to see where it really leads."
+      },
+      "many_redirects": {
+        "text": "The link is built to pass you on to another address — often a way to hide where it really goes."
+      },
+      "risky_ending": {
+        "text": "The address ends in a zone (like .xyz or .top) where scam sites are especially common."
+      },
+      "risky_registrar": {
+        "text": "The site was registered through a service that scammers often choose."
+      },
+      "random_name": {
+        "text": "The name looks like a random jumble — typical of sites churned out for one-off scams."
+      },
+      "detector_suspicious": {
+        "text": "Our detector, trained on thousands of real and scam sites, finds this one similar to the scams."
+      },
+      "not_a_real_business": {
+        "text": "The site has no working email. Real companies almost always do."
+      },
+      "shifty_setup": {
+        "text": "The site's address can switch between many servers very quickly. Large services do this too, but scam networks use it so their sites are harder to shut down."
+      },
+      "padded_address": {
+        "text": "Extra parts are stacked in front of the real name so it's hard to spot."
+      },
+      "shared_hosting": {
+        "text": "Anyone can make a site on this service in minutes, scammers included."
+      },
+      "on_cleanway_list": {
+        "text": "Cleanway's own list of known scam sites includes this one."
+      },
+      "site_not_found": {
+        "text": "There is no working site at this address right now. Check the spelling."
+      },
+      "unreachable_abroad": {
+        "text": "Our server abroad couldn't open this site, so the page itself wasn't checked."
+      },
+      "checks_incomplete": {
+        "text": "Not every check finished in time, so this verdict rests on fewer signs."
+      },
+      "user_content_platform": {
+        "text": "Anyone can publish pages on this service. We can't vouch for this particular page."
+      },
+      "invalid_address": {
+        "text": "The address itself is broken. It may be a trap set for people who copy links."
+      },
+      "private_network": {
+        "text": "Ordinary public websites don't lead there, so we didn't open it."
+      },
+      "ai_second_look": {
+        "text": "When the signs point both ways, an AI model reviews them and may adjust the verdict a little."
+      },
+      "well_known_site": {
+        "text": "This is one of the well-known sites we recognize as genuine."
+      },
+      "popular_site": {
+        "text": "This site is on the list of the world's most visited sites. That counts in its favor, but other warning signs still matter."
+      },
+      "detector_safe": {
+        "text": "Our detector, trained on thousands of real and scam sites, finds this one similar to real sites."
+      },
+      "on_your_trusted_list": {
+        "text": "You added this site to your trusted sites yourself."
+      },
+      "high_risk_score": {
+        "text": "A service that rates sites for fraud gives this one a high risk score. That is an estimate, not a confirmed report."
+      },
+      "new_certificate": {
+        "text": "Scam sites often appear with a brand-new certificate. Real sites renew theirs regularly too, so on its own this means little."
+      },
+      "broken_certificate": {
+        "text": "The certificate that proves who runs this site has expired, was not issued by a trusted authority, or belongs to another address. Your browser will warn about it too."
+      }
+    },
+    "weekly": {
+      "title": {
+        "text": "My week"
+      },
+      "checked": {
+        "text": "Checked"
+      },
+      "blocked": {
+        "text": "Blocked"
+      },
+      "warnings": {
+        "text": "Warnings"
+      },
+      "top_threats": {
+        "text": "Most frequent threats"
+      },
+      "no_threats": {
+        "text": "No scam sites noted this week"
+      },
+      "on_device": {
+        "text": "Report built on your device"
+      }
+    },
+    "score": {
+      "title": {
+        "text": "My safety level"
+      },
+      "label_excellent": {
+        "text": "Excellent"
+      },
+      "label_good": {
+        "text": "Good"
+      },
+      "label_fair": {
+        "text": "Fair"
+      },
+      "label_low": {
+        "text": "Room to improve"
+      },
+      "breakdown": {
+        "text": "What the score is made of"
+      },
+      "on_device": {
+        "text": "Calculated on your device"
+      },
+      "factor_active_days": {
+        "text": "Days with Cleanway: $DAYS$",
+        "placeholders": {
+          "days": {
+            "content": "$1"
+          }
+        }
+      },
+      "factor_active_days_of_week": {
+        "text": "Days with Cleanway: $DAYS$ of 7",
+        "placeholders": {
+          "days": {
+            "content": "$1"
+          }
+        }
+      },
+      "factor_no_dangerous": {
+        "text": "No dangerous sites in 30 days"
+      },
+      "factor_dangerous_visits": {
+        "text": "Dangerous sites opened: $COUNT$",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "factor_audit_avg": {
+        "text": "Average site privacy score: $SCORE$",
+        "placeholders": {
+          "score": {
+            "content": "$1"
+          }
+        }
+      },
+      "factor_trusted_sites": {
+        "text": "Sites on your trusted list: $COUNT$",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "factor_overrides": {
+        "text": "Times you went past a warning: $COUNT$",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "factor_checks": {
+        "text": "Checks in total: $COUNT$",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      }
+    },
+    "breach": {
+      "title": {
+        "text": "Email leak check"
+      },
+      "not_available": {
+        "text": "Checking an email address against known leaks isn't available yet. Nothing was checked, and we don't ask for your email."
+      },
+      "works_now": {
+        "text": "What already works: when you type a password on any site, Cleanway warns you if that password has shown up in a known leak."
+      },
+      "close": {
+        "text": "Close"
+      }
+    },
+    "pwned": {
+      "title": {
+        "text": "This password is in a known data leak."
+      },
+      "body": {
+        "text": "Change it on this site and don't use it anywhere else. Times it has shown up in public leaks: $COUNT$.",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "dismiss": {
+        "text": "Got it"
+      }
+    },
+    "webmail": {
+      "scanning": {
+        "text": "Cleanway is checking this email…"
+      },
+      "rate_limited": {
+        "text": "Too many checks — please wait"
+      },
+      "rate_limited_detail": {
+        "text": "Too many checks from this network right now. Try again in a minute."
+      },
+      "error": {
+        "text": "Cleanway couldn't check this email"
+      },
+      "error_detail": {
+        "text": "Check your internet connection and open the email again."
+      },
+      "dangerous": {
+        "text": "Likely a scam — don't click any links"
+      },
+      "suspicious": {
+        "text": "Suspicious — check who sent it before you act"
+      },
+      "safe": {
+        "text": "Looks safe — no scam signs found"
+      },
+      "dismiss": {
+        "text": "Close"
+      },
+      "finding_url_reputation": {
+        "text": "A link in this email leads to a known dangerous site"
+      },
+      "finding_auth_fail": {
+        "text": "The email failed the checks that confirm who really sent it"
+      },
+      "finding_body_pattern": {
+        "text": "The text has phrases often found in scam emails"
+      },
+      "finding_link_text_mismatch": {
+        "text": "A link shows one address but leads to another"
+      },
+      "safe_minor": {
+        "text": "Looks safe — no serious scam signs"
+      },
+      "finding_sender_check": {
+        "text": "Check the sender's address carefully"
+      },
+      "finding_auth_unconfirmed": {
+        "text": "The sender could not be fully confirmed"
+      },
+      "finding_brand_from_freemail": {
+        "text": "Signed as a well-known company but sent from a free mailbox"
+      },
+      "finding_brand_domain_mismatch": {
+        "text": "Signed as a well-known company but not sent from its address"
+      },
+      "finding_sender_non_ascii": {
+        "text": "The sender's address has non-Latin letters — make sure it is the real one"
+      },
+      "finding_reply_to_mismatch": {
+        "text": "Replies to this email go to a different address than the sender's"
+      },
+      "finding_spf_softfail": {
+        "text": "The sender's mail server could not be fully confirmed"
+      },
+      "finding_urgency": {
+        "text": "The email rushes you to act"
+      },
+      "finding_credential_request": {
+        "text": "The email asks for a password, a code or card details"
+      },
+      "finding_money_request": {
+        "text": "The email asks for money or promises a prize"
+      },
+      "finding_account_threat": {
+        "text": "The email warns of a blocked account or a suspicious sign-in"
+      }
+    },
+    "options": {
+      "page_title": {
+        "text": "Cleanway settings"
+      },
+      "page_subtitle": {
+        "text": "Choose how Cleanway protects you"
+      },
+      "skill_heading": {
+        "text": "Who uses this browser"
+      },
+      "skill_subtitle": {
+        "text": "Cleanway explains its warnings differently for each. You can change this any time."
+      },
+      "skill_kids": {
+        "text": "Kids"
+      },
+      "skill_kids_desc": {
+        "text": "A big STOP on scam sites, with no button to open them anyway."
+      },
+      "skill_regular": {
+        "text": "Regular"
+      },
+      "skill_regular_desc": {
+        "text": "Right for most people. Clear warnings that explain why a site is dangerous."
+      },
+      "skill_granny": {
+        "text": "Grandparent"
+      },
+      "skill_granny_desc": {
+        "text": "Large text, and the warning is read aloud."
+      },
+      "skill_pro": {
+        "text": "Pro"
+      },
+      "skill_pro_desc": {
+        "text": "Shows risk scores and puts the warning signs first."
+      },
+      "font_scale": {
+        "text": "Text size"
+      },
+      "font_scale_desc": {
+        "text": "Larger text in the Cleanway window"
+      },
+      "voice": {
+        "text": "Voice warnings"
+      },
+      "voice_desc": {
+        "text": "Read the warning aloud when Cleanway blocks a scam site"
+      },
+      "pin": {
+        "text": "Parental PIN"
+      },
+      "pin_desc": {
+        "text": "Not working yet — Kids mode can still be switched off without a PIN. What Kids mode already does: a blocked page has no button to open it anyway."
+      },
+      "pin_set": {
+        "text": "Set PIN"
+      },
+      "pin_update": {
+        "text": "Change PIN"
+      },
+      "pin_clear": {
+        "text": "Clear"
+      },
+      "pin_invalid": {
+        "text": "The PIN must be exactly 4 digits"
+      },
+      "pin_clear_confirm": {
+        "text": "Clear the parental PIN?"
+      },
+      "voice_on": {
+        "text": "voice on"
+      },
+      "voice_off": {
+        "text": "voice off"
+      },
+      "source_device": {
+        "text": "Set on this device"
+      },
+      "source_account": {
+        "text": "From your account"
+      },
+      "protection": {
+        "text": "Protection"
+      },
+      "auto_scan": {
+        "text": "Check links automatically"
+      },
+      "auto_scan_desc": {
+        "text": "Check every link on every page"
+      },
+      "badges": {
+        "text": "Marks next to links"
+      },
+      "badges_desc": {
+        "text": "Show a safety mark next to each link"
+      },
+      "block": {
+        "text": "Block dangerous pages"
+      },
+      "block_desc": {
+        "text": "Show a warning screen before a dangerous site opens"
+      },
+      "privacy": {
+        "text": "Privacy"
+      },
+      "auto_audit": {
+        "text": "Privacy check on every new site"
+      },
+      "auto_audit_desc": {
+        "text": "See what each new site collects about you"
+      },
+      "anon_stats": {
+        "text": "Anonymous statistics"
+      },
+      "anon_stats_desc": {
+        "text": "Help improve Cleanway by sharing anonymous totals"
+      },
+      "stats": {
+        "text": "Statistics"
+      },
+      "lists": {
+        "text": "Your lists"
+      },
+      "blocklist": {
+        "text": "Blocked sites"
+      },
+      "blocklist_desc": {
+        "text": "Sites to always block (one per line)"
+      },
+      "allowlist": {
+        "text": "Trusted sites"
+      },
+      "allowlist_desc": {
+        "text": "Sites never to flag (one per line)"
+      },
+      "save_lists": {
+        "text": "Save lists"
+      },
+      "saved": {
+        "text": "Saved ✓"
+      },
+      "tracking_heading": {
+        "text": "Protection from tracking"
+      },
+      "clean_tracking": {
+        "text": "Remove tracking tags from links"
+      },
+      "clean_tracking_desc": {
+        "text": "Strip fbclid, utm_* and gclid from addresses automatically"
+      },
+      "block_miners": {
+        "text": "Block crypto miners"
+      },
+      "block_miners_desc": {
+        "text": "Stop sites from mining cryptocurrency on your computer"
+      },
+      "advanced": {
+        "text": "Advanced"
+      },
+      "api_server": {
+        "text": "API server"
+      },
+      "api_server_desc": {
+        "text": "For developers. Default: https://api.cleanway.ai"
+      },
+      "save": {
+        "text": "Save"
+      },
+      "referral": {
+        "text": "Invite a friend"
+      },
+      "referral_link": {
+        "text": "Your invite link"
+      },
+      "referral_link_desc": {
+        "text": "Share it to give friends 7 days free"
+      },
+      "copied": {
+        "text": "Copied ✓"
+      },
+      "redeem": {
+        "text": "Enter a code"
+      },
+      "redeem_desc": {
+        "text": "Got a code from a friend? Enter it here"
+      },
+      "redeem_btn": {
+        "text": "Apply"
+      },
+      "redeem_placeholder": {
+        "text": "CODE"
+      },
+      "redeem_saved": {
+        "text": "Code $CODE$ saved",
+        "placeholders": {
+          "code": {
+            "content": "$1"
+          }
+        }
+      },
+      "data": {
+        "text": "Data"
+      },
+      "clear": {
+        "text": "Clear history on this device"
+      },
+      "clear_desc": {
+        "text": "Delete all check history kept on this device"
+      },
+      "clear_btn": {
+        "text": "Clear"
+      },
+      "clear_confirm": {
+        "text": "Delete all check history on this device? This can't be undone."
+      },
+      "export": {
+        "text": "Export my data"
+      },
+      "export_desc": {
+        "text": "Download everything Cleanway keeps on this device as a JSON file"
+      },
+      "export_btn": {
+        "text": "Export"
+      },
+      "settings_saved": {
+        "text": "Settings saved"
+      },
+      "family_default_name": {
+        "text": "My family"
+      },
+      "family_role_owner": {
+        "text": "owner"
+      },
+      "family_role_member": {
+        "text": "member"
+      },
+      "family_members_count": {
+        "text": "Members: $COUNT$",
+        "placeholders": {
+          "count": {
+            "content": "$1"
+          }
+        }
+      },
+      "family_no_key": {
+        "text": "no key yet"
+      },
+      "family_unknown_domain": {
+        "text": "(unknown site)"
+      },
+      "family_alert_blocked": {
+        "text": "blocked"
+      },
+      "family_create_failed": {
+        "text": "Couldn't create the family. Try again in a moment."
+      },
+      "family_join_invalid_input": {
+        "text": "Enter the code and the 4-digit PIN."
+      },
+      "family_join_failed": {
+        "text": "This invite is wrong or has expired."
+      },
+      "family_invite_failed": {
+        "text": "Couldn't create an invite. Try again in a moment."
+      },
+      "family_invite_share": {
+        "text": "Cleanway family invite\nCode: $CODE$\nPIN: $PIN$",
+        "placeholders": {
+          "code": {
+            "content": "$1"
+          },
+          "pin": {
+            "content": "$2"
+          }
+        }
+      },
+      "family_invite_qr_alt": {
+        "text": "QR code for the Cleanway family invite"
       }
     }
   },
@@ -1100,6 +1857,7 @@
       "col_tn": "Correct",
       "dataset_phishing_desc": "fresh links from the URLhaus and PhishTank public feeds, downloaded at each run and de-duplicated by domain.",
       "dataset_safe_desc": "random domains from the Tranco top-1M list, ranks 100 to 100,000, with a fixed random seed so the sample can be reproduced.",
+      "dataset_safe_desc_curated": "real Russian sites outside the Tranco top 100,000 — regional and city administrations, universities, .рф sites, small banks and businesses, museums and theatres — from a published list that gives the source of every site, sampled with a fixed random seed.",
       "mapping_cleanway": "Cleanway: \"dangerous\" counts as dangerous, \"safe\" as safe, \"caution\" as unknown.",
       "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: a blocked answer (NXDOMAIN or 0.0.0.0 / ::) counts as dangerous, a normal answer as safe.",
       "mapping_virustotal": "VirusTotal: dangerous when at least 2 of its vendors flag the link; a single vendor is ignored as too noisy.",
@@ -1109,7 +1867,8 @@
       "caveat_gsb": "Google Safe Browsing needs an API key; when none is configured for the run, its column shows \"—\".",
       "caveat_nxdomain": "A domain that no longer exists also gets NXDOMAIN from Cloudflare and is counted as a Cloudflare block, which flatters Cloudflare on phishing domains that have already been taken down.",
       "caveat_latency": "Response times are measured from the machine that runs the script (a cloud runner in the US or EU); from other regions they will differ.",
-      "caveat_allowlist": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, and the sample of real sites above comes from that same range. So it cannot show how often Cleanway wrongly calls a less famous real site dangerous, and we publish no false-alarm rate from it. We will once the sample includes real sites outside that list."
+      "caveat_allowlist": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, and the sample of real sites above comes from that same range. So it cannot show how often Cleanway wrongly calls a less famous real site dangerous, and we publish no false-alarm rate from it. We will once the sample includes real sites outside that list.",
+      "caveat_allowlist_curated": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, so the sample of real sites above is taken from outside that list: every one of them is really analysed. Our server is outside Russia, and some of these sites do not answer foreign visitors; the weekly results on GitHub show the false alarms on those sites separately."
     },
     "install": {
       "browser_label": "Browser extensions",

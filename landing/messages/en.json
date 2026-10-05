@@ -362,6 +362,7 @@
     "col_tn": "Correct",
     "dataset_phishing_desc": "fresh links from the URLhaus and PhishTank public feeds, downloaded at each run and de-duplicated by domain.",
     "dataset_safe_desc": "random domains from the Tranco top-1M list, ranks 100 to 100,000, with a fixed random seed so the sample can be reproduced.",
+    "dataset_safe_desc_curated": "real Russian sites outside the Tranco top 100,000 — regional and city administrations, universities, .рф sites, small banks and businesses, museums and theatres — from a published list that gives the source of every site, sampled with a fixed random seed.",
     "mapping_cleanway": "Cleanway: \"dangerous\" counts as dangerous, \"safe\" as safe, \"caution\" as unknown.",
     "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: a blocked answer (NXDOMAIN or 0.0.0.0 / ::) counts as dangerous, a normal answer as safe.",
     "mapping_virustotal": "VirusTotal: dangerous when at least 2 of its vendors flag the link; a single vendor is ignored as too noisy.",
@@ -371,7 +372,8 @@
     "caveat_gsb": "Google Safe Browsing needs an API key; when none is configured for the run, its column shows \"—\".",
     "caveat_nxdomain": "A domain that no longer exists also gets NXDOMAIN from Cloudflare and is counted as a Cloudflare block, which flatters Cloudflare on phishing domains that have already been taken down.",
     "caveat_latency": "Response times are measured from the machine that runs the script (a cloud runner in the US or EU); from other regions they will differ.",
-    "caveat_allowlist": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, and the sample of real sites above comes from that same range. So it cannot show how often Cleanway wrongly calls a less famous real site dangerous, and we publish no false-alarm rate from it. We will once the sample includes real sites outside that list."
+    "caveat_allowlist": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, and the sample of real sites above comes from that same range. So it cannot show how often Cleanway wrongly calls a less famous real site dangerous, and we publish no false-alarm rate from it. We will once the sample includes real sites outside that list.",
+    "caveat_allowlist_curated": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, so the sample of real sites above is taken from outside that list: every one of them is really analysed. Our server is outside Russia, and some of these sites do not answer foreign visitors; the weekly results on GitHub show the false alarms on those sites separately."
   },
   "Install": {
     "browser_label": "Browser extensions",
