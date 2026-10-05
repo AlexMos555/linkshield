@@ -120,32 +120,9 @@ export default function AuthScreen() {
       startCooldown();
     } catch (e: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      // GoTrue's own messages are English-only; showing them raw would put
-      // English in front of a Russian-speaking user. Map the two cases worth
-      // distinguishing and fall back to our translated generic message.
-      const offline = e instanceof AuthError && (e.code === "network_error" || e.code === "timeout");
-      // 429 is a likely early-launch answer: the project-wide email quota is
-      // small until real SMTP is wired, and GoTrue also caps per address.
-      const limited = e instanceof AuthError && e.status === 429;
-      // The reverse failure mode, and the one worth naming BEFORE captcha is
-      // ever turned on: the Supabase switch is server-side and project-wide, so
-      // the instant it is flipped every already-installed build that sends no
-      // token starts getting 400 captcha_failed. Without this branch that reads
-      // as the generic "Something went wrong" — an undiagnosable launch
-      // incident instead of a one-line answer.
-      const captchaRejected = e instanceof AuthError && e.code === "captcha_failed";
-      setError(
-        t(captchaRejected
-            ? (isCaptchaRequired()
-                // We sent a token and the server refused it — retryable.
-                ? "mobile.auth.err_captcha"
-                // This build has no captcha wired but the server now demands
-                // one: only a newer app can sign in.
-                : "mobile.auth.err_captcha_update")
-          : limited ? "mobile.auth.err_rate_limited"
-          : offline ? "mobile.auth.err_network"
-          : "mobile.auth.generic_error"),
-      );
+      // GoTrue's own messages are English-only; the mapping to a translated
+      // sentence (captcha, rate limit, offline) lives in auth-error-key.ts.
+      setError(t(otpSendErrorKey(authFailure(e), isCaptchaRequired())));
     } finally {
       setLoading(false);
     }
@@ -165,16 +142,8 @@ export default function AuthScreen() {
       leaveAuth();
     } catch (e: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      // A wrong/expired code is the common case — name it plainly.
-      const wrong =
-        e instanceof AuthError &&
-        (e.status === 400 || e.status === 401 || e.status === 403 || e.code === "otp_expired");
-      const offline = e instanceof AuthError && (e.code === "network_error" || e.code === "timeout");
-      setError(
-        t(wrong ? "mobile.auth.err_code_wrong"
-          : offline ? "mobile.auth.err_network"
-          : "mobile.auth.generic_error"),
-      );
+      // A wrong or expired code is the common case — auth-error-key.ts names it.
+      setError(t(otpVerifyErrorKey(authFailure(e))));
     } finally {
       setLoading(false);
     }

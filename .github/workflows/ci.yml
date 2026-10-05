@@ -198,6 +198,11 @@ jobs:
         # as a scam; a slow first check is retried once, a rate limit never.
         run: node mobile/scripts/test-check-verdict.mjs
 
+      - name: Sign-in error text table test
+        # A failed code request or code check shows a translated sentence,
+        # never GoTrue's English: captcha, rate limit, offline, wrong code.
+        run: node --experimental-strip-types mobile/scripts/test-auth-error-key.mjs
+
       - name: Reason label table test
         # Every reason code the app maps has its label in all 10 locales, and
         # the codes the API's verdict_basis release adds read in Russian —
