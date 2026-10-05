@@ -147,6 +147,14 @@ jobs:
           assert len(by_ml) <= 3, f"::error::FP REGRESSION — the model flags {len(by_ml)} held-out Russian sites"
           PY
 
+      - name: Model tests (the retrained model must keep main green)
+        # The gates above are the release bar; these are the tests CI runs on
+        # every push. Without this step the 2026-10-05 retrain passed the gates
+        # and committed a model that failed tests/test_ml_scorer.py on main.
+        run: |
+          pip install pytest==8.3.4 pytest-asyncio==0.25.2
+          PYTHONPATH=. python -m pytest -q tests/test_ml_scorer.py tests/test_ml_feature_parity.py tests/test_brand_on_hosting_tenant.py
+
       - name: Commit new model if changed
         run: |
           git config user.name "github-actions[bot]"
