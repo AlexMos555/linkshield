@@ -13,6 +13,8 @@ internal data class LinkFacts(
     val official: Boolean,
     /** Not official, yet its name carries a brand ("sberbank-bonus.ru"). */
     val imitatesBrand: Boolean,
+    /** The brand it carries is a state body's: "shtraf-oplata.online", "nalog-vozvrat.site". */
+    val imitatesState: Boolean = false,
 ) {
     /** A link whose destination is hidden, disguised or unusual — worse than just "not the brand's". */
     val suspicious: Boolean
@@ -67,6 +69,10 @@ internal class MessageSignals(
     val namesServiceOnly: Boolean get() = organisations.isNotEmpty() && organisations.all { it.kind == Kind.SERVICE }
     /** The police, the FSB, the Central Bank — the "a caller will guide you" family. */
     val namesSecurity: Boolean get() = organisations.any { it.kind == Kind.SECURITY }
+    /** A bank named by its own name ("ВТБ", "Сбер"), not only by the "банк*" catch-all. */
+    val namesBankByName: Boolean get() = organisations.any { it.kind == Kind.BANK && !it.catchAll }
+    /** Ozon, Wildberries, Яндекс Маркет, Почта — the names on the task-scam job offers. */
+    val namesMarketplace: Boolean get() = organisations.any { it.kind == Kind.DELIVERY }
     /** Only a catch-all ("Банк Уралсиб" → "банк*"): its real site may simply be one we do not know. */
     val namesOnlyCatchAll: Boolean get() = organisations.isNotEmpty() && organisations.all { it.catchAll }
 
@@ -74,7 +80,9 @@ internal class MessageSignals(
 
     /** "Выполняйте его указания", "не кладите трубку": obey the caller — pressure of its own. */
     val obey: Boolean by lazy { has(G.OBEY) }
-    val threat: Boolean by lazy { has(G.THREAT) || obey }
+    /** A threat in words — "уголовное дело", "заблокирована" — not only an order to obey. */
+    val threatWords: Boolean by lazy { has(G.THREAT) }
+    val threat: Boolean by lazy { threatWords || obey }
     val urgency: Boolean by lazy { has(G.URGENCY) || within() || dateDeadline() }
     val confirmData: Boolean by lazy { hits(G.CONFIRM_DATA).any { active(it) } }
     val pressure: Boolean get() = threat || urgency || confirmData
@@ -83,6 +91,8 @@ internal class MessageSignals(
     val bait: Boolean by lazy { has(G.BAIT) }
     /** Money handed OUT — a payout, a win, a compensation — not a shop's cashback or bonus points. */
     val payout: Boolean by lazy { has(G.PAYOUT) }
+    /** "Подработка", "оценка товаров", "за отзывы": the task-scam job offer. */
+    val jobOffer: Boolean by lazy { has(G.JOB_OFFER) }
 
     // ── what it asks the reader to do ─────────────────────────────────────
 
@@ -125,11 +135,15 @@ internal class MessageSignals(
     val cardNumber: Boolean by lazy { CARD_NUMBER.containsMatchIn(text) }
     val safeAccount: Boolean by lazy { hits(G.SAFE_ACCOUNT).any { safeAccountActive(it) } }
     val payAsked: Boolean by lazy { hits(G.PAY_VERB).any { active(it) } }
-    /** Pay a fee, duty or delivery charge — "оплатите без комиссии" is the opposite. */
+    /**
+     * Pay a fee, duty or delivery charge — "оплатите без комиссии" is the
+     * opposite. The charge may also come first, as unpaid: "не оплачена
+     * доставка 189 ₽. Оплатите по ссылке…".
+     */
     val fee: Boolean by lazy {
         hits(G.PAY_VERB).any { p ->
             active(p) && hits(G.FEE_WORD).any { f -> follows(p, f, 4) && !index.isWord(f.start - 1, WITHOUT) }
-        }
+        } || (payAsked && hits(G.FEE_UNPAID).any { u -> hits(G.FEE_WORD).any { f -> follows(u, f, 2) || follows(f, u, 2) } })
     }
     val install: Boolean by lazy { hits(G.INSTALL).any { active(it) } }
     val malwareLure: Boolean by lazy { has(G.MALWARE_LURE) }

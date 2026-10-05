@@ -6,18 +6,21 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The 2026-10 held-out set: 60 legitimate and 60 scam messages written after
- * the rules and after MessageCorpus, and scored before any tuning
- * (src/test/resources/message_heldout_2026-10.tsv; first pass in
- * docs/EVALUATION_2026-10.md).
+ * The 2026-10b blind set: 107 legitimate and 110 scam messages written by
+ * someone who never saw the rules, the analyzer, MessageCorpus, the 2026-10
+ * held-out set or the evaluation's miss lists
+ * (src/test/resources/message_blind_2026-10b.tsv; numbers in
+ * docs/EVALUATION_2026-10.md §3.9).
  *
- * This is a measurement, not a contract: every miss and every false alarm is
- * printed with its reasons and written to build/message-heldout-report.md,
- * and the numbers measured on 2026-10-04 are pinned as floors so a later rule
- * change cannot quietly make the set worse. Raise the floors when the rules
- * improve; never edit a message to pass.
+ * This is a measurement, not a contract and not a tuning set. Every miss and
+ * every false alarm is printed and written to build/message-blind-report.md.
+ * The numbers pinned below are the FIRST blind measurement, taken on the
+ * rules of PR #86 after they were frozen. They are floors and a cap only so
+ * a later change cannot quietly make the set worse — never tune a rule on
+ * these texts, and never edit a message to pass. Once rules are changed
+ * because of what this set showed, it is no longer blind for those families.
  */
-class MessageHeldOutTest {
+class MessageBlindTest {
 
     private val analyzer = MessageTestSupport.analyzer()
 
@@ -31,16 +34,15 @@ class MessageHeldOutTest {
     private val scored: List<Scored> by lazy { cases.map { Scored(it, analyzer.analyze(it.text)) } }
 
     @Test
-    fun `the set is 60 legit and 60 scam, unique, and none of it is in the tuning corpus`() {
-        assertEquals(60, cases.count { it.label == "legit" }, "legit messages")
-        assertEquals(60, cases.count { it.label == "scam" }, "scam messages")
-        assertEquals(cases.size, cases.map { it.text }.toSet().size, "duplicate message in the held-out set")
+    fun `the set is 107 legit and 110 scam, unique, and none of it is in the tuning corpus`() {
+        assertEquals(107, cases.count { it.label == "legit" }, "legit messages")
+        assertEquals(110, cases.count { it.label == "scam" }, "scam messages")
+        assertEquals(cases.size, cases.map { it.text }.toSet().size, "duplicate message in the blind set")
         val corpus = (MessageCorpus.SCAMS_RU + MessageCorpus.SCAMS_EN + MessageCorpus.SCAM_VARIANTS +
             MessageCorpus.SCAM_REVIEW + MessageCorpus.LEGIT_RU + MessageCorpus.LEGIT_EN + MessageCorpus.LEGIT_VARIANTS +
             MessageCorpus.SCAM_2026_10_DANGEROUS + MessageCorpus.SCAM_2026_10_CAUTION + MessageCorpus.LEGIT_2026_10 +
             MessageCorpus.SCAM_2026_10_UPGRADES + MessageCorpus.LEGIT_2026_10_UPGRADES).toSet()
-        assertEquals(emptyList(), cases.map { it.text }.filter { it in corpus }, "held-out message also in MessageCorpus")
-        assertTrue(cases.map { it.family }.toSet().size >= 20, "families")
+        assertEquals(emptyList(), cases.map { it.text }.filter { it in corpus }, "blind message also in MessageCorpus")
     }
 
     @Test
@@ -48,16 +50,16 @@ class MessageHeldOutTest {
         val legit = scored.filter { it.case.label == "legit" }
         val scams = scored.filter { it.case.label == "scam" }
         val falseAlarms = legit.filter { it.flagged }
-        val misses = scams.filter { !it.flagged }
         val lines = buildList {
-            add("# Held-out message set 2026-10 — first pass")
+            add("# Blind message set 2026-10b")
             add("")
             add("legit: ${legit.size}, false alarms: ${falseAlarms.size} " +
                 "(dangerous ${falseAlarms.count { it.result.verdict == MessageVerdict.DANGEROUS }}, " +
                 "caution ${falseAlarms.count { it.result.verdict == MessageVerdict.CAUTION }})")
             add("scam: ${scams.size}, flagged: ${scams.count { it.flagged }}, " +
                 "dangerous: ${scams.count { it.result.verdict == MessageVerdict.DANGEROUS }}, " +
-                "caution: ${scams.count { it.result.verdict == MessageVerdict.CAUTION }}, missed: ${misses.size}")
+                "caution: ${scams.count { it.result.verdict == MessageVerdict.CAUTION }}, " +
+                "missed: ${scams.count { !it.flagged }}")
             add("")
             add("## By family (flagged / total, dangerous)")
             for ((family, group) in scored.groupBy { it.case.label + "/" + it.case.family }.toSortedMap()) {
@@ -68,19 +70,16 @@ class MessageHeldOutTest {
             falseAlarms.forEach { add("- [${it.case.family}] ${it.result.verdict} ${it.result.reasons}: ${it.case.text}") }
             add("")
             add("## Misses (scam with no signals)")
-            misses.forEach { add("- [${it.case.family}] ${it.case.text}") }
+            scams.filter { !it.flagged }.forEach { add("- [${it.case.family}] ${it.case.text}") }
             add("")
             add("## Scams flagged only as caution")
             scams.filter { it.result.verdict == MessageVerdict.CAUTION }.forEach {
                 add("- [${it.case.family}] ${it.result.reasons}: ${it.case.text}")
             }
-            add("")
-            add("## Legit shapes recognised on the legit half")
-            for ((shape, n) in legit.groupingBy { it.result.legitShape ?: "none" }.eachCount().toSortedMap()) add("- $shape: $n")
         }
-        lines.forEach { println("HELDOUT $it") }
+        lines.forEach { println("BLIND $it") }
         File("build").mkdirs()
-        File("build/message-heldout-report.md").writeText(lines.joinToString("\n") + "\n")
+        File("build/message-blind-report.md").writeText(lines.joinToString("\n") + "\n")
         for (s in scored) {
             if (!s.flagged) continue
             assertTrue(s.result.reasons.isNotEmpty(), "no reasons for: ${s.case.text}")
@@ -89,14 +88,12 @@ class MessageHeldOutTest {
     }
 
     @Test
-    fun `the first-pass numbers do not regress`() {
+    fun `the first blind numbers do not regress`() {
         val legit = scored.filter { it.case.label == "legit" }
         val scams = scored.filter { it.case.label == "scam" }
         val falseAlarms = legit.count { it.flagged }
         val flagged = scams.count { it.flagged }
         val dangerous = scams.count { it.result.verdict == MessageVerdict.DANGEROUS }
-        // Measured 2026-10-04 on the untuned rules. A fix may lower the first
-        // cap and raise the two floors; nothing may move them the other way.
         assertTrue(falseAlarms <= MAX_FALSE_ALARMS, "false alarms rose to $falseAlarms (cap $MAX_FALSE_ALARMS)")
         assertTrue(flagged >= MIN_FLAGGED, "flagged scams fell to $flagged (floor $MIN_FLAGGED)")
         assertTrue(dangerous >= MIN_DANGEROUS, "dangerous scams fell to $dangerous (floor $MIN_DANGEROUS)")
@@ -113,18 +110,15 @@ class MessageHeldOutTest {
     }
 
     private companion object {
-        const val FILE = "message_heldout_2026-10.tsv"
-        // First pass, 2026-10-04: 0 false alarms, 50/60 scams flagged, 40/60 dangerous.
-        // Raised 2026-10-05 by the commit that changed the rules for the ten
-        // blind-spot families (tuned on new MessageCorpus phrasings, not on this
-        // set): 0 false alarms, 60/60 flagged, 45/60 dangerous. The false-alarm
-        // cap stays 0 — a hard requirement, not a floor to trade against.
-        // Raised again 2026-10-05 by the commit that upgraded the ten caution-only
-        // families of docs/EVALUATION_2026-10.md §3.5 (tuned on new MessageCorpus
-        // phrasings, SCAM_2026_10_UPGRADES): 0 false alarms, 60/60 flagged, 55/60
-        // dangerous. The five left at caution are caution by design (§3.7).
+        const val FILE = "message_blind_2026-10b.tsv"
+        // First blind measurement, 2026-10-05, on the frozen rules of PR #86
+        // (origin/main's rules scored the same): 0/107 false alarms, 26/110
+        // scams flagged, 20/110 dangerous. 42 of the 84 misses carry a link
+        // with a reserved TLD (.test/.example/.invalid) that the bare-link
+        // extractor does not accept — see §3.9. These are floors against
+        // regression, NOT targets: do not tune rules on these texts.
         const val MAX_FALSE_ALARMS = 0
-        const val MIN_FLAGGED = 60
-        const val MIN_DANGEROUS = 55
+        const val MIN_FLAGGED = 26
+        const val MIN_DANGEROUS = 20
     }
 }
