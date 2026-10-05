@@ -89,7 +89,7 @@ def test_training_and_serving_import_one_extractor(train_model):
 def test_shipped_model_metadata_matches_the_extractor():
     assert META["feature_names"] == FEATURE_NAMES
     assert META["n_features"] == len(FEATURE_NAMES) == 27
-    assert META["features_version"] == FEATURES_VERSION == 5
+    assert META["features_version"] == FEATURES_VERSION == 6
 
 
 def test_onnx_input_is_as_wide_as_the_feature_vector():

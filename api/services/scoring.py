@@ -30,7 +30,7 @@ from types import MappingProxyType
 from typing import Mapping, NamedTuple, Optional
 
 from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
-from api.services import ru_brands
+from api.services import ru_brands, ru_lures
 from api.services.hosting_platforms import is_shared_platform_site
 
 logger = logging.getLogger("cleanway.scoring")
@@ -318,6 +318,12 @@ _RU_NAMES: frozenset[str] = frozenset(n for g in RU_BRAND_GROUPS for n in g.name
 _SHARED_NAMES: frozenset[str] = frozenset(n for g in RU_BRAND_GROUPS for n in g.shared_name)
 # Names too few letters apart from other names for edit distance (tele2).
 _NO_FUZZY: frozenset[str] = frozenset(n for g in RU_BRAND_GROUPS for n in g.no_fuzzy)
+# Per name: lure words for this brand alone — its own product's name
+# (СберБанк Онлайн: sberbank-online, сбербанк-онлайн), as ru_lures skeletons.
+_BRAND_LURE_WORDS: Mapping[str, frozenset[str]] = MappingProxyType({
+    n: frozenset(ru_lures.skeleton(w) for w in g.lure_words)
+    for g in RU_BRAND_GROUPS for n in g.names if g.lure_words
+})
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1903,6 +1909,9 @@ class _NameRule(NamedTuple):
     hyphen_combos_only: bool = False
     # The name plus its own country (avito-ru, sberbankru).
     country_combos: bool = False
+    # The name plus a Russian lure word (ru_lures), glued or among several
+    # words: sberbank-bonus, ozonpriz, lk-gosuslugi, yandex-pay-login.
+    lure_words: bool = False
 
 
 _DEFAULT_NAME_RULE = _NameRule()
@@ -1921,8 +1930,9 @@ def _rule_for(name: str, at_home: bool = False) -> _NameRule:
     mts-team.com a Düsseldorf trainer — but under .ru the name means the
     Russian brand, and vtb-team.ru (a copy of VTB's page), theozon.ru (a
     log-in page) and tbankapp.ru ('T-Bank — Ввод ключа') are its imitators.
-    Russian names get slips only under 8 letters, and their country as a
-    combo word (avito-ru.com)."""
+    Russian names get slips only under 8 letters, their country as a combo
+    word (avito-ru.com), and Russian lure words (sberbank-bonus) under every
+    TLD, shared names included."""
     short = len(name) < _SHAPE_MIN_LABEL
     russian = name in _RU_NAMES and name not in GLOBAL_TYPOSQUAT_TARGETS
     if short:
@@ -1935,6 +1945,7 @@ def _rule_for(name: str, at_home: bool = False) -> _NameRule:
         generic_combos=generic,
         hyphen_combos_only=short,
         country_combos=russian,
+        lure_words=russian,
     )
 
 
@@ -2172,6 +2183,34 @@ def _check_combosquat(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RUL
             return True
         if rule.country_combos and after and word in _COMBO_COUNTRY_SUFFIXES:
             return True
+    return rule.lure_words and _check_lure_combo(name, brand)
+
+
+def _is_lure_word(word: str, brand: str) -> bool:
+    """An English lure keyword (login), a Russian one in any spelling
+    (бонус, bonusy, doctavka: see ru_lures), or one that lures next to this
+    brand alone (sberbank-online)."""
+    return (
+        word in _COMBOSQUAT_KEYWORDS
+        or ru_lures.is_lure(word)
+        or ru_lures.skeleton(word) in _BRAND_LURE_WORDS.get(brand, ())
+    )
+
+
+def _check_lure_combo(name: str, brand: str) -> bool:
+    """`name` is `brand` and a lure word: glued to it (ozonpriz, lkgosuslugi)
+    or among the hyphenated words around it (sberbank-bonus, lk-gosuslugi,
+    yandex-pay-login, vk-login-verify, госуслуги-лк). The brand has to be one
+    whole word: vkusvill-bonus is VkusVill's, not VK's."""
+    words = name.split("-")
+    for i, word in enumerate(words):
+        if word == brand:
+            if any(_is_lure_word(w, brand) for w in words[:i] + words[i + 1:]):
+                return True
+        elif len(word) > len(brand):
+            glued = word[len(brand):] if word.startswith(brand) else word[:-len(brand)] if word.endswith(brand) else ""
+            if glued and _is_lure_word(glued, brand):
+                return True
     return False
 
 
@@ -2216,6 +2255,9 @@ _RU_ZONE_BRANDS = frozenset({
 # (vk-login): as one part of a name (ok-stroy) or glued to a word (gook) they
 # are too common.
 _RU_ZONE_BRAND_PART_MIN = 4
+# A keyword combo there is an English or a Russian lure word (vk-login,
+# mts-bonus, ok-podarok): see ru_lures.
+_ZONE_NAME_RULE = _NameRule(lure_words=True)
 _RU_ZONE_BRANDS_LONGEST_FIRST = tuple(sorted(_RU_ZONE_BRANDS, key=lambda b: (-len(b), b)))
 
 
@@ -2244,9 +2286,9 @@ def _check_brand_under_open_zone(domain: str) -> Optional[str]:
         pieces = label.split("-")
         for brand in _RU_ZONE_BRANDS_LONGEST_FIRST:
             if len(brand) >= _RU_ZONE_BRAND_PART_MIN:
-                if brand in pieces or _check_combosquat(label, brand):
+                if brand in pieces or _check_combosquat(label, brand, _ZONE_NAME_RULE):
                     return brand
-            elif brand in pieces and _check_combosquat(label, brand):
+            elif brand in pieces and _check_combosquat(label, brand, _ZONE_NAME_RULE):
                 return brand
     return None
 

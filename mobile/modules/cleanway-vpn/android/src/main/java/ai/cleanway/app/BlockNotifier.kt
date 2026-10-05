@@ -36,15 +36,17 @@ import java.net.URLEncoder
  * Strings come from res/values-xx/strings.xml, GENERATED from
  * packages/i18n-strings by scripts/build-i18n.py (10 locales).
  *
- * Blocks and warnings go to [ALERT_CHANNEL_ID] (high importance), so the
- * phone shows them as a pop-up at the moment the site fails to open; the
- * quieter "allow it in the app" notice ([notifyAllowMoved]) stays on
- * [CHANNEL_ID].
+ * Blocks go to [ALERT_CHANNEL_ID] (high importance), so the phone shows
+ * them as a pop-up at the moment the site fails to open — within the
+ * [AlertBudget]: at most 3 pop-ups an hour and 10 a day, one per site in six
+ * hours, and past the cap one collapsed "N more suspicious" notice
+ * ([notifySummary]) on the silent [CAUTION_CHANNEL_ID]. Warnings ("this site
+ * looks like a scam") are always silent: they wait in the shade, no pop-up,
+ * no sound. The quieter "allow it in the app" notice ([notifyAllowMoved])
+ * stays on [CHANNEL_ID].
  *
- * Throttling (pure, JVM-tested): one notification per domain per
- * [PER_DOMAIN_WINDOW_MS], and at most [MAX_PER_MINUTE] overall — a page that
- * loads twenty trackers off one blocked host must not become twenty
- * notifications.
+ * Nothing posted here carries a link or a phone number; the site's name is
+ * plain text (the person — and the founder — want to see what was stopped).
  */
 object BlockNotifier {
     /** Quiet channel: the "allow it in the app" notice. Created as the block
@@ -52,19 +54,12 @@ object BlockNotifier {
      *  creation — hence the separate [ALERT_CHANNEL_ID]. */
     const val CHANNEL_ID = "cleanway_blocks"
     const val ALERT_CHANNEL_ID = "cleanway_block_alerts"
-    // Every attempt to open a blocked site should pop up. One attempt is a
-    // burst of lookups — A, AAAA and HTTPS records, the browser's own retries
-    // and its 1 s / 5 s / 30 s auto-reloads of the error page. The window
-    // runs from the LAST lookup of the site, so the burst folds into one
-    // alert, and a new try after 45 s of quiet alerts again. (Was 6 h from
-    // the last alert: a second try looked like the shield had done nothing.)
-    const val PER_DOMAIN_WINDOW_MS = 45_000L
-    // An app on the phone that polls a blocked host once a minute would
-    // otherwise alert once a minute forever.
-    const val MAX_PER_DOMAIN_PER_HOUR = 4
-    const val MAX_PER_MINUTE = 3
-    private const val HOUR_MS = 60 * 60_000L
-    private const val MINUTE_MS = 60_000L
+    /** Silent: warnings, repeats of a site already popped up, the summary. No sound, no pop-up. */
+    const val CAUTION_CHANNEL_ID = "cleanway_caution"
+    /** The one collapsed "N more suspicious" notice over the cap. */
+    private const val SUMMARY_ID = 4713
+    /** Kept for callers: the burst window now lives in [AlertBudget]. */
+    const val PER_DOMAIN_WINDOW_MS = AlertBudget.BURST_WINDOW_MS
 
     /**
      * Status-bar icon for EVERY Cleanway notification. Android draws a small
@@ -87,36 +82,53 @@ object BlockNotifier {
         return "cleanway:///history?filter=$filter&domain=" + URLEncoder.encode(domain, "UTF-8")
     }
 
-    /**
-     * Pure, JVM-tested throttle. One instance per process; state is tiny.
-     */
-    class Throttle {
-        // Last LOOKUP of each domain (alerted or not) and its recent alerts.
-        private val lastSeen = mutableMapOf<String, Long>()
-        private val alertsByDomain = mutableMapOf<String, List<Long>>()
-        private val recent = ArrayDeque<Long>()
+    /** The process-wide pop-up budget (AlertBudget); the after-call notice shares it. Use [decide]. */
+    private val budget = AlertBudget()
+    private val budgetLock = Any()
+    private var budgetLoaded = false
+    private const val BUDGET_PREFS = "cleanway_alert_budget"
+    private const val KEY_BUDGET = "budget"
 
-        @Synchronized
-        fun shouldNotify(domain: String, now: Long): Boolean {
-            val seen = lastSeen[domain]
-            lastSeen[domain] = now
-            if (seen != null && now - seen < PER_DOMAIN_WINDOW_MS) return false
-            val hourAlerts = alertsByDomain[domain].orEmpty().filter { now - it < HOUR_MS }
-            if (hourAlerts.size >= MAX_PER_DOMAIN_PER_HOUR) return false
-            while (recent.isNotEmpty() && now - recent.first() >= MINUTE_MS) recent.removeFirst()
-            if (recent.size >= MAX_PER_MINUTE) return false
-            alertsByDomain[domain] = hourAlerts + now
-            recent.addLast(now)
-            // Keep the per-domain maps from growing forever on a long session.
-            if (lastSeen.size > 512) {
-                lastSeen.entries.filter { now - it.value >= HOUR_MS }.map { it.key }
-                    .forEach { lastSeen.remove(it); alertsByDomain.remove(it) }
+    /**
+     * Ask the budget, persisted: the first call in a process restores what
+     * the last one saved, and every pop-up or summary is saved — so a
+     * restarted service cannot pop up another three this hour (AlertBudget).
+     * SILENT and DROP change nothing worth keeping. Never throws; without
+     * storage it still answers from memory.
+     */
+    fun decide(context: Context, severity: AlertBudget.Severity, key: String, now: Long): AlertBudget.Verdict {
+        val prefs = try {
+            context.applicationContext.getSharedPreferences(BUDGET_PREFS, Context.MODE_PRIVATE)
+        } catch (_: Exception) {
+            null
+        }
+        // One lock around load, decide and save, so saves land in decision order.
+        synchronized(budgetLock) {
+            if (!budgetLoaded && prefs != null) {
+                try { budget.restore(prefs.getString(KEY_BUDGET, null), now) } catch (_: Exception) {}
+                budgetLoaded = true
             }
-            return true
+            val verdict = budget.decide(severity, key, now)
+            if (prefs != null && (verdict == AlertBudget.Verdict.HEADS_UP || verdict is AlertBudget.Verdict.SUMMARY)) {
+                try { prefs.edit().putString(KEY_BUDGET, budget.toJson()).apply() } catch (_: Exception) {}
+            }
+            return verdict
         }
     }
 
-    private val throttle = Throttle()
+    /**
+     * Pure: how loud an event may be. A block is "Dangerous" (the site was
+     * on the list) and pops up. A late warning about a site that already
+     * opened pops up only when the server's verdict on it was "dangerous";
+     * a "caution" verdict — even one the model is sure about — is
+     * "Careful", and "Careful" is always silent (plan №7). No level known:
+     * careful.
+     */
+    fun severityOf(kind: String, level: String? = null): AlertBudget.Severity = when {
+        kind != BlockLog.KIND_WARNED -> AlertBudget.Severity.DANGER
+        level == "dangerous" -> AlertBudget.Severity.DANGER
+        else -> AlertBudget.Severity.CAUTION
+    }
 
     /**
      * Pure: will a block alert actually show? The app-wide switch can be on
@@ -155,6 +167,14 @@ object BlockNotifier {
                 loc.getString(R.string.allow_channel),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply { description = loc.getString(R.string.allow_channel_desc) }
+        )
+        // LOW: shown in the shade, never a pop-up, never a sound.
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CAUTION_CHANNEL_ID,
+                loc.getString(R.string.caution_channel),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply { description = loc.getString(R.string.caution_channel_desc) }
         )
     }
 
@@ -200,9 +220,27 @@ object BlockNotifier {
         )
     }
 
-    /** Post the notification if throttling allows. Safe to call from any thread. */
-    fun notify(context: Context, domain: String, kind: String, now: Long = System.currentTimeMillis()) {
-        if (!throttle.shouldNotify(domain, now)) return
+    /**
+     * Post the notification as the budget allows. Safe to call from any
+     * thread. [severity] defaults from the kind alone; the link guard passes
+     * the one it derived from the server's verdict ([severityOf] with a level).
+     */
+    fun notify(
+        context: Context,
+        domain: String,
+        kind: String,
+        now: Long = System.currentTimeMillis(),
+        severity: AlertBudget.Severity = severityOf(kind),
+    ) {
+        when (val verdict = decide(context, severity, domain, now)) {
+            AlertBudget.Verdict.DROP -> return
+            AlertBudget.Verdict.HEADS_UP -> post(context, domain, kind, headsUp = true)
+            AlertBudget.Verdict.SILENT -> post(context, domain, kind, headsUp = false)
+            is AlertBudget.Verdict.SUMMARY -> notifySummary(context, verdict.count)
+        }
+    }
+
+    private fun post(context: Context, domain: String, kind: String, headsUp: Boolean) {
         try {
             ensureChannel(context)
             val loc = LocalizedContext.of(context)
@@ -216,7 +254,7 @@ object BlockNotifier {
             // that appears while the person is trying to open the site — the
             // moment a scammer on the phone says "press allow". Allowing
             // lives in History (the tap below), behind a warning.
-            val notif = NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
+            val notif = NotificationCompat.Builder(context, if (headsUp) ALERT_CHANNEL_ID else CAUTION_CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -224,16 +262,46 @@ object BlockNotifier {
                 .setColor(ACCENT_COLOR)
                 .setContentIntent(historyEntry(context, domain, kind))
                 .setAutoCancel(true)
-                // Pre-O phones have no channels; HIGH is what makes them pop up.
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                // Pre-O phones have no channels; the priority is what decides there.
+                .setPriority(if (headsUp) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_LOW)
                 .build()
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            // Distinct id per domain so a repeat (after the window) replaces
-            // rather than stacks; POST_NOTIFICATIONS may be denied on 13+ —
-            // notify() then no-ops, and the block log still records it.
+            // Distinct id per domain so a repeat replaces rather than stacks;
+            // POST_NOTIFICATIONS may be denied on 13+ — notify() then no-ops,
+            // and the block log still records it.
             nm.notify(domain.hashCode(), notif)
         } catch (_: Exception) {
             // Never let a notification failure touch the DNS path.
+        }
+    }
+
+    /**
+     * Over the cap: one collapsed, silent notice, updated in place with the
+     * count. It names no site — the sites are in History, where the tap lands.
+     */
+    internal fun notifySummary(context: Context, count: Int) {
+        try {
+            ensureChannel(context)
+            val loc = LocalizedContext.of(context)
+            val n = count.toString()
+            val history = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("cleanway:///history?filter=blocked")).apply {
+                component = android.content.ComponentName(context.packageName, "ai.cleanway.app.MainActivity")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            val notif = NotificationCompat.Builder(context, CAUTION_CHANNEL_ID)
+                .setContentTitle(loc.getString(R.string.summary_title, n))
+                .setContentText(loc.getString(R.string.summary_text))
+                .setSmallIcon(SMALL_ICON)
+                .setColor(ACCENT_COLOR)
+                .setContentIntent(PendingIntent.getActivity(
+                    context, SUMMARY_ID, history, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ))
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(SUMMARY_ID, notif)
+        } catch (_: Exception) {
         }
     }
 }

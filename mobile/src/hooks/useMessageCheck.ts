@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 
 import {
   analyzeMessage,
+  noteCallEvent,
   type MessageAnalysis,
   type MessageVerdict,
 } from "../../modules/cleanway-vpn";
@@ -80,6 +81,16 @@ function saveRow(analysis: MessageAnalysis, merged: MergedVerdict): Promise<numb
   return saveMessageCheck(historyEntry(analysis.links, merged)).catch(() => null);
 }
 
+/**
+ * A message that turned dangerous only through the server's answer about a
+ * link: the native analyzer told the after-call notice (CallGuard.kt) about
+ * its own dangerous verdicts already; this covers the rest. Only the fact —
+ * never the text, never a host — crosses the bridge.
+ */
+function noteIfServerMadeItDangerous(onDevice: MessageVerdict, merged: MessageVerdict): void {
+  if (onDevice !== "dangerous" && merged === "dangerous") noteCallEvent("message_dangerous");
+}
+
 /** Same feel as the link check (shared.tsx) — except that no signals is not "safe", so no success buzz. */
 function buzz(verdict: MessageVerdict): void {
   if (verdict === "dangerous") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -121,6 +132,7 @@ export function useMessageCheck() {
       setState({ phase: "done", analysis, linkChecks: checks, ...next });
       if (isEscalation(before, next.verdict)) buzz(next.verdict);
     });
+    noteIfServerMadeItDangerous(analysis.verdict, merged.verdict);
 
     // Saved even if the person already moved on: the check did happen.
     const row = saveRow(analysis, merged);
@@ -146,6 +158,7 @@ export function useMessageCheck() {
       setState({ phase: "done", analysis: prev.analysis, linkChecks: checks, ...next });
       if (isEscalation(before, next.verdict)) buzz(next.verdict);
     });
+    noteIfServerMadeItDangerous(mergeVerdict(prev.analysis, prev.linkChecks).verdict, merged.verdict);
 
     const rowId = await prev.row;
     const row = rowId === null

@@ -33,6 +33,7 @@ import {
   isNotFound, reasonsToShow, serverLevel, showScore, shownLevel, type ServerAnswer,
 } from "../src/utils/check-verdict";
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
+import { useCallGuard } from "../src/components/call/CallGuardProvider";
 
 type Level = keyof typeof levelColors;
 
@@ -66,6 +67,9 @@ export default function SharedScreen() {
   }, [router]);
   const { t } = useTranslation();
   const { url, via } = useLocalSearchParams<{ url: string; via?: string }>();
+  // "Open anyway" on a stopped site during or right after a phone call is
+  // the scam's last step: the stop screen comes first (CallGuardProvider).
+  const callGuard = useCallGuard();
   // openInBrowser returns false when Cleanway is the only browser on the
   // phone. Closing the screen anyway made "Open anyway" a silent no-op.
   const [noBrowser, setNoBrowser] = useState(false);
@@ -201,8 +205,12 @@ export default function SharedScreen() {
         <TouchableOpacity
           style={safe ? s.primaryBtn : s.secondaryBtn}
           onPress={() => {
-            if (openInBrowser(url)) leaveShared();
-            else setNoBrowser(true);
+            const open = () => {
+              if (openInBrowser(url)) leaveShared();
+              else setNoBrowser(true);
+            };
+            if (safe) open();
+            else callGuard.guard("open_anyway", open);
           }}
           activeOpacity={0.85}
           accessibilityRole="button"

@@ -305,7 +305,11 @@ def char_diversity(s: str) -> float:
 #    The benign class gained tenants of the curated platforms
 #    (ml/train_model.py); the version 4 model had never seen one and scored
 #    facebook.github.io and blog.wordpress.com 0.98. Retrained.
-FEATURES_VERSION = 5
+# 6 (2026-10-05): is_typosquat is 1 for a Russian brand next to a Russian or
+#    transliterated lure word (sberbank-bonus, ozon-priz, госуслуги-лк,
+#    yandex-pay-login): see api/services/ru_lures.py (PR #64, numbered 4
+#    there before this branch's 4 and 5 merged). Retrained.
+FEATURES_VERSION = 6
 
 
 def extract_features(domain: str, signals: dict) -> dict[str, float]:

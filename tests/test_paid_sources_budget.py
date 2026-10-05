@@ -124,9 +124,15 @@ def test_live_calls_stop_at_the_daily_budget(slow_claude, settings, monkeypatch)
 
 
 def test_analysis_still_answers_in_time_and_says_the_judge_was_cut(slow_claude, offline_analyzer, monkeypatch):
-    offline_analyzer(site="reachable", values={"whois": {"age_days": 20}})
+    offline_analyzer(site="reachable", values={"whois": {"age_days": 400}})
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")  # the fixture above cleared it
     slow_claude["delay"] = 5
+    # The case needs a caution-band verdict, the only band the judge is asked
+    # about. It used to get there through the model's "ml_safe_override"
+    # (-10 on 55), which the next retrain is free to drop; now the name rules
+    # alone put it there: a lure name (typosquatting 25) on an old domain.
+    import api.services.ml_scorer as ml_scorer
+    monkeypatch.setattr(ml_scorer, "ml_predict", lambda domain: None)
 
     async def _run():
         loop = asyncio.get_event_loop()

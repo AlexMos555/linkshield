@@ -187,8 +187,8 @@ async function checkDomains(domains, page) {
           // (e.g. local flags a legit ccTLD bank; the API says safe). So is the
           // user-content rule (source:"platform", background/trusted-hosts.js):
           // on docs.google.com the offline score would call a page nobody
-          // checked "safe". The background's own local fallback (a weaker
-          // scorer) is not treated as an upgrade.
+          // checked "safe". The background's local fallback is this same
+          // scorer (utils/local-scorer.js), so it adds nothing to merge.
           if (results[k].domain === bgr.domain && (bgr.source === "api" || bgr.source === "platform")) {
             results[k] = bgr;
             _log("Upgraded from background:", bgr.domain, "→ score=" + bgr.score, bgr.level);
