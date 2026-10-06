@@ -2898,7 +2898,8 @@
         "sms_transfer_command": "It asks you to send an SMS command that transfers money",
         "disguised_letters": "Words are written with swapped letters to get past filters",
         "sender_personal_number": "An organisation is writing from an ordinary mobile number",
-        "sender_mismatch": "The sender isn't who the message claims to be"
+        "sender_mismatch": "The sender isn't who the message claims to be",
+        "asks_for_secrecy": "It asks you to keep the message or the call secret, even from family"
       },
       "shape": {
         "login_code": "This looks like an ordinary login code. Never tell this code to anyone — not even a “bank employee”.",
