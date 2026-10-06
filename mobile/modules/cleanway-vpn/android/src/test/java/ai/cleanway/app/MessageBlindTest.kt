@@ -9,10 +9,14 @@ import kotlin.test.assertTrue
  * The blind sets: messages written by someone who never saw the rules, the
  * analyzer, MessageCorpus, the 2026-10 held-out set or the evaluation's miss
  * lists (src/test/resources/message_blind_*.tsv; numbers in
- * docs/EVALUATION_2026-10.md §3.9 and §3.11).
+ * docs/EVALUATION_2026-10.md §3.9, §3.11 and §3.13).
  *  - 2026-10b: 107 legitimate and 110 scam messages.
  *  - 2026-10c: 112 legitimate and 112 scam messages, written by a second
  *    agent that saw only the column format of 2026-10b.
+ *  - 2026-10d: 125 legitimate and 137 scam messages, written by a third agent
+ *    with no access to the rules, the code, the docs or the earlier sets
+ *    (only the label and family columns of two rows of 2026-10c), with the
+ *    emphasis on paraphrase.
  *
  * This is a measurement, not a contract and not a tuning set. Every miss and
  * every false alarm is printed and written to build/message-blind-report-<set>.md.
@@ -54,7 +58,8 @@ class MessageBlindTest {
             MessageCorpus.SCAM_REVIEW + MessageCorpus.LEGIT_RU + MessageCorpus.LEGIT_EN + MessageCorpus.LEGIT_VARIANTS +
             MessageCorpus.SCAM_2026_10_DANGEROUS + MessageCorpus.SCAM_2026_10_CAUTION + MessageCorpus.LEGIT_2026_10 +
             MessageCorpus.SCAM_2026_10_UPGRADES + MessageCorpus.LEGIT_2026_10_UPGRADES + MessageSchemeCorpus.SCAM_DANGEROUS +
-            MessageSchemeCorpus.SCAM_CAUTION + MessageSchemeCorpus.LEGIT).toSet()
+            MessageSchemeCorpus.SCAM_CAUTION + MessageSchemeCorpus.LEGIT + MessageGenericCorpus.SCAM_DANGEROUS +
+            MessageGenericCorpus.SCAM_CAUTION + MessageGenericCorpus.LEGIT).toSet()
         for ((set, scored) in loaded) {
             val cases = scored.map { it.case }
             assertEquals(set.legit, cases.count { it.label == "legit" }, "${set.name}: legit messages")
@@ -62,8 +67,12 @@ class MessageBlindTest {
             assertEquals(cases.size, cases.map { it.text }.toSet().size, "${set.name}: duplicate message")
             assertEquals(emptyList(), cases.map { it.text }.filter { it in corpus }, "${set.name}: message also in MessageCorpus")
         }
-        val (b, c) = SETS.map { set -> loaded.getValue(set).map { it.case.text }.toSet() }
-        assertEquals(emptySet(), b intersect c, "the same message in two blind sets")
+        val texts = SETS.map { set -> set.name to loaded.getValue(set).map { it.case.text }.toSet() }
+        for ((i, first) in texts.withIndex()) {
+            for (second in texts.drop(i + 1)) {
+                assertEquals(emptySet(), first.second intersect second.second, "the same message in ${first.first} and ${second.first}")
+            }
+        }
     }
 
     @Test
@@ -150,9 +159,19 @@ class MessageBlindTest {
         // after #91 and #92 were merged: 0/112 false alarms, 65/112 scams
         // flagged, 47/112 dangerous (§3.11). The rules before #91 and #92
         // scored 60/42/0.
+        //
+        // 2026-10d. First measured 2026-10-06, on origin/main (8682a9d) and on
+        // the generic layer (PR #96, rules frozen before this set was opened):
+        // main 1/125 false alarms, 55/137 flagged, 43/137 dangerous; #96 1/125,
+        // 64/137, 48/137. The one false alarm is the same on both, from a scheme
+        // rule older than #96 (§3.13); it is pinned as measured, not fixed.
+        //
+        // The floors below are the PR #96 measurements (§3.13): 2026-10b
+        // 0/107, 35/110, 29/110; 2026-10c 0/112, 75/112, 54/112.
         val SETS = listOf(
-            BlindSet("2026-10b", legit = 107, scam = 110, maxFalseAlarms = 0, minFlagged = 33, minDangerous = 26),
-            BlindSet("2026-10c", legit = 112, scam = 112, maxFalseAlarms = 0, minFlagged = 65, minDangerous = 47),
+            BlindSet("2026-10b", legit = 107, scam = 110, maxFalseAlarms = 0, minFlagged = 35, minDangerous = 29),
+            BlindSet("2026-10c", legit = 112, scam = 112, maxFalseAlarms = 0, minFlagged = 75, minDangerous = 54),
+            BlindSet("2026-10d", legit = 125, scam = 137, maxFalseAlarms = 1, minFlagged = 64, minDangerous = 48),
         )
     }
 }
