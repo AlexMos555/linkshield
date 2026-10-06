@@ -329,6 +329,85 @@ class MessageAnalyzerTest {
         assertEquals(MessageVerdict.DANGEROUS, verdict(scam, sender = "gosuslugi"))
     }
 
+    // ── the generic layer ─────────────────────────────────────────────────
+
+    @Test
+    fun `a foreign link with two ingredients is dangerous whatever the scheme`() {
+        // Money asked and a threat, in words no scheme rule waits for.
+        val r = analyzer.analyze("За вашим авто числится взыскание 2 500 р. Чтобы избежать удвоения, погасите его сегодня: avto-vzyskanie.ru")
+        assertEquals(MessageVerdict.DANGEROUS, r.verdict)
+        assertTrue(r.reasons.containsAll(listOf("threat_or_urgency", "asks_for_payment", "link_not_official")), "${r.reasons}")
+        // One ingredient is a caution; none is nothing.
+        assertEquals(MessageVerdict.CAUTION, verdict("По вашему ИНН выявлена недоимка, ознакомьтесь с документом: inn-proverka.online"))
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Отчёт за сентябрь выложил сюда: inn-proverka.online"))
+    }
+
+    @Test
+    fun `secrecy around a call from an official is dangerous and named`() {
+        val r = analyzer.analyze("Сотрудник отдела безопасности свяжется с вами в течение часа. Не сообщайте о разговоре близким")
+        assertEquals(MessageVerdict.DANGEROUS, r.verdict)
+        assertTrue("asks_for_secrecy" in r.reasons, "${r.reasons}")
+        // A surprise party is kept secret too, from nobody claiming a role.
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("В пятницу сюрприз для Марины, никому не говорите! С вами свяжется Оля"))
+    }
+
+    @Test
+    fun `a login code's never-tell-anyone is not secrecy`() {
+        // The service's own site is not one we know, so the link is foreign: still no signal.
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Код для входа: 482913. Никому не сообщайте этот код. litres.ru"))
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Код 7730 для входа в приложение. Никому его не говорите. lenta.com"))
+    }
+
+    @Test
+    fun `a code for a person is dangerous in any words`() {
+        for (text in listOf(
+            "Это поддержка маркетплейса. Для перевода кабинета нужно назвать комбинацию, которая сейчас придёт вам по SMS",
+            "Сотовый оператор: с вами свяжется менеджер. Будьте готовы назвать код, который придёт вам в сообщении",
+        )) {
+            val r = analyzer.analyze(text)
+            assertEquals(MessageVerdict.DANGEROUS, r.verdict, text)
+            assertTrue("asks_for_code" in r.reasons, "${r.reasons}")
+        }
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Банк никогда не попросит вас назвать код из SMS"))
+    }
+
+    @Test
+    fun `the site of the name a message signs with is its own`() {
+        val own = "Ivi: не удалось продлить подписку. Обновите данные карты, иначе подписка будет приостановлена: ivi.ru/profile"
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict(own))
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Mail.ru: в аккаунт выполнен вход с нового устройства. Если это не вы, смените пароль: id.mail.ru"))
+        // A site that only starts with the name, or a short link, is not.
+        assertEquals(MessageVerdict.DANGEROUS, verdict(own.replace("ivi.ru/profile", "ivi-oplata.ru")))
+        assertEquals(MessageVerdict.DANGEROUS, verdict(own.replace("ivi.ru/profile", "clck.ru/ivi")))
+    }
+
+    @Test
+    fun `an option to pay is not an order, and a booking is not a fee`() {
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Ваш автомобиль готов. К оплате 18 400 р, оплатить можно на месте. autoservis.ru"))
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Заказ ожидает оплаты. Оплатите в течение 30 минут, иначе бронь будет отменена: aviasales.ru"))
+        assertEquals(MessageVerdict.CAUTION, verdict("Вы прошли отбор на вакансию. Для оформления оплатите обучение 1 990 р: kadry-start.online"))
+    }
+
+    @Test
+    fun `a public office's city number is not a callback, a personal one is`() {
+        val personal = "Надзорный орган: на вас поступило обращение. Чтобы избежать изъятия имущества, наберите +7 999 412-55-61"
+        assertEquals(MessageVerdict.DANGEROUS, verdict(personal))
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict(personal.replace("+7 999 412-55-61", "8 (843) 222-45-67")))
+    }
+
+    @Test
+    fun `a receipt that reports no debt is not a threat`() {
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Энергосбыт: долга за сентябрь нет, спасибо! Передать показания: energo-pokazaniya.ru"))
+        assertEquals(MessageVerdict.CAUTION, verdict("Энергосбыт: за вами долг за сентябрь. Подробности: energo-pokazaniya.ru"))
+    }
+
+    @Test
+    fun `money promised is a caution only when there is money and something to claim`() {
+        assertEquals(MessageVerdict.CAUTION, verdict("Вам одобрена денежная помощь 15 000 р. Получить средства можно до конца недели: semye-pomosh.ru"))
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Поздравляем! Вы выиграли два билета на концерт. Заберите их в кассе: concert-hall.ru"))
+        assertEquals(MessageVerdict.NO_SIGNALS, verdict("Кешбэк-сервис: на ваш счёт поступило 540 р. Вывести: letyshops.com"))
+    }
+
     // ── output ────────────────────────────────────────────────────────────
 
     @Test
