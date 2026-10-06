@@ -62,6 +62,7 @@ export const REASON_KEYS: Record<MessageCheckReason, string> = {
   disguised_letters: "mobile.message.reason.disguised_letters",
   sender_personal_number: "mobile.message.reason.sender_personal_number",
   sender_mismatch: "mobile.message.reason.sender_mismatch",
+  asks_for_secrecy: "mobile.message.reason.asks_for_secrecy",
 };
 
 /** Shown only next to "no signals": what the message most likely is, and the one rule that still applies. */

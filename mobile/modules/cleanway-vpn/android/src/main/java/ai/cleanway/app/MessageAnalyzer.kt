@@ -86,6 +86,16 @@ data class MessageAnalysis(
  * organisation named, a fine, fee or payout through an unknown site; a fake
  * date's ticket link; a summons or the SIM law with a call still to come…).
  *
+ * ## The generic layer
+ *
+ * Each rule above waits for its scheme's own words, so a paraphrase slips
+ * past it. After them, [GenericLayer] scores the ingredients every scheme is
+ * made of — money asked, a code or personal data asked, a promise of money, a
+ * threat, urgency, secrecy, a claimed authority, a call back or to come — in
+ * broad groups, and combines them: a foreign link and two of the first four
+ * is dangerous, one is a caution (MessageGeneric.kt has the full table). It
+ * only adds: a message the scheme rules found dangerous is left as it was.
+ *
  * ## Legitimate shapes are excluded first
  *
  * A real login code ("никому не сообщайте код… позвоните на 900"), a bank
@@ -218,6 +228,8 @@ class MessageAnalyzer(
         if (!excluded) {
             dangerous(s, danger)
             cautious(s, caution)
+            // Last, and only adding: the ingredients the scheme rules have no words for.
+            GenericLayer.judge(s, danger, caution)
         }
         return when {
             danger.isNotEmpty() -> MessageVerdict.DANGEROUS to (danger + caution).toList()
@@ -417,17 +429,6 @@ class MessageAnalyzer(
         if (s.confirmData) add(R_CONFIRM_DATA)
     }
 
-    /** Why a set of links is a problem, most specific first after "not the brand's". */
-    private fun linkReasons(links: List<LinkFacts>): List<String> = buildList {
-        if (links.any { !it.official }) add(R_LINK_NOT_OFFICIAL)
-        if (links.any { it.shortener }) add(R_LINK_SHORTENER)
-        if (links.any { it.messenger }) add(R_LINK_MESSENGER)
-        if (links.any { it.found.isIp }) add(R_LINK_IP)
-        if (links.any { it.found.mixedScript }) add(R_LINK_LOOKALIKE)
-        if (links.any { it.imitatesBrand }) add(R_LINK_IMITATES_BRAND)
-        if (links.any { it.found.isApk }) add(R_LINK_APK)
-    }
-
     /** Spaces over [spans] so a number inside a URL is not read as a phone. */
     private fun blank(text: String, spans: List<IntRange>): String {
         if (spans.isEmpty()) return text
@@ -471,13 +472,25 @@ class MessageAnalyzer(
         const val R_DISGUISED = "disguised_letters"
         const val R_SENDER_PERSONAL = "sender_personal_number"
         const val R_SENDER_MISMATCH = "sender_mismatch"
+        const val R_SECRECY = "asks_for_secrecy"
 
         /** Every reason code the analyzer can emit — the UI must translate each one. */
         val ALL_REASONS = listOf(
             R_LINK_BLOCKLISTED, R_ORGANISATION, R_THREAT, R_CONFIRM_DATA, R_BAIT, R_CALL_UNKNOWN,
             R_LINK_NOT_OFFICIAL, R_LINK_SHORTENER, R_LINK_MESSENGER, R_LINK_IP, R_LINK_LOOKALIKE,
             R_LINK_IMITATES_BRAND, R_LINK_APK, R_CODE, R_SAFE_ACCOUNT, R_PAYMENT, R_RELATIVE, R_INSTALL,
-            R_MALWARE_LURE, R_SMS_COMMAND, R_DISGUISED, R_SENDER_PERSONAL, R_SENDER_MISMATCH,
+            R_MALWARE_LURE, R_SMS_COMMAND, R_DISGUISED, R_SENDER_PERSONAL, R_SENDER_MISMATCH, R_SECRECY,
         )
+
+        /** Why a set of links is a problem, most specific first after "not the brand's". */
+        internal fun linkReasons(links: List<LinkFacts>): List<String> = buildList {
+            if (links.any { !it.official }) add(R_LINK_NOT_OFFICIAL)
+            if (links.any { it.shortener }) add(R_LINK_SHORTENER)
+            if (links.any { it.messenger }) add(R_LINK_MESSENGER)
+            if (links.any { it.found.isIp }) add(R_LINK_IP)
+            if (links.any { it.found.mixedScript }) add(R_LINK_LOOKALIKE)
+            if (links.any { it.imitatesBrand }) add(R_LINK_IMITATES_BRAND)
+            if (links.any { it.found.isApk }) add(R_LINK_APK)
+        }
     }
 }

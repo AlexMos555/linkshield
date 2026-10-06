@@ -2896,7 +2896,8 @@
         "sms_transfer_command": "Te pide enviar un SMS con una orden para transferir dinero",
         "disguised_letters": "Las palabras llevan letras cambiadas para saltarse los filtros",
         "sender_personal_number": "Una entidad escribe desde un número de móvil normal",
-        "sender_mismatch": "El remitente no es quien el mensaje dice ser"
+        "sender_mismatch": "El remitente no es quien el mensaje dice ser",
+        "asks_for_secrecy": "Te pide que guardes en secreto el mensaje o la llamada, incluso ante tu familia"
       },
       "shape": {
         "login_code": "Parece un código de acceso normal. No se lo digas a nadie, ni siquiera a un «empleado del banco».",
