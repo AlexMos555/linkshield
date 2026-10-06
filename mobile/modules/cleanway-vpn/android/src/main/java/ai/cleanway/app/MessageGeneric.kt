@@ -294,7 +294,7 @@ internal object GenericLayer {
     }
 
     /** The ingredients present, most important first, then why the links are a problem. */
-    private fun reasons(s: MessageSignals, g: GenericSignals): List<String> = buildList {
+    internal fun reasons(s: MessageSignals, g: GenericSignals): List<String> = buildList {
         if (g.authority) add(MessageAnalyzer.R_ORGANISATION)
         if (g.threat || g.urgency) add(MessageAnalyzer.R_THREAT)
         if (g.codeToPerson || g.codeOnSite) add(MessageAnalyzer.R_CODE)

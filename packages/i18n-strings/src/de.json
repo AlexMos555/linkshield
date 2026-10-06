@@ -2957,7 +2957,8 @@
         "disguised_letters": "Wörter sind mit vertauschten Buchstaben geschrieben, um Filter zu umgehen",
         "sender_personal_number": "Eine Firma oder Behörde schreibt von einer normalen Handynummer",
         "sender_mismatch": "Der Absender ist nicht der, für den sich die Nachricht ausgibt",
-        "asks_for_secrecy": "Sie verlangt, die Nachricht oder den Anruf geheim zu halten, sogar vor der Familie"
+        "asks_for_secrecy": "Sie verlangt, die Nachricht oder den Anruf geheim zu halten, sogar vor der Familie",
+        "text_resembles_scam": "Der Text ähnelt stark bekannten Betrugsnachrichten"
       },
       "shape": {
         "login_code": "Sieht aus wie ein normaler Anmeldecode. Nenne diesen Code niemandem – auch keinem „Bankmitarbeiter“.",

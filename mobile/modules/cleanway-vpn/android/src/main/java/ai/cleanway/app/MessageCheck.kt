@@ -21,6 +21,10 @@ object MessageCheck {
     private const val RULES_ASSET = "message_rules.json"
     private val lock = Any()
     @Volatile private var rules: MessageRules? = null
+    @Volatile private var loadedModel: LoadedModel? = null
+
+    /** The text model once loaded — null inside when its assets are missing or broken (the rules still run). */
+    private class LoadedModel(val model: MessageModel?)
 
     data class Result(
         val analysis: MessageAnalysis,
@@ -36,7 +40,7 @@ object MessageCheck {
     fun analyze(context: Context, text: String): Result {
         val list = BlocklistHolder.current(context)
         val allowed = BlocklistHolder.allowed(context)
-        val analyzer = MessageAnalyzer(rules(context)) { host -> LinkPolicy.classify(host, list, allowed) }
+        val analyzer = MessageAnalyzer(rules(context), model(context)) { host -> LinkPolicy.classify(host, list, allowed) }
         val usable = list != null && !list.revoked && list.count > 0
         val analysis = analyzer.analyze(text)
         // Only the verdict leaves this function for the after-call notice
@@ -66,6 +70,27 @@ object MessageCheck {
         val version = list?.version ?: return true
         if (version <= 0L) return true
         return System.currentTimeMillis() - version * 1000L > BlockList.STALE_AFTER_MS
+    }
+
+    /** The text model (message_model.json + .bin, ~0.5 MB), read once. */
+    private fun model(context: Context): MessageModel? {
+        loadedModel?.let { return it.model }
+        synchronized(lock) {
+            loadedModel?.let { return it.model }
+            val loaded = try {
+                val assets = context.applicationContext.assets
+                MessageModel.parse(
+                    assets.open(MessageModel.ASSET_JSON).bufferedReader().use { it.readText() },
+                    assets.open(MessageModel.ASSET_WEIGHTS).use { it.readBytes() },
+                )
+            } catch (e: Exception) {
+                // MessageModelTest guards the shipped assets; degrade to the rules alone.
+                Log.w(TAG, "model_unavailable: ${e.javaClass.simpleName}")
+                null
+            }
+            loadedModel = LoadedModel(loaded)
+            return loaded
+        }
     }
 
     private fun rules(context: Context): MessageRules {

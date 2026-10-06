@@ -144,7 +144,8 @@ export type MessageReason =
   | 'disguised_letters'
   | 'sender_personal_number'
   | 'sender_mismatch'
-  | 'asks_for_secrecy';
+  | 'asks_for_secrecy'
+  | 'text_resembles_scam';
 
 /** The message looks like a known legitimate kind. Never reported next to a "dangerous" verdict. */
 export type MessageLegitShape = 'login_code' | 'payment_alert' | 'pickup_code' | 'public_alert' | 'safety_notice';

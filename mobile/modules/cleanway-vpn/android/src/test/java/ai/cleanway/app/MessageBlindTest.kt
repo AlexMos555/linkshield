@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
  * The blind sets: messages written by someone who never saw the rules, the
  * analyzer, MessageCorpus, the 2026-10 held-out set or the evaluation's miss
  * lists (src/test/resources/message_blind_*.tsv; numbers in
- * docs/EVALUATION_2026-10.md §3.9, §3.11 and §3.13).
+ * docs/EVALUATION_2026-10.md §3.9, §3.11, §3.13, §3.14 and §3.15).
  *  - 2026-10b: 107 legitimate and 110 scam messages.
  *  - 2026-10c: 112 legitimate and 112 scam messages, written by a second
  *    agent that saw only the column format of 2026-10b.
@@ -17,6 +17,9 @@ import kotlin.test.assertTrue
  *    with no access to the rules, the code, the docs or the earlier sets
  *    (only the label and family columns of two rows of 2026-10c), with the
  *    emphasis on paraphrase.
+ *  - 2026-10e: 155 legitimate and 158 scam messages, written by a fourth agent
+ *    with no access to the rules, models, training data or other sets, and
+ *    opened only after the text model of §3.14 was frozen (§3.15).
  *
  * This is a measurement, not a contract and not a tuning set. Every miss and
  * every false alarm is printed and written to build/message-blind-report-<set>.md.
@@ -44,6 +47,10 @@ class MessageBlindTest {
         val maxFalseAlarms: Int,
         val minFlagged: Int,
         val minDangerous: Int,
+        /** Rows that happen to match a corpus line word for word, written independently; reported, not hidden. */
+        val alsoInCorpus: Set<String> = emptySet(),
+        /** The same, for a row of an earlier set. */
+        val alsoInEarlierSet: Set<String> = emptySet(),
     ) {
         val file: String get() = "message_blind_$name.tsv"
     }
@@ -65,12 +72,14 @@ class MessageBlindTest {
             assertEquals(set.legit, cases.count { it.label == "legit" }, "${set.name}: legit messages")
             assertEquals(set.scam, cases.count { it.label == "scam" }, "${set.name}: scam messages")
             assertEquals(cases.size, cases.map { it.text }.toSet().size, "${set.name}: duplicate message")
-            assertEquals(emptyList(), cases.map { it.text }.filter { it in corpus }, "${set.name}: message also in MessageCorpus")
+            assertEquals(set.alsoInCorpus, cases.map { it.text }.filter { it in corpus }.toSet(), "${set.name}: message also in MessageCorpus")
         }
-        val texts = SETS.map { set -> set.name to loaded.getValue(set).map { it.case.text }.toSet() }
+        val texts = SETS.map { set -> set to loaded.getValue(set).map { it.case.text }.toSet() }
         for ((i, first) in texts.withIndex()) {
             for (second in texts.drop(i + 1)) {
-                assertEquals(emptySet(), first.second intersect second.second, "the same message in ${first.first} and ${second.first}")
+                val shared = first.second intersect second.second
+                val known = (first.first.alsoInEarlierSet + second.first.alsoInEarlierSet) intersect shared
+                assertEquals(known, shared, "the same message in ${first.first.name} and ${second.first.name}")
             }
         }
     }
@@ -166,12 +175,34 @@ class MessageBlindTest {
         // 64/137, 48/137. The one false alarm is the same on both, from a scheme
         // rule older than #96 (§3.13); it is pinned as measured, not fixed.
         //
-        // The floors below are the PR #96 measurements (§3.13): 2026-10b
-        // 0/107, 35/110, 29/110; 2026-10c 0/112, 75/112, 54/112.
+        // PR #96 measured 2026-10b 0/107, 35/110, 29/110; 2026-10c 0/112,
+        // 75/112, 54/112 (§3.13).
+        //
+        // 2026-10-06, the text model (MessageModel.kt, ml/sms; §3.14). The model
+        // never trained on these sets, but its two thresholds were CHOSEN on
+        // them (with the held-out set and the Kotlin corpora), so from here on
+        // the three sets measure the rules + model with tuned thresholds, not
+        // blind: 2026-10b 0/107, 100/110, 79/110; 2026-10c 0/112, 110/112,
+        // 102/112; 2026-10d 1/125 (the same rule false alarm), 114/137, 102/137.
+        // The floors below are those measurements.
         val SETS = listOf(
-            BlindSet("2026-10b", legit = 107, scam = 110, maxFalseAlarms = 0, minFlagged = 35, minDangerous = 29),
-            BlindSet("2026-10c", legit = 112, scam = 112, maxFalseAlarms = 0, minFlagged = 75, minDangerous = 54),
-            BlindSet("2026-10d", legit = 125, scam = 137, maxFalseAlarms = 1, minFlagged = 64, minDangerous = 48),
+            BlindSet("2026-10b", legit = 107, scam = 110, maxFalseAlarms = 0, minFlagged = 100, minDangerous = 79),
+            BlindSet("2026-10c", legit = 112, scam = 112, maxFalseAlarms = 0, minFlagged = 110, minDangerous = 102),
+            BlindSet("2026-10d", legit = 125, scam = 137, maxFalseAlarms = 1, minFlagged = 114, minDangerous = 102),
+            // 2026-10e. First measured 2026-10-06, after the text model and its
+            // thresholds were frozen in PR #99: set e was never used to choose
+            // anything — no rule, weight, feature, threshold or corpus line.
+            // origin/main rules: 0/155 false alarms, 82/158 flagged, 59/158
+            // dangerous; rules + model (PR #99): 0/155, 141/158, 119/158 (§3.15).
+            // The floors and the cap are that MEASUREMENT, not a target. One legit
+            // row equals a MessageCorpus.LEGIT_VARIANTS line word for word, and
+            // another a 2026-10b legit row (stock notices the author wrote
+            // independently); both are counted, not removed.
+            BlindSet(
+                "2026-10e", legit = 155, scam = 158, maxFalseAlarms = 0, minFlagged = 141, minDangerous = 119,
+                alsoInCorpus = setOf("Госуслуги: по вашему заявлению принято решение. Посмотреть: gosuslugi.ru"),
+                alsoInEarlierSet = setOf("Самокат: курьер уже в пути, будет через 12 минут"),
+            ),
         )
     }
 }

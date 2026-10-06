@@ -1143,6 +1143,7 @@
   "mobile.message.reason.sender_personal_number": "An organisation is writing from an ordinary mobile number",
   "mobile.message.reason.sender_mismatch": "The sender isn't who the message claims to be",
   "mobile.message.reason.asks_for_secrecy": "It asks you to keep the message or the call secret, even from family",
+  "mobile.message.reason.text_resembles_scam": "The wording is very close to known scam messages",
   "mobile.message.shape.login_code": "This looks like an ordinary login code. Never tell this code to anyone — not even a “bank employee”.",
   "mobile.message.shape.payment_alert": "This looks like an ordinary payment notice from a bank. If you didn't make this payment, call the bank on the number on your card.",
   "mobile.message.shape.pickup_code": "This looks like an ordinary parcel pickup code. Give it only at the pickup point or to the courier when you collect the parcel.",
