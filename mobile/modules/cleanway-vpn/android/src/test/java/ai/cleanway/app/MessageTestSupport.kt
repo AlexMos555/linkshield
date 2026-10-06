@@ -12,6 +12,35 @@ internal object MessageTestSupport {
      */
     val rules: MessageRules by lazy { MessageRules.parse(asset("message_rules.json").readText(), rootZone) }
 
+    /** The SHIPPED text model (message_model.json + message_model.bin). */
+    val model: MessageModel by lazy {
+        MessageModel.parse(asset(MessageModel.ASSET_JSON).readText(), asset(MessageModel.ASSET_WEIGHTS).readBytes())
+    }
+
+    /** Every list of the Kotlin dev corpora by name ("MessageCorpus.LEGIT_RU", as ml/sms/data.py names them), with its label. */
+    val corpora: Map<String, Pair<String, List<String>>> by lazy {
+        linkedMapOf(
+            "MessageCorpus.SCAMS_RU" to ("scam" to MessageCorpus.SCAMS_RU),
+            "MessageCorpus.SCAMS_EN" to ("scam" to MessageCorpus.SCAMS_EN),
+            "MessageCorpus.SCAM_VARIANTS" to ("scam" to MessageCorpus.SCAM_VARIANTS),
+            "MessageCorpus.SCAM_REVIEW" to ("scam" to MessageCorpus.SCAM_REVIEW),
+            "MessageCorpus.LEGIT_RU" to ("legit" to MessageCorpus.LEGIT_RU),
+            "MessageCorpus.LEGIT_EN" to ("legit" to MessageCorpus.LEGIT_EN),
+            "MessageCorpus.LEGIT_VARIANTS" to ("legit" to MessageCorpus.LEGIT_VARIANTS),
+            "MessageCorpus.SCAM_2026_10_DANGEROUS" to ("scam" to MessageCorpus.SCAM_2026_10_DANGEROUS),
+            "MessageCorpus.SCAM_2026_10_CAUTION" to ("scam" to MessageCorpus.SCAM_2026_10_CAUTION),
+            "MessageCorpus.LEGIT_2026_10" to ("legit" to MessageCorpus.LEGIT_2026_10),
+            "MessageCorpus.SCAM_2026_10_UPGRADES" to ("scam" to MessageCorpus.SCAM_2026_10_UPGRADES),
+            "MessageCorpus.LEGIT_2026_10_UPGRADES" to ("legit" to MessageCorpus.LEGIT_2026_10_UPGRADES),
+            "MessageSchemeCorpus.SCAM_DANGEROUS" to ("scam" to MessageSchemeCorpus.SCAM_DANGEROUS),
+            "MessageSchemeCorpus.SCAM_CAUTION" to ("scam" to MessageSchemeCorpus.SCAM_CAUTION),
+            "MessageSchemeCorpus.LEGIT" to ("legit" to MessageSchemeCorpus.LEGIT),
+            "MessageGenericCorpus.SCAM_DANGEROUS" to ("scam" to MessageGenericCorpus.SCAM_DANGEROUS),
+            "MessageGenericCorpus.SCAM_CAUTION" to ("scam" to MessageGenericCorpus.SCAM_CAUTION),
+            "MessageGenericCorpus.LEGIT" to ("legit" to MessageGenericCorpus.LEGIT),
+        )
+    }
+
     /** The shipped IANA root zone (root_zone_tlds.txt), as MessageCheck loads it. */
     val rootZone: Set<String> by lazy { RootZone.parse(asset(RootZone.ASSET).readText()) }
 
@@ -29,6 +58,7 @@ internal object MessageTestSupport {
         return requireNotNull(BlockList.parse(out.toByteArray(), popularVeto = emptySet(), nowMs = 0L))
     }
 
-    fun analyzer(list: BlockList? = null, allowed: Set<String> = emptySet()): MessageAnalyzer =
-        MessageAnalyzer(rules) { host -> LinkPolicy.classify(host, list, allowed) }
+    /** The analyzer as MessageCheck builds it: the shipped rules AND the shipped model, unless [withModel] is false. */
+    fun analyzer(list: BlockList? = null, allowed: Set<String> = emptySet(), withModel: Boolean = true): MessageAnalyzer =
+        MessageAnalyzer(rules, if (withModel) model else null) { host -> LinkPolicy.classify(host, list, allowed) }
 }

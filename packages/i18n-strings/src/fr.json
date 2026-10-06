@@ -2957,7 +2957,8 @@
         "disguised_letters": "Les mots sont écrits avec des lettres remplacées pour passer les filtres",
         "sender_personal_number": "Un organisme écrit depuis un numéro de portable ordinaire",
         "sender_mismatch": "L'expéditeur n'est pas celui que le message prétend être",
-        "asks_for_secrecy": "Il vous demande de garder le message ou l'appel secret, même pour vos proches"
+        "asks_for_secrecy": "Il vous demande de garder le message ou l'appel secret, même pour vos proches",
+        "text_resembles_scam": "Le texte ressemble fortement à des messages d’arnaque connus"
       },
       "shape": {
         "login_code": "Cela ressemble à un code de connexion ordinaire. Ne donnez ce code à personne — pas même à un « employé de la banque ».",

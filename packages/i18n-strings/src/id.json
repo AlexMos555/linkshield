@@ -2957,7 +2957,8 @@
         "disguised_letters": "Kata-katanya ditulis dengan huruf yang ditukar agar lolos dari filter",
         "sender_personal_number": "Sebuah lembaga mengirim pesan dari nomor HP biasa",
         "sender_mismatch": "Pengirimnya bukan pihak yang disebut dalam pesan",
-        "asks_for_secrecy": "Meminta Anda merahasiakan pesan atau panggilan ini, bahkan dari keluarga"
+        "asks_for_secrecy": "Meminta Anda merahasiakan pesan atau panggilan ini, bahkan dari keluarga",
+        "text_resembles_scam": "Isi pesannya sangat mirip dengan pesan penipuan yang sudah dikenal"
       },
       "shape": {
         "login_code": "Sepertinya ini kode masuk biasa. Jangan beri tahu kode ini kepada siapa pun — termasuk “petugas bank”.",

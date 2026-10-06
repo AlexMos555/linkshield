@@ -1143,6 +1143,7 @@
   "mobile.message.reason.sender_personal_number": "कोई संस्था आम मोबाइल नंबर से लिख रही है",
   "mobile.message.reason.sender_mismatch": "भेजने वाला वह नहीं है, जिसके नाम से मैसेज लिखा गया है",
   "mobile.message.reason.asks_for_secrecy": "मैसेज या कॉल के बारे में किसी को, परिवार को भी, न बताने को कहा गया है",
+  "mobile.message.reason.text_resembles_scam": "इस मैसेज के शब्द जाने-पहचाने धोखाधड़ी वाले मैसेज से बहुत मिलते हैं",
   "mobile.message.shape.login_code": "यह लॉग-इन का आम कोड लगता है। यह कोड किसी को न बताएँ — “बैंक कर्मचारी” को भी नहीं।",
   "mobile.message.shape.payment_alert": "यह बैंक का आम लेन-देन वाला मैसेज लगता है। अगर यह लेन-देन आपने नहीं किया, तो कार्ड पर लिखे नंबर पर बैंक को कॉल करें।",
   "mobile.message.shape.pickup_code": "यह पार्सल लेने का आम कोड लगता है। इसे सिर्फ़ पिकअप पॉइंट पर या पार्सल लेते समय कूरियर को बताएँ।",

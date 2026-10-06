@@ -2897,7 +2897,8 @@
         "disguised_letters": "Las palabras llevan letras cambiadas para saltarse los filtros",
         "sender_personal_number": "Una entidad escribe desde un número de móvil normal",
         "sender_mismatch": "El remitente no es quien el mensaje dice ser",
-        "asks_for_secrecy": "Te pide que guardes en secreto el mensaje o la llamada, incluso ante tu familia"
+        "asks_for_secrecy": "Te pide que guardes en secreto el mensaje o la llamada, incluso ante tu familia",
+        "text_resembles_scam": "El texto se parece mucho a mensajes de estafa conocidos"
       },
       "shape": {
         "login_code": "Parece un código de acceso normal. No se lo digas a nadie, ni siquiera a un «empleado del banco».",

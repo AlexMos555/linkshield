@@ -1143,6 +1143,7 @@
   "mobile.message.reason.sender_personal_number": "Un organisme écrit depuis un numéro de portable ordinaire",
   "mobile.message.reason.sender_mismatch": "L'expéditeur n'est pas celui que le message prétend être",
   "mobile.message.reason.asks_for_secrecy": "Il vous demande de garder le message ou l'appel secret, même pour vos proches",
+  "mobile.message.reason.text_resembles_scam": "Le texte ressemble fortement à des messages d’arnaque connus",
   "mobile.message.shape.login_code": "Cela ressemble à un code de connexion ordinaire. Ne donnez ce code à personne — pas même à un « employé de la banque ».",
   "mobile.message.shape.payment_alert": "Cela ressemble à une notification de paiement ordinaire de votre banque. Si ce n'est pas vous, appelez la banque au numéro inscrit sur votre carte.",
   "mobile.message.shape.pickup_code": "Cela ressemble à un code de retrait de colis ordinaire. Donnez-le seulement au point relais ou au livreur, au moment de récupérer le colis.",

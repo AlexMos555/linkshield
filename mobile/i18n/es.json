@@ -1143,6 +1143,7 @@
   "mobile.message.reason.sender_personal_number": "Una entidad escribe desde un número de móvil normal",
   "mobile.message.reason.sender_mismatch": "El remitente no es quien el mensaje dice ser",
   "mobile.message.reason.asks_for_secrecy": "Te pide que guardes en secreto el mensaje o la llamada, incluso ante tu familia",
+  "mobile.message.reason.text_resembles_scam": "El texto se parece mucho a mensajes de estafa conocidos",
   "mobile.message.shape.login_code": "Parece un código de acceso normal. No se lo digas a nadie, ni siquiera a un «empleado del banco».",
   "mobile.message.shape.payment_alert": "Parece un aviso normal del banco sobre un pago. Si no hiciste ese pago, llama al banco al número de tu tarjeta.",
   "mobile.message.shape.pickup_code": "Parece un código normal para recoger un paquete. Dilo solo en el punto de recogida o al repartidor cuando recibas el paquete.",

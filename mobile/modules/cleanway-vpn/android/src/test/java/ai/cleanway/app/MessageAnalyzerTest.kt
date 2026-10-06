@@ -10,10 +10,14 @@ import kotlin.test.assertTrue
 /**
  * The combination rules one at a time: what turns a word into a warning, and
  * — more often — what keeps it from becoming one.
+ *
+ * The rules alone, without the text model: what the model may add on top,
+ * and which of these legitimate twins it must leave quiet, is pinned in
+ * MessageModelTest. The corpus, held-out and blind tests run both together.
  */
 class MessageAnalyzerTest {
 
-    private val analyzer = MessageTestSupport.analyzer()
+    private val analyzer = MessageTestSupport.analyzer(withModel = false)
 
     private fun verdict(text: String, sender: String? = null) = analyzer.analyze(text, sender).verdict
 
@@ -228,7 +232,7 @@ class MessageAnalyzerTest {
 
     @Test
     fun `a blocklisted link is dangerous whatever the text says`() {
-        val a = MessageTestSupport.analyzer(MessageTestSupport.list("evil-photos.top"))
+        val a = MessageTestSupport.analyzer(MessageTestSupport.list("evil-photos.top"), withModel = false)
         val r = a.analyze("Привет! Вот фото с дачи: evil-photos.top/album")
         assertEquals(MessageVerdict.DANGEROUS, r.verdict)
         assertEquals("link_blocklisted", r.reasons.first())
@@ -237,7 +241,7 @@ class MessageAnalyzerTest {
 
     @Test
     fun `a link the person allowed is never blocked`() {
-        val a = MessageTestSupport.analyzer(MessageTestSupport.list("evil-photos.top"), allowed = setOf("evil-photos.top"))
+        val a = MessageTestSupport.analyzer(MessageTestSupport.list("evil-photos.top"), allowed = setOf("evil-photos.top"), withModel = false)
         val r = a.analyze("Вот ссылка: evil-photos.top/album")
         assertEquals(LinkStatus.ALLOWED_BY_USER, r.links.single().status)
         assertEquals(MessageVerdict.NO_SIGNALS, r.verdict)
@@ -257,7 +261,7 @@ class MessageAnalyzerTest {
 
     @Test
     fun `repeating a harmless link cannot push a listed one out`() {
-        val a = MessageTestSupport.analyzer(MessageTestSupport.list("evil.top"))
+        val a = MessageTestSupport.analyzer(MessageTestSupport.list("evil.top"), withModel = false)
         for (text in listOf(
             "gosuslugi.ru ".repeat(20) + "evil.top/login",
             "evil.top/login " + "https://gosuslugi.ru ".repeat(20),

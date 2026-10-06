@@ -104,31 +104,41 @@ data class MessageAnalysis(
  * only while they carry no foreign link, no unknown callback number and no
  * request for the code, and their links are still checked against the list.
  *
+ * ## The text model
+ *
+ * Last, [model] (MessageModel.kt, trained in ml/sms) scores how much the
+ * whole text reads like a scam, paraphrase or not. It only adds, and never
+ * to a legitimate shape or to a message the rules already found dangerous:
+ *  - a score at or above its danger threshold, with at least one ingredient
+ *    of the generic layer ([modelIngredients]: a foreign link, money asked or
+ *    moved, a code or data asked, a promise, a threat, a personal number to
+ *    call back, an app to install, secrecy) → dangerous;
+ *  - a score at or above its caution threshold → at least caution.
+ * Either adds the reason [R_TEXT_RESEMBLES_SCAM]. Thresholds and why they
+ * hold: docs/EVALUATION_2026-10.md §3.14.
+ *
  * Pure Kotlin: the link status comes in as a function, so the whole class is
  * JVM-testable against an in-memory BlockList.
  */
 class MessageAnalyzer(
     private val rules: MessageRules,
+    /** The text model; null runs the rules alone (a missing or broken asset). */
+    private val model: MessageModel? = null,
     private val linkStatus: (String) -> LinkStatus,
 ) {
     fun analyze(text: String, sender: String? = null): MessageAnalysis {
         val truncated = text.length > MAX_CHARS
-        val cleaned = MessageText.clean(if (truncated) text.substring(0, MAX_CHARS) else text)
-        val found = LinkExtractor.extract(cleaned.text, rules.bareTlds)
-        // Every link is judged; only the list the person sees is capped.
-        val links = found.map { facts(it) }
-        val phones = PhoneExtractor.extract(blank(cleaned.text, found.map { it.span }))
-        val signals = MessageSignals(
-            rules = rules,
-            index = MessageText.index(cleaned.text, found.map { it.span }, rules.translitMarkers),
-            text = MessageText.normalizeWord(cleaned.text),
-            hiddenInWord = cleaned.hiddenInWord,
-            links = links,
-            phones = phones,
-            sender = sender,
-        )
+        val cut = if (truncated) text.substring(0, MAX_CHARS) else text
+        val signals = read(cut, sender)
+        val links = signals.links
+        val phones = signals.phones
         val shape = legitShape(signals)
-        val (verdict, reasons) = decide(signals, excluded = shape != null)
+        val (ruleVerdict, ruleReasons) = decide(signals, excluded = shape != null)
+        val (verdict, reasons) = if (model == null || shape != null || ruleVerdict == MessageVerdict.DANGEROUS) {
+            ruleVerdict to ruleReasons
+        } else {
+            withModel(model, cut, signals, ruleVerdict, ruleReasons)
+        }
         return MessageAnalysis(
             verdict = verdict,
             reasons = reasons,
@@ -140,6 +150,45 @@ class MessageAnalyzer(
             legitShape = shape.takeIf { verdict != MessageVerdict.DANGEROUS },
             organisations = signals.organisations.map { it.id },
             truncated = truncated,
+        )
+    }
+
+    /** What the text model adds to the rules' verdict (see the class comment): it only ever raises it. */
+    private fun withModel(
+        model: MessageModel,
+        text: String,
+        s: MessageSignals,
+        verdict: MessageVerdict,
+        reasons: List<String>,
+    ): Pair<MessageVerdict, List<String>> {
+        val g = GenericSignals(s)
+        if (officialChannelsOnly(s, g)) return verdict to reasons
+        val p = model.score(text) ?: return verdict to reasons
+        if (p < model.dangerThreshold && p < model.cautionThreshold) return verdict to reasons
+        return when {
+            p >= model.dangerThreshold && modelIngredients(s, g).isNotEmpty() ->
+                MessageVerdict.DANGEROUS to (listOf(R_TEXT_RESEMBLES_SCAM) + reasons + GenericLayer.reasons(s, g)).distinct()
+            p < model.cautionThreshold -> verdict to reasons
+            verdict == MessageVerdict.CAUTION -> verdict to (reasons + R_TEXT_RESEMBLES_SCAM).distinct()
+            else -> MessageVerdict.CAUTION to (listOf(R_TEXT_RESEMBLES_SCAM) + GenericLayer.reasons(s, g)).distinct()
+        }
+    }
+
+    /** The signals of [text], already cut to [MAX_CHARS]: links judged, phones found, words indexed. */
+    internal fun read(text: String, sender: String? = null): MessageSignals {
+        val cleaned = MessageText.clean(text)
+        val found = LinkExtractor.extract(cleaned.text, rules.bareTlds)
+        // Every link is judged; only the list the person sees is capped.
+        val links = found.map { facts(it) }
+        val phones = PhoneExtractor.extract(blank(cleaned.text, found.map { it.span }))
+        return MessageSignals(
+            rules = rules,
+            index = MessageText.index(cleaned.text, found.map { it.span }, rules.translitMarkers),
+            text = MessageText.normalizeWord(cleaned.text),
+            hiddenInWord = cleaned.hiddenInWord,
+            links = links,
+            phones = phones,
+            sender = sender,
         )
     }
 
@@ -204,7 +253,7 @@ class MessageAnalyzer(
         }
     }
 
-    private fun legitShape(s: MessageSignals): String? {
+    internal fun legitShape(s: MessageSignals): String? {
         val clean = s.links.none { it.unofficial } && s.apkLinks.isEmpty() && !s.callbackStrong && !s.codeAsked &&
             !s.safeAccount && !s.malwareLure && !s.smsTransferCommand
         if (!clean) return null
@@ -473,6 +522,7 @@ class MessageAnalyzer(
         const val R_SENDER_PERSONAL = "sender_personal_number"
         const val R_SENDER_MISMATCH = "sender_mismatch"
         const val R_SECRECY = "asks_for_secrecy"
+        const val R_TEXT_RESEMBLES_SCAM = "text_resembles_scam"
 
         /** Every reason code the analyzer can emit — the UI must translate each one. */
         val ALL_REASONS = listOf(
@@ -480,7 +530,35 @@ class MessageAnalyzer(
             R_LINK_NOT_OFFICIAL, R_LINK_SHORTENER, R_LINK_MESSENGER, R_LINK_IP, R_LINK_LOOKALIKE,
             R_LINK_IMITATES_BRAND, R_LINK_APK, R_CODE, R_SAFE_ACCOUNT, R_PAYMENT, R_RELATIVE, R_INSTALL,
             R_MALWARE_LURE, R_SMS_COMMAND, R_DISGUISED, R_SENDER_PERSONAL, R_SENDER_MISMATCH, R_SECRECY,
+            R_TEXT_RESEMBLES_SCAM,
         )
+
+        /**
+         * Every link and number the message gives is the organisation's own
+         * (or one the person vouched for): "Сбербанк: подозрительная операция,
+         * позвоните 8 800 555-55-50" reads like a scam and is the bank. The
+         * model cannot tell a real number from a fake one; the rules can.
+         */
+        internal fun officialChannelsOnly(s: MessageSignals, g: GenericSignals): Boolean =
+            (s.links.isNotEmpty() || s.phones.isNotEmpty()) && g.foreign.isEmpty() &&
+                s.phones.all { it.number in s.rules.officialPhones }
+
+        /**
+         * The rules' ingredients that let a high model score make a message
+         * dangerous: something the reader is asked to do or is promised.
+         * A score alone, on a text with none of them, stays a caution.
+         */
+        internal fun modelIngredients(s: MessageSignals, g: GenericSignals): List<String> = buildList {
+            if (g.foreign.isNotEmpty()) add("foreign")
+            if (g.moneyAsked) add("moneyAsked")
+            if (s.moneyMove) add("moneyMove")
+            if (g.code || s.codeAsked) add("code")
+            if (g.promise) add("promise")
+            if (g.threat) add("threat")
+            if (s.callbackPersonal) add("callbackPersonal")
+            if (s.install || s.apkLinks.isNotEmpty() || s.remoteAsked) add("install")
+            if (g.secrecy) add("secrecy")
+        }
 
         /** Why a set of links is a problem, most specific first after "not the brand's". */
         internal fun linkReasons(links: List<LinkFacts>): List<String> = buildList {
