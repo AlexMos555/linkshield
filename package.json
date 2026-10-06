@@ -30,7 +30,8 @@
   "overrides": {
     "next": "15.5.25",
     "expo": "~52.0.0",
-    "postcss": "^8.5.23"
+    "postcss": "^8.5.23",
+    "source-map-js": "^1.2.2"
   },
   "dependencies": {
     "tweetnacl": "^1.0.3",
