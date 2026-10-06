@@ -143,7 +143,8 @@ export type MessageReason =
   | 'sms_transfer_command'
   | 'disguised_letters'
   | 'sender_personal_number'
-  | 'sender_mismatch';
+  | 'sender_mismatch'
+  | 'asks_for_secrecy';
 
 /** The message looks like a known legitimate kind. Never reported next to a "dangerous" verdict. */
 export type MessageLegitShape = 'login_code' | 'payment_alert' | 'pickup_code' | 'public_alert' | 'safety_notice';

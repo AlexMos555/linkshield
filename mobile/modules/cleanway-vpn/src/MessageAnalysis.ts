@@ -46,6 +46,7 @@ export const MESSAGE_REASONS: readonly MessageReason[] = [
   'disguised_letters',
   'sender_personal_number',
   'sender_mismatch',
+  'asks_for_secrecy',
 ];
 
 const LEGIT_SHAPES: readonly MessageLegitShape[] = [

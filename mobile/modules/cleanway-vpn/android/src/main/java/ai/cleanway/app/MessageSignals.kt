@@ -41,17 +41,17 @@ internal data class LinkFacts(
  * opposite meaning there.
  */
 internal class MessageSignals(
-    private val rules: MessageRules,
-    private val index: WordIndex,
-    private val text: String,
+    internal val rules: MessageRules,
+    internal val index: WordIndex,
+    internal val text: String,
     private val hiddenInWord: Boolean,
     val links: List<LinkFacts>,
     val phones: List<PhoneExtractor.Phone>,
-    private val sender: String?,
+    internal val sender: String?,
 ) {
     private val cache = HashMap<String, List<Hit>>()
-    private fun hits(group: String): List<Hit> = cache.getOrPut(group) { index.hits(rules.group(group)) }
-    private fun has(group: String): Boolean = hits(group).isNotEmpty()
+    internal fun hits(group: String): List<Hit> = cache.getOrPut(group) { index.hits(rules.group(group)) }
+    internal fun has(group: String): Boolean = hits(group).isNotEmpty()
 
     // ── who the message claims to be ───────────────────────────────────────
 
@@ -277,7 +277,7 @@ internal class MessageSignals(
     val publicAlert: Boolean by lazy { has(G.PUBLIC_ALERT) }
     val safetyNotice: Boolean by lazy { has(G.AWARENESS) }
     /** A code the reader is told to hand over is IN the message ("назовите курьеру код 5930"). */
-    private val codeInMessage: Boolean by lazy { hits(G.CODE_WORD).any { numberNear(it.start, window = 3, digits = 3..8) } }
+    internal val codeInMessage: Boolean by lazy { hits(G.CODE_WORD).any { numberNear(it.start, window = 3, digits = 3..8) } }
 
     // ── sender (optional; only ever adds suspicion) ───────────────────────
 
@@ -296,15 +296,15 @@ internal class MessageSignals(
     // ── helpers ───────────────────────────────────────────────────────────
 
     /** Not negated ("не сообщайте") and not described as what scammers do. */
-    private fun active(hit: Hit): Boolean = !negated(hit.start) && !aware(hit.start)
+    internal fun active(hit: Hit): Boolean = !negated(hit.start) && !aware(hit.start)
 
-    private fun negated(i: Int): Boolean {
+    internal fun negated(i: Int): Boolean {
         if (index.isWord(i - 1, rules.negators) && index.sameClause(i - 1, i)) return true
         return index.isWord(i - 2, rules.negators) && index.isWord(i - 1, rules.intermediates) &&
             index.sameClause(i - 2, i)
     }
 
-    private fun aware(i: Int): Boolean =
+    internal fun aware(i: Int): Boolean =
         hits(G.AWARENESS).any { it.end < i && i - it.end <= AWARE_WINDOW && index.sameSentence(it.end, i) }
 
     /**
@@ -317,7 +317,7 @@ internal class MessageSignals(
     }
 
     /** An "если"/"if" earlier in the same clause: the sentence describes a case, it does not instruct. */
-    private fun conditional(i: Int): Boolean {
+    internal fun conditional(i: Int): Boolean {
         var j = i - 1
         while (j >= 0 && index.sameClause(j, i)) {
             if (index.isWord(j, IF)) return true
@@ -330,7 +330,7 @@ internal class MessageSignals(
         hits(G.DIRECTIVE).any { d -> d.end < h.start && h.start - d.end <= 2 && index.sameClause(d.end, h.start) }
 
     /** Does [g] start within [after] words after [h], in the same sentence? */
-    private fun follows(h: Hit, g: Hit, after: Int): Boolean =
+    internal fun follows(h: Hit, g: Hit, after: Int): Boolean =
         g.start > h.end && g.start - h.end <= after && index.sameSentence(h.end, g.start)
 
     /**
@@ -377,7 +377,7 @@ internal class MessageSignals(
      * "курьер", or a code that is still to arrive by SMS from nobody, is the
      * fake-delivery pretext.
      */
-    private fun pickupHandover(): Boolean =
+    internal fun pickupHandover(): Boolean =
         has(G.PICKUP_CONTEXT) && organisations.all { it.kind == Kind.DELIVERY } &&
             (organisations.isNotEmpty() || codeInMessage)
 
@@ -415,7 +415,7 @@ internal class MessageSignals(
         }
 
     /** "356р", "1 500 руб", "RUB 1299" — a sum of money. */
-    private fun amount(): Boolean {
+    internal fun amount(): Boolean {
         val words = index.words
         val currency = rules.group(G.CURRENCY)
         fun isCurrency(j: Int) = j in words.indices && currency.any { it.stems.size == 1 && it.stems[0].matches(words[j]) }

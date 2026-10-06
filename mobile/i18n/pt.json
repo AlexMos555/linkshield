@@ -1142,6 +1142,7 @@
   "mobile.message.reason.disguised_letters": "As palavras têm letras trocadas para escapar dos filtros",
   "mobile.message.reason.sender_personal_number": "Uma instituição escreve de um número de celular comum",
   "mobile.message.reason.sender_mismatch": "O remetente não é quem a mensagem diz ser",
+  "mobile.message.reason.asks_for_secrecy": "Pede para manter a mensagem ou a ligação em segredo, até da família",
   "mobile.message.shape.login_code": "Parece um código de acesso comum. Não passe esse código para ninguém — nem para um “funcionário do banco”.",
   "mobile.message.shape.payment_alert": "Parece um aviso comum do banco sobre um pagamento. Se não foi você, ligue para o banco pelo número do cartão.",
   "mobile.message.shape.pickup_code": "Parece um código comum para retirar uma encomenda. Informe-o só no ponto de retirada ou ao entregador na hora de receber.",

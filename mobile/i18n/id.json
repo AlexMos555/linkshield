@@ -1142,6 +1142,7 @@
   "mobile.message.reason.disguised_letters": "Kata-katanya ditulis dengan huruf yang ditukar agar lolos dari filter",
   "mobile.message.reason.sender_personal_number": "Sebuah lembaga mengirim pesan dari nomor HP biasa",
   "mobile.message.reason.sender_mismatch": "Pengirimnya bukan pihak yang disebut dalam pesan",
+  "mobile.message.reason.asks_for_secrecy": "Meminta Anda merahasiakan pesan atau panggilan ini, bahkan dari keluarga",
   "mobile.message.shape.login_code": "Sepertinya ini kode masuk biasa. Jangan beri tahu kode ini kepada siapa pun — termasuk “petugas bank”.",
   "mobile.message.shape.payment_alert": "Sepertinya ini pemberitahuan transaksi biasa dari bank. Kalau bukan Anda yang bertransaksi, telepon bank ke nomor di kartu Anda.",
   "mobile.message.shape.pickup_code": "Sepertinya ini kode pengambilan paket biasa. Sebutkan hanya di tempat pengambilan atau kepada kurir saat menerima paket.",

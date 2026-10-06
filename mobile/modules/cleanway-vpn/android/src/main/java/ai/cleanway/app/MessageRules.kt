@@ -151,6 +151,26 @@ class MessageRules internal constructor(
         const val ORGANS_VAGUE = "organs_vague"
         const val PROBE = "probe"
 
+        // The generic layer (MessageGeneric.kt): scheme-independent ingredients.
+        const val GEN_MONEY_ASK = "generic_money_ask"
+        const val GEN_MONEY_INFINITIVE = "generic_money_infinitive"
+        const val GEN_FEE = "generic_fee"
+        const val GEN_MONEY_NOUN = "generic_money_noun"
+        const val GEN_MODAL = "generic_modal"
+        const val GEN_DATA_VERB = "generic_data_verb"
+        const val GEN_CARD_DATA = "generic_card_data"
+        const val GEN_TELL_VERB = "generic_tell_verb"
+        const val GEN_SECRET = "generic_secret"
+        const val GEN_IDENTITY = "generic_identity"
+        const val GEN_PROMISE = "generic_promise"
+        const val GEN_CLAIM = "generic_claim"
+        const val GEN_PROMO = "generic_promo"
+        const val GEN_THREAT = "generic_threat"
+        const val GEN_ABSENT = "generic_absent"
+        const val GEN_URGENCY = "generic_urgency"
+        const val GEN_SECRECY = "generic_secrecy"
+        const val GEN_AUTHORITY = "generic_authority"
+
         val REQUIRED_GROUPS = listOf(
             THREAT, URGENCY, CONFIRM_DATA, BAIT, CALL, CODE_VERB, CODE_DICTATE, CODE_WORD, CODE_TARGET, CALL_CONTEXT,
             PICKUP_CONTEXT, FLASH_CALL, MONEY_VERB, MONEY_INFINITIVE, DIRECTIVE, MONEY_REQUEST, SAFE_ACCOUNT,
@@ -161,6 +181,8 @@ class MessageRules internal constructor(
             DATING, TICKET_BUY, MULE_OFFER, MULE_REWARD, LEGAL_WARNING, CASH_JOB, HIRE, LISTING, RECEIVE_MONEY, SAFE_DEAL,
             CHAT_MOVE, REMOTE_APP, INSTALL_VERB, NFC_TAP, REFUND, APK_WORD, MONEY_CONTEXT, CASH_HANDOVER, WRONG_NUMBER,
             LAW_PRETEXT, PASSPORT, SUMMONS, ORGANS, ORGANS_VAGUE, PROBE,
+            GEN_MONEY_ASK, GEN_MONEY_INFINITIVE, GEN_FEE, GEN_MONEY_NOUN, GEN_MODAL, GEN_DATA_VERB, GEN_CARD_DATA, GEN_TELL_VERB, GEN_SECRET, GEN_IDENTITY, GEN_PROMISE,
+            GEN_CLAIM, GEN_PROMO, GEN_THREAT, GEN_ABSENT, GEN_URGENCY, GEN_SECRECY, GEN_AUTHORITY,
         )
 
         /** No vocabulary at all: links are still checked against the blocklist. */

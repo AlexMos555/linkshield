@@ -39,7 +39,8 @@ class MessageHeldOutTest {
             MessageCorpus.SCAM_REVIEW + MessageCorpus.LEGIT_RU + MessageCorpus.LEGIT_EN + MessageCorpus.LEGIT_VARIANTS +
             MessageCorpus.SCAM_2026_10_DANGEROUS + MessageCorpus.SCAM_2026_10_CAUTION + MessageCorpus.LEGIT_2026_10 +
             MessageCorpus.SCAM_2026_10_UPGRADES + MessageCorpus.LEGIT_2026_10_UPGRADES + MessageSchemeCorpus.SCAM_DANGEROUS +
-            MessageSchemeCorpus.SCAM_CAUTION + MessageSchemeCorpus.LEGIT).toSet()
+            MessageSchemeCorpus.SCAM_CAUTION + MessageSchemeCorpus.LEGIT + MessageGenericCorpus.SCAM_DANGEROUS +
+            MessageGenericCorpus.SCAM_CAUTION + MessageGenericCorpus.LEGIT).toSet()
         assertEquals(emptyList(), cases.map { it.text }.filter { it in corpus }, "held-out message also in MessageCorpus")
         assertTrue(cases.map { it.family }.toSet().size >= 20, "families")
     }
@@ -124,8 +125,11 @@ class MessageHeldOutTest {
         // families of docs/EVALUATION_2026-10.md §3.5 (tuned on new MessageCorpus
         // phrasings, SCAM_2026_10_UPGRADES): 0 false alarms, 60/60 flagged, 55/60
         // dangerous. The five left at caution are caution by design (§3.7).
+        // Raised again 2026-10-06 by the generic layer (MessageGeneric.kt, tuned on
+        // MessageGenericCorpus, not on this set; §3.12): 0 false alarms, 60/60
+        // flagged, 58/60 dangerous.
         const val MAX_FALSE_ALARMS = 0
         const val MIN_FLAGGED = 60
-        const val MIN_DANGEROUS = 55
+        const val MIN_DANGEROUS = 58
     }
 }
