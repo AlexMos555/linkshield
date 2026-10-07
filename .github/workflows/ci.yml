@@ -222,6 +222,13 @@ jobs:
         # «Нет сети» long after either had changed.
         run: node mobile/scripts/test-network-shield-hook.mjs
 
+      - name: Keep-protection-on table test
+        # The "Keep protection on" list ticks a row only when the phone
+        # reports it: an odd native value is "cannot tell", never done; the
+        # phone maker's own battery manager is never ticked; and every
+        # template-literal key the card builds exists in all 10 locales.
+        run: node mobile/scripts/test-keep-alive.mjs
+
       - name: Shared message handoff regression test
         # Report #5: a second SMS shared to an open message screen must be
         # checked — the router reuses the screen, so each share needs its id.
