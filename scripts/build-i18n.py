@@ -80,6 +80,7 @@ EXTENSION_NS_TO_FLAT_PREFIX = {
     "extension.pwned": "pwned_",
     "extension.webmail": "webmail_",
     "extension.options": "options_",
+    "extension.account": "account_",  # sign-in row in the popup + settings
 }
 
 # For popup namespace: keys NOT in the dict above use bare names (no prefix).

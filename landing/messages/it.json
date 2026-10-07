@@ -889,6 +889,28 @@
       }
     }
   },
+  "ExtensionConnect": {
+    "meta_title": "Collega l'estensione — Cleanway",
+    "loading": "Verifica dell'accesso…",
+    "heading": "Collega questo browser al tuo account Cleanway",
+    "signed_in_as": "Accesso effettuato come {email}",
+    "explain": "L'estensione Cleanway in questo browser userà questo account per l'Hub Famiglia e la sincronizzazione delle impostazioni. Avrà un accesso tutto suo: se esci dall'estensione, resti connesso al sito.",
+    "connect": "Collega",
+    "connecting": "Collegamento in corso…",
+    "other_account": "Usa un altro account",
+    "connected_title": "Questo browser è collegato",
+    "connected_body": "Ora puoi chiudere questa scheda.",
+    "no_state_title": "Inizia dall'estensione",
+    "no_state_body": "Apri l'estensione Cleanway in questo browser e fai clic su «Accedi». Ti riporterà qui.",
+    "error_no_extension": "L'estensione Cleanway non ha risposto in questo browser. Verifica che sia installata e attiva, poi fai di nuovo clic su «Accedi» nell'estensione.",
+    "error_state": "Questa richiesta di accesso è scaduta. Fai di nuovo clic su «Accedi» nell'estensione.",
+    "error_failed": "Impossibile collegare l'estensione. Riprova.",
+    "error_network": "Nessuna connessione al server. Controlla la connessione a internet e riprova.",
+    "error_locked": "Il tuo account è in attesa di eliminazione. Ripristinalo per collegare l'estensione.",
+    "restore_cta": "Ripristina il mio account",
+    "error_unavailable": "L'accesso non è disponibile in questo momento. La protezione funziona anche senza account.",
+    "handover_note": "L'estensione riceve solo un accesso a questo account. Non viene usata alcuna password."
+  },
   "Reasons": {
     "flagged_dangerous": "Google segnala questo sito come pericoloso",
     "flagged_phishing": "Segnalato come phishing",

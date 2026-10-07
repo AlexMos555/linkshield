@@ -32,7 +32,7 @@
  * ---------------------
  * A local mock API answers every call (api_url is pointed at it through the
  * same chrome.storage override the Options page uses), and Chromium's host
- * resolver maps *.cleanway.ai to nowhere, so a stray request fails instead of
+ * resolver maps *.cleanway.ai and *.supabase.co to nowhere, so a stray request fails instead of
  * reaching production. The test sites (*.example, *.tk, *.top) resolve to
  * the mock too; it serves the same pages on every hostname.
  *
@@ -59,6 +59,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TREES = process.argv.slice(2).length ? process.argv.slice(2) : ["extension", "extension-safari"];
 
 const FAMILY_ID = "fam-e2e";
+// The Supabase project the extension pins (src/utils/auth-session.js). Its
+// host resolves to nowhere below; sign-in pages are served by context.route.
+const SUPABASE_PROJECT = "https://bpyqgzzclsbfvxthyfsf.supabase.co";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -196,7 +199,7 @@ async function launch(tree, lang = UI_LANG) {
       `--disable-extensions-except=${extPath}`,
       `--load-extension=${extPath}`,
       `--lang=${lang}`,
-      "--host-resolver-rules=MAP *.cleanway.ai ~NOTFOUND, MAP cleanway.ai ~NOTFOUND, " +
+      "--host-resolver-rules=MAP *.cleanway.ai ~NOTFOUND, MAP cleanway.ai ~NOTFOUND, MAP *.supabase.co ~NOTFOUND, " +
         "MAP *.example 127.0.0.1, MAP *.tk 127.0.0.1, MAP *.top 127.0.0.1",
     ],
   });
@@ -584,6 +587,81 @@ async function runTree(tree) {
         sw.evaluate(() => chrome.alarms.get("cleanway_family_poll").then((a) => !a)), 5000);
       const left = await sw.evaluate(() => chrome.storage.local.get("family_cache"));
       assert.equal(left.family_cache, undefined);
+    });
+
+    // The real manifest match patterns, the real content-script sender
+    // (origin, frame, URL) and the real storage — what the unit tests in
+    // scripts/test-extension-auth.mjs can only assume.
+    await check("sign-in: the cleanway.ai connect page hands the extension a session, once", async () => {
+      const nowS = Math.floor(Date.now() / 1000);
+      const jwt = (claims) => `${b64url(Buffer.from('{"alg":"HS256"}'))}.${b64url(Buffer.from(JSON.stringify(claims)))}.sig`;
+      const access = jwt({ iss: `${SUPABASE_PROJECT}/auth/v1`, aud: "authenticated", sub: "me", email: "me@example.com", exp: nowS + 3600 });
+      const session = {
+        access_token: access,
+        refresh_token: "e2e-extension-refresh",
+        expires_at: nowS + 3600,
+        anon_key: jwt({ iss: "supabase", role: "anon" }),
+      };
+      // What cleanway.ai/extension/connect does, minus React: hand over as
+      // soon as the extension says it is there, and keep its answers.
+      const page = `<!doctype html><title>Connect</title><script>
+        window.__ready = false; window.__results = [];
+        var session = ${JSON.stringify(session)};
+        var state = new URLSearchParams(location.search).get("state");
+        window.addEventListener("message", function (e) {
+          if (e.source !== window || !e.data || e.data.source !== "cleanway-extension") return;
+          if (e.data.type === "cleanway:extension-ready" && !window.__ready) {
+            window.__ready = true;
+            window.postMessage({ source: "cleanway-web", type: "cleanway:connect", state: state, session: session }, location.origin);
+          }
+          if (e.data.type === "cleanway:connect-result") window.__results.push(e.data);
+        });
+        window.postMessage({ source: "cleanway-web", type: "cleanway:hello" }, location.origin);
+      </script>`;
+      await context.route("https://cleanway.ai/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: page }));
+      const answers = (tab) => until("the extension's answer", () => tab.evaluate(() => (window.__results.length ? window.__results : null)));
+
+      const popup = await context.newPage();
+      await popup.goto(`chrome-extension://${extId}/src/popup/popup.html`);
+      const opened = context.waitForEvent("page");
+      await popup.evaluate(() => chrome.runtime.sendMessage({ type: "AUTH_START_SIGN_IN" }));
+      const tab = await opened;
+      // The tab's first load can beat Playwright's routing (it then lands on
+      // the "can't reach" page — cleanway.ai resolves nowhere here). Ask the
+      // browser which URL the extension opened and load that again, routed.
+      const connectUrl = await until("the connect tab", () => sw.evaluate(() =>
+        chrome.tabs.query({}).then((tabs) => tabs.map((t) => t.pendingUrl || t.url).find((u) => /cleanway\.ai/.test(u || "")) || null)));
+      assert.match(connectUrl, /^https:\/\/cleanway\.ai\/([a-z]{2}\/)?extension\/connect\?state=[A-Za-z0-9_-]{43}$/);
+      if (tab.url() !== connectUrl) await tab.goto(connectUrl);
+
+      assert.deepEqual(await answers(tab), [{ source: "cleanway-extension", type: "cleanway:connect-result", ok: true, error: null }]);
+      const stored = await sw.evaluate(() => chrome.storage.local.get(null));
+      assert.equal(stored.auth_token, access);
+      assert.equal(stored.auth_refresh_token, "e2e-extension-refresh");
+      assert.equal(stored.auth_email, "me@example.com");
+      assert.equal(stored.auth_connect_state, undefined, "the state was not spent");
+      assert.deepEqual(await popup.evaluate(() => chrome.runtime.sendMessage({ type: "AUTH_STATUS" })),
+        { signedIn: true, email: "me@example.com", pending: false, signedOutReason: null });
+      await until("device registration hook", () =>
+        api.calls.some((c) => c.method === "POST" && c.path === "/api/v1/user/device" && c.auth === `Bearer ${access}`), 5000);
+
+      // The same page again — the state is spent.
+      await tab.reload();
+      const replay = await answers(tab);
+      assert.equal(replay[0].ok, false);
+      assert.equal(replay[0].error, "state_mismatch");
+
+      // Any other page of the site gets no relay at all.
+      const other = await context.newPage();
+      await other.goto("https://cleanway.ai/pricing");
+      await sleep(800);
+      assert.equal(await other.evaluate(() => window.__ready), false, "relay injected outside the connect page");
+
+      await popup.evaluate(() => chrome.runtime.sendMessage({ type: "AUTH_SIGN_OUT" }));
+      const left = await sw.evaluate(() => chrome.storage.local.get(["auth_token", "auth_refresh_token", "auth_email"]));
+      assert.deepEqual(left, {});
+      await Promise.all([tab.close(), other.close(), popup.close()]);
+      await context.unroute("https://cleanway.ai/**");
     });
   } finally {
     await context.close();

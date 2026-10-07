@@ -60,7 +60,7 @@ const LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
 // webmail banners and the settings page.
 const NEW_KEY_PREFIXES = [
   "badge_", "audit_", "credguard_", "mpg_", "menu_", "command_", "family_notify_", "reason_",
-  "evidence_", "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_",
+  "evidence_", "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_", "account_",
 ];
 
 // Reason codes whose `detail` is already in the user's language (the

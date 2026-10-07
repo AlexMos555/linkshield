@@ -1448,5 +1448,40 @@
   },
   "options_family_invite_qr_alt": {
     "message": "Kode QR undangan keluarga Cleanway"
+  },
+  "account_heading": {
+    "message": "Akun"
+  },
+  "account_sign_in": {
+    "message": "Masuk"
+  },
+  "account_sign_out": {
+    "message": "Keluar"
+  },
+  "account_signed_in": {
+    "message": "Sudah masuk"
+  },
+  "account_signed_in_as": {
+    "message": "Masuk sebagai $EMAIL$",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "account_signed_in_desc": {
+    "message": "Dipakai untuk Pusat Keluarga dan sinkronisasi pengaturan. Keluar tidak mematikan perlindungan."
+  },
+  "account_signed_out": {
+    "message": "Belum masuk"
+  },
+  "account_signed_out_desc": {
+    "message": "Masuk untuk memakai Pusat Keluarga dan menyinkronkan pengaturan. Perlindungan tetap berjalan tanpa akun."
+  },
+  "account_pending": {
+    "message": "Selesaikan proses masuk di tab Cleanway"
+  },
+  "account_expired": {
+    "message": "Sesi masuk Anda telah berakhir"
   }
 }

@@ -889,6 +889,28 @@
       }
     }
   },
+  "ExtensionConnect": {
+    "meta_title": "Conectar a extensão — Cleanway",
+    "loading": "Verificando seu login…",
+    "heading": "Conecte este navegador à sua conta Cleanway",
+    "signed_in_as": "Conectado como {email}",
+    "explain": "A extensão do Cleanway neste navegador vai usar esta conta para o Hub Familiar e a sincronização das configurações. Ela terá o próprio login: sair na extensão não encerra sua sessão no site.",
+    "connect": "Conectar",
+    "connecting": "Conectando…",
+    "other_account": "Usar outra conta",
+    "connected_title": "Este navegador está conectado",
+    "connected_body": "Você já pode fechar esta aba.",
+    "no_state_title": "Comece pela extensão",
+    "no_state_body": "Abra a extensão do Cleanway neste navegador e clique em “Entrar”. Ela traz você de volta para cá.",
+    "error_no_extension": "A extensão do Cleanway não respondeu neste navegador. Verifique se ela está instalada e ativada e clique de novo em “Entrar” na extensão.",
+    "error_state": "Este pedido de login expirou. Clique de novo em “Entrar” na extensão.",
+    "error_failed": "Não foi possível conectar a extensão. Tente de novo.",
+    "error_network": "Sem conexão com o servidor. Verifique sua internet e tente de novo.",
+    "error_locked": "Sua conta está agendada para exclusão. Restaure-a para conectar a extensão.",
+    "restore_cta": "Restaurar minha conta",
+    "error_unavailable": "O login não está disponível agora. A proteção funciona sem conta.",
+    "handover_note": "A extensão recebe apenas um login desta conta. Nenhuma senha é usada."
+  },
   "Reasons": {
     "flagged_dangerous": "O Google marca este site como perigoso",
     "flagged_phishing": "Denunciado como phishing",

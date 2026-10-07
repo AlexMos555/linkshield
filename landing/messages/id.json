@@ -889,6 +889,28 @@
       }
     }
   },
+  "ExtensionConnect": {
+    "meta_title": "Hubungkan ekstensi — Cleanway",
+    "loading": "Memeriksa status masuk…",
+    "heading": "Hubungkan browser ini ke akun Cleanway Anda",
+    "signed_in_as": "Masuk sebagai {email}",
+    "explain": "Ekstensi Cleanway di browser ini akan memakai akun ini untuk Pusat Keluarga dan sinkronisasi pengaturan. Ekstensi mendapat sesi masuknya sendiri: keluar dari ekstensi tidak membuat Anda keluar dari situs web.",
+    "connect": "Hubungkan",
+    "connecting": "Menghubungkan…",
+    "other_account": "Gunakan akun lain",
+    "connected_title": "Browser ini sudah terhubung",
+    "connected_body": "Anda bisa menutup tab ini.",
+    "no_state_title": "Mulai dari ekstensi",
+    "no_state_body": "Buka ekstensi Cleanway di browser ini dan klik “Masuk”. Ekstensi akan membawa Anda kembali ke sini.",
+    "error_no_extension": "Ekstensi Cleanway tidak merespons di browser ini. Pastikan ekstensi terpasang dan aktif, lalu klik “Masuk” di ekstensi lagi.",
+    "error_state": "Permintaan masuk ini sudah kedaluwarsa. Klik “Masuk” di ekstensi lagi.",
+    "error_failed": "Tidak dapat menghubungkan ekstensi. Silakan coba lagi.",
+    "error_network": "Tidak ada koneksi ke server. Periksa internet Anda dan coba lagi.",
+    "error_locked": "Akun Anda dijadwalkan untuk dihapus. Pulihkan akun untuk menghubungkan ekstensi.",
+    "restore_cta": "Pulihkan akun saya",
+    "error_unavailable": "Fitur masuk sedang tidak tersedia. Perlindungan tetap berjalan tanpa akun.",
+    "handover_note": "Ekstensi hanya menerima sesi masuk untuk akun ini. Tidak ada kata sandi yang digunakan."
+  },
   "Reasons": {
     "flagged_dangerous": "Google menandai situs ini berbahaya",
     "flagged_phishing": "Dilaporkan sebagai phishing",

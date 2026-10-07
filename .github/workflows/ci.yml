@@ -75,6 +75,13 @@ jobs:
         # the app's.
         run: node --experimental-strip-types scripts/test-landing-honesty.mjs
 
+      - name: Signup + extension-connect helpers
+        # /signup's code flow, the /auth/callback error hand-off, the
+        # allowlisted ?next= (the extension's connect page keeps its state
+        # through sign-in; nothing else rides along) and the connect page's
+        # decisions (landing/lib/extension-connect.ts).
+        run: node --experimental-strip-types scripts/test-signup-flow.mjs
+
       - name: Extension local-scorer table test
         # The offline scorer draws the badge before (and sometimes instead of)
         # any backend verdict, so it is a fork of api/services/scoring.py that
@@ -98,6 +105,15 @@ jobs:
         # i18n key the extension uses is missing from any locale. The real-
         # browser proof is .github/workflows/e2e-extension.yml.
         run: node scripts/test-extension-core.mjs
+
+      - name: Extension sign-in (token handoff + refresh)
+        # cleanway.ai/extension/connect → content/connect-relay.js →
+        # background. Pins who may hand over tokens (exact origin, connect
+        # path, top frame, our own content script), the one-time 30-minute
+        # state, what gets stored, and that a refresh is single-flight, goes
+        # only to our Supabase project and signs out only when Supabase
+        # refuses the refresh token.
+        run: node scripts/test-extension-auth.mjs
 
       - name: Extension build drift guard
         # `packages/extension-core/` is the single source of truth.

@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 import { localePath } from "@/lib/locale-path";
+import { safeSignupNext } from "@/lib/signup-flow";
 import SignupForm from "./SignupForm";
 
 const SITE_URL = "https://cleanway.ai";
@@ -40,7 +41,7 @@ export async function generateMetadata({
 
 type Props = {
   /** `error` is the stable code /auth/callback leaves when a link failed. */
-  searchParams: Promise<{ plan?: string; interval?: string; error?: string }>;
+  searchParams: Promise<{ plan?: string; interval?: string; error?: string; next?: string }>;
   params: Promise<{ locale: string }>;
 };
 
@@ -125,7 +126,12 @@ export default async function SignupPage({ searchParams, params }: Props) {
           </div>
         )}
 
-        <SignupForm planFromQuery={plan} intervalFromQuery={interval} errorFromQuery={sp.error ?? null} />
+        <SignupForm
+          planFromQuery={plan}
+          intervalFromQuery={interval}
+          errorFromQuery={sp.error ?? null}
+          nextFromQuery={safeSignupNext(sp.next, routing.locales)}
+        />
 
         {/* Privacy reassurance */}
         <div style={{ marginTop: 28, padding: "16px 18px", background: "#1e293b80", borderRadius: 10, border: "1px solid #1e293b" }}>

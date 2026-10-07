@@ -1448,5 +1448,40 @@
   },
   "options_family_invite_qr_alt": {
     "message": "QR code do convite para a família no Cleanway"
+  },
+  "account_heading": {
+    "message": "Conta"
+  },
+  "account_sign_in": {
+    "message": "Entrar"
+  },
+  "account_sign_out": {
+    "message": "Sair"
+  },
+  "account_signed_in": {
+    "message": "Sessão iniciada"
+  },
+  "account_signed_in_as": {
+    "message": "Conectado como $EMAIL$",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "account_signed_in_desc": {
+    "message": "Usada para o Hub Familiar e para sincronizar as configurações. Sair não desativa a proteção."
+  },
+  "account_signed_out": {
+    "message": "Você não entrou"
+  },
+  "account_signed_out_desc": {
+    "message": "Entre para usar o Hub Familiar e sincronizar as configurações. A proteção funciona sem conta."
+  },
+  "account_pending": {
+    "message": "Conclua o login na aba do Cleanway"
+  },
+  "account_expired": {
+    "message": "Sua sessão expirou"
   }
 }

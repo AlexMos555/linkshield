@@ -20,11 +20,13 @@ src/
 ├── background/         ← Module service worker / background script ("type": "module")
 │   ├── index.js           (entry; STATIC imports only — import() is forbidden in a service worker)
 │   ├── browser-compat.js  (Firefox chrome → browser alias; imported first)
+│   ├── auth.js            (sign-in: AUTH_* messages, the refresh alarm — wires utils/auth-session.js)
 │   ├── page-blocks.js     (what counts as a blocked scam: a block page shown, once per site per day)
 │   └── trusted-hosts.js   (exact official hosts answered "safe", and user-content hosts answered "can't be checked")
 ├── content/            ← Content scripts injected into every page
 │   ├── index.js           (main orchestrator)
 │   ├── block-page.js      (STOP overlay for scam sites)
+│   ├── connect-relay.js   (ONLY on cleanway.ai/<locale>/extension/connect: relays the sign-in handoff)
 │   ├── reason-labels.js   (badge reason lines in the browser's language, by reason code)
 │   ├── privacy-audit.js
 │   ├── security-score.js
@@ -36,7 +38,8 @@ src/
 │   ├── options.html
 │   └── options.js
 └── utils/              ← Shared helpers
-    ├── api.js              (API_BASE resolution + 410 lock detection + chrome.storage.local override)
+    ├── api.js              (API_BASE resolution + 410 lock detection + chrome.storage.local override; registerDevice() hook)
+    ├── auth-session.js     (sign-in handoff checks, token storage, Supabase refresh — pure, no chrome at top level)
     ├── family-api.js       (Family Hub REST client)
     ├── family-crypto.js    (curve25519 + xchacha20-poly1305 alert envelope)
     ├── family-fanout.js    (per-recipient alert dispatch)
@@ -96,6 +99,36 @@ bash scripts/build-extensions.sh
 # Reload unpacked extension in Chrome → see changes
 ```
 
+## Sign-in
+
+The extension has no sign-in form of its own. "Sign in" (popup or Settings)
+opens `https://cleanway.ai/<locale>/extension/connect?state=<32 random bytes>`;
+the page signs the person in on the website if needed, then on "Connect" asks
+the API for a session of the extension's own (`POST /api/v1/auth/extension-session`
+— sharing the website's refresh token would make Supabase revoke both, see
+`api/routers/auth.py`) and posts it with the state to its own window.
+`content/connect-relay.js`, injected only on that path of that origin, forwards
+it as `AUTH_CONNECT`; `utils/auth-session.js` accepts it only from that content
+script's top frame, only with the state this install started (one use, 30
+minutes), and only for a live user token of the pinned Supabase project.
+
+- Tokens live in `chrome.storage.local` (`auth_token` = access token, which
+  every authed call already reads; `auth_refresh_token`, `auth_expires_at`,
+  `auth_email`, `auth_user_id`, `auth_anon_key`). Never in a URL or a log.
+- The background refreshes 5 minutes before expiry (alarm `cleanway_auth_refresh`,
+  plus on every worker start and every popup/Settings open), one request at a
+  time. It signs out only when Supabase refuses the refresh token; offline it
+  keeps the session and retries.
+- Sign out (Settings) forgets every token and ends the extension's session on
+  the server; the website stays signed in.
+- One mechanism for Chrome, Edge, Firefox and Safari: Firefox has no
+  `externally_connectable` for web pages, so there is none in any manifest.
+- `registerDevice()` in `utils/api.js` is the device hook (POST /api/v1/user/device
+  today; a 404 is a no-op).
+
+Tests: `node scripts/test-extension-auth.mjs` (handoff, state, refresh, relay,
+manifests) and the sign-in case in `scripts/test-extension-sw.mjs` (real Chromium).
+
 ## Per-flavor overrides
 
 If a specific browser needs a file that differs from the shared version, put it under that extension's `overrides/` directory with the same relative path. `build-extensions.sh` copies overrides AFTER the core sync, so they always win.
@@ -117,6 +150,7 @@ Code in this package uses `chrome.i18n.getMessage("key_name")`. The keys come fr
 
 ```bash
 node scripts/test-extension-core.mjs   # static: trusted hosts, SW module graph, manifests, i18n keys (all trees)
+node scripts/test-extension-auth.mjs   # sign-in: handoff checks, state, refresh, relay, manifests (all trees)
 node scripts/test-local-scorer.mjs     # offline scorer table + parity with the server's name rules
 node scripts/test-extension-sw.mjs     # real headless Chromium: loads extension/ + extension-safari/ unpacked
 ```
