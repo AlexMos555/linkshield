@@ -23,6 +23,14 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
    * build degrades to "unverified" instead of crashing.
    */
   canaryAnswerCount?(): number;
+  /** Battery / Always-on / phone maker, raw (index.ts validates it). Optional: older native builds lack it. */
+  keepAliveStatus?(): Record<string, unknown>;
+  /** Open Android's "stop optimising battery for Cleanway?" dialog, or the closest screen. */
+  requestBatteryExemption?(): boolean;
+  /** Open the phone maker's own background/autostart screen, else App info. */
+  openOemBackgroundSettings?(): boolean;
+  /** Bring back a shield the person left ON that is not running (same rules as the watchdog). */
+  rearmShield?(): string;
   /** True if the user last chose ON. Optional: older native builds lack it. */
   wasUserEnabled?(): boolean;
   /** Why protection last stopped by itself ("revoked" | "private_dns"), null when not known. */

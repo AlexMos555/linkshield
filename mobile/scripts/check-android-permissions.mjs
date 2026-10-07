@@ -11,7 +11,13 @@
  *    call-screening role: call awareness comes from the audio mode alone
  *    (CallState.kt), which needs nothing;
  *  - no notification listener, no accessibility service, no overlay
- *    (SYSTEM_ALERT_WINDOW stays blocked), no microphone.
+ *    (SYSTEM_ALERT_WINDOW stays blocked), no microphone;
+ *  - none of the other permissions Play reviews as special access (exact
+ *    alarms, all-packages visibility, installing packages, all-files
+ *    access, background location, usage stats) — the shield needs none;
+ *  - exactly one special-access permission, on purpose:
+ *    REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, declared once, in the native
+ *    module's manifest, next to its justification (SPECIAL_ALLOWED below).
  *
  * Checked: app.json's android.permissions (expo prebuild merges it into the
  * manifest), the native module's manifest and Kotlin sources, and the config
@@ -34,6 +40,36 @@ const FORBIDDEN = [
   "BIND_NOTIFICATION_LISTENER_SERVICE", "NotificationListenerService",
   "BIND_ACCESSIBILITY_SERVICE", "AccessibilityService",
   "SYSTEM_ALERT_WINDOW", "RECORD_AUDIO",
+];
+
+/**
+ * Play special-access permissions this app does not use. Listed so that a
+ * library or a "quick fix" cannot add one without this file changing too.
+ */
+const FORBIDDEN_SPECIAL = [
+  "SCHEDULE_EXACT_ALARM", "USE_EXACT_ALARM", "QUERY_ALL_PACKAGES", "REQUEST_INSTALL_PACKAGES",
+  "MANAGE_EXTERNAL_STORAGE", "ACCESS_BACKGROUND_LOCATION", "PACKAGE_USAGE_STATS",
+];
+
+/**
+ * The special-access permissions this app DOES declare, each allowed in one
+ * file only and only with its justification beside it. Adding one here is a
+ * product decision, not a build fix: it changes what the Play listing must
+ * justify.
+ *
+ *  - REQUEST_IGNORE_BATTERY_OPTIMIZATIONS (2026-10, "Keep protection on"):
+ *    shows Android's one-question battery dialog for this app instead of a
+ *    list of every app. Play permits it for a "safety app" whose core
+ *    function battery optimisation breaks — OEM battery managers kill the
+ *    always-on scam shield overnight. docs/MOBILE_AUTO_PROTECTION.md
+ *    "Keeping the shield alive" holds the justification for the listing.
+ */
+const SPECIAL_ALLOWED = [
+  {
+    permission: "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+    file: join("modules", "cleanway-vpn", "android", "src", "main", "AndroidManifest.xml"),
+    justification: "MOBILE_AUTO_PROTECTION.md",
+  },
 ];
 
 /** Phone permissions the app config must actively strip at manifest merge. */
@@ -84,8 +120,27 @@ const files = [
 ].filter((f) => !f.includes(`${join("src", "test")}${"/"}`));
 for (const f of files) {
   const text = readFileSync(f, "utf8");
-  for (const needle of FORBIDDEN) {
+  for (const needle of [...FORBIDDEN, ...FORBIDDEN_SPECIAL]) {
     if (declares(text, needle)) failures.push(`${relative(mobile, f)}: ${needle}`);
+  }
+}
+for (const p of asked) {
+  if (FORBIDDEN_SPECIAL.some((f) => p.endsWith(f))) failures.push(`app.json android.permissions asks for ${p}`);
+}
+
+// 3. The deliberate special-access permissions: declared exactly where
+// allowed, with the justification next to them, and nowhere else.
+for (const { permission, file, justification } of SPECIAL_ALLOWED) {
+  const where = files.filter((f) => declares(readFileSync(f, "utf8"), permission)).map((f) => relative(mobile, f));
+  if (asked.some((p) => p.endsWith(permission))) where.push("app.json");
+  if (where.length !== 1 || where[0] !== file) {
+    failures.push(`${permission} must be declared only in ${file}; found in: ${where.join(", ") || "nowhere"}`);
+    continue;
+  }
+  const manifest = readFileSync(join(mobile, file), "utf8");
+  const at = manifest.indexOf(`android.permission.${permission}`);
+  if (at < 0 || !manifest.slice(Math.max(0, at - 800), at).includes(justification)) {
+    failures.push(`${permission} in ${file} lost its justification comment (must cite ${justification})`);
   }
 }
 
@@ -94,4 +149,7 @@ if (failures.length > 0) {
   for (const f of failures) console.log("  " + f);
   process.exit(1);
 }
-console.log(`ok: ${asked.length} permissions asked, ${FORBIDDEN.length} forbidden ones absent from ${files.length} files, ${MUST_BLOCK.length} stripped at merge`);
+console.log(
+  `ok: ${asked.length} permissions asked, ${FORBIDDEN.length + FORBIDDEN_SPECIAL.length} forbidden ones absent from ${files.length} files, ` +
+  `${SPECIAL_ALLOWED.length} special-access declared where allowed, ${MUST_BLOCK.length} stripped at merge`,
+);

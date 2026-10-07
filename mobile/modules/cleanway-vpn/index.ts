@@ -17,8 +17,11 @@ import type {
   CallEventKind,
   CallStatePayload,
   DomainBlockedPayload,
+  KeepAliveStatus,
   NetworkChangedPayload,
+  OemFamily,
   PauseChangedPayload,
+  RearmDecision,
   ShieldBlockEntry,
   ShieldBlockKind,
   ShieldBlockSource,
@@ -35,14 +38,18 @@ import type {
   MessageVerdict,
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
+import { parseKeepAliveStatus, parseRearmDecision, UNKNOWN_KEEP_ALIVE } from './src/KeepAliveStatus';
 
 export type {
   BlocklistStatus,
   CallEventKind,
   CallStatePayload,
   DomainBlockedPayload,
+  KeepAliveStatus,
   NetworkChangedPayload,
+  OemFamily,
   PauseChangedPayload,
+  RearmDecision,
   ShieldBlockEntry,
   ShieldBlockKind,
   ShieldBlockSource,
@@ -293,6 +300,60 @@ export function openVpnSettings(): boolean {
     return CleanwayVpn.openVpnSettings();
   } catch {
     return false;
+  }
+}
+
+// ── Keeping the shield alive with the app closed (KeepAlive.kt / ShieldWatchdog.kt) ──
+
+/**
+ * Battery optimisation, Always-on VPN and the phone maker, as the phone
+ * reports them. Every field is null where this build or this phone cannot
+ * tell (iOS, an older native build, Always-on while the shield is off).
+ */
+export function keepAliveStatus(): KeepAliveStatus {
+  if (Platform.OS !== 'android') return UNKNOWN_KEEP_ALIVE;
+  try {
+    return parseKeepAliveStatus(CleanwayVpn.keepAliveStatus?.());
+  } catch {
+    return UNKNOWN_KEEP_ALIVE;
+  }
+}
+
+/**
+ * Open Android's "stop optimising battery for Cleanway?" dialog — or, where
+ * the phone maker removed it, the closest settings screen. The caller
+ * explains why first. False when nothing could be opened.
+ */
+export function requestBatteryExemption(): boolean {
+  try {
+    return typeof CleanwayVpn.requestBatteryExemption === 'function' && CleanwayVpn.requestBatteryExemption();
+  } catch {
+    return false;
+  }
+}
+
+/** Open the phone maker's own background/autostart screen (else App info). False if none opened. */
+export function openOemBackgroundSettings(): boolean {
+  try {
+    return typeof CleanwayVpn.openOemBackgroundSettings === 'function' && CleanwayVpn.openOemBackgroundSettings();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The person left the shield ON and it is not running: ask the native side
+ * to bring it back under the watchdog's rules (never after Android took the
+ * tunnel away, never over another VPN, at most 3 times an hour). 'start'
+ * means the service was asked to start — proof still comes from the canary.
+ * Null on older native builds and on error.
+ */
+export function rearmShield(): RearmDecision | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    return parseRearmDecision(CleanwayVpn.rearmShield?.());
+  } catch {
+    return null;
   }
 }
 

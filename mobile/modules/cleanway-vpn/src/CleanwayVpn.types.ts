@@ -37,6 +37,34 @@ export type ShieldBlockEntry = DomainBlockedPayload & { source?: ShieldBlockSour
  */
 export type ShieldStopReason = 'revoked' | 'private_dns';
 
+/**
+ * Phone makers whose own battery managers stop background apps beyond stock
+ * Android (KeepAlivePolicy.OemFamily): Samsung; Xiaomi/Redmi/POCO;
+ * Huawei/Honor; OPPO/realme/OnePlus; vivo/iQOO.
+ */
+export type OemFamily = 'samsung' | 'xiaomi' | 'huawei' | 'oppo' | 'vivo';
+
+/** What the phone says about keeping the shield alive with the app closed. Null: cannot tell. */
+export type KeepAliveStatus = {
+  /** Android's battery optimisation leaves Cleanway alone ("Unrestricted"). */
+  batteryUnrestricted: boolean | null;
+  /** The running tunnel is the phone's Always-on VPN. Null while the shield is off, or below Android 10. */
+  alwaysOn: boolean | null;
+  /** The phone maker whose battery manager needs its own step, or null on stock-like Android. */
+  oem: OemFamily | null;
+};
+
+/** What rearmShield() decided (KeepAlivePolicy.Rearm, lower case). */
+export type RearmDecision =
+  | 'start'
+  | 'running'
+  | 'not_wanted'
+  | 'taken_away'
+  | 'private_dns'
+  | 'other_vpn'
+  | 'budget'
+  | 'no_consent';
+
 /** Emitted when the tunnel is torn down without the user asking for it. */
 export type VpnStoppedPayload = {
   /** A ShieldStopReason; kept as a string so a newer native reason still arrives. */

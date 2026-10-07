@@ -30,6 +30,11 @@ class PolicyGuardTest {
         "BIND_NOTIFICATION_LISTENER_SERVICE", "NotificationListenerService",
         "BIND_ACCESSIBILITY_SERVICE", "AccessibilityService",
         "SYSTEM_ALERT_WINDOW", "RECORD_AUDIO",
+        // Play special-access permissions the shield does not use. The one it
+        // does (REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, the module manifest) is
+        // pinned with its justification by check-android-permissions.mjs.
+        "SCHEDULE_EXACT_ALARM", "USE_EXACT_ALARM", "QUERY_ALL_PACKAGES", "REQUEST_INSTALL_PACKAGES",
+        "MANAGE_EXTERNAL_STORAGE", "ACCESS_BACKGROUND_LOCATION", "PACKAGE_USAGE_STATS",
     )
 
     /** The module's manifest and sources (the app's config is checked by the CI script). */

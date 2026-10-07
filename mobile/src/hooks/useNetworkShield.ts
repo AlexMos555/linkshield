@@ -53,6 +53,7 @@ interface VpnModule {
   stopVpn(): Promise<void>;
   isVpnRunning(): boolean;
   wasUserEnabled?(): boolean;
+  rearmShield?(): string | null;
   lastStopReason?(): ShieldStopReason | null;
   privateDnsStrictHost?(): string | null;
   openPrivateDnsSettings?(): boolean;
@@ -80,6 +81,13 @@ export const PAUSE_MINUTES = 15;
  * Android a few seconds later); one check per burst is enough.
  */
 const NETWORK_SETTLE_MS = 1000;
+
+/**
+ * How long a re-arm gets before the screen reads the service again. The
+ * service sets its running flag once establish() returns — well under a
+ * second on the emulator; a cold start of the tunnel thread can take longer.
+ */
+const REARM_SETTLE_MS = 1500;
 
 async function hasInternet(): Promise<boolean> {
   const abort = new AbortController();
@@ -220,7 +228,18 @@ export function useNetworkShield(): NetworkShield {
     // trusted. With strict Private DNS on, a running tunnel means a phone
     // with no DNS, and a failed probe means nothing about our filtering.
     setPrivateDnsHost(vpn.privateDnsStrictHost?.() ?? null);
-    const isUp = vpn.isVpnRunning();
+    let isUp = vpn.isVpnRunning();
+    // Left ON and found off — an OEM battery manager killed it while the app
+    // was closed. Bring it back now rather than show "protection stopped"
+    // and wait for a tap: the person already said yes. The native side
+    // applies the watchdog's rules (never after Android took the tunnel
+    // away, never over another VPN or strict Private DNS, at most 3 times an
+    // hour), so a refusal there simply leaves the "stopped" screen below.
+    if (!isUp && vpn.wasUserEnabled?.() === true && vpn.rearmShield?.() === "start") {
+      setProbing(true);
+      await new Promise((r) => setTimeout(r, REARM_SETTLE_MS));
+      isUp = vpn.isVpnRunning();
+    }
     setRunning(isUp);
     setPausedUntil(isUp ? readPausedUntil(vpn) : 0);
     readBlocklist();
