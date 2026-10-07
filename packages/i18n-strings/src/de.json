@@ -1706,20 +1706,17 @@
       "reference_label": "Referenz"
     },
     "signup": {
-      "check_inbox": "Prüfen Sie Ihr Postfach",
-      "magic_link_sent": "Wir haben einen Anmeldelink an <strong>{email}</strong> geschickt.",
-      "magic_link_followup": "Öffne den Link in dieser E-Mail, um die Anmeldung abzuschließen. Kommt in 10 Minuten nichts an, schau im Spam-Ordner nach.",
       "email_label": "E-Mail",
       "email_placeholder": "sie@beispiel.de",
-      "submitting": "Link wird gesendet…",
-      "submit_with_plan": "Anmelde-Link senden",
+      "submitting": "Code wird gesendet…",
+      "submit_with_plan": "Anmeldecode per E-Mail senden",
       "submit_no_plan": "Weiter",
-      "footer_lead": "Wir senden Ihnen einen einmaligen Anmelde-Link. Kein Passwort zu merken.",
+      "footer_lead": "Wir schicken Ihnen einen einmaligen Anmeldecode per E-Mail. Kein Passwort zu merken.",
       "footer_or": "Oder",
       "footer_install_cta": "installiere die App kostenlos",
       "footer_install_tail": "– das Blockieren funktioniert ohne Konto.",
       "meta_title": "Anmelden – Cleanway",
-      "meta_description": "Melde dich bei Cleanway mit einem Einmal-Link an, der an deine E-Mail-Adresse geht. Der Schutz selbst funktioniert ohne Konto.",
+      "meta_description": "Melden Sie sich bei Cleanway mit einem einmaligen Code an, der per E-Mail kommt. Der Schutz selbst funktioniert ohne Konto.",
       "back_to_pricing": "Zurück zu den Preisen",
       "heading": "Konto erstellen oder anmelden",
       "intro": "Für den Schutz brauchst du kein Konto – das Blockieren von Betrugsseiten funktioniert auch ohne. Ein Konto ist nur für Familienfunktionen und kostenpflichtige Tarife nötig.",
@@ -1741,7 +1738,21 @@
       "error_rate_limited": "Zu viele Versuche. Warte ein paar Minuten und versuche es noch einmal.",
       "error_send_failed": "Die Anmelde-E-Mail konnte nicht gesendet werden. Bitte versuche es später noch einmal.",
       "error_network": "Keine Verbindung zum Server. Prüfe deine Internetverbindung und versuche es noch einmal.",
-      "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert ohne Konto."
+      "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert ohne Konto.",
+      "code_heading": "Code aus der E-Mail eingeben",
+      "code_sent_to": "Wir haben einen 6-stelligen Code an <strong>{email}</strong> gesendet.",
+      "code_label": "Code aus der E-Mail",
+      "code_submit": "Anmelden",
+      "code_submitting": "Code wird geprüft…",
+      "code_valid_for": "Der Code ist 1 Stunde gültig.",
+      "code_spam_hint": "Keine E-Mail? Warten Sie eine Minute und sehen Sie im Spam-Ordner nach. Absender ist Cleanway.",
+      "code_resend": "Code erneut senden",
+      "code_resend_in": "Erneut senden in {seconds} s",
+      "code_change_email": "E-Mail ändern",
+      "error_code_incomplete": "Geben Sie die 6 Ziffern aus der E-Mail ein.",
+      "error_code_wrong": "Code falsch oder abgelaufen. Prüfen Sie die Ziffern oder fordern Sie einen neuen Code an.",
+      "error_link_expired": "Der Anmeldelink ist abgelaufen. Fordern Sie einen neuen Code an.",
+      "error_link_failed": "Der Anmeldelink hat nicht funktioniert. Geben Sie hier den Code aus der E-Mail ein oder fordern Sie einen neuen an."
     },
     "pricing": {
       "page_title": "Preise",
@@ -3279,7 +3290,9 @@
       "err_rate_limited": "Zu viele Code-Anfragen. Warten Sie kurz und versuchen Sie es erneut.",
       "err_captcha": "Die Sicherheitsprüfung wurde nicht abgeschlossen. Bitte versuchen Sie es erneut.",
       "err_captcha_update": "Für die Anmeldung wird eine neuere Version von Cleanway benötigt. Bitte aktualisieren Sie die App und versuchen Sie es erneut.",
-      "captcha_wait": "Sicherheitsprüfung wird abgeschlossen…"
+      "captcha_wait": "Sicherheitsprüfung wird abgeschlossen…",
+      "code_valid_for": "Der Code ist 1 Stunde gültig.",
+      "code_spam_hint": "Keine E-Mail? Warten Sie eine Minute und sehen Sie im Spam-Ordner nach. Absender ist Cleanway."
     },
     "onboarding": {
       "s1_title": "Prüfe alles, bevor du es antippst",
