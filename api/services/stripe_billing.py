@@ -148,6 +148,13 @@ def stripe_client():
     return stripe
 
 
+def _resource_missing(exc: Exception) -> bool:
+    """Stripe answered "No such subscription / customer" — the object is
+    gone (deleted customer, wiped test data). Nothing left to bill, so
+    callers treat it as "nothing to do" instead of failing forever."""
+    return getattr(exc, "code", None) == "resource_missing"
+
+
 async def resolve_customer_id(row: Optional[dict]) -> Optional[str]:
     """Stripe customer for this row: the stored id, else (rows written
     before migration 021) the customer of the stored subscription.
@@ -164,6 +171,8 @@ async def resolve_customer_id(row: Optional[dict]) -> Optional[str]:
     try:
         sub = await stripe.Subscription.retrieve_async(sub_id)
     except Exception as e:
+        if _resource_missing(e):
+            return None
         raise BillingError(f"subscription retrieve failed: {e}") from e
     return object_id(field(sub, "customer"))
 
@@ -203,6 +212,8 @@ async def cancel_subscription_now(subscription_id: str, *, known_live: bool = Fa
             subscription_id, prorate=False, invoice_now=False
         )
     except Exception as e:
+        if _resource_missing(e):
+            return False
         raise BillingError(f"subscription cancel failed: {e}") from e
     return True
 
@@ -232,7 +243,9 @@ async def cancel_user_subscriptions(user_id: str) -> list[str]:
                 customer=customer_id, status="all", limit=100
             )
         except Exception as e:
-            raise BillingError(f"subscription list failed: {e}") from e
+            if not _resource_missing(e):
+                raise BillingError(f"subscription list failed: {e}") from e
+            listing = None
         live = [
             s["id"] for s in (field(listing, "data") or [])
             if field(s, "status") in LIVE_STRIPE_STATUSES

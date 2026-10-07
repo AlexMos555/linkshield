@@ -538,6 +538,8 @@ async def _resolve_user_id(
                     customer=customer_id, status="all", limit=10
                 )
             except Exception as e:
+                if getattr(e, "code", None) == "resource_missing":
+                    return None  # customer gone in Stripe — nobody to attribute
                 raise BillingError(f"subscription list failed: {e}") from e
             for sub in field(listing, "data") or []:
                 uid = field(field(sub, "metadata"), "user_id")
@@ -969,7 +971,11 @@ async def _update_subscription(
     if stripe_customer_id:
         body["stripe_customer_id"] = stripe_customer_id
     elif clear_customer:
+        # The customer is gone in Stripe: forget it AND its subscription,
+        # or resolve_customer_id would re-derive the dead customer from
+        # the old subscription and checkout would fail on it.
         body["stripe_customer_id"] = None
+        body["provider_subscription_id"] = None
     if trial_used_at:
         body["trial_used_at"] = trial_used_at
 

@@ -1360,5 +1360,7 @@ def test_customer_deleted_resolves_by_stored_customer_id(
     assert sent["user_id"] == "user-cus-del"
     assert sent["tier"] == "free"
     assert sent["status"] == "cancelled"
-    # The customer no longer exists in Stripe — checkout must not reuse it.
+    # The customer no longer exists in Stripe — checkout must not reuse
+    # it, nor re-derive it from the (now dead) subscription.
     assert sent["stripe_customer_id"] is None
+    assert sent["provider_subscription_id"] is None

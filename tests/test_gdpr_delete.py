@@ -251,6 +251,21 @@ def test_delete_account_legacy_row_cancels_via_subscription_customer(
     assert [c[0] for c in fake_stripe.cancel_calls] == ["sub_77"]
 
 
+def test_delete_account_subscription_unknown_to_stripe_does_not_block(
+    client, supabase_ok, supabase_stub, fake_stripe
+):
+    """A stored subscription Stripe no longer knows (deleted customer,
+    wiped test data) has nothing left to bill — it must not make the
+    account undeletable with a permanent 503."""
+    supabase_stub.subscription_row = _paid_row(stripe_customer_id=None, provider_subscription_id="sub_gone")
+
+    resp = client.delete("/api/v1/user/account")
+
+    assert resp.status_code == 200, resp.text
+    assert fake_stripe.cancel_calls == []
+    assert len(supabase_stub.patches) == 1
+
+
 def test_delete_account_free_user_makes_no_stripe_calls(
     client, supabase_ok, supabase_stub, fake_stripe
 ):

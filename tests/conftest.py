@@ -183,7 +183,9 @@ class FakeStripe:
 
         async def sub_retrieve(sub_id, **_params):
             if sub_id not in fake.subscriptions:
-                raise stripe.InvalidRequestError(f"No such subscription: {sub_id}", "id")
+                raise stripe.InvalidRequestError(
+                    f"No such subscription: {sub_id}", "id", code="resource_missing"
+                )
             return fake.subscriptions[sub_id]
 
         async def sub_cancel(sub_id, **params):
