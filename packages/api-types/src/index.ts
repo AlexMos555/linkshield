@@ -120,5 +120,12 @@ export type ReferralStats = NonNullable<
   paths["/api/v1/referral/stats"]["get"]["responses"][200]["content"]["application/json"]
 >;
 
+// ── Account: plan + linked devices (/api/v1/me) ─────────────────
+export type EntitlementResponse = components["schemas"]["EntitlementResponse"];
+export type AccountDevice = components["schemas"]["DeviceOut"];
+export type DeviceRegisterRequest = components["schemas"]["DeviceRegisterRequest"];
+export type DeviceRegisterResponse = components["schemas"]["DeviceRegisterResponse"];
+export type DeviceRenameRequest = components["schemas"]["DeviceRenameRequest"];
+
 // ── Re-export the raw OpenAPI types for power users ─────────────
 export type { paths, components, operations } from "./openapi";

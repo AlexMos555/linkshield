@@ -159,6 +159,9 @@ for (const [raw, expected] of [
   [`/ru/extension/connect?state=${STATE}`, `/ru/extension/connect?state=${STATE}`],
   [`/ar/extension/connect/?state=${STATE}`, `/ar/extension/connect?state=${STATE}`],
   ["/account/restore", "/account/restore"],
+  ["/account", "/account"],
+  ["/hi/account", "/hi/account"],
+  ["/account?x=1", null],
   ["/de/account/restore?reason=locked", "/de/account/restore?reason=locked"],
   [`/extension/connect?state=${STATE}&evil=1`, null],
   [`/extension/connect?state=${STATE.slice(1)}`, null],
@@ -202,6 +205,7 @@ check("the API's answer", () => {
 check("the extension's refusal", () => {
   assert.equal(extensionErrorKey("state_mismatch"), "error_state");
   assert.equal(extensionErrorKey("state_expired"), "error_state");
+  assert.equal(extensionErrorKey("device_limit_reached"), "error_device_limit");
   for (const code of ["invalid_session", "bad_sender", "wrong_project", "extension_error", null]) {
     assert.equal(extensionErrorKey(code), "error_failed", String(code));
   }

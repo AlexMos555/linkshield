@@ -1485,5 +1485,11 @@
   },
   "account_expired": {
     "message": "Your sign-in has expired"
+  },
+  "account_device_revoked": {
+    "message": "This browser was removed from your account. Sign in again to use it here."
+  },
+  "account_device_limit": {
+    "message": "All devices on your plan are in use. Unlink one at cleanway.ai/account, then sign in again."
   }
 }

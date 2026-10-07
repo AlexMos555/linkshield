@@ -144,9 +144,10 @@ const CONNECT_STATE_RE = /^[A-Za-z0-9_-]{43}$/;
 
 /**
  * Where /signup may send the reader after the code is accepted, besides its
- * own pricing/home default. Only two pages ask for it: the browser
+ * own pricing/home default. Only three pages ask for it: the browser
  * extension's connect page (it must come back with the SAME state the
- * extension is waiting for) and the account-restore page.
+ * extension is waiting for), the account-restore page and the account
+ * page (plan + devices).
  *
  * An allowlist, not "any same-origin path": `next` arrives in a link anyone
  * can craft, and the connect page hands a session to the extension, so a
@@ -173,6 +174,9 @@ export function safeSignupNext(raw: string | null | undefined, locales: readonly
   if (path === "/extension/connect") {
     if (params.length !== 1 || params[0][0] !== "state" || !CONNECT_STATE_RE.test(params[0][1])) return null;
     return `${prefix}/extension/connect?state=${params[0][1]}`;
+  }
+  if (path === "/account") {
+    return params.length === 0 ? `${prefix}/account` : null;
   }
   if (path === "/account/restore") {
     if (params.length === 0) return `${prefix}/account/restore`;

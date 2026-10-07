@@ -67,6 +67,8 @@ var FALLBACK_EN = {
   account_signed_out: "Not signed in",
   account_pending: "Finish signing in on the Cleanway tab",
   account_expired: "Your sign-in expired",
+  account_device_revoked: "This browser was removed from your account. Sign in again to use it here.",
+  account_device_limit: "All devices on your plan are in use. Unlink one at cleanway.ai/account, then sign in again.",
 };
 
 function interpolate(str, subs) {
@@ -714,6 +716,8 @@ async function loadAccountRow() {
   } else {
     if (s.pending) text.textContent = t("account_pending");
     else if (s.signedOutReason === "expired") text.textContent = t("account_expired");
+    else if (s.signedOutReason === "device_revoked") text.textContent = t("account_device_revoked");
+    else if (s.signedOutReason === "device_limit") text.textContent = t("account_device_limit");
     else text.textContent = t("account_signed_out");
     btn.hidden = false;
   }

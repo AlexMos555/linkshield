@@ -261,6 +261,14 @@ export default function ConnectClient({ state }: { state: string | null }) {
               </a>
             </>
           )}
+          {view.key === "error_device_limit" && (
+            <>
+              {" "}
+              <a href={localePath(locale, "/account")} style={{ color: "#fca5a5" }} data-testid="connect-devices">
+                {t("devices_cta")}
+              </a>
+            </>
+          )}
         </div>
       )}
 

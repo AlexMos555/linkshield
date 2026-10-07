@@ -101,6 +101,22 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_publishable_key: str = ""
+    # Stripe price for one extra device on top of the plan (+$0.49 / month,
+    # docs/ACCOUNTS_BILLING_PLAN.md §5). Empty until the price exists; the
+    # webhook then counts only the included devices.
+    stripe_price_extra_device: str = ""
+
+    # Accounts & devices (docs/ACCOUNTS_BILLING_PLAN.md §1, §5). A paid plan
+    # covers PLAN_INCLUDED_DEVICES devices plus any bought extras. A signed-in
+    # account WITHOUT a plan may link FREE_ACCOUNT_DEVICE_LIMIT devices: free
+    # use needs no account at all, so this only caps how many installs share
+    # one free account (2 = "my phone + my browser"; 3 would leave nothing
+    # for the plan to add). A plan whose period ended stays effective for
+    # ENTITLEMENT_GRACE_HOURS, so one late renewal webhook doesn't lock out a
+    # paying person.
+    plan_included_devices: int = 3
+    free_account_device_limit: int = 2
+    entitlement_grace_hours: int = 72
 
     # Rate limits — authenticated (per user)
     free_tier_daily_limit: int = 10

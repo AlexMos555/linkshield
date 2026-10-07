@@ -1483,5 +1483,11 @@
   },
   "account_expired": {
     "message": "انتهت صلاحية تسجيل الدخول"
+  },
+  "account_device_revoked": {
+    "message": "تمت إزالة هذا المتصفح من حسابك. سجّل الدخول مجددًا لاستخدامه هنا."
+  },
+  "account_device_limit": {
+    "message": "جميع أجهزة خطتك مستخدمة. افصل جهازًا من cleanway.ai/account ثم سجّل الدخول مجددًا."
   }
 }

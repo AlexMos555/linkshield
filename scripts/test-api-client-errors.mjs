@@ -14,7 +14,7 @@
  */
 import assert from "node:assert/strict";
 
-import { createClient, normalizePublicCheck } from "../packages/api-client/src/index.ts";
+import { createClient, errorDetail, normalizePublicCheck } from "../packages/api-client/src/index.ts";
 
 /**
  * Build a client whose `fetchImpl` returns whatever the test fixture says.
@@ -158,6 +158,58 @@ await test("200 → success path still works", async () => {
   const { data, error } = await client.health();
   assert.equal(error, null);
   assert.ok(data);
+});
+
+await test("403 device_revoked → forbidden with code + the server's sentence", async () => {
+  const c = makeClient(
+    makeResponse({
+      status: 403,
+      body: { detail: { code: "device_revoked", error: "This device was removed from your account." } },
+    }),
+  );
+  const { error } = await c.account.entitlement();
+  assert.equal(error.kind, "forbidden");
+  assert.equal(error.code, "device_revoked");
+  assert.equal(error.message, "This device was removed from your account.");
+});
+
+await test("409 device_limit_reached → code + linked devices via errorDetail", async () => {
+  const devices = [{ id: "d1", platform: "android", name: "Pixel", is_current: false }];
+  const c = makeClient(
+    makeResponse({
+      status: 409,
+      body: { detail: { code: "device_limit_reached", device_limit: 2, devices_used: 2, devices } },
+    }),
+  );
+  const { error } = await c.account.registerDevice({ device_id: "x".repeat(20), platform: "android" });
+  assert.equal(error.kind, "http_4xx");
+  assert.equal(error.code, "device_limit_reached");
+  assert.deepEqual(errorDetail(error).devices, devices);
+  assert.equal(errorDetail(error).device_limit, 2);
+});
+
+await test("plain string detail carries no code", async () => {
+  const c = makeClient(makeResponse({ status: 404, body: { detail: "Not Found" } }));
+  const { error } = await c.account.devices();
+  assert.equal(error.code, undefined);
+  assert.equal(errorDetail(error), undefined);
+});
+
+await test("account calls hit the right method + path", async () => {
+  const calls = [];
+  const c = createClient({
+    baseUrl: "https://api.test",
+    fetchImpl: async (url, init) => {
+      calls.push([init.method, url.replace("https://api.test", ""), init.body ?? null]);
+      return makeResponse({ status: 200, body: {} });
+    },
+  });
+  await c.account.unlinkDevice("abc/def");
+  await c.account.renameDevice("d-1", "Mum's phone");
+  assert.deepEqual(calls, [
+    ["DELETE", "/api/v1/me/devices/abc%2Fdef", null],
+    ["PATCH", "/api/v1/me/devices/d-1", JSON.stringify({ name: "Mum's phone" })],
+  ]);
 });
 
 await test("public check: reason_codes map onto reasons[].code, aligned with detail", () => {

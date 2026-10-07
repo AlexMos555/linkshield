@@ -381,3 +381,143 @@ def probe_web(monkeypatch):
         return requested
 
     return configure
+
+
+# ─── In-memory account store (devices + entitlements) ──────────────
+#
+# Mirrors api/services/account_store.PostgrestAccountStore, including the
+# semantics of the SQL functions register_device / revoke_device from
+# supabase/migrations/022_account_devices.sql (checked against a real
+# Postgres when the migration was written): an already-linked install
+# always heartbeats, a new one takes a seat only below the limit, a revoked
+# install id never comes back.
+
+
+class MemoryAccountStore:
+    def __init__(self) -> None:
+        import itertools
+
+        self.devices: list[dict] = []
+        self.entitlements: list[dict] = []
+        self.fail = False
+        self.register_calls: list[dict] = []
+        self._ids = itertools.count(1)
+
+    def _check(self) -> None:
+        if self.fail:
+            from api.services.account_store import AccountStoreError
+
+            raise AccountStoreError("simulated Supabase outage")
+
+    @staticmethod
+    def _now() -> str:
+        from datetime import datetime, timezone
+
+        return datetime.now(timezone.utc).isoformat()
+
+    def add_entitlement(self, account_id: str, **kw) -> dict:
+        row = {
+            "account_id": account_id,
+            "source": "stripe",
+            "external_id": f"sub_{next(self._ids)}",
+            "plan": "personal",
+            "status": "active",
+            "device_limit": 3,
+            "period_end": None,
+            **kw,
+        }
+        self.entitlements.append(row)
+        return row
+
+    def add_device(self, account_id: str, device_hash: str, **kw) -> dict:
+        row = {
+            "id": f"00000000-0000-4000-8000-{next(self._ids):012d}",
+            "user_id": account_id,
+            "device_hash": device_hash,
+            "platform": "android",
+            "name": None,
+            "app_version": None,
+            "session_id": None,
+            "created_at": self._now(),
+            "last_seen": self._now(),
+            "revoked_at": None,
+            **kw,
+        }
+        self.devices.append(row)
+        return row
+
+    async def list_entitlements(self, account_id: str) -> list[dict]:
+        self._check()
+        return [dict(r) for r in self.entitlements if r["account_id"] == account_id]
+
+    async def upsert_entitlement(self, row: dict) -> None:
+        self._check()
+        for existing in self.entitlements:
+            if (existing["source"], existing["external_id"]) == (row["source"], row["external_id"]):
+                existing.update(row)
+                return
+        self.entitlements.append({"plan": "personal", "device_limit": 3, "period_end": None, **row})
+
+    async def set_entitlements_status(self, *, account_id: str, source: str, status: str) -> None:
+        self._check()
+        for r in self.entitlements:
+            if r["account_id"] == account_id and r["source"] == source:
+                r["status"] = status
+
+    async def list_devices(self, account_id: str) -> list[dict]:
+        self._check()
+        return [
+            dict(r) for r in self.devices
+            if r["user_id"] == account_id and r["revoked_at"] is None
+        ]
+
+    async def register_device(self, *, account_id, device_hash, platform, name,
+                              app_version, session_id, device_limit) -> dict:
+        self._check()
+        self.register_calls.append({"account_id": account_id, "device_limit": device_limit,
+                                    "session_id": session_id, "name": name})
+        for r in self.devices:
+            if r["user_id"] == account_id and r["device_hash"] == device_hash:
+                if r["revoked_at"] is not None:
+                    return {"status": "revoked"}
+                r.update(platform=platform, name=r["name"] or name,
+                         app_version=app_version or r["app_version"],
+                         session_id=session_id or r["session_id"], last_seen=self._now())
+                return {"status": "updated", "device": dict(r)}
+        active = len([r for r in self.devices if r["user_id"] == account_id and r["revoked_at"] is None])
+        if active >= device_limit:
+            return {"status": "limit_reached", "devices_used": active}
+        row = self.add_device(account_id, device_hash, platform=platform, name=name,
+                              app_version=app_version, session_id=session_id)
+        return {"status": "created", "device": dict(row)}
+
+    async def revoke_device(self, *, account_id: str, device_id: str) -> dict:
+        self._check()
+        for r in self.devices:
+            if r["id"] == device_id and r["user_id"] == account_id:
+                if r["revoked_at"] is not None:
+                    return {"status": "already_revoked", "device": dict(r)}
+                r["revoked_at"] = self._now()
+                return {"status": "revoked", "device": dict(r)}
+        return {"status": "not_found"}
+
+    async def rename_device(self, *, account_id: str, device_id: str, name: str):
+        self._check()
+        for r in self.devices:
+            if r["id"] == device_id and r["user_id"] == account_id and r["revoked_at"] is None:
+                r["name"] = name
+                return dict(r)
+        return None
+
+
+@pytest.fixture
+def account_store():
+    """Install a fresh MemoryAccountStore as the API's account store."""
+    from api.services import account_store as store_module
+
+    store = MemoryAccountStore()
+    store_module.set_account_store(store)
+    try:
+        yield store
+    finally:
+        store_module.set_account_store(None)

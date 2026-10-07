@@ -36,7 +36,7 @@ LIVE_STRIPE_STATUSES = frozenset(
 
 _ROW_COLUMNS = (
     "user_id,tier,status,provider,provider_subscription_id,"
-    "stripe_customer_id,trial_used_at"
+    "stripe_customer_id,trial_used_at,current_period_end"
 )
 
 

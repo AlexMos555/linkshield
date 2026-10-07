@@ -135,7 +135,7 @@ function startMockApi(family) {
   const state = { inbox: [] };
   const cors = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Device-Id",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   };
   const server = createServer((req, res) => {
@@ -144,7 +144,9 @@ function startMockApi(family) {
     req.on("end", () => {
       const url = new URL(req.url, "http://mock");
       const body = raw ? JSON.parse(raw) : null;
-      if (req.method !== "OPTIONS") calls.push({ method: req.method, path: url.pathname, body, auth: req.headers.authorization });
+      if (req.method !== "OPTIONS") {
+        calls.push({ method: req.method, path: url.pathname, body, auth: req.headers.authorization, device: req.headers["x-device-id"] });
+      }
       const json = (status, data) => {
         res.writeHead(status, { ...cors, "Content-Type": "application/json" });
         res.end(JSON.stringify(data));
@@ -165,6 +167,7 @@ function startMockApi(family) {
           : { domain, score: 2, level: "safe", signals: [], reason_codes: [] });
       }
       if (url.pathname === "/api/v1/user/threats/increment") return json(200, { threats_blocked_lifetime: 1 });
+      if (url.pathname === "/api/v1/me/devices" && req.method === "POST") return json(201, { status: "created" });
       if (url.pathname === "/api/v1/family/mine") {
         return json(200, { families: [{ family_id: FAMILY_ID, name: "E2E", role: "member", member_count: 2 }] });
       }
@@ -643,7 +646,12 @@ async function runTree(tree) {
       assert.deepEqual(await popup.evaluate(() => chrome.runtime.sendMessage({ type: "AUTH_STATUS" })),
         { signedIn: true, email: "me@example.com", pending: false, signedOutReason: null });
       await until("device registration hook", () =>
-        api.calls.some((c) => c.method === "POST" && c.path === "/api/v1/user/device" && c.auth === `Bearer ${access}`), 5000);
+        api.calls.some((c) => c.method === "POST" && c.path === "/api/v1/me/devices" && c.auth === `Bearer ${access}`), 5000);
+      // Linked as an extension, under its per-install id (header and body agree).
+      const link = api.calls.find((c) => c.path === "/api/v1/me/devices");
+      assert.equal(link.body.platform, "extension");
+      assert.match(link.body.device_id, /^[A-Za-z0-9_-]{16,128}$/);
+      assert.equal(link.device, link.body.device_id);
 
       // The same page again — the state is spent.
       await tab.reload();

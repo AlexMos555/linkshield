@@ -12,6 +12,7 @@ from api.config import get_settings, validate_settings
 from api.routers.check import router as check_router
 from api.routers.payments import router as payments_router
 from api.routers.user import router as user_router
+from api.routers.account import router as account_router
 from api.routers.feedback import router as feedback_router
 from api.routers.public import router as public_router
 from api.routers.breach import router as breach_router
@@ -131,8 +132,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_settings.get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    # DELETE / PATCH: the website's /account page unlinks and renames
+    # devices (api/routers/account.py). X-Device-Id: the per-install id our
+    # clients send so an unlinked device can be refused.
+    allow_methods=["POST", "GET", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Device-Id"],
 )
 
 # Security headers — HSTS, CSP, X-Frame-Options, etc. Defense in depth.
@@ -210,6 +214,7 @@ def _scrub_path_for_logs(path: str) -> str:
 app.include_router(check_router)
 app.include_router(payments_router)
 app.include_router(user_router)
+app.include_router(account_router)
 app.include_router(feedback_router)
 app.include_router(public_router)
 app.include_router(blocklist_router)

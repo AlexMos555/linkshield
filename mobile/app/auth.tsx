@@ -15,6 +15,7 @@ import {
   OTP_CODE_LEN,
 } from "../src/services/auth";
 import { isSupabaseConfigured } from "../src/services/supabase";
+import { linkAfterSignIn } from "../src/services/account";
 import { authFailure, otpSendErrorKey, otpVerifyErrorKey } from "../src/utils/auth-error-key";
 import {
   isCaptchaRequired,
@@ -139,6 +140,14 @@ export default function AuthScreen() {
       const session = await verifyEmailOtp(email.trim(), code);
       setAuthToken(session.accessToken);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // The plan counts devices: link this phone now. No free seat → the
+      // Account screen offers "unlink one" or "add a device". Offline or a
+      // server hiccup doesn't block sign-in; the next heartbeat links it.
+      const linked = await linkAfterSignIn();
+      if (linked.kind === "limit") {
+        router.replace({ pathname: "/account", params: { limit: "1" } });
+        return;
+      }
       leaveAuth();
     } catch (e: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

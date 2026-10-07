@@ -24,6 +24,11 @@
  *    origin, forwards only the known fields, and answers only that origin.
  * 8. Every manifest injects the relay on the connect path alone, and none
  *    declares externally_connectable.
+ * 9. The browser is a device of the account: linked after sign-in and every
+ *    6 hours (POST /api/v1/me/devices, platform "extension"); no free seat →
+ *    signed out with "device_limit"; unlinked → new install id, signed out
+ *    with "device_revoked" (also from any signed-in call's 403); offline
+ *    changes nothing.
  *
  * Every group runs against packages/extension-core/ AND the three generated
  * trees, so a hand-edit to a generated copy (or a forgotten rebuild) fails too.
@@ -464,6 +469,231 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.equal(dead.posted.at(-1).data.error, "extension_error");
   });
 }
+
+// ── 9: this browser as a device of the account ──────────────────────
+//
+// POST /api/v1/me/devices with platform "extension" and the per-install id;
+// no free seat → signed out again ("device_limit", the connect page says so);
+// an unlinked install → a new id, one retry, then signed out
+// ("device_revoked"); offline changes nothing. Re-linked every 6 hours.
+
+const DEVICE_ID = "6f9619ff-8b86-4011-b42d-00cf4fc964ff";
+
+function linkHarness(tree, { stored = {}, results = [], clock = { ms: NOW_MS } } = {}) {
+  return import(pathToFileURL(join(ROOT, tree, "src/utils/auth-session.js")).href).then((mod) => {
+    const storage = memoryStorage(stored);
+    const calls = { fetch: [], link: [], resets: 0, alarms: [] };
+    const auth = mod.createAuthSession({
+      storage,
+      fetchImpl: async (url, init) => {
+        calls.fetch.push({ url, init });
+        return jsonResponse(204, {});
+      },
+      now: () => clock.ms,
+      scheduleRefresh: (when) => calls.alarms.push(when),
+      linkDevice: async (token) => {
+        calls.link.push(token);
+        const next = results.length > 1 ? results.shift() : results[0];
+        if (next instanceof Error) throw next;
+        return next || { ok: true };
+      },
+      resetDeviceId: async () => { calls.resets += 1; },
+    });
+    return { mod, auth, storage, calls, clock };
+  });
+}
+
+async function connectWith(h) {
+  const state = h.mod.generateState();
+  await h.storage.set({ auth_connect_state: { value: state, created_at: NOW_MS } });
+  return h.auth.acceptHandoff({ state, session: session() }, connectSender(), RUNTIME_ID);
+}
+
+function signedInStore(over = {}) {
+  return {
+    auth_token: accessToken(), auth_refresh_token: REFRESH, auth_expires_at: NOW_S + 3600,
+    auth_email: "ann@example.com", auth_user_id: "user-1", auth_anon_key: ANON, ...over,
+  };
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  const loadLink = () => import(pathToFileURL(join(ROOT, tree, "src/utils/device-link.js")).href);
+
+  await check(`[${tree}] device link: the server's answers`, async () => {
+    const m = await loadLink();
+    assert.deepEqual(m.linkResult(201, null), { ok: true });
+    assert.deepEqual(m.linkResult(200, null), { ok: true });
+    assert.deepEqual(
+      m.linkResult(409, { detail: { code: "device_limit_reached", device_limit: 3, devices: [] } }),
+      { ok: false, error: "device_limit_reached", deviceLimit: 3 },
+    );
+    assert.deepEqual(m.linkResult(403, { detail: { code: "device_revoked" } }), { ok: false, error: "device_revoked" });
+    for (const [status, body] of [[403, { detail: "Forbidden" }], [409, { detail: { code: "other" } }],
+      [404, null], [503, { detail: { code: "account_unavailable" } }], [500, "html"]]) {
+      assert.deepEqual(m.linkResult(status, body), { ok: false, error: "unavailable" }, `${status}`);
+    }
+    assert.equal(m.browserName("firefox"), "Firefox");
+    assert.equal(m.browserName("weird"), "Browser");
+    assert.ok(m.isValidDeviceId(DEVICE_ID) && !m.isValidDeviceId("short") && !m.isValidDeviceId("has space here!!"));
+    assert.ok(m.heartbeatDue(undefined, NOW_MS) && m.heartbeatDue(NOW_MS + 1, NOW_MS));
+    assert.ok(!m.heartbeatDue(NOW_MS - 60_000, NOW_MS) && m.heartbeatDue(NOW_MS - m.HEARTBEAT_MS, NOW_MS));
+  });
+
+  await check(`[${tree}] device link: POST /api/v1/me/devices as an extension, never throws`, async () => {
+    const m = await loadLink();
+    const sent = [];
+    const fetchImpl = async (url, init) => { sent.push({ url, init }); return jsonResponse(201, {}); };
+    const r = await m.linkDevice({ fetchImpl, apiBase: "https://api.cleanway.ai", token: "tok", deviceId: DEVICE_ID, browser: "firefox", appVersion: "1.2.3" });
+    assert.deepEqual(r, { ok: true });
+    assert.equal(sent[0].url, "https://api.cleanway.ai/api/v1/me/devices");
+    assert.equal(sent[0].init.method, "POST");
+    assert.equal(sent[0].init.headers.Authorization, "Bearer tok");
+    assert.equal(sent[0].init.headers["X-Device-Id"], DEVICE_ID);
+    assert.deepEqual(JSON.parse(sent[0].init.body), { device_id: DEVICE_ID, platform: "extension", name: "Firefox", app_version: "1.2.3" });
+    const offline = await m.linkDevice({ fetchImpl: async () => { throw new TypeError("offline"); }, apiBase: "x", token: "tok", deviceId: DEVICE_ID, browser: "chrome" });
+    assert.deepEqual(offline, { ok: false, error: "unavailable" });
+    assert.deepEqual(await m.linkDevice({ fetchImpl, apiBase: "x", token: null, deviceId: DEVICE_ID }), { ok: false, error: "unavailable" });
+    assert.equal(sent.length, 1, "nothing sent without a token");
+  });
+
+  await check(`[${tree}] sign-in links the browser and starts the heartbeat clock`, async () => {
+    const h = await linkHarness(tree, { results: [{ ok: true }] });
+    const r = await connectWith(h);
+    assert.deepEqual(r, { ok: true, email: "ann@example.com" });
+    assert.equal(h.calls.link.length, 1);
+    assert.equal(h.storage.data.device_heartbeat_at, NOW_MS);
+    assert.ok(h.storage.data.auth_token);
+  });
+
+  await check(`[${tree}] no free seat: signed out again, the page is told, the session ended`, async () => {
+    const h = await linkHarness(tree, { results: [{ ok: false, error: "device_limit_reached", deviceLimit: 3 }] });
+    const r = await connectWith(h);
+    assert.deepEqual(r, { ok: false, error: "device_limit_reached" });
+    for (const k of SESSION_KEYS) assert.ok(!(k in h.storage.data), `${k} kept`);
+    assert.equal(h.storage.data.auth_signed_out_reason, "device_limit");
+    assert.ok(h.calls.fetch.some((c) => c.url === `${PROJECT}/auth/v1/logout?scope=local`), "extension session ended");
+    const s = await h.auth.status();
+    assert.equal(s.signedIn, false);
+    assert.equal(s.signedOutReason, "device_limit");
+  });
+
+  await check(`[${tree}] an unlinked id at sign-in: new id, one retry`, async () => {
+    const h = await linkHarness(tree, { results: [{ ok: false, error: "device_revoked" }, { ok: true }] });
+    const r = await connectWith(h);
+    assert.equal(r.ok, true);
+    assert.equal(h.calls.resets, 1);
+    assert.equal(h.calls.link.length, 2);
+    assert.ok(h.storage.data.auth_token);
+  });
+
+  await check(`[${tree}] still unlinked after the retry: signed out with device_revoked`, async () => {
+    const h = await linkHarness(tree, { results: [{ ok: false, error: "device_revoked" }] });
+    const r = await connectWith(h);
+    assert.deepEqual(r, { ok: false, error: "device_revoked" });
+    assert.equal(h.calls.link.length, 2);
+    assert.equal(h.storage.data.auth_signed_out_reason, "device_revoked");
+    assert.ok(!("auth_token" in h.storage.data));
+  });
+
+  await check(`[${tree}] offline at sign-in: signed in anyway, linked later`, async () => {
+    const h = await linkHarness(tree, { results: [new Error("boom"), { ok: false, error: "unavailable" }] });
+    const r = await connectWith(h);
+    assert.equal(r.ok, true);
+    assert.ok(h.storage.data.auth_token);
+    assert.ok(!("device_heartbeat_at" in h.storage.data), "not counted as linked");
+  });
+
+  await check(`[${tree}] heartbeat: at most every 6 hours while signed in`, async () => {
+    const h = await linkHarness(tree, { stored: signedInStore({ device_heartbeat_at: NOW_MS - 60_000 }) });
+    await h.auth.ensureFresh();
+    assert.equal(h.calls.link.length, 0, "beat a minute ago");
+    h.clock.ms = NOW_MS + 6 * 3600 * 1000;
+    h.storage.data.auth_expires_at = NOW_S + 7 * 3600;
+    await h.auth.ensureFresh();
+    assert.equal(h.calls.link.length, 1);
+    assert.equal(h.storage.data.device_heartbeat_at, h.clock.ms);
+    const signedOut = await linkHarness(tree, {});
+    await signedOut.auth.ensureFresh();
+    assert.equal(signedOut.calls.link.length, 0, "no heartbeat without a session");
+  });
+
+  await check(`[${tree}] heartbeat finds the browser unlinked: signed out, new id, popup told why`, async () => {
+    const h = await linkHarness(tree, { stored: signedInStore(), results: [{ ok: false, error: "device_revoked" }] });
+    const s = await h.auth.status();
+    assert.equal(h.calls.link.length, 1, "no retry on a heartbeat");
+    assert.equal(h.calls.resets, 1);
+    assert.equal(s.signedIn, false);
+    assert.equal(s.signedOutReason, "device_revoked");
+    assert.ok(!h.calls.fetch.some((c) => c.url.includes("/logout")), "the server already ended that session");
+  });
+
+  await check(`[${tree}] api.js: every signed-in call carries the device id; device_revoked signs out`, async () => {
+    const store = { device_hash: DEVICE_ID, ...signedInStore() };
+    const sent = [];
+    let answer = jsonResponse(200, {});
+    globalThis.chrome = {
+      storage: {
+        local: {
+          get: async (keys) => {
+            if (keys === null || keys === undefined) return { ...store };
+            return Object.fromEntries([].concat(keys).filter((k) => k in store).map((k) => [k, store[k]]));
+          },
+          set: async (obj) => { Object.assign(store, obj); },
+          remove: async (keys) => { for (const k of [].concat(keys)) delete store[k]; },
+        },
+        onChanged: { addListener: () => {} },
+      },
+    };
+    globalThis.fetch = async (url, init) => {
+      sent.push({ url, init });
+      return { ...answer, clone: () => answer };
+    };
+    const api = await import(pathToFileURL(join(ROOT, tree, "src/utils/api.js")).href);
+
+    const linked = await api.registerDevice("tok", { platform: "edge", appVersion: "9.9.9" });
+    assert.deepEqual(linked, { ok: true });
+    assert.ok(sent[0].url.endsWith("/api/v1/me/devices"));
+    assert.equal(JSON.parse(sent[0].init.body).device_id, DEVICE_ID);
+    assert.equal(JSON.parse(sent[0].init.body).name, "Edge");
+
+    await api.fetchThreatStatus("tok");
+    assert.equal(sent[1].init.headers["X-Device-Id"], DEVICE_ID);
+    assert.equal(sent[1].init.headers.Authorization, "Bearer tok");
+
+    answer = { status: 403, ok: false, json: async () => ({ detail: { code: "device_revoked", error: "removed" } }) };
+    await api.fetchThreatStatus("tok");
+    for (const k of SESSION_KEYS) assert.ok(!(k in store), `${k} kept`);
+    assert.ok(!("device_hash" in store), "a new install id next time");
+    assert.equal(store.auth_signed_out_reason, "device_revoked");
+
+    // A plain 403 (no code) signs nobody out.
+    Object.assign(store, signedInStore());
+    answer = { status: 403, ok: false, json: async () => ({ detail: "Forbidden" }) };
+    await api.fetchThreatStatus("tok");
+    assert.ok(store.auth_token);
+    delete globalThis.chrome;
+  });
+}
+
+await check("popup and settings explain both device sign-outs, in every language", () => {
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    for (const rel of ["src/popup/popup.js", "src/options/options.js"]) {
+      const code = readFileSync(join(ROOT, tree, rel), "utf8");
+      for (const reason of ["device_revoked", "device_limit"]) {
+        assert.ok(code.includes(`signedOutReason === "${reason}"`), `${tree}/${rel}: ${reason}`);
+        assert.ok(code.includes(`t("account_${reason}")`), `${tree}/${rel}: account_${reason}`);
+      }
+    }
+  }
+  for (const tree of BROWSER_TREES) {
+    for (const loc of ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"]) {
+      const msgs = JSON.parse(readFileSync(join(ROOT, tree, "_locales", loc, "messages.json"), "utf8"));
+      for (const key of ["account_device_revoked", "account_device_limit"]) {
+        assert.ok(msgs[key] && msgs[key].message, `${tree} ${loc} ${key}`);
+      }
+    }
+  }
+});
 
 // ── 8: manifests and logs ────────────────────────────────────────────
 
