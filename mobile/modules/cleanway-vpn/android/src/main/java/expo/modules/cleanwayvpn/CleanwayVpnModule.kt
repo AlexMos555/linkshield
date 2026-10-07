@@ -210,6 +210,47 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * "Keep protection on": what the phone says about keeping the shield
+     * alive with the app closed. {batteryUnrestricted, alwaysOn, oem}:
+     * alwaysOn is null while the shield is not running or below Android 10
+     * (only the running VpnService can ask); oem is the phone maker whose
+     * battery manager needs its own step ("samsung", "xiaomi", "huawei",
+     * "oppo", "vivo"), or null on stock-like Android.
+     */
+    Function("keepAliveStatus") {
+      mapOf(
+        "batteryUnrestricted" to ai.cleanway.app.KeepAlive.batteryUnrestricted(context),
+        "alwaysOn" to CleanwayVpnService.instance?.alwaysOnState(),
+        "oem" to ai.cleanway.app.KeepAlive.oemFamily()?.wire,
+      )
+    }
+
+    /**
+     * Open Android's "stop optimising battery for Cleanway?" dialog (or,
+     * where an OEM removed it, the closest settings screen). The app explains
+     * why first. False when nothing could be opened.
+     */
+    Function("requestBatteryExemption") {
+      ai.cleanway.app.KeepAlive.requestBatteryExemption(context)
+    }
+
+    /** Open the phone maker's own background/autostart screen, else App info. */
+    Function("openOemBackgroundSettings") {
+      ai.cleanway.app.KeepAlive.openOemBackgroundSettings(context)
+    }
+
+    /**
+     * The app came to the front and found the shield the person left ON not
+     * running: bring it back now, through the same rules as the background
+     * watchdog (never after Android took the tunnel away, never over another
+     * VPN or strict Private DNS, at most 3 times an hour). Returns the
+     * decision in lower case — "start" when the service was asked to start.
+     */
+    Function("rearmShield") {
+      ai.cleanway.app.ShieldWatchdog.rearm(context, "app_open").name.lowercase()
+    }
+
+    /**
      * Whether the user last chose to have the shield ON. Combined with
      * isRunning() this lets the app tell "never set up" apart from "was on,
      * and something turned it off" — a reboot without always-on, an OEM
