@@ -1706,20 +1706,17 @@
       "reference_label": "Référence"
     },
     "signup": {
-      "check_inbox": "Vérifiez votre boîte mail",
-      "magic_link_sent": "Nous avons envoyé un lien de connexion à <strong>{email}</strong>.",
-      "magic_link_followup": "Ouvrez le lien de cet e-mail pour terminer. Si rien n'arrive dans les 10 minutes, regardez dans vos spams.",
       "email_label": "E-mail",
       "email_placeholder": "vous@exemple.com",
-      "submitting": "Envoi du lien…",
-      "submit_with_plan": "Envoyer mon lien de connexion",
+      "submitting": "Envoi du code…",
+      "submit_with_plan": "M'envoyer un code de connexion",
       "submit_no_plan": "Continuer",
-      "footer_lead": "Nous vous enverrons un lien de connexion à usage unique. Aucun mot de passe à retenir.",
+      "footer_lead": "Nous vous enverrons par e-mail un code de connexion à usage unique. Aucun mot de passe à retenir.",
       "footer_or": "Ou",
       "footer_install_cta": "installez l'appli gratuitement",
       "footer_install_tail": "— le blocage fonctionne sans compte.",
       "meta_title": "Connexion — Cleanway",
-      "meta_description": "Connectez-vous à Cleanway avec un lien à usage unique envoyé par e-mail. La protection fonctionne sans compte.",
+      "meta_description": "Connectez-vous à Cleanway avec un code à usage unique envoyé par e-mail. La protection fonctionne sans compte.",
       "back_to_pricing": "Retour aux tarifs",
       "heading": "Créer un compte ou se connecter",
       "intro": "Vous n'avez pas besoin de compte pour être protégé : le blocage des sites d'arnaque fonctionne sans. Le compte ne sert qu'aux fonctions familiales et aux offres payantes.",
@@ -1741,7 +1738,21 @@
       "error_rate_limited": "Trop de tentatives. Patientez quelques minutes, puis réessayez.",
       "error_send_failed": "Impossible d'envoyer l'e-mail de connexion. Réessayez plus tard.",
       "error_network": "Pas de connexion au serveur. Vérifiez votre connexion Internet et réessayez.",
-      "error_unavailable": "La connexion n'est pas disponible pour le moment. La protection fonctionne sans compte."
+      "error_unavailable": "La connexion n'est pas disponible pour le moment. La protection fonctionne sans compte.",
+      "code_heading": "Saisissez le code reçu par e-mail",
+      "code_sent_to": "Nous avons envoyé un code à 6 chiffres à <strong>{email}</strong>.",
+      "code_label": "Code reçu par e-mail",
+      "code_submit": "Se connecter",
+      "code_submitting": "Vérification du code…",
+      "code_valid_for": "Le code est valable 1 heure.",
+      "code_spam_hint": "Pas d'e-mail ? Patientez une minute et vérifiez le dossier Spam. L'expéditeur est Cleanway.",
+      "code_resend": "Renvoyer le code",
+      "code_resend_in": "Renvoyer dans {seconds} s",
+      "code_change_email": "Changer d'e-mail",
+      "error_code_incomplete": "Saisissez les 6 chiffres de l'e-mail.",
+      "error_code_wrong": "Code incorrect ou expiré. Vérifiez les chiffres ou demandez un nouveau code.",
+      "error_link_expired": "Le lien de connexion a expiré. Demandez un nouveau code.",
+      "error_link_failed": "Le lien de connexion n'a pas fonctionné. Saisissez ici le code de l'e-mail ou demandez-en un nouveau."
     },
     "pricing": {
       "page_title": "Tarifs",
@@ -3279,7 +3290,9 @@
       "err_rate_limited": "Trop de demandes de code. Patientez un instant et réessayez.",
       "err_captcha": "La vérification de sécurité n'a pas abouti. Réessayez.",
       "err_captcha_update": "La connexion nécessite une version plus récente de Cleanway. Mettez l'application à jour et réessayez.",
-      "captcha_wait": "Finalisation de la vérification de sécurité…"
+      "captcha_wait": "Finalisation de la vérification de sécurité…",
+      "code_valid_for": "Le code est valable 1 heure.",
+      "code_spam_hint": "Pas d'e-mail ? Patientez une minute et vérifiez le dossier Spam. L'expéditeur est Cleanway."
     },
     "onboarding": {
       "s1_title": "Vérifiez tout avant d'y toucher",

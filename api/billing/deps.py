@@ -67,13 +67,16 @@ def ok(data: Any) -> Dict[str, Any]:
     return {"success": True, "data": data, "error": None}
 
 
-def fail(code: str, message: str) -> Dict[str, Any]:
-    return {"success": False, "data": None, "error": {"code": code, "message": message}}
+def fail(code: str, message: str, details: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    error: Dict[str, Any] = {"code": code, "message": message}
+    if details:
+        error["details"] = details
+    return {"success": False, "data": None, "error": error}
 
 
 def register_error_handlers(app: FastAPI) -> None:
     async def _billing_error(_: Request, exc: BillingError) -> JSONResponse:
-        return JSONResponse(status_code=exc.status_code, content=fail(exc.code, exc.message))
+        return JSONResponse(status_code=exc.status_code, content=fail(exc.code, exc.message, exc.details))
 
     app.add_exception_handler(BillingError, _billing_error)
 

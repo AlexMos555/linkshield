@@ -19,6 +19,7 @@ from typing import Any, Mapping, Optional, Sequence
 from api.billing.models import (
     IDEMPOTENCY_IN_PROGRESS,
     AuditRow,
+    BillingEventRow,
     CancelChannel,
     ClaimCode,
     ClaimPurpose,
@@ -134,6 +135,16 @@ def _consent(r) -> Consent:
     )
 
 
+def _event_row(r) -> BillingEventRow:
+    return BillingEventRow(
+        id=r["id"], provider=ProviderCode(r["provider"]), provider_event_id=r["provider_event_id"],
+        received_at=r["received_at"], signature_ok=r["signature_ok"], payload_ciphertext=bytes(r["payload_ciphertext"]),
+        processed_at=r["processed_at"], outcome=r["outcome"],
+        event_ciphertext=bytes(r["event_ciphertext"]) if r["event_ciphertext"] is not None else None,
+        attempts=r["attempts"],
+    )
+
+
 def _audit(r) -> AuditRow:
     return AuditRow(id=r["id"], actor=r["actor"], action=r["action"], target=r["target"],
                     created_at=r["created_at"], meta=r["meta"] or {})
@@ -228,6 +239,11 @@ class PostgresTx:
         except asyncpg.UniqueViolationError as e:
             raise ConflictError("trial already used for this phone") from e
 
+    async def rebind_trial(self, fingerprint_hmac: str, device_id: str) -> None:
+        await self._c.execute(
+            "UPDATE trials SET device_id = $2 WHERE device_fingerprint_hmac = $1", fingerprint_hmac, uuid.UUID(device_id),
+        )
+
     # ── subscriptions ──
 
     async def create_subscription(self, sub: Subscription) -> Subscription:
@@ -303,7 +319,9 @@ class PostgresTx:
     async def list_expiring(self, *, now: datetime, limit: int = 100) -> Sequence[Subscription]:
         rows = await self._c.fetch(
             "SELECT * FROM subscriptions WHERE (status = 'grace' AND grace_until <= $1) "
-            "OR (status = 'cancel_at_period_end' AND current_period_end <= $1) ORDER BY created_at LIMIT $2",
+            "OR (status = 'cancel_at_period_end' AND current_period_end <= $1) "
+            "OR (status = 'active' AND provider IN ('promo', 't2_option') AND current_period_end <= $1) "
+            "ORDER BY created_at LIMIT $2",
             now, limit,
         )
         return [_sub(r) for r in rows]
@@ -421,17 +439,31 @@ class PostgresTx:
     # ── webhooks, consents, audit ──
 
     async def insert_event(self, *, provider: str, provider_event_id: str, signature_ok: bool,
-                           payload_ciphertext: bytes) -> Optional[int]:
+                           payload_ciphertext: bytes, event_ciphertext: Optional[bytes] = None) -> Optional[int]:
         event_id = await self._c.fetchval(
-            "INSERT INTO billing_events (provider, provider_event_id, signature_ok, payload_ciphertext) "
-            "VALUES ($1, $2, $3, $4) ON CONFLICT (provider, provider_event_id) DO NOTHING RETURNING id",
-            provider, provider_event_id, signature_ok, payload_ciphertext,
+            "INSERT INTO billing_events (provider, provider_event_id, signature_ok, payload_ciphertext, event_ciphertext) "
+            "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (provider, provider_event_id) DO NOTHING RETURNING id",
+            provider, provider_event_id, signature_ok, payload_ciphertext, event_ciphertext,
         )
         return int(event_id) if event_id is not None else None
 
     async def mark_event_processed(self, event_id: int, *, processed_at: datetime, outcome: str) -> None:
         await self._c.execute(
             "UPDATE billing_events SET processed_at = $2, outcome = $3 WHERE id = $1", event_id, processed_at, outcome,
+        )
+
+    async def list_retryable_events(self, *, limit: int = 100) -> Sequence[BillingEventRow]:
+        rows = await self._c.fetch(
+            "SELECT * FROM billing_events WHERE outcome = 'unmatched' AND signature_ok AND event_ciphertext IS NOT NULL "
+            "ORDER BY id LIMIT $1",
+            limit,
+        )
+        return [_event_row(r) for r in rows]
+
+    async def retry_event(self, event_id: int, *, processed_at: datetime, outcome: str) -> None:
+        await self._c.execute(
+            "UPDATE billing_events SET processed_at = $2, outcome = $3, attempts = attempts + 1 WHERE id = $1",
+            event_id, processed_at, outcome,
         )
 
     async def add_consent(self, consent: Consent) -> Consent:

@@ -112,6 +112,21 @@ async def test_trials_are_one_per_fingerprint(store):
 
 
 @pytest.mark.asyncio
+async def test_a_trial_follows_its_phone_to_a_new_install(store):
+    async with store.transaction() as tx:
+        _, account, device, _ = await _seed(tx)
+        reinstalled = await tx.create_device(account_id=account, secret_sha256="b" * 64, platform="android",
+                                             app_version="1.2.0", legacy_free=False)
+        trial = Trial(device_fingerprint_hmac="fp", device_id=device.id, started_at=NOW, ends_at=NOW + timedelta(days=14))
+        await tx.create_trial(trial)
+        await tx.rebind_trial("fp", reinstalled.id)
+        moved = await tx.get_trial_by_fingerprint("fp")
+        assert moved.device_id == reinstalled.id and moved.ends_at == trial.ends_at
+        assert await tx.get_trial_for_device(device.id) is None
+        assert (await tx.get_trial_for_device(reinstalled.id)).started_at == NOW
+
+
+@pytest.mark.asyncio
 async def test_subscription_round_trip_and_optimistic_lock(store):
     async with store.transaction() as tx:
         _, account, _, sub = await _seed(tx)
@@ -151,6 +166,48 @@ async def test_pending_and_expiring_queries(store):
         assert [s.id for s in await tx.list_expiring(now=NOW + timedelta(days=7))] == [sub.id]
         await tx.delete_subscription(sub.id)
         assert await tx.get_subscription(sub.id) is None
+
+
+@pytest.mark.asyncio
+async def test_expiring_includes_fixed_term_grants_whose_term_ended(store):
+    """Promo and partner grants are never renewed, so their period end is their end (2026-10 fix)."""
+    from dataclasses import replace
+
+    async with store.transaction() as tx:
+        _, account, _, paid = await _seed(tx)
+        end = NOW + timedelta(days=30)
+        paid = await tx.update_subscription(replace(paid, status=SubscriptionStatus.ACTIVE, current_period_start=NOW,
+                                                    current_period_end=end, next_charge_at=end), expected_version=0)
+        grants = []
+        for provider in (ProviderCode.PROMO, ProviderCode.T2_OPTION):
+            grants.append(await tx.create_subscription(Subscription(
+                id=str(uuid.uuid4()), payer_account_id=account, plan_code=PlanCode.FAMILY3, plan_version=1,
+                provider=provider, status=SubscriptionStatus.ACTIVE, created_at=NOW, updated_at=NOW,
+                provider_subscription_id=f"{provider.value}-1", current_period_start=NOW, current_period_end=end,
+            )))
+        assert await tx.list_expiring(now=end - timedelta(seconds=1)) == []
+        assert {s.id for s in await tx.list_expiring(now=end)} == {g.id for g in grants}
+
+
+@pytest.mark.asyncio
+async def test_unmatched_events_are_kept_for_retry(store):
+    async with store.transaction() as tx:
+        unmatched = await tx.insert_event(provider="fake", provider_event_id="evt-u", signature_ok=True,
+                                          payload_ciphertext=b"\x01body", event_ciphertext=b"\x01event")
+        await tx.mark_event_processed(unmatched, processed_at=NOW, outcome="unmatched")
+        applied = await tx.insert_event(provider="fake", provider_event_id="evt-a", signature_ok=True,
+                                        payload_ciphertext=b"\x01body", event_ciphertext=b"\x01event")
+        await tx.mark_event_processed(applied, processed_at=NOW, outcome="applied")
+        legacy = await tx.insert_event(provider="fake", provider_event_id="evt-l", signature_ok=True,
+                                       payload_ciphertext=b"\x01body")
+        await tx.mark_event_processed(legacy, processed_at=NOW, outcome="unmatched")
+        (row,) = await tx.list_retryable_events()
+        assert row.id == unmatched and row.provider_event_id == "evt-u" and row.event_ciphertext == b"\x01event"
+        assert row.attempts == 0 and row.outcome == "unmatched" and row.signature_ok is True
+        await tx.retry_event(unmatched, processed_at=NOW, outcome="unmatched")
+        assert (await tx.list_retryable_events())[0].attempts == 1
+        await tx.retry_event(unmatched, processed_at=NOW, outcome="applied")
+        assert await tx.list_retryable_events() == []
 
 
 @pytest.mark.asyncio

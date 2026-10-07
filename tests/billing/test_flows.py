@@ -110,8 +110,9 @@ async def test_trial_is_one_per_phone_and_survives_reinstall(ctx):
     first = await trial_service.start_trial(ctx, device, fingerprint_input="android-id-1")
     assert await trial_service.start_trial(ctx, device, fingerprint_input="android-id-1") == first
     reinstalled, _ = await _device(ctx)
-    with pytest.raises(Conflict, match="already used"):
-        await trial_service.start_trial(ctx, reinstalled, fingerprint_input="android-id-1")
+    # Reinstall: the same trial (same dates) follows the phone, never a second one (docs/BILLING.md).
+    again = await trial_service.start_trial(ctx, reinstalled, fingerprint_input="android-id-1")
+    assert (again.started_at, again.ends_at, again.device_id) == (first.started_at, first.ends_at, reinstalled.id)
     with pytest.raises(Invalid):
         await trial_service.start_trial(ctx, device, fingerprint_input="")
 
@@ -497,13 +498,13 @@ async def test_pending_checkout_times_out_and_run_once_reports_counts(ctx, fake,
     assert await scheduler.run_pending_timeouts(ctx, clock.now) == 0
     clock.advance(minutes=1)
     counts = await scheduler.run_once(ctx, clock.now)
-    assert counts == {"pending_timeouts": 1, "renewals": 0, "expiries": 0, "reconciled": 0}
+    assert counts == {"pending_timeouts": 1, "renewals": 0, "expiries": 0, "reconciled": 0, "unmatched_applied": 0}
     assert await _sub(ctx, result["checkout_id"]) is None
     assert (await checkout_service.get_checkout(ctx, device, result["checkout_id"]))["failure_reason"] == "timeout"
 
 
 @pytest.mark.asyncio
-async def test_renewal_provider_error_leaves_the_subscription_untouched(ctx, fake, clock):
+async def test_renewal_provider_unreachable_leaves_the_charge_pending_for_reconciliation(ctx, fake, clock):
     from api.billing.providers.base import ProviderUnavailable
 
     device, _ = await _device(ctx)
@@ -516,8 +517,10 @@ async def test_renewal_provider_error_leaves_the_subscription_untouched(ctx, fak
     fake.charge_renewal = boom
     assert await scheduler.run_renewals(ctx, clock.now) == 0
     sub = await _sub(ctx, sub_id)
-    assert sub.charge_pending is False and sub.status is S.ACTIVE
+    # The request may have reached the aggregator: no second call, the reconciler asks by our payment id.
+    assert sub.charge_pending is True and sub.status is S.ACTIVE
     assert "charge.provider_error" in await _audit_actions(ctx, sub_id)
+    assert await scheduler.run_renewals(ctx, clock.now) == 0
 
 
 @pytest.mark.asyncio

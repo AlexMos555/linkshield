@@ -40,7 +40,7 @@ def make_settings(**overrides) -> BillingSettings:
     base = dict(
         billing_enabled=True, role="billing", database_url_billing="memory://",
         billing_entitlement_private_key=_b64(32), billing_msisdn_key=_b64(32), billing_hmac_key=_b64(32),
-        billing_fake_provider_enabled=True, billing_partner_hmac_key="partner-secret",
+        billing_fake_provider_enabled=True, billing_partner_hmac_key="partner-secret", environment="development",
     )
     base.update(overrides)
     return BillingSettings(_env_file=None, **base)

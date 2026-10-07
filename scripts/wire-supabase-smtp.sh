@@ -1,62 +1,36 @@
 #!/usr/bin/env bash
-# Point Supabase Auth at a real SMTP provider — the single change that turns
-# sign-in from "2 emails per hour, project-wide" into something a Tele2 cohort
-# can actually use. Nothing else in the launch is blocked by code; this is.
+# Point Supabase Auth at a real mail provider and install the Russian email
+# templates — the one change that turns sign-in from "2 emails per hour,
+# project members only" into something a T2 cohort can use.
 #
-# Usage:
-#   RESEND_API_KEY=re_xxx bash scripts/wire-supabase-smtp.sh
+# This is a thin launcher for scripts/supabase_mail.py (provider presets,
+# config diff, templates, DNS records, verification). Dry run by default;
+# nothing is written to Supabase until you pass --apply.
 #
-# Reads SUPABASE_ACCESS_TOKEN from the repo-root .env (git-ignored).
-# Resend's SMTP bridge takes the literal username "resend" and the API key as
-# the password, so no separate SMTP credential is needed.
+#   bash scripts/wire-supabase-smtp.sh                       # dry run, Яндекс 360 preset
+#   bash scripts/wire-supabase-smtp.sh --apply               # write SMTP + templates, then verify
+#   bash scripts/wire-supabase-smtp.sh --provider resend --apply
+#   bash scripts/wire-supabase-smtp.sh --step dns --with-mx  # DNS records for cleanway.ai + support@
+#   bash scripts/wire-supabase-smtp.sh --step dns --check-dns
+#   bash scripts/wire-supabase-smtp.sh --step verify
+#
+# Inputs (environment or the git-ignored repo-root .env; never printed):
+#   SUPABASE_ACCESS_TOKEN, SMTP_PROVIDER=yandex|resend|custom, SMTP_PASS,
+#   SMTP_SENDER (default no-reply@cleanway.ai), optional SMTP_HOST/PORT/USER,
+#   SMTP_SENDER_NAME, SMTP_RATE_LIMIT, SMTP_MIN_INTERVAL.
+# Founder checklist: docs/EMAIL_SIGNIN.md.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PROJECT_REF="${SUPABASE_PROJECT_REF:-bpyqgzzclsbfvxthyfsf}"
-SENDER_EMAIL="${SMTP_SENDER_EMAIL:-no-reply@cleanway.ai}"
-SENDER_NAME="${SMTP_SENDER_NAME:-Cleanway}"
+# No `set -x`, no echo of the environment: the password must never reach a
+# terminal scrollback or a CI log. The Python side reads .env itself.
+if command -v python3 >/dev/null 2>&1; then
+  PY=python3
+elif command -v python >/dev/null 2>&1; then
+  PY=python
+else
+  echo "python3 is required (brew install python)" >&2
+  exit 1
+fi
 
-: "${RESEND_API_KEY:?set RESEND_API_KEY=re_... (Resend dashboard -> API Keys)}"
-SB_TOKEN="$(grep -E '^SUPABASE_ACCESS_TOKEN=' .env | cut -d= -f2- | tr -d '"'"'"' ')"
-: "${SB_TOKEN:?SUPABASE_ACCESS_TOKEN missing from .env}"
-
-echo "→ Before running: cleanway.ai must show \"Verified\" in Resend → Domains."
-echo "  Add EXACTLY the records Resend lists (Squarespace Domains → DNS → Custom"
-echo "  records): resend._domainkey TXT (DKIM) + MX/TXT on send.cleanway.ai."
-echo "  Do NOT edit the apex SPF (-all): Resend's bounce domain is send.cleanway.ai,"
-echo "  and DMARC passes via DKIM aligned to cleanway.ai (adkim=s)."
-echo
-
-curl -sS -X PATCH \
-  -H "Authorization: Bearer ${SB_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "$(cat <<JSON
-{
-  "smtp_host": "smtp.resend.com",
-  "smtp_port": 587,
-  "smtp_user": "resend",
-  "smtp_pass": "${RESEND_API_KEY}",
-  "smtp_admin_email": "${SENDER_EMAIL}",
-  "smtp_sender_name": "${SENDER_NAME}",
-  "rate_limit_email_sent": 200
-}
-JSON
-)" \
-  "https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth" >/dev/null
-
-echo "→ applied. verifying…"
-curl -sS -H "Authorization: Bearer ${SB_TOKEN}" \
-  "https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth" \
-| python3 -c '
-import sys, json
-d = json.load(sys.stdin)
-print("  smtp_host:", d.get("smtp_host") or "(still built-in!)")
-print("  sender:   ", d.get("smtp_admin_email"))
-print("  emails/h: ", d.get("rate_limit_email_sent"))
-ok = bool(d.get("smtp_host")) and (d.get("rate_limit_email_sent") or 0) > 2
-print("  =>", "SMTP wired — sign-in can scale" if ok else "NOT wired, check the response above")
-'
-echo
-echo "Next: send yourself a code from the app and confirm the 6-digit token"
-echo "arrives (templates already carry {{ .Token }}). Then enable CAPTCHA:"
-echo "Supabase -> Authentication -> Bot and abuse protection."
+exec "$PY" scripts/supabase_mail.py "$@"
