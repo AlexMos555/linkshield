@@ -15,18 +15,32 @@
  *
  * Session persistence contract:
  * - On `signIn` / `signUp` success we stash `access_token`, `refresh_token`,
- *   `user_email`, and `token_expires_at` in SecureStore.
+ *   `user_email`, and `token_expires_at` in SecureStore — the session
+ *   survives app restarts.
  * - `restoreSession` reads them on app boot and returns an `AuthSession`
  *   or `null`; if the access token is <2 min from expiry it transparently
  *   refreshes before returning.
  * - `signOut` clears all four keys and hits the logout endpoint best-effort.
+ *
+ * Keeping the session fresh (so a signed-in person is never bounced by an
+ * expired token):
+ * - every authenticated API call asks `ensureFreshToken()` first, which
+ *   refreshes when fewer than 2 minutes are left (src/services/api.ts);
+ * - `startSessionKeeper()` refreshes ahead of expiry while the app is open
+ *   and again whenever it returns to the foreground;
+ * - a 401 anyway (clock skew, a token revoked server-side) triggers ONE
+ *   forced refresh and a retry (api.ts `withAuth`);
+ * - refreshes are single-flight: GoTrue rotates the refresh token on every
+ *   use, so two parallel refreshes would spend it twice and sign out.
  *
  * All network calls have a 10-second timeout (`AbortController`) so the
  * UI can't hang on a dead server.
  */
 
 import * as SecureStore from "expo-secure-store";
-import { setAuthToken } from "./api";
+import { AppState, type AppStateStatus } from "react-native";
+import { setAuthToken, setTokenProvider } from "./api";
+import { needsRefresh, refreshDelayMs, singleFlight } from "../utils/account-session";
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -67,6 +81,11 @@ const KEY_EXPIRES = "token_expires_at";
 const NETWORK_TIMEOUT_MS = 10_000;
 // Refresh if the token has <2 minutes remaining
 const REFRESH_WINDOW_SECONDS = 120;
+
+// In-memory copy of the stored session, so the per-request freshness check
+// doesn't read SecureStore four times on every API call. Kept in lockstep by
+// persistSession / clearSession; `undefined` = not loaded yet.
+let _memSession: AuthSession | null | undefined;
 
 interface GoTrueTokenResponse {
   access_token?: string;
@@ -160,12 +179,15 @@ async function persistSession(
   // silently 401'd while pushes (which read SecureStore) kept working.
   setAuthToken(tokens.access_token);
 
-  return {
+  const session: AuthSession = {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     email,
     expiresAt,
   };
+  _memSession = session;
+  scheduleRefresh(expiresAt);
+  return session;
 }
 
 async function clearSession(): Promise<void> {
@@ -175,6 +197,8 @@ async function clearSession(): Promise<void> {
     SecureStore.deleteItemAsync(KEY_EMAIL),
     SecureStore.deleteItemAsync(KEY_EXPIRES),
   ]);
+  _memSession = null;
+  cancelScheduledRefresh();
   setAuthToken(null);
 }
 
@@ -185,9 +209,13 @@ async function readStoredSession(): Promise<AuthSession | null> {
     SecureStore.getItemAsync(KEY_EMAIL),
     SecureStore.getItemAsync(KEY_EXPIRES),
   ]);
-  if (!access || !refresh || !email) return null;
+  if (!access || !refresh || !email) {
+    _memSession = null;
+    return null;
+  }
   const expiresAt = Number(expires ?? 0);
-  return { accessToken: access, refreshToken: refresh, email, expiresAt };
+  _memSession = { accessToken: access, refreshToken: refresh, email, expiresAt };
+  return _memSession;
 }
 
 // ─── Public API ───────────────────────────────────────────────────
@@ -332,7 +360,9 @@ export async function signOut(): Promise<void> {
  * online attempt will likely succeed. Collapsing both into null is what made
  * the app tell an offline-but-signed-in user to go type her password again.
  */
-async function _refresh(): Promise<AuthSession | "offline" | null> {
+const _refresh = singleFlight(_refreshOnce);
+
+async function _refreshOnce(): Promise<AuthSession | "offline" | null> {
   const stored = await readStoredSession();
   if (!stored?.refreshToken) return null;
   try {
@@ -353,6 +383,78 @@ async function _refresh(): Promise<AuthSession | "offline" | null> {
 export async function refreshAccessToken(): Promise<AuthSession | null> {
   const r = await _refresh();
   return r === "offline" ? null : r;
+}
+
+/**
+ * The access token to send right now, refreshed first when it is about to
+ * expire. Offline, the stored token is returned as is (the call may still
+ * work; a 401 then triggers `forceRefresh`). Null when signed out.
+ */
+export async function ensureFreshToken(): Promise<string | null> {
+  const session = _memSession === undefined ? await readStoredSession() : _memSession;
+  if (!session) return null;
+  if (!needsRefresh(session.expiresAt, Math.floor(Date.now() / 1000), REFRESH_WINDOW_SECONDS)) {
+    return session.accessToken;
+  }
+  const r = await _refresh();
+  if (r === "offline") return session.accessToken;
+  return r?.accessToken ?? null;
+}
+
+/** Refresh regardless of expiry — the answer to an unexpected 401. */
+export async function forceRefresh(): Promise<string | null> {
+  const r = await _refresh();
+  return r === "offline" || r === null ? null : r.accessToken;
+}
+
+// Every authenticated call of services/api goes through these two.
+setTokenProvider({ fresh: ensureFreshToken, force: forceRefresh });
+
+// ─── Session keeper ───────────────────────────────────────────────
+
+let _refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let _keeperOn = false;
+
+function cancelScheduledRefresh(): void {
+  if (_refreshTimer) clearTimeout(_refreshTimer);
+  _refreshTimer = null;
+}
+
+/** Arm a refresh for just before `expiresAt` (only while the keeper runs). */
+function scheduleRefresh(expiresAt: number): void {
+  if (!_keeperOn) return;
+  cancelScheduledRefresh();
+  const delay = refreshDelayMs(expiresAt, Math.floor(Date.now() / 1000), REFRESH_WINDOW_SECONDS);
+  _refreshTimer = setTimeout(() => {
+    _refreshTimer = null;
+    void ensureFreshToken();
+  }, Math.max(delay, 1_000));
+}
+
+/**
+ * Keep the session fresh while the app runs: refresh ahead of expiry, and
+ * check again each time the app comes back to the foreground (JS timers are
+ * paused in the background, so a timer alone would fire late). Returns a
+ * stop function. Safe to call once at app start.
+ */
+export function startSessionKeeper(): () => void {
+  _keeperOn = true;
+  const kick = () => {
+    void (async () => {
+      await ensureFreshToken();
+      const s = _memSession;
+      if (s) scheduleRefresh(s.expiresAt);
+    })();
+  };
+  kick();
+  const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+    if (next === "active") kick();
+  });
+  return () => {
+    _keeperOn = false;
+    cancelScheduledRefresh();
+    sub.remove();
+  };
 }
 
 /** What a screen may honestly say about the session right now. */

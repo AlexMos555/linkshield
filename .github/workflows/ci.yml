@@ -207,6 +207,13 @@ jobs:
         # never GoTrue's English: captcha, rate limit, offline, wrong code.
         run: node --experimental-strip-types mobile/scripts/test-auth-error-key.mjs
 
+      - name: Account session table test
+        # The token is refreshed before it expires, one refresh at a time
+        # (GoTrue rotates the refresh token); device_revoked signs out,
+        # device_limit_reached offers "unlink one"; every plan / source /
+        # platform the API sends has a label.
+        run: node --experimental-strip-types mobile/scripts/test-account-session.mjs
+
       - name: Reason label table test
         # Every reason code the app maps has its label in all 10 locales, and
         # the codes the API's verdict_basis release adds read in Russian —

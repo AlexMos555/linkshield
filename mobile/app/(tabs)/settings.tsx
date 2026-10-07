@@ -14,6 +14,7 @@ import { getSessionState, signOut } from "../../src/services/auth";
 import { clearKeypair } from "../../src/lib/family-crypto";
 import { setAuthToken, getAccountSettings } from "../../src/services/api";
 import { allowedSites, removeAllowedSite } from "../../src/services/shield-log";
+import { confirmDeleteAccount } from "../../src/services/account-actions";
 import {
   isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
 } from "../../modules/cleanway-vpn";
@@ -318,9 +319,18 @@ export default function SettingsScreen() {
             who is signed in and signs them out — with a confirm, because for a
             security product "am I signed in?" should never be a mystery. */}
         {sessionEmail ? (
-          <Row first label={sessionEmail} desc={t("mobile.settings.signed_in_desc")}
-               right={<Text style={s.signOut}>{t("mobile.settings.sign_out")}</Text>}
-               onPress={confirmSignOut} />
+          <>
+            {/* Plan, linked devices (unlink one), delete account. */}
+            <Row first label={sessionEmail} desc={t("mobile.account.row_desc")}
+                 right={chevron} onPress={() => router.push("/account")} />
+            <Row icon="log-out-outline" iconColor={colors.danger} tint={colors.danger}
+                 label={t("mobile.settings.sign_out")} desc={t("mobile.settings.signed_in_desc")}
+                 onPress={confirmSignOut} />
+            {/* Google Play: an app with accounts must let people delete them in the app. */}
+            <Row icon="trash-outline" iconColor={colors.danger} tint={colors.danger}
+                 label={t("mobile.account.delete")} desc={t("mobile.account.delete_desc")}
+                 onPress={() => confirmDeleteAccount(t, () => setSessionEmail(null))} />
+          </>
         ) : (
           <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
                right={chevron} onPress={() => router.push("/auth")} />
@@ -545,5 +555,4 @@ const s = StyleSheet.create({
     gap: 6, marginTop: space.xxl, paddingHorizontal: space.md,
   },
   privacy: { ...typo.caption, color: colors.textMuted, textAlign: "center", flexShrink: 1 },
-  signOut: { ...typo.body, fontWeight: "600", color: colors.danger },
 });
