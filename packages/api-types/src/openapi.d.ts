@@ -1296,6 +1296,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/extension-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extension Session
+         * @description Open a new Supabase session for the signed-in user's browser extension.
+         *
+         *     Why not hand the extension the website's own tokens: Supabase rotates
+         *     refresh tokens and treats the reuse of an already-rotated one as theft —
+         *     it revokes the WHOLE session. The website and the extension would refresh
+         *     the same session independently, so within a couple of hours one of them
+         *     would present a rotated token and both would be signed out. A session of
+         *     its own (its own refresh-token family, its own row in auth.sessions) lets
+         *     each side refresh, and sign out, without touching the other.
+         *
+         *     How: the service key asks GoTrue for a one-time magic-link token for the
+         *     caller's own address (``admin/generate_link`` — no email is sent), and the
+         *     token is exchanged at ``/verify`` right here, so it never leaves the
+         *     server. The address comes from the verified JWT, never from the request,
+         *     so a caller can only ever open a session for themselves. The soft-delete
+         *     gate in ``get_current_user`` applies (410 while the account is on hold),
+         *     and the per-user sensitive-action limit (10 an hour) caps how many
+         *     sessions a token can open.
+         *
+         *     Tokens are never logged; failures log the upstream status code only.
+         */
+        post: operations["extension_session_api_v1_auth_extension_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/credentials/verified": {
         parameters: {
             query?: never;
@@ -2142,6 +2181,15 @@ export interface components {
             explanation: string;
             /** Source */
             source: string;
+        };
+        /** ExtensionSessionResponse */
+        ExtensionSessionResponse: {
+            /** Access Token */
+            access_token: string;
+            /** Refresh Token */
+            refresh_token: string;
+            /** Expires At */
+            expires_at: number;
         };
         /** FamilyMember */
         FamilyMember: {
@@ -4681,6 +4729,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckEmailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extension_session_api_v1_auth_extension_session_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtensionSessionResponse"];
                 };
             };
             /** @description Validation Error */

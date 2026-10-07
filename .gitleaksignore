@@ -13,3 +13,8 @@ bcbc5cf4fa8c8881b5cde99b55e1b13e8b33b6c6:docs/benchmarks/2026-08-10-fresh-urls.j
 # Generated i18n: "…credential-stealing page." followed by the next JSON key;
 # the heuristic read the word "credential" and took the key name as a secret.
 63ca5e18a26add9454ab4bebd02e835079b73ddc:mobile/i18n/en.json:generic-api-key:244
+#
+# Verified 2026-10-07: the extension sign-in table test's made-up
+# "sb_publishable_AbCdEf…" anon key (a format check, not a key of any project).
+# The next commit builds that value at run time, so only this commit carries it.
+d71fc05b6a79468265771e602c21d539c799e3af:scripts/test-extension-auth.mjs:generic-api-key:210

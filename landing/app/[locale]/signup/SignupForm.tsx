@@ -35,7 +35,11 @@ interface SignupFormProps {
   intervalFromQuery: string | null;
   /** `?error=` left by /auth/callback when a magic link could not sign in. */
   errorFromQuery?: string | null;
-  /** Allowlisted page to return to after sign-in (page.tsx checks it), e.g. "/account". */
+  /**
+   * `?next=`, already checked by safeSignupNext() on the server: the
+   * extension's connect page or the restore page. Wins over the plan/home
+   * default.
+   */
   nextFromQuery?: string | null;
 }
 
@@ -65,12 +69,7 @@ type Step = "email" | "code";
  * mailbox works, the form opens a mailto: so the lead isn't lost; if it
  * doesn't (lib/support.ts), it says plainly that signing in is unavailable.
  */
-export default function SignupForm({
-  planFromQuery,
-  intervalFromQuery,
-  errorFromQuery,
-  nextFromQuery,
-}: SignupFormProps) {
+export default function SignupForm({ planFromQuery, intervalFromQuery, errorFromQuery, nextFromQuery }: SignupFormProps) {
   const t = useTranslations("Signup");
   const nav = useTranslations("Nav");
   const locale = useLocale();
@@ -108,9 +107,11 @@ export default function SignupForm({
     }, 1000);
   }, []);
 
-  const nextPath = planFromQuery
-    ? `${localePath(locale, "/pricing")}?plan=${planFromQuery}${intervalFromQuery ? `&interval=${intervalFromQuery}` : ""}`
-    : localePath(locale, nextFromQuery || "/");
+  const nextPath = nextFromQuery
+    ? nextFromQuery
+    : planFromQuery
+      ? `${localePath(locale, "/pricing")}?plan=${planFromQuery}${intervalFromQuery ? `&interval=${intervalFromQuery}` : ""}`
+      : localePath(locale, "/");
 
   const queryError = queryErrorKey(errorFromQuery);
 

@@ -94,6 +94,22 @@
   <h1 data-i18n="options_page_title">Cleanway settings</h1>
   <p class="subtitle" data-i18n="options_page_subtitle">Choose how Cleanway protects you</p>
 
+  <!-- Account: sign in through cleanway.ai (background/auth.js). Hidden until
+       options.js has asked the background for the state. -->
+  <div class="section" id="account-section" hidden>
+    <h2 data-i18n="account_heading">Account</h2>
+    <div class="row">
+      <div style="min-width:0;">
+        <div class="row-label" id="account-label" style="overflow-wrap:anywhere;"></div>
+        <div class="row-desc" id="account-desc"></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-inline-start:12px;">
+        <button class="btn btn-primary" id="account-sign-in" data-i18n="account_sign_in" hidden>Sign in</button>
+        <button class="btn" id="account-sign-out" data-i18n="account_sign_out" hidden>Sign out</button>
+      </div>
+    </div>
+  </div>
+
   <div class="section">
     <h2 data-i18n="options_skill_heading">Who uses this browser</h2>
     <p class="row-desc" style="margin-bottom: 12px;" data-i18n="options_skill_subtitle">Cleanway explains its warnings differently for each. You can change this any time.</p>

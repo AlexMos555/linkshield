@@ -304,6 +304,46 @@ export async function incrementThreatCounter(token, count = 1) {
 }
 
 /**
+ * HOOK: registerDevice() — tell the account about this browser after sign-in.
+ *
+ * Uses POST /api/v1/user/device (api/routers/user.py::register_device), the
+ * device endpoint on main today. Device endpoints are being reworked on a
+ * separate branch: when the endpoint is missing (404/405) or answers anything
+ * else, this is a silent no-op — sign-in never depends on it. Swap the call
+ * here when the new endpoint lands; nothing else needs to change.
+ *
+ * Sends the per-install device hash, the browser family and the extension
+ * version — no hostname, no history.
+ *
+ * @param {string|null} token JWT
+ * @param {{platform: string, appVersion: string}} info
+ * @returns {Promise<boolean>} true when the server accepted it
+ */
+export async function registerDevice(token, { platform, appVersion } = {}) {
+  if (!token) return false;
+  try {
+    const deviceHash = await getDeviceHash();
+    const resp = await fetch(`${API_BASE}/api/v1/user/device`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        device_hash: deviceHash,
+        platform: platform || "chrome",
+        app_version: appVersion || "0.0.0",
+      }),
+    });
+    if (resp.status === 404 || resp.status === 405) return false; // endpoint not deployed: no-op
+    if (await _handleAuthedResponse(resp)) return false;
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Extract unique domains from a list of URLs
  * @param {string[]} urls
  * @returns {string[]}

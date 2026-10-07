@@ -33,6 +33,7 @@ import {
   syncFamilyPollAlarm,
 } from "../utils/family-notifier.js";
 import { pruneOldChecks } from "../utils/storage.js";
+import { handleAuthAlarm, handleAuthMessage } from "./auth.js"; // sign-in: the cleanway.ai → extension handoff + refresh
 import { blockedPageHost, claimFirstBlockToday } from "./page-blocks.js";
 import { isKnownSafeHost, isUserContentHost } from "./trusted-hosts.js";
 
@@ -371,6 +372,9 @@ async function checkLinkUrl(href) {
 
 // ── Messages ──
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+  // Sign-in (AUTH_*): background/auth.js checks who sent it.
+  const authReply = handleAuthMessage(msg, sender, respond);
+  if (authReply !== undefined) return authReply;
   if (msg.type === "CHECK_DOMAINS") {
     // .catch() prevents an uncaught promise rejection from silently
     // closing the message channel — the content script then waits the
@@ -530,6 +534,7 @@ function ensureHistoryPruneAlarm() {
 ensureHistoryPruneAlarm();
 
 async function onAlarm(alarm) {
+  if (handleAuthAlarm(alarm)) return;
   if (isFamilyPollAlarm(alarm.name)) {
     try {
       await pollAndNotify();

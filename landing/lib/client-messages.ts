@@ -15,6 +15,7 @@ export const CLIENT_NAMESPACES = [
   "Account",
   "AccountRestore",
   "Check",
+  "ExtensionConnect",
   "LanguageSwitcher",
   "Nav",
   "Pricing",

@@ -34,3 +34,12 @@ export function getSupabaseClient() {
 export function isAuthConfigured(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
+
+/**
+ * The project URL and the PUBLIC anon key, for the extension connect page:
+ * the extension needs the anon key to refresh its own session at
+ * <project>/auth/v1/token. Both are already in every page's bundle.
+ */
+export function supabasePublicConfig(): { url: string; anonKey: string } {
+  return { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY };
+}

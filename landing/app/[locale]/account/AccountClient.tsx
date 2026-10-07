@@ -131,7 +131,9 @@ export default function AccountClient() {
             <p style={body}>{t("no_session_body")}</p>
           </>
         )}
-        <a href={`${localePath(locale, "/signup")}?next=/account`} style={button}>{t("no_session_cta")}</a>
+        <a href={`${localePath(locale, "/signup")}?next=${localePath(locale, "/account")}`} style={button}>
+          {t("no_session_cta")}
+        </a>
       </section>
     );
   }

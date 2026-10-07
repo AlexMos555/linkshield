@@ -18,7 +18,7 @@ test("signed out: /account offers sign-in that returns to /account", async ({ pa
 test("signed out: /ru/account is Russian and keeps the locale", async ({ page }) => {
   await page.goto("/ru/account");
   await expect(page.getByRole("heading", { level: 1, name: "Ваш аккаунт" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Войти" })).toHaveAttribute("href", "/ru/signup?next=/account");
+  await expect(page.getByRole("link", { name: "Войти" })).toHaveAttribute("href", "/ru/signup?next=/ru/account");
 });
 
 test("/account is not indexed", async ({ page }) => {

@@ -25,10 +25,19 @@ import {
   isTokenRejected,
   normalizeOtpInput,
   queryErrorKey,
+  safeSignupNext,
   sendErrorKey,
   signupErrorPath,
   verifyErrorKey,
 } from "../landing/lib/signup-flow.ts";
+import {
+  connectPath,
+  extensionErrorKey,
+  isMintedSession,
+  isValidConnectState,
+  mintOutcome,
+  signupForConnectPath,
+} from "../landing/lib/extension-connect.ts";
 
 const LOCALES = ["en", "es", "hi", "pt", "ru", "ar", "fr", "de", "it", "id"];
 
@@ -130,6 +139,76 @@ for (const [next, expected] of [
 ]) {
   check(`${next || "(empty)"} → ${expected}`, () => assert.equal(signupErrorPath(next, "otp_expired", LOCALES, "en"), expected));
 }
+
+// The browser extension's connect page: the state it waits for must survive
+// a trip through /signup, and nothing else may ride along.
+const STATE = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcde"; // 43 base64url chars
+assert.equal(STATE.length, 43);
+
+console.log("signupErrorPath keeps a destination the form honours");
+check("a dead link on the way to the connect page keeps the state", () => {
+  assert.equal(
+    signupErrorPath(`/ru/extension/connect?state=${STATE}`, "otp_expired", LOCALES, "en"),
+    `/ru/signup?error=otp_expired&next=${encodeURIComponent(`/ru/extension/connect?state=${STATE}`)}`,
+  );
+});
+
+console.log("safeSignupNext — an allowlist, not any same-origin path");
+for (const [raw, expected] of [
+  [`/extension/connect?state=${STATE}`, `/extension/connect?state=${STATE}`],
+  [`/ru/extension/connect?state=${STATE}`, `/ru/extension/connect?state=${STATE}`],
+  [`/ar/extension/connect/?state=${STATE}`, `/ar/extension/connect?state=${STATE}`],
+  ["/account/restore", "/account/restore"],
+  ["/account", "/account"],
+  ["/hi/account", "/hi/account"],
+  ["/account?x=1", null],
+  ["/de/account/restore?reason=locked", "/de/account/restore?reason=locked"],
+  [`/extension/connect?state=${STATE}&evil=1`, null],
+  [`/extension/connect?state=${STATE.slice(1)}`, null],
+  [`/extension/connect?state=${STATE}#x`, null],
+  ["/extension/connect", null],
+  [`//evil.example/extension/connect?state=${STATE}`, null],
+  [`/\\evil.example/extension/connect?state=${STATE}`, null],
+  [`https://evil.example/extension/connect?state=${STATE}`, null],
+  [`/zz/extension/connect?state=${STATE}`, null],
+  ["/account/restore?reason=other", null],
+  ["/pricing", null],
+  ["/", null],
+  ["", null],
+  [null, null],
+]) {
+  check(`${raw} → ${expected}`, () => assert.equal(safeSignupNext(raw, LOCALES), expected));
+}
+
+console.log("extension connect page");
+check("the state is exactly what the extension makes", () => {
+  assert.ok(isValidConnectState(STATE));
+  for (const bad of [STATE.slice(1), `${STATE}x`, `${STATE.slice(1)}!`, "", null, 42]) assert.ok(!isValidConnectState(bad), String(bad));
+});
+check("not signed in → /signup and back, in the reader's locale", () => {
+  assert.equal(connectPath("en", STATE, "en"), `/extension/connect?state=${STATE}`);
+  assert.equal(signupForConnectPath("ru", STATE, "en"), `/ru/signup?next=${encodeURIComponent(`/ru/extension/connect?state=${STATE}`)}`);
+  // …and /signup accepts what it is given.
+  const next = new URL(signupForConnectPath("ru", STATE, "en"), "https://cleanway.ai").searchParams.get("next");
+  assert.equal(safeSignupNext(next, LOCALES), `/ru/extension/connect?state=${STATE}`);
+});
+check("the API's answer", () => {
+  assert.equal(mintOutcome(200), "ok");
+  assert.equal(mintOutcome(401), "signin");
+  assert.equal(mintOutcome(410), "error_locked");
+  for (const s of [429, 500, 502, 503, 409, 404]) assert.equal(mintOutcome(s), "error_failed", String(s));
+  assert.ok(isMintedSession({ access_token: "a", refresh_token: "r", expires_at: 1 }));
+  for (const bad of [null, {}, { access_token: "a", refresh_token: "", expires_at: 1 }, { access_token: "a", refresh_token: "r" }]) {
+    assert.ok(!isMintedSession(bad), JSON.stringify(bad));
+  }
+});
+check("the extension's refusal", () => {
+  assert.equal(extensionErrorKey("state_mismatch"), "error_state");
+  assert.equal(extensionErrorKey("state_expired"), "error_state");
+  for (const code of ["invalid_session", "bad_sender", "wrong_project", "extension_error", null]) {
+    assert.equal(extensionErrorKey(code), "error_failed", String(code));
+  }
+});
 
 if (failures) {
   console.log(`\n${failures} failure(s)`);

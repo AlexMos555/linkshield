@@ -1489,6 +1489,43 @@
       "family_invite_qr_alt": {
         "text": "QR code de l'invitation à la famille Cleanway"
       }
+    },
+    "account": {
+      "heading": {
+        "text": "Compte"
+      },
+      "sign_in": {
+        "text": "Se connecter"
+      },
+      "sign_out": {
+        "text": "Se déconnecter"
+      },
+      "signed_in": {
+        "text": "Connecté"
+      },
+      "signed_in_as": {
+        "text": "Connecté en tant que $EMAIL$",
+        "placeholders": {
+          "email": {
+            "content": "$1"
+          }
+        }
+      },
+      "signed_in_desc": {
+        "text": "Utilisé pour l'Espace Famille et la synchronisation des réglages. Se déconnecter ne désactive pas la protection."
+      },
+      "signed_out": {
+        "text": "Non connecté"
+      },
+      "signed_out_desc": {
+        "text": "Connectez-vous pour utiliser l'Espace Famille et synchroniser vos réglages. La protection fonctionne sans compte."
+      },
+      "pending": {
+        "text": "Terminez la connexion dans l'onglet Cleanway"
+      },
+      "expired": {
+        "text": "Votre connexion a expiré"
+      }
     }
   },
   "landing": {
@@ -2381,6 +2418,28 @@
           ]
         }
       }
+    },
+    "extension_connect": {
+      "meta_title": "Connecter l'extension — Cleanway",
+      "loading": "Vérification de votre connexion…",
+      "heading": "Connectez ce navigateur à votre compte Cleanway",
+      "signed_in_as": "Connecté en tant que {email}",
+      "explain": "L'extension Cleanway de ce navigateur utilisera ce compte pour l'Espace Famille et la synchronisation des réglages. Elle aura sa propre connexion : vous déconnecter de l'extension ne vous déconnecte pas du site.",
+      "connect": "Connecter",
+      "connecting": "Connexion…",
+      "other_account": "Utiliser un autre compte",
+      "connected_title": "Ce navigateur est connecté",
+      "connected_body": "Vous pouvez fermer cet onglet.",
+      "no_state_title": "Commencez depuis l'extension",
+      "no_state_body": "Ouvrez l'extension Cleanway dans ce navigateur et cliquez sur « Se connecter ». Elle vous ramènera ici.",
+      "error_no_extension": "L'extension Cleanway n'a pas répondu dans ce navigateur. Vérifiez qu'elle est installée et activée, puis cliquez à nouveau sur « Se connecter » dans l'extension.",
+      "error_state": "Cette demande de connexion a expiré. Cliquez à nouveau sur « Se connecter » dans l'extension.",
+      "error_failed": "Impossible de connecter l'extension. Veuillez réessayer.",
+      "error_network": "Pas de connexion au serveur. Vérifiez votre connexion Internet et réessayez.",
+      "error_locked": "Votre compte doit être supprimé. Restaurez-le pour connecter l'extension.",
+      "restore_cta": "Restaurer mon compte",
+      "error_unavailable": "La connexion n'est pas disponible pour le moment. La protection fonctionne sans compte.",
+      "handover_note": "L'extension reçoit uniquement une connexion à ce compte. Aucun mot de passe n'est utilisé."
     },
     "account": {
       "plan_heading": "Offre",

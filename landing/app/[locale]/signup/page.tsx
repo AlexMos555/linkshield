@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 import { localePath } from "@/lib/locale-path";
+import { safeSignupNext } from "@/lib/signup-flow";
 import SignupForm from "./SignupForm";
 
 const SITE_URL = "https://cleanway.ai";
@@ -46,9 +47,6 @@ type Props = {
 
 const VALID_PLANS = new Set(["personal", "family", "business"]);
 const VALID_INTERVALS = new Set(["monthly", "yearly"]);
-// Where `?next=` may send someone after sign-in. An allowlist, never a free
-// path: anything else would be an open redirect.
-const VALID_NEXT = new Set(["/account"]);
 
 const PLAN_LABELS: Record<string, string> = {
   personal: "Personal",
@@ -132,7 +130,7 @@ export default async function SignupPage({ searchParams, params }: Props) {
           planFromQuery={plan}
           intervalFromQuery={interval}
           errorFromQuery={sp.error ?? null}
-          nextFromQuery={sp.next && VALID_NEXT.has(sp.next) ? sp.next : null}
+          nextFromQuery={safeSignupNext(sp.next, routing.locales)}
         />
 
         {/* Privacy reassurance */}
