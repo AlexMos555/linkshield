@@ -11,7 +11,8 @@ calls they exist to make; every request carries an idempotency key.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any, Mapping, Optional, Protocol, Sequence, runtime_checkable
 
@@ -40,6 +41,23 @@ class BillingEvent:
     failure: Optional[FailureReason] = None
     # Test-mode payments must never activate a production subscription.
     test: bool = False
+    # ISO 4217 as the provider reports it ("RUB" / "643"); None when it does not say.
+    currency: Optional[str] = None
+
+
+def event_to_bytes(event: BillingEvent) -> bytes:
+    """The normalised event as JSON (stored encrypted next to the raw body, for retries)."""
+    data = asdict(event)
+    data["kind"] = event.kind.value
+    data["failure"] = event.failure.value if event.failure else None
+    return json.dumps(data, sort_keys=True).encode("utf-8")
+
+
+def event_from_bytes(raw: bytes) -> BillingEvent:
+    data = json.loads(raw)
+    data["kind"] = EventKind(data["kind"])
+    data["failure"] = FailureReason(data["failure"]) if data.get("failure") else None
+    return BillingEvent(**data)
 
 
 @dataclass(frozen=True)
@@ -91,7 +109,11 @@ class BillingProvider(Protocol):
 
     def ack_body(self) -> Mapping[str, Any]: ...   # what the provider expects back for a handled webhook
 
-    async def fetch_status(self, *, provider_ref: str) -> Optional[BillingEvent]: ...
+    async def fetch_status(
+        self, *, provider_ref: Optional[str] = None, merchant_payment_id: Optional[str] = None,
+    ) -> Optional[BillingEvent]: ...
+    # ↑ by the provider's payment/subscription reference, or — when a call's answer was lost and
+    #   no reference was ever recorded — by OUR payment id (the idempotency key we sent).
 
 
 PROVIDER_METHODS = (

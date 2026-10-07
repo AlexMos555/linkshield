@@ -177,6 +177,38 @@ def test_cancel_by_phone_same_answer(client, ctx, fake):
     assert client.post("/billing/v1/cancel-by-phone", json={"msisdn": "+1 415 555 0100"}).status_code == 400
 
 
+def test_number_in_use_is_a_clear_error_with_the_masked_number(client, ctx, fake):
+    _, old_install = _register(client)
+    _subscribe(client, ctx, fake, old_install)
+    _, reinstalled = _register(client)
+    r = client.post("/billing/v1/checkout", headers=reinstalled, json={
+        "plan_code": "solo", "provider": "fake", "msisdn": SUCCESS_NUMBER, "consent_doc_version": CONSENT,
+    })
+    assert r.status_code == 409
+    error = r.json()["error"]
+    assert error["code"] == "subscription_exists_for_number"
+    assert error["details"] == {"msisdn_masked": "+7 9•• •••-00-00"}
+    assert SUCCESS_NUMBER not in r.text
+
+
+def test_cancel_by_phone_is_limited_per_number(client, ctx, fake, monkeypatch):
+    """No proof of owning the number is possible yet (no SMS API at the aggregator): a strict per-number limit."""
+    from tests.conftest import FakeRedis
+
+    redis = FakeRedis()
+
+    async def _get():
+        return redis
+
+    monkeypatch.setattr("api.services.rate_limiter.get_redis", _get)
+    assert ctx.settings.billing_cancel_by_phone_per_phone_per_day == 3
+    ctx.settings.billing_cancel_by_phone_per_phone_per_day = 1
+    assert client.post("/billing/v1/cancel-by-phone", json={"msisdn": SUCCESS_NUMBER}).status_code == 200
+    r = client.post("/billing/v1/cancel-by-phone", json={"msisdn": "8 915 000-00-00"})
+    assert r.status_code == 429 and r.json()["detail"]["category"] == "billing:cancel_by_phone:phone"
+    assert client.post("/billing/v1/cancel-by-phone", json={"msisdn": "+79990000000"}).status_code == 200
+
+
 def test_webhook_errors(client, ctx, fake):
     assert client.post("/billing/v1/webhooks/nobody", content=b"{}").status_code == 404
     r = client.post("/billing/v1/webhooks/fake", headers={"X-Fake-Signature": "bad"}, content=b"{}")

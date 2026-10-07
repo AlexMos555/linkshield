@@ -215,6 +215,10 @@ class BillingEventRow:
     payload_ciphertext: bytes
     processed_at: Optional[datetime] = None
     outcome: Optional[str] = None
+    # The normalised event (encrypted JSON), so an unmatched one can be applied again later
+    # without re-verifying a signature whose headers were not kept.
+    event_ciphertext: Optional[bytes] = None
+    attempts: int = 0
 
 
 @dataclass(frozen=True)

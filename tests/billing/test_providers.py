@@ -275,6 +275,51 @@ async def test_mixplat_error_replies_and_transport_failures():
         await MixplatProvider(project_id=1, api_key="k", http_post=not_object).fetch_status(provider_ref="x")
 
 
+@pytest.mark.asyncio
+async def test_mixplat_status_by_merchant_payment_id():
+    """A renewal whose answer was lost has no MIXPLAT payment_id yet: ask by ours."""
+    calls = []
+
+    async def post(url, body):
+        calls.append(dict(body))
+        return {"result": "ok", "status": "success", "payment_id": "707607041", "merchant_payment_id": "571",
+                "amount": 9900, "amount_merchant": 9405, "currency": "RUB", "recurrent_id": "1449272"}
+
+    mp = MixplatProvider(project_id=1, api_key=DOC_KEY, http_post=post)
+    event = await mp.fetch_status(merchant_payment_id="571")
+    assert calls[0] == {"api_version": 3, "merchant_payment_id": "571",
+                        "signature": md5_signature("", "571", api_key=DOC_KEY)}
+    assert event.kind is EventKind.PAYMENT_SUCCEEDED and event.provider_payment_id == "707607041"
+    assert event.merchant_payment_id == "571" and event.provider_subscription_id == "1449272"
+    # The amount the subscriber paid, not what reaches us after the aggregator's commission.
+    assert event.amount_kopecks == 9900 and event.currency == "RUB"
+
+    async def no_payment_id(url, body):
+        return {"result": "ok", "status": "pending"}
+
+    pending = await MixplatProvider(project_id=1, api_key=DOC_KEY, http_post=no_payment_id).fetch_status(
+        merchant_payment_id="571")
+    assert pending.kind is EventKind.PAYMENT_PENDING and pending.merchant_payment_id == "571"
+    assert await MixplatProvider(project_id=1, api_key=DOC_KEY, http_post=post).fetch_status() is None
+
+
+@pytest.mark.asyncio
+async def test_fake_answers_status_for_renewals_and_by_merchant_payment_id():
+    fake = FakeProvider()
+    start = await fake.start_checkout(plan_product_id="solo", amount_kopecks=9900, msisdn="+79150000000",
+                                      idempotency_key="s:checkout", return_url="")
+    assert (await fake.fetch_status(merchant_payment_id="s:checkout")).provider_subscription_id == start.provider_ref
+    pid = await fake.charge_renewal(provider_subscription_id=start.provider_ref, amount_kopecks=9900,
+                                    idempotency_key="s:k:0")
+    by_key = await fake.fetch_status(merchant_payment_id="s:k:0")
+    assert by_key.kind is EventKind.PAYMENT_SUCCEEDED and by_key.provider_payment_id == pid
+    assert by_key.merchant_payment_id == "s:k:0" and by_key.amount_kopecks == 9900
+    fake.renewal_script["s:k:0"] = FailureReason.NO_MONEY
+    failed = await fake.fetch_status(provider_ref=pid)
+    assert failed.kind is EventKind.PAYMENT_FAILED and failed.failure is FailureReason.NO_MONEY
+    assert await fake.fetch_status(merchant_payment_id="nobody") is None
+
+
 # ── T2 stub ──
 
 

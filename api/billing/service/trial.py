@@ -1,6 +1,7 @@
 """The free trial (§2.2): N days, no phone number, no consent, one per phone."""
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 
 from api.billing.context import BillingContext
@@ -30,7 +31,12 @@ async def start_trial(ctx: BillingContext, device: Device, *, fingerprint_input:
         existing = await tx.get_trial_by_fingerprint(fingerprint)
         if existing is not None:
             if existing.device_id != device.id:
-                raise Conflict("this phone already used its trial", code="trial_already_used")
+                # Reinstall (a new device record on the same phone): the SAME trial — same
+                # start, same end — moves to the new install. Never a second one.
+                await tx.rebind_trial(fingerprint, device.id)
+                await tx.add_audit(actor=device_actor(device), action="trial.reinstalled", target=f"device:{device.id}",
+                                   meta={"previous_device": existing.device_id})
+                return replace(existing, device_id=device.id)
             return existing
         trial = Trial(device_fingerprint_hmac=fingerprint, device_id=device.id, started_at=now,
                       ends_at=now + timedelta(days=ctx.settings.billing_trial_days))

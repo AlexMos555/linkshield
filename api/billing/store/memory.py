@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 from api.billing.models import (
     IDEMPOTENCY_IN_PROGRESS,
     AuditRow,
+    BillingEventRow,
     ClaimCode,
     Consent,
     Device,
@@ -25,12 +26,16 @@ from api.billing.models import (
     Payment,
     PaymentStatus,
     Plan,
+    ProviderCode,
     Seat,
     Subscription,
     SubscriptionStatus,
     Trial,
 )
 from api.billing.store.base import ConflictError
+
+# Fixed-term grants: never renewed, so their period end is their end.
+GRANT_PROVIDERS = (ProviderCode.PROMO, ProviderCode.T2_OPTION)
 
 
 @dataclass
@@ -148,6 +153,11 @@ class MemoryTx:
             raise ConflictError("trial already used for this phone")
         self._t.trials[trial.device_fingerprint_hmac] = trial
 
+    async def rebind_trial(self, fingerprint_hmac: str, device_id: str) -> None:
+        trial = self._t.trials.get(fingerprint_hmac)
+        if trial is not None:
+            self._t.trials[fingerprint_hmac] = replace(trial, device_id=device_id)
+
     # ── subscriptions ──
 
     async def create_subscription(self, sub: Subscription) -> Subscription:
@@ -206,12 +216,14 @@ class MemoryTx:
         return sorted(pending, key=lambda s: s.created_at)[:limit]
 
     async def list_expiring(self, *, now: datetime, limit: int = 100) -> Sequence[Subscription]:
-        """Grace periods and cancelled periods that have run out."""
+        """Grace periods, cancelled periods and fixed-term grants that have run out."""
         rows = [
             s for s in self._t.subscriptions.values()
             if (s.status is SubscriptionStatus.GRACE and s.grace_until is not None and s.grace_until <= now)
             or (s.status is SubscriptionStatus.CANCEL_AT_PERIOD_END and s.current_period_end is not None
                 and s.current_period_end <= now)
+            or (s.status is SubscriptionStatus.ACTIVE and s.provider in GRANT_PROVIDERS
+                and s.current_period_end is not None and s.current_period_end <= now)
         ]
         return sorted(rows, key=lambda s: s.created_at)[:limit]
 
@@ -290,7 +302,7 @@ class MemoryTx:
     # ── webhooks, consents, audit ──
 
     async def insert_event(self, *, provider: str, provider_event_id: str, signature_ok: bool,
-                           payload_ciphertext: bytes) -> Optional[int]:
+                           payload_ciphertext: bytes, event_ciphertext: Optional[bytes] = None) -> Optional[int]:
         key = (provider, provider_event_id)
         if key in self._t.events:
             return None
@@ -298,6 +310,7 @@ class MemoryTx:
         self._t.events[key] = {
             "id": event_id, "signature_ok": signature_ok, "payload_ciphertext": payload_ciphertext,
             "received_at": _now(), "processed_at": None, "outcome": None,
+            "event_ciphertext": event_ciphertext, "attempts": 0,
         }
         return event_id
 
@@ -306,6 +319,26 @@ class MemoryTx:
             if row["id"] == event_id:
                 row["processed_at"] = processed_at
                 row["outcome"] = outcome
+
+    async def list_retryable_events(self, *, limit: int = 100) -> Sequence[BillingEventRow]:
+        rows = [
+            BillingEventRow(
+                id=row["id"], provider=ProviderCode(provider), provider_event_id=event_id,
+                received_at=row["received_at"], signature_ok=row["signature_ok"],
+                payload_ciphertext=row["payload_ciphertext"], processed_at=row["processed_at"],
+                outcome=row["outcome"], event_ciphertext=row["event_ciphertext"], attempts=row["attempts"],
+            )
+            for (provider, event_id), row in self._t.events.items()
+            if row["outcome"] == "unmatched" and row["signature_ok"] and row["event_ciphertext"] is not None
+        ]
+        return sorted(rows, key=lambda r: r.id)[:limit]
+
+    async def retry_event(self, event_id: int, *, processed_at: datetime, outcome: str) -> None:
+        for row in self._t.events.values():
+            if row["id"] == event_id:
+                row["processed_at"] = processed_at
+                row["outcome"] = outcome
+                row["attempts"] += 1
 
     async def add_consent(self, consent: Consent) -> Consent:
         stored = replace(consent, id=self._next_id())

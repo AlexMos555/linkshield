@@ -11,7 +11,8 @@ table is an `InvalidTransition`, never a silent no-op.
 Invariants the tests pin (tests/billing/test_state_machine.py):
   * after `cancel_requested_at` is set, no Charge effect is ever produced;
   * a period is paid at most once (a success only extends the period when a
-    charge for it is pending, or the provider itself initiated it);
+    charge for it is pending, settles one of our unsettled charge rows, or
+    the provider itself initiated it);
   * a Charge is produced only in `active` or `grace`;
   * the phone's mode after the grace period is exactly `policy.lapse_policy`.
 """
@@ -83,6 +84,11 @@ class PaymentSucceeded:
     # True when the provider charges on its own schedule (RuStore): then no
     # Charge effect of ours precedes the success.
     external: bool = False
+    # True when the success settles one of OUR charge rows that had no final
+    # answer yet (the call timed out, or we read its error as a refusal):
+    # the money was taken for that period, so the period is given even
+    # though `charge_pending` is no longer set.
+    settles_charge: bool = False
 
 
 @dataclass(frozen=True)
@@ -125,9 +131,14 @@ class OperatorStop:
     pass
 
 
+@dataclass(frozen=True)
+class TermEnded:
+    """A fixed-term grant (promo, partner licence) reached its period end; nothing renews it."""
+
+
 Event = Union[
     CheckoutStarted, PaymentSucceeded, PaymentFailed, PendingTimeout, RenewalDue,
-    GraceExpired, CancelRequested, PeriodEnded, Refunded, OperatorStop,
+    GraceExpired, CancelRequested, PeriodEnded, Refunded, OperatorStop, TermEnded,
 ]
 
 
@@ -283,7 +294,7 @@ def _renewal_due(state: SubState, event: RenewalDue, now: datetime, policy: Poli
 
 
 def _renewal_paid(state: SubState, event: PaymentSucceeded, now: datetime, policy: Policy) -> Transition:
-    if not (state.charge_pending or event.external):
+    if not (state.charge_pending or event.external or event.settles_charge):
         return Transition(state=state, effects=(
             Audit(action="payment.unexpected_success", meta={"payment_id": event.payment_id}),
         ))
@@ -303,7 +314,7 @@ def _renewal_paid(state: SubState, event: PaymentSucceeded, now: datetime, polic
 
 def _cancelled_paid(state: SubState, event: PaymentSucceeded, now: datetime, policy: Policy) -> Transition:
     """A charge issued before the cancel that still landed: the days are honoured."""
-    if not state.charge_pending:
+    if not (state.charge_pending or event.settles_charge):
         return Transition(state=state, effects=(
             Audit(action="payment.unexpected_success", meta={"payment_id": event.payment_id}),
         ))
@@ -372,6 +383,17 @@ def _period_ended(state: SubState, event: PeriodEnded, now: datetime, policy: Po
     ))
 
 
+def _term_ended(state: SubState, event: TermEnded, now: datetime, policy: Policy) -> Transition:
+    if state.current_period_end is None or now < state.current_period_end:
+        return _no_op(state)
+    new = replace(state, status=Status.LAPSED, next_charge_at=None, charge_pending=False)
+    return Transition(state=new, effects=(
+        Audit(action="subscription.lapsed", meta={"lapse_policy": policy.lapse_policy.value, "after": "term_end"}),
+        Notify(kind="lapsed"),
+        SetDeviceMode(mode=policy.lapse_policy.mode),
+    ))
+
+
 def _refunded(state: SubState, event: Refunded, now: datetime, policy: Policy) -> Transition:
     new = replace(state, status=Status.REFUNDED, next_charge_at=None, charge_pending=False)
     return Transition(state=new, effects=(
@@ -395,6 +417,7 @@ _HANDLERS: Dict[Tuple[Optional[SubscriptionStatus], type], Handler] = {
     (Status.ACTIVE, CancelRequested): _cancel,
     (Status.ACTIVE, OperatorStop): _cancel,
     (Status.ACTIVE, Refunded): _refunded,
+    (Status.ACTIVE, TermEnded): _term_ended,
     (Status.GRACE, RenewalDue): _renewal_due,
     (Status.GRACE, PaymentSucceeded): _renewal_paid,
     (Status.GRACE, PaymentFailed): _payment_failed,

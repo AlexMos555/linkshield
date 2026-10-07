@@ -1,13 +1,14 @@
 """Checkout (purchase intent) and applying what the provider says happened."""
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import replace
 from typing import Any, Dict, Optional, Tuple
 
 from api.billing.consents import UnknownConsentVersion, require_current
 from api.billing.context import BillingContext
-from api.billing.crypto import InvalidMsisdn, normalize_msisdn
+from api.billing.crypto import InvalidMsisdn, mask_msisdn, normalize_msisdn
 from api.billing.models import (
     CancelChannel,
     Device,
@@ -47,7 +48,11 @@ from api.billing.state_machine import (
     apply,
 )
 
+logger = logging.getLogger("cleanway.billing.checkout")
+
 _GRANT_PROVIDERS = ("promo", "t2_option")
+# Statuses in which a subscription will charge its number again.
+_CHARGING_STATUSES = (SubscriptionStatus.ACTIVE, SubscriptionStatus.GRACE)
 
 
 def checkout_key(sub_id: str) -> str:
@@ -75,11 +80,19 @@ def _msisdn(raw: Optional[str], *, required: bool) -> Optional[str]:
 async def start_checkout(ctx: BillingContext, device: Device, *, plan_code: str, provider_code: str,
                          msisdn: Optional[str], consent_doc_version: str, consent_method: str = "app_button",
                          ip: Optional[str] = None, allow_grant: bool = False) -> Dict[str, Any]:
-    """Create the pending subscription, record the consent, ask the provider to start.
+    """Record the purchase intent, then ask the provider to start, then record its answer.
 
-    The owner seat is claimed now so a device can never sit in two checkouts.
-    A promo grant activates immediately; anything else waits for the
-    provider's notification (or reconciliation).
+    Three steps, never one transaction around a provider call (outbox-style):
+      1. commit the pending subscription, the owner seat, the consent and the
+         checkout payment row (our idempotency key = MIXPLAT's merchant_payment_id);
+      2. call the provider with nothing locked;
+      3. commit its reference. A refusal closes the intent; an ambiguous failure
+         (timeout, 5xx) leaves it pending for the reconciler, which asks the
+         provider by our key — a payment made meanwhile is applied, not lost.
+
+    The owner seat is claimed in step 1 so a device can never sit in two checkouts.
+    A promo grant activates in step 3; anything else waits for the provider's
+    notification (or reconciliation).
     """
     plan = _plan(ctx, plan_code)
     provider = ctx.providers.get(provider_code)
@@ -96,6 +109,8 @@ async def start_checkout(ctx: BillingContext, device: Device, *, plan_code: str,
     async with ctx.store.transaction() as tx:
         if await live_subscription_for_device(tx, device.id) is not None:
             raise Conflict("this phone already has a subscription", code="already_subscribed")
+        if number:
+            await _refuse_number_in_use(ctx, tx, device, number)
         await _close_restarted_checkouts(ctx, tx, device, now)
         await _drop_stale_seat(tx, device.id, now)
         transition = apply(SubState(sub_id, None), CheckoutStarted(plan.code, consent_method), now, ctx.policy())
@@ -108,33 +123,79 @@ async def start_checkout(ctx: BillingContext, device: Device, *, plan_code: str,
         await tx.add_seat(Seat(subscription_id=sub.id, device_id=device.id, role=SeatRole.OWNER, claimed_at=now))
         consent = ConsentInfo(doc=doc, plan=plan, ip_hmac=ctx.hasher.ip(ip) if ip else None)
         await run_effects(ctx, tx, sub, transition.effects, actor=device_actor(device), consent=consent)
-        start = await _provider_start(provider, provider_code, plan, number, sub,
-                                      return_url=ctx.settings.billing_mixplat_return_url)
-        sub = await tx.update_subscription(replace(sub, provider_subscription_id=start.provider_ref),
-                                           expected_version=sub.row_version)
         await tx.create_payment(Payment(
             id=str(uuid.uuid4()), subscription_id=sub.id, provider=sub.provider, idempotency_key=checkout_key(sub.id),
             amount_kopecks=plan.price_kopecks if provider_code not in _GRANT_PROVIDERS else 0,
             status=PaymentStatus.PENDING, created_at=now,
         ))
-        if start.kind == "granted":
+    try:
+        start = await provider.start_checkout(
+            plan_product_id=plan.provider_product_ids.get(provider_code, plan.code.value),
+            amount_kopecks=plan.price_kopecks, msisdn=number, idempotency_key=checkout_key(sub_id),
+            return_url=ctx.settings.billing_mixplat_return_url,
+        )
+    except ProviderUnavailable as e:
+        await _keep_for_reconciliation(ctx, sub_id, device, e)
+        raise NotConfigured("payment provider unavailable, try again", code="provider_error") from e
+    except NotConfiguredError as e:
+        await _close_refused(ctx, sub_id, device, e)
+        raise NotConfigured(str(e)) from e
+    except ProviderError as e:
+        await _close_refused(ctx, sub_id, device, e)
+        raise NotConfigured("payment provider unavailable, try again", code="provider_error") from e
+    async with ctx.store.transaction() as tx:
+        sub = await tx.get_subscription(sub_id, for_update=True)
+        if sub is None:
+            # Closed meanwhile (a failure notification, a newer checkout): the app polls GET /checkout/{id}.
+            return {"checkout_id": sub_id, "kind": start.kind, "url": start.url, "sdk_params": start.sdk_params,
+                    "status": "failed", "provider": provider_code}
+        if sub.provider_subscription_id is None:
+            sub = await tx.update_subscription(replace(sub, provider_subscription_id=start.provider_ref),
+                                               expected_version=sub.row_version)
+        if start.kind == "granted" and sub.status is SubscriptionStatus.PENDING:
             sub, _ = await apply_provider_event(ctx, tx, granted_event(start.provider_ref), actor="system")
     return {"checkout_id": sub.id, "kind": start.kind, "url": start.url, "sdk_params": start.sdk_params,
             "status": sub.status.value, "provider": provider_code}
 
 
-async def _provider_start(provider, provider_code: str, plan: Plan, number: Optional[str], sub: Subscription,
-                          *, return_url: str):
-    try:
-        return await provider.start_checkout(
-            plan_product_id=plan.provider_product_ids.get(provider_code, plan.code.value),
-            amount_kopecks=plan.price_kopecks, msisdn=number, idempotency_key=checkout_key(sub.id),
-            return_url=return_url,
-        )
-    except NotConfiguredError as e:
-        raise NotConfigured(str(e)) from e
-    except (ProviderUnavailable, ProviderError) as e:
-        raise NotConfigured("payment provider unavailable, try again", code="provider_error") from e
+async def _refuse_number_in_use(ctx: BillingContext, tx, device: Device, number: str) -> None:
+    """One paying subscription per phone number.
+
+    A reinstalled app is a new device and a new account: without this check it
+    could buy again while the old subscription keeps charging the same number.
+    Re-linking that subscription to the new install is a separate flow
+    (docs/BILLING.md, "Re-linking a number to a new install").
+    """
+    details = {"msisdn_masked": mask_msisdn(number)}
+    for other in await tx.list_subscriptions_by_msisdn_hmac(ctx.hasher.msisdn(number)):
+        if other.status in _CHARGING_STATUSES:
+            raise Conflict("this phone number already has a subscription", code="subscription_exists_for_number",
+                           details=details)
+        if other.status is SubscriptionStatus.PENDING and other.payer_account_id != device.account_id:
+            raise Conflict("a payment for this phone number is already in progress",
+                           code="checkout_in_progress_for_number", details=details)
+
+
+async def _close_refused(ctx: BillingContext, sub_id: str, device: Device, error: Exception) -> None:
+    """The provider answered and refused: nothing was started, the intent is closed."""
+    async with ctx.store.transaction() as tx:
+        sub = await tx.get_subscription(sub_id, for_update=True)
+        if sub is None or sub.status is not SubscriptionStatus.PENDING:
+            return
+        transition = apply(sub_state(sub), PaymentFailed(FailureReason.OTHER), ctx.now(), ctx.policy())
+        await tx.add_audit(actor=device_actor(device), action="checkout.provider_refused", target=sub_target(sub.id),
+                           meta={"error": type(error).__name__})
+        await run_effects(ctx, tx, sub, transition.effects, actor=device_actor(device))
+        await close_checkout(tx, sub, transition.effects, actor=device_actor(device))
+
+
+async def _keep_for_reconciliation(ctx: BillingContext, sub_id: str, device: Device, error: Exception) -> None:
+    """No answer (timeout, 5xx): the provider may have started the payment. Keep the intent;
+    the reconciler asks by our key, the timeout pass closes it only once nothing is under way."""
+    logger.warning("billing.checkout.provider_unreachable", extra={"error": type(error).__name__})
+    async with ctx.store.transaction() as tx:
+        await tx.add_audit(actor=device_actor(device), action="checkout.provider_unreachable", target=sub_target(sub_id),
+                           meta={"error": type(error).__name__})
 
 
 async def _close_restarted_checkouts(ctx: BillingContext, tx, device: Device, now) -> None:
@@ -227,10 +288,33 @@ async def _resolve(tx, event: BillingEvent) -> Tuple[Optional[Subscription], Opt
     return None, None
 
 
-def _machine_event(event: BillingEvent, payment: Optional[Payment], external: bool):
+_ROUBLES = ("RUB", "RUR", "643")
+
+
+def _money_mismatch(event: BillingEvent, payment: Optional[Payment], *, strict: bool) -> Optional[str]:
+    """Why a success must not be applied: it does not pay what our row expects, in roubles.
+
+    `strict` (MIXPLAT: the notification's signature does not cover the amount)
+    also refuses a success with no amount or no payment row to compare with.
+    """
+    if event.kind is not EventKind.PAYMENT_SUCCEEDED:
+        return None
+    if event.currency is not None and event.currency.strip().upper() not in _ROUBLES:
+        return "currency"
+    if payment is None:
+        return "no_payment_row" if strict else None
+    if event.amount_kopecks is None:
+        return "amount_missing" if strict else None
+    if event.amount_kopecks != payment.amount_kopecks:
+        return "amount"
+    return None
+
+
+def _machine_event(event: BillingEvent, payment: Optional[Payment], external: bool, settles_charge: bool = False):
     payment_id = event.provider_payment_id or (payment.id if payment else "unknown")
     if event.kind is EventKind.PAYMENT_SUCCEEDED:
-        return PaymentSucceeded(payment_id=payment_id, amount_kopecks=event.amount_kopecks or 0, external=external)
+        return PaymentSucceeded(payment_id=payment_id, amount_kopecks=event.amount_kopecks or 0, external=external,
+                                settles_charge=settles_charge)
     if event.kind is EventKind.PAYMENT_FAILED:
         return PaymentFailed(event.failure or FailureReason.OTHER)
     if event.kind is EventKind.SUBSCRIPTION_CANCELLED:
@@ -248,12 +332,23 @@ async def apply_provider_event(ctx: BillingContext, tx, event: BillingEvent, *, 
     if event.test and not ctx.settings.billing_mixplat_test:
         await tx.add_audit(actor=actor, action="event.test_ignored", target=sub_target(sub.id), meta={"kind": event.kind.value})
         return sub, "ignored_test_event"
+    provider = ctx.providers.get(event.provider)
+    problem = _money_mismatch(event, payment, strict=bool(getattr(provider, "confirms_success_by_status", False)))
+    if problem is not None:
+        meta = {"why": problem, "expected_kopecks": payment.amount_kopecks if payment else None,
+                "reported_kopecks": event.amount_kopecks, "currency": event.currency, "event": event.provider_event_id}
+        logger.error("billing.payment.amount_mismatch", extra={"provider": event.provider, **meta})
+        await tx.add_audit(actor=actor, action="payment.amount_mismatch", target=sub_target(sub.id), meta=meta)
+        return sub, "amount_mismatch"
+    settles_charge = (event.kind is EventKind.PAYMENT_SUCCEEDED and payment is not None
+                      and payment.period_start is not None
+                      and payment.status in (PaymentStatus.PENDING, PaymentStatus.FAILED))
     if payment is not None and event.kind is not EventKind.SUBSCRIPTION_CANCELLED:
         payment = await _record_payment(tx, payment, event, sub)
     if event.kind is EventKind.PAYMENT_PENDING:
         return sub, "pending"
-    provider = ctx.providers.get(event.provider)
-    machine_event = _machine_event(event, payment, external=provider is not None and not provider.initiates_renewals)
+    machine_event = _machine_event(event, payment, external=provider is not None and not provider.initiates_renewals,
+                                   settles_charge=settles_charge)
     try:
         transition = apply(sub_state(sub), machine_event, ctx.now(), ctx.policy())
     except InvalidTransition as e:
@@ -277,10 +372,10 @@ async def _record_payment(tx, payment: Payment, event: BillingEvent, sub: Subscr
         EventKind.PAYMENT_SUCCEEDED: PaymentStatus.SUCCEEDED, EventKind.PAYMENT_FAILED: PaymentStatus.FAILED,
         EventKind.REFUNDED: PaymentStatus.REFUNDED, EventKind.PAYMENT_PENDING: PaymentStatus.PENDING,
     }[event.kind]
+    # The amount stays what we asked for: a success that differs never gets this far (_money_mismatch).
     updated = replace(
         payment, status=status, provider_payment_id=event.provider_payment_id or payment.provider_payment_id,
         failure_reason=event.failure if status is PaymentStatus.FAILED else None,
-        amount_kopecks=event.amount_kopecks if event.amount_kopecks is not None else payment.amount_kopecks,
     )
     await tx.update_payment(updated)
     return updated

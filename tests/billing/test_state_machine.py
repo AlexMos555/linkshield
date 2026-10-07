@@ -45,6 +45,7 @@ from api.billing.state_machine import (
     RenewalDue,
     SetDeviceMode,
     SubState,
+    TermEnded,
     add_months,
     allowed_events,
     apply,
@@ -58,6 +59,7 @@ SUB = "sub-1"
 ALL_EVENTS = (
     CheckoutStarted(plan_code=PlanCode.SOLO), PaymentSucceeded(payment_id="p"), PaymentFailed(),
     PendingTimeout(), RenewalDue(), GraceExpired(), CancelRequested(), PeriodEnded(), Refunded(), OperatorStop(),
+    TermEnded(),
 )
 ALL_STATUSES = (None,) + tuple(S)
 
@@ -104,7 +106,8 @@ def test_every_pair_is_either_handled_or_rejected(status, event):
 def test_table_matches_plan_a4():
     assert set(allowed_events(None)) == {CheckoutStarted}
     assert set(allowed_events(S.PENDING)) == {PaymentSucceeded, PaymentFailed, PendingTimeout, CancelRequested}
-    assert set(allowed_events(S.ACTIVE)) == {RenewalDue, PaymentSucceeded, PaymentFailed, CancelRequested, OperatorStop, Refunded}
+    assert set(allowed_events(S.ACTIVE)) == {RenewalDue, PaymentSucceeded, PaymentFailed, CancelRequested, OperatorStop, Refunded,
+                                             TermEnded}
     assert set(allowed_events(S.GRACE)) == {RenewalDue, PaymentSucceeded, PaymentFailed, GraceExpired, CancelRequested, OperatorStop, Refunded}
     assert set(allowed_events(S.LAPSED)) == {CheckoutStarted, Refunded}
     assert set(allowed_events(S.REFUNDED)) == {CheckoutStarted}
@@ -313,6 +316,29 @@ def test_charge_in_flight_before_cancel_is_honoured_when_it_lands():
     assert _effects_of(landed, Audit)[0].action == "payment.after_cancel_honoured"
 
 
+def test_a_fixed_term_grant_lapses_when_its_term_ends():
+    """Promo and partner grants are never charged: their end is the end (2026-10 money-safety fix)."""
+    active = _active()
+    early = apply(active, TermEnded(), active.current_period_end - timedelta(seconds=1), POLICY)
+    assert early.state == active and early.effects == ()
+    ended = apply(active, TermEnded(), active.current_period_end, POLICY)
+    assert ended.state.status is S.LAPSED and ended.state.next_charge_at is None
+    assert _effects_of(ended, SetDeviceMode)[0].mode is ProtectionMode.BASIC
+    assert _effects_of(ended, Audit)[0].meta["after"] == "term_end"
+    assert not _effects_of(ended, Charge)
+
+
+def test_success_for_a_known_unsettled_charge_is_applied_without_a_pending_flag():
+    """Our own charge whose answer we lost (or misread as a refusal) still pays its period when it lands."""
+    active = _active()
+    t = apply(active, PaymentSucceeded("late", settles_charge=True), active.current_period_end, POLICY)
+    assert t.state.current_period_start == active.current_period_end
+    assert t.state.current_period_end == add_months(active.current_period_end, 1)
+    cancelled = apply(active, CancelRequested(), T0, POLICY).state
+    honoured = apply(cancelled, PaymentSucceeded("late", settles_charge=True), T0, POLICY)
+    assert honoured.state.current_period_end == add_months(active.current_period_end, 1)
+
+
 def test_refund_drops_access_immediately():
     t = apply(_active(), Refunded("p1"), T0, POLICY)
     assert t.state.status is S.REFUNDED
@@ -325,7 +351,7 @@ _RANDOM_EVENTS = (
     lambda: CheckoutStarted(PlanCode.SOLO),
     lambda: PaymentSucceeded(payment_id="p"),
     lambda: PaymentFailed(FailureReason.NO_MONEY),
-    PendingTimeout, RenewalDue, GraceExpired, CancelRequested, PeriodEnded, Refunded, OperatorStop,
+    PendingTimeout, RenewalDue, GraceExpired, CancelRequested, PeriodEnded, Refunded, OperatorStop, TermEnded,
 )
 
 

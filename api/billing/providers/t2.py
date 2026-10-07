@@ -38,5 +38,6 @@ class T2DirectProvider:
     def ack_body(self) -> Mapping[str, Any]:
         return {"result": "ok"}
 
-    async def fetch_status(self, *, provider_ref: str) -> Optional[BillingEvent]:
+    async def fetch_status(self, *, provider_ref: Optional[str] = None,
+                           merchant_payment_id: Optional[str] = None) -> Optional[BillingEvent]:
         raise NotConfiguredError(_MESSAGE)
