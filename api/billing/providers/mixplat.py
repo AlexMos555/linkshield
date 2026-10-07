@@ -26,7 +26,14 @@ UNCERTAIN (mark for the MIXPLAT manager before go-live):
     required" and "corporate number" are not documented — they map to OTHER;
   * there is no documented call to STOP a recurrent — we simply never charge
     again after a cancel (`initiates_renewals=True`), and `cancel()` is a no-op;
-  * webhook source IPs and retry cadence are not published.
+  * webhook source IPs and retry cadence are not published
+    (BILLING_MIXPLAT_WEBHOOK_IPS is an optional allowlist, empty = off);
+  * the notification's md5 covers payment_id only, so every success is
+    re-checked with get_payment_status before it is applied;
+  * `amount` vs `amount_merchant` (we read `amount` as what the subscriber
+    paid) and the name/format of the currency field (`currency`, "RUB");
+  * there is no documented method to SEND an SMS (needed for a one-time
+    code on /cancel-by-phone) — none is used.
 
 Disabled (NotConfiguredError) until BILLING_MIXPLAT_PROJECT_ID and
 BILLING_MIXPLAT_API_KEY are set.
@@ -75,13 +82,24 @@ def failure_reason(status_extended: Optional[str]) -> FailureReason:
 
 
 def parse_payment_status(payload: Mapping[str, Any], *, api_key: str) -> BillingEvent:
-    """Turn a `payment_status` notification into a BillingEvent, checking its md5."""
+    """Turn a `payment_status` notification into a BillingEvent, checking its md5.
+
+    The md5 covers `payment_id` only — status, amount and currency are NOT
+    signed. The service therefore never applies a success on the strength of
+    this notification alone: it asks `get_payment_status` and compares the
+    answer with its own payment row (service/webhooks.py, 2026-10 fix).
+    """
     if payload.get("request") not in (None, "payment_status"):
         raise InvalidSignature(f"unexpected notification type {payload.get('request')!r}")
     payment_id = str(payload.get("payment_id") or "")
     presented = str(payload.get("signature") or "")
     if not payment_id or not hmac.compare_digest(presented, md5_signature(payment_id, api_key=api_key)):
         raise InvalidSignature("bad payment_status signature")
+    return _event(payload, payment_id=payment_id)
+
+
+def _event(payload: Mapping[str, Any], *, payment_id: Optional[str],
+           merchant_payment_id: Optional[str] = None) -> BillingEvent:
     status = payload.get("status")
     if status == "success":
         kind = EventKind.PAYMENT_SUCCEEDED
@@ -91,18 +109,23 @@ def parse_payment_status(payload: Mapping[str, Any], *, api_key: str) -> Billing
         kind = EventKind.PAYMENT_PENDING
     else:
         raise InvalidSignature(f"unknown status {status!r}")
-    amount = payload.get("amount_merchant", payload.get("amount"))
+    # `amount` is what the subscriber paid; `amount_merchant` is what reaches us after the
+    # aggregator's commission (to confirm with the MIXPLAT manager) — the former is compared
+    # with the price, the latter only when the former is missing.
+    amount = payload.get("amount", payload.get("amount_merchant"))
+    merchant = _opt_str(payload.get("merchant_payment_id")) or merchant_payment_id
     return BillingEvent(
         provider=MixplatProvider.code,
-        provider_event_id=f"{payment_id}:{status}",
+        provider_event_id=f"{payment_id}:{status}" if payment_id else f"merchant:{merchant}:{status}",
         kind=kind,
         occurred_at=_epoch(payload.get("date_processed") or payload.get("date_created")),
         provider_subscription_id=_opt_str(payload.get("recurrent_id")),
-        provider_payment_id=payment_id,
-        merchant_payment_id=_opt_str(payload.get("merchant_payment_id")),
+        provider_payment_id=payment_id or None,
+        merchant_payment_id=merchant,
         amount_kopecks=int(amount) if amount not in (None, "") else None,
         failure=failure_reason(payload.get("status_extended")) if kind is EventKind.PAYMENT_FAILED else None,
         test=str(payload.get("test", "0")) in ("1", "true", "True"),
+        currency=_opt_str(payload.get("currency")),
     )
 
 
@@ -129,6 +152,9 @@ def _epoch(value: Any) -> float:
 class MixplatProvider:
     code = "mixplat"
     initiates_renewals = True
+    # The notification's md5 does not cover status or amount: a success is applied only
+    # after get_payment_status confirms it (service/webhooks.py).
+    confirms_success_by_status = True
 
     def __init__(self, *, project_id: int, api_key: str, test: bool = True,
                  base_url: str = "https://api.mixplat.com", http_post=None) -> None:
@@ -245,14 +271,23 @@ class MixplatProvider:
     def ack_body(self) -> Mapping[str, Any]:
         return {"result": "ok"}
 
-    async def fetch_status(self, *, provider_ref: str) -> Optional[BillingEvent]:
+    async def fetch_status(self, *, provider_ref: Optional[str] = None,
+                           merchant_payment_id: Optional[str] = None) -> Optional[BillingEvent]:
+        """get_payment_status by MIXPLAT's payment_id, or — when we never learnt it (a renewal
+        call that timed out) — by our merchant_payment_id, which the method also accepts."""
         self._require()
-        reply = await self._call("get_payment_status", self.status_request(payment_id=provider_ref))
+        if not provider_ref and not merchant_payment_id:
+            return None
+        if provider_ref:
+            body = self.status_request(payment_id=provider_ref)
+        else:
+            body = self.status_request(merchant_payment_id=merchant_payment_id or "")
+        reply = await self._call("get_payment_status", body)
         if reply.get("status") not in ("success", "failure", "pending"):
             return None
-        # get_payment_status answers are not signed; we sign the synthetic notification ourselves.
-        payload = dict(reply, payment_id=provider_ref, signature=md5_signature(provider_ref, api_key=self._api_key))
-        return parse_payment_status(payload, api_key=self._api_key)
+        # get_payment_status answers are not signed; they come over our own TLS request.
+        payment_id = _opt_str(reply.get("payment_id")) or provider_ref
+        return _event(reply, payment_id=payment_id, merchant_payment_id=merchant_payment_id)
 
     # ── HTTP ──
 

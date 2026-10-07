@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from api.billing import partner as partner_service
 from api.billing.deps import (
     IDEMPOTENCY_HEADER,
+    client_ip,
     current_device,
     fail,
     get_context,
@@ -41,6 +42,7 @@ from api.billing.service.webhooks import MAX_WEBHOOK_BODY_BYTES, ingest_webhook
 router = APIRouter(prefix="/billing/v1", tags=["billing"])
 
 _MINUTE = 60
+_DAY = 24 * 3600
 
 
 # ── Request models ──
@@ -171,6 +173,11 @@ async def cancel_subscription(device: Device = Depends(current_device)):
 async def cancel_by_phone(body: CancelByPhoneRequest, request: Request,
                           _limit: None = Depends(ip_limit("cancel_by_phone", "billing_cancel_by_phone_per_ip_per_hour"))):
     ctx = await get_context()
+    # Nobody can prove owning the number here yet (the aggregator documents no SMS-sending API
+    # for a one-time code — docs/BILLING.md, open question): the number itself is limited strictly.
+    phone_key = _phone_limit_key(ctx, body.msisdn)
+    if phone_key:
+        await limit_key(phone_key, "cancel_by_phone:phone", ctx.settings.billing_cancel_by_phone_per_phone_per_day, _DAY)
     await cancel_service.cancel_by_phone(ctx, msisdn=body.msisdn, ip=request.client.host if request.client else None)
     # The same answer whether or not the number had a subscription (no enumeration).
     return ok({"message": "Если на этом номере была подписка, она отменена. Больше ничего не спишется."})
@@ -223,7 +230,8 @@ async def provider_webhook(provider: str, request: Request):
     body = await request.body()
     if len(body) > MAX_WEBHOOK_BODY_BYTES:
         return JSONResponse(status_code=413, content=fail("too_large", "webhook body too large"))
-    status, payload = await ingest_webhook(ctx, provider_code=provider, headers=dict(request.headers), body=body)
+    status, payload = await ingest_webhook(ctx, provider_code=provider, headers=dict(request.headers), body=body,
+                                           ip=client_ip(request))
     return JSONResponse(status_code=status, content=payload)
 
 

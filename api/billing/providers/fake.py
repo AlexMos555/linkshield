@@ -59,6 +59,8 @@ class FakeProvider:
         self.renewals: List[Dict[str, Any]] = []
         self.cancelled: List[str] = []
         self.refunds: List[Dict[str, Any]] = []
+        # What get-status reports for a renewal, by idempotency key (absent = the charge went through).
+        self.renewal_script: Dict[str, Optional[FailureReason]] = {}
 
     # ── BillingProvider ──
 
@@ -102,11 +104,25 @@ class FakeProvider:
     def ack_body(self) -> Mapping[str, Any]:
         return {"success": True}
 
-    async def fetch_status(self, *, provider_ref: str) -> Optional[BillingEvent]:
-        checkout = self.checkouts.get(provider_ref)
+    async def fetch_status(self, *, provider_ref: Optional[str] = None,
+                           merchant_payment_id: Optional[str] = None) -> Optional[BillingEvent]:
+        renewal = next((r for r in self.renewals
+                        if (provider_ref and r["payment_id"] == provider_ref)
+                        or (merchant_payment_id and r["idempotency_key"] == merchant_payment_id)), None)
+        if renewal is not None:
+            outcome = self.renewal_script.get(renewal["idempotency_key"])
+            payload = self.event_payload(renewal["provider_subscription_id"], outcome=outcome,
+                                         payment_id=renewal["payment_id"], amount_kopecks=renewal["amount_kopecks"],
+                                         merchant_payment_id=renewal["idempotency_key"],
+                                         event_id=f"status_{renewal['payment_id']}")
+            return self._event_from(payload)
+        ref = provider_ref if provider_ref in self.checkouts else next(
+            (r for r, c in self.checkouts.items() if merchant_payment_id and c["idempotency_key"] == merchant_payment_id), None)
+        checkout = self.checkouts.get(ref) if ref else None
         if checkout is None or checkout["pending_forever"]:
             return None
-        return self._event_from(self.event_payload(provider_ref, outcome=checkout["outcome"]))
+        return self._event_from(self.event_payload(ref, outcome=checkout["outcome"],
+                                                   merchant_payment_id=checkout["idempotency_key"]))
 
     # ── Test helpers ──
 
@@ -120,7 +136,8 @@ class FakeProvider:
 
     def event_payload(self, provider_ref: str, *, outcome: Optional[FailureReason] = None,
                       event_id: Optional[str] = None, kind: Optional[str] = None,
-                      payment_id: Optional[str] = None, amount_kopecks: Optional[int] = None) -> Dict[str, Any]:
+                      payment_id: Optional[str] = None, amount_kopecks: Optional[int] = None,
+                      merchant_payment_id: Optional[str] = None) -> Dict[str, Any]:
         """The JSON the Fake 'aggregator' would POST for a checkout or renewal."""
         checkout = self.checkouts.get(provider_ref, {})
         resolved_kind = kind or ("payment_failed" if outcome else "payment_succeeded")
@@ -132,6 +149,7 @@ class FakeProvider:
             "amount_kopecks": amount_kopecks if amount_kopecks is not None else checkout.get("amount_kopecks"),
             "failure": outcome.value if outcome else None,
             "occurred_at": time.time(),
+            "merchant_payment_id": merchant_payment_id,
         }
 
     def _event_from(self, payload: Mapping[str, Any]) -> BillingEvent:
@@ -143,6 +161,7 @@ class FakeProvider:
                 occurred_at=float(payload.get("occurred_at") or time.time()),
                 provider_subscription_id=payload.get("subscription_ref"),
                 provider_payment_id=payload.get("payment_id"),
+                merchant_payment_id=payload.get("merchant_payment_id"),
                 amount_kopecks=int(payload["amount_kopecks"]) if payload.get("amount_kopecks") is not None else None,
                 failure=failure,
             )

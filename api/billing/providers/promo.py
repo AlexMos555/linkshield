@@ -38,8 +38,9 @@ class PromoProvider:
     def ack_body(self) -> Mapping[str, Any]:
         return {"success": True}
 
-    async def fetch_status(self, *, provider_ref: str) -> Optional[BillingEvent]:
-        return granted_event(provider_ref)
+    async def fetch_status(self, *, provider_ref: Optional[str] = None,
+                           merchant_payment_id: Optional[str] = None) -> Optional[BillingEvent]:
+        return granted_event(provider_ref) if provider_ref else None
 
 
 def granted_event(provider_ref: str, *, amount_kopecks: int = 0) -> BillingEvent:

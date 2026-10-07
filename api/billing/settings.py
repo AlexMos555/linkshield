@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import ipaddress
 import logging
 from functools import lru_cache
 from typing import Literal, Optional
@@ -22,7 +23,7 @@ from typing import Literal, Optional
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
-from api.config import ConfigError
+from api.config import ConfigError, Environment
 
 logger = logging.getLogger("cleanway.billing.settings")
 
@@ -43,6 +44,10 @@ class BillingSettings(BaseSettings):
     # env (the phone-number database must not be reachable from there).
     billing_enabled: bool = False
     role: Role = Field(default="api", validation_alias=AliasChoices("ROLE", "BILLING_ROLE"))
+    # The same ENVIRONMENT the main API validates against (api/config.py).
+    # In production the billing role refuses test-mode payments and the Fake provider.
+    environment: Environment = Field(default="development",
+                                     validation_alias=AliasChoices("ENVIRONMENT", "BILLING_ENVIRONMENT"))
 
     # ── The separate Russian database (152-ФЗ) ──
     database_url_billing: str = Field(
@@ -93,7 +98,15 @@ class BillingSettings(BaseSettings):
     billing_fake_provider_enabled: bool = False
     billing_mixplat_project_id: int = 0
     billing_mixplat_api_key: str = ""
+    # Sandbox payments (no real money). Defaults to true so nothing is charged by
+    # accident; in ENVIRONMENT=production startup refuses it unless
+    # BILLING_MIXPLAT_TEST_ALLOWED_IN_PRODUCTION=true (a deliberate, logged choice,
+    # e.g. a smoke test on the production host before launch).
     billing_mixplat_test: bool = True
+    billing_mixplat_test_allowed_in_production: bool = False
+    # Optional allowlist of webhook source addresses: comma-separated IPs or CIDRs.
+    # Empty = off (MIXPLAT does not publish its addresses; ask the manager).
+    billing_mixplat_webhook_ips: str = ""
     billing_mixplat_base_url: str = "https://api.mixplat.com"
     billing_mixplat_return_url: str = "https://cleanway.ai/ru/subscription/return"
     # Partner licences (T2 "option" model): HMAC key the partner signs with.
@@ -109,6 +122,9 @@ class BillingSettings(BaseSettings):
     billing_checkout_per_device_per_hour: int = 10
     billing_checkout_per_phone_per_hour: int = 5
     billing_cancel_by_phone_per_ip_per_hour: int = 10
+    # /cancel-by-phone cannot prove the caller owns the number (no SMS-sending API at
+    # the aggregator yet), so the number itself is limited strictly, whatever the IP.
+    billing_cancel_by_phone_per_phone_per_day: int = 3
     billing_webhooks_per_ip_per_minute: int = 600
 
     # populate_by_name: the aliased fields (ROLE, DATABASE_URL_BILLING) can also
@@ -120,6 +136,11 @@ class BillingSettings(BaseSettings):
     def retry_days(self) -> tuple:
         """The retry schedule as a tuple of ints, ignoring blanks."""
         return tuple(int(d) for d in self.billing_retry_days.split(",") if d.strip())
+
+    def webhook_networks(self) -> tuple:
+        """BILLING_MIXPLAT_WEBHOOK_IPS parsed; () = no allowlist. Raises ValueError when malformed."""
+        return tuple(ipaddress.ip_network(part.strip(), strict=False)
+                     for part in self.billing_mixplat_webhook_ips.split(",") if part.strip())
 
     def routes_enabled(self) -> bool:
         """True only when this process must serve /billing/v1."""
@@ -170,6 +191,11 @@ def validate_billing_settings(settings: BillingSettings) -> None:
         raise ConfigError("BILLING_PLAN_VERSION must be >= 1.")
     if not settings.retry_days():
         raise ConfigError("BILLING_RETRY_DAYS must list at least one day.")
+    try:
+        settings.webhook_networks()
+    except ValueError as e:
+        raise ConfigError(f"BILLING_MIXPLAT_WEBHOOK_IPS is not a list of IPs / CIDRs: {e}") from e
+    _validate_production(settings)
     logger.info(
         "billing.settings.validated",
         extra={
@@ -178,8 +204,26 @@ def validate_billing_settings(settings: BillingSettings) -> None:
             "lapse_policy": settings.billing_lapse_policy,
             "fake_provider": settings.billing_fake_provider_enabled,
             "mixplat": bool(settings.billing_mixplat_api_key),
+            "mixplat_test": settings.billing_mixplat_test,
+            "environment": settings.environment,
         },
     )
+
+
+def _validate_production(settings: BillingSettings) -> None:
+    """Production must take real money and only real money."""
+    if settings.environment != "production":
+        return
+    if settings.billing_fake_provider_enabled:
+        raise ConfigError("BILLING_FAKE_PROVIDER_ENABLED must be false in ENVIRONMENT=production.")
+    if settings.billing_mixplat_test:
+        if not settings.billing_mixplat_test_allowed_in_production:
+            raise ConfigError(
+                "BILLING_MIXPLAT_TEST=true (sandbox, no real money) in ENVIRONMENT=production. "
+                "Set BILLING_MIXPLAT_TEST=false, or BILLING_MIXPLAT_TEST_ALLOWED_IN_PRODUCTION=true "
+                "for a deliberate test on the production host."
+            )
+        logger.warning("billing.settings.mixplat_test_mode_in_production")
 
 
 @lru_cache

@@ -55,6 +55,7 @@ def _enabled(**overrides) -> BillingSettings:
     base = dict(
         billing_enabled=True, role="billing", database_url_billing="postgresql://localhost/billing",
         billing_entitlement_private_key=_b64(32), billing_msisdn_key=_b64(32), billing_hmac_key=_b64(32),
+        environment="development",
     )
     base.update(overrides)
     return _make(**base)
@@ -78,6 +79,38 @@ def test_enabled_role_validates():
 def test_enabled_role_fails_fast(overrides, match):
     with pytest.raises(ConfigError, match=match):
         validate_billing_settings(_enabled(**overrides))
+
+
+def test_production_refuses_mixplat_test_mode_unless_explicitly_allowed():
+    """BILLING_MIXPLAT_TEST defaults to true: in production that would take no real money."""
+    assert _make().billing_mixplat_test is True
+    with pytest.raises(ConfigError, match="BILLING_MIXPLAT_TEST"):
+        validate_billing_settings(_enabled(environment="production"))
+    validate_billing_settings(_enabled(environment="production", billing_mixplat_test=False))
+    validate_billing_settings(_enabled(environment="production", billing_mixplat_test_allowed_in_production=True))
+    validate_billing_settings(_enabled(environment="staging"))
+    validate_billing_settings(_enabled(environment="development"))
+
+
+def test_production_refuses_the_fake_provider():
+    with pytest.raises(ConfigError, match="BILLING_FAKE_PROVIDER_ENABLED"):
+        validate_billing_settings(_enabled(environment="production", billing_mixplat_test=False,
+                                           billing_fake_provider_enabled=True))
+
+
+def test_environment_comes_from_the_shared_env_name(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("BILLING_MIXPLAT_TEST_ALLOWED_IN_PRODUCTION", "true")
+    monkeypatch.setenv("BILLING_MIXPLAT_WEBHOOK_IPS", "185.77.232.0/24")
+    s = _make()
+    assert s.environment == "production" and s.billing_mixplat_test_allowed_in_production is True
+    assert s.billing_mixplat_webhook_ips == "185.77.232.0/24"
+
+
+@pytest.mark.parametrize("value", ["not-an-ip", "10.0.0.0/33"])
+def test_a_malformed_webhook_allowlist_fails_fast(value):
+    with pytest.raises(ConfigError, match="BILLING_MIXPLAT_WEBHOOK_IPS"):
+        validate_billing_settings(_enabled(billing_mixplat_webhook_ips=value))
 
 
 def test_decode_key():
