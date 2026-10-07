@@ -347,39 +347,45 @@ async def register_device(
     data: DeviceRegister,
     user: AuthUser = Depends(get_current_user),
 ):
-    """Register or update device for multi-device sync."""
-    import httpx
+    """Register or update a device. DEPRECATED — use POST /api/v1/me/devices.
 
-    settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
-        return {"status": "ok"}
+    Kept for old clients, but it now goes through the same registration as
+    the new route, so it can't link devices past the plan's device limit
+    (it used to upsert straight into `devices` and answer "ok" even when
+    the write failed). Old platform names (chrome / firefox / safari) map
+    to 'extension'."""
+    from api.services import account_devices as devices_svc
 
+    if not devices_svc.valid_device_id(data.device_hash):
+        raise HTTPException(422, detail={"code": "invalid_device_id", "error": "Invalid device id."})
     try:
-        headers = {
-            "apikey": settings.supabase_service_key,
-            "Authorization": f"Bearer {settings.supabase_service_key}",
-            "Content-Type": "application/json",
-            "Prefer": "resolution=merge-duplicates",
-        }
-
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(
-                f"{settings.supabase_url}/rest/v1/devices",
-                headers=headers,
-                json={
-                    "user_id": user.id,
-                    "device_hash": data.device_hash,
-                    "platform": data.platform,
-                    "app_version": data.app_version,
-                    "last_seen": datetime.now(timezone.utc).isoformat(),
-                },
-            )
-
-        return {"status": "ok"}
-
-    except Exception as e:
+        await devices_svc.register(
+            account_id=user.id,
+            device_id=data.device_hash,
+            platform=devices_svc.legacy_platform(data.platform),
+            name=None,
+            app_version=data.app_version,
+            session_id=user.session_id,
+        )
+    except devices_svc.DeviceRevoked:
+        raise HTTPException(
+            403,
+            detail={"code": "device_revoked", "error": "This device was removed from your account."},
+        )
+    except devices_svc.DeviceLimitReached as e:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "device_limit_reached",
+                "error": "All devices of your plan are in use. Unlink one first.",
+                "device_limit": e.entitlement.device_limit,
+                "devices_used": len(e.devices),
+            },
+        )
+    except devices_svc.StoreUnavailable as e:
         logger.error("device_register_error", extra={"error": str(e)})
-        return {"status": "ok"}
+        raise HTTPException(503, detail={"code": "account_unavailable", "error": "Try again later."})
+    return {"status": "ok"}
 
 
 _ALLOWED_LOCALES = frozenset(
@@ -587,7 +593,8 @@ async def get_profile(user: AuthUser = Depends(get_current_user)):
                 devices_resp, user_resp = await asyncio.gather(
                     client.get(
                         f"{settings.supabase_url}/rest/v1/devices",
-                        params={"user_id": f"eq.{user.id}", "select": "id"},
+                        # Linked devices only — an unlinked one no longer counts.
+                        params={"user_id": f"eq.{user.id}", "revoked_at": "is.null", "select": "id"},
                         headers={**headers, "Range-Unit": "items", "Range": "0-0"},
                     ),
                     client.get(
@@ -1164,6 +1171,7 @@ async def export_user_data(
     tables: list[tuple[str, str, str]] = [
         ("users", "id", "*"),
         ("subscriptions", "user_id", "*"),
+        ("entitlements", "account_id", "*"),
         ("user_settings", "user_id", "*"),
         ("devices", "user_id", "*"),
         ("weekly_aggregates", "user_id", "*"),

@@ -143,3 +143,6 @@ class AuthUser(BaseModel):
     id: str
     email: Optional[str] = None
     tier: UserTier = UserTier.free
+    # Supabase Auth session behind the JWT (`session_id` claim). Stored on
+    # the device row so unlinking a device can end exactly that session.
+    session_id: Optional[str] = None

@@ -304,14 +304,19 @@ async def _check_window_limit(
         return limit
 
 
-async def check_sensitive_action_limit(user: AuthUser, category: str) -> int:
+async def check_sensitive_action_limit(
+    user: AuthUser, category: str, limit: Optional[int] = None
+) -> int:
     """
     Stricter per-user limit for sensitive actions (payments, org creation).
 
     Uses a separate key space from daily quota so it doesn't consume user's
-    normal quota.
+    normal quota. `limit` overrides SENSITIVE_ACTION_LIMIT for one category
+    (per hour window) — account screens and device heartbeats need more than
+    10 an hour, but must not eat the free user's daily check quota either.
     """
     settings = get_settings()
+    allowed = limit if limit is not None else settings.sensitive_action_limit
     key = f"rate:sensitive:{category}:{user.id}"
     try:
         r = await get_redis()
@@ -319,7 +324,7 @@ async def check_sensitive_action_limit(user: AuthUser, category: str) -> int:
             r, key, settings.sensitive_action_window_seconds
         )
 
-        if current > settings.sensitive_action_limit:
+        if current > allowed:
             ttl = await r.ttl(key)
             logger.warning(
                 "sensitive_action_limit_exceeded",
@@ -337,7 +342,7 @@ async def check_sensitive_action_limit(user: AuthUser, category: str) -> int:
                     "retry_after_seconds": max(ttl, 1),
                 },
             )
-        return settings.sensitive_action_limit - current
+        return allowed - current
     except HTTPException:
         raise
     except Exception as e:
@@ -352,7 +357,7 @@ async def check_sensitive_action_limit(user: AuthUser, category: str) -> int:
                     "retry_after_seconds": 30,
                 },
             )
-        return settings.sensitive_action_limit
+        return allowed
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -490,6 +495,7 @@ def rate_limit(
     category: str = "default",
     mode: RateLimitMode = "user",
     install_aware: bool = False,
+    limit: Optional[int] = None,
 ) -> Callable:
     """
     FastAPI dependency factory.
@@ -539,7 +545,7 @@ def rate_limit(
         async def sensitive_dep(
             user: AuthUser = Depends(get_current_user_including_deleted),
         ) -> None:
-            await check_sensitive_action_limit(user, category)
+            await check_sensitive_action_limit(user, category, limit)
 
         return sensitive_dep
 
