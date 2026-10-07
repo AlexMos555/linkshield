@@ -40,12 +40,15 @@ export async function generateMetadata({
 
 type Props = {
   /** `error` is the stable code /auth/callback leaves when a link failed. */
-  searchParams: Promise<{ plan?: string; interval?: string; error?: string }>;
+  searchParams: Promise<{ plan?: string; interval?: string; error?: string; next?: string }>;
   params: Promise<{ locale: string }>;
 };
 
 const VALID_PLANS = new Set(["personal", "family", "business"]);
 const VALID_INTERVALS = new Set(["monthly", "yearly"]);
+// Where `?next=` may send someone after sign-in. An allowlist, never a free
+// path: anything else would be an open redirect.
+const VALID_NEXT = new Set(["/account"]);
 
 const PLAN_LABELS: Record<string, string> = {
   personal: "Personal",
@@ -125,7 +128,12 @@ export default async function SignupPage({ searchParams, params }: Props) {
           </div>
         )}
 
-        <SignupForm planFromQuery={plan} intervalFromQuery={interval} errorFromQuery={sp.error ?? null} />
+        <SignupForm
+          planFromQuery={plan}
+          intervalFromQuery={interval}
+          errorFromQuery={sp.error ?? null}
+          nextFromQuery={sp.next && VALID_NEXT.has(sp.next) ? sp.next : null}
+        />
 
         {/* Privacy reassurance */}
         <div style={{ marginTop: 28, padding: "16px 18px", background: "#1e293b80", borderRadius: 10, border: "1px solid #1e293b" }}>

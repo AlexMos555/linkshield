@@ -12,6 +12,7 @@
  * one reads a namespace missing here — otherwise it would render raw keys.
  */
 export const CLIENT_NAMESPACES = [
+  "Account",
   "AccountRestore",
   "Check",
   "LanguageSwitcher",

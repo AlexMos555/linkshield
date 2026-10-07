@@ -35,6 +35,8 @@ interface SignupFormProps {
   intervalFromQuery: string | null;
   /** `?error=` left by /auth/callback when a magic link could not sign in. */
   errorFromQuery?: string | null;
+  /** Allowlisted page to return to after sign-in (page.tsx checks it), e.g. "/account". */
+  nextFromQuery?: string | null;
 }
 
 type Step = "email" | "code";
@@ -63,7 +65,12 @@ type Step = "email" | "code";
  * mailbox works, the form opens a mailto: so the lead isn't lost; if it
  * doesn't (lib/support.ts), it says plainly that signing in is unavailable.
  */
-export default function SignupForm({ planFromQuery, intervalFromQuery, errorFromQuery }: SignupFormProps) {
+export default function SignupForm({
+  planFromQuery,
+  intervalFromQuery,
+  errorFromQuery,
+  nextFromQuery,
+}: SignupFormProps) {
   const t = useTranslations("Signup");
   const nav = useTranslations("Nav");
   const locale = useLocale();
@@ -103,7 +110,7 @@ export default function SignupForm({ planFromQuery, intervalFromQuery, errorFrom
 
   const nextPath = planFromQuery
     ? `${localePath(locale, "/pricing")}?plan=${planFromQuery}${intervalFromQuery ? `&interval=${intervalFromQuery}` : ""}`
-    : localePath(locale, "/");
+    : localePath(locale, nextFromQuery || "/");
 
   const queryError = queryErrorKey(errorFromQuery);
 
