@@ -69,6 +69,11 @@ class FakeSubscriptionsTable:
     """Captures POSTs to /rest/v1/subscriptions so we can assert on the
     body AND the URL (the latter pins the `on_conflict=user_id` upsert
     semantics introduced after migration 013).
+
+    Also serves GET lookups from `rows` (the webhook resolves the user
+    behind a refund / dispute / metadata-less subscription event via
+    provider_subscription_id or stripe_customer_id), and can simulate a
+    failing write via `post_status` / `post_error`.
     """
 
     def __init__(self) -> None:
@@ -78,17 +83,22 @@ class FakeSubscriptionsTable:
         # existing subscriptions assertions undisturbed when audit
         # rows fire alongside the main write.
         self.audit_posts: List[Dict[str, Any]] = []
+        self.rows: List[Dict[str, Any]] = []
+        self.gets: List[Dict[str, Any]] = []
+        self.post_status = 201
+        self.post_error: Optional[Exception] = None
 
     def build(self):
         recorder = self
 
         class _Resp:
-            def __init__(self, status: int):
+            def __init__(self, status: int, body: Any = None):
                 self.status_code = status
-                self.text = ""
+                self.text = "" if status < 400 else "upstream error"
+                self._body = body
 
             def json(self):
-                return [{"ok": True}]
+                return self._body if self._body is not None else [{"ok": True}]
 
         class _Client:
             def __init__(self, *_a, **_k):
@@ -102,11 +112,29 @@ class FakeSubscriptionsTable:
 
             async def post(self, url, headers=None, json=None, params=None):
                 if "/rest/v1/subscriptions" in url:
+                    if recorder.post_error is not None:
+                        raise recorder.post_error
+                    if recorder.post_status >= 300:
+                        return _Resp(recorder.post_status)
                     recorder.posts.append(json or {})
                     recorder.urls.append(url)
                 elif "/rest/v1/audit_log" in url:
                     recorder.audit_posts.append(json or {})
                 return _Resp(201)
+
+            async def get(self, url, params=None, headers=None, **_kw):
+                params = dict(params or {})
+                recorder.gets.append({"url": url, "params": params})
+                matches = list(recorder.rows)
+                for col, cond in params.items():
+                    if col in ("select", "limit", "order"):
+                        continue
+                    want = cond.split(".", 1)[1] if "." in cond else cond
+                    matches = [r for r in matches if str(r.get(col)) == want]
+                return _Resp(200, matches[:1])
+
+            async def patch(self, url, params=None, json=None, headers=None, **_kw):
+                return _Resp(204)
 
         return _Client
 
@@ -122,29 +150,27 @@ def fake_subscriptions(monkeypatch):
 
 class FakeRedis:
     """Just enough surface for _update_subscription's invalidation step
-    and the webhook idempotency gate."""
+    and the webhook idempotency gate (SET NX lease → SET done marker →
+    DELETE on failure)."""
 
     def __init__(self) -> None:
         self.deleted: List[str] = []
-        # Tracks keys claimed via SET NX so the idempotency gate sees
-        # the second call to the same event.id as a duplicate.
-        self._claimed: set[str] = set()
+        self.kv: Dict[str, Any] = {}
 
     async def delete(self, key: str):
         self.deleted.append(key)
-        self._claimed.discard(key)
+        self.kv.pop(key, None)
         return 1
+
+    async def get(self, key: str):
+        return self.kv.get(key)
 
     async def set(self, key: str, value, nx: bool = False, ex: int | None = None):
         """Mirror redis-py's set(..., nx=True): returns truthy when the
         key was NOT previously set; falsy on re-set."""
-        if nx:
-            if key in self._claimed:
-                return None  # already taken — duplicate
-            self._claimed.add(key)
-            return True
-        # Non-NX path isn't used by the webhook, but be permissive.
-        self._claimed.add(key)
+        if nx and key in self.kv:
+            return None  # already taken — duplicate
+        self.kv[key] = value
         return True
 
 
@@ -472,16 +498,18 @@ def test_concurrent_duplicate_delivery_processes_once(
     with ThreadPoolExecutor(max_workers=8) as pool:
         responses = list(pool.map(lambda _: _post(), range(8)))
 
-    # All requests succeed at the HTTP level.
-    assert all(r.status_code == 200 for r in responses), [r.status_code for r in responses]
-
-    # Exactly ONE response should have processed the event; the other
-    # seven should be marked duplicate. The fake Redis SET NX is
-    # atomic, so only the first caller wins the slot.
-    processed = [r for r in responses if r.json().get("duplicate") is not True]
-    dupes = [r for r in responses if r.json().get("duplicate") is True]
-    assert len(processed) == 1, f"expected 1 processed, got {len(processed)}"
-    assert len(dupes) == 7, f"expected 7 dupes, got {len(dupes)}"
+    # Exactly ONE delivery processed the event. Every other delivery is
+    # either a completed duplicate (200 + duplicate:true) or arrived
+    # while the first was still in flight (409 — Stripe retries it
+    # later and then sees the done marker). Nothing else is acceptable.
+    processed = [
+        r for r in responses
+        if r.status_code == 200 and r.json().get("duplicate") is not True
+    ]
+    dupes = [r for r in responses if r.status_code == 200 and r.json().get("duplicate") is True]
+    in_flight = [r for r in responses if r.status_code == 409]
+    assert len(processed) == 1, [(r.status_code, r.text) for r in responses]
+    assert len(dupes) + len(in_flight) == 7, [(r.status_code, r.text) for r in responses]
 
     # And exactly one Supabase subscription upsert happened.
     assert len(fake_subscriptions.posts) == 1
@@ -906,147 +934,433 @@ def test_epoch_to_iso_helper():
     assert iso == datetime.fromtimestamp(1786723200, tz=timezone.utc).isoformat()
 
 
+
+
 # ─── charge.refunded ────────────────────────────────────────────────
+#
+# Invoice charges (every renewal, and the first payment after a trial)
+# carry NO metadata.user_id — Stripe only copies subscription metadata
+# onto the subscription. The handler finds the user via the customer.
+# The subscriptions CHECK only allows active / cancelled / expired /
+# past_due, so 'refunded' can never be written.
+
+_ALLOWED_STATUSES = {"active", "cancelled", "expired", "past_due"}
 
 
-def test_charge_refunded_full_drops_user_to_free(
-    client, supabase_ok, fake_subscriptions, fake_redis
-):
-    """A full refund must immediately downgrade the user's tier — they
-    got their money back, we don't want to leave paid access on for
-    the rest of the billing period."""
-    payload = _event(
-        "charge.refunded",
-        {
-            "id": "ch_test_refund_full",
-            "customer": "cus_test_refund",
-            "metadata": {"user_id": "user-refunded"},
-            "amount": 9900,
-            "amount_refunded": 9900,
-            "currency": "usd",
-            "refunds": {"data": [{"reason": "requested_by_customer"}]},
-        },
-    )
-    resp = client.post(
+def _paid_row(user_id: str, sub_id: str, customer: Optional[str]) -> Dict[str, Any]:
+    return {
+        "user_id": user_id,
+        "tier": "personal",
+        "status": "active",
+        "provider": "stripe",
+        "provider_subscription_id": sub_id,
+        "stripe_customer_id": customer,
+        "trial_used_at": None,
+    }
+
+
+def _invoice_charge(**overrides) -> Dict[str, Any]:
+    charge = {
+        "id": "ch_invoice_1",
+        "object": "charge",
+        "customer": "cus_refund",
+        "invoice": "in_latest",
+        "metadata": {},  # invoice charges never carry our user_id
+        "amount": 499,
+        "amount_refunded": 499,
+        "currency": "usd",
+        "refunds": {"data": [{"reason": "requested_by_customer"}]},
+    }
+    charge.update(overrides)
+    return charge
+
+
+def _post_event(client, event_type: str, data: Dict[str, Any], event_id: Optional[str] = None):
+    body = json.loads(_event(event_type, data).decode())
+    if event_id:
+        body["id"] = event_id
+    payload = json.dumps(body).encode()
+    return client.post(
         "/api/v1/payments/webhook",
         content=payload,
         headers={"stripe-signature": _sign(payload)},
     )
-    assert resp.status_code == 200
+
+
+def test_full_refund_of_latest_invoice_cancels_and_drops_to_free(
+    client, supabase_ok, fake_subscriptions, fake_redis, fake_stripe
+):
+    """Full refund of the current period: access ends now, with a status
+    the CHECK constraint accepts, and the Stripe subscription is
+    cancelled immediately so it can't renew and re-grant access."""
+    fake_subscriptions.rows = [_paid_row("user-refunded", "sub_r", "cus_refund")]
+    fake_stripe.add_subscription("sub_r", "cus_refund", latest_invoice="in_latest")
+
+    resp = _post_event(client, "charge.refunded", _invoice_charge())
+
+    assert resp.status_code == 200, resp.text
     assert len(fake_subscriptions.posts) == 1
     sent = fake_subscriptions.posts[0]
     assert sent["user_id"] == "user-refunded"
     assert sent["tier"] == "free"
-    assert sent["status"] == "refunded"
-    # An audit row must accompany the tier drop so finance can correlate.
+    assert sent["status"] == "cancelled"
+    assert sent["status"] in _ALLOWED_STATUSES
+    assert [c[0] for c in fake_stripe.cancel_calls] == ["sub_r"]
+    assert fake_stripe.cancel_calls[0][1] == {"prorate": False, "invoice_now": False}
     refund_rows = [
         r for r in fake_subscriptions.audit_posts
         if r.get("action") == "subscription.refunded"
     ]
     assert len(refund_rows) == 1
-    assert refund_rows[0]["meta"]["amount_refunded_cents"] == 9900
+    assert refund_rows[0]["actor_user_id"] == "user-refunded"
+    assert refund_rows[0]["meta"]["amount_refunded_cents"] == 499
     assert refund_rows[0]["meta"]["reason"] == "requested_by_customer"
+    assert refund_rows[0]["meta"]["access_revoked"] is True
 
 
-def test_charge_refunded_partial_still_drops(
-    client, supabase_ok, fake_subscriptions, fake_redis
+def test_refund_never_writes_a_status_outside_the_check_constraint(
+    client, supabase_ok, fake_subscriptions, fake_redis, fake_stripe
 ):
-    """Partial refund — operator-driven goodwill — still drops the
-    tier. Stripe will fire subscription.updated to correct if the
-    underlying subscription is still active."""
-    payload = _event(
-        "charge.refunded",
-        {
-            "id": "ch_test_refund_partial",
-            "customer": "cus_test_refund",
-            "metadata": {"user_id": "user-partial"},
-            "amount": 9900,
-            "amount_refunded": 5000,
-            "currency": "usd",
-        },
-    )
-    resp = client.post(
-        "/api/v1/payments/webhook",
-        content=payload,
-        headers={"stripe-signature": _sign(payload)},
-    )
-    assert resp.status_code == 200
-    assert fake_subscriptions.posts[0]["tier"] == "free"
-    assert fake_subscriptions.posts[0]["status"] == "refunded"
+    """Regression: the old handler wrote status='refunded', which the
+    subscriptions CHECK rejects — PostgREST answered 400, the error was
+    swallowed, and the user kept paid access."""
+    fake_subscriptions.rows = [_paid_row("user-x", "sub_x", "cus_refund")]
+    fake_stripe.add_subscription("sub_x", "cus_refund", latest_invoice="in_latest")
+
+    _post_event(client, "charge.refunded", _invoice_charge())
+
+    assert fake_subscriptions.posts
+    assert all(p["status"] in _ALLOWED_STATUSES for p in fake_subscriptions.posts)
 
 
-def test_charge_refunded_no_user_id_skips_persistence(
-    client, supabase_ok, fake_subscriptions, fake_redis
+def test_partial_refund_keeps_access(
+    client, supabase_ok, fake_subscriptions, fake_redis, fake_stripe
 ):
-    """Refund without our metadata.user_id (e.g. legacy charges from
-    before the metadata was added). Log + audit row are absent because
-    we have nothing actionable to do — don't corrupt the DB with a
-    speculative downgrade."""
-    payload = _event(
-        "charge.refunded",
-        {
-            "id": "ch_test_refund_orphan",
-            "customer": "cus_orphan",
-            "metadata": {},  # no user_id
-            "amount": 9900,
-            "amount_refunded": 9900,
-            "currency": "usd",
-        },
-    )
-    resp = client.post(
-        "/api/v1/payments/webhook",
-        content=payload,
-        headers={"stripe-signature": _sign(payload)},
-    )
+    """A partial refund is a goodwill credit — the period is still
+    mostly paid. Audit it; don't touch access or the subscription."""
+    fake_subscriptions.rows = [_paid_row("user-partial", "sub_p", "cus_refund")]
+    fake_stripe.add_subscription("sub_p", "cus_refund", latest_invoice="in_latest")
+
+    resp = _post_event(client, "charge.refunded", _invoice_charge(amount_refunded=200))
+
     assert resp.status_code == 200
     assert fake_subscriptions.posts == []
-    assert fake_subscriptions.audit_posts == []
+    assert fake_stripe.cancel_calls == []
+    rows = [r for r in fake_subscriptions.audit_posts if r.get("action") == "subscription.refunded"]
+    assert len(rows) == 1
+    assert rows[0]["meta"]["access_revoked"] is False
+
+
+def test_full_refund_of_an_older_invoice_keeps_current_access(
+    client, supabase_ok, fake_subscriptions, fake_redis, fake_stripe
+):
+    """Refunding last month's charge doesn't void the period the user
+    has already paid for now."""
+    fake_subscriptions.rows = [_paid_row("user-old", "sub_o", "cus_refund")]
+    fake_stripe.add_subscription("sub_o", "cus_refund", latest_invoice="in_newer")
+
+    resp = _post_event(client, "charge.refunded", _invoice_charge(invoice="in_older"))
+
+    assert resp.status_code == 200
+    assert fake_subscriptions.posts == []
+    assert fake_stripe.cancel_calls == []
+
+
+def test_refund_resolves_legacy_user_via_stripe_subscription_metadata(
+    client, supabase_ok, fake_subscriptions, fake_redis, fake_stripe
+):
+    """Rows written before stripe_customer_id existed can't be found by
+    customer in our DB. The customer's Stripe subscription carries our
+    user_id in metadata (set at checkout) — use that."""
+    fake_subscriptions.rows = [_paid_row("user-legacy", "sub_l", None)]
+    sub = fake_stripe.add_subscription("sub_l", "cus_legacy", latest_invoice="in_latest")
+    sub["metadata"] = {"user_id": "user-legacy"}
+
+    resp = _post_event(client, "charge.refunded", _invoice_charge(customer="cus_legacy"))
+
+    assert resp.status_code == 200
+    assert fake_subscriptions.posts[0]["user_id"] == "user-legacy"
+    assert fake_subscriptions.posts[0]["status"] == "cancelled"
+
+
+def test_refund_for_unknown_customer_skips_persistence(
+    client, supabase_ok, fake_subscriptions, fake_redis, fake_stripe
+):
+    """Nobody to attribute the refund to (one-off charge, foreign
+    customer): log and acknowledge — never downgrade a random user."""
+    resp = _post_event(client, "charge.refunded", _invoice_charge(customer="cus_nobody"))
+
+    assert resp.status_code == 200
+    assert fake_subscriptions.posts == []
+    assert fake_stripe.cancel_calls == []
 
 
 # ─── charge.dispute.created ─────────────────────────────────────────
 
 
 def test_charge_dispute_audit_logged_no_tier_change(
-    client, supabase_ok, fake_subscriptions, fake_redis
+    client, supabase_ok, fake_subscriptions, fake_redis, fake_stripe
 ):
     """Disputes get an audit-log row but DO NOT change tier — Stripe
     gives merchants ~20 days to respond and revoking access mid-dispute
     is bad UX if the dispute turns out to be card-not-present fraud
-    where Cleanway is the victim too."""
-    payload = _event(
+    where Cleanway is the victim too.
+
+    The dispute object has no customer and no user metadata; the user
+    is found through the disputed charge's customer."""
+    fake_subscriptions.rows = [_paid_row("user-dispute", "sub_d", "cus_disp")]
+    fake_stripe.charges["ch_test_disputed"] = _invoice_charge(id="ch_test_disputed", customer="cus_disp")
+
+    resp = _post_event(
+        client,
         "charge.dispute.created",
         {
             "id": "dp_test_dispute",
+            "object": "dispute",
             "charge": "ch_test_disputed",
-            "metadata": {"user_id": "user-dispute"},
-            "amount": 9900,
+            "metadata": {},
+            "amount": 499,
             "currency": "usd",
             "reason": "fraudulent",
         },
     )
-    resp = client.post(
-        "/api/v1/payments/webhook",
-        content=payload,
-        headers={"stripe-signature": _sign(payload)},
-    )
     assert resp.status_code == 200
     # No tier change — subscriptions table untouched
     assert fake_subscriptions.posts == []
-    # But audit row IS written
     dispute_rows = [
         r for r in fake_subscriptions.audit_posts
         if r.get("action") == "subscription.dispute_opened"
     ]
     assert len(dispute_rows) == 1
+    assert dispute_rows[0]["actor_user_id"] == "user-dispute"
     assert dispute_rows[0]["meta"]["reason"] == "fraudulent"
     assert dispute_rows[0]["meta"]["charge_id"] == "ch_test_disputed"
 
 
-def test_charge_dispute_without_user_id_still_audited():
-    """Disputes without our metadata.user_id can happen (rare — see
-    refund-orphan note). We still audit-log it so finance can pull a
-    report; the audit row's actor_user_id is null."""
-    # This test goes through the same client fixture but skips the
-    # supabase-recorder; the contract is that the request returns 200
-    # without exception even when user_id is missing.
-    pass  # Implementation covered by the previous test's audit flow.
+# ─── Idempotency must never lose an event ──────────────────────────
+
+
+def test_failed_supabase_write_returns_5xx_and_retry_processes(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """The bug: the event was marked seen BEFORE processing and the
+    write error was swallowed, so the endpoint said 200, Stripe stopped
+    retrying, and the paid subscription never reached our DB. Now a
+    failed write is a 5xx, the event stays unclaimed, and Stripe's retry
+    of the SAME event id is processed."""
+    data = {
+        "metadata": {"user_id": "user-retry", "plan": "personal_monthly"},
+        "subscription": "sub_retry",
+        "customer": "cus_retry",
+    }
+    fake_subscriptions.post_status = 503
+    r1 = _post_event(client, "checkout.session.completed", data, event_id="evt_retry")
+    assert r1.status_code >= 500
+    assert fake_subscriptions.posts == []
+
+    fake_subscriptions.post_status = 201
+    r2 = _post_event(client, "checkout.session.completed", data, event_id="evt_retry")
+    assert r2.status_code == 200, r2.text
+    assert r2.json().get("duplicate") is not True
+    assert len(fake_subscriptions.posts) == 1
+
+    # Only now is it a duplicate.
+    r3 = _post_event(client, "checkout.session.completed", data, event_id="evt_retry")
+    assert r3.status_code == 200
+    assert r3.json().get("duplicate") is True
+    assert len(fake_subscriptions.posts) == 1
+
+
+def test_supabase_exception_returns_5xx(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    import httpx as _httpx
+
+    fake_subscriptions.post_error = _httpx.ConnectTimeout("supabase timed out")
+    resp = _post_event(
+        client,
+        "customer.subscription.deleted",
+        {"id": "sub_gone", "metadata": {"user_id": "user-timeout"}},
+        event_id="evt_timeout",
+    )
+    assert resp.status_code >= 500
+    # The lease was released so the retry isn't mistaken for a duplicate.
+    assert "stripe:event:evt_timeout" not in fake_redis.kv
+
+
+def test_supabase_not_configured_is_a_5xx_not_a_silent_200(
+    client, supabase_ok, fake_subscriptions, fake_redis, monkeypatch
+):
+    monkeypatch.setattr(supabase_ok, "supabase_url", "", raising=False)
+    resp = _post_event(
+        client,
+        "checkout.session.completed",
+        {"metadata": {"user_id": "u-nodb", "plan": "personal_monthly"}, "subscription": "sub_n"},
+        event_id="evt_nodb",
+    )
+    assert resp.status_code >= 500
+
+
+def test_event_in_flight_elsewhere_is_not_acknowledged(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """Another worker holds the processing lease. Answering 200 would
+    let Stripe drop the event if that worker then fails — answer 409 so
+    Stripe retries and sees the outcome."""
+    fake_redis.kv["stripe:event:evt_busy"] = "processing"
+    resp = _post_event(
+        client,
+        "checkout.session.completed",
+        {"metadata": {"user_id": "user-busy", "plan": "personal_monthly"}, "subscription": "sub_b"},
+        event_id="evt_busy",
+    )
+    assert resp.status_code == 409
+    assert fake_subscriptions.posts == []
+
+
+def test_processed_event_is_marked_done(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    _post_event(
+        client,
+        "checkout.session.completed",
+        {"metadata": {"user_id": "user-done", "plan": "personal_monthly"}, "subscription": "sub_dn"},
+        event_id="evt_done",
+    )
+    assert fake_redis.kv.get("stripe:event:evt_done") == "done"
+
+
+# ─── Customer id + one-time trial are recorded at checkout ─────────
+
+
+def test_checkout_completed_stores_customer_and_trial_use(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    resp = _post_event(
+        client,
+        "checkout.session.completed",
+        {
+            "metadata": {"user_id": "user-cus", "plan": "personal_monthly", "trial": "1"},
+            "subscription": "sub_cus",
+            "customer": "cus_123",
+        },
+    )
+    assert resp.status_code == 200
+    sent = fake_subscriptions.posts[0]
+    assert sent["stripe_customer_id"] == "cus_123"
+    assert sent.get("trial_used_at")
+
+
+def test_checkout_completed_without_trial_leaves_trial_marker_alone(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    _post_event(
+        client,
+        "checkout.session.completed",
+        {
+            "metadata": {"user_id": "user-nt", "plan": "personal_monthly", "trial": "0"},
+            "subscription": "sub_nt",
+            "customer": "cus_nt",
+        },
+    )
+    assert "trial_used_at" not in fake_subscriptions.posts[0]
+
+
+def test_checkout_completed_flags_a_second_live_subscription(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """Two Checkout tabs completed → two Stripe subscriptions, one row.
+    The row follows the newest, and the overlap is audit-logged so the
+    operator can refund the other one."""
+    fake_subscriptions.rows = [_paid_row("user-dup", "sub_first", "cus_dup")]
+    _post_event(
+        client,
+        "checkout.session.completed",
+        {
+            "metadata": {"user_id": "user-dup", "plan": "family_monthly"},
+            "subscription": "sub_second",
+            "customer": "cus_dup",
+        },
+    )
+    dup_rows = [
+        r for r in fake_subscriptions.audit_posts
+        if r.get("action") == "subscription.duplicate_detected"
+    ]
+    assert len(dup_rows) == 1
+    assert dup_rows[0]["meta"]["previous_subscription_id"] == "sub_first"
+    assert fake_subscriptions.posts[0]["provider_subscription_id"] == "sub_second"
+
+
+# ─── subscription.updated maps the price back to the plan ──────────
+
+
+def _sub_with_price(price_id: str, **extra) -> Dict[str, Any]:
+    sub = {
+        "id": "sub_plan_change",
+        "object": "subscription",
+        "status": "active",
+        "customer": "cus_pc",
+        "metadata": {"user_id": "user-plan"},
+        "items": {"data": [{"id": "si_1", "price": {"id": price_id}}]},
+    }
+    sub.update(extra)
+    return sub
+
+
+@pytest.mark.parametrize(
+    "plan,tier,interval",
+    [("family", 2, "monthly"), ("business", 4, "yearly"), ("personal", 1, "monthly")],
+)
+def test_subscription_updated_maps_price_to_tier(
+    client, supabase_ok, fake_subscriptions, fake_redis, plan, tier, interval
+):
+    """Upgrade personal → family in the portal fires subscription.updated
+    with the new price. The old handler passed tier=None, so the DB kept
+    'personal' forever."""
+    from api.services.pricing import STRIPE_PRICE_IDS
+
+    price_id = STRIPE_PRICE_IDS[plan][tier][interval]
+    resp = _post_event(client, "customer.subscription.updated", _sub_with_price(price_id))
+
+    assert resp.status_code == 200
+    sent = fake_subscriptions.posts[0]
+    assert sent["tier"] == plan
+    assert sent["stripe_customer_id"] == "cus_pc"
+
+
+def test_subscription_updated_unknown_price_leaves_tier_untouched(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    resp = _post_event(client, "customer.subscription.updated", _sub_with_price("price_unknown"))
+    assert resp.status_code == 200
+    assert "tier" not in fake_subscriptions.posts[0]
+
+
+def test_subscription_deleted_without_metadata_resolves_by_subscription_id(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    fake_subscriptions.rows = [_paid_row("user-by-sub", "sub_lookup", "cus_l")]
+    resp = _post_event(
+        client,
+        "customer.subscription.deleted",
+        {"id": "sub_lookup", "customer": "cus_l", "metadata": {}},
+    )
+    assert resp.status_code == 200
+    assert fake_subscriptions.posts[0]["user_id"] == "user-by-sub"
+    assert fake_subscriptions.posts[0]["status"] == "cancelled"
+
+
+def test_customer_deleted_resolves_by_stored_customer_id(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    fake_subscriptions.rows = [_paid_row("user-cus-del", "sub_cd", "cus_gone")]
+    resp = _post_event(client, "customer.deleted", {"id": "cus_gone"})
+    assert resp.status_code == 200
+    sent = fake_subscriptions.posts[0]
+    assert sent["user_id"] == "user-cus-del"
+    assert sent["tier"] == "free"
+    assert sent["status"] == "cancelled"
+    # The customer no longer exists in Stripe — checkout must not reuse
+    # it, nor re-derive it from the (now dead) subscription.
+    assert sent["stripe_customer_id"] is None
+    assert sent["provider_subscription_id"] is None

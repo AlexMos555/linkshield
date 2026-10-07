@@ -50,7 +50,8 @@ type CheckoutError =
   | "server"
   | "bad_response"
   | "invalid_url"
-  | "wrong_host";
+  | "wrong_host"
+  | "already_subscribed";
 
 type CheckoutOutcome =
   | { ok: true }
@@ -60,6 +61,9 @@ async function startCheckout(
   plan: PaidPlan,
   interval: Interval,
   locale: string,
+  // The country the shown prices were computed for (/pricing/for-country
+  // echoes it). Sent along so checkout charges exactly the shown price.
+  country: string | null,
 ): Promise<CheckoutOutcome> {
   const planKey = `${plan}_${interval}`; // matches backend CheckoutRequest.plan
   const success_url = "https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}";
@@ -88,7 +92,12 @@ async function startCheckout(
       method: "POST",
       credentials: "include",
       headers,
-      body: JSON.stringify({ plan: planKey, success_url, cancel_url }),
+      body: JSON.stringify({
+        plan: planKey,
+        success_url,
+        cancel_url,
+        ...(country ? { country } : {}),
+      }),
     });
   } catch {
     return { ok: false, reason: "network" };
@@ -106,6 +115,11 @@ async function startCheckout(
     // them bounce through generic error UX.
     window.location.href = localePath(locale, "/account/restore?reason=locked");
     return { ok: true };
+  }
+
+  if (resp.status === 409) {
+    // subscription_already_active — one paid subscription per account.
+    return { ok: false, reason: "already_subscribed" };
   }
 
   if (!resp.ok) {
@@ -144,6 +158,7 @@ const CHECKOUT_ERROR_COPY: Record<CheckoutError, string> = {
   bad_response: "Checkout didn't return a redirect URL — please contact support.",
   invalid_url: "Checkout returned an invalid URL — please contact support.",
   wrong_host: "Checkout returned an unexpected URL — please contact support.",
+  already_subscribed: "You already have an active subscription. To change your plan, please contact support.",
 };
 
 export default function PricingClient({ data }: PricingClientProps) {
@@ -219,6 +234,7 @@ export default function PricingClient({ data }: PricingClientProps) {
             cta="Try 14 days free"
             emphasis={false}
             paidPlan="personal"
+            country={data.country ?? null}
           />
 
           {/* Family — emphasized */}
@@ -241,6 +257,7 @@ export default function PricingClient({ data }: PricingClientProps) {
             emphasis={true}
             badge="Most popular"
             paidPlan="family"
+            country={data.country ?? null}
           />
 
           {/* Business */}
@@ -268,7 +285,7 @@ export default function PricingClient({ data }: PricingClientProps) {
 
         {data.country === null && (
           <p className="mt-6 text-center text-xs text-slate-500">
-            Prices shown at base tier (Tier 2). Final price determined by your Stripe billing country.
+            Prices shown at base tier (Tier 2). This is the price you are charged at checkout.
           </p>
         )}
       </div>
@@ -295,9 +312,11 @@ interface PlanCardProps {
   // for that plan + current interval. Free plan and Business stay as
   // anchor links via ctaHref.
   paidPlan?: PaidPlan;
+  // Country the shown price was computed for — forwarded to checkout.
+  country?: string | null;
 }
 
-function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuffix, features, cta, ctaHref = "#", ctaAndroidLabel, emphasis, badge, paidPlan }: PlanCardProps) {
+function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuffix, features, cta, ctaHref = "#", ctaAndroidLabel, emphasis, badge, paidPlan, country = null }: PlanCardProps) {
   const locale = useLocale();
   const [checkoutError, setCheckoutError] = useState<CheckoutError | null>(null);
   const [checkoutPending, setCheckoutPending] = useState(false);
@@ -351,7 +370,7 @@ function PlanCard({ name, subtitle, price, monthlyEquivalent, interval, priceSuf
             onClick={async () => {
               setCheckoutError(null);
               setCheckoutPending(true);
-              const result = await startCheckout(paidPlan, interval, locale);
+              const result = await startCheckout(paidPlan, interval, locale, country);
               if (!result.ok) {
                 setCheckoutError(result.reason);
                 setCheckoutPending(false);

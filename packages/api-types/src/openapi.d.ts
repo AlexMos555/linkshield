@@ -47,6 +47,11 @@ export interface paths {
          *     Endpoint path is /checkout (matches the landing PricingClient).
          *     /create-checkout is preserved as an alias below for any code that
          *     might still reference the legacy name.
+         *
+         *     Refuses (409 `subscription_already_active`) when the user already
+         *     pays: subscriptions has one row per user, so a second Stripe
+         *     subscription would overwrite the first on our side while Stripe kept
+         *     billing both. Plan changes go through the Customer Portal.
          */
         post: operations["create_checkout_api_v1_payments_checkout_post"];
         delete?: never;
@@ -86,13 +91,16 @@ export interface paths {
          * @description Handle Stripe webhook events.
          *
          *     Stripe documents "events may be delivered more than once" — they
-         *     retry on any 5xx / timeout for up to 72 hours with exponential
-         *     backoff. Without dedup, a retried checkout.session.completed
-         *     upserts the subscription twice; a retried subscription.updated
-         *     can race with newer events and flip status backward.
-         *
-         *     We dedup by event.id with a Redis SETNX + 7-day TTL. Already-seen
-         *     events return 200 OK (so Stripe stops retrying) but skip processing.
+         *     retry on any non-2xx / timeout for up to 72 hours with exponential
+         *     backoff. So:
+         *       - an event is acknowledged (2xx) only once every write it implies
+         *         has succeeded; any failure → 500 → Stripe retries;
+         *       - an already-processed event id answers 200 duplicate:true;
+         *       - an event another worker is processing right now answers 409 —
+         *         Stripe retries later and then sees the outcome (a 200 here could
+         *         drop the event if that other worker fails).
+         *     Redis unreachable → process anyway (risking one duplicate write is
+         *     better than dropping a billing event; every handler is an upsert).
          */
         post: operations["stripe_webhook_api_v1_payments_webhook_post"];
         delete?: never;
@@ -113,6 +121,12 @@ export interface paths {
         /**
          * Customer Portal
          * @description Create Stripe Customer Portal link for managing subscription.
+         *
+         *     Uses the Stripe customer stored on the user's subscriptions row (or
+         *     the customer of their pre-migration-021 subscription). It used to
+         *     search customers by email with limit=1 — emails aren't unique in
+         *     Stripe, so that could open someone else's billing portal or a stale
+         *     duplicate customer without the live subscription.
          */
         post: operations["customer_portal_api_v1_payments_portal_post"];
         delete?: never;
@@ -1794,6 +1808,11 @@ export interface components {
              * @default https://cleanway.ai/pricing
              */
             cancel_url: string;
+            /**
+             * Country
+             * @description ISO 3166-1 alpha-2 country code — the `cc` used for /api/v1/pricing/for-country.
+             */
+            country?: string | null;
         };
         /** CheckoutResponse */
         CheckoutResponse: {

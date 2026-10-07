@@ -28,16 +28,21 @@ class _SupabaseStub:
     def __init__(self) -> None:
         self.patches: List[Dict[str, Any]] = []
         self.patch_status = 204
+        # The caller's subscriptions row (None = no row). Deletion looks
+        # it up to cancel any live Stripe subscription first.
+        self.subscription_row: Dict[str, Any] | None = None
+        self.gets: List[str] = []
 
     def build(self):
         stub = self
 
         class _Resp:
-            def __init__(self, status: int):
+            def __init__(self, status: int, body: Any = None):
                 self.status_code = status
+                self._body = body
 
             def json(self):
-                return {}
+                return self._body if self._body is not None else {}
 
         class _Client:
             def __init__(self, *_a, **_k):
@@ -48,6 +53,14 @@ class _SupabaseStub:
 
             async def __aexit__(self, *_a):
                 return None
+
+            async def get(self, url: str, params=None, headers=None, **_kw):
+                stub.gets.append(url)
+                rows = [stub.subscription_row] if stub.subscription_row else []
+                return _Resp(200, rows)
+
+            async def post(self, url: str, json=None, headers=None, **_kw):
+                return _Resp(201, [])
 
             async def patch(self, url: str, params=None, json=None, headers=None, **_kw):
                 stub.patches.append(
@@ -180,6 +193,105 @@ def test_delete_account_500_on_upstream_reject(client, supabase_ok, supabase_stu
 
     resp = client.delete("/api/v1/user/account")
     assert resp.status_code == 500
+
+
+# ─── Deletion stops Stripe billing ─────────────────────────────
+#
+# A soft-deleted user is locked out of the API (410) for the 30-day
+# grace window. Before this fix their Stripe subscription kept renewing
+# through that window — charged for a service they can't use. Deletion
+# now cancels every live Stripe subscription IMMEDIATELY (no proration,
+# no final invoice → nothing further is charged) before marking the
+# account. Restoring the account does not resurrect the subscription.
+
+
+def _paid_row(**kw):
+    row = {
+        "user_id": "user-77",
+        "tier": "personal",
+        "status": "active",
+        "provider": "stripe",
+        "provider_subscription_id": "sub_77",
+        "stripe_customer_id": "cus_77",
+        "trial_used_at": "2026-09-01T00:00:00+00:00",
+    }
+    row.update(kw)
+    return row
+
+
+def test_delete_account_cancels_live_stripe_subscriptions_immediately(
+    client, supabase_ok, supabase_stub, fake_stripe
+):
+    supabase_stub.subscription_row = _paid_row()
+    fake_stripe.add_subscription("sub_77", "cus_77", status="active")
+    # A second subscription from a double checkout — must not survive.
+    fake_stripe.add_subscription("sub_77b", "cus_77", status="trialing")
+    fake_stripe.add_subscription("sub_old", "cus_77", status="canceled")
+
+    resp = client.delete("/api/v1/user/account")
+
+    assert resp.status_code == 200, resp.text
+    cancelled = sorted(c[0] for c in fake_stripe.cancel_calls)
+    assert cancelled == ["sub_77", "sub_77b"]
+    for _sid, params in fake_stripe.cancel_calls:
+        assert params == {"prorate": False, "invoice_now": False}
+    # And only then is the account marked for deletion.
+    assert len(supabase_stub.patches) == 1
+
+
+def test_delete_account_legacy_row_cancels_via_subscription_customer(
+    client, supabase_ok, supabase_stub, fake_stripe
+):
+    supabase_stub.subscription_row = _paid_row(stripe_customer_id=None)
+    fake_stripe.add_subscription("sub_77", "cus_legacy", status="past_due")
+
+    resp = client.delete("/api/v1/user/account")
+
+    assert resp.status_code == 200, resp.text
+    assert [c[0] for c in fake_stripe.cancel_calls] == ["sub_77"]
+
+
+def test_delete_account_subscription_unknown_to_stripe_does_not_block(
+    client, supabase_ok, supabase_stub, fake_stripe
+):
+    """A stored subscription Stripe no longer knows (deleted customer,
+    wiped test data) has nothing left to bill — it must not make the
+    account undeletable with a permanent 503."""
+    supabase_stub.subscription_row = _paid_row(stripe_customer_id=None, provider_subscription_id="sub_gone")
+
+    resp = client.delete("/api/v1/user/account")
+
+    assert resp.status_code == 200, resp.text
+    assert fake_stripe.cancel_calls == []
+    assert len(supabase_stub.patches) == 1
+
+
+def test_delete_account_free_user_makes_no_stripe_calls(
+    client, supabase_ok, supabase_stub, fake_stripe
+):
+    supabase_stub.subscription_row = _paid_row(
+        tier="free", provider_subscription_id=None, stripe_customer_id=None
+    )
+    resp = client.delete("/api/v1/user/account")
+    assert resp.status_code == 200
+    assert fake_stripe.cancel_calls == []
+    assert fake_stripe.list_calls == []
+
+
+def test_delete_account_does_not_delete_when_stripe_cancel_fails(
+    client, supabase_ok, supabase_stub, fake_stripe
+):
+    """If we can't stop the billing we must not lock the user out (they
+    could no longer reach the portal to cancel themselves). 503, account
+    untouched, safe to retry."""
+    supabase_stub.subscription_row = _paid_row()
+    fake_stripe.add_subscription("sub_77", "cus_77", status="active")
+    fake_stripe.fail_cancel = True
+
+    resp = client.delete("/api/v1/user/account")
+
+    assert resp.status_code == 503
+    assert supabase_stub.patches == []
 
 
 # ─── POST /api/v1/user/account/restore ─────────────────────────

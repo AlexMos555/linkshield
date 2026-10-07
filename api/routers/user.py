@@ -1260,10 +1260,15 @@ async def export_user_data(
 # 30 days later (foreign-key cascades wipe every dependent row in one
 # transaction — schema set this up since migration 001).
 #
+# Any live Stripe subscription is cancelled immediately when deletion
+# is requested (see delete_account) — restoring does not undo that.
+#
 # During the grace window the user can:
 #   * Cancel the deletion via POST /api/v1/user/account/restore
 #   * Still receive magic links from Supabase Auth (we don't touch
-#     auth.users — that would make the soft-delete irreversible)
+#     auth.users until the purge — doing it now would make the
+#     soft-delete irreversible; api/services/account_purge.py deletes
+#     the auth user when the grace window ends)
 #
 # Most operations (anything routed through get_current_user) refuse
 # requests once deletion_requested_at is set, returning 410 Gone. The
@@ -1291,6 +1296,36 @@ async def delete_account(user: AuthUser = Depends(get_current_user)) -> DeleteAc
         raise HTTPException(503, "Database not configured")
 
     import httpx
+
+    # Stop billing FIRST. The account is locked (410) from the moment it
+    # is marked, so a still-live Stripe subscription would keep charging
+    # through the 30-day grace for a service the user can't use — and
+    # they could no longer reach the portal to cancel it themselves.
+    # Every live subscription is cancelled IMMEDIATELY (no proration, no
+    # final invoice: nothing further is charged; the unused part of the
+    # current period is not refunded automatically). If Stripe can't be
+    # reached we refuse with 503 and mark nothing — the request is safe
+    # to retry. Restoring the account later does NOT resurrect the
+    # subscription; the user subscribes again if they want to.
+    from api.services.stripe_billing import BillingError, cancel_user_subscriptions
+
+    try:
+        cancelled_subscriptions = await cancel_user_subscriptions(user.id)
+    except BillingError as e:
+        logger.error(
+            "account_delete_subscription_cancel_failed",
+            extra={"user_id": user.id, "error": str(e)},
+        )
+        raise HTTPException(
+            503,
+            detail={
+                "code": "subscription_cancel_failed",
+                "error": (
+                    "We couldn't cancel your subscription just now, so your "
+                    "account was not deleted. Please try again in a moment."
+                ),
+            },
+        )
 
     now = datetime.now(timezone.utc)
     headers = {
@@ -1353,7 +1388,10 @@ async def delete_account(user: AuthUser = Depends(get_current_user)) -> DeleteAc
         target_kind="user",
         target_id=user.id,
         actor_user_id=user.id,
-        meta={"restore_until": restore_until.isoformat()},
+        meta={
+            "restore_until": restore_until.isoformat(),
+            "cancelled_subscriptions": cancelled_subscriptions,
+        },
     )
 
     return DeleteAccountResponse(

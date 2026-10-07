@@ -72,7 +72,7 @@
           "payments"
         ],
         "summary": "Create Checkout",
-        "description": "Create a Stripe Checkout session for subscription.\n\nEndpoint path is /checkout (matches the landing PricingClient).\n/create-checkout is preserved as an alias below for any code that\nmight still reference the legacy name.",
+        "description": "Create a Stripe Checkout session for subscription.\n\nEndpoint path is /checkout (matches the landing PricingClient).\n/create-checkout is preserved as an alias below for any code that\nmight still reference the legacy name.\n\nRefuses (409 `subscription_already_active`) when the user already\npays: subscriptions has one row per user, so a second Stripe\nsubscription would overwrite the first on our side while Stripe kept\nbilling both. Plan changes go through the Customer Portal.",
         "operationId": "create_checkout_api_v1_payments_checkout_post",
         "parameters": [
           {
@@ -191,7 +191,7 @@
           "payments"
         ],
         "summary": "Stripe Webhook",
-        "description": "Handle Stripe webhook events.\n\nStripe documents \"events may be delivered more than once\" — they\nretry on any 5xx / timeout for up to 72 hours with exponential\nbackoff. Without dedup, a retried checkout.session.completed\nupserts the subscription twice; a retried subscription.updated\ncan race with newer events and flip status backward.\n\nWe dedup by event.id with a Redis SETNX + 7-day TTL. Already-seen\nevents return 200 OK (so Stripe stops retrying) but skip processing.",
+        "description": "Handle Stripe webhook events.\n\nStripe documents \"events may be delivered more than once\" — they\nretry on any non-2xx / timeout for up to 72 hours with exponential\nbackoff. So:\n  - an event is acknowledged (2xx) only once every write it implies\n    has succeeded; any failure → 500 → Stripe retries;\n  - an already-processed event id answers 200 duplicate:true;\n  - an event another worker is processing right now answers 409 —\n    Stripe retries later and then sees the outcome (a 200 here could\n    drop the event if that other worker fails).\nRedis unreachable → process anyway (risking one duplicate write is\nbetter than dropping a billing event; every handler is an upsert).",
         "operationId": "stripe_webhook_api_v1_payments_webhook_post",
         "responses": {
           "200": {
@@ -211,7 +211,7 @@
           "payments"
         ],
         "summary": "Customer Portal",
-        "description": "Create Stripe Customer Portal link for managing subscription.",
+        "description": "Create Stripe Customer Portal link for managing subscription.\n\nUses the Stripe customer stored on the user's subscriptions row (or\nthe customer of their pre-migration-021 subscription). It used to\nsearch customers by email with limit=1 — emails aren't unique in\nStripe, so that could open someone else's billing portal or a stale\nduplicate customer without the live subscription.",
         "operationId": "customer_portal_api_v1_payments_portal_post",
         "parameters": [
           {
@@ -4225,6 +4225,19 @@
             "type": "string",
             "title": "Cancel Url",
             "default": "https://cleanway.ai/pricing"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country",
+            "description": "ISO 3166-1 alpha-2 country code — the `cc` used for /api/v1/pricing/for-country."
           }
         },
         "type": "object",

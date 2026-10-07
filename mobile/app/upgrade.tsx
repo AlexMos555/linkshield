@@ -72,7 +72,9 @@ export default function UpgradeScreen() {
         </View>
       ))}
 
-      <Text style={styles.note}>14-day free trial. Cancel anytime. No credit card to start.</Text>
+      <Text style={styles.note}>
+        14-day free trial for your first subscription. A card is required to start it; cancel before the trial ends and you won't be charged.
+      </Text>
     </ScrollView>
   );
 }
