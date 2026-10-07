@@ -530,3 +530,57 @@ def test_portal_404_without_a_customer(client, subs_db, fake_stripe):
     resp = client.post("/api/v1/payments/portal", headers={"Authorization": "Bearer fake"})
     assert resp.status_code == 404
     assert fake_stripe.portal_calls == []
+
+
+# ─── Double-payment guard across every source ─────────────────
+#
+# docs/ACCOUNTS_BILLING_PLAN.md §1: before ANY payment the server checks
+# all sources of the account. An active plan bought in Google Play, through
+# the operator or as a promo blocks a Stripe checkout just like a live
+# Stripe subscription does.
+
+
+@pytest.mark.parametrize("source", ["google_play", "app_store", "operator_ru", "promo"])
+def test_checkout_refused_when_another_source_already_pays(
+    client, stripe_configured, stripe_stub, subs_db, account_store, source
+):
+    subs_db.row = _row()
+    account_store.add_entitlement("user-checkout", source=source, external_id="x-1")
+    resp = _checkout(client)
+    assert resp.status_code == 409, resp.text
+    detail = resp.json()["detail"]
+    assert detail["code"] == "subscription_already_active"
+    assert detail["source"] == source
+    assert "portal_endpoint" not in detail  # the Stripe portal can't manage it
+    assert stripe_stub == []
+
+
+def test_checkout_refused_by_a_stripe_entitlement_points_at_the_portal(
+    client, stripe_configured, stripe_stub, subs_db, account_store
+):
+    subs_db.row = _row()
+    account_store.add_entitlement("user-checkout", source="stripe", external_id="sub_e")
+    resp = _checkout(client)
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["portal_endpoint"] == "/api/v1/payments/portal"
+
+
+def test_checkout_allowed_when_the_entitlement_ended(
+    client, stripe_configured, stripe_stub, subs_db, account_store
+):
+    subs_db.row = _row()
+    account_store.add_entitlement("user-checkout", source="google_play", external_id="gp",
+                                  status="expired")
+    assert _checkout(client).status_code == 200
+    assert len(stripe_stub) == 1
+
+
+def test_checkout_503_when_entitlements_cannot_be_read(
+    client, stripe_configured, stripe_stub, subs_db, account_store
+):
+    """Not knowing whether the account already pays is not "free"."""
+    subs_db.row = _row()
+    account_store.fail = True
+    resp = _checkout(client)
+    assert resp.status_code == 503
+    assert stripe_stub == []

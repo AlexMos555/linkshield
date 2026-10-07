@@ -1364,3 +1364,119 @@ def test_customer_deleted_resolves_by_stored_customer_id(
     # it, nor re-derive it from the (now dead) subscription.
     assert sent["stripe_customer_id"] is None
     assert sent["provider_subscription_id"] is None
+
+
+# ─── entitlements (migration 023) ──────────────────────────────────
+#
+# The webhook mirrors every Stripe subscription into `entitlements`, the
+# table the account screens, the device limit and the double-payment
+# guard read. Same lossless rule as the subscriptions write: a failed
+# entitlement write answers 5xx so Stripe retries.
+
+
+def _stripe_row(account_store, sub_id):
+    rows = [r for r in account_store.entitlements if r["external_id"] == sub_id]
+    assert len(rows) == 1, account_store.entitlements
+    assert rows[0]["source"] == "stripe"
+    return rows[0]
+
+
+def test_checkout_completed_writes_a_trialing_entitlement(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store
+):
+    resp = _post_event(client, "checkout.session.completed", {
+        "metadata": {"user_id": "user-ent", "plan": "family_monthly", "trial": "1"},
+        "subscription": "sub_ent", "customer": "cus_ent",
+    })
+    assert resp.status_code == 200, resp.text
+    row = _stripe_row(account_store, "sub_ent")
+    assert row["account_id"] == "user-ent"
+    assert row["status"] == "trialing" and row["plan"] == "family"
+    assert row["device_limit"] == 3  # included devices until the items arrive
+
+
+def test_subscription_updated_writes_status_period_and_devices(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store, monkeypatch
+):
+    monkeypatch.setattr(supabase_ok, "stripe_price_extra_device", "price_extra_device", raising=False)
+    resp = _post_event(client, "customer.subscription.updated", {
+        "id": "sub_dev", "status": "active", "customer": "cus_dev",
+        "metadata": {"user_id": "user-dev"},
+        "current_period_end": 1786723200,
+        "items": {"data": [
+            {"price": {"id": "price_unmapped_plan"}, "quantity": 1},
+            {"price": {"id": "price_extra_device"}, "quantity": 2},
+        ]},
+    })
+    assert resp.status_code == 200, resp.text
+    from datetime import datetime, timezone
+
+    row = _stripe_row(account_store, "sub_dev")
+    assert row["status"] == "active"
+    assert row["device_limit"] == 5
+    assert row["period_end"] == datetime.fromtimestamp(1786723200, tz=timezone.utc).isoformat()
+
+
+@pytest.mark.parametrize("stripe_status,expected", [
+    ("past_due", "past_due"), ("canceled", "cancelled"), ("unpaid", "expired"),
+    ("incomplete", "pending"),
+])
+def test_subscription_updated_maps_stripe_status(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store, stripe_status, expected
+):
+    _post_event(client, "customer.subscription.updated", {
+        "id": "sub_st", "status": stripe_status, "metadata": {"user_id": "user-st"},
+    })
+    assert _stripe_row(account_store, "sub_st")["status"] == expected
+
+
+def test_subscription_deleted_cancels_the_entitlement(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store
+):
+    account_store.add_entitlement("user-del", external_id="sub_gone")
+    resp = _post_event(client, "customer.subscription.deleted", {
+        "id": "sub_gone", "metadata": {"user_id": "user-del"},
+    })
+    assert resp.status_code == 200
+    assert _stripe_row(account_store, "sub_gone")["status"] == "cancelled"
+
+
+def test_full_refund_marks_the_entitlement_refunded(
+    client, supabase_ok, fake_subscriptions, fake_redis, fake_stripe, account_store
+):
+    fake_subscriptions.rows = [_paid_row("user-rf", "sub_rf", "cus_refund")]
+    fake_stripe.add_subscription("sub_rf", "cus_refund", latest_invoice="in_latest")
+    account_store.add_entitlement("user-rf", external_id="sub_rf")
+
+    resp = _post_event(client, "charge.refunded", _invoice_charge())
+    assert resp.status_code == 200, resp.text
+    assert _stripe_row(account_store, "sub_rf")["status"] == "refunded"
+
+
+def test_customer_deleted_ends_every_stripe_entitlement_of_the_account(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store
+):
+    fake_subscriptions.rows = [_paid_row("user-cd", "sub_cd2", "cus_cd")]
+    account_store.add_entitlement("user-cd", external_id="sub_cd2")
+    account_store.add_entitlement("user-cd", source="promo", external_id="promo-1")
+
+    resp = _post_event(client, "customer.deleted", {"id": "cus_cd"})
+    assert resp.status_code == 200
+    statuses = {r["external_id"]: r["status"] for r in account_store.entitlements}
+    assert statuses == {"sub_cd2": "cancelled", "promo-1": "active"}
+
+
+def test_failed_entitlement_write_is_a_5xx_and_the_retry_processes(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store
+):
+    account_store.fail = True
+    data = {"metadata": {"user_id": "user-retry", "plan": "personal_monthly"},
+            "subscription": "sub_retry"}
+    first = _post_event(client, "checkout.session.completed", data, event_id="evt_ent_retry")
+    assert first.status_code == 500
+    # The lease was released, so Stripe's retry is processed, not skipped.
+    account_store.fail = False
+    second = _post_event(client, "checkout.session.completed", data, event_id="evt_ent_retry")
+    assert second.status_code == 200
+    assert second.json().get("duplicate") is not True
+    assert _stripe_row(account_store, "sub_retry")["status"] == "active"

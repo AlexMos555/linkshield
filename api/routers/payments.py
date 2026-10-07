@@ -44,6 +44,14 @@ from api.services.stripe_billing import (
     stripe_client,
     trial_available,
 )
+from api.services.entitlements import (
+    EntitlementError,
+    end_source_entitlements,
+    has_active_entitlement,
+    record_entitlement,
+    stripe_device_limit,
+    stripe_status,
+)
 from api.models.schemas import AuthUser
 
 logger = logging.getLogger("cleanway.payments")
@@ -134,10 +142,11 @@ async def create_checkout(
     /create-checkout is preserved as an alias below for any code that
     might still reference the legacy name.
 
-    Refuses (409 `subscription_already_active`) when the user already
-    pays: subscriptions has one row per user, so a second Stripe
-    subscription would overwrite the first on our side while Stripe kept
-    billing both. Plan changes go through the Customer Portal."""
+    Refuses (409 `subscription_already_active`) when the account already
+    has an active plan from ANY source (Stripe, Google Play, App Store,
+    RuStore, the operator subscription, a promo — `has_active_entitlement`):
+    paying twice for the same account is never right. For a Stripe plan the
+    answer points at the Customer Portal, where plan changes happen."""
     try:
         import stripe
     except ImportError:
@@ -157,23 +166,28 @@ async def create_checkout(
 
     try:
         row = await fetch_subscription_row(user_id=user.id)
-        if has_paid_subscription(row):
-            raise HTTPException(
-                409,
-                detail={
-                    "code": "subscription_already_active",
-                    "error": (
-                        "You already have an active subscription. Change or "
-                        "cancel it in the billing portal."
-                    ),
-                    "portal_endpoint": "/api/v1/payments/portal",
-                },
-            )
+        active = await has_active_entitlement(user.id, legacy_row=row)
+        if active:
+            detail: dict = {
+                "code": "subscription_already_active",
+                "source": active.source,
+                "plan": active.plan,
+                "error": (
+                    "You already have an active subscription. Change or "
+                    "cancel it in the billing portal."
+                    if active.source == "stripe"
+                    else "You already have an active subscription on this account, "
+                    "paid another way. Manage it where you bought it."
+                ),
+            }
+            if active.source == "stripe":
+                detail["portal_endpoint"] = "/api/v1/payments/portal"
+            raise HTTPException(409, detail=detail)
         # Reuse the user's Stripe customer (stored id, or the customer of
         # a pre-migration-021 subscription) instead of letting Checkout
         # mint a new customer from customer_email on every purchase.
         customer_id = await resolve_customer_id(row)
-    except BillingError as e:
+    except (BillingError, EntitlementError) as e:
         logger.error("checkout_billing_lookup_failed", extra={"user_id": user.id, "error": str(e)})
         raise HTTPException(503, _BILLING_UNAVAILABLE)
     if customer_id and row and not row.get("stripe_customer_id"):
@@ -591,6 +605,15 @@ async def _handle_checkout_completed(session: dict):
         stripe_customer_id=customer_id,
         trial_used_at=trial_used_at,
     )
+    if subscription_id:
+        # device_limit / period_end come with customer.subscription.updated
+        # (the session doesn't carry the items); a new row starts at the
+        # included devices.
+        await _record_stripe_entitlement(
+            user_id, subscription_id,
+            status="trialing" if metadata.get("trial") == "1" else "active",
+            plan=tier,
+        )
     logger.info("subscription_created", extra={"user_id": user_id, "tier": tier})
 
     await audit_log.write(
@@ -635,6 +658,14 @@ async def _handle_subscription_updated(subscription: dict):
         current_period_end=period_end,
         stripe_customer_id=customer_id,
     )
+    if subscription_id:
+        await _record_stripe_entitlement(
+            user_id, subscription_id,
+            status=stripe_status(status),
+            plan=tier,
+            period_end=period_end,
+            device_limit=stripe_device_limit(subscription),
+        )
 
     from api.services import audit_log
     await audit_log.write(
@@ -660,6 +691,8 @@ async def _handle_subscription_deleted(subscription: dict):
     )
     if user_id:
         await _update_subscription(user_id, "free", "cancelled", "stripe", subscription.get("id"))
+        if subscription.get("id"):
+            await _record_stripe_entitlement(user_id, subscription["id"], status="cancelled")
         logger.info("subscription_cancelled", extra={"user_id": user_id})
 
         from api.services import audit_log
@@ -785,6 +818,8 @@ async def _handle_charge_refunded(charge: dict):
             if sub_id:
                 await cancel_subscription_now(sub_id)
             await _update_subscription(user_id, "free", "cancelled", "stripe", None)
+            if sub_id:
+                await _record_stripe_entitlement(user_id, sub_id, status="refunded")
             access_revoked = True
 
     from api.services import audit_log
@@ -893,6 +928,37 @@ async def _handle_customer_deleted(customer: dict):
         await _update_subscription(
             user_id, "free", "cancelled", "stripe", None, clear_customer=row is not None
         )
+        try:
+            await end_source_entitlements(account_id=user_id, source="stripe")
+        except EntitlementError as e:
+            raise BillingError(f"entitlement update failed: {e}") from e
+
+
+async def _record_stripe_entitlement(
+    user_id: str,
+    subscription_id: str,
+    *,
+    status: str,
+    plan: Optional[str] = None,
+    period_end: Optional[str] = None,
+    device_limit: Optional[int] = None,
+) -> None:
+    """Mirror a Stripe subscription into `entitlements` (migration 023) —
+    the table every account screen and the double-payment guard read.
+    Written alongside the legacy `subscriptions` row; a failure raises so
+    the webhook answers 5xx and Stripe retries both writes."""
+    try:
+        await record_entitlement(
+            account_id=user_id,
+            source="stripe",
+            external_id=subscription_id,
+            status=status,
+            plan=plan,
+            period_end=period_end,
+            device_limit=device_limit,
+        )
+    except EntitlementError as e:
+        raise BillingError(f"entitlement write failed: {e}") from e
 
 
 def _epoch_to_iso(epoch: Optional[int]) -> Optional[str]:
