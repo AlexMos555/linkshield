@@ -1483,5 +1483,11 @@
   },
   "account_expired": {
     "message": "Votre connexion a expiré"
+  },
+  "account_device_revoked": {
+    "message": "Ce navigateur a été retiré de votre compte. Reconnectez-vous pour l'utiliser ici."
+  },
+  "account_device_limit": {
+    "message": "Tous les appareils de votre offre sont utilisés. Dissociez-en un sur cleanway.ai/account, puis reconnectez-vous."
   }
 }

@@ -79,6 +79,8 @@ async function loadAccount() {
   } else {
     if (s.pending) label.textContent = t("account_pending");
     else if (s.signedOutReason === "expired") label.textContent = t("account_expired");
+    else if (s.signedOutReason === "device_revoked") label.textContent = t("account_device_revoked");
+    else if (s.signedOutReason === "device_limit") label.textContent = t("account_device_limit");
     else label.textContent = t("account_signed_out");
     desc.textContent = t("account_signed_out_desc");
   }

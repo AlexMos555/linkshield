@@ -909,7 +909,9 @@
     "error_locked": "Your account is scheduled for deletion. Restore it to connect the extension.",
     "restore_cta": "Restore my account",
     "error_unavailable": "Signing in isn't available right now. Protection works without an account.",
-    "handover_note": "The extension receives a sign-in for this account only. No password is involved."
+    "handover_note": "The extension receives a sign-in for this account only. No password is involved.",
+    "error_device_limit": "All devices on your plan are in use, so this browser wasn't connected. Unlink a device you no longer use, then click “Sign in” in the extension again.",
+    "devices_cta": "Manage devices"
   },
   "Account": {
     "plan_heading": "Plan",

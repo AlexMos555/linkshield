@@ -12,7 +12,7 @@
  * Anything else falls through to the main listener in index.js.
  */
 
-import { registerDevice } from "../utils/api.js";
+import { registerDevice, resetDeviceHash } from "../utils/api.js";
 import { createAuthSession, isExtensionPageSender } from "../utils/auth-session.js";
 
 const AUTH_REFRESH_ALARM = "cleanway_auth_refresh";
@@ -42,11 +42,15 @@ export const auth = createAuthSession({
     try { return chrome.i18n.getUILanguage(); } catch (e) { return "en"; }
   },
   scheduleRefresh,
-  onSignedIn: async (accessToken) => {
+  // This browser is a device of the account (POST /api/v1/me/devices):
+  // after sign-in and every 6 hours. No free seat / unlinked → signed out
+  // with a reason the popup and settings show (utils/auth-session.js).
+  linkDevice: async (accessToken) => {
     let appVersion = "0.0.0";
     try { appVersion = chrome.runtime.getManifest().version; } catch (e) { /* keep default */ }
-    await registerDevice(accessToken, { platform: browserPlatform(), appVersion });
+    return registerDevice(accessToken, { platform: browserPlatform(), appVersion });
   },
+  resetDeviceId: () => resetDeviceHash(),
 });
 
 const PAGE_ACTIONS = {

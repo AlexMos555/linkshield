@@ -1525,6 +1525,12 @@
       },
       "expired": {
         "text": "Votre connexion a expiré"
+      },
+      "device_revoked": {
+        "text": "Ce navigateur a été retiré de votre compte. Reconnectez-vous pour l'utiliser ici."
+      },
+      "device_limit": {
+        "text": "Tous les appareils de votre offre sont utilisés. Dissociez-en un sur cleanway.ai/account, puis reconnectez-vous."
       }
     }
   },
@@ -2439,7 +2445,9 @@
       "error_locked": "Votre compte doit être supprimé. Restaurez-le pour connecter l'extension.",
       "restore_cta": "Restaurer mon compte",
       "error_unavailable": "La connexion n'est pas disponible pour le moment. La protection fonctionne sans compte.",
-      "handover_note": "L'extension reçoit uniquement une connexion à ce compte. Aucun mot de passe n'est utilisé."
+      "handover_note": "L'extension reçoit uniquement une connexion à ce compte. Aucun mot de passe n'est utilisé.",
+      "error_device_limit": "Tous les appareils de votre offre sont utilisés : ce navigateur n'a donc pas été connecté. Dissociez un appareil que vous n'utilisez plus, puis cliquez de nouveau sur « Se connecter » dans l'extension.",
+      "devices_cta": "Gérer les appareils"
     },
     "account": {
       "plan_heading": "Offre",

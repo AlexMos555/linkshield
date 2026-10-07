@@ -43,7 +43,8 @@ export type ConnectErrorKey =
   | "error_state"
   | "error_failed"
   | "error_network"
-  | "error_locked";
+  | "error_locked"
+  | "error_device_limit";
 
 /** The extension's refusal code → the sentence the reader sees. */
 export function extensionErrorKey(code: string | null | undefined): ConnectErrorKey {
@@ -51,6 +52,10 @@ export function extensionErrorKey(code: string | null | undefined): ConnectError
     case "state_mismatch":
     case "state_expired":
       return "error_state";
+    // Every device seat of the plan is taken (POST /api/v1/me/devices 409):
+    // the extension signed itself out again; the page links to /account.
+    case "device_limit_reached":
+      return "error_device_limit";
     default:
       return "error_failed";
   }

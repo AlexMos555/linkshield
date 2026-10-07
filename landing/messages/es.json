@@ -909,7 +909,9 @@
     "error_locked": "Tu cuenta está programada para eliminarse. Restáurala para conectar la extensión.",
     "restore_cta": "Restaurar mi cuenta",
     "error_unavailable": "El inicio de sesión no está disponible ahora. La protección funciona sin cuenta.",
-    "handover_note": "La extensión solo recibe una sesión de esta cuenta. No se usa ninguna contraseña."
+    "handover_note": "La extensión solo recibe una sesión de esta cuenta. No se usa ninguna contraseña.",
+    "error_device_limit": "Todos los dispositivos de tu plan están en uso, así que este navegador no se conectó. Desvincula un dispositivo que ya no uses y vuelve a pulsar «Iniciar sesión» en la extensión.",
+    "devices_cta": "Gestionar dispositivos"
   },
   "Account": {
     "plan_heading": "Plan",

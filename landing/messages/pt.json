@@ -909,7 +909,9 @@
     "error_locked": "Sua conta está agendada para exclusão. Restaure-a para conectar a extensão.",
     "restore_cta": "Restaurar minha conta",
     "error_unavailable": "O login não está disponível agora. A proteção funciona sem conta.",
-    "handover_note": "A extensão recebe apenas um login desta conta. Nenhuma senha é usada."
+    "handover_note": "A extensão recebe apenas um login desta conta. Nenhuma senha é usada.",
+    "error_device_limit": "Todos os dispositivos do seu plano estão em uso, então este navegador não foi conectado. Desvincule um dispositivo que você não usa mais e clique em “Entrar” na extensão de novo.",
+    "devices_cta": "Gerenciar dispositivos"
   },
   "Account": {
     "plan_heading": "Plano",

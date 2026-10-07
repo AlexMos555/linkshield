@@ -28,10 +28,19 @@
  * all three. The relay is limited to one path of one origin by the manifest
  * AND re-checks both at run time, and the background re-checks the sender.
  *
+ * 5. The browser is then linked to the account as a device
+ *    (utils/device-link.js): no free seat → signed out again with
+ *    "device_limit" and the connect page says so; an install that was
+ *    unlinked → a new install id and one retry. While signed in it is
+ *    re-linked at most every 6 hours, which is how an unlink made elsewhere
+ *    reaches a browser that makes no other account call.
+ *
  * Tokens never go into a URL or a log line. They live in
  * chrome.storage.local under the keys below; `auth_token` is the access token
  * every authed call already reads.
  */
+
+import { HEARTBEAT_KEY, heartbeatDue } from "./device-link.js";
 
 export const CONNECT_ORIGIN = "https://cleanway.ai";
 // The production Supabase project. The refresh token is only ever sent here,
@@ -239,7 +248,10 @@ export async function refreshSession({ fetchImpl, supabaseUrl = SUPABASE_URL, an
  * @param {Function} [deps.openTab]       (url) => void
  * @param {() => string} [deps.uiLanguage]
  * @param {(whenMs: number|null) => void} [deps.scheduleRefresh]  arm (or clear, with null) the refresh alarm
- * @param {(accessToken: string) => Promise<void>} [deps.onSignedIn]  e.g. registerDevice
+ * @param {(accessToken: string) => Promise<void>} [deps.onSignedIn]  legacy hook, used when linkDevice is absent
+ * @param {(accessToken: string) => Promise<{ok: boolean, error?: string}>} [deps.linkDevice]
+ *        link this browser to the account (utils/device-link.js linkResult shape)
+ * @param {() => Promise<void>} [deps.resetDeviceId]  forget this install's device id (a new one is made)
  * @param {string} [deps.supabaseUrl]
  */
 export function createAuthSession(deps) {
@@ -251,6 +263,8 @@ export function createAuthSession(deps) {
     uiLanguage = () => "en",
     scheduleRefresh = () => {},
     onSignedIn = async () => {},
+    linkDevice = null,
+    resetDeviceId = async () => {},
     supabaseUrl = SUPABASE_URL,
   } = deps;
   const nowS = () => Math.floor(now() / 1000);
@@ -283,8 +297,10 @@ export function createAuthSession(deps) {
     else await storage.remove(KEYS.signedOutReason);
     scheduleRefresh(null);
     // Best effort: end this session on the server too. It is the extension's
-    // own session, so the website stays signed in.
-    if (!reason && current[KEYS.access] && current[KEYS.anonKey]) {
+    // own session, so the website stays signed in. Not after "expired" (the
+    // token is dead) or "device_revoked" (the server already ended it).
+    const endOnServer = !reason || reason === "device_limit";
+    if (endOnServer && current[KEYS.access] && current[KEYS.anonKey]) {
       try {
         await fetchImpl(`${supabaseUrl}/auth/v1/logout?scope=local`, {
           method: "POST",
@@ -313,10 +329,57 @@ export function createAuthSession(deps) {
     await storage.set(parsed.session);
     await storage.remove(KEYS.signedOutReason);
     armFor(parsed.session[KEYS.expiresAt]);
-    try {
-      await onSignedIn(parsed.session[KEYS.access]);
-    } catch (e) { /* device registration is best effort */ }
+    if (!linkDevice) {
+      try {
+        await onSignedIn(parsed.session[KEYS.access]);
+      } catch (e) { /* best effort */ }
+      return { ok: true, email: parsed.session[KEYS.email] };
+    }
+    const linked = await linkThisBrowser(parsed.session[KEYS.access], true);
+    if (!linked.ok && (linked.error === "device_limit_reached" || linked.error === "device_revoked")) {
+      return { ok: false, error: linked.error };
+    }
     return { ok: true, email: parsed.session[KEYS.email] };
+  }
+
+  async function safeLink(accessToken) {
+    try {
+      return (await linkDevice(accessToken)) || { ok: false, error: "unavailable" };
+    } catch (e) {
+      return { ok: false, error: "unavailable" };
+    }
+  }
+
+  /**
+   * Link (or heartbeat) this browser. A refused seat or an unlinked install
+   * signs the extension out with a reason the popup and settings show;
+   * offline or a server hiccup changes nothing (tried again later).
+   * `retryRevoked`: right after sign-in, an id the server knows as unlinked
+   * (unlinked earlier, then signed in again here) is replaced once.
+   */
+  async function linkThisBrowser(accessToken, retryRevoked) {
+    let result = await safeLink(accessToken);
+    if (!result.ok && result.error === "device_revoked" && retryRevoked) {
+      await resetDeviceId();
+      result = await safeLink(accessToken);
+    }
+    if (result.ok) {
+      await storage.set({ [HEARTBEAT_KEY]: now() });
+    } else if (result.error === "device_limit_reached") {
+      await signOut("device_limit");
+    } else if (result.error === "device_revoked") {
+      await resetDeviceId();
+      await signOut("device_revoked");
+    }
+    return result;
+  }
+
+  /** Re-link at most every 6 hours while signed in. */
+  async function heartbeat() {
+    if (!linkDevice) return;
+    const s = await read([KEYS.access, HEARTBEAT_KEY]);
+    if (!s[KEYS.access] || !heartbeatDue(Number(s[HEARTBEAT_KEY]), now())) return;
+    await linkThisBrowser(s[KEYS.access], false);
   }
 
   async function doRefresh() {
@@ -342,9 +405,18 @@ export function createAuthSession(deps) {
     return { signedIn: true, refreshed: false, offline: true };
   }
 
-  /** Refresh if the access token is (nearly) expired. Safe to call often. */
+  async function refreshAndBeat() {
+    const result = await doRefresh();
+    if (result.signedIn) {
+      await heartbeat();
+      if (!(await read([KEYS.access]))[KEYS.access]) return { signedIn: false, signedOut: true };
+    }
+    return result;
+  }
+
+  /** Refresh if the access token is (nearly) expired, then the device heartbeat. Safe to call often. */
   function ensureFresh() {
-    if (!inflight) inflight = doRefresh().finally(() => { inflight = null; });
+    if (!inflight) inflight = refreshAndBeat().finally(() => { inflight = null; });
     return inflight;
   }
 

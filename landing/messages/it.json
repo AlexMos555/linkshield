@@ -909,7 +909,9 @@
     "error_locked": "Il tuo account è in attesa di eliminazione. Ripristinalo per collegare l'estensione.",
     "restore_cta": "Ripristina il mio account",
     "error_unavailable": "L'accesso non è disponibile in questo momento. La protezione funziona anche senza account.",
-    "handover_note": "L'estensione riceve solo un accesso a questo account. Non viene usata alcuna password."
+    "handover_note": "L'estensione riceve solo un accesso a questo account. Non viene usata alcuna password.",
+    "error_device_limit": "Tutti i dispositivi del tuo piano sono in uso, quindi questo browser non è stato collegato. Scollega un dispositivo che non usi più e fai di nuovo clic su «Accedi» nell'estensione.",
+    "devices_cta": "Gestisci dispositivi"
   },
   "Account": {
     "plan_heading": "Piano",

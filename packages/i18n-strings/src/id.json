@@ -1525,6 +1525,12 @@
       },
       "expired": {
         "text": "Sesi masuk Anda telah berakhir"
+      },
+      "device_revoked": {
+        "text": "Browser ini dilepaskan dari akun Anda. Masuk lagi untuk memakainya di sini."
+      },
+      "device_limit": {
+        "text": "Semua perangkat di paket Anda sedang dipakai. Lepaskan satu di cleanway.ai/account, lalu masuk lagi."
       }
     }
   },
@@ -2439,7 +2445,9 @@
       "error_locked": "Akun Anda dijadwalkan untuk dihapus. Pulihkan akun untuk menghubungkan ekstensi.",
       "restore_cta": "Pulihkan akun saya",
       "error_unavailable": "Fitur masuk sedang tidak tersedia. Perlindungan tetap berjalan tanpa akun.",
-      "handover_note": "Ekstensi hanya menerima sesi masuk untuk akun ini. Tidak ada kata sandi yang digunakan."
+      "handover_note": "Ekstensi hanya menerima sesi masuk untuk akun ini. Tidak ada kata sandi yang digunakan.",
+      "error_device_limit": "Semua perangkat di paket Anda sedang dipakai, jadi browser ini tidak terhubung. Lepaskan perangkat yang tidak lagi Anda pakai, lalu klik “Masuk” di ekstensi lagi.",
+      "devices_cta": "Kelola perangkat"
     },
     "account": {
       "plan_heading": "Paket",

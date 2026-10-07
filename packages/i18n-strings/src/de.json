@@ -1525,6 +1525,12 @@
       },
       "expired": {
         "text": "Deine Anmeldung ist abgelaufen"
+      },
+      "device_revoked": {
+        "text": "Dieser Browser wurde aus Ihrem Konto entfernt. Melden Sie sich erneut an, um ihn hier zu nutzen."
+      },
+      "device_limit": {
+        "text": "Alle Geräteplätze Ihres Tarifs sind belegt. Entfernen Sie eines auf cleanway.ai/account und melden Sie sich erneut an."
       }
     }
   },
@@ -2439,7 +2445,9 @@
       "error_locked": "Dein Konto ist zur Löschung vorgemerkt. Stelle es wieder her, um die Erweiterung zu verbinden.",
       "restore_cta": "Mein Konto wiederherstellen",
       "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert auch ohne Konto.",
-      "handover_note": "Die Erweiterung erhält nur eine Anmeldung für dieses Konto. Ein Passwort wird nicht verwendet."
+      "handover_note": "Die Erweiterung erhält nur eine Anmeldung für dieses Konto. Ein Passwort wird nicht verwendet.",
+      "error_device_limit": "Alle Geräteplätze Ihres Tarifs sind belegt, daher wurde dieser Browser nicht verbunden. Entfernen Sie ein Gerät, das Sie nicht mehr nutzen, und klicken Sie in der Erweiterung erneut auf „Anmelden“.",
+      "devices_cta": "Geräte verwalten"
     },
     "account": {
       "plan_heading": "Tarif",

@@ -205,6 +205,7 @@ check("the API's answer", () => {
 check("the extension's refusal", () => {
   assert.equal(extensionErrorKey("state_mismatch"), "error_state");
   assert.equal(extensionErrorKey("state_expired"), "error_state");
+  assert.equal(extensionErrorKey("device_limit_reached"), "error_device_limit");
   for (const code of ["invalid_session", "bad_sender", "wrong_project", "extension_error", null]) {
     assert.equal(extensionErrorKey(code), "error_failed", String(code));
   }

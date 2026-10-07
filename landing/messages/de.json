@@ -909,7 +909,9 @@
     "error_locked": "Dein Konto ist zur Löschung vorgemerkt. Stelle es wieder her, um die Erweiterung zu verbinden.",
     "restore_cta": "Mein Konto wiederherstellen",
     "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert auch ohne Konto.",
-    "handover_note": "Die Erweiterung erhält nur eine Anmeldung für dieses Konto. Ein Passwort wird nicht verwendet."
+    "handover_note": "Die Erweiterung erhält nur eine Anmeldung für dieses Konto. Ein Passwort wird nicht verwendet.",
+    "error_device_limit": "Alle Geräteplätze Ihres Tarifs sind belegt, daher wurde dieser Browser nicht verbunden. Entfernen Sie ein Gerät, das Sie nicht mehr nutzen, und klicken Sie in der Erweiterung erneut auf „Anmelden“.",
+    "devices_cta": "Geräte verwalten"
   },
   "Account": {
     "plan_heading": "Tarif",

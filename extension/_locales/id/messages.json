@@ -1483,5 +1483,11 @@
   },
   "account_expired": {
     "message": "Sesi masuk Anda telah berakhir"
+  },
+  "account_device_revoked": {
+    "message": "Browser ini dilepaskan dari akun Anda. Masuk lagi untuk memakainya di sini."
+  },
+  "account_device_limit": {
+    "message": "Semua perangkat di paket Anda sedang dipakai. Lepaskan satu di cleanway.ai/account, lalu masuk lagi."
   }
 }

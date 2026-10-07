@@ -909,7 +909,9 @@
     "error_locked": "Akun Anda dijadwalkan untuk dihapus. Pulihkan akun untuk menghubungkan ekstensi.",
     "restore_cta": "Pulihkan akun saya",
     "error_unavailable": "Fitur masuk sedang tidak tersedia. Perlindungan tetap berjalan tanpa akun.",
-    "handover_note": "Ekstensi hanya menerima sesi masuk untuk akun ini. Tidak ada kata sandi yang digunakan."
+    "handover_note": "Ekstensi hanya menerima sesi masuk untuk akun ini. Tidak ada kata sandi yang digunakan.",
+    "error_device_limit": "Semua perangkat di paket Anda sedang dipakai, jadi browser ini tidak terhubung. Lepaskan perangkat yang tidak lagi Anda pakai, lalu klik “Masuk” di ekstensi lagi.",
+    "devices_cta": "Kelola perangkat"
   },
   "Account": {
     "plan_heading": "Paket",

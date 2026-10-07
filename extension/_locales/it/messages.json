@@ -1483,5 +1483,11 @@
   },
   "account_expired": {
     "message": "Il tuo accesso è scaduto"
+  },
+  "account_device_revoked": {
+    "message": "Questo browser è stato rimosso dal tuo account. Accedi di nuovo per usarlo qui."
+  },
+  "account_device_limit": {
+    "message": "Tutti i dispositivi del tuo piano sono in uso. Scollegane uno su cleanway.ai/account e accedi di nuovo."
   }
 }

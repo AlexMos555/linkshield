@@ -1525,6 +1525,12 @@
       },
       "expired": {
         "text": "Tu sesión ha caducado"
+      },
+      "device_revoked": {
+        "text": "Este navegador se quitó de tu cuenta. Vuelve a iniciar sesión para usarlo aquí."
+      },
+      "device_limit": {
+        "text": "Todos los dispositivos de tu plan están en uso. Desvincula uno en cleanway.ai/account y vuelve a iniciar sesión."
       }
     }
   },
@@ -2439,7 +2445,9 @@
       "error_locked": "Tu cuenta está programada para eliminarse. Restáurala para conectar la extensión.",
       "restore_cta": "Restaurar mi cuenta",
       "error_unavailable": "El inicio de sesión no está disponible ahora. La protección funciona sin cuenta.",
-      "handover_note": "La extensión solo recibe una sesión de esta cuenta. No se usa ninguna contraseña."
+      "handover_note": "La extensión solo recibe una sesión de esta cuenta. No se usa ninguna contraseña.",
+      "error_device_limit": "Todos los dispositivos de tu plan están en uso, así que este navegador no se conectó. Desvincula un dispositivo que ya no uses y vuelve a pulsar «Iniciar sesión» en la extensión.",
+      "devices_cta": "Gestionar dispositivos"
     },
     "account": {
       "plan_heading": "Plan",

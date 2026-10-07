@@ -1483,5 +1483,11 @@
   },
   "account_expired": {
     "message": "Deine Anmeldung ist abgelaufen"
+  },
+  "account_device_revoked": {
+    "message": "Dieser Browser wurde aus Ihrem Konto entfernt. Melden Sie sich erneut an, um ihn hier zu nutzen."
+  },
+  "account_device_limit": {
+    "message": "Alle Geräteplätze Ihres Tarifs sind belegt. Entfernen Sie eines auf cleanway.ai/account und melden Sie sich erneut an."
   }
 }

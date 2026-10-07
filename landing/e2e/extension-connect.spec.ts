@@ -172,6 +172,19 @@ test.describe("with sign-in configured", () => {
     await expect.poll(() => supabaseCalls.some((u) => u.endsWith("/auth/v1/logout?scope=local"))).toBe(true);
   });
 
+  test("every device seat is taken: says so and links to the device list", async ({ page }) => {
+    await signIn(page);
+    await fakeSupabase(page);
+    await fakeApi(page);
+    await fakeExtension(page, { ok: false, error: "device_limit_reached" });
+
+    await page.goto(`/ru/extension/connect?state=${STATE}`);
+    await page.getByRole("button", { name: "Подключить", exact: true }).click();
+    const error = page.getByTestId("connect-error");
+    await expect(error).toContainText("Все устройства тарифа заняты");
+    await expect(page.getByTestId("connect-devices")).toHaveAttribute("href", "/ru/account");
+  });
+
   test("account on hold: points to the restore page", async ({ page }) => {
     await signIn(page);
     await fakeSupabase(page);

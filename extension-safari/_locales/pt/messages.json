@@ -1483,5 +1483,11 @@
   },
   "account_expired": {
     "message": "Sua sessão expirou"
+  },
+  "account_device_revoked": {
+    "message": "Este navegador foi removido da sua conta. Entre de novo para usá-lo aqui."
+  },
+  "account_device_limit": {
+    "message": "Todos os dispositivos do seu plano estão em uso. Desvincule um em cleanway.ai/account e entre de novo."
   }
 }
