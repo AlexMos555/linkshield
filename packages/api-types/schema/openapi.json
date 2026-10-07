@@ -72,7 +72,7 @@
           "payments"
         ],
         "summary": "Create Checkout",
-        "description": "Create a Stripe Checkout session for subscription.\n\nEndpoint path is /checkout (matches the landing PricingClient).\n/create-checkout is preserved as an alias below for any code that\nmight still reference the legacy name.\n\nRefuses (409 `subscription_already_active`) when the user already\npays: subscriptions has one row per user, so a second Stripe\nsubscription would overwrite the first on our side while Stripe kept\nbilling both. Plan changes go through the Customer Portal.",
+        "description": "Create a Stripe Checkout session for subscription.\n\nEndpoint path is /checkout (matches the landing PricingClient).\n/create-checkout is preserved as an alias below for any code that\nmight still reference the legacy name.\n\nRefuses (409 `subscription_already_active`) when the account already\nhas an active plan from ANY source (Stripe, Google Play, App Store,\nRuStore, the operator subscription, a promo — `has_active_entitlement`):\npaying twice for the same account is never right. For a Stripe plan the\nanswer points at the Customer Portal, where plan changes happen.",
         "operationId": "create_checkout_api_v1_payments_checkout_post",
         "parameters": [
           {
@@ -425,7 +425,7 @@
           "user"
         ],
         "summary": "Register Device",
-        "description": "Register or update device for multi-device sync.",
+        "description": "Register or update a device. DEPRECATED — use POST /api/v1/me/devices.\n\nKept for old clients, but it now goes through the same registration as\nthe new route, so it can't link devices past the plan's device limit\n(it used to upsert straight into `devices` and answer \"ok\" even when\nthe write failed). Old platform names (chrome / firefox / safari) map\nto 'extension'.",
         "operationId": "register_device_api_v1_user_device_post",
         "parameters": [
           {
@@ -1058,6 +1058,292 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RestoreAccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/entitlement": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Get Entitlement",
+        "description": "The account's effective plan and its linked devices.",
+        "operationId": "get_entitlement_api_v1_me_entitlement_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitlementResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/devices": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Get Devices",
+        "operationId": "get_devices_api_v1_me_devices_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceOut"
+                  },
+                  "title": "Response Get Devices Api V1 Me Devices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Register Device",
+        "description": "Link this install to the account, or heartbeat it when already linked.\n\nIdempotent: the same device_id answers 200 'updated' every time after the\nfirst 201 'created'. A new device beyond the plan's device_limit gets 409\ndevice_limit_reached with the linked devices listed.",
+        "operationId": "register_device_api_v1_me_devices_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegisterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/devices/{device_id}": {
+      "patch": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Rename Device",
+        "operationId": "rename_device_api_v1_me_devices__device_id__patch",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRenameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Unlink Device",
+        "description": "Unlink a device: its seat frees up at once, its session ends, and its\nrequests are refused with device_revoked. Answers with the updated\nentitlement so the screen re-renders without another round trip.\nIdempotent — unlinking an unlinked device answers the same.",
+        "operationId": "unlink_device_api_v1_me_devices__device_id__delete",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitlementResponse"
                 }
               }
             }
@@ -4337,6 +4623,73 @@
         ],
         "title": "DeleteAccountResponse"
       },
+      "DeviceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "is_current": {
+            "type": "boolean",
+            "title": "Is Current",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "platform"
+        ],
+        "title": "DeviceOut"
+      },
       "DeviceOverrideUpdate": {
         "properties": {
           "skill_level_override": {
@@ -4403,6 +4756,99 @@
           "platform"
         ],
         "title": "DeviceRegister"
+      },
+      "DeviceRegisterRequest": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Device Id",
+            "description": "Random per-install id made by the client and kept in secure storage."
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "android",
+              "ios",
+              "extension",
+              "web"
+            ],
+            "title": "Platform"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Device model or browser."
+          },
+          "app_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "platform"
+        ],
+        "title": "DeviceRegisterRequest"
+      },
+      "DeviceRegisterResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "updated"
+            ],
+            "title": "Status"
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceOut"
+          },
+          "entitlement": {
+            "$ref": "#/components/schemas/EntitlementResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "device",
+          "entitlement"
+        ],
+        "title": "DeviceRegisterResponse"
+      },
+      "DeviceRenameRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "DeviceRenameRequest"
       },
       "DomainReason": {
         "properties": {
@@ -4591,6 +5037,73 @@
         ],
         "title": "EffectiveSkillResponse",
         "description": "Resolved skill + accessibility for a specific device.\n\nResolution rule: device override (if set) wins over user default.\nReturned to extension/mobile so the UI can render with the right\ndensity, fonts, voice alerts, etc."
+      },
+      "EntitlementResponse": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "title": "Plan",
+            "description": "'free', or the paid plan (personal / family / business)."
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "'free', or active / trialing / past_due."
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Where the plan was paid: stripe, google_play, app_store, rustore, operator_ru, promo, partner."
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
+          "device_limit": {
+            "type": "integer",
+            "title": "Device Limit"
+          },
+          "included_devices": {
+            "type": "integer",
+            "title": "Included Devices",
+            "description": "Devices a paid plan covers before extras."
+          },
+          "devices_used": {
+            "type": "integer",
+            "title": "Devices Used"
+          },
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceOut"
+            },
+            "type": "array",
+            "title": "Devices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan",
+          "status",
+          "device_limit",
+          "included_devices",
+          "devices_used",
+          "devices"
+        ],
+        "title": "EntitlementResponse"
       },
       "ExplainRequest": {
         "properties": {

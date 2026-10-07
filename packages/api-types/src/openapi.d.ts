@@ -48,10 +48,11 @@ export interface paths {
          *     /create-checkout is preserved as an alias below for any code that
          *     might still reference the legacy name.
          *
-         *     Refuses (409 `subscription_already_active`) when the user already
-         *     pays: subscriptions has one row per user, so a second Stripe
-         *     subscription would overwrite the first on our side while Stripe kept
-         *     billing both. Plan changes go through the Customer Portal.
+         *     Refuses (409 `subscription_already_active`) when the account already
+         *     has an active plan from ANY source (Stripe, Google Play, App Store,
+         *     RuStore, the operator subscription, a promo — `has_active_entitlement`):
+         *     paying twice for the same account is never right. For a Stripe plan the
+         *     answer points at the Customer Portal, where plan changes happen.
          */
         post: operations["create_checkout_api_v1_payments_checkout_post"];
         delete?: never;
@@ -211,7 +212,13 @@ export interface paths {
         put?: never;
         /**
          * Register Device
-         * @description Register or update device for multi-device sync.
+         * @description Register or update a device. DEPRECATED — use POST /api/v1/me/devices.
+         *
+         *     Kept for old clients, but it now goes through the same registration as
+         *     the new route, so it can't link devices past the plan's device limit
+         *     (it used to upsert straight into `devices` and answer "ok" even when
+         *     the write failed). Old platform names (chrome / firefox / safari) map
+         *     to 'extension'.
          */
         post: operations["register_device_api_v1_user_device_post"];
         delete?: never;
@@ -449,6 +456,75 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/entitlement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Entitlement
+         * @description The account's effective plan and its linked devices.
+         */
+        get: operations["get_entitlement_api_v1_me_entitlement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Devices */
+        get: operations["get_devices_api_v1_me_devices_get"];
+        put?: never;
+        /**
+         * Register Device
+         * @description Link this install to the account, or heartbeat it when already linked.
+         *
+         *     Idempotent: the same device_id answers 200 'updated' every time after the
+         *     first 201 'created'. A new device beyond the plan's device_limit gets 409
+         *     device_limit_reached with the linked devices listed.
+         */
+        post: operations["register_device_api_v1_me_devices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink Device
+         * @description Unlink a device: its seat frees up at once, its session ends, and its
+         *     requests are refused with device_revoked. Answers with the updated
+         *     entitlement so the screen re-renders without another round trip.
+         *     Idempotent — unlinking an unlinked device answers the same.
+         */
+        delete: operations["unlink_device_api_v1_me_devices__device_id__delete"];
+        options?: never;
+        head?: never;
+        /** Rename Device */
+        patch: operations["rename_device_api_v1_me_devices__device_id__patch"];
         trace?: never;
     };
     "/api/v1/feedback/report": {
@@ -1853,6 +1929,26 @@ export interface components {
             /** Restore Until */
             restore_until: string;
         };
+        /** DeviceOut */
+        DeviceOut: {
+            /** Id */
+            id: string;
+            /** Platform */
+            platform: string;
+            /** Name */
+            name?: string | null;
+            /** App Version */
+            app_version?: string | null;
+            /** Created At */
+            created_at?: string | null;
+            /** Last Seen At */
+            last_seen_at?: string | null;
+            /**
+             * Is Current
+             * @default false
+             */
+            is_current: boolean;
+        };
         /**
          * DeviceOverrideUpdate
          * @description Per-device overrides — used by Family Hub to set Granny Mode on
@@ -1884,6 +1980,41 @@ export interface components {
              * @default 0.1.0
              */
             app_version: string;
+        };
+        /** DeviceRegisterRequest */
+        DeviceRegisterRequest: {
+            /**
+             * Device Id
+             * @description Random per-install id made by the client and kept in secure storage.
+             */
+            device_id: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "android" | "ios" | "extension" | "web";
+            /**
+             * Name
+             * @description Device model or browser.
+             */
+            name?: string | null;
+            /** App Version */
+            app_version?: string | null;
+        };
+        /** DeviceRegisterResponse */
+        DeviceRegisterResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "created" | "updated";
+            device: components["schemas"]["DeviceOut"];
+            entitlement: components["schemas"]["EntitlementResponse"];
+        };
+        /** DeviceRenameRequest */
+        DeviceRenameRequest: {
+            /** Name */
+            name: string;
         };
         /** DomainReason */
         DomainReason: {
@@ -1959,6 +2090,37 @@ export interface components {
              * @enum {string}
              */
             font_source: "device_override" | "user_default";
+        };
+        /** EntitlementResponse */
+        EntitlementResponse: {
+            /**
+             * Plan
+             * @description 'free', or the paid plan (personal / family / business).
+             */
+            plan: string;
+            /**
+             * Status
+             * @description 'free', or active / trialing / past_due.
+             */
+            status: string;
+            /**
+             * Source
+             * @description Where the plan was paid: stripe, google_play, app_store, rustore, operator_ru, promo, partner.
+             */
+            source?: string | null;
+            /** Period End */
+            period_end?: string | null;
+            /** Device Limit */
+            device_limit: number;
+            /**
+             * Included Devices
+             * @description Devices a paid plan covers before extras.
+             */
+            included_devices: number;
+            /** Devices Used */
+            devices_used: number;
+            /** Devices */
+            devices: components["schemas"]["DeviceOut"][];
         };
         /** ExplainRequest */
         ExplainRequest: {
@@ -3152,6 +3314,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RestoreAccountResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_entitlement_api_v1_me_entitlement_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_devices_api_v1_me_devices_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_device_api_v1_me_devices_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRegisterResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlink_device_api_v1_me_devices__device_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_device_api_v1_me_devices__device_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRenameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceOut"];
                 };
             };
             /** @description Validation Error */
