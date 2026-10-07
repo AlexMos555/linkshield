@@ -59,6 +59,14 @@
       ],
       "js": ["src/content/webmail.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://cleanway.ai/extension/connect*",
+        "https://cleanway.ai/*/extension/connect*"
+      ],
+      "js": ["src/content/connect-relay.js"],
+      "run_at": "document_idle"
     }
   ],
 

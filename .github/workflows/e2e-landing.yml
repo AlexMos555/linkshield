@@ -29,6 +29,12 @@ jobs:
         billing: [off, on]
     env:
       NEXT_PUBLIC_BILLING_ENABLED: ${{ matrix.billing == 'on' && '1' || '' }}
+      # A fake Supabase project, so the pages that need sign-in render their
+      # signed-in states. Nothing calls it: landing/e2e/extension-connect.spec.ts
+      # answers every request to it with page.route. (*.supabase.co is in the
+      # CSP's connect-src, so the build's CSP stays the production one.)
+      NEXT_PUBLIC_SUPABASE_URL: https://cleanway-e2e.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-public-anon-key
     defaults:
       run:
         working-directory: landing

@@ -889,6 +889,28 @@
       }
     }
   },
+  "ExtensionConnect": {
+    "meta_title": "Erweiterung verbinden — Cleanway",
+    "loading": "Anmeldung wird geprüft…",
+    "heading": "Verbinde diesen Browser mit deinem Cleanway-Konto",
+    "signed_in_as": "Angemeldet als {email}",
+    "explain": "Die Cleanway-Erweiterung in diesem Browser nutzt dieses Konto für den Familien-Hub und die Synchronisierung der Einstellungen. Sie bekommt eine eigene Anmeldung: Wenn du dich in der Erweiterung abmeldest, bleibst du auf der Website angemeldet.",
+    "connect": "Verbinden",
+    "connecting": "Wird verbunden…",
+    "other_account": "Anderes Konto verwenden",
+    "connected_title": "Dieser Browser ist verbunden",
+    "connected_body": "Du kannst diesen Tab jetzt schließen.",
+    "no_state_title": "Starte in der Erweiterung",
+    "no_state_body": "Öffne die Cleanway-Erweiterung in diesem Browser und klicke auf „Anmelden“. Sie bringt dich hierher zurück.",
+    "error_no_extension": "Die Cleanway-Erweiterung hat in diesem Browser nicht geantwortet. Prüfe, ob sie installiert und aktiviert ist, und klicke in der Erweiterung erneut auf „Anmelden“.",
+    "error_state": "Diese Anmeldeanfrage ist abgelaufen. Klicke in der Erweiterung erneut auf „Anmelden“.",
+    "error_failed": "Die Erweiterung konnte nicht verbunden werden. Bitte versuche es erneut.",
+    "error_network": "Keine Verbindung zum Server. Prüfe deine Internetverbindung und versuche es erneut.",
+    "error_locked": "Dein Konto ist zur Löschung vorgemerkt. Stelle es wieder her, um die Erweiterung zu verbinden.",
+    "restore_cta": "Mein Konto wiederherstellen",
+    "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert auch ohne Konto.",
+    "handover_note": "Die Erweiterung erhält nur eine Anmeldung für dieses Konto. Ein Passwort wird nicht verwendet."
+  },
   "Reasons": {
     "flagged_dangerous": "Google stuft diese Seite als gefährlich ein",
     "flagged_phishing": "Als Phishing gemeldet",

@@ -889,6 +889,28 @@
       }
     }
   },
+  "ExtensionConnect": {
+    "meta_title": "Conectar la extensión — Cleanway",
+    "loading": "Comprobando tu sesión…",
+    "heading": "Conecta este navegador a tu cuenta de Cleanway",
+    "signed_in_as": "Sesión iniciada como {email}",
+    "explain": "La extensión de Cleanway en este navegador usará esta cuenta para el Centro Familiar y la sincronización de ajustes. Tendrá su propia sesión: cerrar sesión en la extensión no la cierra en el sitio web.",
+    "connect": "Conectar",
+    "connecting": "Conectando…",
+    "other_account": "Usar otra cuenta",
+    "connected_title": "Este navegador está conectado",
+    "connected_body": "Ya puedes cerrar esta pestaña.",
+    "no_state_title": "Empieza desde la extensión",
+    "no_state_body": "Abre la extensión de Cleanway en este navegador y haz clic en «Iniciar sesión». Te traerá de vuelta aquí.",
+    "error_no_extension": "La extensión de Cleanway no respondió en este navegador. Comprueba que esté instalada y activada, y vuelve a hacer clic en «Iniciar sesión» en la extensión.",
+    "error_state": "Esta solicitud de inicio de sesión ha caducado. Vuelve a hacer clic en «Iniciar sesión» en la extensión.",
+    "error_failed": "No se pudo conectar la extensión. Inténtalo de nuevo.",
+    "error_network": "Sin conexión con el servidor. Revisa tu internet e inténtalo de nuevo.",
+    "error_locked": "Tu cuenta está programada para eliminarse. Restáurala para conectar la extensión.",
+    "restore_cta": "Restaurar mi cuenta",
+    "error_unavailable": "El inicio de sesión no está disponible ahora. La protección funciona sin cuenta.",
+    "handover_note": "La extensión solo recibe una sesión de esta cuenta. No se usa ninguna contraseña."
+  },
   "Reasons": {
     "flagged_dangerous": "Google marca este sitio como peligroso",
     "flagged_phishing": "Reportado como phishing",

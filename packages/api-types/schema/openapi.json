@@ -3018,6 +3018,56 @@
         }
       }
     },
+    "/api/v1/auth/extension-session": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Extension Session",
+        "description": "Open a new Supabase session for the signed-in user's browser extension.\n\nWhy not hand the extension the website's own tokens: Supabase rotates\nrefresh tokens and treats the reuse of an already-rotated one as theft —\nit revokes the WHOLE session. The website and the extension would refresh\nthe same session independently, so within a couple of hours one of them\nwould present a rotated token and both would be signed out. A session of\nits own (its own refresh-token family, its own row in auth.sessions) lets\neach side refresh, and sign out, without touching the other.\n\nHow: the service key asks GoTrue for a one-time magic-link token for the\ncaller's own address (``admin/generate_link`` — no email is sent), and the\ntoken is exchanged at ``/verify`` right here, so it never leaves the\nserver. The address comes from the verified JWT, never from the request,\nso a caller can only ever open a session for themselves. The soft-delete\ngate in ``get_current_user`` applies (410 while the account is on hold),\nand the per-user sensitive-action limit (10 an hour) caps how many\nsessions a token can open.\n\nTokens are never logged; failures log the upstream status code only.",
+        "operationId": "extension_session_api_v1_auth_extension_session_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtensionSessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/credentials/verified": {
       "get": {
         "tags": [
@@ -4640,6 +4690,29 @@
           "source"
         ],
         "title": "ExplainResponse"
+      },
+      "ExtensionSessionResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          },
+          "expires_at": {
+            "type": "integer",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "refresh_token",
+          "expires_at"
+        ],
+        "title": "ExtensionSessionResponse"
       },
       "FamilyMember": {
         "properties": {

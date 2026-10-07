@@ -889,6 +889,28 @@
       }
     }
   },
+  "ExtensionConnect": {
+    "meta_title": "Connect the extension — Cleanway",
+    "loading": "Checking your sign-in…",
+    "heading": "Connect this browser to your Cleanway account",
+    "signed_in_as": "Signed in as {email}",
+    "explain": "The Cleanway extension in this browser will use this account for Family Hub and settings sync. It gets a sign-in of its own: signing out of the extension won't sign you out of the website.",
+    "connect": "Connect",
+    "connecting": "Connecting…",
+    "other_account": "Use a different account",
+    "connected_title": "This browser is connected",
+    "connected_body": "You can close this tab.",
+    "no_state_title": "Start from the extension",
+    "no_state_body": "Open the Cleanway extension in this browser and click “Sign in”. It brings you back here.",
+    "error_no_extension": "The Cleanway extension didn't answer in this browser. Make sure it's installed and turned on, then click “Sign in” in the extension again.",
+    "error_state": "This sign-in request has expired. Click “Sign in” in the extension again.",
+    "error_failed": "Couldn't connect the extension. Please try again.",
+    "error_network": "No connection to the server. Check your internet and try again.",
+    "error_locked": "Your account is scheduled for deletion. Restore it to connect the extension.",
+    "restore_cta": "Restore my account",
+    "error_unavailable": "Signing in isn't available right now. Protection works without an account.",
+    "handover_note": "The extension receives a sign-in for this account only. No password is involved."
+  },
   "Reasons": {
     "flagged_dangerous": "Google flags this site as dangerous",
     "flagged_phishing": "Reported as phishing",
