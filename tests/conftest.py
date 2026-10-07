@@ -143,6 +143,87 @@ def redis_down(monkeypatch):
     monkeypatch.setattr("api.services.cache.get_redis", _boom)
 
 
+# ─── Fake Stripe API ───────────────────────────────────────────────
+#
+# The billing path (checkout, portal, webhook attribution, account
+# deletion, the GDPR purge) talks to Stripe through a handful of async
+# resource calls. This stand-in keeps a tiny in-memory Stripe account so
+# tests can assert WHICH subscriptions got cancelled and with WHAT
+# parameters, without a network call. Plain dicts are fine: the code
+# under test reads Stripe objects via dict access (StripeObject is a
+# dict subclass).
+
+
+class FakeStripe:
+    def __init__(self) -> None:
+        self.subscriptions: dict[str, dict] = {}
+        self.charges: dict[str, dict] = {}
+        self.cancel_calls: list[tuple[str, dict]] = []
+        self.portal_calls: list[dict] = []
+        self.list_calls: list[dict] = []
+        self.fail_cancel = False
+        self.fail_list = False
+
+    def add_subscription(self, sub_id: str, customer: str, status: str = "active", **extra) -> dict:
+        sub = {"id": sub_id, "customer": customer, "status": status, "metadata": {}, **extra}
+        self.subscriptions[sub_id] = sub
+        return sub
+
+    def install(self, monkeypatch) -> "FakeStripe":
+        import stripe
+
+        fake = self
+
+        async def sub_list(**params):
+            fake.list_calls.append(params)
+            if fake.fail_list:
+                raise stripe.APIConnectionError("simulated Stripe outage")
+            data = [s for s in fake.subscriptions.values() if s["customer"] == params.get("customer")]
+            return {"object": "list", "data": data}
+
+        async def sub_retrieve(sub_id, **_params):
+            if sub_id not in fake.subscriptions:
+                raise stripe.InvalidRequestError(f"No such subscription: {sub_id}", "id")
+            return fake.subscriptions[sub_id]
+
+        async def sub_cancel(sub_id, **params):
+            if fake.fail_cancel:
+                raise stripe.APIConnectionError("simulated Stripe outage")
+            fake.cancel_calls.append((sub_id, params))
+            fake.subscriptions[sub_id]["status"] = "canceled"
+            return fake.subscriptions[sub_id]
+
+        async def charge_retrieve(charge_id, **_params):
+            return fake.charges[charge_id]
+
+        class _Portal:
+            url = "https://billing.stripe.com/p/session/fake"
+
+        async def portal_create(**params):
+            fake.portal_calls.append(params)
+            return _Portal()
+
+        async def must_not_search(**_params):
+            raise AssertionError("Customer lookup by email is not allowed")
+
+        monkeypatch.setattr(stripe.Subscription, "list_async", sub_list)
+        monkeypatch.setattr(stripe.Subscription, "retrieve_async", sub_retrieve)
+        monkeypatch.setattr(stripe.Subscription, "cancel_async", sub_cancel)
+        monkeypatch.setattr(stripe.Charge, "retrieve_async", charge_retrieve)
+        monkeypatch.setattr(stripe.billing_portal.Session, "create_async", portal_create)
+        monkeypatch.setattr(stripe.Customer, "list_async", must_not_search)
+        return self
+
+
+@pytest.fixture
+def fake_stripe(monkeypatch) -> FakeStripe:
+    """In-memory Stripe + a configured secret key."""
+    from api import config
+
+    monkeypatch.setattr(config.get_settings(), "stripe_secret_key", "sk_test_dummy", raising=False)
+    return FakeStripe().install(monkeypatch)
+
+
 # ─── Offline analyzer ──────────────────────────────────────────────
 #
 # analyze_domain() with every network call replaced, so verdict tests are
