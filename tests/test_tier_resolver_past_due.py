@@ -131,3 +131,39 @@ async def test_query_orders_by_created_at_desc(supabase_ok, no_redis, monkeypatc
     q = stub.urls[0]
     assert "order=created_at.desc" in q, q
     assert "limit=1" in q, q
+
+
+@pytest.mark.asyncio
+async def test_store_plan_in_entitlements_grants_the_paid_tier(account_store):
+    """A plan bought in Google Play / the App Store exists only in
+    `entitlements` (no Stripe `subscriptions` row): the tier must follow it,
+    or the account screen says "paid" while every limit stays free."""
+    from api.services import auth
+
+    account_store.add_entitlement("user-play", source="google_play", external_id="GPA.1",
+                                  plan="personal", status="active")
+    assert await auth._tier_from_entitlements("user-play") == UserTier.personal
+
+    account_store.add_entitlement("user-addon", source="google_play", external_id="GPA.2",
+                                  plan="extra_devices", device_limit=1)
+    assert await auth._tier_from_entitlements("user-addon") == UserTier.free
+
+
+@pytest.mark.asyncio
+async def test_entitlement_lookup_failure_falls_back_to_free(account_store):
+    from api.services import auth
+
+    account_store.fail = True
+    assert await auth._tier_from_entitlements("user-x") == UserTier.free
+
+
+@pytest.mark.asyncio
+async def test_no_subscription_row_falls_through_to_entitlements(supabase_ok, no_redis, monkeypatch, account_store):
+    import httpx as _httpx
+    from api.services import auth
+
+    stub = _SupabaseStub(rows=[])
+    monkeypatch.setattr(_httpx, "AsyncClient", stub.build())
+    account_store.add_entitlement("user-store", source="app_store", external_id="2000001",
+                                  plan="personal", status="trialing")
+    assert await auth._fetch_tier_from_supabase("user-store") == UserTier.personal

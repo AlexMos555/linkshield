@@ -1127,6 +1127,56 @@
         }
       }
     },
+    "/api/v1/me/entitlement/refresh": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Refresh Entitlement",
+        "description": "\"Restore purchases\": reconcile this account's Google Play / App Store\npurchases with RevenueCat (GET /v1/subscribers/{account id}), then answer\nthe updated entitlement. The app calls it after the RevenueCat SDK's\nrestorePurchases(), so a purchase whose webhook was missed or is late\nshows up at once.",
+        "operationId": "refresh_entitlement_api_v1_me_entitlement_refresh_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitlementResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/devices": {
       "get": {
         "tags": [
@@ -5157,6 +5207,18 @@
             ],
             "title": "Source",
             "description": "Where the plan was paid: stripe, google_play, app_store, rustore, operator_ru, promo, partner."
+          },
+          "manage_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manage Url",
+            "description": "Where this plan is changed or cancelled: the Google Play / App Store subscriptions page for store purchases, the cleanway.ai account page for Stripe; null for free and for sources without a self-service page."
           },
           "period_end": {
             "anyOf": [

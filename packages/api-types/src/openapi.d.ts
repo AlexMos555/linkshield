@@ -478,6 +478,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/entitlement/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Entitlement
+         * @description "Restore purchases": reconcile this account's Google Play / App Store
+         *     purchases with RevenueCat (GET /v1/subscribers/{account id}), then answer
+         *     the updated entitlement. The app calls it after the RevenueCat SDK's
+         *     restorePurchases(), so a purchase whose webhook was missed or is late
+         *     shows up at once.
+         */
+        post: operations["refresh_entitlement_api_v1_me_entitlement_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/devices": {
         parameters: {
             query?: never;
@@ -2177,6 +2201,11 @@ export interface components {
              * @description Where the plan was paid: stripe, google_play, app_store, rustore, operator_ru, promo, partner.
              */
             source?: string | null;
+            /**
+             * Manage Url
+             * @description Where this plan is changed or cancelled: the Google Play / App Store subscriptions page for store purchases, the cleanway.ai account page for Stripe; null for free and for sources without a self-service page.
+             */
+            manage_url?: string | null;
             /** Period End */
             period_end?: string | null;
             /** Device Limit */
@@ -3429,6 +3458,37 @@ export interface operations {
         };
     };
     get_entitlement_api_v1_me_entitlement_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_entitlement_api_v1_me_entitlement_refresh_post: {
         parameters: {
             query?: never;
             header?: {
