@@ -124,6 +124,7 @@ def test_export_returns_all_user_tables(client, supabase_ok, supabase_stub):
     expected_tables = {
         "users",
         "subscriptions",
+        "entitlements",
         "user_settings",
         "devices",
         "weekly_aggregates",
@@ -143,6 +144,7 @@ def test_export_filters_by_user_id_per_table(client, supabase_ok, supabase_stub)
     expected_filter = {
         "users": "id",
         "subscriptions": "user_id",
+        "entitlements": "account_id",
         "user_settings": "user_id",
         "devices": "user_id",
         "weekly_aggregates": "user_id",

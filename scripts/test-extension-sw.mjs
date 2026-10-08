@@ -32,7 +32,7 @@
  * ---------------------
  * A local mock API answers every call (api_url is pointed at it through the
  * same chrome.storage override the Options page uses), and Chromium's host
- * resolver maps *.cleanway.ai to nowhere, so a stray request fails instead of
+ * resolver maps *.cleanway.ai and *.supabase.co to nowhere, so a stray request fails instead of
  * reaching production. The test sites (*.example, *.tk, *.top) resolve to
  * the mock too; it serves the same pages on every hostname.
  *
@@ -48,6 +48,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 // createRequire honours NODE_PATH, which CI uses to point at a throwaway install.
 const require = createRequire(import.meta.url);
@@ -58,6 +59,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TREES = process.argv.slice(2).length ? process.argv.slice(2) : ["extension", "extension-safari"];
 
 const FAMILY_ID = "fam-e2e";
+// The Supabase project the extension pins (src/utils/auth-session.js). Its
+// host resolves to nowhere below; sign-in pages are served by context.route.
+const SUPABASE_PROJECT = "https://bpyqgzzclsbfvxthyfsf.supabase.co";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -112,7 +116,11 @@ const PAGES = {
   "/links.html":
     "<!doctype html><title>Inbox</title><p>" +
     "<a id=\"l-scam\" href=\"http://scam-linked.example/win\">Prize</a> " +
-    "<a id=\"l-guess\" href=\"http://paypa1-login.tk/\">Account</a> " +
+    // The offline scorer's own verdict: the mock API rate-limits every
+    // "paypa1" host. paypa1-login.tk used to be it, but the server's name
+    // rules (which the extension now runs) do not read a look-alike glued to
+    // a lure word, so that one scores 30/caution offline.
+    "<a id=\"l-guess\" href=\"http://login.paypa1.tk/\">Account</a> " +
     "<a id=\"l-wrapped\" href=\"https://www.google.com/url?q=http://scam-wrapped.example/&sa=D\">Search result</a> " +
     "<a id=\"l-hidden\" href=\"https://www.linkedin.com/slink?code=e2e\">Short link</a> " +
     "<a id=\"l-docs\" href=\"https://docs.google.com/forms/d/e/e2e/viewform\">Form</a></p>",
@@ -127,7 +135,7 @@ function startMockApi(family) {
   const state = { inbox: [] };
   const cors = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Device-Id",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   };
   const server = createServer((req, res) => {
@@ -136,7 +144,9 @@ function startMockApi(family) {
     req.on("end", () => {
       const url = new URL(req.url, "http://mock");
       const body = raw ? JSON.parse(raw) : null;
-      if (req.method !== "OPTIONS") calls.push({ method: req.method, path: url.pathname, body, auth: req.headers.authorization });
+      if (req.method !== "OPTIONS") {
+        calls.push({ method: req.method, path: url.pathname, body, auth: req.headers.authorization, device: req.headers["x-device-id"] });
+      }
       const json = (status, data) => {
         res.writeHead(status, { ...cors, "Content-Type": "application/json" });
         res.end(JSON.stringify(data));
@@ -157,6 +167,7 @@ function startMockApi(family) {
           : { domain, score: 2, level: "safe", signals: [], reason_codes: [] });
       }
       if (url.pathname === "/api/v1/user/threats/increment") return json(200, { threats_blocked_lifetime: 1 });
+      if (url.pathname === "/api/v1/me/devices" && req.method === "POST") return json(201, { status: "created" });
       if (url.pathname === "/api/v1/family/mine") {
         return json(200, { families: [{ family_id: FAMILY_ID, name: "E2E", role: "member", member_count: 2 }] });
       }
@@ -191,7 +202,7 @@ async function launch(tree, lang = UI_LANG) {
       `--disable-extensions-except=${extPath}`,
       `--load-extension=${extPath}`,
       `--lang=${lang}`,
-      "--host-resolver-rules=MAP *.cleanway.ai ~NOTFOUND, MAP cleanway.ai ~NOTFOUND, " +
+      "--host-resolver-rules=MAP *.cleanway.ai ~NOTFOUND, MAP cleanway.ai ~NOTFOUND, MAP *.supabase.co ~NOTFOUND, " +
         "MAP *.example 127.0.0.1, MAP *.tk 127.0.0.1, MAP *.top 127.0.0.1",
     ],
   });
@@ -213,6 +224,15 @@ async function activeCatalog(sw, tree) {
   const base = exact.split("_")[0];
   const locale = existsSync(resolve(ROOT, tree, "_locales", exact)) ? exact : base;
   return { locale, messages: readCatalog(tree, locale) };
+}
+
+// The content script's offline scorer, loaded the way the manifest loads it.
+function offlineScorer(tree) {
+  const ctx = vm.createContext({});
+  for (const rel of ["src/utils/scorer-data.js", "src/utils/name-rules.js", "src/utils/local-scorer.js"]) {
+    vm.runInContext(readFileSync(join(ROOT, tree, rel), "utf8"), ctx);
+  }
+  return ctx;
 }
 
 async function sendCheck(page, domains) {
@@ -356,6 +376,22 @@ async function runTree(tree) {
       assert.equal(posts(api, ALERTS).length, 0, "a verdict is not a block: nothing may reach the family");
     });
 
+    await check("with no API answer, the background gives the content script's offline verdict", async () => {
+      // The mock rate-limits every "paypa1" host, so these are offline
+      // verdicts, as the popup and the context menu show them. The background
+      // used to run its own weaker scorer, which read paypa1-login.tk as
+      // PayPal (70, dangerous) while the badge on the same link said caution.
+      const hosts = ["login.paypa1.tk", "paypa1-login.tk"];
+      const resp = await sendCheck(page, hosts);
+      const scorer = offlineScorer(tree);
+      for (const host of hosts) {
+        const r = resp.results.find((x) => x.domain === host);
+        assert.equal(r.source, "local", `${host}: expected the offline verdict`);
+        assert.equal(JSON.stringify(r), JSON.stringify(scorer.localScore(host)), host);
+      }
+      assert.deepEqual(hosts.map((h) => resp.results.find((x) => x.domain === h).level), ["dangerous", "caution"]);
+    });
+
     await check("a page that only LINKS to scams blocks nothing and tells nobody", async () => {
       const reader = await context.newPage();
       await reader.goto(`http://reader.example:${new URL(api.base).port}/links.html`);
@@ -417,7 +453,7 @@ async function runTree(tree) {
     });
 
     await check("an offline guess blocks the page but reaches neither the account nor the family", async () => {
-      const tab = await openBlocked(context, `http://paypa1-login.tk:${port}/landing.html`);
+      const tab = await openBlocked(context, `http://login.paypa1.tk:${port}/landing.html`);
       await sleep(1500);
       assert.equal(posts(api, INCREMENT).length, 1, "a guess from the offline scorer reached the account counter");
       assert.equal(posts(api, ALERTS).length, 1, "a guess from the offline scorer reached the family");
@@ -554,6 +590,86 @@ async function runTree(tree) {
         sw.evaluate(() => chrome.alarms.get("cleanway_family_poll").then((a) => !a)), 5000);
       const left = await sw.evaluate(() => chrome.storage.local.get("family_cache"));
       assert.equal(left.family_cache, undefined);
+    });
+
+    // The real manifest match patterns, the real content-script sender
+    // (origin, frame, URL) and the real storage — what the unit tests in
+    // scripts/test-extension-auth.mjs can only assume.
+    await check("sign-in: the cleanway.ai connect page hands the extension a session, once", async () => {
+      const nowS = Math.floor(Date.now() / 1000);
+      const jwt = (claims) => `${b64url(Buffer.from('{"alg":"HS256"}'))}.${b64url(Buffer.from(JSON.stringify(claims)))}.sig`;
+      const access = jwt({ iss: `${SUPABASE_PROJECT}/auth/v1`, aud: "authenticated", sub: "me", email: "me@example.com", exp: nowS + 3600 });
+      const session = {
+        access_token: access,
+        refresh_token: "e2e-extension-refresh",
+        expires_at: nowS + 3600,
+        anon_key: jwt({ iss: "supabase", role: "anon" }),
+      };
+      // What cleanway.ai/extension/connect does, minus React: hand over as
+      // soon as the extension says it is there, and keep its answers.
+      const page = `<!doctype html><title>Connect</title><script>
+        window.__ready = false; window.__results = [];
+        var session = ${JSON.stringify(session)};
+        var state = new URLSearchParams(location.search).get("state");
+        window.addEventListener("message", function (e) {
+          if (e.source !== window || !e.data || e.data.source !== "cleanway-extension") return;
+          if (e.data.type === "cleanway:extension-ready" && !window.__ready) {
+            window.__ready = true;
+            window.postMessage({ source: "cleanway-web", type: "cleanway:connect", state: state, session: session }, location.origin);
+          }
+          if (e.data.type === "cleanway:connect-result") window.__results.push(e.data);
+        });
+        window.postMessage({ source: "cleanway-web", type: "cleanway:hello" }, location.origin);
+      </script>`;
+      await context.route("https://cleanway.ai/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: page }));
+      const answers = (tab) => until("the extension's answer", () => tab.evaluate(() => (window.__results.length ? window.__results : null)));
+
+      const popup = await context.newPage();
+      await popup.goto(`chrome-extension://${extId}/src/popup/popup.html`);
+      const opened = context.waitForEvent("page");
+      await popup.evaluate(() => chrome.runtime.sendMessage({ type: "AUTH_START_SIGN_IN" }));
+      const tab = await opened;
+      // The tab's first load can beat Playwright's routing (it then lands on
+      // the "can't reach" page — cleanway.ai resolves nowhere here). Ask the
+      // browser which URL the extension opened and load that again, routed.
+      const connectUrl = await until("the connect tab", () => sw.evaluate(() =>
+        chrome.tabs.query({}).then((tabs) => tabs.map((t) => t.pendingUrl || t.url).find((u) => /cleanway\.ai/.test(u || "")) || null)));
+      assert.match(connectUrl, /^https:\/\/cleanway\.ai\/([a-z]{2}\/)?extension\/connect\?state=[A-Za-z0-9_-]{43}$/);
+      if (tab.url() !== connectUrl) await tab.goto(connectUrl);
+
+      assert.deepEqual(await answers(tab), [{ source: "cleanway-extension", type: "cleanway:connect-result", ok: true, error: null }]);
+      const stored = await sw.evaluate(() => chrome.storage.local.get(null));
+      assert.equal(stored.auth_token, access);
+      assert.equal(stored.auth_refresh_token, "e2e-extension-refresh");
+      assert.equal(stored.auth_email, "me@example.com");
+      assert.equal(stored.auth_connect_state, undefined, "the state was not spent");
+      assert.deepEqual(await popup.evaluate(() => chrome.runtime.sendMessage({ type: "AUTH_STATUS" })),
+        { signedIn: true, email: "me@example.com", pending: false, signedOutReason: null });
+      await until("device registration hook", () =>
+        api.calls.some((c) => c.method === "POST" && c.path === "/api/v1/me/devices" && c.auth === `Bearer ${access}`), 5000);
+      // Linked as an extension, under its per-install id (header and body agree).
+      const link = api.calls.find((c) => c.path === "/api/v1/me/devices");
+      assert.equal(link.body.platform, "extension");
+      assert.match(link.body.device_id, /^[A-Za-z0-9_-]{16,128}$/);
+      assert.equal(link.device, link.body.device_id);
+
+      // The same page again — the state is spent.
+      await tab.reload();
+      const replay = await answers(tab);
+      assert.equal(replay[0].ok, false);
+      assert.equal(replay[0].error, "state_mismatch");
+
+      // Any other page of the site gets no relay at all.
+      const other = await context.newPage();
+      await other.goto("https://cleanway.ai/pricing");
+      await sleep(800);
+      assert.equal(await other.evaluate(() => window.__ready), false, "relay injected outside the connect page");
+
+      await popup.evaluate(() => chrome.runtime.sendMessage({ type: "AUTH_SIGN_OUT" }));
+      const left = await sw.evaluate(() => chrome.storage.local.get(["auth_token", "auth_refresh_token", "auth_email"]));
+      assert.deepEqual(left, {});
+      await Promise.all([tab.close(), other.close(), popup.close()]);
+      await context.unroute("https://cleanway.ai/**");
     });
   } finally {
     await context.close();

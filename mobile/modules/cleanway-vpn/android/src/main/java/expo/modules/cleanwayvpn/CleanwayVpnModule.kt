@@ -34,13 +34,15 @@ class CleanwayVpnModule : Module() {
   private var pendingStart: Promise? = null
   private var blockReceiver: BroadcastReceiver? = null
   private var networkPresence: ai.cleanway.app.NetworkPresence? = null
+  /** Set while JS follows the phone's calls (the module holds the CallState watcher then). */
+  private var callListener: ((ai.cleanway.app.CallState.Snapshot) -> Unit)? = null
   /** The receiver-fed events JS listens to now; the receiver lives while any is. */
   private var observedBroadcasts: Set<String> = emptySet()
 
   override fun definition() = ModuleDefinition {
     Name("CleanwayVpn")
 
-    Events("onDomainBlocked", "onVpnStopped", "onPauseChanged", "onBlocklistChanged", "onNetworkChanged")
+    Events("onDomainBlocked", "onVpnStopped", "onPauseChanged", "onBlocklistChanged", "onNetworkChanged", "onCallStateChanged")
 
     AsyncFunction("startVpn") { promise: Promise ->
       if (pendingStart != null) {
@@ -205,6 +207,47 @@ class CleanwayVpnModule : Module() {
      */
     Function("upstreamStatus") {
       CleanwayVpnService.instance?.upstreamStatus() ?: emptyMap<String, Any?>()
+    }
+
+    /**
+     * "Keep protection on": what the phone says about keeping the shield
+     * alive with the app closed. {batteryUnrestricted, alwaysOn, oem}:
+     * alwaysOn is null while the shield is not running or below Android 10
+     * (only the running VpnService can ask); oem is the phone maker whose
+     * battery manager needs its own step ("samsung", "xiaomi", "huawei",
+     * "oppo", "vivo"), or null on stock-like Android.
+     */
+    Function("keepAliveStatus") {
+      mapOf(
+        "batteryUnrestricted" to ai.cleanway.app.KeepAlive.batteryUnrestricted(context),
+        "alwaysOn" to CleanwayVpnService.instance?.alwaysOnState(),
+        "oem" to ai.cleanway.app.KeepAlive.oemFamily()?.wire,
+      )
+    }
+
+    /**
+     * Open Android's "stop optimising battery for Cleanway?" dialog (or,
+     * where an OEM removed it, the closest settings screen). The app explains
+     * why first. False when nothing could be opened.
+     */
+    Function("requestBatteryExemption") {
+      ai.cleanway.app.KeepAlive.requestBatteryExemption(context)
+    }
+
+    /** Open the phone maker's own background/autostart screen, else App info. */
+    Function("openOemBackgroundSettings") {
+      ai.cleanway.app.KeepAlive.openOemBackgroundSettings(context)
+    }
+
+    /**
+     * The app came to the front and found the shield the person left ON not
+     * running: bring it back now, through the same rules as the background
+     * watchdog (never after Android took the tunnel away, never over another
+     * VPN or strict Private DNS, at most 3 times an hour). Returns the
+     * decision in lower case — "start" when the service was asked to start.
+     */
+    Function("rearmShield") {
+      ai.cleanway.app.ShieldWatchdog.rearm(context, "app_open").name.lowercase()
     }
 
     /**
@@ -483,6 +526,72 @@ class CleanwayVpnModule : Module() {
       }
     }
 
+    /**
+     * Is the person on the phone, and when did the last call end? Read from
+     * the audio mode — no permission, no number, no audio (ai.cleanway.app.CallState).
+     * {inCall, ringing, callStartedAt, callEndedAt, windowEndsAt, guardActive}:
+     * guardActive is true in a call and for 30 minutes after one — the stop
+     * screen applies to pausing, allowing a site and "open anyway".
+     */
+    Function("callState") {
+      val s = ai.cleanway.app.CallState.snapshot(context)
+      val now = System.currentTimeMillis()
+      mapOf(
+        "inCall" to s.inCall,
+        "ringing" to s.ringing,
+        "callStartedAt" to s.callStartedAt.toDouble(),
+        "callEndedAt" to s.callEndedAt.toDouble(),
+        "windowEndsAt" to s.windowEndsAt().toDouble(),
+        "guardActive" to s.guardActive(now),
+      )
+    }
+
+    /**
+     * The app saw something the after-call notice should name: the person
+     * met the stop screen on a pause / allow / "open anyway"
+     * ("protection_off_asked"), or a message check came back dangerous after
+     * the server's answer ("message_dangerous"). Unknown kinds are ignored.
+     */
+    Function("noteCallEvent") { kind: String ->
+      ai.cleanway.app.CallGuard.noteEvent(context, kind)
+      Unit
+    }
+
+    /**
+     * Bring the phone app to the front during a call (its in-call screen is
+     * where "hang up" lives — no app may end a call for the person without a
+     * permission this one does not ask for). False when there is no phone app.
+     */
+    Function("showInCallScreen") {
+      try {
+        context.startActivity(Intent(Intent.ACTION_DIAL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+      } catch (e: Exception) {
+        false
+      }
+    }
+
+    /** The saved "close one" number (ai.cleanway.app.CloseContact), or null. Stays on the phone. */
+    Function("closeContactPhone") {
+      ai.cleanway.app.CloseContact.phone(context)
+    }
+
+    /** Save (or clear with null) the "close one" number. False when it is not a dialable number. */
+    Function("setCloseContactPhone") { phone: String? ->
+      ai.cleanway.app.CloseContact.set(context, phone)
+    }
+
+    /** Open the phone app on the saved number (ACTION_DIAL: the person presses call). False when none is saved. */
+    Function("dialCloseContact") {
+      val dial = ai.cleanway.app.CloseContact.dialIntent(context)
+      try {
+        if (dial != null) context.startActivity(dial)
+        dial != null
+      } catch (e: Exception) {
+        false
+      }
+    }
+
     OnActivityResult { _, payload ->
       if (payload.requestCode == VPN_CONSENT_REQUEST) {
         val promise = pendingStart
@@ -505,10 +614,13 @@ class CleanwayVpnModule : Module() {
     }
     OnStartObserving("onNetworkChanged") { startNetworkPresence() }
     OnStopObserving("onNetworkChanged") { stopNetworkPresence() }
+    OnStartObserving("onCallStateChanged") { startCallWatch() }
+    OnStopObserving("onCallStateChanged") { stopCallWatch() }
     OnDestroy {
       observedBroadcasts = emptySet()
       unregisterBlockReceiver()
       stopNetworkPresence()
+      stopCallWatch()
       pendingStart?.reject("E_MODULE_DESTROYED", "VPN module destroyed before consent completed", null)
       pendingStart = null
     }
@@ -587,5 +699,30 @@ class CleanwayVpnModule : Module() {
   private fun stopNetworkPresence() {
     networkPresence?.stop()
     networkPresence = null
+  }
+
+  /** A call began or ended while the app is open: the stop screen and the home button follow it. */
+  private fun startCallWatch() {
+    if (callListener != null) return
+    val listener: (ai.cleanway.app.CallState.Snapshot) -> Unit = { s ->
+      sendEvent("onCallStateChanged", mapOf(
+        "inCall" to s.inCall,
+        "ringing" to s.ringing,
+        "callStartedAt" to s.callStartedAt.toDouble(),
+        "callEndedAt" to s.callEndedAt.toDouble(),
+        "windowEndsAt" to s.windowEndsAt().toDouble(),
+        "guardActive" to s.guardActive(System.currentTimeMillis()),
+      ))
+    }
+    callListener = listener
+    ai.cleanway.app.CallState.addListener(listener)
+    ai.cleanway.app.CallState.acquire(context)
+  }
+
+  private fun stopCallWatch() {
+    val listener = callListener ?: return
+    callListener = null
+    ai.cleanway.app.CallState.removeListener(listener)
+    ai.cleanway.app.CallState.release(context)
   }
 }

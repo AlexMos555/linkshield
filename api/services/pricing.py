@@ -177,6 +177,26 @@ def get_prices_for_country(country_code: str | None) -> dict[Plan, dict[Interval
 
 
 def price_id_for_checkout(plan: Plan, country_code: str | None, interval: Interval = "monthly") -> str:
-    """Resolve Stripe price ID for a checkout session. Server-side truth."""
+    """Resolve Stripe price ID for a checkout session. Server-side truth.
+
+    Goes through the same `country_to_tier` as `get_prices_for_country`
+    (the /api/v1/pricing/for-country endpoint), so for the same country
+    the price charged is the price shown."""
     tier = country_to_tier(country_code)
     return STRIPE_PRICE_IDS[plan][tier][interval]
+
+
+def plan_for_price_id(price_id: str | None) -> Plan | None:
+    """Reverse lookup: which plan does this Stripe price belong to?
+
+    A plan change in the Customer Portal arrives as a
+    customer.subscription.updated carrying only the new price id; the
+    webhook maps it back to the plan stored in subscriptions.tier.
+    None for a price we didn't create (never guess a plan)."""
+    if not price_id:
+        return None
+    for plan, tiers in STRIPE_PRICE_IDS.items():
+        for intervals in tiers.values():
+            if price_id in intervals.values():
+                return plan
+    return None

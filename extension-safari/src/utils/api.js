@@ -7,6 +7,9 @@
 
 // API base resolution: chrome.storage.local.api_url (dev override) → production Railway URL
 // To use local dev: Options page → set API URL to http://localhost:8000 → Save
+import { DEVICE_ID_KEY, linkDevice } from "./device-link.js";
+import { KEYS as AUTH_KEYS } from "./auth-session.js";
+
 let API_BASE = "https://api.cleanway.ai";
 try {
   chrome.storage.local.get("api_url").then(function(data) {
@@ -59,11 +62,54 @@ export async function isAccountLocked() {
 }
 
 /**
+ * Headers for a signed-in call: the token plus this install's device id, so
+ * the server can refuse a browser that was unlinked from the account
+ * (403 device_revoked, handled below).
+ */
+async function _authHeaders(token, extra = {}) {
+  const headers = { ...extra, Authorization: `Bearer ${token}` };
+  const id = await getDeviceHash();
+  if (id) headers["X-Device-Id"] = id;
+  return headers;
+}
+
+/**
+ * This browser was unlinked from the account (on another device or on
+ * cleanway.ai/account): forget the sign-in and the install id, and leave the
+ * reason the popup and settings show. The next sign-in is a new device.
+ */
+export async function signOutUnlinkedBrowser() {
+  try {
+    await chrome.storage.local.remove([
+      AUTH_KEYS.access, AUTH_KEYS.refresh, AUTH_KEYS.expiresAt, AUTH_KEYS.email,
+      AUTH_KEYS.userId, AUTH_KEYS.anonKey, DEVICE_ID_KEY,
+    ]);
+    await chrome.storage.local.set({ [AUTH_KEYS.signedOutReason]: "device_revoked" });
+  } catch (e) { /* storage unavailable — the next heartbeat signs out */ }
+}
+
+/** Forget this install's device id; getDeviceHash() makes a new one. */
+export async function resetDeviceHash() {
+  try {
+    await chrome.storage.local.remove(DEVICE_ID_KEY);
+  } catch (e) { /* storage unavailable */ }
+}
+
+/**
  * Inspect an authed-fetch response. On 410, mark the local lock flag
  * (extracting restore_url from the JSON detail if present) and return
- * true so callers can short-circuit. Otherwise returns false.
+ * true so callers can short-circuit. A 403 `device_revoked` signs this
+ * browser out (returns false: the caller treats it as the error it is).
+ * Otherwise returns false.
  */
 async function _handleAuthedResponse(resp) {
+  if (resp.status === 403) {
+    try {
+      const body = await resp.clone().json();
+      if (body && body.detail && body.detail.code === "device_revoked") await signOutUnlinkedBrowser();
+    } catch (e) { /* not JSON */ }
+    return false;
+  }
   if (resp.status !== 410) return false;
   // Parse without throwing — if body isn't JSON or restore_url isn't in
   // it, we still set the lock with the default route.
@@ -92,7 +138,7 @@ export async function restoreAccount(token) {
   try {
     const resp = await fetch(`${API_BASE}/api/v1/user/account/restore`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await _authHeaders(token),
     });
     if (resp.ok) {
       await clearAccountLocked();
@@ -113,7 +159,7 @@ export async function restoreAccount(token) {
 export async function checkDomains(domains, token = null) {
   const headers = { "Content-Type": "application/json" };
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    Object.assign(headers, await _authHeaders(token));
   }
 
   try {
@@ -201,7 +247,7 @@ export async function fetchEffectiveSkill(token, deviceHash) {
     const url = `${API_BASE}/api/v1/user/device/${encodeURIComponent(deviceHash)}/effective`;
     const resp = await fetch(url, {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await _authHeaders(token),
     });
     if (await _handleAuthedResponse(resp)) return null;
     if (!resp.ok) return null;
@@ -231,10 +277,7 @@ export async function patchDeviceOverrides(token, deviceHash, payload) {
     const url = `${API_BASE}/api/v1/user/device/${encodeURIComponent(deviceHash)}/overrides`;
     const resp = await fetch(url, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: await _authHeaders(token, { "Content-Type": "application/json" }),
       body: JSON.stringify(payload || {}),
     });
     if (await _handleAuthedResponse(resp)) return null;
@@ -263,7 +306,7 @@ export async function fetchThreatStatus(token) {
   try {
     const resp = await fetch(`${API_BASE}/api/v1/user/threats/status`, {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await _authHeaders(token),
     });
     if (await _handleAuthedResponse(resp)) return null;
     if (!resp.ok) return null;
@@ -289,10 +332,7 @@ export async function incrementThreatCounter(token, count = 1) {
   try {
     const resp = await fetch(`${API_BASE}/api/v1/user/threats/increment`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: await _authHeaders(token, { "Content-Type": "application/json" }),
       body: JSON.stringify({ count }),
     });
     if (await _handleAuthedResponse(resp)) return null;
@@ -301,6 +341,30 @@ export async function incrementThreatCounter(token, count = 1) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Link this browser to the signed-in account as a device
+ * (POST /api/v1/me/devices, platform "extension"; utils/device-link.js).
+ * Called by the background after sign-in and as a heartbeat; what a refusal
+ * means for the session is decided in utils/auth-session.js.
+ *
+ * Sends the per-install id, the browser family ("Chrome") and the extension
+ * version — no hostname, no history.
+ *
+ * @param {string|null} token JWT
+ * @param {{platform: string, appVersion: string}} info  platform = browser family
+ * @returns {Promise<{ok: true} | {ok: false, error: string}>}
+ */
+export async function registerDevice(token, { platform, appVersion } = {}) {
+  return linkDevice({
+    fetchImpl: (url, init) => fetch(url, init),
+    apiBase: API_BASE,
+    token,
+    deviceId: await getDeviceHash(),
+    browser: platform,
+    appVersion,
+  });
 }
 
 /**

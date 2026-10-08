@@ -7,6 +7,8 @@ import {
   recallIsPublishable,
 } from "../lib/benchmark";
 
+import { BILLING_ON } from "./billing-flag";
+
 // The Android version that ships — the same source check-landing-claims.py
 // reads, so this test follows each release instead of pinning one.
 const RELEASED_APP: string = JSON.parse(
@@ -62,6 +64,8 @@ test("/ru/android link preview is Russian and has no Chrome button image", async
 });
 
 test("/ru/pricing is free-only: no prices, no paid plans", async ({ page }) => {
+  // Today's free-only page; with the subscription on, billing.spec.ts asserts what replaces it.
+  test.skip(BILLING_ON, "NEXT_PUBLIC_BILLING_ENABLED is on");
   await page.goto("/ru/pricing");
   await expect(page.getByTestId("free-pricing")).toBeVisible();
   const body = page.locator("body");
@@ -151,6 +155,8 @@ test("/ru/signup shows no captcha test widget and no operator notice", async ({ 
 });
 
 test("/pricing is free-only for a visitor from Russia, whatever the page language", async ({ page }) => {
+  // Today's free-only page; with the subscription on, billing.spec.ts asserts what replaces it.
+  test.skip(BILLING_ON, "NEXT_PUBLIC_BILLING_ENABLED is on");
   await page.setExtraHTTPHeaders({ "x-vercel-ip-country": "RU" });
   await page.goto("/pricing");
   await expect(page.getByTestId("free-pricing")).toBeVisible();
@@ -158,6 +164,8 @@ test("/pricing is free-only for a visitor from Russia, whatever the page languag
 });
 
 test("/de/pricing?cc=RU is free-only too", async ({ page }) => {
+  // Today's free-only page; with the subscription on, billing.spec.ts asserts what replaces it.
+  test.skip(BILLING_ON, "NEXT_PUBLIC_BILLING_ENABLED is on");
   await page.goto("/de/pricing?cc=RU");
   await expect(page.getByTestId("free-pricing")).toBeVisible();
 });

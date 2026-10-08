@@ -21,6 +21,10 @@
  *  3. A stopped shield said "usually after a reboot, one tap" whatever had
  *     stopped it. The hook now passes on the cause the service recorded, and
  *     the module passes on only the causes the screen has words for.
+ *  4. A shield the person left on, killed by a battery manager while the app
+ *     was closed, waited for a tap on «Включить снова». Opening the app now
+ *     asks the native side to bring it back (rearmShield, the watchdog's
+ *     rules); a refusal there leaves the "stopped" screen as before.
  *
  * No test runner in mobile/: the hook is transpiled with the tree's
  * TypeScript and loaded with a small require that hands it its stubs; react /
@@ -39,6 +43,7 @@ const ts = appRequire("typescript");
 
 const MINUTE = 60_000;
 const NETWORK_SETTLE_MS = 1000; // useNetworkShield's
+const REARM_SETTLE_MS = 1500; // useNetworkShield's
 
 // ── the world the hook talks to: the service, the phone, the OS ─────
 
@@ -56,6 +61,9 @@ function resetWorld() {
     probes: 0,
     listCount: 460_481,
     appState: "active",
+    // rearmShield(): undefined = an older native build without the call.
+    rearm: undefined,
+    rearmCalls: 0,
     listeners: { stopped: [], pause: [], list: [], network: [], app: [] },
   };
 }
@@ -87,6 +95,11 @@ const VPN = {
   stopVpn: async () => {},
   isVpnRunning: () => world.running,
   wasUserEnabled: () => world.userEnabled,
+  rearmShield: () => {
+    if (world.rearm === undefined) return undefined;
+    world.rearmCalls += 1;
+    return world.rearm();
+  },
   lastStopReason: () => world.stopReason,
   privateDnsStrictHost: () => null,
   blocklistStatus: () => (world.listCount > 0
@@ -347,6 +360,63 @@ const CASES = [
       { state: "setup", paused: false, interrupted: true, stopReason: "private_dns" },
       { state: "setup", paused: false, interrupted: true, stopReason: null },
     ],
+  ],
+  [
+    "a shield a battery manager killed comes back when the app opens, no tap",
+    async () => {
+      world.running = false;
+      world.rearm = () => {
+        world.running = true; // the service came up
+        return "start";
+      };
+      const home = await openHome();
+      await settle(REARM_SETTLE_MS + 100);
+      const now = home.now();
+      await home.close();
+      return { ...now, rearmCalls: world.rearmCalls };
+    },
+    { state: "on", paused: false, interrupted: false, stopReason: null, rearmCalls: 1 },
+  ],
+  [
+    "the native side refuses (Android took the tunnel away): the screen says stopped, and why",
+    async () => {
+      world.running = false;
+      world.stopReason = "revoked";
+      world.rearm = () => "taken_away";
+      const home = await openHome();
+      await settle(REARM_SETTLE_MS + 100);
+      const now = home.now();
+      await home.close();
+      return { ...now, rearmCalls: world.rearmCalls };
+    },
+    { state: "setup", paused: false, interrupted: true, stopReason: "revoked", rearmCalls: 1 },
+  ],
+  [
+    "asked to start, but the tunnel did not come up: stopped, not a green guess",
+    async () => {
+      world.running = false;
+      world.rearm = () => "start";
+      const home = await openHome();
+      await settle(REARM_SETTLE_MS + 100);
+      const now = home.now();
+      await home.close();
+      return now;
+    },
+    { state: "setup", paused: false, interrupted: true, stopReason: null },
+  ],
+  [
+    "turned off by the person: the app never asks to bring it back",
+    async () => {
+      world.running = false;
+      world.userEnabled = false;
+      world.rearm = () => "start";
+      const home = await openHome();
+      await settle();
+      const now = home.now();
+      await home.close();
+      return { ...now, rearmCalls: world.rearmCalls };
+    },
+    { state: "setup", paused: false, interrupted: false, stopReason: null, rearmCalls: 0 },
   ],
 ];
 

@@ -18,6 +18,12 @@
 
 import "./browser-compat.js"; // must stay first: aliases chrome → browser in Firefox
 import "../utils/link-target.js"; // sets self.cleanwayLinkTarget (classic UMD file)
+// The offline scorer the content script runs, in the same order the manifests
+// load it: the generated data, the server's name rules, then the scorer
+// (self.cleanwayLocalScorer). Classic files, imported for their side effect.
+import "../utils/scorer-data.js";
+import "../utils/name-rules.js";
+import "../utils/local-scorer.js";
 import { incrementThreatCounter } from "../utils/api.js";
 import { clearFamilyCache, fanOutAlerts, refreshFamilyCache } from "../utils/family-fanout.js";
 import {
@@ -27,6 +33,7 @@ import {
   syncFamilyPollAlarm,
 } from "../utils/family-notifier.js";
 import { pruneOldChecks } from "../utils/storage.js";
+import { handleAuthAlarm, handleAuthMessage } from "./auth.js"; // sign-in: the cleanway.ai → extension handoff + refresh
 import { blockedPageHost, claimFirstBlockToday } from "./page-blocks.js";
 import { isKnownSafeHost, isUserContentHost } from "./trusted-hosts.js";
 
@@ -140,10 +147,6 @@ function setCached(d, r) {
   _cache.set(d, { r, ts: Date.now() });
 }
 
-// Last two labels. Used ONLY by the offline brand heuristics below — never
-// to decide trust (see trusted-hosts.js for why).
-function baseDomain(d) { var p = d.split("."); return p.length >= 2 ? p.slice(-2).join(".") : d; }
-
 // ── Fetch with timeout ──
 // The previous version raced fetch() against a setTimeout-reject, which
 // rejects the OUTER promise on timeout but leaves the underlying fetch
@@ -162,47 +165,12 @@ function fetchWithTimeout(url, ms) {
 }
 
 // ── Local scoring (instant, no network) ──
-const _HR = [".tk",".ml",".ga",".cf",".gq",".xyz",".top",".click",".buzz",".icu",".cam",".live",".online",".site",".loan",".download",".zip",".mov",".sbs",".cfd"];
-const _SW = ["login","signin","verify","update","confirm","secure","account","password","wallet","payment","invoice","banking","reset","suspend","locked","unlock"];
-const _CS = {"1":"l","0":"o","3":"e","@":"a","5":"s"};
-const _BR = {"paypal":"paypal.com","apple":"apple.com","google":"google.com","amazon":"amazon.com","microsoft":"microsoft.com","netflix":"netflix.com","facebook":"facebook.com","instagram":"instagram.com","whatsapp":"whatsapp.com","chase":"chase.com","coinbase":"coinbase.com","binance":"binance.com","dhl":"dhl.com","fedex":"fedex.com","ups":"ups.com","ebay":"ebay.com","steam":"store.steampowered.com","discord":"discord.com","telegram":"telegram.org","linkedin":"linkedin.com"};
-
+// The content script's scorer (utils/local-scorer.js), not a copy: this used
+// to be a second, weaker one — 20 brands, the last two labels read as the
+// site — that called eBay UK's real sign-in host dangerous. It answers the
+// popup and the context menu whenever the API does not.
 function scoreLocally(domain) {
-  let s = 0; const R = []; const P = domain.split("."); const tld = "." + P[P.length-1];
-  const nm = P.length >= 2 ? P[P.length-2] : domain;
-  const nmClean = nm.replace(/[-_](verify|login|secure|update|account|confirm|alert|support|help|app|web|mail|team)$/, "");
-
-  for (const b in _BR) {
-    if (nm === b || domain === _BR[b] || baseDomain(domain) === _BR[b]) continue;
-    let norm = nmClean; for (const c in _CS) norm = norm.replaceAll(c, _CS[c]);
-    if (norm === b) { s += 40; R.push({signal:"typosquatting",detail:"Impersonates "+_BR[b],weight:40}); break; }
-    if (nm.replaceAll("-","") === b) { s += 30; R.push({signal:"typosquatting",detail:"Impersonates "+_BR[b]+" (hyphen)",weight:30}); break; }
-    if (nm.startsWith(b) && nm.length > b.length) {
-      const sf = nm.slice(b.length).replace(/^[-_]/,"");
-      if (_SW.includes(sf)) { s += 25; R.push({signal:"combosquatting",detail:"Fake "+_BR[b]+"-"+sf,weight:25}); break; }
-    }
-    if (nm.length === b.length && nm.length >= 4) {
-      let diffs = 0; for (let i = 0; i < nm.length; i++) if (nm[i] !== b[i]) diffs++;
-      if (diffs <= 2) { s += 25; R.push({signal:"similar",detail:"Similar to "+_BR[b],weight:25}); break; }
-    }
-  }
-
-  // Brand in subdomain
-  if (P.length > 2) {
-    for (let i = 0; i < P.length - 2; i++) {
-      const cl = P[i].replaceAll("-","");
-      if (_BR[cl] && baseDomain(domain) !== _BR[cl]) { s += 30; R.push({signal:"brand_sub",detail:"'"+cl+"' brand in subdomain",weight:30}); break; }
-    }
-  }
-
-  if (_HR.includes(tld)) { s += 20; R.push({signal:"risky_tld",detail:"High-risk TLD "+tld,weight:20}); }
-  for (const w of _SW) { if (domain.includes(w)) { s += 10; R.push({signal:"keyword",detail:"Contains '"+w+"'",weight:10}); break; } }
-  if (P.length > 3) { s += 15; R.push({signal:"subdomains",detail:P.length+" levels deep",weight:15}); }
-  if (nm.length > 20) { s += 10; R.push({signal:"long",detail:"Long name ("+nm.length+")",weight:10}); }
-  if ((domain.match(/-/g)||[]).length >= 3) { s += 10; R.push({signal:"hyphens",detail:"Many hyphens",weight:10}); }
-
-  s = Math.min(s, 100);
-  return { domain, score: s, level: s <= 20 ? "safe" : s <= 50 ? "caution" : "dangerous", reasons: R, source: "local" };
+  return self.cleanwayLocalScorer.localScore(domain);
 }
 
 // ── Verdicts that need no API call ──
@@ -364,10 +332,9 @@ function promoteCredentialGuard(tabId) {
 }
 
 // The account's threat counter (the freemium gate) and the family hear only
-// about blocks the API itself confirmed. The background's offline scorer is
-// a guess — weaker than the content script's; it calls eBay UK's real
-// sign-in host dangerous — and must never reach a relative as "a scam site
-// was blocked". Anonymous users send nothing.
+// about blocks the API itself confirmed. The offline scorer reads nothing
+// but the name — a guess, however careful — and must never reach a relative
+// as "a scam site was blocked". Anonymous users send nothing.
 async function reportBlockToAccount(host) {
   const verdict = getCached(host);
   if (!verdict || verdict.source !== "api" || verdict.level !== "dangerous") return;
@@ -405,6 +372,9 @@ async function checkLinkUrl(href) {
 
 // ── Messages ──
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+  // Sign-in (AUTH_*): background/auth.js checks who sent it.
+  const authReply = handleAuthMessage(msg, sender, respond);
+  if (authReply !== undefined) return authReply;
   if (msg.type === "CHECK_DOMAINS") {
     // .catch() prevents an uncaught promise rejection from silently
     // closing the message channel — the content script then waits the
@@ -564,6 +534,7 @@ function ensureHistoryPruneAlarm() {
 ensureHistoryPruneAlarm();
 
 async function onAlarm(alarm) {
+  if (handleAuthAlarm(alarm)) return;
   if (isFamilyPollAlarm(alarm.name)) {
     try {
       await pollAndNotify();

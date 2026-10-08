@@ -14,12 +14,15 @@ Run: python3 scripts/build-i18n.py
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parent.parent
+# {{name}} as the mobile strings carry it (and chrome.i18n's $NAME$ never reaches here).
+PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 SOURCE_DIR = ROOT / "packages" / "i18n-strings" / "src"
 SUPPORTED_LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"]
 
@@ -77,6 +80,7 @@ EXTENSION_NS_TO_FLAT_PREFIX = {
     "extension.pwned": "pwned_",
     "extension.webmail": "webmail_",
     "extension.options": "options_",
+    "extension.account": "account_",  # sign-in row in the popup + settings
 }
 
 # For popup namespace: keys NOT in the dict above use bare names (no prefix).
@@ -215,10 +219,14 @@ def android_strings_xml(source: dict[str, Any]) -> str | None:
         if isinstance(value, dict):
             value = value.get("text", "")
         text = str(value)
-        # Each native string carries at most one placeholder, so every name
-        # maps to the first positional argument.
-        for ph in ("domain", "time"):
-            text = text.replace("{{" + ph + "}}", "%1$s")
+        # Each native string carries at most one placeholder (whatever its
+        # name: domain, time, reason, n), so it maps to the first positional
+        # argument. A second distinct one would render the same value twice
+        # in silence — refuse it instead.
+        names = sorted(set(PLACEHOLDER_RE.findall(text)))
+        if len(names) > 1:
+            sys.exit(f"ERROR: android_native.{name} carries several placeholders {names}; one per string")
+        text = PLACEHOLDER_RE.sub("%1$s", text)
         text = (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                     .replace("'", "\\'").replace('"', '\\"'))
         lines.append(f'    <string name="{name}">{text}</string>')

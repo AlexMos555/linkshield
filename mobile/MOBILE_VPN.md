@@ -1,16 +1,24 @@
-# Android DNS-VPN — build & verify (branch `mobile-android-vpn`)
+# Android DNS-VPN — build & verify
 
-Wires Cleanway's **system-wide, on-tap protection** on Android: a local DNS-filtering
-VPN that inspects the DNS query for **every** link opened in **any** app (Safari,
-Chrome, and the in-app browsers of WhatsApp / Telegram / Mail) and blocks known
-phishing domains via `api.cleanway.ai/api/v1/public/check`. This is the "protect the
-moment a link is opened" layer — the only mechanism that reaches messenger in-app
-webviews.
+Cleanway's **system-wide, on-tap protection** on Android: a local DNS-filtering
+VPN that sees the DNS lookup for **every** link opened in **any** app (Chrome, other
+browsers, and the in-app browsers of WhatsApp / Telegram / Mail) and blocks known
+phishing domains from a list **synced to the phone** (`GET /api/v1/blocklist/dns`,
+ETag/304, every ~6h, also through Doze via `BlocklistAlarm`). Names are matched on the
+phone; **no lookup is sent to Cleanway** — what the list does not block goes to the
+network's own resolver, then 1.1.1.1 / 9.9.9.9, then Cloudflare DoH. This is the
+"protect the moment a link is opened" layer — the only mechanism that reaches
+messenger in-app webviews.
 
-The hardened DNS service (`CleanwayVpnService.kt`) already existed but was **never
-wired** into a buildable app. This branch adds the missing integration.
+> **Status (2026-10).** Everything below the "What changed" heading is the record of the
+> original `mobile-android-vpn` branch (2026-07). Since then the module has been
+> compiled, emulator-verified (2026-08-18 scenario matrix in
+> `docs/MOBILE_AUTO_PROTECTION.md`) and shipped in the Tele2 builds. The per-lookup
+> `/public/check` design described there was replaced by the on-device list on
+> 2026-08-18. The real-device OEM sweep is still owed — see "Keeping protection on"
+> below.
 
-> ✅ **TS-verified + prebuild-clean · ⚠️ Kotlin not compiled, not device-tested.**
+> *(Historical, 2026-07:)* ✅ **TS-verified + prebuild-clean · ⚠️ Kotlin not compiled, not device-tested.**
 > Authored on a Mac **without the Android SDK/gradle/Java**, so the Kotlin can't be
 > compiled here. What WAS verified: `npx tsc --noEmit` is clean (0 new errors — the JS
 > API + the wired home toggle typecheck), `npx expo prebuild -p android` runs without
@@ -41,6 +49,8 @@ wired** into a buildable app. This branch adds the missing integration.
   FOREGROUND_SERVICE / POST_NOTIFICATIONS were already there).
 - **`app/(tabs)/index.tsx`** — the home **shield toggle** (which was local state only)
   now drives the real VPN via `useVpn()`. iOS taps show a "coming soon" alert.
+  *(Since replaced by the Shield Checklist home: `useNetworkShield`, canary-proven
+  state, no toggle.)*
 
 ## Build & test (Android Studio / SDK required; Node 20)
 
@@ -64,20 +74,43 @@ npx expo run:android            # needs ANDROID_HOME + a device/emulator
       resolve (blocked), and the shield subtitle updates to "Blocked <domain>".
 - [ ] Open a normal site → resolves fine (fail-open). Toggle off → tunnel tears down.
 - [ ] Airplane-mode / background the app for a while → protection survives (FGS).
+- [ ] "Keep protection on" list (below the shield card): battery → dialog → back →
+      ticked; phone-maker step opens the OEM screen (or App info); Always-on ticks
+      only when set in Settings → VPN.
+- [ ] `adb shell am kill ai.cleanway.app` while ON, app closed → within ~15 min
+      `CleanwayWatchdog: rearmed trigger=watchdog` (force the job now:
+      `adb shell cmd jobscheduler run -f ai.cleanway.app 31252`).
+- [ ] `adb shell am force-stop ai.cleanway.app` → stays off (Android's rule) until the
+      app is opened → `rearmed trigger=app_open`, green without a tap.
+- [ ] Another VPN app takes over → ours never takes the slot back by itself.
 
 ## Known risks (couldn't compile-check here)
 1. **Uncompiled Kotlin** — the bridge + service edits follow the Expo Modules API and
    Android FGS docs, but a typo/API-shape mismatch would only surface at gradle build.
    Read the compiler output; the surfaces most likely to need a tweak: the
    `OnActivityResult`/consent flow, and `startForeground(..., type)` on older APIs.
-2. **Notification icon** — uses `applicationInfo.icon` as the small icon; Android wants
-   a monochrome drawable. Swap for a dedicated `ic_stat_shield` if it looks wrong.
+2. **Notification icon** — *(resolved)* notifications use the dedicated monochrome
+   `cleanway_ic_notification` drawable (`BlockNotifier.SMALL_ICON`).
 3. **Play Store** — before publishing: complete the **VpnService Declaration** form +
    a ≤90s demo video + a prominent in-app disclosure (it's the permitted "device
    security" category, low approval risk, but the form is mandatory).
-4. **Battery/DNS edge cases** — the service routes only DNS (port 53) through the
-   tunnel; validate that IPv6 DNS and private-DNS (DoT) settings don't bypass it on
-   your test device.
+4. **DNS edge cases** — the service routes only DNS through the tunnel; strict
+   Private DNS (DoT) is detected and explained (`PrivateDnsGuard`); IPv6 DNS still to
+   check on a real device.
+5. **Battery / OEM kills** — see "Keeping protection on" below.
+
+## Keeping protection on (2026-10)
+
+What keeps the shield running after the app is closed, and what is not yet verified on
+hardware, is in `docs/MOBILE_AUTO_PROTECTION.md` → "Keeping the shield alive". In
+short: a battery-exemption step (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, Play "safety
+app" justification there), per-OEM steps and settings buttons (Samsung, Xiaomi/Redmi/
+POCO, Huawei/Honor, OPPO/realme/OnePlus, vivo/iQOO), a `ShieldWatchdog` JobScheduler
+job plus boot / update / time-zone / language triggers and an app-open re-arm — all
+through one rule set (`KeepAlivePolicy.decideRearm`, JVM-tested) that never starts the
+shield without the person's earlier "on", never after Android took the tunnel away, and
+never without the VPN permission. A force-stop still keeps it off until the app is
+opened: that is Android's rule.
 
 ## iOS
 iOS system-wide VPN (`PacketTunnelProvider.swift`, already written) is the next track —

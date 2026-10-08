@@ -73,10 +73,28 @@ data class MessageAnalysis(
  * DANGEROUS: a blocklisted link; A+B+call back; A+B+foreign link; A+fee+
  * foreign link; a code asked for a person; a safe-account instruction; a
  * relative with a new number asking for money; a photo/app lure with a
- * foreign link or an .apk; bait plus a fee; an SMS-banking transfer command.
+ * foreign link or an .apk; bait plus a fee; an SMS-banking transfer command;
+ * a fine through a site named after a state body; a bank's payout through a
+ * foreign link; a marketplace job through a chat; the police with a criminal
+ * case, a coming call and orders to obey; and the 2026-10 schemes (see
+ * [newSchemes]): intimate blackmail, recruiting a drop, a buyer's payment
+ * behind a link, NFC relay and remote-access apps, cash for a courier, SIM
+ * re-registration "by the new law", a summons with an article number,
+ * FakeBoss with "из органов".
  * CAUTION: the partial combinations (A + foreign link; an authority + an
  * unknown number; pressure + a hidden link; a look-alike link; with no
- * organisation named, a fine, fee or payout through an unknown site…).
+ * organisation named, a fine, fee or payout through an unknown site; a fake
+ * date's ticket link; a summons or the SIM law with a call still to come…).
+ *
+ * ## The generic layer
+ *
+ * Each rule above waits for its scheme's own words, so a paraphrase slips
+ * past it. After them, [GenericLayer] scores the ingredients every scheme is
+ * made of — money asked, a code or personal data asked, a promise of money, a
+ * threat, urgency, secrecy, a claimed authority, a call back or to come — in
+ * broad groups, and combines them: a foreign link and two of the first four
+ * is dangerous, one is a caution (MessageGeneric.kt has the full table). It
+ * only adds: a message the scheme rules found dangerous is left as it was.
  *
  * ## Legitimate shapes are excluded first
  *
@@ -86,31 +104,41 @@ data class MessageAnalysis(
  * only while they carry no foreign link, no unknown callback number and no
  * request for the code, and their links are still checked against the list.
  *
+ * ## The text model
+ *
+ * Last, [model] (MessageModel.kt, trained in ml/sms) scores how much the
+ * whole text reads like a scam, paraphrase or not. It only adds, and never
+ * to a legitimate shape or to a message the rules already found dangerous:
+ *  - a score at or above its danger threshold, with at least one ingredient
+ *    of the generic layer ([modelIngredients]: a foreign link, money asked or
+ *    moved, a code or data asked, a promise, a threat, a personal number to
+ *    call back, an app to install, secrecy) → dangerous;
+ *  - a score at or above its caution threshold → at least caution.
+ * Either adds the reason [R_TEXT_RESEMBLES_SCAM]. Thresholds and why they
+ * hold: docs/EVALUATION_2026-10.md §3.14.
+ *
  * Pure Kotlin: the link status comes in as a function, so the whole class is
  * JVM-testable against an in-memory BlockList.
  */
 class MessageAnalyzer(
     private val rules: MessageRules,
+    /** The text model; null runs the rules alone (a missing or broken asset). */
+    private val model: MessageModel? = null,
     private val linkStatus: (String) -> LinkStatus,
 ) {
     fun analyze(text: String, sender: String? = null): MessageAnalysis {
         val truncated = text.length > MAX_CHARS
-        val cleaned = MessageText.clean(if (truncated) text.substring(0, MAX_CHARS) else text)
-        val found = LinkExtractor.extract(cleaned.text, rules.bareTlds)
-        // Every link is judged; only the list the person sees is capped.
-        val links = found.map { facts(it) }
-        val phones = PhoneExtractor.extract(blank(cleaned.text, found.map { it.span }))
-        val signals = MessageSignals(
-            rules = rules,
-            index = MessageText.index(cleaned.text, found.map { it.span }),
-            text = MessageText.normalizeWord(cleaned.text),
-            hiddenInWord = cleaned.hiddenInWord,
-            links = links,
-            phones = phones,
-            sender = sender,
-        )
+        val cut = if (truncated) text.substring(0, MAX_CHARS) else text
+        val signals = read(cut, sender)
+        val links = signals.links
+        val phones = signals.phones
         val shape = legitShape(signals)
-        val (verdict, reasons) = decide(signals, excluded = shape != null)
+        val (ruleVerdict, ruleReasons) = decide(signals, excluded = shape != null)
+        val (verdict, reasons) = if (model == null || shape != null || ruleVerdict == MessageVerdict.DANGEROUS) {
+            ruleVerdict to ruleReasons
+        } else {
+            withModel(model, cut, signals, ruleVerdict, ruleReasons)
+        }
         return MessageAnalysis(
             verdict = verdict,
             reasons = reasons,
@@ -122,6 +150,45 @@ class MessageAnalyzer(
             legitShape = shape.takeIf { verdict != MessageVerdict.DANGEROUS },
             organisations = signals.organisations.map { it.id },
             truncated = truncated,
+        )
+    }
+
+    /** What the text model adds to the rules' verdict (see the class comment): it only ever raises it. */
+    private fun withModel(
+        model: MessageModel,
+        text: String,
+        s: MessageSignals,
+        verdict: MessageVerdict,
+        reasons: List<String>,
+    ): Pair<MessageVerdict, List<String>> {
+        val g = GenericSignals(s)
+        if (officialChannelsOnly(s, g)) return verdict to reasons
+        val p = model.score(text) ?: return verdict to reasons
+        if (p < model.dangerThreshold && p < model.cautionThreshold) return verdict to reasons
+        return when {
+            p >= model.dangerThreshold && modelIngredients(s, g).isNotEmpty() ->
+                MessageVerdict.DANGEROUS to (listOf(R_TEXT_RESEMBLES_SCAM) + reasons + GenericLayer.reasons(s, g)).distinct()
+            p < model.cautionThreshold -> verdict to reasons
+            verdict == MessageVerdict.CAUTION -> verdict to (reasons + R_TEXT_RESEMBLES_SCAM).distinct()
+            else -> MessageVerdict.CAUTION to (listOf(R_TEXT_RESEMBLES_SCAM) + GenericLayer.reasons(s, g)).distinct()
+        }
+    }
+
+    /** The signals of [text], already cut to [MAX_CHARS]: links judged, phones found, words indexed. */
+    internal fun read(text: String, sender: String? = null): MessageSignals {
+        val cleaned = MessageText.clean(text)
+        val found = LinkExtractor.extract(cleaned.text, rules.bareTlds)
+        // Every link is judged; only the list the person sees is capped.
+        val links = found.map { facts(it) }
+        val phones = PhoneExtractor.extract(blank(cleaned.text, found.map { it.span }))
+        return MessageSignals(
+            rules = rules,
+            index = MessageText.index(cleaned.text, found.map { it.span }, rules.translitMarkers),
+            text = MessageText.normalizeWord(cleaned.text),
+            hiddenInWord = cleaned.hiddenInWord,
+            links = links,
+            phones = phones,
+            sender = sender,
         )
     }
 
@@ -138,30 +205,36 @@ class MessageAnalyzer(
 
     private fun facts(link: FoundLink): LinkFacts {
         val official = rules.isOfficial(link.host)
+        val imitated = if (official) emptyList() else imitated(link.host)
         return LinkFacts(
             found = link,
             status = linkStatus(link.host),
             shortener = HostNames.under(link.host, rules.shorteners),
             messenger = HostNames.under(link.host, rules.messengers),
             official = official,
-            imitatesBrand = !official && imitatesBrand(link.host),
+            imitatesBrand = imitated.isNotEmpty(),
+            imitatesState = imitated.any { it.kind == MessageRules.Kind.GOV || it.kind == MessageRules.Kind.SECURITY },
         )
     }
 
     /**
+     * The organisations whose brand a non-official host carries.
      * "sberbank-bonus.ru", "gosuslugi-help.ru", "t2-gosuslugi.ru": a brand in a
      * name that is not the brand's. A short brand must stand as its own token
      * — "apple" inside goldapple.ru is a cosmetics shop, not Apple — and only
-     * a long, distinctive one ("sberbank") may hide inside a longer word.
+     * a long, distinctive one ("sberbank") may hide inside a longer word. A
+     * five-letter Latin one may start one ("nalog" in nalogvozvrat.online);
+     * the Cyrillic "альфа" may not, it starts too many ordinary names.
      * A Cyrillic name ("госуслуги-выплаты.рф") is read as written, not as its
      * punycode.
      */
-    private fun imitatesBrand(host: String): Boolean {
+    private fun imitated(host: String): List<MessageRules.Organisation> {
         val tokens = (hostTokens(host) + hostTokens(unicode(host))).distinct()
-        return rules.organisations.any { org ->
+        return rules.organisations.filter { org ->
             org.domainTokens.any { brand ->
                 tokens.any { t ->
                     t == brand || (brand.length >= 6 && (t.startsWith(brand) || t.endsWith(brand))) ||
+                        (brand.length == 5 && brand.all { it in 'a'..'z' || it in '0'..'9' } && t.startsWith(brand)) ||
                         (brand.length >= 8 && t.contains(brand))
                 }
             }
@@ -180,7 +253,7 @@ class MessageAnalyzer(
         }
     }
 
-    private fun legitShape(s: MessageSignals): String? {
+    internal fun legitShape(s: MessageSignals): String? {
         val clean = s.links.none { it.unofficial } && s.apkLinks.isEmpty() && !s.callbackStrong && !s.codeAsked &&
             !s.safeAccount && !s.malwareLure && !s.smsTransferCommand
         if (!clean) return null
@@ -204,6 +277,8 @@ class MessageAnalyzer(
         if (!excluded) {
             dangerous(s, danger)
             cautious(s, caution)
+            // Last, and only adding: the ingredients the scheme rules have no words for.
+            GenericLayer.judge(s, danger, caution)
         }
         return when {
             danger.isNotEmpty() -> MessageVerdict.DANGEROUS to (danger + caution).toList()
@@ -232,18 +307,97 @@ class MessageAnalyzer(
         if (s.namesKnownBody && s.fee && foreign.isNotEmpty()) {
             out += listOf(R_ORGANISATION, R_PAYMENT) + linkReasons(foreign)
         }
-        // The state and the police do not pay out through a foreign link.
-        if (s.namesState && s.bait && foreign.isNotEmpty()) {
+        // The state and the police do not pay out through a foreign link, and
+        // neither does a bank we know by name ("компенсация по вкладам СССР").
+        if ((s.namesState && s.bait || s.namesBankByName && s.payout) && foreign.isNotEmpty()) {
             out += listOf(R_ORGANISATION, R_BAIT) + linkReasons(foreign)
+        }
+        // "Штраф 3 000 ₽, оплатите: parkovka-shtraf.ru": nobody named in words, but
+        // the site wears a state body's name, and the state collects on its own site.
+        val stateLookalike = foreign.filter { it.imitatesState }
+        if (s.threat && s.payAsked && stateLookalike.isNotEmpty()) {
+            out += listOf(R_THREAT, R_PAYMENT) + linkReasons(stateLookalike)
+        }
+        // "Подработка на Ozon: оценка товаров, пишите t.me/…": a marketplace does not
+        // hire for paid reviews through a Telegram or WhatsApp chat. A gig at a
+        // shop down the road may well be passed on that way, so only marketplaces.
+        val chats = foreign.filter { it.messenger }
+        if (s.namesMarketplace && s.jobOffer && chats.isNotEmpty()) {
+            out += listOf(R_ORGANISATION, R_BAIT) + linkReasons(chats)
         }
         if (s.codeAsked) out += if (s.namesAnyBody) listOf(R_CODE, R_ORGANISATION) else listOf(R_CODE)
         if (s.safeAccount && (s.moneyMove || s.namesAuthority || s.callbackStrong)) out += R_SAFE_ACCOUNT
         if (s.kin && s.moneyMove && (s.newNumber || s.emergency)) out += R_RELATIVE
+        // FakeBoss: "это ваш руководитель — вам позвонит куратор из ФСБ, никому не
+        // говорите". A real boss may pass on a police visit, never one to keep secret.
+        if (s.boss && s.namesSecurity && s.callComing && s.secrecy) out += listOf(R_ORGANISATION, R_THREAT)
+        // "Возбуждено уголовное дело по ст. 275… следователь свяжется, выполняйте его
+        // указания": a real investigator summons, he does not order obedience by SMS.
+        if (s.namesSecurity && s.threatWords && s.callComing && s.obey) out += listOf(R_ORGANISATION, R_THREAT)
         if (s.malwareLure && foreign.isNotEmpty()) out += listOf(R_MALWARE_LURE) + linkReasons(foreign)
         if (s.install && foreign.any { it.suspicious || s.namesKnownBody }) out += listOf(R_INSTALL) + linkReasons(foreign)
         if (s.apkLinks.isNotEmpty()) out += listOf(R_INSTALL) + linkReasons(s.apkLinks)
         if (s.bait && s.fee) out += listOf(R_BAIT, R_PAYMENT)
         if (s.smsTransferCommand) out += R_SMS_COMMAND
+        newSchemes(s, foreign, out)
+    }
+
+    /**
+     * The 2026-10 schemes the rules had no vocabulary for. Each needs the
+     * scheme's own move, not its words: an intimate leak AND money; a drop
+     * offer AND a cut; a buyer AND money waiting behind a link; a remote or
+     * NFC app AND a bank or money; cash AND a stranger to hand it to.
+     */
+    private fun newSchemes(s: MessageSignals, foreign: List<LinkFacts>, out: MutableSet<String>) {
+        val named = if (s.namesAnyBody) listOf(R_ORGANISATION) else emptyList()
+        // "Переведи 20 000, иначе твои интимные фото увидят все": sextortion.
+        if (s.leakThreat && s.intimate && (s.moneyDemand || foreign.isNotEmpty())) {
+            out += listOf(R_THREAT, R_PAYMENT) + linkReasons(foreign)
+        }
+        // "Сдай карту в аренду, 5 000 ₽ в неделю", "принимай переводы и переводи
+        // дальше за 10%", "требуются курьеры забирать наличные": the reader made a drop.
+        if (s.muleOffer || s.cashJob) out += listOf(R_BAIT) + linkReasons(foreign)
+        // "Покупатель оплатил ваш товар, получите деньги: avito-pay.site", "давайте в
+        // WhatsApp, скину ссылку на безопасную сделку": a buyer never pays through a link.
+        val sites = foreign.filter { !it.messenger }
+        val chats = foreign.filter { it.messenger }
+        if (s.listing && sites.isNotEmpty() && (s.receiveMoney || s.safeDeal || s.confirmData)) {
+            out += listOf(R_PAYMENT) + linkReasons(sites)
+        }
+        if (s.listing && chats.isNotEmpty() && (s.receiveMoney || s.safeDeal)) out += listOf(R_PAYMENT) + linkReasons(chats)
+        // "Приложите карту к задней панели телефона": NFC relay — with an app from a link or a
+        // file, or a refund pretext. A wallet from the store may ask the same tap.
+        if (s.nfcTap && (s.apkNamed || s.apkLinks.isNotEmpty() || foreign.isNotEmpty() || s.refund || s.payout)) {
+            out += named + R_INSTALL + linkReasons(foreign)
+        }
+        // "Сбербанк: установите RustDesk", "скачайте AnyDesk, чтобы вернуть деньги".
+        // An IT department installing AnyDesk on a work laptop names neither.
+        if (s.remoteAsked && (s.namesKnownBody || s.moneyContext)) out += named + R_INSTALL + linkReasons(foreign)
+        // "Установите приложение по ссылке, чтобы получить компенсацию / вернуть деньги".
+        if (s.install && foreign.isNotEmpty() && (s.refund || s.payout || s.safeAccount)) out += listOf(R_INSTALL) + linkReasons(foreign)
+        // "Файл vozvrat.apk — установите": a package handed over in words.
+        if (s.apkNamed && (s.install || s.installVerb) && (s.namesKnownBody || s.moneyContext || s.pressure)) {
+            out += named + R_INSTALL
+        }
+        // "Снимите наличные и передайте инкассатору / курьеру ЦБ": a bank never collects at the door.
+        if (s.cashHandover && (s.namesAuthority || s.safeAccount || s.callComing || s.secrecy || s.obey)) {
+            out += named + R_SAFE_ACCOUNT
+        }
+        // "По новому закону номер будет заблокирован — подтвердите паспорт: …", with a
+        // link, a call-back, a passport photo or a code. Operators ask in the salon or on Госуслуги.
+        if (s.lawPretext && (s.threat || s.urgency) &&
+            (foreign.isNotEmpty() || s.callbackStrong || s.passportAsked || s.codeAsked)
+        ) {
+            out += pressureReasons(s) + (if (s.callbackStrong) listOf(R_CALL_UNKNOWN) else emptyList()) + linkReasons(foreign)
+        }
+        if (s.lawPretext && s.passportAsked) out += listOf(R_CONFIRM_DATA) + pressureReasons(s)
+        // "Вы вызываетесь свидетелем по делу № …, ст. 159 УК — позвоните +7 9…". A court
+        // does text hearings, with its own city number; never a mobile one or a site of its own.
+        if (s.summons && s.caseCited && (s.callbackPersonal || foreign.isNotEmpty())) {
+            out += named + R_THREAT + (if (s.callbackPersonal) listOf(R_CALL_UNKNOWN) else emptyList()) + linkReasons(foreign)
+        }
+        // FakeBoss without the FSB's name: "вам позвонят из органов… никому не говорите".
+        if (s.boss && s.callComing && (s.secrecy || s.obey) && (s.organs || s.organsVague)) out += listOf(R_ORGANISATION, R_THREAT)
     }
 
     private fun cautious(s: MessageSignals, out: MutableSet<String>) {
@@ -252,7 +406,10 @@ class MessageAnalyzer(
         // Shops put "кешбэк до 30.09" behind clck.ru every day; a short link
         // earns caution only next to a threat or a request for data.
         val hiddenBeyondShortener = hidden.filter { !it.shortener || it.found.isApk || it.imitatesBrand }
-        if (s.namesKnownBody && foreign.isNotEmpty()) {
+        // "Вопросы? Напишите нам в WhatsApp: wa.me/…" names the messenger only to say
+        // where its own chat link goes.
+        val chatInvite = s.namesOnlyMessenger && foreign.all { it.messenger }
+        if (s.namesKnownBody && foreign.isNotEmpty() && !chatInvite) {
             out += listOf(R_ORGANISATION) + (if (s.bait) listOf(R_BAIT) else emptyList()) + linkReasons(foreign)
         }
         // A regional МФЦ or bailiffs' office does give its city number ("справки
@@ -280,23 +437,38 @@ class MessageAnalyzer(
         if (s.kin && s.moneyMove && (s.secrecy || s.urgency)) out += R_RELATIVE
         // "Это Серёга, пишу с нового номера, займи 5000 срочно": the same family without "мама".
         if (s.newNumber && s.moneyMove && (s.secrecy || s.urgency)) out += R_RELATIVE
-        // "МВД: ожидайте звонка следователя, не кладите трубку": the coming call is the scam.
-        // A police warning ABOUT such calls names no call to the reader and gives no orders.
-        if (s.namesSecurity && s.callComing && s.obey) out += listOf(R_ORGANISATION, R_THREAT)
+        // "МВД: ожидайте звонка следователя, не кладите трубку / никому не сообщайте":
+        // the coming call is the scam. A police warning ABOUT such calls names no
+        // call to the reader ("если вам позвонят…") and gives no orders.
+        if (s.namesSecurity && s.callComing && (s.obey || s.secrecy)) out += listOf(R_ORGANISATION, R_THREAT)
+        // "Проголосуй за мою племянницу: golos-deti.site, подтверди кодом": the vote is the account takeover.
+        if (s.vote && s.codeMentioned && foreign.isNotEmpty()) out += listOf(R_CODE) + linkReasons(foreign)
         nobodyNamed(s, foreign, out)
+        // Partial schemes: blackmail before the price, the fake date's ticket site, a buyer
+        // moving to a chat for "the money", a summons or the SIM law with the call still to come.
+        if (s.leakThreat && s.intimate) out += R_THREAT
+        if (s.dating && s.ticketBuy && foreign.isNotEmpty()) out += listOf(R_PAYMENT) + linkReasons(foreign)
+        if (s.listing && s.chatMove && (s.receiveMoney || s.safeDeal)) out += listOf(R_PAYMENT) + linkReasons(foreign)
+        if (s.summons && s.caseCited && (s.callComing || s.callbackWeak)) {
+            out += (if (s.namesAnyBody) listOf(R_ORGANISATION) else emptyList()) + R_THREAT
+        }
+        if (s.lawPretext && (s.threat || s.urgency) && s.callComing) out += pressureReasons(s)
         if (s.install && foreign.isNotEmpty() && s.pressure) out += listOf(R_INSTALL) + linkReasons(foreign)
         if (s.namesKnownBody && s.senderPersonal) out += listOf(R_ORGANISATION, R_SENDER_PERSONAL)
         if (s.senderMismatch) out += listOf(R_ORGANISATION, R_SENDER_MISMATCH)
     }
 
     /**
-     * Nobody named, so no site to compare the link with — but a fine, a fee
-     * or a payout through an unknown site is the scam family itself
-     * ("Штраф 1500 р… оплатите: oplata-pdd.ru", "положена доплата… до 01.10").
+     * Nobody named, so no site to compare the link with — but a fine, a fee,
+     * a payout or "confirm your card or the account is frozen" through an
+     * unknown site is the scam family itself ("Штраф 1500 р… оплатите:
+     * oplata-pdd.ru", "положена доплата… до 01.10").
      */
     private fun nobodyNamed(s: MessageSignals, foreign: List<LinkFacts>, out: MutableSet<String>) {
         if (s.namesAnyBody || foreign.isEmpty()) return
         if (s.threat && s.payAsked) out += listOf(R_THREAT, R_PAYMENT) + linkReasons(foreign)
+        // "Счёт будет заморожен — подтвердите данные карты: karta-zashita.ru".
+        if (s.threat && s.confirmData) out += pressureReasons(s) + linkReasons(foreign)
         if (s.fee) out += listOf(R_PAYMENT) + linkReasons(foreign)
         if (s.payout && (s.urgency || s.confirmData)) out += pressureReasons(s) + R_BAIT + linkReasons(foreign)
     }
@@ -304,17 +476,6 @@ class MessageAnalyzer(
     private fun pressureReasons(s: MessageSignals): List<String> = buildList {
         if (s.threat || s.urgency) add(R_THREAT)
         if (s.confirmData) add(R_CONFIRM_DATA)
-    }
-
-    /** Why a set of links is a problem, most specific first after "not the brand's". */
-    private fun linkReasons(links: List<LinkFacts>): List<String> = buildList {
-        if (links.any { !it.official }) add(R_LINK_NOT_OFFICIAL)
-        if (links.any { it.shortener }) add(R_LINK_SHORTENER)
-        if (links.any { it.messenger }) add(R_LINK_MESSENGER)
-        if (links.any { it.found.isIp }) add(R_LINK_IP)
-        if (links.any { it.found.mixedScript }) add(R_LINK_LOOKALIKE)
-        if (links.any { it.imitatesBrand }) add(R_LINK_IMITATES_BRAND)
-        if (links.any { it.found.isApk }) add(R_LINK_APK)
     }
 
     /** Spaces over [spans] so a number inside a URL is not read as a phone. */
@@ -360,13 +521,54 @@ class MessageAnalyzer(
         const val R_DISGUISED = "disguised_letters"
         const val R_SENDER_PERSONAL = "sender_personal_number"
         const val R_SENDER_MISMATCH = "sender_mismatch"
+        const val R_SECRECY = "asks_for_secrecy"
+        const val R_TEXT_RESEMBLES_SCAM = "text_resembles_scam"
 
         /** Every reason code the analyzer can emit — the UI must translate each one. */
         val ALL_REASONS = listOf(
             R_LINK_BLOCKLISTED, R_ORGANISATION, R_THREAT, R_CONFIRM_DATA, R_BAIT, R_CALL_UNKNOWN,
             R_LINK_NOT_OFFICIAL, R_LINK_SHORTENER, R_LINK_MESSENGER, R_LINK_IP, R_LINK_LOOKALIKE,
             R_LINK_IMITATES_BRAND, R_LINK_APK, R_CODE, R_SAFE_ACCOUNT, R_PAYMENT, R_RELATIVE, R_INSTALL,
-            R_MALWARE_LURE, R_SMS_COMMAND, R_DISGUISED, R_SENDER_PERSONAL, R_SENDER_MISMATCH,
+            R_MALWARE_LURE, R_SMS_COMMAND, R_DISGUISED, R_SENDER_PERSONAL, R_SENDER_MISMATCH, R_SECRECY,
+            R_TEXT_RESEMBLES_SCAM,
         )
+
+        /**
+         * Every link and number the message gives is the organisation's own
+         * (or one the person vouched for): "Сбербанк: подозрительная операция,
+         * позвоните 8 800 555-55-50" reads like a scam and is the bank. The
+         * model cannot tell a real number from a fake one; the rules can.
+         */
+        internal fun officialChannelsOnly(s: MessageSignals, g: GenericSignals): Boolean =
+            (s.links.isNotEmpty() || s.phones.isNotEmpty()) && g.foreign.isEmpty() &&
+                s.phones.all { it.number in s.rules.officialPhones }
+
+        /**
+         * The rules' ingredients that let a high model score make a message
+         * dangerous: something the reader is asked to do or is promised.
+         * A score alone, on a text with none of them, stays a caution.
+         */
+        internal fun modelIngredients(s: MessageSignals, g: GenericSignals): List<String> = buildList {
+            if (g.foreign.isNotEmpty()) add("foreign")
+            if (g.moneyAsked) add("moneyAsked")
+            if (s.moneyMove) add("moneyMove")
+            if (g.code || s.codeAsked) add("code")
+            if (g.promise) add("promise")
+            if (g.threat) add("threat")
+            if (s.callbackPersonal) add("callbackPersonal")
+            if (s.install || s.apkLinks.isNotEmpty() || s.remoteAsked) add("install")
+            if (g.secrecy) add("secrecy")
+        }
+
+        /** Why a set of links is a problem, most specific first after "not the brand's". */
+        internal fun linkReasons(links: List<LinkFacts>): List<String> = buildList {
+            if (links.any { !it.official }) add(R_LINK_NOT_OFFICIAL)
+            if (links.any { it.shortener }) add(R_LINK_SHORTENER)
+            if (links.any { it.messenger }) add(R_LINK_MESSENGER)
+            if (links.any { it.found.isIp }) add(R_LINK_IP)
+            if (links.any { it.found.mixedScript }) add(R_LINK_LOOKALIKE)
+            if (links.any { it.imitatesBrand }) add(R_LINK_IMITATES_BRAND)
+            if (links.any { it.found.isApk }) add(R_LINK_APK)
+        }
     }
 }

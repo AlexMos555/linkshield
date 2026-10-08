@@ -150,6 +150,13 @@
       <button class="icon-btn tip-dismiss" id="dismiss-tip" aria-label="Dismiss" data-i18n-aria-label="tip_dismiss">&times;</button>
     </section>
 
+    <!-- Account: sign in through cleanway.ai (background/auth.js). Shown
+         once popup.js knows the state, so it never flashes the wrong one. -->
+    <section class="account-row" id="account-row" hidden>
+      <span class="account-text" id="account-text"></span>
+      <button class="account-btn" id="btn-account-sign-in" type="button" data-i18n="account_sign_in" hidden>Sign in</button>
+    </section>
+
     <!-- Trust footer -->
     <footer class="trust-footer">
       <span aria-hidden="true">&#x1F512;</span>

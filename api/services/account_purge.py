@@ -13,6 +13,15 @@ mean a single DELETE wipes every dependent row across:
   org_members, feedback_reports (user_id set to NULL by ON DELETE
   SET NULL), referrals.
 
+public.users has NO foreign key to auth.users, so that cascade never
+touched the Supabase Auth identity (email, provider identities,
+sessions). Each user's auth record is deleted explicitly through the
+Auth Admin API (DELETE /auth/v1/admin/users/{id}), which also cascades
+the tables keyed on auth.users (brand_watchlist, …). Before anything is
+deleted, any still-live Stripe subscription is cancelled; a user whose
+billing can't be stopped, or whose auth record can't be deleted, is
+skipped and retried on the next run.
+
 This script is invokable two ways:
   1. CLI:   `python -m api.services.account_purge`
   2. HTTP:  the admin-token-gated endpoint defined in api/routers/admin.py
@@ -27,6 +36,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from api.config import get_settings
+from api.services.stripe_billing import BillingError, cancel_user_subscriptions
 
 logger = logging.getLogger("cleanway.account_purge")
 
@@ -82,18 +92,37 @@ async def purge_expired_accounts() -> dict:
             logger.info("account_purge.no_candidates", extra={"cutoff": cutoff})
             return {"deleted": 0}
 
-        # Step 1.5: GDPR Art. 17 — anonymise audit_log rows BEFORE the
-        # cascade DELETE.
-        #
-        # audit_log.actor_user_id has no FK cascade (see migration 014),
-        # so historical rows would otherwise persist with the deleted
-        # user's UUID forever. The compliance-friendly answer: keep the
-        # event timeline (the action verb + timestamp + meta), null the
-        # actor so the row is no longer personal data tied to the user.
-        # (Audit backend MEDIUM "audit_log table has no retention
-        # policy or row cap, and the GDPR purge cron is not wired to
-        # clean it".)
-        for uid in deleted_ids:
+        candidate_ids = deleted_ids
+        deleted_ids = []
+        skipped_ids: list[str] = []
+        for uid in candidate_ids:
+            # Step 1.4: stop Stripe billing. The subscriptions row (with
+            # the Stripe customer id) is wiped by the cascade below; after
+            # that nothing links the user to a still-live subscription and
+            # it would bill forever. DELETE /user/account already cancels
+            # at request time — this is the safety net. Can't confirm →
+            # keep the user and retry next run.
+            try:
+                await cancel_user_subscriptions(uid)
+            except BillingError as e:
+                logger.error(
+                    "account_purge.stripe_cancel_failed",
+                    extra={"user_id": uid, "error": str(e)},
+                )
+                skipped_ids.append(uid)
+                continue
+
+            # Step 1.5: GDPR Art. 17 — anonymise audit_log rows BEFORE the
+            # cascade DELETE.
+            #
+            # audit_log.actor_user_id has no FK cascade (see migration 014),
+            # so historical rows would otherwise persist with the deleted
+            # user's UUID forever. The compliance-friendly answer: keep the
+            # event timeline (the action verb + timestamp + meta), null the
+            # actor so the row is no longer personal data tied to the user.
+            # (Audit backend MEDIUM "audit_log table has no retention
+            # policy or row cap, and the GDPR purge cron is not wired to
+            # clean it".)
             try:
                 anon_resp = await client.request(
                     "PATCH",
@@ -116,14 +145,49 @@ async def purge_expired_accounts() -> dict:
                     extra={"user_id": uid, "error": str(e)},
                 )
 
+            # Step 1.6: delete the Supabase Auth identity (auth.users —
+            # email, provider identities, sessions, refresh tokens).
+            # public.users.id has no FK to auth.users, so the cascade
+            # below never reached it: the identity outlived the purge and
+            # the person could still sign in. Done BEFORE the public row:
+            # if this fails the public row keeps the user a candidate for
+            # the next run; 404 means a previous run already did it.
+            try:
+                auth_resp = await client.request(
+                    "DELETE",
+                    f"{settings.supabase_url}/auth/v1/admin/users/{uid}",
+                    headers=headers,
+                )
+                auth_ok = auth_resp.status_code in (200, 204, 404)
+            except Exception as e:
+                logger.error(
+                    "account_purge.auth_delete_exception",
+                    extra={"user_id": uid, "error": str(e)},
+                )
+                auth_ok = False
+            if not auth_ok:
+                logger.error("account_purge.auth_delete_failed", extra={"user_id": uid})
+                skipped_ids.append(uid)
+                continue
+
+            deleted_ids.append(uid)
+
+        if not deleted_ids:
+            return {"deleted": 0, "ids": [], "skipped": skipped_ids}
+
         # Step 2: hard-delete. We rely on the cascading foreign keys
         # established in migration 001 — a single DELETE on users.id
-        # wipes every dependent row across 8+ tables.
+        # wipes every dependent row across 8+ tables. Restricted to the
+        # users that cleared every step above, AND still to the grace
+        # cutoff so a bad id list can never reach a user inside grace.
         try:
             del_resp = await client.request(
                 "DELETE",
                 f"{settings.supabase_url}/rest/v1/users",
-                params={"deletion_requested_at": f"lte.{cutoff}"},
+                params={
+                    "id": f"in.({','.join(deleted_ids)})",
+                    "deletion_requested_at": f"lte.{cutoff}",
+                },
                 headers=headers,
             )
             if del_resp.status_code not in (200, 204):
@@ -145,7 +209,12 @@ async def purge_expired_accounts() -> dict:
 
     logger.info(
         "account_purge.complete",
-        extra={"deleted": len(deleted_ids), "ids": deleted_ids, "cutoff": cutoff},
+        extra={
+            "deleted": len(deleted_ids),
+            "ids": deleted_ids,
+            "skipped": skipped_ids,
+            "cutoff": cutoff,
+        },
     )
 
     # Write one audit row per deleted user. audit_log.actor_user_id is
@@ -164,7 +233,10 @@ async def purge_expired_accounts() -> dict:
             meta={"grace_days": GRACE_DAYS, "cutoff": cutoff},
         )
 
-    return {"deleted": len(deleted_ids), "ids": deleted_ids}
+    result: dict = {"deleted": len(deleted_ids), "ids": deleted_ids}
+    if skipped_ids:
+        result["skipped"] = skipped_ids
+    return result
 
 
 def main() -> int:

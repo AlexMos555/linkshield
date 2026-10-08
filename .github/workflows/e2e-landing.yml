@@ -16,8 +16,25 @@ on:
 
 jobs:
   e2e:
+    name: e2e (billing ${{ matrix.billing }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # The operator-billed subscription pages exist only behind this flag
+        # (landing/lib/billing-config.ts). Both states are built and tested:
+        # "off" is today's site, "on" is what the founder's flip would ship —
+        # landing/e2e/billing.spec.ts asserts each state and skips the other.
+        billing: [off, on]
+    env:
+      NEXT_PUBLIC_BILLING_ENABLED: ${{ matrix.billing == 'on' && '1' || '' }}
+      # A fake Supabase project, so the pages that need sign-in render their
+      # signed-in states. Nothing calls it: landing/e2e/extension-connect.spec.ts
+      # answers every request to it with page.route. (*.supabase.co is in the
+      # CSP's connect-src, so the build's CSP stays the production one.)
+      NEXT_PUBLIC_SUPABASE_URL: https://cleanway-e2e.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-public-anon-key
     defaults:
       run:
         working-directory: landing
@@ -72,7 +89,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-billing-${{ matrix.billing }}
           path: landing/playwright-report/
           retention-days: 7
 
@@ -80,6 +97,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces
+          name: playwright-traces-billing-${{ matrix.billing }}
           path: landing/test-results/
           retention-days: 7

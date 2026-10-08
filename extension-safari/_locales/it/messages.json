@@ -1448,5 +1448,46 @@
   },
   "options_family_invite_qr_alt": {
     "message": "Codice QR dell'invito alla famiglia Cleanway"
+  },
+  "account_heading": {
+    "message": "Account"
+  },
+  "account_sign_in": {
+    "message": "Accedi"
+  },
+  "account_sign_out": {
+    "message": "Esci"
+  },
+  "account_signed_in": {
+    "message": "Accesso effettuato"
+  },
+  "account_signed_in_as": {
+    "message": "Accesso effettuato come $EMAIL$",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "account_signed_in_desc": {
+    "message": "Serve per l'Hub Famiglia e la sincronizzazione delle impostazioni. Uscire non disattiva la protezione."
+  },
+  "account_signed_out": {
+    "message": "Accesso non effettuato"
+  },
+  "account_signed_out_desc": {
+    "message": "Accedi per usare l'Hub Famiglia e sincronizzare le impostazioni. La protezione funziona anche senza account."
+  },
+  "account_pending": {
+    "message": "Completa l'accesso nella scheda di Cleanway"
+  },
+  "account_expired": {
+    "message": "Il tuo accesso è scaduto"
+  },
+  "account_device_revoked": {
+    "message": "Questo browser è stato rimosso dal tuo account. Accedi di nuovo per usarlo qui."
+  },
+  "account_device_limit": {
+    "message": "Tutti i dispositivi del tuo piano sono in uso. Scollegane uno su cleanway.ai/account e accedi di nuovo."
   }
 }

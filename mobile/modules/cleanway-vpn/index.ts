@@ -14,9 +14,14 @@ const CANARY_DEADLINE_MS = 2500;
 const CANARY_POLL_MS = 150;
 import type {
   BlocklistStatus,
+  CallEventKind,
+  CallStatePayload,
   DomainBlockedPayload,
+  KeepAliveStatus,
   NetworkChangedPayload,
+  OemFamily,
   PauseChangedPayload,
+  RearmDecision,
   ShieldBlockEntry,
   ShieldBlockKind,
   ShieldBlockSource,
@@ -33,12 +38,18 @@ import type {
   MessageVerdict,
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
+import { parseKeepAliveStatus, parseRearmDecision, UNKNOWN_KEEP_ALIVE } from './src/KeepAliveStatus';
 
 export type {
   BlocklistStatus,
+  CallEventKind,
+  CallStatePayload,
   DomainBlockedPayload,
+  KeepAliveStatus,
   NetworkChangedPayload,
+  OemFamily,
   PauseChangedPayload,
+  RearmDecision,
   ShieldBlockEntry,
   ShieldBlockKind,
   ShieldBlockSource,
@@ -201,6 +212,85 @@ export function addNetworkChangedListener(cb: (p: NetworkChangedPayload) => void
   return CleanwayVpn.addListener('onNetworkChanged', cb);
 }
 
+// ── Calls (CallState.kt / CallGuard.kt / CloseContact.kt) ─────────────────
+
+/**
+ * Is the person on the phone, and when did the last call end? From the audio
+ * mode: no permission, no number, no audio. Null where this build cannot tell
+ * (iOS, an older native build) — then no stop screen is ever shown, which is
+ * the honest degradation: nothing may claim to know about a call it cannot see.
+ */
+export function callState(): CallStatePayload | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    const s = CleanwayVpn.callState?.();
+    return s && typeof s.inCall === 'boolean' ? s : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A call began or ended while the app is open. */
+export function addCallStateChangedListener(cb: (p: CallStatePayload) => void) {
+  return CleanwayVpn.addListener('onCallStateChanged', cb);
+}
+
+/**
+ * Tell the native side that the app saw something the after-call notice
+ * should name — the stop screen shown on a pause / allow / "open anyway",
+ * or a message check that ended up dangerous.
+ */
+export function noteCallEvent(kind: CallEventKind): void {
+  try {
+    CleanwayVpn.noteCallEvent?.(kind);
+  } catch {
+    /* older native build */
+  }
+}
+
+/** Bring the phone app to the front during a call — where "hang up" lives. */
+export function showInCallScreen(): boolean {
+  try {
+    return CleanwayVpn.showInCallScreen?.() ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** The saved "close one" number, or null. It never leaves the phone. */
+export function closeContactPhone(): string | null {
+  try {
+    return CleanwayVpn.closeContactPhone?.() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save (or clear with null) the "close one" number for the native side. False
+ * when it is not a dialable number. This is the hook the checkup screen (#55)
+ * calls from `saveCloseOne` / `clearCloseOne` (src/services/checkup-store.ts),
+ * mirroring the secure-store contact into the module's no-backup file so the
+ * service can offer "call a close one" on the after-call notice, where JS is
+ * not running. Until that ships nothing is saved and the buttons stay hidden.
+ */
+export function setCloseContactPhone(phone: string | null): boolean {
+  try {
+    return CleanwayVpn.setCloseContactPhone?.(phone) ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** Open the phone app on the saved number (the person presses call). False when none is saved. */
+export function dialCloseContact(): boolean {
+  try {
+    return CleanwayVpn.dialCloseContact?.() ?? false;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Open the system VPN settings so the user can enable "Always-on VPN".
  * Returns false when no such screen exists on this device.
@@ -210,6 +300,60 @@ export function openVpnSettings(): boolean {
     return CleanwayVpn.openVpnSettings();
   } catch {
     return false;
+  }
+}
+
+// ── Keeping the shield alive with the app closed (KeepAlive.kt / ShieldWatchdog.kt) ──
+
+/**
+ * Battery optimisation, Always-on VPN and the phone maker, as the phone
+ * reports them. Every field is null where this build or this phone cannot
+ * tell (iOS, an older native build, Always-on while the shield is off).
+ */
+export function keepAliveStatus(): KeepAliveStatus {
+  if (Platform.OS !== 'android') return UNKNOWN_KEEP_ALIVE;
+  try {
+    return parseKeepAliveStatus(CleanwayVpn.keepAliveStatus?.());
+  } catch {
+    return UNKNOWN_KEEP_ALIVE;
+  }
+}
+
+/**
+ * Open Android's "stop optimising battery for Cleanway?" dialog — or, where
+ * the phone maker removed it, the closest settings screen. The caller
+ * explains why first. False when nothing could be opened.
+ */
+export function requestBatteryExemption(): boolean {
+  try {
+    return typeof CleanwayVpn.requestBatteryExemption === 'function' && CleanwayVpn.requestBatteryExemption();
+  } catch {
+    return false;
+  }
+}
+
+/** Open the phone maker's own background/autostart screen (else App info). False if none opened. */
+export function openOemBackgroundSettings(): boolean {
+  try {
+    return typeof CleanwayVpn.openOemBackgroundSettings === 'function' && CleanwayVpn.openOemBackgroundSettings();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The person left the shield ON and it is not running: ask the native side
+ * to bring it back under the watchdog's rules (never after Android took the
+ * tunnel away, never over another VPN, at most 3 times an hour). 'start'
+ * means the service was asked to start — proof still comes from the canary.
+ * Null on older native builds and on error.
+ */
+export function rearmShield(): RearmDecision | null {
+  if (Platform.OS !== 'android') return null;
+  try {
+    return parseRearmDecision(CleanwayVpn.rearmShield?.());
+  } catch {
+    return null;
   }
 }
 

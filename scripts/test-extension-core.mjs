@@ -60,7 +60,7 @@ const LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
 // webmail banners and the settings page.
 const NEW_KEY_PREFIXES = [
   "badge_", "audit_", "credguard_", "mpg_", "menu_", "command_", "family_notify_", "reason_",
-  "evidence_", "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_",
+  "evidence_", "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_", "account_",
 ];
 
 // Reason codes whose `detail` is already in the user's language (the
@@ -301,6 +301,61 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     await loadBackground(tree, noFamily);
     await new Promise((r) => setTimeout(r, 0));
     assert.ok(!noFamilyCalls.alarmsCreated.includes("cleanway_family_poll"), "armed without a family");
+  });
+}
+
+// ── Group 2e: one offline scorer for the whole extension ──
+// The background used to carry its own, weaker scorer (20 brands, the last
+// two labels read as the site): with the API down it called eBay UK's real
+// sign-in host dangerous in the popup and the context menu, while the badge
+// on the same link said caution. Now it runs the content script's.
+const SCORER_FILES = ["src/utils/scorer-data.js", "src/utils/name-rules.js", "src/utils/local-scorer.js"];
+
+function contentScorer(tree) {
+  const ctx = vm.createContext({});
+  for (const rel of SCORER_FILES) vm.runInContext(readFileSync(join(ROOT, tree, rel), "utf8"), ctx);
+  return ctx;
+}
+
+for (const tree of BROWSER_TREES) {
+  await check(`[${tree}] content scripts load the scorer's data and rules before the scorer`, () => {
+    const js = readJson(join(tree, "manifest.json")).content_scripts[0].js;
+    const order = [...SCORER_FILES, "src/content/index.js"].map((f) => js.indexOf(f));
+    assert.ok(order.every((i) => i >= 0), `missing from content_scripts: ${JSON.stringify(order)}`);
+    assert.deepEqual([...order].sort((a, b) => a - b), order, "scorer-data.js, name-rules.js, local-scorer.js, content/index.js");
+  });
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the background imports the same scorer files, in the manifest's order`, () => {
+    const src = readFileSync(join(ROOT, tree, "src/background/index.js"), "utf8");
+    const imports = [...src.matchAll(STATIC_IMPORT_RE)].map((m) => relative(join(ROOT, tree), resolve(join(ROOT, tree, "src/background"), m[1])));
+    assert.deepEqual(imports.filter((p) => SCORER_FILES.includes(p)), SCORER_FILES);
+    // No brand table of its own left behind.
+    assert.ok(!/["']paypal\.com["']/.test(stripComments(src)), "the background still spells out brands");
+  });
+
+  await check(`[${tree}] offline, the background answers with the content script's verdicts`, async () => {
+    const { api } = fakeChrome({ optional: true });
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async () => { throw new TypeError("Failed to fetch"); };
+    try {
+      await loadBackground(tree, api);
+      const hosts = ["signin.ebay.co.uk", "sberbamk.ru", "kvs.gov.spb.ru", "vk.com.msk.ru", "paypal.com.evil.xyz"];
+      const reply = await new Promise((resolve) => {
+        api.runtime.onMessage.listeners[0]({ type: "CHECK_DOMAINS", domains: hosts }, {}, resolve);
+      });
+      // Node caches the classic scorer files per path, so the globals the
+      // background reads may be another tree's copy; the four copies are
+      // identical (the build drift guard and scripts/test-local-scorer.mjs).
+      const scorer = contentScorer(tree);
+      for (const [i, host] of hosts.entries()) {
+        assert.equal(JSON.stringify(reply.results[i]), JSON.stringify(scorer.localScore(host)), host);
+      }
+      assert.deepEqual(reply.results.map((r) => r.level), ["safe", "caution", "safe", "dangerous", "dangerous"]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 }
 

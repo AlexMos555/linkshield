@@ -360,6 +360,38 @@ body { width: 380px; min-height: 300px; }
 .tip-dismiss { color: var(--text-dim); font-size: 18px; line-height: 1; }
 
 /* ── Trust footer ── */
+/* ── Account row (sign in / signed in as) ── */
+.account-row {
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+}
+.account-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-btn {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--blue);
+  background: var(--blue-bg);
+  color: var(--blue-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.account-btn:hover { background: var(--blue); color: var(--text); }
+.account-btn:focus-visible { outline: 2px solid var(--blue-text); outline-offset: 2px; }
+
 .trust-footer {
   padding: 12px 18px;
   display: flex;

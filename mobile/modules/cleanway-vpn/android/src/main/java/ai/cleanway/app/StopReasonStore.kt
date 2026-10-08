@@ -13,7 +13,8 @@ import java.io.File
  * phone restored from Google backup then named a cause from the old phone,
  * one that never happened on this one.
  *
- * Written and read only in the main process (the service and the module).
+ * Written only in the main process (the service and the module); also read
+ * by BootReceiver in the ":boot" process, which never writes it.
  */
 internal class StopReasonStore(private val dir: File) {
 

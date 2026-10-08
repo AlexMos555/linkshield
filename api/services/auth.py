@@ -64,11 +64,41 @@ async def _decode_jwt_and_resolve(authorization: Optional[str]) -> AuthUser:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     tier = await _resolve_user_tier(user_id)
-    return AuthUser(id=user_id, email=email, tier=tier)
+    session_id = payload.get("session_id")
+    return AuthUser(
+        id=user_id,
+        email=email,
+        tier=tier,
+        session_id=session_id if isinstance(session_id, str) else None,
+    )
+
+
+async def _refuse_revoked_device(user_id: str, device_id: Optional[str]) -> None:
+    """403 `device_revoked` when this install was unlinked from the account.
+
+    The app sends its per-install id as X-Device-Id (see
+    api/services/account_devices.py). An unlinked install keeps a valid JWT
+    for up to an hour, so the token alone can't tell — the marker written at
+    unlink time can. The app answers this code by signing out locally."""
+    if not isinstance(device_id, str) or not device_id:
+        return
+    from api.services.account_devices import is_revoked
+
+    if await is_revoked(user_id, device_id):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "device_revoked",
+                "error": "This device was removed from your account. Sign in again to use it.",
+            },
+        )
 
 
 async def get_current_user(
     authorization: Optional[str] = Header(None),
+    # Hidden from the OpenAPI document: it is a transport detail of our own
+    # clients, not a parameter of every authenticated endpoint.
+    x_device_id: Optional[str] = Header(None, alias="X-Device-Id", include_in_schema=False),
 ) -> AuthUser:
     """
     Validate Supabase JWT and return authenticated user.
@@ -104,6 +134,11 @@ async def get_current_user(
         # Redis blip → fail-open. Better one user briefly past the
         # gate than the whole API down on a Redis hiccup.
         pass
+
+    # Unlinked device gate (fails open on Redis trouble, like the above).
+    # Called directly from Python (get_optional_user, tests) the parameter
+    # holds FastAPI's Header() default instead of a string — ignored then.
+    await _refuse_revoked_device(user.id, x_device_id if isinstance(x_device_id, str) else None)
 
     # Attach context to Sentry's request-scoped scope so any subsequent
     # error within this request is pre-tagged with the authenticated
@@ -146,18 +181,23 @@ async def get_current_user_including_deleted(
 
 async def get_optional_user(
     authorization: Optional[str] = Header(None),
+    x_device_id: Optional[str] = Header(None, alias="X-Device-Id", include_in_schema=False),
 ) -> Optional[AuthUser]:
-    """Same as get_current_user but returns None for unauthenticated requests."""
+    """Same as get_current_user but returns None for unauthenticated requests
+    (an unlinked device counts as unauthenticated here)."""
     if not authorization:
         return None
     try:
-        return await get_current_user(authorization)
+        return await get_current_user(
+            authorization, x_device_id if isinstance(x_device_id, str) else None
+        )
     except HTTPException:
         return None
 
 
 async def get_current_user_no_disposable(
     authorization: Optional[str] = Header(None),
+    x_device_id: Optional[str] = Header(None, alias="X-Device-Id", include_in_schema=False),
 ) -> AuthUser:
     """`get_current_user` plus a domain check against the disposable
     blocklist (mailinator, 10minutemail, …).
@@ -175,7 +215,9 @@ async def get_current_user_no_disposable(
     support email path stays open via /unsubscribe / /settings which
     use plain `get_current_user` so they can still update their address.
     """
-    user = await get_current_user(authorization)
+    user = await get_current_user(
+        authorization, x_device_id if isinstance(x_device_id, str) else None
+    )
     # Lazy import — keeps the module-level import graph small for
     # tests that stub auth without loading the 5400-domain blocklist.
     from api.services.email_validator import is_disposable_email

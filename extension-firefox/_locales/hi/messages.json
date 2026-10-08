@@ -1448,5 +1448,46 @@
   },
   "options_family_invite_qr_alt": {
     "message": "Cleanway परिवार न्योते का QR कोड"
+  },
+  "account_heading": {
+    "message": "खाता"
+  },
+  "account_sign_in": {
+    "message": "साइन इन करें"
+  },
+  "account_sign_out": {
+    "message": "साइन आउट करें"
+  },
+  "account_signed_in": {
+    "message": "साइन इन हैं"
+  },
+  "account_signed_in_as": {
+    "message": "$EMAIL$ के रूप में साइन इन",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "account_signed_in_desc": {
+    "message": "परिवार हब और सेटिंग्स सिंक के लिए। साइन आउट करने से सुरक्षा बंद नहीं होती।"
+  },
+  "account_signed_out": {
+    "message": "साइन इन नहीं है"
+  },
+  "account_signed_out_desc": {
+    "message": "परिवार हब इस्तेमाल करने और सेटिंग्स सिंक करने के लिए साइन इन करें। सुरक्षा बिना खाते के भी काम करती है।"
+  },
+  "account_pending": {
+    "message": "Cleanway टैब पर साइन इन पूरा करें"
+  },
+  "account_expired": {
+    "message": "आपका साइन-इन समाप्त हो गया है"
+  },
+  "account_device_revoked": {
+    "message": "इस ब्राउज़र को आपके खाते से हटा दिया गया है। यहाँ इस्तेमाल करने के लिए फिर से साइन इन करें।"
+  },
+  "account_device_limit": {
+    "message": "आपके प्लान के सभी डिवाइस इस्तेमाल में हैं। cleanway.ai/account पर कोई एक हटाएँ, फिर से साइन इन करें।"
   }
 }

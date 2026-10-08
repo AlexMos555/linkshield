@@ -56,13 +56,16 @@ Four layers, ordered by "protects without user action per-threat." Each layer ha
 | **Messaging (pre-tap)** | **ILMessageFilterExtension, offline-only** (Individual OK, no entitlement gate). Swift rule engine over **code-generated JSON from extension-core** — never a fourth hand-fork. Server-assisted mode is banned (fixed payload = full message text to our server = kills server-blind). | **Notification listener — DEFERRED, likely never** (greenfield 2/10, MEDIUM Play risk for unknown dev, Android 17 Sherlocks it). Share-sheet is the documented fallback. | SMS/MMS/RCS from unknown senders → Junk (iOS 26: dead links + silenced). | **iMessage — permanently invisible to any third party** (and it's where 2025-26 smishing lives). Known senders, post-3-replies threads. Android RCS filtering is Google-only. Market as "filters scam texts (SMS)", never "blocks smishing." |
 | **On-demand (fallback, demoted from hero)** | Share-sheet (`mobile-share-flow` branch, 80% done) + paste + QR + screenshot → existing 18-check engine. | Same, `shared.tsx` already complete. | Anything the user actively suspects — including iMessage content the filter can't see. | Requires the user to suspect something. That's why it's the fallback, not the product. |
 
+**Calls (Android, 2026-10, no permission):** not a fifth layer and not a verdict — Cleanway cannot know who is calling and asks for nothing that would. It sees only *that* a call is going on (the audio mode) and puts a stop screen in front of "pause / allow / open anyway" during a call and for 30 minutes after, plus one after-call notice when it saw something during the call. See [CALLS_AND_NOTIFICATIONS.md](./CALLS_AND_NOTIFICATIONS.md), which also holds the notification caps.
+
 **Why this shape:** every above-the-line mechanic is (a) shippable on the Individual account today, (b) ≥5/10 built already, (c) precedented in the App Store / Play (DNSecure, URLCheck, Norton/Malwarebytes Safari extensions, Bitdefender), and (d) the layers' blind spots are mutually covering: DNS catches what the browser layer can't reach (in-app browsers), the browser layer catches what DNS can't see (novel domains, full URLs), share-sheet catches what messaging legally can't see (iMessage).
 
 ### Privacy egress map (per mechanic — publish this)
 
 | Mechanic | What leaves the device | What never leaves |
 |---|---|---|
-| iOS DNS / Android VPN-DNS | Every DNS query (domain names) → api.cleanway.ai. No per-user logs (existing posture). | URLs, page content, identity. |
+| Android VPN-DNS (shipped) | **No lookup is sent to Cleanway.** Names are matched on the phone against the synced list. Lookups the list does not block go where they would go without Cleanway — the network's own resolver (operator / router) first, then Cloudflare 1.1.1.1 or Quad9 9.9.9.9 over plain DNS, then Cloudflare DNS-over-HTTPS when port 53 is blocked. Cleanway's server sees only the anonymous blocklist download (`GET /api/v1/blocklist/dns`, no install id). | URLs, page content, identity, the names looked up. |
+| iOS DNS (planned, not built) | As designed above: every DNS query (domain names) → the api.cleanway.ai DoH gateway. No per-user logs (existing posture). Re-decide against the Android model before building. | URLs, page content, identity. |
 | Safari ext / interceptor | Caution-band domains only → public /check (local scorer verdicts safe/danger without network). | Full URLs for local-scored pages; webmail content (module disabled on mobile). |
 | SMS filter (iOS) | **Nothing. Ever.** Offline rules via App Group. | Message text, sender numbers. |
 | Share-sheet / paste | The domain the user explicitly submitted. | Everything else. |
@@ -124,6 +127,8 @@ Replaces the paste hero AND the current **placebo shield** (`mobile/app/(tabs)/i
 > | Offline (no internet at all) | up | neutral "No internet right now" | n/a |
 > | Reboot | BootReceiver → `prepare()` → up | opens straight to green, no tap | ok |
 > | Force-stop / killed while ON | down | "Protection stopped" + "Turn back on" (interrupted) | ok |
+> | *2026-10:* process killed while ON (OEM battery manager), app closed | `ShieldWatchdog` job (≤15 min, Doze-deferred) → service → up | opens to green; opening the app re-arms at once | **not yet device-verified** |
+> | *2026-10:* force-stop while ON | down until the app is opened — Android cancels the job and all broadcasts | opening the app re-arms it (no tap); "Keep protection on" list explains how to stop the phone doing it | **not yet device-verified** |
 > | Settings → VPN → Forget | `tunnel_revoked` → down | interrupted → tap → consent dialog → OK → green | ok |
 > | Private DNS strict, then turn on | refused, `private_dns_strict` | amber conflict, names provider, "Open network settings" | ok |
 > | Private DNS strict while ON | steps aside ≤1s | green → conflict on its own | ok (was DEAD before fix) |
@@ -132,6 +137,88 @@ Replaces the paste hero AND the current **placebo shield** (`mobile/app/(tabs)/i
 >
 > **Architecture change 2026-08-18 (design panel, unanimous):** the shield no longer forwards unknown names fail-open and asks `/public/check` afterwards (measured first-visit protection: 0/12 live phishing domains — the resolver cached the fail-open answer for the record's TTL). It syncs a server-published blocklist (`scripts/refresh_dangerous_domains.py` → Redis artifact → `GET /api/v1/blocklist/dns`, ETag/304, publish gates) and decides on the phone in microseconds; **no lookup is ever sent to Cleanway**. Honest coverage: listed names ~100% on first visit; a random live phishing tap is on the list only some of the time (feeds ≈1K names vs GSB 1.6M) — the card's "Can't catch brand-new scam sites" stays. No recall number may be claimed until measured against a held-out feed (plan step 11). Remaining plan steps: dns-canary workflow + `list-canary.cleanway.ai` A record (ops), never-silent transport chain (SERVFAIL instead of drop), "Not a scam? Allow" action, held-out coverage measurement, docs/Play copy, real-device sweep.
 
+
+### Keeping the shield alive (Android, 2026-10)
+
+Real phones stop background apps far more aggressively than the emulator: Samsung's
+"Sleeping apps", MIUI/HyperOS autostart and battery saver, Huawei/Honor "App launch",
+ColorOS/realme UI/OxygenOS auto-launch, vivo background power management. Before
+this change the only answers were START_STICKY (which many OEMs ignore), BootReceiver
+and the "Protection stopped" screen the next time the person happened to open the app.
+What is built now (`mobile/modules/cleanway-vpn`, pure logic in `KeepAlivePolicy.kt`,
+JVM-tested by `KeepAlivePolicyTest`):
+
+1. **Battery exemption** — the home screen's "Keep protection on" list explains in plain
+   words why, then opens Android's one-question dialog
+   (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`). Falls back to the all-apps battery
+   list, then to App info, where an OEM removed the dialog.
+2. **Phone-maker step** — `Build.MANUFACTURER`/`BRAND` → Samsung, Xiaomi/Redmi/POCO,
+   Huawei/Honor, OPPO/realme/OnePlus, vivo/iQOO. A button opens the OEM's own screen
+   (several known components per OEM, newest first; a missing or non-exported one
+   throws and the next is tried) and always ends at App info. Short localized steps
+   in all 10 locales. The app cannot read these settings, so the row is never ticked.
+3. **Self-healing** — `ShieldWatchdog`, a persisted periodic JobScheduler job (15 min,
+   flex 5), scheduled when the tunnel comes up, cancelled when the person turns
+   protection off, Android takes the tunnel away, strict Private DNS is on or the VPN
+   permission is gone (waiting cannot help; opening the app re-arms). It, BootReceiver (boot, app update,
+   time-zone and language change) and the app coming to the front all go through
+   `KeepAlivePolicy.decideRearm`: start only if the person left protection ON
+   (`ShieldPreference`), the tunnel is down, the last stop was **not** Android taking it
+   away (`onRevoke` — another VPN app or a withdrawn permission: `prepare()` would
+   silently take the slot back from the VPN the person chose), strict Private DNS is
+   off, no other VPN is up, and fewer than 3 re-arms in the last hour. The watchdog then
+   checks the VPN permission last (`VpnService.prepare() == null`; the check itself
+   takes the slot, hence last) and never starts without it. A start keeps a timed pause.
+4. **Always-on VPN** — stays optional; the list offers it and ticks it only while the
+   running service reports `VpnService.isAlwaysOn()` (Android 10+).
+5. **Protection health** — the list's rows: shield running (canary-proven), battery
+   unrestricted, phone-maker step, block alerts, Always-on.
+
+**Background-start rules, as relied on** (Android 12+ forbids starting a foreground
+service from the background, with exemptions —
+[restrictions-bg-start](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)):
+
+| Trigger | Allowed because | Notes |
+|---|---|---|
+| Watchdog job / app-open re-arm | The app holds the VPN permission (AppOps `OP_ACTIVATE_VPN`: AOSP `ActiveServices` grants `REASON_OP_ACTIVATE_VPN`, logged as "Background started FGS: Allowed … code:OP_ACTIVATE_VPN"); also, once granted, "the user turns off battery optimizations for your app" (documented). App open is a foreground start anyway. | The VPN exemption is AOSP behaviour, not in the public list — the battery exemption is the documented belt to it. A refused start is caught and retried by the next run. |
+| BOOT_COMPLETED, MY_PACKAGE_REPLACED | Documented exemption. | Android 14/15 limits on BOOT_COMPLETED apply to other FGS types; ours is `specialUse`. |
+| TIMEZONE_CHANGED, LOCALE_CHANGED | Documented exemption, and still delivered to manifest receivers on Android 8+. | Opportunistic. A running tunnel of ours shows as an active VPN, so they never restart a running shield. |
+| USER_PRESENT (unlock) | — | Not delivered to manifest receivers since Android 8. Not used; the watchdog covers it. |
+| Force-stop | — | Cancels the job, alarms and broadcasts until the app is opened. Android's guarantee to the person; not worked around. The battery and OEM steps are what keep phones from doing it. |
+
+**Play policy — `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` justification.** Google Play
+forbids asking for a direct Doze/App Standby exemption unless the app's core function
+is adversely affected; the acceptable-use table in
+[Optimize for Doze and App Standby](https://developer.android.com/training/monitoring-device-state/doze-standby)
+lists **"Safety app — apps that keep their users and their families safe"** as
+acceptable. Cleanway's core function is an always-on scam shield that must keep running
+with the app closed; OEM battery managers stopping it silently leave the person
+unprotected without any sign. For the Play declaration / review notes:
+
+> Cleanway is a safety app: its core function is an always-on local DNS filter
+> (VpnService) that blocks known scam and phishing sites in every app. Battery
+> optimisation and OEM battery managers stop it in the background without telling the
+> user, which leaves them unprotected. The app asks once, after explaining why, from its
+> "Keep protection on" checklist; the person can decline and the app keeps working.
+
+The direct dialog was chosen over `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (no
+permission, but a list of every app the target user would have to search) because the
+use case is on the acceptable list. If review objects, the fallback is a one-line
+change in `KeepAlive.requestBatteryExemption` (drop the first intent) plus removing the
+permission from the module manifest and `SPECIAL_ALLOWED` in
+`mobile/scripts/check-android-permissions.mjs`, which pins it to that one file next to
+this justification.
+
+**Not verified without a device** (all of the above is compiled, JVM-tested where pure,
+and CI-checked on the JS side; nothing here has run on Samsung/Xiaomi/Huawei/OPPO/vivo
+hardware): that the OEM components open on current firmware; that the watchdog
+actually fires on those phones after an overnight kill; the OP_ACTIVATE_VPN
+background-start exemption on Android 14–16 devices; `isAlwaysOn()` on OEM builds.
+Device sweep checklist: turn on → allow battery → do the OEM step → lock overnight →
+`adb logcat -s CleanwayWatchdog CleanwayBoot CleanwayVPN`; `adb shell am kill
+ai.cleanway.app` (process kill, not force-stop) → within 15 min `rearmed trigger=watchdog`
+(`adb shell cmd jobscheduler run -f ai.cleanway.app 31252` runs the job now);
+`adb shell am force-stop` → nothing until the app opens, then `rearmed trigger=app_open`.
 
 ### First launch
 
@@ -283,7 +370,7 @@ Grounding checks run before critique: `doh_gateway.py:239` does open a per-query
 
 **4.1 BLOCKER — shipping always-on DNS makes you a one-person ISP, and the spec prices it at "1 day of pre-flight infra."** Every install routes 100% of device DNS through a single-region Railway deployment fronted by a per-query-instantiated httpx client (`doh_gateway.py:239` — the spec knows about pooling, good). What it doesn't price: every page load on every installed device now carries your server's RTT (a São Paulo grandma pays intercontinental latency on *every DNS lookup in every app*); an api.cleanway.ai outage = total internet loss for every install simultaneously (DoH hard-fail, no fallback) = 1-star firestorm + emergency while you sleep; and DNS SLO infrastructure (anycast/multi-region, monitoring, paging) is not a solo-founder line item. The resolver's verdict-level fail-open (`doh.py:45`) doesn't help with *availability* failure. **Change:** before any install volume, make an explicit availability decision — either (a) front the DoH endpoint with an edge CDN/worker layer that serves cached/pass-through resolution when origin is down (fail-open on availability, fail-closed only on confirmed-bad cache hits), or (b) cap Phase 1 rollout deliberately (soft-launch markets) until multi-region exists. This is the single most dangerous unpriced item in the spec.
 
-**4.2 HIGH — Android OEM process-killing will silently disable the VPN shield, and the spec has no state for it.** Samsung/Xiaomi/Oppo battery managers kill VpnService overnight; protection goes dark until next app open; your verified-state model (`isRunning` + canary on appDidBecomeActive) only detects it *when grandma opens the app*, which she never does. This is the top complaint class for every Android DNS-filter app (see dontkillmyapp's entire existence). **Change:** foreground service with persistent notification, always-on-VPN guidance in setup, and a periodic WorkManager canary that fires a "protection was turned off by your phone" notification. Budget the per-OEM whack-a-mole as permanent maintenance, not a bug.
+**4.2 HIGH — Android OEM process-killing will silently disable the VPN shield, and the spec has no state for it.** *(Status 2026-10: foreground service + persistent notification shipped; watchdog re-arm, battery exemption, per-OEM steps and Always-on in one "Keep protection on" list — see "Keeping the shield alive". No "turned off by your phone" notification yet; real-device OEM sweep still owed.)* Samsung/Xiaomi/Oppo battery managers kill VpnService overnight; protection goes dark until next app open; your verified-state model (`isRunning` + canary on appDidBecomeActive) only detects it *when grandma opens the app*, which she never does. This is the top complaint class for every Android DNS-filter app (see dontkillmyapp's entire existence). **Change:** foreground service with persistent notification, always-on-VPN guidance in setup, and a periodic WorkManager canary that fires a "protection was turned off by your phone" notification. Budget the per-OEM whack-a-mole as permanent maintenance, not a bug.
 
 **4.3 HIGH — the rule-data codegen pipeline is scheduled backwards.** The spec puts "CI-code-generated JSON from extension-core" in Phase 3 (SMS filter), but Phase 1 ships a *third* consumer (Android VPN blocklist logic) and Phase 2 ships Safari with the July-20-drift-prone local-scorer.js. Your own memory system records that hand-mirroring already produced shipped bugs (apple.com.cn FP, vvellsfargo miss). Every phase that ships before the pipeline exists mints new drift surface. **Change:** pull the codegen work to Phase 2 start (it's also your acquisition-story prop #3 — build the asset before the DD engineer looks). Phase 1's Android branch should at minimum consume a checked-in generated snapshot with the existing i18n-style drift guard, not fresh Kotlin logic.
 

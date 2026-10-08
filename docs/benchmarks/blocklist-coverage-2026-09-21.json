@@ -51,5 +51,6 @@
       "artifact_bytes_added_pct": 7.55,
       "verdict": "Small. 32,560 more names on the phone bought 24 more held-out hostnames in 3,000. Phishunt is the only one that pays for its bytes (500 names -> 16 hits); TweetFeed's 34,807 names bought 12; CSIRT Italia is malware C2 and moves a phishing benchmark by nothing at all, which is what it was adopted for."
     }
-  }
+  },
+  "correction_2026-09-29": "The note above is wrong about circularity. phishing.army, a source of every artifact scored here, is itself built from PhishTank (plus OpenPhish, CERT.pl, PhishFindR, urlscan, Phishunt), so a PhishTank sample reaches the list through it: 82.3% of this sample was covered by phishing.army alone. The number measures how fast phishing.army mirrors PhishTank, not what the list catches independently. The honest figures are in docs/benchmarks/day-one-coverage-latest.json (scripts/eval_day_one_coverage.py): with and without the non-commercial feeds, on PhishTank and on a TweetFeed sample scored against a list built WITHOUT TweetFeed."
 }

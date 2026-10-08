@@ -20,7 +20,11 @@ class MessageRules internal constructor(
     val messengers: Set<String>,
     /** App stores and public bodies whose links never count as "not the brand's". */
     val trustedDomains: Set<String>,
-    /** TLDs a bare (scheme-less) name may end in: every country code plus the generic ones scams use. */
+    /**
+     * TLDs a bare (scheme-less) name may end in: the whole IANA root zone
+     * (root_zone_tlds.txt, see [RootZone]) plus the asset's own bare_tlds and
+     * country_tlds, which alone stand in if the root zone failed to load.
+     */
     val bareTlds: Set<String>,
     /**
      * Hosts under an official domain where anyone can upload (disk.yandex.ru,
@@ -29,6 +33,8 @@ class MessageRules internal constructor(
     val userContentHosts: Set<String>,
     /** Where an .apk link is expected: app stores. Anywhere else sideloading is the harm. */
     val appStores: Set<String>,
+    /** Words only Russian typed in Latin letters uses ("vash", "srochno"): see [MessageText.index]. */
+    val translitMarkers: Set<String> = emptySet(),
 ) {
     /** Kind of body a message claims to come from; decides which rules apply. */
     enum class Kind { GOV, SECURITY, BANK, OPERATOR, DELIVERY, MESSENGER, COMPANY, SERVICE }
@@ -110,6 +116,60 @@ class MessageRules internal constructor(
         const val SCAM_LABEL = "scam_label"
         const val OBEY = "obey"
         const val CALL_COMING = "call_coming"
+        const val CODE_INFINITIVE = "code_infinitive"
+        const val CODE_REQUEST = "code_request"
+        const val MONEY_PLEA = "money_plea"
+        const val BOSS = "boss"
+        const val VOTE = "vote"
+        const val FEE_UNPAID = "fee_unpaid"
+        const val JOB_OFFER = "job_offer"
+        const val LEAK_THREAT = "leak_threat"
+        const val INTIMATE = "intimate"
+        const val DATING = "dating"
+        const val TICKET_BUY = "ticket_buy"
+        const val MULE_OFFER = "mule_offer"
+        const val MULE_REWARD = "mule_reward"
+        const val LEGAL_WARNING = "legal_warning"
+        const val CASH_JOB = "cash_job"
+        const val HIRE = "hire"
+        const val LISTING = "listing"
+        const val RECEIVE_MONEY = "receive_money"
+        const val SAFE_DEAL = "safe_deal"
+        const val CHAT_MOVE = "chat_move"
+        const val REMOTE_APP = "remote_app"
+        const val INSTALL_VERB = "install_verb"
+        const val NFC_TAP = "nfc_tap"
+        const val REFUND = "refund"
+        const val APK_WORD = "apk_word"
+        const val MONEY_CONTEXT = "money_context"
+        const val CASH_HANDOVER = "cash_handover"
+        const val WRONG_NUMBER = "wrong_number"
+        const val LAW_PRETEXT = "law_pretext"
+        const val PASSPORT = "passport"
+        const val SUMMONS = "summons"
+        const val ORGANS = "organs"
+        const val ORGANS_VAGUE = "organs_vague"
+        const val PROBE = "probe"
+
+        // The generic layer (MessageGeneric.kt): scheme-independent ingredients.
+        const val GEN_MONEY_ASK = "generic_money_ask"
+        const val GEN_MONEY_INFINITIVE = "generic_money_infinitive"
+        const val GEN_FEE = "generic_fee"
+        const val GEN_MONEY_NOUN = "generic_money_noun"
+        const val GEN_MODAL = "generic_modal"
+        const val GEN_DATA_VERB = "generic_data_verb"
+        const val GEN_CARD_DATA = "generic_card_data"
+        const val GEN_TELL_VERB = "generic_tell_verb"
+        const val GEN_SECRET = "generic_secret"
+        const val GEN_IDENTITY = "generic_identity"
+        const val GEN_PROMISE = "generic_promise"
+        const val GEN_CLAIM = "generic_claim"
+        const val GEN_PROMO = "generic_promo"
+        const val GEN_THREAT = "generic_threat"
+        const val GEN_ABSENT = "generic_absent"
+        const val GEN_URGENCY = "generic_urgency"
+        const val GEN_SECRECY = "generic_secrecy"
+        const val GEN_AUTHORITY = "generic_authority"
 
         val REQUIRED_GROUPS = listOf(
             THREAT, URGENCY, CONFIRM_DATA, BAIT, CALL, CODE_VERB, CODE_DICTATE, CODE_WORD, CODE_TARGET, CALL_CONTEXT,
@@ -117,6 +177,12 @@ class MessageRules internal constructor(
             PAY_VERB, FEE_WORD, INSTALL, MALWARE_LURE, KIN, NEW_NUMBER, EMERGENCY, SECRECY, AWARENESS,
             CODE_LABEL, CODE_DISCLAIMER, PAYMENT_OP, BALANCE_WORD, CURRENCY, PICKUP, PUBLIC_ALERT, SMS_COMMAND,
             PAYOUT, CODE_INCOMING, CODE_PRONOUN, CODE_EXCEPT, CODE_HOUSEHOLD, SCAM_LABEL, OBEY, CALL_COMING,
+            CODE_INFINITIVE, CODE_REQUEST, MONEY_PLEA, BOSS, VOTE, FEE_UNPAID, JOB_OFFER, LEAK_THREAT, INTIMATE,
+            DATING, TICKET_BUY, MULE_OFFER, MULE_REWARD, LEGAL_WARNING, CASH_JOB, HIRE, LISTING, RECEIVE_MONEY, SAFE_DEAL,
+            CHAT_MOVE, REMOTE_APP, INSTALL_VERB, NFC_TAP, REFUND, APK_WORD, MONEY_CONTEXT, CASH_HANDOVER, WRONG_NUMBER,
+            LAW_PRETEXT, PASSPORT, SUMMONS, ORGANS, ORGANS_VAGUE, PROBE,
+            GEN_MONEY_ASK, GEN_MONEY_INFINITIVE, GEN_FEE, GEN_MONEY_NOUN, GEN_MODAL, GEN_DATA_VERB, GEN_CARD_DATA, GEN_TELL_VERB, GEN_SECRET, GEN_IDENTITY, GEN_PROMISE,
+            GEN_CLAIM, GEN_PROMO, GEN_THREAT, GEN_ABSENT, GEN_URGENCY, GEN_SECRECY, GEN_AUTHORITY,
         )
 
         /** No vocabulary at all: links are still checked against the blocklist. */
@@ -124,8 +190,11 @@ class MessageRules internal constructor(
             emptyMap(), emptyList(), emptySet(), emptySet(), emptySet(), emptySet(), emptySet(), emptySet(), emptySet(), emptySet(),
         )
 
-        /** Parse the asset. Throws on malformed JSON so a broken ship is caught by the tests. */
-        fun parse(json: String): MessageRules {
+        /**
+         * Parse the asset. Throws on malformed JSON so a broken ship is caught by the tests.
+         * [rootZone] is [RootZone.parse] of the shipped TLD list.
+         */
+        fun parse(json: String, rootZone: Set<String> = emptySet()): MessageRules {
             val root = JSONObject(json)
             val groupsJson = root.optJSONObject("groups") ?: JSONObject()
             val groups = groupsJson.keys().asSequence().associateWith { key ->
@@ -141,9 +210,10 @@ class MessageRules internal constructor(
                 shorteners = hosts(root.optJSONArray("shorteners")),
                 messengers = hosts(root.optJSONArray("messengers")),
                 trustedDomains = hosts(root.optJSONArray("trusted_domains")),
-                bareTlds = words(root.optJSONArray("bare_tlds")) + words(root.optJSONArray("country_tlds")),
+                bareTlds = words(root.optJSONArray("bare_tlds")) + words(root.optJSONArray("country_tlds")) + rootZone,
                 userContentHosts = hosts(root.optJSONArray("user_content_hosts")),
                 appStores = hosts(root.optJSONArray("app_stores")),
+                translitMarkers = words(root.optJSONArray("translit_markers")),
             )
         }
 

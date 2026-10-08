@@ -1489,6 +1489,49 @@
       "family_invite_qr_alt": {
         "text": "Kode QR undangan keluarga Cleanway"
       }
+    },
+    "account": {
+      "heading": {
+        "text": "Akun"
+      },
+      "sign_in": {
+        "text": "Masuk"
+      },
+      "sign_out": {
+        "text": "Keluar"
+      },
+      "signed_in": {
+        "text": "Sudah masuk"
+      },
+      "signed_in_as": {
+        "text": "Masuk sebagai $EMAIL$",
+        "placeholders": {
+          "email": {
+            "content": "$1"
+          }
+        }
+      },
+      "signed_in_desc": {
+        "text": "Dipakai untuk Pusat Keluarga dan sinkronisasi pengaturan. Keluar tidak mematikan perlindungan."
+      },
+      "signed_out": {
+        "text": "Belum masuk"
+      },
+      "signed_out_desc": {
+        "text": "Masuk untuk memakai Pusat Keluarga dan menyinkronkan pengaturan. Perlindungan tetap berjalan tanpa akun."
+      },
+      "pending": {
+        "text": "Selesaikan proses masuk di tab Cleanway"
+      },
+      "expired": {
+        "text": "Sesi masuk Anda telah berakhir"
+      },
+      "device_revoked": {
+        "text": "Browser ini dilepaskan dari akun Anda. Masuk lagi untuk memakainya di sini."
+      },
+      "device_limit": {
+        "text": "Semua perangkat di paket Anda sedang dipakai. Lepaskan satu di cleanway.ai/account, lalu masuk lagi."
+      }
     }
   },
   "landing": {
@@ -1591,7 +1634,12 @@
       "free_only_body": "Memblokir situs penipuan serta memeriksa tautan dan pesan tidak dipungut biaya dan tidak perlu akun. Saat ini tidak ada paket berbayar di negara Anda.",
       "free_only_cta": "Unduh aplikasi Android",
       "free_body_with_plans": "Memblokir situs penipuan serta memeriksa tautan dan pesan tidak dipungut biaya dan tidak perlu akun. Paket berbayar bersifat opsional dan tidak pernah mematikan perlindungannya.",
-      "plans_link": "Lihat paket berbayar"
+      "plans_link": "Lihat paket berbayar",
+      "operator": {
+        "heading": "Langganan yang ditagihkan ke pulsa",
+        "body": "Selama {days} hari pertama perlindungan berjalan tanpa tagihan apa pun. Setelah itu berupa langganan mulai {solo} ₽ per bulan, ditagihkan ke pulsa ponsel, tanpa kartu bank. Bisa dibatalkan kapan saja.",
+        "plans_link": "Harga dan isi paket"
+      }
     },
     "privacy": {
       "heading": "Privacy is not a feature. It's the architecture.",
@@ -1701,20 +1749,17 @@
       "reference_label": "Referensi"
     },
     "signup": {
-      "check_inbox": "Periksa kotak masuk Anda",
-      "magic_link_sent": "Kami sudah mengirim tautan masuk ke <strong>{email}</strong>.",
-      "magic_link_followup": "Buka tautan di email tersebut untuk menyelesaikan proses masuk. Jika tidak ada yang masuk dalam 10 menit, periksa folder spam.",
       "email_label": "Email",
       "email_placeholder": "kamu@contoh.com",
-      "submitting": "Mengirim tautan…",
-      "submit_with_plan": "Kirim tautan masuk",
+      "submitting": "Mengirim kode…",
+      "submit_with_plan": "Kirimkan kode masuk ke email saya",
       "submit_no_plan": "Lanjutkan",
-      "footer_lead": "Kami akan mengirimkan tautan masuk sekali pakai. Tidak ada kata sandi untuk diingat.",
+      "footer_lead": "Kami akan mengirim kode masuk sekali pakai ke email Anda. Tidak ada kata sandi yang perlu diingat.",
       "footer_or": "Atau",
       "footer_install_cta": "pasang aplikasinya gratis",
       "footer_install_tail": "— pemblokiran berfungsi tanpa akun.",
       "meta_title": "Masuk — Cleanway",
-      "meta_description": "Masuk ke Cleanway dengan tautan sekali pakai yang dikirim ke email Anda. Perlindungannya sendiri berfungsi tanpa akun.",
+      "meta_description": "Masuk ke Cleanway dengan kode sekali pakai yang dikirim ke email Anda. Perlindungan tetap berjalan tanpa akun.",
       "back_to_pricing": "Kembali ke harga",
       "heading": "Buat akun atau masuk",
       "intro": "Anda tidak perlu akun untuk terlindungi: pemblokiran situs penipuan berfungsi tanpa akun. Akun hanya diperlukan untuk fitur keluarga dan paket berbayar.",
@@ -1736,7 +1781,21 @@
       "error_rate_limited": "Terlalu banyak percobaan. Tunggu beberapa menit, lalu coba lagi.",
       "error_send_failed": "Kami tidak bisa mengirim email untuk masuk. Coba lagi nanti.",
       "error_network": "Tidak ada koneksi ke server. Periksa internet Anda, lalu coba lagi.",
-      "error_unavailable": "Saat ini belum bisa masuk. Perlindungan tetap berfungsi tanpa akun."
+      "error_unavailable": "Saat ini belum bisa masuk. Perlindungan tetap berfungsi tanpa akun.",
+      "code_heading": "Masukkan kode dari email",
+      "code_sent_to": "Kami mengirim kode 6 digit ke <strong>{email}</strong>.",
+      "code_label": "Kode dari email",
+      "code_submit": "Masuk",
+      "code_submitting": "Memeriksa kode…",
+      "code_valid_for": "Kode berlaku selama 1 jam.",
+      "code_spam_hint": "Email belum masuk? Tunggu semenit dan periksa folder Spam. Pengirimnya adalah Cleanway.",
+      "code_resend": "Kirim ulang kode",
+      "code_resend_in": "Kirim ulang dalam {seconds} dtk",
+      "code_change_email": "Ganti email",
+      "error_code_incomplete": "Masukkan 6 digit dari email.",
+      "error_code_wrong": "Kode salah atau kedaluwarsa. Periksa angkanya atau minta kode baru.",
+      "error_link_expired": "Tautan masuk sudah kedaluwarsa. Minta kode baru.",
+      "error_link_failed": "Tautan masuk tidak berfungsi. Masukkan kode dari email di sini atau minta yang baru."
     },
     "pricing": {
       "page_title": "Harga",
@@ -1761,6 +1820,99 @@
       "free_cta": "Unduh aplikasi Android",
       "footer_cta_title": "Mulai gratis hari ini",
       "footer_cta_body": "Tanpa kartu kredit. Tingkatkan paket hanya jika memang berguna bagi Anda."
+    },
+    "billing": {
+      "meta_title": "Langganan Cleanway — harga dan ketentuan",
+      "meta_description": "Perlindungan dari situs penipuan dengan langganan: {solo} ₽ per bulan untuk satu ponsel, {family3} ₽ untuk tiga, {family5} ₽ untuk lima. Ditagihkan ke pulsa; tidak ada tagihan selama {days} hari pertama.",
+      "badge": "Ditagihkan ke pulsa",
+      "title": "Perlindungan dari penipu — untuk Anda dan orang tua Anda",
+      "subtitle": "Cleanway memblokir situs penipuan di semua aplikasi ponsel dan memeriksa tautan dari SMS dan aplikasi pesan. {days} hari pertama adalah masa percobaan: tidak ada yang ditagihkan. Setelah itu berupa langganan dengan harga di bawah; bisa dibatalkan kapan saja.",
+      "trial_note": "{days} hari pertama: tanpa tagihan, tanpa memasukkan nomor telepon atau kartu.",
+      "plans_title": "Paket",
+      "per_month": "{price} ₽ per bulan",
+      "per_device": "≈ {price} ₽ per ponsel",
+      "best_value": "Paling hemat",
+      "plan_solo_name": "Satu ponsel",
+      "plan_solo_for": "Untuk Anda",
+      "plan_family3_name": "Tiga ponsel",
+      "plan_family3_for": "Untuk Anda dan orang tua",
+      "plan_family5_name": "Lima ponsel",
+      "plan_family5_for": "Untuk seluruh keluarga",
+      "plan_cta": "Unduh aplikasi dan coba",
+      "plan_cta_hint": "Langganan diaktifkan di aplikasi — setelah masa percobaan dan hanya dengan konfirmasi Anda.",
+      "included_title": "Isi setiap paket",
+      "included_items": [
+        "Memblokir situs penipuan yang dikenal di semua aplikasi ponsel — peramban, aplikasi pesan, email",
+        "Memeriksa tautan dari SMS dan aplikasi pesan sebelum terbuka",
+        "Memeriksa pesan mencurigakan langsung di ponsel",
+        "Daftar situs penipuan diperbarui beberapa kali sehari",
+        "Pada paket tiga dan lima ponsel, satu orang membayar dan semua ponsel dalam paket terlindungi",
+        "Dukungan dalam bahasa Rusia"
+      ],
+      "how_title": "Cara kerjanya",
+      "how_1_title": "Pasang aplikasinya",
+      "how_1_body": "Unduh Cleanway untuk Android dan nyalakan perlindungan. Selama {days} hari ia berjalan tanpa tagihan apa pun; tidak perlu memasukkan nomor telepon atau kartu.",
+      "how_2_title": "Aktifkan langganan di aplikasi",
+      "how_2_body": "Pilih paket, masukkan nomor telepon Anda, dan konfirmasi dengan kode SMS. Harga dan tanggal penagihan ditampilkan sebelum Anda mengonfirmasi.",
+      "how_3_title": "Tagihan masuk ke pulsa",
+      "how_3_body": "Operator Anda menagih {solo}, {family3}, atau {family5} ₽ sekali sebulan dari pulsa nomor Anda. Tidak perlu kartu bank, dan kami tidak pernah menerima data kartu.",
+      "how_4_title": "Batalkan dalam satu langkah",
+      "how_4_body": "Batalkan di aplikasi, lewat SMS, atau melalui dukungan. Setelah dibatalkan tidak ada lagi tagihan, dan perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
+      "faq_title": "Pertanyaan umum",
+      "faq_auto_q": "Apakah akan ditagih otomatis setelah masa percobaan?",
+      "faq_auto_a": "Tidak. Setelah {days} hari masa percobaan berakhir, tidak ada yang ditagihkan sampai Anda sendiri memilih paket di aplikasi dan mengonfirmasinya dengan kode SMS. Tanpa konfirmasi Anda tidak ada pembayaran.",
+      "faq_cancel_q": "Bagaimana cara membatalkan?",
+      "faq_cancel_a": "Di aplikasi: “Langganan” → “Batalkan langganan”. Atau kirim SMS berisi kata СТОП ke nomor singkat yang tertera di aplikasi dan di halaman pembatalan. Setelah dibatalkan tidak ada lagi tagihan; perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
+      "faq_nomoney_q": "Bagaimana jika pulsa tidak cukup?",
+      "faq_nomoney_a": "Kami tidak pernah menagih sampai saldo minus dan tidak pernah membuat utang. Jika pada hari penagihan pulsa tidak cukup, operator mencoba lagi beberapa kali selama {grace} hari berikutnya, dan selama itu perlindungan tetap berjalan penuh. Jika pembayaran tetap gagal, {lapse}",
+      "lapse_basic": "langganan dijeda, tetapi pemblokiran dasar berdasarkan daftar situs penipuan tetap berjalan tanpa tagihan: daftar diperbarui seminggu sekali dan perisai di aplikasi berubah kuning. Anda bisa berlangganan lagi kapan saja.",
+      "lapse_off": "langganan dijeda dan perlindungan dimatikan sampai pembayaran berikutnya. Anda bisa berlangganan lagi kapan saja.",
+      "faq_network_q": "Apakah berfungsi lewat Wi-Fi dan dengan operator lain?",
+      "faq_network_a": "Ya. Perlindungan berfungsi di jaringan apa pun — Wi-Fi, roaming, atau ponsel dengan SIM operator lain. Tagihan masuk ke pulsa nomor yang Anda pakai untuk berlangganan. Penagihan ke pulsa tersedia di operator besar Rusia; jika operator Anda tidak mendukungnya, aplikasi memberi tahu sebelum konfirmasi.",
+      "faq_number_q": "Siapa lagi yang mengetahui nomor telepon saya?",
+      "faq_number_a": "Nomor hanya diperlukan untuk penagihan: operator Anda dan agregator pembayaran yang memproses pembayaran menerimanya. Kami menyimpannya terenkripsi di basis data terpisah di Rusia dan tidak pernah menjualnya. Rinciannya ada di kebijakan privasi.",
+      "faq_refund_q": "Bisakah uang saya dikembalikan?",
+      "faq_refund_a": "Ya — jika perlindungan tidak berfungsi karena kesalahan kami, atau tagihan terjadi setelah Anda membatalkan. Hubungi dukungan dan kami mengembalikan biaya bulan itu. Rinciannya ada di halaman pembatalan dan pengembalian dana.",
+      "requisites_title": "Siapa penyedia layanan",
+      "requisites_name": "Penyedia: {name}",
+      "requisites_inn": "INN (nomor pajak) {inn}",
+      "requisites_ogrnip": "OGRNIP (nomor registrasi) {ogrnip}",
+      "requisites_pending": "Data penyedia (pengusaha perorangan, INN, OGRNIP) dipublikasikan di sini dan di aplikasi sebelum langganan bisa diaktifkan.",
+      "requisites_note": "Langganan dimulai hanya setelah Anda melihat harga dan mengonfirmasinya dengan kode SMS. Harga langganan yang sedang berjalan tidak berubah: harga baru hanya berlaku untuk langganan baru.",
+      "support_title": "Dukungan",
+      "support_body": "Pertanyaan tentang langganan, tagihan, dan pengembalian dana — hubungi kami. Sebutkan nomor telepon langganan dan tanggal penagihan.",
+      "support_phone": "Telepon dukungan: {phone}",
+      "link_cancel": "Cara membatalkan dan mendapat pengembalian dana",
+      "link_terms": "Ketentuan penggunaan",
+      "link_privacy": "Kebijakan privasi"
+    },
+    "cancel": {
+      "meta_title": "Membatalkan langganan Cleanway dan pengembalian dana",
+      "meta_description": "Batalkan di aplikasi, lewat SMS, atau melalui dukungan. Setelah dibatalkan tidak ada tagihan. Pengembalian dana jika perlindungan gagal karena kesalahan kami atau tagihan terjadi setelah pembatalan.",
+      "back": "Kembali ke harga",
+      "title": "Membatalkan langganan dan pengembalian dana",
+      "intro": "Anda bisa membatalkan kapan saja dengan salah satu cara di bawah. Setelah dibatalkan tidak ada lagi tagihan, dan perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
+      "ways_title": "Cara membatalkan",
+      "way_app_title": "Di aplikasi — satu langkah",
+      "way_app_body": "Buka Cleanway → “Langganan” → “Batalkan langganan” dan konfirmasi. Tidak perlu kode SMS.",
+      "way_sms_title": "Lewat SMS",
+      "way_sms_body": "Kirim kata СТОП ke nomor {number} dari ponsel yang berlangganan. SMS balasan mengonfirmasi pembatalan.",
+      "way_sms_pending": "Nomor singkat untuk SMS akan muncul di sini setelah operator menetapkannya. Sementara itu, batalkan di aplikasi atau di operator Anda.",
+      "way_support_title": "Melalui dukungan",
+      "way_support_body": "Hubungi kami dengan menyebutkan nomor telepon langganan. Kami membatalkannya pada hari kerja yang sama dan mengonfirmasi lewat pesan.",
+      "way_support_pending": "Kotak surat dukungan masih disiapkan: cara ini tersedia begitu alamatnya muncul. Sementara itu, batalkan di aplikasi atau di operator Anda.",
+      "way_operator_title": "Di operator Anda",
+      "way_operator_body": "Langganan yang ditagihkan ke pulsa tercantum di area pelanggan dan aplikasi operator Anda — di sana juga bisa dimatikan.",
+      "after_title": "Apa yang terjadi setelah pembatalan",
+      "after_1": "Tidak ada tagihan lagi — tidak bulan ini, tidak nanti.",
+      "after_2": "Perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
+      "after_3": "Setelah itu, {lapse}",
+      "after_4": "Anda bisa berlangganan lagi kapan saja; masa percobaan tidak diberikan untuk kedua kalinya.",
+      "refund_title": "Pengembalian dana",
+      "refund_body": "Kami mengembalikan biaya bulan itu jika perlindungan tidak berfungsi karena kesalahan kami, atau tagihan terjadi setelah Anda membatalkan. Hubungi dukungan dengan nomor telepon dan tanggal penagihan. Uang dikembalikan ke pulsa atau dengan cara yang ditawarkan operator Anda — biasanya dalam 10 hari kerja.",
+      "refund_law": "Ini tidak membatasi hak Anda menurut undang-undang perlindungan konsumen.",
+      "contact_title": "Dukungan",
+      "contact_pending": "Kotak surat dukungan masih disiapkan; alamatnya akan muncul di sini begitu berfungsi. Sementara itu, batalkan di aplikasi."
     },
     "transparency": {
       "page_title": "Laporan transparansi",
@@ -2032,6 +2184,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "4. Paket berbayar",
           "paragraphs": [
             "Di beberapa negara, Cleanway menawarkan paket berbayar dengan fitur tambahan. Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia, pembayaran ditangani oleh Stripe, harga dan periode tagihan ditampilkan sebelum membayar, dan Anda bisa membatalkan kapan saja; paket tetap aktif sampai akhir periode yang sudah dibayar. Pengembalian dana ditangani sesuai ketentuan hukum. Memblokir situs penipuan tidak akan pernah menjadi fitur berbayar."
@@ -2089,7 +2242,20 @@
           "title": "11. Kontak",
           "paragraphs": []
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "4. Langganan dan pembayaran",
+          "paragraphs": [
+            "Di Rusia Cleanway adalah langganan yang ditagihkan ke pulsa ponsel melalui operator Anda dan agregator pembayaran. Harga paket dan tanggal penagihan ditampilkan sebelum konfirmasi; langganan dimulai hanya setelah Anda mengonfirmasinya dengan kode SMS dari nomor Anda. Hari-hari pertama setelah pemasangan adalah masa percobaan tanpa tagihan; lamanya dan harganya ada di halaman harga.",
+            "Langganan diperpanjang setiap bulan sampai Anda membatalkannya. Anda bisa membatalkan di aplikasi, lewat SMS, atau melalui dukungan — setelah dibatalkan tidak ada lagi tagihan, dan perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar. Kami tidak pernah menagih sampai saldo minus dan tidak pernah membuat utang. Jika perlindungan tidak berfungsi karena kesalahan kami, atau tagihan terjadi setelah pembatalan, kami mengembalikan biaya bulan itu; ini tidak membatasi hak hukum Anda.",
+            "Harga hanya bisa berubah untuk langganan baru: langganan yang sedang berjalan mempertahankan harga awalnya. Di negara lain paket berbayar dibayar dengan kartu bank melalui Stripe — di sana pun harga dan periode ditampilkan sebelum pembayaran, dan Anda bisa membatalkan kapan saja."
+          ]
+        },
+        "lapse_basic": "Jika pembayaran tetap gagal setelah percobaan ulang, langganan dijeda, tetapi pemblokiran dasar situs penipuan yang dikenal tetap berjalan tanpa tagihan — daftar diperbarui seminggu sekali.",
+        "lapse_off": "Jika pembayaran tetap gagal setelah percobaan ulang, langganan dijeda dan perlindungan dimatikan sampai pembayaran berikutnya."
+      }
     },
     "privacy_policy": {
       "meta_title": "Kebijakan privasi — Cleanway",
@@ -2193,6 +2359,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "12. Pembayaran",
           "paragraphs": [
             "Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia, pembayaran dilakukan melalui Stripe: Stripe menerima email Anda dan paket yang dipilih serta menangani kartunya sendiri. Kami tidak pernah melihat atau menyimpan data kartu."
@@ -2244,7 +2411,99 @@
             "Jika kami mengubah kebijakan ini, versi baru akan kami publikasikan di halaman ini dengan tanggal baru."
           ]
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "12. Pembayaran langganan",
+          "paragraphs": [
+            "Di Rusia langganan ditagihkan ke pulsa ponsel. Untuk mengaktifkannya Anda memasukkan nomor telepon — milik Anda sendiri atau milik kerabat yang membayar. Masa percobaan tidak memerlukan nomor.",
+            "Nomor telepon, paket, tanggal, dan riwayat tagihan disimpan di basis data terpisah yang berada di Rusia, terpisah dari data Cleanway lainnya. Nomor disimpan terenkripsi; di log, laporan kesalahan, dan layar ia hanya ditampilkan sebagian. Kami tidak memiliki data kartu bank: tidak ada kartu yang terlibat dalam pembayaran ini.",
+            "Operator Anda dan agregator pembayaran yang memproses tagihan menerima nomor dan jumlahnya — mereka menangani data itu menurut aturan mereka sendiri. Kami juga menyimpan catatan persetujuan: teks dan harga apa yang Anda lihat dan bagaimana Anda mengonfirmasi.",
+            "Catatan pembayaran dan persetujuan disimpan selama diwajibkan aturan akuntansi dan pajak — hingga lima tahun; setelah langganan berakhir dan masa itu lewat, nomor telepon dihapus dari basis data. Di negara lain pembayaran melalui Stripe: Stripe menerima email Anda dan paket yang dipilih serta menangani kartunya sendiri; kami tidak pernah melihat atau menyimpan data kartu."
+          ]
+        }
+      }
+    },
+    "extension_connect": {
+      "meta_title": "Hubungkan ekstensi — Cleanway",
+      "loading": "Memeriksa status masuk…",
+      "heading": "Hubungkan browser ini ke akun Cleanway Anda",
+      "signed_in_as": "Masuk sebagai {email}",
+      "explain": "Ekstensi Cleanway di browser ini akan memakai akun ini untuk Pusat Keluarga dan sinkronisasi pengaturan. Ekstensi mendapat sesi masuknya sendiri: keluar dari ekstensi tidak membuat Anda keluar dari situs web.",
+      "connect": "Hubungkan",
+      "connecting": "Menghubungkan…",
+      "other_account": "Gunakan akun lain",
+      "connected_title": "Browser ini sudah terhubung",
+      "connected_body": "Anda bisa menutup tab ini.",
+      "no_state_title": "Mulai dari ekstensi",
+      "no_state_body": "Buka ekstensi Cleanway di browser ini dan klik “Masuk”. Ekstensi akan membawa Anda kembali ke sini.",
+      "error_no_extension": "Ekstensi Cleanway tidak merespons di browser ini. Pastikan ekstensi terpasang dan aktif, lalu klik “Masuk” di ekstensi lagi.",
+      "error_state": "Permintaan masuk ini sudah kedaluwarsa. Klik “Masuk” di ekstensi lagi.",
+      "error_failed": "Tidak dapat menghubungkan ekstensi. Silakan coba lagi.",
+      "error_network": "Tidak ada koneksi ke server. Periksa internet Anda dan coba lagi.",
+      "error_locked": "Akun Anda dijadwalkan untuk dihapus. Pulihkan akun untuk menghubungkan ekstensi.",
+      "restore_cta": "Pulihkan akun saya",
+      "error_unavailable": "Fitur masuk sedang tidak tersedia. Perlindungan tetap berjalan tanpa akun.",
+      "handover_note": "Ekstensi hanya menerima sesi masuk untuk akun ini. Tidak ada kata sandi yang digunakan.",
+      "error_device_limit": "Semua perangkat di paket Anda sedang dipakai, jadi browser ini tidak terhubung. Lepaskan perangkat yang tidak lagi Anda pakai, lalu klik “Masuk” di ekstensi lagi.",
+      "devices_cta": "Kelola perangkat"
+    },
+    "account": {
+      "plan_heading": "Paket",
+      "plan_free": "Gratis",
+      "plan_personal": "Pribadi",
+      "plan_family": "Keluarga",
+      "plan_business": "Bisnis",
+      "plan_paid": "Paket berbayar",
+      "free_desc": "Memblokir situs penipuan yang dikenal selalu gratis",
+      "source_stripe": "Dibayar di cleanway.ai",
+      "source_google_play": "Dibayar di Google Play",
+      "source_app_store": "Dibayar di App Store",
+      "source_rustore": "Dibayar di RuStore",
+      "source_operator_ru": "Dibayar dengan pulsa",
+      "source_promo": "Kode promo",
+      "source_partner": "Dari mitra",
+      "source_other": "Dibayar",
+      "status_active": "Aktif",
+      "status_paid_until": "Dibayar sampai {date}",
+      "status_trial": "Uji coba gratis",
+      "status_trial_until": "Uji coba gratis sampai {date}",
+      "status_past_due": "Pembayaran gagal — perbarui metode pembayaran Anda",
+      "devices_heading": "Perangkat",
+      "devices_count": "{used} dari {limit}",
+      "devices_note": "Perangkat adalah ponsel, tablet, atau browser yang masuk ke akun ini. Lepaskan perangkat yang tidak lagi Anda pakai, dan tempatnya langsung kosong.",
+      "last_seen": "Terakhir dipakai: {date}",
+      "platform_android": "Ponsel Android",
+      "platform_ios": "iPhone atau iPad",
+      "platform_extension": "Ekstensi browser",
+      "platform_web": "Browser",
+      "unlink": "Lepaskan",
+      "unlink_failed": "Perangkat tidak dapat dilepaskan. Coba lagi.",
+      "error_load": "Akun Anda tidak dapat dimuat. Periksa koneksi lalu coba lagi.",
+      "retry": "Coba lagi",
+      "delete_cta": "Hapus akun",
+      "delete_failed": "Server tidak dapat dihubungi, jadi tidak ada yang dihapus. Coba lagi sebentar lagi.",
+      "page_title": "Akun Cleanway Anda",
+      "page_meta_description": "Paket Cleanway Anda dan perangkat yang terhubung ke akun Anda.",
+      "heading": "Akun Anda",
+      "signed_in_as": "Masuk sebagai {email}",
+      "loading": "Memuat akun Anda…",
+      "no_session_title": "Masuk untuk melihat akun Anda",
+      "no_session_body": "Gunakan email yang Anda pakai saat mendaftar — kami akan mengirim kode masuk.",
+      "no_session_cta": "Masuk",
+      "locked_body": "Akun Anda dijadwalkan untuk dihapus.",
+      "locked_cta": "Pulihkan",
+      "plans_cta": "Lihat paket",
+      "devices_empty": "Belum ada perangkat yang terhubung. Masuk di aplikasi Cleanway atau ekstensi browser untuk menambahkannya.",
+      "unlink_confirm": "Lepaskan {name}? Perangkat itu akan keluar dari akun Anda. Perlindungan di sana tetap berjalan tanpa akun.",
+      "unlinking": "Melepaskan…",
+      "sign_out": "Keluar",
+      "delete_heading": "Hapus akun",
+      "delete_body": "Menghapus akun, paket, dan pengaturan yang disinkronkan. Langganan yang dibayar di cleanway.ai langsung dibatalkan dan tidak ditagih lagi. Anda bisa memulihkan akun dalam 30 hari dengan masuk kembali.",
+      "delete_confirm": "Hapus akun Cleanway Anda? Anda bisa memulihkannya dalam 30 hari dengan masuk kembali.",
+      "delete_done": "Akun Anda sudah dihapus dan Anda telah keluar. Masuk dalam 30 hari jika ingin memulihkannya.",
+      "brand": "Cleanway"
     }
   },
   "email": {
@@ -2649,7 +2908,6 @@
         "pause_action": "Jeda perlindungan",
         "offline_pill": "Offline"
       },
-      "always_on_hint": "Menyala sendiri setelah HP di-restart. Agar mulai bersama HP, sebelum aplikasi apa pun: aktifkan VPN Selalu Aktif",
       "pause_confirm_title": "Jeda perlindungan?",
       "pause_confirm_body": "Selama perlindungan dijeda, situs penipuan bisa terbuka di semua aplikasi.",
       "blocklist": {
@@ -2678,6 +2936,52 @@
       "pause_until_on": "Matikan sampai saya nyalakan lagi",
       "pause_keep": "Tetap nyalakan perlindungan",
       "resume_now": "Nyalakan perlindungan sekarang"
+    },
+    "keep_alive": {
+      "title": "Jaga perlindungan tetap aktif",
+      "intro": "Ponsel menghentikan aplikasi di latar belakang untuk menghemat baterai — dan perlindungan Cleanway ikut berhenti, tanpa pemberitahuan. Langkah-langkah ini menjaganya tetap berjalan saat aplikasi ditutup.",
+      "all_set": "Semua yang dilaporkan ponsel Anda sudah diatur. Perlindungan tetap berjalan saat aplikasi ditutup.",
+      "running_on": "Perlindungan berjalan",
+      "running_unproven": "Perlindungan berjalan, belum dikonfirmasi",
+      "running_paused": "Perlindungan dijeda — akan aktif lagi dengan sendirinya",
+      "running_off": "Perlindungan tidak berjalan — aktifkan lagi dengan tombol di atas",
+      "battery_ok": "Baterai: tanpa batasan untuk Cleanway",
+      "battery_todo": "Penghemat baterai bisa menghentikan perlindungan",
+      "notifications_ok": "Peringatan blokir: aktif",
+      "notifications_todo": "Peringatan nonaktif — situs yang diblokir hanya tidak akan terbuka",
+      "always_on_ok": "VPN selalu aktif: aktif",
+      "always_on_optional": "VPN selalu aktif (opsional): perlindungan mulai bersama ponsel",
+      "action_allow": "Izinkan",
+      "action_open": "Buka",
+      "action_open_settings": "Buka setelan",
+      "action_turn_on": "Aktifkan",
+      "action_how": "Caranya",
+      "state_ok": "selesai",
+      "state_todo": "perlu diketuk",
+      "state_optional": "opsional",
+      "state_manual": "periksa sekali",
+      "state_unknown": "belum dikonfirmasi",
+      "row_a11y": "{{label}}: {{state}}",
+      "battery_explain_title": "Biarkan perlindungan berjalan di latar belakang",
+      "battery_explain_body": "Untuk menghemat baterai, Android bisa menghentikan aplikasi yang bekerja di latar belakang — dan perlindungan Cleanway ikut berhenti, tanpa memberi tahu Anda. Perlindungan hanya memakai sedikit baterai: ia hanya melihat nama situs web.\n\nDi layar berikutnya, ketuk \"Izinkan\". Jika yang terbuka justru daftar aplikasi, cari Cleanway lalu pilih \"Jangan optimalkan\" atau \"Tidak dibatasi\".",
+      "explain_continue": "Lanjutkan",
+      "explain_cancel": "Nanti saja",
+      "oem_note": "Cleanway tidak bisa melihat setelan ini, jadi tidak bisa mencentangnya untuk Anda. Cukup lakukan sekali.",
+      "oem_row_samsung": "Samsung: keluarkan Cleanway dari aplikasi tidur",
+      "oem_title_samsung": "Samsung: jangan pernah menidurkan Cleanway",
+      "oem_steps_samsung": "1. Buka Setelan → Baterai (atau Perawatan perangkat → Baterai).\n2. Ketuk \"Batas penggunaan latar belakang\".\n3. Buka \"Aplikasi yang tidak pernah tidur\" dan tambahkan Cleanway.\n4. Pastikan Cleanway tidak ada di \"Aplikasi tidur\" atau \"Aplikasi tidur nyenyak\".",
+      "oem_row_xiaomi": "Xiaomi: izinkan Mulai otomatis untuk Cleanway",
+      "oem_title_xiaomi": "Xiaomi, Redmi, POCO: biarkan Cleanway mulai sendiri",
+      "oem_steps_xiaomi": "1. Di layar yang terbuka, aktifkan Mulai otomatis untuk Cleanway.\n2. Lalu buka Setelan → Aplikasi → Cleanway → Penghemat baterai dan pilih \"Tidak ada batasan\".",
+      "oem_row_huawei": "Huawei / Honor: biarkan Cleanway berjalan di latar belakang",
+      "oem_title_huawei": "Huawei, Honor: kelola peluncuran Cleanway secara manual",
+      "oem_steps_huawei": "1. Buka Setelan → Baterai → Peluncuran aplikasi.\n2. Cari Cleanway dan matikan \"Kelola secara otomatis\".\n3. Di jendela yang terbuka, biarkan Peluncuran otomatis, Peluncuran sekunder, dan Berjalan di latar belakang tetap aktif.",
+      "oem_row_oppo": "OPPO / realme / OnePlus: izinkan aktivitas latar belakang",
+      "oem_title_oppo": "OPPO, realme, OnePlus: biarkan Cleanway berjalan di latar belakang",
+      "oem_steps_oppo": "1. Buka Setelan → Aplikasi → Cleanway → Penggunaan baterai (atau Baterai).\n2. Aktifkan \"Izinkan aktivitas latar belakang\" dan \"Izinkan peluncuran otomatis\".\n3. Jika ada daftar \"Peluncuran otomatis\" atau \"Pengelola startup\", aktifkan Cleanway di sana juga.",
+      "oem_row_vivo": "vivo / iQOO: izinkan pemakaian daya latar belakang",
+      "oem_title_vivo": "vivo, iQOO: biarkan Cleanway berjalan di latar belakang",
+      "oem_steps_vivo": "1. Buka Setelan → Baterai → Manajemen konsumsi daya latar belakang.\n2. Cari Cleanway dan pilih \"Izinkan\".\n3. Jika ponsel Anda punya Mulai otomatis (i Manager → Pengelola aplikasi), aktifkan untuk Cleanway."
     },
     "rollout": {
       "network_ios": "Memblokir situs penipuan di hampir semua aplikasi. Sedang tahap uji akhir — belum tersedia di iPhone.",
@@ -2831,7 +3135,9 @@
         "sms_transfer_command": "Meminta Anda mengirim SMS berisi perintah transfer uang",
         "disguised_letters": "Kata-katanya ditulis dengan huruf yang ditukar agar lolos dari filter",
         "sender_personal_number": "Sebuah lembaga mengirim pesan dari nomor HP biasa",
-        "sender_mismatch": "Pengirimnya bukan pihak yang disebut dalam pesan"
+        "sender_mismatch": "Pengirimnya bukan pihak yang disebut dalam pesan",
+        "asks_for_secrecy": "Meminta Anda merahasiakan pesan atau panggilan ini, bahkan dari keluarga",
+        "text_resembles_scam": "Isi pesannya sangat mirip dengan pesan penipuan yang sudah dikenal"
       },
       "shape": {
         "login_code": "Sepertinya ini kode masuk biasa. Jangan beri tahu kode ini kepada siapa pun — termasuk “petugas bank”.",
@@ -3152,7 +3458,9 @@
       "err_rate_limited": "Terlalu banyak permintaan kode. Tunggu sebentar dan coba lagi.",
       "err_captcha": "Pemeriksaan keamanan tidak selesai. Silakan coba lagi.",
       "err_captcha_update": "Untuk masuk, diperlukan versi Cleanway yang lebih baru. Perbarui aplikasi lalu coba lagi.",
-      "captcha_wait": "Menyelesaikan pemeriksaan keamanan…"
+      "captcha_wait": "Menyelesaikan pemeriksaan keamanan…",
+      "code_valid_for": "Kode berlaku selama 1 jam.",
+      "code_spam_hint": "Email belum masuk? Tunggu semenit dan periksa folder Spam. Pengirimnya adalah Cleanway."
     },
     "onboarding": {
       "s1_title": "Cek apa saja sebelum Anda mengetuknya",
@@ -3182,7 +3490,38 @@
       "warn_text": "{{domain}} tampak berbahaya. Kalau sedang terbuka, tutup dan jangan ketik apa pun.",
       "paused_title": "Perlindungan Cleanway sedang dijeda",
       "paused_text": "Menyala lagi sendiri pukul {{time}}.",
-      "resume_action": "Nyalakan sekarang"
+      "resume_action": "Nyalakan sekarang",
+      "caution_channel": "Peringatan",
+      "caution_channel_desc": "Pemberitahuan senyap: situs yang tampak seperti penipuan, pengulangan, dan ringkasan. Tanpa suara.",
+      "summary_title": "{{n}} situs mencurigakan lagi",
+      "summary_text": "Cleanway terus memblokir. Daftar lengkapnya ada di Riwayat.",
+      "after_call_title": "Anda baru saja ditelepon",
+      "after_call_text": "{{reason}} Jika penelepon meminta kode, transfer, membuka situs, atau memasang aplikasi — itu penipuan. Jangan transfer apa pun dan jangan beri tahu kode kepada siapa pun.",
+      "after_call_reason_site_blocked": "Saat panggilan, atau sesaat setelahnya, Cleanway menghentikan situs berbahaya.",
+      "after_call_reason_site_warned": "Saat panggilan, atau sesaat setelahnya, terbuka situs yang tampak seperti penipuan.",
+      "after_call_reason_message": "Saat panggilan, atau sesaat setelahnya, Anda memeriksa pesan berbahaya.",
+      "after_call_reason_protection_off": "Saat panggilan, atau sesaat setelahnya, Anda mencoba mematikan perlindungan.",
+      "after_call_reason_app_installed": "Saat panggilan, atau sesaat setelahnya, aplikasi baru dipasang di ponsel.",
+      "after_call_call_close_one": "Telepon orang terdekat"
+    },
+    "call_guard": {
+      "title_in_call": "Anda sedang menelepon sekarang",
+      "title_after_call": "Anda baru saja selesai menelepon",
+      "body_in_call": "Jika Anda diminta mematikan perlindungan, membuka situs, atau memasang aplikasi — itu penipuan. Tutup teleponnya.",
+      "body_after_call": "Jika penelepon meminta Anda mematikan perlindungan, membuka situs, atau memasang aplikasi — itu penipuan. Jangan lakukan, dan jangan telepon balik ke nomor yang ia berikan.",
+      "keep_in_call": "Tutup telepon dan tetap lindungi",
+      "keep_after_call": "Tetap lindungi",
+      "call_close_one": "Telepon orang terdekat",
+      "proceed_wait": "Saya mengerti, ini panggilan saya sendiri ({{seconds}})",
+      "proceed": "Saya mengerti, ini panggilan saya sendiri",
+      "proceed_hint": "Tunggu beberapa detik. Jika ragu — tutup teleponnya.",
+      "honesty": "Cleanway tidak mengenali nomor, tidak memblokir panggilan, dan tidak mendengarkan percakapan. Siapa yang menelepon ditampilkan oleh operator Anda.",
+      "demand_title": "Ditelepon oleh bank, polisi, atau kantor pemerintah?",
+      "demand_body": "Tutup teleponnya. Bank sungguhan tidak pernah meminta kode dari SMS, transfer ke “rekening aman”, mematikan perlindungan, atau memasang aplikasi. Telepon sendiri bank Anda — ke nomor di belakang kartu Anda.",
+      "demand_close": "Mengerti",
+      "home_button": "Ada yang menelepon saya",
+      "home_button_sub": "Apa yang harus dilakukan jika bank atau polisi menelepon",
+      "nav_title": "Ada yang menelepon saya"
     },
     "reason": {
       "flagged_dangerous": "Google menandai situs ini berbahaya",
@@ -3228,6 +3567,64 @@
       "required_body": "Versi ini sudah usang. Perbarui Cleanway agar perlindungan Anda tetap berfungsi.",
       "action": "Perbarui",
       "later": "Nanti"
+    },
+    "account": {
+      "title": "Akun",
+      "row_desc": "Paket, perangkat, hapus akun",
+      "signed_in_as": "Masuk sebagai",
+      "plan_title": "Paket",
+      "plan_free": "Gratis",
+      "plan_personal": "Pribadi",
+      "plan_family": "Keluarga",
+      "plan_business": "Bisnis",
+      "plan_paid": "Paket berbayar",
+      "free_desc": "Memblokir situs penipuan yang dikenal selalu gratis",
+      "source_stripe": "Dibayar di cleanway.ai",
+      "source_google_play": "Dibayar di Google Play",
+      "source_app_store": "Dibayar di App Store",
+      "source_rustore": "Dibayar di RuStore",
+      "source_operator_ru": "Dibayar dengan pulsa",
+      "source_promo": "Kode promo",
+      "source_partner": "Dari mitra",
+      "source_other": "Dibayar",
+      "status_active": "Aktif",
+      "status_paid_until": "Dibayar sampai {{date}}",
+      "status_trial": "Uji coba gratis",
+      "status_trial_until": "Uji coba gratis sampai {{date}}",
+      "status_past_due": "Pembayaran gagal — perbarui metode pembayaran Anda",
+      "devices_title": "Perangkat",
+      "devices_count": "{{used}} dari {{limit}}",
+      "devices_note": "Perangkat adalah ponsel, tablet, atau browser yang masuk ke akun ini. Lepaskan perangkat yang tidak lagi Anda pakai, dan tempatnya langsung kosong.",
+      "devices_empty": "Belum ada perangkat yang terhubung",
+      "this_device": "Perangkat ini",
+      "last_seen": "Terakhir dipakai: {{date}}",
+      "platform_android": "Ponsel Android",
+      "platform_ios": "iPhone atau iPad",
+      "platform_extension": "Ekstensi browser",
+      "platform_web": "Browser",
+      "unlink": "Lepaskan",
+      "unlink_confirm_title": "Lepaskan perangkat ini?",
+      "unlink_confirm_body": "{{name}} akan keluar dari akun Anda. Perlindungan di perangkat itu tetap berjalan tanpa akun.",
+      "unlink_this_confirm_body": "Ponsel ini akan keluar dari akun Anda. Perlindungan tetap berjalan tanpa akun.",
+      "unlink_failed": "Perangkat tidak dapat dilepaskan. Coba lagi.",
+      "limit_title": "Semua perangkat Anda sedang dipakai",
+      "limit_body": "Paket Anda mencakup {{limit}} perangkat. Lepaskan satu yang tidak lagi Anda pakai untuk masuk di ponsel ini, atau tambahkan perangkat ke paket Anda.",
+      "add_device": "Tambah perangkat",
+      "limit_not_now": "Nanti saja — keluar",
+      "revoked_title": "Anda keluar di ponsel ini",
+      "revoked_body": "Ponsel ini dilepaskan dari akun Anda di perangkat lain. Perlindungan tetap berjalan. Masuk lagi untuk memakai akun Anda di sini.",
+      "delete": "Hapus akun",
+      "delete_desc": "Menghapus akun Anda dan data yang tersimpan bersamanya",
+      "delete_confirm_title": "Hapus akun Anda?",
+      "delete_confirm_body": "Akun, paket, dan pengaturan yang disinkronkan akan dihapus. Langganan yang dibayar di cleanway.ai langsung dibatalkan dan tidak ditagih lagi. Anda bisa memulihkan akun dalam 30 hari dengan masuk kembali. Perlindungan di ponsel ini tetap berjalan tanpa akun.",
+      "delete_confirm": "Hapus",
+      "delete_done_title": "Akun dihapus",
+      "delete_done_body": "Anda sudah keluar. Jika berubah pikiran, masuk dengan email yang sama dalam 30 hari.",
+      "delete_failed_title": "Akun tidak dihapus",
+      "delete_failed_body": "Server tidak dapat dihubungi, jadi tidak ada yang dihapus. Coba lagi sebentar lagi.",
+      "not_signed_in": "Anda belum masuk.",
+      "load_failed": "Akun Anda tidak dapat dimuat. Periksa koneksi lalu coba lagi.",
+      "retry": "Coba lagi"
     }
   }
 }

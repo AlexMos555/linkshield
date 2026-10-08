@@ -37,6 +37,34 @@ export type ShieldBlockEntry = DomainBlockedPayload & { source?: ShieldBlockSour
  */
 export type ShieldStopReason = 'revoked' | 'private_dns';
 
+/**
+ * Phone makers whose own battery managers stop background apps beyond stock
+ * Android (KeepAlivePolicy.OemFamily): Samsung; Xiaomi/Redmi/POCO;
+ * Huawei/Honor; OPPO/realme/OnePlus; vivo/iQOO.
+ */
+export type OemFamily = 'samsung' | 'xiaomi' | 'huawei' | 'oppo' | 'vivo';
+
+/** What the phone says about keeping the shield alive with the app closed. Null: cannot tell. */
+export type KeepAliveStatus = {
+  /** Android's battery optimisation leaves Cleanway alone ("Unrestricted"). */
+  batteryUnrestricted: boolean | null;
+  /** The running tunnel is the phone's Always-on VPN. Null while the shield is off, or below Android 10. */
+  alwaysOn: boolean | null;
+  /** The phone maker whose battery manager needs its own step, or null on stock-like Android. */
+  oem: OemFamily | null;
+};
+
+/** What rearmShield() decided (KeepAlivePolicy.Rearm, lower case). */
+export type RearmDecision =
+  | 'start'
+  | 'running'
+  | 'not_wanted'
+  | 'taken_away'
+  | 'private_dns'
+  | 'other_vpn'
+  | 'budget'
+  | 'no_consent';
+
 /** Emitted when the tunnel is torn down without the user asking for it. */
 export type VpnStoppedPayload = {
   /** A ShieldStopReason; kept as a string so a newer native reason still arrives. */
@@ -62,7 +90,29 @@ export type CleanwayVpnModuleEvents = {
   /** The list the shield blocks from was loaded, synced or revoked; read blocklistStatus() again. */
   onBlocklistChanged: (params: Record<string, never>) => void;
   onNetworkChanged: (params: NetworkChangedPayload) => void;
+  /** A call began or ended (CallState.kt) — the stop screen and the home button follow it. */
+  onCallStateChanged: (params: CallStatePayload) => void;
 };
+
+/**
+ * Is the person on the phone (CallState.kt)? Read from the audio mode — no
+ * permission, no number, no audio. Times are epoch ms, 0 = never.
+ */
+export type CallStatePayload = {
+  /** A SIM call or a messenger call is going on. */
+  inCall: boolean;
+  /** The phone is ringing (not yet a call). */
+  ringing: boolean;
+  callStartedAt: number;
+  callEndedAt: number;
+  /** When the 30-minute window after the last call closes; 0 when no call ended yet. */
+  windowEndsAt: number;
+  /** In a call, or within 30 minutes after one: the stop screen applies. */
+  guardActive: boolean;
+};
+
+/** What the after-call notice may be about (CallGuard.kt). */
+export type CallEventKind = 'site_blocked' | 'site_warned' | 'message_dangerous' | 'protection_off_asked';
 
 /** What blocklist the service has loaded and how fresh it is (BlockList.kt). */
 export type BlocklistStatus = {
@@ -121,7 +171,9 @@ export type MessageReason =
   | 'sms_transfer_command'
   | 'disguised_letters'
   | 'sender_personal_number'
-  | 'sender_mismatch';
+  | 'sender_mismatch'
+  | 'asks_for_secrecy'
+  | 'text_resembles_scam';
 
 /** The message looks like a known legitimate kind. Never reported next to a "dangerous" verdict. */
 export type MessageLegitShape = 'login_code' | 'payment_alert' | 'pickup_code' | 'public_alert' | 'safety_notice';

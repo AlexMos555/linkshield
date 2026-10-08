@@ -6,10 +6,14 @@ data/top-1m.csv) with no refresher — so a retrain just re-learned April's phis
 This script pulls fresh, free, bulk sources into the exact files ml/train_model.py
 reads, turning the model into a living, retrainable system (run by retrain-ml.yml).
 
-Writes (both gitignored — regenerated each run):
+Writes (all gitignored — regenerated each run):
   data/phishtank.csv  — phishing corpus, 'url' column (from URLhaus full dump +
                         OpenPhish). Name kept for train_model.py compatibility.
   data/top-1m.csv     — Tranco top-1M (benign corpus).
+  data/top-1m-subdomains.csv — Tranco top-1M with subdomains: the benign
+                        host shapes (www.example.com, kvs.gov.spb.ru-style
+                        names) the default list folds into their registrable
+                        domain. See ml/train_model.load_benign_domains.
 
 Usage:
     python scripts/refresh_training_feeds.py
@@ -34,6 +38,7 @@ _DATA = os.path.join(os.path.dirname(__file__), "..", "data")
 URLHAUS_FULL = "https://urlhaus.abuse.ch/downloads/csv/"          # full dump (zip)
 OPENPHISH = "https://raw.githubusercontent.com/openphish/public_feed/refs/heads/main/feed.txt"
 TRANCO = "https://tranco-list.eu/top-1m.csv.zip"
+TRANCO_SUBDOMAINS = "https://tranco-list.eu/top-1m-incl-subdomains.csv.zip"
 
 
 def _get(url: str, timeout: float = 180.0) -> bytes:
@@ -86,20 +91,26 @@ def refresh_phishing() -> int:
     return 0
 
 
-def refresh_benign() -> int:
+def _refresh_tranco(url: str, filename: str) -> int:
     try:
-        raw = _get(TRANCO)
+        raw = _get(url)
         with zipfile.ZipFile(io.BytesIO(raw)) as zf:
             member = next(m for m in zf.namelist() if m.endswith(".csv"))
             data = zf.read(member).decode("utf-8", "ignore")
-        out = os.path.join(_DATA, "top-1m.csv")
+        out = os.path.join(_DATA, filename)
         with open(out, "w") as f:
             f.write(data)
         logger.info("Wrote %s (%d bytes)", out, len(data))
         return 0
     except Exception as e:  # noqa: BLE001
-        logger.error("Tranco fetch failed: %s", e)
+        logger.error("Tranco fetch failed (%s): %s", url, e)
         return 2
+
+
+def refresh_benign() -> int:
+    # Both lists or neither: a retrain without the subdomain list would
+    # quietly go back to flagging every host that has a subdomain.
+    return _refresh_tranco(TRANCO, "top-1m.csv") or _refresh_tranco(TRANCO_SUBDOMAINS, "top-1m-subdomains.csv")
 
 
 def main() -> int:

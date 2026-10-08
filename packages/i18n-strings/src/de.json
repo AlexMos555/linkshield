@@ -1489,6 +1489,49 @@
       "family_invite_qr_alt": {
         "text": "QR-Code der Einladung zur Cleanway-Familie"
       }
+    },
+    "account": {
+      "heading": {
+        "text": "Konto"
+      },
+      "sign_in": {
+        "text": "Anmelden"
+      },
+      "sign_out": {
+        "text": "Abmelden"
+      },
+      "signed_in": {
+        "text": "Angemeldet"
+      },
+      "signed_in_as": {
+        "text": "Angemeldet als $EMAIL$",
+        "placeholders": {
+          "email": {
+            "content": "$1"
+          }
+        }
+      },
+      "signed_in_desc": {
+        "text": "Wird für den Familien-Hub und die Synchronisierung der Einstellungen verwendet. Abmelden schaltet den Schutz nicht aus."
+      },
+      "signed_out": {
+        "text": "Nicht angemeldet"
+      },
+      "signed_out_desc": {
+        "text": "Melde dich an, um den Familien-Hub zu nutzen und Einstellungen zu synchronisieren. Der Schutz funktioniert auch ohne Konto."
+      },
+      "pending": {
+        "text": "Schließe die Anmeldung im Cleanway-Tab ab"
+      },
+      "expired": {
+        "text": "Deine Anmeldung ist abgelaufen"
+      },
+      "device_revoked": {
+        "text": "Dieser Browser wurde aus Ihrem Konto entfernt. Melden Sie sich erneut an, um ihn hier zu nutzen."
+      },
+      "device_limit": {
+        "text": "Alle Geräteplätze Ihres Tarifs sind belegt. Entfernen Sie eines auf cleanway.ai/account und melden Sie sich erneut an."
+      }
     }
   },
   "landing": {
@@ -1591,7 +1634,12 @@
       "free_only_body": "Betrugsseiten blockieren sowie Links und Nachrichten prüfen kostet nichts und braucht kein Konto. In deinem Land gibt es derzeit keine kostenpflichtigen Tarife.",
       "free_only_cta": "Android-App herunterladen",
       "free_body_with_plans": "Betrugsseiten blockieren sowie Links und Nachrichten prüfen kostet nichts und braucht kein Konto. Kostenpflichtige Tarife sind freiwillig und schalten den Schutz selbst nie ab.",
-      "plans_link": "Kostenpflichtige Tarife ansehen"
+      "plans_link": "Kostenpflichtige Tarife ansehen",
+      "operator": {
+        "heading": "Ein Abo, das über die Handyrechnung läuft",
+        "body": "In den ersten {days, plural, one {# Tag} other {# Tage}} läuft der Schutz ohne jede Abbuchung. Danach ist es ein Abo ab {solo} ₽ im Monat, abgebucht vom Mobilfunkkonto, ohne Bankkarte. Jederzeit kündbar.",
+        "plans_link": "Preise und Leistungen"
+      }
     },
     "privacy": {
       "heading": "Privacy is not a feature. It's the architecture.",
@@ -1701,20 +1749,17 @@
       "reference_label": "Referenz"
     },
     "signup": {
-      "check_inbox": "Prüfen Sie Ihr Postfach",
-      "magic_link_sent": "Wir haben einen Anmeldelink an <strong>{email}</strong> geschickt.",
-      "magic_link_followup": "Öffne den Link in dieser E-Mail, um die Anmeldung abzuschließen. Kommt in 10 Minuten nichts an, schau im Spam-Ordner nach.",
       "email_label": "E-Mail",
       "email_placeholder": "sie@beispiel.de",
-      "submitting": "Link wird gesendet…",
-      "submit_with_plan": "Anmelde-Link senden",
+      "submitting": "Code wird gesendet…",
+      "submit_with_plan": "Anmeldecode per E-Mail senden",
       "submit_no_plan": "Weiter",
-      "footer_lead": "Wir senden Ihnen einen einmaligen Anmelde-Link. Kein Passwort zu merken.",
+      "footer_lead": "Wir schicken Ihnen einen einmaligen Anmeldecode per E-Mail. Kein Passwort zu merken.",
       "footer_or": "Oder",
       "footer_install_cta": "installiere die App kostenlos",
       "footer_install_tail": "– das Blockieren funktioniert ohne Konto.",
       "meta_title": "Anmelden – Cleanway",
-      "meta_description": "Melde dich bei Cleanway mit einem Einmal-Link an, der an deine E-Mail-Adresse geht. Der Schutz selbst funktioniert ohne Konto.",
+      "meta_description": "Melden Sie sich bei Cleanway mit einem einmaligen Code an, der per E-Mail kommt. Der Schutz selbst funktioniert ohne Konto.",
       "back_to_pricing": "Zurück zu den Preisen",
       "heading": "Konto erstellen oder anmelden",
       "intro": "Für den Schutz brauchst du kein Konto – das Blockieren von Betrugsseiten funktioniert auch ohne. Ein Konto ist nur für Familienfunktionen und kostenpflichtige Tarife nötig.",
@@ -1736,7 +1781,21 @@
       "error_rate_limited": "Zu viele Versuche. Warte ein paar Minuten und versuche es noch einmal.",
       "error_send_failed": "Die Anmelde-E-Mail konnte nicht gesendet werden. Bitte versuche es später noch einmal.",
       "error_network": "Keine Verbindung zum Server. Prüfe deine Internetverbindung und versuche es noch einmal.",
-      "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert ohne Konto."
+      "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert ohne Konto.",
+      "code_heading": "Code aus der E-Mail eingeben",
+      "code_sent_to": "Wir haben einen 6-stelligen Code an <strong>{email}</strong> gesendet.",
+      "code_label": "Code aus der E-Mail",
+      "code_submit": "Anmelden",
+      "code_submitting": "Code wird geprüft…",
+      "code_valid_for": "Der Code ist 1 Stunde gültig.",
+      "code_spam_hint": "Keine E-Mail? Warten Sie eine Minute und sehen Sie im Spam-Ordner nach. Absender ist Cleanway.",
+      "code_resend": "Code erneut senden",
+      "code_resend_in": "Erneut senden in {seconds} s",
+      "code_change_email": "E-Mail ändern",
+      "error_code_incomplete": "Geben Sie die 6 Ziffern aus der E-Mail ein.",
+      "error_code_wrong": "Code falsch oder abgelaufen. Prüfen Sie die Ziffern oder fordern Sie einen neuen Code an.",
+      "error_link_expired": "Der Anmeldelink ist abgelaufen. Fordern Sie einen neuen Code an.",
+      "error_link_failed": "Der Anmeldelink hat nicht funktioniert. Geben Sie hier den Code aus der E-Mail ein oder fordern Sie einen neuen an."
     },
     "pricing": {
       "page_title": "Preise",
@@ -1761,6 +1820,99 @@
       "free_cta": "Android-App herunterladen",
       "footer_cta_title": "Starte heute kostenlos",
       "footer_cta_body": "Ohne Kreditkarte. Wechsle nur dann zu einem Tarif, wenn es für dich Sinn ergibt."
+    },
+    "billing": {
+      "meta_title": "Cleanway-Abo — Preise und Bedingungen",
+      "meta_description": "Schutz vor Betrugsseiten im Abo: {solo} ₽ im Monat für ein Telefon, {family3} ₽ für drei, {family5} ₽ für fünf. Abbuchung vom Mobilfunkkonto; in den ersten {days, plural, one {# Tag} other {# Tage}} wird nichts abgebucht.",
+      "badge": "Abbuchung über das Mobilfunkkonto",
+      "title": "Schutz vor Betrügern — für Sie und für Ihre Eltern",
+      "subtitle": "Cleanway blockiert Betrugsseiten in jeder App des Telefons und prüft Links aus SMS und Messengern. Die ersten {days, plural, one {# Tag} other {# Tage}} sind eine Probezeit: Es wird nichts abgebucht. Danach ist es ein Abo zu den Preisen unten, jederzeit kündbar.",
+      "trial_note": "Die ersten {days, plural, one {# Tag} other {# Tage}}: keine Abbuchung, keine Telefonnummer und keine Karte einzugeben.",
+      "plans_title": "Pakete",
+      "per_month": "{price} ₽ im Monat",
+      "per_device": "≈ {price} ₽ pro Telefon",
+      "best_value": "Am günstigsten",
+      "plan_solo_name": "Ein Telefon",
+      "plan_solo_for": "Für Sie",
+      "plan_family3_name": "Drei Telefone",
+      "plan_family3_for": "Für Sie und Ihre Eltern",
+      "plan_family5_name": "Fünf Telefone",
+      "plan_family5_for": "Für die ganze Familie",
+      "plan_cta": "App laden und ausprobieren",
+      "plan_cta_hint": "Das Abo wird in der App abgeschlossen — nach der Probezeit und nur mit Ihrer Bestätigung.",
+      "included_title": "Was jedes Paket enthält",
+      "included_items": [
+        "Blockieren bekannter Betrugsseiten in jeder App des Telefons — Browser, Messenger, E-Mail",
+        "Prüfung von Links aus SMS und Messengern, bevor sie sich öffnen",
+        "Prüfung verdächtiger Nachrichten direkt auf dem Telefon",
+        "Die Liste der Betrugsseiten wird mehrmals täglich aktualisiert",
+        "Bei den Paketen für drei und fünf Telefone zahlt eine Person, und alle Telefone des Pakets sind geschützt",
+        "Support auf Russisch"
+      ],
+      "how_title": "So funktioniert es",
+      "how_1_title": "App installieren",
+      "how_1_body": "Laden Sie Cleanway für Android und schalten Sie den Schutz ein. {days, plural, one {# Tag} other {# Tage}} lang läuft er ohne jede Abbuchung; es ist keine Telefonnummer und keine Karte einzugeben.",
+      "how_2_title": "Abo in der App abschließen",
+      "how_2_body": "Wählen Sie ein Paket, geben Sie Ihre Telefonnummer ein und bestätigen Sie mit dem SMS-Code. Preis und Abbuchungsdatum werden vor der Bestätigung angezeigt.",
+      "how_3_title": "Abbuchung über das Mobilfunkkonto",
+      "how_3_body": "Ihr Mobilfunkanbieter bucht {solo}, {family3} oder {family5} ₽ einmal im Monat vom Konto Ihrer Nummer ab. Eine Bankkarte ist nicht nötig, und ihre Daten erhalten wir nie.",
+      "how_4_title": "Kündigung in einem Schritt",
+      "how_4_body": "Kündigen Sie in der App, per SMS oder über den Support. Nach der Kündigung wird nichts mehr abgebucht, der Schutz läuft bis zum Ende des bezahlten Monats weiter.",
+      "faq_title": "Häufige Fragen",
+      "faq_auto_q": "Wird nach der Probezeit automatisch abgebucht?",
+      "faq_auto_a": "Nein. Wenn die {days, plural, one {# Tag} other {# Tage}} Probezeit vorbei sind, wird nichts abgebucht, bis Sie selbst in der App ein Paket wählen und es mit einem SMS-Code bestätigen. Ohne Ihre Bestätigung gibt es keine Zahlung.",
+      "faq_cancel_q": "Wie kündige ich?",
+      "faq_cancel_a": "In der App: „Abo“ → „Abo kündigen“. Oder senden Sie eine SMS mit dem Wort СТОП an die Kurznummer, die in der App und auf der Kündigungsseite steht. Nach der Kündigung wird nichts mehr abgebucht; der Schutz läuft bis zum Ende des bezahlten Monats weiter.",
+      "faq_nomoney_q": "Was passiert, wenn kein Guthaben auf dem Konto ist?",
+      "faq_nomoney_a": "Wir buchen nie ins Minus ab und lassen keine Schulden entstehen. Reicht das Guthaben am Abbuchungstag nicht, versucht es der Anbieter in den folgenden {grace, plural, one {# Tag} other {# Tage}} noch einige Male, und der Schutz läuft die ganze Zeit vollständig weiter. Geht die Zahlung weiterhin nicht durch, {lapse}",
+      "lapse_basic": "wird das Abo pausiert, aber das Basis-Blockieren nach der Liste der Betrugsseiten läuft ohne Abbuchung weiter: Die Liste wird einmal pro Woche aktualisiert, und das Schild in der App wird gelb. Sie können das Abo jederzeit wieder abschließen.",
+      "lapse_off": "wird das Abo pausiert und der Schutz bis zur nächsten Zahlung abgeschaltet. Sie können das Abo jederzeit wieder abschließen.",
+      "faq_network_q": "Funktioniert es über WLAN und bei einem anderen Anbieter?",
+      "faq_network_a": "Ja. Der Schutz funktioniert in jedem Netz — über WLAN, im Roaming und auf einem Telefon mit der SIM eines anderen Anbieters. Abgebucht wird vom Konto der Nummer, mit der Sie das Abo abgeschlossen haben. Die Abbuchung über das Mobilfunkkonto gibt es bei den großen russischen Anbietern; unterstützt Ihrer sie nicht, sagt die App das vor der Bestätigung.",
+      "faq_number_q": "Wer erfährt sonst noch meine Telefonnummer?",
+      "faq_number_a": "Die Nummer wird nur für die Abbuchung gebraucht: Ihr Mobilfunkanbieter und der Zahlungsaggregator, die die Zahlung abwickeln, erhalten sie. Wir speichern sie verschlüsselt in einer separaten Datenbank in Russland und verkaufen sie nie. Einzelheiten stehen in der Datenschutzerklärung.",
+      "faq_refund_q": "Bekomme ich mein Geld zurück?",
+      "faq_refund_a": "Ja — wenn der Schutz durch unser Verschulden nicht funktioniert hat oder nach Ihrer Kündigung noch abgebucht wurde. Schreiben Sie dem Support, und wir erstatten diesen Monat. Einzelheiten auf der Seite zu Kündigung und Erstattung.",
+      "requisites_title": "Wer die Leistung erbringt",
+      "requisites_name": "Anbieter: {name}",
+      "requisites_inn": "INN (Steuernummer) {inn}",
+      "requisites_ogrnip": "OGRNIP (Registernummer) {ogrnip}",
+      "requisites_pending": "Die Angaben zum Anbieter (Einzelunternehmer, INN, OGRNIP) werden hier und in der App veröffentlicht, bevor ein Abo abgeschlossen werden kann.",
+      "requisites_note": "Ein Abo beginnt erst, nachdem Sie den Preis gesehen und per SMS-Code bestätigt haben. Der Preis eines laufenden Abos ändert sich nicht: Neue Preise gelten nur für neue Abos.",
+      "support_title": "Support",
+      "support_body": "Fragen zu Abo, Abbuchungen und Erstattungen — schreiben Sie uns. Nennen Sie die Telefonnummer des Abos und das Datum der Abbuchung.",
+      "support_phone": "Support-Telefon: {phone}",
+      "link_cancel": "So kündigen Sie und erhalten eine Erstattung",
+      "link_terms": "Nutzungsbedingungen",
+      "link_privacy": "Datenschutzerklärung"
+    },
+    "cancel": {
+      "meta_title": "Cleanway-Abo kündigen und Erstattungen",
+      "meta_description": "Kündigen in der App, per SMS oder über den Support. Nach der Kündigung wird nichts abgebucht. Erstattung, wenn der Schutz durch unser Verschulden ausfiel oder nach der Kündigung abgebucht wurde.",
+      "back": "Zurück zu den Preisen",
+      "title": "Abo kündigen und Erstattungen",
+      "intro": "Sie können jederzeit auf einem der folgenden Wege kündigen. Nach der Kündigung wird nichts mehr abgebucht, und der Schutz läuft bis zum Ende des bereits bezahlten Monats weiter.",
+      "ways_title": "So kündigen Sie",
+      "way_app_title": "In der App — ein Schritt",
+      "way_app_body": "Öffnen Sie Cleanway → „Abo“ → „Abo kündigen“ und bestätigen Sie. Ein SMS-Code ist nicht nötig.",
+      "way_sms_title": "Per SMS",
+      "way_sms_body": "Senden Sie das Wort СТОП an die Nummer {number} von dem Telefon, auf dem das Abo läuft. Eine Antwort-SMS bestätigt die Kündigung.",
+      "way_sms_pending": "Die Kurznummer für SMS erscheint hier, sobald der Anbieter sie zugeteilt hat. Bis dahin kündigen Sie in der App oder bei Ihrem Anbieter.",
+      "way_support_title": "Über den Support",
+      "way_support_body": "Schreiben Sie uns mit der Telefonnummer des Abos. Wir kündigen es noch am selben Werktag und bestätigen das per Nachricht.",
+      "way_support_pending": "Das Support-Postfach wird noch eingerichtet: Dieser Weg steht offen, sobald die Adresse erscheint. Bis dahin kündigen Sie in der App oder bei Ihrem Anbieter.",
+      "way_operator_title": "Bei Ihrem Anbieter",
+      "way_operator_body": "Abos, die über das Mobilfunkkonto laufen, stehen im Kundenbereich und in der App Ihres Anbieters — dort können Sie sie ebenfalls abschalten.",
+      "after_title": "Was nach der Kündigung passiert",
+      "after_1": "Keine Abbuchungen mehr — weder in diesem Monat noch später.",
+      "after_2": "Der Schutz läuft bis zum Ende des bezahlten Monats weiter.",
+      "after_3": "Danach {lapse}",
+      "after_4": "Sie können das Abo jederzeit wieder abschließen; die Probezeit gibt es kein zweites Mal.",
+      "refund_title": "Erstattungen",
+      "refund_body": "Wir erstatten den Monat, wenn der Schutz durch unser Verschulden nicht funktioniert hat oder nach Ihrer Kündigung noch abgebucht wurde. Schreiben Sie dem Support mit der Telefonnummer und dem Datum der Abbuchung. Das Geld geht zurück auf das Mobilfunkkonto oder auf dem Weg, den Ihr Anbieter anbietet — in der Regel innerhalb von 10 Werktagen.",
+      "refund_law": "Ihre Rechte nach dem Verbraucherschutzrecht bleiben davon unberührt.",
+      "contact_title": "Support",
+      "contact_pending": "Das Support-Postfach wird noch eingerichtet; die Adresse erscheint hier, sobald es funktioniert. Bis dahin kündigen Sie in der App."
     },
     "transparency": {
       "page_title": "Transparenzbericht",
@@ -2032,6 +2184,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "4. Kostenpflichtige Tarife",
           "paragraphs": [
             "In einigen Ländern bietet Cleanway kostenpflichtige Tarife mit Extras an. In Russland werden keine kostenpflichtigen Tarife angeboten. Wo es sie gibt, wickelt Stripe die Zahlung ab, Preis und Abrechnungszeitraum werden vor der Zahlung angezeigt, und du kannst jederzeit kündigen – der Tarif bleibt bis zum Ende des bezahlten Zeitraums aktiv. Erstattungen erfolgen nach den gesetzlichen Vorgaben. Das Blockieren von Betrugsseiten wird nie kostenpflichtig."
@@ -2089,7 +2242,20 @@
           "title": "11. Kontakt",
           "paragraphs": []
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "4. Abo und Bezahlung",
+          "paragraphs": [
+            "In Russland ist Cleanway ein Abo, das über Ihren Mobilfunkanbieter und einen Zahlungsaggregator vom Mobilfunkkonto abgebucht wird. Preis des Pakets und Abbuchungsdatum werden vor der Bestätigung angezeigt; das Abo beginnt erst, nachdem Sie es mit einem SMS-Code von Ihrer Nummer bestätigt haben. Die ersten Tage nach der Installation sind eine Probezeit ohne Abbuchung; ihre Dauer und die Preise stehen auf der Preisseite.",
+            "Das Abo verlängert sich jeden Monat, bis Sie kündigen. Kündigen können Sie in der App, per SMS oder über den Support — nach der Kündigung wird nichts mehr abgebucht, und der Schutz läuft bis zum Ende des bezahlten Monats weiter. Wir buchen nie ins Minus ab und lassen keine Schulden entstehen. Hat der Schutz durch unser Verschulden nicht funktioniert oder wurde nach der Kündigung abgebucht, erstatten wir diesen Monat; Ihre gesetzlichen Rechte bleiben unberührt.",
+            "Preise können sich nur für neue Abos ändern: Ein laufendes Abo behält den Preis, zu dem es begonnen hat. In anderen Ländern werden bezahlte Tarife per Bankkarte über Stripe bezahlt — auch dort werden Preis und Laufzeit vor der Zahlung angezeigt, und das Abo ist jederzeit kündbar."
+          ]
+        },
+        "lapse_basic": "Schlägt eine Zahlung auch nach den weiteren Versuchen fehl, wird das Abo pausiert, aber das Basis-Blockieren bekannter Betrugsseiten läuft ohne Abbuchung weiter — die Liste wird einmal pro Woche aktualisiert.",
+        "lapse_off": "Schlägt eine Zahlung auch nach den weiteren Versuchen fehl, wird das Abo pausiert und der Schutz bis zur nächsten Zahlung abgeschaltet."
+      }
     },
     "privacy_policy": {
       "meta_title": "Datenschutzerklärung – Cleanway",
@@ -2193,6 +2359,7 @@
           ]
         },
         {
+          "id": "payments",
           "title": "12. Zahlungen",
           "paragraphs": [
             "In Russland werden keine kostenpflichtigen Tarife angeboten. Wo es sie gibt, läuft die Zahlung über Stripe: Stripe erhält deine E-Mail-Adresse und den gewählten Tarif und verarbeitet die Karte selbst. Kartendaten sehen und speichern wir nie."
@@ -2244,7 +2411,99 @@
             "Wenn wir diese Erklärung ändern, veröffentlichen wir die neue Fassung mit neuem Datum auf dieser Seite."
           ]
         }
-      ]
+      ],
+      "billing": {
+        "section": {
+          "id": "billing",
+          "title": "12. Bezahlung des Abos",
+          "paragraphs": [
+            "In Russland wird das Abo vom Mobilfunkkonto abgebucht. Dafür geben Sie beim Abschluss eine Telefonnummer an — Ihre eigene oder die des Angehörigen, der zahlt. Die Probezeit braucht keine Nummer.",
+            "Telefonnummer, Paket, Daten und die Abbuchungshistorie liegen in einer separaten Datenbank in Russland, getrennt von den übrigen Daten von Cleanway. Die Nummer wird verschlüsselt gespeichert; in Protokollen, Fehlerberichten und auf Bildschirmen erscheint sie nur teilweise. Bankkartendaten haben wir keine: An dieser Zahlung ist keine Karte beteiligt.",
+            "Ihr Mobilfunkanbieter und der Zahlungsaggregator, die die Abbuchung abwickeln, erhalten Nummer und Betrag — sie verarbeiten diese Daten nach ihren eigenen Regeln. Außerdem halten wir die Einwilligung fest: welchen Text und welchen Preis Sie gesehen und wie Sie bestätigt haben.",
+            "Zahlungs- und Einwilligungsdaten werden so lange aufbewahrt, wie Buchhaltungs- und Steuervorschriften es verlangen — bis zu fünf Jahre; nach dem Ende des Abos und Ablauf dieser Frist wird die Telefonnummer aus der Datenbank gelöscht. In anderen Ländern läuft die Zahlung über Stripe: Stripe erhält Ihre E-Mail-Adresse und den gewählten Tarif und verarbeitet die Karte selbst; Kartendaten sehen und speichern wir nie."
+          ]
+        }
+      }
+    },
+    "extension_connect": {
+      "meta_title": "Erweiterung verbinden — Cleanway",
+      "loading": "Anmeldung wird geprüft…",
+      "heading": "Verbinde diesen Browser mit deinem Cleanway-Konto",
+      "signed_in_as": "Angemeldet als {email}",
+      "explain": "Die Cleanway-Erweiterung in diesem Browser nutzt dieses Konto für den Familien-Hub und die Synchronisierung der Einstellungen. Sie bekommt eine eigene Anmeldung: Wenn du dich in der Erweiterung abmeldest, bleibst du auf der Website angemeldet.",
+      "connect": "Verbinden",
+      "connecting": "Wird verbunden…",
+      "other_account": "Anderes Konto verwenden",
+      "connected_title": "Dieser Browser ist verbunden",
+      "connected_body": "Du kannst diesen Tab jetzt schließen.",
+      "no_state_title": "Starte in der Erweiterung",
+      "no_state_body": "Öffne die Cleanway-Erweiterung in diesem Browser und klicke auf „Anmelden“. Sie bringt dich hierher zurück.",
+      "error_no_extension": "Die Cleanway-Erweiterung hat in diesem Browser nicht geantwortet. Prüfe, ob sie installiert und aktiviert ist, und klicke in der Erweiterung erneut auf „Anmelden“.",
+      "error_state": "Diese Anmeldeanfrage ist abgelaufen. Klicke in der Erweiterung erneut auf „Anmelden“.",
+      "error_failed": "Die Erweiterung konnte nicht verbunden werden. Bitte versuche es erneut.",
+      "error_network": "Keine Verbindung zum Server. Prüfe deine Internetverbindung und versuche es erneut.",
+      "error_locked": "Dein Konto ist zur Löschung vorgemerkt. Stelle es wieder her, um die Erweiterung zu verbinden.",
+      "restore_cta": "Mein Konto wiederherstellen",
+      "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert auch ohne Konto.",
+      "handover_note": "Die Erweiterung erhält nur eine Anmeldung für dieses Konto. Ein Passwort wird nicht verwendet.",
+      "error_device_limit": "Alle Geräteplätze Ihres Tarifs sind belegt, daher wurde dieser Browser nicht verbunden. Entfernen Sie ein Gerät, das Sie nicht mehr nutzen, und klicken Sie in der Erweiterung erneut auf „Anmelden“.",
+      "devices_cta": "Geräte verwalten"
+    },
+    "account": {
+      "plan_heading": "Tarif",
+      "plan_free": "Kostenlos",
+      "plan_personal": "Persönlich",
+      "plan_family": "Familie",
+      "plan_business": "Business",
+      "plan_paid": "Bezahlter Tarif",
+      "free_desc": "Das Blockieren bekannter Betrugsseiten ist immer kostenlos",
+      "source_stripe": "Bezahlt auf cleanway.ai",
+      "source_google_play": "Bezahlt bei Google Play",
+      "source_app_store": "Bezahlt im App Store",
+      "source_rustore": "Bezahlt bei RuStore",
+      "source_operator_ru": "Bezahlt über das Handyguthaben",
+      "source_promo": "Gutscheincode",
+      "source_partner": "Über einen Partner",
+      "source_other": "Bezahlt",
+      "status_active": "Aktiv",
+      "status_paid_until": "Bezahlt bis {date}",
+      "status_trial": "Kostenloser Test",
+      "status_trial_until": "Kostenloser Test bis {date}",
+      "status_past_due": "Die Zahlung ist fehlgeschlagen – bitte aktualisieren Sie Ihre Zahlungsmethode",
+      "devices_heading": "Geräte",
+      "devices_count": "{used} von {limit}",
+      "devices_note": "Ein Gerät ist ein Telefon, Tablet oder Browser, der bei diesem Konto angemeldet ist. Entfernen Sie eines, das Sie nicht mehr nutzen – sein Platz wird sofort frei.",
+      "last_seen": "Zuletzt genutzt: {date}",
+      "platform_android": "Android-Telefon",
+      "platform_ios": "iPhone oder iPad",
+      "platform_extension": "Browser-Erweiterung",
+      "platform_web": "Browser",
+      "unlink": "Entfernen",
+      "unlink_failed": "Das Gerät konnte nicht entfernt werden. Bitte versuchen Sie es erneut.",
+      "error_load": "Ihr Konto konnte nicht geladen werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "retry": "Erneut versuchen",
+      "delete_cta": "Konto löschen",
+      "delete_failed": "Der Server war nicht erreichbar, daher wurde nichts gelöscht. Bitte versuchen Sie es gleich noch einmal.",
+      "page_title": "Ihr Cleanway-Konto",
+      "page_meta_description": "Ihr Cleanway-Tarif und die mit Ihrem Konto verknüpften Geräte.",
+      "heading": "Ihr Konto",
+      "signed_in_as": "Angemeldet als {email}",
+      "loading": "Ihr Konto wird geladen…",
+      "no_session_title": "Melden Sie sich an, um Ihr Konto zu sehen",
+      "no_session_body": "Verwenden Sie die E-Mail-Adresse Ihrer Registrierung – wir senden Ihnen einen Anmeldecode.",
+      "no_session_cta": "Anmelden",
+      "locked_body": "Ihr Konto ist zur Löschung vorgemerkt.",
+      "locked_cta": "Wiederherstellen",
+      "plans_cta": "Tarife ansehen",
+      "devices_empty": "Noch keine Geräte verknüpft. Melden Sie sich in der Cleanway-App oder der Browser-Erweiterung an, um eines hinzuzufügen.",
+      "unlink_confirm": "{name} entfernen? Das Gerät wird von Ihrem Konto abgemeldet. Der Schutz darauf funktioniert ohne Konto weiter.",
+      "unlinking": "Wird entfernt…",
+      "sign_out": "Abmelden",
+      "delete_heading": "Konto löschen",
+      "delete_body": "Löscht Ihr Konto, Ihren Tarif und Ihre synchronisierten Einstellungen. Ein auf cleanway.ai bezahltes Abo wird sofort gekündigt und nicht mehr abgebucht. Innerhalb von 30 Tagen können Sie das Konto durch Anmelden wiederherstellen.",
+      "delete_confirm": "Ihr Cleanway-Konto löschen? Innerhalb von 30 Tagen können Sie es durch Anmelden wiederherstellen.",
+      "delete_done": "Ihr Konto ist gelöscht und Sie sind abgemeldet. Melden Sie sich innerhalb von 30 Tagen an, wenn Sie es wiederherstellen möchten.",
+      "brand": "Cleanway"
     }
   },
   "email": {
@@ -2649,7 +2908,6 @@
         "pause_action": "Schutz pausieren",
         "offline_pill": "Offline"
       },
-      "always_on_hint": "Kommt nach einem Neustart von selbst zurück. Damit er mit dem Telefon startet, vor jeder App: „Durchgehend aktives VPN“ einschalten",
       "pause_confirm_title": "Schutz pausieren?",
       "pause_confirm_body": "Solange der Schutz pausiert, öffnen sich Betrugsseiten in jeder App.",
       "blocklist": {
@@ -2678,6 +2936,52 @@
       "pause_until_on": "Ausschalten, bis ich ihn wieder einschalte",
       "pause_keep": "Schutz eingeschaltet lassen",
       "resume_now": "Schutz jetzt wieder einschalten"
+    },
+    "keep_alive": {
+      "title": "Schutz eingeschaltet lassen",
+      "intro": "Handys stoppen Apps im Hintergrund, um Akku zu sparen – und damit auch den Cleanway-Schutz, ohne Hinweis. Diese Schritte halten ihn aktiv, wenn die App geschlossen ist.",
+      "all_set": "Alles, was dein Handy meldet, ist eingerichtet. Der Schutz läuft auch bei geschlossener App weiter.",
+      "running_on": "Der Schutz läuft",
+      "running_unproven": "Der Schutz läuft, noch nicht bestätigt",
+      "running_paused": "Der Schutz ist pausiert – er kommt von selbst zurück",
+      "running_off": "Der Schutz läuft nicht – schalte ihn mit der Taste oben wieder ein",
+      "battery_ok": "Akku: keine Einschränkungen für Cleanway",
+      "battery_todo": "Energiesparen kann den Schutz stoppen",
+      "notifications_ok": "Sperr-Hinweise: an",
+      "notifications_todo": "Hinweise sind aus – eine gesperrte Seite öffnet sich einfach nicht",
+      "always_on_ok": "Durchgehend aktives VPN: an",
+      "always_on_optional": "Durchgehend aktives VPN (optional): Schutz startet mit dem Handy",
+      "action_allow": "Erlauben",
+      "action_open": "Öffnen",
+      "action_open_settings": "Einstellungen öffnen",
+      "action_turn_on": "Einschalten",
+      "action_how": "Wie",
+      "state_ok": "erledigt",
+      "state_todo": "braucht einen Tipp",
+      "state_optional": "optional",
+      "state_manual": "einmal prüfen",
+      "state_unknown": "noch nicht bestätigt",
+      "row_a11y": "{{label}}: {{state}}",
+      "battery_explain_title": "Schutz im Hintergrund laufen lassen",
+      "battery_explain_body": "Um Akku zu sparen, kann Android Apps stoppen, die im Hintergrund arbeiten – und damit den Cleanway-Schutz, ohne dir Bescheid zu sagen. Der Schutz braucht sehr wenig Akku: Er schaut nur auf die Namen von Websites.\n\nTippe auf dem nächsten Bildschirm auf „Erlauben“. Öffnet sich stattdessen eine App-Liste, such Cleanway und wähle „Nicht optimieren“ oder „Uneingeschränkt“.",
+      "explain_continue": "Weiter",
+      "explain_cancel": "Nicht jetzt",
+      "oem_note": "Cleanway kann diese Einstellung nicht sehen und sie deshalb nicht für dich abhaken. Einmal reicht.",
+      "oem_row_samsung": "Samsung: Cleanway aus den Standby-Apps nehmen",
+      "oem_title_samsung": "Samsung: Cleanway nie in den Standby versetzen",
+      "oem_steps_samsung": "1. Öffne Einstellungen → Akku (oder Gerätewartung → Akku).\n2. Tippe auf „Hintergrundnutzungslimits“.\n3. Öffne „Apps, die nie in den Standby wechseln“ und füge Cleanway hinzu.\n4. Prüfe, dass Cleanway nicht unter „Apps im Standby“ oder „Apps im Tiefschlaf“ steht.",
+      "oem_row_xiaomi": "Xiaomi: Autostart für Cleanway erlauben",
+      "oem_title_xiaomi": "Xiaomi, Redmi, POCO: Cleanway von selbst starten lassen",
+      "oem_steps_xiaomi": "1. Schalte auf dem Bildschirm, der sich öffnet, Autostart für Cleanway ein.\n2. Öffne dann Einstellungen → Apps → Cleanway → Akku-Sparmodus und wähle „Keine Einschränkungen“.",
+      "oem_row_huawei": "Huawei / Honor: Cleanway im Hintergrund laufen lassen",
+      "oem_title_huawei": "Huawei, Honor: Start von Cleanway manuell verwalten",
+      "oem_steps_huawei": "1. Öffne Einstellungen → Akku → App-Start.\n2. Such Cleanway und schalte „Automatisch verwalten“ aus.\n3. Lass im Fenster, das sich öffnet, Automatischer Start, Sekundärer Start und Im Hintergrund ausführen eingeschaltet.",
+      "oem_row_oppo": "OPPO / realme / OnePlus: Hintergrundaktivität erlauben",
+      "oem_title_oppo": "OPPO, realme, OnePlus: Cleanway im Hintergrund laufen lassen",
+      "oem_steps_oppo": "1. Öffne Einstellungen → Apps → Cleanway → Akkunutzung (oder Akku).\n2. Schalte „Hintergrundaktivität erlauben“ und „Automatischen Start erlauben“ ein.\n3. Gibt es eine Liste „Autostart“ oder „Startmanager“, schalte Cleanway auch dort ein.",
+      "oem_row_vivo": "vivo / iQOO: Hintergrundverbrauch erlauben",
+      "oem_title_vivo": "vivo, iQOO: Cleanway im Hintergrund laufen lassen",
+      "oem_steps_vivo": "1. Öffne Einstellungen → Akku → Verwaltung des Hintergrundverbrauchs.\n2. Such Cleanway und wähle „Erlauben“.\n3. Hat dein Handy Autostart (i Manager → App-Manager), schalte ihn für Cleanway ein."
     },
     "rollout": {
       "network_ios": "Blockiert Betrugsseiten in fast jeder App. Gerade in der letzten Testphase – auf dem iPhone noch nicht verfügbar.",
@@ -2831,7 +3135,9 @@
         "sms_transfer_command": "Sie verlangt, eine SMS mit einem Überweisungsbefehl zu schicken",
         "disguised_letters": "Wörter sind mit vertauschten Buchstaben geschrieben, um Filter zu umgehen",
         "sender_personal_number": "Eine Firma oder Behörde schreibt von einer normalen Handynummer",
-        "sender_mismatch": "Der Absender ist nicht der, für den sich die Nachricht ausgibt"
+        "sender_mismatch": "Der Absender ist nicht der, für den sich die Nachricht ausgibt",
+        "asks_for_secrecy": "Sie verlangt, die Nachricht oder den Anruf geheim zu halten, sogar vor der Familie",
+        "text_resembles_scam": "Der Text ähnelt stark bekannten Betrugsnachrichten"
       },
       "shape": {
         "login_code": "Sieht aus wie ein normaler Anmeldecode. Nenne diesen Code niemandem – auch keinem „Bankmitarbeiter“.",
@@ -3152,7 +3458,9 @@
       "err_rate_limited": "Zu viele Code-Anfragen. Warten Sie kurz und versuchen Sie es erneut.",
       "err_captcha": "Die Sicherheitsprüfung wurde nicht abgeschlossen. Bitte versuchen Sie es erneut.",
       "err_captcha_update": "Für die Anmeldung wird eine neuere Version von Cleanway benötigt. Bitte aktualisieren Sie die App und versuchen Sie es erneut.",
-      "captcha_wait": "Sicherheitsprüfung wird abgeschlossen…"
+      "captcha_wait": "Sicherheitsprüfung wird abgeschlossen…",
+      "code_valid_for": "Der Code ist 1 Stunde gültig.",
+      "code_spam_hint": "Keine E-Mail? Warten Sie eine Minute und sehen Sie im Spam-Ordner nach. Absender ist Cleanway."
     },
     "onboarding": {
       "s1_title": "Prüfe alles, bevor du es antippst",
@@ -3182,7 +3490,38 @@
       "warn_text": "{{domain}} wirkt gefährlich. Falls sie offen ist: schließen und nichts eingeben.",
       "paused_title": "Cleanway-Schutz ist pausiert",
       "paused_text": "Schaltet sich um {{time}} von selbst wieder ein.",
-      "resume_action": "Jetzt einschalten"
+      "resume_action": "Jetzt einschalten",
+      "caution_channel": "Warnungen",
+      "caution_channel_desc": "Stille Hinweise: eine Seite, die nach Betrug aussieht, Wiederholungen und die Zusammenfassung. Ohne Ton.",
+      "summary_title": "{{n}} weitere verdächtige Seiten",
+      "summary_text": "Cleanway blockiert weiter. Die vollständige Liste steht im Verlauf.",
+      "after_call_title": "Sie wurden gerade angerufen",
+      "after_call_text": "{{reason}} Wenn der Anrufer einen Code, eine Überweisung, das Öffnen einer Seite oder das Installieren einer App verlangt hat – das ist Betrug. Überweisen Sie nichts und nennen Sie niemandem einen Code.",
+      "after_call_reason_site_blocked": "Während des Anrufs oder kurz danach hat Cleanway eine gefährliche Seite gestoppt.",
+      "after_call_reason_site_warned": "Während des Anrufs oder kurz danach wurde eine Seite geöffnet, die nach Betrug aussieht.",
+      "after_call_reason_message": "Während des Anrufs oder kurz danach haben Sie eine gefährliche Nachricht geprüft.",
+      "after_call_reason_protection_off": "Während des Anrufs oder kurz danach haben Sie versucht, den Schutz auszuschalten.",
+      "after_call_reason_app_installed": "Während des Anrufs oder kurz danach wurde eine neue App auf dem Telefon installiert.",
+      "after_call_call_close_one": "Vertraute Person anrufen"
+    },
+    "call_guard": {
+      "title_in_call": "Sie telefonieren gerade",
+      "title_after_call": "Sie haben gerade eben telefoniert",
+      "body_in_call": "Wenn man Sie bittet, den Schutz auszuschalten, eine Seite zu öffnen oder eine App zu installieren – das ist Betrug. Legen Sie auf.",
+      "body_after_call": "Wenn der Anrufer Sie gebeten hat, den Schutz auszuschalten, eine Seite zu öffnen oder eine App zu installieren – das ist Betrug. Tun Sie es nicht und rufen Sie nicht die Nummer zurück, die er genannt hat.",
+      "keep_in_call": "Auflegen und Schutz behalten",
+      "keep_after_call": "Schutz behalten",
+      "call_close_one": "Vertraute Person anrufen",
+      "proceed_wait": "Ich verstehe, das ist mein Anruf ({{seconds}})",
+      "proceed": "Ich verstehe, das ist mein Anruf",
+      "proceed_hint": "Warten Sie ein paar Sekunden. Im Zweifel: auflegen.",
+      "honesty": "Cleanway erkennt keine Nummern, blockiert keine Anrufe und hört keine Gespräche mit. Wer anruft, zeigt Ihr Mobilfunkanbieter.",
+      "demand_title": "Ruft die Bank, die Polizei oder eine Behörde an?",
+      "demand_body": "Legen Sie auf. Eine echte Bank fragt nie nach einem Code aus einer SMS, einer Überweisung auf ein „sicheres Konto“, dem Ausschalten des Schutzes oder dem Installieren einer App. Rufen Sie die Bank selbst zurück – unter der Nummer auf der Rückseite Ihrer Karte.",
+      "demand_close": "Verstanden",
+      "home_button": "Ich werde angerufen",
+      "home_button_sub": "Was tun, wenn die Bank oder die Polizei anruft",
+      "nav_title": "Ich werde angerufen"
     },
     "reason": {
       "flagged_dangerous": "Google stuft diese Seite als gefährlich ein",
@@ -3228,6 +3567,64 @@
       "required_body": "Diese Version ist veraltet. Aktualisieren Sie Cleanway, damit Ihr Schutz weiter funktioniert.",
       "action": "Aktualisieren",
       "later": "Später"
+    },
+    "account": {
+      "title": "Konto",
+      "row_desc": "Tarif, Geräte, Konto löschen",
+      "signed_in_as": "Angemeldet als",
+      "plan_title": "Tarif",
+      "plan_free": "Kostenlos",
+      "plan_personal": "Persönlich",
+      "plan_family": "Familie",
+      "plan_business": "Business",
+      "plan_paid": "Bezahlter Tarif",
+      "free_desc": "Das Blockieren bekannter Betrugsseiten ist immer kostenlos",
+      "source_stripe": "Bezahlt auf cleanway.ai",
+      "source_google_play": "Bezahlt bei Google Play",
+      "source_app_store": "Bezahlt im App Store",
+      "source_rustore": "Bezahlt bei RuStore",
+      "source_operator_ru": "Bezahlt über das Handyguthaben",
+      "source_promo": "Gutscheincode",
+      "source_partner": "Über einen Partner",
+      "source_other": "Bezahlt",
+      "status_active": "Aktiv",
+      "status_paid_until": "Bezahlt bis {{date}}",
+      "status_trial": "Kostenloser Test",
+      "status_trial_until": "Kostenloser Test bis {{date}}",
+      "status_past_due": "Die Zahlung ist fehlgeschlagen – bitte aktualisieren Sie Ihre Zahlungsmethode",
+      "devices_title": "Geräte",
+      "devices_count": "{{used}} von {{limit}}",
+      "devices_note": "Ein Gerät ist ein Telefon, Tablet oder Browser, der bei diesem Konto angemeldet ist. Entfernen Sie eines, das Sie nicht mehr nutzen – sein Platz wird sofort frei.",
+      "devices_empty": "Noch keine Geräte verknüpft",
+      "this_device": "Dieses Gerät",
+      "last_seen": "Zuletzt genutzt: {{date}}",
+      "platform_android": "Android-Telefon",
+      "platform_ios": "iPhone oder iPad",
+      "platform_extension": "Browser-Erweiterung",
+      "platform_web": "Browser",
+      "unlink": "Entfernen",
+      "unlink_confirm_title": "Dieses Gerät entfernen?",
+      "unlink_confirm_body": "{{name}} wird von Ihrem Konto abgemeldet. Der Schutz darauf funktioniert ohne Konto weiter.",
+      "unlink_this_confirm_body": "Dieses Telefon wird von Ihrem Konto abgemeldet. Der Schutz funktioniert ohne Konto weiter.",
+      "unlink_failed": "Das Gerät konnte nicht entfernt werden. Bitte versuchen Sie es erneut.",
+      "limit_title": "Alle Geräteplätze sind belegt",
+      "limit_body": "Ihr Tarif umfasst {{limit}} Geräte. Entfernen Sie eines, das Sie nicht mehr nutzen, um sich auf diesem Telefon anzumelden, oder fügen Sie Ihrem Tarif ein Gerät hinzu.",
+      "add_device": "Gerät hinzufügen",
+      "limit_not_now": "Nicht jetzt – abmelden",
+      "revoked_title": "Auf diesem Telefon abgemeldet",
+      "revoked_body": "Dieses Telefon wurde auf einem anderen Gerät aus Ihrem Konto entfernt. Der Schutz funktioniert weiter. Melden Sie sich erneut an, um Ihr Konto hier zu nutzen.",
+      "delete": "Konto löschen",
+      "delete_desc": "Löscht Ihr Konto und alles, was dazu gespeichert ist",
+      "delete_confirm_title": "Konto löschen?",
+      "delete_confirm_body": "Ihr Konto, Ihr Tarif und Ihre synchronisierten Einstellungen werden gelöscht. Ein auf cleanway.ai bezahltes Abo wird sofort gekündigt und nicht mehr abgebucht. Innerhalb von 30 Tagen können Sie das Konto durch Anmelden wiederherstellen. Der Schutz auf diesem Telefon funktioniert ohne Konto weiter.",
+      "delete_confirm": "Löschen",
+      "delete_done_title": "Konto gelöscht",
+      "delete_done_body": "Sie sind abgemeldet. Wenn Sie es sich anders überlegen, melden Sie sich innerhalb von 30 Tagen mit derselben E-Mail an.",
+      "delete_failed_title": "Konto nicht gelöscht",
+      "delete_failed_body": "Der Server war nicht erreichbar, daher wurde nichts gelöscht. Bitte versuchen Sie es gleich noch einmal.",
+      "not_signed_in": "Sie sind nicht angemeldet.",
+      "load_failed": "Ihr Konto konnte nicht geladen werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "retry": "Erneut versuchen"
     }
   }
 }

@@ -47,6 +47,12 @@ export interface paths {
          *     Endpoint path is /checkout (matches the landing PricingClient).
          *     /create-checkout is preserved as an alias below for any code that
          *     might still reference the legacy name.
+         *
+         *     Refuses (409 `subscription_already_active`) when the account already
+         *     has an active plan from ANY source (Stripe, Google Play, App Store,
+         *     RuStore, the operator subscription, a promo — `has_active_entitlement`):
+         *     paying twice for the same account is never right. For a Stripe plan the
+         *     answer points at the Customer Portal, where plan changes happen.
          */
         post: operations["create_checkout_api_v1_payments_checkout_post"];
         delete?: never;
@@ -86,13 +92,16 @@ export interface paths {
          * @description Handle Stripe webhook events.
          *
          *     Stripe documents "events may be delivered more than once" — they
-         *     retry on any 5xx / timeout for up to 72 hours with exponential
-         *     backoff. Without dedup, a retried checkout.session.completed
-         *     upserts the subscription twice; a retried subscription.updated
-         *     can race with newer events and flip status backward.
-         *
-         *     We dedup by event.id with a Redis SETNX + 7-day TTL. Already-seen
-         *     events return 200 OK (so Stripe stops retrying) but skip processing.
+         *     retry on any non-2xx / timeout for up to 72 hours with exponential
+         *     backoff. So:
+         *       - an event is acknowledged (2xx) only once every write it implies
+         *         has succeeded; any failure → 500 → Stripe retries;
+         *       - an already-processed event id answers 200 duplicate:true;
+         *       - an event another worker is processing right now answers 409 —
+         *         Stripe retries later and then sees the outcome (a 200 here could
+         *         drop the event if that other worker fails).
+         *     Redis unreachable → process anyway (risking one duplicate write is
+         *     better than dropping a billing event; every handler is an upsert).
          */
         post: operations["stripe_webhook_api_v1_payments_webhook_post"];
         delete?: never;
@@ -113,6 +122,12 @@ export interface paths {
         /**
          * Customer Portal
          * @description Create Stripe Customer Portal link for managing subscription.
+         *
+         *     Uses the Stripe customer stored on the user's subscriptions row (or
+         *     the customer of their pre-migration-021 subscription). It used to
+         *     search customers by email with limit=1 — emails aren't unique in
+         *     Stripe, so that could open someone else's billing portal or a stale
+         *     duplicate customer without the live subscription.
          */
         post: operations["customer_portal_api_v1_payments_portal_post"];
         delete?: never;
@@ -197,7 +212,13 @@ export interface paths {
         put?: never;
         /**
          * Register Device
-         * @description Register or update device for multi-device sync.
+         * @description Register or update a device. DEPRECATED — use POST /api/v1/me/devices.
+         *
+         *     Kept for old clients, but it now goes through the same registration as
+         *     the new route, so it can't link devices past the plan's device limit
+         *     (it used to upsert straight into `devices` and answer "ok" even when
+         *     the write failed). Old platform names (chrome / firefox / safari) map
+         *     to 'extension'.
          */
         post: operations["register_device_api_v1_user_device_post"];
         delete?: never;
@@ -435,6 +456,75 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/entitlement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Entitlement
+         * @description The account's effective plan and its linked devices.
+         */
+        get: operations["get_entitlement_api_v1_me_entitlement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Devices */
+        get: operations["get_devices_api_v1_me_devices_get"];
+        put?: never;
+        /**
+         * Register Device
+         * @description Link this install to the account, or heartbeat it when already linked.
+         *
+         *     Idempotent: the same device_id answers 200 'updated' every time after the
+         *     first 201 'created'. A new device beyond the plan's device_limit gets 409
+         *     device_limit_reached with the linked devices listed.
+         */
+        post: operations["register_device_api_v1_me_devices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink Device
+         * @description Unlink a device: its seat frees up at once, its session ends, and its
+         *     requests are refused with device_revoked. Answers with the updated
+         *     entitlement so the screen re-renders without another round trip.
+         *     Idempotent — unlinking an unlinked device answers the same.
+         */
+        delete: operations["unlink_device_api_v1_me_devices__device_id__delete"];
+        options?: never;
+        head?: never;
+        /** Rename Device */
+        patch: operations["rename_device_api_v1_me_devices__device_id__patch"];
         trace?: never;
     };
     "/api/v1/feedback/report": {
@@ -1206,6 +1296,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/extension-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extension Session
+         * @description Open a new Supabase session for the signed-in user's browser extension.
+         *
+         *     Why not hand the extension the website's own tokens: Supabase rotates
+         *     refresh tokens and treats the reuse of an already-rotated one as theft —
+         *     it revokes the WHOLE session. The website and the extension would refresh
+         *     the same session independently, so within a couple of hours one of them
+         *     would present a rotated token and both would be signed out. A session of
+         *     its own (its own refresh-token family, its own row in auth.sessions) lets
+         *     each side refresh, and sign out, without touching the other.
+         *
+         *     How: the service key asks GoTrue for a one-time magic-link token for the
+         *     caller's own address (``admin/generate_link`` — no email is sent), and the
+         *     token is exchanged at ``/verify`` right here, so it never leaves the
+         *     server. The address comes from the verified JWT, never from the request,
+         *     so a caller can only ever open a session for themselves. The soft-delete
+         *     gate in ``get_current_user`` applies (410 while the account is on hold),
+         *     and the per-user sensitive-action limit (10 an hour) caps how many
+         *     sessions a token can open.
+         *
+         *     Tokens are never logged; failures log the upstream status code only.
+         */
+        post: operations["extension_session_api_v1_auth_extension_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/credentials/verified": {
         parameters: {
             query?: never;
@@ -1794,6 +1923,11 @@ export interface components {
              * @default https://cleanway.ai/pricing
              */
             cancel_url: string;
+            /**
+             * Country
+             * @description ISO 3166-1 alpha-2 country code — the `cc` used for /api/v1/pricing/for-country.
+             */
+            country?: string | null;
         };
         /** CheckoutResponse */
         CheckoutResponse: {
@@ -1834,6 +1968,26 @@ export interface components {
             /** Restore Until */
             restore_until: string;
         };
+        /** DeviceOut */
+        DeviceOut: {
+            /** Id */
+            id: string;
+            /** Platform */
+            platform: string;
+            /** Name */
+            name?: string | null;
+            /** App Version */
+            app_version?: string | null;
+            /** Created At */
+            created_at?: string | null;
+            /** Last Seen At */
+            last_seen_at?: string | null;
+            /**
+             * Is Current
+             * @default false
+             */
+            is_current: boolean;
+        };
         /**
          * DeviceOverrideUpdate
          * @description Per-device overrides — used by Family Hub to set Granny Mode on
@@ -1865,6 +2019,41 @@ export interface components {
              * @default 0.1.0
              */
             app_version: string;
+        };
+        /** DeviceRegisterRequest */
+        DeviceRegisterRequest: {
+            /**
+             * Device Id
+             * @description Random per-install id made by the client and kept in secure storage.
+             */
+            device_id: string;
+            /**
+             * Platform
+             * @enum {string}
+             */
+            platform: "android" | "ios" | "extension" | "web";
+            /**
+             * Name
+             * @description Device model or browser.
+             */
+            name?: string | null;
+            /** App Version */
+            app_version?: string | null;
+        };
+        /** DeviceRegisterResponse */
+        DeviceRegisterResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "created" | "updated";
+            device: components["schemas"]["DeviceOut"];
+            entitlement: components["schemas"]["EntitlementResponse"];
+        };
+        /** DeviceRenameRequest */
+        DeviceRenameRequest: {
+            /** Name */
+            name: string;
         };
         /** DomainReason */
         DomainReason: {
@@ -1941,6 +2130,37 @@ export interface components {
              */
             font_source: "device_override" | "user_default";
         };
+        /** EntitlementResponse */
+        EntitlementResponse: {
+            /**
+             * Plan
+             * @description 'free', or the paid plan (personal / family / business).
+             */
+            plan: string;
+            /**
+             * Status
+             * @description 'free', or active / trialing / past_due.
+             */
+            status: string;
+            /**
+             * Source
+             * @description Where the plan was paid: stripe, google_play, app_store, rustore, operator_ru, promo, partner.
+             */
+            source?: string | null;
+            /** Period End */
+            period_end?: string | null;
+            /** Device Limit */
+            device_limit: number;
+            /**
+             * Included Devices
+             * @description Devices a paid plan covers before extras.
+             */
+            included_devices: number;
+            /** Devices Used */
+            devices_used: number;
+            /** Devices */
+            devices: components["schemas"]["DeviceOut"][];
+        };
         /** ExplainRequest */
         ExplainRequest: {
             /** Signals */
@@ -1961,6 +2181,15 @@ export interface components {
             explanation: string;
             /** Source */
             source: string;
+        };
+        /** ExtensionSessionResponse */
+        ExtensionSessionResponse: {
+            /** Access Token */
+            access_token: string;
+            /** Refresh Token */
+            refresh_token: string;
+            /** Expires At */
+            expires_at: number;
         };
         /** FamilyMember */
         FamilyMember: {
@@ -3133,6 +3362,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RestoreAccountResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_entitlement_api_v1_me_entitlement_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_devices_api_v1_me_devices_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_device_api_v1_me_devices_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceRegisterResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlink_device_api_v1_me_devices__device_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_device_api_v1_me_devices__device_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceRenameRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceOut"];
                 };
             };
             /** @description Validation Error */
@@ -4333,6 +4729,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckEmailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extension_session_api_v1_auth_extension_session_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtensionSessionResponse"];
                 };
             };
             /** @description Validation Error */

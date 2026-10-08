@@ -21,6 +21,14 @@
   <!-- The shield reads the underlying network's DNS servers (UnderlyingNetworks).
        Already merged in from a library; declared here because we depend on it. -->
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <!-- "Keep protection on" (KeepAlive.requestBatteryExemption): lets the app
+       show Android's one-question "stop optimising battery for Cleanway?"
+       dialog instead of sending the person through a list of every app.
+       A normal permission; Play allows it for safety apps whose core function
+       battery optimisation breaks — an always-on scam shield killed overnight
+       is exactly that. Justification: docs/MOBILE_AUTO_PROTECTION.md
+       "Keeping the shield alive". Pinned by check-android-permissions.mjs. -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
   <application>
     <service
       android:name="ai.cleanway.app.CleanwayVpnService"
@@ -84,8 +92,21 @@
         <action android:name="android.intent.action.BOOT_COMPLETED" />
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
         <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+        <!-- Exempt from the background foreground-service start rules and
+             still delivered to manifest receivers on Android 8+; a chance to
+             re-arm a shield an OEM killed (see BootReceiver). -->
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.LOCALE_CHANGED" />
       </intent-filter>
     </receiver>
+    <!-- Re-arms a shield the person left ON that something else stopped (an
+         OEM battery manager killing the process). Periodic JobScheduler job,
+         main process; scheduled when the tunnel comes up, cancelled when the
+         person turns protection off. See ShieldWatchdog. -->
+    <service
+      android:name="ai.cleanway.app.ShieldWatchdog"
+      android:permission="android.permission.BIND_JOB_SERVICE"
+      android:exported="false" />
     <!-- Woken by AlarmManager to keep the blocklist fresh through Doze. Runs
          in the main process so it can poke the already-running VPN service. -->
     <receiver

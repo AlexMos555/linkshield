@@ -75,6 +75,9 @@ class CleanwayVpnService : VpnService() {
     /** Unregisters the Private DNS setting observer; null while not watching. */
     private var stopPrivateDnsWatch: (() -> Unit)? = null
 
+    /** This service holds the call watcher (CallState) while the tunnel is up. */
+    private var callWatched = false
+
     @Volatile
     private var running = false
 
@@ -167,6 +170,8 @@ class CleanwayVpnService : VpnService() {
             // Explicit user request: forget the intent so we do not come back
             // on the next boot.
             ShieldPreference.setUserEnabled(this, false)
+            // ...and stop the watchdog: nothing may bring back what the person turned off.
+            ShieldWatchdog.cancel(this)
             ShieldPreference.noteTunnel(this, ShieldPreference.TunnelEvent.STOPPED_BY_PERSON)
             ShieldPreference.setPausedUntil(
                 this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STOPPED_BY_PERSON, pausedUntilMs),
@@ -178,7 +183,16 @@ class CleanwayVpnService : VpnService() {
         // or a sticky restart arrives without it.
         val byPerson = intent?.action == ACTION_START_BY_PERSON
         if (running) {
-            if (byPerson) pauseUntil(ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STARTED_BY_PERSON, pausedUntilMs))
+            if (byPerson) {
+                pauseUntil(ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.STARTED_BY_PERSON, pausedUntilMs))
+            } else {
+                // A re-arm (watchdog, boot receiver) can race a tunnel that is
+                // already up and arrive through startForegroundService(), which
+                // expects startForeground() in reply. Android waives that for a
+                // service already in the foreground; answering anyway costs one
+                // notification update and leaves nothing to chance.
+                refreshForeground()
+            }
         } else {
             startVpn(byPerson)
         }
@@ -271,9 +285,13 @@ class CleanwayVpnService : VpnService() {
         running = true
         isRunning = true
         // Remember that protection should be on, so BootReceiver can re-arm it
-        // after a reboot or an OEM force-stop.
+        // after a reboot and ShieldWatchdog after an OEM kill (a force-stop
+        // keeps it off until the app is opened — Android's rule).
         ShieldPreference.setUserEnabled(this, true)
         ShieldPreference.noteTunnel(this, ShieldPreference.TunnelEvent.CAME_UP)
+        // Watch for the tunnel dying without the person asking (an OEM
+        // battery manager killing the process) and bring it back.
+        ShieldWatchdog.ensureScheduled(this)
         Log.i(TAG, "tunnel_started")
 
         // A pause outlives a restart of the service (process killed, reboot):
@@ -301,6 +319,11 @@ class CleanwayVpnService : VpnService() {
         }.also { it.start() }
 
         Thread({ dnsProxyLoop() }, "Cleanway-DNS").start()
+
+        // While the tunnel is up, follow the phone's calls (no permission: the
+        // audio mode) so a block during a call can be named after it.
+        CallState.acquire(this)
+        callWatched = true
 
         // The user can switch Private DNS to strict while we run — from that
         // moment every lookup on the phone fails. Step aside immediately and
@@ -331,6 +354,9 @@ class CleanwayVpnService : VpnService() {
             this, ShieldPreference.pauseAfter(ShieldPreference.PauseEvent.TAKEN_AWAY, pausedUntilMs),
         )
         broadcastStopped(ShieldPreference.TunnelEvent.TAKEN_AWAY)
+        // The watchdog would only decide TAKEN_AWAY from here on; it comes
+        // back when the person turns protection on again.
+        ShieldWatchdog.cancel(this)
         super.onRevoke()
     }
 
@@ -356,6 +382,10 @@ class CleanwayVpnService : VpnService() {
     private fun stopVpn() {
         running = false
         isRunning = false
+        if (callWatched) {
+            callWatched = false
+            CallState.release(this)
+        }
         dynamicBlocked = emptySet()
         pausedUntilMs = 0L
         blocklistSync?.stop()
@@ -700,6 +730,11 @@ class CleanwayVpnService : VpnService() {
         }
         // Throttled per site on its own; never throws.
         BlockNotifier.notify(this, domain, kind, now)
+        // A stop during or right after a phone call is what the after-call
+        // notice is about (CallGuard). Told even when BlockLog coalesced it: a
+        // site stopped minutes before the call and tried again during it is
+        // new for the call. CallGuard drops repeats within a call itself.
+        CallGuard.noteEvent(this, if (kind == BlockLog.KIND_WARNED) CallGuard.EVENT_SITE_WARNED else CallGuard.EVENT_SITE_BLOCKED, now)
         // A repeat of a recent event changes no count. Announcing it would
         // only make an open History re-read the log on every packet of an app
         // that keeps polling a blocked host.
@@ -736,6 +771,33 @@ class CleanwayVpnService : VpnService() {
             startForeground(NOTIF_ID, notif)
         }
     }
+
+    /** Re-post the ongoing notification as the foreground one, in its current (paused or not) form. */
+    private fun refreshForeground() {
+        try {
+            val notif = foregroundNotification(pausedUntilMs)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(NOTIF_ID, notif)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "fg_refresh_error: ${e.javaClass.simpleName}")
+        }
+    }
+
+    /**
+     * Is this tunnel running as the phone's Always-on VPN? Null below
+     * Android 10, where VpnService cannot tell. Only the running service can
+     * ask (VpnService.isAlwaysOn is an instance method), so the app reads it
+     * while the shield is up and says nothing about it otherwise.
+     */
+    fun alwaysOnState(): Boolean? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try { isAlwaysOn } catch (e: Exception) { null }
+        } else {
+            null
+        }
 
     /**
      * The ongoing notification. While paused it says so, says when protection

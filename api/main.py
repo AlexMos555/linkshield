@@ -12,6 +12,7 @@ from api.config import get_settings, validate_settings
 from api.routers.check import router as check_router
 from api.routers.payments import router as payments_router
 from api.routers.user import router as user_router
+from api.routers.account import router as account_router
 from api.routers.feedback import router as feedback_router
 from api.routers.public import router as public_router
 from api.routers.breach import router as breach_router
@@ -32,6 +33,7 @@ from api.routers.explainer import router as explainer_router
 from api.routers.doh import router as doh_router
 from api.routers.mobileconfig import router as mobileconfig_router
 from api.routers.watchtower import router as watchtower_router
+from api.billing.mount import mount_billing
 from api.services.cache import close_redis, get_redis
 from api.services.logger import setup_logging
 
@@ -108,6 +110,9 @@ async def lifespan(app: FastAPI):
     yield
     # ── Shutdown ──
     await close_redis()
+    # The billing role's database pool (None on the api role — nothing to close).
+    from api.billing.deps import close_context as close_billing_context
+    await close_billing_context()
     # DoH gateway keeps one pooled upstream client per loop; release it.
     from api.services.doh_gateway import close_upstream_client
     await close_upstream_client()
@@ -127,8 +132,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_settings.get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    # DELETE / PATCH: the website's /account page unlinks and renames
+    # devices (api/routers/account.py). X-Device-Id: the per-install id our
+    # clients send so an unlinked device can be refused.
+    allow_methods=["POST", "GET", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Device-Id"],
 )
 
 # Security headers — HSTS, CSP, X-Frame-Options, etc. Defense in depth.
@@ -206,6 +214,7 @@ def _scrub_path_for_logs(path: str) -> str:
 app.include_router(check_router)
 app.include_router(payments_router)
 app.include_router(user_router)
+app.include_router(account_router)
 app.include_router(feedback_router)
 app.include_router(public_router)
 app.include_router(blocklist_router)
@@ -226,6 +235,11 @@ app.include_router(explainer_router)
 app.include_router(doh_router)
 app.include_router(mobileconfig_router)
 app.include_router(watchtower_router)
+
+# Operator-billed subscriptions for Russia (docs/BILLING.md). A no-op unless
+# BILLING_ENABLED=true AND ROLE=billing: the Railway deployment never mounts
+# /billing/v1 and never reaches the separate Russian billing database.
+mount_billing(app)
 
 
 @app.get("/health")

@@ -1,6 +1,6 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-import { BlocklistStatus, CleanwayVpnModuleEvents, ShieldBlockEntry } from './CleanwayVpn.types';
+import { BlocklistStatus, CallStatePayload, CleanwayVpnModuleEvents, ShieldBlockEntry } from './CleanwayVpn.types';
 
 declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   /** Requests VPN consent (once) then starts the local DNS-filter VPN. Resolves false if the user declines. */
@@ -23,6 +23,14 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
    * build degrades to "unverified" instead of crashing.
    */
   canaryAnswerCount?(): number;
+  /** Battery / Always-on / phone maker, raw (index.ts validates it). Optional: older native builds lack it. */
+  keepAliveStatus?(): Record<string, unknown>;
+  /** Open Android's "stop optimising battery for Cleanway?" dialog, or the closest screen. */
+  requestBatteryExemption?(): boolean;
+  /** Open the phone maker's own background/autostart screen, else App info. */
+  openOemBackgroundSettings?(): boolean;
+  /** Bring back a shield the person left ON that is not running (same rules as the watchdog). */
+  rearmShield?(): string;
   /** True if the user last chose ON. Optional: older native builds lack it. */
   wasUserEnabled?(): boolean;
   /** Why protection last stopped by itself ("revoked" | "private_dns"), null when not known. */
@@ -79,6 +87,18 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   notificationsEnabled?(): boolean;
   /** Open this app's system notification settings. */
   openNotificationSettings?(): boolean;
+  /** Is the person on the phone, and when did the last call end? Optional: older native builds lack it. */
+  callState?(): CallStatePayload;
+  /** The app saw something the after-call notice should name (CallGuard.kt). */
+  noteCallEvent?(kind: string): void;
+  /** Bring the phone app (its in-call screen) to the front. */
+  showInCallScreen?(): boolean;
+  /** The saved "close one" number, or null. Kept on the phone only. */
+  closeContactPhone?(): string | null;
+  /** Save (or clear with null) the "close one" number; false when not dialable. */
+  setCloseContactPhone?(phone: string | null): boolean;
+  /** Open the phone app on the saved number; false when none is saved. */
+  dialCloseContact?(): boolean;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

@@ -18,8 +18,14 @@ import {
   type CleanwayClient,
   type UserSettings,
   type Result,
+  type EntitlementResponse,
+  type DeviceRegisterRequest,
+  type DeviceRegisterResponse,
+  type DeleteAccountResponse,
 } from "@cleanway/api-client";
 import { getInstallId } from "./install-id";
+import { getDeviceId } from "./device-id";
+import { EventEmitter } from "events";
 import { retryOnceOnTimeout } from "../utils/check-verdict";
 
 // ─── Config ───────────────────────────────────────────────────────
@@ -40,6 +46,44 @@ export function setAuthToken(token: string | null): void {
   _authToken = token;
 }
 
+/**
+ * Where fresh tokens come from — registered by services/auth.ts (which
+ * imports this module, so the dependency can't point the other way).
+ * `fresh` refreshes ahead of expiry; `force` refreshes now (after a 401).
+ */
+interface TokenProvider {
+  fresh: () => Promise<string | null>;
+  force: () => Promise<string | null>;
+}
+let _tokenProvider: TokenProvider | null = null;
+
+export function setTokenProvider(provider: TokenProvider | null): void {
+  _tokenProvider = provider;
+}
+
+async function currentToken(): Promise<string | null> {
+  if (!_tokenProvider) return _authToken;
+  try {
+    const token = await _tokenProvider.fresh();
+    _authToken = token;
+    return token;
+  } catch {
+    return _authToken;
+  }
+}
+
+// ─── Unlinked-device event bus ────────────────────────────────────
+//
+// The server answers 403 `device_revoked` once this install was unlinked
+// from the account (on another device or on the website). Whoever made the
+// call doesn't handle it: the listener in app/_layout.tsx signs out locally,
+// makes a new device id and tells the person what happened.
+export const deviceRevokedEvents = new EventEmitter();
+
+function _maybeEmitDeviceRevoked(error: ApiError | null): void {
+  if (error && error.code === "device_revoked") deviceRevokedEvents.emit("revoked");
+}
+
 // ─── Account-lock (410) event bus ─────────────────────────────────
 //
 // The api-client returns `kind: "account_locked"` on any HTTP 410. We
@@ -53,8 +97,6 @@ export function setAuthToken(token: string | null): void {
 // only need to await the API call as before — the modal takes care
 // of presenting the restore CTA, calling /restore, and clearing the
 // flag on success. (Audit mobile-ts HIGH account-locked-410-unhandled.)
-import { EventEmitter } from "events";
-
 export const accountLockedEvents = new EventEmitter();
 
 /** Last seen restoreUrl from a 410 response, for the modal. */
@@ -76,12 +118,48 @@ const CLIENT_HEADERS = {
   "X-Client-Version": Constants.expoConfig?.version ?? "0.0.0",
 };
 
+const DEVICE_HEADER = "X-Device-Id";
+
+/**
+ * Adds this install's device id to SIGNED-IN calls only (an anonymous call —
+ * pricing, health — never carries it), so the server can refuse an install
+ * that was unlinked from the account.
+ */
+const fetchWithDeviceId: typeof fetch = async (input, init) => {
+  const headers = { ...(init?.headers as Record<string, string> | undefined) };
+  if (headers.Authorization) {
+    const id = await getDeviceId();
+    if (id) headers[DEVICE_HEADER] = id;
+  }
+  return fetch(input, { ...init, headers });
+};
+
 const _client: CleanwayClient = createClient({
   baseUrl: API_BASE,
   timeoutMs: 6_000,
-  getAuthToken: () => _authToken,
+  // Refreshed ahead of expiry on every call (services/auth.ts).
+  getAuthToken: currentToken,
   defaultHeaders: CLIENT_HEADERS,
+  fetchImpl: fetchWithDeviceId,
 });
+
+/**
+ * Run a signed-in call: one forced refresh + retry on 401, then route the
+ * account-wide answers (410 locked, 403 device_revoked) to their listeners.
+ */
+async function withAuth<T>(call: () => Promise<Result<T>>): Promise<Result<T>> {
+  let r = await call();
+  if (r.error?.kind === "unauthorized" && _tokenProvider) {
+    const token = await _tokenProvider.force().catch(() => null);
+    if (token) {
+      _authToken = token;
+      r = await call();
+    }
+  }
+  _maybeEmitAccountLocked(r.error);
+  _maybeEmitDeviceRevoked(r.error);
+  return r;
+}
 
 /**
  * Site checks get their own client. A site's FIRST check runs the server's
@@ -123,9 +201,40 @@ export async function checkDomain(domain: string): Promise<Result<PublicCheckRes
  * this phone.
  */
 export async function getAccountSettings(): Promise<Result<UserSettings>> {
-  const r = await _client.user.settings();
+  return withAuth(() => _client.user.settings());
+}
+
+// ─── Account: plan + linked devices (/api/v1/me) ─────────────────
+
+export async function getEntitlement(): Promise<Result<EntitlementResponse>> {
+  return withAuth(() => _client.account.entitlement());
+}
+
+/** Link this install / heartbeat it. 409 device_limit_reached, 403 device_revoked. */
+export async function registerDevice(
+  req: DeviceRegisterRequest,
+): Promise<Result<DeviceRegisterResponse>> {
+  // device_revoked is handled by the caller (services/account.ts) — it must
+  // rotate the id and decide whether to retry, so no event here.
+  let r = await _client.account.registerDevice(req);
+  if (r.error?.kind === "unauthorized" && _tokenProvider) {
+    const token = await _tokenProvider.force().catch(() => null);
+    if (token) {
+      _authToken = token;
+      r = await _client.account.registerDevice(req);
+    }
+  }
   _maybeEmitAccountLocked(r.error);
   return r;
+}
+
+export async function unlinkDevice(deviceId: string): Promise<Result<EntitlementResponse>> {
+  return withAuth(() => _client.account.unlinkDevice(deviceId));
+}
+
+/** DELETE /api/v1/user/account — 30-day grace, cancels a Stripe plan at once. */
+export async function deleteAccount(): Promise<Result<DeleteAccountResponse>> {
+  return withAuth(() => _client.user.deleteAccount());
 }
 
 export async function getPricingForCountry(cc?: string | null): Promise<Result<PricingFor>> {
@@ -173,7 +282,16 @@ export async function restoreAccount(): Promise<boolean> {
 // PublicCheckResult is what the screens actually receive from checkSingleDomain.
 // It is NOT DomainResult: the public endpoint returns plain-language `signals`
 // (mapped to `reasons`) and carries no TLS or domain-age facts at all.
-export type { DomainResult, PublicCheckResult, PricingFor, ApiError, Result } from "@cleanway/api-client";
+export type {
+  DomainResult,
+  PublicCheckResult,
+  PricingFor,
+  ApiError,
+  Result,
+  EntitlementResponse,
+  AccountDevice,
+} from "@cleanway/api-client";
+export { errorDetail } from "@cleanway/api-client";
 
 // Legacy shim: some older screens call `checkDomains([...])`. Keep for now —
 // delete once all call sites migrate to singular checkDomain().

@@ -29,6 +29,8 @@
         "<all_urls>"
       ],
       "js": [
+        "src/utils/scorer-data.js",
+        "src/utils/name-rules.js",
         "src/utils/local-scorer.js",
         "src/utils/link-target.js",
         "src/content/tracking-cleaner.js",
@@ -57,6 +59,16 @@
       ],
       "js": [
         "src/content/webmail.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://cleanway.ai/extension/connect*",
+        "https://cleanway.ai/*/extension/connect*"
+      ],
+      "js": [
+        "src/content/connect-relay.js"
       ],
       "run_at": "document_idle"
     }

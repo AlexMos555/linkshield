@@ -156,7 +156,8 @@ def is_regional_government_domain(domain: str) -> bool:
     return any(name == g or name.endswith("." + g) for g in REGIONAL_GOVERNMENT_DOMAINS)
 
 # ── Shared platforms: subdomains can be anyone's ──
-# Kept in sync with ml_features.HOSTING_PLATFORMS / refresh_dangerous_domains.
+# Kept in sync with refresh_dangerous_domains. The ML model's tenant feature
+# (ml_features.shared_tenant) reads this list through _SCORER_SHARED_SUFFIXES.
 HOSTING_PLATFORMS: frozenset[str] = frozenset({
     # CDN / Cloud hosting
     "pages.dev", "workers.dev", "r2.dev",                   # Cloudflare
@@ -273,20 +274,58 @@ def _load_typosquat_targets() -> dict[str, str]:
     }
 
 
-# The global list exactly as loaded. brand_subdomain_abuse and the ML
-# model's max_brand_similarity feature read THIS one, not the merged list
-# below: the served model was trained on these brands' similarity, and a
-# Russian brand as a subdomain label has not had its false-positive pass —
+# The global list exactly as loaded. brand_subdomain_abuse reads THIS one,
+# not the merged list below (the ML model's max_brand_similarity reads the
+# merged one since features_version 4, when the model was retrained on it,
+# less the names added after the served model's training, _NOT_IN_MODEL):
+# a Russian brand as a subdomain label has not had its false-positive pass —
 # 'pochta' is what Russian companies call their webmail (pochta.<company>.ru),
 # and marketplace seller tools put ozon./wildberries. in front of their own
 # names.
 GLOBAL_TYPOSQUAT_TARGETS: Mapping[str, str] = MappingProxyType(_load_typosquat_targets())
+
+def _load_measured_global_groups() -> tuple[tuple[ru_brands.BrandGroup, ...], frozenset[str]]:
+    """The global brands added with a false-positive pass, and the names the
+    served ML model has not been trained with.
+
+    data/typosquat_targets.json 'measured' holds one entry per brand owner in
+    data/typosquat_targets_ru.json's format (official / unrelated /
+    not_typos / shared_name, each with its evidence; api.services.ru_brands
+    parses it). Its names are in 'brands' too, so every reader of the flat
+    list sees them. The 2026-10-05 pass is docs/benchmarks/2026-10-05-global-brands.md.
+    A malformed entry is logged and the flat list keeps working without the
+    exemptions — the same failure mode as the Russian file."""
+    path = os.path.join(_DATA_DIR, "typosquat_targets.json")
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+        measured = data.get("measured", {})
+        groups = tuple(ru_brands.parse_group(k, v) for k, v in measured.items() if not k.startswith("_"))
+        brands = {k.lower(): v.lower() for k, v in data.get("brands", {}).items()}
+        for g in groups:
+            for name, domain in g.names.items():
+                if brands.get(name) != domain:
+                    raise ValueError(f"{g.key}: {name!r} must be in 'brands' as {domain!r}")
+        not_in_model = frozenset(data.get("not_in_model", {}).get("names", ()))
+        return groups, not_in_model
+    except (FileNotFoundError, json.JSONDecodeError, ValueError, AttributeError) as e:
+        logger.error("typosquat_targets.json 'measured' is unusable (%s); global exemptions skipped", e)
+        return (), frozenset()
+
 
 # Russian brands (data/typosquat_targets_ru.json, see api.services.ru_brands):
 # every official domain of the brand family, same-shaped sites of other
 # owners, words one edit from a name, and per-brand switches for TLD
 # confusion and edit distance.
 RU_BRAND_GROUPS: tuple[ru_brands.BrandGroup, ...] = ru_brands.load()
+
+# Global brands added with a measured false-positive pass (allegro, olx,
+# xfinity, att …), in the Russian file's format. Their names are compared
+# under the slip rule (see _rule_for), and the ML similarity feature leaves
+# out _NOT_IN_MODEL until the model is retrained with them.
+MEASURED_GLOBAL_GROUPS, _NOT_IN_MODEL = _load_measured_global_groups()
+# Every group whose exemptions the rules honour, Russian and global.
+_EXEMPTION_GROUPS: tuple[ru_brands.BrandGroup, ...] = RU_BRAND_GROUPS + MEASURED_GLOBAL_GROUPS
 
 # What the typosquat rule compares against: global first (so an existing
 # host keeps the brand it was reported under), then the Russian names.
@@ -296,32 +335,35 @@ TYPOSQUAT_TARGETS: dict[str, str] = {
 }
 logger.info("Loaded %d typosquat brand targets (%d Russian brand groups)", len(TYPOSQUAT_TARGETS), len(RU_BRAND_GROUPS))
 
-# Every Russian brand's own registrable domains (yandex.kz, втб.рф), both
-# spellings of an IDN.
-_BRAND_OFFICIAL_DOMAINS: frozenset[str] = frozenset(d for g in RU_BRAND_GROUPS for d in g.official)
+# Every listed brand family's own registrable domains (yandex.kz, втб.рф,
+# olx.ua), both spellings of an IDN.
+_BRAND_OFFICIAL_DOMAINS: frozenset[str] = frozenset(d for g in _EXEMPTION_GROUPS for d in g.official)
 # Registrable domains that are no one's typo: a listed brand's own sites
 # and verified sites of other owners with the same shape (mts.ca —
 # Manitoba's phone company).
 _BRAND_LEGIT_DOMAINS: frozenset[str] = _BRAND_OFFICIAL_DOMAINS | frozenset(
-    d for g in RU_BRAND_GROUPS for d in g.unrelated
+    d for g in _EXEMPTION_GROUPS for d in g.unrelated
 )
 # Per name: labels one edit away that are words or other companies (ozone).
 _BRAND_NOT_TYPOS: Mapping[str, frozenset[str]] = MappingProxyType(
-    {n: g.not_typos for g in RU_BRAND_GROUPS for n in g.names if g.not_typos}
+    {n: g.not_typos for g in _EXEMPTION_GROUPS for n in g.names if g.not_typos}
 )
 # The Russian list's names (sberbank, втб …): see _rule_for.
 _RU_NAMES: frozenset[str] = frozenset(n for g in RU_BRAND_GROUPS for n in g.names)
+# Global names added with a false-positive pass (allegro, xfinity …): see
+# _rule_for.
+_MEASURED_GLOBAL_NAMES: frozenset[str] = frozenset(n for g in MEASURED_GLOBAL_GROUPS for n in g.names)
 # Names other owners use too — abroad (Tele2 AB, T Bank N.A.), as an
 # acronym (vtb) or a word (ozon): TLD confusion only under a TLD phishing
 # favours, and no combos with generic words.
-_SHARED_NAMES: frozenset[str] = frozenset(n for g in RU_BRAND_GROUPS for n in g.shared_name)
+_SHARED_NAMES: frozenset[str] = frozenset(n for g in _EXEMPTION_GROUPS for n in g.shared_name)
 # Names too few letters apart from other names for edit distance (tele2).
-_NO_FUZZY: frozenset[str] = frozenset(n for g in RU_BRAND_GROUPS for n in g.no_fuzzy)
+_NO_FUZZY: frozenset[str] = frozenset(n for g in _EXEMPTION_GROUPS for n in g.no_fuzzy)
 # Per name: lure words for this brand alone — its own product's name
 # (СберБанк Онлайн: sberbank-online, сбербанк-онлайн), as ru_lures skeletons.
 _BRAND_LURE_WORDS: Mapping[str, frozenset[str]] = MappingProxyType({
     n: frozenset(ru_lures.skeleton(w) for w in g.lure_words)
-    for g in RU_BRAND_GROUPS for n in g.names if g.lure_words
+    for g in _EXEMPTION_GROUPS for n in g.names if g.lure_words
 })
 
 
@@ -970,7 +1012,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # (sberbank.spb.ru, vk.nov.ru): the same deception, one level down.
     brand_sub = _check_brand_in_subdomain(ascii_domain)
     zone_brand = None if brand_sub else _check_brand_under_open_zone(ascii_domain)
-    if brand_sub or zone_brand:
+    tenant_brand = None if (brand_sub or zone_brand) else _check_brand_on_hosting_tenant(ascii_domain)
+    if brand_sub or zone_brand or tenant_brand:
         score += 30
         # Under an open zone the name may be a dealer's or a partner's
         # (cdek.msk.ru calls itself CDEK's partner): the reason says what the
@@ -978,7 +1021,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         detail = (
             f"Uses '{brand_sub}' brand name in subdomain to deceive" if brand_sub else
             f"Uses the '{zone_brand}' brand name as its own name under a zone anyone can register in, "
-            f"so it reads as the brand's site"
+            f"so it reads as the brand's site" if zone_brand else
+            f"Uses the '{tenant_brand}' brand name in the name of a site on a hosting platform "
+            f"anyone can publish to"
         )
         reasons.append(DomainReason(signal="brand_subdomain_abuse", weight=30, detail=detail))
 
@@ -1454,7 +1499,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         from api.services.ml_scorer import ml_predict
         # ASCII form: the model's features were extracted from ASCII domains,
         # so the wire form is what keeps inference consistent with training.
-        ml_result = ml_predict(ascii_domain)
+        # A known shortener's name says nothing about the destination, and the
+        # url_shortener rule above already says so. The feeds are full of
+        # shortened lures, so the model scores the shortener itself as phishing;
+        # letting it add weight would mark every bit.ly link "caution".
+        ml_result = None if _is_url_shortener(ascii_domain) else ml_predict(ascii_domain)
         if ml_result:
             ml_prob = ml_result["phishing_probability"]
             ml_confidence = ml_result["confidence"]
@@ -1927,7 +1976,11 @@ def _rule_for(name: str, at_home: bool = False) -> _NameRule:
     log-in page) and tbankapp.ru ('T-Bank — Ввод ключа') are its imitators.
     Russian names get slips only under 8 letters, their country as a combo
     word (avito-ru.com), and Russian lure words (sberbank-bonus) under every
-    TLD, shared names included."""
+    TLD, shared names included. The global names added with a measured
+    false-positive pass (MEASURED_GLOBAL_GROUPS) get slips only under 8
+    letters too: one free substitution made nfinity.com, ufinity.jp,
+    myway.com and comcash.com look-alikes of xfinity, mbway and comcast
+    (docs/benchmarks/2026-10-05-global-brands.md)."""
     short = len(name) < _SHAPE_MIN_LABEL
     russian = name in _RU_NAMES and name not in GLOBAL_TYPOSQUAT_TARGETS
     if short:
@@ -1936,7 +1989,7 @@ def _rule_for(name: str, at_home: bool = False) -> _NameRule:
         generic = name not in _SHARED_NAMES or at_home
     return _NameRule(
         fuzzy=name not in _NO_FUZZY,
-        slips_only=russian,
+        slips_only=russian or name in _MEASURED_GLOBAL_NAMES,
         generic_combos=generic,
         hyphen_combos_only=short,
         country_combos=russian,
@@ -2254,6 +2307,12 @@ _RU_ZONE_BRAND_PART_MIN = 4
 # mts-bonus, ok-podarok): see ru_lures.
 _ZONE_NAME_RULE = _NameRule(lure_words=True)
 _RU_ZONE_BRANDS_LONGEST_FIRST = tuple(sorted(_RU_ZONE_BRANDS, key=lambda b: (-len(b), b)))
+# Brands looked for in a hosting customer's name: the Russian ones above and
+# the global typosquat targets, longest first (sberbank before sber).
+_HOSTING_TENANT_BRANDS = tuple(sorted(_RU_ZONE_BRANDS | set(GLOBAL_TYPOSQUAT_TARGETS), key=lambda b: (-len(b), b)))
+# Zones only a licensed bank may register in: sber.bank.in is Sberbank's
+# Indian branch, not a customer of a hosting platform.
+_REGISTRY_ONLY_ZONES = frozenset({"bank.in"})
 
 
 def _check_brand_under_open_zone(domain: str) -> Optional[str]:
@@ -2285,6 +2344,56 @@ def _check_brand_under_open_zone(domain: str) -> Optional[str]:
                     return brand
             elif brand in pieces and _check_combosquat(label, brand, _ZONE_NAME_RULE):
                 return brand
+    return None
+
+
+def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
+    """A brand in the name a customer gave its site on a hosting platform:
+    sberbank-online.pages.dev, gosuslugi-vhod.netlify.app,
+    paypal-login.netlify.app, sberbank.tw1.ru.
+
+    The typosquat rule reads the registrable domain, which for these hosts is
+    the platform (pages.dev), so the customer's own name was never compared.
+    Fresh phishing lives exactly here (docs/EVALUATION_2026-10.md §1.2), and
+    so do student clones and fan pages (netflix-clone.vercel.app,
+    sber-hackathon.github.io). So the rule is narrow: a Russian brand of four
+    letters or more as the whole name, or any brand next to a lure word — an
+    English combo keyword or a Russian lure (ru_lures), hyphenated, or glued
+    for brands of four letters or more. Russian zones (spb.ru) are
+    _check_brand_under_open_zone's; a name directly under a country's zone
+    (paypal-login.com.br) is the typosquat rule's."""
+    from api.services.hosting_platforms import tenant_suffix_of
+
+    d = (domain or "").lower().strip(".")
+    suffix = tenant_suffix_of(d, _SCORER_SHARED_SUFFIXES)
+    if not suffix or suffix in RU_PUBLIC_SUFFIXES or suffix in _RU_RESTRICTED_ZONES:
+        return None
+    # ru.com / ru.net names are the typosquat rule's (yandex.ru.com), and a
+    # registry zone only banks may register in is not a hosting platform.
+    if suffix in _RU_LOOKALIKE_ZONES or suffix in _REGISTRY_ONLY_ZONES:
+        return None
+    base = _extract_base_domain(d)
+    # Only where the typosquat rule read the platform, not the customer's name.
+    if not (suffix == base or suffix.endswith("." + base)):
+        return None
+    if d in _BRAND_LEGIT_DOMAINS:
+        return None
+    for label in d[: -(len(suffix) + 1)].split("."):
+        whole = label.replace("-", "")
+        if len(whole) >= _RU_ZONE_BRAND_PART_MIN and whole in _RU_ZONE_BRANDS:
+            return whole
+        words = label.split("-")
+        # Two-word lures written with a hyphen: sign-in, log-in.
+        pairs = [a + b for a, b in zip(words, words[1:])]
+        for brand in _HOSTING_TENANT_BRANDS:
+            if brand in words:
+                if any(_is_lure_word(w, brand) for w in words + pairs if w != brand):
+                    return brand
+            elif len(brand) >= _RU_ZONE_BRAND_PART_MIN:
+                for w in words:
+                    glued = w[len(brand):] if w.startswith(brand) else w[: -len(brand)] if w.endswith(brand) else ""
+                    if glued and glued != w and _is_lure_word(glued, brand):
+                        return brand
     return None
 
 

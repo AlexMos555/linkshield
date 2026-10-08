@@ -47,6 +47,74 @@ function flashLabel(el, message, restoreKey) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// Account — sign in / out through the background (background/auth.js)
+// ══════════════════════════════════════════════════════════════════════
+// The background owns the tokens: it refreshes before answering AUTH_STATUS,
+// opens the cleanway.ai connect tab for AUTH_START_SIGN_IN and forgets the
+// session on AUTH_SIGN_OUT. This page never touches the refresh token.
+
+function sendToBackground(message) {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(message, (reply) => {
+        if (chrome.runtime.lastError) { resolve(null); return; }
+        resolve(reply || null);
+      });
+    } catch (e) { resolve(null); }
+  });
+}
+
+async function loadAccount() {
+  const section = document.getElementById("account-section");
+  if (!section) return;
+  const s = await sendToBackground({ type: "AUTH_STATUS" });
+  if (!s) return;
+  const label = document.getElementById("account-label");
+  const desc = document.getElementById("account-desc");
+  const signIn = document.getElementById("account-sign-in");
+  const signOut = document.getElementById("account-sign-out");
+  if (s.signedIn) {
+    label.textContent = s.email ? t("account_signed_in_as", [s.email]) : t("account_signed_in");
+    desc.textContent = t("account_signed_in_desc");
+  } else {
+    if (s.pending) label.textContent = t("account_pending");
+    else if (s.signedOutReason === "expired") label.textContent = t("account_expired");
+    else if (s.signedOutReason === "device_revoked") label.textContent = t("account_device_revoked");
+    else if (s.signedOutReason === "device_limit") label.textContent = t("account_device_limit");
+    else label.textContent = t("account_signed_out");
+    desc.textContent = t("account_signed_out_desc");
+  }
+  signIn.hidden = s.signedIn;
+  signOut.hidden = !s.signedIn;
+  section.hidden = false;
+}
+
+document.getElementById("account-sign-in").addEventListener("click", async (e) => {
+  e.currentTarget.disabled = true;
+  await sendToBackground({ type: "AUTH_START_SIGN_IN" });
+  e.currentTarget.disabled = false;
+});
+
+document.getElementById("account-sign-out").addEventListener("click", async (e) => {
+  e.currentTarget.disabled = true;
+  await sendToBackground({ type: "AUTH_SIGN_OUT" });
+  e.currentTarget.disabled = false;
+  // The storage listener below reloads the page into its signed-out state.
+});
+
+// Signing in on the cleanway.ai tab (or out here) changes which sections
+// this page shows — Family Hub, This device. Reload when the signed-in state
+// flips; an hourly token refresh (same state) does not.
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.auth_token) return;
+    if (Boolean(changes.auth_token.oldValue) !== Boolean(changes.auth_token.newValue)) location.reload();
+  });
+} catch (e) { /* storage events unavailable */ }
+
+loadAccount().catch(() => {});
+
+// ══════════════════════════════════════════════════════════════════════
 // Skill Level (Kids / Regular / Granny / Pro)
 // ══════════════════════════════════════════════════════════════════════
 // Defaults per-mode (applied only when the user hasn't customized them)
@@ -493,7 +561,8 @@ document.getElementById("export-data").addEventListener("click", () => {
 //
 // Auth: requires chrome.storage.local.auth_token (Supabase access
 // token from a successful sign-in). Without it the section stays
-// hidden — sign-in flow lives in /signup on the landing page.
+// hidden — "Sign in" in the Account section above goes through
+// cleanway.ai/extension/connect (background/auth.js).
 //
 // Modules: family-api.js, family-crypto.js and family-fanout.js are ES
 // modules, imported on demand below. family-crypto.js imports the vendored

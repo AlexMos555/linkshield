@@ -5,32 +5,33 @@
  * When API is available, results are enriched with external blocklists.
  * When API is unavailable, this provides full protection locally.
  *
+ * One scorer for the whole extension: the content script calls it for the
+ * page and its links, and the background (background/index.js) for the
+ * popup, the context menu and its own fallback when the API does not answer.
+ * The background used to carry a second, weaker copy with 20 brands and the
+ * last-two-labels rule, which called eBay UK's real sign-in host
+ * (signin.ebay.co.uk) dangerous.
+ *
  * Signals:
- *   - Typosquatting (50+ brands, char substitution, hyphen, TLD confusion)
+ *   - Name rules ported from the server (utils/name-rules.js, data generated
+ *     into utils/scorer-data.js): typosquatting against the server's brands,
+ *     Russian ones included, with their official domains and exemptions;
+ *     a brand as a subdomain, or bought under an open Russian zone
+ *     (sberbank.spb.ru); a TLD dressed up as a subdomain (paypal.com.evil.xyz);
+ *     subdomain depth counted from the PSL-aware registrable domain
  *   - Risky TLDs (.tk, .xyz, .click, etc.)
  *   - Suspicious keywords (login, verify, account, etc.)
- *   - Domain structure (length, hyphens, subdomains, @ symbol)
+ *   - Domain structure (length, hyphens, @ symbol)
  *   - Entropy (DGA detection)
  *   - Hosting platform detection
- *   - Fake TLD in subdomain (paypal.com.evil.xyz)
+ *
+ * Load order: scorer-data.js, name-rules.js, then this file — the manifests'
+ * content_scripts list and the background's imports both say so.
  */
 
-// ── Brand targets for typosquatting ──
-var BRANDS = {
-  paypal:"paypal.com",apple:"apple.com",google:"google.com",amazon:"amazon.com",
-  microsoft:"microsoft.com",netflix:"netflix.com",facebook:"facebook.com",
-  instagram:"instagram.com",whatsapp:"whatsapp.com",linkedin:"linkedin.com",
-  twitter:"twitter.com",github:"github.com",dropbox:"dropbox.com",spotify:"spotify.com",
-  adobe:"adobe.com",slack:"slack.com",discord:"discord.com",ebay:"ebay.com",
-  walmart:"walmart.com",chase:"chase.com",wellsfargo:"wellsfargo.com",
-  bankofamerica:"bankofamerica.com",coinbase:"coinbase.com",binance:"binance.com",
-  steam:"store.steampowered.com",youtube:"youtube.com",yahoo:"yahoo.com",
-  tiktok:"tiktok.com",reddit:"reddit.com",zoom:"zoom.us",stripe:"stripe.com",
-  shopify:"shopify.com",fedex:"fedex.com",ups:"ups.com",usps:"usps.com",
-  dhl:"dhl.com",citi:"citi.com",hsbc:"hsbc.com",metamask:"metamask.io",
-  telegram:"telegram.org",docusign:"docusign.com",icloud:"icloud.com",
-  outlook:"outlook.com",gmail:"gmail.com",roblox:"roblox.com",
-};
+// Where name-rules.js published itself: the isolated world's global in a
+// content script, `self` in the background module, the vm global in tests.
+var SCORER_ROOT = typeof self !== "undefined" ? self : globalThis;
 
 var HIGH_RISK_TLDS = [".tk",".ml",".ga",".cf",".gq",".xyz",".top",".click",".buzz",".icu",".cam",".live",".online",".site",".loan",".racing",".win",".download",".rest",".surf",".zip",".mov",".sbs",".cfd"];
 var MEDIUM_RISK_TLDS = [".info",".biz",".cc",".pw",".ws",".club",".space",".fun",".monster",".store",".stream"];
@@ -38,8 +39,6 @@ var MEDIUM_RISK_TLDS = [".info",".biz",".cc",".pw",".ws",".club",".space",".fun"
 var SUSPICIOUS_WORDS = ["login","signin","sign-in","verify","verification","update","confirm","secure","account","banking","password","reset","suspend","locked","unlock","validate","wallet","payment","invoice","billing","refund","recovery","alert","urgent","expired","reactivate"];
 
 var HOSTING_PLATFORMS = ["pages.dev","workers.dev","r2.dev","netlify.app","vercel.app","herokuapp.com","github.io","gitlab.io","web.app","firebaseapp.com","appspot.com","azurewebsites.net","cloudfront.net","onrender.com","fly.dev","railway.app","blogspot.com","wordpress.com","wixsite.com","wixstudio.com","weebly.com","webflow.io","framer.app","framer.website","carrd.co","notion.site","myshopify.com","lovable.app","replit.app","webcindario.com","contaboserver.net"];
-
-var CHAR_SUBS = {"1":"l","0":"o","3":"e","@":"a","5":"s","!":"i"};
 
 // ═══════════════════════════════════════════════════════════════
 // IDN / PUNYCODE NORMALISATION
@@ -242,18 +241,6 @@ function nameScript(s) {
   return "cyrillic";
 }
 
-// PSL-aware registrable domain (mirrors backend doh_gateway._registrable_domain):
-// a 2-letter ccTLD preceded by a generic second-level label (com.cn/co.uk/com.mx...)
-// means the eTLD+1 is the last THREE labels, so a brand's own apex is not a subdomain.
-var CCTLD_SLD = ["com","co","org","net","gov","edu","ac","gob","or","ne","go","in","id","biz","info"];
-function registrableDomain(d) {
-  var p = String(d).toLowerCase().replace(/^\.+|\.+$/g, "").split(".");
-  if (p.length <= 2) return p.join(".");
-  var tld = p[p.length - 1], sld = p[p.length - 2];
-  if (tld.length === 2 && CCTLD_SLD.indexOf(sld) !== -1) return p.slice(-3).join(".");
-  return p.slice(-2).join(".");
-}
-
 // ── Main scoring function ──
 function localScore(domain) {
   var score = 0;
@@ -274,6 +261,9 @@ function localScore(domain) {
   //                   this, or it scores the encoder's artefacts.
   var asciiDomain = domain;
   var unicodeDomain = decodeIDN(domain);
+  // Absent only if scorer-data.js / name-rules.js failed to load; the other
+  // heuristics still run rather than the whole check throwing.
+  var rules = SCORER_ROOT.cleanwayNameRules;
 
   var parts = asciiDomain.split(".");
   var tld = "." + parts[parts.length - 1];
@@ -281,52 +271,52 @@ function localScore(domain) {
 
   // Decoding is per-label, so uParts lines up with parts one for one.
   var uParts = unicodeDomain.split(".");
-  var uTld = "." + uParts[uParts.length - 1];
-  var uBase = uParts.length >= 2 ? uParts.slice(-2).join(".") : unicodeDomain;
   var name = uParts.length >= 2 ? uParts[uParts.length - 2] : unicodeDomain;
 
   // 1. Hosting platform subdomain — ASCII: HOSTING_PLATFORMS is an ASCII table.
   var isHosting = HOSTING_PLATFORMS.indexOf(base) !== -1 && asciiDomain !== base;
 
-  // 2. Typosquatting — UNICODE: brand comparison against punycode gibberish is
-  //    meaningless ("xn--pypal-4ve" resembles no brand), while on the decoded
-  //    name a Cyrillic look-alike sits one edit from its target. Decoding is
-  //    what lets this catch the homograph instead of missing it.
-  var typo = checkTyposquat(name, unicodeDomain, uBase, uTld);
+  // 2. Typosquatting — the server's rule (name-rules.js). It reads the
+  //    DECODED name — brand comparison against punycode gibberish is
+  //    meaningless ("xn--pypal-4ve" resembles no brand), while decoded a
+  //    Cyrillic look-alike is the letter it imitates — and the ASCII one only
+  //    to look the name's zone up in the Russian suffix table. The name is the
+  //    registrable label: 'kvs' of kvs.gov.spb.ru is judged under gov.spb.ru,
+  //    never 'spb' against ups.com.
+  var typo = rules ? rules.typosquat(asciiDomain, unicodeDomain) : null;
   if (typo) {
     score += 30;
     reasons.push({signal:"typosquatting", detail:"Impersonates " + typo.brand + " (" + typo.method + ")", weight:30});
   }
 
-  // 3. Brand in subdomain (paypal.evil.com) — PSL-aware so a brand's own apex on a
-  //    compound ccTLD (apple.com.cn, hsbc.co.uk) is NOT mistaken for a spoof subdomain.
-  //    ASCII: this walks the registrable-domain boundary with the PSL helper,
-  //    whose compound-suffix table is ASCII. Decoding would change nothing
-  //    anyway — BRANDS is Latin, so a decoded Cyrillic label can never match it.
-  var reg = registrableDomain(asciiDomain);
-  if (asciiDomain !== reg) {
-    var subLabels = asciiDomain.slice(0, asciiDomain.length - reg.length - 1).split(".");
-    for (var i = 0; i < subLabels.length; i++) {
-      var clean = subLabels[i].replace(/-/g, "");
-      if (BRANDS[clean] && reg !== BRANDS[clean]) {
-        score += 30;
-        reasons.push({signal:"brand_subdomain", detail:"Uses '" + clean + "' brand as subdomain", weight:30});
-        break;
-      }
-    }
+  // 3. A brand where a reader takes it for the site: a global brand as a
+  //    subdomain of someone else's (paypal.evil.com — apple.com.cn and
+  //    hsbc.co.uk are registrable domains, not subdomains), or a Russian
+  //    brand's name bought under an open Russian zone (sberbank.spb.ru,
+  //    vk-login.nov.ru). ASCII: both walk the registrable-domain boundary with
+  //    ASCII suffix tables.
+  var brandSub = rules ? rules.brandInSubdomain(asciiDomain) : null;
+  var zoneBrand = rules && !brandSub ? rules.brandUnderOpenZone(asciiDomain) : null;
+  var tenantBrand = rules && !brandSub && !zoneBrand && rules.brandOnHostingTenant
+    ? rules.brandOnHostingTenant(asciiDomain) : null;
+  if (brandSub) {
+    score += 30;
+    reasons.push({signal:"brand_subdomain", detail:"Uses '" + brandSub + "' brand as subdomain", weight:30});
+  } else if (zoneBrand) {
+    score += 30;
+    reasons.push({signal:"brand_subdomain", detail:"Uses the '" + zoneBrand + "' brand name as its own name under a zone anyone can register in", weight:30});
+  } else if (tenantBrand) {
+    score += 30;
+    reasons.push({signal:"brand_subdomain", detail:"Uses the '" + tenantBrand + "' brand name in the name of a site on a hosting platform anyone can publish to", weight:30});
   }
 
-  // 4. Fake TLD in subdomain (paypal.com.evil.xyz) — ASCII: looks for literal
-  //    'com'/'org'/… labels; decoding never creates or removes one.
-  if (parts.length > 2) {
-    var realTLDs = ["com","org","net","gov","edu","co","io"];
-    for (var j = 0; j < parts.length - 2; j++) {
-      if (realTLDs.indexOf(parts[j]) !== -1) {
-        score += 35;
-        reasons.push({signal:"fake_tld", detail:"Contains real TLD '" + parts[j] + "' in subdomain (deception)", weight:35});
-        break;
-      }
-    }
+  // 4. Fake TLD in subdomain (paypal.com.evil.xyz) — ASCII. Only labels left
+  //    of the registrable domain count ('gov' of kvs.gov.spb.ru is the name
+  //    registered under spb.ru), plus the registered name itself when it
+  //    spells a TLD under an open zone (vk.com.msk.ru reads as vk.com).
+  if (rules && rules.hasFakeTldInSubdomain(asciiDomain)) {
+    score += 35;
+    reasons.push({signal:"fake_tld", detail:"Contains a real TLD in subdomain (deception)", weight:35});
   }
 
   // 5. Risky TLD — ASCII: the lists are spelled in ASCII, so '.xn--p1ai' must
@@ -374,11 +364,14 @@ function localScore(domain) {
     reasons.push({signal:"many_hyphens", detail:"Excessive hyphens (" + hyphens + ")", weight:15});
   }
 
-  // 10. Deep subdomains — either form works; decoding never adds or removes a
-  //     label separator.
-  if (parts.length > 3) {
+  // 10. Deep subdomains — two or more levels above the registrable domain:
+  //     www.shop.co.uk and kvs.gov.spb.ru have one, a.b.evil.com two, and so
+  //     does vk.com.msk.ru, whose registered name 'com' reads as a TLD. Either
+  //     form works; decoding never adds or removes a label separator.
+  var levels = rules ? rules.apparentSubdomainLevels(asciiDomain) : 0;
+  if (levels >= 2) {
     score += 15;
-    reasons.push({signal:"deep_subdomains", detail:"Deep subdomain nesting (" + parts.length + " levels)", weight:15});
+    reasons.push({signal:"deep_subdomains", detail:"Deep subdomain nesting (" + levels + " levels)", weight:15});
   }
 
   // 11. Entropy (DGA detection) — UNICODE (via `name`) and SCRIPT-GATED.
@@ -451,54 +444,6 @@ function localScore(domain) {
   };
 }
 
-function checkTyposquat(name, domain, base, tld) {
-  for (var brand in BRANDS) {
-    var legit = BRANDS[brand];
-    if (domain === legit || base === legit) continue;
-
-    // TLD confusion
-    if (name === brand && "." + legit.split(".").pop() !== tld) {
-      return {brand: legit, method: "TLD confusion"};
-    }
-    if (name === brand) continue;
-
-    // Char substitution (also try with common suffixes stripped)
-    var nameClean = name.replace(/[-_](verify|login|secure|update|account|confirm|alert|support|help|app|web|mail)$/, "");
-    var normalized = nameClean;
-    for (var c in CHAR_SUBS) normalized = normalized.split(c).join(CHAR_SUBS[c]);
-    if (normalized === brand) return {brand: legit, method: "character substitution"};
-    // Try full name too
-    var normFull = name;
-    for (var c in CHAR_SUBS) normFull = normFull.split(c).join(CHAR_SUBS[c]);
-    if (normFull === brand) return {brand: legit, method: "character substitution"};
-
-    // Multi-char ASCII glyph homoglyph (rn->m, vv->w, cl->d) — mirrors backend.
-    if (brand.length >= 5) {
-      var skel = nameClean.split("rn").join("m").split("vv").join("w").split("cl").join("d");
-      if (skel !== nameClean && skel === brand) return {brand: legit, method: "glyph homoglyph"};
-    }
-
-    // Hyphen injection
-    if (name.replace(/-/g, "") === brand && name.indexOf("-") !== -1) {
-      return {brand: legit, method: "hyphen injection"};
-    }
-
-    // Combosquatting
-    if (name.startsWith(brand) && name.length > brand.length) {
-      var suffix = name.slice(brand.length).replace(/^-/, "");
-      if (SUSPICIOUS_WORDS.indexOf(suffix) !== -1) return {brand: legit, method: "combosquatting"};
-    }
-
-    // Similarity
-    if (name.length === brand.length && name.length >= 4) {
-      var diffs = 0;
-      for (var i = 0; i < name.length; i++) if (name[i] !== brand[i]) diffs++;
-      if (diffs <= 2) return {brand: legit, method: "high similarity"};
-    }
-  }
-  return null;
-}
-
 function shannonEntropy(s) {
   if (!s) return 0;
   var freq = {};
@@ -510,3 +455,7 @@ function shannonEntropy(s) {
   }
   return e;
 }
+
+// The background is an ES module, where the declarations above are not
+// globals; it reads the scorer from here.
+SCORER_ROOT.cleanwayLocalScorer = { localScore: localScore, decodeIDN: decodeIDN };

@@ -142,6 +142,12 @@ export interface ApiError {
   restoreUrl?: string;
   /** For rate_limited (429), seconds to wait before retrying (from Retry-After). */
   retryAfterSeconds?: number;
+  /**
+   * The server's stable machine-readable reason, from `detail.code` — e.g.
+   * "device_revoked" (403), "device_limit_reached" (409),
+   * "subscription_already_active" (409). Branch on this, never on `message`.
+   */
+  code?: string;
 }
 
 export type Result<T> =
@@ -166,7 +172,7 @@ export interface ClientOptions {
 
 async function request<T>(
   opts: ClientOptions,
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<Result<T>> {
@@ -271,12 +277,14 @@ function mapHttpError(
 ): ApiError {
   const status = resp.status;
   const baseMessage = extractErrorMessage(parsed) ?? `HTTP ${status}`;
+  const code = extractDetailCode(parsed);
+  const withCode = code ? { code } : {};
 
   if (status === 401) {
-    return { kind: "unauthorized", status, message: baseMessage, body: parsed ?? rawText };
+    return { kind: "unauthorized", status, message: baseMessage, body: parsed ?? rawText, ...withCode };
   }
   if (status === 403) {
-    return { kind: "forbidden", status, message: baseMessage, body: parsed ?? rawText };
+    return { kind: "forbidden", status, message: baseMessage, body: parsed ?? rawText, ...withCode };
   }
   if (status === 410) {
     return {
@@ -285,6 +293,7 @@ function mapHttpError(
       message: baseMessage,
       body: parsed ?? rawText,
       restoreUrl: extractRestoreUrl(parsed),
+      ...withCode,
     };
   }
   if (status === 429) {
@@ -296,6 +305,7 @@ function mapHttpError(
       message: baseMessage,
       body: parsed ?? rawText,
       retryAfterSeconds,
+      ...withCode,
     };
   }
   return {
@@ -303,7 +313,32 @@ function mapHttpError(
     status,
     message: baseMessage,
     body: parsed ?? rawText,
+    ...withCode,
   };
+}
+
+/** `detail.code` from FastAPI's `detail: {code, error, ...}` envelope. */
+function extractDetailCode(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const detail = (body as Record<string, unknown>).detail;
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    const c = (detail as Record<string, unknown>).code;
+    if (typeof c === "string" && c) return c;
+  }
+  return undefined;
+}
+
+/**
+ * The `detail` object of an error answer, for codes that carry data along
+ * (device_limit_reached lists the linked devices). Undefined otherwise.
+ */
+export function errorDetail(error: ApiError | null | undefined): Record<string, unknown> | undefined {
+  const body = error?.body;
+  if (!body || typeof body !== "object") return undefined;
+  const detail = (body as Record<string, unknown>).detail;
+  return detail && typeof detail === "object" && !Array.isArray(detail)
+    ? (detail as Record<string, unknown>)
+    : undefined;
 }
 
 /** Pull restore_url out of FastAPI's `detail: {error, restore_url}` envelope. */
@@ -336,6 +371,11 @@ function extractErrorMessage(body: unknown): string | undefined {
   const b = body as Record<string, unknown>;
   // FastAPI validation error shape
   if (typeof b.detail === "string") return b.detail;
+  // Our structured errors: detail = {code, error, ...}
+  if (b.detail && typeof b.detail === "object" && !Array.isArray(b.detail)) {
+    const d = b.detail as Record<string, unknown>;
+    if (typeof d.error === "string") return d.error;
+  }
   if (Array.isArray(b.detail) && b.detail.length > 0) {
     const first = b.detail[0] as Record<string, unknown> | undefined;
     if (first && typeof first.msg === "string") return first.msg;
@@ -365,9 +405,13 @@ import type {
   BreachDomain,
   CheckoutRequest,
   CheckoutResponse,
+  AccountDevice,
   CreateFamilyRequest,
   CreateFamilyResponse,
   DeleteAccountResponse,
+  DeviceRegisterRequest,
+  DeviceRegisterResponse,
+  EntitlementResponse,
   GdprExport,
   MyFamiliesResponse,
   PercentileResponse,
@@ -424,6 +468,22 @@ export interface CleanwayClient {
     restoreAccount(): Promise<Result<RestoreAccountResponse>>;
     /** POST /user/welcome — idempotent welcome-email trigger. */
     welcome(): Promise<Result<unknown>>;
+  };
+  account: {
+    /** GET /me/entitlement — plan, status, source, device_limit, linked devices. */
+    entitlement(): Promise<Result<EntitlementResponse>>;
+    /** GET /me/devices — linked devices of the account. */
+    devices(): Promise<Result<AccountDevice[]>>;
+    /**
+     * POST /me/devices — link this install, or heartbeat it (idempotent).
+     * 409 code "device_limit_reached" (errorDetail(error).devices lists the
+     * linked ones); 403 code "device_revoked" (this install was unlinked).
+     */
+    registerDevice(req: DeviceRegisterRequest): Promise<Result<DeviceRegisterResponse>>;
+    /** DELETE /me/devices/{id} — unlink; answers the updated entitlement. */
+    unlinkDevice(deviceId: string): Promise<Result<EntitlementResponse>>;
+    /** PATCH /me/devices/{id} — rename. */
+    renameDevice(deviceId: string, name: string): Promise<Result<AccountDevice>>;
   };
   payments: {
     /** POST /payments/checkout — Stripe Checkout session URL. */
@@ -542,6 +602,33 @@ export function createClient(opts: ClientOptions): CleanwayClient {
       },
     },
 
+    account: {
+      entitlement() {
+        return request<EntitlementResponse>(opts, "GET", "/api/v1/me/entitlement");
+      },
+      devices() {
+        return request<AccountDevice[]>(opts, "GET", "/api/v1/me/devices");
+      },
+      registerDevice(req) {
+        return request<DeviceRegisterResponse>(opts, "POST", "/api/v1/me/devices", req);
+      },
+      unlinkDevice(deviceId) {
+        return request<EntitlementResponse>(
+          opts,
+          "DELETE",
+          `/api/v1/me/devices/${encodeURIComponent(deviceId)}`,
+        );
+      },
+      renameDevice(deviceId, name) {
+        return request<AccountDevice>(
+          opts,
+          "PATCH",
+          `/api/v1/me/devices/${encodeURIComponent(deviceId)}`,
+          { name },
+        );
+      },
+    },
+
     payments: {
       checkout(req) {
         return request<CheckoutResponse>(opts, "POST", "/api/v1/payments/checkout", req);
@@ -636,6 +723,7 @@ export function createClient(opts: ClientOptions): CleanwayClient {
 export type {
   AcceptInviteRequest,
   AcceptInviteResponse,
+  AccountDevice,
   AuthCheckEmail,
   BreachCheck,
   BreachDomain,
@@ -644,7 +732,10 @@ export type {
   CreateFamilyRequest,
   CreateFamilyResponse,
   DeleteAccountResponse,
+  DeviceRegisterRequest,
+  DeviceRegisterResponse,
   DomainResult,
+  EntitlementResponse,
   GdprExport,
   HealthResponse,
   MyFamiliesResponse,

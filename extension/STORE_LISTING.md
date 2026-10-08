@@ -45,7 +45,7 @@ FAMILY PLAN ($9.99/mo):
 
 PERMISSIONS EXPLAINED:
 - "Access to the page you're actively using + Gmail / Outlook / Yahoo Mail" — Required to badge links inline. Domain is extracted on-device; only the domain is checked, never page content. (activeTab + host access scoped to api.cleanway.ai and the 3 webmail hosts — NOT all websites.)
-- "Storage" — Stores your settings and check history ON YOUR DEVICE only.
+- "Storage" — Stores your settings and check history ON YOUR DEVICE only. If you sign in (optional, for Family Hub and settings sync), the extension also keeps its own Cleanway sign-in tokens there; "Sign out" in Settings deletes them.
 
 Open source clients. Privacy policy: https://cleanway.ai/privacy-policy
 

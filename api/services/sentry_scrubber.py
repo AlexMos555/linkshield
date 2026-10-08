@@ -166,6 +166,19 @@ _ALWAYS_REDACT_KEYS = frozenset(
         "http.fragment",
         # The weekly benchmark's rate-limit bypass token, when configured.
         "x-cleanway-benchmark",
+        # Billing (api/billing): a phone number is the most sensitive datum in
+        # the system and must never reach Sentry, nor a device's bearer
+        # secret, a trial fingerprint, a claim / activation code or the
+        # provider's own phone field.
+        "msisdn",
+        "phone",
+        "user_phone",
+        "device_secret",
+        "fingerprint",
+        "activation_code",
+        "idempotency-key",
+        "x-fake-signature",
+        "x-partner-signature",
     }
 )
 
@@ -177,6 +190,9 @@ _ALWAYS_REDACT_KEYS = frozenset(
 _UPSTREAM_HOSTS = frozenset(
     {
         "safebrowsing.googleapis.com",
+        "webrisk.googleapis.com",
+        "data.phishtank.com",
+        "cdn.phishtank.com",
         "urlhaus-api.abuse.ch",
         "threatfox-api.abuse.ch",
         "mb-api.abuse.ch",

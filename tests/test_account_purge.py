@@ -25,6 +25,11 @@ class _SupabaseStub:
         self.list_response: List[Dict[str, Any]] = []
         self.list_status = 200
         self.delete_status = 204
+        # Supabase Auth admin API (DELETE /auth/v1/admin/users/{id}).
+        self.auth_delete_status = 200
+        # subscriptions rows by user_id — the purge cancels live Stripe
+        # billing before anything is deleted.
+        self.subscription_rows: Dict[str, Dict[str, Any]] = {}
         self.requests: List[Dict[str, Any]] = []
         # audit_log writes go through .post(); kept separate so existing
         # assertions on .requests (GET+DELETE only) stay correct after
@@ -56,12 +61,18 @@ class _SupabaseStub:
                 stub.requests.append(
                     {"method": "GET", "url": url, "params": dict(params or {})}
                 )
+                if "/rest/v1/subscriptions" in url:
+                    uid = dict(params or {}).get("user_id", "eq.")[3:]
+                    row = stub.subscription_rows.get(uid)
+                    return _Resp(200, [row] if row else [])
                 return _Resp(stub.list_status, stub.list_response)
 
             async def request(self, method, url, params=None, headers=None, **_kw):
                 stub.requests.append(
                     {"method": method, "url": url, "params": dict(params or {})}
                 )
+                if "/auth/v1/admin/users/" in url:
+                    return _Resp(stub.auth_delete_status, {})
                 return _Resp(stub.delete_status)
 
             async def post(self, url, json=None, headers=None, **_kw):
@@ -99,8 +110,9 @@ async def test_purges_expired_accounts(supabase_ok, supabase_stub):
     """Two candidates past the grace window → both hard-deleted, IDs
     returned in the summary.
 
-    Method sequence is GET (list) → PATCH × N (anonymise audit_log per
-    user, GDPR Art. 17) → DELETE (cascade through FKs).
+    Sequence: GET (list) → per user: GET subscriptions row (stop Stripe
+    billing first), PATCH audit_log (anonymise, GDPR Art. 17), DELETE the
+    Supabase Auth user → one DELETE on public.users (cascade through FKs).
     """
     from api.services.account_purge import purge_expired_accounts
 
@@ -110,9 +122,19 @@ async def test_purges_expired_accounts(supabase_ok, supabase_stub):
 
     assert result["deleted"] == 2
     assert set(result["ids"]) == {"user-a", "user-b"}
-    methods = [r["method"] for r in supabase_stub.requests]
-    # GET, PATCH (user-a), PATCH (user-b), DELETE
-    assert methods == ["GET", "PATCH", "PATCH", "DELETE"]
+
+    def kind(r):
+        url = r["url"]
+        if "/auth/v1/admin/users/" in url:
+            return f"{r['method']} auth:{url.rsplit('/', 1)[1]}"
+        return f"{r['method']} {url.split('/rest/v1/')[1]}"
+
+    assert [kind(r) for r in supabase_stub.requests] == [
+        "GET users",
+        "GET subscriptions", "PATCH audit_log", "DELETE auth:user-a",
+        "GET subscriptions", "PATCH audit_log", "DELETE auth:user-b",
+        "DELETE users",
+    ]
 
 
 @pytest.mark.asyncio
@@ -151,9 +173,12 @@ async def test_delete_filter_params_pin_grace_window(
     await purge_expired_accounts()
 
     delete_call = next(
-        r for r in supabase_stub.requests if r["method"] == "DELETE"
+        r for r in supabase_stub.requests
+        if r["method"] == "DELETE" and r["url"].endswith("/rest/v1/users")
     )
-    assert delete_call["url"].endswith("/rest/v1/users"), delete_call["url"]
+    # Only the users that cleared every pre-delete step are deleted…
+    assert delete_call["params"]["id"] == "in.(user-c)"
+    # …and still only while they're past the grace window.
     raw = delete_call["params"]["deletion_requested_at"]
     assert raw.startswith("lte."), raw
     # The exact cutoff value matches the GET's cutoff (computed once
@@ -275,3 +300,109 @@ async def test_purge_writes_audit_row_per_deleted_user(supabase_ok, supabase_stu
     assert target_ids == {"u1", "u2", "u3"}
     # actor_user_id is NULL — this is a system-cron event, not a human.
     assert all(row.get("actor_user_id") is None for row in supabase_stub.audit_posts)
+
+
+# ─── auth.users + Stripe ──────────────────────────────────────
+#
+# public.users.id has no FK to auth.users, so deleting the app row left
+# the Supabase Auth identity (email, provider ids, sessions) behind
+# forever — and the person could still sign in. The purge now deletes
+# the auth user through the Admin API, and refuses to delete anyone
+# whose Stripe billing it could not stop.
+
+
+@pytest.mark.asyncio
+async def test_purge_deletes_the_supabase_auth_user(supabase_ok, supabase_stub):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-auth"}]
+    result = await purge_expired_accounts()
+
+    assert result["deleted"] == 1
+    auth_deletes = [
+        r for r in supabase_stub.requests
+        if r["method"] == "DELETE" and "/auth/v1/admin/users/" in r["url"]
+    ]
+    assert [r["url"] for r in auth_deletes] == [
+        "https://fake.supabase.co/auth/v1/admin/users/user-auth"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_auth_user_already_gone_counts_as_deleted(supabase_ok, supabase_stub):
+    """A previous run deleted the auth user, then the public delete
+    failed. The retry gets 404 from the Admin API — that's done, not an
+    error."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-404"}]
+    supabase_stub.auth_delete_status = 404
+    result = await purge_expired_accounts()
+
+    assert result["deleted"] == 1
+    assert result["ids"] == ["user-404"]
+
+
+@pytest.mark.asyncio
+async def test_auth_delete_failure_keeps_user_for_next_run(supabase_ok, supabase_stub):
+    """If the auth identity can't be deleted, keep the public row too —
+    it's the only thing that makes the user a candidate again next run."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-stuck"}]
+    supabase_stub.auth_delete_status = 500
+    result = await purge_expired_accounts()
+
+    assert result["deleted"] == 0
+    assert result["skipped"] == ["user-stuck"]
+    assert not any(
+        r["method"] == "DELETE" and r["url"].endswith("/rest/v1/users")
+        for r in supabase_stub.requests
+    )
+
+
+@pytest.mark.asyncio
+async def test_purge_cancels_live_stripe_billing_first(supabase_ok, supabase_stub, fake_stripe):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-pay"}]
+    supabase_stub.subscription_rows["user-pay"] = {
+        "user_id": "user-pay", "tier": "personal", "status": "active",
+        "provider": "stripe", "provider_subscription_id": "sub_pay",
+        "stripe_customer_id": "cus_pay", "trial_used_at": None,
+    }
+    fake_stripe.add_subscription("sub_pay", "cus_pay", status="active")
+
+    result = await purge_expired_accounts()
+
+    assert result["deleted"] == 1
+    assert [c[0] for c in fake_stripe.cancel_calls] == ["sub_pay"]
+
+
+@pytest.mark.asyncio
+async def test_purge_skips_user_when_stripe_cancel_fails(supabase_ok, supabase_stub, fake_stripe):
+    """Deleting the row would lose the only link to the Stripe customer
+    and the subscription would bill forever. Skip, retry next run."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-pay"}, {"id": "user-free"}]
+    supabase_stub.subscription_rows["user-pay"] = {
+        "user_id": "user-pay", "tier": "personal", "status": "active",
+        "provider": "stripe", "provider_subscription_id": "sub_pay",
+        "stripe_customer_id": "cus_pay", "trial_used_at": None,
+    }
+    fake_stripe.add_subscription("sub_pay", "cus_pay", status="active")
+    fake_stripe.fail_cancel = True
+
+    result = await purge_expired_accounts()
+
+    assert result["ids"] == ["user-free"]
+    assert result["skipped"] == ["user-pay"]
+    assert not any(
+        "/auth/v1/admin/users/user-pay" in r["url"] for r in supabase_stub.requests
+    )
+    users_delete = next(
+        r for r in supabase_stub.requests
+        if r["method"] == "DELETE" and r["url"].endswith("/rest/v1/users")
+    )
+    assert users_delete["params"]["id"] == "in.(user-free)"

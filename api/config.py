@@ -70,6 +70,21 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Google Web Risk (Lookup API). Set: the analyzer asks Web Risk instead of
+    # Safe Browsing v4 — Safe Browsing's terms bar commercial use without a
+    # separate agreement, Web Risk is Google's commercial product for the
+    # same lookup (api/services/web_risk.py, docs/THIRD_PARTY_FEEDS.md).
+    # Unset (default): Safe Browsing v4 as before.
+    web_risk_api_key: str = ""
+
+    # Which threat-intel lookups the analyzer consults (api/services/
+    # licensed_intel.py). "all" (default) — every source, today's behaviour.
+    # "licensed" — without SURBL, the Spamhaus DBL public mirror, ThreatFox,
+    # MalwareBazaar and Feodo Tracker, whose free tiers are for
+    # non-commercial use. A switched-off source is not consulted at all and
+    # leaves the check total, so confidence figures stay honest.
+    licensed_intel: Literal["all", "licensed"] = "all"
+
     # PhishTank (no key needed for free tier, but optional)
     phishtank_api_key: str = ""
 
@@ -86,6 +101,22 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_publishable_key: str = ""
+    # Stripe price for one extra device on top of the plan (+$0.49 / month,
+    # docs/ACCOUNTS_BILLING_PLAN.md §5). Empty until the price exists; the
+    # webhook then counts only the included devices.
+    stripe_price_extra_device: str = ""
+
+    # Accounts & devices (docs/ACCOUNTS_BILLING_PLAN.md §1, §5). A paid plan
+    # covers PLAN_INCLUDED_DEVICES devices plus any bought extras. A signed-in
+    # account WITHOUT a plan may link FREE_ACCOUNT_DEVICE_LIMIT devices: free
+    # use needs no account at all, so this only caps how many installs share
+    # one free account (2 = "my phone + my browser"; 3 would leave nothing
+    # for the plan to add). A plan whose period ended stays effective for
+    # ENTITLEMENT_GRACE_HOURS, so one late renewal webhook doesn't lock out a
+    # paying person.
+    plan_included_devices: int = 3
+    free_account_device_limit: int = 2
+    entitlement_grace_hours: int = 72
 
     # Rate limits — authenticated (per user)
     free_tier_daily_limit: int = 10
@@ -387,9 +418,12 @@ def validate_settings(settings: "Settings") -> None:
             )
 
     # 6) Soft warnings (not fatal)
-    if env != "development" and not _is_safe_nonempty(settings.google_safe_browsing_key):
+    if env != "development" and not (
+        _is_safe_nonempty(settings.google_safe_browsing_key) or _is_safe_nonempty(settings.web_risk_api_key)
+    ):
         logger.warning(
-            "google_safe_browsing_key not set in environment=%s — detection quality degraded", env
+            "neither google_safe_browsing_key nor web_risk_api_key set in environment=%s — "
+            "detection quality degraded", env
         )
 
     logger.info(

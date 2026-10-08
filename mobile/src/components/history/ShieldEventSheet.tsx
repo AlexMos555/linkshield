@@ -10,6 +10,7 @@ import { SHIELD_KIND_KEYS, SHIELD_SOURCE_KEYS } from "../../utils/history-labels
 import { absoluteTime, relativeTime } from "../../utils/relative-time";
 import { allowedSites, allowSite, removeAllowedSite } from "../../services/shield-log";
 import { HISTORY_TONES, shieldIcon, shieldTone } from "./HistoryRows";
+import { useCallGuard } from "../call/CallGuardProvider";
 
 interface ShieldEventSheetProps {
   /** The event to explain; null keeps the sheet closed. */
@@ -33,6 +34,9 @@ interface ShieldEventSheetProps {
  */
 export function ShieldEventSheet({ item, onClose, onChanged, onMore }: ShieldEventSheetProps) {
   const { t, i18n } = useTranslation();
+  // "Allow this site" during or right after a phone call is the scam's last
+  // step: the stop screen comes before the confirm (CallGuardProvider).
+  const callGuard = useCallGuard();
   // Read when the sheet opens: a site can be removed from the allow list in
   // Settings between two openings.
   const allowedNow = useMemo(
@@ -60,6 +64,10 @@ export function ShieldEventSheet({ item, onClose, onChanged, onMore }: ShieldEve
    * nobody allows something they did not mean to.
    */
   function confirmAllow(domain: string) {
+    callGuard.guard("allow", () => askAllow(domain));
+  }
+
+  function askAllow(domain: string) {
     Alert.alert(
       t("mobile.history.detail.allow_confirm_title", { domain }),
       t("mobile.history.detail.allow_confirm_body", { domain }),

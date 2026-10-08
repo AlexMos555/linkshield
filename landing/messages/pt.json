@@ -98,7 +98,12 @@
     "free_only_body": "Bloquear sites de golpe e verificar links e mensagens não custa nada e não exige conta. No seu país não há planos pagos no momento.",
     "free_only_cta": "Baixar o app para Android",
     "free_body_with_plans": "Bloquear sites de golpe e verificar links e mensagens não custa nada e não exige conta. Os planos pagos são opcionais e nunca desligam a proteção em si.",
-    "plans_link": "Ver planos pagos"
+    "plans_link": "Ver planos pagos",
+    "operator": {
+      "heading": "Assinatura cobrada na conta do celular",
+      "body": "Nos primeiros {days, plural, one {# dia} other {# dias}} a proteção funciona sem nenhuma cobrança. Depois é uma assinatura a partir de {solo} ₽ por mês, cobrada na conta do celular, sem cartão bancário. Cancele quando quiser.",
+      "plans_link": "Preços e o que está incluído"
+    }
   },
   "Privacy": {
     "heading": "Privacy is not a feature. It's the architecture.",
@@ -208,20 +213,17 @@
     "reference_label": "Referência"
   },
   "Signup": {
-    "check_inbox": "Verifique sua caixa de entrada",
-    "magic_link_sent": "Enviamos um link de acesso para <strong>{email}</strong>.",
-    "magic_link_followup": "Abra o link desse e-mail para terminar de entrar. Se nada chegar em 10 minutos, olhe a pasta de spam.",
     "email_label": "E-mail",
     "email_placeholder": "voce@exemplo.com",
-    "submitting": "Enviando o link…",
-    "submit_with_plan": "Me envie o link de login",
+    "submitting": "Enviando o código…",
+    "submit_with_plan": "Enviar-me um código de acesso",
     "submit_no_plan": "Continuar",
-    "footer_lead": "Enviaremos um link único de login. Sem senhas para lembrar.",
+    "footer_lead": "Enviaremos por e-mail um código de acesso de uso único. Sem senha para lembrar.",
     "footer_or": "Ou",
     "footer_install_cta": "instale o app de graça",
     "footer_install_tail": "— o bloqueio funciona sem conta.",
     "meta_title": "Entrar — Cleanway",
-    "meta_description": "Entre no Cleanway com um link de uso único enviado para o seu e-mail. A proteção funciona sem conta.",
+    "meta_description": "Entre no Cleanway com um código de uso único enviado para o seu e-mail. A proteção funciona sem conta.",
     "back_to_pricing": "Voltar aos preços",
     "heading": "Crie uma conta ou entre",
     "intro": "Você não precisa de conta para estar protegido: bloquear sites de golpe funciona sem ela. A conta serve só para os recursos de família e os planos pagos.",
@@ -243,7 +245,21 @@
     "error_rate_limited": "Muitas tentativas. Espere alguns minutos e tente de novo.",
     "error_send_failed": "Não conseguimos enviar o e-mail de acesso. Tente mais tarde.",
     "error_network": "Sem conexão com o servidor. Confira sua internet e tente de novo.",
-    "error_unavailable": "Não é possível entrar agora. A proteção funciona sem conta."
+    "error_unavailable": "Não é possível entrar agora. A proteção funciona sem conta.",
+    "code_heading": "Digite o código do e-mail",
+    "code_sent_to": "Enviamos um código de 6 dígitos para <strong>{email}</strong>.",
+    "code_label": "Código do e-mail",
+    "code_submit": "Entrar",
+    "code_submitting": "Verificando o código…",
+    "code_valid_for": "O código vale por 1 hora.",
+    "code_spam_hint": "O e-mail não chegou? Aguarde um minuto e confira a pasta de spam. O remetente é Cleanway.",
+    "code_resend": "Enviar o código de novo",
+    "code_resend_in": "Reenviar em {seconds} s",
+    "code_change_email": "Trocar e-mail",
+    "error_code_incomplete": "Digite os 6 dígitos do e-mail.",
+    "error_code_wrong": "Código incorreto ou expirado. Confira os dígitos ou peça um novo código.",
+    "error_link_expired": "O link de acesso expirou. Peça um novo código.",
+    "error_link_failed": "O link de acesso não funcionou. Digite aqui o código do e-mail ou peça um novo."
   },
   "Pricing": {
     "page_title": "Preços",
@@ -268,6 +284,99 @@
     "free_cta": "Baixar o app para Android",
     "footer_cta_title": "Comece grátis hoje",
     "footer_cta_body": "Sem cartão de crédito. Faça upgrade só quando fizer sentido para você."
+  },
+  "Billing": {
+    "meta_title": "Assinatura Cleanway — preços e condições",
+    "meta_description": "Proteção contra sites fraudulentos por assinatura: {solo} ₽ por mês para um celular, {family3} ₽ para três, {family5} ₽ para cinco. Cobrança na conta do celular; nada é cobrado nos primeiros {days, plural, one {# dia} other {# dias}}.",
+    "badge": "Cobrança na conta do celular",
+    "title": "Proteção contra golpistas — para você e para seus pais",
+    "subtitle": "O Cleanway bloqueia sites fraudulentos em todos os apps do celular e verifica links de SMS e mensageiros. Os primeiros {days, plural, one {# dia} other {# dias}} são um período de teste: nada é cobrado. Depois é uma assinatura pelos preços abaixo; cancele quando quiser.",
+    "trial_note": "Primeiros {days, plural, one {# dia} other {# dias}}: sem cobrança, sem informar número de telefone nem cartão.",
+    "plans_title": "Planos",
+    "per_month": "{price} ₽ por mês",
+    "per_device": "≈ {price} ₽ por celular",
+    "best_value": "Mais vantajoso",
+    "plan_solo_name": "Um celular",
+    "plan_solo_for": "Para você",
+    "plan_family3_name": "Três celulares",
+    "plan_family3_for": "Para você e seus pais",
+    "plan_family5_name": "Cinco celulares",
+    "plan_family5_for": "Para toda a família",
+    "plan_cta": "Baixar o app e experimentar",
+    "plan_cta_hint": "A assinatura é ativada no app — depois do período de teste e só com a sua confirmação.",
+    "included_title": "O que cada plano inclui",
+    "included_items": [
+      "Bloqueio de sites fraudulentos conhecidos em todos os apps do celular — navegador, mensageiros, e-mail",
+      "Verificação de links de SMS e mensageiros antes de abrirem",
+      "Verificação de mensagens suspeitas no próprio celular",
+      "A lista de sites fraudulentos é atualizada várias vezes por dia",
+      "Nos planos de três e cinco celulares uma pessoa paga e todos os celulares do plano ficam protegidos",
+      "Suporte em russo"
+    ],
+    "how_title": "Como funciona",
+    "how_1_title": "Instale o app",
+    "how_1_body": "Baixe o Cleanway para Android e ative a proteção. Por {days, plural, one {# dia} other {# dias}} ele funciona sem nenhuma cobrança; não é preciso informar número de telefone nem cartão.",
+    "how_2_title": "Ative a assinatura no app",
+    "how_2_body": "Escolha um plano, informe seu número de telefone e confirme com o código SMS. O preço e a data da cobrança aparecem antes de você confirmar.",
+    "how_3_title": "A cobrança vai para a conta do celular",
+    "how_3_body": "Sua operadora cobra {solo}, {family3} ou {family5} ₽ uma vez por mês na conta do seu número. Não é preciso cartão bancário e nunca recebemos os dados dele.",
+    "how_4_title": "Cancelamento em um passo",
+    "how_4_body": "Cancele no app, por SMS ou pelo suporte. Depois do cancelamento nada mais é cobrado e a proteção continua até o fim do mês pago.",
+    "faq_title": "Perguntas frequentes",
+    "faq_auto_q": "Vai ser cobrado sozinho depois do teste?",
+    "faq_auto_a": "Não. Quando os {days, plural, one {# dia} other {# dias}} de teste terminarem, nada é cobrado até você mesmo escolher um plano no app e confirmá-lo com um código SMS. Sem a sua confirmação não há pagamento.",
+    "faq_cancel_q": "Como cancelar?",
+    "faq_cancel_a": "No app: «Assinatura» → «Cancelar assinatura». Ou envie um SMS com a palavra СТОП para o número curto mostrado no app e na página de cancelamento. Depois do cancelamento nada mais é cobrado; a proteção continua até o fim do mês pago.",
+    "faq_nomoney_q": "E se não houver saldo na conta?",
+    "faq_nomoney_a": "Nunca deixamos a conta negativa nem criamos dívida. Se no dia da cobrança não houver saldo suficiente, a operadora tenta de novo algumas vezes ao longo dos {grace, plural, one {# dia} other {# dias}} seguintes, e a proteção continua funcionando por completo durante todo esse tempo. Se o pagamento ainda assim não for feito, {lapse}",
+    "lapse_basic": "a assinatura é pausada, mas o bloqueio básico pela lista de sites fraudulentos continua funcionando sem cobrança: a lista é atualizada uma vez por semana e o escudo no app fica amarelo. Você pode assinar de novo quando quiser.",
+    "lapse_off": "a assinatura é pausada e a proteção é desativada até o próximo pagamento. Você pode assinar de novo quando quiser.",
+    "faq_network_q": "Funciona no Wi-Fi e com outra operadora?",
+    "faq_network_a": "Sim. A proteção funciona em qualquer rede — Wi-Fi, roaming ou um celular com chip de outra operadora. A cobrança vai para a conta do número com o qual você assinou. A cobrança na conta do celular está disponível nas grandes operadoras russas; se a sua não oferecer, o app avisa antes da confirmação.",
+    "faq_number_q": "Quem mais fica sabendo meu número de telefone?",
+    "faq_number_a": "O número só é necessário para a cobrança: quem o recebe são a sua operadora e o agregador de pagamentos que processam o pagamento. Nós o guardamos criptografado em um banco de dados separado na Rússia e nunca o vendemos. Os detalhes estão na política de privacidade.",
+    "faq_refund_q": "Posso receber meu dinheiro de volta?",
+    "faq_refund_a": "Sim — se a proteção não funcionou por culpa nossa ou se uma cobrança foi feita depois de você cancelar. Escreva ao suporte e devolvemos esse mês. Os detalhes estão na página de cancelamento e reembolso.",
+    "requisites_title": "Quem presta o serviço",
+    "requisites_name": "Prestador: {name}",
+    "requisites_inn": "INN (número fiscal) {inn}",
+    "requisites_ogrnip": "OGRNIP (número de registro) {ogrnip}",
+    "requisites_pending": "Os dados do prestador (empresário individual, INN, OGRNIP) são publicados aqui e no app antes que uma assinatura possa ser ativada.",
+    "requisites_note": "A assinatura começa só depois que você vê o preço e o confirma com um código SMS. O preço de uma assinatura ativa não muda: novos preços valem apenas para novas assinaturas.",
+    "support_title": "Suporte",
+    "support_body": "Dúvidas sobre a assinatura, cobranças e reembolsos — escreva para nós. Informe o número de telefone da assinatura e a data da cobrança.",
+    "support_phone": "Telefone do suporte: {phone}",
+    "link_cancel": "Como cancelar e receber reembolso",
+    "link_terms": "Termos de uso",
+    "link_privacy": "Política de privacidade"
+  },
+  "Cancel": {
+    "meta_title": "Cancelar a assinatura Cleanway e reembolsos",
+    "meta_description": "Cancele no app, por SMS ou pelo suporte. Depois do cancelamento nada é cobrado. Reembolso se a proteção falhou por culpa nossa ou se houve cobrança depois do cancelamento.",
+    "back": "Voltar aos preços",
+    "title": "Cancelar a assinatura e reembolsos",
+    "intro": "Você pode cancelar quando quiser de qualquer uma das formas abaixo. Depois do cancelamento nada mais é cobrado e a proteção continua até o fim do mês já pago.",
+    "ways_title": "Como cancelar",
+    "way_app_title": "No app — um passo",
+    "way_app_body": "Abra o Cleanway → «Assinatura» → «Cancelar assinatura» e confirme. Não é preciso código SMS.",
+    "way_sms_title": "Por SMS",
+    "way_sms_body": "Envie a palavra СТОП para o número {number} a partir do celular da assinatura. Um SMS de resposta confirma o cancelamento.",
+    "way_sms_pending": "O número curto para SMS aparecerá aqui quando a operadora o atribuir. Até lá, cancele no app ou na sua operadora.",
+    "way_support_title": "Pelo suporte",
+    "way_support_body": "Escreva para nós informando o número de telefone da assinatura. Cancelamos no mesmo dia útil e confirmamos por mensagem.",
+    "way_support_pending": "A caixa de e-mail do suporte ainda está sendo configurada: esta opção estará disponível assim que o endereço aparecer. Até lá, cancele no app ou na sua operadora.",
+    "way_operator_title": "Na sua operadora",
+    "way_operator_body": "Assinaturas cobradas na conta do celular aparecem na área do cliente e no app da sua operadora — lá também é possível desativá-las.",
+    "after_title": "O que acontece depois do cancelamento",
+    "after_1": "Não há mais cobranças — nem neste mês, nem depois.",
+    "after_2": "A proteção continua até o fim do mês pago.",
+    "after_3": "Depois disso, {lapse}",
+    "after_4": "Você pode assinar de novo quando quiser; o período de teste não é oferecido uma segunda vez.",
+    "refund_title": "Reembolsos",
+    "refund_body": "Devolvemos o mês se a proteção não funcionou por culpa nossa ou se uma cobrança foi feita depois de você cancelar. Escreva ao suporte com o número de telefone e a data da cobrança. O dinheiro volta para a conta do celular ou da forma que a operadora oferecer — normalmente em até 10 dias úteis.",
+    "refund_law": "Isso não limita seus direitos segundo a legislação de defesa do consumidor.",
+    "contact_title": "Suporte",
+    "contact_pending": "A caixa de e-mail do suporte ainda está sendo configurada; o endereço aparecerá aqui assim que funcionar. Até lá, cancele no app."
   },
   "Transparency": {
     "page_title": "Relatório de transparência",
@@ -539,6 +648,7 @@
         ]
       },
       {
+        "id": "payments",
         "title": "4. Planos pagos",
         "paragraphs": [
           "Em alguns países o Cleanway oferece planos pagos com extras. Não há planos pagos na Rússia. Onde eles existem, o pagamento é feito pela Stripe, o preço e o período aparecem antes do pagamento e você pode cancelar quando quiser — o plano continua ativo até o fim do período pago. Reembolsos seguem o que a lei exige. Bloquear sites de golpe nunca vai virar um recurso pago."
@@ -596,7 +706,20 @@
         "title": "11. Contato",
         "paragraphs": []
       }
-    ]
+    ],
+    "billing": {
+      "section": {
+        "id": "billing",
+        "title": "4. Assinatura e pagamento",
+        "paragraphs": [
+          "Na Rússia o Cleanway é uma assinatura cobrada na conta do celular por meio da sua operadora e de um agregador de pagamentos. O preço do plano e a data da cobrança aparecem antes da confirmação; a assinatura começa só depois que você a confirma com um código SMS do seu número. Os primeiros dias após a instalação são um período de teste sem cobrança; a duração e os preços estão na página de preços.",
+          "A assinatura é renovada todo mês até você cancelar. É possível cancelar no app, por SMS ou pelo suporte — depois do cancelamento nada mais é cobrado e a proteção continua até o fim do mês pago. Nunca deixamos a conta negativa nem criamos dívida. Se a proteção não funcionou por culpa nossa ou se houve cobrança depois do cancelamento, devolvemos esse mês; isso não limita seus direitos legais.",
+          "Os preços só podem mudar para novas assinaturas: uma assinatura ativa mantém o preço com que foi iniciada. Em outros países os planos pagos são pagos com cartão bancário via Stripe — lá também o preço e o período aparecem antes do pagamento, e é possível cancelar quando quiser."
+        ]
+      },
+      "lapse_basic": "Se um pagamento continuar falhando após as novas tentativas, a assinatura é pausada, mas o bloqueio básico de sites fraudulentos conhecidos continua funcionando sem cobrança — a lista é atualizada uma vez por semana.",
+      "lapse_off": "Se um pagamento continuar falhando após as novas tentativas, a assinatura é pausada e a proteção é desativada até o próximo pagamento."
+    }
   },
   "PrivacyPolicy": {
     "meta_title": "Política de privacidade — Cleanway",
@@ -700,6 +823,7 @@
         ]
       },
       {
+        "id": "payments",
         "title": "12. Pagamentos",
         "paragraphs": [
           "Não há planos pagos na Rússia. Onde eles existem, o pagamento passa pela Stripe: a Stripe recebe seu e-mail e o plano escolhido e cuida do cartão por conta própria. Nunca vemos nem guardamos os dados do cartão."
@@ -751,7 +875,99 @@
           "Se mudarmos esta política, publicaremos a nova versão nesta página com uma data nova."
         ]
       }
-    ]
+    ],
+    "billing": {
+      "section": {
+        "id": "billing",
+        "title": "12. Pagamento da assinatura",
+        "paragraphs": [
+          "Na Rússia a assinatura é cobrada na conta do celular. Para ativá-la você informa um número de telefone — o seu ou o do familiar que paga. O período de teste não precisa de número.",
+          "O número de telefone, o plano, as datas e o histórico de cobranças ficam em um banco de dados separado localizado na Rússia, à parte dos demais dados do Cleanway. O número é armazenado criptografado; em registros, relatórios de erro e telas ele aparece só em parte. Não temos dados de cartão bancário: nenhum cartão participa desse pagamento.",
+          "Sua operadora e o agregador de pagamentos que processam a cobrança recebem o número e o valor — eles tratam esses dados conforme as próprias regras. Também guardamos o registro do consentimento: qual texto e qual preço você viu e como confirmou.",
+          "Os registros de pagamentos e consentimentos são mantidos pelo tempo exigido pelas normas contábeis e fiscais — até cinco anos; terminada a assinatura e passado esse prazo, o número de telefone é apagado do banco de dados. Em outros países o pagamento passa pelo Stripe: o Stripe recebe seu e-mail e o plano escolhido e processa o cartão por conta própria; nunca vemos nem guardamos os dados do cartão."
+        ]
+      }
+    }
+  },
+  "ExtensionConnect": {
+    "meta_title": "Conectar a extensão — Cleanway",
+    "loading": "Verificando seu login…",
+    "heading": "Conecte este navegador à sua conta Cleanway",
+    "signed_in_as": "Conectado como {email}",
+    "explain": "A extensão do Cleanway neste navegador vai usar esta conta para o Hub Familiar e a sincronização das configurações. Ela terá o próprio login: sair na extensão não encerra sua sessão no site.",
+    "connect": "Conectar",
+    "connecting": "Conectando…",
+    "other_account": "Usar outra conta",
+    "connected_title": "Este navegador está conectado",
+    "connected_body": "Você já pode fechar esta aba.",
+    "no_state_title": "Comece pela extensão",
+    "no_state_body": "Abra a extensão do Cleanway neste navegador e clique em “Entrar”. Ela traz você de volta para cá.",
+    "error_no_extension": "A extensão do Cleanway não respondeu neste navegador. Verifique se ela está instalada e ativada e clique de novo em “Entrar” na extensão.",
+    "error_state": "Este pedido de login expirou. Clique de novo em “Entrar” na extensão.",
+    "error_failed": "Não foi possível conectar a extensão. Tente de novo.",
+    "error_network": "Sem conexão com o servidor. Verifique sua internet e tente de novo.",
+    "error_locked": "Sua conta está agendada para exclusão. Restaure-a para conectar a extensão.",
+    "restore_cta": "Restaurar minha conta",
+    "error_unavailable": "O login não está disponível agora. A proteção funciona sem conta.",
+    "handover_note": "A extensão recebe apenas um login desta conta. Nenhuma senha é usada.",
+    "error_device_limit": "Todos os dispositivos do seu plano estão em uso, então este navegador não foi conectado. Desvincule um dispositivo que você não usa mais e clique em “Entrar” na extensão de novo.",
+    "devices_cta": "Gerenciar dispositivos"
+  },
+  "Account": {
+    "plan_heading": "Plano",
+    "plan_free": "Grátis",
+    "plan_personal": "Pessoal",
+    "plan_family": "Família",
+    "plan_business": "Empresas",
+    "plan_paid": "Plano pago",
+    "free_desc": "Bloquear sites de golpe conhecidos é sempre grátis",
+    "source_stripe": "Pago em cleanway.ai",
+    "source_google_play": "Pago no Google Play",
+    "source_app_store": "Pago na App Store",
+    "source_rustore": "Pago na RuStore",
+    "source_operator_ru": "Pago com o saldo do celular",
+    "source_promo": "Código promocional",
+    "source_partner": "De um parceiro",
+    "source_other": "Pago",
+    "status_active": "Ativo",
+    "status_paid_until": "Pago até {date}",
+    "status_trial": "Teste grátis",
+    "status_trial_until": "Teste grátis até {date}",
+    "status_past_due": "O pagamento não foi concluído — atualize sua forma de pagamento",
+    "devices_heading": "Dispositivos",
+    "devices_count": "{used} de {limit}",
+    "devices_note": "Um dispositivo é um celular, tablet ou navegador conectado a esta conta. Desvincule o que você não usa mais e a vaga fica livre na hora.",
+    "last_seen": "Último uso: {date}",
+    "platform_android": "Celular Android",
+    "platform_ios": "iPhone ou iPad",
+    "platform_extension": "Extensão do navegador",
+    "platform_web": "Navegador",
+    "unlink": "Desvincular",
+    "unlink_failed": "Não foi possível desvincular o dispositivo. Tente de novo.",
+    "error_load": "Não foi possível carregar sua conta. Verifique a conexão e tente de novo.",
+    "retry": "Tentar de novo",
+    "delete_cta": "Excluir conta",
+    "delete_failed": "Não conseguimos falar com o servidor, então nada foi excluído. Tente de novo daqui a pouco.",
+    "page_title": "Sua conta Cleanway",
+    "page_meta_description": "Seu plano Cleanway e os dispositivos vinculados à sua conta.",
+    "heading": "Sua conta",
+    "signed_in_as": "Conectado como {email}",
+    "loading": "Carregando sua conta…",
+    "no_session_title": "Entre para ver sua conta",
+    "no_session_body": "Use o e-mail com que você se cadastrou — enviaremos um código de acesso.",
+    "no_session_cta": "Entrar",
+    "locked_body": "Sua conta está agendada para exclusão.",
+    "locked_cta": "Restaurar",
+    "plans_cta": "Ver planos",
+    "devices_empty": "Nenhum dispositivo vinculado ainda. Entre no app Cleanway ou na extensão do navegador para adicionar um.",
+    "unlink_confirm": "Desvincular {name}? Ele será desconectado da sua conta. A proteção nele continua funcionando sem conta.",
+    "unlinking": "Desvinculando…",
+    "sign_out": "Sair",
+    "delete_heading": "Excluir conta",
+    "delete_body": "Exclui sua conta, seu plano e as configurações sincronizadas. Uma assinatura paga em cleanway.ai é cancelada na hora e não é cobrada de novo. Você pode restaurar a conta em até 30 dias entrando nela.",
+    "delete_confirm": "Excluir sua conta Cleanway? Você pode restaurá-la em até 30 dias entrando nela.",
+    "delete_done": "Sua conta foi excluída e você saiu. Entre em até 30 dias se quiser restaurá-la.",
+    "brand": "Cleanway"
   },
   "Reasons": {
     "flagged_dangerous": "O Google marca este site como perigoso",

@@ -1450,5 +1450,46 @@
   },
   "options_family_invite_qr_alt": {
     "message": "QR code for the Cleanway family invite"
+  },
+  "account_heading": {
+    "message": "Account"
+  },
+  "account_sign_in": {
+    "message": "Sign in"
+  },
+  "account_sign_out": {
+    "message": "Sign out"
+  },
+  "account_signed_in": {
+    "message": "Signed in"
+  },
+  "account_signed_in_as": {
+    "message": "Signed in as $EMAIL$",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "account_signed_in_desc": {
+    "message": "Used for Family Hub and settings sync. Signing out doesn't turn protection off."
+  },
+  "account_signed_out": {
+    "message": "Not signed in"
+  },
+  "account_signed_out_desc": {
+    "message": "Sign in to use Family Hub and sync settings. Protection works without an account."
+  },
+  "account_pending": {
+    "message": "Finish signing in on the Cleanway tab"
+  },
+  "account_expired": {
+    "message": "Your sign-in has expired"
+  },
+  "account_device_revoked": {
+    "message": "This browser was removed from your account. Sign in again to use it here."
+  },
+  "account_device_limit": {
+    "message": "All devices on your plan are in use. Unlink one at cleanway.ai/account, then sign in again."
   }
 }

@@ -20,7 +20,12 @@ import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
 import { useLinkGuard } from "../../src/hooks/useLinkGuard";
 import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
 import { MessageCheckCard } from "../../src/components/shield/MessageCheckCard";
-import { isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
+import { KeepAliveCard } from "../../src/components/shield/KeepAliveCard";
+import { useKeepAlive } from "../../src/hooks/useKeepAlive";
+import { shieldForKeepAlive } from "../../src/utils/keep-alive";
+import { callState, isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
+import { CallHelpButton } from "../../src/components/call/CallHelpButton";
+import { useCallGuard } from "../../src/components/call/CallGuardProvider";
 import type { HistoryFilter } from "../../src/utils/history-model";
 
 /**
@@ -77,6 +82,13 @@ export default function HomeScreen() {
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [pauseSheetVisible, setPauseSheetVisible] = useState(false);
   const network = useNetworkShield();
+  // The stop screen: a pause asked for during (or right after) a phone call
+  // is what a scammer asks for, so it goes through the guard first.
+  const callGuard = useCallGuard();
+  // "I'm being called" only where the phone's calls can be seen at all
+  // (Android with the native module); elsewhere the button would open a
+  // screen about calls the app knows nothing of.
+  const [callHelp] = useState(() => callState() !== null);
   // The link guard (Android): when Cleanway is the default link handler, tapped
   // links are checked before they open — the exact SMS-phishing defense.
   const linkGuard = useLinkGuard();
@@ -95,6 +107,10 @@ export default function HomeScreen() {
   // Sideloaded (Tele2 direct-APK) users have no store to push updates; offer a
   // fresher build here, and insist if the running one is below the security floor.
   const update = useUpdateCheck(i18n.language);
+  // What keeps the shield running with the app closed (battery, the phone
+  // maker's own manager, alerts, Always-on). Re-read when the shield changes:
+  // Always-on can only be read while it runs.
+  const keepAlive = useKeepAlive(`${network.state}:${network.verified}`);
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -128,6 +144,11 @@ export default function HomeScreen() {
   const needsSetup = network.available && network.state === "setup";
   // Was on, and something else stopped it: not a first setup (ShieldState "stopped").
   const stopped = needsSetup && network.interrupted;
+  // "Keep protection on" once the person has turned the shield on: running,
+  // paused, or stopped by something else — the case it exists to prevent.
+  // Not before the first setup (nothing to keep yet), and not under strict
+  // Private DNS, where the card above names the one setting that matters.
+  const showKeepAlive = network.available && (stopped || (network.state !== "setup" && network.state !== "conflict"));
   // Paused or blocked by Private DNS: whatever else is on, the hero is not green.
   const heroHold: HeroHold | null =
     network.state === "paused" ? { kind: "paused", until: network.pausedUntil }
@@ -183,7 +204,7 @@ export default function HomeScreen() {
    * second, and "keep protection" the most prominent choice.
    */
   function confirmPause() {
-    setPauseSheetVisible(true);
+    callGuard.guard("pause", () => setPauseSheetVisible(true));
   }
 
   return (
@@ -202,6 +223,12 @@ export default function HomeScreen() {
       />
 
       <UpdateBanner status={update} />
+
+      {callHelp && (
+        <View style={s.section}>
+          <CallHelpButton onPress={() => router.push("/call-guard")} />
+        </View>
+      )}
 
       {needsSetup && (
         <>
@@ -331,21 +358,16 @@ export default function HomeScreen() {
               <Ionicons name="chevron-forward" size={14} color={colors.amber} />
             </TouchableOpacity>
           )}
-          {network.verified && (
-            // Protection returns on its own after a reboot; Always-on VPN
-            // additionally starts it with the phone, before any app receives
-            // BOOT_COMPLETED. Offer it as an upgrade, not as a requirement.
-            <TouchableOpacity
-              style={s.hintRow}
-              onPress={network.openVpnSettings}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-            >
-              <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
-              <Text style={s.hintText}>{t("mobile.shield.always_on_hint")}</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
+        </View>
+      )}
+
+      {showKeepAlive && (
+        // Protection health: the shield, the battery exemption, the phone
+        // maker's own battery manager, alerts, and Always-on VPN (optional —
+        // protection already returns by itself after a reboot; Always-on
+        // starts it with the phone, before any app receives BOOT_COMPLETED).
+        <View style={s.section}>
+          <KeepAliveCard shield={shieldForKeepAlive(network.state, network.verified)} keepAlive={keepAlive} />
         </View>
       )}
 
