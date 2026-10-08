@@ -10,24 +10,33 @@
  *  - Persists the last server snapshot, so a known "you must update" verdict
  *    survives being offline and shows on every launch — a security floor you
  *    can dodge by turning off wifi is not a floor.
- *  - Network is throttled (once per CHECK_INTERVAL_MS); the decision itself is
- *    derived from the persisted snapshot every mount, instantly.
+ *  - The same answer carries the server's switches for the on-phone checks
+ *    (src/lib/remote-config.ts — the SMS text model's kill switch). They go
+ *    straight to the native module, which keeps them for the Kotlin message
+ *    check; an answer without them leaves the stored ones in force.
+ *  - Asked on app start and, while the app stays open, about daily when it
+ *    returns to the foreground — never more than once an hour (refreshDue),
+ *    so a switch flipped on the server reaches a phone at its next launch.
+ *    The decision itself is derived from the persisted snapshot every mount,
+ *    instantly.
  *  - A network failure shows nothing. We never invent a scary "out of date".
  *  - An OPTIONAL nudge is dismissible per target version (dismiss once, we stay
  *    quiet until there's an even newer one). A REQUIRED gate is never
  *    dismissible.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
+import { setRemoteConfig } from "../../modules/cleanway-vpn";
 import {
   decideUpdate,
   fetchVersionInfo,
   type UpdateDecision,
   type VersionInfo,
 } from "../lib/update-check";
+import { readStamp, refreshDue, remoteConfigWire, type RefreshTrigger } from "../lib/remote-config";
 
 const API_BASE = (
   (typeof process !== "undefined" && process.env?.EXPO_PUBLIC_API_URL) ||
@@ -36,13 +45,13 @@ const API_BASE = (
 ).replace(/\/+$/, "");
 
 const WEB_BASE = "https://cleanway.ai";
-const CHECK_INTERVAL_MS = 20 * 60 * 60 * 1000; // ~daily, off launch cadence
-// After a failed check (endpoint not deployed yet, offline, 5xx) wait this long
-// instead of the full interval — but DO record the attempt, so a permanently
-// 404ing endpoint isn't re-hit on every single cold start.
-const RETRY_INTERVAL_MS = 60 * 60 * 1000;
 const SNAPSHOT_KEY = "cleanway_update_snapshot";
+// The last SUCCESSFUL check. (Before 1.0.4 a failure also wrote here, backdated
+// to retry within the hour; such a stamp now simply reads as an older success.)
 const LAST_CHECK_KEY = "cleanway_update_last_check";
+// The last attempt, success or not: the hourly floor (remote-config.ts
+// MIN_GAP_MS) that keeps a launch loop or a failing endpoint from hammering us.
+const LAST_ATTEMPT_KEY = "cleanway_update_last_attempt";
 const DISMISSED_KEY = "cleanway_update_dismissed"; // the version name last dismissed
 
 const RUNNING = Constants.expoConfig?.version ?? "0.0.0";
@@ -83,6 +92,50 @@ export function useUpdateCheck(lang: string = "en"): UpdateStatus {
   useEffect(() => {
     if (Platform.OS !== "android") return;
     let alive = true;
+    let inFlight = false;
+
+    // Ask the server if it is time (refreshDue), and apply what comes back.
+    const refresh = async (trigger: RefreshTrigger) => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        let lastAttempt = 0;
+        let lastSuccess = 0;
+        try {
+          const [rawAttempt, rawSuccess] = await Promise.all([
+            SecureStore.getItemAsync(LAST_ATTEMPT_KEY),
+            SecureStore.getItemAsync(LAST_CHECK_KEY),
+          ]);
+          lastAttempt = readStamp(rawAttempt);
+          lastSuccess = readStamp(rawSuccess);
+        } catch {
+          // Unreadable stamps → treat as never checked.
+        }
+        const now = Date.now();
+        if (!refreshDue(trigger, now, lastAttempt, lastSuccess)) return;
+        try {
+          await SecureStore.setItemAsync(LAST_ATTEMPT_KEY, String(now));
+        } catch {
+          // best effort
+        }
+        const fetched = await fetchVersionInfo(API_BASE);
+        // A failed check changes nothing: the snapshot and the native switches
+        // stay as they were, and the next try waits for the hourly floor.
+        if (!fetched) return;
+        // The switches first, and even if the screen has gone: the native
+        // message check reads them, not this component.
+        if (fetched.remoteConfig) setRemoteConfig(remoteConfigWire(fetched.remoteConfig));
+        if (alive) setInfo(fetched);
+        try {
+          await SecureStore.setItemAsync(SNAPSHOT_KEY, JSON.stringify(fetched));
+          await SecureStore.setItemAsync(LAST_CHECK_KEY, String(Date.now()));
+        } catch {
+          // Persisting is best-effort; the in-memory decision still holds.
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
 
     (async () => {
       // 1. Load whatever we already know — instant, offline-safe.
@@ -98,48 +151,18 @@ export function useUpdateCheck(lang: string = "en"): UpdateStatus {
       }
       if (alive) setReady(true);
 
-      // 2. Refresh from the network at most once per interval.
-      try {
-        const rawLast = await SecureStore.getItemAsync(LAST_CHECK_KEY);
-        const last = rawLast ? parseInt(rawLast, 10) : 0;
-        const now = Date.now();
-        const elapsed = now - last;
-        // `elapsed < 0` means the stored stamp is in the FUTURE — the phone's
-        // clock was ahead when we last checked (common on cheap devices booting
-        // without a network). Treating that as "checked recently" would disable
-        // update checks forever, so a future stamp counts as stale.
-        const fresh = Number.isFinite(last) && elapsed >= 0 && elapsed < CHECK_INTERVAL_MS;
-        if (fresh) return;
-      } catch {
-        // fall through and check
-      }
-      const fetched = await fetchVersionInfo(API_BASE);
-      if (!alive) return;
-      if (!fetched) {
-        // Record the failed attempt with a shorter backoff so a not-yet-deployed
-        // endpoint doesn't get hit on every launch, but a transient outage still
-        // resolves within the hour.
-        try {
-          await SecureStore.setItemAsync(
-            LAST_CHECK_KEY,
-            String(Date.now() - (CHECK_INTERVAL_MS - RETRY_INTERVAL_MS)),
-          );
-        } catch {
-          // best effort
-        }
-        return;
-      }
-      setInfo(fetched);
-      try {
-        await SecureStore.setItemAsync(SNAPSHOT_KEY, JSON.stringify(fetched));
-        await SecureStore.setItemAsync(LAST_CHECK_KEY, String(Date.now()));
-      } catch {
-        // Persisting is best-effort; the in-memory decision still holds.
-      }
+      // 2. App start: ask the server (at most once an hour).
+      await refresh("start");
     })();
+
+    // 3. While the app stays open: about daily, when it comes back to the front.
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refresh("resume");
+    });
 
     return () => {
       alive = false;
+      sub.remove();
     };
   }, []);
 

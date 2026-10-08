@@ -10,6 +10,7 @@ import { colors, type as typo, space, radius, sectionHeader } from "../src/utils
 import { getSessionState } from "../src/services/auth";
 import { getEntitlement, unlinkDevice, type AccountDevice, type EntitlementResponse } from "../src/services/api";
 import { linkThisDevice, signOutUnlinkedDevice } from "../src/services/account";
+import { rememberEntitlement } from "../src/services/freemium";
 import { confirmDeleteAccount, signOutEverywhereLocal } from "../src/services/account-actions";
 import { accountFailure, planKey, platformKey, sourceKey, statusKey } from "../src/utils/account-session";
 import { paidPlansVisible } from "../src/config/market";
@@ -64,6 +65,7 @@ export default function AccountScreen() {
     const { data, error } = await getEntitlement();
     if (data) {
       setLoad({ kind: "ready", email, ent: data });
+      void rememberEntitlement(data);
     } else if (accountFailure(error) === "signed_out") {
       setLoad({ kind: "signed_out" });
     } else if (accountFailure(error) !== "revoked") {

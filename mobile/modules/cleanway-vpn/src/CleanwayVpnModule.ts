@@ -71,6 +71,14 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
    * validates it into a MessageAnalysis. Optional: older native builds lack it.
    */
   analyzeMessage?(text: string): Promise<Record<string, unknown>>;
+  /**
+   * Store the server's switches for the on-phone checks (remote_config, as
+   * JSON) where the native message check reads them. False, keeping the last
+   * stored ones, when it is not a config. Optional: older native builds lack it.
+   */
+  setRemoteConfig?(json: string): boolean;
+  /** The switches the message check uses now (stored, else defaults), as JSON. */
+  remoteConfig?(): string;
   /** The blocklisted suffix covering this host (DNS rules), or null. */
   matchBlocklist?(host: string): Promise<string | null>;
   /** A blocklist exists for the link guard: the shield's, a synced copy on disk, or the bundled seed. */

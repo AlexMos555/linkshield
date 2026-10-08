@@ -499,6 +499,21 @@ class CleanwayVpnModule : Module() {
     }
 
     /**
+     * Store the server's switches for the on-phone checks (`remote_config` of
+     * the update check, as JSON — ai.cleanway.app.RemoteConfig). The message
+     * check reads them on every call. False, with the last stored ones kept,
+     * when the JSON is not a config.
+     */
+    Function("setRemoteConfig") { json: String ->
+      ai.cleanway.app.RemoteConfigStore.save(context, json)
+    }
+
+    /** The switches the message check uses now (stored, else the defaults), as JSON. */
+    Function("remoteConfig") {
+      ai.cleanway.app.RemoteConfigStore.current(context).toJson()
+    }
+
+    /**
      * The blocklisted suffix that covers [host], or null. Same rules as the
      * DNS path: system domains and sites the person allowed never match.
      * Works with the shield off (reads the synced list from disk).

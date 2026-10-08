@@ -58,26 +58,24 @@ logger = logging.getLogger(__name__)
 
 # Configuration — these knobs matter for cost AND safety.
 #
-# Model choice — this is the "is this site dangerous?" call. We're
-# defaulting to Opus 4.8 (flagship reasoning model) because the
-# question is high-stakes: a wrong "safe" call costs the user
-# their credentials. Haiku 4.5 is the FALLBACK when Opus times
-# out or errors. Both knobs are env-tunable for ops:
+# Model choice — the judge only nudges a caution-band score by at most ±20
+# points (see judge_ambiguous_verdict); it never decides a verdict alone.
+# Haiku 4.5 is the default since 2026-10-08: at the 300-call daily cap Opus
+# cost up to ~$400/month for that nudge, Haiku ~$25. Sonnet is the fallback
+# when Haiku times out or errors (rare, so its higher price barely shows).
+# Both knobs stay env-tunable for ops:
 #
-#   LLM_JUDGE_MODEL_PRIMARY=claude-opus-4-8
-#   LLM_JUDGE_MODEL_FALLBACK=claude-haiku-4-5-20251001
+#   LLM_JUDGE_MODEL_PRIMARY=claude-haiku-4-5-20251001
+#   LLM_JUDGE_MODEL_FALLBACK=claude-sonnet-5
 #   LLM_JUDGE_TIMEOUT_S=10.0
 #
-# Cost at scale: Opus is ~$15/$75 per million in/out tokens vs
-# Haiku $1/$5. We cache aggressively by feature fingerprint so
-# the average user-visible call is a cache hit, not a fresh
-# Opus run. Real spend depends on the unique-feature-set
-# cardinality of caution-band traffic — typically small.
+# Prices per million input/output tokens: Haiku $1/$5, Sonnet $3/$15,
+# Opus $15/$75. Calls are cached by feature fingerprint for 7 days.
 LLM_JUDGE_MODEL_PRIMARY = os.environ.get(
-    "LLM_JUDGE_MODEL_PRIMARY", "claude-opus-4-8"
+    "LLM_JUDGE_MODEL_PRIMARY", "claude-haiku-4-5-20251001"
 )
 LLM_JUDGE_MODEL_FALLBACK = os.environ.get(
-    "LLM_JUDGE_MODEL_FALLBACK", "claude-haiku-4-5-20251001"
+    "LLM_JUDGE_MODEL_FALLBACK", "claude-sonnet-5"
 )
 LLM_TIMEOUT_S = float(os.environ.get("LLM_JUDGE_TIMEOUT_S", "10.0"))
 LLM_MAX_SHIFT = 20            # max points the judge can move the score

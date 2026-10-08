@@ -2262,7 +2262,7 @@
       "meta_description": "Was Cleanway erhält, was auf deinem Handy bleibt, wer sonst was sieht und wie lange alles gespeichert wird.",
       "back": "Zurück zu Cleanway",
       "title": "Datenschutzerklärung",
-      "updated": "Zuletzt aktualisiert: 27. September 2026",
+      "updated": "Zuletzt aktualisiert: 8. Oktober 2026",
       "intro": "Diese Erklärung beschreibt in einfachen Worten, welche Daten Cleanway verarbeitet, warum und wer sie sonst noch sieht. Sie beschreibt den Dienst so, wie er heute funktioniert. Wenn hier etwas nicht zu dem passt, was Cleanway tatsächlich tut, ist das ein Fehler, und wir möchten davon erfahren.",
       "contact_live": "Fragen und Anfragen zu deinen Daten:",
       "contact_not_live": "Unser Support-Postfach wird noch eingerichtet, daher können wir noch keine E-Mails empfangen. Die Adresse erscheint hier, sobald es funktioniert.",
@@ -2287,14 +2287,14 @@
           "paragraphs": [
             "Wenn du den Schutz einschaltest, startet Cleanway einen lokalen Filter über den VPN-Mechanismus von Android. Durch ihn laufen nur DNS-Anfragen – die Fragen, mit denen das Handy die Adresse einer Seite sucht, etwa „Wo ist example.com?“. Seiteninhalte, deine Nachrichten und Anrufe laufen nicht durch den Filter und werden nicht gelesen.",
             "Jeder Seitenname wird mit der auf dem Handy gespeicherten Liste von Betrugsseiten abgeglichen. Steht er auf der Liste, öffnet das Handy die Seite nicht, und auf dem Handy wird ein Eintrag (Name der Seite, Uhrzeit und was passiert ist) für den Verlauf der App gespeichert.",
-            "Namen, die nicht auf der Liste stehen, werden weitergegeben, um die Adresse der Seite zu finden: zuerst an den DNS-Server des Netzes, mit dem das Handy verbunden ist – den deines Mobilfunkanbieters oder deines WLAN-Routers –, wie ohne Cleanway. Nur wenn er nicht antwortet, gehen sie an Cloudflare (1.1.1.1), dann an Quad9 (9.9.9.9) und als letzter Ausweg an das verschlüsselte DNS-over-HTTPS von Cloudflare. So arbeiten die App-Versionen 1.0.2 und 1.0.3; Version 1.0.1 fragte zuerst Cloudflare. Diese Dienste sehen den Namen der Seite und die IP-Adresse deiner Verbindung, wie jeder DNS-Dienst; es gelten ihre eigenen Datenschutzrichtlinien. Cleanway erhält und speichert diese Anfragen nicht.",
+            "Namen, die nicht auf der Liste stehen, werden weitergegeben, um die Adresse der Seite zu finden: zuerst an den DNS-Server des Netzes, mit dem das Handy verbunden ist – den deines Mobilfunkanbieters oder deines WLAN-Routers –, wie ohne Cleanway. Nur wenn er nicht antwortet, gehen sie an Cloudflare (1.1.1.1), dann an Quad9 (9.9.9.9) und als letzter Ausweg an das verschlüsselte DNS-over-HTTPS von Cloudflare. So arbeiten die App-Versionen 1.0.2 bis 1.0.4; Version 1.0.1 fragte zuerst Cloudflare. Diese Dienste sehen den Namen der Seite und die IP-Adresse deiner Verbindung, wie jeder DNS-Dienst; es gelten ihre eigenen Datenschutzrichtlinien. Cleanway erhält und speichert diese Anfragen nicht.",
             "Seit Version 1.0.2 enthält die App eine Kopie der Liste der Betrugsseiten, die nur genutzt wird, bis das Handy eine aktuelle Liste heruntergeladen hat."
           ]
         },
         {
           "title": "4. Die Liste der Betrugsseiten",
           "paragraphs": [
-            "Die App lädt die Liste von unserem Server (api.cleanway.ai) und aktualisiert sie etwa alle 6 Stunden, über mobile Daten seltener. Die Anfrage verrät nichts über die Seiten, die du besuchst: Sie enthält nur die üblichen technischen Angaben jeder Internetanfrage, etwa deine IP-Adresse, und eine Kennung der Listenversion, die das Handy schon hat. Ab und zu fragt die App unseren Server außerdem, ob es eine neue Version der App gibt."
+            "Die App lädt die Liste von unserem Server (api.cleanway.ai) und aktualisiert sie etwa alle 6 Stunden, über mobile Daten seltener. Die Anfrage verrät nichts über die Seiten, die du besuchst: Sie enthält nur die üblichen technischen Angaben jeder Internetanfrage, etwa deine IP-Adresse, und eine Kennung der Listenversion, die das Handy schon hat. Beim Öffnen (höchstens einmal pro Stunde) und etwa einmal am Tag fragt die App unseren Server außerdem, ob es eine neue Version der App gibt und welche Prüfungen auf dem Handy eingeschaltet sind; auch diese Anfrage verrät nichts über die Seiten, die du besuchst, oder deine Nachrichten."
           ]
         },
         {
@@ -3625,6 +3625,49 @@
       "not_signed_in": "Sie sind nicht angemeldet.",
       "load_failed": "Ihr Konto konnte nicht geladen werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
       "retry": "Erneut versuchen"
+    },
+    "paywall": {
+      "close": "Schließen",
+      "title": "Ohne Limit prüfen",
+      "lead": "Die kostenlosen Detailprüfungen für heute sind aufgebraucht. Seiten auf unserer Betrugsliste bleiben blockiert – mit oder ohne Abo.",
+      "per_month": "{{price}} pro Monat",
+      "per_year": "{{price}} pro Jahr",
+      "period_month": "/ Monat",
+      "period_year": "/ Jahr",
+      "alt_month": "oder {{price}} pro Monat",
+      "alt_year": "oder {{price}} pro Jahr",
+      "devices_note": "bis zu {{n}} Geräte",
+      "benefit_unlimited": "Unbegrenzte Detailprüfungen von Links und Nachrichten",
+      "benefit_sms": "Automatische SMS-Prüfung",
+      "benefit_text_model": "Textanalyse: warum es Betrug ist und was zu tun ist",
+      "benefit_calls": "Schutz während Telefonaten",
+      "benefit_devices": "Bis zu {{n}} Geräte in einem Konto",
+      "cta_sign_in": "Anmelden und abonnieren",
+      "cta_web": "Auf cleanway.ai abonnieren",
+      "cta_store": "Abonnieren",
+      "cta_soon_ru": "Bald: Bezahlen über das Handyguthaben",
+      "fine_cancel": "Jederzeit kündbar.",
+      "fine_soon": "Bezahlen über das Handyguthaben kommt bald. Bis dahin blockiert die Betrugsliste weiter, und die kostenlosen Prüfungen erneuern sich jeden Tag.",
+      "restore": "Schon bezahlt? Wiederherstellen",
+      "restore_sign_in": "Schon bezahlt? Anmelden",
+      "note_store_soon": "Bezahlen in der App kommt bald.",
+      "note_restore_none": "Für dieses Konto gibt es noch kein aktives Abo.",
+      "note_restore_failed": "Server nicht erreichbar. Bitte erneut versuchen.",
+      "note_web_opened": "Die Zahlung wurde im Browser geöffnet. Kommen Sie danach hierher zurück.",
+      "paid_done": "Ihr Abo ist aktiv – Prüfungen ohne Limit.",
+      "done": "Fertig",
+      "always_free": "Das Blockieren von Seiten auf unserer Betrugsliste ist immer kostenlos.",
+      "locked_title": "Die Detailanalyse gehört zum Abo",
+      "locked_body": "Die kostenlosen Detailprüfungen für heute sind aufgebraucht, morgen gibt es neue. Seiten auf unserer Betrugsliste werden immer blockiert.",
+      "locked_cta": "Ohne Limit prüfen",
+      "not_listed_title": "Nicht auf unserer Betrugsliste",
+      "not_listed_body": "Das allein heißt nicht, dass die Seite sicher ist – die Detailprüfung schaut viel genauer hin.",
+      "left_today": "Heute verbleibende kostenlose Prüfungen: {{n}}",
+      "none_left": "Die kostenlosen Prüfungen für heute sind aufgebraucht. Die Betrugsliste arbeitet weiter.",
+      "message_listed_sub": "Ein Link in dieser Nachricht steht auf unserer Liste von Betrugsseiten.",
+      "message_locked_title_links": "Kein Link von unserer Betrugsliste",
+      "message_locked_title_none": "Nachricht nicht analysiert",
+      "message_locked_sub": "Der Text wurde nicht gelesen: Die kostenlosen Detailprüfungen für heute sind aufgebraucht."
     }
   }
 }
