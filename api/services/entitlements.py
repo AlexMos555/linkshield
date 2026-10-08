@@ -18,12 +18,18 @@ legacy `subscriptions` row with no entitlement row of its own still counts
 as an active Stripe entitlement — nobody who paid loses their plan because
 the migration ran a little later than the deploy.
 
-Writers for the other sources are TODO hooks (`record_entitlement` is the
-single entry point they will call):
-  * google_play / app_store — RevenueCat webhook (not built; §2)
+Writers (`record_entitlement` is the single entry point):
+  * stripe                  — the Stripe webhook (api/routers/payments.py)
+  * google_play / app_store — the RevenueCat webhook and "Restore purchases"
+                              (api/services/revenuecat.py, §11)
   * rustore, operator_ru    — api/billing linking an operator subscription
                               to an account (not built; §7.3)
   * promo, partner          — admin tooling (not built)
+
+Extra-device ADD-ONS (a store sells "+1 device" as its own subscription):
+a row with plan = ADDON_PLAN whose device_limit is the number of EXTRA
+devices it adds. It never grants a plan by itself; while active it adds its
+devices to the best plan row (any source).
 """
 from __future__ import annotations
 
@@ -31,6 +37,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
+from urllib.parse import urlencode
 
 from api.config import get_settings
 from api.services import account_store
@@ -42,6 +49,11 @@ SOURCES = ("stripe", "google_play", "app_store", "rustore", "operator_ru", "prom
 STATUSES = (
     "active", "trialing", "past_due", "pending", "paused", "cancelled", "expired", "refunded",
 )
+# Plan of an extra-device add-on row (see the module docstring).
+ADDON_PLAN = "extra_devices"
+# entitlements.device_limit is capped at 100 (migration 023).
+MAX_DEVICE_LIMIT = 100
+
 # Statuses that grant the plan. past_due = Stripe is retrying a failed card;
 # the old tier resolver kept access during dunning too.
 ACTIVE_STATUSES = frozenset({"active", "trialing", "past_due"})
@@ -74,6 +86,8 @@ class Entitlement:
     external_id: Optional[str]
     period_end: Optional[str]
     device_limit: int
+    # Store product the plan was bought as (google_play / app_store rows).
+    product_id: Optional[str] = None
 
     @property
     def is_paid(self) -> bool:
@@ -129,11 +143,24 @@ def _row_limit(row: dict) -> int:
         return included_devices()
 
 
+def is_addon(row: dict) -> bool:
+    return row.get("plan") == ADDON_PLAN
+
+
+def _addon_extras(row: dict) -> int:
+    try:
+        return max(0, int(row.get("device_limit") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def effective_entitlement(rows: list[dict], now: Optional[datetime] = None) -> Entitlement:
-    """The best active row, or free. Best = most devices, then the end date
-    furthest away (open-ended beats any date)."""
+    """The best active plan row, or free. Best = most devices, then the end
+    date furthest away (open-ended beats any date). Active extra-device
+    add-ons add their devices to it; add-ons alone grant nothing."""
     active = [r for r in rows if row_is_active(r, now)]
-    if not active:
+    plans = [r for r in active if not is_addon(r)]
+    if not plans:
         return free_entitlement()
 
     far_future = datetime.max.replace(tzinfo=timezone.utc)
@@ -141,14 +168,16 @@ def effective_entitlement(rows: list[dict], now: Optional[datetime] = None) -> E
     def rank(r: dict) -> tuple:
         return (_row_limit(r), _parse_ts(r.get("period_end")) or far_future)
 
-    best = max(active, key=rank)
+    best = max(plans, key=rank)
+    extras = sum(_addon_extras(r) for r in active if is_addon(r))
     return Entitlement(
         plan=str(best.get("plan") or "personal"),
         status=str(best["status"]),
         source=str(best.get("source")),
         external_id=best.get("external_id"),
         period_end=best.get("period_end"),
-        device_limit=_row_limit(best),
+        device_limit=min(MAX_DEVICE_LIMIT, _row_limit(best) + extras),
+        product_id=best.get("product_id"),
     )
 
 
@@ -216,6 +245,34 @@ async def has_active_entitlement(account_id: str, *, legacy_row: Any = _UNSET) -
     return best if best.is_paid else None
 
 
+#: Where a paid plan is managed (changed / cancelled), by source. The app
+#: and the site send the person there: a plan paid through Google Play can
+#: only be cancelled in Google Play, and so on.
+ACCOUNT_PAGE_URL = "https://cleanway.ai/account"
+PLAY_SUBSCRIPTIONS_URL = "https://play.google.com/store/account/subscriptions"
+APP_STORE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions"
+
+
+def manage_url(ent: Entitlement) -> Optional[str]:
+    """Link to where this plan is managed, or None (free, or a source with
+    no self-service page: operator, promo, partner)."""
+    if ent.source == "stripe":
+        # The account page carries the "Manage or cancel" button that opens
+        # the Stripe Customer Portal (POST /api/v1/payments/portal).
+        return ACCOUNT_PAGE_URL
+    if ent.source == "google_play":
+        package = get_settings().google_play_package_name
+        # Play products since 2023 are "<subscription id>:<base plan id>";
+        # Play's deep link wants the subscription id as `sku`.
+        sku = (ent.product_id or "").split(":", 1)[0]
+        if package and sku:
+            return f"{PLAY_SUBSCRIPTIONS_URL}?{urlencode({'sku': sku, 'package': package})}"
+        return PLAY_SUBSCRIPTIONS_URL
+    if ent.source == "app_store":
+        return APP_STORE_SUBSCRIPTIONS_URL
+    return None
+
+
 # ── writers ──
 
 
@@ -228,10 +285,13 @@ async def record_entitlement(
     plan: Optional[str] = None,
     period_end: Optional[str] = None,
     device_limit: Optional[int] = None,
+    product_id: Optional[str] = None,
+    source_event_at: Optional[str] = None,
 ) -> None:
     """Create or update the (source, external_id) row. Fields left as None
     keep their stored value on update (plan defaults to 'personal' and
-    device_limit to PLAN_INCLUDED_DEVICES on insert). Raises EntitlementError."""
+    device_limit to PLAN_INCLUDED_DEVICES on insert). `product_id` and
+    `source_event_at` need migration 024. Raises EntitlementError."""
     if source not in SOURCES:
         raise ValueError(f"unknown entitlement source: {source}")
     if status not in STATUSES:
@@ -254,7 +314,11 @@ async def record_entitlement(
     if period_end:
         row["period_end"] = period_end
     if device_limit is not None:
-        row["device_limit"] = max(1, int(device_limit))
+        row["device_limit"] = min(MAX_DEVICE_LIMIT, max(1, int(device_limit)))
+    if product_id:
+        row["product_id"] = product_id
+    if source_event_at:
+        row["source_event_at"] = source_event_at
     try:
         await store.upsert_entitlement(row)
     except AccountStoreError as e:
