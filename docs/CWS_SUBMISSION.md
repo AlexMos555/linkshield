@@ -49,8 +49,9 @@ Cleanway flags phishing and scam links before you click.
   never sent anywhere.
 • For unknown domains, Cleanway checks the DOMAIN (not the full URL, not the page
   content) against 16 threat-intelligence sources plus an ML model.
-• Optional webmail scanning (Gmail, Outlook, Yahoo) checks an open message for
-  phishing. This reads the open message's content — see the privacy section.
+• Optional webmail scanning (Gmail, Outlook, Yahoo), OFF until you switch it on in
+  Settings, checks each message you open for phishing. It sends that message's
+  subject, sender, reply-to, text and links — see the privacy section.
 • Optional breach check warns if a password you type appears in a known breach,
   using k-anonymity (only the first 5 characters of a SHA-1 hash ever leave the
   device — never your password).
@@ -72,8 +73,10 @@ cleanway.ai/transparency.
 
 ## 3. Permission justifications
 
-Paste one per permission. All 5 permissions and all 6 host-permissions are
-**actually exercised** in code (verified) — none are removable.
+Paste one per permission. All 6 permissions and both install-time host
+permissions are **actually exercised** in code (verified) — none are removable.
+The four webmail hosts are **optional** host permissions, requested only when
+the user switches the webmail scanner on in Settings.
 
 | Permission | Justification |
 |---|---|
@@ -82,6 +85,7 @@ Paste one per permission. All 5 permissions and all 6 host-permissions are
 | `alarms` | Runs periodic background jobs that must survive MV3 service-worker suspension: local history pruning and the Family Hub notification poll. |
 | `contextMenus` | Adds right-click items "Check with Cleanway" (links) and "Privacy Audit" (pages) so users can trigger a check on demand. |
 | `notifications` | Shows OS notifications for dangerous-site and Family Hub alerts, with a click handler to open the relevant page. |
+| `scripting` | Registers the opt-in webmail scanner (`src/content/webmail.js`) on Gmail / Outlook / Yahoo Mail only after the user switches it on in Settings and grants those sites, and unregisters it when they switch it off (`scripting.registerContentScripts` / `unregisterContentScripts`, plus `executeScript` into mail tabs already open). Nothing else is injected this way. |
 
 **Host permissions:**
 
@@ -89,10 +93,17 @@ Paste one per permission. All 5 permissions and all 6 host-permissions are
 |---|---|
 | `https://api.cleanway.ai/*` | Primary backend: domain safety checks, optional webmail analysis, breach check, feedback, user settings. |
 | `https://*.cleanway.ai/*` | First-party only. Covers the API subdomain and account/pricing links. (Could be narrowed to `api.cleanway.ai` — see §7.) |
-| `https://mail.google.com/*` | Webmail phishing scan for Gmail (opt-in feature). |
-| `https://outlook.office.com/*` | Webmail phishing scan for Outlook (work/edu). |
-| `https://outlook.live.com/*` | Webmail phishing scan for Outlook.com (consumer). |
-| `https://mail.yahoo.com/*` | Webmail phishing scan for Yahoo Mail. |
+
+**Optional host permissions** (`optional_host_permissions`; not granted at install,
+requested from the Settings switch "Scan emails I open in Gmail, Outlook and Yahoo
+for phishing", given back when it is switched off):
+
+| Host | Justification |
+|---|---|
+| `https://mail.google.com/*` | Opt-in webmail phishing scan for Gmail. |
+| `https://outlook.office.com/*` | Opt-in webmail phishing scan for Outlook (work/edu). |
+| `https://outlook.live.com/*` | Opt-in webmail phishing scan for Outlook.com (consumer). |
+| `https://mail.yahoo.com/*` | Opt-in webmail phishing scan for Yahoo Mail. |
 
 **Content scripts on `<all_urls>`:** justified — the injected scripts run a
 100%-on-device scoring engine (`src/utils/local-scorer.js`) and badge links locally;
@@ -112,7 +123,7 @@ egress paths. **Bold = you must tick "collected" and disclose.**
 | CWS data type | Collected? | What / why (grounded in code) |
 |---|---|---|
 | **Web history** | **YES** | Domain (hostname only, no full URL/path/query) of unknown links/pages is sent to `api.cleanway.ai/api/v1/public/check` to score safety. Known-safe + cached domains are never sent. `feedback/report` sends a domain when the user reports a wrong verdict. |
-| **Personal communications** | **YES** | Webmail scan (opt-in, Gmail/Outlook/Yahoo) sends the **open message's** sender, subject, and body (text+HTML) to `api/v1/email/analyze` for phishing analysis. No other messages, recipients, thread IDs, or attachments. |
+| **Personal communications** | **YES** | Webmail scan (opt-in, off by default, Gmail/Outlook/Yahoo) sends **each message the user opens** — subject, sender name and address, Reply-To, body text, and the address and text of each link (not the HTML) — to `api/v1/email/analyze` for phishing analysis. Processed in memory, not stored. No other messages, recipients, thread IDs, or attachments. |
 | **Authentication info** | **YES** | Breach check sends only the **first 5 hex chars of the SHA-1** of a typed password (k-anonymity) to `api/v1/breach/check` — never the password or full hash. Signed-in users send a JWT on authenticated calls. |
 | **Personally identifiable info** | **YES (Family Hub only)** | If the user creates/joins a Family Hub, a display name and invite are sent. Alert contents between members are **end-to-end encrypted** (server stores ciphertext only). |
 | **User activity** | **YES** | Aggregate: dangerous-block counts (integer only), user settings (skill level, font scale), a per-install random device id (UUID, not hardware-derived). |
@@ -137,7 +148,8 @@ The extension **is** privacy-respecting, but "your browsing data never leaves yo
 device" is **not literally true** and must not appear in the listing or landing:
 - Domains of **unknown** sites are sent to Cleanway to be scored (full URLs, paths,
   query strings, and page content are **not**).
-- On webmail, the **open message content** is sent for analysis (opt-in feature).
+- On webmail, if the user switched the scanner on in Settings (off by default), each
+  **opened message's** subject, sender, reply-to, text and links are sent for analysis.
 
 Accurate framing to use instead: *"We check domains, not your full URLs or page
 content,"* and *"we never sell your data."* Both are true and on-brand. See

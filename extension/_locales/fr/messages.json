@@ -1170,6 +1170,21 @@
   "webmail_finding_account_threat": {
     "message": "L'e-mail annonce un compte bloqué ou une connexion suspecte"
   },
+  "webmail_setting_heading": {
+    "message": "Analyse des e-mails"
+  },
+  "webmail_setting_label": {
+    "message": "Analyser les e-mails que j'ouvre dans Gmail, Outlook et Yahoo pour détecter le phishing"
+  },
+  "webmail_setting_consent": {
+    "message": "Désactivé tant que vous ne l'activez pas. Une fois activé, chaque e-mail que vous ouvrez dans Gmail, Outlook ou Yahoo Mail est envoyé au serveur de Cleanway (api.cleanway.ai) pour détecter le phishing : l'objet, le nom et l'adresse de l'expéditeur, l'adresse Reply-To, le texte du message ainsi que l'adresse et le texte de chaque lien. L'e-mail est analysé et n'est pas conservé ; les domaines de ses liens sont aussi vérifiés auprès de Google Safe Browsing. Désactivez-le à tout moment : l'analyse s'arrête aussitôt."
+  },
+  "webmail_setting_denied": {
+    "message": "Votre navigateur n'a pas donné à Cleanway l'accès aux sites de messagerie : l'analyse des e-mails reste désactivée."
+  },
+  "webmail_setting_unsupported": {
+    "message": "Ce navigateur ne peut pas exécuter l'analyse des e-mails."
+  },
   "options_page_title": {
     "message": "Paramètres de Cleanway"
   },

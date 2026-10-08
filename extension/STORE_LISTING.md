@@ -5,7 +5,7 @@ Cleanway — Protection from scam links
 <!-- AUTHORITATIVE: this equals the manifest _locales extension_name — the string Chrome actually renders. To change it, edit extension/src/_locales/*/messages.json + rebuild. -->
 
 ## Short Description (132 chars max)
-Automatic phishing detection + privacy audit. 16 signals + ML. Your browsing data never leaves your device.
+Automatic phishing detection + privacy audit. 16 signals + ML. We check domains, not your full URLs or page content.
 
 ## Detailed Description
 
@@ -14,11 +14,11 @@ Cleanway automatically checks every link you encounter against 16 threat-intelli
 WHAT IT DOES:
 - Scans every link on every page — red, yellow, green badges show safety at a glance
 - Right-click any link to check it, or any page for a Privacy Audit
-- Finds phishing links in your Gmail and Outlook that your browser missed
+- Optional, off until you switch it on in Settings: checks the emails you open in Gmail, Outlook and Yahoo Mail for phishing
 - Most checks resolve instantly on-device against a local blocklist; only unknown domains query the server
 
 PRIVACY FIRST:
-Your browsing data NEVER leaves your device. We only see domain names for safety checks — never full URLs, never page content, never your browsing history. Even if our servers are breached, attackers learn nothing about your online life.
+For link and page checks we only see domain names — never full URLs, never page content, never your browsing history. The one exception is the optional email scanner: it is off until you switch it on in Settings, and while it is on, each email you open in Gmail, Outlook or Yahoo Mail (its subject, sender, reply-to, text and links) is sent to our server to be checked for phishing and is not stored.
 
 16 THREAT-INTELLIGENCE SIGNALS:
 10 named blocklist feeds (Google Safe Browsing, URLhaus, PhishStats, abuse.ch ThreatFox, Spamhaus DBL, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (Tranco popularity rank) + visual identity (brand favicon hashes, typosquat watchtower) + CatBoost ML model + LLM judge on ambiguous verdicts + heuristics.
@@ -44,7 +44,9 @@ FAMILY PLAN ($9.99/mo):
 - Family Hub with E2E encrypted alerts
 
 PERMISSIONS EXPLAINED:
-- "Access to the page you're actively using + Gmail / Outlook / Yahoo Mail" — Required to badge links inline. Domain is extracted on-device; only the domain is checked, never page content. (activeTab + host access scoped to api.cleanway.ai and the 3 webmail hosts — NOT all websites.)
+- "Read and change data on the websites you visit" — Required to badge links inline on every page. The domain is extracted on-device; only the domain of an unknown link is checked with api.cleanway.ai, never page content.
+- Optional: "Gmail / Outlook / Yahoo Mail" — Requested only when you switch on "Scan emails I open in Gmail, Outlook and Yahoo for phishing" in Settings (off by default). While it is on, each email you open there is sent to api.cleanway.ai — the subject, the sender's name and address, the Reply-To address, the text, and the address and text of each link (not the HTML). It is checked for phishing and not stored; the domains of its links are also checked with Google Safe Browsing. Switch it off any time: scanning stops at once and the access is given back.
+- "Scripting" — Turns the optional email scanner on and off: it is injected into those three mail sites only while you have it switched on.
 - "Storage" — Stores your settings and check history ON YOUR DEVICE only. If you sign in (optional, for Family Hub and settings sync), the extension also keeps its own Cleanway sign-in tokens there; "Sign out" in Settings deletes them.
 
 Open source clients. Privacy policy: https://cleanway.ai/privacy-policy

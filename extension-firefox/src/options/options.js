@@ -270,6 +270,92 @@ document.getElementById("clear-pin").addEventListener("click", async () => {
 loadSkillSettings();
 
 // ══════════════════════════════════════════════════════════════════════
+// Email scanning (opt-in) — background/webmail-scanner.js does the rest
+// ══════════════════════════════════════════════════════════════════════
+// Off unless switched on here. On = the browser granted the four mail
+// sites AND webmailScannerEnabled is true; the background then injects
+// content/webmail.js. Off = the flag goes false, the background unregisters
+// the script and every copy running in an open mail tab stops itself.
+
+const WEBMAIL_FLAG = "webmailScannerEnabled";
+const WEBMAIL_ORIGINS = [
+  "https://mail.google.com/*",
+  "https://outlook.office.com/*",
+  "https://outlook.live.com/*",
+  "https://mail.yahoo.com/*",
+];
+
+// Callback form: it works in Chrome, in Firefox's chrome.* namespace and in
+// Safari alike. Must be called straight from the click — Firefox only shows
+// its permission prompt for a user action, and an await before it loses that.
+function requestWebmailOrigins() {
+  return new Promise((resolve, reject) => {
+    if (!chrome.permissions || typeof chrome.permissions.request !== "function") {
+      // No permissions API: the browser's own per-site access controls apply.
+      resolve(true);
+      return;
+    }
+    try {
+      const maybe = chrome.permissions.request({ origins: WEBMAIL_ORIGINS }, (granted) => {
+        const err = chrome.runtime.lastError;
+        if (err) reject(err);
+        else resolve(Boolean(granted));
+      });
+      if (maybe && typeof maybe.then === "function") maybe.then((g) => resolve(Boolean(g)), reject);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+(function initWebmailScanner() {
+  const box = document.getElementById("webmail-scanner");
+  const status = document.getElementById("webmail-status");
+  if (!box || !status) return;
+
+  function showStatus(key) {
+    status.textContent = key ? t(key) : "";
+    status.hidden = !key;
+  }
+
+  const supported = Boolean(chrome.scripting && typeof chrome.scripting.registerContentScripts === "function");
+  if (!supported) {
+    box.checked = false;
+    box.disabled = true;
+    showStatus("webmail_setting_unsupported");
+    return;
+  }
+
+  chrome.storage.local.get(WEBMAIL_FLAG, (d) => {
+    box.checked = Boolean(d) && d[WEBMAIL_FLAG] === true;
+  });
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes[WEBMAIL_FLAG]) return;
+      box.checked = changes[WEBMAIL_FLAG].newValue === true;
+    });
+  } catch (e) { /* storage events unavailable: the page shows what it read */ }
+
+  box.addEventListener("change", () => {
+    if (!box.checked) {
+      showStatus(null);
+      chrome.storage.local.set({ [WEBMAIL_FLAG]: false });
+      return;
+    }
+    requestWebmailOrigins()
+      .then((granted) => {
+        if (!granted) throw new Error("denied");
+        showStatus(null);
+        chrome.storage.local.set({ [WEBMAIL_FLAG]: true });
+      })
+      .catch(() => {
+        box.checked = false;
+        showStatus("webmail_setting_denied");
+      });
+  });
+})();
+
+// ══════════════════════════════════════════════════════════════════════
 // Existing Options logic below
 // ══════════════════════════════════════════════════════════════════════
 
@@ -290,6 +376,7 @@ chrome.storage.local.get(["settings", "stats"], (data) => {
 
 // Save on toggle
 document.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+  if (cb.id === "webmail-scanner") return; // its own handler above; "saved" would show even when the browser refused
   cb.addEventListener("change", () => {
     const settings = {
       autoScan: document.getElementById("auto-scan").checked,

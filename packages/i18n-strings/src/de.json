@@ -1207,6 +1207,21 @@
       },
       "finding_account_threat": {
         "text": "Die E-Mail warnt vor einem gesperrten Konto oder einer verdächtigen Anmeldung"
+      },
+      "setting_heading": {
+        "text": "E-Mail-Prüfung"
+      },
+      "setting_label": {
+        "text": "E-Mails, die ich in Gmail, Outlook und Yahoo öffne, auf Phishing prüfen"
+      },
+      "setting_consent": {
+        "text": "Aus, bis Sie es einschalten. Wenn eingeschaltet, wird jede E-Mail, die Sie in Gmail, Outlook oder Yahoo Mail öffnen, zur Phishing-Prüfung an den Server von Cleanway (api.cleanway.ai) gesendet: Betreff, Name und Adresse des Absenders, die Reply-To-Adresse, der Text der Nachricht sowie Adresse und Text jedes Links. Die E-Mail wird geprüft und nicht gespeichert; die Domains ihrer Links werden zusätzlich bei Google Safe Browsing geprüft. Sie können es jederzeit ausschalten – die Prüfung endet sofort."
+      },
+      "setting_denied": {
+        "text": "Ihr Browser hat Cleanway keinen Zugriff auf die Mail-Websites gegeben, daher bleibt die E-Mail-Prüfung aus."
+      },
+      "setting_unsupported": {
+        "text": "Dieser Browser kann die E-Mail-Prüfung nicht ausführen."
       }
     },
     "options": {

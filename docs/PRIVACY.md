@@ -4,7 +4,7 @@
 
 Cleanway checks whether a website is a phishing or scam site. To do that, it looks at the **domain name** of the page you are on — for example `example.com` — and nothing more. It does **not** send the full web address, the path, the query string, the page content, or your browsing history to our servers. Full URLs never leave your device for a safety check; the browser extension extracts only the hostname before making any network call.
 
-There is one important exception you should know up front: if you turn on the **webmail scanner** for Gmail, Outlook, or Yahoo, that feature sends the email's subject, sender, reply-to, and body to our server so it can be analyzed for phishing. Everything else — your link checks, your statistics, your history — stays on your device or is reduced to a domain name before it is sent. This document explains exactly what happens, backed by the code.
+There is one important exception you should know up front: if you turn on the **webmail scanner** for Gmail, Outlook, or Yahoo — it is off unless you switch it on in the extension's Settings — that feature sends each email you open there (its subject, sender, reply-to, text, and links) to our server so it can be analyzed for phishing. Everything else — your link checks, your statistics, your history — stays on your device or is reduced to a domain name before it is sent. This document explains exactly what happens, backed by the code.
 
 ## What stays on your device
 
@@ -33,9 +33,26 @@ Cleanway's server receives only what it needs, per request:
 - **A device hash — for optional device-level settings and Family Hub.** The random UUID described above.
 - **Aggregated usage counters.** Lifetime and weekly threat counts per user, for freemium limits — numbers only, no domains.
 
-### The webmail exception
+### The webmail exception (opt-in, off by default)
 
-If you enable the webmail scanner, the extension sends the email's **subject, sender, reply-to, and body (text and HTML)** to `POST /api/v1/email/analyze`. This is the one feature where page content leaves your device. It applies only to Gmail, Outlook, and Yahoo webmail and only when the feature is active. Subject lines and bodies can contain sensitive context, so treat this as an explicit trade-off you are opting into.
+The webmail scanner is **off** on every install, including installs updated from an earlier version; nothing turns it on but you. It runs only after you switch on **"Scan emails I open in Gmail, Outlook and Yahoo for phishing"** in the extension's Settings, which also asks your browser for access to `mail.google.com`, `outlook.office.com`, `outlook.live.com`, and `mail.yahoo.com`. Until then the extension does not load its scanner on those sites at all (`background/webmail-scanner.js` registers `content/webmail.js` only while the switch is on).
+
+While it is on, for each email you open there the extension sends to `POST /api/v1/email/analyze`:
+
+- the **subject**, the **sender's display name and address**, and the **Reply-To** address;
+- the **text of the message** (up to 100 KB);
+- the **address and visible text of each link** in it.
+
+It does **not** send the message's HTML, images, attachments, recipients, or thread IDs. If you are signed in, the request carries your account token. This is the one feature where page content leaves your device, and subject lines and bodies can contain sensitive context, so treat it as an explicit trade-off you are opting into.
+
+What the server does with it (`api/routers/email.py`, `api/services/email_analyzer.py`):
+
+- It analyzes the email in memory and returns a verdict. The email is **not stored** — not in the database, not in a cache, and not in the logs. The one log line per analysis holds the verdict, the score, the number of findings and links, and your account ID if you are signed in (`anon` otherwise).
+- Error reports never carry the request body (`max_request_body_size="never"`), and the Sentry scrubber also redacts `subject`, `body_text`, and `body_html`.
+- The **domains** of the links (not the full links) are checked with Google Safe Browsing. Those verdicts are cached by domain in Redis for up to an hour, with nothing tying them to you or to the email.
+- Your IP is used for the per-IP rate limit, as described above.
+
+Switch it off in Settings at any time: scanning stops at once in mail tabs that are already open, the scanner is unregistered, and the extension gives back its access to the mail sites. Removing that site access in the browser's own extension settings also switches it off.
 
 ## The Android app
 
@@ -92,7 +109,7 @@ Unlike the extension, the mobile check history is **not pruned automatically**: 
 
 - **Full URLs, paths, or query strings.** The system is domain-only end to end. No database table anywhere stores check history with URLs (verified across all migrations).
 - **Your browsing history** as a server-side record. Cached verdicts are transient (max 1 hour on the hot path).
-- **Page content, HTML, DOM, or screenshots** — except the webmail body described above, which is an explicit opt-in feature.
+- **Page content, HTML, DOM, or screenshots** — except the email text and links described above, sent only while you have the webmail scanner switched on.
 - **Search queries** or activity outside domain safety checks.
 - **Credit card data.** Payments go directly to Stripe; card data is never stored on our servers.
 - **Plaintext passwords, ever.** The pwned-password check sends only the first 5 hex characters of a SHA-1 hash (k-anonymity); the full hash is discarded after the local match. The honeypot feature replaces a password with a random string client-side before any form submits.

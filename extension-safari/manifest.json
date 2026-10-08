@@ -9,11 +9,14 @@
     "storage",
     "alarms",
     "contextMenus",
-    "notifications"
+    "notifications",
+    "scripting"
   ],
   "host_permissions": [
     "https://api.cleanway.ai/*",
-    "https://*.cleanway.ai/*",
+    "https://*.cleanway.ai/*"
+  ],
+  "optional_host_permissions": [
     "https://mail.google.com/*",
     "https://outlook.office.com/*",
     "https://outlook.live.com/*",
@@ -47,18 +50,6 @@
       ],
       "css": [
         "styles/badges.css"
-      ],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": [
-        "https://mail.google.com/*",
-        "https://outlook.office.com/*",
-        "https://outlook.live.com/*",
-        "https://mail.yahoo.com/*"
-      ],
-      "js": [
-        "src/content/webmail.js"
       ],
       "run_at": "document_idle"
     },

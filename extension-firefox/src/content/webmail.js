@@ -1,11 +1,17 @@
 /**
  * Cleanway Webmail Guardian — Gmail + Outlook Web + Yahoo Mail.
  *
- * Runs as a content script on mail.google.com, outlook.office.com /
- * outlook.live.com, and mail.yahoo.com. For the currently-open
- * conversation, it:
+ * OPT-IN. No manifest loads this file: background/webmail-scanner.js
+ * registers it for mail.google.com, outlook.office.com / outlook.live.com
+ * and mail.yahoo.com only after the person turns "Scan emails I open" on in
+ * Settings (`webmailScannerEnabled === true` in chrome.storage.local). Even
+ * when injected it reads that flag before touching the page, and stops —
+ * observer off, request aborted, banner gone — the moment it is turned off.
  *
- *   1. Extracts the subject, sender, reply-to, and body text.
+ * While on, for the currently-open conversation, it:
+ *
+ *   1. Extracts the subject, sender, reply-to, the body text and the links
+ *      (address + visible text of each <a href>).
  *   2. POSTs them to `/api/v1/email/analyze`.
  *   3. Renders a non-intrusive banner above the message:
  *        ✅ green   "Looks safe"
@@ -18,8 +24,10 @@
  * a MutationObserver watches for navigation (Gmail/Outlook are SPAs and
  * swap message bodies without reloading). On every swap we rescan.
  *
- * Privacy: only the subset of headers and body the analyzer needs are
- * sent. Recipients, thread IDs, attachment content — nothing else.
+ * Privacy: only what the analyzer reads is sent. The message's HTML is NOT:
+ * the analyzer only uses it to find links, so the links are taken out here
+ * and sent as bare `<a href="…">text</a>` lines (linksAsHtml). Recipients,
+ * thread IDs, attachments, images — nothing else.
  */
 (function () {
   "use strict";
@@ -39,10 +47,7 @@
         return el ? el.getAttribute('email') : "";
       },
       subject: () => document.querySelector('h2.hP')?.textContent || "",
-      body: () => {
-        const el = document.querySelector('[role="main"] .ii.gt .a3s');
-        return { html: el?.innerHTML || "", text: el?.innerText || "" };
-      },
+      body: () => document.querySelector('[role="main"] .ii.gt .a3s'),
       insertBanner: (banner, container) => {
         container.parentNode.insertBefore(banner, container);
       },
@@ -59,10 +64,7 @@
       replyTo: () => "",
       subject: () =>
         document.querySelector('[data-test-id="message-subject"]')?.textContent || "",
-      body: () => {
-        const el = document.querySelector('[data-test-id="message-view-body-content"]');
-        return { html: el?.innerHTML || "", text: el?.innerText || "" };
-      },
+      body: () => document.querySelector('[data-test-id="message-view-body-content"]'),
       insertBanner: (banner, container) => {
         container.parentNode.insertBefore(banner, container);
       },
@@ -87,11 +89,9 @@
         const el = document.querySelector('[data-testid="message-subject-heading"]');
         return el?.textContent || "";
       },
-      body: () => {
-        const el = document.querySelector('[role="document"] [aria-label*="Message body"]') ||
-                   document.querySelector('.ReadingPaneContainer .allowTextSelection');
-        return { html: el?.innerHTML || "", text: el?.innerText || "" };
-      },
+      body: () =>
+        document.querySelector('[role="document"] [aria-label*="Message body"]') ||
+        document.querySelector('.ReadingPaneContainer .allowTextSelection'),
       insertBanner: (banner, container) => {
         container.parentNode.insertBefore(banner, container);
       },
@@ -102,6 +102,13 @@
   const BANNER_ID = "cleanway-webmail-banner";
   const DEBOUNCE_MS = 600;
   const DEFAULT_API_BASE = "https://api.cleanway.ai";
+  // The Settings switch (background/webmail-scanner.js WEBMAIL_FLAG).
+  const ENABLED_KEY = "webmailScannerEnabled";
+  // The API's own caps (api/routers/email.py): over them it answers 422.
+  const MAX_TEXT = 100_000;
+  const MAX_LINKS_HTML = 400_000;
+  const MAX_LINKS = 300;
+  const MAX_LINK_TEXT = 300;
 
   // ── Verdict → banner text ────────────────────────────────────────────────
   // Text in the browser's language (packages/i18n-strings extension.webmail).
@@ -197,30 +204,132 @@
     };
   }
 
-  // The only thing this script puts on the shared isolated-world global:
-  // the pure text helpers above, for scripts/test-extension-core.mjs. Set
-  // before the host check, so the test can load this file off a mail page.
-  window.__cleanwayWebmail = Object.freeze({ describeResult, findingText, topFinding });
+  // ── Links, not HTML ──────────────────────────────────────────────────────
+  // The analyzer reads body_html for one thing: <a href="…">text</a> pairs
+  // (a link whose text shows one address but goes to another). So we send
+  // exactly those pairs, rebuilt from the DOM, instead of the message's
+  // markup. Only http(s) links, as the analyzer would keep.
+  function escapeAttr(s) {
+    return String(s).replace(/"/g, "%22").replace(/'/g, "%27").replace(/</g, "%3C").replace(/>/g, "%3E");
+  }
+
+  function escapeText(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function linksAsHtml(root) {
+    if (!root || typeof root.querySelectorAll !== "function") return "";
+    const out = [];
+    let size = 0;
+    for (const a of root.querySelectorAll("a[href]")) {
+      const href = String(a.getAttribute("href") || "").trim();
+      if (!/^https?:\/\//i.test(href)) continue;
+      const text = String(a.textContent || "").replace(/\s+/g, " ").trim().slice(0, MAX_LINK_TEXT);
+      const line = `<a href="${escapeAttr(href)}">${escapeText(text)}</a>`;
+      if (size + line.length + 1 > MAX_LINKS_HTML) break;
+      out.push(line);
+      size += line.length + 1;
+      if (out.length >= MAX_LINKS) break;
+    }
+    return out.join("\n");
+  }
+
+  // What leaves the browser for one open message. Built from the adapter
+  // only: the fields the API reads, nothing else.
+  function buildPayload(adapter) {
+    const bodyEl = adapter.body();
+    const text = bodyEl ? String(bodyEl.innerText || bodyEl.textContent || "") : "";
+    return {
+      from_address: adapter.sender(),
+      from_display: adapter.senderName(),
+      reply_to: adapter.replyTo(),
+      subject: adapter.subject(),
+      return_path: "",
+      spf: null,
+      dkim: null,
+      dmarc: null,
+      body_text: text.slice(0, MAX_TEXT),
+      body_html: linksAsHtml(bodyEl),
+    };
+  }
+
+  // What this script puts on the shared isolated-world global (besides the
+  // __cleanwayWebmailLoaded guard below): the pure helpers above, for
+  // scripts/test-extension-core.mjs. Set
+  // before the host and switch checks, so the test can load this file off
+  // a mail page; none of them reads the page by itself.
+  window.__cleanwayWebmail = Object.freeze({ describeResult, findingText, topFinding, linksAsHtml, buildPayload });
 
   // ── Resolve adapter ──────────────────────────────────────────────────────
   const host = location.hostname;
   const adapter = ADAPTERS[host];
   if (!adapter) return;
 
-  // ── Observation + debounced scan ─────────────────────────────────────────
+  // Injected twice into one page (registered script + the inject-into-open-
+  // tabs pass when the switch is turned on): the first copy already listens.
+  if (window.__cleanwayWebmailLoaded) return;
+  window.__cleanwayWebmailLoaded = true;
+
+  // ── The switch ───────────────────────────────────────────────────────────
+  // Nothing below runs until the stored flag is literally true; turning it
+  // off stops everything at once, turning it back on restarts this copy.
+  let active = false;
+  let generation = 0; // bumps on every stop, so a scan in flight knows it is stale
+  let inflight = null; // AbortController of the request in flight
   let scanTimer = null;
   let lastSignature = null;
+  let observer = null;
 
-  const observer = new MutationObserver(() => {
-    clearTimeout(scanTimer);
+  function readEnabled() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get(ENABLED_KEY, (data) => {
+          resolve(Boolean(data) && data[ENABLED_KEY] === true);
+        });
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  }
+
+  function start() {
+    if (active) return;
+    active = true;
+    observer = new MutationObserver(() => {
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(scheduleScan, DEBOUNCE_MS);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    // Run once on start
     scanTimer = setTimeout(scheduleScan, DEBOUNCE_MS);
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+  }
 
-  // Run once on initial load
-  setTimeout(scheduleScan, DEBOUNCE_MS);
+  function stop() {
+    active = false;
+    generation++;
+    if (observer) observer.disconnect();
+    observer = null;
+    clearTimeout(scanTimer);
+    scanTimer = null;
+    if (inflight) inflight.abort();
+    inflight = null;
+    lastSignature = null;
+    removeBanner();
+  }
 
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes || !Object.prototype.hasOwnProperty.call(changes, ENABLED_KEY)) return;
+      if (changes[ENABLED_KEY].newValue === true) start();
+      else stop();
+    });
+  } catch (e) { /* no storage events: the start-up read below still decides */ }
+
+  readEnabled().then((on) => { if (on) start(); });
+
+  // ── Debounced scan ───────────────────────────────────────────────────────
   function scheduleScan() {
+    if (!active) return;
     const container = adapter.container();
     if (!container) {
       // No open message — clean up any stale banner from a previous thread
@@ -242,26 +351,20 @@
 
   // ── Scan ─────────────────────────────────────────────────────────────────
   async function runScan(container) {
-    const body = adapter.body();
-    const payload = {
-      from_address: adapter.sender(),
-      from_display: adapter.senderName(),
-      reply_to: adapter.replyTo(),
-      subject: adapter.subject(),
-      return_path: "",
-      spf: null,
-      dkim: null,
-      dmarc: null,
-      body_text: body.text || "",
-      body_html: body.html || "",
-    };
+    const gen = generation;
+    // Re-read the switch right before anything leaves the browser: a stale
+    // in-memory "on" must never send a message.
+    if (!active || !(await readEnabled()) || gen !== generation) return;
+    const payload = buildPayload(adapter);
 
     renderBanner(container, { state: "scanning" });
 
     const apiBase = await getApiBase();
     const token = await getAuthToken();
+    if (!active || gen !== generation) return;
 
     const ctrl = new AbortController();
+    inflight = ctrl;
     const timer = setTimeout(() => ctrl.abort(), 15_000);
     try {
       const resp = await fetch(`${apiBase}/api/v1/email/analyze`, {
@@ -273,6 +376,7 @@
         body: JSON.stringify(payload),
         signal: ctrl.signal,
       });
+      if (gen !== generation) return;
       if (!resp.ok) {
         // 429 means the public IP bucket is full — surface a quiet "slow
         // down" state rather than a red error.
@@ -283,12 +387,15 @@
         throw new Error(`HTTP ${resp.status}`);
       }
       const result = await resp.json();
+      if (gen !== generation) return;
       renderBanner(container, { state: "ready", result });
     } catch (err) {
+      if (gen !== generation) return; // switched off mid-request: say nothing
       console.warn("[Cleanway] webmail analyze failed:", err && err.message);
       renderBanner(container, { state: "error" });
     } finally {
       clearTimeout(timer);
+      if (inflight === ctrl) inflight = null;
     }
   }
 
