@@ -99,6 +99,29 @@ export default function AccountClient() {
     else setNotice(t("unlink_failed"));
   }
 
+  /**
+   * A plan bought on cleanway.ai is changed or cancelled in Stripe's customer
+   * portal — the "cancel at any time" the pricing page promises. Only a
+   * billing.stripe.com URL is followed (same origin check as checkout).
+   */
+  async function manageSubscription() {
+    setBusy("portal");
+    setNotice(null);
+    const { data } = await api.payments.portal();
+    let target: URL | null = null;
+    try {
+      target = data?.portal_url ? new URL(data.portal_url) : null;
+    } catch {
+      target = null;
+    }
+    if (target && target.protocol === "https:" && target.hostname === "billing.stripe.com") {
+      window.location.href = target.href;
+      return;
+    }
+    setBusy(null);
+    setNotice(t("manage_failed"));
+  }
+
   async function signOut() {
     await getSupabaseClient().auth.signOut().catch(() => null);
     setState({ kind: "no_session" });
@@ -182,6 +205,17 @@ export default function AccountClient() {
           {[sourceLabel, statusLabel, paid ? null : t("free_desc")].filter(Boolean).join(" · ")}
         </p>
         {!paid && <a href={localePath(locale, "/pricing")} style={{ ...button, marginTop: 12 }}>{t("plans_cta")}</a>}
+        {paid && ent.source === "stripe" && (
+          <button
+            type="button"
+            style={{ ...ghostButton, marginTop: 12 }}
+            disabled={busy !== null}
+            onClick={() => void manageSubscription()}
+            data-testid="account-manage-subscription"
+          >
+            {busy === "portal" ? t("loading") : t("manage_cta")}
+          </button>
+        )}
       </section>
 
       <section style={card} aria-labelledby="devices-h">
