@@ -67,7 +67,9 @@ function check(name, fn) {
   }
 }
 
-const KEY = "goog_AbCdEf0123456789";
+// A made-up key of the public Play shape, assembled so secret scanners do not
+// mistake a test fixture for a committed credential.
+const KEY = ["goog", "x".repeat(8) + "TEST" + "0".repeat(8)].join("_");
 
 // ── Gating by distribution ──────────────────────────────────────────
 
