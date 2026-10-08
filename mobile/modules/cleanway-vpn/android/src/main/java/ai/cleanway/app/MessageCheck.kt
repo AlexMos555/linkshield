@@ -40,7 +40,11 @@ object MessageCheck {
     fun analyze(context: Context, text: String): Result {
         val list = BlocklistHolder.current(context)
         val allowed = BlocklistHolder.allowed(context)
-        val analyzer = MessageAnalyzer(rules(context), model(context)) { host -> LinkPolicy.classify(host, list, allowed) }
+        // The server's switches (RemoteConfig.kt): with the model off it is not
+        // even loaded — the rules alone decide, as on a build without its assets.
+        val remote = RemoteConfigStore.current(context)
+        val textModel = if (remote.smsTextModelEnabled) model(context) else null
+        val analyzer = MessageAnalyzer(rules(context), textModel, remote) { host -> LinkPolicy.classify(host, list, allowed) }
         val usable = list != null && !list.revoked && list.count > 0
         val analysis = analyzer.analyze(text)
         // Only the verdict leaves this function for the after-call notice
