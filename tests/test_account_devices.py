@@ -166,6 +166,7 @@ def test_entitlement_for_a_free_account(client):
         "plan": "free",
         "status": "free",
         "source": None,
+        "manage_url": None,
         "period_end": None,
         "device_limit": 2,
         "included_devices": 3,
@@ -184,6 +185,7 @@ def test_entitlement_for_a_paid_account_marks_this_device(client, account_store)
     body = resp.json()
     assert body["plan"] == "family" and body["status"] == "trialing"
     assert body["source"] == "stripe" and body["period_end"].startswith("2099-01-01")
+    assert body["manage_url"] == "https://cleanway.ai/account"
     assert body["device_limit"] == 3 and body["devices_used"] == 2
     current = [d for d in body["devices"] if d["is_current"]]
     assert [d["name"] for d in current] == ["Firefox on Linux"]

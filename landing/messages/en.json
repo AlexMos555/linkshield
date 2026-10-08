@@ -670,10 +670,10 @@
   },
   "Terms": {
     "meta_title": "Terms of use — Cleanway",
-    "meta_description": "The rules for using Cleanway: what the service does and does not promise, accounts, paid plans and acceptable use.",
+    "meta_description": "The rules for using Cleanway: what the service does and does not promise, the free plan, accounts and devices, paid plans, cancelling and refunds, and acceptable use.",
     "back": "Back to Cleanway",
     "title": "Terms of use",
-    "updated": "Last updated: September 27, 2026",
+    "updated": "Last updated: October 8, 2026",
     "privacy_link": "Read the privacy policy",
     "contact_live": "Questions about these terms:",
     "contact_not_live": "Our support mailbox is still being set up, so we cannot receive email yet. The support page has answers to common questions.",
@@ -682,7 +682,7 @@
       {
         "title": "1. What Cleanway is",
         "paragraphs": [
-          "Cleanway helps protect you from scam and phishing sites. It consists of the Android app, the site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. Cleanway checks site names against lists of known threats and other signals and tells you what it found."
+          "Cleanway helps protect you from scam and phishing sites. It consists of the Android app, the browser extension, the site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. Cleanway checks site names against lists of known threats and other signals and tells you what it found."
         ]
       },
       {
@@ -701,16 +701,19 @@
         ]
       },
       {
-        "title": "3. Free use and accounts",
+        "title": "3. The free plan and accounts",
         "paragraphs": [
-          "Blocking scam sites is free and works without an account. An account is needed only for family features and paid plans. If you create one, use a real email address and keep access to it: you sign in with one-time codes or links sent there."
+          "Blocking known scam sites is free, has no limit and works without an account. The free plan also includes a number of detailed checks of links and messages each day, and everything is unlimited for the first days after you install the app; the current numbers are on the Pricing page.",
+          "An account is needed only for family features, paid plans and seeing your devices in one place. If you create one, use a real email address and keep access to it: you sign in with one-time codes or links sent there. You can delete your account at any time (cleanway.ai/delete-account)."
         ]
       },
       {
         "id": "payments",
         "title": "4. Paid plans",
         "paragraphs": [
-          "In some countries Cleanway offers paid plans with extras. Paid plans are not offered in Russia. Where they are offered, payment is handled by Stripe, the price and billing period are shown before you pay, and you can cancel at any time — the plan stays active until the end of the paid period. Refunds are handled as the law requires. Blocking scam sites never becomes a paid feature."
+          "In some countries Cleanway offers a paid plan with unlimited detailed checks. Paid plans are not offered in Russia. The plan counts devices, not people: it covers a set number of devices signed in to one account — currently 3 — such as phones, tablets or browsers with the extension, and you can add more devices for an extra charge. You can unlink a device in your account and its place frees up at once. The price, the billing period and the price of an extra device are shown before you pay. If your first subscription starts with a free trial, its length is shown before you subscribe too. Blocking known scam sites never becomes a paid feature.",
+          "Bought on cleanway.ai: payment is handled by Stripe. You can cancel at any time in your account (“Manage or cancel subscription”). After that nothing more is charged, and the plan stays active until the end of the period you paid for. If you were charged after cancelling, or charged by mistake, write to us and we refund that charge. Other refunds follow the consumer law of your country.",
+          "Bought in Google Play or the App Store: the purchase, renewals, cancelling and refunds are handled by that store under its own terms. Cancel in the store's subscription settings at any time; deleting the app or your Cleanway account does not cancel a store subscription. Ask the store for a refund."
         ]
       },
       {
@@ -773,7 +776,7 @@
         "paragraphs": [
           "In Russia Cleanway is a subscription billed to your mobile phone account through your mobile operator and a payment aggregator. The plan's price and the charge date are shown before you confirm; the subscription starts only after you confirm it with an SMS code from your number. The first days after installation are a trial with nothing charged; its length and the prices are on the Pricing page.",
           "The subscription renews every month until you cancel. You can cancel in the app, by SMS or through support — after cancelling nothing more is charged, and protection runs until the end of the paid month. We never charge an account into the negative and never create a debt. If protection did not work through our fault, or a charge went through after cancellation, we refund that month; this does not limit your statutory rights.",
-          "Prices can change for new subscriptions only: a running subscription keeps the price it was started at. In other countries paid plans are paid by bank card through Stripe — there too the price and period are shown before you pay, and you can cancel at any time."
+          "Prices can change for new subscriptions only: a running subscription keeps the price it was started at. In other countries the plan is paid on cleanway.ai by bank card through Stripe, or in the app through Google Play or the App Store. There too the price and period are shown before you pay and you can cancel at any time; a purchase made in a store follows that store's terms, including its refunds."
         ]
       },
       "lapse_basic": "If a payment still fails after the retries, the subscription is paused, but basic blocking of known scam sites keeps working at no charge — the list is refreshed once a week.",
@@ -782,7 +785,7 @@
   },
   "PrivacyPolicy": {
     "meta_title": "Privacy policy — Cleanway",
-    "meta_description": "What Cleanway receives, what stays on your phone, who else sees what, and how long anything is kept.",
+    "meta_description": "What Cleanway receives, what stays on your phone or in your browser, who else sees what, and how long anything is kept.",
     "back": "Back to Cleanway",
     "title": "Privacy policy",
     "updated": "Last updated: October 8, 2026",
@@ -793,7 +796,7 @@
       {
         "title": "1. In short",
         "items": [
-          "To check a site we need only its name (for example, example.com). We don't receive full links, page contents or the texts of your messages.",
+          "To check a site we need only its name (for example, example.com). We don't receive full links, page contents or the texts of your messages — except an email you open in web mail while the browser extension's email check is switched on (section 8).",
           "Most checks happen on your phone, against a list of known scam sites.",
           "When a site needs a closer look, its name goes to our server, which may ask other checking services about that name — never about you.",
           "You don't need an account to be protected. We don't show ads and don't sell data."
@@ -802,7 +805,7 @@
       {
         "title": "2. Who we are",
         "paragraphs": [
-          "Cleanway (cleanway.ai) protects against scam and phishing sites. It consists of an Android app, a site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. How to contact us is at the end of this policy."
+          "Cleanway (cleanway.ai) protects against scam and phishing sites. It consists of an Android app, a browser extension, a site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. How to contact us is at the end of this policy."
         ]
       },
       {
@@ -856,40 +859,66 @@
         ]
       },
       {
-        "title": "8. Account and email",
+        "id": "extension",
+        "title": "8. The browser extension",
         "paragraphs": [
-          "An account is optional: it is needed only for family features and paid plans. If you create one, we store your email address, your plan, a random device ID (not derived from your phone's hardware) and your app settings. You sign in with a one-time code (in the app) or a one-time link (on the website) sent to your email; there is no password.",
+          "The Cleanway extension for Chrome, Edge, Opera, Firefox and Safari talks only to our servers (cleanway.ai and api.cleanway.ai) and, if you sign in, to our account provider Supabase. It has no advertising, analytics or error reporting inside. This is everything it sends:"
+        ],
+        "items": [
+          "the name of the site you open and of the links on it (for example, example.com), to check them as described in section 5. Never the full address, the page contents or your history. Well-known official sites are recognised in the browser and not sent;",
+          "when you leave a password field, the first 5 characters of a scrambled code (a SHA-1 hash) made from the password, to check it against known data leaks. Never the password itself: the match is made in your browser;",
+          "a site's name, if you report a wrong result;",
+          "emails — only if you switch on “Scan emails I open in Gmail, Outlook and Yahoo for phishing” in the extension's Settings; it is off until you do. While it is on, for each email you open there, the extension sends its subject, the sender's name and address, the reply-to address, the text and the links — not the email's HTML, attachments or recipients. Our server checks the email in memory and does not store it: not in the database, not in a cache and not in logs. Switch it off at any time and the checks stop at once. In Firefox you can also take this consent back in the add-on's settings;",
+          "if you sign in: this browser is added to your account as a device, with a random device ID, the browser's name and the extension's version, and it checks in about every 6 hours. With an account the extension also saves this device's display settings, adds to your account's count of blocked threats (a number, without site names) and sends family alerts encrypted (section 10)."
+        ],
+        "after": [
+          "You sign in on cleanway.ai with a one-time code or link sent to your email. The extension then keeps its sign-in keys (tokens), your email address and your account ID in the browser's extension storage and uses them only to talk to our servers. “Sign out” in the extension's Settings deletes them.",
+          "Your check history (deleted after 30 days), counters and settings stay in your browser. Removing the extension deletes everything it stored."
+        ]
+      },
+      {
+        "title": "9. Account and devices",
+        "paragraphs": [
+          "An account is optional: it is needed for family features, for paid plans and to see your devices in one place. If you create one, we store your email address, your plan and your app settings. You sign in with a one-time code (in the app) or a one-time link (on the website) sent to your email; there is no password.",
+          "Every phone, tablet or browser signed in to your account appears in your device list with a random device ID (not derived from the hardware), its type and name, the version of the app or extension, and when it was last used. You can see the list and unlink a device at cleanway.ai/account or in the app. An unlinked device is signed out at once, and blocking known scam sites keeps working on it.",
           "Accounts are stored with our database provider, Supabase. Supabase may also record the IP address a sign-in came from in its own security log."
         ]
       },
       {
-        "title": "9. Family",
+        "title": "10. Family",
         "paragraphs": [
           "Family alerts are encrypted on the sender's device and can be read only on the recipients' devices. Our server stores only the encrypted text and cannot read it, but it does see who belongs to which family and who sent an alert to whom, and when. Alerts are kept for up to 30 days. Invitation codes and PINs are stored only as hashes."
         ]
       },
       {
-        "title": "10. The website and the DNS filter",
+        "title": "11. The website and the DNS filter",
         "paragraphs": [
           "cleanway.ai has no advertising or analytics trackers. Our hosting providers — Vercel for the website, Railway for the server — keep standard technical request logs, which can include the requested address and your IP address.",
           "If you set up the Cleanway DNS filter (dns.cleanway.ai) on an iPhone, Mac or Windows computer, all of your device's DNS queries go to our server. It blocks names from the list and passes the rest to Cloudflare to find the address. Queries are not written to disk; for a blocked name, our log keeps at most its last 32 characters, without your IP address."
         ]
       },
       {
-        "title": "11. Error reports",
+        "title": "12. Error reports",
         "paragraphs": [
-          "The app, the website and our server may send Sentry technical error reports, so that we can fix bugs, and timing measurements for about one request in ten. We remove email addresses, IP addresses and access keys from error reports. A report or a measurement can still contain the address of a page or request — for example, the name of a site that was being checked. The website does not record sessions. Sentry keeps this data for up to 90 days."
+          "The app, the website and our server may send Sentry technical error reports, so that we can fix bugs, and timing measurements for about one request in ten. We remove email addresses, IP addresses and access keys from error reports. A report or a measurement can still contain the address of a page or request — for example, the name of a site that was being checked. The website does not record sessions. Sentry keeps this data for up to 90 days. The browser extension sends no error reports."
         ]
       },
       {
         "id": "payments",
-        "title": "12. Payments",
+        "title": "13. Payments",
         "paragraphs": [
-          "Paid plans are not offered in Russia. Where they are offered, payment goes through Stripe: Stripe receives your email and the chosen plan and handles the card itself. We never see or store card details."
+          "Blocking known scam sites is free. Paid plans are not offered in Russia. Where they are offered:"
+        ],
+        "items": [
+          "on the website, payment goes through Stripe. Stripe receives your email, the chosen plan and your account ID, and handles the card itself;",
+          "in the app, where purchases are offered, you pay through Google Play or the App Store. The store takes the payment and handles your card under its own terms and privacy policy. RevenueCat, a service that manages in-app subscriptions for us, receives an anonymous account ID from the app — a random identifier, not your name or email — and the status of the purchase from the store. We receive only whether your subscription is active, which plan it is and until when."
+        ],
+        "after": [
+          "We never see or store card details. We keep a record of each purchase — where it was made, the plan, its status and dates — with your account until the account is deleted."
         ]
       },
       {
-        "title": "13. Who processes data for us",
+        "title": "14. Who processes data for us",
         "items": [
           "Railway — runs our server (api.cleanway.ai);",
           "Vercel — hosts the website;",
@@ -897,14 +926,15 @@
           "GitHub — hosts the app file you download and sees your IP address when you download it;",
           "Cloudflare and Quad9 — public DNS used by the app, see section 3;",
           "the checking services listed in section 5, and Anthropic — receive site names or abstract signals only;",
-          "Sentry — error reports and timing measurements; Stripe — payments outside Russia."
+          "Sentry — error reports and timing measurements;",
+          "Stripe — payments on the website; Google Play, the App Store and RevenueCat — purchases in the app (payments are not offered in Russia)."
         ],
         "after": [
           "These companies are based outside Russia, mainly in the USA and the EU, so the data they process is transferred abroad."
         ]
       },
       {
-        "title": "14. How long we keep data",
+        "title": "15. How long we keep data",
         "items": [
           "site check results in the server cache — up to 24 hours;",
           "your IP address in the check-limit counter — up to an hour;",
@@ -912,24 +942,28 @@
           "the security log of account actions (with hashed IP addresses) — 2 years;",
           "weekly counters for accounts (numbers only, no site names) — 1 year;",
           "encrypted family alerts — up to 30 days;",
-          "data on your phone — until you clear it or remove the app."
+          "your device list and purchase records — until you delete the account; Stripe and the app stores keep their own payment records as the law requires them to;",
+          "the extension's check history — 30 days, in your browser;",
+          "data on your phone or in your browser — until you clear it or remove the app or the extension."
         ]
       },
       {
-        "title": "15. Your rights",
+        "title": "16. Your rights",
         "paragraphs": [
-          "You can ask what data about you we hold, ask us to correct or delete it, and withdraw your consent. Without an account we don't know who you are: we have no name, email or phone number of yours — only the technical data described above, such as your IP address in the check counter and in hosting logs. To delete an account or make a request, contact us as described below. Removing the app deletes everything it stored on the phone."
+          "You can ask what data about you we hold, ask us to correct or delete it, and withdraw your consent.",
+          "To delete your account yourself, sign in at cleanway.ai/account and choose “Delete account”, or use “Delete account” in the app's Settings. The page cleanway.ai/delete-account explains the steps and what is deleted and what is kept.",
+          "Without an account we don't know who you are: we have no name, email or phone number of yours — only the technical data described above, such as your IP address in the check counter and in hosting logs. For other requests, contact us as described below. Removing the app or the extension deletes everything it stored on your device."
         ]
       },
       {
-        "title": "16. Children",
+        "title": "17. Children",
         "paragraphs": [
           "Cleanway is not meant for children under 13 to use on their own; family features are managed by an adult."
         ]
       },
       {
         "id": "contact",
-        "title": "17. Changes and contact",
+        "title": "18. Changes and contact",
         "paragraphs": [
           "If we change this policy, we will publish the new version on this page with a new date."
         ]
@@ -938,12 +972,12 @@
     "billing": {
       "section": {
         "id": "billing",
-        "title": "12. Paying for the subscription",
+        "title": "13. Paying for the subscription",
         "paragraphs": [
           "In Russia the subscription is billed to a mobile phone account. To set it up you enter a phone number — your own, or that of the relative who pays. The trial needs no number.",
           "The phone number, the plan, the dates and the history of charges are kept in a separate database located in Russia, apart from the rest of Cleanway's data. The number is stored encrypted; in logs, error reports and on screens it is shown only in part. We hold no bank-card data: no card is involved in this payment.",
           "Your mobile operator and the payment aggregator that process the charge receive the number and the amount — they handle that data under their own rules. We also keep a record of consent: which text and which price you saw and how you confirmed.",
-          "Payment and consent records are kept as long as accounting and tax rules require — up to five years; once the subscription is over and that period has passed, the phone number is deleted from the database. In other countries payment goes through Stripe: Stripe receives your email and the chosen plan and handles the card itself; we never see or store card details."
+          "Payment and consent records are kept as long as accounting and tax rules require — up to five years; once the subscription is over and that period has passed, the phone number is deleted from the database. In other countries payment goes through Stripe on the website, or through Google Play or the App Store in the app (with RevenueCat, as described for other countries): the store or Stripe handles the card, and we never see or store card details."
         ]
       }
     }
@@ -1023,12 +1057,71 @@
     "unlinking": "Unlinking…",
     "sign_out": "Sign out",
     "delete_heading": "Delete account",
-    "delete_body": "Deletes your account, plan and synced settings. A subscription paid on cleanway.ai is cancelled at once and not charged again. You can restore the account within 30 days by signing in.",
+    "delete_body": "Deletes your account, plan and synced settings. A subscription paid on cleanway.ai is cancelled at once and not charged again; one bought in Google Play or the App Store is not — cancel it in the store. You can restore the account within 30 days by signing in.",
     "delete_confirm": "Delete your Cleanway account? You can restore it within 30 days by signing in.",
     "delete_done": "Your account is deleted and you're signed out. Sign in within 30 days if you want to restore it.",
     "brand": "Cleanway",
     "manage_cta": "Manage or cancel subscription",
     "manage_failed": "Couldn't open subscription management. Please try again in a moment."
+  },
+  "DeleteAccount": {
+    "meta_title": "Delete your Cleanway account",
+    "meta_description": "How to delete your Cleanway account without the app: sign in, then choose “Delete account”. What is deleted, what is kept, and for how long.",
+    "back": "Back to Cleanway",
+    "title": "Delete your Cleanway account",
+    "intro": "You can delete your account at any time, from any browser, without the app. Protection does not need an account: after you delete it, Cleanway keeps blocking known scam sites on your phone and warning you about them in your browser.",
+    "steps_heading": "How to delete your account",
+    "steps": [
+      "Open cleanway.ai/account.",
+      "Sign in with the email address of your Cleanway account. We send you a one-time code or link; there is no password.",
+      "Under “Delete account”, choose “Delete account” and confirm."
+    ],
+    "steps_app": "In the Cleanway app you can do the same in Settings → Delete account.",
+    "cta": "Go to my account",
+    "deleted_heading": "What is deleted",
+    "deleted_items": [
+      "your email address and account ID;",
+      "your plan and your purchase records;",
+      "your device list — every phone, tablet and browser is signed out of the account;",
+      "your saved settings and weekly counters;",
+      "your place in a family group and the family alerts sent to you."
+    ],
+    "timing": "Your account is locked as soon as you confirm. For 30 days you can change your mind: sign in with the same email and restore it. After 30 days everything listed above is erased for good.",
+    "kept_heading": "What is kept",
+    "kept_items": [
+      "the security log of account actions — what was done and when, with a shortened hash of the IP address instead of the address — for 2 years;",
+      "payment records that Stripe, Google Play or the App Store must keep under their own legal obligations;",
+      "what is stored on your phone or in your browser, such as check history: remove the app or the extension to delete it."
+    ],
+    "subscription_heading": "If you pay for a subscription",
+    "subscription_body": "A subscription paid on cleanway.ai is cancelled at once when you delete the account, and nothing more is charged. A subscription bought in Google Play or the App Store is not cancelled by deleting the account: cancel it in the store's subscription settings.",
+    "help_heading": "Can't sign in?",
+    "help_live": "If you no longer receive email at that address, write to us from it or describe your account, and we will help:",
+    "help_not_live": "Our support mailbox is still being set up, so we cannot take deletion requests by email yet. This page will show the address as soon as it works.",
+    "privacy_link": "Read the privacy policy"
+  },
+  "Business": {
+    "meta_title": "Cleanway for teams",
+    "meta_description": "Protect the phones and browsers your team uses from scam and phishing sites. Cleanway is priced per device; for a larger team, write to us.",
+    "brand": "Cleanway",
+    "badge": "For teams",
+    "title": "Scam protection for your team's phones and browsers",
+    "subtitle": "Cleanway blocks known scam and phishing sites on Android phones and warns about them in the browser. It counts devices, not people, so a small team pays only for the devices it protects.",
+    "how_heading": "How it works for a team",
+    "how_items": [
+      "Everyone installs the Cleanway app on their Android phone or the extension in their browser.",
+      "Blocking known scam sites is free on every device, with no account and no limit.",
+      "The paid plan adds unlimited detailed checks of links and messages. One account covers several devices, and you can add more.",
+      "In your account at cleanway.ai/account you see every device and unlink one that is no longer used."
+    ],
+    "pricing_heading": "Price",
+    "pricing_body": "The price is per device and is the same for a team as for anyone else. See the current price for your country, and the price of each extra device, on the Pricing page.",
+    "pricing_cta": "See prices",
+    "contact_heading": "A larger team?",
+    "contact_live": "If you want to protect many devices, or need an invoice, write to us:",
+    "contact_not_live": "Our mailbox is still being set up, so we cannot take requests by email yet. Until then, use the plan on the Pricing page; this page will show our address as soon as it works.",
+    "honest_heading": "What Cleanway does not do",
+    "honest_body": "Cleanway is not a corporate security suite: there is no admin console, single sign-on, central policies or phishing training. It does not see your team's browsing, messages or passwords. No tool catches every new scam site, so keep the usual rules: never share codes from text messages and check urgent payment requests by phone."
   },
   "Reasons": {
     "flagged_dangerous": "Google flags this site as dangerous",

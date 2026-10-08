@@ -1,15 +1,16 @@
 """Storage for accounts: linked devices and entitlements.
 
 Two tables (supabase/migrations 022, 023) reached through PostgREST with
-the service key, like the rest of the API. Device registration and unlinking
+the service key, like the rest of the API — plus `revenuecat_events` (024),
+the RevenueCat webhook's dedupe list. Device registration and unlinking
 go through the SQL functions `register_device` / `revoke_device`: the device
 limit has to be checked and written in ONE transaction (two new phones
 racing for the last seat must not both get it), which a pair of REST calls
 cannot do.
 
 Everything raises `AccountStoreError` when Supabase can't be reached or
-answers non-2xx. Callers decide: an account screen answers 503, the Stripe
-webhook answers 5xx so Stripe retries. Nothing here turns "database down"
+answers non-2xx. Callers decide: an account screen answers 503, a billing
+webhook (Stripe, RevenueCat) answers 5xx so it is retried. Nothing here turns "database down"
 into "no devices" or "free plan".
 
 `get_account_store()` returns None when Supabase isn't configured (local
@@ -28,9 +29,10 @@ logger = logging.getLogger("cleanway.account_store")
 # Columns a device is read with. device_hash (the client's install id) is
 # read so the API can tell "this device" apart; it is never sent back out.
 DEVICE_COLUMNS = "id,device_hash,platform,name,app_version,created_at,last_seen,revoked_at"
-ENTITLEMENT_COLUMNS = (
-    "id,account_id,source,external_id,plan,status,device_limit,period_end,created_at,updated_at"
-)
+# Every column: product_id / source_event_at arrive with migration 024, and
+# naming them here would turn every account screen into a 503 on a database
+# where 024 hasn't been applied yet.
+ENTITLEMENT_COLUMNS = "*"
 
 
 class AccountStoreError(Exception):
@@ -45,6 +47,16 @@ class AccountStore(Protocol):
     async def set_entitlements_status(
         self, *, account_id: str, source: str, status: str
     ) -> None: ...
+
+    async def get_entitlement(self, *, source: str, external_id: str) -> Optional[dict]: ...
+
+    async def reassign_entitlements(
+        self, *, from_account: str, to_account: str, sources: tuple[str, ...]
+    ) -> int: ...
+
+    async def is_event_processed(self, event_id: str) -> bool: ...
+
+    async def mark_event_processed(self, event_id: str, event_type: str) -> None: ...
 
     async def list_devices(self, account_id: str) -> list[dict]: ...
 
@@ -140,6 +152,65 @@ class PostgrestAccountStore:
             json={"status": status},
             headers=self._headers(
                 **{"Content-Type": "application/json", "Prefer": "return=minimal"}
+            ),
+        )
+
+    async def get_entitlement(self, *, source: str, external_id: str) -> Optional[dict]:
+        rows = await self._call(
+            "get",
+            "/rest/v1/entitlements",
+            params={
+                "source": f"eq.{source}",
+                "external_id": f"eq.{external_id}",
+                "select": ENTITLEMENT_COLUMNS,
+                "limit": "1",
+            },
+            headers=self._headers(),
+        )
+        rows = list(rows or [])
+        return rows[0] if rows else None
+
+    async def reassign_entitlements(
+        self, *, from_account: str, to_account: str, sources: tuple[str, ...]
+    ) -> int:
+        rows = await self._call(
+            "patch",
+            "/rest/v1/entitlements",
+            params={
+                "account_id": f"eq.{from_account}",
+                "source": f"in.({','.join(sources)})",
+                "select": "id",
+            },
+            json={"account_id": to_account},
+            headers=self._headers(
+                **{"Content-Type": "application/json", "Prefer": "return=representation"}
+            ),
+        )
+        return len(list(rows or []))
+
+    # ── RevenueCat webhook dedupe (migration 024) ──
+
+    async def is_event_processed(self, event_id: str) -> bool:
+        rows = await self._call(
+            "get",
+            "/rest/v1/revenuecat_events",
+            params={"event_id": f"eq.{event_id}", "select": "event_id", "limit": "1"},
+            headers=self._headers(),
+        )
+        return bool(rows)
+
+    async def mark_event_processed(self, event_id: str, event_type: str) -> None:
+        await self._call(
+            "post",
+            "/rest/v1/revenuecat_events",
+            ok=(200, 201, 204),
+            params={"on_conflict": "event_id"},
+            json={"event_id": event_id, "event_type": event_type},
+            headers=self._headers(
+                **{
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=ignore-duplicates,return=minimal",
+                }
             ),
         )
 

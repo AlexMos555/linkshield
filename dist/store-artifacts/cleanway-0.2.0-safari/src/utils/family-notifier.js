@@ -1,0 +1,210 @@
+/**
+ * Family Hub local-notifications poller.
+ *
+ * The auto-fan-out path (family-fanout.js) ensures Mom's blocks reach
+ * Grandma's server inbox in real time. This module closes the rest of
+ * the loop: every minute or so, fetch the inbox, decrypt the unseen
+ * envelopes, and surface them as OS notifications via the
+ * chrome.notifications API.
+ *
+ * Why local + not server-pushed:
+ *   - Server-pushed notifications need FCM (Android) / APNs (iOS) /
+ *     Web Push VAPID keys + a backend push subscription store.
+ *   - Local polling is good enough for the 1-minute SLA the strategy
+ *     doc describes ("real-time block alerts").
+ *   - Saves us from adding a third-party push provider before we have
+ *     a real deploy story for it.
+ *
+ * Dedup:
+ *   chrome.storage.local["family_last_seen_alert_id"] — UUID of the
+ *   most-recent alert we've already shown. Anything newer than that
+ *   is fresh. Server orders by created_at desc so the first row IS
+ *   the newest; we walk the list until we hit the last_seen.
+ *
+ * Click handling: notification.onClicked opens the Family Hub section
+ * of the Options page. Wired in background/index.js, not here, so the
+ * persistent listener doesn't get redefined per poll.
+ *
+ * Imports are static: the background is a module service worker, where
+ * import() is forbidden (it used to be called here and always threw).
+ */
+
+import { listAlerts } from "./family-api.js";
+import { decryptForMe, getOrCreateKeypair } from "./family-crypto.js";
+import { familyStateFor, readFamilyCache } from "./family-fanout.js";
+
+const SEEN_KEY = "family_last_seen_alert_id";
+const ALARM_NAME = "cleanway_family_poll";
+const NOTIFICATION_PREFIX = "cleanway-family:";
+
+const POLL_PERIOD_MINUTES = 1;
+
+/**
+ * Arm the poll alarm when there is someone to hear from — a signed-in user
+ * with a family — and clear it otherwise. The alarm wakes a torn-down
+ * worker every minute, so nobody else should pay for it.
+ *
+ * An existing alarm is left alone: chrome.alarms.create() REPLACES an alarm
+ * of the same name and restarts its clock, so re-creating it on every worker
+ * start could keep pushing the next poll back.
+ *
+ * @returns {Promise<boolean>} whether the alarm is wanted
+ */
+export async function syncFamilyPollAlarm() {
+  if (!chrome.alarms) return false;
+  let wanted = false;
+  try {
+    const stored = await chrome.storage.local.get(["auth_token"]);
+    wanted = Boolean(stored && stored.auth_token) && Boolean(await readFamilyCache());
+    const existing = await chrome.alarms.get(ALARM_NAME);
+    if (wanted && !existing) {
+      chrome.alarms.create(ALARM_NAME, { periodInMinutes: POLL_PERIOD_MINUTES });
+    } else if (!wanted && existing) {
+      await chrome.alarms.clear(ALARM_NAME);
+    }
+  } catch {
+    // alarms or storage unavailable — nothing to schedule
+  }
+  return wanted;
+}
+
+export function isFamilyPollAlarm(alarmName) {
+  return alarmName === ALARM_NAME;
+}
+
+/**
+ * Pull the inbox, decrypt new envelopes, fire notifications.
+ * Best-effort: every error path returns 0 silently.
+ *
+ * @returns {Promise<number>} number of notifications shown
+ */
+export async function pollAndNotify() {
+  let stored;
+  try {
+    stored = await chrome.storage.local.get(["auth_token", SEEN_KEY]);
+  } catch {
+    return 0;
+  }
+  if (!stored || !stored.auth_token) return 0;
+
+  // Need the family — without it we have nothing to poll. Refreshed from the
+  // server once the cached copy is an hour old (family-fanout.js).
+  const cache = await familyStateFor(stored.auth_token);
+  if (!cache) return 0;
+
+  let kp;
+  try {
+    kp = await getOrCreateKeypair();
+  } catch {
+    return 0;
+  }
+  if (!kp || !kp.secretKeyB64) return 0;
+
+  const list = await listAlerts(stored.auth_token, cache.family_id);
+  if (!list || !Array.isArray(list.alerts) || list.alerts.length === 0) {
+    return 0;
+  }
+
+  const lastSeen = stored[SEEN_KEY] || null;
+  const fresh = [];
+  for (const env of list.alerts) {
+    if (lastSeen && env.id === lastSeen) break; // we've caught up
+    if (!env.ciphertext_b64 || !env.nonce_b64 || !env.sender_pubkey_b64) continue;
+    const opened = decryptForMe(
+      {
+        ciphertext_b64: env.ciphertext_b64,
+        nonce_b64: env.nonce_b64,
+        sender_pubkey_b64: env.sender_pubkey_b64,
+      },
+      kp.secretKeyB64,
+    );
+    if (!opened) continue;
+    fresh.push({ id: env.id, alert: opened, at: env.created_at });
+  }
+
+  if (fresh.length === 0) {
+    // Bump last_seen so we don't re-walk this list next minute.
+    if (list.alerts[0] && list.alerts[0].id !== lastSeen) {
+      try { await chrome.storage.local.set({ [SEEN_KEY]: list.alerts[0].id }); } catch {}
+    }
+    return 0;
+  }
+
+  // Show notifications. Walk OLDEST first (reverse) so the most recent
+  // is what the user sees on top of the stack.
+  fresh.reverse();
+  for (const item of fresh) {
+    const { title, message } = notificationText(item.alert);
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => {
+        chrome.notifications.create(
+          NOTIFICATION_PREFIX + item.id,
+          {
+            type: "basic",
+            iconUrl: chrome.runtime.getURL("public/icons/icon128.png"),
+            title,
+            message,
+            priority: 1,
+          },
+          () => resolve(),
+        );
+      });
+    } catch {
+      // chrome.notifications may not be available (rare browsers /
+      // permission denied) — skip silently and keep the loop going.
+    }
+  }
+
+  // Mark the newest as seen — list[0] before reverse was the newest.
+  try {
+    await chrome.storage.local.set({ [SEEN_KEY]: list.alerts[0].id });
+  } catch {
+    // Silent
+  }
+
+  return fresh.length;
+}
+
+function _t(key, subs) {
+  try {
+    return chrome.i18n.getMessage(key, subs || []) || key;
+  } catch {
+    return key;
+  }
+}
+
+/**
+ * Plain-language notification copy in the browser's language. A relative's
+ * alert is a block — fan-out sends only block pages the API confirmed — or,
+ * from older/other senders, a caution warning. An alert without a domain
+ * gets a sentence that does not need one.
+ *
+ * @param {{ domain?: string, level?: string }} alert — decrypted payload
+ * @returns {{ title: string, message: string }}
+ */
+export function notificationText(alert) {
+  const domain = alert && typeof alert.domain === "string" ? alert.domain : "";
+  if (alert && alert.level === "caution") {
+    return {
+      title: _t("family_notify_title_warned"),
+      message: domain
+        ? _t("family_notify_message_warned", [domain])
+        : _t("family_notify_message_warned_unnamed"),
+    };
+  }
+  return {
+    title: _t("family_notify_title_blocked"),
+    message: domain
+      ? _t("family_notify_message_blocked", [domain])
+      : _t("family_notify_message_blocked_unnamed"),
+  };
+}
+
+/**
+ * notification ID → "open Family Hub on click" URL. Used by the
+ * persistent onClicked listener in background/index.js.
+ */
+export function isFamilyNotificationId(notificationId) {
+  return typeof notificationId === "string" && notificationId.startsWith(NOTIFICATION_PREFIX);
+}

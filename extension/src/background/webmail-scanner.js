@@ -20,6 +20,15 @@
  *
  * Nothing here turns the scanner on. The flag only ever becomes true from
  * the Settings switch, so an update leaves every existing install off.
+ *
+ * Firefox 140+ also has its own data-collection consent
+ * (browser_specific_settings.gecko.data_collection_permissions): the
+ * Firefox manifest lists what the scanner sends as OPTIONAL data
+ * collection, Settings asks for it together with the mail sites, and a
+ * person can take it back in about:addons. Where the browser reports that
+ * consent (permissions.getAll() returns `data_collection`), the scanner runs
+ * only while it is granted. Chrome, Safari and older Firefox report nothing,
+ * and only the switch and the mail sites decide.
  */
 
 export const WEBMAIL_FLAG = "webmailScannerEnabled";
@@ -31,6 +40,9 @@ export const WEBMAIL_MATCHES = Object.freeze([
   "https://mail.yahoo.com/*",
 ]);
 export const WEBMAIL_FILES = Object.freeze(["src/content/webmail.js"]);
+// Firefox's names for what the scanner sends: the email (personal
+// communications) and the text and links of the mail page (website content).
+export const WEBMAIL_DATA_COLLECTION = Object.freeze(["personalCommunications", "websiteContent"]);
 
 /** Only a literal `true` turns it on: a missing key, "true" or 1 do not. */
 export function isWebmailScannerEnabled(stored) {
@@ -40,6 +52,22 @@ export function isWebmailScannerEnabled(stored) {
 /** True when this browser can register a content script at run time. */
 export function webmailScannerSupported(api) {
   return Boolean(api && api.scripting && typeof api.scripting.registerContentScripts === "function");
+}
+
+/**
+ * Firefox's data-collection consent for the scanner: true / false where the
+ * browser reports it, null where it does not (Chrome, Safari, Firefox < 140).
+ */
+export async function webmailDataConsent(api) {
+  if (!api || !api.permissions || typeof api.permissions.getAll !== "function") return null;
+  let all;
+  try {
+    all = await api.permissions.getAll();
+  } catch (e) {
+    return null;
+  }
+  if (!all || !Array.isArray(all.data_collection)) return null;
+  return WEBMAIL_DATA_COLLECTION.every((type) => all.data_collection.includes(type));
 }
 
 function scriptDefinition(persist) {
@@ -111,7 +139,13 @@ export function createWebmailScanner(api) {
   async function syncOnce({ injectOpen = false } = {}) {
     if (!webmailScannerSupported(api)) return { supported: false, registered: false };
     const stored = await api.storage.local.get(WEBMAIL_FLAG);
-    const want = isWebmailScannerEnabled(stored);
+    let want = isWebmailScannerEnabled(stored);
+    if (want && (await webmailDataConsent(api)) === false) {
+      // Switched on, but Firefox's data-collection consent is not (or no
+      // longer) given: run nothing, and Settings shows the switch off.
+      want = false;
+      await api.storage.local.set({ [WEBMAIL_FLAG]: false });
+    }
     const have = (await registeredIds(api.scripting)).length > 0;
     if (want && !have) await register(api.scripting);
     if (!want && have) await api.scripting.unregisterContentScripts({ ids: [WEBMAIL_SCRIPT_ID] });
@@ -131,6 +165,10 @@ export function createWebmailScanner(api) {
   async function releasePermission() {
     if (!api.permissions || typeof api.permissions.remove !== "function") return;
     try { await api.permissions.remove({ origins: [...WEBMAIL_MATCHES] }); } catch (e) { /* see above */ }
+    // Firefox 140+: give back the data-collection consent too. Asked only
+    // where the browser reports it — Chrome rejects the unknown key.
+    if ((await webmailDataConsent(api)) === null) return;
+    try { await api.permissions.remove({ data_collection: [...WEBMAIL_DATA_COLLECTION] }); } catch (e) { /* best effort */ }
   }
 
   function onStorageChanged(changes, area) {
@@ -140,12 +178,15 @@ export function createWebmailScanner(api) {
     if (!on) releasePermission();
   }
 
-  // Taking the mail-site access away in the browser's own extension
-  // settings turns the switch off too, so Settings never shows "on" for a
-  // scanner the browser no longer lets run.
+  // Taking the mail-site access (or, in Firefox, the data-collection
+  // consent) away in the browser's own extension settings turns the switch
+  // off too, so Settings never shows "on" for a scanner the browser no
+  // longer lets run.
   function onPermissionsRemoved(removed) {
     const origins = (removed && removed.origins) || [];
-    if (!origins.some((o) => WEBMAIL_MATCHES.includes(o))) return;
+    const data = (removed && removed.data_collection) || [];
+    if (!origins.some((o) => WEBMAIL_MATCHES.includes(o))
+        && !data.some((type) => WEBMAIL_DATA_COLLECTION.includes(type))) return;
     api.storage.local.set({ [WEBMAIL_FLAG]: false }).catch(() => {});
   }
 

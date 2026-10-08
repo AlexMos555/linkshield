@@ -957,7 +957,59 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     const bare = fakeScannerApi({ stored: { [WEBMAIL_FLAG]: true }, scripting: false });
     assert.deepEqual(await installWebmailScanner(bare.api).sync(), { supported: false, registered: false });
   });
+
+  // Firefox 140+ keeps its own data-collection consent (AMO requires
+  // data_collection_permissions for new add-ons). Where the browser reports
+  // it, the scanner runs only while it is granted.
+  await check(`[${tree}] webmail scanner obeys Firefox's data-collection consent where the browser has one`, async () => {
+    const { WEBMAIL_FLAG, WEBMAIL_DATA_COLLECTION, installWebmailScanner, webmailDataConsent } = await scannerModule(tree);
+    assert.deepEqual([...WEBMAIL_DATA_COLLECTION].sort(), ["personalCommunications", "websiteContent"]);
+
+    // Chrome / Safari / Firefox < 140: getAll() has no data_collection → only the switch decides.
+    const chromeLike = fakeScannerApi({ stored: { [WEBMAIL_FLAG]: true } });
+    chromeLike.api.permissions.getAll = async () => ({ permissions: ["storage"], origins: [...WEBMAIL_HOSTS] });
+    assert.equal(await webmailDataConsent(chromeLike.api), null);
+    await installWebmailScanner(chromeLike.api).sync();
+    assert.equal(chromeLike.registered.size, 1, "a browser without the consent API lost the scanner");
+
+    // Firefox, switched on but the consent missing → nothing runs, the switch goes off.
+    const refused = fakeScannerApi({ stored: { [WEBMAIL_FLAG]: true } });
+    refused.api.permissions.getAll = async () => ({ origins: [...WEBMAIL_HOSTS], data_collection: ["browsingActivity"] });
+    assert.equal(await webmailDataConsent(refused.api), false);
+    await installWebmailScanner(refused.api).sync();
+    assert.equal(refused.registered.size, 0, "ran without Firefox's data-collection consent");
+    assert.equal(refused.api.storage.local.data[WEBMAIL_FLAG], false);
+
+    // Firefox, consent given → runs; taking it back in about:addons switches it off,
+    // and switching off gives the consent back.
+    const granted = fakeScannerApi({ stored: { [WEBMAIL_FLAG]: true } });
+    granted.api.permissions.getAll = async () => ({
+      origins: [...WEBMAIL_HOSTS],
+      data_collection: ["browsingActivity", "authenticationInfo", ...WEBMAIL_DATA_COLLECTION],
+    });
+    const scanner = installWebmailScanner(granted.api);
+    await scanner.sync();
+    assert.equal(granted.registered.size, 1, "did not run with the consent given");
+    for (const fn of granted.api.permissions.onRemoved.listeners) fn({ data_collection: ["personalCommunications"] });
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(granted.api.storage.local.data[WEBMAIL_FLAG], false, "still on after the consent was taken back");
+    await scanner.releasePermission();
+    assert.ok(granted.log.removed.some((p) => Array.isArray(p.data_collection)), "the data-collection consent was kept");
+  });
 }
+
+await check("[extension-firefox] declares its data collection for Firefox's consent screen", async () => {
+  const gecko = readJson("extension-firefox/manifest.json").browser_specific_settings.gecko;
+  const dc = gecko.data_collection_permissions;
+  assert.ok(dc, "AMO requires data_collection_permissions for new add-ons");
+  // Site names of every page go to the API; a 5-char SHA-1 prefix of typed passwords and,
+  // when signed in, the account token go with some calls (docs/PRIVACY.md).
+  assert.deepEqual([...dc.required].sort(), ["authenticationInfo", "browsingActivity"]);
+  const { WEBMAIL_DATA_COLLECTION } = await scannerModule("extension-firefox");
+  assert.deepEqual([...dc.optional].sort(), [...WEBMAIL_DATA_COLLECTION].sort(), "the webmail scanner's data is optional");
+  const options = readFileSync(join(ROOT, "extension-firefox/src/options/options.js"), "utf8");
+  for (const type of WEBMAIL_DATA_COLLECTION) assert.ok(options.includes(`"${type}"`), `Settings does not ask for ${type}`);
+});
 
 // A fake mail page: just enough Gmail DOM for content/webmail.js, counting
 // every read of the page so "off" can be proved to read nothing.
@@ -1158,7 +1210,7 @@ await check("the Settings switch starts off and its consent text names everythin
     assert.ok(section, `${tree}: the email scanning section is missing or hidden`);
     // Not stripComments(): the mail-site patterns ("https://…/*") look like comment openers to it.
     const js = readFileSync(join(ROOT, tree, "src/options/options.js"), "utf8");
-    assert.match(js, /permissions\.request\(\s*\{\s*origins: WEBMAIL_ORIGINS\s*\}/, `${tree}: Settings does not ask for the mail sites`);
+    assert.match(js, /const wanted = \{ origins: WEBMAIL_ORIGINS \};[\s\S]{0,200}permissions\.request\(wanted,/, `${tree}: Settings does not ask for the mail sites`);
   }
   const en = readJson("extension/_locales/en/messages.json");
   const consent = en.webmail_setting_consent.message;

@@ -1,0 +1,1508 @@
+{
+  "extension_name": {
+    "message": "Cleanway — Perlindungan dari tautan penipuan"
+  },
+  "extension_description": {
+    "message": "Deteksi otomatis situs penipuan dan phishing. Bahasa sederhana, untuk semua orang."
+  },
+  "popup_brand": {
+    "message": "Cleanway"
+  },
+  "popup_settings_title": {
+    "message": "Pengaturan"
+  },
+  "status_scanning": {
+    "message": "Memeriksa halaman ini…"
+  },
+  "status_safe_title": {
+    "message": "Halaman ini aman"
+  },
+  "status_safe_subtitle": {
+    "message": "Tidak ada tautan penipuan di $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "Beberapa tautan terlihat mencurigakan"
+  },
+  "status_warning_subtitle": {
+    "message": "$N$ tautan di halaman ini perlu diperiksa lebih teliti",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "Ini situs penipuan"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ berpura-pura menjadi situs lain untuk mencuri data Anda",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "Tidak bisa memeriksa halaman ini"
+  },
+  "status_unknown_subtitle": {
+    "message": "Coba lagi sebentar"
+  },
+  "action_close_tab": {
+    "message": "Tutup halaman ini"
+  },
+  "action_audit": {
+    "message": "Apa yang dikumpulkan situs ini"
+  },
+  "action_week": {
+    "message": "Minggu saya"
+  },
+  "action_more": {
+    "message": "Lainnya"
+  },
+  "action_less": {
+    "message": "Lebih sedikit"
+  },
+  "more_section_label": {
+    "message": "Alat tambahan"
+  },
+  "action_breach": {
+    "message": "Cek kebocoran email"
+  },
+  "action_score": {
+    "message": "Tingkat keamanan saya"
+  },
+  "action_trust": {
+    "message": "Selalu percayai situs ini"
+  },
+  "action_report": {
+    "message": "Laporkan hasil salah"
+  },
+  "stats_label_blocked": {
+    "message": "Penipuan diblokir"
+  },
+  "stats_label_warned": {
+    "message": "Peringatan"
+  },
+  "stats_label_checked": {
+    "message": "Tautan diperiksa"
+  },
+  "upgrade_free_count": {
+    "message": "Gratis: $USED$ dari $LIMIT$ pemeriksaan hari ini",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "Upgrade"
+  },
+  "onboarding_welcome": {
+    "message": "Hai! Saya Cleanway."
+  },
+  "onboarding_tip": {
+    "message": "Saya periksa setiap tautan di setiap halaman. Yang berbahaya saya tandai merah. Ragu? Klik kanan → «Periksa dengan Cleanway»."
+  },
+  "aha_found_scams": {
+    "message": "Saya menemukan $N$ tautan penipuan yang terlewat oleh browser Anda",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "Offline — perlindungan dasar aktif"
+  },
+  "recent_empty": {
+    "message": "Belum ada apa-apa — berselancar saja, saya mengawasi."
+  },
+  "nudge_threshold_title": {
+    "message": "Anda telah memblokir $COUNT$+ situs penipuan!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "Pemblokiran tetap gratis selamanya. Buka detail lengkap \"mengapa berbahaya\" di paket Personal."
+  },
+  "nudge_threshold_cta": {
+    "message": "Lihat detail"
+  },
+  "device_override_heading": {
+    "message": "Perangkat ini"
+  },
+  "device_override_subtitle": {
+    "message": "Terapkan tingkat dan aksesibilitas hanya pada instalasi peramban ini. Perangkat lain di akun ini tetap menggunakan default."
+  },
+  "device_effective_label": {
+    "message": "Aktif sekarang"
+  },
+  "device_override_toggle_label": {
+    "message": "Ganti hanya di perangkat ini"
+  },
+  "device_override_toggle_desc": {
+    "message": "Saat aktif, kontrol di bawah hanya tersimpan di perangkat ini — default akun Anda tidak berubah."
+  },
+  "device_voice_label": {
+    "message": "Peringatan suara di perangkat ini"
+  },
+  "device_font_label": {
+    "message": "Ukuran teks di perangkat ini"
+  },
+  "device_clear_overrides_label": {
+    "message": "Hapus semua penggantian perangkat"
+  },
+  "device_clear_overrides_desc": {
+    "message": "Mengembalikan perangkat ini ke default akun Anda."
+  },
+  "device_clear_overrides_btn": {
+    "message": "Hapus"
+  },
+  "family_hub_heading": {
+    "message": "Pusat Keluarga"
+  },
+  "family_hub_subtitle": {
+    "message": "Dapatkan pemberitahuan saat penipuan diblokir di perangkat orang yang Anda sayangi. Enkripsi end-to-end — Cleanway pun tidak membaca peringatannya."
+  },
+  "family_loading": {
+    "message": "Memuat…"
+  },
+  "family_none_label": {
+    "message": "Anda belum dalam keluarga"
+  },
+  "family_none_desc": {
+    "message": "Buat satu dan undang hingga 5 orang. Atau bergabung dengan keluarga yang sudah ada lewat kode."
+  },
+  "family_create_btn": {
+    "message": "Buat keluarga"
+  },
+  "family_join_btn": {
+    "message": "Gabung dengan kode"
+  },
+  "family_accept_btn": {
+    "message": "Gabung"
+  },
+  "family_members_label": {
+    "message": "anggota"
+  },
+  "family_invite_label": {
+    "message": "Undang anggota"
+  },
+  "family_invite_desc": {
+    "message": "Membuat kode + PIN sekali pakai. Kirim lewat SMS atau langsung."
+  },
+  "family_invite_btn": {
+    "message": "Buat undangan"
+  },
+  "family_alerts_label": {
+    "message": "Peringatan terbaru"
+  },
+  "family_alerts_empty": {
+    "message": "Belum ada peringatan — pemblokiran keluarga akan muncul di sini."
+  },
+  "family_invite_modal_title": {
+    "message": "Bagikan ini dengan anggota keluarga"
+  },
+  "family_invite_modal_desc": {
+    "message": "Kedua nilai hanya muncul sekali. Setelah dialog ditutup Anda tidak bisa melihatnya lagi — buat undangan baru jika perlu."
+  },
+  "family_invite_code_label": {
+    "message": "Kode"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "Salin keduanya"
+  },
+  "family_invite_close_btn": {
+    "message": "Selesai"
+  },
+  "family_invite_qr_label": {
+    "message": "Atau pindai dengan ponsel"
+  },
+  "family_invite_link_label": {
+    "message": "Atau bagikan tautan ini"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "Salin tautan"
+  },
+  "family_join_code_placeholder": {
+    "message": "Kode atau tempel tautan undangan"
+  },
+  "family_join_paste_hint": {
+    "message": "Tips: tempel tautan undangan Cleanway di kolom pertama — PIN akan terisi otomatis."
+  },
+  "locked_title": {
+    "message": "Akun ditahan"
+  },
+  "locked_body": {
+    "message": "Anda meminta untuk menghapus akun Cleanway. Kami menyimpannya selama 30 hari sebelum menghapus semuanya. Pulihkan sekarang untuk mempertahankan langganan, riwayat, dan keluarga Anda."
+  },
+  "locked_restore_cta": {
+    "message": "Pulihkan akun saya"
+  },
+  "locked_restoring": {
+    "message": "Memulihkan…"
+  },
+  "locked_meta": {
+    "message": "Penghapusan diminta pada $DATE$. Penghapusan permanen dalam 30 hari.",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "Sesi Anda telah berakhir. Silakan masuk lagi di cleanway.ai."
+  },
+  "locked_error_generic": {
+    "message": "Tidak dapat memulihkan akun Anda. Coba lagi atau hubungi dukungan."
+  },
+  "locked_error_network": {
+    "message": "Tidak dapat terhubung ke server kami. Periksa koneksi Anda."
+  },
+  "status_user_content_title": {
+    "message": "Siapa pun bisa membuat halaman di sini"
+  },
+  "status_user_content_subtitle": {
+    "message": "Cleanway tidak bisa memeriksa halaman di $DOMAIN$. Jangan masukkan data kartu atau kata sandi jika Anda tidak tahu siapa pembuat halaman ini.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_just_now": {
+    "message": "baru saja"
+  },
+  "time_minutes": {
+    "message": "$N$ mnt",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_hours": {
+    "message": "$N$ jam",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_days": {
+    "message": "$N$ hari",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_no_tab": {
+    "message": "Buka halaman dulu"
+  },
+  "action_trust_invalid": {
+    "message": "Halaman ini tidak bisa ditambahkan"
+  },
+  "action_trust_done": {
+    "message": "$DOMAIN$ ditambahkan ke situs tepercaya",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_error": {
+    "message": "Gagal menyimpan"
+  },
+  "action_report_no_tab": {
+    "message": "Buka halaman dulu"
+  },
+  "action_report_invalid": {
+    "message": "Halaman ini tidak bisa dilaporkan"
+  },
+  "action_report_done": {
+    "message": "Terima kasih, sudah dilaporkan"
+  },
+  "action_report_throttled": {
+    "message": "Terlalu banyak laporan, coba lagi nanti"
+  },
+  "action_report_error": {
+    "message": "Laporan gagal dikirim"
+  },
+  "tip_dismiss": {
+    "message": "Tutup"
+  },
+  "trust_footer": {
+    "message": "Kami memeriksa alamat situs, bukan tautan lengkap atau isi halaman"
+  },
+  "confidence_chip": {
+    "message": "Keyakinan: $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_title": {
+    "message": "STOP"
+  },
+  "block_subtitle_scam": {
+    "message": "Ini situs penipuan"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ berpura-pura menjadi situs lain untuk mencuri data Anda.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "Situs ini berpura-pura menjadi $BRAND$",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "Bagaimana penipu menggunakan situs seperti ini:"
+  },
+  "block_scheme_step1": {
+    "message": "Anda akan diminta password atau data bank"
+  },
+  "block_scheme_step2": {
+    "message": "Penipu mencuri semua yang Anda ketik"
+  },
+  "block_scheme_step3": {
+    "message": "Mereka menguras rekening atau mencuri identitas Anda"
+  },
+  "block_back_button": {
+    "message": "Kembali ke tempat aman"
+  },
+  "block_proceed_button": {
+    "message": "Saya paham risikonya — tetap buka"
+  },
+  "block_proceed_countdown": {
+    "message": "Tunggu $N$ detik…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Dilindungi oleh Cleanway. Kami tidak pernah menjual data Anda."
+  },
+  "block_voice_alert": {
+    "message": "Berhenti. Situs $DOMAIN$ berbahaya. Jangan masukkan kata sandi Anda.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_evidence_heading": {
+    "message": "Mengapa kami memblokir situs ini"
+  },
+  "block_explainer_heading": {
+    "message": "Penipuan jenis apa ini?"
+  },
+  "block_evidence_other_title": {
+    "message": "Tanda bahaya"
+  },
+  "block_evidence_other_body": {
+    "message": "Pemeriksaan kami menemukan hal tidak biasa pada situs ini."
+  },
+  "welcome_hero_title": {
+    "message": "Anda sekarang terlindungi"
+  },
+  "welcome_hero_subtitle": {
+    "message": "Setiap tautan yang Anda lihat diperiksa. Yang berbahaya diblokir otomatis."
+  },
+  "welcome_step1_title": {
+    "message": "Pemeriksaan otomatis"
+  },
+  "welcome_step1_desc": {
+    "message": "Setiap halaman, setiap tautan. Tanda hijau: aman. Merah: penipuan."
+  },
+  "welcome_step2_title": {
+    "message": "Privasi yang utama"
+  },
+  "welcome_step2_desc": {
+    "message": "Kami memeriksa alamat situs, bukan tautan lengkap atau isi halaman. Kami tidak pernah menjual data Anda."
+  },
+  "welcome_step3_title": {
+    "message": "Tanpa lambat"
+  },
+  "welcome_step3_desc": {
+    "message": "Sebagian besar pemeriksaan terjadi di perangkat Anda dalam kurang dari sedetik."
+  },
+  "welcome_step4_title": {
+    "message": "Untuk seluruh keluarga"
+  },
+  "welcome_step4_desc": {
+    "message": "Lindungi orang tua, anak, kakek-nenek dengan satu paket. Mode berbeda untuk masing-masing."
+  },
+  "welcome_cta_scan": {
+    "message": "Periksa kotak masuk saya dari penipuan tersembunyi"
+  },
+  "welcome_cta_skip": {
+    "message": "Lewati — mulai menjelajah"
+  },
+  "welcome_trust_footer": {
+    "message": "Pemblokiran gratis selamanya. Kami tidak pernah menjual data Anda."
+  },
+  "welcome_page_title": {
+    "message": "Selamat datang di Cleanway"
+  },
+  "welcome_persona_title": {
+    "message": "Siapa yang paling sering memakai perangkat ini?"
+  },
+  "welcome_persona_regular": {
+    "message": "Saya — mode biasa"
+  },
+  "welcome_persona_granny": {
+    "message": "Orang tua / kakek-nenek"
+  },
+  "welcome_persona_kids": {
+    "message": "Anak-anak"
+  },
+  "welcome_persona_pro": {
+    "message": "Pengguna mahir"
+  },
+  "welcome_persona_hint": {
+    "message": "Mengatur cara peringatan dijelaskan. Bisa diubah kapan saja di Pengaturan."
+  },
+  "badge_label_safe": {
+    "message": "Aman"
+  },
+  "badge_label_caution": {
+    "message": "Hati-hati"
+  },
+  "badge_label_dangerous": {
+    "message": "Berbahaya"
+  },
+  "badge_label_unknown": {
+    "message": "Tidak diketahui"
+  },
+  "badge_aria_safe": {
+    "message": "Tautan aman"
+  },
+  "badge_aria_caution": {
+    "message": "Hati-hati — periksa tautan ini sebelum memercayainya"
+  },
+  "badge_aria_dangerous": {
+    "message": "Tautan berbahaya — jangan dibuka"
+  },
+  "badge_score": {
+    "message": "Risiko: $SCORE$/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_reason_official_site": {
+    "message": "Situs resmi"
+  },
+  "badge_label_user_content": {
+    "message": "Tidak bisa diperiksa"
+  },
+  "badge_aria_user_content": {
+    "message": "Tautan ke situs tempat siapa pun bisa membuat halaman — tidak diperiksa"
+  },
+  "badge_reason_user_content": {
+    "message": "Siapa pun bisa membuat halaman di sini. Jangan masukkan data kartu atau kata sandi."
+  },
+  "audit_title": {
+    "message": "Audit privasi"
+  },
+  "audit_trackers": {
+    "message": "Pelacak"
+  },
+  "audit_cookies": {
+    "message": "Cookie"
+  },
+  "audit_data_fields": {
+    "message": "Kolom data"
+  },
+  "audit_fingerprint": {
+    "message": "Sidik jari digital"
+  },
+  "audit_yes": {
+    "message": "Ya"
+  },
+  "audit_no": {
+    "message": "Tidak"
+  },
+  "audit_share": {
+    "message": "Bagikan nilai"
+  },
+  "audit_on_device": {
+    "message": "Dijalankan di perangkat Anda"
+  },
+  "credguard_banner_title": {
+    "message": "Berhenti — ini tampak seperti halaman penipuan"
+  },
+  "credguard_banner_brand": {
+    "message": "Tampak seperti $BRAND$, tetapi alamatnya $HOST$ — bukan $LEGIT$.",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "legit": {
+        "content": "$3"
+      }
+    }
+  },
+  "credguard_banner_action": {
+    "message": "Formulir ini mengirim kata sandi Anda ke $HOST$ — situs yang berbeda dari yang terlihat di bilah alamat.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_tld": {
+    "message": "Situs ini memakai alamat $TLD$, yang sering dipakai penipu untuk halaman palsu sekali pakai.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_advice": {
+    "message": "Jangan ketik kata sandi Anda di sini. Buka situs aslinya dengan mengetik alamatnya sendiri."
+  },
+  "credguard_dismiss": {
+    "message": "Tutup"
+  },
+  "credguard_modal_title": {
+    "message": "Cleanway menilai formulir ini adalah penipuan"
+  },
+  "credguard_modal_intro": {
+    "message": "Jika dilanjutkan, nama pengguna dan kata sandi Anda akan terkirim. Ini alasannya tampak tidak aman:"
+  },
+  "credguard_reason_action": {
+    "message": "Formulir mengirim kata sandi Anda ke $ACTION$ — bukan ke $PAGE$.",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "page": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_typosquat": {
+    "message": "Alamat ini ($HOST$) tampak seperti salah ketik dari $BRAND$.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "brand": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_tld": {
+    "message": "Penipu sering memakai alamat $TLD$ untuk halaman masuk palsu.",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_button_cancel": {
+    "message": "Jangan kirim — kembali"
+  },
+  "credguard_button_honeypot": {
+    "message": "Lindungi kata sandi saya"
+  },
+  "credguard_button_honeypot_hint": {
+    "message": "Cleanway mengirim kata sandi karangan acak bersama formulir, bukan kata sandi Anda."
+  },
+  "credguard_button_override": {
+    "message": "Tetap kirim"
+  },
+  "credguard_toast_title": {
+    "message": "Cleanway mengirim kata sandi karangan"
+  },
+  "credguard_toast_body": {
+    "message": "Cleanway tidak mengirim kata sandi asli Anda dengan formulir ini. Namun halaman ini mungkin sudah membacanya saat Anda mengetik, jadi paling aman ganti kata sandi itu."
+  },
+  "credguard_banner_title_weak": {
+    "message": "Hati-hati di halaman masuk ini"
+  },
+  "credguard_banner_advice_weak": {
+    "message": "Jika Anda tidak yakin ini situs yang asli, buka dengan mengetik sendiri alamatnya."
+  },
+  "credguard_modal_title_weak": {
+    "message": "Periksa situs ini sebelum mengirim kata sandi Anda"
+  },
+  "credguard_page_flagged": {
+    "message": "Cleanway sudah mengenali situs ini sebagai penipuan."
+  },
+  "mpg_bitb": {
+    "message": "Halaman ini menggambar bilah alamat palsu ($FAKE$). Sebenarnya Anda berada di $REAL$.",
+    "placeholders": {
+      "fake": {
+        "content": "$1"
+      },
+      "real": {
+        "content": "$2"
+      }
+    }
+  },
+  "mpg_orphan": {
+    "message": "Halaman ini meminta kata sandi tanpa formulir masuk yang asli — kata sandi Anda bisa dicuri."
+  },
+  "menu_check_link": {
+    "message": "Periksa tautan ini dengan Cleanway"
+  },
+  "menu_privacy_audit": {
+    "message": "Periksa privasi halaman ini"
+  },
+  "command_open_popup": {
+    "message": "Buka Cleanway"
+  },
+  "command_check_page": {
+    "message": "Periksa halaman ini"
+  },
+  "family_notify_title_blocked": {
+    "message": "Cleanway melindungi anggota keluarga Anda"
+  },
+  "family_notify_message_blocked": {
+    "message": "Situs penipuan diblokir: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_title_warned": {
+    "message": "Peringatan keluarga"
+  },
+  "family_notify_message_warned": {
+    "message": "Anggota keluarga Anda diperingatkan tentang situs mencurigakan: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_message_blocked_unnamed": {
+    "message": "Situs penipuan diblokir."
+  },
+  "family_notify_message_warned_unnamed": {
+    "message": "Anggota keluarga Anda diperingatkan tentang situs mencurigakan."
+  },
+  "reason_flagged_dangerous": {
+    "message": "Google menandai situs ini berbahaya"
+  },
+  "reason_flagged_phishing": {
+    "message": "Dilaporkan sebagai phishing"
+  },
+  "reason_on_blocklists": {
+    "message": "Ada di daftar tepercaya penipuan dan spam"
+  },
+  "reason_threat_reports": {
+    "message": "Disebut dalam laporan ancaman"
+  },
+  "reason_spreads_malware": {
+    "message": "Dikenal menyebarkan malware"
+  },
+  "reason_imitates_brand": {
+    "message": "Namanya meniru merek terkenal"
+  },
+  "reason_lookalike_letters": {
+    "message": "Memakai huruf mirip untuk menipumu"
+  },
+  "reason_fake_brand_address": {
+    "message": "Nama merek tepercaya disembunyikan dalam alamat palsu"
+  },
+  "reason_copies_brand_icon": {
+    "message": "Menyalin ikon merek terkenal"
+  },
+  "reason_no_https": {
+    "message": "Koneksi tidak aman (tanpa HTTPS)"
+  },
+  "reason_missing_protections": {
+    "message": "Tidak ada perlindungan keamanan dasar"
+  },
+  "reason_raw_ip_address": {
+    "message": "Alamatnya angka, bukan nama sungguhan"
+  },
+  "reason_unusual_connection": {
+    "message": "Memakai cara koneksi yang tidak biasa"
+  },
+  "reason_hidden_destination": {
+    "message": "Menyembunyikan ke mana tautan sebenarnya menuju"
+  },
+  "reason_very_new_site": {
+    "message": "Situs ini baru dibuat"
+  },
+  "reason_scam_words": {
+    "message": "Alamat memuat kata-kata yang sering dipakai penipu"
+  },
+  "reason_carries_personal_data": {
+    "message": "Tautan membawa data pribadimu di dalamnya"
+  },
+  "reason_long_complex_address": {
+    "message": "Alamatnya luar biasa panjang dan berbelit"
+  },
+  "reason_many_redirects": {
+    "message": "Tautan ini mengalihkan Anda ke alamat lain"
+  },
+  "reason_risky_ending": {
+    "message": "Memakai akhiran yang disukai penipu"
+  },
+  "reason_risky_registrar": {
+    "message": "Didaftarkan lewat layanan yang sering dipakai penipu"
+  },
+  "reason_random_name": {
+    "message": "Namanya tampak dibuat acak"
+  },
+  "reason_detector_suspicious": {
+    "message": "Detektor kami menilainya mencurigakan"
+  },
+  "reason_well_known_site": {
+    "message": "Situs web terkenal dan tepercaya"
+  },
+  "reason_popular_site": {
+    "message": "Situs yang banyak dipakai dan populer"
+  },
+  "reason_detector_safe": {
+    "message": "Detektor kami menilai situs ini aman"
+  },
+  "reason_not_a_real_business": {
+    "message": "Tidak disiapkan seperti situs perusahaan asli"
+  },
+  "reason_shifty_setup": {
+    "message": "Pengaturan server yang tidak biasa, yang juga dipakai jaringan penipu"
+  },
+  "reason_padded_address": {
+    "message": "Alamatnya diberi bagian tambahan untuk menyembunyikan nama asli"
+  },
+  "reason_shared_hosting": {
+    "message": "Di-hosting di layanan tempat siapa pun bisa membuat situs"
+  },
+  "reason_invalid_address": {
+    "message": "Alamatnya tidak ditulis dengan benar"
+  },
+  "reason_private_network": {
+    "message": "Alamat ini mengarah ke jaringan pribadi, bukan internet terbuka"
+  },
+  "reason_on_your_trusted_list": {
+    "message": "Anda menandai situs ini sebagai tepercaya"
+  },
+  "reason_ai_second_look": {
+    "message": "Asisten AI kami menimbang tanda-tanda bahayanya"
+  },
+  "reason_on_cleanway_list": {
+    "message": "Ada di daftar situs penipuan Cleanway"
+  },
+  "reason_site_not_found": {
+    "message": "Alamat ini tidak ada"
+  },
+  "reason_unreachable_abroad": {
+    "message": "Server kami di luar negeri tidak bisa membuka situs ini. Banyak bank dan situs pemerintah memblokir alamat dari luar negeri, jadi ini saja bukan tanda bahaya"
+  },
+  "reason_checks_incomplete": {
+    "message": "Sebagian pengecekan tidak selesai, jadi hasilnya kurang pasti"
+  },
+  "reason_user_content_platform": {
+    "message": "Siapa pun bisa membuat halaman di layanan ini — penipu juga"
+  },
+  "reason_high_risk_score": {
+    "message": "Layanan penilai penipuan menganggap situs ini berisiko tinggi"
+  },
+  "reason_new_certificate": {
+    "message": "Sertifikat keamanan situs ini baru berumur beberapa hari"
+  },
+  "reason_broken_certificate": {
+    "message": "Sertifikat keamanan situs ini tidak valid"
+  },
+  "evidence_flagged_dangerous": {
+    "message": "Google Safe Browsing, daftar yang dipakai Chrome, Firefox, dan Safari untuk memperingatkan pengguna, menandai situs ini berbahaya."
+  },
+  "evidence_flagged_phishing": {
+    "message": "Situs ini ada di basis data antiphishing — daftar situs yang menipu orang untuk mencuri kata sandi atau data kartu."
+  },
+  "evidence_on_blocklists": {
+    "message": "Peneliti keamanan sudah memasukkan situs ini ke daftar situs penipuan dan spam."
+  },
+  "evidence_threat_reports": {
+    "message": "Peneliti keamanan menyebut situs ini dalam laporan mereka tentang serangan."
+  },
+  "evidence_spreads_malware": {
+    "message": "Situs ini pernah ketahuan menyebarkan program yang menginfeksi komputer dan ponsel."
+  },
+  "evidence_imitates_brand": {
+    "message": "Alamatnya mirip alamat perusahaan terkenal, tetapi bukan milik perusahaan itu."
+  },
+  "evidence_lookalike_letters": {
+    "message": "Beberapa huruf di alamat itu hanya mirip huruf biasa. Begitulah alamat aslinya disembunyikan."
+  },
+  "evidence_fake_brand_address": {
+    "message": "Nama terkenal ada di awal alamat, tetapi situsnya milik orang lain."
+  },
+  "evidence_copies_brand_icon": {
+    "message": "Halaman ini memakai ikon perusahaan asli, tetapi berada di alamat lain yang tidak terkait — trik umum untuk mencuri data login."
+  },
+  "evidence_no_https": {
+    "message": "Semua yang Anda ketik di situs ini dikirim tanpa perlindungan dan bisa disadap."
+  },
+  "evidence_missing_protections": {
+    "message": "Situs ini tidak punya perlindungan dasar yang biasanya dipasang perusahaan asli."
+  },
+  "evidence_raw_ip_address": {
+    "message": "Perusahaan asli memberi nama pada situsnya. Halaman penipuan sering hanya memakai deretan angka."
+  },
+  "evidence_unusual_connection": {
+    "message": "Situs ini terhubung dengan cara tidak biasa yang jarang dibutuhkan situs normal."
+  },
+  "evidence_hidden_destination": {
+    "message": "Tautan ini menyembunyikan alamat tujuan sebenarnya."
+  },
+  "evidence_very_new_site": {
+    "message": "Situs penipuan biasanya hanya bertahan beberapa hari, jadi alamat yang baru dibuat patut dicurigai."
+  },
+  "evidence_scam_words": {
+    "message": "Alamatnya berisi kata seperti “login” atau “secure” yang ditambahkan penipu agar terlihat resmi."
+  },
+  "evidence_carries_personal_data": {
+    "message": "Tautan ini sendiri memuat email Anda atau kunci login. Siapa pun yang melihat tautannya bisa memakainya."
+  },
+  "evidence_long_complex_address": {
+    "message": "Alamatnya panjang dan berbelit sehingga sulit melihat ke mana sebenarnya ia mengarah."
+  },
+  "evidence_many_redirects": {
+    "message": "Tautan ini dibuat untuk mengarahkan Anda ke alamat lain — sering kali untuk menyembunyikan ke mana tautan itu sebenarnya menuju."
+  },
+  "evidence_risky_ending": {
+    "message": "Alamatnya berakhiran zona (seperti .xyz atau .top) yang banyak dipakai situs penipuan."
+  },
+  "evidence_risky_registrar": {
+    "message": "Situs ini didaftarkan lewat layanan yang sering dipilih penipu."
+  },
+  "evidence_random_name": {
+    "message": "Namanya tampak seperti huruf acak — ciri situs yang dibuat massal untuk penipuan sekali pakai."
+  },
+  "evidence_detector_suspicious": {
+    "message": "Detektor kami, yang dilatih dengan ribuan situs asli dan penipuan, menilai situs ini mirip situs penipuan."
+  },
+  "evidence_not_a_real_business": {
+    "message": "Situs ini tidak punya email yang berfungsi. Perusahaan asli hampir selalu punya."
+  },
+  "evidence_shifty_setup": {
+    "message": "Alamat situs ini bisa berpindah sangat cepat di antara banyak server. Layanan besar juga melakukannya, tetapi jaringan penipu memakainya agar situs mereka lebih sulit ditutup."
+  },
+  "evidence_padded_address": {
+    "message": "Ada bagian tambahan di depan nama aslinya supaya sulit terlihat."
+  },
+  "evidence_shared_hosting": {
+    "message": "Di layanan ini siapa pun bisa membuat situs dalam hitungan menit, termasuk penipu."
+  },
+  "evidence_on_cleanway_list": {
+    "message": "Daftar situs penipuan milik Cleanway sendiri mencantumkan situs ini."
+  },
+  "evidence_site_not_found": {
+    "message": "Saat ini tidak ada situs yang aktif di alamat ini. Periksa ejaannya."
+  },
+  "evidence_unreachable_abroad": {
+    "message": "Server kami di luar negeri tidak bisa membuka situs ini, jadi halamannya sendiri tidak diperiksa."
+  },
+  "evidence_checks_incomplete": {
+    "message": "Tidak semua pemeriksaan selesai tepat waktu, jadi penilaian ini didasarkan pada lebih sedikit tanda."
+  },
+  "evidence_user_content_platform": {
+    "message": "Siapa pun bisa memublikasikan halaman di layanan ini. Kami tidak bisa menjamin halaman yang ini."
+  },
+  "evidence_invalid_address": {
+    "message": "Alamatnya sendiri rusak. Ini bisa jadi jebakan bagi orang yang menyalin tautan."
+  },
+  "evidence_private_network": {
+    "message": "Situs publik biasa tidak mengarah ke sana, jadi kami tidak membukanya."
+  },
+  "evidence_ai_second_look": {
+    "message": "Jika tandanya saling bertentangan, model AI meninjaunya dan bisa sedikit menyesuaikan penilaian."
+  },
+  "evidence_well_known_site": {
+    "message": "Ini salah satu situs terkenal yang kami kenali sebagai asli."
+  },
+  "evidence_popular_site": {
+    "message": "Situs ini masuk daftar situs yang paling banyak dikunjungi di dunia. Itu nilai tambah, tetapi tanda bahaya lainnya tetap penting."
+  },
+  "evidence_detector_safe": {
+    "message": "Detektor kami, yang dilatih dengan ribuan situs asli dan penipuan, menilai situs ini mirip situs asli."
+  },
+  "evidence_on_your_trusted_list": {
+    "message": "Anda sendiri yang menambahkan situs ini ke situs tepercaya."
+  },
+  "evidence_high_risk_score": {
+    "message": "Layanan yang menilai situs dari sisi penipuan memberi situs ini skor risiko tinggi. Itu perkiraan, bukan laporan yang sudah dipastikan."
+  },
+  "evidence_new_certificate": {
+    "message": "Situs penipuan sering muncul dengan sertifikat yang masih baru. Namun situs asli juga rutin memperbaruinya, jadi hal ini sendiri tidak banyak berarti."
+  },
+  "evidence_broken_certificate": {
+    "message": "Sertifikat yang membuktikan siapa pengelola situs ini sudah kedaluwarsa, tidak diterbitkan oleh otoritas tepercaya, atau milik alamat lain. Browser Anda juga akan memperingatkannya."
+  },
+  "weekly_title": {
+    "message": "Minggu saya"
+  },
+  "weekly_checked": {
+    "message": "Diperiksa"
+  },
+  "weekly_blocked": {
+    "message": "Diblokir"
+  },
+  "weekly_warnings": {
+    "message": "Peringatan"
+  },
+  "weekly_top_threats": {
+    "message": "Ancaman paling sering"
+  },
+  "weekly_no_threats": {
+    "message": "Tidak ada situs penipuan tercatat minggu ini"
+  },
+  "weekly_on_device": {
+    "message": "Laporan dibuat di perangkat Anda"
+  },
+  "score_title": {
+    "message": "Tingkat keamanan saya"
+  },
+  "score_label_excellent": {
+    "message": "Sangat baik"
+  },
+  "score_label_good": {
+    "message": "Baik"
+  },
+  "score_label_fair": {
+    "message": "Cukup"
+  },
+  "score_label_low": {
+    "message": "Masih bisa ditingkatkan"
+  },
+  "score_breakdown": {
+    "message": "Dari mana skor ini berasal"
+  },
+  "score_on_device": {
+    "message": "Dihitung di perangkat Anda"
+  },
+  "score_factor_active_days": {
+    "message": "Hari bersama Cleanway: $DAYS$",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_active_days_of_week": {
+    "message": "Hari bersama Cleanway: $DAYS$ dari 7",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_no_dangerous": {
+    "message": "Tidak ada situs berbahaya dalam 30 hari"
+  },
+  "score_factor_dangerous_visits": {
+    "message": "Situs berbahaya yang dibuka: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_audit_avg": {
+    "message": "Rata-rata skor privasi situs: $SCORE$",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_trusted_sites": {
+    "message": "Situs di daftar tepercaya Anda: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_overrides": {
+    "message": "Peringatan yang Anda abaikan: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_checks": {
+    "message": "Total pemeriksaan: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "breach_title": {
+    "message": "Cek kebocoran email"
+  },
+  "breach_not_available": {
+    "message": "Pengecekan email di kebocoran data yang diketahui belum tersedia. Tidak ada yang diperiksa, dan kami tidak meminta email Anda."
+  },
+  "breach_works_now": {
+    "message": "Yang sudah berfungsi: saat Anda mengetik kata sandi di situs mana pun, Cleanway memperingatkan jika kata sandi itu pernah muncul di kebocoran yang diketahui."
+  },
+  "breach_close": {
+    "message": "Tutup"
+  },
+  "pwned_title": {
+    "message": "Kata sandi ini ada di kebocoran data yang diketahui."
+  },
+  "pwned_body": {
+    "message": "Ganti di situs ini dan jangan dipakai di tempat lain. Jumlah kemunculan di kebocoran publik: $COUNT$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pwned_dismiss": {
+    "message": "Mengerti"
+  },
+  "webmail_scanning": {
+    "message": "Cleanway sedang memeriksa email ini…"
+  },
+  "webmail_rate_limited": {
+    "message": "Terlalu banyak pemeriksaan — harap tunggu"
+  },
+  "webmail_rate_limited_detail": {
+    "message": "Terlalu banyak pemeriksaan dari jaringan ini sekarang. Coba lagi dalam semenit."
+  },
+  "webmail_error": {
+    "message": "Cleanway tidak bisa memeriksa email ini"
+  },
+  "webmail_error_detail": {
+    "message": "Periksa koneksi internet Anda lalu buka email ini lagi."
+  },
+  "webmail_dangerous": {
+    "message": "Kemungkinan penipuan — jangan klik tautan apa pun"
+  },
+  "webmail_suspicious": {
+    "message": "Mencurigakan — periksa pengirimnya sebelum bertindak"
+  },
+  "webmail_safe": {
+    "message": "Tampak aman — tidak ada tanda penipuan"
+  },
+  "webmail_dismiss": {
+    "message": "Tutup"
+  },
+  "webmail_finding_url_reputation": {
+    "message": "Tautan di email ini mengarah ke situs berbahaya yang dikenal"
+  },
+  "webmail_finding_auth_fail": {
+    "message": "Email ini gagal dalam pemeriksaan yang memastikan pengirim sebenarnya"
+  },
+  "webmail_finding_body_pattern": {
+    "message": "Teksnya memuat kalimat yang sering ada di email penipuan"
+  },
+  "webmail_finding_link_text_mismatch": {
+    "message": "Tautan menampilkan satu alamat tetapi mengarah ke alamat lain"
+  },
+  "webmail_safe_minor": {
+    "message": "Tampak aman — tidak ada tanda penipuan yang serius"
+  },
+  "webmail_finding_sender_check": {
+    "message": "Periksa alamat pengirim dengan cermat"
+  },
+  "webmail_finding_auth_unconfirmed": {
+    "message": "Pengirim tidak dapat dipastikan sepenuhnya"
+  },
+  "webmail_finding_brand_from_freemail": {
+    "message": "Mengaku dari perusahaan terkenal, tetapi dikirim dari email gratis"
+  },
+  "webmail_finding_brand_domain_mismatch": {
+    "message": "Mengaku dari perusahaan terkenal, tetapi tidak dikirim dari alamatnya"
+  },
+  "webmail_finding_sender_non_ascii": {
+    "message": "Alamat pengirim memakai huruf non-Latin — pastikan alamat itu asli"
+  },
+  "webmail_finding_reply_to_mismatch": {
+    "message": "Balasan untuk email ini akan terkirim ke alamat lain, bukan ke pengirim"
+  },
+  "webmail_finding_spf_softfail": {
+    "message": "Server email pengirim tidak dapat dipastikan sepenuhnya"
+  },
+  "webmail_finding_urgency": {
+    "message": "Email ini mendesak Anda untuk segera bertindak"
+  },
+  "webmail_finding_credential_request": {
+    "message": "Email ini meminta kata sandi, kode, atau data kartu"
+  },
+  "webmail_finding_money_request": {
+    "message": "Email ini meminta uang atau menjanjikan hadiah"
+  },
+  "webmail_finding_account_threat": {
+    "message": "Email ini memperingatkan akun diblokir atau login mencurigakan"
+  },
+  "webmail_setting_heading": {
+    "message": "Pemeriksaan email"
+  },
+  "webmail_setting_label": {
+    "message": "Periksa email yang saya buka di Gmail, Outlook, dan Yahoo dari phishing"
+  },
+  "webmail_setting_consent": {
+    "message": "Mati kecuali Anda menyalakannya. Saat menyala, setiap email yang Anda buka di Gmail, Outlook, atau Yahoo Mail dikirim ke server Cleanway (api.cleanway.ai) untuk diperiksa dari phishing: subjek, nama dan alamat pengirim, alamat Reply-To, teks pesan, serta alamat dan teks setiap tautan di dalamnya. Email diperiksa dan tidak disimpan; domain tautannya juga diperiksa dengan Google Safe Browsing. Matikan kapan saja dan pemeriksaan langsung berhenti."
+  },
+  "webmail_setting_denied": {
+    "message": "Browser Anda tidak memberi Cleanway akses ke situs email, jadi pemeriksaan email tetap mati."
+  },
+  "webmail_setting_unsupported": {
+    "message": "Browser ini tidak dapat menjalankan pemeriksaan email."
+  },
+  "options_page_title": {
+    "message": "Pengaturan Cleanway"
+  },
+  "options_page_subtitle": {
+    "message": "Pilih cara Cleanway melindungi Anda"
+  },
+  "options_skill_heading": {
+    "message": "Siapa yang memakai browser ini"
+  },
+  "options_skill_subtitle": {
+    "message": "Cleanway menjelaskan peringatannya secara berbeda untuk tiap orang. Bisa diubah kapan saja."
+  },
+  "options_skill_kids": {
+    "message": "Anak"
+  },
+  "options_skill_kids_desc": {
+    "message": "Tanda STOP besar di situs penipuan, tanpa tombol untuk tetap membukanya."
+  },
+  "options_skill_regular": {
+    "message": "Biasa"
+  },
+  "options_skill_regular_desc": {
+    "message": "Cocok untuk kebanyakan orang. Peringatan jelas yang menerangkan kenapa situs berbahaya."
+  },
+  "options_skill_granny": {
+    "message": "Kakek-nenek"
+  },
+  "options_skill_granny_desc": {
+    "message": "Teks besar, dan peringatan dibacakan dengan suara."
+  },
+  "options_skill_pro": {
+    "message": "Mahir"
+  },
+  "options_skill_pro_desc": {
+    "message": "Menampilkan skor risiko dan mendahulukan tanda-tanda bahaya."
+  },
+  "options_font_scale": {
+    "message": "Ukuran teks"
+  },
+  "options_font_scale_desc": {
+    "message": "Teks lebih besar di jendela Cleanway"
+  },
+  "options_voice": {
+    "message": "Peringatan suara"
+  },
+  "options_voice_desc": {
+    "message": "Bacakan peringatan saat Cleanway memblokir situs penipuan"
+  },
+  "options_pin": {
+    "message": "PIN orang tua"
+  },
+  "options_pin_desc": {
+    "message": "Belum berfungsi — mode Anak masih bisa dimatikan tanpa PIN. Yang sudah dilakukan mode Anak: halaman yang diblokir tidak punya tombol untuk tetap membukanya."
+  },
+  "options_pin_set": {
+    "message": "Atur PIN"
+  },
+  "options_pin_update": {
+    "message": "Ubah PIN"
+  },
+  "options_pin_clear": {
+    "message": "Hapus"
+  },
+  "options_pin_invalid": {
+    "message": "PIN harus tepat 4 angka"
+  },
+  "options_pin_clear_confirm": {
+    "message": "Hapus PIN orang tua?"
+  },
+  "options_voice_on": {
+    "message": "suara aktif"
+  },
+  "options_voice_off": {
+    "message": "suara mati"
+  },
+  "options_source_device": {
+    "message": "Diatur di perangkat ini"
+  },
+  "options_source_account": {
+    "message": "Dari akun Anda"
+  },
+  "options_protection": {
+    "message": "Perlindungan"
+  },
+  "options_auto_scan": {
+    "message": "Periksa tautan otomatis"
+  },
+  "options_auto_scan_desc": {
+    "message": "Periksa setiap tautan di setiap halaman"
+  },
+  "options_badges": {
+    "message": "Tanda di samping tautan"
+  },
+  "options_badges_desc": {
+    "message": "Tampilkan tanda keamanan di samping setiap tautan"
+  },
+  "options_block": {
+    "message": "Blokir halaman berbahaya"
+  },
+  "options_block_desc": {
+    "message": "Tampilkan layar peringatan sebelum situs berbahaya terbuka"
+  },
+  "options_privacy": {
+    "message": "Privasi"
+  },
+  "options_auto_audit": {
+    "message": "Cek privasi di setiap situs baru"
+  },
+  "options_auto_audit_desc": {
+    "message": "Lihat apa yang dikumpulkan setiap situs baru tentang Anda"
+  },
+  "options_anon_stats": {
+    "message": "Statistik anonim"
+  },
+  "options_anon_stats_desc": {
+    "message": "Bantu kembangkan Cleanway dengan berbagi angka total anonim"
+  },
+  "options_stats": {
+    "message": "Statistik"
+  },
+  "options_lists": {
+    "message": "Daftar Anda"
+  },
+  "options_blocklist": {
+    "message": "Situs yang diblokir"
+  },
+  "options_blocklist_desc": {
+    "message": "Situs yang selalu diblokir (satu per baris)"
+  },
+  "options_allowlist": {
+    "message": "Situs tepercaya"
+  },
+  "options_allowlist_desc": {
+    "message": "Situs yang tidak pernah ditandai (satu per baris)"
+  },
+  "options_save_lists": {
+    "message": "Simpan daftar"
+  },
+  "options_saved": {
+    "message": "Tersimpan ✓"
+  },
+  "options_tracking_heading": {
+    "message": "Perlindungan dari pelacakan"
+  },
+  "options_clean_tracking": {
+    "message": "Hapus tanda pelacak dari tautan"
+  },
+  "options_clean_tracking_desc": {
+    "message": "Hapus fbclid, utm_*, dan gclid dari alamat secara otomatis"
+  },
+  "options_block_miners": {
+    "message": "Blokir penambang kripto"
+  },
+  "options_block_miners_desc": {
+    "message": "Cegah situs menambang kripto di komputer Anda"
+  },
+  "options_advanced": {
+    "message": "Lanjutan"
+  },
+  "options_api_server": {
+    "message": "Server API"
+  },
+  "options_api_server_desc": {
+    "message": "Untuk pengembang. Bawaan: https://api.cleanway.ai"
+  },
+  "options_save": {
+    "message": "Simpan"
+  },
+  "options_referral": {
+    "message": "Undang teman"
+  },
+  "options_referral_link": {
+    "message": "Tautan undangan Anda"
+  },
+  "options_referral_link_desc": {
+    "message": "Bagikan agar teman dapat gratis 7 hari"
+  },
+  "options_copied": {
+    "message": "Tersalin ✓"
+  },
+  "options_redeem": {
+    "message": "Masukkan kode"
+  },
+  "options_redeem_desc": {
+    "message": "Dapat kode dari teman? Masukkan di sini"
+  },
+  "options_redeem_btn": {
+    "message": "Terapkan"
+  },
+  "options_redeem_placeholder": {
+    "message": "KODE"
+  },
+  "options_redeem_saved": {
+    "message": "Kode $CODE$ tersimpan",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_data": {
+    "message": "Data"
+  },
+  "options_clear": {
+    "message": "Hapus riwayat di perangkat ini"
+  },
+  "options_clear_desc": {
+    "message": "Hapus semua riwayat pemeriksaan yang tersimpan di perangkat ini"
+  },
+  "options_clear_btn": {
+    "message": "Hapus"
+  },
+  "options_clear_confirm": {
+    "message": "Hapus semua riwayat pemeriksaan di perangkat ini? Tindakan ini tidak bisa dibatalkan."
+  },
+  "options_export": {
+    "message": "Ekspor data saya"
+  },
+  "options_export_desc": {
+    "message": "Unduh semua yang disimpan Cleanway di perangkat ini sebagai file JSON"
+  },
+  "options_export_btn": {
+    "message": "Ekspor"
+  },
+  "options_settings_saved": {
+    "message": "Pengaturan tersimpan"
+  },
+  "options_family_default_name": {
+    "message": "Keluarga saya"
+  },
+  "options_family_role_owner": {
+    "message": "pemilik"
+  },
+  "options_family_role_member": {
+    "message": "anggota"
+  },
+  "options_family_members_count": {
+    "message": "Anggota: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_family_no_key": {
+    "message": "belum ada kunci"
+  },
+  "options_family_unknown_domain": {
+    "message": "(situs tidak diketahui)"
+  },
+  "options_family_alert_blocked": {
+    "message": "diblokir"
+  },
+  "options_family_create_failed": {
+    "message": "Gagal membuat keluarga. Coba lagi sebentar lagi."
+  },
+  "options_family_join_invalid_input": {
+    "message": "Masukkan kode dan PIN 4 angka."
+  },
+  "options_family_join_failed": {
+    "message": "Undangan ini salah atau sudah kedaluwarsa."
+  },
+  "options_family_invite_failed": {
+    "message": "Gagal membuat undangan. Coba lagi sebentar lagi."
+  },
+  "options_family_invite_share": {
+    "message": "Undangan keluarga Cleanway\nKode: $CODE$\nPIN: $PIN$",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      },
+      "pin": {
+        "content": "$2"
+      }
+    }
+  },
+  "options_family_invite_qr_alt": {
+    "message": "Kode QR undangan keluarga Cleanway"
+  },
+  "account_heading": {
+    "message": "Akun"
+  },
+  "account_sign_in": {
+    "message": "Masuk"
+  },
+  "account_sign_out": {
+    "message": "Keluar"
+  },
+  "account_signed_in": {
+    "message": "Sudah masuk"
+  },
+  "account_signed_in_as": {
+    "message": "Masuk sebagai $EMAIL$",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "account_signed_in_desc": {
+    "message": "Dipakai untuk Pusat Keluarga dan sinkronisasi pengaturan. Keluar tidak mematikan perlindungan."
+  },
+  "account_signed_out": {
+    "message": "Belum masuk"
+  },
+  "account_signed_out_desc": {
+    "message": "Masuk untuk memakai Pusat Keluarga dan menyinkronkan pengaturan. Perlindungan tetap berjalan tanpa akun."
+  },
+  "account_pending": {
+    "message": "Selesaikan proses masuk di tab Cleanway"
+  },
+  "account_expired": {
+    "message": "Sesi masuk Anda telah berakhir"
+  },
+  "account_device_revoked": {
+    "message": "Browser ini dilepaskan dari akun Anda. Masuk lagi untuk memakainya di sini."
+  },
+  "account_device_limit": {
+    "message": "Semua perangkat di paket Anda sedang dipakai. Lepaskan satu di cleanway.ai/account, lalu masuk lagi."
+  }
+}

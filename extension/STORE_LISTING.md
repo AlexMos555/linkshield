@@ -78,7 +78,7 @@ https://cleanway.ai/privacy-policy
 
 ---
 
-## Evidence (manifest version 0.1.1)
+## Evidence (manifest version 0.2.0)
 
 | Claim | Code |
 |---|---|
@@ -120,13 +120,16 @@ https://cleanway.ai/privacy-policy
 - [x] **Webmail has no off switch.** Fixed: the email check is a Settings
       switch, off by default (also for updated installs); the mail sites are
       optional host permissions requested from that switch. The copy above
-      describes it. The public privacy policy (cleanway.ai/privacy-policy)
-      still has to gain the webmail section of `docs/PRIVACY.md`.
+      describes it. The public privacy policy (cleanway.ai/privacy-policy,
+      section 8 "The browser extension", all 10 languages) carries it since
+      2026-10-08, together with sign-in, device registration and the
+      password-hash prefix. Firefox 140+ also asks for its own data-collection
+      consent when the switch is turned on.
 - [ ] **Pricing.** The copy says "Free." When the subscription is sold for
       browsers, add: "Optional subscription: $0.99 a month or $9.99 a year for 3
       devices (phone, tablet, or browser with the extension); each extra device
       $0.49 a month." Confirm the numbers (`docs/ACCOUNTS_BILLING_PLAN.md` §5)
       and that a browser can actually buy or use it.
-- [ ] `docs/marketing/chrome-web-store-listing.md:22` still says "Your browsing
-      data never leaves your device" — retire that file or fix it, so nobody
-      pastes the old line.
+- [x] `docs/marketing/chrome-web-store-listing.md` is marked retired at the top
+      (it still carries "Your browsing data never leaves your device"); paste
+      only from this file.

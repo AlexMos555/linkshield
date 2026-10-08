@@ -453,9 +453,8 @@ Google Play specifics:
   `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` = `vpn` property); provide the same
   justification if Play asks about `FOREGROUND_SERVICE_SPECIAL_USE`. Play Console
   asks every app targeting Android 14+ to declare its foreground-service types
-  under **App content → Foreground service permissions**: tick *Special use*,
-  describe the always-on local DNS filter (the VpnService text above), and be
-  ready to add a short screen recording of turning the shield on if review asks.
+  under **App content → Foreground service permissions** — tick *Special use*;
+  the paste-ready justification and video note are in `docs/STORES.md` §6.6.
   It is the only FGS type the app declares (`LinkCheckService` is a plain
   short-lived service, not a foreground one).
 

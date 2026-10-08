@@ -285,6 +285,25 @@ const WEBMAIL_ORIGINS = [
   "https://mail.yahoo.com/*",
 ];
 
+// Firefox 140+ asks for data-collection consent itself
+// (browser_specific_settings.gecko.data_collection_permissions in the
+// Firefox manifest; background/webmail-scanner.js runs the scanner only while
+// it is granted). Same names as WEBMAIL_DATA_COLLECTION there.
+const WEBMAIL_DATA_COLLECTION = ["personalCommunications", "websiteContent"];
+
+// Whether this browser takes `data_collection` in permissions.request().
+// Learned when the page opens, because the click handler must not await
+// anything before the request. Chrome, Safari and Firefox < 140 return no
+// `data_collection` from getAll() and would reject the key.
+let webmailAsksDataConsent = false;
+try {
+  if (chrome.permissions && typeof chrome.permissions.getAll === "function") {
+    chrome.permissions.getAll((all) => {
+      webmailAsksDataConsent = Boolean(all) && Array.isArray(all.data_collection);
+    });
+  }
+} catch (e) { /* no permissions API: only the mail sites are asked for */ }
+
 // Callback form: it works in Chrome, in Firefox's chrome.* namespace and in
 // Safari alike. Must be called straight from the click — Firefox only shows
 // its permission prompt for a user action, and an await before it loses that.
@@ -295,8 +314,10 @@ function requestWebmailOrigins() {
       resolve(true);
       return;
     }
+    const wanted = { origins: WEBMAIL_ORIGINS };
+    if (webmailAsksDataConsent) wanted.data_collection = WEBMAIL_DATA_COLLECTION;
     try {
-      const maybe = chrome.permissions.request({ origins: WEBMAIL_ORIGINS }, (granted) => {
+      const maybe = chrome.permissions.request(wanted, (granted) => {
         const err = chrome.runtime.lastError;
         if (err) reject(err);
         else resolve(Boolean(granted));

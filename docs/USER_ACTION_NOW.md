@@ -83,7 +83,7 @@
 **Где:** chrome.google.com/webstore/devconsole
 **Шаги:**
 1. Купить dev-аккаунт ($5 однократно).
-2. Upload `dist/store-artifacts/cleanway-0.1.1-chrome.zip` (⚠️ имя такое, не `cleanway-extension.zip`).
+2. Upload `dist/store-artifacts/cleanway-0.2.0-chrome.zip` (⚠️ имя такое, не `cleanway-extension.zip`).
 3. Листинг: copy-paste из `docs/marketing/chrome-web-store-listing.md` (текст честный, готов).
 4. Загрузить 5 скриншотов из шага 2.
 5. Submit → статус «In review».
@@ -110,8 +110,8 @@ Weekly-бенчмарк рассчитан укладываться в лими�
 **Время:** 15 мин.
 
 ### 9. Firefox AMO + Edge listings (те же zip, бесплатно)
-**Что:** `dist/store-artifacts/cleanway-0.1.1-firefox.zip` → addons.mozilla.org,
-`cleanway-0.1.1-edge.zip` → Edge dev console.
+**Что:** `dist/store-artifacts/cleanway-0.2.0-firefox.zip` → addons.mozilla.org,
+`cleanway-0.2.0-edge.zip` → Edge dev console.
 **Зачем:** покрывает ещё ~30% браузерного рынка теми же артефактами. Дев-аккаунты бесплатные.
 **Время:** 30 мин каждый.
 

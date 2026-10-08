@@ -108,6 +108,23 @@ class Settings(BaseSettings):
     # tiered prices.
     stripe_price_extra_device: str = ""
 
+    # Store purchases (Google Play, App Store) via RevenueCat —
+    # docs/runbooks/revenuecat.md. REVENUECAT_WEBHOOK_AUTH is the exact
+    # Authorization header value set on the webhook in the RevenueCat
+    # dashboard (empty → the webhook answers 503 and grants nothing).
+    # REVENUECAT_SECRET_API_KEY (sk_…) powers "Restore purchases"
+    # (POST /api/v1/me/entitlement/refresh) and the post-TRANSFER sync.
+    # REVENUECAT_PRODUCTS: optional JSON overriding the store product → plan
+    # map in api/services/revenuecat.py. Sandbox (test) purchases grant a
+    # plan only with REVENUECAT_ACCEPT_SANDBOX=true — staging, or production
+    # while the founder tests with Play license testers.
+    revenuecat_webhook_auth: str = ""
+    revenuecat_secret_api_key: str = ""
+    revenuecat_products: str = ""
+    revenuecat_accept_sandbox: bool = False
+    # Android applicationId — the Play "manage subscription" deep link.
+    google_play_package_name: str = "ai.cleanway.app"
+
     # Accounts & devices (docs/ACCOUNTS_BILLING_PLAN.md §1, §5). A paid plan
     # covers PLAN_INCLUDED_DEVICES devices plus any bought extras. A signed-in
     # account WITHOUT a plan may link FREE_ACCOUNT_DEVICE_LIMIT devices: free
@@ -463,6 +480,13 @@ def validate_settings(settings: "Settings") -> None:
             "neither google_safe_browsing_key nor web_risk_api_key set in environment=%s — "
             "detection quality degraded", env
         )
+    # RevenueCat: a guessable webhook secret lets anyone grant themselves a
+    # plan; a public SDK key (goog_ / appl_) in place of the secret one makes
+    # every "Restore purchases" fail with 401.
+    if settings.revenuecat_webhook_auth and len(settings.revenuecat_webhook_auth) < 32:
+        logger.warning("revenuecat_webhook_auth is shorter than 32 characters — use a long random value")
+    if settings.revenuecat_secret_api_key and not settings.revenuecat_secret_api_key.startswith("sk_"):
+        logger.warning("revenuecat_secret_api_key doesn't look like a secret key (sk_...)")
 
     logger.info(
         "config.validated",
@@ -471,6 +495,7 @@ def validate_settings(settings: "Settings") -> None:
             "debug": settings.debug,
             "has_supabase": bool(settings.supabase_url),
             "has_stripe": bool(settings.stripe_secret_key),
+            "has_revenuecat": bool(settings.revenuecat_webhook_auth),
             "has_sentry": bool(settings.sentry_dsn),
         },
     )
