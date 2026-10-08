@@ -670,10 +670,10 @@
   },
   "Terms": {
     "meta_title": "Ketentuan penggunaan — Cleanway",
-    "meta_description": "Aturan penggunaan Cleanway: apa yang dijanjikan dan tidak dijanjikan layanan ini, akun, paket berbayar, dan penggunaan yang diperbolehkan.",
+    "meta_description": "Aturan penggunaan Cleanway: apa yang dijanjikan dan tidak dijanjikan layanan ini, paket gratis, akun dan perangkat, paket berbayar, pembatalan dan pengembalian dana, serta penggunaan yang diperbolehkan.",
     "back": "Kembali ke Cleanway",
     "title": "Ketentuan penggunaan",
-    "updated": "Terakhir diperbarui: 27 September 2026",
+    "updated": "Terakhir diperbarui: 8 Oktober 2026",
     "privacy_link": "Baca kebijakan privasi",
     "contact_live": "Pertanyaan tentang ketentuan ini:",
     "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Halaman bantuan menjawab pertanyaan yang umum.",
@@ -682,7 +682,7 @@
       {
         "title": "1. Apa itu Cleanway",
         "paragraphs": [
-          "Cleanway membantu melindungi Anda dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cleanway mencocokkan nama situs dengan daftar ancaman yang dikenal dan tanda-tanda lain, lalu memberi tahu Anda apa yang ditemukannya."
+          "Cleanway membantu melindungi Anda dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android, ekstensi browser, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cleanway mencocokkan nama situs dengan daftar ancaman yang dikenal dan tanda-tanda lain, lalu memberi tahu Anda apa yang ditemukannya."
         ]
       },
       {
@@ -701,16 +701,19 @@
         ]
       },
       {
-        "title": "3. Penggunaan gratis dan akun",
+        "title": "3. Paket gratis dan akun",
         "paragraphs": [
-          "Memblokir situs penipuan itu gratis dan berfungsi tanpa akun. Akun hanya diperlukan untuk fitur keluarga dan paket berbayar. Jika Anda membuat akun, gunakan alamat email asli dan jaga aksesnya: Anda masuk dengan kode atau tautan sekali pakai yang dikirim ke sana."
+          "Memblokir situs penipuan yang dikenal itu gratis, tanpa batas, dan berfungsi tanpa akun. Paket gratis juga mencakup sejumlah pemeriksaan detail tautan dan pesan setiap hari, dan semuanya tanpa batas selama hari-hari pertama setelah Anda memasang aplikasi; angka terbarunya ada di halaman Harga.",
+          "Akun hanya diperlukan untuk fitur keluarga, paket berbayar, dan melihat perangkat Anda di satu tempat. Jika Anda membuat akun, gunakan alamat email asli dan jaga aksesnya: Anda masuk dengan kode atau tautan sekali pakai yang dikirim ke sana. Anda bisa menghapus akun kapan saja (cleanway.ai/delete-account)."
         ]
       },
       {
         "id": "payments",
         "title": "4. Paket berbayar",
         "paragraphs": [
-          "Di beberapa negara, Cleanway menawarkan paket berbayar dengan fitur tambahan. Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia, pembayaran ditangani oleh Stripe, harga dan periode tagihan ditampilkan sebelum membayar, dan Anda bisa membatalkan kapan saja; paket tetap aktif sampai akhir periode yang sudah dibayar. Pengembalian dana ditangani sesuai ketentuan hukum. Memblokir situs penipuan tidak akan pernah menjadi fitur berbayar."
+          "Di beberapa negara, Cleanway menawarkan paket berbayar dengan pemeriksaan detail tanpa batas. Paket berbayar tidak ditawarkan di Rusia. Paket ini menghitung perangkat, bukan orang: paket mencakup sejumlah perangkat tertentu yang masuk ke satu akun — saat ini 3 — seperti ponsel, tablet, atau browser dengan ekstensi, dan Anda bisa menambah perangkat dengan biaya tambahan. Anda bisa melepaskan perangkat di akun Anda dan tempatnya langsung kosong. Harga, periode tagihan, dan harga perangkat tambahan ditampilkan sebelum Anda membayar. Jika langganan pertama Anda dimulai dengan uji coba gratis, lamanya juga ditampilkan sebelum Anda berlangganan. Memblokir situs penipuan yang dikenal tidak akan pernah menjadi fitur berbayar.",
+          "Dibeli di cleanway.ai: pembayaran ditangani oleh Stripe. Anda bisa membatalkan kapan saja di akun Anda (“Kelola atau batalkan langganan”). Setelah itu tidak ada tagihan lagi, dan paket tetap aktif sampai akhir periode yang sudah dibayar. Jika Anda ditagih setelah membatalkan, atau ditagih karena kesalahan, tulis kepada kami dan kami kembalikan tagihan itu. Pengembalian dana lainnya mengikuti undang-undang perlindungan konsumen di negara Anda.",
+          "Dibeli di Google Play atau App Store: pembelian, perpanjangan, pembatalan, dan pengembalian dana ditangani oleh toko tersebut menurut ketentuannya sendiri. Batalkan kapan saja di pengaturan langganan toko; menghapus aplikasi atau akun Cleanway Anda tidak membatalkan langganan dari toko. Minta pengembalian dana kepada toko."
         ]
       },
       {
@@ -773,7 +776,7 @@
         "paragraphs": [
           "Di Rusia Cleanway adalah langganan yang ditagihkan ke pulsa ponsel melalui operator Anda dan agregator pembayaran. Harga paket dan tanggal penagihan ditampilkan sebelum konfirmasi; langganan dimulai hanya setelah Anda mengonfirmasinya dengan kode SMS dari nomor Anda. Hari-hari pertama setelah pemasangan adalah masa percobaan tanpa tagihan; lamanya dan harganya ada di halaman harga.",
           "Langganan diperpanjang setiap bulan sampai Anda membatalkannya. Anda bisa membatalkan di aplikasi, lewat SMS, atau melalui dukungan — setelah dibatalkan tidak ada lagi tagihan, dan perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar. Kami tidak pernah menagih sampai saldo minus dan tidak pernah membuat utang. Jika perlindungan tidak berfungsi karena kesalahan kami, atau tagihan terjadi setelah pembatalan, kami mengembalikan biaya bulan itu; ini tidak membatasi hak hukum Anda.",
-          "Harga hanya bisa berubah untuk langganan baru: langganan yang sedang berjalan mempertahankan harga awalnya. Di negara lain paket berbayar dibayar dengan kartu bank melalui Stripe — di sana pun harga dan periode ditampilkan sebelum pembayaran, dan Anda bisa membatalkan kapan saja."
+          "Harga hanya bisa berubah untuk langganan baru: langganan yang sedang berjalan mempertahankan harga awalnya. Di negara lain paket dibayar di cleanway.ai dengan kartu bank melalui Stripe, atau di aplikasi melalui Google Play atau App Store. Di sana pun harga dan periode ditampilkan sebelum pembayaran dan Anda bisa membatalkan kapan saja; pembelian di toko mengikuti ketentuan toko itu, termasuk soal pengembalian dana."
         ]
       },
       "lapse_basic": "Jika pembayaran tetap gagal setelah percobaan ulang, langganan dijeda, tetapi pemblokiran dasar situs penipuan yang dikenal tetap berjalan tanpa tagihan — daftar diperbarui seminggu sekali.",
@@ -782,7 +785,7 @@
   },
   "PrivacyPolicy": {
     "meta_title": "Kebijakan privasi — Cleanway",
-    "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
+    "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel atau browser Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
     "back": "Kembali ke Cleanway",
     "title": "Kebijakan privasi",
     "updated": "Terakhir diperbarui: 8 Oktober 2026",
@@ -793,7 +796,7 @@
       {
         "title": "1. Singkatnya",
         "items": [
-          "Untuk memeriksa sebuah situs, kami hanya perlu namanya (misalnya example.com). Kami tidak menerima tautan lengkap, isi halaman, atau teks pesan Anda.",
+          "Untuk memeriksa sebuah situs, kami hanya perlu namanya (misalnya example.com). Kami tidak menerima tautan lengkap, isi halaman, atau teks pesan Anda — kecuali email yang Anda buka di webmail saat pemeriksaan email di ekstensi browser dinyalakan (bagian 8).",
           "Sebagian besar pemeriksaan dilakukan di ponsel Anda, dengan daftar situs penipuan yang dikenal.",
           "Jika sebuah situs perlu diperiksa lebih teliti, namanya dikirim ke server kami, yang bisa menanyakan nama itu ke layanan pemeriksaan lain, tidak pernah tentang Anda.",
           "Anda tidak perlu akun untuk terlindungi. Kami tidak menampilkan iklan dan tidak menjual data."
@@ -802,7 +805,7 @@
       {
         "title": "2. Siapa kami",
         "paragraphs": [
-          "Cleanway (cleanway.ai) melindungi dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cara menghubungi kami ada di akhir kebijakan ini."
+          "Cleanway (cleanway.ai) melindungi dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android, ekstensi browser, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cara menghubungi kami ada di akhir kebijakan ini."
         ]
       },
       {
@@ -856,40 +859,66 @@
         ]
       },
       {
-        "title": "8. Akun dan email",
+        "id": "extension",
+        "title": "8. Ekstensi browser",
         "paragraphs": [
-          "Akun bersifat opsional: hanya diperlukan untuk fitur keluarga dan paket berbayar. Jika Anda membuat akun, kami menyimpan alamat email Anda, paket Anda, ID perangkat acak (tidak berasal dari perangkat keras ponsel), dan pengaturan aplikasi. Anda masuk dengan kode sekali pakai (di aplikasi) atau tautan sekali pakai (di situs web) yang dikirim ke email Anda; tidak ada kata sandi.",
+          "Ekstensi Cleanway untuk Chrome, Edge, Opera, Firefox, dan Safari hanya berkomunikasi dengan server kami (cleanway.ai dan api.cleanway.ai) dan, jika Anda masuk, dengan penyedia akun kami, Supabase. Di dalamnya tidak ada iklan, analitik, atau laporan galat. Inilah semua yang dikirimnya:"
+        ],
+        "items": [
+          "nama situs yang Anda buka dan nama situs dari tautan di dalamnya (misalnya example.com), untuk diperiksa seperti dijelaskan di bagian 5. Tidak pernah alamat lengkap, isi halaman, atau riwayat Anda. Situs resmi yang terkenal dikenali di browser dan tidak dikirim;",
+          "saat Anda meninggalkan kolom kata sandi, 5 karakter pertama dari kode teracak (hash SHA-1) yang dibuat dari kata sandi itu, untuk mencocokkannya dengan kebocoran data yang dikenal. Tidak pernah kata sandinya sendiri: pencocokan dilakukan di browser Anda;",
+          "nama situs, jika Anda melaporkan hasil yang keliru;",
+          "email — hanya jika Anda menyalakan “Periksa email yang saya buka di Gmail, Outlook, dan Yahoo dari phishing” di Pengaturan ekstensi; sampai Anda menyalakannya, fitur ini mati. Selama menyala, untuk setiap email yang Anda buka di sana, ekstensi mengirim subjeknya, nama dan alamat pengirim, alamat balasan (reply-to), teks, dan tautannya — bukan HTML email, lampiran, atau penerimanya. Server kami memeriksa email itu di memori dan tidak menyimpannya: tidak di basis data, tidak di cache, dan tidak di log. Matikan kapan saja dan pemeriksaan langsung berhenti. Di Firefox Anda juga bisa menarik persetujuan ini di pengaturan add-on;",
+          "jika Anda masuk: browser ini ditambahkan ke akun Anda sebagai perangkat, dengan ID perangkat acak, nama browser, dan versi ekstensi, dan melapor ke server kami kira-kira setiap 6 jam. Dengan akun, ekstensi juga menyimpan pengaturan tampilan perangkat ini, menambah hitungan ancaman yang diblokir di akun Anda (berupa angka, tanpa nama situs), dan mengirim peringatan keluarga secara terenkripsi (bagian 10)."
+        ],
+        "after": [
+          "Anda masuk di cleanway.ai dengan kode atau tautan sekali pakai yang dikirim ke email Anda. Setelah itu ekstensi menyimpan kunci masuknya (token), alamat email Anda, dan ID akun Anda di penyimpanan ekstensi di browser, dan hanya memakainya untuk berkomunikasi dengan server kami. “Keluar” di Pengaturan ekstensi menghapusnya.",
+          "Riwayat pemeriksaan Anda (dihapus setelah 30 hari), penghitung, dan pengaturan tetap di browser Anda. Menghapus ekstensi akan menghapus semua yang disimpannya."
+        ]
+      },
+      {
+        "title": "9. Akun dan perangkat",
+        "paragraphs": [
+          "Akun bersifat opsional: diperlukan untuk fitur keluarga, paket berbayar, dan untuk melihat perangkat Anda di satu tempat. Jika Anda membuat akun, kami menyimpan alamat email Anda, paket Anda, dan pengaturan aplikasi Anda. Anda masuk dengan kode sekali pakai (di aplikasi) atau tautan sekali pakai (di situs web) yang dikirim ke email Anda; tidak ada kata sandi.",
+          "Setiap ponsel, tablet, atau browser yang masuk ke akun Anda muncul di daftar perangkat Anda dengan ID perangkat acak (tidak berasal dari perangkat keras), jenis dan namanya, versi aplikasi atau ekstensi, serta kapan terakhir dipakai. Anda bisa melihat daftar itu dan melepaskan perangkat di cleanway.ai/account atau di aplikasi. Perangkat yang dilepaskan langsung keluar dari akun, dan pemblokiran situs penipuan yang dikenal tetap berjalan di perangkat itu.",
           "Akun disimpan di penyedia basis data kami, Supabase. Supabase juga dapat mencatat alamat IP asal proses masuk di log keamanannya sendiri."
         ]
       },
       {
-        "title": "9. Keluarga",
+        "title": "10. Keluarga",
         "paragraphs": [
           "Peringatan keluarga dienkripsi di perangkat pengirim dan hanya bisa dibaca di perangkat penerima. Server kami hanya menyimpan teks terenkripsi dan tidak bisa membacanya, tetapi server melihat siapa yang termasuk keluarga mana dan siapa mengirim peringatan kepada siapa, serta kapan. Peringatan disimpan hingga 30 hari. Kode undangan dan PIN hanya disimpan dalam bentuk hash."
         ]
       },
       {
-        "title": "10. Situs web dan filter DNS",
+        "title": "11. Situs web dan filter DNS",
         "paragraphs": [
           "cleanway.ai tidak memiliki iklan maupun pelacak analitik. Penyedia hosting kami, Vercel untuk situs web dan Railway untuk server, menyimpan log teknis permintaan yang biasa, yang dapat berisi alamat yang diminta dan alamat IP Anda.",
           "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai) di iPhone, Mac, atau komputer Windows, semua permintaan DNS perangkat dikirim ke server kami. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk; untuk nama yang diblokir, log kami menyimpan paling banyak 32 karakter terakhirnya, tanpa alamat IP Anda."
         ]
       },
       {
-        "title": "11. Laporan galat",
+        "title": "12. Laporan galat",
         "paragraphs": [
-          "Aplikasi, situs web, dan server kami dapat mengirim laporan galat teknis ke Sentry agar kami bisa memperbaiki masalah, serta pengukuran waktu untuk kira-kira satu dari sepuluh permintaan. Dari laporan galat kami menghapus alamat email, alamat IP, dan kunci akses. Namun, laporan atau pengukuran tetap bisa memuat alamat halaman atau permintaan — misalnya nama situs yang sedang diperiksa. Situs web tidak merekam sesi. Sentry menyimpan data ini hingga 90 hari."
+          "Aplikasi, situs web, dan server kami dapat mengirim laporan galat teknis ke Sentry agar kami bisa memperbaiki masalah, serta pengukuran waktu untuk kira-kira satu dari sepuluh permintaan. Dari laporan galat kami menghapus alamat email, alamat IP, dan kunci akses. Namun, laporan atau pengukuran tetap bisa memuat alamat halaman atau permintaan — misalnya nama situs yang sedang diperiksa. Situs web tidak merekam sesi. Sentry menyimpan data ini hingga 90 hari. Ekstensi browser tidak mengirim laporan galat."
         ]
       },
       {
         "id": "payments",
-        "title": "12. Pembayaran",
+        "title": "13. Pembayaran",
         "paragraphs": [
-          "Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia, pembayaran dilakukan melalui Stripe: Stripe menerima email Anda dan paket yang dipilih serta menangani kartunya sendiri. Kami tidak pernah melihat atau menyimpan data kartu."
+          "Memblokir situs penipuan yang dikenal itu gratis. Paket berbayar tidak ditawarkan di Rusia. Di tempat yang tersedia:"
+        ],
+        "items": [
+          "di situs web, pembayaran dilakukan melalui Stripe. Stripe menerima email Anda, paket yang dipilih, dan ID akun Anda, serta menangani kartunya sendiri;",
+          "di aplikasi, jika pembelian ditawarkan, Anda membayar melalui Google Play atau App Store. Toko itulah yang menerima pembayaran dan menangani kartu Anda menurut ketentuan dan kebijakan privasinya sendiri. RevenueCat, layanan yang mengelola langganan dalam aplikasi untuk kami, menerima ID akun anonim dari aplikasi — pengenal acak, bukan nama atau email Anda — dan status pembelian dari toko. Kami hanya menerima informasi apakah langganan Anda aktif, paket apa, dan sampai kapan."
+        ],
+        "after": [
+          "Kami tidak pernah melihat atau menyimpan data kartu. Kami menyimpan catatan setiap pembelian — tempat pembelian dilakukan, paket, status, dan tanggalnya — bersama akun Anda sampai akun dihapus."
         ]
       },
       {
-        "title": "13. Siapa yang memproses data untuk kami",
+        "title": "14. Siapa yang memproses data untuk kami",
         "items": [
           "Railway: menjalankan server kami (api.cleanway.ai);",
           "Vercel: menjadi hosting situs web;",
@@ -897,14 +926,15 @@
           "GitHub: menyimpan file aplikasi yang Anda unduh dan melihat alamat IP Anda saat mengunduh;",
           "Cloudflare dan Quad9: DNS publik yang dipakai aplikasi, lihat bagian 3;",
           "layanan pemeriksaan di bagian 5 dan Anthropic: hanya menerima nama situs atau tanda-tanda abstrak;",
-          "Sentry: laporan galat dan pengukuran waktu; Stripe: pembayaran di luar Rusia."
+          "Sentry: laporan galat dan pengukuran waktu;",
+          "Stripe: pembayaran di situs web; Google Play, App Store, dan RevenueCat: pembelian di aplikasi (pembayaran tidak ditawarkan di Rusia)."
         ],
         "after": [
           "Perusahaan-perusahaan ini berada di luar Rusia, terutama di AS dan UE, sehingga data yang mereka proses ditransfer ke luar negeri."
         ]
       },
       {
-        "title": "14. Berapa lama kami menyimpan data",
+        "title": "15. Berapa lama kami menyimpan data",
         "items": [
           "hasil pemeriksaan di cache server: hingga 24 jam;",
           "alamat IP Anda di penghitung batas pemeriksaan: paling lama satu jam;",
@@ -912,24 +942,28 @@
           "log keamanan untuk tindakan akun (dengan alamat IP dalam bentuk hash): 2 tahun;",
           "penghitung mingguan akun (hanya angka, tanpa nama situs): 1 tahun;",
           "peringatan keluarga terenkripsi: hingga 30 hari;",
-          "data di ponsel Anda: sampai Anda menghapusnya atau mencopot aplikasinya."
+          "daftar perangkat dan catatan pembelian Anda: sampai Anda menghapus akun; Stripe dan toko aplikasi menyimpan catatan pembayaran mereka sendiri sesuai yang diwajibkan hukum kepada mereka;",
+          "riwayat pemeriksaan ekstensi: 30 hari, di browser Anda;",
+          "data di ponsel atau browser Anda: sampai Anda menghapusnya atau mencopot aplikasi atau ekstensinya."
         ]
       },
       {
-        "title": "15. Hak Anda",
+        "title": "16. Hak Anda",
         "paragraphs": [
-          "Anda dapat menanyakan data apa tentang Anda yang kami miliki, meminta kami memperbaiki atau menghapusnya, dan menarik persetujuan Anda. Tanpa akun, kami tidak tahu siapa Anda: kami tidak memiliki nama, email, atau nomor telepon Anda — hanya data teknis yang dijelaskan di atas, seperti alamat IP Anda di penghitung pemeriksaan dan di log hosting. Untuk menghapus akun atau mengajukan permintaan, hubungi kami seperti dijelaskan di bawah. Mencopot aplikasi akan menghapus semua yang disimpannya di ponsel."
+          "Anda dapat menanyakan data apa tentang Anda yang kami miliki, meminta kami memperbaiki atau menghapusnya, dan menarik persetujuan Anda.",
+          "Untuk menghapus akun sendiri, masuk di cleanway.ai/account lalu pilih “Hapus akun”, atau gunakan “Hapus akun” di Pengaturan aplikasi. Halaman cleanway.ai/delete-account menjelaskan langkah-langkahnya serta apa yang dihapus dan apa yang tetap disimpan.",
+          "Tanpa akun, kami tidak tahu siapa Anda: kami tidak memiliki nama, email, atau nomor telepon Anda — hanya data teknis yang dijelaskan di atas, seperti alamat IP Anda di penghitung pemeriksaan dan di log hosting. Untuk permintaan lain, hubungi kami seperti dijelaskan di bawah. Mencopot aplikasi atau ekstensi akan menghapus semua yang disimpannya di perangkat Anda."
         ]
       },
       {
-        "title": "16. Anak-anak",
+        "title": "17. Anak-anak",
         "paragraphs": [
           "Cleanway tidak ditujukan untuk dipakai sendiri oleh anak di bawah 13 tahun; fitur keluarga dikelola oleh orang dewasa."
         ]
       },
       {
         "id": "contact",
-        "title": "17. Perubahan dan kontak",
+        "title": "18. Perubahan dan kontak",
         "paragraphs": [
           "Jika kami mengubah kebijakan ini, versi baru akan kami publikasikan di halaman ini dengan tanggal baru."
         ]
@@ -938,12 +972,12 @@
     "billing": {
       "section": {
         "id": "billing",
-        "title": "12. Pembayaran langganan",
+        "title": "13. Pembayaran langganan",
         "paragraphs": [
           "Di Rusia langganan ditagihkan ke pulsa ponsel. Untuk mengaktifkannya Anda memasukkan nomor telepon — milik Anda sendiri atau milik kerabat yang membayar. Masa percobaan tidak memerlukan nomor.",
           "Nomor telepon, paket, tanggal, dan riwayat tagihan disimpan di basis data terpisah yang berada di Rusia, terpisah dari data Cleanway lainnya. Nomor disimpan terenkripsi; di log, laporan kesalahan, dan layar ia hanya ditampilkan sebagian. Kami tidak memiliki data kartu bank: tidak ada kartu yang terlibat dalam pembayaran ini.",
           "Operator Anda dan agregator pembayaran yang memproses tagihan menerima nomor dan jumlahnya — mereka menangani data itu menurut aturan mereka sendiri. Kami juga menyimpan catatan persetujuan: teks dan harga apa yang Anda lihat dan bagaimana Anda mengonfirmasi.",
-          "Catatan pembayaran dan persetujuan disimpan selama diwajibkan aturan akuntansi dan pajak — hingga lima tahun; setelah langganan berakhir dan masa itu lewat, nomor telepon dihapus dari basis data. Di negara lain pembayaran melalui Stripe: Stripe menerima email Anda dan paket yang dipilih serta menangani kartunya sendiri; kami tidak pernah melihat atau menyimpan data kartu."
+          "Catatan pembayaran dan persetujuan disimpan selama diwajibkan aturan akuntansi dan pajak — hingga lima tahun; setelah langganan berakhir dan masa itu lewat, nomor telepon dihapus dari basis data. Di negara lain pembayaran dilakukan melalui Stripe di situs web, atau melalui Google Play atau App Store di aplikasi (dengan RevenueCat, seperti dijelaskan untuk negara lain): toko atau Stripe yang menangani kartu, dan kami tidak pernah melihat atau menyimpan data kartu."
         ]
       }
     }
@@ -1023,12 +1057,71 @@
     "unlinking": "Melepaskan…",
     "sign_out": "Keluar",
     "delete_heading": "Hapus akun",
-    "delete_body": "Menghapus akun, paket, dan pengaturan yang disinkronkan. Langganan yang dibayar di cleanway.ai langsung dibatalkan dan tidak ditagih lagi. Anda bisa memulihkan akun dalam 30 hari dengan masuk kembali.",
+    "delete_body": "Menghapus akun, paket, dan pengaturan yang disinkronkan. Langganan yang dibayar di cleanway.ai langsung dibatalkan dan tidak ditagih lagi; langganan yang dibeli di Google Play atau App Store tidak — batalkan di toko. Anda bisa memulihkan akun dalam 30 hari dengan masuk kembali.",
     "delete_confirm": "Hapus akun Cleanway Anda? Anda bisa memulihkannya dalam 30 hari dengan masuk kembali.",
     "delete_done": "Akun Anda sudah dihapus dan Anda telah keluar. Masuk dalam 30 hari jika ingin memulihkannya.",
     "brand": "Cleanway",
     "manage_cta": "Kelola atau batalkan langganan",
     "manage_failed": "Tidak dapat membuka pengelolaan langganan. Silakan coba lagi sebentar lagi."
+  },
+  "DeleteAccount": {
+    "meta_title": "Hapus akun Cleanway Anda",
+    "meta_description": "Cara menghapus akun Cleanway tanpa aplikasi: masuk, lalu pilih “Hapus akun”. Apa yang dihapus, apa yang tetap disimpan, dan berapa lama.",
+    "back": "Kembali ke Cleanway",
+    "title": "Hapus akun Cleanway Anda",
+    "intro": "Anda bisa menghapus akun kapan saja, dari browser mana pun, tanpa aplikasi. Perlindungan tidak memerlukan akun: setelah akun dihapus, Cleanway tetap memblokir situs penipuan yang dikenal di ponsel Anda dan memperingatkan Anda tentang situs itu di browser.",
+    "steps_heading": "Cara menghapus akun",
+    "steps": [
+      "Buka cleanway.ai/account.",
+      "Masuk dengan alamat email akun Cleanway Anda. Kami mengirimkan kode atau tautan sekali pakai; tidak ada kata sandi.",
+      "Di bagian “Hapus akun”, pilih “Hapus akun” lalu konfirmasi."
+    ],
+    "steps_app": "Di aplikasi Cleanway, Anda bisa melakukan hal yang sama di Pengaturan → Hapus akun.",
+    "cta": "Buka akun saya",
+    "deleted_heading": "Apa yang dihapus",
+    "deleted_items": [
+      "alamat email dan ID akun Anda;",
+      "paket dan catatan pembelian Anda;",
+      "daftar perangkat Anda — setiap ponsel, tablet, dan browser dikeluarkan dari akun;",
+      "pengaturan tersimpan dan penghitung mingguan Anda;",
+      "tempat Anda di grup keluarga dan peringatan keluarga yang dikirim kepada Anda."
+    ],
+    "timing": "Akun Anda dikunci begitu Anda mengonfirmasi. Selama 30 hari Anda bisa berubah pikiran: masuk dengan email yang sama dan pulihkan akun. Setelah 30 hari, semua yang tercantum di atas dihapus untuk selamanya.",
+    "kept_heading": "Apa yang tetap disimpan",
+    "kept_items": [
+      "log keamanan tindakan akun — apa yang dilakukan dan kapan, dengan hash alamat IP yang dipersingkat, bukan alamatnya — selama 2 tahun;",
+      "catatan pembayaran yang wajib disimpan Stripe, Google Play, atau App Store berdasarkan kewajiban hukum mereka sendiri;",
+      "apa yang tersimpan di ponsel atau browser Anda, seperti riwayat pemeriksaan: copot aplikasi atau ekstensinya untuk menghapusnya."
+    ],
+    "subscription_heading": "Jika Anda membayar langganan",
+    "subscription_body": "Langganan yang dibayar di cleanway.ai langsung dibatalkan saat Anda menghapus akun, dan tidak ada tagihan lagi. Langganan yang dibeli di Google Play atau App Store tidak dibatalkan dengan menghapus akun: batalkan di pengaturan langganan toko.",
+    "help_heading": "Tidak bisa masuk?",
+    "help_live": "Jika Anda tidak lagi menerima email di alamat itu, tulis kepada kami dari alamat tersebut atau jelaskan akun Anda, dan kami akan membantu:",
+    "help_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima permintaan penghapusan lewat email. Alamatnya akan muncul di halaman ini begitu berfungsi.",
+    "privacy_link": "Baca kebijakan privasi"
+  },
+  "Business": {
+    "meta_title": "Cleanway untuk tim",
+    "meta_description": "Lindungi ponsel dan browser yang dipakai tim Anda dari situs penipuan dan phishing. Harga Cleanway dihitung per perangkat; untuk tim yang lebih besar, tulis kepada kami.",
+    "brand": "Cleanway",
+    "badge": "Untuk tim",
+    "title": "Perlindungan dari penipuan untuk ponsel dan browser tim Anda",
+    "subtitle": "Cleanway memblokir situs penipuan dan phishing yang dikenal di ponsel Android dan memperingatkan tentang situs itu di browser. Cleanway menghitung perangkat, bukan orang, jadi tim kecil hanya membayar perangkat yang dilindunginya.",
+    "how_heading": "Cara kerjanya untuk tim",
+    "how_items": [
+      "Setiap orang memasang aplikasi Cleanway di ponsel Android-nya atau ekstensi di browser-nya.",
+      "Memblokir situs penipuan yang dikenal itu gratis di setiap perangkat, tanpa akun dan tanpa batas.",
+      "Paket berbayar menambahkan pemeriksaan detail tautan dan pesan tanpa batas. Satu akun mencakup beberapa perangkat, dan Anda bisa menambah lagi.",
+      "Di akun Anda di cleanway.ai/account, Anda melihat setiap perangkat dan bisa melepaskan perangkat yang tidak dipakai lagi."
+    ],
+    "pricing_heading": "Harga",
+    "pricing_body": "Harga dihitung per perangkat dan sama untuk tim seperti untuk siapa pun. Lihat harga terbaru untuk negara Anda, dan harga setiap perangkat tambahan, di halaman Harga.",
+    "pricing_cta": "Lihat harga",
+    "contact_heading": "Tim yang lebih besar?",
+    "contact_live": "Jika Anda ingin melindungi banyak perangkat, atau memerlukan faktur, tulis kepada kami:",
+    "contact_not_live": "Kotak surat kami masih disiapkan, jadi kami belum bisa menerima permintaan lewat email. Sementara itu, gunakan paket di halaman Harga; alamat kami akan muncul di halaman ini begitu berfungsi.",
+    "honest_heading": "Yang tidak dilakukan Cleanway",
+    "honest_body": "Cleanway bukan paket keamanan korporat: tidak ada konsol admin, single sign-on, kebijakan terpusat, atau pelatihan phishing. Cleanway tidak melihat aktivitas browsing, pesan, atau kata sandi tim Anda. Tidak ada alat yang bisa menangkap setiap situs penipuan baru, jadi tetap pegang aturan biasa: jangan pernah membagikan kode dari SMS, dan pastikan permintaan pembayaran yang mendesak lewat telepon."
   },
   "Reasons": {
     "flagged_dangerous": "Google menandai situs ini berbahaya",

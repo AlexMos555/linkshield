@@ -115,6 +115,12 @@ GLOBAL_RULES: tuple[Rule, ...] = (
     _rule(r"\$\s?\d",
           "hand-writes a dollar price on /pricing — prices come from the API (landing/lib/world-pricing.ts)",
           scope="landing.pricing"),
+    # 2026-10-08 store readiness: /business sold "$3.99/user/month" with a
+    # 14-day trial, SSO and phishing simulations — none of it exists. A team
+    # buys the same device plan; its prices live on /pricing (from the API).
+    _rule(r"\$\s?\d",
+          "hand-writes a dollar price on /business — a team buys the device plan; link to /pricing instead",
+          scope="landing.business"),
     _rule(r"billing country",
           "says the price tier comes from the Stripe billing country — it follows the country of the connection "
           "(the `cc` the page sends), and checkout charges that same country's price",
@@ -278,6 +284,25 @@ CLAIMS: tuple[Claim, ...] = (
               "hi": r"ब्लॉक",
               "ar": r"حظر|محظور",
           }, scope="landing.hero.badge"),
+    # 2026-10-08 store readiness: an "automatic SMS check" exists only on the
+    # unmerged RuStore branch (feat/sms-auto-rustore); the site and the Google
+    # Play build check a message only when the person shares or pastes it, and
+    # the app requests no SMS permission (mobile/scripts/check-android-permissions.mjs).
+    # The benefit may appear only in RuStore-specific copy, never on the site.
+    Claim("promises an automatic SMS / message check — the site's and Play's app checks only a message the "
+          "person shares or pastes (no SMS permission); the automatic check is RuStore-only", {
+              "en": r"automatic(ally)?\W+(\w+\W+)?(sms|text message|message)s?\W+check|"
+                    r"(sms|text messages?|messages?)\W+(are\W+)?checked automatically",
+              "ru": r"автоматическ\w*\W+проверк\w*\W+(sms|смс|сообщени)|(sms|смс|сообщени\w*)\W+проверя\w*\W+автоматически",
+              "es": r"(verificaci[oó]n|comprobaci[oó]n|revisi[oó]n) autom[aá]tica de (sms|mensajes)",
+              "pt": r"(verifica[cç][aã]o|checagem) autom[aá]tica de (sms|mensagens)",
+              "fr": r"(v[ée]rification|contr[oô]le) automatique des (sms|messages)",
+              "de": r"automatische\w* (sms|nachrichten)[- ]?(pr[üu]fung|check)",
+              "it": r"(verifica|controllo) automatic[ao] (degli |dei )?(sms|messaggi)",
+              "id": r"(pemeriksaan|cek) (sms|pesan) otomatis",
+              "hi": r"(sms|एसएमएस|मैसेज|संदेश)\w*\W+(की\W+)?(स्वचालित|ऑटोमैटिक|अपने आप)",
+              "ar": r"(فحص|تحقق)\W+(تلقائي\W+)?(لل)?(رسائل|sms)\W*(النصية\W+)?تلقائي",
+          }),
 )
 
 # Chrome CTAs are allowed again the moment install-urls.ts marks Chrome live.
@@ -374,6 +399,9 @@ CODE_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
     # tier never came from Stripe; it follows the country the page sends.
     (re.compile(r"Stripe billing country", re.IGNORECASE), "hard-coded false claim about how the price tier is chosen"),
     (re.compile(r"analyst team", re.IGNORECASE), "hard-coded 'analyst team' claim"),
+    # 2026-10-08: the old /business page hard-coded "$3.99/user/month". Prices
+    # per user or seat do not exist; the plan counts devices (lib/world-pricing.ts).
+    (re.compile(r"\$\s?\d+(\.\d+)?\s*/\s*(user|seat)", re.IGNORECASE), "hard-coded per-user price — the plan counts devices"),
 )
 CODE_CHROME_RULE = (re.compile(r"Add to Chrome", re.IGNORECASE), "hard-coded Chrome CTA while Chrome is not live")
 

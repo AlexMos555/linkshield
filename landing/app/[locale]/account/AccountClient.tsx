@@ -141,6 +141,25 @@ export default function AccountClient() {
     setState({ kind: "deleted" });
   }
 
+  const deleteSection = (
+    <section style={card} aria-labelledby="delete-h">
+      <h2 id="delete-h" style={h2}>{t("delete_heading")}</h2>
+      <p style={muted}>{t("delete_body")}</p>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
+        <button
+          type="button"
+          style={dangerButton}
+          disabled={busy !== null}
+          onClick={() => void deleteAccount()}
+          data-testid="account-delete"
+        >
+          {t("delete_cta")}
+        </button>
+        <button type="button" style={ghostButton} onClick={() => void signOut()}>{t("sign_out")}</button>
+      </div>
+    </section>
+  );
+
   if (state.kind === "loading") return <p style={muted} role="status">{t("loading")}</p>;
 
   if (state.kind === "no_session" || state.kind === "deleted") {
@@ -172,10 +191,17 @@ export default function AccountClient() {
 
   if (state.kind === "error") {
     return (
-      <section style={card}>
-        <p style={{ ...body, marginTop: 0 }} role="alert">{t("error_load")}</p>
-        <button type="button" style={button} onClick={() => void load()}>{t("retry")}</button>
-      </section>
+      <div style={{ display: "grid", gap: 20 }}>
+        <section style={card}>
+          <p style={{ ...body, marginTop: 0 }} role="alert">{t("error_load")}</p>
+          <button type="button" style={button} onClick={() => void load()}>{t("retry")}</button>
+        </section>
+        {/* Signed in, but the plan and devices did not load (API or database
+            down): deleting the account must still work — it is a separate
+            endpoint, and /delete-account sends people here for it. */}
+        {notice && <p role="alert" style={{ ...body, color: "#fca5a5", margin: 0 }}>{notice}</p>}
+        {deleteSection}
+      </div>
     );
   }
 
@@ -251,16 +277,7 @@ export default function AccountClient() {
         )}
       </section>
 
-      <section style={card} aria-labelledby="delete-h">
-        <h2 id="delete-h" style={h2}>{t("delete_heading")}</h2>
-        <p style={muted}>{t("delete_body")}</p>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
-          <button type="button" style={dangerButton} disabled={busy !== null} onClick={() => void deleteAccount()}>
-            {t("delete_cta")}
-          </button>
-          <button type="button" style={ghostButton} onClick={() => void signOut()}>{t("sign_out")}</button>
-        </div>
-      </section>
+      {deleteSection}
     </div>
   );
 }

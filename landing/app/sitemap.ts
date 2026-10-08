@@ -81,6 +81,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/business", changeFrequency: "monthly" as const, priority: 0.6 },
     { path: "/privacy-policy", changeFrequency: "monthly" as const, priority: 0.3 },
     { path: "/terms", changeFrequency: "monthly" as const, priority: 0.3 },
+    // Google Play's "delete account URL" (docs/STORES.md).
+    { path: "/delete-account", changeFrequency: "monthly" as const, priority: 0.3 },
     // The cancel/refund page exists only with the operator-billed subscription on.
     ...(BILLING_ENABLED ? [{ path: "/cancel", changeFrequency: "monthly" as const, priority: 0.4 }] : []),
   ];
