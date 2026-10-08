@@ -8,7 +8,8 @@ artifacts.sh` first to produce the upload-ready ZIPs under
 
 The Android app's **Google Play** pack (listing EN + RU, Data safety, VPN and
 foreground-service declarations, account-deletion URL, console checklist) is §6
-below; Play submission waits for the targetSdk-36 build. §7 is the 0.2.0
+below; the targetSdk-36 build comes from the Expo SDK 54 upgrade (§6.A),
+submission still waits for the founder TODOs in §6.0. §7 is the 0.2.0
 checklist for the browser stores. The RuStore listing is in
 `docs/RUSTORE_SUBMISSION.md` §7.
 
@@ -179,18 +180,24 @@ grep '"version"' extension/manifest.json
 
 ## 6. Google Play (Android app) — readiness pack
 
-> **Status (re-checked 2026-10-08): ready on paper, the build is not.** Google
-> Play requires targetSdk 36 for new apps and updates since 31 Aug 2026; the
-> APK on `main` targets 34 (`mobile/package.json`: `expo ~52.0.0`). The Expo
-> upgrade is in progress on its own branch — submit only a build made after it
-> lands, and re-check §6.4 (permissions) against that build with `aapt`.
+> **Status (2026-10-08): the build is technically ready, the founder TODOs in
+> §6.0 are not.** Google Play requires new apps and updates to target **API 36**
+> since 31 Aug 2026 ([Target API level requirements](https://developer.android.com/google/play/requirements/target-sdk);
+> an extension to 1 Nov 2026 can be requested). The app moved from Expo SDK 52
+> (targetSdk 34) to **Expo SDK 54 / React Native 0.81** and now builds with
+> targetSdk 36 — see §6.A. Only upload an AAB built after that change.
 > `landing/lib/install-urls.ts` has no Google Play entry yet — the Android button
 > leads to `/android` (direct APK). Everything below is what Play Console asks
 > for, answered from the code.
 
 Package `ai.cleanway.app`. Build and signing are shared with RuStore:
 `docs/RUSTORE_SUBMISSION.md` §1–2 (Play App Signing: upload the AAB signed with
-the release key; let Google manage the app signing key).
+the release key; let Google manage the app signing key). **Decide this once,
+before the first upload:** with a Google-generated app signing key, Play installs
+and the direct-download / RuStore APK (signed with `cleanway-release.jks`) carry
+different signatures and cannot update each other — a phone has to uninstall to
+switch channel. Choosing "use existing app signing key" in Console (exported with
+Google's PEPK tool) keeps one signature everywhere.
 
 | Play Console field | Value |
 |---|---|
@@ -202,10 +209,24 @@ the release key; let Google manage the app signing key).
 | App category | Tools (alternative: Productivity) |
 | Contains in-app purchases | **No** until Google Play Billing (RevenueCat) ships in the app; then **Yes** |
 
+### 6.A Play technical readiness (verified on the 2026-10-08 build)
+
+| Requirement | Status | Evidence / where |
+|---|---|---|
+| **Target API 36** (new apps + updates since 31 Aug 2026) | ✅ | `aapt2 dump badging`: `targetSdkVersion 36`, `compileSdkVersion 36` (Expo SDK 54 default, no override). Commands: `docs/RUSTORE_SUBMISSION.md` §2. |
+| **16 KB page size** (apps targeting Android 15+; updates blocked from 1 Feb 2027 — [page-size guide](https://developer.android.com/guide/practices/page-sizes)) | ✅ | All 21 `arm64-v8a` `.so` in the APK and AAB have 16 KB LOAD alignment; `zipalign -c -P 16` passes; the AAB requests `PAGE_ALIGNMENT_16K`. On SDK 52, 18 of 23 were 4 KB-aligned. |
+| **64-bit native code** | ✅ | `arm64-v8a` (+ `armeabi-v7a`) in the AAB. |
+| **Permissions** | ✅ | Identical to the SDK 52 APK, so §6.4 holds (`aapt2 dump permissions`, 2026-10-08). |
+| **Foreground service type** (manifest + Play Console for targetSdk 34+) | ✅ manifest / ⏳ Console | `CleanwayVpnService` only: `foregroundServiceType="specialUse"`, subtype `vpn`. Console text: §6.6. |
+| **Edge-to-edge (Android 15/16)** | ✅ | Insets handled in the root stack and tab bar; dark system bars (`plugins/withDarkSystemBars.js`). Checked on an Android 16 emulator in gesture and 3-button navigation. |
+| **Predictive back (Android 16)** | ✅ | Opted out (`predictiveBackGestureEnabled: false` → `enableOnBackInvokedCallback="false"`) because React Native still uses `onBackPressed`; back works. |
+| **App Bundle** | ✅ | `./gradlew bundleRelease` builds (35 MB, ARM-only by design — `plugins/withAbiFilters.js`). |
+| **Real-device retest of the release-signed build** | ⏳ | Samsung A16 — see "What is and isn't verified" in `docs/RUSTORE_SUBMISSION.md` §2 (the Android 16 emulator run is listed there too). |
+
 ### 6.0 TODO before any Play submission (founder)
 
-- [ ] **targetSdk 36** — wait for the Expo SDK upgrade build; re-run
-      `aapt dump permissions` on it and compare with §6.4.
+- [x] **targetSdk 36** — Expo SDK 54 build (2026-10-08); its `aapt dump
+      permissions` matches §6.4. Retest the release-signed build on the phone.
 - [ ] **Remove or replace the old upgrade screen.** In every language except
       Russian, Settings → Plan opens `mobile/app/upgrade.tsx`: hard-coded "$4.99
       Personal / $9.99 Family", "10 checks/day", and a button that opens
@@ -385,7 +406,7 @@ terms, so the conservative answer is **Shared: Web browsing history — Fraud
 prevention, security and compliance**. The privacy policy (section 5) already
 names them, so either answer is consistent with it.
 
-### 6.4 Permissions in the APK (re-check with `aapt dump permissions` on the targetSdk-36 build)
+### 6.4 Permissions in the APK (checked with `aapt2 dump permissions` on the targetSdk-36 build, 2026-10-08)
 
 | Permission | Why | Play declaration needed |
 |---|---|---|

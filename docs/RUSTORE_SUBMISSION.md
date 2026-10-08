@@ -14,13 +14,18 @@ claims.
 
 RuStore is the **primary** channel for the Tele2 RF launch.
 
-> ⚠️ **Google Play is BLOCKED right now — do not waste time submitting there.**
-> Verified 2026-08-31: the built APK targets **API 34**, but from **31 Aug 2026**
-> Google Play requires new apps and updates to target **API 36** (Android 16);
-> anything at 35 or lower is rejected. Raising it is not a flag flip — Expo SDK 52
-> / RN 0.76 is built around targetSdk 34, so reaching 36 means an Expo SDK upgrade
-> plus on-device retesting of the VPN shield. Treat Play as a post-launch project.
-> (Re-checked 2026-10-08: `mobile/package.json` is still `expo ~52.0.0`.)
+> **Google Play: the target-API blocker is fixed in code (2026-10-08), not yet
+> shipped.** Since **31 Aug 2026** Play requires new apps and updates to target
+> **API 36** (Android 16) — [Target API level requirements](https://developer.android.com/google/play/requirements/target-sdk)
+> (an extension to 1 Nov 2026 can be requested). The app is now on **Expo SDK 54
+> / React Native 0.81**, and the build from §2 produces an APK/AAB with
+> `targetSdkVersion 36` (compileSdk 36) whose 64-bit native libraries are all
+> 16 KB-aligned (Play's [16 KB page-size requirement](https://developer.android.com/guide/practices/page-sizes)
+> for apps targeting Android 15+). What is still open before a Play upload: a
+> release-signed build retested on a real phone (VPN shield, boot restart, link
+> guard, share, notifications — §2 "What is and isn't verified") and the Play
+> TODOs in `docs/STORES.md` §6.0. Every APK built before this change (Expo SDK 52,
+> up to and including the first 1.0.4 builds) targets API 34 — do not upload those to Play.
 >
 > **RuStore is unaffected**: its floor is targetSdk **28**, it requires 64-bit
 > native libs (our APK ships `arm64-v8a` ✓) and a signed artifact (✓). Our build
@@ -159,49 +164,70 @@ never flips a switch; a phone that never got one runs the model. A junk value
 in an override is ignored (logged), it does not stop the API from booting.
 Turning the model back on = unset `SMS_TEXT_MODEL_ENABLED` (or `true`).
 
-> ⚠️ **Build from the mirror sandbox, NOT from the monorepo.** Two things in the
-> repo checkout break the Metro bundle (verified 2026-08-25):
-> 1. **Node version.** Expo SDK 52 needs Node ≤22; the machine's default `node`
->    is 25. The sandbox ships its own Node 22 at `~/Library/Caches/cleanway-dev/node22/bin`.
-> 2. **Hoisted React Native.** npm workspaces hoist a much newer
->    `react-native@0.86.2` to the monorepo root, while the app pins **0.76.9**
->    (SDK 52). Root-hoisted `expo`, `expo-asset`, `expo-constants`,
->    `expo-file-system` and `expo-linking` then resolve the WRONG RN, and Metro
->    dies with a `SyntaxError` in RN's `VirtualView.js`. The mirror has a clean
->    `react-native@0.76.9`, which is why builds succeed there.
+> ⚠️ **Build from a mirror outside the monorepo, NOT from the repo checkout.**
+> npm workspaces hoist the app's packages to the repo root next to landing's
+> React (19.2 at the root, while the app pins **19.1.0** for Expo SDK 54), and
+> root-hoisted Expo/RN packages then resolve the wrong copies. A standalone copy
+> of `mobile/` with its own `node_modules` has exactly one `react-native@0.81.5`
+> and one `react@19.1.0`. (On SDK 52 the same hoisting put `react-native@0.86`
+> at the root and Metro died in `VirtualView.js`.) Fixing the hoisting is a
+> nice-to-have, not a launch blocker; the mirror is the proven path.
 >
-> Verified in the mirror on 2026-08-25: the JS bundles cleanly —
-> `entry-*.hbc, 4.98 MB` — including the OTP sign-in, update check and link-guard
-> code. Fixing the monorepo hoisting is a nice-to-have cleanup, **not** a launch
-> blocker; the mirror path is the proven one.
+> **Toolchain (Expo SDK 54 / RN 0.81, verified 2026-10-08):** Node ≥ 20.19.4
+> (22 is fine), JDK 17+ (Android Studio's bundled JBR 21 works), the Android SDK
+> with platform **android-36** and build-tools **36.0.0**. Gradle 8.14.3, AGP
+> 8.11, Kotlin 2.1.20 and **NDK 27.1.12297006** come with the generated project;
+> Gradle downloads the NDK on the first build (≈2.5 GB, slow). The first full
+> build took ~22 min on the 6-core Intel Mac, later ones ~2 min.
+> `mobile/package-lock.json` is the lock of the verified mirror (its
+> `@cleanway/*` entries point at `vendor/`).
 
 ```bash
-CACHE="$HOME/Library/Caches/cleanway-dev"
-
-# 0) Push the current repo state into the build mirror (keeps vendored
-#    workspace packages; excludes android/ios/node_modules by design).
-bash "$CACHE/bin/sync.sh"
-
-# 1) Use the sandbox toolchain: Node 22 + JDK 17 + the Android SDK.
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
-export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+# 1) Toolchain. (The older sandbox toolchain — $HOME/Library/Caches/cleanway-dev
+#    node22/ and bin/sync.sh — is no longer on the build Mac; this works:)
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export ANDROID_HOME="$HOME/Library/Android/sdk"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
-export PATH="$CACHE/node22/bin:$JAVA_HOME/bin:$PATH"
+export PATH="$JAVA_HOME/bin:$PATH"
 
-cd "$CACHE/cwmobile"
-# 2) Regenerate android/ so the release-signing plugin and the new versionCode
-#    are actually applied (sync.sh deliberately does not copy android/).
-npx expo prebuild -p android --clean
-# Sanity: the signing wiring must be present in the generated gradle.
-grep -n "cleanwayKeystoreProps" android/app/build.gradle
+# 2) The mirror: a copy of mobile/ outside the repo with the two workspace
+#    packages vendored. Its node_modules/ survives between runs; everything
+#    else is overwritten from the repo.
+REPO="$HOME/Desktop/linkshield"            # your checkout
+M="$HOME/Library/Caches/cleanway-dev/cwmobile"
+mkdir -p "$M/vendor"
+rsync -a --delete \
+  --exclude '/node_modules' --exclude '/android' --exclude '/ios' \
+  --exclude '/dist' --exclude '/.expo' --exclude '/vendor' \
+  --exclude '/package.json' --exclude '/package-lock.json' \
+  "$REPO/mobile/" "$M/"
+rsync -a --delete --exclude node_modules "$REPO/packages/api-client/" "$M/vendor/api-client/"
+rsync -a --delete --exclude node_modules "$REPO/packages/api-types/" "$M/vendor/api-types/"
+node -e '
+const fs = require("fs"); const [repo, m] = process.argv.slice(1);
+const p = JSON.parse(fs.readFileSync(repo + "/mobile/package.json", "utf8"));
+p.dependencies["@cleanway/api-client"] = "file:./vendor/api-client";
+p.dependencies["@cleanway/api-types"] = "file:./vendor/api-types";
+fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");' "$REPO" "$M"
+cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
 
-# 3) Put the keystore where the plugin expects it (see §1) BEFORE building:
-#    $CACHE/cwmobile/android/keystore.properties + the .jks alongside it.
+cd "$M"
+npm install
+npx expo install --check   # "Dependencies are up to date" (reanimated is excluded on purpose)
 
-# 4) The starter blocklist (1.0.2+): download + verify it into the module's
-#    assets, AFTER sync.sh (its rsync --delete removes the gitignored file).
-#    Without it a fresh install blocks nothing until its first sync, so the
-#    release build now refuses to start (plugins/withSeedGuard.js; skip only
+# 3) Regenerate android/ so the config plugins and the new versionCode are
+#    applied. CI=1 keeps prebuild non-interactive (the mirror is not a git repo).
+CI=1 npx expo prebuild -p android --clean
+grep -n "cleanwayKeystoreProps" android/app/build.gradle   # release-signing wiring present
+
+# 4) Put the keystore where the plugin expects it (see §1) BEFORE building:
+#    $M/android/keystore.properties + the .jks alongside it. `prebuild --clean`
+#    deletes android/, so copy them back after every prebuild. Without them the
+#    build still succeeds but is signed with the DEBUG key (big warning in the log).
+
+# 5) The starter blocklist (1.0.2+): download + verify it into the module's
+#    assets, AFTER the rsync (its --delete removes the gitignored file). Without
+#    it the release build refuses to start (plugins/withSeedGuard.js; skip only
 #    on purpose with -PcleanwayNoSeed).
 bash scripts/fetch-seed-blocklist.sh
 grep -n "cleanway-seed-guard" android/app/build.gradle
@@ -209,50 +235,133 @@ grep -n "cleanway-seed-guard" android/app/build.gradle
 cd android
 
 # A) Direct-download APK for the Tele2 funnel. Do NOT pass
-#    -PreactNativeArchitectures: measured 2026-08-31, it does NOT slim the APK
-#    (it only feeds splits.abi.include, and splits are off by default — the
-#    build still came out 92 MB with all four ABIs). Slimming is handled by
+#    -PreactNativeArchitectures: it does NOT slim the APK (it only feeds
+#    splits.abi.include, and splits are off by default). Slimming is handled by
 #    plugins/withAbiFilters.js, which drops the emulator-only x86/x86_64.
-#    Result: 55 MB with armeabi-v7a + arm64-v8a, i.e. every real phone.
+#    Result: 56 MB with armeabi-v7a + arm64-v8a, i.e. every real phone.
 ./gradlew assembleRelease
 #    → android/app/build/outputs/apk/release/app-release.apk
 #    (arm64-only, ~20 MB smaller but excludes old 32-bit phones:
 #     CLEANWAY_ABIS=arm64-v8a npx expo prebuild -p android --clean, then rebuild.)
 
-# B) App Bundle for the stores. NOTE: withAbiFilters applies to every RELEASE
-#    variant, so the AAB is ARM-only too (armeabi-v7a + arm64-v8a), not
-#    universal — verified by building it. That is fine for this market (no
-#    retail x86 Android phones) but it does exclude x86 Chromebooks/tablets.
+# B) App Bundle for the stores (35 MB). NOTE: withAbiFilters applies to every
+#    RELEASE variant, so the AAB is ARM-only too (armeabi-v7a + arm64-v8a), not
+#    universal. Fine for phones; it does exclude x86 Chromebooks/tablets.
 #    Widen with CLEANWAY_ABIS + a fresh `expo prebuild --clean` if you need them.
 ./gradlew bundleRelease
 #    → android/app/build/outputs/bundle/release/app-release.aab
 
-# The seed is inside (≈2.6 MB):
+# The seed is inside (≈2.8 MB):
 unzip -l app/build/outputs/apk/release/app-release.apk | grep dns-blocklist-v2.seed.bin
 ```
 
-Confirm it is **release-signed, not debug**:
+Confirm the **target API, the signer and 16 KB alignment** before uploading:
 
 ```bash
+BT="$ANDROID_HOME/build-tools/36.0.0"
+APK=app/build/outputs/apk/release/app-release.apk
+
+# targetSdkVersion:'36' (Play's floor since 31 Aug 2026), compileSdkVersion='36'.
+"$BT/aapt2" dump badging "$APK" | grep -E "targetSdkVersion|compileSdkVersion"
+
 # Should show CN=Cleanway…, NOT "CN=Android Debug".
-$ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs \
-  app/build/outputs/apk/release/app-release.apk | grep -i "Signer #1 certificate DN"
+"$BT/apksigner" verify --print-certs "$APK" | grep -i "Signer #1 certificate DN"
+
+# 16 KB, part 1: uncompressed .so files are 16 KB-aligned inside the zip.
+"$BT/zipalign" -c -P 16 -v 4 "$APK" | tail -1        # → "Verification successful"
+
+# 16 KB, part 2: every 64-bit library's ELF LOAD segments are aligned to
+# 0x4000 (16 KB). 32-bit armeabi-v7a libraries stay at 0x1000 — Play's rule is
+# for 64-bit devices only.
+RE="$ANDROID_HOME/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-readelf"
+rm -rf /tmp/cw-so && unzip -q "$APK" 'lib/arm64-v8a/*' -d /tmp/cw-so
+for so in /tmp/cw-so/lib/arm64-v8a/*.so; do
+  echo "$(basename "$so") $("$RE" -lW "$so" | awk '/LOAD/{print $NF}' | sort -u | tr '\n' ' ')"
+done | grep -E "0x(1000|2000) " || echo "all arm64-v8a libraries are 16 KB-aligned"
 ```
 
 Then sanity-check on the real device: install the APK, confirm it opens, turn on
 the shield, then **bump versionCode, rebuild, reinstall over it** — it must update
 in place (no "App not installed"). That proves B2 is fixed end-to-end.
 
-> **What is and isn't verified (2026-08-31).** The full release build IS done:
-> a signed 55 MB APK exists and `apksigner` reports *Verifies*, v2 scheme,
-> `CN=Cleanway` — not the debug key. Both config plugins have committed tests
-> (`mobile/plugins/__tests__/plugins.test.js`, 15 assertions, run in CI) covering
-> correct anchors, idempotency across prebuilds, the debug-signing fallback, and
-> that ABI filtering never touches debug builds.
+> **What is and isn't verified (2026-10-08, Expo SDK 54 build).** Built in a
+> mirror exactly as above, without the release key (so debug-signed, as
+> expected): `assembleRelease` and `bundleRelease` both succeed. `aapt2` reports
+> `targetSdkVersion 36`, `compileSdkVersion 36`, `versionCode 104`; the
+> permission list is identical to SDK 52's 1.0.3 APK (table in §3). 16 KB:
+> `zipalign -c -P 16` passes; all 21 `arm64-v8a` libraries in the APK and in the
+> AAB have 16 KB LOAD alignment (the SDK 52 APK had 18 of 23 at 4 KB — React
+> Native 0.76's own `libreactnative`/`libhermes`/`libfbjni` among them, which
+> is why a targetSdk flag on SDK 52 could not pass Play), and the AAB's
+> BundleConfig asks for `PAGE_ALIGNMENT_16K`. The merged manifest keeps the
+> VpnService (`foregroundServiceType="specialUse"` + the `vpn` subtype
+> property), BootReceiver in `:boot`, ShieldWatchdog, the alarm receiver, the
+> link-guard activity and the `text/*` share filter unchanged;
+> `enableOnBackInvokedCallback="false"` is new (below), and the unused
+> `ai.cleanway.app://` deep-link scheme is gone (Expo SDK 53 stopped adding the
+> package name as a scheme; nothing links to it — `cleanway://` is the scheme).
 >
-> Still **unverified**: that the APK installs on a real phone and updates over
-> itself (bump versionCode, rebuild, reinstall). No device has been attached —
-> this is the one check that needs the founder's Samsung.
+> **On an Android 16 emulator** (API 36.1, x86_64, a release build with x86_64
+> added to the ABI filter), every native path was exercised: onboarding → tabs;
+> the shield's explainer → Android's VPN consent → tunnel up (`tun0`, foreground
+> service type `specialUse`), seed loaded (469,685 names), blocklist sync and
+> its alarm, ordinary DNS still resolving, the list canary not resolving; the
+> notification-permission prompt; the battery-optimisation explainer → Android's
+> dialog → app on the idle allow-list; "Link checking" → the browser-role
+> dialog → Cleanway holds `ROLE_BROWSER`, and a tapped link goes through
+> `LinkGuardActivity` to Chrome; a shared SMS text → the SMS check screen with
+> the on-device verdict; a link check against the API; system back; and a
+> **reboot**: BootReceiver restarted the shield by itself (FGS start allowed,
+> watchdog job and refresh alarm re-armed). Installing the new build over the
+> previous one (same key, same versionCode) kept its data. Both navigation modes
+> (gesture and 3-button) were checked for insets.
+>
+> The native module's Kotlin unit tests: 328 of 330 pass. The two that fail are
+> wall-clock budgets in `MessageAnalyzerTest` (≈9.6 ms per 1,000-character
+> message against a 5 ms limit, and the pathological-input case) — they fail
+> the same way on `main`'s SDK 52 build on this Mac (9.8 ms), so they are a
+> machine-speed / budget question, not an effect of the upgrade.
+>
+> Still **unverified**: the release-signed build on the founder's Samsung —
+> install over the installed 1.0.x (same key, higher versionCode), the shield on
+> mobile data, One UI's battery manager, the blocked-site notification on a real
+> blocked site, the QR scanner (camera) and the after-call screen. No release
+> key was used and nothing was installed on the phone during the upgrade.
+
+### Android 15/16 behaviour (targetSdk 34 → 36) and what the app does about it
+
+- **Edge-to-edge is mandatory** (Android 15 enforces it at targetSdk 35; Android
+  16 removes the opt-out). The app now draws under the status and navigation
+  bars. Stack headers pad for the status bar; `app/_layout.tsx` pads every stack
+  screen by the navigation-bar inset, and the tab bar's height includes it
+  (`app/(tabs)/_layout.tsx` — the fixed 84 px bar was covered by Android's
+  3-button navigation). `plugins/withDarkSystemBars.js` puts the activity in
+  night mode before React Native sets up edge-to-edge, so the transparent
+  navigation bar and its contrast scrim are dark even when the phone uses the
+  light system theme (before, they came out as a white strip). Native dialogs
+  (Alert) are dark as a side effect, matching the app.
+- **Predictive back**: at targetSdk 36 Android stops calling `onBackPressed`
+  unless the app opts out. React Native still relies on it, so
+  `android.predictiveBackGestureEnabled` is pinned to `false` in `app.json`
+  (Expo SDK 54's default) → `enableOnBackInvokedCallback="false"`. The system
+  back button/gesture navigates the JS stack as before.
+- **Large screens** (≥ 600 dp): Android 16 ignores `screenOrientation`, so on
+  tablets/foldables the portrait-only app can rotate and fill the screen. Phones
+  are unaffected.
+- **Foreground service**: the shield is `specialUse` with subtype `vpn`. Android
+  15's ban on starting some FGS types from `BOOT_COMPLETED` (dataSync, camera,
+  media, phoneCall, microphone…) does not cover `specialUse`, so BootReceiver's
+  restart path is unchanged (verified on the emulator, above).
+- **Local network permission** (Android 16 opt-in, enforced in a later release):
+  DNS on port 53 to the network's own resolver is exempt, which is what the
+  shield forwards to. Re-check when Google turns enforcement on.
+- **16 KB pages**: covered by React Native ≥ 0.77 and NDK r27/r28 builds; see
+  the checks above. Play blocks non-compliant updates of apps targeting
+  Android 15+ from 1 Feb 2027.
+- **Architecture**: the app stays on React Native's legacy architecture
+  (`newArchEnabled: false`, as on SDK 52; reanimated stays on 3.19 because 4.x
+  needs the New Architecture). Expo SDK 54 is the last SDK that allows this —
+  moving to SDK 55+ means switching to the New Architecture first.
 
 ---
 
@@ -340,8 +449,14 @@ Google Play specifics:
 - In the app's **Advanced/VpnService declaration**, select the "core
   functionality (device security / parental control)" use, not "app that
   connects to a VPN gateway".
-- Foreground-service type is `specialUse` (declared in the manifest); provide the
-  same justification if Play asks about `FOREGROUND_SERVICE_SPECIAL_USE`.
+- Foreground-service type is `specialUse` (declared in the manifest, with the
+  `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` = `vpn` property); provide the same
+  justification if Play asks about `FOREGROUND_SERVICE_SPECIAL_USE`. Play Console
+  asks every app targeting Android 14+ to declare its foreground-service types
+  under **App content → Foreground service permissions** — tick *Special use*;
+  the paste-ready justification and video note are in `docs/STORES.md` §6.6.
+  It is the only FGS type the app declares (`LinkCheckService` is a plain
+  short-lived service, not a foreground one).
 
 **Battery optimisation** (paste if asked about
 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`; source: `docs/MOBILE_AUTO_PROTECTION.md`):

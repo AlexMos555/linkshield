@@ -173,9 +173,11 @@ simultaneously, without weakening any check. What it took, for the record:
    `MOBILE_APK_URL=<the new release asset URL>`.
 6. **RuStore developer account** (ЕСИА, физлицо OK), then submit: listing copy in
    `mobile/STORE_LISTING.md`, data-safety + VpnService answers in
-   `docs/RUSTORE_SUBMISSION.md` §3–4. **RuStore only** — Google Play now requires
-   targetSdk 36 (we ship 34, an Expo SDK 52 constraint), so Play is a post-launch
-   project, not a parallel track. RuStore's floor is 28, so our build qualifies.
+   `docs/RUSTORE_SUBMISSION.md` §3–4. **RuStore first.** Google Play requires
+   targetSdk 36 since 31 Aug 2026; builds from Expo SDK 54 (2026-10-08) meet it
+   and the 16 KB page-size rule, but Play still needs the founder TODOs in
+   `docs/STORES.md` §6.0 and a release-signed retest on the phone. RuStore's
+   floor is 28, so our build qualifies.
 7. **Plug in the Samsung and authorize USB debugging** for the end-to-end run. The
    A16 was last tested 2026-08-25 via `adb` with a **debug** build. Never tested:
    the release APK through the browser install path, the Play Protect + Samsung

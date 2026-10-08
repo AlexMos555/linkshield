@@ -14,7 +14,7 @@
  * Backend contract: api/routers/user.py::restore_account.
  * Sibling UI in landing/app/[locale]/account/restore/RestoreClient.tsx.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type JSX } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 

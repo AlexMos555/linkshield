@@ -24,7 +24,7 @@ source (this file used to hold a v1.0.0 draft that had drifted from the build):
 | Store | Language | Where |
 |---|---|---|
 | **RuStore** (primary, Tele2 launch) | RU | `docs/RUSTORE_SUBMISSION.md` §7 — name, short and full description, "Что нового" 1.0.4, keywords, screenshot captions, founder TODOs |
-| **Google Play** (blocked: targetSdk 36 required) | EN + RU | `docs/STORES.md` §6 — title, short and full description, Data safety answers |
+| **Google Play** (targetSdk 36 since SDK 54; founder TODOs open) | EN + RU | `docs/STORES.md` §6 — title, short and full description, Data safety answers |
 | Data-collection / permissions answers | — | `docs/RUSTORE_SUBMISSION.md` §3–4 |
 
 The Russian full description is the same text in both stores on purpose; if you
