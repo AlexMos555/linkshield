@@ -11,6 +11,7 @@ from api import __version__, __service_name__
 from api.config import get_settings, validate_settings
 from api.routers.check import router as check_router
 from api.routers.payments import router as payments_router
+from api.routers.revenuecat import router as revenuecat_router
 from api.routers.user import router as user_router
 from api.routers.account import router as account_router
 from api.routers.feedback import router as feedback_router
@@ -213,6 +214,7 @@ def _scrub_path_for_logs(path: str) -> str:
 # Routers
 app.include_router(check_router)
 app.include_router(payments_router)
+app.include_router(revenuecat_router)
 app.include_router(user_router)
 app.include_router(account_router)
 app.include_router(feedback_router)

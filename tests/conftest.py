@@ -400,6 +400,9 @@ class MemoryAccountStore:
         self.devices: list[dict] = []
         self.entitlements: list[dict] = []
         self.fail = False
+        self.fail_mark = False
+        # RevenueCat webhook event ids already applied (migration 024).
+        self.processed_events: dict[str, str] = {}
         self.register_calls: list[dict] = []
         self._ids = itertools.count(1)
 
@@ -463,6 +466,34 @@ class MemoryAccountStore:
         for r in self.entitlements:
             if r["account_id"] == account_id and r["source"] == source:
                 r["status"] = status
+
+    async def get_entitlement(self, *, source: str, external_id: str):
+        self._check()
+        for r in self.entitlements:
+            if (r["source"], r["external_id"]) == (source, external_id):
+                return dict(r)
+        return None
+
+    async def reassign_entitlements(self, *, from_account: str, to_account: str, sources) -> int:
+        self._check()
+        moved = 0
+        for r in self.entitlements:
+            if r["account_id"] == from_account and r["source"] in sources:
+                r["account_id"] = to_account
+                moved += 1
+        return moved
+
+    async def is_event_processed(self, event_id: str) -> bool:
+        self._check()
+        return event_id in self.processed_events
+
+    async def mark_event_processed(self, event_id: str, event_type: str) -> None:
+        if self.fail_mark:
+            from api.services.account_store import AccountStoreError
+
+            raise AccountStoreError("simulated mark failure")
+        self._check()
+        self.processed_events.setdefault(event_id, event_type)
 
     async def list_devices(self, account_id: str) -> list[dict]:
         self._check()

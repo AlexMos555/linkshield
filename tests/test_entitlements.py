@@ -101,6 +101,40 @@ def test_best_row_has_most_devices_then_latest_end():
     assert ent.effective_entitlement(rows).external_id == "open"
 
 
+def test_extra_device_addons_add_to_the_best_plan_and_grant_nothing_alone():
+    addon = _row(external_id="x1", source="google_play", plan=ent.ADDON_PLAN, device_limit=1)
+    assert not ent.effective_entitlement([addon]).is_paid
+
+    rows = [_row(external_id="plan", source="google_play"), addon,
+            _row(external_id="x2", source="google_play", plan=ent.ADDON_PLAN, device_limit=2),
+            _row(external_id="x3", plan=ent.ADDON_PLAN, device_limit=5, status="expired")]
+    best = ent.effective_entitlement(rows)
+    assert best.external_id == "plan" and best.plan == "personal" and best.device_limit == 6
+
+
+def test_device_limit_is_capped_at_the_column_maximum():
+    rows = [_row(device_limit=99), _row(external_id="x", plan=ent.ADDON_PLAN, device_limit=20)]
+    assert ent.effective_entitlement(rows).device_limit == 100
+
+
+@pytest.mark.parametrize("source,product_id,url", [
+    ("stripe", None, "https://cleanway.ai/account"),
+    ("google_play", "cleanway.devices:monthly",
+     "https://play.google.com/store/account/subscriptions?sku=cleanway.devices&package=ai.cleanway.app"),
+    ("google_play", None, "https://play.google.com/store/account/subscriptions"),
+    ("app_store", "cleanway.devices.yearly", "https://apps.apple.com/account/subscriptions"),
+    ("operator_ru", None, None),
+    ("promo", None, None),
+])
+def test_manage_url_by_source(source, product_id, url):
+    e = ent.effective_entitlement([_row(source=source, product_id=product_id)])
+    assert ent.manage_url(e) == url
+
+
+def test_free_has_no_manage_url():
+    assert ent.manage_url(ent.free_entitlement()) is None
+
+
 # ─── get_effective_entitlement / has_active_entitlement ───────────
 
 

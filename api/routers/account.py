@@ -1,7 +1,11 @@
 """The signed-in account: plan and linked devices.
 
-  GET    /api/v1/me/entitlement      plan, status, source, period_end,
-                                     device_limit, devices_used, devices
+  GET    /api/v1/me/entitlement      plan, status, source, manage_url,
+                                     period_end, device_limit, devices_used,
+                                     devices
+  POST   /api/v1/me/entitlement/refresh
+                                     "Restore purchases": re-read Google Play /
+                                     App Store purchases from RevenueCat
   GET    /api/v1/me/devices          linked devices
   POST   /api/v1/me/devices          register this install / heartbeat (idempotent)
   PATCH  /api/v1/me/devices/{id}     rename a device
@@ -17,6 +21,8 @@ website) read the entitlement. Error answers carry a stable `code`:
   403 device_revoked        — this install was unlinked; sign out locally
   404 device_not_found
   503 account_unavailable   — the database couldn't answer; retry later
+  503 store_sync_unavailable — refresh: RevenueCat isn't configured
+  502 store_sync_failed     — refresh: RevenueCat couldn't be reached
 """
 from __future__ import annotations
 
@@ -35,7 +41,7 @@ from api.services.account_devices import (
     StoreUnavailable,
 )
 from api.services.auth import get_current_user
-from api.services.entitlements import Entitlement, included_devices
+from api.services.entitlements import Entitlement, included_devices, manage_url
 from api.services.rate_limiter import rate_limit
 
 logger = logging.getLogger("cleanway.account")
@@ -47,6 +53,9 @@ router = APIRouter(prefix="/api/v1/me", tags=["account"])
 _READ_LIMIT = 60
 _REGISTER_LIMIT = 30
 _MANAGE_LIMIT = 20
+# Each refresh is a RevenueCat API call; a "Restore purchases" button
+# pressed a few times is fine, a loop is not.
+_REFRESH_LIMIT = 10
 
 
 class DeviceOut(BaseModel):
@@ -65,6 +74,14 @@ class EntitlementResponse(BaseModel):
     source: Optional[str] = Field(
         None,
         description="Where the plan was paid: stripe, google_play, app_store, rustore, operator_ru, promo, partner.",
+    )
+    manage_url: Optional[str] = Field(
+        None,
+        description=(
+            "Where this plan is changed or cancelled: the Google Play / App Store subscriptions "
+            "page for store purchases, the cleanway.ai account page for Stripe; null for free "
+            "and for sources without a self-service page."
+        ),
     )
     period_end: Optional[str] = None
     device_limit: int
@@ -116,6 +133,7 @@ def _entitlement_body(ent: Entitlement, rows: list[dict], current: Optional[str]
         plan=ent.plan,
         status=ent.status,
         source=ent.source,
+        manage_url=manage_url(ent),
         period_end=ent.period_end,
         device_limit=ent.device_limit,
         included_devices=included_devices(),
@@ -143,6 +161,47 @@ async def get_entitlement(
     x_device_id: Optional[str] = Header(None, alias="X-Device-Id", include_in_schema=False),
 ) -> EntitlementResponse:
     """The account's effective plan and its linked devices."""
+    return await _entitlement_view(user, x_device_id)
+
+
+@router.post(
+    "/entitlement/refresh",
+    response_model=EntitlementResponse,
+    dependencies=[
+        Depends(rate_limit(mode="sensitive", category="entitlement_refresh", limit=_REFRESH_LIMIT))
+    ],
+)
+async def refresh_entitlement(
+    user: AuthUser = Depends(get_current_user),
+    x_device_id: Optional[str] = Header(None, alias="X-Device-Id", include_in_schema=False),
+) -> EntitlementResponse:
+    """"Restore purchases": reconcile this account's Google Play / App Store
+    purchases with RevenueCat (GET /v1/subscribers/{account id}), then answer
+    the updated entitlement. The app calls it after the RevenueCat SDK's
+    restorePurchases(), so a purchase whose webhook was missed or is late
+    shows up at once."""
+    from api.services.revenuecat import RevenueCatError, RevenueCatNotConfigured
+    from api.services.revenuecat_sync import sync_account
+
+    try:
+        await sync_account(user.id)
+    except RevenueCatNotConfigured:
+        raise HTTPException(
+            503,
+            detail={
+                "code": "store_sync_unavailable",
+                "error": "Restoring store purchases isn't available yet. Please try again later.",
+            },
+        )
+    except RevenueCatError as e:
+        logger.error("entitlement_refresh_failed", extra={"user_id": user.id, "error": str(e)})
+        raise HTTPException(
+            502,
+            detail={
+                "code": "store_sync_failed",
+                "error": "Your purchases couldn't be checked just now. Please try again in a moment.",
+            },
+        )
     return await _entitlement_view(user, x_device_id)
 
 

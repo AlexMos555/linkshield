@@ -483,6 +483,12 @@ def test_every_router_imports_rate_limit_helper():
             # installs to a required security update. See TELE2_LAUNCH_PLAN.md.
             if path.name == "mobile.py":
                 continue
+            # revenuecat.py is a server-to-server webhook gated by a shared
+            # secret (constant-time compare before any work). Renewals arrive
+            # in bursts from RevenueCat's few IPs; a per-IP 429 would only
+            # push billing events into RevenueCat's 5-retry budget.
+            if path.name == "revenuecat.py":
+                continue
             missing.append(path.name)
     assert missing == [], f"Routers without rate limit import: {missing}"
 

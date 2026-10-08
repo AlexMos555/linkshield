@@ -1,0 +1,40 @@
+{
+  "request_date": "2026-10-08T10:00:00Z",
+  "request_date_ms": 1791453600000,
+  "subscriber": {
+    "entitlements": {
+      "unlimited": {
+        "expires_date": "2099-11-08T10:00:00Z",
+        "grace_period_expires_date": null,
+        "product_identifier": "cleanway.devices",
+        "product_plan_identifier": "monthly",
+        "purchase_date": "2026-10-08T10:00:00Z"
+      }
+    },
+    "first_seen": "2026-10-01T09:00:00Z",
+    "management_url": "https://play.google.com/store/account/subscriptions",
+    "non_subscriptions": {},
+    "original_app_user_id": "11111111-1111-4111-8111-111111111111",
+    "original_application_version": null,
+    "original_purchase_date": null,
+    "other_purchases": {},
+    "subscriptions": {
+      "cleanway.devices": {
+        "auto_resume_date": null,
+        "billing_issues_detected_at": null,
+        "expires_date": "2099-11-08T10:00:00Z",
+        "grace_period_expires_date": null,
+        "is_sandbox": false,
+        "original_purchase_date": "2026-09-08T10:00:00Z",
+        "ownership_type": "PURCHASED",
+        "period_type": "normal",
+        "product_plan_identifier": "monthly",
+        "purchase_date": "2026-10-08T10:00:00Z",
+        "refunded_at": null,
+        "store": "play_store",
+        "store_transaction_id": "GPA.3372-4150-8203-17209..1",
+        "unsubscribe_detected_at": null
+      }
+    }
+  }
+}

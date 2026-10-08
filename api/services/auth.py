@@ -324,8 +324,25 @@ async def _fetch_tier_from_supabase(user_id: str) -> UserTier:
                         logger.warning("Unknown tier value: %s", tier_str)
                         return UserTier.free
 
-        return UserTier.free
+        return await _tier_from_entitlements(user_id)
 
     except Exception as e:
         logger.warning("supabase_tier_lookup_failed", extra={"error": str(e)})
         return UserTier.free  # Safe fallback
+
+
+async def _tier_from_entitlements(user_id: str) -> UserTier:
+    """Plans paid outside Stripe (Google Play / App Store via RevenueCat,
+    later RuStore, the operator, promo) exist only in `entitlements`
+    (migration 023 step 2): without this a store purchase would show as
+    paid on the account screen yet keep free limits everywhere else."""
+    from api.services.entitlements import get_effective_entitlement
+
+    try:
+        ent = await get_effective_entitlement(user_id, legacy_row=None)
+        if ent.is_paid:
+            return UserTier(ent.plan)
+        return UserTier.free
+    except Exception as e:  # EntitlementError, or a plan name UserTier doesn't know
+        logger.warning("entitlement_tier_lookup_failed", extra={"error": str(e)})
+        return UserTier.free  # same safe fallback as the subscriptions lookup
