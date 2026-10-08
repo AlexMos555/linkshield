@@ -1170,6 +1170,21 @@
   "webmail_finding_account_threat": {
     "message": "Email ini memperingatkan akun diblokir atau login mencurigakan"
   },
+  "webmail_setting_heading": {
+    "message": "Pemeriksaan email"
+  },
+  "webmail_setting_label": {
+    "message": "Periksa email yang saya buka di Gmail, Outlook, dan Yahoo dari phishing"
+  },
+  "webmail_setting_consent": {
+    "message": "Mati kecuali Anda menyalakannya. Saat menyala, setiap email yang Anda buka di Gmail, Outlook, atau Yahoo Mail dikirim ke server Cleanway (api.cleanway.ai) untuk diperiksa dari phishing: subjek, nama dan alamat pengirim, alamat Reply-To, teks pesan, serta alamat dan teks setiap tautan di dalamnya. Email diperiksa dan tidak disimpan; domain tautannya juga diperiksa dengan Google Safe Browsing. Matikan kapan saja dan pemeriksaan langsung berhenti."
+  },
+  "webmail_setting_denied": {
+    "message": "Browser Anda tidak memberi Cleanway akses ke situs email, jadi pemeriksaan email tetap mati."
+  },
+  "webmail_setting_unsupported": {
+    "message": "Browser ini tidak dapat menjalankan pemeriksaan email."
+  },
   "options_page_title": {
     "message": "Pengaturan Cleanway"
   },

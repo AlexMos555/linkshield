@@ -1207,6 +1207,21 @@
       },
       "finding_account_threat": {
         "text": "O e-mail avisa sobre uma conta bloqueada ou um acesso suspeito"
+      },
+      "setting_heading": {
+        "text": "Verificação de e-mails"
+      },
+      "setting_label": {
+        "text": "Verificar se há phishing nos e-mails que abro no Gmail, Outlook e Yahoo"
+      },
+      "setting_consent": {
+        "text": "Desativado, a menos que você ative. Quando ativado, cada e-mail que você abre no Gmail, Outlook ou Yahoo Mail é enviado ao servidor da Cleanway (api.cleanway.ai) para verificar se é phishing: o assunto, o nome e o endereço do remetente, o endereço Reply-To, o texto da mensagem e o endereço e o texto de cada link. O e-mail é verificado e não é guardado; os domínios dos links também são verificados com o Google Safe Browsing. Desative quando quiser e a verificação para na hora."
+      },
+      "setting_denied": {
+        "text": "O navegador não deu à Cleanway acesso aos sites de e-mail, então a verificação de e-mails continua desativada."
+      },
+      "setting_unsupported": {
+        "text": "Este navegador não consegue executar a verificação de e-mails."
       }
     },
     "options": {

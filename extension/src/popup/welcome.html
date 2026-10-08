@@ -284,7 +284,9 @@
     </div>
 
     <div class="cta-group">
-      <a href="https://mail.google.com" class="btn btn-primary" id="cta-scan">
+      <!-- Email scanning is opt-in: this opens its switch and consent text in
+           Settings, not the inbox (nothing would be scanned there yet). -->
+      <a href="../options/options.html#webmail-section" class="btn btn-primary" id="cta-scan">
         <span data-i18n="welcome_cta_scan">&#x1F4E7; Scan my inbox for hidden scams</span>
       </a>
       <button class="btn btn-secondary" id="cta-skip" type="button" data-i18n="welcome_cta_skip">

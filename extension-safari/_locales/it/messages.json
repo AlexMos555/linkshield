@@ -1170,6 +1170,21 @@
   "webmail_finding_account_threat": {
     "message": "L'email avvisa di un account bloccato o di un accesso sospetto"
   },
+  "webmail_setting_heading": {
+    "message": "Controllo delle email"
+  },
+  "webmail_setting_label": {
+    "message": "Controlla se le email che apro in Gmail, Outlook e Yahoo sono phishing"
+  },
+  "webmail_setting_consent": {
+    "message": "Disattivato finché non lo attivi tu. Quando è attivo, ogni email che apri in Gmail, Outlook o Yahoo Mail viene inviata al server di Cleanway (api.cleanway.ai) per verificare se è phishing: l'oggetto, il nome e l'indirizzo del mittente, l'indirizzo Reply-To, il testo del messaggio e l'indirizzo e il testo di ogni link. L'email viene controllata e non viene conservata; i domini dei suoi link vengono controllati anche con Google Safe Browsing. Puoi disattivarlo in qualsiasi momento e il controllo si ferma subito."
+  },
+  "webmail_setting_denied": {
+    "message": "Il browser non ha dato a Cleanway l'accesso ai siti di posta, quindi il controllo delle email resta disattivato."
+  },
+  "webmail_setting_unsupported": {
+    "message": "Questo browser non può eseguire il controllo delle email."
+  },
   "options_page_title": {
     "message": "Impostazioni di Cleanway"
   },

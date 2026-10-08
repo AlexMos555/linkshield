@@ -22,11 +22,13 @@ src/
 │   ├── browser-compat.js  (Firefox chrome → browser alias; imported first)
 │   ├── auth.js            (sign-in: AUTH_* messages, the refresh alarm — wires utils/auth-session.js)
 │   ├── page-blocks.js     (what counts as a blocked scam: a block page shown, once per site per day)
-│   └── trusted-hosts.js   (exact official hosts answered "safe", and user-content hosts answered "can't be checked")
+│   ├── trusted-hosts.js   (exact official hosts answered "safe", and user-content hosts answered "can't be checked")
+│   └── webmail-scanner.js (opt-in: registers content/webmail.js only while Settings has it on)
 ├── content/            ← Content scripts injected into every page
 │   ├── index.js           (main orchestrator)
 │   ├── block-page.js      (STOP overlay for scam sites)
 │   ├── connect-relay.js   (ONLY on cleanway.ai/<locale>/extension/connect: relays the sign-in handoff)
+│   ├── webmail.js         (OPT-IN, in no manifest: Gmail / Outlook / Yahoo banner, injected by background/webmail-scanner.js)
 │   ├── reason-labels.js   (badge reason lines in the browser's language, by reason code)
 │   ├── privacy-audit.js
 │   ├── security-score.js
@@ -98,6 +100,42 @@ Typical iteration:
 bash scripts/build-extensions.sh
 # Reload unpacked extension in Chrome → see changes
 ```
+
+## Webmail scanner (opt-in)
+
+`content/webmail.js` sends the email a person opens to `POST /api/v1/email/analyze`,
+so it is **off unless they switch it on** in Settings ("Scan emails I open in
+Gmail, Outlook and Yahoo for phishing"). One mechanism for all three builds:
+
+- No manifest lists `webmail.js`, and the four mail origins
+  (`mail.google.com`, `outlook.office.com`, `outlook.live.com`, `mail.yahoo.com`)
+  are **optional** host permissions (`optional_host_permissions` in the MV3
+  Chrome/Safari manifests, `optional_permissions` in Firefox MV2). The
+  `scripting` permission is required (Chrome 96+, Safari 15.4+, Firefox 102+,
+  MV2 included).
+- Switching it on in Settings calls `permissions.request` for the four origins
+  straight from the click (Firefox shows its prompt only for a user action),
+  then stores `webmailScannerEnabled: true`. Refused → stays off, with a note.
+- `background/webmail-scanner.js` watches that key: `true` →
+  `scripting.registerContentScripts` (id `cleanway-webmail`) plus
+  `executeScript` into mail tabs already open; anything else → unregister and
+  give the origins back. Re-synced on every worker start; on update it gives
+  back the origins older installs were granted at install time. Removing the
+  sites in the browser's own extension settings turns the switch off.
+- `webmail.js` reads the key itself before it touches the page and listens
+  for it: off disconnects the observer, aborts the request in flight and
+  removes the banner at once.
+- What is sent: subject, sender name + address, Reply-To, body text (≤100 KB)
+  and the links as `<a href="…">text</a>` lines — never the message's HTML
+  (the analyzer only reads links from it). Keep the Settings consent text
+  (`webmail_setting_consent`) and `docs/PRIVACY.md` in step with `buildPayload()`.
+- A browser without `scripting.registerContentScripts` shows the switch
+  disabled: "This browser cannot run the email scanner."
+
+Tests: group 5 of `scripts/test-extension-core.mjs` (manifests, the background
+switch, the content script off / on / off on a fake Gmail, the consent text)
+and `runWebmailTree` in `scripts/test-extension-sw.mjs` (real Chromium). Firefox
+and Safari: check the permission prompt by hand before a release.
 
 ## Sign-in
 

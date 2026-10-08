@@ -1170,6 +1170,21 @@
   "webmail_finding_account_threat": {
     "message": "Письмо сообщает о блокировке аккаунта или подозрительном входе"
   },
+  "webmail_setting_heading": {
+    "message": "Проверка писем"
+  },
+  "webmail_setting_label": {
+    "message": "Проверять на фишинг письма, которые я открываю в Gmail, Outlook и Yahoo"
+  },
+  "webmail_setting_consent": {
+    "message": "Выключено, пока вы сами не включите. Когда включено, каждое письмо, которое вы открываете в Gmail, Outlook или Yahoo Mail, отправляется на сервер Cleanway (api.cleanway.ai) для проверки на фишинг: тема, имя и адрес отправителя, адрес Reply-To, текст письма, а также адрес и текст каждой ссылки в нём. Письмо проверяется и не сохраняется; домены ссылок из него также проверяются через Google Safe Browsing. Выключите в любой момент — проверка сразу прекратится."
+  },
+  "webmail_setting_denied": {
+    "message": "Браузер не дал Cleanway доступ к почтовым сайтам, поэтому проверка писем остаётся выключенной."
+  },
+  "webmail_setting_unsupported": {
+    "message": "В этом браузере проверка писем не работает."
+  },
   "options_page_title": {
     "message": "Настройки Cleanway"
   },

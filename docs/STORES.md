@@ -72,11 +72,16 @@ grep '"version"' extension/manifest.json
        them goes to `GET /api/v1/public/check/{host}` (official and
        user-content hosts are answered locally, `trusted-hosts.js`); never the
        path or query.
-     - **Personal communications** and **Website content** — on Gmail, Outlook
-       and Yahoo Mail the extension sends the open email's subject, sender,
-       reply-to and body to `POST /api/v1/email/analyze`
-       (`extension/src/content/webmail.js:244-270`). It runs automatically on
-       every opened message; there is no setting to turn it off.
+     - **Personal communications** and **Website content** — only if the user
+       switches on "Scan emails I open in Gmail, Outlook and Yahoo for
+       phishing" in Settings (off by default, also for updated installs): then,
+       on Gmail, Outlook and Yahoo Mail, the extension sends each opened email's
+       subject, sender name and address, reply-to, text and links (not its
+       HTML) to `POST /api/v1/email/analyze` (`extension/src/content/webmail.js`
+       `buildPayload()`, registered by `extension/src/background/webmail-scanner.js`
+       only while the switch is on). Processed in memory, not stored. The four
+       mail sites are optional host permissions requested from that switch;
+       justify `scripting` with the text in `extension/STORE_LISTING.md`.
      - **Personally identifiable information** — the email address, only if the
        user signs in.
      - Do **not** claim "no data collected", and do not leave the two boxes

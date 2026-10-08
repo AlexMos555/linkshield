@@ -1170,6 +1170,21 @@
   "webmail_finding_account_threat": {
     "message": "الرسالة تحذّر من حساب محظور أو تسجيل دخول مريب"
   },
+  "webmail_setting_heading": {
+    "message": "فحص الرسائل"
+  },
+  "webmail_setting_label": {
+    "message": "افحص الرسائل التي أفتحها في Gmail وOutlook وYahoo بحثًا عن التصيّد"
+  },
+  "webmail_setting_consent": {
+    "message": "متوقّف ما لم تشغّله بنفسك. عند تشغيله، تُرسَل كل رسالة تفتحها في Gmail أو Outlook أو Yahoo Mail إلى خادم Cleanway ‏(api.cleanway.ai) لفحصها بحثًا عن التصيّد: الموضوع، واسم المرسل وعنوانه، وعنوان Reply-To، ونص الرسالة، وعنوان كل رابط فيها ونصّه. تُفحَص الرسالة ولا تُحفَظ؛ وتُفحَص نطاقات روابطها أيضًا عبر Google Safe Browsing. أوقفه في أي وقت فيتوقف الفحص فورًا."
+  },
+  "webmail_setting_denied": {
+    "message": "لم يمنح متصفحك Cleanway إذن الوصول إلى مواقع البريد، لذلك يبقى فحص الرسائل متوقفًا."
+  },
+  "webmail_setting_unsupported": {
+    "message": "لا يستطيع هذا المتصفح تشغيل فحص الرسائل."
+  },
   "options_page_title": {
     "message": "إعدادات Cleanway"
   },

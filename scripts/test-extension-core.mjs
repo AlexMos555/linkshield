@@ -31,6 +31,12 @@
  *    top frame), the family poll is armed only for a signed-in family member,
  *    and no screen promises that "your data never leaves this device".
  *
+ * 5. The webmail scanner is opt-in: no manifest loads it or asks for the
+ *    mail sites at install, the background registers it only while Settings
+ *    has it on, switched off it reads no email and sends nothing, switching
+ *    it off mid-scan aborts the request, and it sends a message's links
+ *    instead of its HTML.
+ *
  * Every group runs against packages/extension-core/ AND the three generated
  * trees, so a hand-edit to a generated copy (or a forgotten rebuild) fails too.
  */
@@ -832,6 +838,334 @@ await check("webmail banner: a safe verdict names no scam trick, and the most se
   // The accusing line is gone from the catalog, not just unused.
   const ru = readJson("extension/_locales/ru/messages.json");
   assert.equal(ru.webmail_finding_sender_spoofing, undefined, "the old 'disguised sender' line is back");
+});
+
+// ── Group 5: the webmail scanner is opt-in ──
+// content/webmail.js sent every email a person opened in Gmail, Outlook or
+// Yahoo (subject, sender, reply-to, the whole body as text AND HTML) to the
+// API, from a static content script with no switch at all, while the
+// privacy policy called it an opt-in feature. Now no manifest loads it, the
+// background registers it only while Settings has it on, the script itself
+// reads the switch before it touches the page, and it sends the links of a
+// message instead of its HTML.
+
+const WEBMAIL_HOSTS = [
+  "https://mail.google.com/*",
+  "https://outlook.office.com/*",
+  "https://outlook.live.com/*",
+  "https://mail.yahoo.com/*",
+];
+
+for (const tree of BROWSER_TREES) {
+  await check(`[${tree}] no manifest loads the webmail scanner or asks for the mail sites at install`, () => {
+    const m = readJson(join(tree, "manifest.json"));
+    const scripts = (m.content_scripts || []).flatMap((cs) => cs.js || []);
+    assert.ok(!scripts.includes("src/content/webmail.js"), "webmail.js is a static content script again");
+    for (const cs of m.content_scripts || []) {
+      const mailOnly = (cs.matches || []).filter((p) => WEBMAIL_HOSTS.includes(p));
+      assert.deepEqual(mailOnly, [], `a content script is registered for ${mailOnly.join(", ")}`);
+    }
+    const installTime = [...(m.host_permissions || []), ...(m.permissions || [])];
+    assert.deepEqual(installTime.filter((p) => WEBMAIL_HOSTS.includes(p)), [], "mail sites granted at install");
+    const optional = m.manifest_version === 2 ? m.optional_permissions : m.optional_host_permissions;
+    assert.deepEqual([...(optional || [])].sort(), [...WEBMAIL_HOSTS].sort(), "the four mail sites are optional");
+    assert.ok((m.permissions || []).includes("scripting"), "scripting is needed to register the scanner at run time");
+  });
+}
+
+const scannerModule = (tree) => import(pathToFileURL(join(ROOT, tree, "src/background/webmail-scanner.js")).href);
+
+function fakeScannerApi({ stored = {}, scripting = true } = {}) {
+  const registered = new Map();
+  const log = { registered: [], unregistered: [], injected: [], removed: [] };
+  const api = {
+    storage: { local: memoryStorage(stored), onChanged: fakeEvent() },
+    runtime: { onInstalled: fakeEvent() },
+    permissions: { onRemoved: fakeEvent(), remove: async (p) => { log.removed.push(p); return true; } },
+    tabs: { query: async (q) => (q.url ? [{ id: 11, url: "https://mail.google.com/mail/u/0/" }] : []) },
+  };
+  if (scripting) {
+    api.scripting = {
+      registerContentScripts: async (defs) => {
+        for (const d of defs) {
+          if (registered.has(d.id)) throw new Error(`Duplicate script ID '${d.id}'`);
+          registered.set(d.id, d);
+          log.registered.push(d);
+        }
+      },
+      unregisterContentScripts: async ({ ids }) => { for (const id of ids) { registered.delete(id); log.unregistered.push(id); } },
+      getRegisteredContentScripts: async (filter) => [...registered.values()].filter((d) => !filter || !filter.ids || filter.ids.includes(d.id)),
+      executeScript: async (inj) => { log.injected.push(inj); return []; },
+    };
+  }
+  return { api, registered, log };
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the background registers the webmail scanner only while it is switched on`, async () => {
+    const { WEBMAIL_FLAG, WEBMAIL_MATCHES, WEBMAIL_FILES, installWebmailScanner, isWebmailScannerEnabled } = await scannerModule(tree);
+    assert.equal(WEBMAIL_FLAG, "webmailScannerEnabled");
+    assert.deepEqual([...WEBMAIL_MATCHES].sort(), [...WEBMAIL_HOSTS].sort());
+    for (const f of WEBMAIL_FILES) assert.ok(existsSync(join(ROOT, tree, f)), `${tree}/${f} is registered but missing`);
+    for (const v of [undefined, false, "true", 1, null, {}]) {
+      assert.equal(isWebmailScannerEnabled({ [WEBMAIL_FLAG]: v }), false, `${JSON.stringify(v)} must not turn it on`);
+    }
+
+    // An install updated from a version without the switch: no flag at all.
+    const old = fakeScannerApi({ stored: { auth_token: "t", settings: { autoScan: true } } });
+    const s1 = installWebmailScanner(old.api);
+    await s1.sync();
+    assert.equal(old.registered.size, 0, "registered for an install that never turned it on");
+    assert.equal(old.log.injected.length, 0);
+    assert.equal(old.api.storage.local.data[WEBMAIL_FLAG], undefined, "the update wrote the switch");
+    // onInstalled (the update) gives back the mail sites granted at install.
+    for (const fn of old.api.runtime.onInstalled.listeners) fn({ reason: "update" });
+    await new Promise((r) => setTimeout(r, 0));
+    assert.deepEqual(old.log.removed.map((p) => [...p.origins].sort()), [[...WEBMAIL_HOSTS].sort()]);
+
+    // Switched on in Settings → registered for the four mail origins, and
+    // injected into the mail tab that is already open.
+    const { api, registered, log } = fakeScannerApi();
+    installWebmailScanner(api);
+    await api.storage.local.set({ [WEBMAIL_FLAG]: true });
+    for (const fn of api.storage.onChanged.listeners) fn({ [WEBMAIL_FLAG]: { newValue: true } }, "local");
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(registered.size, 1, "not registered after switching on");
+    const def = [...registered.values()][0];
+    assert.deepEqual([...def.matches].sort(), [...WEBMAIL_HOSTS].sort());
+    assert.deepEqual([...def.js], ["src/content/webmail.js"]);
+    assert.deepEqual(log.injected.map((i) => i.target.tabId), [11], "the open mail tab did not get the scanner");
+
+    // A second sync (worker restart) does not register twice.
+    await installWebmailScanner(api).sync();
+    assert.equal(log.registered.length, 1);
+
+    // Switched off → unregistered, and the mail-site access is given back.
+    await api.storage.local.set({ [WEBMAIL_FLAG]: false });
+    for (const fn of api.storage.onChanged.listeners) fn({ [WEBMAIL_FLAG]: { oldValue: true, newValue: false } }, "local");
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(registered.size, 0, "still registered after switching off");
+    assert.ok(log.removed.length >= 1, "mail-site access kept after switching off");
+
+    // The browser's own settings took the mail sites away → the switch goes off.
+    await api.storage.local.set({ [WEBMAIL_FLAG]: true });
+    for (const fn of api.permissions.onRemoved.listeners) fn({ origins: ["https://mail.google.com/*"] });
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(api.storage.local.data[WEBMAIL_FLAG], false);
+
+    // No scripting API: nothing to register, and nothing throws.
+    const bare = fakeScannerApi({ stored: { [WEBMAIL_FLAG]: true }, scripting: false });
+    assert.deepEqual(await installWebmailScanner(bare.api).sync(), { supported: false, registered: false });
+  });
+}
+
+// A fake mail page: just enough Gmail DOM for content/webmail.js, counting
+// every read of the page so "off" can be proved to read nothing.
+function fakeGmailPage() {
+  const reads = [];
+  const byId = new Map();
+  const el = (props = {}) => {
+    const node = {
+      style: {}, dataset: {}, attrs: {}, children: [], listeners: {}, textContent: "",
+      setAttribute(k, v) { this.attrs[k] = String(v); },
+      getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; },
+      addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
+      remove() { if (byId.get(this.id) === this) byId.delete(this.id); },
+      querySelectorAll() { return []; },
+      ...props,
+    };
+    // renderBanner's markup: icon, a text block with two lines, a close button.
+    Object.defineProperty(node, "innerHTML", {
+      set() { node.children = [el(), el({ children: [el(), el()] }), el()]; },
+      get() { return ""; },
+    });
+    return node;
+  };
+  const anchor = (href, text) => el({ attrs: { href }, textContent: text });
+  const anchors = [
+    anchor("https://chase.com.secure-verify.example/login", "https://chase.com/login"),
+    anchor("http://track.example/o?u=1&x=\"2\"", "Unsubscribe <now>"),
+    anchor("mailto:help@chase.com", "Write to us"),
+    anchor("javascript:alert(1)", "Click"),
+    anchor("/relative/path", "Relative"),
+  ];
+  const body = el({
+    innerText: "Dear customer,\nConfirm your account within 24 hours: https://chase.com/login",
+    querySelectorAll: (sel) => (sel === "a[href]" ? anchors : []),
+  });
+  const sender = el({ attrs: { email: "security@chase-alerts.example", name: "Chase Security" } });
+  const subject = el({ textContent: "Your account is locked" });
+  const container = el({ textContent: "Dear customer… (rendered HTML with <img> and styles)" });
+  container.parentNode = { insertBefore: (banner) => { byId.set(banner.id, banner); } };
+  const SELECTORS = {
+    '[role="main"] .ii.gt': container,
+    ".gD": sender,
+    "[data-hovercard-id][email]": sender,
+    "h2.hP": subject,
+    '[role="main"] .ii.gt .a3s': body,
+  };
+  const document = {
+    body: el(),
+    querySelector(sel) { reads.push(sel); return SELECTORS[sel] || null; },
+    querySelectorAll(sel) { reads.push(sel); return []; },
+    getElementById(id) { return byId.get(id) || null; },
+    createElement() { return el(); },
+  };
+  return { document, reads, banner: () => byId.get("cleanway-webmail-banner") || null };
+}
+
+// Runs content/webmail.js on a fake mail.google.com tab with the given
+// stored switch. Timers are manual so the debounce runs on demand.
+function runWebmailOnMailPage(tree, stored, { hang = false } = {}) {
+  const page = fakeGmailPage();
+  const timers = [];
+  const requests = [];
+  const observers = [];
+  const storageListeners = [];
+  const data = { api_url: "https://api.test", ...stored };
+  const chrome = {
+    i18n: { getMessage: (key) => `<${key}>` },
+    storage: {
+      local: {
+        get(keys, cb) {
+          const out = Object.fromEntries([].concat(keys).filter((k) => k in data).map((k) => [k, data[k]]));
+          queueMicrotask(() => cb(out));
+        },
+      },
+      onChanged: { addListener: (fn) => storageListeners.push(fn) },
+    },
+  };
+  class MutationObserver {
+    constructor(fn) { this.fn = fn; this.connected = false; observers.push(this); }
+    observe() { this.connected = true; }
+    disconnect() { this.connected = false; }
+  }
+  const window = {};
+  const ctx = vm.createContext({
+    window, chrome, document: page.document, location: { hostname: "mail.google.com" },
+    MutationObserver, AbortController, console: { warn() {}, log() {} },
+    setTimeout: (fn) => { timers.push(fn); return timers.length; },
+    clearTimeout: () => {},
+    fetch: (url, init) => {
+      requests.push({ url, body: JSON.parse(init.body), signal: init.signal });
+      if (hang) {
+        // A slow API: answers only by failing when the request is aborted.
+        return new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted"))));
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ level: "dangerous", score: 80, findings: [], links: [] }) });
+    },
+  });
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/content/webmail.js"), "utf8"), ctx);
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  return {
+    page, requests, observers, window,
+    async tick() {
+      await settle();
+      const due = timers.splice(0);
+      for (const fn of due) fn();
+      await settle();
+      await settle();
+    },
+    async setSwitch(value) {
+      data.webmailScannerEnabled = value;
+      for (const fn of storageListeners) fn({ webmailScannerEnabled: { newValue: value } }, "local");
+      await settle();
+    },
+  };
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] webmail scanner, switched off: reads no email and sends nothing`, async () => {
+    for (const stored of [{}, { webmailScannerEnabled: false }, { webmailScannerEnabled: "true" }]) {
+      const tab = runWebmailOnMailPage(tree, stored);
+      for (let i = 0; i < 3; i++) await tab.tick();
+      assert.deepEqual(tab.requests, [], `${JSON.stringify(stored)}: a request was made`);
+      assert.deepEqual(tab.page.reads, [], `${JSON.stringify(stored)}: the page was read`);
+      assert.equal(tab.observers.length, 0, `${JSON.stringify(stored)}: the page is being watched`);
+      assert.equal(tab.page.banner(), null);
+    }
+  });
+
+  await check(`[${tree}] webmail scanner, switched on: scans, sends links not HTML, and stops when switched off`, async () => {
+    const tab = runWebmailOnMailPage(tree, {});
+    await tab.tick();
+    assert.equal(tab.requests.length, 0);
+
+    await tab.setSwitch(true); // the Settings switch, seen through storage.onChanged
+    await tab.tick();
+    await tab.tick();
+    assert.equal(tab.requests.length, 1, "switching on did not start scanning");
+    const [req] = tab.requests;
+    assert.equal(req.url, "https://api.test/api/v1/email/analyze");
+    assert.deepEqual(Object.keys(req.body).sort(), [
+      "body_html", "body_text", "dkim", "dmarc", "from_address", "from_display", "reply_to", "return_path", "spf", "subject",
+    ]);
+    assert.equal(req.body.subject, "Your account is locked");
+    assert.equal(req.body.from_address, "security@chase-alerts.example");
+    assert.match(req.body.body_text, /Confirm your account/);
+    // Links only: one <a> line per http(s) link, nothing of the message's markup.
+    const lines = req.body.body_html.split("\n");
+    assert.equal(lines.length, 2, req.body.body_html);
+    for (const line of lines) assert.match(line, /^<a href="[^"'<>]+">[^<>]*<\/a>$/, line);
+    assert.ok(!/img|style|mailto:|javascript:|relative/i.test(req.body.body_html), req.body.body_html);
+    // What the API's anchor regex (api/services/email_analyzer.py _ANCHOR_RE) reads back.
+    const ANCHOR_RE = /<a\s[^>]*href\s*=\s*['"]([^'"]+)['"][^>]*>(.*?)<\/a>/gis;
+    const pairs = [...req.body.body_html.matchAll(ANCHOR_RE)].map((m) => [m[1], m[2]]);
+    assert.deepEqual(pairs, [
+      ["https://chase.com.secure-verify.example/login", "https://chase.com/login"],
+      ["http://track.example/o?u=1&x=%222%22", "Unsubscribe &lt;now&gt;"],
+    ]);
+    assert.equal(tab.page.banner().children[1].children[0].textContent, "<webmail_dangerous>");
+
+    // Off: the watcher stops, the banner goes, and new mail is not sent.
+    await tab.setSwitch(false);
+    assert.ok(tab.observers.every((o) => !o.connected), "still watching the page");
+    assert.equal(tab.page.banner(), null, "banner left on the page");
+    const readsWhenOff = tab.page.reads.length;
+    for (let i = 0; i < 3; i++) await tab.tick();
+    for (const o of tab.observers) o.fn();
+    await tab.tick();
+    assert.equal(tab.requests.length, 1, "a request after switching off");
+    assert.equal(tab.page.reads.length, readsWhenOff, "the page was read after switching off");
+
+    // On again: the same copy picks up where it left.
+    await tab.setSwitch(true);
+    await tab.tick();
+    await tab.tick();
+    assert.equal(tab.requests.length, 2, "switching back on did not rescan");
+  });
+
+  await check(`[${tree}] webmail scanner: switching off mid-request aborts it and draws nothing`, async () => {
+    const tab = runWebmailOnMailPage(tree, { webmailScannerEnabled: true }, { hang: true });
+    await tab.tick();
+    // The request is in flight once the scan reaches fetch.
+    await tab.tick();
+    assert.equal(tab.requests.length, 1);
+    await tab.setSwitch(false);
+    assert.equal(tab.requests[0].signal.aborted, true, "the request in flight was not aborted");
+    await tab.tick();
+    assert.equal(tab.page.banner(), null);
+  });
+}
+
+await check("the Settings switch starts off and its consent text names everything that is sent", () => {
+  for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+    const html = readFileSync(join(ROOT, tree, "src/options/options.html"), "utf8");
+    const box = html.match(/<input\b[^>]*\bid="webmail-scanner"[^>]*>/);
+    assert.ok(box, `${tree}: no #webmail-scanner switch`);
+    assert.ok(!/\bchecked\b/.test(box[0]), `${tree}: the switch is on by default`);
+    const section = html.match(/<div class="section" id="webmail-section"(?![^>]*\bhidden)[^>]*>/);
+    assert.ok(section, `${tree}: the email scanning section is missing or hidden`);
+    // Not stripComments(): the mail-site patterns ("https://…/*") look like comment openers to it.
+    const js = readFileSync(join(ROOT, tree, "src/options/options.js"), "utf8");
+    assert.match(js, /permissions\.request\(\s*\{\s*origins: WEBMAIL_ORIGINS\s*\}/, `${tree}: Settings does not ask for the mail sites`);
+  }
+  const en = readJson("extension/_locales/en/messages.json");
+  const consent = en.webmail_setting_consent.message;
+  for (const word of ["subject", "sender", "Reply-To", "text of the message", "link", "not stored", "Off unless you turn it on"]) {
+    assert.ok(consent.includes(word), `consent text does not mention "${word}"`);
+  }
+  assert.equal(en.webmail_setting_label.message, "Scan emails I open in Gmail, Outlook and Yahoo for phishing");
 });
 
 // The extension sends hostnames to the API, relatives get encrypted alerts

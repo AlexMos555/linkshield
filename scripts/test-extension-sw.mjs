@@ -36,6 +36,12 @@
  * reaching production. The test sites (*.example, *.tk, *.top) resolve to
  * the mock too; it serves the same pages on every hostname.
  *
+ * The webmail scanner reads and sends the email a person opens, so it must
+ * stay silent until Settings switches it on (runWebmailTree below): off, a
+ * routed Gmail page is neither scanned nor sent; on, the open message is
+ * scanned without a reload and only its links go instead of its HTML; off
+ * again, the banner goes and a reload sends nothing.
+ *
  * The Safari tree is loaded into Chromium too: that cannot prove Safari's
  * runtime, but it does prove the Safari manifest + module graph load and run.
  * The Firefox tree is MV2 and Chromium no longer loads MV2; it is covered by
@@ -44,7 +50,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -189,8 +195,7 @@ function startMockApi(family) {
 // Russian first: most of our users are, and it proves the strings are not English.
 const UI_LANG = "ru";
 
-async function launch(tree, lang = UI_LANG) {
-  const extPath = resolve(ROOT, tree);
+async function launch(tree, lang = UI_LANG, extPath = resolve(ROOT, tree)) {
   const userDir = mkdtempSync(join(tmpdir(), "cleanway-e2e-"));
   const context = await chromium.launchPersistentContext(userDir, {
     channel: "chromium",
@@ -679,12 +684,123 @@ async function runTree(tree) {
   return { ok, failures };
 }
 
+// ── the webmail scanner (opt-in) ──
+//
+// The scanner sends the email a person opens, so it must do nothing until
+// they switch it on in Settings. In Chrome that switch first asks for the
+// four mail sites (optional host permissions) — a prompt headless Chromium
+// can neither show nor accept, and without the grant Chrome injects nothing
+// (which is the point). So this case loads a COPY of the tree whose manifest
+// grants the mail sites at install, i.e. the state after the person said
+// "Allow": even then, nothing may run until the switch is on.
+// scripts/test-extension-core.mjs pins that the real manifests ask for the
+// sites only as optional permissions and that Settings requests them.
+
+const GMAIL_PAGE = "<!doctype html><title>Inbox</title><div role=\"main\">" +
+  "<h2 class=\"hP\">Your account is locked</h2>" +
+  "<span class=\"gD\" email=\"security@chase-alerts.example\" name=\"Chase Security\">Chase Security</span>" +
+  "<div class=\"ii gt\"><div class=\"a3s\"><p style=\"color:red\">Confirm your account within 24 hours.</p>" +
+  "<img src=\"https://tracker.example/pixel.gif\" alt=\"\">" +
+  "<a href=\"https://chase.com.secure-verify.example/login\">https://chase.com/login</a></div></div></div>";
+
+function grantedCopy(tree) {
+  const dir = mkdtempSync(join(tmpdir(), "cleanway-webmail-"));
+  cpSync(resolve(ROOT, tree), dir, { recursive: true });
+  const path = join(dir, "manifest.json");
+  const m = JSON.parse(readFileSync(path, "utf8"));
+  m.host_permissions = [...(m.host_permissions || []), ...(m.optional_host_permissions || [])];
+  delete m.optional_host_permissions;
+  writeFileSync(path, JSON.stringify(m, null, 2));
+  return dir;
+}
+
+async function runWebmailTree(tree) {
+  const failures = [];
+  let ok = 0;
+  const check = async (name, fn) => {
+    try { await fn(); ok++; console.log(`  ok    [${tree}] ${name}`); }
+    catch (err) { failures.push(name); console.error(`  FAIL  [${tree}] ${name}\n        ${err && err.message}`); }
+  };
+  const copy = grantedCopy(tree);
+  const { context, sw, extId, userDir } = await launch(tree, UI_LANG, copy);
+  try {
+    await check("webmail scanner: nothing is read or sent until Settings switches it on, and off stops it", async () => {
+      // A Gmail look-alike at mail.google.com (routed, never the real site)
+      // and the analyze endpoint, wherever api_url points the content script.
+      await context.route("https://mail.google.com/**", (route) =>
+        route.fulfill({ status: 200, contentType: "text/html", body: GMAIL_PAGE }));
+      const analyzed = [];
+      await context.route("**/api/v1/email/analyze", (route) => {
+        const req = route.request();
+        const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+        if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+        analyzed.push(req.postDataJSON());
+        return route.fulfill({
+          status: 200, contentType: "application/json", headers: cors,
+          body: JSON.stringify({ level: "dangerous", score: 80, findings: [], links: [] }),
+        });
+      });
+      await sw.evaluate(() => chrome.storage.local.set({ api_url: "https://api-e2e.example" }));
+      const registered = () => sw.evaluate(() => chrome.scripting.getRegisteredContentScripts().then((l) => l.map((s) => s.id)));
+      const banner = (tab) => tab.evaluate(() => Boolean(document.getElementById("cleanway-webmail-banner")));
+
+      // Off — what every install has after this update: no switch stored.
+      assert.equal((await sw.evaluate(() => chrome.storage.local.get("webmailScannerEnabled"))).webmailScannerEnabled, undefined);
+      assert.deepEqual(await registered(), [], "registered without being switched on");
+      const mail = await context.newPage();
+      await mail.goto("https://mail.google.com/mail/u/0/#inbox/1");
+      await sleep(2000);
+      assert.deepEqual(analyzed, [], "an email was sent while the scanner was off");
+      assert.equal(await banner(mail), false);
+
+      // On, from the Settings switch (a real click; the mail sites are
+      // already granted in this copy, so Chrome answers without a prompt).
+      const settings = await context.newPage();
+      await settings.goto(`chrome-extension://${extId}/src/options/options.html#webmail-section`);
+      assert.equal(await settings.isChecked("#webmail-scanner"), false, "the switch starts on");
+      await settings.click('label[for="webmail-scanner"]');
+      await until("the switch to be stored on", () => sw.evaluate(() =>
+        chrome.storage.local.get("webmailScannerEnabled").then((d) => d.webmailScannerEnabled === true)), 5000);
+      await until("the scanner to be registered", async () => (await registered()).includes("cleanway-webmail"), 5000);
+      // The mail tab that was already open is scanned without a reload.
+      await until("the open message to be scanned", () => analyzed.length > 0, 8000);
+      await until("the banner", () => banner(mail), 5000);
+      const [sent] = analyzed;
+      assert.equal(sent.subject, "Your account is locked");
+      assert.equal(sent.from_address, "security@chase-alerts.example");
+      assert.match(sent.body_text, /Confirm your account/);
+      assert.equal(sent.body_html, "<a href=\"https://chase.com.secure-verify.example/login\">https://chase.com/login</a>",
+        "the message's HTML was sent instead of its links");
+
+      // Off again: the banner goes at once, nothing is registered, and a
+      // reload sends nothing.
+      await settings.click('label[for="webmail-scanner"]');
+      await until("the switch to be stored off", () => sw.evaluate(() =>
+        chrome.storage.local.get("webmailScannerEnabled").then((d) => d.webmailScannerEnabled === false)), 5000);
+      await until("the banner to go", async () => !(await banner(mail)), 5000);
+      await until("the scanner to be unregistered", async () => (await registered()).length === 0, 5000);
+      const before = analyzed.length;
+      await mail.reload();
+      await sleep(2000);
+      assert.equal(analyzed.length, before, "an email was sent after switching off");
+      assert.equal(await banner(mail), false);
+    });
+  } finally {
+    await context.close();
+    rmSync(userDir, { recursive: true, force: true });
+    rmSync(copy, { recursive: true, force: true });
+  }
+  return { ok, failures };
+}
+
 let totalOk = 0;
 const allFailures = [];
 for (const tree of TREES) {
-  const { ok, failures } = await runTree(tree);
-  totalOk += ok;
-  allFailures.push(...failures.map((f) => `[${tree}] ${f}`));
+  for (const run of [runTree, runWebmailTree]) {
+    const { ok, failures } = await run(tree);
+    totalOk += ok;
+    allFailures.push(...failures.map((f) => `[${tree}] ${f}`));
+  }
 }
 console.log(allFailures.length === 0
   ? `\n${totalOk} browser checks passed (${TREES.join(", ")})`

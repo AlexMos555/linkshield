@@ -36,6 +36,7 @@ import { pruneOldChecks } from "../utils/storage.js";
 import { handleAuthAlarm, handleAuthMessage } from "./auth.js"; // sign-in: the cleanway.ai → extension handoff + refresh
 import { blockedPageHost, claimFirstBlockToday } from "./page-blocks.js";
 import { isKnownSafeHost, isUserContentHost } from "./trusted-hosts.js";
+import { installWebmailScanner } from "./webmail-scanner.js"; // opt-in only: injects content/webmail.js while Settings has it on
 
 const HISTORY_PRUNE_ALARM = "cleanway_history_prune";
 const EMPTY_STATS = Object.freeze({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
@@ -532,6 +533,11 @@ function ensureHistoryPruneAlarm() {
   }).catch(() => { /* alarms unavailable — nothing to schedule */ });
 }
 ensureHistoryPruneAlarm();
+
+// Webmail scanner: content/webmail.js is injected into Gmail / Outlook /
+// Yahoo only while the person has it switched on in Settings
+// (webmailScannerEnabled === true). Re-synced on every worker start.
+installWebmailScanner(chrome);
 
 async function onAlarm(alarm) {
   if (handleAuthAlarm(alarm)) return;

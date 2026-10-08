@@ -128,8 +128,14 @@ Suggested image size: 1280×800. Show real UI, no mockups.
 **"activeTab"**
 > Scans the links on the page you're actively looking at. No access to your other tabs or background browsing.
 
-**"Host access: api.cleanway.ai + Gmail / Outlook / Yahoo Mail"**
-> Sends only the domain of a link (never the full URL, page content, cookies, or form values) to api.cleanway.ai for checking. Access to the four webmail hosts is what lets Cleanway badge links inline inside your inbox. It does NOT request access to all websites.
+**"Host access: api.cleanway.ai"**
+> Sends only the domain of a link (never the full URL, page content, cookies, or form values) to api.cleanway.ai for checking.
+
+**"Optional host access: Gmail / Outlook / Yahoo Mail"**
+> Requested only if you switch on "Scan emails I open in Gmail, Outlook and Yahoo for phishing" in Settings (off by default). While it is on, each email you open there — its subject, sender, reply-to, text and links — is sent to api.cleanway.ai to be checked for phishing, then discarded. Switching it off stops scanning at once and gives the access back.
+
+**"Scripting"**
+> Turns the opt-in email scanner on and off: it is injected into Gmail / Outlook / Yahoo Mail only while you have it switched on.
 
 **"Storage"**
 > Recent scan results are cached locally so repeat visits don't re-query the server — per-device, never synced to a cloud, expires per entry.

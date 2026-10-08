@@ -1207,6 +1207,21 @@
       },
       "finding_account_threat": {
         "text": "El correo avisa de una cuenta bloqueada o de un inicio de sesión sospechoso"
+      },
+      "setting_heading": {
+        "text": "Análisis de correos"
+      },
+      "setting_label": {
+        "text": "Analizar en busca de phishing los correos que abro en Gmail, Outlook y Yahoo"
+      },
+      "setting_consent": {
+        "text": "Desactivado salvo que lo actives. Cuando está activado, cada correo que abres en Gmail, Outlook o Yahoo Mail se envía al servidor de Cleanway (api.cleanway.ai) para comprobar si es phishing: el asunto, el nombre y la dirección del remitente, la dirección Reply-To, el texto del mensaje y la dirección y el texto de cada enlace. El correo se analiza y no se guarda; los dominios de sus enlaces también se comprueban con Google Safe Browsing. Desactívalo cuando quieras y el análisis se detiene al instante."
+      },
+      "setting_denied": {
+        "text": "Tu navegador no dio a Cleanway acceso a los sitios de correo, así que el análisis de correos sigue desactivado."
+      },
+      "setting_unsupported": {
+        "text": "Este navegador no puede ejecutar el análisis de correos."
       }
     },
     "options": {

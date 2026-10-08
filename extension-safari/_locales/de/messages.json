@@ -1170,6 +1170,21 @@
   "webmail_finding_account_threat": {
     "message": "Die E-Mail warnt vor einem gesperrten Konto oder einer verdächtigen Anmeldung"
   },
+  "webmail_setting_heading": {
+    "message": "E-Mail-Prüfung"
+  },
+  "webmail_setting_label": {
+    "message": "E-Mails, die ich in Gmail, Outlook und Yahoo öffne, auf Phishing prüfen"
+  },
+  "webmail_setting_consent": {
+    "message": "Aus, bis Sie es einschalten. Wenn eingeschaltet, wird jede E-Mail, die Sie in Gmail, Outlook oder Yahoo Mail öffnen, zur Phishing-Prüfung an den Server von Cleanway (api.cleanway.ai) gesendet: Betreff, Name und Adresse des Absenders, die Reply-To-Adresse, der Text der Nachricht sowie Adresse und Text jedes Links. Die E-Mail wird geprüft und nicht gespeichert; die Domains ihrer Links werden zusätzlich bei Google Safe Browsing geprüft. Sie können es jederzeit ausschalten – die Prüfung endet sofort."
+  },
+  "webmail_setting_denied": {
+    "message": "Ihr Browser hat Cleanway keinen Zugriff auf die Mail-Websites gegeben, daher bleibt die E-Mail-Prüfung aus."
+  },
+  "webmail_setting_unsupported": {
+    "message": "Dieser Browser kann die E-Mail-Prüfung nicht ausführen."
+  },
   "options_page_title": {
     "message": "Cleanway-Einstellungen"
   },

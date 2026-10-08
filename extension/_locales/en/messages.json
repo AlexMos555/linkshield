@@ -1172,6 +1172,21 @@
   "webmail_finding_account_threat": {
     "message": "The email warns of a blocked account or a suspicious sign-in"
   },
+  "webmail_setting_heading": {
+    "message": "Email scanning"
+  },
+  "webmail_setting_label": {
+    "message": "Scan emails I open in Gmail, Outlook and Yahoo for phishing"
+  },
+  "webmail_setting_consent": {
+    "message": "Off unless you turn it on. When on, every email you open in Gmail, Outlook or Yahoo Mail is sent to Cleanway's server (api.cleanway.ai) to be checked for phishing: its subject, the sender's name and address, the Reply-To address, the text of the message, and the address and text of each link in it. The email is checked and not stored; the domains of its links are also checked with Google Safe Browsing. Turn this off at any time and scanning stops at once."
+  },
+  "webmail_setting_denied": {
+    "message": "Your browser did not give Cleanway access to the mail sites, so email scanning stays off."
+  },
+  "webmail_setting_unsupported": {
+    "message": "This browser cannot run the email scanner."
+  },
   "options_page_title": {
     "message": "Cleanway settings"
   },
