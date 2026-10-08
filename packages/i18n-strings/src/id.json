@@ -3793,7 +3793,15 @@
       "delete_failed_body": "Server tidak dapat dihubungi, jadi tidak ada yang dihapus. Coba lagi sebentar lagi.",
       "not_signed_in": "Anda belum masuk.",
       "load_failed": "Akun Anda tidak dapat dimuat. Periksa koneksi lalu coba lagi.",
-      "retry": "Coba lagi"
+      "retry": "Coba lagi",
+      "manage": "Kelola langganan",
+      "manage_desc": "Ubah atau batalkan di tempat Anda membelinya",
+      "restore": "Pulihkan pembelian",
+      "restore_desc": "Berlangganan di Google Play dengan akun atau ponsel lain? Pindahkan ke sini",
+      "delete_store_title": "Batalkan dulu langganan {{store}} Anda",
+      "delete_store_body": "Menghapus akun tidak menghentikan langganan {{store}} Anda — hanya Anda yang dapat membatalkannya, di {{store}}. Batalkan di sana agar tidak ditagih lagi, lalu hapus akun.",
+      "delete_store_open": "Buka {{store}}",
+      "delete_store_continue": "Tetap hapus"
     },
     "paywall": {
       "close": "Tutup",
@@ -3836,7 +3844,29 @@
       "message_listed_sub": "Sebuah tautan dalam pesan ini ada di daftar situs penipuan kami.",
       "message_locked_title_links": "Tidak ada tautan dari daftar penipuan kami",
       "message_locked_title_none": "Pesan belum dianalisis",
-      "message_locked_sub": "Teksnya tidak dibaca: pemeriksaan rinci gratis hari ini sudah habis."
+      "message_locked_sub": "Teksnya tidak dibaca: pemeriksaan rinci gratis hari ini sudah habis.",
+      "lead_upgrade": "Pemeriksaan mendetail untuk tautan dan pesan tanpa batas harian, di hingga {{n}} perangkat. Situs di daftar penipuan kami tetap diblokir, berlangganan atau tidak.",
+      "plan_month": "Bulanan",
+      "plan_year": "Tahunan",
+      "save_percent": "Hemat {{n}}%",
+      "prices_loading": "Mengambil harga dari Google Play…",
+      "prices_failed": "Tidak dapat mengambil harga dari Google Play. Periksa koneksi Anda dan coba lagi.",
+      "prices_empty": "Langganan ini belum tersedia di Google Play di negara Anda.",
+      "retry": "Coba lagi",
+      "fine_store": "Ditagih oleh Google Play. Diperpanjang otomatis sampai Anda membatalkannya — bisa dibatalkan kapan saja di Google Play.",
+      "cta_soon_play": "Belum tersedia di negara Anda",
+      "fine_soon_play": "Langganan belum tersedia di sini. Daftar penipuan tetap memblokir, dan pemeriksaan gratis diperbarui setiap hari.",
+      "note_pending": "Pembayaran Anda masih tertunda. Paket aktif segera setelah Google Play mengonfirmasinya.",
+      "note_processing": "Pembayaran diterima. Paket aktif dalam satu menit — jika tidak, ketuk Pulihkan.",
+      "note_restored": "Pembelian dipulihkan — paket Anda aktif.",
+      "err_already_owned": "Akun Google ini sudah memiliki langganan. Ketuk Pulihkan untuk memindahkannya ke akun ini.",
+      "err_network": "Tidak ada koneksi ke Google Play. Periksa internet dan coba lagi.",
+      "err_not_allowed": "Pembelian dinonaktifkan di ponsel atau akun Google ini (misalnya oleh kontrol orang tua).",
+      "err_unavailable": "Langganan ini tidak dapat dibeli di sini saat ini. Coba lagi nanti.",
+      "err_store": "Google Play tidak dapat menyelesaikan pembelian. Coba lagi.",
+      "err_busy": "Pembelian lain masih berlangsung. Tunggu sebentar lalu coba lagi.",
+      "err_unknown": "Terjadi kesalahan saat pembelian. Coba lagi.",
+      "manage": "Kelola langganan"
     }
   }
 }

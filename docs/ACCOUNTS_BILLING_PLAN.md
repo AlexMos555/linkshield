@@ -490,7 +490,17 @@ Business: подробные проверки без лимита на 3 уст�
 (после 022 и 023), задать `REVENUECAT_WEBHOOK_AUTH` и `REVENUECAT_SECRET_API_KEY`,
 пройти `docs/runbooks/revenuecat.md`.
 
-**Не сделано.** Экран оплаты в приложении (react-native-purchases), отмена подписки
-магазина при удалении аккаунта, App Store (сервер готов, нужна настройка в App Store
-Connect). Для App Store «Восстановить покупки» находит строку по продукту: REST API
+**Приложение (`feat/play-billing-app`).** В сборке Google Play
+(`EXPO_PUBLIC_DISTRIBUTION=play`, ключ `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`) экран оплаты
+продаёт `cleanway.devices` месяц / год по ценам из Google Play (react-native-purchases),
+после покупки и «Восстановить покупки» зовёт `POST /api/v1/me/entitlement/refresh`; вход в
+RevenueCat — id аккаунта, выход — при любом выходе из аккаунта. В сборке Play нигде нет
+ссылки на оплату на сайте и баннера самообновления; «Автоматическая проверка SMS» в списке
+выгод — только в сборке RuStore. Перед удалением аккаунта с подпиской Google Play приложение
+отправляет отменить её в Play (сам магазин отменить её приложению не даёт). Старый экран
+тарифов (`upgrade.tsx`, $4,99 / $9,99) убран — везде открывается экран оплаты. Подробно:
+`docs/runbooks/revenuecat.md` §5.
+
+**Не сделано.** Покупка «+1 устройство» в приложении, App Store (сервер готов, нужна
+настройка в App Store Connect), оплата в сборке RuStore. Для App Store «Восстановить покупки» находит строку по продукту: REST API
 RevenueCat отдаёт номер последней, а не исходной транзакции.

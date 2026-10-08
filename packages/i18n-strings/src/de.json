@@ -3793,7 +3793,15 @@
       "delete_failed_body": "Der Server war nicht erreichbar, daher wurde nichts gelöscht. Bitte versuchen Sie es gleich noch einmal.",
       "not_signed_in": "Sie sind nicht angemeldet.",
       "load_failed": "Ihr Konto konnte nicht geladen werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "manage": "Abo verwalten",
+      "manage_desc": "Dort ändern oder kündigen, wo es gekauft wurde",
+      "restore": "Käufe wiederherstellen",
+      "restore_desc": "Mit einem anderen Konto oder Telefon bei Google Play abonniert? Hierher übernehmen",
+      "delete_store_title": "Kündige zuerst dein Abo bei {{store}}",
+      "delete_store_body": "Das Löschen deines Kontos beendet dein Abo bei {{store}} nicht — nur du kannst es kündigen, in {{store}}. Kündige es dort, damit dir nichts mehr berechnet wird, und lösche dann das Konto.",
+      "delete_store_open": "{{store}} öffnen",
+      "delete_store_continue": "Trotzdem löschen"
     },
     "paywall": {
       "close": "Schließen",
@@ -3836,7 +3844,29 @@
       "message_listed_sub": "Ein Link in dieser Nachricht steht auf unserer Liste von Betrugsseiten.",
       "message_locked_title_links": "Kein Link von unserer Betrugsliste",
       "message_locked_title_none": "Nachricht nicht analysiert",
-      "message_locked_sub": "Der Text wurde nicht gelesen: Die kostenlosen Detailprüfungen für heute sind aufgebraucht."
+      "message_locked_sub": "Der Text wurde nicht gelesen: Die kostenlosen Detailprüfungen für heute sind aufgebraucht.",
+      "lead_upgrade": "Ausführliche Prüfungen von Links und Nachrichten ohne Tageslimit, auf bis zu {{n}} Geräten. Seiten auf unserer Betrugsliste werden mit und ohne Abo blockiert.",
+      "plan_month": "Monatlich",
+      "plan_year": "Jährlich",
+      "save_percent": "{{n}} % sparen",
+      "prices_loading": "Preise werden von Google Play geladen…",
+      "prices_failed": "Die Preise konnten nicht von Google Play geladen werden. Prüfe deine Verbindung und versuche es erneut.",
+      "prices_empty": "Dieses Abo ist in deinem Land bei Google Play noch nicht verfügbar.",
+      "retry": "Erneut versuchen",
+      "fine_store": "Abrechnung über Google Play. Verlängert sich automatisch, bis du kündigst — jederzeit in Google Play kündbar.",
+      "cta_soon_play": "In deinem Land noch nicht verfügbar",
+      "fine_soon_play": "Abos sind hier noch nicht verfügbar. Die Betrugsliste blockiert weiter, und die kostenlosen Prüfungen erneuern sich jeden Tag.",
+      "note_pending": "Deine Zahlung steht noch aus. Das Abo startet, sobald Google Play sie bestätigt.",
+      "note_processing": "Zahlung erhalten. Das Abo startet innerhalb einer Minute — falls nicht, tippe auf Wiederherstellen.",
+      "note_restored": "Käufe wiederhergestellt — dein Abo ist aktiv.",
+      "err_already_owned": "Dieses Google-Konto hat das Abo bereits. Tippe auf Wiederherstellen, um es in dieses Konto zu übernehmen.",
+      "err_network": "Keine Verbindung zu Google Play. Prüfe das Internet und versuche es erneut.",
+      "err_not_allowed": "Käufe sind auf diesem Telefon oder Google-Konto deaktiviert (zum Beispiel durch die Jugendschutzeinstellungen).",
+      "err_unavailable": "Dieses Abo kann hier gerade nicht gekauft werden. Bitte versuche es später erneut.",
+      "err_store": "Google Play konnte den Kauf nicht abschließen. Bitte versuche es erneut.",
+      "err_busy": "Ein anderer Kauf läuft noch. Warte einen Moment und versuche es erneut.",
+      "err_unknown": "Beim Kauf ist etwas schiefgelaufen. Bitte versuche es erneut.",
+      "manage": "Abo verwalten"
     }
   }
 }

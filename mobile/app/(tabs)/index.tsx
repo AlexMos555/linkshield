@@ -19,6 +19,8 @@ import { useShieldBlockTotals } from "../../src/hooks/useShieldBlockTotals";
 import { useUpdateCheck } from "../../src/hooks/useUpdateCheck";
 import { useLinkGuard } from "../../src/hooks/useLinkGuard";
 import { UpdateBanner } from "../../src/components/shield/UpdateBanner";
+import { FREEMIUM } from "../../src/services/freemium";
+import { selfUpdateAllowed } from "../../src/utils/freemium";
 import { MessageCheckCard } from "../../src/components/shield/MessageCheckCard";
 import { KeepAliveCard } from "../../src/components/shield/KeepAliveCard";
 import { useKeepAlive } from "../../src/hooks/useKeepAlive";
@@ -106,6 +108,9 @@ export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   // Sideloaded (Tele2 direct-APK) users have no store to push updates; offer a
   // fresher build here, and insist if the running one is below the security floor.
+  // The check still runs in store builds (it carries the server's switches,
+  // src/lib/remote-config.ts) but only the site APK shows the banner: a store
+  // build is updated by its store, never by a download link.
   const update = useUpdateCheck(i18n.language);
   // What keeps the shield running with the app closed (battery, the phone
   // maker's own manager, alerts, Always-on). Re-read when the shield changes:
@@ -222,7 +227,7 @@ export default function HomeScreen() {
         offline={network.state === "offline"}
       />
 
-      <UpdateBanner status={update} />
+      {selfUpdateAllowed(FREEMIUM.distribution) && <UpdateBanner status={update} />}
 
       {callHelp && (
         <View style={s.section}>

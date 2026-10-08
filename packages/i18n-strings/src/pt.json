@@ -3793,7 +3793,15 @@
       "delete_failed_body": "Não conseguimos falar com o servidor, então nada foi excluído. Tente de novo daqui a pouco.",
       "not_signed_in": "Você não está conectado.",
       "load_failed": "Não foi possível carregar sua conta. Verifique a conexão e tente de novo.",
-      "retry": "Tentar de novo"
+      "retry": "Tentar de novo",
+      "manage": "Gerenciar assinatura",
+      "manage_desc": "Altere ou cancele onde ela foi comprada",
+      "restore": "Restaurar compras",
+      "restore_desc": "Assinou no Google Play com outra conta ou outro telefone? Traga para cá",
+      "delete_store_title": "Primeiro cancele sua assinatura no {{store}}",
+      "delete_store_body": "Excluir sua conta não interrompe sua assinatura no {{store}} — só você pode cancelá-la, no {{store}}. Cancele lá para não ser cobrado de novo e depois exclua a conta.",
+      "delete_store_open": "Abrir {{store}}",
+      "delete_store_continue": "Excluir mesmo assim"
     },
     "paywall": {
       "close": "Fechar",
@@ -3836,7 +3844,29 @@
       "message_listed_sub": "Um link desta mensagem está na nossa lista de sites de golpe.",
       "message_locked_title_links": "Nenhum link da nossa lista de golpes",
       "message_locked_title_none": "Mensagem não analisada",
-      "message_locked_sub": "O texto não foi lido: as verificações detalhadas gratuitas de hoje acabaram."
+      "message_locked_sub": "O texto não foi lido: as verificações detalhadas gratuitas de hoje acabaram.",
+      "lead_upgrade": "Verificações detalhadas de links e mensagens sem limite diário, em até {{n}} dispositivos. Sites da nossa lista de golpes são bloqueados com ou sem assinatura.",
+      "plan_month": "Mensal",
+      "plan_year": "Anual",
+      "save_percent": "Economize {{n}}%",
+      "prices_loading": "Obtendo os preços do Google Play…",
+      "prices_failed": "Não foi possível obter os preços do Google Play. Verifique sua conexão e tente de novo.",
+      "prices_empty": "Esta assinatura ainda não está disponível no Google Play no seu país.",
+      "retry": "Tentar de novo",
+      "fine_store": "Cobrado pelo Google Play. Renova automaticamente até você cancelar — cancele quando quiser no Google Play.",
+      "cta_soon_play": "Ainda não disponível no seu país",
+      "fine_soon_play": "As assinaturas ainda não estão disponíveis aqui. A lista de golpes continua bloqueando, e as verificações grátis se renovam todo dia.",
+      "note_pending": "Seu pagamento está pendente. O plano é ativado assim que o Google Play confirmar.",
+      "note_processing": "Pagamento recebido. O plano é ativado em até um minuto — se não for, toque em Restaurar.",
+      "note_restored": "Compras restauradas — seu plano está ativo.",
+      "err_already_owned": "Esta conta Google já tem a assinatura. Toque em Restaurar para transferi-la para esta conta.",
+      "err_network": "Sem conexão com o Google Play. Verifique a internet e tente de novo.",
+      "err_not_allowed": "As compras estão desativadas neste telefone ou conta Google (por exemplo, pelo controle dos pais).",
+      "err_unavailable": "Esta assinatura não pode ser comprada aqui agora. Tente mais tarde.",
+      "err_store": "O Google Play não conseguiu concluir a compra. Tente de novo.",
+      "err_busy": "Outra compra ainda está em andamento. Aguarde um momento e tente de novo.",
+      "err_unknown": "Algo deu errado com a compra. Tente de novo.",
+      "manage": "Gerenciar assinatura"
     }
   }
 }

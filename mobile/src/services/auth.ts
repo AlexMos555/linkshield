@@ -39,6 +39,7 @@
 
 import * as SecureStore from "expo-secure-store";
 import { AppState, type AppStateStatus } from "react-native";
+import { EventEmitter } from "events";
 import { setAuthToken, setTokenProvider } from "./api";
 import { needsRefresh, refreshDelayMs, singleFlight } from "../utils/account-session";
 import {
@@ -154,6 +155,26 @@ async function goTrue<T = GoTrueTokenResponse>(
   }
 }
 
+// ─── Session events ───────────────────────────────────────────────
+
+/**
+ * Whoever must follow the account without this module knowing about them
+ * (the store purchase SDK: src/services/store-billing.ts):
+ *   "session"    (accessToken) — a session was stored: sign-in or a refresh;
+ *   "signed_out" ()            — the stored session is gone, by any path
+ *                                (Settings, Account, account deletion, an
+ *                                unlinked device, a refused refresh).
+ */
+export const authEvents = new EventEmitter();
+
+function emitSafely(event: "session" | "signed_out", ...args: unknown[]): void {
+  try {
+    authEvents.emit(event, ...args);
+  } catch {
+    // A listener's failure must never break sign-in or sign-out.
+  }
+}
+
 // ─── Session persistence ──────────────────────────────────────────
 
 async function persistSession(
@@ -187,6 +208,7 @@ async function persistSession(
   };
   _memSession = session;
   scheduleRefresh(expiresAt);
+  emitSafely("session", session.accessToken);
   return session;
 }
 
@@ -200,6 +222,7 @@ async function clearSession(): Promise<void> {
   _memSession = null;
   cancelScheduledRefresh();
   setAuthToken(null);
+  emitSafely("signed_out");
 }
 
 async function readStoredSession(): Promise<AuthSession | null> {

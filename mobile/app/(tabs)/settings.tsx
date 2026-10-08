@@ -338,7 +338,7 @@ export default function SettingsScreen() {
         {paidPlansVisible(i18n.language) && (
           <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
                right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
-               onPress={() => router.push("/upgrade")} />
+               onPress={() => router.push({ pathname: "/paywall", params: { from: "upgrade" } })} />
         )}
         <Row label={t("mobile.settings.report")} desc={t("mobile.settings.report_desc")}
              right={chevron} onPress={() => router.push("/report")} />

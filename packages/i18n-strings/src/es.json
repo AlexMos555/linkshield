@@ -3733,7 +3733,15 @@
       "delete_failed_body": "No pudimos contactar con el servidor, así que no se eliminó nada. Inténtalo de nuevo en un momento.",
       "not_signed_in": "No has iniciado sesión.",
       "load_failed": "No se pudo cargar tu cuenta. Comprueba la conexión e inténtalo de nuevo.",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "manage": "Gestionar suscripción",
+      "manage_desc": "Cámbiala o cancélala donde la compraste",
+      "restore": "Restaurar compras",
+      "restore_desc": "¿Te suscribiste en Google Play con otra cuenta u otro teléfono? Tráela aquí",
+      "delete_store_title": "Primero cancela tu suscripción en {{store}}",
+      "delete_store_body": "Eliminar tu cuenta no detiene tu suscripción en {{store}}: solo tú puedes cancelarla, en {{store}}. Cancélala allí para que no se te cobre de nuevo y luego elimina la cuenta.",
+      "delete_store_open": "Abrir {{store}}",
+      "delete_store_continue": "Eliminar de todos modos"
     },
     "paywall": {
       "close": "Cerrar",
@@ -3776,7 +3784,29 @@
       "message_listed_sub": "Un enlace de este mensaje está en nuestra lista de sitios de estafa.",
       "message_locked_title_links": "Ningún enlace de nuestra lista de estafas",
       "message_locked_title_none": "Mensaje sin analizar",
-      "message_locked_sub": "El texto no se ha leído: se acabaron las comprobaciones detalladas gratuitas de hoy."
+      "message_locked_sub": "El texto no se ha leído: se acabaron las comprobaciones detalladas gratuitas de hoy.",
+      "lead_upgrade": "Comprobaciones detalladas de enlaces y mensajes sin límite diario, en hasta {{n}} dispositivos. Los sitios de nuestra lista de estafas se bloquean con o sin suscripción.",
+      "plan_month": "Mensual",
+      "plan_year": "Anual",
+      "save_percent": "Ahorra un {{n}} %",
+      "prices_loading": "Obteniendo precios de Google Play…",
+      "prices_failed": "No se pudieron obtener los precios de Google Play. Revisa tu conexión e inténtalo de nuevo.",
+      "prices_empty": "Esta suscripción aún no está disponible en Google Play en tu país.",
+      "retry": "Reintentar",
+      "fine_store": "Cobrado por Google Play. Se renueva automáticamente hasta que la canceles; cancélala cuando quieras en Google Play.",
+      "cta_soon_play": "Aún no disponible en tu país",
+      "fine_soon_play": "Las suscripciones aún no están disponibles aquí. La lista de estafas sigue bloqueando y las comprobaciones gratuitas se renuevan cada día.",
+      "note_pending": "Tu pago está pendiente. El plan se activará en cuanto Google Play lo confirme.",
+      "note_processing": "Pago recibido. El plan se activará en un minuto; si no, toca Restaurar.",
+      "note_restored": "Compras restauradas: tu plan está activo.",
+      "err_already_owned": "Esta cuenta de Google ya tiene la suscripción. Toca Restaurar para pasarla a esta cuenta.",
+      "err_network": "No hay conexión con Google Play. Revisa internet e inténtalo de nuevo.",
+      "err_not_allowed": "Las compras están desactivadas en este teléfono o cuenta de Google (por ejemplo, por el control parental).",
+      "err_unavailable": "Ahora no se puede comprar esta suscripción aquí. Inténtalo más tarde.",
+      "err_store": "Google Play no pudo completar la compra. Inténtalo de nuevo.",
+      "err_busy": "Otra compra aún está en curso. Espera un momento e inténtalo de nuevo.",
+      "err_unknown": "Algo salió mal con la compra. Inténtalo de nuevo.",
+      "manage": "Gestionar suscripción"
     }
   }
 }

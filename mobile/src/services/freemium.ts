@@ -97,6 +97,22 @@ export async function rememberEntitlement(ent: EntitlementResponse): Promise<voi
   }
 }
 
+/**
+ * A plan answer right after a purchase or a restore: kept whatever the
+ * EXPO_PUBLIC_FREEMIUM_ENABLED switch says (the paywall's paid check reads
+ * the same cache), so every counter on screen sees "paid" at once.
+ */
+export async function applyEntitlement(ent: EntitlementResponse): Promise<boolean> {
+  const paid = isPaidEntitlement(ent);
+  try {
+    const account = accountOf(await getSessionState());
+    if (account !== null) await writeCache({ account, paid, fetchedAt: Date.now() }, await readCache());
+  } catch {
+    // Best-effort: the next check asks the server itself.
+  }
+  return paid;
+}
+
 /** Ask the server; null when it could not answer. */
 async function fetchPaid(account: string, before: EntitlementCache | null): Promise<boolean | null> {
   const { data } = await getEntitlement();
@@ -187,18 +203,4 @@ export function notePaywallShown(): Promise<void> {
   });
   chain = run;
   return run;
-}
-
-export type StorePurchaseResult = { kind: "purchased" } | { kind: "cancelled" } | { kind: "unavailable" };
-
-/**
- * TODO(billing): Google Play Billing / RuStore Pay (or RevenueCat over both)
- * for store builds (EXPO_PUBLIC_DISTRIBUTION=play|rustore). Must: start the
- * subscription purchase for the shown plan, let the server verify the token
- * (it then records the entitlement with source google_play / rustore), and
- * resolve "purchased" only after that — the paywall then re-reads the
- * entitlement. Until it exists a store build has no way to pay, and says so.
- */
-export async function startStorePurchase(): Promise<StorePurchaseResult> {
-  return { kind: "unavailable" };
 }

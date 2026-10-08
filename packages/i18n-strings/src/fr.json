@@ -3793,7 +3793,15 @@
       "delete_failed_body": "Impossible de joindre le serveur, rien n'a donc été supprimé. Réessayez dans un instant.",
       "not_signed_in": "Vous n'êtes pas connecté.",
       "load_failed": "Impossible de charger votre compte. Vérifiez la connexion et réessayez.",
-      "retry": "Réessayer"
+      "retry": "Réessayer",
+      "manage": "Gérer l'abonnement",
+      "manage_desc": "Le modifier ou le résilier là où il a été acheté",
+      "restore": "Restaurer les achats",
+      "restore_desc": "Abonné sur Google Play avec un autre compte ou téléphone ? Récupérez-le ici",
+      "delete_store_title": "Résiliez d'abord votre abonnement {{store}}",
+      "delete_store_body": "Supprimer votre compte n'arrête pas votre abonnement {{store}} — vous seul pouvez le résilier, dans {{store}}. Résiliez-le là-bas pour ne plus être facturé, puis supprimez le compte.",
+      "delete_store_open": "Ouvrir {{store}}",
+      "delete_store_continue": "Supprimer quand même"
     },
     "paywall": {
       "close": "Fermer",
@@ -3836,7 +3844,29 @@
       "message_listed_sub": "Un lien de ce message figure dans notre liste de sites d'arnaque.",
       "message_locked_title_links": "Aucun lien de notre liste d'arnaques",
       "message_locked_title_none": "Message non analysé",
-      "message_locked_sub": "Le texte n'a pas été lu : les vérifications détaillées gratuites du jour sont épuisées."
+      "message_locked_sub": "Le texte n'a pas été lu : les vérifications détaillées gratuites du jour sont épuisées.",
+      "lead_upgrade": "Vérifications détaillées des liens et des messages sans limite quotidienne, sur {{n}} appareils maximum. Les sites de notre liste d'arnaques sont bloqués avec ou sans abonnement.",
+      "plan_month": "Mensuel",
+      "plan_year": "Annuel",
+      "save_percent": "{{n}} % d'économie",
+      "prices_loading": "Récupération des prix sur Google Play…",
+      "prices_failed": "Impossible de récupérer les prix sur Google Play. Vérifiez votre connexion et réessayez.",
+      "prices_empty": "Cet abonnement n'est pas encore disponible sur Google Play dans votre pays.",
+      "retry": "Réessayer",
+      "fine_store": "Facturé par Google Play. Renouvelé automatiquement jusqu'à résiliation — résiliable à tout moment dans Google Play.",
+      "cta_soon_play": "Pas encore disponible dans votre pays",
+      "fine_soon_play": "Les abonnements ne sont pas encore disponibles ici. La liste d'arnaques continue de bloquer et les vérifications gratuites se renouvellent chaque jour.",
+      "note_pending": "Votre paiement est en attente. L'abonnement démarre dès que Google Play le confirme.",
+      "note_processing": "Paiement reçu. L'abonnement démarre dans la minute — sinon, touchez Restaurer.",
+      "note_restored": "Achats restaurés — votre abonnement est actif.",
+      "err_already_owned": "Ce compte Google a déjà l'abonnement. Touchez Restaurer pour le transférer sur ce compte.",
+      "err_network": "Pas de connexion à Google Play. Vérifiez Internet et réessayez.",
+      "err_not_allowed": "Les achats sont désactivés sur ce téléphone ou ce compte Google (par exemple par le contrôle parental).",
+      "err_unavailable": "Cet abonnement ne peut pas être acheté ici pour le moment. Réessayez plus tard.",
+      "err_store": "Google Play n'a pas pu finaliser l'achat. Réessayez.",
+      "err_busy": "Un autre achat est encore en cours. Patientez un instant et réessayez.",
+      "err_unknown": "Un problème est survenu pendant l'achat. Réessayez.",
+      "manage": "Gérer l'abonnement"
     }
   }
 }

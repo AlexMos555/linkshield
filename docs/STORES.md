@@ -207,7 +207,7 @@ Google's PEPK tool) keeps one signature everywhere.
 | Support email / website | `support@cleanway.ai` (confirm the mailbox receives mail first — `NEXT_PUBLIC_SUPPORT_EMAIL_LIVE`) / `https://cleanway.ai/support` |
 | Ads | **No ads** — no ad SDK in `mobile/package.json` |
 | App category | Tools (alternative: Productivity) |
-| Contains in-app purchases | **No** until Google Play Billing (RevenueCat) ships in the app; then **Yes** |
+| Contains in-app purchases | **Yes** — the Play build sells the device plan through Google Play Billing (RevenueCat): `cleanway.devices` monthly / yearly. Only a build made with `EXPO_PUBLIC_DISTRIBUTION=play` (see §6.0) |
 
 ### 6.A Play technical readiness (verified on the 2026-10-08 build)
 
@@ -227,24 +227,30 @@ Google's PEPK tool) keeps one signature everywhere.
 
 - [x] **targetSdk 36** — Expo SDK 54 build (2026-10-08); its `aapt dump
       permissions` matches §6.4. Retest the release-signed build on the phone.
-- [ ] **Remove or replace the old upgrade screen.** In every language except
-      Russian, Settings → Plan opens `mobile/app/upgrade.tsx`: hard-coded "$4.99
-      Personal / $9.99 Family", "10 checks/day", and a button that opens
-      `cleanway.ai/pricing` in the browser. That breaks Play's Payments policy
-      (digital subscriptions must use Play Billing) and contradicts the device
-      plan (`docs/ACCOUNTS_BILLING_PLAN.md` §5). Hide it like in Russian
-      (`mobile/src/config/market.ts`) or wire Play Billing (RevenueCat) first.
-      The paywall's "Subscribe on cleanway.ai" button (`mobile/app/paywall.tsx`,
-      `cta_web`) is the same problem in a Play build.
-- [ ] **"Automatic SMS check" in the paywall.** `mobile/app/paywall.tsx` lists
-      `mobile.paywall.benefit_sms` ("Automatic SMS check") in every build. The
-      Play build has no SMS receiver and no SMS permission (and must not —
-      Play's SMS policy), so that line must be shown only in the RuStore build
-      (see `docs/RUSTORE_SUBMISSION.md` §7.0). The website no longer carries it
-      anywhere (`scripts/check-landing-claims.py` blocks it in all 10 languages).
-- [ ] **Pricing line** in the listing (§6.1): Play Billing is not wired, so the
-      copy says only "Basic protection is free." When paid is live, add (confirm
-      numbers first): "Blocking known scam sites is free with no limit. 3
+- [x] **Old upgrade screen removed; Play Billing wired** (`feat/play-billing-app`).
+      `mobile/app/upgrade.tsx` (hard-coded "$4.99 Personal / $9.99 Family", a
+      button to `cleanway.ai/pricing`) now only redirects to the paywall;
+      Settings → Plan and the Account screen open the paywall directly. In the
+      Play build the paywall sells through Google Play (RevenueCat) at Play's own
+      prices and has no "Subscribe on cleanway.ai" button or any other link to a
+      web checkout (`webCheckoutAllowed`, pinned by
+      `mobile/scripts/test-store-billing.mjs`); the update banner that offers an
+      APK download from our server is hidden too (Play forbids self-updates).
+      For a plan paid on the site, the Play build only says "Paid on
+      cleanway.ai" — no link. Setup and test plan: `docs/runbooks/revenuecat.md` §5.
+- [x] **"Automatic SMS check" in the paywall** is shown only in the RuStore build
+      (`smsBenefitShown`); the site and Play builds never list it.
+- [ ] **Build the Play AAB with the right env** — for the WHOLE build (prebuild,
+      gradle, bundle; `mobile/.env` or the EAS profile):
+      `EXPO_PUBLIC_DISTRIBUTION=play` and
+      `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_…` (RevenueCat → API keys → Play
+      Store app; never the `sk_` secret). Without `play` the AAB has no billing
+      (no `com.android.vending.BILLING`, `mobile/react-native.config.js`) and its
+      paywall links to the web checkout — Play would reject it. Check an APK
+      built with the same env: `aapt2 dump permissions app-release.apk | grep BILLING`.
+- [ ] **Pricing line** in the listing (§6.1): the copy says only "Basic
+      protection is free." Once the subscriptions are live in Play Console, add
+      (confirm numbers first; Play shows its own localised prices in the app): "Blocking known scam sites is free with no limit. 3
       detailed checks a day are free, and everything is unlimited for the first
       7 days. Optional subscription: $0.99 a month or $9.99 a year for 3 devices
       (phone, tablet, or browser with the extension); each extra device $0.49 a
@@ -390,10 +396,10 @@ counts only data **sent off the device**; data processed only on the phone is
 |---|---|---|---|---|
 | Web browsing → **Web browsing history** | **Collected.** Shared: see the note below | Required | App functionality; Fraud prevention, security and compliance | The host of every link the person checks (typed, pasted, QR, shared, link guard, max 3 per message) goes to `GET /api/v1/public/check/{host}`; the server caches host + verdict up to 24 h, so do **not** tick "processed ephemerally". Never the full URL. |
 | Personal info → **Email address** | Collected, not shared | **Optional** | Account management | Only when the person signs in (Supabase Auth). |
-| Personal info → **User IDs** | Collected, not shared | Optional | Account management | The account ID of a signed-in person (and, once in-app purchases ship, the anonymous app user ID sent to RevenueCat). |
+| Personal info → **User IDs** | Collected, not shared | Optional | Account management | The account ID of a signed-in person. In the Play build it is also the app user ID sent to RevenueCat (service provider) when the person opens the paywall, buys or restores; before sign-in the paywall's price lookup uses an anonymous RevenueCat ID. |
 | Device or other IDs | Collected, not shared | Required | Fraud prevention, security and compliance; Account management | The random install number `X-Cleanway-Install` (rate limiting, replaced every 24 h) and the device ID in the account's device list. Neither is derived from hardware; no advertising ID. |
 | App info and performance → **Crash logs**, **Diagnostics** | Collected, not shared (Sentry is a service provider) | Required | Analytics (app stability) | `@sentry/react-native`. |
-| Financial info → **Purchase history** | **Not collected today.** When Play Billing / RevenueCat ships: Collected, not shared (RevenueCat = service provider), Optional, purpose App functionality / Account management | — | — | The entitlement (plan, status, dates) stored with the account (`entitlements`, migration 023). The store handles the card; no payment info reaches us. |
+| Financial info → **Purchase history** | **Collected, not shared** (RevenueCat = service provider) — Play build | Optional | App functionality; Account management | The store purchase (product, dates, status) via RevenueCat and the entitlement stored with the account (`entitlements`, migrations 023–024). Google Play handles the card; no payment info reaches us or RevenueCat. |
 | Messages → **SMS or MMS**, **Other in-app messages** | **Not collected** | — | — | A shared or pasted message is analysed on the phone and never leaves it (`MessageAnalyzer`). Only up to 3 link hosts go out — already declared as web browsing history. |
 | Location, contacts, photos and videos, audio, files, calendar, health and fitness, app activity, installed apps, financial info (other than above) | **Not collected** | — | — | No such permission or code path. The camera reads QR codes on the device and discards frames. |
 
@@ -419,7 +425,8 @@ names them, so either answer is consistent with it.
 | `INTERNET`, `ACCESS_NETWORK_STATE`, `WAKE_LOCK` | Checks, blocklist refresh, offline detection | No |
 | `USE_BIOMETRIC`, `USE_FINGERPRINT` | Declared by `expo-secure-store`; the app never prompts | No |
 | `com.google.android.c2dm.permission.RECEIVE`, launcher-badge permissions | Declared by `expo-notifications`; no Firebase project, no push token | No |
-| `com.android.vending.BILLING` | **Only once** RevenueCat / Play Billing ships | No (in-app products set up in Play Console) |
+| `com.android.vending.BILLING` | **Play build only** (`EXPO_PUBLIC_DISTRIBUTION=play`): added by Play Billing Library 8.3.0 through `react-native-purchases` (checked with `aapt2 dump permissions` on the 2026-10-08 Play build). The site APK and RuStore build do not link the SDK and do not have it (`mobile/react-native.config.js`) | No (subscriptions set up in Play Console) |
+| `com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE` | Every build (not new): declared by the Play Install Referrer library (`installreferrer:2.2`) that `expo-application` pulls in. Not an Advertising ID; no `AD_ID` permission in the build | No |
 | Never requested (blocked in `app.json`, pinned by `mobile/scripts/check-android-permissions.mjs`) | SMS, call log, phone state, `QUERY_ALL_PACKAGES`, `REQUEST_INSTALL_PACKAGES`, exact alarms, `RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`, storage | — |
 
 If `aapt` shows `com.google.android.gms.permission.AD_ID` on the new build (some
@@ -491,8 +498,8 @@ permission in `app.json` (`blockedPermissions`) before uploading.
   end-to-end encrypted warnings about a site between family members who invited
   each other; no free-text chat, no public content).
 - Shares the user's location with other users: **No**.
-- Allows purchases of digital goods: **No** today; **Yes** once Play Billing
-  ships (re-take the questionnaire then).
+- Allows purchases of digital goods: **Yes** (the Play build sells the device
+  subscription through Google Play Billing).
 - Unrestricted internet access / web browser: **No** (the app opens links in the
   user's own browser).
 - Expected rating: Everyone / PEGI 3.
@@ -533,9 +540,12 @@ permission in `app.json` (`blockedPermissions`) before uploading.
         not load and the notification shows.
 11. [ ] Closed testing: personal developer accounts created after Nov 2023 need
         **12 testers for 14 days** before production access — start it early.
-12. [ ] When Play Billing ships: create the subscription products (device plan,
-        monthly / yearly, extra device), connect RevenueCat, re-answer Data
-        safety (Purchase history) and the content rating (digital purchases).
+12. [ ] Billing: after the first AAB with the billing library is uploaded,
+        create the subscriptions (`cleanway.devices` and `cleanway.extra_device`,
+        base plans `monthly` / `yearly`), add license testers, connect RevenueCat,
+        then test on the internal track — `docs/runbooks/revenuecat.md` §1–3, §5.3.
+        Data safety (Purchase history) and the content rating (digital purchases)
+        are answered for it above.
 13. [ ] After approval: add Google Play to `landing/lib/install-urls.ts` and drop
         the "Google Play" rule in `scripts/check-landing-claims.py` (scope
         `landing.android`).

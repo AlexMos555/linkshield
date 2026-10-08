@@ -274,6 +274,29 @@ await test("public check: never carries the account token", async () => {
   assert.equal(seen[1].headers.Authorization, "Bearer jwt-of-a-signed-in-person");
 });
 
+await test("restore purchases: POST /me/entitlement/refresh, with the token; a 503 keeps its code", async () => {
+  const seen = [];
+  const client = createClient({
+    baseUrl: "https://api.test",
+    timeoutMs: 1000,
+    getAuthToken: () => "jwt",
+    fetchImpl: async (url, init) => {
+      seen.push({ url, method: init.method, headers: init.headers });
+      return makeResponse({
+        status: 503,
+        body: { detail: { code: "store_sync_unavailable", error: "Restoring store purchases isn't available yet." } },
+      });
+    },
+  });
+  const { data, error } = await client.account.refreshEntitlement();
+  assert.equal(data, null);
+  assert.equal(seen[0].url, "https://api.test/api/v1/me/entitlement/refresh");
+  assert.equal(seen[0].method, "POST");
+  assert.equal(seen[0].headers.Authorization, "Bearer jwt");
+  assert.equal(error.kind, "http_5xx");
+  assert.equal(error.code, "store_sync_unavailable");
+});
+
 if (failed > 0) {
   console.error(`\n${failed} test(s) failed`);
   process.exit(1);

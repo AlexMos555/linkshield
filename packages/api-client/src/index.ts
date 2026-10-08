@@ -472,6 +472,13 @@ export interface CleanwayClient {
   account: {
     /** GET /me/entitlement — plan, status, source, device_limit, linked devices. */
     entitlement(): Promise<Result<EntitlementResponse>>;
+    /**
+     * POST /me/entitlement/refresh — "Restore purchases": the server re-reads
+     * this account's Google Play / App Store purchases from RevenueCat and
+     * answers the updated entitlement. 503 code "store_sync_unavailable",
+     * 502 "store_sync_failed", 429 after 10 an hour.
+     */
+    refreshEntitlement(): Promise<Result<EntitlementResponse>>;
     /** GET /me/devices — linked devices of the account. */
     devices(): Promise<Result<AccountDevice[]>>;
     /**
@@ -605,6 +612,9 @@ export function createClient(opts: ClientOptions): CleanwayClient {
     account: {
       entitlement() {
         return request<EntitlementResponse>(opts, "GET", "/api/v1/me/entitlement");
+      },
+      refreshEntitlement() {
+        return request<EntitlementResponse>(opts, "POST", "/api/v1/me/entitlement/refresh");
       },
       devices() {
         return request<AccountDevice[]>(opts, "GET", "/api/v1/me/devices");

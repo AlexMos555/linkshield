@@ -554,13 +554,14 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       подробные проверки в день — бесплатно, первые 7 дней — без ограничений.
       Подписка по желанию: 99 ₽ в месяц за 3 устройства (телефон, планшет или
       браузер с расширением), каждое следующее — 29 ₽ в месяц."
-- [ ] **Old upgrade screen on non-Russian phones.** Paid plans are hidden only
-      when the app language is Russian. A RuStore user whose phone is in English
-      (or any other language) sees Settings → Plan → `mobile/app/upgrade.tsx`:
-      "$4.99 / $9.99", "10 checks/day" and a link to pay on cleanway.ai. Those
-      prices contradict the new ones and the link is an outside payment.
-      Hide it for every language in the RuStore build (one line in
-      `mobile/src/config/market.ts`) before submitting.
+- [x] **Old upgrade screen on non-Russian phones** — removed
+      (`feat/play-billing-app`): `mobile/app/upgrade.tsx` only redirects to the
+      paywall. Built with `EXPO_PUBLIC_DISTRIBUTION=rustore`, the paywall has no
+      link to the web checkout, says paying in the app is "coming soon", lists
+      "Автоматическая проверка SMS" (RuStore only), and the APK has no Google Play
+      Billing library and no `com.android.vending.BILLING` permission. Still
+      decide whether a RuStore user with a non-Russian phone should see the
+      "$0.99" paywall at all (`mobile/src/config/market.ts`).
 - [ ] **Screenshots** are from v1.0.0. The home screen in 1.0.4 has the "Мне
       звонят" button and the "Чтобы защита не выключалась" card. Recapture
       `01`–`04` on the signed 1.0.4 APK and add the three new frames in §7.6.

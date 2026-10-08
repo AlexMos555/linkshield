@@ -3793,7 +3793,15 @@
       "delete_failed_body": "Non siamo riusciti a contattare il server, quindi non è stato eliminato nulla. Riprova tra poco.",
       "not_signed_in": "Non hai eseguito l'accesso.",
       "load_failed": "Impossibile caricare il tuo account. Controlla la connessione e riprova.",
-      "retry": "Riprova"
+      "retry": "Riprova",
+      "manage": "Gestisci abbonamento",
+      "manage_desc": "Modificalo o disdicilo dove l'hai acquistato",
+      "restore": "Ripristina acquisti",
+      "restore_desc": "Abbonato su Google Play con un altro account o telefono? Portalo qui",
+      "delete_store_title": "Prima disdici l'abbonamento su {{store}}",
+      "delete_store_body": "Eliminare l'account non interrompe l'abbonamento su {{store}}: solo tu puoi disdirlo, in {{store}}. Disdicilo lì per non ricevere altri addebiti, poi elimina l'account.",
+      "delete_store_open": "Apri {{store}}",
+      "delete_store_continue": "Elimina comunque"
     },
     "paywall": {
       "close": "Chiudi",
@@ -3836,7 +3844,29 @@
       "message_listed_sub": "Un link di questo messaggio è nella nostra lista di siti truffa.",
       "message_locked_title_links": "Nessun link della nostra lista di truffe",
       "message_locked_title_none": "Messaggio non analizzato",
-      "message_locked_sub": "Il testo non è stato letto: i controlli dettagliati gratuiti di oggi sono finiti."
+      "message_locked_sub": "Il testo non è stato letto: i controlli dettagliati gratuiti di oggi sono finiti.",
+      "lead_upgrade": "Controlli dettagliati di link e messaggi senza limite giornaliero, su un massimo di {{n}} dispositivi. I siti nella nostra lista delle truffe vengono bloccati con o senza abbonamento.",
+      "plan_month": "Mensile",
+      "plan_year": "Annuale",
+      "save_percent": "Risparmi il {{n}}%",
+      "prices_loading": "Recupero dei prezzi da Google Play…",
+      "prices_failed": "Impossibile recuperare i prezzi da Google Play. Controlla la connessione e riprova.",
+      "prices_empty": "Questo abbonamento non è ancora disponibile su Google Play nel tuo paese.",
+      "retry": "Riprova",
+      "fine_store": "Addebitato da Google Play. Si rinnova automaticamente finché non lo disdici: puoi disdire quando vuoi in Google Play.",
+      "cta_soon_play": "Non ancora disponibile nel tuo paese",
+      "fine_soon_play": "Gli abbonamenti non sono ancora disponibili qui. La lista delle truffe continua a bloccare e i controlli gratuiti si rinnovano ogni giorno.",
+      "note_pending": "Il pagamento è in attesa. L'abbonamento si attiva appena Google Play lo conferma.",
+      "note_processing": "Pagamento ricevuto. L'abbonamento si attiva entro un minuto; in caso contrario, tocca Ripristina.",
+      "note_restored": "Acquisti ripristinati: il tuo abbonamento è attivo.",
+      "err_already_owned": "Questo account Google ha già l'abbonamento. Tocca Ripristina per spostarlo su questo account.",
+      "err_network": "Nessuna connessione a Google Play. Controlla internet e riprova.",
+      "err_not_allowed": "Gli acquisti sono disattivati su questo telefono o account Google (ad esempio dal controllo genitori).",
+      "err_unavailable": "Al momento questo abbonamento non può essere acquistato qui. Riprova più tardi.",
+      "err_store": "Google Play non è riuscito a completare l'acquisto. Riprova.",
+      "err_busy": "Un altro acquisto è ancora in corso. Attendi un momento e riprova.",
+      "err_unknown": "Qualcosa è andato storto con l'acquisto. Riprova.",
+      "manage": "Gestisci abbonamento"
     }
   }
 }

@@ -10,6 +10,7 @@ import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { restoreSession } from "../src/services/auth";
 import { getSetting } from "../src/services/database";
 import { setAuthToken } from "../src/services/api";
+import { initStoreBilling } from "../src/services/store-billing";
 // Side-effecting import: initialises i18next at boot so every screen
 // can immediately `useTranslation()`. Previously the module was authored
 // but never imported anywhere — all 10 locales were dead code on
@@ -168,6 +169,9 @@ export default function RootLayout() {
       } catch {
         // Silent — never block UI on auth restore failures.
       }
+      // Google Play build only (a no-op elsewhere): follow sign-in / sign-out,
+      // and finish a pending store purchase started on this phone.
+      initStoreBilling();
     })();
     return () => {
       cancelled = true;
