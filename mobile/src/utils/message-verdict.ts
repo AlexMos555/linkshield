@@ -188,6 +188,18 @@ export function mergeVerdict(
   return { verdict, reasons };
 }
 
+/**
+ * The verdict when the free plan's daily detailed checks are used up: the
+ * on-device scam list alone. A listed link is "dangerous" — that never needs
+ * a subscription — and nothing else is claimed: the wording and the links'
+ * server check are the detailed analysis.
+ */
+export function listOnlyVerdict(links: readonly MessageLink[]): MergedVerdict {
+  return links.some((l) => l.status === "blocked")
+    ? { verdict: "dangerous", reasons: ["link_blocklisted"] }
+    : { verdict: "no_signals", reasons: [] };
+}
+
 /** Did the verdict get worse? The screen buzzes again only then. */
 export function isEscalation(from: MessageVerdict, to: MessageVerdict): boolean {
   return RANK[to] > RANK[from];

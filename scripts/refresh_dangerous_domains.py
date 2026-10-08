@@ -114,6 +114,7 @@ from api.services import blocklist_feed_backing as feed_backing  # noqa: E402
 from api.services import blocklist_feed_health as feed_health  # noqa: E402
 from api.services import blocklist_retention as retention  # noqa: E402
 from api.services import confirmed_threats  # noqa: E402
+from api.services import own_sources  # noqa: E402
 from api.services import phishtank_feed  # noqa: E402
 
 API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
@@ -1121,6 +1122,38 @@ async def _confirmed_hosts(r, now: float, publish: bool) -> tuple[set[str], set[
     return {_norm_host(n) for n in active} - {""}, {_norm_host(n) for n in expired} - {""}
 
 
+async def _own_source_hosts(r, now: float, publish: bool) -> tuple[set[str], set[str]]:
+    """(active, expired) hosts from Cleanway's own sources — the lookalike
+    generator and verified in-app reports (api/services/own_sources.py) —
+    the same way as the server-confirmed set: exact hosts, through every
+    guard, and with the switch off every stored host counts as expired so it
+    leaves at once. An unreadable set is logged and contributes nothing:
+    these sets are small and a missed hour costs nothing a feed covers."""
+    if r is None:
+        return set(), set()
+    active: set[str] = set()
+    expired: set[str] = set()
+    for source in own_sources.SOURCE_KEYS:
+        try:
+            entries = await own_sources.load(r, source)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("own source %s unreadable (%s) — publishing without it", source, e)
+            continue
+        if not entries:
+            continue
+        if not publish:
+            logger.info("own source %s: publishing is off (%s) — %d stored hosts leave the list",
+                        source, own_sources.ENABLE_ENV, len(entries))
+            expired |= {_norm_host(n) for n in entries} - {""}
+            continue
+        live, gone = own_sources.split(entries, now)
+        logger.info("own source %s: %d inside the %d-day window, %d expired", source, len(live),
+                    own_sources.WINDOW_SECONDS // 86_400, len(gone))
+        active |= {_norm_host(n) for n in live} - {""}
+        expired |= {_norm_host(n) for n in gone} - {""}
+    return active, expired
+
+
 async def _load_backing(r, now: float) -> dict:
     """Which names each source backed on its last healthy run. Never raises:
     without the records an outage keeps every unlisted published name."""
@@ -1212,6 +1245,14 @@ async def _save_backing(r, run: FeedFetch, health: feed_health.FeedHealth, sourc
         logger.warning("feed backing records not saved (%s)", e)
 
 
+async def _prune_own_sources(r, now: float) -> None:
+    for source in own_sources.SOURCE_KEYS:
+        try:
+            await own_sources.prune(r, source, now)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("could not prune own source %s (%s)", source, e)
+
+
 async def _prune_confirmed(r, now: float) -> None:
     try:
         await confirmed_threats.prune(r, now)
@@ -1257,7 +1298,11 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
         # a failed feed when it stays unreadable (it is never carried).
         fetched[CONFIRMED_SOURCE] = None if confirmed is None else len(confirmed[0])
     health = await _feed_health(r, fetched, now, dry_run, accept_sizes=force)
-    active, expired = confirmed or (set(), set())
+    confirmed_active, expired = confirmed or (set(), set())
+    # Cleanway's own sources (lookalike generator, verified in-app reports):
+    # exact hosts, judged by every guard below like a server-confirmed host.
+    own_active, own_expired = await _own_source_hosts(r, now, own_sources.enabled())
+    active, expired = confirmed_active | own_active, expired | own_expired
     promoting = {_norm_host(h) for h in hosts}
     promoting.discard("")
     exact_only = {_norm_host(h) for h in exact_hosts} - promoting
@@ -1302,10 +1347,10 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     blockset = build_blockset(candidate_hosts, top_100k, is_popular=is_popular,
                               public_suffixes=public_suffixes, exact_only=exact_only)
     logger.info("Built dangerous set: %d entries (from %d feed URLs / %d distinct feed hosts, "
-                "%d exact-only; %d retained, %d carried through an outage, %d server-confirmed — "
-                "%d of those passed the guards)",
+                "%d exact-only; %d retained, %d carried through an outage, %d server-confirmed, "
+                "%d from own sources — %d of those passed the guards)",
                 len(blockset), len(feed_hosts), len(set(feed_hosts)), len(exact_only),
-                len(retained), len(carried), len(active), len(extra & blockset))
+                len(retained), len(carried), len(confirmed_active), len(own_active), len(extra & blockset))
     shared_all = default_shared_suffixes()
     ok, why = publish_gate(blockset, previous, top_100k | (public_suffixes or set()), shared_all, force=force)
     if not ok:
@@ -1448,8 +1493,9 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
             return 5
         logger.info("post-publish verification: live gateway healthy")
         await _prune_confirmed(r, now)
+        await _prune_own_sources(r, now)
         await _save_backing(r, run, health, set(fetched), published, {_norm_host(h) for h in candidate_hosts},
-                            active, public_suffixes, now)
+                            confirmed_active, public_suffixes, now)
         outage = health.outage_seconds(now)
         if outage >= feed_health.ALERT_AFTER_SECONDS:
             logger.error("published, but %s has been degraded for %.0f h — exit %d so this run alerts",

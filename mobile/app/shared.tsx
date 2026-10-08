@@ -34,6 +34,8 @@ import {
 } from "../src/utils/check-verdict";
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
 import { useCallGuard } from "../src/components/call/CallGuardProvider";
+import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
+import { useAutoPaywall, useDetailGate } from "../src/hooks/useFreemium";
 
 type Level = keyof typeof levelColors;
 
@@ -83,7 +85,12 @@ export default function SharedScreen() {
   // A link-guard hand-off is not a check the person made: the guard already
   // recorded the stop in the block log (History, "Blocked"). Saving it here
   // too counted every stopped link twice.
-  const { listed, result, error, pending, retry } = useDomainCheck(domain, via !== "guard");
+  // The free plan's daily limit decides whether the server's detailed check
+  // runs; the on-device list's verdict shows either way (useFreemium).
+  const gate = useDetailGate(domain);
+  const locked = gate.deep === false;
+  const { listed, result, error, pending, retry } = useDomainCheck(domain, via !== "guard", gate.deep);
+  useAutoPaywall(locked, gate.autoPaywall, listed === undefined ? undefined : Boolean(listed), gate.key);
 
   if (!domain) {
     return (
@@ -113,6 +120,17 @@ export default function SharedScreen() {
       <ScrollView style={s.container} contentContainerStyle={s.content}>
         <Text style={s.eyebrow}>{t("mobile.shared.eyebrow")}</Text>
         <NotFoundCard domain={domain} />
+        <DoneButton label={t("mobile.shared.done")} onPress={leaveShared} />
+      </ScrollView>
+    );
+  }
+
+  if (locked && !listed) {
+    return (
+      <ScrollView style={s.container} contentContainerStyle={s.content}>
+        <Text style={s.eyebrow}>{t("mobile.shared.eyebrow")}</Text>
+        <NotListedCard domain={domain} />
+        <LockedDetailsCard />
         <DoneButton label={t("mobile.shared.done")} onPress={leaveShared} />
       </ScrollView>
     );
@@ -173,7 +191,7 @@ export default function SharedScreen() {
         {!listed && result?.confidence === "low" && (
           <Text style={s.lowConf}>{t("mobile.result.low_confidence")}</Text>
         )}
-        {listed && (
+        {listed && !locked && (
           <ServerDetailsNote
             pending={pending}
             failed={!pending && !result}
@@ -225,7 +243,10 @@ export default function SharedScreen() {
         <Text style={s.noBrowserNote}>{t("mobile.shared.no_browser")}</Text>
       )}
 
-      <TouchableOpacity
+      {/* Today's free detailed checks are used up: the details are what the plan adds. */}
+      {locked && <LockedDetailsCard />}
+
+      {!locked && <TouchableOpacity
         style={via === "guard" && safe ? s.secondaryBtn : s.primaryBtn}
         onPress={() => router.push({
           pathname: "/result",
@@ -235,7 +256,7 @@ export default function SharedScreen() {
         accessibilityRole="button"
       >
         <Text style={via === "guard" && safe ? s.secondaryLabel : s.primaryLabel}>{t("mobile.shared.full_details")}</Text>
-      </TouchableOpacity>
+      </TouchableOpacity>}
 
       <DoneButton label={t("mobile.shared.done")} onPress={leaveShared} />
 

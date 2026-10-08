@@ -2262,7 +2262,7 @@
       "meta_description": "Cosa riceve Cleanway, cosa resta sul tuo telefono, chi altro vede cosa e per quanto tempo viene conservato tutto.",
       "back": "Torna a Cleanway",
       "title": "Informativa sulla privacy",
-      "updated": "Ultimo aggiornamento: 27 settembre 2026",
+      "updated": "Ultimo aggiornamento: 8 ottobre 2026",
       "intro": "Questa informativa spiega in parole semplici quali dati tratta Cleanway, perché e chi altro li vede. Descrive il servizio così come funziona oggi. Se qualcosa qui non corrisponde a ciò che Cleanway fa davvero, è un errore e vogliamo saperlo.",
       "contact_live": "Domande e richieste sui tuoi dati:",
       "contact_not_live": "La nostra casella di assistenza è ancora in configurazione, quindi non possiamo ancora ricevere email. L'indirizzo comparirà qui appena funzionerà.",
@@ -2287,14 +2287,14 @@
           "paragraphs": [
             "Quando attivi la protezione, Cleanway avvia un filtro locale usando il meccanismo VPN di Android. Da esso passano solo le richieste DNS, le domande che il telefono fa per trovare l'indirizzo di un sito, come «dov'è example.com?». Il contenuto delle pagine, i tuoi messaggi e le chiamate non passano dal filtro e non vengono letti.",
             "Ogni nome di sito viene confrontato con la lista dei siti truffa salvata sul telefono. Se è nella lista, il telefono non apre il sito, e sul telefono viene salvata una nota (il nome del sito, l'ora e cosa è successo) per la Cronologia dell'app.",
-            "I nomi che non sono nella lista vengono passati per trovare l'indirizzo del sito: prima al server DNS della rete a cui è collegato il telefono — quello del tuo operatore mobile o del tuo router Wi-Fi —, come senza Cleanway. Solo se non risponde, vanno a Cloudflare (1.1.1.1), poi a Quad9 (9.9.9.9) e, come ultima risorsa, al DNS-over-HTTPS cifrato di Cloudflare. Così funzionano le versioni 1.0.2 e 1.0.3 dell'app; la versione 1.0.1 chiedeva prima a Cloudflare. Questi servizi vedono il nome del sito e l'indirizzo IP della tua connessione, come qualsiasi servizio DNS; valgono le loro informative sulla privacy. Cleanway non riceve né conserva queste richieste.",
+            "I nomi che non sono nella lista vengono passati per trovare l'indirizzo del sito: prima al server DNS della rete a cui è collegato il telefono — quello del tuo operatore mobile o del tuo router Wi-Fi —, come senza Cleanway. Solo se non risponde, vanno a Cloudflare (1.1.1.1), poi a Quad9 (9.9.9.9) e, come ultima risorsa, al DNS-over-HTTPS cifrato di Cloudflare. Così funzionano le versioni dalla 1.0.2 alla 1.0.4 dell'app; la versione 1.0.1 chiedeva prima a Cloudflare. Questi servizi vedono il nome del sito e l'indirizzo IP della tua connessione, come qualsiasi servizio DNS; valgono le loro informative sulla privacy. Cleanway non riceve né conserva queste richieste.",
             "Dalla versione 1.0.2 l'app contiene una copia della lista dei siti truffa, usata solo finché il telefono non ne scarica una aggiornata."
           ]
         },
         {
           "title": "4. La lista dei siti truffa",
           "paragraphs": [
-            "L'app scarica la lista dal nostro server (api.cleanway.ai) e la aggiorna circa ogni 6 ore, meno spesso con i dati mobili. La richiesta non dice nulla dei siti che visiti: contiene solo i normali dati tecnici di qualsiasi richiesta su internet, come il tuo indirizzo IP, e un'indicazione della versione della lista già presente sul telefono. Ogni tanto l'app chiede anche al nostro server se è disponibile una nuova versione dell'app."
+            "L'app scarica la lista dal nostro server (api.cleanway.ai) e la aggiorna circa ogni 6 ore, meno spesso con i dati mobili. La richiesta non dice nulla dei siti che visiti: contiene solo i normali dati tecnici di qualsiasi richiesta su internet, come il tuo indirizzo IP, e un'indicazione della versione della lista già presente sul telefono. All'apertura (al massimo una volta all'ora) e circa una volta al giorno, l'app chiede anche al nostro server se è disponibile una nuova versione dell'app e quali controlli sul telefono sono attivi; anche questa richiesta non dice nulla dei siti che visiti né dei tuoi messaggi."
           ]
         },
         {
@@ -3625,6 +3625,49 @@
       "not_signed_in": "Non hai eseguito l'accesso.",
       "load_failed": "Impossibile caricare il tuo account. Controlla la connessione e riprova.",
       "retry": "Riprova"
+    },
+    "paywall": {
+      "close": "Chiudi",
+      "title": "Controlla senza limiti",
+      "lead": "I controlli dettagliati gratuiti di oggi sono finiti. I siti della nostra lista di truffe restano bloccati, con o senza abbonamento.",
+      "per_month": "{{price}} al mese",
+      "per_year": "{{price}} all'anno",
+      "period_month": "/ mese",
+      "period_year": "/ anno",
+      "alt_month": "oppure {{price}} al mese",
+      "alt_year": "oppure {{price}} all'anno",
+      "devices_note": "fino a {{n}} dispositivi",
+      "benefit_unlimited": "Controlli dettagliati di link e messaggi senza limiti",
+      "benefit_sms": "Controllo automatico degli SMS",
+      "benefit_text_model": "Analisi del testo: perché è una truffa e cosa fare",
+      "benefit_calls": "Protezione durante le chiamate",
+      "benefit_devices": "Fino a {{n}} dispositivi in un solo account",
+      "cta_sign_in": "Accedi per abbonarti",
+      "cta_web": "Abbonati su cleanway.ai",
+      "cta_store": "Abbonati",
+      "cta_soon_ru": "Presto: pagamento con il credito telefonico",
+      "fine_cancel": "Disdici quando vuoi.",
+      "fine_soon": "Il pagamento con il credito telefonico arriverà presto. Nel frattempo la lista di truffe continua a bloccare e i controlli gratuiti si rinnovano ogni giorno.",
+      "restore": "Paghi già? Ripristina",
+      "restore_sign_in": "Paghi già? Accedi",
+      "note_store_soon": "Il pagamento nell'app arriverà presto.",
+      "note_restore_none": "Questo account non ha ancora un abbonamento attivo.",
+      "note_restore_failed": "Impossibile contattare il server. Riprova.",
+      "note_web_opened": "Il pagamento si è aperto nel browser. Torna qui quando hai finito.",
+      "paid_done": "Il tuo abbonamento è attivo: controlli senza limiti.",
+      "done": "Fatto",
+      "always_free": "Il blocco dei siti della nostra lista di truffe è sempre gratuito.",
+      "locked_title": "L'analisi dettagliata è nell'abbonamento",
+      "locked_body": "I controlli dettagliati gratuiti di oggi sono finiti; domani ne avrai di nuovi. I siti della nostra lista di truffe vengono sempre bloccati.",
+      "locked_cta": "Controlla senza limiti",
+      "not_listed_title": "Non è nella nostra lista di truffe",
+      "not_listed_body": "Questo da solo non significa che il sito sia sicuro: il controllo dettagliato guarda molto più a fondo.",
+      "left_today": "Controlli gratuiti rimasti oggi: {{n}}",
+      "none_left": "I controlli gratuiti di oggi sono finiti. La lista di truffe continua a funzionare.",
+      "message_listed_sub": "Un link di questo messaggio è nella nostra lista di siti truffa.",
+      "message_locked_title_links": "Nessun link della nostra lista di truffe",
+      "message_locked_title_none": "Messaggio non analizzato",
+      "message_locked_sub": "Il testo non è stato letto: i controlli dettagliati gratuiti di oggi sono finiti."
     }
   }
 }

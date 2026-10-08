@@ -47,6 +47,10 @@ jobs:
           # licence decision — see docs/runbooks/monitoring.md before setting
           # this repository variable (and the same one on the API).
           PUBLISH_CONFIRMED_THREATS: ${{ vars.PUBLISH_CONFIRMED_THREATS }}
+          # Unset = off. Cleanway's own sources (CT lookalikes, verified in-app
+          # reports — scripts/refresh_lookalikes.py); off, any stored host
+          # leaves the list at once. See docs/runbooks/monitoring.md.
+          LOOKALIKE_GENERATOR_ENABLED: ${{ vars.LOOKALIKE_GENERATOR_ENABLED }}
           # Licence switches (docs/THIRD_PARTY_FEEDS.md) — repository
           # variables, unset = today's list. BLOCKLIST_LICENSED_ONLY=true
           # leaves URLhaus, OpenPhish and phishing.army out; the first run

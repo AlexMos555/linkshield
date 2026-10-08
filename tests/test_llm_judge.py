@@ -372,15 +372,18 @@ def test_llm_available_reflects_env(monkeypatch):
 # Tiered model routing — Opus primary, Haiku fallback
 # ─────────────────────────────────────────────────────────────────
 
-def test_default_primary_model_is_opus(monkeypatch):
-    """The judge defaults to Opus 4.8 (the strongest reasoner).
-    Haiku is the fallback, not the primary."""
+def test_default_primary_model_is_haiku(monkeypatch):
+    """The judge defaults to Haiku 4.5 since 2026-10-08: it only nudges a
+    caution-band score, and Opus cost up to ~$400/month at the daily cap.
+    Sonnet is the fallback when Haiku errors."""
+    monkeypatch.delenv("LLM_JUDGE_MODEL_PRIMARY", raising=False)
+    monkeypatch.delenv("LLM_JUDGE_MODEL_FALLBACK", raising=False)
     # Re-import to get the env-derived value with a clean env.
     import importlib
     import api.services.llm_judge as mod
     importlib.reload(mod)
-    assert mod.LLM_JUDGE_MODEL_PRIMARY == "claude-opus-4-8"
-    assert "haiku" in mod.LLM_JUDGE_MODEL_FALLBACK.lower()
+    assert mod.LLM_JUDGE_MODEL_PRIMARY == "claude-haiku-4-5-20251001"
+    assert "sonnet" in mod.LLM_JUDGE_MODEL_FALLBACK.lower()
 
 
 def test_model_choice_overridable_via_env(monkeypatch):
@@ -394,7 +397,7 @@ def test_model_choice_overridable_via_env(monkeypatch):
 @pytest.mark.asyncio
 async def test_call_claude_uses_primary_first(monkeypatch):
     """The orchestrator MUST hit the primary model first; only
-    falls back to Haiku if primary returns None."""
+    falls back to the fallback model if primary returns None."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     import importlib
     import api.services.llm_judge as mod
@@ -404,7 +407,7 @@ async def test_call_claude_uses_primary_first(monkeypatch):
 
     async def _fake_call(model, features, max_tokens=280):
         calls.append(model)
-        if "opus" in model:
+        if model == mod.LLM_JUDGE_MODEL_PRIMARY:
             return {
                 "verdict": "dangerous", "confidence": 0.9,
                 "one_line_reason": "from primary", "model": model,
@@ -414,14 +417,14 @@ async def test_call_claude_uses_primary_first(monkeypatch):
     monkeypatch.setattr(mod, "_call_one_model", _fake_call)
     out = await mod._call_claude({"x": 1})
     assert out is not None
-    assert "opus" in calls[0]
+    assert calls[0] == mod.LLM_JUDGE_MODEL_PRIMARY
     assert len(calls) == 1  # fallback NOT triggered on primary success
     assert out["one_line_reason"] == "from primary"
 
 
 @pytest.mark.asyncio
 async def test_call_claude_falls_back_on_primary_failure(monkeypatch):
-    """When Opus is unavailable / times out, Haiku takes over."""
+    """When the primary model is unavailable / times out, the fallback takes over."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     import importlib
     import api.services.llm_judge as mod
@@ -431,7 +434,7 @@ async def test_call_claude_falls_back_on_primary_failure(monkeypatch):
 
     async def _fake_call(model, features, max_tokens=280):
         calls.append(model)
-        if "opus" in model:
+        if model == mod.LLM_JUDGE_MODEL_PRIMARY:
             return None  # primary fails
         return {
             "verdict": "safe", "confidence": 0.8,
@@ -443,8 +446,8 @@ async def test_call_claude_falls_back_on_primary_failure(monkeypatch):
     assert out is not None
     assert out["one_line_reason"] == "from fallback"
     assert len(calls) == 2
-    assert "opus" in calls[0]
-    assert "haiku" in calls[1]
+    assert calls[0] == mod.LLM_JUDGE_MODEL_PRIMARY
+    assert calls[1] == mod.LLM_JUDGE_MODEL_FALLBACK
 
 
 @pytest.mark.asyncio
