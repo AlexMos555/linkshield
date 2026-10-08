@@ -18,3 +18,7 @@ bcbc5cf4fa8c8881b5cde99b55e1b13e8b33b6c6:docs/benchmarks/2026-08-10-fresh-urls.j
 # "sb_publishable_AbCdEf…" anon key (a format check, not a key of any project).
 # The next commit builds that value at run time, so only this commit carries it.
 d71fc05b6a79468265771e602c21d539c799e3af:scripts/test-extension-auth.mjs:generic-api-key:210
+
+# Verified 2026-10-08: a made-up RevenueCat public-key fixture ("goog_AbCdEf…")
+# in the store-billing table test; replaced by an assembled value in the next commit.
+ab1484456a593151b69861abd175b51400924e0c:mobile/scripts/test-store-billing.mjs:generic-api-key:70

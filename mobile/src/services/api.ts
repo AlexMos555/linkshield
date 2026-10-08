@@ -210,6 +210,11 @@ export async function getEntitlement(): Promise<Result<EntitlementResponse>> {
   return withAuth(() => _client.account.entitlement());
 }
 
+/** POST /api/v1/me/entitlement/refresh — the server re-reads store purchases (after a purchase / restore). */
+export async function refreshEntitlement(): Promise<Result<EntitlementResponse>> {
+  return withAuth(() => _client.account.refreshEntitlement());
+}
+
 /** Link this install / heartbeat it. 409 device_limit_reached, 403 device_revoked. */
 export async function registerDevice(
   req: DeviceRegisterRequest,

@@ -257,6 +257,24 @@ export function webCheckoutAllowed(distribution: Distribution): boolean {
 }
 
 /**
+ * List "automatic SMS check" among the plan's benefits? Only in the RuStore
+ * build: the APKs from our site and from Google Play cannot read SMS (no SMS
+ * permission — scripts/check-android-permissions.mjs), so they never promise it.
+ */
+export function smsBenefitShown(distribution: Distribution): boolean {
+  return distribution === "rustore";
+}
+
+/**
+ * Offer "a newer version — download" from our own server? Only in the APK
+ * from our site. A store build is updated by its store (Google Play forbids
+ * an app updating itself any other way).
+ */
+export function selfUpdateAllowed(distribution: Distribution): boolean {
+  return distribution === "site";
+}
+
+/**
  * What the paywall's one button does:
  *   sign_in      — paying needs an account: sign in first, then come back;
  *   web_checkout — the site's checkout (site APK, world prices);

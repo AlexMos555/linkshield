@@ -1,23 +1,29 @@
 /**
  * The paywall — one sheet, opened where the free plan's daily limit stopped
  * a check (by itself once a day, or from the "detailed analysis is in the
- * subscription" card). docs/ACCOUNTS_BILLING_PLAN.md §5.
+ * subscription" card), and from "Upgrade" in Settings / Account
+ * (`?from=upgrade`). docs/ACCOUNTS_BILLING_PLAN.md §5, §11.
  *
  * Price large, one primary button, a plain list of what the plan adds, a
  * small "already paying" link and a close button. It never says protection
  * stops: sites on the scam list are blocked paid or not.
  *
  * Paying (src/utils/freemium.ts purchaseAction):
- *   • not signed in → sign in first (a plan belongs to an account);
+ *   • not signed in → sign in first (a plan belongs to an account), then
+ *     the purchase continues by itself on return;
  *   • the APK from our site → the site's checkout, in the browser;
- *   • a store build (EXPO_PUBLIC_DISTRIBUTION=play|rustore) → the store's
- *     billing (startStorePurchase, TODO) — never a link to the web checkout;
- *   • Russia → phone-balance billing is not merged yet: "coming soon".
- * Coming back to the sheet re-reads the plan; once it is paid, it says so.
+ *   • the Google Play build → Google Play billing (src/services/store-billing.ts):
+ *     monthly / yearly with the store's own prices, then our server confirms;
+ *     never a link to the web checkout, never a price typed into the app;
+ *   • RuStore → not built yet: "coming soon";
+ *   • Russia → phone-balance billing is not merged yet: "coming soon" (the
+ *     Play build does not mention other ways to pay).
+ * Coming back to the sheet re-reads the plan; once it is paid, it says so,
+ * where it was paid, and (store plans) offers "Manage subscription".
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Pressable, Linking, AppState, ActivityIndicator } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Localization from "expo-localization";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,10 +31,18 @@ import { useTranslation } from "react-i18next";
 
 import { colors, type as typo, space, radius } from "../src/utils/theme";
 import { getSessionState } from "../src/services/auth";
-import { FREEMIUM, isPaid, startStorePurchase } from "../src/services/freemium";
+import { getEntitlement, type EntitlementResponse } from "../src/services/api";
+import { FREEMIUM, applyEntitlement, isPaid } from "../src/services/freemium";
 import {
-  PRICES, WEB_CHECKOUT_URL, marketFor, priceDisplay, purchaseAction, webCheckoutAllowed,
+  loadStorePlans, restoreStorePurchases, startStorePurchase, storeBillingOn,
+} from "../src/services/store-billing";
+import {
+  PRICES, WEB_CHECKOUT_URL, marketFor, priceDisplay, purchaseAction, smsBenefitShown, webCheckoutAllowed,
 } from "../src/utils/freemium";
+import { manageUrlFor, storeErrorNoteKey, type PlanPeriod } from "../src/utils/store-billing";
+import { sourceKey } from "../src/utils/account-session";
+import { StorePlans, type StorePlansState } from "../src/components/paywall/StorePlans";
+import { PublishedPrice } from "../src/components/paywall/PublishedPrice";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -39,9 +53,16 @@ const BENEFITS: ReadonlyArray<{ icon: IconName; key: string }> = [
   { icon: "call-outline", key: "mobile.paywall.benefit_calls" },
   { icon: "phone-portrait-outline", key: "mobile.paywall.benefit_devices" },
 ];
+// The site and Play APKs cannot read SMS, so they never promise it.
+const SHOWN_BENEFITS = BENEFITS.filter(
+  (b) => b.key !== "mobile.paywall.benefit_sms" || smsBenefitShown(FREEMIUM.distribution),
+);
+
+/** The Google Play build: prices and purchases come from the store. */
+const PLAY = FREEMIUM.distribution === "play";
 
 /** A note under the button after an attempt: what happened, in words. */
-type Note = null | "store_soon" | "restore_none" | "restore_failed" | "web_opened";
+type Note = null | "store_soon" | "restore_none" | "restore_failed" | "web_opened" | "processing" | "restored";
 
 // Literal keys, so scripts/check-mobile-i18n.py can see every one.
 const NOTE_KEYS: Record<Exclude<Note, null>, string> = {
@@ -49,20 +70,40 @@ const NOTE_KEYS: Record<Exclude<Note, null>, string> = {
   restore_none: "mobile.paywall.note_restore_none",
   restore_failed: "mobile.paywall.note_restore_failed",
   web_opened: "mobile.paywall.note_web_opened",
+  processing: "mobile.paywall.note_processing",
+  restored: "mobile.paywall.note_restored",
 };
+
+interface Account {
+  signedIn: boolean;
+  paid: boolean;
+  ent: EntitlementResponse | null;
+}
 
 export default function PaywallScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
-  const [paid, setPaid] = useState(false);
+  const params = useLocalSearchParams<{ from?: string }>();
+  // One state for all three, set at once: the purchase that continues after
+  // sign-in must never see "signed in" before it knows whether it is paid.
+  const [acct, setAcct] = useState<Account | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<Note>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [plans, setPlans] = useState<StorePlansState>({ kind: "loading" });
+  const [selected, setSelected] = useState<PlanPeriod>("month");
+  /** Sent to sign in from the button: buy when back. */
+  const continueAfterSignIn = useRef(false);
 
+  const storeOn = PLAY && storeBillingOn();
   const market = marketFor(i18n.language, Localization.getLocales()[0]?.regionCode);
   const price = priceDisplay(market, FREEMIUM.distribution);
   const devices = PRICES[market].devices;
+  const signedIn = acct?.signedIn === true;
+  const paid = acct?.paid === true;
+  const action = purchaseAction({ signedIn, market, distribution: FREEMIUM.distribution });
+  const showStorePlans = PLAY && storeOn && action !== "soon";
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -70,34 +111,95 @@ export default function PaywallScreen() {
   }, [router]);
 
   /** Who is here and whether the plan is paid now — after sign-in, a checkout, a restore. */
-  const reload = useCallback(async (force: boolean) => {
+  const reload = useCallback(async (): Promise<Account> => {
     const st = await getSessionState();
-    const inNow = st.kind !== "none";
-    setSignedIn(inNow);
-    if (!inNow) return false;
-    const nowPaid = await isPaid(force);
-    setPaid(nowPaid);
-    return nowPaid;
+    if (st.kind === "none") {
+      const next = { signedIn: false, paid: false, ent: null };
+      setAcct(next);
+      return next;
+    }
+    const { data } = await getEntitlement();
+    const next = data
+      ? { signedIn: true, paid: await applyEntitlement(data), ent: data }
+      : { signedIn: true, paid: await isPaid(false), ent: null };
+    setAcct(next);
+    return next;
+  }, []);
+
+  const loadPlans = useCallback(async () => {
+    setPlans({ kind: "loading" });
+    const r = await loadStorePlans();
+    setPlans(r);
+    if (r.kind === "ok" && !r.plans.some((p) => p.period === "month")) setSelected(r.plans[0].period);
   }, []);
 
   // Back from the sign-in screen: the button becomes the purchase.
   useFocusEffect(useCallback(() => {
-    void reload(true);
+    void reload();
   }, [reload]));
 
-  // Back from the browser's checkout.
+  // Back from the browser's checkout or Google Play.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
-      if (next === "active") void reload(true);
+      if (next === "active") void reload();
     });
     return () => sub.remove();
   }, [reload]);
 
-  const action = purchaseAction({ signedIn: signedIn === true, market, distribution: FREEMIUM.distribution });
+  useEffect(() => {
+    if (showStorePlans) void loadPlans();
+  }, [showStorePlans, loadPlans]);
+
+  function showStoreError(kind: Parameters<typeof storeErrorNoteKey>[0]): void {
+    setErrorKey(storeErrorNoteKey(kind));
+  }
+
+  async function buyFromStore(): Promise<void> {
+    if (!storeOn) {
+      setNote("store_soon");
+      return;
+    }
+    const plan = plans.kind === "ok" ? plans.plans.find((p) => p.period === selected) ?? plans.plans[0] : null;
+    if (!plan) {
+      void loadPlans();
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await startStorePurchase(plan);
+      switch (r.kind) {
+        case "purchased":
+          await reload();
+          break;
+        case "processing":
+          setNote("processing");
+          break;
+        case "pending":
+          setErrorKey("mobile.paywall.note_pending");
+          break;
+        case "signed_out":
+          continueAfterSignIn.current = true;
+          router.push("/auth");
+          break;
+        case "unavailable":
+          setNote("store_soon");
+          break;
+        case "error":
+          showStoreError(r.error);
+          break;
+        case "cancelled":
+          break;
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function buy(): Promise<void> {
     setNote(null);
+    setErrorKey(null);
     if (action === "sign_in") {
+      continueAfterSignIn.current = true;
       router.push("/auth");
       return;
     }
@@ -108,28 +210,48 @@ export default function PaywallScreen() {
       setNote("web_opened");
       return;
     }
-    if (action === "store") {
-      setBusy(true);
-      try {
-        const r = await startStorePurchase();
-        if (r.kind === "purchased") await reload(true);
-        else if (r.kind === "unavailable") setNote("store_soon");
-      } finally {
-        setBusy(false);
-      }
-    }
+    if (action === "store") await buyFromStore();
   }
+
+  // Signed in on the way here from the button: carry on with the purchase —
+  // unless the account turned out to be paid already (then the sheet says so).
+  // Google Play still shows its own confirmation sheet before charging.
+  useEffect(() => {
+    if (!continueAfterSignIn.current || !acct?.signedIn) return;
+    if (acct.paid || action === "soon") {
+      continueAfterSignIn.current = false;
+      return;
+    }
+    if (action === "store" && storeOn && plans.kind === "loading") return; // wait for prices
+    continueAfterSignIn.current = false;
+    if (action === "store" && storeOn && plans.kind !== "ok") return;
+    void buy();
+    // Deliberately keyed on the state it waits for only (buy reads the rest).
+  }, [acct, plans, action, storeOn]);
 
   async function restore(): Promise<void> {
     setNote(null);
+    setErrorKey(null);
     if (!signedIn) {
       router.push("/auth");
       return;
     }
     setBusy(true);
     try {
-      const nowPaid = await reload(true);
-      if (!nowPaid) setNote("restore_none");
+      if (storeOn) {
+        const r = await restoreStorePurchases();
+        if (r.kind === "restored") {
+          await reload();
+          setNote("restored");
+        } else if (r.kind === "processing") setNote("processing");
+        else if (r.kind === "none") setNote("restore_none");
+        else if (r.kind === "signed_out") router.push("/auth");
+        else if (r.kind === "error") showStoreError(r.error);
+        else setNote("restore_failed");
+        return;
+      }
+      const now = await reload();
+      if (!now.paid) setNote("restore_none");
     } catch {
       setNote("restore_failed");
     } finally {
@@ -137,12 +259,25 @@ export default function PaywallScreen() {
     }
   }
 
+  const soonCta = PLAY ? "mobile.paywall.cta_soon_play" : "mobile.paywall.cta_soon_ru";
+  const soonFine = PLAY ? "mobile.paywall.fine_soon_play" : "mobile.paywall.fine_soon";
   const ctaKey =
     action === "sign_in" ? "mobile.paywall.cta_sign_in"
     : action === "web_checkout" ? "mobile.paywall.cta_web"
     : action === "store" ? "mobile.paywall.cta_store"
-    : "mobile.paywall.cta_soon_ru";
-  const ctaDisabled = action === "soon" || busy || signedIn === null;
+    : soonCta;
+  const storeNotReady = action === "store" && storeOn && plans.kind !== "ok";
+  // The Play build made without a RevenueCat key: say so up front, no dead button.
+  const playOff = PLAY && !storeOn && action === "store";
+  const ctaDisabled = action === "soon" || busy || acct === null || storeNotReady || playOff;
+  const fineKey =
+    action === "soon" ? soonFine
+    : playOff ? "mobile.paywall.note_store_soon"
+    : PLAY ? "mobile.paywall.fine_store"
+    : "mobile.paywall.fine_cancel";
+  const manageUrl = manageUrlFor(acct?.ent, FREEMIUM.distribution);
+  const paidSource = sourceKey(acct?.ent?.source);
+  const leadKey = params.from === "upgrade" ? "mobile.paywall.lead_upgrade" : "mobile.paywall.lead";
 
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
@@ -163,37 +298,26 @@ export default function PaywallScreen() {
           <Ionicons name="shield-checkmark" size={36} color={colors.green} />
         </View>
         <Text style={s.title} accessibilityRole="header">{t("mobile.paywall.title")}</Text>
-        <Text style={s.lead}>{t("mobile.paywall.lead")}</Text>
+        <Text style={s.lead}>{t(leadKey, { n: devices })}</Text>
 
         {paid ? (
           <View style={s.paidCard} accessibilityLiveRegion="polite">
             <Ionicons name="checkmark-circle" size={24} color={colors.green} />
-            <Text style={s.paidText}>{t("mobile.paywall.paid_done")}</Text>
-          </View>
-        ) : (
-          <View
-            style={s.priceBlock}
-            accessible
-            accessibilityLabel={[
-              t(price.period === "year" ? "mobile.paywall.per_year" : "mobile.paywall.per_month", { price: price.price }),
-              t("mobile.paywall.devices_note", { n: devices }),
-            ].join(". ")}
-          >
-            <View style={s.priceRow}>
-              <Text style={s.price}>{price.price}</Text>
-              <Text style={s.period}>{t(price.period === "year" ? "mobile.paywall.period_year" : "mobile.paywall.period_month")}</Text>
+            <View style={s.paidTextBox}>
+              <Text style={s.paidText}>{t("mobile.paywall.paid_done")}</Text>
+              {paidSource && <Text style={s.paidSource}>{t(paidSource)}</Text>}
             </View>
-            <Text style={s.priceSub}>{t("mobile.paywall.devices_note", { n: devices })}</Text>
-            {price.alt && (
-              <Text style={s.priceAlt}>
-                {t(price.alt.period === "year" ? "mobile.paywall.alt_year" : "mobile.paywall.alt_month", { price: price.alt.price })}
-              </Text>
-            )}
           </View>
+        ) : showStorePlans ? (
+          <StorePlans state={plans} selected={selected} onSelect={setSelected} onRetry={() => void loadPlans()} devices={devices} />
+        ) : PLAY ? null : (
+          // The site APK and RuStore: the plan's published price. The Play
+          // build shows only what Google Play itself quotes (above).
+          <PublishedPrice price={price} devices={devices} />
         )}
 
         <View style={s.benefits}>
-          {BENEFITS.map((b) => (
+          {SHOWN_BENEFITS.map((b) => (
             <View key={b.key} style={s.benefitRow}>
               <Ionicons name={b.icon} size={22} color={colors.green} />
               <Text style={s.benefitText}>{t(b.key, { n: devices })}</Text>
@@ -202,9 +326,21 @@ export default function PaywallScreen() {
         </View>
 
         {paid ? (
-          <Pressable style={({ pressed }) => [s.cta, pressed && s.ctaPressed]} onPress={close} accessibilityRole="button">
-            <Text style={s.ctaLabel}>{t("mobile.paywall.done")}</Text>
-          </Pressable>
+          <>
+            <Pressable style={({ pressed }) => [s.cta, pressed && s.ctaPressed]} onPress={close} accessibilityRole="button">
+              <Text style={s.ctaLabel}>{t("mobile.paywall.done")}</Text>
+            </Pressable>
+            {note && <Text style={s.fine} accessibilityLiveRegion="polite">{t(NOTE_KEYS[note])}</Text>}
+            {manageUrl && (
+              <Pressable
+                onPress={() => void Linking.openURL(manageUrl).catch(() => undefined)}
+                style={s.restore}
+                accessibilityRole="link"
+              >
+                <Text style={s.restoreLabel}>{t("mobile.paywall.manage")}</Text>
+              </Pressable>
+            )}
+          </>
         ) : (
           <>
             <Pressable
@@ -219,7 +355,7 @@ export default function PaywallScreen() {
             </Pressable>
 
             <Text style={s.fine} accessibilityLiveRegion="polite">
-              {note ? t(NOTE_KEYS[note]) : t(action === "soon" ? "mobile.paywall.fine_soon" : "mobile.paywall.fine_cancel")}
+              {errorKey ? t(errorKey) : note ? t(NOTE_KEYS[note]) : t(fineKey)}
             </Text>
 
             <Pressable onPress={() => void restore()} style={s.restore} disabled={busy} accessibilityRole="button">
@@ -253,19 +389,14 @@ const s = StyleSheet.create({
   title: { ...typo.title1, color: colors.textPrimary, textAlign: "center", marginTop: space.lg },
   lead: { fontSize: 17, lineHeight: 24, color: colors.textSecondary, textAlign: "center", marginTop: space.sm },
 
-  priceBlock: { alignItems: "center", marginTop: space.xxl },
-  priceRow: { flexDirection: "row", alignItems: "baseline", gap: space.xs },
-  price: { fontSize: 48, lineHeight: 56, fontWeight: "800", color: colors.textPrimary },
-  period: { fontSize: 20, lineHeight: 26, fontWeight: "600", color: colors.textSecondary },
-  priceSub: { fontSize: 17, lineHeight: 24, color: colors.textPrimary, marginTop: space.xs, textAlign: "center" },
-  priceAlt: { fontSize: 15, lineHeight: 21, color: colors.textSecondary, marginTop: space.xs, textAlign: "center" },
-
   paidCard: {
     flexDirection: "row", alignItems: "center", gap: space.md, marginTop: space.xxl,
     backgroundColor: colors.greenWash, borderWidth: 1, borderColor: colors.greenStroke,
     borderRadius: radius.card, padding: space.lg,
   },
-  paidText: { fontSize: 17, lineHeight: 24, color: colors.textPrimary, flex: 1 },
+  paidTextBox: { flex: 1 },
+  paidText: { fontSize: 17, lineHeight: 24, color: colors.textPrimary },
+  paidSource: { fontSize: 15, lineHeight: 21, color: colors.textSecondary, marginTop: 2 },
 
   benefits: {
     marginTop: space.xxl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,

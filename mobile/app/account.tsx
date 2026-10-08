@@ -1,6 +1,6 @@
 import { useCallback, useState, type ReactNode } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Linking,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,7 +10,9 @@ import { colors, type as typo, space, radius, sectionHeader } from "../src/utils
 import { getSessionState } from "../src/services/auth";
 import { getEntitlement, unlinkDevice, type AccountDevice, type EntitlementResponse } from "../src/services/api";
 import { linkThisDevice, signOutUnlinkedDevice } from "../src/services/account";
-import { rememberEntitlement } from "../src/services/freemium";
+import { FREEMIUM, rememberEntitlement } from "../src/services/freemium";
+import { restoreStorePurchases, storeBillingOn } from "../src/services/store-billing";
+import { manageUrlFor, storeErrorNoteKey } from "../src/utils/store-billing";
 import { confirmDeleteAccount, signOutEverywhereLocal } from "../src/services/account-actions";
 import { accountFailure, planKey, platformKey, sourceKey, statusKey } from "../src/utils/account-session";
 import { paidPlansVisible } from "../src/config/market";
@@ -45,6 +47,7 @@ export default function AccountScreen() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [limitMode, setLimitMode] = useState(params.limit === "1");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   const formatDate = useCallback(
     (iso?: string | null) => {
@@ -125,6 +128,26 @@ export default function AccountScreen() {
     );
   }
 
+  /** "Restore purchases" (Google Play build): this Google account's subscription → this account. */
+  async function restorePurchases(): Promise<void> {
+    setRestoring(true);
+    try {
+      const r = await restoreStorePurchases();
+      if (r.kind === "restored") await refresh();
+      const key =
+        r.kind === "restored" ? "mobile.paywall.note_restored"
+        : r.kind === "processing" ? "mobile.paywall.note_processing"
+        : r.kind === "none" ? "mobile.paywall.note_restore_none"
+        : r.kind === "error" ? storeErrorNoteKey(r.error)
+        : "mobile.paywall.note_restore_failed";
+      if (key) Alert.alert(t("mobile.account.restore"), t(key));
+    } finally {
+      setRestoring(false);
+    }
+  }
+
+  const goPay = () => router.push({ pathname: "/paywall", params: { from: "upgrade" } });
+
   async function signOutHere(): Promise<void> {
     await signOutEverywhereLocal();
     leave();
@@ -158,6 +181,9 @@ export default function AccountScreen() {
   const source = sourceKey(ent.source);
   const status = statusKey(ent.status, Boolean(ent.period_end));
   const showUpgrade = paidPlansVisible(i18n.language);
+  // A store build opens only the store's own page (manageUrlFor).
+  const manageUrl = manageUrlFor(ent, FREEMIUM.distribution);
+  const canRestore = storeBillingOn();
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -167,10 +193,11 @@ export default function AccountScreen() {
           <Text style={s.bannerBody}>{t("mobile.account.limit_body", { limit: ent.device_limit })}</Text>
           <View style={s.bannerActions}>
             {/* Free: a plan adds devices. TODO(billing): paid plans can't buy
-                an extra device in the app yet (Play Billing / RevenueCat, §2) —
-                until then a paid account can only unlink one. */}
+                an extra device in the app yet (cleanway.extra_device is known to
+                the server, not sold by the paywall) — until then a paid account
+                can only unlink one. */}
             {showUpgrade && !paid && (
-              <TouchableOpacity style={s.button} accessibilityRole="button" onPress={() => router.push("/upgrade")}>
+              <TouchableOpacity style={s.button} accessibilityRole="button" onPress={goPay}>
                 <Text style={s.buttonText}>{t("mobile.account.add_device")}</Text>
               </TouchableOpacity>
             )}
@@ -196,8 +223,25 @@ export default function AccountScreen() {
             paid ? null : t("mobile.account.free_desc"),
           ].filter(Boolean).join(" · ")}
           right={!paid && showUpgrade ? <Text style={s.pill}>{t("mobile.settings.upgrade")}</Text> : undefined}
-          onPress={!paid && showUpgrade ? () => router.push("/upgrade") : undefined}
+          onPress={!paid && showUpgrade ? goPay : undefined}
         />
+        {manageUrl && (
+          <Row
+            icon="open-outline"
+            label={t("mobile.account.manage")}
+            desc={t("mobile.account.manage_desc")}
+            onPress={() => void Linking.openURL(manageUrl).catch(() => undefined)}
+          />
+        )}
+        {canRestore && (
+          <Row
+            icon="refresh-outline"
+            label={t("mobile.account.restore")}
+            desc={t("mobile.account.restore_desc")}
+            right={restoring ? <ActivityIndicator color={colors.textSecondary} /> : undefined}
+            onPress={restoring ? undefined : () => void restorePurchases()}
+          />
+        )}
       </Section>
 
       <Section
@@ -244,7 +288,7 @@ export default function AccountScreen() {
           tint={colors.danger}
           label={t("mobile.account.delete")}
           desc={t("mobile.account.delete_desc")}
-          onPress={() => confirmDeleteAccount(t, leave)}
+          onPress={() => confirmDeleteAccount(t, leave, ent)}
         />
       </Section>
     </ScrollView>

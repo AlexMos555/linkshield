@@ -3735,7 +3735,15 @@
       "delete_failed_body": "We couldn't reach the server, so nothing was deleted. Please try again in a moment.",
       "not_signed_in": "You're not signed in.",
       "load_failed": "Couldn't load your account. Check your connection and try again.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "manage": "Manage subscription",
+      "manage_desc": "Change or cancel it where it was bought",
+      "restore": "Restore purchases",
+      "restore_desc": "Subscribed in Google Play with another account or phone? Bring it here",
+      "delete_store_title": "Cancel your {{store}} subscription first",
+      "delete_store_body": "Deleting your account does not stop your {{store}} subscription — only you can cancel it, in {{store}}. Cancel it there so you aren't charged again, then delete the account.",
+      "delete_store_open": "Open {{store}}",
+      "delete_store_continue": "Delete anyway"
     },
     "paywall": {
       "close": "Close",
@@ -3778,7 +3786,29 @@
       "message_listed_sub": "A link in this message is on our list of scam sites.",
       "message_locked_title_links": "No links from our scam list",
       "message_locked_title_none": "Message not analysed",
-      "message_locked_sub": "The text itself was not read: today's free detailed checks are used up."
+      "message_locked_sub": "The text itself was not read: today's free detailed checks are used up.",
+      "lead_upgrade": "Detailed checks of links and messages with no daily limit, on up to {{n}} devices. Sites on our scam list are blocked with or without a subscription.",
+      "plan_month": "Monthly",
+      "plan_year": "Yearly",
+      "save_percent": "Save {{n}}%",
+      "prices_loading": "Getting prices from Google Play…",
+      "prices_failed": "Couldn't get prices from Google Play. Check your connection and try again.",
+      "prices_empty": "This subscription isn't available in Google Play in your country yet.",
+      "retry": "Try again",
+      "fine_store": "Billed by Google Play. Renews automatically until you cancel — cancel anytime in Google Play.",
+      "cta_soon_play": "Not available in your country yet",
+      "fine_soon_play": "Subscriptions aren't available here yet. The scam list keeps blocking, and free checks renew every day.",
+      "note_pending": "Your payment is pending. The plan turns on as soon as Google Play confirms it.",
+      "note_processing": "Payment received. The plan turns on within a minute — if it doesn't, tap Restore.",
+      "note_restored": "Purchases restored — your plan is active.",
+      "err_already_owned": "This Google account already has the subscription. Tap Restore to move it to this account.",
+      "err_network": "No connection to Google Play. Check the internet and try again.",
+      "err_not_allowed": "Purchases are turned off on this phone or Google account (for example, by parental controls).",
+      "err_unavailable": "This subscription can't be bought here right now. Please try again later.",
+      "err_store": "Google Play couldn't complete the purchase. Please try again.",
+      "err_busy": "Another purchase is still in progress. Wait a moment and try again.",
+      "err_unknown": "Something went wrong with the purchase. Please try again.",
+      "manage": "Manage subscription"
     }
   }
 }

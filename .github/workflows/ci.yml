@@ -238,6 +238,16 @@ jobs:
         # and a store build never linking out to the web checkout.
         run: node --experimental-strip-types mobile/scripts/test-freemium.mjs
 
+      - name: Google Play billing (RevenueCat) table test
+        # Only the Play build with a public goog_ key pays in the app (the
+        # site APK and RuStore never load or link the SDK); the plan sold is
+        # cleanway.devices monthly/yearly at the store's own price, never the
+        # "+1 device" add-on; store errors (cancel, pending, already owned,
+        # offline) read as sentences in all 10 locales; a store build opens
+        # only a store's subscriptions page; deleting the account sends a
+        # Play subscriber to cancel in Play first.
+        run: node --experimental-strip-types mobile/scripts/test-store-billing.mjs
+
       - name: Remote config (SMS text model kill switch) table test
         # The server can turn the on-device SMS text model off without an APK.
         # An answer without a valid block keeps the stored switches (an outage
