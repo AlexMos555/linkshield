@@ -13,4 +13,4 @@ class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   }
 }
 
-export default registerWebModule(CleanwayVpnModule);
+export default registerWebModule(CleanwayVpnModule, 'CleanwayVpn');
