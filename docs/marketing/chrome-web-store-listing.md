@@ -1,5 +1,11 @@
 # Chrome Web Store listing copy
 
+> **RETIRED (2026-10-08) — do not paste anything from this file.** It predates
+> the code audit and claims things the extension does not do ("your browsing data
+> never leaves your device", on-device blocklists, source counts). The listing
+> source is `extension/STORE_LISTING.md`; the review answers are
+> `docs/CWS_SUBMISSION.md`.
+
 > Re-verify numbers against `data/model_meta.json` + latest `docs/benchmarks/` before submitting. Google can reject for unverifiable claims.
 
 ---
@@ -162,7 +168,7 @@ Suggested image size: 1280×800. Show real UI, no mockups.
 ## Submission checklist
 
 - [ ] $5 dev account purchased
-- [ ] ZIP is `dist/store-artifacts/cleanway-0.1.1-chrome.zip`, rebuilt clean via `bash scripts/build-extensions.sh && bash scripts/build-store-artifacts.sh`
+- [ ] ZIP is `dist/store-artifacts/cleanway-0.2.0-chrome.zip`, rebuilt clean via `bash scripts/build-extensions.sh && bash scripts/build-store-artifacts.sh`
 - [ ] Privacy policy URL works: https://cleanway.ai/privacy-policy
 - [ ] Permissions justifications match what manifest.json actually requests
 - [ ] 5 screenshots uploaded at 1280×800

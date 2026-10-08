@@ -43,7 +43,7 @@
 ### Как
 Всё готово в [`docs/CWS_SUBMISSION.md`](CWS_SUBMISSION.md) — оттуда copy-paste.
 1. Создать developer-аккаунт: https://chrome.google.com/webstore/devconsole (**$5** разово).
-2. Загрузить `dist/store-artifacts/cleanway-0.1.1-chrome.zip` (пересобран, проверен).
+2. Загрузить `dist/store-artifacts/cleanway-0.2.0-chrome.zip` (пересобран, проверен).
 3. Вставить листинг (name / summary / description) — §1 документа.
 4. Вставить **single-purpose** (§2) + **обоснования 5 permissions** (§3).
    *Без обоснований — автоматический reject.*
