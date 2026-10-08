@@ -127,17 +127,18 @@ const verdict = (domain, level, score, codes = []) => ({
 });
 
 /** A mounted link-check screen; share() hands the SAME screen a new site, as the router does. */
-async function openScreen(domain, record = true) {
+async function openScreen(domain, record = true, deep = true) {
   const frames = [];
   let retry = noop;
+  let current = { domain, record, deep };
   function Screen(props) {
-    const c = useDomainCheck(props.domain, props.record);
+    const c = useDomainCheck(props.domain, props.record, props.deep);
     retry = c.retry;
     frames.push({ domain: props.domain, listed: c.listed, pending: c.pending, result: c.result?.domain ?? null });
     return null;
   }
   const rootNode = createRoot(container());
-  await act(async () => rootNode.render(React.createElement(Screen, { domain, record })));
+  await act(async () => rootNode.render(React.createElement(Screen, current)));
   await settle();
   return {
     frames,
@@ -147,9 +148,16 @@ async function openScreen(domain, record = true) {
     },
     share: async (next) => {
       const firstFrame = frames.length;
-      await act(async () => rootNode.render(React.createElement(Screen, { domain: next, record })));
+      current = { ...current, domain: next };
+      await act(async () => rootNode.render(React.createElement(Screen, current)));
       await settle();
       return frames[firstFrame];
+    },
+    /** The free plan's daily-limit decision arrives (useDetailGate). */
+    decide: async (nextDeep) => {
+      current = { ...current, deep: nextDeep };
+      await act(async () => rootNode.render(React.createElement(Screen, current)));
+      await settle();
     },
     close: async () => act(async () => rootNode.unmount()),
   };
@@ -281,6 +289,48 @@ const CASES = [
     {
       history: [],
       last: { domain: "scam-pochta.ru", listed: "scam-pochta.ru", pending: false, result: "scam-pochta.ru" },
+    },
+  ],
+  [
+    "daily limit spent (deep=false): no server check, and a listed site is still dangerous, buzzes and reaches History",
+    async () => {
+      const s = await openScreen("scam-pochta.ru", true, false);
+      return { asked: pendingChecks.map((c) => c.domain), last: s.frames.at(-1), history: history(), haptics };
+    },
+    {
+      asked: [],
+      last: { domain: "scam-pochta.ru", listed: "scam-pochta.ru", pending: false, result: null },
+      history: [["scam-pochta.ru", "dangerous", 0, "list"]],
+      haptics: ["error"],
+    },
+  ],
+  [
+    "daily limit spent, site not listed: no server check, nothing saved, not left \"checking\"",
+    async () => {
+      const s = await openScreen("a-shop.ru", true, false);
+      return { asked: pendingChecks.map((c) => c.domain), last: s.frames.at(-1), history: history(), haptics };
+    },
+    {
+      asked: [],
+      last: { domain: "a-shop.ru", listed: null, pending: false, result: null },
+      history: [],
+      haptics: [],
+    },
+  ],
+  [
+    "while the limit is being decided (deep=null) the server waits; a yes then runs the check",
+    async () => {
+      const s = await openScreen("a-shop.ru", true, null);
+      const waiting = { asked: pendingChecks.map((c) => c.domain), last: s.frames.at(-1) };
+      await s.decide(true);
+      const asked = pendingChecks.map((c) => c.domain);
+      await server("a-shop.ru", verdict("a-shop.ru", "caution", 40));
+      return { waiting, asked, history: history() };
+    },
+    {
+      waiting: { asked: [], last: { domain: "a-shop.ru", listed: null, pending: true, result: null } },
+      asked: ["a-shop.ru"],
+      history: [["a-shop.ru", "caution", 40, "server"]],
     },
   ],
 ];
