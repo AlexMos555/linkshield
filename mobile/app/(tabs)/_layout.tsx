@@ -1,5 +1,7 @@
+import { Platform } from "react-native";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { colors } from "../../src/utils/theme";
 
@@ -17,6 +19,12 @@ function icon(outline: keyof typeof Ionicons.glyphMap, filled: keyof typeof Ioni
 
 export default function TabLayout() {
   const { t } = useTranslation();
+  // The bar's height INCLUDES the bottom inset (bottom-tabs pads by it). The
+  // fixed 84 fits an iPhone (home indicator inside it). Since targetSdk 35+ the
+  // app is drawn edge-to-edge on Android too, and the 3-button navigation bar
+  // (48 dp) then covered the tab labels — so on Android the bar is its content
+  // height plus the inset the phone reports.
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
@@ -28,7 +36,7 @@ export default function TabLayout() {
           backgroundColor: colors.bg,
           borderTopWidth: 1,
           borderTopColor: colors.hairline,
-          height: 84,
+          height: Platform.OS === "android" ? 62 + insets.bottom : 84,
           paddingTop: 6,
         },
         tabBarActiveTintColor: colors.green,

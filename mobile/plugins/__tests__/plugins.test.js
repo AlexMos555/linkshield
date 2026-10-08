@@ -14,8 +14,10 @@ const assert = require("node:assert");
 const { _patch: patchSigning } = require("../withReleaseSigning.js");
 const { _patch: patchAbi, DEFAULT_ABIS } = require("../withAbiFilters.js");
 const { _patch: patchSeed } = require("../withSeedGuard.js");
+const { _patch: patchDarkBars } = require("../withDarkSystemBars.js");
 
-// A trimmed but structurally faithful Expo SDK 52 / RN 0.76 app/build.gradle.
+// A trimmed but structurally faithful app/build.gradle (Expo SDK 52 / RN 0.76;
+// the anchors are unchanged in the SDK 54 / RN 0.81 prebuild output).
 const TEMPLATE = `
 apply plugin: "com.android.application"
 def enableProguardInReleaseBuilds = false
@@ -149,6 +151,44 @@ console.log("withSeedGuard:");
   });
 }
 
+console.log("withDarkSystemBars:");
+{
+  // The Expo SDK 54 prebuild MainActivity.kt onCreate, verbatim.
+  const MAIN_ACTIVITY = `package ai.cleanway.app
+
+import android.os.Build
+import android.os.Bundle
+
+import com.facebook.react.ReactActivity
+
+class MainActivity : ReactActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    // Set the theme to AppTheme BEFORE onCreate to support
+    // coloring the background, status bar, and navigation bar.
+    // This is required for expo-splash-screen.
+    setTheme(R.style.AppTheme);
+    super.onCreate(null)
+  }
+
+  override fun getMainComponentName(): String = "main"
+}
+`;
+  const out = patchDarkBars(MAIN_ACTIVITY);
+  check("sets night mode in MainActivity.onCreate, before super.onCreate", () => {
+    const night = out.indexOf("AppCompatDelegate.setDefaultNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)");
+    assert.ok(night > 0, "night-mode line present");
+    assert.ok(night > out.indexOf("setTheme(R.style.AppTheme)"));
+    assert.ok(night < out.indexOf("super.onCreate(null)"));
+  });
+  check("is idempotent across repeated prebuilds", () => {
+    assert.strictEqual(patchDarkBars(out), out);
+  });
+  check("leaves an unrecognised file alone", () => {
+    const odd = "class MainActivity : ReactActivity()\n";
+    assert.strictEqual(patchDarkBars(odd), odd);
+  });
+}
+
 // Guard the RuStore-facing app.json config: the four Expo-template
 // permissions the app never uses must stay blocked, and expo-camera must
 // not pull RECORD_AUDIO back in. (RuStore asks to justify each sensitive
@@ -166,6 +206,16 @@ console.log("withSeedGuard:");
       "android.permission.WRITE_EXTERNAL_STORAGE",
     ]) assert.ok(blocked.includes(perm), `${perm} must be in android.blockedPermissions`);
     assert.ok(!blocked.includes("android.permission.CAMERA"), "CAMERA is used by the QR scanner and must stay");
+  });
+  // Google Play target API 36 (Expo SDK 54): RN still relies on onBackPressed,
+  // which Android 16 stops calling for targetSdk 36 apps unless predictive back
+  // is opted out; and the legacy architecture is what reanimated 3 needs.
+  check("app.json keeps predictive back off and the legacy architecture", () => {
+    assert.strictEqual(appJson.android.predictiveBackGestureEnabled, false);
+    assert.strictEqual(appJson.newArchEnabled, false);
+  });
+  check("app.json registers the dark-system-bars plugin", () => {
+    assert.ok((appJson.plugins || []).includes("./plugins/withDarkSystemBars"));
   });
   check("expo-camera plugin disables Android audio recording", () => {
     const cam = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-camera");

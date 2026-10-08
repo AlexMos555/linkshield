@@ -1,6 +1,8 @@
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { Stack, useRouter, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -121,6 +123,13 @@ function ShareIntentRouter() {
 
 export default function RootLayout() {
   const { t } = useTranslation();
+  // Android 15+ (targetSdk 35+) draws the app edge-to-edge, under the system
+  // navigation bar. Stack headers already pad for the status bar; this keeps
+  // the end of every stack screen above the navigation bar, where it sat on
+  // targetSdk 34. The tab screens and the paywall pad for it themselves; iOS
+  // keeps its layout.
+  const insets = useSafeAreaInsets();
+  const bottomPad = Platform.OS === "android" ? insets.bottom : 0;
   // Apply the saved language choice (Settings → Language) over the device
   // locale, once, at start.
   useEffect(() => { void restoreSavedLocale(); }, []);
@@ -181,14 +190,14 @@ export default function RootLayout() {
           headerStyle: { backgroundColor: "#0f172a" },
           headerTintColor: "#f8fafc",
           headerTitleStyle: { fontWeight: "700" },
-          contentStyle: { backgroundColor: "#0f172a" },
+          contentStyle: { backgroundColor: "#0f172a", paddingBottom: bottomPad },
         }}
       >
         {/* Titles go through i18n. They were hardcoded English literals, so the
             navigation bar stayed in English in all 10 locales — on a product
             whose whole point is being readable by someone's grandmother in her
             own language. */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: "#0f172a" } }} />
         <Stack.Screen name="check" options={{ title: t("mobile.check.title") }} />
         <Stack.Screen name="result" options={{ title: t("mobile.nav.result") }} />
         <Stack.Screen name="breach" options={{ title: t("mobile.breach.title") }} />
@@ -200,7 +209,7 @@ export default function RootLayout() {
         <Stack.Screen name="account" options={{ title: t("mobile.account.title") }} />
         <Stack.Screen name="upgrade" options={{ title: t("mobile.nav.upgrade") }} />
         {/* The free plan's paywall: a sheet over the check that hit the daily limit, with its own close button. */}
-        <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal" }} />
+        <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal", contentStyle: { backgroundColor: "#0f172a" } }} />
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
         {/* Without an entry the header renders the raw route slug "family". */}
         <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />
