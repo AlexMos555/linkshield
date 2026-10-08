@@ -8,6 +8,8 @@ import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { getRecentChecks, MESSAGE_CHECK_SOURCE } from "../src/services/database";
 import { toCheckableHost } from "../src/utils/host";
+import { ChecksLeftHint } from "../src/components/paywall/LockedDetails";
+import { useAccess } from "../src/hooks/useFreemium";
 
 export default function CheckScreen() {
   const router = useRouter();
@@ -18,6 +20,8 @@ export default function CheckScreen() {
   const [url, setUrl] = useState("");
   const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
+  // "N free checks left today" — only on the free plan with the limit switched on.
+  const access = useAccess();
 
   // On focus, not on mount. This screen stays mounted while the user goes off
   // to /result and comes back, so a mount-only load meant the link they just
@@ -90,6 +94,7 @@ export default function CheckScreen() {
         <TouchableOpacity style={s.checkBtn} onPress={handleCheck} activeOpacity={0.85}>
           <Text style={s.checkBtnText}>{t("mobile.check.submit")}</Text>
         </TouchableOpacity>
+        <ChecksLeftHint access={access} />
       </View>
 
       <Text style={s.sectionTitle}>{t("mobile.check.try")}</Text>

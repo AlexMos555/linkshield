@@ -199,6 +199,8 @@ export default function RootLayout() {
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="account" options={{ title: t("mobile.account.title") }} />
         <Stack.Screen name="upgrade" options={{ title: t("mobile.nav.upgrade") }} />
+        {/* The free plan's paywall: a sheet over the check that hit the daily limit, with its own close button. */}
+        <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
         {/* Without an entry the header renders the raw route slug "family". */}
         <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />

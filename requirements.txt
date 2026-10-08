@@ -1,5 +1,5 @@
 fastapi==0.137.2
-uvicorn[standard]==0.32.0
+uvicorn[standard]==0.39.0
 httpx==0.28.1
 redis[hiredis]==5.2.0
 pydantic-settings==2.6.0
@@ -7,8 +7,8 @@ PyJWT==2.15.1
 python-multipart==0.0.31
 dnspython==2.8.0
 stripe==11.0.0
-sentry-sdk[fastapi]==2.19.0
-bcrypt==4.2.1
+sentry-sdk[fastapi]==2.59.0
+bcrypt==5.0.0
 
 # ── Operator-billed subscriptions (api/billing, docs/BILLING.md) ──
 # cryptography: Ed25519 device passes + AES-256-GCM for phone numbers at rest.

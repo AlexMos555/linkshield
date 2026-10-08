@@ -6,14 +6,28 @@ build is below the minimum supported version, prompts a required update. Values
 come from settings (env), so the founder bumps them at release time with no code
 deploy. Public, cacheable, tiny — no per-IP limit for the same CGNAT reason as
 the blocklist endpoint.
+
+The same answer carries `remote_config`: switches for the app's on-phone checks
+(today the SMS text model), also from env. Unlike `features` (UI switches), the
+app stores them on the device for the native message check and keeps the last
+ones when this call fails.
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Response
 
 from api.config import get_settings
+from api.services import own_sources
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["mobile"])
+
+
+def features() -> dict[str, bool]:
+    """Server-side switches the app reads on launch, so a feature can be
+    turned on for every phone without a release. `report_sites`: the result
+    screen's «Пожаловаться на сайт» button, which feeds the verification
+    queue (api/services/own_sources.py) — only while that queue is read."""
+    return {"report_sites": own_sources.enabled()}
 
 
 @router.get("/version")
@@ -27,4 +41,10 @@ async def mobile_version(response: Response) -> dict:
         "min_supported_version_name": s.mobile_min_supported_version_name or None,
         "apk_url": s.mobile_apk_url or None,
         "release_notes": s.mobile_release_notes or None,
+        "features": features(),
+        "remote_config": {
+            "sms_text_model_enabled": s.sms_text_model_enabled,
+            "sms_text_model_caution_threshold_override": s.sms_text_model_caution_threshold_override,
+            "sms_text_model_danger_threshold_override": s.sms_text_model_danger_threshold_override,
+        },
     }

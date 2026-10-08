@@ -1,0 +1,91 @@
+name: Refresh own sources (CT lookalikes + in-app reports)
+
+# Reads new Let's Encrypt certificates from the Certificate Transparency logs,
+# keeps the names that imitate a Russian brand (the scorer's own rules), and
+# verifies them and the in-app reports with evidence of our own before they
+# enter dangerous_domains:lookalike / :reports — which the blocklist refresh
+# then publishes through every false-positive gate. See
+# scripts/refresh_lookalikes.py and docs/runbooks/monitoring.md.
+#
+# OFF unless the repository variable LOOKALIKE_GENERATOR_ENABLED is set: the
+# scheduled run is skipped entirely. A manual dry run works either way and
+# writes to no store (no Redis, no production API) — its report is uploaded
+# as an artifact.
+#
+# Secret requirement: REDIS_URL_PRODUCTION (not used by a dry run).
+
+on:
+  schedule:
+    - cron: '41 * * * *'   # hourly at :41 (the budget is one hour of Let's Encrypt)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run the pipeline into a JSON report; write nothing'
+        type: boolean
+        default: true
+      hours:
+        description: 'Dry run: how many hours of CT entries to read'
+        type: string
+        default: '1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-lookalikes
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.LOOKALIKE_GENERATOR_ENABLED != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Dry run
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          HOURS: ${{ inputs.hours }}
+        run: |
+          python scripts/refresh_lookalikes.py --dry-run --hours "$HOURS" \
+            --max-tiles 100000 --max-verify 100000 \
+            --state-file lookalikes-state.json --report-json lookalikes-report.json
+
+      - name: Upload the dry-run report
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: lookalikes-dry-run
+          path: lookalikes-report.json
+          retention-days: 14
+
+      - name: Promote
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL_PRODUCTION }}
+          LOOKALIKE_GENERATOR_ENABLED: ${{ vars.LOOKALIKE_GENERATOR_ENABLED }}
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          set +e
+          python scripts/refresh_lookalikes.py
+          code=$?
+          # Exit codes: 0 done (or switched off); 2 no CT log readable;
+          # 3 another run holds the lock (overlap) — not a failure.
+          if [ "$code" = "3" ]; then
+            echo "::warning::Another lookalike run holds the lock. Skipping."
+            exit 0
+          fi
+          exit $code

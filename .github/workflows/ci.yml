@@ -37,10 +37,10 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         continue-on-error: true
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
           fail_ci_if_error: false
 
       - name: Run benchmark (if PhishTank data available)
@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Set up Node (for TS package tests)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
 
@@ -162,7 +162,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -229,6 +229,22 @@ jobs:
         # device_limit_reached offers "unlink one"; every plan / source /
         # platform the API sends has a label.
         run: node --experimental-strip-types mobile/scripts/test-account-session.mjs
+
+      - name: Free plan daily-limit table test
+        # EXPO_PUBLIC_FREEMIUM_ENABLED (off by default): 3 detailed checks a
+        # day reset at local midnight, 7 unlimited days after install, a paid
+        # account unlimited (7-day offline grace), the paywall opening by
+        # itself once a day, a listed link still "dangerous" after the limit,
+        # and a store build never linking out to the web checkout.
+        run: node --experimental-strip-types mobile/scripts/test-freemium.mjs
+
+      - name: Remote config (SMS text model kill switch) table test
+        # The server can turn the on-device SMS text model off without an APK.
+        # An answer without a valid block keeps the stored switches (an outage
+        # never flips one); the app asks on start, ~daily while open, never
+        # twice an hour; and the keys match RemoteConfig.kt and the API — the
+        # Kotlin side's own tests do not run in CI.
+        run: node --experimental-strip-types mobile/scripts/test-remote-config.mjs
 
       - name: Reason label table test
         # Every reason code the app maps has its label in all 10 locales, and
@@ -376,7 +392,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm

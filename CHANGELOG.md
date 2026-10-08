@@ -23,6 +23,30 @@
 ### Tests
 - 382 backend tests passing (was 373). Added 9 parameterized tests for `CheckoutRequest` URL validation.
 
+## [Android 1.0.4] - 2026-10-08
+
+Android app, versionCode 104.
+
+**Что нового**
+- **Проверка SMS стала умнее.** Кроме правил, текст сообщения теперь оценивает небольшая модель прямо на телефоне: она замечает мошеннические сообщения, даже если они написаны своими словами. Текст по-прежнему никуда не отправляется.
+- **Новые правила для SMS.** Приложение узнаёт мошеннические схемы, которые раньше пропускало, и общие приметы обмана: просят перевести деньги, назвать код, установить приложение, никому не говорить, перезвонить на личный номер.
+- **Ссылки без http://.** Адрес вроде `bonus-sber.online` в тексте сообщения тоже находится и проверяется.
+- **«Чтобы защита не выключалась».** На главном экране — шаги, которые не дают телефону усыплять защиту: разрешить работу в фоне и настройки вашего производителя (Samsung, Xiaomi, Huawei и другие). Если система всё же остановила защиту, приложение включает её снова.
+- **Аккаунт и устройства.** Новый экран «Аккаунт»: тариф и список устройств, любое можно отвязать. Вход больше не слетает.
+- **Удаление аккаунта** прямо в приложении; 30 дней, чтобы передумать.
+- **Во время звонка.** Если во время разговора или в течение 30 минут после него вы пытаетесь отключить защиту или открыть опасный сайт, приложение сначала предупреждает: это мошенники, положите трубку. Без доступа к звонкам и номерам.
+
+**What's new**
+- **Smarter SMS check:** a small on-phone model reads the message text next to the rules and catches scams written in their own words. The text still never leaves the phone.
+- **New SMS rules:** scam schemes the rules used to miss, plus the generic signs — asking for money, a code, an app install, secrecy, a call back to a personal number.
+- **Links without http://** in a message (`bonus-sber.online`) are found and checked.
+- **Keep protection on:** home-screen steps so the phone does not put protection to sleep (background/battery and your phone maker's settings); protection is turned back on if the system stops it.
+- **Account and devices:** a new Account screen with your plan and devices, each can be unlinked; you stay signed in.
+- **Delete your account** from the app, with 30 days to change your mind.
+- **During a call:** trying to turn protection off or open a dangerous site while on the phone (or within 30 minutes after) first shows a "hang up, it's a scam" screen. No call permissions are asked for.
+
+**For the team:** the server can turn the SMS text model off or make it quieter without a new APK (`SMS_TEXT_MODEL_*` env, see docs/RUSTORE_SUBMISSION.md §2).
+
 ## [0.3.0] - 2026-06-17
 
 ### Added — top-20 active-protection strategies (all shipped)

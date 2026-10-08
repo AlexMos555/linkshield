@@ -785,7 +785,7 @@
     "meta_description": "What Cleanway receives, what stays on your phone, who else sees what, and how long anything is kept.",
     "back": "Back to Cleanway",
     "title": "Privacy policy",
-    "updated": "Last updated: September 27, 2026",
+    "updated": "Last updated: October 8, 2026",
     "intro": "This policy explains in plain words what data Cleanway handles, why, and who else sees it. It describes the service as it works today. If something here does not match what Cleanway actually does, that is a mistake and we want to hear about it.",
     "contact_live": "Questions and requests about your data:",
     "contact_not_live": "Our support mailbox is still being set up, so we cannot receive email yet. This section will show the address as soon as it works.",
@@ -810,14 +810,14 @@
         "paragraphs": [
           "When you turn on protection, Cleanway starts a local filter using Android's VPN mechanism. Only DNS queries pass through it — the questions your phone asks to find a site's address, such as \"where is example.com?\". The contents of pages, your messages and calls do not go through the filter and are not read.",
           "Each site name is compared with the list of scam sites stored on the phone. If it is on the list, the phone doesn't open the site, and a note (the site's name, the time and what happened) is saved on the phone for the app's History.",
-          "Names that are not on the list are passed on to find the site's address: first to the DNS server of the network the phone is on — your mobile operator's or your Wi-Fi router's — as without Cleanway. Only if it does not answer do they go to Cloudflare (1.1.1.1), then Quad9 (9.9.9.9), and as a last resort Cloudflare's encrypted DNS-over-HTTPS. This is how app versions 1.0.2 and 1.0.3 work; version 1.0.1 asked Cloudflare first. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries.",
+          "Names that are not on the list are passed on to find the site's address: first to the DNS server of the network the phone is on — your mobile operator's or your Wi-Fi router's — as without Cleanway. Only if it does not answer do they go to Cloudflare (1.1.1.1), then Quad9 (9.9.9.9), and as a last resort Cloudflare's encrypted DNS-over-HTTPS. This is how app versions 1.0.2 to 1.0.4 work; version 1.0.1 asked Cloudflare first. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries.",
           "From version 1.0.2 the app carries a copy of the scam-site list, used only until the phone downloads a fresh one."
         ]
       },
       {
         "title": "4. The list of scam sites",
         "paragraphs": [
-          "The app downloads the list from our server (api.cleanway.ai) and refreshes it about every 6 hours, less often on mobile data. The request says nothing about the sites you visit: it carries only the usual technical details of any internet request, such as your IP address, and a marker of the list version the phone already has. From time to time the app also asks our server whether a newer version of the app is available."
+          "The app downloads the list from our server (api.cleanway.ai) and refreshes it about every 6 hours, less often on mobile data. The request says nothing about the sites you visit: it carries only the usual technical details of any internet request, such as your IP address, and a marker of the list version the phone already has. When it opens (at most once an hour) and about once a day, the app also asks our server whether a newer version of the app is available and which of its checks on the phone are switched on; this request, too, says nothing about the sites you visit or your messages."
         ]
       },
       {

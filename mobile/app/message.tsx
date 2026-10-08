@@ -26,6 +26,9 @@ import { colors, type as typo, space, radius } from "../src/utils/theme";
 import { useMessageCheck } from "../src/hooks/useMessageCheck";
 import { takeForScreen } from "../src/services/message-handoff";
 import { MessageResult } from "../src/components/message/MessageResult";
+import { ChecksLeftHint } from "../src/components/paywall/LockedDetails";
+import { useAccess, useAutoPaywall } from "../src/hooks/useFreemium";
+import { beginDetailedCheck } from "../src/services/freemium";
 
 export default function MessageScreen() {
   const router = useRouter();
@@ -39,6 +42,30 @@ export default function MessageScreen() {
   const [clipboardEmpty, setClipboardEmpty] = useState(false);
   const { state, check, retryLinks, reset } = useMessageCheck();
   const handled = useRef<string | null>(null);
+  const access = useAccess();
+  // The free plan's daily limit: each check asks first (one free check, or
+  // the scam list's verdict only). [stop] names the check the limit stopped
+  // and whether the paywall may open by itself for it.
+  const checks = useRef(0);
+  const [stop, setStop] = useState<{ id: string; auto: boolean } | null>(null);
+
+  const run = useCallback(async (message: string) => {
+    const id = String(++checks.current);
+    const decision = await beginDetailedCheck(null);
+    // check() puts the screen in "checking" before its first await, so the
+    // new stop is never paired with the previous message's verdict.
+    const running = check(message, decision.detailed);
+    setStop(decision.detailed ? null : { id, auto: decision.autoPaywall });
+    await running;
+  }, [check]);
+
+  const lockedDone = state.phase === "done" && state.locked === true;
+  useAutoPaywall(
+    lockedDone && stop !== null,
+    stop?.auto ?? false,
+    state.phase === "done" ? state.verdict === "dangerous" : undefined,
+    stop?.id ?? null,
+  );
 
   // Someone who shared a message wants the verdict, not a Check button — and
   // when this screen is already open and ANOTHER message is shared, the router
@@ -49,8 +76,8 @@ export default function MessageScreen() {
     if (!shared) return;
     setText(shared);
     setClipboardEmpty(false);
-    void check(shared);
-  }, [from, handoff, check]);
+    void run(shared);
+  }, [from, handoff, run]);
 
   // Same exit as shared.tsx: going back, never stacking a fresh tabs navigator.
   const leave = useCallback(() => {
@@ -78,7 +105,7 @@ export default function MessageScreen() {
     const trimmed = text.trim();
     if (!trimmed) return;
     Keyboard.dismiss();
-    void check(trimmed);
+    void run(trimmed);
   }
 
   function another() {
@@ -128,6 +155,7 @@ export default function MessageScreen() {
           linkChecks={state.linkChecks}
           verdict={state.verdict}
           reasons={state.reasons}
+          locked={state.locked === true}
           onRetry={() => void retryLinks()}
           onAnother={another}
           onDone={leave}
@@ -180,6 +208,7 @@ export default function MessageScreen() {
       >
         <Text style={s.checkLabel}>{t("mobile.message.submit")}</Text>
       </TouchableOpacity>
+      <ChecksLeftHint access={access} />
 
       {text.length > 0 && (
         <TouchableOpacity style={s.clearBtn} onPress={another} activeOpacity={0.7} accessibilityRole="button">
