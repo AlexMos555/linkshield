@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload HTML report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-billing-${{ matrix.billing }}
           path: landing/playwright-report/
@@ -95,7 +95,7 @@ jobs:
 
       - name: Upload trace on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces-billing-${{ matrix.billing }}
           path: landing/test-results/
