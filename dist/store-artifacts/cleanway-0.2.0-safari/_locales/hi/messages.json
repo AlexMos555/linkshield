@@ -1,0 +1,1508 @@
+{
+  "extension_name": {
+    "message": "Cleanway — धोखाधड़ी वाले लिंक से सुरक्षा"
+  },
+  "extension_description": {
+    "message": "धोखाधड़ी और फ़िशिंग साइटों का स्वचालित पता लगाना। सरल भाषा में, सबके लिए।"
+  },
+  "popup_brand": {
+    "message": "Cleanway"
+  },
+  "popup_settings_title": {
+    "message": "सेटिंग्स"
+  },
+  "status_scanning": {
+    "message": "इस पेज की जाँच हो रही है…"
+  },
+  "status_safe_title": {
+    "message": "यह पेज सुरक्षित है"
+  },
+  "status_safe_subtitle": {
+    "message": "$DOMAIN$ पर कोई धोखाधड़ी वाला लिंक नहीं मिला",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_warning_title": {
+    "message": "कुछ लिंक संदिग्ध लग रहे हैं"
+  },
+  "status_warning_subtitle": {
+    "message": "इस पेज पर $N$ लिंक को ध्यान से जाँचने की ज़रूरत है",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_danger_title": {
+    "message": "यह धोखाधड़ी वाली साइट है"
+  },
+  "status_danger_subtitle": {
+    "message": "$DOMAIN$ आपकी जानकारी चुराने के लिए दूसरी साइट होने का नाटक कर रही है",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "status_unknown_title": {
+    "message": "इस पेज की जाँच नहीं हो सकी"
+  },
+  "status_unknown_subtitle": {
+    "message": "थोड़ी देर में फिर से कोशिश करें"
+  },
+  "action_close_tab": {
+    "message": "इस पेज को बंद करें"
+  },
+  "action_audit": {
+    "message": "यह साइट क्या जानकारी इकट्ठा करती है"
+  },
+  "action_week": {
+    "message": "मेरा हफ़्ता"
+  },
+  "action_more": {
+    "message": "और"
+  },
+  "action_less": {
+    "message": "कम"
+  },
+  "more_section_label": {
+    "message": "और टूल"
+  },
+  "action_breach": {
+    "message": "ईमेल लीक जाँचें"
+  },
+  "action_score": {
+    "message": "मेरा सुरक्षा स्तर"
+  },
+  "action_trust": {
+    "message": "हमेशा इस साइट पर भरोसा करें"
+  },
+  "action_report": {
+    "message": "ग़लत नतीजे की रिपोर्ट"
+  },
+  "stats_label_blocked": {
+    "message": "धोखे रोके गए"
+  },
+  "stats_label_warned": {
+    "message": "चेतावनियाँ"
+  },
+  "stats_label_checked": {
+    "message": "लिंक जाँचे गए"
+  },
+  "upgrade_free_count": {
+    "message": "फ़्री: आज $USED$/$LIMIT$ जाँच",
+    "placeholders": {
+      "used": {
+        "content": "$1"
+      },
+      "limit": {
+        "content": "$2"
+      }
+    }
+  },
+  "upgrade_cta": {
+    "message": "अपग्रेड"
+  },
+  "onboarding_welcome": {
+    "message": "नमस्ते! मैं Cleanway हूँ।"
+  },
+  "onboarding_tip": {
+    "message": "मैं हर पेज पर हर लिंक की जाँच करता हूँ। ख़तरनाक लिंक लाल रंग में दिखेंगे। शक है? दायाँ क्लिक → «Cleanway से जाँचें»।"
+  },
+  "aha_found_scams": {
+    "message": "आपके ब्राउज़र ने $N$ धोखाधड़ी वाले लिंक नहीं पकड़े — मैंने पकड़े",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "offline_warning": {
+    "message": "ऑफ़लाइन — बुनियादी सुरक्षा चालू है"
+  },
+  "recent_empty": {
+    "message": "अभी कुछ नहीं मिला — सामान्य रूप से सर्फ़ करें, मैं नज़र रख रहा हूँ।"
+  },
+  "nudge_threshold_title": {
+    "message": "आपने $COUNT$+ धोखाधड़ी साइटें ब्लॉक की हैं!",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "nudge_threshold_subtitle": {
+    "message": "ब्लॉकिंग हमेशा मुफ़्त रहती है। Personal प्लान पर \"क्यों ख़तरनाक है\" का पूरा विवरण देखें।"
+  },
+  "nudge_threshold_cta": {
+    "message": "विवरण देखें"
+  },
+  "device_override_heading": {
+    "message": "यह डिवाइस"
+  },
+  "device_override_subtitle": {
+    "message": "केवल इस ब्राउज़र इंस्टॉलेशन पर स्किल लेवल और सुगमता लागू करें। इस अकाउंट के अन्य डिवाइस आपके डिफ़ॉल्ट पर रहेंगे।"
+  },
+  "device_effective_label": {
+    "message": "अभी सक्रिय"
+  },
+  "device_override_toggle_label": {
+    "message": "केवल इस डिवाइस पर ओवरराइड करें"
+  },
+  "device_override_toggle_desc": {
+    "message": "चालू होने पर, नीचे के नियंत्रण केवल इस डिवाइस पर सहेजे जाते हैं — आपकी अकाउंट डिफ़ॉल्ट नहीं बदलती।"
+  },
+  "device_voice_label": {
+    "message": "इस डिवाइस पर वॉइस अलर्ट"
+  },
+  "device_font_label": {
+    "message": "इस डिवाइस पर टेक्स्ट का आकार"
+  },
+  "device_clear_overrides_label": {
+    "message": "सभी डिवाइस ओवरराइड साफ़ करें"
+  },
+  "device_clear_overrides_desc": {
+    "message": "इस डिवाइस को आपकी अकाउंट डिफ़ॉल्ट पर वापस लाता है।"
+  },
+  "device_clear_overrides_btn": {
+    "message": "साफ़ करें"
+  },
+  "family_hub_heading": {
+    "message": "परिवार हब"
+  },
+  "family_hub_subtitle": {
+    "message": "जब आपके प्रियजनों के डिवाइस पर धोखाधड़ी ब्लॉक हो, तो आपको सूचित किया जाएगा। एंड-टू-एंड एन्क्रिप्शन — Cleanway भी अलर्ट नहीं पढ़ता।"
+  },
+  "family_loading": {
+    "message": "लोड हो रहा है…"
+  },
+  "family_none_label": {
+    "message": "आप अभी किसी परिवार में नहीं हैं"
+  },
+  "family_none_desc": {
+    "message": "एक बनाएँ और 5 लोगों तक को आमंत्रित करें। या कोड के साथ मौजूदा परिवार में शामिल हों।"
+  },
+  "family_create_btn": {
+    "message": "परिवार बनाएँ"
+  },
+  "family_join_btn": {
+    "message": "कोड से शामिल हों"
+  },
+  "family_accept_btn": {
+    "message": "शामिल हों"
+  },
+  "family_members_label": {
+    "message": "सदस्य"
+  },
+  "family_invite_label": {
+    "message": "सदस्य को आमंत्रित करें"
+  },
+  "family_invite_desc": {
+    "message": "एक बार उपयोग का कोड + PIN बनाता है। SMS से या व्यक्तिगत रूप से भेजें।"
+  },
+  "family_invite_btn": {
+    "message": "आमंत्रण बनाएँ"
+  },
+  "family_alerts_label": {
+    "message": "हाल के अलर्ट"
+  },
+  "family_alerts_empty": {
+    "message": "अभी कोई अलर्ट नहीं — परिवार के ब्लॉक यहाँ दिखेंगे।"
+  },
+  "family_invite_modal_title": {
+    "message": "इसे अपने परिवार के सदस्य से साझा करें"
+  },
+  "family_invite_modal_desc": {
+    "message": "दोनों मान एक बार दिखते हैं। डायलॉग बंद होने के बाद आप उन्हें फिर नहीं देख पाएँगे — ज़रूरत पड़ने पर नया आमंत्रण बनाएँ।"
+  },
+  "family_invite_code_label": {
+    "message": "कोड"
+  },
+  "family_invite_pin_label": {
+    "message": "PIN"
+  },
+  "family_invite_copy_btn": {
+    "message": "दोनों कॉपी करें"
+  },
+  "family_invite_close_btn": {
+    "message": "हो गया"
+  },
+  "family_invite_qr_label": {
+    "message": "या फ़ोन से स्कैन करें"
+  },
+  "family_invite_link_label": {
+    "message": "या यह लिंक शेयर करें"
+  },
+  "family_invite_link_copy_btn": {
+    "message": "लिंक कॉपी करें"
+  },
+  "family_join_code_placeholder": {
+    "message": "कोड या आमंत्रण लिंक चिपकाएँ"
+  },
+  "family_join_paste_hint": {
+    "message": "सुझाव: पहले फ़ील्ड में Cleanway आमंत्रण लिंक चिपकाएँ — PIN अपने आप भर जाएगा।"
+  },
+  "locked_title": {
+    "message": "अकाउंट होल्ड पर है"
+  },
+  "locked_body": {
+    "message": "आपने अपने Cleanway अकाउंट को डिलीट करने का अनुरोध किया था। हम इसे 30 दिनों तक रखते हैं, फिर सब कुछ मिटा देते हैं। अभी पुनर्स्थापित करें ताकि आपकी सब्सक्रिप्शन, इतिहास और परिवार बना रहे।"
+  },
+  "locked_restore_cta": {
+    "message": "मेरा अकाउंट पुनर्स्थापित करें"
+  },
+  "locked_restoring": {
+    "message": "पुनर्स्थापित किया जा रहा है…"
+  },
+  "locked_meta": {
+    "message": "$DATE$ को डिलीट का अनुरोध किया गया। 30 दिनों में स्थायी डिलीट।",
+    "placeholders": {
+      "date": {
+        "content": "$1"
+      }
+    }
+  },
+  "locked_error_session": {
+    "message": "आपका सेशन समाप्त हो गया है। कृपया cleanway.ai पर दोबारा साइन इन करें।"
+  },
+  "locked_error_generic": {
+    "message": "आपका अकाउंट पुनर्स्थापित नहीं हो सका। कृपया पुनः प्रयास करें या सपोर्ट से संपर्क करें।"
+  },
+  "locked_error_network": {
+    "message": "हम अपने सर्वर तक नहीं पहुँच सके। कृपया अपना कनेक्शन जाँचें।"
+  },
+  "status_user_content_title": {
+    "message": "यहाँ कोई भी पेज बना सकता है"
+  },
+  "status_user_content_subtitle": {
+    "message": "Cleanway $DOMAIN$ पर पेज नहीं जाँच सकता। अगर आपको नहीं पता कि यह पेज किसने बनाया है, तो कार्ड की जानकारी या पासवर्ड न डालें।",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_just_now": {
+    "message": "अभी-अभी"
+  },
+  "time_minutes": {
+    "message": "$N$ मिनट",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_hours": {
+    "message": "$N$ घंटे",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "time_days": {
+    "message": "$N$ दिन",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_no_tab": {
+    "message": "पहले कोई पेज खोलें"
+  },
+  "action_trust_invalid": {
+    "message": "यह पेज जोड़ा नहीं जा सकता"
+  },
+  "action_trust_done": {
+    "message": "$DOMAIN$ भरोसेमंद साइटों में जोड़ी गई",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "action_trust_error": {
+    "message": "सहेजा नहीं जा सका"
+  },
+  "action_report_no_tab": {
+    "message": "पहले कोई पेज खोलें"
+  },
+  "action_report_invalid": {
+    "message": "इस पेज की रिपोर्ट नहीं की जा सकती"
+  },
+  "action_report_done": {
+    "message": "धन्यवाद, रिपोर्ट भेज दी गई"
+  },
+  "action_report_throttled": {
+    "message": "बहुत सारी रिपोर्ट, बाद में कोशिश करें"
+  },
+  "action_report_error": {
+    "message": "रिपोर्ट भेजी नहीं जा सकी"
+  },
+  "tip_dismiss": {
+    "message": "बंद करें"
+  },
+  "trust_footer": {
+    "message": "हम साइटों के पते जाँचते हैं, पूरे लिंक या पेज की सामग्री नहीं"
+  },
+  "confidence_chip": {
+    "message": "भरोसा: $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_title": {
+    "message": "रुकें"
+  },
+  "block_subtitle_scam": {
+    "message": "यह धोखाधड़ी वाली साइट है"
+  },
+  "block_explanation": {
+    "message": "$DOMAIN$ आपकी जानकारी चुराने के लिए दूसरी साइट होने का नाटक कर रही है।",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_brand_impersonation": {
+    "message": "यह साइट $BRAND$ होने का नाटक कर रही है",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_scheme_heading": {
+    "message": "ठग ऐसी साइटों का उपयोग कैसे करते हैं:"
+  },
+  "block_scheme_step1": {
+    "message": "आपसे पासवर्ड या बैंक जानकारी माँगी जाएगी"
+  },
+  "block_scheme_step2": {
+    "message": "ठग आपकी लिखी हर चीज़ चुरा लेगा"
+  },
+  "block_scheme_step3": {
+    "message": "वे आपका खाता ख़ाली कर देंगे या पहचान चुरा लेंगे"
+  },
+  "block_back_button": {
+    "message": "सुरक्षा की ओर वापस जाएँ"
+  },
+  "block_proceed_button": {
+    "message": "मैं जोख़िम समझता हूँ — फिर भी खोलें"
+  },
+  "block_proceed_countdown": {
+    "message": "$N$ सेकंड रुकें…",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_trust_footer": {
+    "message": "Cleanway द्वारा सुरक्षित। हम आपका डेटा कभी नहीं बेचते।"
+  },
+  "block_voice_alert": {
+    "message": "रुको। साइट $DOMAIN$ खतरनाक है। अपना पासवर्ड न डालो।",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_evidence_heading": {
+    "message": "हमने इस साइट को क्यों ब्लॉक किया"
+  },
+  "block_explainer_heading": {
+    "message": "यह किस तरह की धोखाधड़ी है?"
+  },
+  "block_evidence_other_title": {
+    "message": "खतरे का एक संकेत"
+  },
+  "block_evidence_other_body": {
+    "message": "हमारी जाँच में इस साइट पर कुछ असामान्य मिला।"
+  },
+  "welcome_hero_title": {
+    "message": "अब आप सुरक्षित हैं"
+  },
+  "welcome_hero_subtitle": {
+    "message": "आप जो भी लिंक देखते हैं, उसकी जाँच होती है। ख़तरनाक लिंक अपने आप रोक दिए जाते हैं।"
+  },
+  "welcome_step1_title": {
+    "message": "स्वचालित जाँच"
+  },
+  "welcome_step1_desc": {
+    "message": "हर पेज, हर लिंक। हरा चिह्न मतलब सुरक्षित। लाल मतलब धोखाधड़ी।"
+  },
+  "welcome_step2_title": {
+    "message": "निजता सबसे पहले"
+  },
+  "welcome_step2_desc": {
+    "message": "हम साइटों के पते जाँचते हैं, पूरे लिंक या पेज की सामग्री नहीं। हम आपका डेटा कभी नहीं बेचते।"
+  },
+  "welcome_step3_title": {
+    "message": "बिना धीमा किए"
+  },
+  "welcome_step3_desc": {
+    "message": "ज़्यादातर जाँच आपके डिवाइस पर एक सेकंड से कम में हो जाती है।"
+  },
+  "welcome_step4_title": {
+    "message": "पूरे परिवार के लिए"
+  },
+  "welcome_step4_desc": {
+    "message": "माता-पिता, बच्चों, दादा-दादी को एक प्लान से सुरक्षित करें। सबके लिए अलग मोड।"
+  },
+  "welcome_cta_scan": {
+    "message": "मेरे इनबॉक्स में छिपी धोखाधड़ी जाँचें"
+  },
+  "welcome_cta_skip": {
+    "message": "छोड़ें — ब्राउज़ करना शुरू करें"
+  },
+  "welcome_trust_footer": {
+    "message": "ब्लॉक करना हमेशा मुफ़्त है। हम आपका डेटा कभी नहीं बेचते।"
+  },
+  "welcome_page_title": {
+    "message": "Cleanway में आपका स्वागत है"
+  },
+  "welcome_persona_title": {
+    "message": "यह डिवाइस ज़्यादातर कौन इस्तेमाल करता है?"
+  },
+  "welcome_persona_regular": {
+    "message": "मैं — सामान्य"
+  },
+  "welcome_persona_granny": {
+    "message": "माता-पिता / दादा-दादी"
+  },
+  "welcome_persona_kids": {
+    "message": "बच्चा"
+  },
+  "welcome_persona_pro": {
+    "message": "विशेषज्ञ"
+  },
+  "welcome_persona_hint": {
+    "message": "इससे तय होता है कि चेतावनियाँ कैसे समझाई जाएँ। सेटिंग्स में कभी भी बदलें।"
+  },
+  "badge_label_safe": {
+    "message": "सुरक्षित"
+  },
+  "badge_label_caution": {
+    "message": "सावधान"
+  },
+  "badge_label_dangerous": {
+    "message": "खतरनाक"
+  },
+  "badge_label_unknown": {
+    "message": "अज्ञात"
+  },
+  "badge_aria_safe": {
+    "message": "सुरक्षित लिंक"
+  },
+  "badge_aria_caution": {
+    "message": "सावधान — इस लिंक पर भरोसा करने से पहले इसे जाँच लें"
+  },
+  "badge_aria_dangerous": {
+    "message": "खतरनाक लिंक — इसे न खोलें"
+  },
+  "badge_score": {
+    "message": "जोखिम: $SCORE$/100",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "badge_reason_official_site": {
+    "message": "आधिकारिक साइट"
+  },
+  "badge_label_user_content": {
+    "message": "जाँच संभव नहीं"
+  },
+  "badge_aria_user_content": {
+    "message": "ऐसी साइट का लिंक जहाँ कोई भी पेज बना सकता है — जाँचा नहीं गया"
+  },
+  "badge_reason_user_content": {
+    "message": "यहाँ कोई भी पेज बना सकता है। कार्ड की जानकारी या पासवर्ड न डालें।"
+  },
+  "audit_title": {
+    "message": "निजता जाँच"
+  },
+  "audit_trackers": {
+    "message": "ट्रैकर"
+  },
+  "audit_cookies": {
+    "message": "कुकीज़"
+  },
+  "audit_data_fields": {
+    "message": "डेटा फ़ील्ड"
+  },
+  "audit_fingerprint": {
+    "message": "डिजिटल फ़िंगरप्रिंट"
+  },
+  "audit_yes": {
+    "message": "हाँ"
+  },
+  "audit_no": {
+    "message": "नहीं"
+  },
+  "audit_share": {
+    "message": "ग्रेड शेयर करें"
+  },
+  "audit_on_device": {
+    "message": "आपके डिवाइस पर जाँचा गया"
+  },
+  "credguard_banner_title": {
+    "message": "रुकिए — यह धोखाधड़ी वाला पेज लगता है"
+  },
+  "credguard_banner_brand": {
+    "message": "यह $BRAND$ जैसा दिखता है, लेकिन पता $HOST$ है — $LEGIT$ नहीं।",
+    "placeholders": {
+      "brand": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "legit": {
+        "content": "$3"
+      }
+    }
+  },
+  "credguard_banner_action": {
+    "message": "यह फ़ॉर्म आपका पासवर्ड $HOST$ पर भेजता है — यह एड्रेस बार में दिख रही साइट से अलग साइट है।",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_tld": {
+    "message": "यह साइट $TLD$ पते का इस्तेमाल करती है, जिसे ठग अक्सर एक बार के नकली पेजों के लिए इस्तेमाल करते हैं।",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_banner_advice": {
+    "message": "यहाँ अपना पासवर्ड न लिखें। असली साइट खुद पता टाइप करके खोलें।"
+  },
+  "credguard_dismiss": {
+    "message": "बंद करें"
+  },
+  "credguard_modal_title": {
+    "message": "Cleanway के अनुसार यह फ़ॉर्म धोखाधड़ी है"
+  },
+  "credguard_modal_intro": {
+    "message": "आगे बढ़ने पर आपका लॉगिन और पासवर्ड भेज दिया जाएगा। यह असुरक्षित क्यों लगता है:"
+  },
+  "credguard_reason_action": {
+    "message": "फ़ॉर्म आपका पासवर्ड $ACTION$ पर भेजता है — $PAGE$ पर नहीं।",
+    "placeholders": {
+      "action": {
+        "content": "$1"
+      },
+      "page": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_typosquat": {
+    "message": "यह पता ($HOST$) $BRAND$ की गलत वर्तनी जैसा लगता है।",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "brand": {
+        "content": "$2"
+      }
+    }
+  },
+  "credguard_reason_tld": {
+    "message": "ठग अक्सर नकली साइन-इन पेजों के लिए $TLD$ पतों का इस्तेमाल करते हैं।",
+    "placeholders": {
+      "tld": {
+        "content": "$1"
+      }
+    }
+  },
+  "credguard_button_cancel": {
+    "message": "न भेजें — वापस जाएँ"
+  },
+  "credguard_button_honeypot": {
+    "message": "मेरा पासवर्ड सुरक्षित रखें"
+  },
+  "credguard_button_honeypot_hint": {
+    "message": "Cleanway फ़ॉर्म के साथ आपके पासवर्ड की जगह एक बेतरतीब बनावटी पासवर्ड भेजेगा।"
+  },
+  "credguard_button_override": {
+    "message": "फिर भी भेजें"
+  },
+  "credguard_toast_title": {
+    "message": "Cleanway ने बनावटी पासवर्ड भेजा"
+  },
+  "credguard_toast_body": {
+    "message": "Cleanway ने इस फ़ॉर्म के साथ आपका असली पासवर्ड नहीं भेजा। फिर भी टाइप करते समय पेज ने उसे पढ़ लिया हो सकता है, इसलिए वह पासवर्ड बदल देना सबसे सुरक्षित है।"
+  },
+  "credguard_banner_title_weak": {
+    "message": "इस साइन-इन पेज पर सावधान रहें"
+  },
+  "credguard_banner_advice_weak": {
+    "message": "अगर आपको यकीन नहीं कि यह असली साइट है, तो उसका पता खुद टाइप करके खोलें।"
+  },
+  "credguard_modal_title_weak": {
+    "message": "पासवर्ड भेजने से पहले इस साइट की जाँच करें"
+  },
+  "credguard_page_flagged": {
+    "message": "Cleanway इस साइट को पहले ही धोखाधड़ी वाली साइट के रूप में पहचान चुका है।"
+  },
+  "mpg_bitb": {
+    "message": "यह पेज एक नकली एड्रेस बार ($FAKE$) दिखा रहा है। असल में आप $REAL$ पर हैं।",
+    "placeholders": {
+      "fake": {
+        "content": "$1"
+      },
+      "real": {
+        "content": "$2"
+      }
+    }
+  },
+  "mpg_orphan": {
+    "message": "यह पेज बिना असली लॉगिन फ़ॉर्म के पासवर्ड माँग रहा है — आपका पासवर्ड चुराया जा सकता है।"
+  },
+  "menu_check_link": {
+    "message": "Cleanway से यह लिंक जाँचें"
+  },
+  "menu_privacy_audit": {
+    "message": "इस पेज की निजता जाँचें"
+  },
+  "command_open_popup": {
+    "message": "Cleanway खोलें"
+  },
+  "command_check_page": {
+    "message": "यह पेज जाँचें"
+  },
+  "family_notify_title_blocked": {
+    "message": "Cleanway ने आपके परिवार के सदस्य को बचाया"
+  },
+  "family_notify_message_blocked": {
+    "message": "धोखाधड़ी वाली साइट ब्लॉक की गई: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_title_warned": {
+    "message": "परिवार के लिए चेतावनी"
+  },
+  "family_notify_message_warned": {
+    "message": "परिवार के सदस्य को एक संदिग्ध साइट के बारे में चेताया गया: $DOMAIN$",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "family_notify_message_blocked_unnamed": {
+    "message": "धोखाधड़ी वाली साइट ब्लॉक की गई।"
+  },
+  "family_notify_message_warned_unnamed": {
+    "message": "परिवार के सदस्य को एक संदिग्ध साइट के बारे में चेताया गया।"
+  },
+  "reason_flagged_dangerous": {
+    "message": "Google इस साइट को खतरनाक बताता है"
+  },
+  "reason_flagged_phishing": {
+    "message": "फ़िशिंग के रूप में रिपोर्ट किया गया"
+  },
+  "reason_on_blocklists": {
+    "message": "भरोसेमंद धोखाधड़ी और स्पैम सूचियों में"
+  },
+  "reason_threat_reports": {
+    "message": "खतरे की रिपोर्टों में उल्लेखित"
+  },
+  "reason_spreads_malware": {
+    "message": "मैलवेयर फैलाने के लिए जाना जाता है"
+  },
+  "reason_imitates_brand": {
+    "message": "नाम किसी जाने-माने ब्रांड की नकल करता है"
+  },
+  "reason_lookalike_letters": {
+    "message": "धोखा देने के लिए मिलती-जुलती अक्षरों का उपयोग"
+  },
+  "reason_fake_brand_address": {
+    "message": "एक भरोसेमंद ब्रांड नाम नकली पते में छिपा है"
+  },
+  "reason_copies_brand_icon": {
+    "message": "किसी जाने-माने ब्रांड के आइकन की नकल"
+  },
+  "reason_no_https": {
+    "message": "कनेक्शन सुरक्षित नहीं है (HTTPS नहीं)"
+  },
+  "reason_missing_protections": {
+    "message": "बुनियादी सुरक्षा सुविधाएँ नहीं हैं"
+  },
+  "reason_raw_ip_address": {
+    "message": "पता एक संख्या है, असली नाम नहीं"
+  },
+  "reason_unusual_connection": {
+    "message": "जुड़ने का असामान्य तरीका"
+  },
+  "reason_hidden_destination": {
+    "message": "लिंक वास्तव में कहाँ जाता है, यह छिपाता है"
+  },
+  "reason_very_new_site": {
+    "message": "यह साइट बहुत हाल में बनाई गई"
+  },
+  "reason_scam_words": {
+    "message": "पते में वे शब्द हैं जो धोखेबाज़ अक्सर इस्तेमाल करते हैं"
+  },
+  "reason_carries_personal_data": {
+    "message": "लिंक में आपकी निजी जानकारी है"
+  },
+  "reason_long_complex_address": {
+    "message": "पता असामान्य रूप से लंबा और उलझा हुआ है"
+  },
+  "reason_many_redirects": {
+    "message": "लिंक आपको किसी दूसरे पते पर भेज देता है"
+  },
+  "reason_risky_ending": {
+    "message": "ऐसा अंत जो धोखेबाज़ पसंद करते हैं"
+  },
+  "reason_risky_registrar": {
+    "message": "धोखेबाज़ों की पसंदीदा सेवा से पंजीकृत"
+  },
+  "reason_random_name": {
+    "message": "नाम बेतरतीब बना हुआ लगता है"
+  },
+  "reason_detector_suspicious": {
+    "message": "हमारा डिटेक्टर इसे संदिग्ध पाता है"
+  },
+  "reason_well_known_site": {
+    "message": "एक जानी-मानी, भरोसेमंद वेबसाइट"
+  },
+  "reason_popular_site": {
+    "message": "एक व्यापक रूप से इस्तेमाल होने वाली लोकप्रिय वेबसाइट"
+  },
+  "reason_detector_safe": {
+    "message": "हमारा डिटेक्टर इस साइट को सुरक्षित मानता है"
+  },
+  "reason_not_a_real_business": {
+    "message": "असली कंपनी की साइट जैसा सेटअप नहीं है"
+  },
+  "reason_shifty_setup": {
+    "message": "सर्वर की असामान्य व्यवस्था, जैसी ठगों के नेटवर्क भी इस्तेमाल करते हैं"
+  },
+  "reason_padded_address": {
+    "message": "असली नाम छिपाने के लिए पते में अतिरिक्त हिस्से जोड़े गए हैं"
+  },
+  "reason_shared_hosting": {
+    "message": "ऐसी सेवा पर होस्ट, जहाँ कोई भी साइट बना सकता है"
+  },
+  "reason_invalid_address": {
+    "message": "पता सही तरह से नहीं लिखा है"
+  },
+  "reason_private_network": {
+    "message": "यह पता खुले इंटरनेट के बजाय किसी निजी नेटवर्क में ले जाता है"
+  },
+  "reason_on_your_trusted_list": {
+    "message": "आपने इस साइट को भरोसेमंद चिह्नित किया है"
+  },
+  "reason_ai_second_look": {
+    "message": "हमारे AI सहायक ने खतरे के संकेतों को परखा"
+  },
+  "reason_on_cleanway_list": {
+    "message": "Cleanway की ठगी वाली साइटों की सूची में है"
+  },
+  "reason_site_not_found": {
+    "message": "यह पता मौजूद ही नहीं है"
+  },
+  "reason_unreachable_abroad": {
+    "message": "विदेश में हमारा सर्वर यह साइट नहीं खोल पाया। कई बैंक और सरकारी साइटें विदेशी पतों को रोकती हैं, इसलिए सिर्फ़ इससे ख़तरा साबित नहीं होता"
+  },
+  "reason_checks_incomplete": {
+    "message": "कुछ जाँचें पूरी नहीं हो पाईं, इसलिए नतीजा कम पक्का है"
+  },
+  "reason_user_content_platform": {
+    "message": "इस सेवा पर कोई भी अपना पेज बना सकता है — ठग भी"
+  },
+  "reason_high_risk_score": {
+    "message": "धोखाधड़ी आँकने वाली एक सेवा इस साइट को बहुत जोखिम भरा मानती है"
+  },
+  "reason_new_certificate": {
+    "message": "साइट का सुरक्षा प्रमाणपत्र सिर्फ़ कुछ दिन पुराना है"
+  },
+  "reason_broken_certificate": {
+    "message": "साइट का सुरक्षा प्रमाणपत्र अमान्य है"
+  },
+  "evidence_flagged_dangerous": {
+    "message": "Google Safe Browsing — वह सूची जिससे Chrome, Firefox और Safari लोगों को चेताते हैं — इस साइट को खतरनाक बताती है।"
+  },
+  "evidence_flagged_phishing": {
+    "message": "यह साइट एंटी-फ़िशिंग डेटाबेस में है — उन साइटों की सूचियों में जो धोखे से पासवर्ड या कार्ड की जानकारी हथियाती हैं।"
+  },
+  "evidence_on_blocklists": {
+    "message": "सुरक्षा शोधकर्ता इस साइट को पहले ही ठगी और स्पैम वाली साइटों की सूचियों में डाल चुके हैं।"
+  },
+  "evidence_threat_reports": {
+    "message": "सुरक्षा शोधकर्ता हमलों पर अपनी रिपोर्टों में इस साइट का ज़िक्र करते हैं।"
+  },
+  "evidence_spreads_malware": {
+    "message": "यह साइट कंप्यूटर और फ़ोन को संक्रमित करने वाले प्रोग्राम फैलाते हुए पकड़ी जा चुकी है।"
+  },
+  "evidence_imitates_brand": {
+    "message": "पता किसी जानी-मानी कंपनी जैसा दिखता है, पर वह उस कंपनी का नहीं है।"
+  },
+  "evidence_lookalike_letters": {
+    "message": "पते के कुछ अक्षर बस सामान्य जैसे दिखते हैं। असली पता इसी तरह छिपाया जाता है।"
+  },
+  "evidence_fake_brand_address": {
+    "message": "पते की शुरुआत में कोई मशहूर नाम है, पर साइट असल में किसी और की है।"
+  },
+  "evidence_copies_brand_icon": {
+    "message": "पेज किसी असली कंपनी का आइकन दिखाता है, पर किसी दूसरे पते पर है — लॉगिन चुराने की आम चाल।"
+  },
+  "evidence_no_https": {
+    "message": "इस साइट पर आप जो भी लिखते हैं, वह बिना सुरक्षा के जाता है और बीच में पकड़ा जा सकता है।"
+  },
+  "evidence_missing_protections": {
+    "message": "साइट पर वह बुनियादी सुरक्षा नहीं है जो असली कंपनियाँ आम तौर पर लगाती हैं।"
+  },
+  "evidence_raw_ip_address": {
+    "message": "असली कंपनियाँ अपनी साइट को नाम देती हैं। ठगी वाले पेज अक्सर सिर्फ़ अंकों से काम चलाते हैं।"
+  },
+  "evidence_unusual_connection": {
+    "message": "साइट जुड़ने का ऐसा असामान्य तरीका अपनाती है जिसकी आम वेबसाइटों को शायद ही ज़रूरत पड़ती है।"
+  },
+  "evidence_hidden_destination": {
+    "message": "लिंक यह छिपाता है कि वह असल में किस पते पर ले जाता है।"
+  },
+  "evidence_very_new_site": {
+    "message": "ठगी वाली साइटें आम तौर पर कुछ ही दिन चलती हैं, इसलिए बिल्कुल नया पता खतरे का संकेत है।"
+  },
+  "evidence_scam_words": {
+    "message": "पते में “login” या “secure” जैसे शब्द हैं, जिन्हें ठग आधिकारिक दिखने के लिए जोड़ते हैं।"
+  },
+  "evidence_carries_personal_data": {
+    "message": "लिंक में ही आपका ईमेल या लॉगिन की कुंजी है। लिंक देखने वाला कोई भी इनका इस्तेमाल कर सकता है।"
+  },
+  "evidence_long_complex_address": {
+    "message": "पता लंबा और उलझा हुआ है, ताकि यह समझना मुश्किल हो कि वह असल में कहाँ ले जाता है।"
+  },
+  "evidence_many_redirects": {
+    "message": "यह लिंक आपको किसी दूसरे पते पर भेजने के लिए बनाया गया है — अक्सर यह छिपाने के लिए कि वह असल में कहाँ जाता है।"
+  },
+  "evidence_risky_ending": {
+    "message": "पता ऐसे ज़ोन (जैसे .xyz या .top) पर खत्म होता है जहाँ ठगी वाली साइटें खास तौर पर ज़्यादा हैं।"
+  },
+  "evidence_risky_registrar": {
+    "message": "साइट ऐसी सेवा से रजिस्टर हुई है जिसे ठग अक्सर चुनते हैं।"
+  },
+  "evidence_random_name": {
+    "message": "नाम बेतरतीब अक्षरों जैसा दिखता है — एक बार की ठगी के लिए थोक में बनाई गई साइटों जैसा।"
+  },
+  "evidence_detector_suspicious": {
+    "message": "हमारा डिटेक्टर, जिसे हज़ारों असली और ठगी वाली साइटों पर सिखाया गया है, इसे ठगी वाली साइटों जैसा पाता है।"
+  },
+  "evidence_not_a_real_business": {
+    "message": "साइट का कोई चालू ईमेल नहीं है। असली कंपनियों का लगभग हमेशा होता है।"
+  },
+  "evidence_shifty_setup": {
+    "message": "इस साइट का पता बहुत तेज़ी से कई सर्वरों के बीच बदल सकता है। बड़ी सेवाएँ भी ऐसा करती हैं, लेकिन ठगों के नेटवर्क इसका इस्तेमाल इसलिए करते हैं ताकि उनकी साइटें बंद करना मुश्किल हो।"
+  },
+  "evidence_padded_address": {
+    "message": "असली नाम के आगे फ़ालतू हिस्से जोड़े गए हैं ताकि वह आसानी से दिखे नहीं।"
+  },
+  "evidence_shared_hosting": {
+    "message": "इस सेवा पर कोई भी कुछ ही मिनटों में साइट बना सकता है — ठग भी।"
+  },
+  "evidence_on_cleanway_list": {
+    "message": "Cleanway की अपनी जानी-मानी ठगी वाली साइटों की सूची में यह साइट है।"
+  },
+  "evidence_site_not_found": {
+    "message": "इस पते पर अभी कोई चालू साइट नहीं है। वर्तनी जाँच लें।"
+  },
+  "evidence_unreachable_abroad": {
+    "message": "विदेश में मौजूद हमारा सर्वर यह साइट नहीं खोल पाया, इसलिए पेज की खुद जाँच नहीं हुई।"
+  },
+  "evidence_checks_incomplete": {
+    "message": "सारी जाँचें समय पर पूरी नहीं हुईं, इसलिए यह नतीजा कम संकेतों पर आधारित है।"
+  },
+  "evidence_user_content_platform": {
+    "message": "इस सेवा पर कोई भी पेज प्रकाशित कर सकता है। हम इस खास पेज की गारंटी नहीं दे सकते।"
+  },
+  "evidence_invalid_address": {
+    "message": "पता ही गलत बना है। यह लिंक कॉपी करने वालों के लिए जाल हो सकता है।"
+  },
+  "evidence_private_network": {
+    "message": "आम सार्वजनिक वेबसाइटें वहाँ नहीं ले जातीं, इसलिए हमने इसे नहीं खोला।"
+  },
+  "evidence_ai_second_look": {
+    "message": "जब संकेत दोनों तरफ़ इशारा करते हैं, तो एक AI मॉडल उन्हें देखता है और नतीजे को थोड़ा बदल सकता है।"
+  },
+  "evidence_well_known_site": {
+    "message": "यह उन जानी-मानी साइटों में से है जिन्हें हम असली के रूप में पहचानते हैं।"
+  },
+  "evidence_popular_site": {
+    "message": "यह साइट दुनिया की सबसे ज़्यादा देखी जाने वाली साइटों की सूची में है। यह इसके पक्ष में है, पर खतरे के दूसरे संकेत भी मायने रखते हैं।"
+  },
+  "evidence_detector_safe": {
+    "message": "हमारा डिटेक्टर, जिसे हज़ारों असली और ठगी वाली साइटों पर सिखाया गया है, इसे असली साइटों जैसा पाता है।"
+  },
+  "evidence_on_your_trusted_list": {
+    "message": "आपने खुद इस साइट को अपनी भरोसेमंद साइटों में जोड़ा है।"
+  },
+  "evidence_high_risk_score": {
+    "message": "साइटों में धोखाधड़ी का जोखिम आँकने वाली एक सेवा ने इस साइट को ऊँचा जोखिम स्कोर दिया है। यह एक अनुमान है, पुष्टि की गई शिकायत नहीं।"
+  },
+  "evidence_new_certificate": {
+    "message": "ठगी वाली साइटें अक्सर बिल्कुल नए प्रमाणपत्र के साथ आती हैं। लेकिन असली साइटें भी इसे नियमित रूप से नया करती हैं, इसलिए सिर्फ़ इससे बहुत कुछ पता नहीं चलता।"
+  },
+  "evidence_broken_certificate": {
+    "message": "यह साइट कौन चलाता है, यह साबित करने वाला प्रमाणपत्र या तो पुराना हो चुका है, किसी भरोसेमंद संस्था ने जारी नहीं किया, या किसी दूसरे पते का है। आपका ब्राउज़र भी इसकी चेतावनी देगा।"
+  },
+  "weekly_title": {
+    "message": "मेरा हफ़्ता"
+  },
+  "weekly_checked": {
+    "message": "जाँचे गए"
+  },
+  "weekly_blocked": {
+    "message": "रोके गए"
+  },
+  "weekly_warnings": {
+    "message": "चेतावनियाँ"
+  },
+  "weekly_top_threats": {
+    "message": "सबसे आम खतरे"
+  },
+  "weekly_no_threats": {
+    "message": "इस हफ़्ते कोई ठगी वाली साइट दर्ज नहीं हुई"
+  },
+  "weekly_on_device": {
+    "message": "रिपोर्ट आपके डिवाइस पर बनी"
+  },
+  "score_title": {
+    "message": "मेरा सुरक्षा स्तर"
+  },
+  "score_label_excellent": {
+    "message": "बहुत बढ़िया"
+  },
+  "score_label_good": {
+    "message": "अच्छा"
+  },
+  "score_label_fair": {
+    "message": "ठीक-ठाक"
+  },
+  "score_label_low": {
+    "message": "सुधार की गुंजाइश है"
+  },
+  "score_breakdown": {
+    "message": "यह स्कोर किससे बना है"
+  },
+  "score_on_device": {
+    "message": "आपके डिवाइस पर गिना गया"
+  },
+  "score_factor_active_days": {
+    "message": "Cleanway के साथ दिन: $DAYS$",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_active_days_of_week": {
+    "message": "Cleanway के साथ दिन: 7 में से $DAYS$",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_no_dangerous": {
+    "message": "30 दिनों में कोई खतरनाक साइट नहीं"
+  },
+  "score_factor_dangerous_visits": {
+    "message": "खोली गई खतरनाक साइटें: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_audit_avg": {
+    "message": "साइटों का औसत प्राइवेसी स्कोर: $SCORE$",
+    "placeholders": {
+      "score": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_trusted_sites": {
+    "message": "आपकी भरोसेमंद सूची में साइटें: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_overrides": {
+    "message": "आपने कितनी बार चेतावनी अनदेखी की: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "score_factor_checks": {
+    "message": "कुल जाँचें: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "breach_title": {
+    "message": "ईमेल लीक की जाँच"
+  },
+  "breach_not_available": {
+    "message": "ज्ञात लीक में ईमेल की जाँच अभी उपलब्ध नहीं है। कुछ भी जाँचा नहीं गया और हम आपका ईमेल नहीं माँगते।"
+  },
+  "breach_works_now": {
+    "message": "जो पहले से काम करता है: जब आप किसी भी साइट पर पासवर्ड डालते हैं, तो Cleanway बताता है कि वह पासवर्ड किसी ज्ञात लीक में आया है या नहीं।"
+  },
+  "breach_close": {
+    "message": "बंद करें"
+  },
+  "pwned_title": {
+    "message": "यह पासवर्ड किसी ज्ञात डेटा लीक में है।"
+  },
+  "pwned_body": {
+    "message": "इसे इस साइट पर बदलें और कहीं और इस्तेमाल न करें। सार्वजनिक लीक में यह इतनी बार आया है: $COUNT$।",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "pwned_dismiss": {
+    "message": "ठीक है"
+  },
+  "webmail_scanning": {
+    "message": "Cleanway यह ईमेल जाँच रहा है…"
+  },
+  "webmail_rate_limited": {
+    "message": "बहुत ज़्यादा जाँचें — कृपया रुकें"
+  },
+  "webmail_rate_limited_detail": {
+    "message": "अभी इस नेटवर्क से बहुत ज़्यादा जाँचें हो रही हैं। एक मिनट बाद फिर कोशिश करें।"
+  },
+  "webmail_error": {
+    "message": "Cleanway यह ईमेल नहीं जाँच सका"
+  },
+  "webmail_error_detail": {
+    "message": "अपना इंटरनेट कनेक्शन जाँचें और ईमेल फिर से खोलें।"
+  },
+  "webmail_dangerous": {
+    "message": "शायद धोखाधड़ी है — कोई भी लिंक न खोलें"
+  },
+  "webmail_suspicious": {
+    "message": "संदिग्ध — कुछ भी करने से पहले भेजने वाले की जाँच करें"
+  },
+  "webmail_safe": {
+    "message": "सुरक्षित लगता है — धोखाधड़ी का कोई संकेत नहीं मिला"
+  },
+  "webmail_dismiss": {
+    "message": "बंद करें"
+  },
+  "webmail_finding_url_reputation": {
+    "message": "इस ईमेल का एक लिंक किसी जानी-मानी खतरनाक साइट पर ले जाता है"
+  },
+  "webmail_finding_auth_fail": {
+    "message": "ईमेल उन जाँचों में फ़ेल हुआ जो असली भेजने वाले की पुष्टि करती हैं"
+  },
+  "webmail_finding_body_pattern": {
+    "message": "टेक्स्ट में ऐसे वाक्य हैं जो ठगी वाले ईमेल में अक्सर होते हैं"
+  },
+  "webmail_finding_link_text_mismatch": {
+    "message": "एक लिंक एक पता दिखाता है पर दूसरे पर ले जाता है"
+  },
+  "webmail_safe_minor": {
+    "message": "सुरक्षित लगता है — धोखाधड़ी का कोई गंभीर संकेत नहीं"
+  },
+  "webmail_finding_sender_check": {
+    "message": "भेजने वाले का पता ध्यान से जाँचें"
+  },
+  "webmail_finding_auth_unconfirmed": {
+    "message": "भेजने वाले की पूरी तरह पुष्टि नहीं हो सकी"
+  },
+  "webmail_finding_brand_from_freemail": {
+    "message": "किसी जानी-मानी कंपनी के नाम से, लेकिन मुफ़्त ईमेल से भेजा गया"
+  },
+  "webmail_finding_brand_domain_mismatch": {
+    "message": "किसी जानी-मानी कंपनी के नाम से, लेकिन उसके पते से नहीं भेजा गया"
+  },
+  "webmail_finding_sender_non_ascii": {
+    "message": "भेजने वाले के पते में गैर-लैटिन अक्षर हैं — पक्का करें कि पता असली है"
+  },
+  "webmail_finding_reply_to_mismatch": {
+    "message": "इस ईमेल का जवाब भेजने वाले के बजाय किसी दूसरे पते पर जाएगा"
+  },
+  "webmail_finding_spf_softfail": {
+    "message": "भेजने वाले के मेल सर्वर की पूरी तरह पुष्टि नहीं हो सकी"
+  },
+  "webmail_finding_urgency": {
+    "message": "ईमेल आपसे जल्दी कुछ करने को कहता है"
+  },
+  "webmail_finding_credential_request": {
+    "message": "ईमेल पासवर्ड, कोड या कार्ड की जानकारी माँगता है"
+  },
+  "webmail_finding_money_request": {
+    "message": "ईमेल पैसे माँगता है या इनाम का वादा करता है"
+  },
+  "webmail_finding_account_threat": {
+    "message": "ईमेल खाता ब्लॉक होने या संदिग्ध लॉगिन की चेतावनी देता है"
+  },
+  "webmail_setting_heading": {
+    "message": "ईमेल जाँच"
+  },
+  "webmail_setting_label": {
+    "message": "Gmail, Outlook और Yahoo में मेरे खोले गए ईमेल की फ़िशिंग के लिए जाँच करें"
+  },
+  "webmail_setting_consent": {
+    "message": "जब तक आप इसे चालू न करें, यह बंद रहता है। चालू होने पर, Gmail, Outlook या Yahoo Mail में आपका खोला गया हर ईमेल फ़िशिंग की जाँच के लिए Cleanway के सर्वर (api.cleanway.ai) पर भेजा जाता है: विषय, भेजने वाले का नाम और पता, Reply-To पता, संदेश का टेक्स्ट, और उसके हर लिंक का पता और टेक्स्ट। ईमेल की जाँच होती है और उसे सहेजा नहीं जाता; उसके लिंक के डोमेन Google Safe Browsing से भी जाँचे जाते हैं। इसे कभी भी बंद करें — जाँच तुरंत रुक जाती है।"
+  },
+  "webmail_setting_denied": {
+    "message": "आपके ब्राउज़र ने Cleanway को ईमेल साइटों तक पहुँच नहीं दी, इसलिए ईमेल जाँच बंद रहेगी।"
+  },
+  "webmail_setting_unsupported": {
+    "message": "यह ब्राउज़र ईमेल जाँच नहीं चला सकता।"
+  },
+  "options_page_title": {
+    "message": "Cleanway सेटिंग्स"
+  },
+  "options_page_subtitle": {
+    "message": "चुनें कि Cleanway आपकी सुरक्षा कैसे करे"
+  },
+  "options_skill_heading": {
+    "message": "यह ब्राउज़र कौन इस्तेमाल करता है"
+  },
+  "options_skill_subtitle": {
+    "message": "Cleanway हर किसी के लिए चेतावनियाँ अलग तरह से समझाता है। इसे कभी भी बदल सकते हैं।"
+  },
+  "options_skill_kids": {
+    "message": "बच्चे"
+  },
+  "options_skill_kids_desc": {
+    "message": "ठगी वाली साइटों पर बड़ा STOP, उन्हें फिर भी खोलने का कोई बटन नहीं।"
+  },
+  "options_skill_regular": {
+    "message": "सामान्य"
+  },
+  "options_skill_regular_desc": {
+    "message": "ज़्यादातर लोगों के लिए सही। साफ़ चेतावनियाँ जो बताती हैं कि साइट खतरनाक क्यों है।"
+  },
+  "options_skill_granny": {
+    "message": "दादा-दादी"
+  },
+  "options_skill_granny_desc": {
+    "message": "बड़े अक्षर, और चेतावनी बोलकर सुनाई जाती है।"
+  },
+  "options_skill_pro": {
+    "message": "विशेषज्ञ"
+  },
+  "options_skill_pro_desc": {
+    "message": "जोखिम स्कोर दिखाता है और खतरे के संकेत सबसे पहले रखता है।"
+  },
+  "options_font_scale": {
+    "message": "टेक्स्ट का आकार"
+  },
+  "options_font_scale_desc": {
+    "message": "Cleanway विंडो में बड़े अक्षर"
+  },
+  "options_voice": {
+    "message": "आवाज़ वाली चेतावनियाँ"
+  },
+  "options_voice_desc": {
+    "message": "जब Cleanway किसी ठगी वाली साइट को रोके, तो चेतावनी बोलकर सुनाएँ"
+  },
+  "options_pin": {
+    "message": "माता-पिता का PIN"
+  },
+  "options_pin_desc": {
+    "message": "अभी काम नहीं करता — बच्चों वाला मोड बिना PIN के बंद किया जा सकता है। बच्चों वाला मोड अभी यह करता है: रोके गए पेज पर उसे फिर भी खोलने का बटन नहीं होता।"
+  },
+  "options_pin_set": {
+    "message": "PIN सेट करें"
+  },
+  "options_pin_update": {
+    "message": "PIN बदलें"
+  },
+  "options_pin_clear": {
+    "message": "हटाएँ"
+  },
+  "options_pin_invalid": {
+    "message": "PIN ठीक 4 अंकों का होना चाहिए"
+  },
+  "options_pin_clear_confirm": {
+    "message": "माता-पिता का PIN हटाएँ?"
+  },
+  "options_voice_on": {
+    "message": "आवाज़ चालू"
+  },
+  "options_voice_off": {
+    "message": "आवाज़ बंद"
+  },
+  "options_source_device": {
+    "message": "इस डिवाइस पर सेट"
+  },
+  "options_source_account": {
+    "message": "आपके खाते से"
+  },
+  "options_protection": {
+    "message": "सुरक्षा"
+  },
+  "options_auto_scan": {
+    "message": "लिंक अपने-आप जाँचें"
+  },
+  "options_auto_scan_desc": {
+    "message": "हर पेज के हर लिंक की जाँच करें"
+  },
+  "options_badges": {
+    "message": "लिंक के पास निशान"
+  },
+  "options_badges_desc": {
+    "message": "हर लिंक के पास सुरक्षा का निशान दिखाएँ"
+  },
+  "options_block": {
+    "message": "खतरनाक पेज रोकें"
+  },
+  "options_block_desc": {
+    "message": "खतरनाक साइट खुलने से पहले चेतावनी स्क्रीन दिखाएँ"
+  },
+  "options_privacy": {
+    "message": "प्राइवेसी"
+  },
+  "options_auto_audit": {
+    "message": "हर नई साइट पर प्राइवेसी जाँच"
+  },
+  "options_auto_audit_desc": {
+    "message": "देखें कि हर नई साइट आपके बारे में क्या जुटाती है"
+  },
+  "options_anon_stats": {
+    "message": "गुमनाम आँकड़े"
+  },
+  "options_anon_stats_desc": {
+    "message": "गुमनाम कुल आँकड़े भेजकर Cleanway को बेहतर बनाने में मदद करें"
+  },
+  "options_stats": {
+    "message": "आँकड़े"
+  },
+  "options_lists": {
+    "message": "आपकी सूचियाँ"
+  },
+  "options_blocklist": {
+    "message": "रोकी गई साइटें"
+  },
+  "options_blocklist_desc": {
+    "message": "हमेशा रोकी जाने वाली साइटें (हर पंक्ति में एक)"
+  },
+  "options_allowlist": {
+    "message": "भरोसेमंद साइटें"
+  },
+  "options_allowlist_desc": {
+    "message": "कभी चिह्नित न की जाने वाली साइटें (हर पंक्ति में एक)"
+  },
+  "options_save_lists": {
+    "message": "सूचियाँ सहेजें"
+  },
+  "options_saved": {
+    "message": "सहेजा गया ✓"
+  },
+  "options_tracking_heading": {
+    "message": "ट्रैकिंग से सुरक्षा"
+  },
+  "options_clean_tracking": {
+    "message": "लिंक से ट्रैकिंग टैग हटाएँ"
+  },
+  "options_clean_tracking_desc": {
+    "message": "पतों से fbclid, utm_* और gclid अपने-आप हटाएँ"
+  },
+  "options_block_miners": {
+    "message": "क्रिप्टो माइनर रोकें"
+  },
+  "options_block_miners_desc": {
+    "message": "साइटों को आपके कंप्यूटर पर क्रिप्टोकरेंसी माइन करने से रोकें"
+  },
+  "options_advanced": {
+    "message": "उन्नत"
+  },
+  "options_api_server": {
+    "message": "API सर्वर"
+  },
+  "options_api_server_desc": {
+    "message": "डेवलपर्स के लिए। डिफ़ॉल्ट: https://api.cleanway.ai"
+  },
+  "options_save": {
+    "message": "सहेजें"
+  },
+  "options_referral": {
+    "message": "दोस्त को बुलाएँ"
+  },
+  "options_referral_link": {
+    "message": "आपका न्योता लिंक"
+  },
+  "options_referral_link_desc": {
+    "message": "इसे शेयर करें, दोस्तों को 7 दिन मुफ़्त मिलेंगे"
+  },
+  "options_copied": {
+    "message": "कॉपी हो गया ✓"
+  },
+  "options_redeem": {
+    "message": "कोड डालें"
+  },
+  "options_redeem_desc": {
+    "message": "दोस्त से कोड मिला? उसे यहाँ डालें"
+  },
+  "options_redeem_btn": {
+    "message": "लागू करें"
+  },
+  "options_redeem_placeholder": {
+    "message": "कोड"
+  },
+  "options_redeem_saved": {
+    "message": "कोड $CODE$ सहेजा गया",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_data": {
+    "message": "डेटा"
+  },
+  "options_clear": {
+    "message": "इस डिवाइस का इतिहास मिटाएँ"
+  },
+  "options_clear_desc": {
+    "message": "इस डिवाइस पर रखा जाँचों का पूरा इतिहास मिटाएँ"
+  },
+  "options_clear_btn": {
+    "message": "मिटाएँ"
+  },
+  "options_clear_confirm": {
+    "message": "इस डिवाइस पर जाँचों का पूरा इतिहास मिटाएँ? इसे वापस नहीं किया जा सकता।"
+  },
+  "options_export": {
+    "message": "मेरा डेटा एक्सपोर्ट करें"
+  },
+  "options_export_desc": {
+    "message": "Cleanway इस डिवाइस पर जो कुछ रखता है, वह सब JSON फ़ाइल में डाउनलोड करें"
+  },
+  "options_export_btn": {
+    "message": "एक्सपोर्ट"
+  },
+  "options_settings_saved": {
+    "message": "सेटिंग्स सहेजी गईं"
+  },
+  "options_family_default_name": {
+    "message": "मेरा परिवार"
+  },
+  "options_family_role_owner": {
+    "message": "मालिक"
+  },
+  "options_family_role_member": {
+    "message": "सदस्य"
+  },
+  "options_family_members_count": {
+    "message": "सदस्य: $COUNT$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "options_family_no_key": {
+    "message": "अभी कुंजी नहीं"
+  },
+  "options_family_unknown_domain": {
+    "message": "(अज्ञात साइट)"
+  },
+  "options_family_alert_blocked": {
+    "message": "रोका गया"
+  },
+  "options_family_create_failed": {
+    "message": "परिवार नहीं बन सका। थोड़ी देर में फिर कोशिश करें।"
+  },
+  "options_family_join_invalid_input": {
+    "message": "कोड और 4 अंकों का PIN डालें।"
+  },
+  "options_family_join_failed": {
+    "message": "यह न्योता गलत है या इसकी मियाद खत्म हो गई है।"
+  },
+  "options_family_invite_failed": {
+    "message": "न्योता नहीं बन सका। थोड़ी देर में फिर कोशिश करें।"
+  },
+  "options_family_invite_share": {
+    "message": "Cleanway परिवार का न्योता\nकोड: $CODE$\nPIN: $PIN$",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      },
+      "pin": {
+        "content": "$2"
+      }
+    }
+  },
+  "options_family_invite_qr_alt": {
+    "message": "Cleanway परिवार न्योते का QR कोड"
+  },
+  "account_heading": {
+    "message": "खाता"
+  },
+  "account_sign_in": {
+    "message": "साइन इन करें"
+  },
+  "account_sign_out": {
+    "message": "साइन आउट करें"
+  },
+  "account_signed_in": {
+    "message": "साइन इन हैं"
+  },
+  "account_signed_in_as": {
+    "message": "$EMAIL$ के रूप में साइन इन",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "account_signed_in_desc": {
+    "message": "परिवार हब और सेटिंग्स सिंक के लिए। साइन आउट करने से सुरक्षा बंद नहीं होती।"
+  },
+  "account_signed_out": {
+    "message": "साइन इन नहीं है"
+  },
+  "account_signed_out_desc": {
+    "message": "परिवार हब इस्तेमाल करने और सेटिंग्स सिंक करने के लिए साइन इन करें। सुरक्षा बिना खाते के भी काम करती है।"
+  },
+  "account_pending": {
+    "message": "Cleanway टैब पर साइन इन पूरा करें"
+  },
+  "account_expired": {
+    "message": "आपका साइन-इन समाप्त हो गया है"
+  },
+  "account_device_revoked": {
+    "message": "इस ब्राउज़र को आपके खाते से हटा दिया गया है। यहाँ इस्तेमाल करने के लिए फिर से साइन इन करें।"
+  },
+  "account_device_limit": {
+    "message": "आपके प्लान के सभी डिवाइस इस्तेमाल में हैं। cleanway.ai/account पर कोई एक हटाएँ, फिर से साइन इन करें।"
+  }
+}
