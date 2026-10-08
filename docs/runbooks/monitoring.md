@@ -132,6 +132,45 @@ check records it again; the lasting fix is Google's — the site owner asks
 for a review in Google Search Console (Security issues), or report it at
 https://safebrowsing.google.com/safebrowsing/report_error/.
 
+## Own sources: CT lookalikes and in-app reports (`LOOKALIKE_GENERATOR_ENABLED`) — off
+
+`scripts/refresh_lookalikes.py` (workflow *Refresh own sources*, hourly)
+reads every new Let's Encrypt certificate from the CT logs, keeps the names
+the scorer's rules say imitate a Russian brand (`sberbamk.ru`,
+`gosuslugi-lk.help`, `сбербанк-бонус.рф`) as candidates, and promotes one
+into `dangerous_domains:lookalike` only on evidence it gathered itself: the
+site serves a password form that names the brand. In-app reports
+(«Пожаловаться на сайт», `POST /api/v1/feedback/report` with
+`false_negative`) are queued and need the same evidence — a report, or a
+hundred, is never enough on its own. A third party's listing (Safe Browsing,
+abuse.ch …) is recorded with the evidence but never publishes a host: that
+would derive this list from theirs, the licence problem it exists to avoid.
+The blocklist refresh publishes both sets as exact hosts through every guard
+a feed host meets (top-100k/Tranco veto, brand-owned veto, hosting-platform
+apexes, zones), for 14 days after the last confirmation.
+
+It is **off**. Set `LOOKALIKE_GENERATOR_ENABLED=1` in **both** places: the
+API service on Railway (it queues reports and shows the report button via
+`/api/v1/mobile/version` → `features.report_sites`) and GitHub → Actions →
+Variables (the hourly job runs, and the refresh job publishes). Unset both
+to switch off: stored hosts leave the list at the next refresh, with no
+retention tail.
+
+Before switching on, run the workflow by hand with *dry run* checked (the
+default): it writes nothing and uploads `lookalikes-report.json` — the
+candidates, which of them pass the publisher's gates, and `would_publish`.
+Look through the names for brand-owned ones first.
+
+**A wrongly promoted site**: make its confirmation look expired, then run
+the refresh workflow by hand (a production Redis write, your decision):
+
+    ZADD dangerous_domains:lookalike XX <now minus 14 days and 1 hour, unix seconds> <host>
+
+(`dangerous_domains:reports` for a reported one). The lasting fix: the
+brand's own name goes into `data/typosquat_targets_ru.json` (`official`, with
+its evidence) so the rule never matches it again, or another owner's exact
+host into `data/brand_owned_hosts.txt`.
+
 ## When the DNS canary goes red
 
 - `LISTED NAME NOT BLOCKED` / `NOT BLOCKED BY US` — the gateway is not
