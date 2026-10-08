@@ -6,8 +6,10 @@ and Gecko-family store + Safari. Run `bash scripts/build-store-
 artifacts.sh` first to produce the upload-ready ZIPs under
 `dist/store-artifacts/`.
 
-The Android app's **Google Play** listing draft (EN + RU, Data safety) is in
-§6 below; Play submission is currently blocked. The RuStore listing is in
+The Android app's **Google Play** pack (listing EN + RU, Data safety, VPN and
+foreground-service declarations, account-deletion URL, console checklist) is §6
+below; Play submission waits for the targetSdk-36 build. §7 is the 0.2.0
+checklist for the browser stores. The RuStore listing is in
 `docs/RUSTORE_SUBMISSION.md` §7.
 
 | Store | Reach | Cost | Manifest | Build artifact |
@@ -18,7 +20,7 @@ The Android app's **Google Play** listing draft (EN + RU, Data safety) is in
 | Firefox Add-ons (AMO) | ~180 M Firefox + Tor users | Free | MV2 shim | `cleanway-<v>-firefox.zip` |
 | Safari App Extensions | ~1 B Safari (Mac + iOS) users | $99/yr (Apple Developer) | MV3 in Xcode wrapper | `cleanway-<v>-safari/` |
 | Brave / Vivaldi | (consume CWS) | n/a | n/a — same Chrome upload | n/a |
-| Firefox Android | included in AMO listing if `gecko_android` block added | Free | MV2 shim | same firefox.zip |
+| Firefox Android | not declared yet (no `gecko_android` block) | Free | MV2 shim | same firefox.zip |
 
 > **Quick start:** if you only have time for one submission today,
 > ship to Chrome Web Store. That single upload reaches Chrome,
@@ -83,9 +85,13 @@ grep '"version"' extension/manifest.json
        mail sites are optional host permissions requested from that switch;
        justify `scripting` with the text in `extension/STORE_LISTING.md`.
      - **Personally identifiable information** — the email address, only if the
-       user signs in.
-     - Do **not** claim "no data collected", and do not leave the two boxes
-       above unticked.
+       user signs in (the extension stores it locally; the account holds it).
+     - **Authentication information** — the first 5 characters of the SHA-1 of
+       a typed password (leak check, `content/password-pwned.js`) and, when
+       signed in, the account token sent with account calls (tokens are kept in
+       `chrome.storage.local`, `utils/auth-session.js`).
+     - Do **not** claim "no data collected", and do not leave these boxes
+       unticked. Full answers: `docs/CWS_SUBMISSION.md` §4.
    - Link the privacy policy: https://cleanway.ai/privacy-policy
 4. Screenshots (1280×800 or 640×400):
    - 1. Popup with safe verdict
@@ -111,7 +117,7 @@ grep '"version"' extension/manifest.json
 
 **Submission:**
 1. Extensions → New → upload `cleanway-<v>-edge.zip`
-2. Listing fields are similar to Chrome; reuse `STORE-LISTINGS.md → edge.*`
+2. Listing fields are similar to Chrome; reuse `extension/STORE_LISTING.md`
 3. Edge requires a contact email visible in the listing — use `support@cleanway.ai`
 4. Privacy: Edge displays each permission inline. The justifications must match the Chrome ones EXACTLY or we get a discrepancy flag.
 5. Localisation: Edge accepts the same `_locales/` map Chrome does.
@@ -130,7 +136,7 @@ grep '"version"' extension/manifest.json
 **Submission:**
 1. Dashboard → Add → upload `cleanway-<v>-opera.zip`
 2. Category: `Productivity`
-3. Listing: see `STORE-LISTINGS.md → opera.*` — slightly punchier copy than Chrome.
+3. Listing: `extension/STORE_LISTING.md` (same text as Chrome).
 
 ---
 
@@ -146,9 +152,9 @@ grep '"version"' extension/manifest.json
 **Submission:**
 1. Submit a new add-on → upload `cleanway-<v>-firefox.zip`
 2. Add-on type: `Extension`
-3. Listing fields: `STORE-LISTINGS.md → firefox.*`
+3. Listing fields: `extension/STORE_LISTING.md` (the "Read and change all your data" line is Chrome's wording; Firefox shows "Access your data for all websites")
 4. Source code: link the GitHub release tag (e.g. `https://github.com/AlexMos555/linkshield/releases/tag/v<version>`).
-5. Add the `gecko_android` block to `manifest.json` before submitting if Firefox Android support is in scope — done already.
+5. Firefox for Android is not declared (no `gecko_android` block); untick Android in the AMO upload unless it is tested there. The manifest declares Firefox's `data_collection_permissions` (§7).
 6. Privacy policy: AMO requires a public URL. We use https://cleanway.ai/privacy-policy.
 
 ---
@@ -166,46 +172,69 @@ grep '"version"' extension/manifest.json
 1. Open Xcode → `xcrun safari-web-extension-converter dist/store-artifacts/cleanway-<v>-safari/`
 2. Choose project name `Cleanway` and bundle id `ai.cleanway.safari`
 3. Build → Archive → Distribute → Upload to App Store Connect
-4. In App Store Connect, fill the macOS listing per `STORE-LISTINGS.md → safari.*`
+4. In App Store Connect, fill the macOS listing from `extension/STORE_LISTING.md`
 5. Submit for review. **Safari review can take 7-14 days** — start the clock first.
 
 ---
 
-## 6. Google Play (Android app) — DRAFT, submission BLOCKED
+## 6. Google Play (Android app) — readiness pack
 
-> **Status (re-checked 2026-10-08): do not submit.** Google Play requires
-> targetSdk 36 for new apps and updates since 31 Aug 2026; our APK targets 34
-> because the app is on Expo SDK 52 (`mobile/package.json`: `expo ~52.0.0`).
-> Details: `docs/RUSTORE_SUBMISSION.md` (top) and `docs/GO_LIVE_CHECKLIST.md`.
-> `landing/lib/install-urls.ts` has no Google Play entry — the Android button
-> leads to `/android` (direct APK). The copy below is ready so the listing is not
-> the bottleneck once the SDK upgrade ships.
+> **Status (re-checked 2026-10-08): ready on paper, the build is not.** Google
+> Play requires targetSdk 36 for new apps and updates since 31 Aug 2026; the
+> APK on `main` targets 34 (`mobile/package.json`: `expo ~52.0.0`). The Expo
+> upgrade is in progress on its own branch — submit only a build made after it
+> lands, and re-check §6.4 (permissions) against that build with `aapt`.
+> `landing/lib/install-urls.ts` has no Google Play entry yet — the Android button
+> leads to `/android` (direct APK). Everything below is what Play Console asks
+> for, answered from the code.
 
-Package `ai.cleanway.app`. Build, signing, permissions and the VpnService /
-battery / camera justifications are shared with RuStore:
-`docs/RUSTORE_SUBMISSION.md` §2–4.
+Package `ai.cleanway.app`. Build and signing are shared with RuStore:
+`docs/RUSTORE_SUBMISSION.md` §1–2 (Play App Signing: upload the AAB signed with
+the release key; let Google manage the app signing key).
+
+| Play Console field | Value |
+|---|---|
+| Privacy policy URL | `https://cleanway.ai/privacy-policy` (all 10 languages; covers the app, the extension, the website, payments through Stripe / Google Play / the App Store via RevenueCat) |
+| Delete account URL | `https://cleanway.ai/delete-account` (public page: sign in → "Delete account"; what is deleted and kept). The deletion itself: `https://cleanway.ai/account` |
+| Terms of service (store listing "Website" or in-app) | `https://cleanway.ai/terms` |
+| Support email / website | `support@cleanway.ai` (confirm the mailbox receives mail first — `NEXT_PUBLIC_SUPPORT_EMAIL_LIVE`) / `https://cleanway.ai/support` |
+| Ads | **No ads** — no ad SDK in `mobile/package.json` |
+| App category | Tools (alternative: Productivity) |
+| Contains in-app purchases | **No** until Google Play Billing (RevenueCat) ships in the app; then **Yes** |
 
 ### 6.0 TODO before any Play submission (founder)
 
+- [ ] **targetSdk 36** — wait for the Expo SDK upgrade build; re-run
+      `aapt dump permissions` on it and compare with §6.4.
 - [ ] **Remove or replace the old upgrade screen.** In every language except
       Russian, Settings → Plan opens `mobile/app/upgrade.tsx`: hard-coded "$4.99
       Personal / $9.99 Family", "10 checks/day", and a button that opens
       `cleanway.ai/pricing` in the browser. That breaks Play's Payments policy
-      (digital subscriptions must use Play Billing) and contradicts the new
-      prices (`docs/ACCOUNTS_BILLING_PLAN.md` §5). Hide it like in Russian
-      (`mobile/src/config/market.ts`) or wire Play Billing (§7 item 4 of the
-      plan) first.
-- [ ] **Pricing line.** Play Billing is not wired, the 3-checks-a-day limit and
-      the 7-day trial are not in the app, so the copy says only "Basic protection
-      is free." When paid is live, add (confirm numbers first): "Blocking known
-      scam sites is free with no limit. 3 detailed checks a day are free, and
-      everything is unlimited for the first 7 days. Optional subscription:
-      $0.99 a month or $9.99 a year for 3 devices (phone, tablet, or browser with
-      the extension); each extra device $0.49 a month." Russian: see
-      `docs/RUSTORE_SUBMISSION.md` §7.0 (99 ₽ / +29 ₽).
-- [ ] **Data safety "shared" answer** for the threat-intelligence lookups (below).
+      (digital subscriptions must use Play Billing) and contradicts the device
+      plan (`docs/ACCOUNTS_BILLING_PLAN.md` §5). Hide it like in Russian
+      (`mobile/src/config/market.ts`) or wire Play Billing (RevenueCat) first.
+      The paywall's "Subscribe on cleanway.ai" button (`mobile/app/paywall.tsx`,
+      `cta_web`) is the same problem in a Play build.
+- [ ] **"Automatic SMS check" in the paywall.** `mobile/app/paywall.tsx` lists
+      `mobile.paywall.benefit_sms` ("Automatic SMS check") in every build. The
+      Play build has no SMS receiver and no SMS permission (and must not —
+      Play's SMS policy), so that line must be shown only in the RuStore build
+      (see `docs/RUSTORE_SUBMISSION.md` §7.0). The website no longer carries it
+      anywhere (`scripts/check-landing-claims.py` blocks it in all 10 languages).
+- [ ] **Pricing line** in the listing (§6.1): Play Billing is not wired, so the
+      copy says only "Basic protection is free." When paid is live, add (confirm
+      numbers first): "Blocking known scam sites is free with no limit. 3
+      detailed checks a day are free, and everything is unlimited for the first
+      7 days. Optional subscription: $0.99 a month or $9.99 a year for 3 devices
+      (phone, tablet, or browser with the extension); each extra device $0.49 a
+      month." Russian: see `docs/RUSTORE_SUBMISSION.md` §7.0 (99 ₽ / +29 ₽).
 - [ ] **Screenshots in English** — none exist; capture on the signed build in
-      the `en` locale.
+      the `en` locale (phone: at least 2, 1080×1920 or larger; plus the
+      512×512 icon `mobile/assets/store/icon-512.png` and a 1024×500 feature
+      graphic, not made yet).
+- [ ] **Sign-in works for the reviewer** — transactional SMTP in Supabase
+      (`docs/RUSTORE_SUBMISSION.md` §5). In "App access" say that every
+      protection feature works without signing in; sign-in is optional.
 
 ### 6.1 English
 
@@ -321,20 +350,200 @@ EOF
 
 ### 6.3 Data safety — answers that match the code
 
-Full table with evidence: `docs/RUSTORE_SUBMISSION.md` §3; the source of truth
-is `docs/PRIVACY.md` → "The Android app". In Play's terms:
+Source of truth: `docs/PRIVACY.md` ("The Android app", "Accounts, devices and
+purchases"); the full evidence table is `docs/RUSTORE_SUBMISSION.md` §3. Play
+counts only data **sent off the device**; data processed only on the phone is
+"not collected".
 
-| Play category | Answer | Why |
+**Overview questions**
+
+| Question | Answer |
+|---|---|
+| Does your app collect or share any of the required user data types? | **Yes** |
+| Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS to `api.cleanway.ai`, Supabase, Sentry). Note for yourself, not a form field: DNS lookups of unblocked sites go to the network's resolver in plain DNS, as without the app — that is not data *we* collect. |
+| Do you provide a way for users to request that their data is deleted? | **Yes** — in the app (Settings → Delete account), and on the web: `https://cleanway.ai/delete-account` |
+
+**Data types**
+
+| Play category → type | Collected / shared | Optional? | Purposes | Why (code) |
+|---|---|---|---|---|
+| Web browsing → **Web browsing history** | **Collected.** Shared: see the note below | Required | App functionality; Fraud prevention, security and compliance | The host of every link the person checks (typed, pasted, QR, shared, link guard, max 3 per message) goes to `GET /api/v1/public/check/{host}`; the server caches host + verdict up to 24 h, so do **not** tick "processed ephemerally". Never the full URL. |
+| Personal info → **Email address** | Collected, not shared | **Optional** | Account management | Only when the person signs in (Supabase Auth). |
+| Personal info → **User IDs** | Collected, not shared | Optional | Account management | The account ID of a signed-in person (and, once in-app purchases ship, the anonymous app user ID sent to RevenueCat). |
+| Device or other IDs | Collected, not shared | Required | Fraud prevention, security and compliance; Account management | The random install number `X-Cleanway-Install` (rate limiting, replaced every 24 h) and the device ID in the account's device list. Neither is derived from hardware; no advertising ID. |
+| App info and performance → **Crash logs**, **Diagnostics** | Collected, not shared (Sentry is a service provider) | Required | Analytics (app stability) | `@sentry/react-native`. |
+| Financial info → **Purchase history** | **Not collected today.** When Play Billing / RevenueCat ships: Collected, not shared (RevenueCat = service provider), Optional, purpose App functionality / Account management | — | — | The entitlement (plan, status, dates) stored with the account (`entitlements`, migration 023). The store handles the card; no payment info reaches us. |
+| Messages → **SMS or MMS**, **Other in-app messages** | **Not collected** | — | — | A shared or pasted message is analysed on the phone and never leaves it (`MessageAnalyzer`). Only up to 3 link hosts go out — already declared as web browsing history. |
+| Location, contacts, photos and videos, audio, files, calendar, health and fitness, app activity, installed apps, financial info (other than above) | **Not collected** | — | — | No such permission or code path. The camera reads QR codes on the device and discards frames. |
+
+**"Shared" note (decide once, keep in step with the privacy policy):** the
+server sends the bare host, with no user identity, to threat-intelligence
+services (Google Safe Browsing and the others in `docs/PRIVACY.md`) to answer
+the check. Play's definition excludes transfers to service providers that
+process data on your behalf; these services answer a lookup under their own
+terms, so the conservative answer is **Shared: Web browsing history — Fraud
+prevention, security and compliance**. The privacy policy (section 5) already
+names them, so either answer is consistent with it.
+
+### 6.4 Permissions in the APK (re-check with `aapt dump permissions` on the targetSdk-36 build)
+
+| Permission | Why | Play declaration needed |
 |---|---|---|
-| Web browsing → **Web browsing history** | **Collected**, not optional, purpose *App functionality* + *Fraud prevention, security* | The host name of every link the person checks (typed, pasted, QR, shared, link guard, max 3 per message) goes to `api.cleanway.ai`; the server caches host + verdict up to 24 h, so do **not** tick "processed ephemerally". Never the full URL. |
-| Messages → **SMS or MMS** | **Not collected** | The text is analysed on the phone and never leaves it (Play counts only data sent off the device). |
-| Personal info → **Email address** | Collected, **optional**, *Account management* | Only when the person signs in. |
-| App info and performance → **Crash logs**, **Diagnostics** | Collected, *Analytics* (stability) | Sentry; a processor, so not "shared". |
-| Device or other IDs | Collected, *Fraud prevention, security* + *Account management* | The random install number (rate limiting, replaced every 24 h) and the device ID of a signed-in account. Neither is derived from hardware. |
-| Location, contacts, photos, calendar, files, audio, health, financial info, app activity | **Not collected** | No such permission or code path. No purchases in the app yet. |
-| Data shared with third parties | **TODO (founder):** the server sends the bare host, with no user identity, to threat-intelligence services (Google Safe Browsing and the others in `docs/PRIVACY.md`). Play's "service provider" exemption may cover it; the conservative answer is *Shared: Web browsing history — Fraud prevention, security*. Pick one and keep it in step with the privacy policy. | |
-| Encrypted in transit | **Yes** | HTTPS to our API. |
-| Deletion | **Yes** — in the app (Settings → Delete account, Account screen) and on the web: `https://cleanway.ai/account` (use as the "delete account URL") | Required for apps with accounts. |
+| `BIND_VPN_SERVICE` (on the service) | The on-device DNS filter (`CleanwayVpnService`) | **VPN service declaration** — §6.5 |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | The shield runs as a foreground service while protection is on (`foregroundServiceType="specialUse"`, subtype `vpn`, `mobile/modules/cleanway-vpn/android/src/main/AndroidManifest.xml`) | **Foreground service declaration** — §6.6 |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Asks once, after explaining why, to exempt the shield from battery optimisation (`KeepAlive.kt`) | Justify if asked — §6.7 (no separate form; Play reviews it under the "Device and network abuse" policy) |
+| `RECEIVE_BOOT_COMPLETED` | Restarts the shield after a reboot if it was on | No |
+| `POST_NOTIFICATIONS`, `VIBRATE` | "Protection is on" notification, blocked-site alerts, the after-call reminder | No |
+| `CAMERA` | QR-code scanning only, requested at first use | No (disclosed in Data safety as not collected) |
+| `INTERNET`, `ACCESS_NETWORK_STATE`, `WAKE_LOCK` | Checks, blocklist refresh, offline detection | No |
+| `USE_BIOMETRIC`, `USE_FINGERPRINT` | Declared by `expo-secure-store`; the app never prompts | No |
+| `com.google.android.c2dm.permission.RECEIVE`, launcher-badge permissions | Declared by `expo-notifications`; no Firebase project, no push token | No |
+| `com.android.vending.BILLING` | **Only once** RevenueCat / Play Billing ships | No (in-app products set up in Play Console) |
+| Never requested (blocked in `app.json`, pinned by `mobile/scripts/check-android-permissions.mjs`) | SMS, call log, phone state, `QUERY_ALL_PACKAGES`, `REQUEST_INSTALL_PACKAGES`, exact alarms, `RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`, storage | — |
+
+If `aapt` shows `com.google.android.gms.permission.AD_ID` on the new build (some
+libraries add it), answer the "Advertising ID" declaration **No** and block the
+permission in `app.json` (`blockedPermissions`) before uploading.
+
+### 6.5 VPN service declaration (Play Console → App content → VPN service)
+
+- **Does your app use the VpnService?** Yes.
+- **Use case:** *Device security* (anti-phishing / DNS filter). Not "app that
+  connects to a VPN gateway", not a proxy.
+- **Description** (paste):
+
+> Cleanway uses Android's VpnService only to run a DNS filter on the device
+> itself. The VPN interface routes nothing but DNS lookups to the app (a single
+> /32 route to the on-device DNS address); web pages, app traffic, messages and
+> calls never enter the tunnel. The app compares each looked-up name with a list
+> of known scam and phishing sites stored on the phone and answers names on the
+> list with "not found", so those sites do not open. Every other lookup is
+> forwarded to the DNS server of the network the phone is on (the user's mobile
+> operator or Wi-Fi router), and only if that fails to Cloudflare (1.1.1.1) or
+> Quad9 (9.9.9.9) — the lookups the phone makes without Cleanway. No traffic
+> leaves the device through the VPN except these DNS lookups to the user's
+> resolver. There is no remote VPN server: the app does not route, proxy,
+> inspect, log or monetise the user's traffic, and does not change or hide the
+> user's IP address. The DNS answers are not sent to us. The VPN starts only
+> after the user turns protection on and accepts Android's VPN consent dialog,
+> and the store listing says that Cleanway uses the built-in VPN feature.
+
+- Video (if requested): screen recording of turning protection on (system VPN
+  consent dialog), opening a known test scam host in Chrome (it does not load),
+  and the "Protection is on" notification.
+
+### 6.6 Foreground service declaration (`FOREGROUND_SERVICE_SPECIAL_USE`)
+
+- **Foreground service type:** Special use; subtype declared in the manifest:
+  `vpn`.
+- **Justification** (paste):
+
+> The foreground service is Cleanway's on-device DNS filter, the VpnService that
+> blocks known scam and phishing sites in every app. It must keep running while
+> the user has protection switched on, including when the app is closed: if
+> Android stopped it, scam links opened from messages or other apps would load
+> unprotected. It starts only when the user turns protection on, shows a
+> persistent "Protection is on" notification with a way to open the app, and
+> stops when the user turns protection off or another VPN takes over. None of
+> the other foreground service types covers an always-on local DNS filter.
+
+- **User impact if deferred or interrupted:** the user is unprotected without
+  knowing it — scam sites open normally.
+- Video: same recording as §6.5, ending with the persistent notification.
+
+### 6.7 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` justification
+
+> Cleanway is a safety app whose core function is an always-on, on-device DNS
+> filter (VpnService) that blocks known scam and phishing sites in every app.
+> Battery optimisation and manufacturers' battery managers stop it in the
+> background without telling the user, which leaves them unprotected while they
+> believe they are protected. The app asks once, from its "Keep protection on"
+> checklist and only after explaining why; the user can decline and the app
+> keeps working. It does not use the exemption for anything else (no sync, no
+> ads, no tracking).
+
+### 6.8 Content rating (IARC questionnaire)
+
+- Category: **Utility, Productivity, Communication or Other**.
+- Violence, sexuality, language, controlled substances, gambling: **No** to all.
+- Users can interact or exchange content: **No** (Family alerts are automatic,
+  end-to-end encrypted warnings about a site between family members who invited
+  each other; no free-text chat, no public content).
+- Shares the user's location with other users: **No**.
+- Allows purchases of digital goods: **No** today; **Yes** once Play Billing
+  ships (re-take the questionnaire then).
+- Unrestricted internet access / web browser: **No** (the app opens links in the
+  user's own browser).
+- Expected rating: Everyone / PEGI 3.
+
+### 6.9 Target audience and other App content declarations
+
+| Declaration | Answer |
+|---|---|
+| Target age groups | **18 and over** (the product is for adults and their parents; the policy says it is not for children under 13 to use on their own). Do not tick under-13 groups — that brings in the Families policy. |
+| Appeals to children | No |
+| Ads | **No, my app does not contain ads** |
+| Advertising ID | No (see §6.4 note) |
+| Government app | No |
+| Financial features | None (no banking, loans, payments between users, crypto) |
+| Health | No health features |
+| News app | No |
+| Data safety | §6.3 |
+| App access | All functionality available without special access; sign-in is optional (email one-time code) |
+
+### 6.10 Founder checklist in Play Console
+
+1. [ ] Create the app (`Cleanway: Scam Protection`, default language English,
+       App, Free) — package `ai.cleanway.app`.
+2. [ ] Store listing: paste §6.1 (and §6.2 as the Russian translation); upload
+       icon, feature graphic, phone screenshots; contact email and website.
+3. [ ] Privacy policy URL `https://cleanway.ai/privacy-policy`.
+4. [ ] App access: "All functionality is available without special access"
+       (+ the note that sign-in is optional).
+5. [ ] Ads: No. Advertising ID: No (after the `aapt` check).
+6. [ ] Content rating: §6.8. Target audience: §6.9 (18+).
+7. [ ] Data safety: §6.3, including the account-deletion URL
+       `https://cleanway.ai/delete-account`.
+8. [ ] VPN service declaration: §6.5. Foreground service declaration: §6.6
+       (record and upload the video).
+9. [ ] Government / financial / health / news declarations: §6.9.
+10. [ ] Upload the targetSdk-36 AAB to **Internal testing** first; install from
+        Play on a real phone; turn protection on; confirm a known scam host does
+        not load and the notification shows.
+11. [ ] Closed testing: personal developer accounts created after Nov 2023 need
+        **12 testers for 14 days** before production access — start it early.
+12. [ ] When Play Billing ships: create the subscription products (device plan,
+        monthly / yearly, extra device), connect RevenueCat, re-answer Data
+        safety (Purchase history) and the content rating (digital purchases).
+13. [ ] After approval: add Google Play to `landing/lib/install-urls.ts` and drop
+        the "Google Play" rule in `scripts/check-landing-claims.py` (scope
+        `landing.android`).
+
+---
+
+## 7. Browser stores — console checklist for 0.2.0
+
+All four uploads come from `bash scripts/build-extensions.sh && bash
+scripts/build-store-artifacts.sh` (`dist/store-artifacts/cleanway-0.2.0-*.zip`,
+checksums in `cleanway-0.2.0-sha256.txt`). Verify before uploading:
+
+```bash
+node scripts/test-extension-core.mjs && node scripts/test-extension-auth.mjs \
+  && node scripts/test-local-scorer.mjs && python3 scripts/check-extension-paths.py
+npx -y web-ext@8 lint --source-dir extension-firefox   # 0 errors expected
+```
+
+What 0.2.0 contains: the opt-in webmail scanner (PR #117 — off by default, mail
+sites are optional permissions, Firefox's data-collection consent on Firefox
+140+) and sign-in through cleanway.ai with device registration (PR #107).
+
+| Store | Founder action |
+|---|---|
+| Chrome Web Store | Upload `cleanway-0.2.0-chrome.zip`; listing from `extension/STORE_LISTING.md`; Privacy practices from `docs/CWS_SUBMISSION.md` §2–4; privacy policy URL; "remote code: No". |
+| Edge Add-ons | Upload `cleanway-0.2.0-edge.zip`; same listing and the **same** permission justifications as Chrome; contact email. |
+| Opera add-ons | Upload `cleanway-0.2.0-opera.zip`; same listing. |
+| Firefox AMO | Upload `cleanway-0.2.0-firefox.zip`. The manifest declares Firefox's `data_collection_permissions` (required: browsing activity, authentication information; optional: personal communications, website content — the webmail switch asks for these). Source code: link the repo; the build is plain, unminified JS. Privacy policy URL. Notes for the reviewer: "Webmail scanning is off by default and asks for the mail sites and Firefox's data consent when switched on in Settings." |
+| Safari | `xcrun safari-web-extension-converter dist/store-artifacts/cleanway-0.2.0-safari/` (§5 above). |
 
 ---
 

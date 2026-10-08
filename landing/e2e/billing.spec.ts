@@ -167,7 +167,7 @@ test.describe("billing flag on — the operator-billed subscription", () => {
 
     await page.goto("/ru/privacy-policy");
     const policy = page.locator("section#billing");
-    await expect(policy).toContainText("12. Оплата подписки");
+    await expect(policy).toContainText("13. Оплата подписки");
     await expect(policy).toContainText("отдельной базе данных на территории России");
     await expect(policy).toContainText("зашифрованном виде");
     await expect(page.locator("section#payments")).toHaveCount(0);
@@ -180,7 +180,7 @@ test.describe("billing flag on — the operator-billed subscription", () => {
       await expect(page.locator("section#payments")).toContainText("Stripe");
       await expect(page.locator("section#billing")).toHaveCount(0);
     }
-    await expect(page.locator("section#payments")).toContainText("Das Blockieren von Betrugsseiten wird nie kostenpflichtig");
+    await expect(page.locator("section#payments")).toContainText("Das Blockieren bekannter Betrugsseiten wird nie kostenpflichtig");
   });
 
   test("/terms for a visitor from Russia gets the subscription terms in the page's language", async ({ page }) => {
