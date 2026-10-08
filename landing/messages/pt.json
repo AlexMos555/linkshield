@@ -726,7 +726,7 @@
     "meta_description": "O que o Cleanway recebe, o que fica no seu celular, quem mais vê o quê e por quanto tempo tudo é guardado.",
     "back": "Voltar para o Cleanway",
     "title": "Política de privacidade",
-    "updated": "Última atualização: 27 de setembro de 2026",
+    "updated": "Última atualização: 8 de outubro de 2026",
     "intro": "Esta política explica em palavras simples quais dados o Cleanway trata, por quê e quem mais os vê. Ela descreve o serviço como funciona hoje. Se algo aqui não bater com o que o Cleanway realmente faz, é um erro e queremos saber.",
     "contact_live": "Dúvidas e pedidos sobre os seus dados:",
     "contact_not_live": "Nossa caixa de suporte ainda está sendo configurada, então ainda não conseguimos receber e-mails. O endereço vai aparecer nesta seção assim que funcionar.",
@@ -751,14 +751,14 @@
         "paragraphs": [
           "Quando você ativa a proteção, o Cleanway liga um filtro local usando o mecanismo de VPN do Android. Por ele passam só as consultas DNS — as perguntas que o celular faz para achar o endereço de um site, como “onde fica example.com?”. O conteúdo das páginas, suas mensagens e ligações não passam pelo filtro e não são lidos.",
           "Cada nome de site é comparado com a lista de sites de golpe guardada no celular. Se ele estiver na lista, o celular não abre o site e uma anotação (o nome do site, a hora e o que aconteceu) é salva no celular para o Histórico do app.",
-          "Os nomes que não estão na lista são repassados para achar o endereço do site: primeiro ao servidor DNS da rede em que o celular está — da sua operadora ou do seu roteador Wi-Fi —, como sem o Cleanway. Só se ele não responder, vão para o Cloudflare (1.1.1.1), depois para o Quad9 (9.9.9.9) e, em último caso, para o DNS-over-HTTPS criptografado do Cloudflare. É assim que funcionam as versões 1.0.2 e 1.0.3 do app; a versão 1.0.1 perguntava primeiro ao Cloudflare. Esses serviços veem o nome do site e o endereço IP da sua conexão, como qualquer serviço de DNS; valem as políticas de privacidade deles. O Cleanway não recebe nem guarda essas consultas.",
+          "Os nomes que não estão na lista são repassados para achar o endereço do site: primeiro ao servidor DNS da rede em que o celular está — da sua operadora ou do seu roteador Wi-Fi —, como sem o Cleanway. Só se ele não responder, vão para o Cloudflare (1.1.1.1), depois para o Quad9 (9.9.9.9) e, em último caso, para o DNS-over-HTTPS criptografado do Cloudflare. É assim que funcionam as versões 1.0.2 a 1.0.4 do app; a versão 1.0.1 perguntava primeiro ao Cloudflare. Esses serviços veem o nome do site e o endereço IP da sua conexão, como qualquer serviço de DNS; valem as políticas de privacidade deles. O Cleanway não recebe nem guarda essas consultas.",
           "A partir da versão 1.0.2, o app traz uma cópia da lista de sites de golpe, usada só até o celular baixar uma lista nova."
         ]
       },
       {
         "title": "4. A lista de sites de golpe",
         "paragraphs": [
-          "O app baixa a lista do nosso servidor (api.cleanway.ai) e a atualiza mais ou menos a cada 6 horas, com menos frequência nos dados móveis. A requisição não diz nada sobre os sites que você visita: ela leva só os dados técnicos comuns de qualquer requisição na internet, como o seu endereço IP, e uma marca da versão da lista que o celular já tem. De vez em quando o app também pergunta ao nosso servidor se há uma versão nova do app."
+          "O app baixa a lista do nosso servidor (api.cleanway.ai) e a atualiza mais ou menos a cada 6 horas, com menos frequência nos dados móveis. A requisição não diz nada sobre os sites que você visita: ela leva só os dados técnicos comuns de qualquer requisição na internet, como o seu endereço IP, e uma marca da versão da lista que o celular já tem. Ao ser aberto (no máximo uma vez por hora) e mais ou menos uma vez por dia, o app também pergunta ao nosso servidor se há uma versão nova do app e quais verificações no celular estão ativadas; essa requisição também não diz nada sobre os sites que você visita nem sobre as suas mensagens."
         ]
       },
       {
