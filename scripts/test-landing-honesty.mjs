@@ -20,6 +20,8 @@
  *  11. The operator-billed subscription (Russia) is sold only behind its flag,
  *      at prices that come from settings, with the same ICU arguments in every
  *      language — and the legal pages swap their payment section by id.
+ *  12. The world's /pricing shows the device plan the API serves, falls back to
+ *      the base tier for anything else, and never hand-writes a price.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -40,15 +42,18 @@ import { CLIENT_NAMESPACES, pickClientMessages } from "../landing/lib/client-mes
 import { displayHost } from "../landing/lib/display-host.ts";
 import { installScreenshotSrc } from "../landing/lib/install-screenshots.ts";
 import {
+  DEFAULT_EXTRA_DEVICE_RUB,
+  DEFAULT_FREE_CHECKS_PER_DAY,
   DEFAULT_GRACE_DAYS,
-  DEFAULT_PRICES_RUB,
+  DEFAULT_INCLUDED_DEVICES,
+  DEFAULT_PRICE_RUB,
   DEFAULT_TRIAL_DAYS,
   billingMessageArgs,
   billingTermsFromEnv,
   formatPhone,
+  monthlyPriceFor,
   parseLapsePolicy,
   parsePositiveInt,
-  pricePerDevice,
   pricingVariant,
   replaceSection,
   sellerFromEnv,
@@ -60,6 +65,14 @@ import { paidPlansOffered } from "../landing/lib/paid-plans.ts";
 import { REASON_CODE_TO_KEY, reasonLabelKey, reasonLines } from "../landing/lib/reason-label.ts";
 import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
 import { isFlagOn } from "../landing/lib/support.ts";
+import {
+  DEFAULT_PRICING,
+  checkoutPlanKey,
+  intervalFrom,
+  monthsFree,
+  normalizePricing,
+  usd,
+} from "../landing/lib/world-pricing.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, "..");
@@ -334,26 +347,33 @@ check("every locale has the same sections, and the ids the pages attach links to
 });
 
 console.log("operator-billed subscription (lib/billing.ts)");
-check("defaults are the founder's numbers: 99 / 270 / 399 ₽, 14-day trial, 7-day grace, basic lapse", () => {
+check("defaults are the founder's numbers: 99 ₽ for 3 devices, +29 ₽ each more, 3 checks a day, 7 days unlimited, 7-day grace, basic lapse", () => {
   const terms = billingTermsFromEnv({});
-  assert.deepEqual(terms.plans.map((p) => [p.code, p.devices, p.priceRub]), [["solo", 1, 99], ["family3", 3, 270], ["family5", 5, 399]]);
-  assert.deepEqual(DEFAULT_PRICES_RUB, { solo: 99, family3: 270, family5: 399 });
+  assert.deepEqual(
+    [terms.priceRub, terms.includedDevices, terms.extraDeviceRub, terms.freeChecksPerDay],
+    [99, 3, 29, 3],
+  );
+  assert.deepEqual(
+    [DEFAULT_PRICE_RUB, DEFAULT_INCLUDED_DEVICES, DEFAULT_EXTRA_DEVICE_RUB, DEFAULT_FREE_CHECKS_PER_DAY],
+    [99, 3, 29, 3],
+  );
   assert.equal(terms.trialDays, DEFAULT_TRIAL_DAYS);
-  assert.equal(terms.trialDays, 14);
+  assert.equal(terms.trialDays, 7);
   assert.equal(terms.graceDays, DEFAULT_GRACE_DAYS);
   assert.equal(terms.graceDays, 7);
   assert.equal(terms.lapsePolicy, "basic");
 });
 check("every number comes from its env setting; a malformed value falls back instead of selling a typo", () => {
   const terms = billingTermsFromEnv({
-    NEXT_PUBLIC_BILLING_PRICE_SOLO_RUB: "149",
-    NEXT_PUBLIC_BILLING_PRICE_FAMILY3_RUB: " 300 ",
-    NEXT_PUBLIC_BILLING_PRICE_FAMILY5_RUB: "4.99",
+    NEXT_PUBLIC_BILLING_PRICE_RUB: "149",
+    NEXT_PUBLIC_BILLING_INCLUDED_DEVICES: " 4 ",
+    NEXT_PUBLIC_BILLING_EXTRA_DEVICE_RUB: "4.99",
+    NEXT_PUBLIC_BILLING_FREE_CHECKS_PER_DAY: "5",
     NEXT_PUBLIC_BILLING_TRIAL_DAYS: "30",
     NEXT_PUBLIC_BILLING_GRACE_DAYS: "-3",
     NEXT_PUBLIC_BILLING_LAPSE_POLICY: "OFF",
   });
-  assert.deepEqual(terms.plans.map((p) => p.priceRub), [149, 300, 399]);
+  assert.deepEqual([terms.priceRub, terms.includedDevices, terms.extraDeviceRub, terms.freeChecksPerDay], [149, 4, 29, 5]);
   assert.equal(terms.trialDays, 30);
   assert.equal(terms.graceDays, 7);
   assert.equal(terms.lapsePolicy, "off");
@@ -368,10 +388,10 @@ check("parsePositiveInt / parseLapsePolicy edge cases", () => {
   assert.equal(parseLapsePolicy("anything-else"), "basic");
   assert.equal(parseLapsePolicy(" off "), "off");
 });
-check("per-phone price rounds to whole rubles; the message arguments carry prices as text and day counts as numbers", () => {
+check("price for N devices: the plan covers the included ones, each more adds the extra price; message arguments carry prices as text and counts as numbers", () => {
   const terms = billingTermsFromEnv({});
-  assert.deepEqual(terms.plans.map(pricePerDevice), [99, 90, 80]);
-  assert.deepEqual(billingMessageArgs(terms), { solo: "99", family3: "270", family5: "399", days: 14, grace: 7 });
+  assert.deepEqual([1, 3, 4, 5].map((n) => monthlyPriceFor(terms, n)), [99, 99, 128, 157]);
+  assert.deepEqual(billingMessageArgs(terms), { price: "99", extra: "29", devices: 3, days: 7, checks: 3, grace: 7 });
 });
 check("pricingVariant: Russian visitors get the free page today and the operator page only with the flag on", () => {
   const stripe = (visitor) => paidPlansOffered(visitor);
@@ -493,6 +513,99 @@ check("/check and /audit pages lose the site name, any locale prefix", () => {
 check("other paths are left alone", () => {
   assert.equal(scrubSitePaths("/ru/android"), "/ru/android");
   assert.equal(scrubSitePaths("/ru/check"), "/ru/check");
+});
+
+console.log("world pricing (lib/world-pricing.ts)");
+const DEVICE_PLAN_RESPONSE = {
+  country: "IN",
+  tier: 4,
+  currency: "USD",
+  plan: {
+    id: "devices",
+    included_devices: 3,
+    price: {
+      monthly: { amount: 0.99, monthly_equivalent: 0.99, interval: "monthly", stripe_price_id: "p1" },
+      yearly: { amount: 4.99, monthly_equivalent: 0.42, interval: "yearly", stripe_price_id: "p2" },
+    },
+    extra_device: {
+      monthly: { amount: 0.49, monthly_equivalent: 0.49, interval: "monthly", stripe_price_id: "p3" },
+      yearly: { amount: 2.49, monthly_equivalent: 0.21, interval: "yearly", stripe_price_id: "p4" },
+    },
+    trial_days: 14,
+  },
+  free: { list_blocking_unlimited: true, detailed_checks_per_day: 3, unlimited_days_after_install: 7 },
+  messaging: { blocking_is_free_forever: true, what_paid_unlocks: [] },
+};
+check("the base tier fallback is the founder's world price: $0.99 / $9.99, +$0.49 per device, 3 devices", () => {
+  assert.equal(DEFAULT_PRICING.price.monthly.amount, 0.99);
+  assert.equal(DEFAULT_PRICING.price.yearly.amount, 9.99);
+  assert.equal(DEFAULT_PRICING.extraDevice.monthly.amount, 0.49);
+  assert.equal(DEFAULT_PRICING.includedDevices, 3);
+  assert.equal(DEFAULT_PRICING.country, null);
+  assert.equal(monthsFree(DEFAULT_PRICING), 2);
+});
+check("normalizePricing reads the device plan and refuses anything else (an API from before it, partial bodies)", () => {
+  const pricing = normalizePricing(DEVICE_PLAN_RESPONSE);
+  assert.ok(pricing);
+  assert.equal(pricing.country, "IN");
+  assert.equal(pricing.tier, 4);
+  assert.equal(pricing.price.yearly.amount, 4.99);
+  assert.equal(pricing.extraDevice.yearly.amount, 2.49);
+  assert.equal(pricing.freeChecksPerDay, 3);
+  assert.equal(monthsFree(pricing), 7);
+  // The pre-device-plan response: personal / family / business.
+  const legacy = {
+    country: null, tier: 2, currency: "USD",
+    plans: { personal: { monthly: { amount: 4.99 }, yearly: { amount: 49.9 } } },
+    messaging: { blocking_is_free_forever: true, free_threat_threshold: 50, what_paid_unlocks: [] },
+  };
+  assert.equal(normalizePricing(legacy), null);
+  assert.equal(normalizePricing(null), null);
+  assert.equal(normalizePricing("oops"), null);
+  const noYearly = structuredClone(DEVICE_PLAN_RESPONSE);
+  delete noYearly.plan.price.yearly;
+  assert.equal(normalizePricing(noYearly), null);
+  const zeroPrice = structuredClone(DEVICE_PLAN_RESPONSE);
+  zeroPrice.plan.price.monthly.amount = 0;
+  assert.equal(normalizePricing(zeroPrice), null);
+  const badTier = structuredClone(DEVICE_PLAN_RESPONSE);
+  badTier.tier = 7;
+  assert.equal(normalizePricing(badTier), null);
+  const oddCountry = structuredClone(DEVICE_PLAN_RESPONSE);
+  oddCountry.country = "<script>";
+  assert.equal(normalizePricing(oddCountry).country, null);
+});
+check("usd, intervals and the checkout key", () => {
+  assert.equal(usd(0.99), "$0.99");
+  assert.equal(usd(9.99), "$9.99");
+  assert.equal(usd(4.9), "$4.90");
+  assert.equal(intervalFrom(undefined), "yearly");
+  assert.equal(intervalFrom("monthly"), "monthly");
+  assert.equal(intervalFrom("weekly"), "yearly");
+  assert.equal(checkoutPlanKey("yearly"), "devices_yearly");
+  assert.equal(checkoutPlanKey("monthly"), "devices_monthly");
+});
+check("monthsFree says nothing when yearly is not cheaper", () => {
+  const flat = { ...DEFAULT_PRICING, price: { monthly: { amount: 1, monthlyEquivalent: 1 }, yearly: { amount: 12, monthlyEquivalent: 1 } } };
+  assert.equal(monthsFree(flat), 0);
+});
+check("every world pricing key exists in every language, with English's ICU arguments", () => {
+  const refLeaves = new Map(stringLeaves(landingSource("en").pricing));
+  for (const locale of LOCALES) {
+    const leaves = new Map(stringLeaves(landingSource(locale).pricing));
+    assert.deepEqual([...leaves.keys()].sort(), [...refLeaves.keys()].sort(), `${locale}: landing.pricing keys differ from en`);
+    for (const [key, text] of refLeaves) {
+      assert.deepEqual(icuArgs(leaves.get(key)), icuArgs(text), `${locale}: landing.pricing.${key} ICU arguments differ`);
+    }
+  }
+});
+check("the world pricing strings carry no hand-written dollar price, in any locale", () => {
+  for (const locale of LOCALES) {
+    for (const [key, value] of Object.entries(landingSource(locale).pricing)) {
+      const text = Array.isArray(value) ? value.join(" ") : String(value);
+      assert.ok(!/\$\s?\d/.test(text), `${locale} landing.pricing.${key}: hand-written price "${text}"`);
+    }
+  }
 });
 
 if (failures > 0) {

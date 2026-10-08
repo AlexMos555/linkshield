@@ -9,9 +9,10 @@ Handles:
      a successful write; failures answer 5xx so Stripe retries)
   3. POST /api/v1/payments/portal — Stripe Customer Portal link
 
-Real Stripe price IDs are resolved at request time from
-api.services.pricing.STRIPE_PRICE_IDS, which reads
-STRIPE_PRICE_{PLAN}_T{TIER}_{INTERVAL} env vars populated by
+One plan is sold: the device plan (api/services/pricing.py — 3 devices,
+plus optional extra devices). Stripe price IDs come from
+api.services.pricing, which reads STRIPE_PRICE_DEVICES_T{TIER}_{INTERVAL}
+and STRIPE_PRICE_EXTRA_DEVICE_T{TIER}_{INTERVAL} env vars populated by
 scripts/create_stripe_prices.py.
 
 Tier updates are written to Supabase subscriptions table
@@ -44,6 +45,7 @@ from api.services.stripe_billing import (
     stripe_client,
     trial_available,
 )
+from api.services.pricing import STRIPE_TRIAL_DAYS
 from api.services.entitlements import (
     EntitlementError,
     end_source_entitlements,
@@ -59,36 +61,52 @@ logger = logging.getLogger("cleanway.payments")
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
 # Free trial length for a user's FIRST paid subscription. Offered once
-# per user (subscriptions.trial_used_at, migration 021).
-TRIAL_DAYS = 14
+# per user (subscriptions.trial_used_at, migration 021). /api/v1/pricing
+# publishes the same number (plan.trial_days).
+TRIAL_DAYS = STRIPE_TRIAL_DAYS
+
+# Devices a single checkout may add on top of the included ones (the
+# entitlements table caps device_limit at 100, migration 023).
+MAX_EXTRA_DEVICES = 20
 
 
-def _resolve_price(plan_interval: str, country: Optional[str]) -> tuple[str, int] | None:
-    """Translate 'personal_monthly' / 'family_yearly' / 'business_monthly'
-    + the visitor's country into (Stripe price ID, PPP tier).
+def _resolve_price(
+    plan_interval: str, country: Optional[str], extra_devices: int = 0
+) -> tuple[list[dict], int] | None:
+    """Translate 'devices_monthly' / 'devices_yearly' (+ optional extra
+    devices) and the visitor's country into (Stripe line items, PPP tier).
 
     Uses pricing.price_id_for_checkout → country_to_tier, the same
     function /api/v1/pricing/for-country uses to pick the price it SHOWS
     — so for the same `cc` the price charged is the price displayed.
-    (Before, checkout always charged tier 1 while the page showed the
-    regional tier.) Returns None on a malformed key."""
-    from api.services.pricing import STRIPE_PRICE_IDS, country_to_tier, price_id_for_checkout
+    Extra devices bill on the plan's interval (Stripe requires one
+    interval per subscription). The pre-device-plan key 'personal_*' buys
+    the device plan; 'family_*' / 'business_*' are no longer sold.
+    Returns None on an unknown key."""
+    from api.services.pricing import (
+        country_to_tier,
+        extra_device_price_id_for_checkout,
+        parse_plan_key,
+        price_id_for_checkout,
+    )
 
-    if "_" not in plan_interval:
+    interval = parse_plan_key(plan_interval)
+    if interval is None:
         return None
-    plan, interval = plan_interval.rsplit("_", 1)
-    if plan not in STRIPE_PRICE_IDS:
-        return None
-    if interval not in ("monthly", "yearly"):
-        return None
-    return price_id_for_checkout(plan, country, interval), country_to_tier(country)  # type: ignore[arg-type]
+    items = [{"price": price_id_for_checkout(country, interval), "quantity": 1}]
+    if extra_devices:
+        items.append({"price": extra_device_price_id_for_checkout(country, interval), "quantity": extra_devices})
+    return items, country_to_tier(country)
 
 
 _ALLOWED_REDIRECT_PREFIXES = ("https://cleanway.ai/", "https://www.cleanway.ai/")
 
 
 class CheckoutRequest(BaseModel):
-    plan: str  # "personal_monthly", "personal_yearly", "family_monthly", "family_yearly"
+    plan: str  # "devices_monthly" | "devices_yearly" ("personal_*" still accepted)
+    # Devices beyond the plan's included ones (+$0.49/month each at the
+    # base tier). The webhook counts them into the entitlement's device_limit.
+    extra_devices: int = Field(default=0, ge=0, le=MAX_EXTRA_DEVICES)
     success_url: str = "https://cleanway.ai/success"
     cancel_url: str = "https://cleanway.ai/pricing"
     # The same `cc` the client passed to /api/v1/pricing/for-country, so
@@ -122,6 +140,10 @@ class CheckoutRequest(BaseModel):
 
 class CheckoutResponse(BaseModel):
     checkout_url: str
+
+
+class PortalResponse(BaseModel):
+    portal_url: str = Field(..., description="Stripe Customer Portal session URL (billing.stripe.com).")
 
 
 _BILLING_UNAVAILABLE = "Billing is temporarily unavailable. Please try again in a moment."
@@ -159,10 +181,10 @@ async def create_checkout(
 
     stripe.api_key = stripe_key
 
-    resolved = _resolve_price(request.plan, request.country)
+    resolved = _resolve_price(request.plan, request.country, request.extra_devices)
     if not resolved:
         raise HTTPException(400, f"Invalid plan: {request.plan}")
-    price_id, pricing_tier = resolved
+    line_items, pricing_tier = resolved
 
     try:
         row = await fetch_subscription_row(user_id=user.id)
@@ -199,7 +221,7 @@ async def create_checkout(
         subscription_data["trial_period_days"] = TRIAL_DAYS
     params: dict = {
         "mode": "subscription",
-        "line_items": [{"price": price_id, "quantity": 1}],
+        "line_items": line_items,
         "success_url": request.success_url + "?session_id={CHECKOUT_SESSION_ID}",
         "cancel_url": request.cancel_url,
         "metadata": {
@@ -209,6 +231,7 @@ async def create_checkout(
             # once the session actually completes.
             "trial": "1" if trial else "0",
             "pricing_tier": str(pricing_tier),
+            "extra_devices": str(request.extra_devices),
         },
         "subscription_data": subscription_data,
     }
@@ -438,6 +461,7 @@ async def _dispatch_event(event_type: str, data: dict) -> None:
 
 @router.post(
     "/portal",
+    response_model=PortalResponse,
     dependencies=[Depends(rate_limit(mode="sensitive", category="portal"))],
 )
 async def customer_portal(user: AuthUser = Depends(get_current_user)):
@@ -466,14 +490,12 @@ async def customer_portal(user: AuthUser = Depends(get_current_user)):
 
     try:
         # return_url is where Stripe sends the user after they close the
-        # portal (or after they cancel / upgrade). /settings on landing
-        # doesn't exist yet (web settings UI lives inside the extension
-        # popup + mobile app, not on the marketing site). Redirecting to
-        # /pricing makes the most sense — it shows their tier options
-        # again and reflects the change they just made via the portal.
+        # portal (or after they cancel / change the plan): /account, where
+        # the "Manage or cancel subscription" button that opened the portal
+        # lives and the new plan and devices show.
         session = await stripe.billing_portal.Session.create_async(
             customer=customer_id,
-            return_url="https://cleanway.ai/pricing",
+            return_url="https://cleanway.ai/account",
         )
         return {"portal_url": session.url}
     except Exception as e:
@@ -488,7 +510,11 @@ async def customer_portal(user: AuthUser = Depends(get_current_user)):
 # normally only when there is nothing (more) to do.
 
 def _tier_from_plan_key(plan: str) -> str:
-    """Map 'personal_monthly' / 'family_yearly' / 'business_monthly' → tier.
+    """Map a checkout metadata.plan → the subscriptions.tier we store.
+
+    'devices_monthly' / 'devices_yearly' (the device plan) → 'personal'
+    (pricing.STORED_TIER). Sessions opened before the device plan carry
+    'personal_*' / 'family_*' / 'business_*' and keep their tier.
 
     Used by webhook handlers to translate the metadata.plan we set during
     checkout into the subscriptions.tier value our DB stores. Before
@@ -641,8 +667,8 @@ async def _handle_subscription_updated(subscription: dict):
         return
 
     mapped_status = "active" if status in ("active", "trialing") else "past_due" if status == "past_due" else "cancelled"
-    # Plan changes (personal ↔ family ↔ business) arrive here as a new
-    # price; map it back so the tier follows. Unknown price → leave the
+    # Plan changes (monthly ↔ yearly, or a retired plan → the device
+    # plan) arrive here as a new price; map it back so the tier follows. Unknown price → leave the
     # stored tier alone rather than guess.
     tier = _tier_from_subscription(subscription)
     if tier is None and field(field(subscription, "items"), "data"):

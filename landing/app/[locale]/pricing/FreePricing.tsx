@@ -6,7 +6,7 @@ import PricingNav from "./PricingNav";
 /**
  * /pricing for visitors who cannot be sold a plan (lib/paid-plans.ts): today,
  * Russia. Stripe does not take Russian cards and the launch promise is free
- * protection, so instead of $4.99 / $9.99 cards the page says what is included
+ * protection, so instead of dollar plan cards the page says what is included
  * and that it costs nothing (report #15).
  */
 export default function FreePricing({ locale }: { locale: string }) {

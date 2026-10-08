@@ -75,11 +75,12 @@ test("footer links to privacy policy and terms", async ({ page }) => {
   expect(termsResp?.status()).toBe(200);
 });
 
-test("pricing page renders three tiers", async ({ page }) => {
+test("pricing page shows Free and the one device plan", async ({ page }) => {
   await page.goto("/en/pricing");
-  // On the dedicated pricing page, tier names should be visible
-  await expect(page.getByText(/Personal/i).first()).toBeVisible();
-  await expect(page.getByText(/Family/i).first()).toBeVisible();
+  await expect(page.getByTestId("plan-card-free")).toBeVisible();
+  await expect(page.getByTestId("plan-card-unlimited")).toBeVisible();
+  // The retired plans are not sold any more.
+  await expect(page.getByTestId("world-pricing")).not.toContainText(/Granny|Family Hub|Kids Mode/);
 });
 
 // ─── Section content (EN only — localized copy is tested via unit tests) ─────

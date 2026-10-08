@@ -7,9 +7,12 @@
  * keeps the free-only page for Russian visitors, /cancel does not exist, the
  * terms and the policy keep their current payment sections.
  *
- * The numbers are the founder's settings, not facts of the code: the same env
- * names as the API's `BillingSettings` (docs/BILLING.md) with a NEXT_PUBLIC_
- * prefix, so the page and the server can be configured from one sheet.
+ * The numbers are the founder's settings, not facts of the code. The windows
+ * use the same env names as the API's `BillingSettings` (docs/BILLING.md) with
+ * a NEXT_PUBLIC_ prefix. The device prices (NEXT_PUBLIC_BILLING_PRICE_RUB,
+ * _INCLUDED_DEVICES, _EXTRA_DEVICE_RUB) are ahead of the API: its operator
+ * catalogue (api/billing) still sells the one-, three- and five-phone plans
+ * and must move to the device plan before the flag is switched on.
  * Hand-written prices are banned from the strings by
  * scripts/check-landing-claims.py; the components pass these values as ICU
  * arguments instead.
@@ -19,34 +22,43 @@
 // Node, where the "@/" alias does not exist. The flag and the env-bound values
 // live in lib/billing-config.ts.
 
-export type PlanCode = "solo" | "family3" | "family5";
-
-export interface Plan {
-  readonly code: PlanCode;
-  /** Phones one payment covers. */
-  readonly devices: 1 | 3 | 5;
-  /** Monthly price, whole rubles. */
-  readonly priceRub: number;
-}
-
-export type LapsePolicy = "basic" | "off";
-
+/**
+ * One subscription that counts devices (founder decision 2026-10-07,
+ * docs/ACCOUNTS_BILLING_PLAN.md §5): a monthly price for the included
+ * devices, and a price for every device beyond them. A device is a phone,
+ * tablet or browser with the extension signed in to one account.
+ */
 export interface BillingTerms {
-  readonly plans: readonly Plan[];
+  /** Monthly price for the included devices, whole rubles. */
+  readonly priceRub: number;
+  /** Devices the subscription covers. */
+  readonly includedDevices: number;
+  /** Monthly price of each device beyond the included ones, whole rubles. */
+  readonly extraDeviceRub: number;
+  /** Days after install with everything unlimited and nothing charged. */
   readonly trialDays: number;
+  /** Detailed checks a day without the subscription. */
+  readonly freeChecksPerDay: number;
   readonly graceDays: number;
   /** What happens after the grace window: `basic` keeps list blocking, `off` stops it. */
   readonly lapsePolicy: LapsePolicy;
 }
 
-/** The founder's prices (2026-09-29): 99 / 270 / 399 ₽ a month. */
-export const DEFAULT_PRICES_RUB: Readonly<Record<PlanCode, number>> = { solo: 99, family3: 270, family5: 399 };
-export const DEFAULT_TRIAL_DAYS = 14;
+export type LapsePolicy = "basic" | "off";
+
+/**
+ * The founder's numbers (2026-10-07): 99 ₽ a month for 3 devices, +29 ₽ a
+ * month for each one more, everything unlimited for the first 7 days. They
+ * replace the 99 / 270 / 399 ₽ one-, three- and five-phone plans of
+ * 2026-09-29.
+ */
+export const DEFAULT_PRICE_RUB = 99;
+export const DEFAULT_INCLUDED_DEVICES = 3;
+export const DEFAULT_EXTRA_DEVICE_RUB = 29;
+export const DEFAULT_TRIAL_DAYS = 7;
+export const DEFAULT_FREE_CHECKS_PER_DAY = 3;
 export const DEFAULT_GRACE_DAYS = 7;
 export const DEFAULT_LAPSE_POLICY: LapsePolicy = "basic";
-
-const PLAN_DEVICES: Readonly<Record<PlanCode, 1 | 3 | 5>> = { solo: 1, family3: 3, family5: 5 };
-const PLAN_ORDER: readonly PlanCode[] = ["solo", "family3", "family5"];
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -64,37 +76,36 @@ export function parseLapsePolicy(raw: string | undefined | null): LapsePolicy {
 }
 
 export function billingTermsFromEnv(env: Env): BillingTerms {
-  const prices: Record<PlanCode, number> = {
-    solo: parsePositiveInt(env.NEXT_PUBLIC_BILLING_PRICE_SOLO_RUB, DEFAULT_PRICES_RUB.solo),
-    family3: parsePositiveInt(env.NEXT_PUBLIC_BILLING_PRICE_FAMILY3_RUB, DEFAULT_PRICES_RUB.family3),
-    family5: parsePositiveInt(env.NEXT_PUBLIC_BILLING_PRICE_FAMILY5_RUB, DEFAULT_PRICES_RUB.family5),
-  };
   return {
-    plans: PLAN_ORDER.map((code) => ({ code, devices: PLAN_DEVICES[code], priceRub: prices[code] })),
+    priceRub: parsePositiveInt(env.NEXT_PUBLIC_BILLING_PRICE_RUB, DEFAULT_PRICE_RUB),
+    includedDevices: parsePositiveInt(env.NEXT_PUBLIC_BILLING_INCLUDED_DEVICES, DEFAULT_INCLUDED_DEVICES),
+    extraDeviceRub: parsePositiveInt(env.NEXT_PUBLIC_BILLING_EXTRA_DEVICE_RUB, DEFAULT_EXTRA_DEVICE_RUB),
     trialDays: parsePositiveInt(env.NEXT_PUBLIC_BILLING_TRIAL_DAYS, DEFAULT_TRIAL_DAYS),
+    freeChecksPerDay: parsePositiveInt(env.NEXT_PUBLIC_BILLING_FREE_CHECKS_PER_DAY, DEFAULT_FREE_CHECKS_PER_DAY),
     graceDays: parsePositiveInt(env.NEXT_PUBLIC_BILLING_GRACE_DAYS, DEFAULT_GRACE_DAYS),
     lapsePolicy: parseLapsePolicy(env.NEXT_PUBLIC_BILLING_LAPSE_POLICY),
   };
 }
 
-/** Rubles per phone a month, rounded to whole rubles ("≈ 80 ₽ за телефон"). */
-export function pricePerDevice(plan: Plan): number {
-  return Math.round(plan.priceRub / plan.devices);
+/** Rubles a month for `devices` devices: the plan, plus each device beyond the included ones. */
+export function monthlyPriceFor(terms: BillingTerms, devices: number): number {
+  return terms.priceRub + Math.max(0, devices - terms.includedDevices) * terms.extraDeviceRub;
 }
 
 /**
- * The ICU arguments every billing string may use: the three prices and the
- * windows. Prices go in as strings so a locale's number formatting cannot
- * change them (Intl renders 399 as ٣٩٩ for Arabic); the day counts stay
- * numbers because the strings pluralise on them.
+ * The ICU arguments every billing string may use: the price, the extra
+ * device's price, the included devices and the windows. Prices go in as
+ * strings so a locale's number formatting cannot change them (Intl renders
+ * 99 as ٩٩ for Arabic); the counts stay numbers because the strings
+ * pluralise on them.
  */
 export function billingMessageArgs(terms: BillingTerms): Record<string, string | number> {
-  const byCode = Object.fromEntries(terms.plans.map((plan) => [plan.code, plan.priceRub])) as Record<PlanCode, number>;
   return {
-    solo: String(byCode.solo),
-    family3: String(byCode.family3),
-    family5: String(byCode.family5),
+    price: String(terms.priceRub),
+    extra: String(terms.extraDeviceRub),
+    devices: terms.includedDevices,
     days: terms.trialDays,
+    checks: terms.freeChecksPerDay,
     grace: terms.graceDays,
   };
 }

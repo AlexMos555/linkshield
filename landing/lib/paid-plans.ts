@@ -3,7 +3,7 @@
  *
  * For Russia the answer is "nowhere yet": checkout runs on Stripe, which does
  * not take Russian cards, and the launch promise to Tele2 subscribers is that
- * protection is free. Showing $4.99 / $9.99 cards there sells something the
+ * protection is free. Showing dollar plan cards there sells something the
  * visitor cannot buy. So a Russian-language page, or a visitor whose country
  * we know is RU, gets the free-only variant: what is included, no prices.
  */

@@ -283,18 +283,19 @@ def stripe_status(stripe_subscription_status: Optional[str]) -> str:
 
 
 def stripe_device_limit(subscription: Any) -> int:
-    """Included devices + the quantity of the "extra device" price, when
-    STRIPE_PRICE_EXTRA_DEVICE is configured and on the subscription."""
+    """Included devices + the quantity of the "extra device" items: any
+    tier's STRIPE_PRICE_EXTRA_DEVICE_T{n}_{INTERVAL} (api/services/pricing.py),
+    or the single STRIPE_PRICE_EXTRA_DEVICE configured before the tiers."""
+    from api.services.pricing import is_extra_device_price
     from api.services.stripe_billing import field, object_id
 
-    extra_price = get_settings().stripe_price_extra_device
+    legacy_extra_price = get_settings().stripe_price_extra_device
     extras = 0
-    if extra_price:
-        for item in field(field(subscription, "items"), "data") or []:
-            price = field(item, "price") or field(item, "plan")
-            if object_id(price) == extra_price:
-                try:
-                    extras += max(0, int(field(item, "quantity") or 0))
-                except (TypeError, ValueError):
-                    pass
+    for item in field(field(subscription, "items"), "data") or []:
+        price_id = object_id(field(item, "price") or field(item, "plan"))
+        if is_extra_device_price(price_id) or (legacy_extra_price and price_id == legacy_extra_price):
+            try:
+                extras += max(0, int(field(item, "quantity") or 0))
+            except (TypeError, ValueError):
+                pass
     return included_devices() + extras
