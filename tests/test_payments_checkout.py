@@ -16,8 +16,9 @@ the entire Stripe checkout pipeline non-functional in production:
      /api/v1/pricing endpoint that the landing renders — was a
      SEPARATE hardcoded dict of 24 placeholders. Same problem.
 
-All three are fixed by reading env vars STRIPE_PRICE_{PLAN}_T{TIER}_{INTERVAL}
-at module import time. Tests below pin the canonical URL, the resolver
+All three are fixed by reading env vars at module import time — since the
+device plan, STRIPE_PRICE_DEVICES_T{TIER}_{INTERVAL} and
+STRIPE_PRICE_EXTRA_DEVICE_T{TIER}_{INTERVAL}. Tests below pin the canonical URL, the resolver
 shape, and the error paths.
 """
 from __future__ import annotations
@@ -56,12 +57,12 @@ def real_price_env(monkeypatch):
     no cc is given — so tier 2 carries the short names the assertions
     below use; the other tiers are suffixed `_t{n}`."""
     fake_prices = {}
-    for plan in ("personal", "family", "business"):
+    for product in ("devices", "extra_device"):
         for interval in ("monthly", "yearly"):
             for tier in (1, 2, 3, 4):
                 suffix = "" if tier == 2 else f"_t{tier}"
-                fake_prices[f"STRIPE_PRICE_{plan.upper()}_T{tier}_{interval.upper()}"] = (
-                    f"price_real_{plan}_{interval}{suffix}"
+                fake_prices[f"STRIPE_PRICE_{product.upper()}_T{tier}_{interval.upper()}"] = (
+                    f"price_real_{product}_{interval}{suffix}"
                 )
     for k, v in fake_prices.items():
         monkeypatch.setenv(k, v)
@@ -161,27 +162,69 @@ def test_checkout_uses_real_price_id_from_env(
     not the legacy placeholder."""
     client.post(
         "/api/v1/payments/checkout",
-        json={"plan": "family_yearly"},
+        json={"plan": "devices_yearly"},
         headers={"Authorization": "Bearer fake"},
     )
     assert len(stripe_stub) == 1
     line_items = stripe_stub[0].get("line_items", [])
-    assert len(line_items) == 1
-    assert line_items[0]["price"] == "price_real_family_yearly"
+    assert line_items == [{"price": "price_real_devices_yearly", "quantity": 1}]
 
 
-def test_checkout_business_plan_supported(
+def test_checkout_legacy_personal_key_buys_the_device_plan(
     client, stripe_configured, real_price_env, stripe_stub
 ):
-    """`business_monthly` must resolve correctly — the old hardcoded
-    PRICE_IDS dict didn't include business at all (silent 400)."""
+    """A page cached before the device plan still sends `personal_monthly`.
+    It buys the one plan we sell — not a 400 mid-purchase."""
     resp = client.post(
         "/api/v1/payments/checkout",
-        json={"plan": "business_monthly"},
+        json={"plan": "personal_monthly"},
         headers={"Authorization": "Bearer fake"},
     )
-    assert resp.status_code == 200
-    assert stripe_stub[0]["line_items"][0]["price"] == "price_real_business_monthly"
+    assert resp.status_code == 200, resp.text
+    assert stripe_stub[0]["line_items"] == [{"price": "price_real_devices_monthly", "quantity": 1}]
+
+
+@pytest.mark.parametrize("retired", ["family_monthly", "family_yearly", "business_monthly", "business_yearly"])
+def test_checkout_rejects_retired_plans(client, stripe_configured, real_price_env, stripe_stub, retired):
+    """Family and Business are no longer sold: 400, nothing sent to Stripe."""
+    resp = client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": retired},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 400
+    assert stripe_stub == []
+
+
+@pytest.mark.parametrize("interval", ["monthly", "yearly"])
+def test_checkout_adds_extra_devices_on_the_plans_interval(
+    client, stripe_configured, real_price_env, stripe_stub, interval
+):
+    """Extra devices are a second line item, same tier and interval as the
+    plan (Stripe bills one interval per subscription); the webhook counts
+    their quantity into device_limit."""
+    resp = client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": f"devices_{interval}", "extra_devices": 2, "country": "IN"},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert stripe_stub[0]["line_items"] == [
+        {"price": f"price_real_devices_{interval}_t4", "quantity": 1},
+        {"price": f"price_real_extra_device_{interval}_t4", "quantity": 2},
+    ]
+    assert stripe_stub[0]["metadata"]["extra_devices"] == "2"
+
+
+@pytest.mark.parametrize("extra", [-1, 21, "many"])
+def test_checkout_rejects_bad_extra_devices(client, stripe_configured, real_price_env, stripe_stub, extra):
+    resp = client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": "devices_monthly", "extra_devices": extra},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 422
+    assert stripe_stub == []
 
 
 # ─── Error paths ─────────────────────────────────────────────
@@ -205,8 +248,7 @@ def test_checkout_rejects_malformed_plan(
 def test_checkout_rejects_unknown_plan_name(
     client, stripe_configured, real_price_env, stripe_stub
 ):
-    """Plan is well-formed (`enterprise_monthly`) but the plan name
-    isn't in STRIPE_PRICE_IDS. Same 400."""
+    """Plan is well-formed (`enterprise_monthly`) but not a plan we sell. Same 400."""
     resp = client.post(
         "/api/v1/payments/checkout",
         json={"plan": "enterprise_monthly"},
@@ -219,10 +261,10 @@ def test_checkout_rejects_unknown_plan_name(
 def test_checkout_rejects_unknown_interval(
     client, stripe_configured, real_price_env, stripe_stub
 ):
-    """`personal_quarterly` — valid plan name but unsupported interval."""
+    """`devices_quarterly` — valid plan name but unsupported interval."""
     resp = client.post(
         "/api/v1/payments/checkout",
-        json={"plan": "personal_quarterly"},
+        json={"plan": "devices_quarterly"},
         headers={"Authorization": "Bearer fake"},
     )
     assert resp.status_code == 400
@@ -277,12 +319,12 @@ def test_checkout_different_plan_yields_different_idem_key(
     = different Stripe session."""
     client.post(
         "/api/v1/payments/checkout",
-        json={"plan": "personal_monthly"},
+        json={"plan": "devices_monthly"},
         headers={"Authorization": "Bearer fake"},
     )
     client.post(
         "/api/v1/payments/checkout",
-        json={"plan": "family_yearly"},
+        json={"plan": "devices_yearly"},
         headers={"Authorization": "Bearer fake"},
     )
     assert len(stripe_stub) == 2
@@ -384,7 +426,7 @@ def test_checkout_refused_when_paid_subscription_exists(
 ):
     subs_db.row = _row(tier="personal", status=status, provider_subscription_id="sub_1",
                        stripe_customer_id="cus_1")
-    resp = _checkout(client, plan="family_monthly")
+    resp = _checkout(client, plan="devices_yearly")
     assert resp.status_code == 409, resp.text
     assert resp.json()["detail"]["code"] == "subscription_already_active"
     assert stripe_stub == []
@@ -470,9 +512,9 @@ def test_first_checkout_without_customer_uses_email(client, stripe_configured, s
 
 
 @pytest.mark.parametrize("cc", ["US", "IN", "TH", "BR", None])
-@pytest.mark.parametrize("plan,interval", [("personal", "monthly"), ("family", "yearly")])
+@pytest.mark.parametrize("interval", ["monthly", "yearly"])
 def test_checkout_charges_the_price_the_pricing_page_shows(
-    client, stripe_configured, stripe_stub, cc, plan, interval
+    client, stripe_configured, stripe_stub, cc, interval
 ):
     """/api/v1/pricing/for-country shows a regional (PPP) price; checkout
     used to charge tier 1 regardless. Both must resolve through the same
@@ -481,18 +523,20 @@ def test_checkout_charges_the_price_the_pricing_page_shows(
 
     q = f"?cc={cc}" if cc else ""
     shown = client.get(f"/api/v1/pricing/for-country{q}").json()
-    shown_price = shown["plans"][plan][interval]["stripe_price_id"]
+    shown_price = shown["plan"]["price"][interval]["stripe_price_id"]
+    shown_extra = shown["plan"]["extra_device"][interval]["stripe_price_id"]
 
-    body = {"plan": f"{plan}_{interval}"}
+    body = {"plan": f"devices_{interval}", "extra_devices": 1}
     if cc:
         body["country"] = cc
     resp = client.post(
         "/api/v1/payments/checkout", json=body, headers={"Authorization": "Bearer fake"}
     )
     assert resp.status_code == 200, resp.text
-    charged = stripe_stub[0]["line_items"][0]["price"]
+    charged, charged_extra = (item["price"] for item in stripe_stub[0]["line_items"])
     assert charged == shown_price
-    assert charged == STRIPE_PRICE_IDS[plan][country_to_tier(cc)][interval]
+    assert charged == STRIPE_PRICE_IDS[country_to_tier(cc)][interval]
+    assert charged_extra == shown_extra
 
 
 def test_checkout_rejects_malformed_country(client, stripe_configured, stripe_stub):

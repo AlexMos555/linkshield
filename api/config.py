@@ -101,9 +101,11 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_publishable_key: str = ""
-    # Stripe price for one extra device on top of the plan (+$0.49 / month,
-    # docs/ACCOUNTS_BILLING_PLAN.md §5). Empty until the price exists; the
-    # webhook then counts only the included devices.
+    # Single Stripe price for one extra device, from before the tiered
+    # STRIPE_PRICE_EXTRA_DEVICE_T{n}_{INTERVAL} prices (api/services/pricing.py,
+    # scripts/create_stripe_prices.py). Still counted by the webhook if set, so
+    # a subscription that carries it keeps its devices; new checkouts use the
+    # tiered prices.
     stripe_price_extra_device: str = ""
 
     # Accounts & devices (docs/ACCOUNTS_BILLING_PLAN.md §1, §5). A paid plan

@@ -12,7 +12,7 @@
  *   const api = createClient({ baseUrl: "https://api.cleanway.ai" });
  *   const { data, error } = await api.pricing.forCountry("US");
  *   if (error) return showErrorUI(error);
- *   render(data.plans.personal.monthly);
+ *   render(data.plan.price.monthly);
  */
 import type {
   DomainResult,
