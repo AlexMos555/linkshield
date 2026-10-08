@@ -7,7 +7,8 @@ artifacts.sh` first to produce the upload-ready ZIPs under
 `dist/store-artifacts/`.
 
 The Android app's **Google Play** listing draft (EN + RU, Data safety) is in
-§6 below; Play submission is currently blocked. The RuStore listing is in
+§6 below; the technical blocker (target API 36) is fixed, the founder TODOs in
+§6.0 are not, so do not submit yet. The RuStore listing is in
 `docs/RUSTORE_SUBMISSION.md` §7.
 
 | Store | Reach | Cost | Manifest | Build artifact |
@@ -171,15 +172,29 @@ grep '"version"' extension/manifest.json
 
 ---
 
-## 6. Google Play (Android app) — DRAFT, submission BLOCKED
+## 6. Google Play (Android app) — DRAFT, not submitted yet
 
-> **Status (re-checked 2026-10-08): do not submit.** Google Play requires
-> targetSdk 36 for new apps and updates since 31 Aug 2026; our APK targets 34
-> because the app is on Expo SDK 52 (`mobile/package.json`: `expo ~52.0.0`).
-> Details: `docs/RUSTORE_SUBMISSION.md` (top) and `docs/GO_LIVE_CHECKLIST.md`.
-> `landing/lib/install-urls.ts` has no Google Play entry — the Android button
-> leads to `/android` (direct APK). The copy below is ready so the listing is not
-> the bottleneck once the SDK upgrade ships.
+> **Status (2026-10-08): technically ready, founder TODOs open — do not submit
+> yet.** Google Play requires new apps and updates to target **API 36** since
+> 31 Aug 2026 ([Target API level requirements](https://developer.android.com/google/play/requirements/target-sdk);
+> an extension to 1 Nov 2026 can be requested). The app moved from Expo SDK 52
+> (targetSdk 34) to **Expo SDK 54 / React Native 0.81** and now builds with
+> targetSdk 36. `landing/lib/install-urls.ts` has no Google Play entry — the
+> Android button leads to `/android` (direct APK); add one once the listing is live.
+
+### 6.A Play technical readiness (verified on the 2026-10-08 build)
+
+| Requirement | Status | Evidence / where |
+|---|---|---|
+| **Target API 36** (new apps + updates since 31 Aug 2026) | ✅ | `aapt2 dump badging`: `targetSdkVersion 36`, `compileSdkVersion 36` (Expo SDK 54 default, no override). Command: `docs/RUSTORE_SUBMISSION.md` §2. |
+| **16 KB page size** (apps targeting Android 15+; updates blocked from 1 Feb 2027 — [page-size guide](https://developer.android.com/guide/practices/page-sizes)) | ✅ | All 21 `arm64-v8a` `.so` in the APK and AAB have 16 KB LOAD alignment; `zipalign -c -P 16` passes; the AAB requests `PAGE_ALIGNMENT_16K`. On SDK 52, 18 of 23 were 4 KB-aligned. |
+| **64-bit native code** | ✅ | `arm64-v8a` (+ `armeabi-v7a`) in the AAB. |
+| **Foreground service types** (declared in the manifest + in Play Console for targetSdk 34+) | ✅ manifest / ⏳ Console | `CleanwayVpnService`: `foregroundServiceType="specialUse"`, subtype property `vpn`, `FOREGROUND_SERVICE_SPECIAL_USE`. Console declaration text: `docs/RUSTORE_SUBMISSION.md` §4. No other FGS. |
+| **VpnService policy** | ⏳ Console | Core-functionality declaration; text in `docs/RUSTORE_SUBMISSION.md` §4. |
+| **Edge-to-edge (Android 15/16)** | ✅ | Insets handled in the root stack and tab bar; dark system bars plugin. Checked on an Android 16 emulator in gesture and 3-button navigation. |
+| **Predictive back (Android 16)** | ✅ | Opted out (`predictiveBackGestureEnabled: false` → `enableOnBackInvokedCallback="false"`) because React Native still uses `onBackPressed`; back works. |
+| **App Bundle** | ✅ | `./gradlew bundleRelease` builds (35 MB, ARM-only by design). Play App Signing is mandatory for new apps. **Founder decision:** let Play keep the *existing* `cleanway-release.jks` as the app signing key (Console → "use existing key", uploaded via Google's PEPK tool) so Play installs and the direct-download/RuStore APK can update each other; with a Google-generated key they cannot. |
+| **Real-device retest of the release-signed build** | ⏳ | Samsung A16: shield, boot restart, link guard, share, notifications, QR. The emulator run is listed in `docs/RUSTORE_SUBMISSION.md` §2. |
 
 Package `ai.cleanway.app`. Build, signing, permissions and the VpnService /
 battery / camera justifications are shared with RuStore:
