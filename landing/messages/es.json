@@ -726,7 +726,7 @@
     "meta_description": "Qué recibe Cleanway, qué se queda en tu teléfono, quién más ve qué y cuánto tiempo se guarda todo.",
     "back": "Volver a Cleanway",
     "title": "Política de privacidad",
-    "updated": "Última actualización: 27 de septiembre de 2026",
+    "updated": "Última actualización: 8 de octubre de 2026",
     "intro": "Esta política explica con palabras sencillas qué datos trata Cleanway, por qué y quién más los ve. Describe el servicio tal como funciona hoy. Si algo de aquí no coincide con lo que Cleanway hace realmente, es un error y queremos saberlo.",
     "contact_live": "Preguntas y solicitudes sobre tus datos:",
     "contact_not_live": "Nuestro buzón de soporte aún se está configurando, así que todavía no podemos recibir correos. En esta sección aparecerá la dirección en cuanto funcione.",
@@ -751,14 +751,14 @@
         "paragraphs": [
           "Cuando activas la protección, Cleanway pone en marcha un filtro local usando el mecanismo de VPN de Android. Por él solo pasan las consultas DNS, las preguntas que hace el teléfono para encontrar la dirección de un sitio, como «¿dónde está example.com?». El contenido de las páginas, tus mensajes y tus llamadas no pasan por el filtro y no se leen.",
           "Cada nombre de sitio se compara con la lista de sitios fraudulentos guardada en el teléfono. Si está en la lista, el teléfono no abre el sitio y se guarda en el teléfono una nota (el nombre del sitio, la hora y lo que pasó) para el Historial de la app.",
-          "Los nombres que no están en la lista se pasan para encontrar la dirección del sitio: primero al servidor DNS de la red a la que está conectado el teléfono —el de tu operador móvil o tu router wifi—, como sin Cleanway. Solo si no responde, van a Cloudflare (1.1.1.1), luego a Quad9 (9.9.9.9) y, como último recurso, al DNS-over-HTTPS cifrado de Cloudflare. Así funcionan las versiones 1.0.2 y 1.0.3 de la app; la versión 1.0.1 preguntaba primero a Cloudflare. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas.",
+          "Los nombres que no están en la lista se pasan para encontrar la dirección del sitio: primero al servidor DNS de la red a la que está conectado el teléfono —el de tu operador móvil o tu router wifi—, como sin Cleanway. Solo si no responde, van a Cloudflare (1.1.1.1), luego a Quad9 (9.9.9.9) y, como último recurso, al DNS-over-HTTPS cifrado de Cloudflare. Así funcionan las versiones 1.0.2 a 1.0.4 de la app; la versión 1.0.1 preguntaba primero a Cloudflare. Estos servicios ven el nombre del sitio y la dirección IP de tu conexión, como cualquier servicio DNS; se aplican sus propias políticas de privacidad. Cleanway no recibe ni guarda estas consultas.",
           "Desde la versión 1.0.2, la app incluye una copia de la lista de sitios fraudulentos, que se usa solo hasta que el teléfono descarga una nueva."
         ]
       },
       {
         "title": "4. La lista de sitios fraudulentos",
         "paragraphs": [
-          "La app descarga la lista de nuestro servidor (api.cleanway.ai) y la actualiza aproximadamente cada 6 horas, con menos frecuencia con datos móviles. La petición no dice nada de los sitios que visitas: solo lleva los datos técnicos habituales de cualquier petición en internet, como tu dirección IP, y una marca de la versión de la lista que ya tiene el teléfono. De vez en cuando la app también pregunta a nuestro servidor si hay una versión nueva de la app."
+          "La app descarga la lista de nuestro servidor (api.cleanway.ai) y la actualiza aproximadamente cada 6 horas, con menos frecuencia con datos móviles. La petición no dice nada de los sitios que visitas: solo lleva los datos técnicos habituales de cualquier petición en internet, como tu dirección IP, y una marca de la versión de la lista que ya tiene el teléfono. Al abrirse (como mucho una vez por hora) y aproximadamente una vez al día, la app también pregunta a nuestro servidor si hay una versión nueva de la app y qué comprobaciones en el teléfono están activadas; esta petición tampoco dice nada de los sitios que visitas ni de tus mensajes."
         ]
       },
       {

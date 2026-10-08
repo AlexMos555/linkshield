@@ -692,6 +692,21 @@ export function isMessageCheckSupported(): boolean {
 }
 
 /**
+ * Hand the server's switches for the on-phone checks (`remote_config` of the
+ * update check, serialised by src/lib/remote-config.ts) to the native side,
+ * which keeps them in SharedPreferences for the message check
+ * (RemoteConfig.kt). False when nothing was stored — not Android, an older
+ * native build, or not a config; the switches stored before stay in force.
+ */
+export function setRemoteConfig(json: string): boolean {
+  try {
+    return Platform.OS === 'android' ? (CleanwayVpn.setRemoteConfig?.(json) ?? false) : false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Check a pasted or shared message ON THE PHONE (MessageAnalyzer.kt): the
  * links it contains against the on-device blocklist, and its wording against
  * the known scam shapes. Works with the shield off.

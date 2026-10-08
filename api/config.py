@@ -207,6 +207,21 @@ class Settings(BaseSettings):
     )
     mobile_release_notes: str = ""
 
+    # Remote switches for the app's on-phone checks, sent with the update check
+    # (`remote_config` in GET /api/v1/mobile/version) so a bad on-device model
+    # can be turned off without shipping an APK. The phone keeps the last answer
+    # it got (native SharedPreferences) and falls back to these defaults only
+    # when it has never heard from us — so an outage never flips a switch.
+    # SMS_TEXT_MODEL_ENABLED=false: the SMS text model stops scoring messages;
+    # the message rules and the link check keep working.
+    sms_text_model_enabled: bool = True
+    # Optional, 0 < x < 1. Unset = the thresholds shipped in the APK. The phone
+    # only ever RAISES a threshold with these (MessageAnalyzer: quieter, never
+    # louder), so a typo cannot turn every SMS into a warning. A value that is
+    # not a number in range is ignored with a warning, never a failed boot.
+    sms_text_model_caution_threshold_override: float | None = None
+    sms_text_model_danger_threshold_override: float | None = None
+
     # Rate limits — sensitive actions (per user, stricter)
     # Applied to /payments/checkout, /payments/portal, /org/create
     sensitive_action_limit: int = 10               # 10 per hour per user
@@ -264,6 +279,27 @@ class Settings(BaseSettings):
                 f"supabase_jwt_secret must be at least {_MIN_JWT_SECRET_LENGTH_DEV} characters"
             )
         return v
+
+    @field_validator(
+        "sms_text_model_caution_threshold_override",
+        "sms_text_model_danger_threshold_override",
+        mode="before",
+    )
+    @classmethod
+    def lenient_threshold_override(cls, v: object) -> float | None:
+        """A kill-switch env var must never stop the API from booting: blank,
+        junk or out-of-range values mean "no override" (logged)."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        try:
+            value = float(v)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            logger.warning("sms_text_model threshold override %r is not a number; ignored", v)
+            return None
+        if not (0.0 < value < 1.0):  # NaN fails this too
+            logger.warning("sms_text_model threshold override %r is outside (0, 1); ignored", v)
+            return None
+        return value
 
     def get_allowed_origins(self) -> list[str]:
         """Parse comma-separated origins into a list."""

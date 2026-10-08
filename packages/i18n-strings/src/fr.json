@@ -2262,7 +2262,7 @@
       "meta_description": "Ce que Cleanway reçoit, ce qui reste sur votre téléphone, qui d'autre voit quoi, et combien de temps tout est conservé.",
       "back": "Retour à Cleanway",
       "title": "Politique de confidentialité",
-      "updated": "Dernière mise à jour : 27 septembre 2026",
+      "updated": "Dernière mise à jour : 8 octobre 2026",
       "intro": "Cette politique explique en termes simples quelles données Cleanway traite, pourquoi et qui d'autre les voit. Elle décrit le service tel qu'il fonctionne aujourd'hui. Si quelque chose ici ne correspond pas à ce que fait réellement Cleanway, c'est une erreur et nous voulons le savoir.",
       "contact_live": "Questions et demandes concernant vos données :",
       "contact_not_live": "Notre boîte d'assistance est encore en cours de configuration : nous ne pouvons donc pas encore recevoir d'e-mails. L'adresse apparaîtra ici dès qu'elle fonctionnera.",
@@ -2287,14 +2287,14 @@
           "paragraphs": [
             "Quand vous activez la protection, Cleanway lance un filtre local en utilisant le mécanisme VPN d'Android. Seules les requêtes DNS y passent — les questions que pose le téléphone pour trouver l'adresse d'un site, comme « où se trouve example.com ? ». Le contenu des pages, vos messages et vos appels ne passent pas par le filtre et ne sont pas lus.",
             "Chaque nom de site est comparé à la liste des sites d'arnaque enregistrée sur le téléphone. S'il figure sur la liste, le téléphone n'ouvre pas le site, et une note (le nom du site, l'heure et ce qui s'est passé) est enregistrée sur le téléphone pour l'Historique de l'appli.",
-            "Les noms qui ne figurent pas sur la liste sont transmis pour trouver l'adresse du site : d'abord au serveur DNS du réseau auquel le téléphone est connecté — celui de votre opérateur mobile ou de votre box Wi-Fi —, comme sans Cleanway. Seulement s'il ne répond pas, ils vont à Cloudflare (1.1.1.1), puis à Quad9 (9.9.9.9) et, en dernier recours, au DNS-over-HTTPS chiffré de Cloudflare. C'est ainsi que fonctionnent les versions 1.0.2 et 1.0.3 de l'appli ; la version 1.0.1 interrogeait d'abord Cloudflare. Ces services voient le nom du site et l'adresse IP de votre connexion, comme tout service DNS ; leurs propres politiques de confidentialité s'appliquent. Cleanway ne reçoit ni ne conserve ces requêtes.",
+            "Les noms qui ne figurent pas sur la liste sont transmis pour trouver l'adresse du site : d'abord au serveur DNS du réseau auquel le téléphone est connecté — celui de votre opérateur mobile ou de votre box Wi-Fi —, comme sans Cleanway. Seulement s'il ne répond pas, ils vont à Cloudflare (1.1.1.1), puis à Quad9 (9.9.9.9) et, en dernier recours, au DNS-over-HTTPS chiffré de Cloudflare. C'est ainsi que fonctionnent les versions 1.0.2 à 1.0.4 de l'appli ; la version 1.0.1 interrogeait d'abord Cloudflare. Ces services voient le nom du site et l'adresse IP de votre connexion, comme tout service DNS ; leurs propres politiques de confidentialité s'appliquent. Cleanway ne reçoit ni ne conserve ces requêtes.",
             "Depuis la version 1.0.2, l'appli contient une copie de la liste des sites d'arnaque, utilisée seulement jusqu'à ce que le téléphone en télécharge une récente."
           ]
         },
         {
           "title": "4. La liste des sites d'arnaque",
           "paragraphs": [
-            "L'appli télécharge la liste depuis notre serveur (api.cleanway.ai) et la met à jour environ toutes les 6 heures, moins souvent sur les données mobiles. La requête ne dit rien des sites que vous visitez : elle ne contient que les informations techniques habituelles de toute requête sur Internet, comme votre adresse IP, et une marque de la version de la liste déjà présente sur le téléphone. De temps en temps, l'appli demande aussi à notre serveur si une nouvelle version de l'appli est disponible."
+            "L'appli télécharge la liste depuis notre serveur (api.cleanway.ai) et la met à jour environ toutes les 6 heures, moins souvent sur les données mobiles. La requête ne dit rien des sites que vous visitez : elle ne contient que les informations techniques habituelles de toute requête sur Internet, comme votre adresse IP, et une marque de la version de la liste déjà présente sur le téléphone. À l'ouverture (au plus une fois par heure) et environ une fois par jour, l'appli demande aussi à notre serveur si une nouvelle version de l'appli est disponible et quelles vérifications sur le téléphone sont activées ; cette requête ne dit rien non plus des sites que vous visitez ni de vos messages."
           ]
         },
         {
