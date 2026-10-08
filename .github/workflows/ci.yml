@@ -230,6 +230,14 @@ jobs:
         # platform the API sends has a label.
         run: node --experimental-strip-types mobile/scripts/test-account-session.mjs
 
+      - name: Remote config (SMS text model kill switch) table test
+        # The server can turn the on-device SMS text model off without an APK.
+        # An answer without a valid block keeps the stored switches (an outage
+        # never flips one); the app asks on start, ~daily while open, never
+        # twice an hour; and the keys match RemoteConfig.kt and the API — the
+        # Kotlin side's own tests do not run in CI.
+        run: node --experimental-strip-types mobile/scripts/test-remote-config.mjs
+
       - name: Reason label table test
         # Every reason code the app maps has its label in all 10 locales, and
         # the codes the API's verdict_basis release adds read in Russian —
