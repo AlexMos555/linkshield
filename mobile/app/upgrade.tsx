@@ -2,6 +2,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking } from "r
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { colors, spacing, fontSize } from "../src/utils/theme";
+import { FREEMIUM } from "../src/services/freemium";
+import { webCheckoutAllowed } from "../src/utils/freemium";
 
 const plans = [
   {
@@ -31,6 +33,12 @@ export default function UpgradeScreen() {
 
   function handleUpgrade(plan: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Store policy: a Play / RuStore build never links out to a web
+    // checkout — it pays through the store, from the paywall.
+    if (!webCheckoutAllowed(FREEMIUM.distribution)) {
+      router.push("/paywall");
+      return;
+    }
     Linking.openURL(`https://cleanway.ai/pricing?plan=${plan}`);
   }
 

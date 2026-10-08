@@ -230,6 +230,14 @@ jobs:
         # platform the API sends has a label.
         run: node --experimental-strip-types mobile/scripts/test-account-session.mjs
 
+      - name: Free plan daily-limit table test
+        # EXPO_PUBLIC_FREEMIUM_ENABLED (off by default): 3 detailed checks a
+        # day reset at local midnight, 7 unlimited days after install, a paid
+        # account unlimited (7-day offline grace), the paywall opening by
+        # itself once a day, a listed link still "dangerous" after the limit,
+        # and a store build never linking out to the web checkout.
+        run: node --experimental-strip-types mobile/scripts/test-freemium.mjs
+
       - name: Reason label table test
         # Every reason code the app maps has its label in all 10 locales, and
         # the codes the API's verdict_basis release adds read in Russian —
