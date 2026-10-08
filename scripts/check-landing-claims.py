@@ -29,6 +29,12 @@ on) to a paid product's truth: nothing "free", no Stripe or dollar prices where
 the operator bills the phone account, and no hand-written price (prices are
 settings, passed as ICU arguments — landing/lib/billing.ts).
 
+The world's /pricing (landing.pricing) is held to the same discipline: its
+prices come from the API (landing/lib/world-pricing.ts), so no string may
+hand-write a dollar amount, and none may repeat the old claim that the price
+tier is "detected from your Stripe billing country" (it follows the country
+of the connection, and never came from Stripe).
+
 Usage:
   python3 scripts/check-landing-claims.py
   python3 scripts/check-landing-claims.py --billing-on
@@ -104,6 +110,15 @@ GLOBAL_RULES: tuple[Rule, ...] = (
           "hand-written check count from the pre-launch transparency fixture"),
     _rule(r"\b0[.,]08\s?%",
           "hand-written false-positive rate — false positives have never been measured"),
+    # 2026-10 device plan: world prices come from the API as ICU arguments. A
+    # hand-written "$4.99" outlived the plan it described once already.
+    _rule(r"\$\s?\d",
+          "hand-writes a dollar price on /pricing — prices come from the API (landing/lib/world-pricing.ts)",
+          scope="landing.pricing"),
+    _rule(r"billing country",
+          "says the price tier comes from the Stripe billing country — it follows the country of the connection "
+          "(the `cc` the page sends), and checkout charges that same country's price",
+          scope="landing.pricing"),
     _rule(r"Google Play",
           "promises a Google Play listing — Play is blocked (targetSdk); say only that RuStore is coming",
           scope="landing.android",
@@ -308,7 +323,11 @@ FREE_WORDS: Mapping[str, str] = {
 }
 FREE_WHY = ("calls the subscription free — only the trial window is without charge; say "
             "'без оплаты' / 'nothing charged', never 'free'")
-HARDCODED_PRICE = re.compile(r"\b(99|270|399)\s?(₽|руб|rub\b)", re.IGNORECASE)
+# The ruble prices a string must never spell out. 2026-10-07 device plan: 99 ₽
+# for 3 devices and +29 ₽ per extra device (both ICU arguments: {price},
+# {extra}). 270 and 399 are the retired three- and five-phone plans — still
+# banned, so a stale string cannot bring them back.
+HARDCODED_PRICE = re.compile(r"\b(99|29|270|399)\s?(₽|руб|rub\b)", re.IGNORECASE)
 STRIPE_OR_DOLLARS = re.compile(r"stripe|\$\s?\d|\bUSD\b", re.IGNORECASE)
 
 
@@ -351,6 +370,9 @@ CHROME_CTA_RULES: tuple[Rule, ...] = localized(CHROME_CTA)
 CODE_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"lives only on your device|stays on your device|Zero data stored", re.IGNORECASE),
      "hard-coded privacy over-claim"),
+    # The old /pricing FAQ: "Tier detected from your Stripe billing country". The
+    # tier never came from Stripe; it follows the country the page sends.
+    (re.compile(r"Stripe billing country", re.IGNORECASE), "hard-coded false claim about how the price tier is chosen"),
     (re.compile(r"analyst team", re.IGNORECASE), "hard-coded 'analyst team' claim"),
 )
 CODE_CHROME_RULE = (re.compile(r"Add to Chrome", re.IGNORECASE), "hard-coded Chrome CTA while Chrome is not live")

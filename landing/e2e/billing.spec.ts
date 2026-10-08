@@ -11,11 +11,13 @@ import { BILLING_ON, SUPPORT_LIVE } from "./billing-flag";
  * Flag OFF is today's site and must stay exactly that: the free-only
  * /ru/pricing, no /cancel, the current payment sections in the terms and the
  * policy, the free-only home teaser. Flag ON is what the founder's flip ships:
- * the configured prices (99 / 270 / 399 ₽ by default — lib/billing.ts), the
- * trial, the four FAQ answers, the requisites block, and copy that is true for
- * a paid product (no "free forever", no Stripe, no dollars).
+ * the device plan at the configured prices (99 ₽ a month for 3 devices, +29 ₽
+ * for each one more by default — lib/billing.ts), basic protection with
+ * nothing to pay, the first 7 days unlimited, the FAQ answers, the requisites
+ * block, and copy that is true for a paid product (no "free forever", no
+ * Stripe, no dollars).
  */
-const PRICES_RUB = ["99", "270", "399"];
+const PRICES_RUB = ["99", "29"];
 const TODAYS_RU_TERMS_PAYMENTS = "В России платных тарифов нет";
 const TODAYS_RU_TEASER = "Платных тарифов в России сейчас нет";
 
@@ -68,11 +70,18 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await expect(page.getByTestId("free-pricing")).toHaveCount(0);
     await expect(page.locator("h1")).toContainText("Защита от мошенников");
 
-    for (const [code, price] of [["solo", "99"], ["family3", "270"], ["family5", "399"]] as const) {
-      await expect(page.getByTestId(`plan-card-${code}`)).toContainText(`${price} ₽ в месяц`);
-    }
-    await expect(page.getByTestId("plan-card-family5")).toContainText("80 ₽ за телефон");
-    await expect(page.getByTestId("operator-trial")).toContainText("14 дней");
+    const plan = page.getByTestId("plan-card-devices");
+    await expect(plan).toContainText("99 ₽ в месяц");
+    await expect(plan).toContainText("за 3 устройства в одном аккаунте");
+    await expect(page.getByTestId("operator-extra-device")).toContainText("+29 ₽ в месяц");
+    // Basic protection: list blocking with nothing to pay, 3 detailed checks a day.
+    const basic = page.getByTestId("plan-card-basic");
+    await expect(basic).toContainText("Без оплаты");
+    await expect(basic).toContainText("3 подробные проверки в день");
+    await expect(page.getByTestId("operator-trial")).toContainText("7 дней");
+    // The retired one-, three- and five-phone plans are gone.
+    await expect(page.getByTestId("plan-card-family5")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText("270 ₽");
 
     const body = page.locator("body");
     await expect(body).not.toContainText("$");
@@ -85,7 +94,8 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await page.goto("/ru/pricing");
     const faq = page.getByTestId("operator-faq");
     for (const question of [
-      "Спишется ли само после пробного периода?",
+      "Спишется ли что-нибудь само после первых дней?",
+      "Что считается устройством?",
       "Как отменить подписку?",
       "Что будет, если на счёте нет денег?",
       "Работает ли по Wi-Fi и с другим оператором?",
@@ -117,14 +127,15 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await page.setExtraHTTPHeaders({ "x-vercel-ip-country": "RU" });
     await page.goto("/pricing");
     await expect(page.getByTestId("operator-pricing")).toBeVisible();
-    await expect(page.getByTestId("plan-card-solo")).toContainText("99 ₽ a month");
-    await expect(page.locator("body")).not.toContainText("$4.99");
+    await expect(page.getByTestId("plan-card-devices")).toContainText("99 ₽ a month");
+    await expect(page.locator("body")).not.toContainText(/\$\d/);
   });
 
   test("/de/pricing without a Russian country stays on Stripe plans", async ({ page }) => {
     await page.goto("/de/pricing");
     await expect(page.getByTestId("operator-pricing")).toHaveCount(0);
     await expect(page.getByTestId("free-pricing")).toHaveCount(0);
+    await expect(page.getByTestId("world-pricing")).toBeVisible();
   });
 
   test("/ru/cancel explains the four channels, what follows, and refunds", async ({ page }) => {
@@ -193,8 +204,7 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await page.goto("/ru");
     const teaser = page.locator("#pricing");
     await expect(teaser).toContainText("Подписка со счёта телефона");
-    await expect(teaser).toContainText("14 дней");
-    await expect(teaser).toContainText("от 99 ₽ в месяц");
+    await expect(teaser).toContainText("99 ₽ в месяц за 3 устройства");
     await expect(teaser).not.toContainText(TODAYS_RU_TEASER);
     await expect(page.getByTestId("home-plans-link")).toHaveAttribute("href", "/ru/pricing");
   });

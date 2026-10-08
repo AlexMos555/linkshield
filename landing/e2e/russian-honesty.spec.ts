@@ -160,7 +160,7 @@ test("/pricing is free-only for a visitor from Russia, whatever the page languag
   await page.setExtraHTTPHeaders({ "x-vercel-ip-country": "RU" });
   await page.goto("/pricing");
   await expect(page.getByTestId("free-pricing")).toBeVisible();
-  await expect(page.locator("body")).not.toContainText("$4.99");
+  await expect(page.locator("body")).not.toContainText(/\$\d/);
 });
 
 test("/de/pricing?cc=RU is free-only too", async ({ page }) => {

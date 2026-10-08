@@ -1307,25 +1307,55 @@ def _sub_with_price(price_id: str, **extra) -> Dict[str, Any]:
     return sub
 
 
-@pytest.mark.parametrize(
-    "plan,tier,interval",
-    [("family", 2, "monthly"), ("business", 4, "yearly"), ("personal", 1, "monthly")],
-)
+@pytest.mark.parametrize("tier,interval", [(2, "monthly"), (4, "yearly"), (1, "monthly")])
 def test_subscription_updated_maps_price_to_tier(
-    client, supabase_ok, fake_subscriptions, fake_redis, plan, tier, interval
+    client, supabase_ok, fake_subscriptions, fake_redis, tier, interval
 ):
-    """Upgrade personal → family in the portal fires subscription.updated
-    with the new price. The old handler passed tier=None, so the DB kept
-    'personal' forever."""
+    """A plan change in the portal (monthly ↔ yearly) fires
+    subscription.updated with the new price. The old handler passed
+    tier=None, so the DB never followed. The device plan is stored as
+    'personal' (pricing.STORED_TIER — the subscriptions.tier CHECK)."""
     from api.services.pricing import STRIPE_PRICE_IDS
 
-    price_id = STRIPE_PRICE_IDS[plan][tier][interval]
+    price_id = STRIPE_PRICE_IDS[tier][interval]
     resp = _post_event(client, "customer.subscription.updated", _sub_with_price(price_id))
 
     assert resp.status_code == 200
     sent = fake_subscriptions.posts[0]
-    assert sent["tier"] == plan
+    assert sent["tier"] == "personal"
     assert sent["stripe_customer_id"] == "cus_pc"
+
+
+def test_subscription_updated_keeps_a_retired_plans_tier(
+    client, supabase_ok, fake_subscriptions, fake_redis, monkeypatch
+):
+    """A Family subscription bought before the device plan still maps back
+    to 'family' while its price is configured (STRIPE_PRICE_FAMILY_T*_*)."""
+    from api.services import pricing
+
+    monkeypatch.setitem(pricing.LEGACY_PRICE_IDS, "price_old_family", "family")
+    resp = _post_event(client, "customer.subscription.updated", _sub_with_price("price_old_family"))
+
+    assert resp.status_code == 200
+    assert fake_subscriptions.posts[0]["tier"] == "family"
+
+
+def test_subscription_updated_extra_device_item_is_not_a_plan(
+    client, supabase_ok, fake_subscriptions, fake_redis
+):
+    """The extra-device item never decides the tier; the plan item does,
+    whatever order Stripe lists them in."""
+    from api.services.pricing import STRIPE_EXTRA_DEVICE_PRICE_IDS, STRIPE_PRICE_IDS
+
+    sub = _sub_with_price("unused")
+    sub["items"]["data"] = [
+        {"id": "si_x", "price": {"id": STRIPE_EXTRA_DEVICE_PRICE_IDS[2]["monthly"]}, "quantity": 2},
+        {"id": "si_p", "price": {"id": STRIPE_PRICE_IDS[2]["monthly"]}, "quantity": 1},
+    ]
+    resp = _post_event(client, "customer.subscription.updated", sub)
+
+    assert resp.status_code == 200
+    assert fake_subscriptions.posts[0]["tier"] == "personal"
 
 
 def test_subscription_updated_unknown_price_leaves_tier_untouched(

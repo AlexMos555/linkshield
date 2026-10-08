@@ -236,7 +236,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PortalResponse"
+                }
               }
             }
           },
@@ -2310,7 +2312,7 @@
           "pricing"
         ],
         "summary": "Prices For Country",
-        "description": "Return pricing for all plans (personal, family, business) × intervals (monthly, yearly)\nfor the given country's PPP tier.",
+        "description": "The device plan (monthly + yearly), the extra device and the free tier\nfor the given country's PPP tier.",
         "operationId": "prices_for_country_api_v1_pricing_for_country_get",
         "parameters": [
           {
@@ -2364,7 +2366,7 @@
           "pricing"
         ],
         "summary": "Pricing Tiers",
-        "description": "Full tier reference — which countries are in each tier + base prices.",
+        "description": "Full tier reference — which countries are in each tier + their prices.",
         "operationId": "pricing_tiers_api_v1_pricing_tiers_get",
         "responses": {
           "200": {
@@ -4552,6 +4554,13 @@
             "type": "string",
             "title": "Plan"
           },
+          "extra_devices": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 0.0,
+            "title": "Extra Devices",
+            "default": 0
+          },
           "success_url": {
             "type": "string",
             "title": "Success Url",
@@ -4783,6 +4792,43 @@
         "type": "object",
         "title": "DeviceOverrideUpdate",
         "description": "Per-device overrides — used by Family Hub to set Granny Mode on\ngrandmother's phone without changing her account-level default.\n\nAll fields optional so PATCH semantics work; setting any to None\nexplicitly clears the override and falls back to the user-level value."
+      },
+      "DevicePlan": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "const": "devices",
+            "title": "Id",
+            "description": "Checkout key prefix: `devices_monthly` / `devices_yearly`."
+          },
+          "included_devices": {
+            "type": "integer",
+            "title": "Included Devices",
+            "description": "Devices (phone, tablet, browser with the extension) the plan covers."
+          },
+          "price": {
+            "$ref": "#/components/schemas/Intervals"
+          },
+          "extra_device": {
+            "$ref": "#/components/schemas/Intervals",
+            "description": "Price of ONE device beyond the included ones, on the same interval as the plan."
+          },
+          "trial_days": {
+            "type": "integer",
+            "title": "Trial Days",
+            "description": "Free trial on the account's first web subscription (Stripe Checkout), once per account."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "included_devices",
+          "price",
+          "extra_device",
+          "trial_days"
+        ],
+        "title": "DevicePlan",
+        "description": "The one paid plan: unlimited detailed checks on N devices of one account."
       },
       "DeviceRegister": {
         "properties": {
@@ -5302,6 +5348,32 @@
         ],
         "title": "FamilyMembersResponse"
       },
+      "FreeTier": {
+        "properties": {
+          "list_blocking_unlimited": {
+            "type": "boolean",
+            "title": "List Blocking Unlimited",
+            "description": "Blocking known scam sites from the list never needs payment. Always true."
+          },
+          "detailed_checks_per_day": {
+            "type": "integer",
+            "title": "Detailed Checks Per Day",
+            "description": "Detailed checks (verdict, reasons, the scheme explained) a day without a plan."
+          },
+          "unlimited_days_after_install": {
+            "type": "integer",
+            "title": "Unlimited Days After Install",
+            "description": "Days after install with everything unlimited, no card."
+          }
+        },
+        "type": "object",
+        "required": [
+          "list_blocking_unlimited",
+          "detailed_checks_per_day",
+          "unlimited_days_after_install"
+        ],
+        "title": "FreeTier"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -5328,6 +5400,22 @@
         "type": "object",
         "title": "IncrementThreatsRequest",
         "description": "Extension/mobile reports N newly-blocked threats since last sync."
+      },
+      "Intervals": {
+        "properties": {
+          "monthly": {
+            "$ref": "#/components/schemas/PricePoint"
+          },
+          "yearly": {
+            "$ref": "#/components/schemas/PricePoint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monthly",
+          "yearly"
+        ],
+        "title": "Intervals"
       },
       "InviteCreateResponse": {
         "properties": {
@@ -5569,33 +5657,31 @@
         ],
         "title": "PhoneReport"
       },
-      "PlanIntervals": {
+      "PortalResponse": {
         "properties": {
-          "monthly": {
-            "$ref": "#/components/schemas/PricePoint"
-          },
-          "yearly": {
-            "$ref": "#/components/schemas/PricePoint"
+          "portal_url": {
+            "type": "string",
+            "title": "Portal Url",
+            "description": "Stripe Customer Portal session URL (billing.stripe.com)."
           }
         },
         "type": "object",
         "required": [
-          "monthly",
-          "yearly"
+          "portal_url"
         ],
-        "title": "PlanIntervals"
+        "title": "PortalResponse"
       },
       "PricePoint": {
         "properties": {
           "amount": {
             "type": "number",
             "title": "Amount",
-            "description": "Display price in USD (monthly or yearly total)"
+            "description": "Price in USD for the interval (the monthly price, or the yearly total)"
           },
           "monthly_equivalent": {
             "type": "number",
             "title": "Monthly Equivalent",
-            "description": "Equivalent monthly rate for comparison"
+            "description": "Equivalent monthly rate for comparison (yearly ÷ 12)"
           },
           "interval": {
             "type": "string",
@@ -5608,7 +5694,7 @@
           "stripe_price_id": {
             "type": "string",
             "title": "Stripe Price Id",
-            "description": "Stripe price ID for checkout session"
+            "description": "Stripe price ID for the checkout session"
           }
         },
         "type": "object",
@@ -5619,7 +5705,7 @@
           "stripe_price_id"
         ],
         "title": "PricePoint",
-        "description": "One price (monthly or yearly) for a single plan in a single tier."
+        "description": "One price (monthly or yearly)."
       },
       "PricingForCountryResponse": {
         "properties": {
@@ -5652,19 +5738,11 @@
             "title": "Currency",
             "default": "USD"
           },
-          "plans": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/PlanIntervals"
-            },
-            "propertyNames": {
-              "enum": [
-                "personal",
-                "family",
-                "business"
-              ]
-            },
-            "type": "object",
-            "title": "Plans"
+          "plan": {
+            "$ref": "#/components/schemas/DevicePlan"
+          },
+          "free": {
+            "$ref": "#/components/schemas/FreeTier"
           },
           "messaging": {
             "$ref": "#/components/schemas/PricingMessaging"
@@ -5673,7 +5751,8 @@
         "type": "object",
         "required": [
           "tier",
-          "plans",
+          "plan",
+          "free",
           "messaging"
         ],
         "title": "PricingForCountryResponse"
@@ -5684,11 +5763,6 @@
             "type": "boolean",
             "title": "Blocking Is Free Forever",
             "description": "Ethical invariant: scam site blocking never requires payment. Always true."
-          },
-          "free_threat_threshold": {
-            "type": "integer",
-            "title": "Free Threat Threshold",
-            "description": "Number of detailed threat explanations given free. After this, paywall gates the DETAILS (not the block itself)."
           },
           "what_paid_unlocks": {
             "items": {
@@ -5701,7 +5775,6 @@
         "type": "object",
         "required": [
           "blocking_is_free_forever",
-          "free_threat_threshold",
           "what_paid_unlocks"
         ],
         "title": "PricingMessaging"
@@ -5723,12 +5796,9 @@
             "type": "object",
             "title": "Tiers"
           },
-          "base_prices_usd_monthly": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "type": "object",
-            "title": "Base Prices Usd Monthly"
+          "included_devices": {
+            "type": "integer",
+            "title": "Included Devices"
           },
           "notes": {
             "additionalProperties": {
@@ -5741,7 +5811,7 @@
         "type": "object",
         "required": [
           "tiers",
-          "base_prices_usd_monthly",
+          "included_devices",
           "notes"
         ],
         "title": "PricingTiersResponse"
@@ -6208,10 +6278,6 @@
             "type": "string",
             "title": "Name"
           },
-          "multiplier": {
-            "type": "number",
-            "title": "Multiplier"
-          },
           "countries": {
             "title": "Countries",
             "description": "List of ISO country codes, or a human-readable note for tier 2 (default)."
@@ -6219,14 +6285,33 @@
           "examples": {
             "type": "string",
             "title": "Examples"
+          },
+          "monthly_usd": {
+            "type": "number",
+            "title": "Monthly Usd"
+          },
+          "yearly_usd": {
+            "type": "number",
+            "title": "Yearly Usd"
+          },
+          "extra_device_monthly_usd": {
+            "type": "number",
+            "title": "Extra Device Monthly Usd"
+          },
+          "extra_device_yearly_usd": {
+            "type": "number",
+            "title": "Extra Device Yearly Usd"
           }
         },
         "type": "object",
         "required": [
           "name",
-          "multiplier",
           "countries",
-          "examples"
+          "examples",
+          "monthly_usd",
+          "yearly_usd",
+          "extra_device_monthly_usd",
+          "extra_device_yearly_usd"
         ],
         "title": "TierDescription"
       },

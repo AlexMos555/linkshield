@@ -935,7 +935,7 @@ export interface paths {
         };
         /**
          * Prices For Country
-         * @description Return pricing for all plans (personal, family, business) × intervals (monthly, yearly)
+         * @description The device plan (monthly + yearly), the extra device and the free tier
          *     for the given country's PPP tier.
          */
         get: operations["prices_for_country_api_v1_pricing_for_country_get"];
@@ -956,7 +956,7 @@ export interface paths {
         };
         /**
          * Pricing Tiers
-         * @description Full tier reference — which countries are in each tier + base prices.
+         * @description Full tier reference — which countries are in each tier + their prices.
          */
         get: operations["pricing_tiers_api_v1_pricing_tiers_get"];
         put?: never;
@@ -1914,6 +1914,11 @@ export interface components {
             /** Plan */
             plan: string;
             /**
+             * Extra Devices
+             * @default 0
+             */
+            extra_devices: number;
+            /**
              * Success Url
              * @default https://cleanway.ai/success
              */
@@ -2007,6 +2012,31 @@ export interface components {
              * @default false
              */
             clear_overrides: boolean;
+        };
+        /**
+         * DevicePlan
+         * @description The one paid plan: unlimited detailed checks on N devices of one account.
+         */
+        DevicePlan: {
+            /**
+             * Id
+             * @description Checkout key prefix: `devices_monthly` / `devices_yearly`.
+             * @constant
+             */
+            id: "devices";
+            /**
+             * Included Devices
+             * @description Devices (phone, tablet, browser with the extension) the plan covers.
+             */
+            included_devices: number;
+            price: components["schemas"]["Intervals"];
+            /** @description Price of ONE device beyond the included ones, on the same interval as the plan. */
+            extra_device: components["schemas"]["Intervals"];
+            /**
+             * Trial Days
+             * @description Free trial on the account's first web subscription (Stripe Checkout), once per account.
+             */
+            trial_days: number;
         };
         /** DeviceRegister */
         DeviceRegister: {
@@ -2211,6 +2241,24 @@ export interface components {
             /** Members */
             members: components["schemas"]["FamilyMember"][];
         };
+        /** FreeTier */
+        FreeTier: {
+            /**
+             * List Blocking Unlimited
+             * @description Blocking known scam sites from the list never needs payment. Always true.
+             */
+            list_blocking_unlimited: boolean;
+            /**
+             * Detailed Checks Per Day
+             * @description Detailed checks (verdict, reasons, the scheme explained) a day without a plan.
+             */
+            detailed_checks_per_day: number;
+            /**
+             * Unlimited Days After Install
+             * @description Days after install with everything unlimited, no card.
+             */
+            unlimited_days_after_install: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2226,6 +2274,11 @@ export interface components {
              * @default 1
              */
             count: number;
+        };
+        /** Intervals */
+        Intervals: {
+            monthly: components["schemas"]["PricePoint"];
+            yearly: components["schemas"]["PricePoint"];
         };
         /**
          * InviteCreateResponse
@@ -2329,24 +2382,27 @@ export interface components {
             /** Tag */
             tag?: string | null;
         };
-        /** PlanIntervals */
-        PlanIntervals: {
-            monthly: components["schemas"]["PricePoint"];
-            yearly: components["schemas"]["PricePoint"];
+        /** PortalResponse */
+        PortalResponse: {
+            /**
+             * Portal Url
+             * @description Stripe Customer Portal session URL (billing.stripe.com).
+             */
+            portal_url: string;
         };
         /**
          * PricePoint
-         * @description One price (monthly or yearly) for a single plan in a single tier.
+         * @description One price (monthly or yearly).
          */
         PricePoint: {
             /**
              * Amount
-             * @description Display price in USD (monthly or yearly total)
+             * @description Price in USD for the interval (the monthly price, or the yearly total)
              */
             amount: number;
             /**
              * Monthly Equivalent
-             * @description Equivalent monthly rate for comparison
+             * @description Equivalent monthly rate for comparison (yearly ÷ 12)
              */
             monthly_equivalent: number;
             /**
@@ -2356,7 +2412,7 @@ export interface components {
             interval: "monthly" | "yearly";
             /**
              * Stripe Price Id
-             * @description Stripe price ID for checkout session
+             * @description Stripe price ID for the checkout session
              */
             stripe_price_id: string;
         };
@@ -2379,10 +2435,8 @@ export interface components {
              * @constant
              */
             currency: "USD";
-            /** Plans */
-            plans: {
-                [key: string]: components["schemas"]["PlanIntervals"];
-            };
+            plan: components["schemas"]["DevicePlan"];
+            free: components["schemas"]["FreeTier"];
             messaging: components["schemas"]["PricingMessaging"];
         };
         /** PricingMessaging */
@@ -2392,11 +2446,6 @@ export interface components {
              * @description Ethical invariant: scam site blocking never requires payment. Always true.
              */
             blocking_is_free_forever: boolean;
-            /**
-             * Free Threat Threshold
-             * @description Number of detailed threat explanations given free. After this, paywall gates the DETAILS (not the block itself).
-             */
-            free_threat_threshold: number;
             /** What Paid Unlocks */
             what_paid_unlocks: string[];
         };
@@ -2406,10 +2455,8 @@ export interface components {
             tiers: {
                 [key: string]: components["schemas"]["TierDescription"];
             };
-            /** Base Prices Usd Monthly */
-            base_prices_usd_monthly: {
-                [key: string]: number;
-            };
+            /** Included Devices */
+            included_devices: number;
             /** Notes */
             notes: {
                 [key: string]: string;
@@ -2602,8 +2649,6 @@ export interface components {
         TierDescription: {
             /** Name */
             name: string;
-            /** Multiplier */
-            multiplier: number;
             /**
              * Countries
              * @description List of ISO country codes, or a human-readable note for tier 2 (default).
@@ -2611,6 +2656,14 @@ export interface components {
             countries: unknown;
             /** Examples */
             examples: string;
+            /** Monthly Usd */
+            monthly_usd: number;
+            /** Yearly Usd */
+            yearly_usd: number;
+            /** Extra Device Monthly Usd */
+            extra_device_monthly_usd: number;
+            /** Extra Device Yearly Usd */
+            extra_device_yearly_usd: number;
         };
         /**
          * UserSettings
@@ -2866,7 +2919,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["PortalResponse"];
                 };
             };
             /** @description Validation Error */

@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
-import { billingMessageArgs, formatPhone, pricePerDevice, sellerIsComplete, type BillingTerms, type Plan, type Seller } from "@/lib/billing";
+import { billingMessageArgs, formatPhone, sellerIsComplete, type BillingTerms, type Seller } from "@/lib/billing";
 import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 import PricingNav from "./PricingNav";
@@ -10,6 +11,10 @@ import PricingNav from "./PricingNav";
  * subscription billed to the phone account (docs/BILLING.md), at the prices
  * this deployment is configured with. Until the flag is on they get
  * FreePricing, unchanged.
+ *
+ * Since 2026-10-07 the subscription counts devices (docs/ACCOUNTS_BILLING_PLAN.md
+ * §5): basic protection with nothing to pay, and one plan — 99 ₽ a month for
+ * 3 devices of one account, +29 ₽ for each one more (defaults; lib/billing.ts).
  *
  * Every number on the page is an ICU argument (lib/billing.ts); the strings
  * never carry a price, so a settings change is one env edit. The strings
@@ -23,7 +28,7 @@ interface OperatorPricingProps {
   supportPhone: string | null;
 }
 
-const FAQ_KEYS = ["auto", "cancel", "nomoney", "network", "number", "refund"] as const;
+const FAQ_KEYS = ["auto", "device", "cancel", "nomoney", "network", "number", "refund"] as const;
 const HOW_STEPS = [1, 2, 3, 4] as const;
 
 export default function OperatorPricing({ locale, terms, seller, supportPhone }: OperatorPricingProps) {
@@ -32,6 +37,7 @@ export default function OperatorPricing({ locale, terms, seller, supportPhone }:
   const args = billingMessageArgs(terms);
   const lapse = t(`lapse_${terms.lapsePolicy}`);
   const included = t.raw("included_items") as string[];
+  const planItems = t.raw("plan_items") as string[];
   const faq = FAQ_KEYS.map((key) => ({ q: t(`faq_${key}_q`), a: t(`faq_${key}_a`, { ...args, lapse }) }));
   const href = (path: string) => localePath(locale, path);
 
@@ -55,10 +61,35 @@ export default function OperatorPricing({ locale, terms, seller, supportPhone }:
         {/* Plans */}
         <section className="mt-16" aria-labelledby="plans-title">
           <h2 id="plans-title" className="text-2xl font-extrabold text-white text-center mb-8">{t("plans_title")}</h2>
-          <div className="grid md:grid-cols-3 gap-5">
-            {terms.plans.map((plan) => (
-              <PlanCard key={plan.code} plan={plan} best={plan.code === "family5"} locale={locale} />
-            ))}
+          <div className="grid md:grid-cols-2 gap-5 max-w-4xl mx-auto">
+            <article data-testid="plan-card-basic" className="rounded-2xl p-6 border flex flex-col bg-slate-800/50 border-slate-700">
+              <h3 className="text-xl font-extrabold text-white">{t("basic_name")}</h3>
+              <p className="text-sm text-slate-400 mb-4">{t("basic_for")}</p>
+              <p className="text-3xl font-extrabold text-white">{t("basic_price")}</p>
+              <ul className="mt-5 space-y-2 flex-grow">
+                {(["basic_item_block", "basic_item_checks", "basic_item_first_days"] as const).map((key) => (
+                  <CheckItem key={key}>{t(key, args)}</CheckItem>
+                ))}
+              </ul>
+            </article>
+            <article data-testid="plan-card-devices" className="rounded-2xl p-6 border flex flex-col bg-green-500/10 border-green-500/40">
+              <h3 className="text-xl font-extrabold text-white">{t("plan_name")}</h3>
+              <p className="text-sm text-slate-400 mb-4">{t("plan_for")}</p>
+              <p className="text-3xl font-extrabold text-white">{t("per_month", args)}</p>
+              <p className="text-sm text-slate-300 mt-1">{t("plan_devices", args)}</p>
+              <p data-testid="operator-extra-device" className="text-sm text-slate-400 mt-1">{t("extra_device", args)}</p>
+              <ul className="mt-5 space-y-2 flex-grow">
+                {planItems.map((item) => (
+                  <CheckItem key={item}>{item}</CheckItem>
+                ))}
+              </ul>
+              <a
+                href={href("/android")}
+                className="mt-6 inline-block text-center px-5 py-3 rounded-xl font-bold transition bg-green-500 text-green-950 hover:bg-green-400"
+              >
+                {t("plan_cta")}
+              </a>
+            </article>
           </div>
           <p className="text-center text-sm text-slate-500 mt-6">{t("plan_cta_hint")}</p>
         </section>
@@ -157,26 +188,14 @@ export default function OperatorPricing({ locale, terms, seller, supportPhone }:
   );
 }
 
-function PlanCard({ plan, best, locale }: { plan: Plan; best: boolean; locale: string }) {
-  const t = useTranslations("Billing");
-  const price = String(plan.priceRub);
+function CheckItem({ children }: { children: ReactNode }) {
   return (
-    <article
-      data-testid={`plan-card-${plan.code}`}
-      className={`rounded-2xl p-6 border flex flex-col ${best ? "bg-green-500/10 border-green-500/40" : "bg-slate-800/50 border-slate-700"}`}
-    >
-      {best && <span className="self-start text-xs font-bold uppercase tracking-wide text-green-400 mb-2">{t("best_value")}</span>}
-      <h3 className="text-xl font-extrabold text-white">{t(`plan_${plan.code}_name`)}</h3>
-      <p className="text-sm text-slate-400 mb-4">{t(`plan_${plan.code}_for`)}</p>
-      <p className="text-3xl font-extrabold text-white">{t("per_month", { price })}</p>
-      {plan.devices > 1 && <p className="text-sm text-slate-400 mt-1">{t("per_device", { price: String(pricePerDevice(plan)) })}</p>}
-      <a
-        href={localePath(locale, "/android")}
-        className={`mt-6 inline-block text-center px-5 py-3 rounded-xl font-bold transition ${best ? "bg-green-500 text-green-950 hover:bg-green-400" : "bg-slate-700 text-white hover:bg-slate-600"}`}
-      >
-        {t("plan_cta")}
-      </a>
-    </article>
+    <li className="flex items-start gap-2 text-sm text-slate-300">
+      <svg aria-hidden="true" focusable="false" className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+      </svg>
+      <span>{children}</span>
+    </li>
   );
 }
 
@@ -197,20 +216,22 @@ function buildJsonLd(terms: BillingTerms, faq: ReadonlyArray<{ q: string; a: str
         "@type": "Product",
         name: "Cleanway",
         brand: { "@type": "Brand", name: "Cleanway" },
-        offers: terms.plans.map((plan) => ({
-          "@type": "Offer",
-          name: `Cleanway — ${plan.devices}`,
-          price: plan.priceRub,
-          priceCurrency: "RUB",
-          availability: "https://schema.org/InStock",
-          priceSpecification: {
-            "@type": "UnitPriceSpecification",
-            price: plan.priceRub,
+        offers: [
+          {
+            "@type": "Offer",
+            name: `Cleanway — ${terms.includedDevices}`,
+            price: terms.priceRub,
             priceCurrency: "RUB",
-            billingDuration: "P1M",
-            unitCode: "MON",
+            availability: "https://schema.org/InStock",
+            priceSpecification: {
+              "@type": "UnitPriceSpecification",
+              price: terms.priceRub,
+              priceCurrency: "RUB",
+              billingDuration: "P1M",
+              unitCode: "MON",
+            },
           },
-        })),
+        ],
       },
     ],
   };
