@@ -6,6 +6,11 @@ build is below the minimum supported version, prompts a required update. Values
 come from settings (env), so the founder bumps them at release time with no code
 deploy. Public, cacheable, tiny — no per-IP limit for the same CGNAT reason as
 the blocklist endpoint.
+
+The same answer carries `remote_config`: switches for the app's on-phone checks
+(today the SMS text model), also from env. Unlike `features` (UI switches), the
+app stores them on the device for the native message check and keeps the last
+ones when this call fails.
 """
 from __future__ import annotations
 
@@ -37,4 +42,9 @@ async def mobile_version(response: Response) -> dict:
         "apk_url": s.mobile_apk_url or None,
         "release_notes": s.mobile_release_notes or None,
         "features": features(),
+        "remote_config": {
+            "sms_text_model_enabled": s.sms_text_model_enabled,
+            "sms_text_model_caution_threshold_override": s.sms_text_model_caution_threshold_override,
+            "sms_text_model_danger_threshold_override": s.sms_text_model_danger_threshold_override,
+        },
     }

@@ -99,7 +99,7 @@ function siteRecorder(domain: string, record: boolean): SiteRecorder {
   };
 }
 
-export function useDomainCheck(domain: string | null, record: boolean): DomainCheck {
+export function useDomainCheck(domain: string | null, record: boolean, deep: boolean | null = true): DomainCheck {
   const [site, setSite] = useState<SiteState>(() => freshState(domain));
   const [attempt, setAttempt] = useState(0);
   const recorder = useRef<SiteRecorder | null>(null);
@@ -140,7 +140,8 @@ export function useDomainCheck(domain: string | null, record: boolean): DomainCh
   }, [domain, record, update]);
 
   useEffect(() => {
-    if (!domain) return;
+    // The free plan's daily limit (useDetailGate): no server check until it says yes, none at all on a no.
+    if (!domain || deep !== true) return;
     const rec = recorder.current?.domain === domain ? recorder.current : null;
     let alive = true;
     update(domain, { pending: true, error: null, result: null });
@@ -162,7 +163,7 @@ export function useDomainCheck(domain: string | null, record: boolean): DomainCh
     return () => {
       alive = false;
     };
-  }, [domain, attempt, record, update]);
+  }, [domain, attempt, record, update, deep]);
 
   // One buzz per site, at the first verdict — for a listed site that is the
   // list's, before the server has said anything.
@@ -182,5 +183,5 @@ export function useDomainCheck(domain: string | null, record: boolean): DomainCh
     );
   }, [domain, shown.listed, shown.result]);
 
-  return { listed: shown.listed, result: shown.result, error: shown.error, pending: shown.pending, retry };
+  return { listed: shown.listed, result: shown.result, error: shown.error, pending: deep === false ? false : shown.pending, retry };
 }

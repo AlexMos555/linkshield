@@ -27,6 +27,7 @@ import { checkMessageHost } from "../services/message-link-check";
 import {
   historyEntry,
   isEscalation,
+  listOnlyVerdict,
   mergeVerdict,
   pendingHosts,
   planServerChecks,
@@ -52,6 +53,8 @@ export type MessageCheckState =
       linkChecks: Readonly<Record<string, LinkCheck>>;
       verdict: MessageVerdict;
       reasons: MessageCheckReason[];
+      /** The free plan's daily limit: the scam list's verdict only (listOnlyVerdict), no detailed analysis. */
+      locked?: boolean;
     };
 
 /**
@@ -104,7 +107,8 @@ export function useMessageCheck() {
   const run = useRef(0);
   const last = useRef<Finished | null>(null);
 
-  const check = useCallback(async (text: string) => {
+  /** [detailed] false: the free plan's daily limit is spent — the scam list's verdict only. */
+  const check = useCallback(async (text: string, detailed: boolean = true) => {
     const id = ++run.current;
     const current = () => id === run.current;
     last.current = null;
@@ -119,6 +123,25 @@ export function useMessageCheck() {
       return;
     }
     const { available: _available, ...analysis } = result;
+
+    if (!detailed) {
+      // No wording reasons, no legit shape, no server check: what the list
+      // says about the links is all that shows. A listed link is still
+      // "dangerous", buzzes and reaches History, as it does on a paid plan.
+      const listOnly = listOnlyVerdict(analysis.links);
+      const shown: MessageAnalysis = {
+        ...analysis,
+        verdict: listOnly.verdict,
+        reasons: listOnly.verdict === "dangerous" ? ["link_blocklisted"] : [],
+        legitShape: null,
+      };
+      if (current()) {
+        setState({ phase: "done", analysis: shown, linkChecks: {}, ...listOnly, locked: true });
+        buzz(listOnly.verdict);
+      }
+      if (listOnly.verdict === "dangerous") await saveRow(shown, listOnly);
+      return;
+    }
 
     const plan = planServerChecks(analysis.links);
     const first = mergeVerdict(analysis, plan);

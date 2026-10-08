@@ -2262,7 +2262,7 @@
       "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
       "back": "Kembali ke Cleanway",
       "title": "Kebijakan privasi",
-      "updated": "Terakhir diperbarui: 27 September 2026",
+      "updated": "Terakhir diperbarui: 8 Oktober 2026",
       "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
       "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
       "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Alamatnya akan muncul di bagian ini begitu berfungsi.",
@@ -2287,14 +2287,14 @@
           "paragraphs": [
             "Saat Anda menyalakan perlindungan, Cleanway menjalankan filter lokal menggunakan mekanisme VPN Android. Yang melewatinya hanya permintaan DNS, yaitu pertanyaan ponsel untuk mencari alamat sebuah situs, seperti \"di mana example.com?\". Isi halaman, pesan, dan panggilan Anda tidak melewati filter dan tidak dibaca.",
             "Setiap nama situs dicocokkan dengan daftar situs penipuan yang tersimpan di ponsel. Jika ada di daftar, ponsel tidak membuka situs itu, dan sebuah catatan (nama situs, waktu, dan apa yang terjadi) disimpan di ponsel untuk Riwayat aplikasi.",
-            "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2 dan 1.0.3; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
+            "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2 hingga 1.0.4; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
             "Sejak versi 1.0.2, aplikasi membawa salinan daftar situs penipuan, yang hanya dipakai sampai ponsel mengunduh daftar terbaru."
           ]
         },
         {
           "title": "4. Daftar situs penipuan",
           "paragraphs": [
-            "Aplikasi mengunduh daftar dari server kami (api.cleanway.ai) dan memperbaruinya kira-kira setiap 6 jam, lebih jarang saat memakai data seluler. Permintaan ini tidak memuat apa pun tentang situs yang Anda kunjungi: isinya hanya data teknis biasa dari setiap permintaan di internet, seperti alamat IP Anda, dan penanda versi daftar yang sudah ada di ponsel. Sesekali aplikasi juga menanyakan ke server kami apakah ada versi aplikasi yang lebih baru."
+            "Aplikasi mengunduh daftar dari server kami (api.cleanway.ai) dan memperbaruinya kira-kira setiap 6 jam, lebih jarang saat memakai data seluler. Permintaan ini tidak memuat apa pun tentang situs yang Anda kunjungi: isinya hanya data teknis biasa dari setiap permintaan di internet, seperti alamat IP Anda, dan penanda versi daftar yang sudah ada di ponsel. Saat dibuka (paling sering sekali per jam) dan kira-kira sekali sehari, aplikasi juga menanyakan ke server kami apakah ada versi aplikasi yang lebih baru dan pemeriksaan mana di ponsel yang sedang aktif; permintaan ini juga tidak memuat apa pun tentang situs yang Anda kunjungi maupun pesan Anda."
           ]
         },
         {
@@ -3625,6 +3625,49 @@
       "not_signed_in": "Anda belum masuk.",
       "load_failed": "Akun Anda tidak dapat dimuat. Periksa koneksi lalu coba lagi.",
       "retry": "Coba lagi"
+    },
+    "paywall": {
+      "close": "Tutup",
+      "title": "Periksa tanpa batas",
+      "lead": "Pemeriksaan rinci gratis hari ini sudah habis. Situs di daftar penipuan kami tetap diblokir, berlangganan atau tidak.",
+      "per_month": "{{price}} per bulan",
+      "per_year": "{{price}} per tahun",
+      "period_month": "/ bulan",
+      "period_year": "/ tahun",
+      "alt_month": "atau {{price}} per bulan",
+      "alt_year": "atau {{price}} per tahun",
+      "devices_note": "hingga {{n}} perangkat",
+      "benefit_unlimited": "Pemeriksaan rinci tautan dan pesan tanpa batas",
+      "benefit_sms": "Pemeriksaan SMS otomatis",
+      "benefit_text_model": "Analisis teks: mengapa itu penipuan dan apa yang harus dilakukan",
+      "benefit_calls": "Perlindungan saat panggilan telepon",
+      "benefit_devices": "Hingga {{n}} perangkat dalam satu akun",
+      "cta_sign_in": "Masuk untuk berlangganan",
+      "cta_web": "Berlangganan di cleanway.ai",
+      "cta_store": "Berlangganan",
+      "cta_soon_ru": "Segera: bayar dengan pulsa",
+      "fine_cancel": "Bisa dibatalkan kapan saja.",
+      "fine_soon": "Pembayaran dengan pulsa segera hadir. Sementara itu, daftar penipuan tetap memblokir dan pemeriksaan gratis diperbarui setiap hari.",
+      "restore": "Sudah membayar? Pulihkan",
+      "restore_sign_in": "Sudah membayar? Masuk",
+      "note_store_soon": "Pembayaran di aplikasi segera hadir.",
+      "note_restore_none": "Akun ini belum memiliki langganan aktif.",
+      "note_restore_failed": "Tidak dapat menghubungi server. Coba lagi.",
+      "note_web_opened": "Pembayaran dibuka di browser. Kembali ke sini setelah selesai.",
+      "paid_done": "Langganan Anda aktif — pemeriksaan tanpa batas.",
+      "done": "Selesai",
+      "always_free": "Memblokir situs di daftar penipuan kami selalu gratis.",
+      "locked_title": "Analisis rinci termasuk dalam langganan",
+      "locked_body": "Pemeriksaan rinci gratis hari ini sudah habis; besok ada yang baru. Situs di daftar penipuan kami selalu diblokir.",
+      "locked_cta": "Periksa tanpa batas",
+      "not_listed_title": "Tidak ada di daftar penipuan kami",
+      "not_listed_body": "Itu saja tidak berarti situsnya aman — pemeriksaan rinci melihat jauh lebih dalam.",
+      "left_today": "Sisa pemeriksaan gratis hari ini: {{n}}",
+      "none_left": "Pemeriksaan gratis hari ini sudah habis. Daftar penipuan tetap bekerja.",
+      "message_listed_sub": "Sebuah tautan dalam pesan ini ada di daftar situs penipuan kami.",
+      "message_locked_title_links": "Tidak ada tautan dari daftar penipuan kami",
+      "message_locked_title_none": "Pesan belum dianalisis",
+      "message_locked_sub": "Teksnya tidak dibaca: pemeriksaan rinci gratis hari ini sudah habis."
     }
   }
 }

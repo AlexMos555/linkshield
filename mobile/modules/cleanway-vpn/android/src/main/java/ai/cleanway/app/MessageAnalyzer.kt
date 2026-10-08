@@ -117,6 +117,10 @@ data class MessageAnalysis(
  * Either adds the reason [R_TEXT_RESEMBLES_SCAM]. Thresholds and why they
  * hold: docs/EVALUATION_2026-10.md §3.14.
  *
+ * The server can switch the model off, or raise its thresholds, without a new
+ * APK ([remote], RemoteConfig.kt). Off, the analysis is exactly the rules'
+ * one — the same as a build without the model's assets.
+ *
  * Pure Kotlin: the link status comes in as a function, so the whole class is
  * JVM-testable against an in-memory BlockList.
  */
@@ -124,6 +128,8 @@ class MessageAnalyzer(
     private val rules: MessageRules,
     /** The text model; null runs the rules alone (a missing or broken asset). */
     private val model: MessageModel? = null,
+    /** The server's switches for the model (RemoteConfig.kt): off, or quieter thresholds. */
+    private val remote: RemoteConfig = RemoteConfig.DEFAULT,
     private val linkStatus: (String) -> LinkStatus,
 ) {
     fun analyze(text: String, sender: String? = null): MessageAnalysis {
@@ -134,10 +140,11 @@ class MessageAnalyzer(
         val phones = signals.phones
         val shape = legitShape(signals)
         val (ruleVerdict, ruleReasons) = decide(signals, excluded = shape != null)
-        val (verdict, reasons) = if (model == null || shape != null || ruleVerdict == MessageVerdict.DANGEROUS) {
+        val active = model?.takeIf { remote.smsTextModelEnabled }
+        val (verdict, reasons) = if (active == null || shape != null || ruleVerdict == MessageVerdict.DANGEROUS) {
             ruleVerdict to ruleReasons
         } else {
-            withModel(model, cut, signals, ruleVerdict, ruleReasons)
+            withModel(active, cut, signals, ruleVerdict, ruleReasons)
         }
         return MessageAnalysis(
             verdict = verdict,
@@ -164,11 +171,13 @@ class MessageAnalyzer(
         val g = GenericSignals(s)
         if (officialChannelsOnly(s, g)) return verdict to reasons
         val p = model.score(text) ?: return verdict to reasons
-        if (p < model.dangerThreshold && p < model.cautionThreshold) return verdict to reasons
+        val danger = remote.dangerThreshold(model.dangerThreshold)
+        val caution = remote.cautionThreshold(model.cautionThreshold)
+        if (p < danger && p < caution) return verdict to reasons
         return when {
-            p >= model.dangerThreshold && modelIngredients(s, g).isNotEmpty() ->
+            p >= danger && modelIngredients(s, g).isNotEmpty() ->
                 MessageVerdict.DANGEROUS to (listOf(R_TEXT_RESEMBLES_SCAM) + reasons + GenericLayer.reasons(s, g)).distinct()
-            p < model.cautionThreshold -> verdict to reasons
+            p < caution -> verdict to reasons
             verdict == MessageVerdict.CAUTION -> verdict to (reasons + R_TEXT_RESEMBLES_SCAM).distinct()
             else -> MessageVerdict.CAUTION to (listOf(R_TEXT_RESEMBLES_SCAM) + GenericLayer.reasons(s, g)).distinct()
         }

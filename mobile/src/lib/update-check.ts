@@ -17,6 +17,8 @@
  * tested in isolation; the fetch is the only side-effecting part.
  */
 
+import { parseRemoteConfig, type RemoteConfig } from "./remote-config";
+
 export type UpdateDecision = "none" | "optional" | "required";
 
 export interface VersionInfo {
@@ -24,6 +26,12 @@ export interface VersionInfo {
   minSupportedVersionName: string | null;
   apkUrl: string | null;
   releaseNotes: string | null;
+  /**
+   * Switches for the on-phone checks (src/lib/remote-config.ts), or null when
+   * the server sent none (an older API) or a malformed block — then the phone
+   * keeps the switches it already stored.
+   */
+  remoteConfig: RemoteConfig | null;
 }
 
 /**
@@ -121,6 +129,7 @@ export async function fetchVersionInfo(
       // phone from a banner they trust.
       apkUrl: isSafeDownloadUrl(body.apk_url) ? (body.apk_url as string) : null,
       releaseNotes: typeof body.release_notes === "string" ? body.release_notes : null,
+      remoteConfig: parseRemoteConfig(body.remote_config),
     };
   } catch {
     return null;

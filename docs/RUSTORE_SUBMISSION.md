@@ -117,6 +117,41 @@ Set the version for this release in `mobile/app.json` first: bump
 (`mobile_latest_version_*` env in Railway) so the in-app "update available"
 prompt is truthful.
 
+**Current release: 1.0.4 (versionCode 104).** `mobile/app.json` already says so.
+Change the server **only after** the signed APK is attached to the GitHub
+release `v1.0.4` — announcing a version nobody can download sends every phone
+to a 404. Then, in Railway (API service → Variables), set:
+
+```
+MOBILE_LATEST_VERSION_NAME=1.0.4
+MOBILE_LATEST_VERSION_CODE=104
+MOBILE_APK_URL=https://github.com/AlexMos555/linkshield/releases/download/v1.0.4/cleanway-1.0.4-104-arm.apk
+```
+
+(the URL must be the exact asset name you uploaded; the app opens only
+`https://` URLs). Optionally `MOBILE_RELEASE_NOTES=<one line>`. Leave
+`MOBILE_MIN_SUPPORTED_VERSION_*` empty/0 — 1.0.4 is not a security floor. In
+Vercel, point `NEXT_PUBLIC_APK_URL` at the same asset URL and redeploy without
+the build cache (see docs/GO_LIVE_CHECKLIST.md). Check:
+`curl -s https://api.cleanway.ai/api/v1/mobile/version` shows `1.0.4` (the
+answer is cached up to 15 minutes).
+
+**SMS text model kill switch (1.0.4+).** The same answer carries
+`remote_config`, driven by Railway env — no APK needed:
+
+| Env var | Default | Effect on phones |
+|---|---|---|
+| `SMS_TEXT_MODEL_ENABLED` | `true` | `false` stops the on-device SMS text model; the message rules and link checks keep working. |
+| `SMS_TEXT_MODEL_CAUTION_THRESHOLD_OVERRIDE` | unset | A number in (0, 1). Used only if **higher** than the threshold in the APK — the model can be made quieter, never louder. |
+| `SMS_TEXT_MODEL_DANGER_THRESHOLD_OVERRIDE` | unset | Same, for the "dangerous" threshold. |
+
+A phone picks a change up at its next app start (at most hourly) or within
+about a day while the app stays open, plus up to 15 minutes of HTTP cache. It
+keeps the last answer it got: an API outage, or an answer without the block,
+never flips a switch; a phone that never got one runs the model. A junk value
+in an override is ignored (logged), it does not stop the API from booting.
+Turning the model back on = unset `SMS_TEXT_MODEL_ENABLED` (or `true`).
+
 > ⚠️ **Build from the mirror sandbox, NOT from the monorepo.** Two things in the
 > repo checkout break the Metro bundle (verified 2026-08-25):
 > 1. **Node version.** Expo SDK 52 needs Node ≤22; the machine's default `node`

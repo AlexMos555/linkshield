@@ -726,7 +726,7 @@
     "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
     "back": "Kembali ke Cleanway",
     "title": "Kebijakan privasi",
-    "updated": "Terakhir diperbarui: 27 September 2026",
+    "updated": "Terakhir diperbarui: 8 Oktober 2026",
     "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
     "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
     "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Alamatnya akan muncul di bagian ini begitu berfungsi.",
@@ -751,14 +751,14 @@
         "paragraphs": [
           "Saat Anda menyalakan perlindungan, Cleanway menjalankan filter lokal menggunakan mekanisme VPN Android. Yang melewatinya hanya permintaan DNS, yaitu pertanyaan ponsel untuk mencari alamat sebuah situs, seperti \"di mana example.com?\". Isi halaman, pesan, dan panggilan Anda tidak melewati filter dan tidak dibaca.",
           "Setiap nama situs dicocokkan dengan daftar situs penipuan yang tersimpan di ponsel. Jika ada di daftar, ponsel tidak membuka situs itu, dan sebuah catatan (nama situs, waktu, dan apa yang terjadi) disimpan di ponsel untuk Riwayat aplikasi.",
-          "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2 dan 1.0.3; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
+          "Nama yang tidak ada di daftar diteruskan untuk mencari alamat situs: pertama ke server DNS jaringan tempat ponsel terhubung — milik operator seluler Anda atau router Wi-Fi Anda —, sama seperti tanpa Cleanway. Hanya jika server itu tidak menjawab, nama diteruskan ke Cloudflare (1.1.1.1), lalu ke Quad9 (9.9.9.9), dan sebagai upaya terakhir ke DNS-over-HTTPS terenkripsi milik Cloudflare. Begitulah cara kerja aplikasi versi 1.0.2 hingga 1.0.4; versi 1.0.1 bertanya ke Cloudflare terlebih dahulu. Layanan ini melihat nama situs dan alamat IP koneksi Anda, seperti layanan DNS mana pun; kebijakan privasi mereka sendiri berlaku. Cleanway tidak menerima maupun menyimpan kueri ini.",
           "Sejak versi 1.0.2, aplikasi membawa salinan daftar situs penipuan, yang hanya dipakai sampai ponsel mengunduh daftar terbaru."
         ]
       },
       {
         "title": "4. Daftar situs penipuan",
         "paragraphs": [
-          "Aplikasi mengunduh daftar dari server kami (api.cleanway.ai) dan memperbaruinya kira-kira setiap 6 jam, lebih jarang saat memakai data seluler. Permintaan ini tidak memuat apa pun tentang situs yang Anda kunjungi: isinya hanya data teknis biasa dari setiap permintaan di internet, seperti alamat IP Anda, dan penanda versi daftar yang sudah ada di ponsel. Sesekali aplikasi juga menanyakan ke server kami apakah ada versi aplikasi yang lebih baru."
+          "Aplikasi mengunduh daftar dari server kami (api.cleanway.ai) dan memperbaruinya kira-kira setiap 6 jam, lebih jarang saat memakai data seluler. Permintaan ini tidak memuat apa pun tentang situs yang Anda kunjungi: isinya hanya data teknis biasa dari setiap permintaan di internet, seperti alamat IP Anda, dan penanda versi daftar yang sudah ada di ponsel. Saat dibuka (paling sering sekali per jam) dan kira-kira sekali sehari, aplikasi juga menanyakan ke server kami apakah ada versi aplikasi yang lebih baru dan pemeriksaan mana di ponsel yang sedang aktif; permintaan ini juga tidak memuat apa pun tentang situs yang Anda kunjungi maupun pesan Anda."
         ]
       },
       {

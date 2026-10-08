@@ -23,6 +23,7 @@ import {
   type EntitlementResponse,
 } from "./api";
 import { getDeviceId, rotateDeviceId } from "./device-id";
+import { rememberEntitlement } from "./freemium";
 import { signOutEverywhereLocal } from "./account-actions";
 import { accountFailure, defaultDeviceName, heartbeatDue } from "../utils/account-session";
 
@@ -64,6 +65,8 @@ export async function linkThisDevice(): Promise<LinkResult> {
   });
   if (data) {
     _lastHeartbeatAt = Date.now();
+    // The free plan's limit reads the plan from here too (no extra request).
+    void rememberEntitlement(data.entitlement);
     return { kind: "ok", entitlement: data.entitlement };
   }
   switch (accountFailure(error)) {

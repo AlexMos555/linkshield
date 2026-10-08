@@ -15,6 +15,7 @@ import {
   type MessageCheckReason,
 } from "../../utils/message-verdict";
 import { MessageLinksCard } from "./MessageLinksCard";
+import { LockedDetailsCard } from "../paywall/LockedDetails";
 
 interface Props {
   /** The checked text — shown back on this screen only, never stored. */
@@ -24,6 +25,8 @@ interface Props {
   linkChecks: Readonly<Record<string, LinkCheck>>;
   verdict: MessageVerdict;
   reasons: MessageCheckReason[];
+  /** Today's free detailed checks are used up: the scam list's verdict only (listOnlyVerdict). */
+  locked?: boolean;
   onRetry: () => void;
   onAnother: () => void;
   onDone: () => void;
@@ -45,16 +48,18 @@ const UNCHECKED_LOOK: Look = { icon: "help-circle-outline", color: colors.textPr
 const RETRYABLE = new Set(["rate_limited", "offline", "timeout", "failed"]);
 
 export function MessageResult(props: Props) {
-  const { text, fromShare, analysis, linkChecks, verdict, reasons, onRetry, onAnother, onDone } = props;
+  const { text, fromShare, analysis, linkChecks, verdict, reasons, locked = false, onRetry, onAnother, onDone } = props;
   const { t } = useTranslation();
   const links = linksState(analysis.links, linkChecks);
   // A calm verdict never stands in for a link check: while a link is being
   // checked, or when one could not be, the headline says so instead.
   const pending = verdict === "no_signals" && (links === "checking" || links === "unchecked") ? links : null;
-  const look = pending ? UNCHECKED_LOOK : LOOKS[verdict];
-  const verdictLabel = t(pending ? LINKS_HEADLINE_KEYS[pending].title : VERDICT_KEYS[verdict]);
-  const verdictSub = t(pending ? LINKS_HEADLINE_KEYS[pending].sub : VERDICT_SUB_KEYS[verdict]);
-  const shown = reasons.slice(0, MAX_SHOWN_REASONS);
+  const headline = locked ? lockedHeadline(verdict, analysis.links.length > 0) : null;
+  const look = headline ? headline.look : pending ? UNCHECKED_LOOK : LOOKS[verdict];
+  const verdictLabel = t(headline ? headline.title : pending ? LINKS_HEADLINE_KEYS[pending].title : VERDICT_KEYS[verdict]);
+  const verdictSub = t(headline ? headline.sub : pending ? LINKS_HEADLINE_KEYS[pending].sub : VERDICT_SUB_KEYS[verdict]);
+  // Locked: the headline already says a link is on the list; the wording's reasons are the detailed analysis.
+  const shown = locked ? [] : reasons.slice(0, MAX_SHOWN_REASONS);
   // Native never pairs a legitimate shape with "dangerous"; a server answer
   // that raised the verdict must not leave "looks like a pickup code" beside it.
   const shape = verdict === "no_signals" ? analysis.legitShape : null;
@@ -111,17 +116,21 @@ export function MessageResult(props: Props) {
         />
       )}
 
-      <View style={s.card}>
-        <Text style={s.cardTitle}>
-          {t(verdict === "no_signals" ? "mobile.message.advice_title_calm" : "mobile.message.advice_title")}
-        </Text>
-        {advice.map((key, i) => (
-          <View key={key} style={[s.bulletRow, i > 0 && s.rowBorder]}>
-            <Ionicons name="arrow-forward-circle-outline" size={20} color={colors.textSecondary} />
-            <Text style={s.bulletText}>{t(ADVICE_KEYS[key])}</Text>
-          </View>
-        ))}
-      </View>
+      {locked ? (
+        <LockedDetailsCard />
+      ) : (
+        <View style={s.card}>
+          <Text style={s.cardTitle}>
+            {t(verdict === "no_signals" ? "mobile.message.advice_title_calm" : "mobile.message.advice_title")}
+          </Text>
+          {advice.map((key, i) => (
+            <View key={key} style={[s.bulletRow, i > 0 && s.rowBorder]}>
+              <Ionicons name="arrow-forward-circle-outline" size={20} color={colors.textSecondary} />
+              <Text style={s.bulletText}>{t(ADVICE_KEYS[key])}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {analysis.truncated && <Text style={s.note}>{t("mobile.message.truncated")}</Text>}
 
@@ -135,6 +144,22 @@ export function MessageResult(props: Props) {
       <Button label={t("mobile.message.done")} onPress={onDone} />
     </>
   );
+}
+
+/**
+ * The headline when the free plan's daily limit stopped the detailed check:
+ * a listed link is "dangerous" as always; otherwise it says the text was not
+ * read — never "no signs of fraud", which the list alone cannot know.
+ */
+function lockedHeadline(verdict: MessageVerdict, hasLinks: boolean): { look: Look; title: string; sub: string } {
+  if (verdict === "dangerous") {
+    return { look: LOOKS.dangerous, title: VERDICT_KEYS.dangerous, sub: "mobile.paywall.message_listed_sub" };
+  }
+  return {
+    look: UNCHECKED_LOOK,
+    title: hasLinks ? "mobile.paywall.message_locked_title_links" : "mobile.paywall.message_locked_title_none",
+    sub: "mobile.paywall.message_locked_sub",
+  };
 }
 
 function Button({ label, onPress, primary = false }: { label: string; onPress: () => void; primary?: boolean }) {
