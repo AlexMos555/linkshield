@@ -11,6 +11,8 @@ import type { ApiError } from "../src/services/api";
 import { useDomainCheck } from "../src/hooks/useDomainCheck";
 import { isNotFound, reasonsToShow, serverLevel, showScore, shownLevel } from "../src/utils/check-verdict";
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
+import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
+import { useAutoPaywall, useDetailGate } from "../src/hooks/useFreemium";
 
 /**
  * Say what actually went wrong. A rate limit, a slow server and a dead server
@@ -34,7 +36,12 @@ export default function ResultScreen() {
   const { t } = useTranslation();
   // The on-device list first, the server after — a listed site never waits
   // for the server and is never downgraded by it (useDomainCheck).
-  const { listed, result, error, pending, retry } = useDomainCheck(domain || null, record);
+  // The free plan's daily limit decides whether the server's detailed check
+  // runs; the on-device list's verdict shows either way (useFreemium).
+  const gate = useDetailGate(domain || null);
+  const locked = gate.deep === false;
+  const { listed, result, error, pending, retry } = useDomainCheck(domain || null, record, gate.deep);
+  useAutoPaywall(locked, gate.autoPaywall, listed === undefined ? undefined : Boolean(listed), gate.key);
 
   if (listed === undefined || (!listed && pending)) {
     return (
@@ -50,6 +57,15 @@ export default function ResultScreen() {
     return (
       <ScrollView style={s.container} contentContainerStyle={s.content}>
         <NotFoundCard domain={domain} />
+      </ScrollView>
+    );
+  }
+
+  if (locked && !listed) {
+    return (
+      <ScrollView style={s.container} contentContainerStyle={s.content}>
+        <NotListedCard domain={domain} />
+        <LockedDetailsCard />
       </ScrollView>
     );
   }
@@ -94,7 +110,7 @@ export default function ResultScreen() {
         {!listed && result?.confidence === "low" && (
           <Text style={s.lowConf}>{t("mobile.result.low_confidence")}</Text>
         )}
-        {listed && (
+        {listed && !locked && (
           <ServerDetailsNote
             pending={pending}
             failed={!pending && !result}
@@ -112,6 +128,10 @@ export default function ResultScreen() {
       <View style={s.card}>
         <Text style={s.summary}>{t(`mobile.shared.advice_${level}`)}</Text>
       </View>
+
+      {/* Today's free detailed checks are used up: the list's verdict above
+          stands; the server's reasons and details are what the plan adds. */}
+      {locked && <LockedDetailsCard />}
 
       {/* Signals — the list's own line first when it decided. */}
       {hasSignals && (
