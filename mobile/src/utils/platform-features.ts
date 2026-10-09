@@ -14,7 +14,8 @@
  * The iPhone app protects through three iOS-native layers instead, built in
  * separate steps: a Safari Web Extension, an SMS filter
  * (ILMessageFilterExtension) and DNS protection (NEDNSSettingsManager with
- * encrypted DNS). Until a layer ships it is listed as "coming soon" — said
+ * encrypted DNS — src/utils/ios-dns.ts reports its layer). Until a layer
+ * ships it is listed as "coming soon" — said
  * plainly, never as a placebo switch. Each later step reports its layer's
  * status through IosLayerAvailability; this file and the home card need no
  * other change.
@@ -100,9 +101,14 @@ export function shareHowToKey(os: string): string {
   return os === "ios" ? "mobile.home.check.share_sheet_body_ios" : "mobile.home.check.share_sheet_body";
 }
 
-/** The privacy line at the bottom of home: the Android one talks about shields an iPhone does not have. */
-export function homePrivacyKey(os: string): string {
-  return os === "ios" ? "mobile.home.privacy_ios" : "mobile.home.privacy";
+/**
+ * The privacy line at the bottom of home: the Android one talks about shields
+ * an iPhone does not have. With the iPhone's DNS protection on, site names
+ * also go to Cleanway's DNS server — the line says so.
+ */
+export function homePrivacyKey(os: string, iosDnsOn = false): string {
+  if (os !== "ios") return "mobile.home.privacy";
+  return iosDnsOn ? "mobile.home.privacy_ios_dns" : "mobile.home.privacy_ios";
 }
 
 /**
@@ -111,7 +117,11 @@ export function homePrivacyKey(os: string): string {
  * that does not exist, but what the app does now and where the rest is.
  * Null when the usual hero copy applies.
  */
-export function heroWithoutShieldsKeys(os: string, shieldCount: number): { title: string; sub: string } | null {
+export function heroWithoutShieldsKeys(
+  os: string, shieldCount: number, iosLayers: readonly { status: IosLayerStatus }[] = [],
+): { title: string; sub: string } | null {
   if (shieldCount > 0 || os !== "ios") return null;
-  return { title: "mobile.home.hero.title_ios", sub: "mobile.home.hero.sub_ios" };
+  // "On its way" stops being true once a layer can be set up.
+  const ready = iosLayers.some((l) => l.status !== "coming");
+  return { title: "mobile.home.hero.title_ios", sub: ready ? "mobile.home.hero.sub_ios_ready" : "mobile.home.hero.sub_ios" };
 }

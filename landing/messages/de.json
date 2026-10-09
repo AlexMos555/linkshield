@@ -788,7 +788,7 @@
     "meta_description": "Was Cleanway erhält, was auf deinem Handy oder in deinem Browser bleibt, wer sonst was sieht und wie lange alles gespeichert wird.",
     "back": "Zurück zu Cleanway",
     "title": "Datenschutzerklärung",
-    "updated": "Zuletzt aktualisiert: 8. Oktober 2026",
+    "updated": "Zuletzt aktualisiert: 9. Oktober 2026",
     "intro": "Diese Erklärung beschreibt in einfachen Worten, welche Daten Cleanway verarbeitet, warum und wer sie sonst noch sieht. Sie beschreibt den Dienst so, wie er heute funktioniert. Wenn hier etwas nicht zu dem passt, was Cleanway tatsächlich tut, ist das ein Fehler, und wir möchten davon erfahren.",
     "contact_live": "Fragen und Anfragen zu deinen Daten:",
     "contact_not_live": "Unser Support-Postfach wird noch eingerichtet, daher können wir noch keine E-Mails empfangen. Die Adresse erscheint hier, sobald es funktioniert.",
@@ -894,7 +894,8 @@
         "title": "11. Website und DNS-Filter",
         "paragraphs": [
           "cleanway.ai hat keine Werbung und keine Analyse-Tracker. Unsere Hosting-Anbieter – Vercel für die Website, Railway für den Server – führen übliche technische Anfrage-Protokolle, die die aufgerufene Adresse und deine IP-Adresse enthalten können.",
-          "Wenn du den DNS-Filter von Cleanway (dns.cleanway.ai) auf einem iPhone, Mac oder Windows-Computer einrichtest, gehen alle DNS-Anfragen des Geräts an unseren Server. Er blockiert Namen von der Liste und gibt den Rest an Cloudflare weiter, um die Adresse zu finden. Anfragen werden nicht auf die Festplatte geschrieben; von einem blockierten Namen behält unser Protokoll höchstens die letzten 32 Zeichen, ohne deine IP-Adresse."
+          "Wenn du den DNS-Filter von Cleanway (dns.cleanway.ai) auf einem iPhone, Mac oder Windows-Computer einrichtest, gehen alle DNS-Anfragen des Geräts an unseren Server. Er blockiert Namen von der Liste und gibt den Rest an Cloudflare weiter, um die Adresse zu finden. Anfragen werden nicht auf die Festplatte geschrieben; von einem blockierten Namen behält unser Protokoll höchstens die letzten 32 Zeichen, ohne deine IP-Adresse.",
+          "Die Cleanway-App für das iPhone kann diesen DNS-Filter als „DNS-Schutz“ für dich einrichten: Die App speichert die verschlüsselte DNS-Einstellung von Cleanway auf dem iPhone, und sie wirkt erst, wenn du sie in den Einstellungen des iPhone auswählst. Anders als die Android-App, die Website-Namen mit einer Liste auf dem Telefon vergleicht, findet der Vergleich auf dem iPhone auf unserem Server statt: Solange der DNS-Schutz an ist, sendet das iPhone unserem Server verschlüsselt den Namen jeder Website, die eine App nachschlägt, und der Server behandelt ihn wie im vorigen Absatz beschrieben. Um zu begrenzen, wie viele Anfragen eine Verbindung stellen kann, behält unser Server deine IP-Adresse höchstens eine Stunde lang als Zähler, wie bei Website-Prüfungen (Abschnitt 5) – nicht zusammen mit den Namen, die du nachschlägst. Ab iOS 26 kann das iPhone, wenn unser Server nicht antwortet, stattdessen den DNS-Server des Netzwerks selbst fragen, wie ohne Cleanway. Du kannst den DNS-Schutz jederzeit in den Einstellungen des iPhone ausschalten oder in der App entfernen."
         ]
       },
       {

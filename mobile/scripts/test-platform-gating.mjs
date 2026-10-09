@@ -115,12 +115,24 @@ check("share how-to, home privacy line, hero: iPhone copy on iOS, in every local
   assert.equal(shareHowToKey("android"), "mobile.home.check.share_sheet_body");
   assert.equal(homePrivacyKey("ios"), "mobile.home.privacy_ios");
   assert.equal(homePrivacyKey("android"), "mobile.home.privacy");
-  assertKeys([shareHowToKey("ios"), homePrivacyKey("ios")]);
-  // The iPhone privacy line names no Android shield.
-  for (const loc of LOCALES) assert.ok(!/All apps|Every app/.test(STRINGS[loc][homePrivacyKey("ios")]), loc);
+  // DNS protection on: the line also says site names go to Cleanway's DNS server.
+  assert.equal(homePrivacyKey("ios", true), "mobile.home.privacy_ios_dns");
+  assert.equal(homePrivacyKey("android", true), "mobile.home.privacy");
+  assertKeys([shareHowToKey("ios"), homePrivacyKey("ios"), homePrivacyKey("ios", true)]);
+  // The iPhone privacy lines name no Android shield.
+  for (const loc of LOCALES) {
+    for (const key of [homePrivacyKey("ios"), homePrivacyKey("ios", true)]) {
+      assert.ok(!/All apps|Every app/.test(STRINGS[loc][key]), `${loc} ${key}`);
+    }
+  }
   const hero = heroWithoutShieldsKeys("ios", 0);
   assert.deepEqual(hero, { title: "mobile.home.hero.title_ios", sub: "mobile.home.hero.sub_ios" });
   assertKeys([hero.title, hero.sub]);
+  // Once a layer can be set up, "on its way" is no longer the whole truth.
+  assert.deepEqual(heroWithoutShieldsKeys("ios", 0, iosProtectionLayers({ dns: "setup" })),
+    { title: "mobile.home.hero.title_ios", sub: "mobile.home.hero.sub_ios_ready" });
+  assert.equal(heroWithoutShieldsKeys("ios", 0, iosProtectionLayers()).sub, "mobile.home.hero.sub_ios");
+  assertKeys(["mobile.home.hero.sub_ios_ready"]);
   assert.equal(heroWithoutShieldsKeys("ios", 1), null);
   assert.equal(heroWithoutShieldsKeys("android", 0), null);
 });
@@ -130,10 +142,10 @@ check("share how-to, home privacy line, hero: iPhone copy on iOS, in every local
 check("home: the iPhone card and the Android-only cards sit behind their switches", () => {
   const home = read("app/(tabs)/index.tsx");
   assert.match(home, /iosProtectionShown\(Platform\.OS\)/);
-  assert.match(home, /<IosProtectionCard /);
-  assert.match(home, /heroWithoutShieldsKeys\(Platform\.OS, totalCount\)/);
+  assert.match(home, /<IosProtectionCard\s/);
+  assert.match(home, /heroWithoutShieldsKeys\(Platform\.OS, totalCount, iosLayers \?\? \[\]\)/);
   assert.match(home, /shareHowToKey\(Platform\.OS\)/);
-  assert.match(home, /homePrivacyKey\(Platform\.OS\)/);
+  assert.match(home, /homePrivacyKey\(Platform\.OS, iosDns\.phase === "on"\)/);
   // Android cards render only where their native half exists (false on iOS).
   assert.match(home, /\{network\.available && \(/);
   assert.match(home, /\{linkGuard\.available && \(/);
@@ -198,21 +210,20 @@ check("app.json: privacy manifest — no tracking, a reason for each required-re
   assert.deepEqual(reasons.NSPrivacyAccessedAPICategoryDiskSpace, ["E174.1"]);
 });
 
-check("the iOS entitlements plugin runs first and strips push and VPN entitlements, keeping the app group", () => {
+check("the iOS entitlements plugin runs first: strips push and VPN, keeps the app group, adds dns-settings", () => {
   const first = app.plugins[0];
   assert.equal(first, "./plugins/withIosAppStore");
   const patch = require("../plugins/withIosAppStore.js")._patch;
+  const NE = "com.apple.developer.networking.networkextension";
   const out = patch({
     "aps-environment": "development",
     "com.apple.security.application-groups": ["group.ai.cleanway.app"],
-    "com.apple.developer.networking.networkextension": ["packet-tunnel-provider"],
+    [NE]: ["packet-tunnel-provider"],
   });
-  assert.deepEqual(out, { "com.apple.security.application-groups": ["group.ai.cleanway.app"] });
-  // The DNS-settings step will add `dns-settings`; that one stays.
-  assert.deepEqual(
-    patch({ "com.apple.developer.networking.networkextension": ["dns-settings", "packet-tunnel-provider"] }),
-    { "com.apple.developer.networking.networkextension": ["dns-settings"] },
-  );
+  // DNS protection (NEDNSSettingsManager) needs exactly `dns-settings` — never a VPN value.
+  assert.deepEqual(out, { "com.apple.security.application-groups": ["group.ai.cleanway.app"], [NE]: ["dns-settings"] });
+  assert.deepEqual(patch({}), { [NE]: ["dns-settings"] });
+  assert.deepEqual(patch({ [NE]: ["dns-settings", "packet-tunnel-provider", "app-proxy-provider"] }), { [NE]: ["dns-settings"] });
 });
 
 check("expo-notifications is kept out of the iOS build (no push on iPhone yet)", () => {

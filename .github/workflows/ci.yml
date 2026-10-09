@@ -257,6 +257,15 @@ jobs:
         # deployment target, the share extension's hand-off URL routed home.
         run: node --experimental-strip-types mobile/scripts/test-platform-gating.mjs
 
+      - name: iPhone DNS protection (NEDNSSettingsManager) table test
+        # The DNS layer is "on" only when iOS says our configuration is saved,
+        # current and enabled — an odd native value is never on. The setup
+        # sheet follows iOS's two steps (the app saves it, the person picks it
+        # in Settings), says first that site names go to Cleanway's server,
+        # and the Swift side saves DoH to the /dns-query gateway the API
+        # serves, with no pinned IPs and no on-demand rules. docs/IOS.md §4.
+        run: node --experimental-strip-types mobile/scripts/test-ios-dns.mjs
+
       - name: Remote config (SMS text model kill switch) table test
         # The server can turn the on-device SMS text model off without an APK.
         # An answer without a valid block keeps the stored switches (an outage
