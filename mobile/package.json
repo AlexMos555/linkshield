@@ -15,7 +15,7 @@
     "@cleanway/api-types": "*",
     "@sentry/react-native": "~7.2.0",
     "events": "^3.3.0",
-    "expo": "~54.0.37",
+    "expo": "~57.0.27",
     "expo-asset": "~12.0.13",
     "expo-camera": "~17.0.10",
     "expo-clipboard": "~8.0.8",
