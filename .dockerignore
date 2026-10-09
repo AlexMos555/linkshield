@@ -1,0 +1,51 @@
+# Keep secrets and everything the API does not read out of the image.
+# The API needs api/, data/, docs/ and packages/email-templates/out (see Dockerfile).
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+*.mobileprovision
+
+# VCS, CI, tooling
+.git
+.github
+.claude
+.planning
+.vscode
+.idea
+**/.DS_Store
+
+# Python leftovers
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+venv
+.venv
+
+# Clients and builds the server never serves
+node_modules
+**/node_modules
+mobile
+extension
+extension-firefox
+extension-safari
+email-plugin-outlook
+landing
+dist
+ml
+tests
+scripts
+supabase
+packages/*/node_modules
+packages/*/src
+
+# Local runtime output
+data/feature_log.jsonl

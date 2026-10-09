@@ -136,11 +136,10 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
 
-  # ─── Dockerfile linting (Hadolint) — disabled; no Dockerfile in repo ───
+  # ─── Dockerfile linting (Hadolint) ───
   hadolint:
     name: hadolint (Dockerfile lint)
     runs-on: ubuntu-latest
-    if: false  # re-enable if a Dockerfile is reintroduced
     steps:
       - uses: actions/checkout@v6
       - uses: hadolint/hadolint-action@v3.3.0

@@ -14,9 +14,9 @@ developer push                      │
         ├→ GitHub Actions: E2E      (Playwright landing suite)
         ├→ GitHub Actions: deploy-staging  (optional — manual dispatch)
         └→ Railway auto-deploy      (main branch → production API)
-             ├→ Nixpacks builder reads railway.json + requirements.txt
+             ├→ builds the root Dockerfile (python:3.11-slim, non-root)
              ├→ Railway security scanner blocks on CVE (e.g., next@CVE-*)
-             └→ `uvicorn api.main:app` on $PORT (Procfile)
+             └→ `uvicorn api.main:app` on $PORT (Dockerfile CMD)
 ```
 
 ## Component status map
@@ -98,7 +98,7 @@ Scaling levers when sustained RPS climbs:
 
 1. **Add Redis** (Upstash free tier) — unlocks the rate limiter and
    caches Safe Browsing verdicts (cuts 40 % of GSB API calls).
-2. **Scale Railway replicas** — Procfile is stateless; horizontal scale
+2. **Scale Railway replicas** — the API is stateless; horizontal scale
    just works.
 3. **Supabase pooler** — move from direct connection to connection
    pooler (pgBouncer URL in Supabase dashboard). Bumps concurrent ceiling
