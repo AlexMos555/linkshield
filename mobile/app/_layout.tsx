@@ -36,9 +36,10 @@ import { toCheckableHost } from "../src/utils/host";
  * both created by the expo-share-intent config plugin) into the existing /shared
  * screen, which runs the full domain check and shows the verdict + haptics.
  *
- * !! UNVERIFIED: the Expo SDK 52 toolchain can't run in the authoring env (Node 25).
- * Requires `npx expo prebuild` + a dev-client build + on-device test.
- * See mobile/SHARE_FLOW.md.
+ * Verified on the iOS 26.2 simulator (2026-10-09: a Safari URL and selected text).
+ * On iOS the extension opens the app with `cleanway://dataUrl=…`, which
+ * app/+native-intent.tsx sends to home so this router can take over.
+ * See mobile/SHARE_FLOW.md, docs/IOS.md.
  */
 /**
  * First-launch gate. The onboarding screen wrote `onboarding_done` on finish,
@@ -194,6 +195,10 @@ export default function RootLayout() {
           headerStyle: { backgroundColor: "#0f172a" },
           headerTintColor: "#f8fafc",
           headerTitleStyle: { fontWeight: "700" },
+          // iOS writes the previous screen's title next to the back chevron —
+          // for every screen opened from the tabs that was the raw route name
+          // "(tabs)" (seen on the iOS simulator). A bare chevron, as on Android.
+          headerBackButtonDisplayMode: "minimal",
           contentStyle: { backgroundColor: "#0f172a", paddingBottom: bottomPad },
         }}
       >

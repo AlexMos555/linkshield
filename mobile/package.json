@@ -55,6 +55,13 @@
     "typescript": "~5.9.2"
   },
   "expo": {
+    "autolinking": {
+      "ios": {
+        "exclude": [
+          "expo-notifications"
+        ]
+      }
+    },
     "install": {
       "exclude": [
         "react-native-reanimated"

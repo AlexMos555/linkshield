@@ -32,6 +32,11 @@ export default function TabLayout() {
         headerShadowVisible: false,
         headerTintColor: colors.textPrimary,
         headerTitleStyle: { fontSize: 17, fontWeight: "600" },
+        // The header has a fixed height: at the largest accessibility text
+        // sizes the title grew past it and was cut in half (iOS simulator,
+        // Dynamic Type AX-XL). iOS's own navigation titles stay put too; the
+        // screens' content still follows the person's text size.
+        headerTitleAllowFontScaling: false,
         tabBarStyle: {
           backgroundColor: colors.bg,
           borderTopWidth: 1,

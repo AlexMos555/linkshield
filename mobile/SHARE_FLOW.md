@@ -1,5 +1,10 @@
 # Mobile Share Flow — build & verify (branch `mobile-share-flow`)
 
+> **2026-10-09:** verified on the iOS 26.2 simulator (Safari URL and selected text →
+> Share → Cleanway → the check). iOS needed `app/+native-intent.tsx` (the extension's
+> `cleanway://dataUrl=…` hand-off URL showed "Unmatched Route") and the URL — not the
+> web page — as the activation rule. Current iOS notes: `docs/IOS.md` §2.1.
+
 Wires the **"Share → Cleanway"** flow so a link from ANY app (Safari, Messages,
 WhatsApp, Telegram, Mail…) can be shared into Cleanway and instantly checked. This
 was ~80% built already — `app/shared.tsx` runs the full domain check and shows the
