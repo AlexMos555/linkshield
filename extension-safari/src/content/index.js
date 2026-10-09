@@ -429,7 +429,18 @@ _log("Content script loaded on", window.location.hostname);
     // overlay on our own marketing / pricing page. Game over for trust.
     // The tiny client-side allow-list catches that worst case without
     // affecting normal API verdicts for any other domain.
-    if (domain === "cleanway.ai" || domain.endsWith(".cleanway.ai")) return;
+    if (domain === "cleanway.ai" || domain.endsWith(".cleanway.ai")) {
+      // Not checked, but proof the extension runs on websites: in Safari the
+      // background tells the Cleanway iPhone app (background/safari-native.js),
+      // whose setup steps send people here to test it. Elsewhere a no-op.
+      if (window.top === window) {
+        try {
+          var seen = chrome.runtime.sendMessage({ type: "EXTENSION_SEEN" });
+          if (seen && typeof seen.catch === "function") seen.catch(function() {});
+        } catch (e) { /* extension reloaded under the page — nothing to tell */ }
+      }
+      return;
+    }
 
     var results = await checkDomains([domain], true);
     if (results && results[0] && results[0].level === "dangerous") {

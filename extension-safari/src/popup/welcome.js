@@ -1,3 +1,9 @@
+// Safari on iPhone / iPad: phone layout, and no webmail scanner
+// (elements marked data-hide-on-ios are removed). utils/platform.js.
+try {
+  if (self.cleanwayPlatform) self.cleanwayPlatform.applyToPage(chrome, document);
+} catch (e) { /* no platform helper: the desktop page is shown */ }
+
 // ── Inline i18n with fallback ──
     const WELCOME_EN = {
       welcome_page_title: "Welcome to Cleanway",

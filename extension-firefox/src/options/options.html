@@ -187,8 +187,9 @@
        and stores webmailScannerEnabled = true; background/webmail-scanner.js
        then injects content/webmail.js. Turning it off stops it at once. The
        consent text says exactly what is sent — keep it in step with
-       content/webmail.js buildPayload() and docs/PRIVACY.md. -->
-  <div class="section" id="webmail-section">
+       content/webmail.js buildPayload() and docs/PRIVACY.md. Not on iPhone /
+       iPad: data-hide-on-ios removes it there (utils/platform.js). -->
+  <div class="section" id="webmail-section" data-hide-on-ios>
     <h2 data-i18n="webmail_setting_heading">Email scanning</h2>
     <div class="row">
       <label class="row-label" for="webmail-scanner" style="margin-inline-end:12px;" data-i18n="webmail_setting_label">Scan emails I open in Gmail, Outlook and Yahoo for phishing</label>
@@ -533,6 +534,7 @@
        the module service worker. -->
   <script src="../utils/vendor/qrcode-generator.min.js"></script>
   <script src="../utils/family-invite-url.js"></script>
+  <script src="../utils/platform.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

@@ -1253,6 +1253,222 @@ await check("no screen promises that data never leaves the device", () => {
   }
 });
 
+// ── Group 6: Safari on iPhone / iPad ──
+// The same extension-safari/ tree ships inside the Cleanway iPhone app
+// (mobile/plugins/withSafariExtension.js, docs/IOS.md). On iOS the webmail
+// scanner is never offered (docs/MOBILE_AUTO_PROTECTION.md), the pages get a
+// phone layout, the Family Hub poll (OS notifications Safari does not have)
+// stays off, and the background tells the app — through Safari's native
+// messaging — that it ran on a real web page, so the app's setup card can
+// say "On" instead of guessing.
+
+const SAFARI_BASE = "safari-web-extension://4C0FFEE0-0000-4000-8000-000000000000/";
+const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Mobile/15E148 Safari/604.1";
+const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15";
+
+const platformModule = (tree) => import(pathToFileURL(join(ROOT, tree, "src/utils/platform.js")).href).then((m) => m.default || m);
+const safariNativeModule = (tree) => import(pathToFileURL(join(ROOT, tree, "src/background/safari-native.js")).href);
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] platform: only Safari on an iPhone / iPad counts as iOS`, async () => {
+    const p = await platformModule(tree);
+    const table = [
+      [{ baseUrl: SAFARI_BASE, platformOs: "ios" }, true],
+      [{ baseUrl: SAFARI_BASE, platformOs: "ipados" }, true],
+      [{ baseUrl: SAFARI_BASE, platformOs: "mac", userAgent: IPHONE_UA }, false], // the browser's answer wins
+      [{ baseUrl: SAFARI_BASE, userAgent: IPHONE_UA }, true],
+      [{ baseUrl: SAFARI_BASE, userAgent: MAC_UA, maxTouchPoints: 5 }, true], // desktop-class iPad
+      [{ baseUrl: SAFARI_BASE, userAgent: MAC_UA, maxTouchPoints: 0 }, false],
+      [{ baseUrl: "chrome-extension://abc/", platformOs: "ios", userAgent: IPHONE_UA }, false],
+      [{ baseUrl: "moz-extension://abc/", userAgent: IPHONE_UA }, false],
+      [{}, false],
+    ];
+    for (const [env, want] of table) assert.equal(p.isMobileSafari(env), want, JSON.stringify(env));
+
+    const api = (os, getInfo) => ({ runtime: { getURL: (x) => SAFARI_BASE + x, getPlatformInfo: getInfo || (async () => ({ os })) } });
+    assert.equal(await p.detectMobileSafari(api("ios")), true);
+    assert.equal(await p.detectMobileSafari(api("mac")), false);
+    // getPlatformInfo failing falls back to the user agent (Node's: not an iPhone).
+    assert.equal(await p.detectMobileSafari(api(null, async () => { throw new Error("nope"); })), false);
+    assert.equal(await p.detectMobileSafari({ runtime: { getURL: (x) => "chrome-extension://a/" + x, getPlatformInfo: async () => ({ os: "ios" }) } }), false);
+  });
+
+  await check(`[${tree}] webmail scanner: never registered in Safari on iOS, whatever the flag says`, async () => {
+    const { installWebmailScanner, webmailScannerBlockedHere } = await scannerModule(tree);
+    const ios = fakeScannerApi({ stored: { webmailScannerEnabled: true } });
+    ios.api.runtime.getURL = (x) => SAFARI_BASE + x;
+    ios.api.runtime.getPlatformInfo = async () => ({ os: "ios" });
+    assert.equal(await webmailScannerBlockedHere(ios.api), true);
+    // A registration left from before is dropped, and nothing new is added.
+    await ios.api.scripting.registerContentScripts([{ id: "cleanway-webmail", matches: [...WEBMAIL_HOSTS], js: ["src/content/webmail.js"] }]);
+    const result = await installWebmailScanner(ios.api).sync({ injectOpen: true });
+    assert.deepEqual(result, { supported: false, registered: false });
+    assert.equal(ios.registered.size, 0, "registered on an iPhone");
+    assert.deepEqual(ios.log.injected, [], "injected into a mail tab on an iPhone");
+
+    // Safari on a Mac keeps the opt-in scanner.
+    const mac = fakeScannerApi({ stored: { webmailScannerEnabled: true } });
+    mac.api.runtime.getURL = (x) => SAFARI_BASE + x;
+    mac.api.runtime.getPlatformInfo = async () => ({ os: "mac" });
+    await installWebmailScanner(mac.api).sync();
+    assert.equal(mac.registered.size, 1, "the Mac lost the scanner");
+  });
+
+  await check(`[${tree}] Safari "seen" message: once per 6 h, nothing but its type, Safari only`, async () => {
+    const { createSafariSeen, isWebPageSender, seenIsDue, SEEN_EVERY_MS, SEEN_STORAGE_KEY } = await safariNativeModule(tree);
+    assert.equal(SEEN_EVERY_MS, 6 * 3600_000);
+    assert.equal(isWebPageSender({ tab: { id: 1 }, url: "https://bank.example/login" }), true);
+    assert.equal(isWebPageSender({ tab: { id: 1 }, url: SAFARI_BASE + "src/popup/popup.html" }), false);
+    assert.equal(isWebPageSender({ url: "https://bank.example/" }), false, "not from a tab");
+    assert.equal(seenIsDue(null, 1000), true);
+    assert.equal(seenIsDue(1000, 1000 + SEEN_EVERY_MS - 1), false);
+    assert.equal(seenIsDue(1000, 1000 + SEEN_EVERY_MS), true);
+    assert.equal(seenIsDue(5000, 1000), true, "a clock set back does not silence it for good");
+
+    let clock = 1_000_000;
+    const sent = [];
+    const make = (base, { reply = { ok: true }, stored = {} } = {}) => ({
+      runtime: {
+        getURL: (x) => base + x,
+        sendNativeMessage: async (app, msg) => { sent.push([app, msg]); return reply; },
+      },
+      storage: { local: memoryStorage(stored) },
+    });
+    const api = make(SAFARI_BASE);
+    const seen = createSafariSeen(api, { now: () => clock });
+    assert.equal(seen.available, true);
+    assert.equal(await seen.note(), true);
+    assert.deepEqual(sent, [["ai.cleanway.app", { type: "seen" }]]);
+    assert.equal(api.storage.local.data[SEEN_STORAGE_KEY], clock);
+    clock += 3600_000;
+    assert.equal(await seen.note(), false, "sent again within 6 h");
+    // A new worker reads the time from storage, not its empty memory.
+    assert.equal(await createSafariSeen(api, { now: () => clock }).note(), false, "a restarted worker sent again");
+    clock += SEEN_EVERY_MS;
+    assert.equal(await seen.note(), true);
+    assert.equal(sent.length, 2);
+
+    // No app answering (a Mac without it): nothing stored, tried again next time.
+    sent.length = 0;
+    const lonely = make(SAFARI_BASE, { reply: null });
+    assert.equal(await createSafariSeen(lonely, { now: () => clock }).note(), false);
+    assert.equal(lonely.storage.local.data[SEEN_STORAGE_KEY], undefined);
+
+    // Chrome / Firefox: never.
+    sent.length = 0;
+    const chromeSeen = createSafariSeen(make("chrome-extension://abc/"), { now: () => clock });
+    assert.equal(chromeSeen.available, false);
+    assert.equal(await chromeSeen.note(), false);
+    assert.deepEqual(sent, []);
+  });
+
+  await check(`[${tree}] background in Safari on iOS: loads, tells the app, no Family Hub poll without notifications`, async () => {
+    const sent = [];
+    const alarmsCreated = [];
+    const family = { family_id: "f1", members: [], cached_at: Date.now() };
+    const api = {
+      runtime: {
+        onMessage: fakeEvent(),
+        onInstalled: fakeEvent(),
+        getURL: (p) => SAFARI_BASE + p,
+        getPlatformInfo: async () => ({ os: "ios" }),
+        getManifest: () => ({ version: "0.2.0" }),
+        sendNativeMessage: async (app, msg) => { sent.push(msg); return { ok: true }; },
+        lastError: undefined,
+      },
+      storage: { local: memoryStorage({ auth_token: "t", family_cache: family }), onChanged: fakeEvent() },
+      i18n: { getMessage: (key) => `[${key}]`, getUILanguage: () => "en" },
+      tabs: { create() {}, query: async () => [], sendMessage: async () => {}, remove() {} },
+      // iOS Safari: alarms and scripting, no notifications, context menus or commands.
+      alarms: { create: (name) => alarmsCreated.push(name), get: async () => undefined, clear: async () => true, onAlarm: fakeEvent() },
+      scripting: {
+        registerContentScripts: async () => { throw new Error("must not register on iOS"); },
+        unregisterContentScripts: async () => {},
+        getRegisteredContentScripts: async () => [],
+      },
+      permissions: { onRemoved: fakeEvent(), remove: async () => true },
+    };
+    await loadBackground(tree, api);
+    assert.equal(api.runtime.onMessage.listeners.length, 1, "link-check listener not registered");
+    await new Promise((r) => setTimeout(r, 10));
+    assert.ok(!alarmsCreated.includes("cleanway_family_poll"), "family poll armed where nothing can show its alerts");
+
+    const [listener] = api.runtime.onMessage.listeners;
+    // From the extension's own page: not proof of anything.
+    listener({ type: "EXTENSION_SEEN" }, { url: SAFARI_BASE + "src/popup/popup.html" }, () => {});
+    await new Promise((r) => setTimeout(r, 0));
+    assert.deepEqual(sent, []);
+    // From a content script on cleanway.ai: the app hears "seen".
+    assert.equal(listener({ type: "EXTENSION_SEEN" }, { tab: { id: 3 }, frameId: 0, url: "https://cleanway.ai/" }, () => {}), false);
+    await new Promise((r) => setTimeout(r, 0));
+    assert.deepEqual(sent, [{ type: "seen" }]);
+  });
+
+  await check(`[${tree}] pages: platform.js loads first, webmail switch and inbox button are hidden on iOS`, async () => {
+    const read = (f) => readFileSync(join(ROOT, tree, f), "utf8");
+    const before = (html, a, b) => {
+      const i = html.indexOf(a);
+      const j = html.indexOf(b);
+      return i >= 0 && j > i;
+    };
+    const options = read("src/options/options.html");
+    assert.ok(before(options, '<script src="../utils/platform.js">', '<script src="options.js">'), "options.html");
+    assert.match(options, /<div class="section" id="webmail-section" data-hide-on-ios>/);
+    const welcome = read("src/popup/welcome.html");
+    assert.ok(before(welcome, '<script src="../utils/platform.js">', '<script src="welcome.js">'), "welcome.html");
+    assert.match(welcome, /id="cta-scan" data-hide-on-ios>/);
+    assert.ok(before(read("src/popup/popup.html"), '<script src="../utils/platform.js">', '<script src="popup.js">'), "popup.html");
+    assert.match(read("src/popup/popup.css"), /html\.cw-ios body \{ width: auto;/);
+    for (const f of ["src/options/options.js", "src/popup/welcome.js", "src/popup/popup.js"]) {
+      assert.match(read(f), /self\.cleanwayPlatform\.applyToPage\(chrome, document\)/, f);
+    }
+
+    // applyToPage on a fake page: removes the marked elements on an iPhone only.
+    const p = await platformModule(tree);
+    const fakeDoc = () => {
+      const classes = new Set();
+      const removed = [];
+      const parent = { removeChild: (el) => removed.push(el.id) };
+      const marked = [{ id: "webmail-section", parentNode: parent }, { id: "cta-scan", parentNode: parent }];
+      return { classes, removed, documentElement: { classList: { add: (c) => classes.add(c) } }, querySelectorAll: () => marked };
+    };
+    const savedNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    try {
+      Object.defineProperty(globalThis, "navigator", { value: { userAgent: IPHONE_UA, maxTouchPoints: 5 }, configurable: true });
+      const doc = fakeDoc();
+      assert.equal(p.applyToPage({ runtime: { getURL: (x) => SAFARI_BASE + x } }, doc), true);
+      assert.deepEqual(doc.removed, ["webmail-section", "cta-scan"]);
+      assert.ok(doc.classes.has("cw-ios"));
+      const chromeDoc = fakeDoc();
+      assert.equal(p.applyToPage({ runtime: { getURL: (x) => "chrome-extension://a/" + x } }, chromeDoc), false);
+      assert.deepEqual(chromeDoc.removed, []);
+      Object.defineProperty(globalThis, "navigator", { value: { userAgent: MAC_UA, maxTouchPoints: 0 }, configurable: true });
+      const macDoc = fakeDoc();
+      assert.equal(p.applyToPage({ runtime: { getURL: (x) => SAFARI_BASE + x } }, macDoc), false);
+      assert.deepEqual(macDoc.removed, [], "the Mac lost its webmail switch");
+    } finally {
+      if (savedNavigator) Object.defineProperty(globalThis, "navigator", savedNavigator);
+      else delete globalThis.navigator;
+    }
+  });
+
+  await check(`[${tree}] content script on cleanway.ai: never checked, but says the extension runs`, () => {
+    const src = readFileSync(join(ROOT, tree, "src/content/index.js"), "utf8");
+    const own = src.indexOf('if (domain === "cleanway.ai" || domain.endsWith(".cleanway.ai")) {');
+    assert.ok(own >= 0, "own-domain branch");
+    const seen = src.indexOf('sendMessage({ type: "EXTENSION_SEEN" })', own);
+    const firstCheck = src.indexOf("await checkDomains([domain], true)");
+    assert.ok(seen > own && seen < firstCheck, "EXTENSION_SEEN is sent inside the own-domain branch, before any check");
+  });
+}
+
+await check("[extension-safari] asks for nativeMessaging (the iPhone app's status); Chrome and Firefox do not", () => {
+  assert.ok(readJson("extension-safari/manifest.json").permissions.includes("nativeMessaging"));
+  for (const tree of ["extension", "extension-firefox"]) {
+    assert.ok(!(readJson(join(tree, "manifest.json")).permissions || []).includes("nativeMessaging"), tree);
+  }
+});
+
 console.log(
   failed === 0
     ? `\n${passed} checks passed (source + ${BROWSER_TREES.length} browser trees)`
