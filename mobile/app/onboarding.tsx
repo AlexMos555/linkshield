@@ -1,13 +1,15 @@
 import { useState } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { colors, spacing, fontSize } from "../src/utils/theme";
 import { setSetting } from "../src/services/database";
+import { onboardingSlides } from "../src/utils/platform-features";
 
 const { width } = Dimensions.get("window");
 
@@ -16,28 +18,18 @@ const { width } = Dimensions.get("window");
 // "9 threat intelligence sources" (the API itself says 16), and claimed
 // "even if our servers are breached, your data is safe" — an overclaim this
 // product's own privacy doc refuses to make.
-const slides = [
-  {
-    icon: "search-outline" as const,
-    titleKey: "mobile.onboarding.s1_title",
-    descKey: "mobile.onboarding.s1_desc",
-  },
-  {
-    icon: "lock-closed-outline" as const,
-    titleKey: "mobile.onboarding.s2_title",
-    descKey: "mobile.onboarding.s2_desc",
-  },
-  {
-    icon: "shield-outline" as const,
-    titleKey: "mobile.onboarding.s3_title",
-    descKey: "mobile.onboarding.s3_desc",
-  },
-];
+//
+// The third slide differs by platform (platform-features.ts onboardingSlides):
+// Android sets up the "Every app" shield; an iPhone gets its protection
+// layers (Safari, scam texts, DNS) in updates, and the slide says exactly that.
+const ICONS = ["search-outline", "lock-closed-outline", "shield-outline"] as const;
+const slides = onboardingSlides(Platform.OS).map((slide, i) => ({ ...slide, icon: ICONS[i] }));
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const [page, setPage] = useState(0);
+  const insets = useSafeAreaInsets();
 
   async function finish() {
     await setSetting("onboarding_done", "true");
@@ -57,12 +49,13 @@ export default function OnboardingScreen() {
   const slide = slides[page];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom }]}>
+      {/* Scrolls when the person's text size makes a slide taller than the screen. */}
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Ionicons name={slide.icon} size={72} color={colors.safe} style={styles.iconGlyph} />
-        <Text style={styles.title}>{t(slide.titleKey)}</Text>
+        <Text style={styles.title} accessibilityRole="header">{t(slide.titleKey)}</Text>
         <Text style={styles.desc}>{t(slide.descKey)}</Text>
-      </View>
+      </ScrollView>
 
       {/* Dots */}
       <View style={styles.dots}>
@@ -75,15 +68,15 @@ export default function OnboardingScreen() {
       <View style={styles.buttons}>
         {page < slides.length - 1 ? (
           <>
-            <TouchableOpacity onPress={finish}>
+            <TouchableOpacity onPress={finish} accessibilityRole="button" style={styles.skipBtn}>
               <Text style={styles.skipText}>{t("mobile.onboarding.skip")}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.nextBtn} onPress={next}>
+            <TouchableOpacity style={styles.nextBtn} onPress={next} accessibilityRole="button">
               <Text style={styles.nextBtnText}>{t("mobile.onboarding.next")}</Text>
             </TouchableOpacity>
           </>
         ) : (
-          <TouchableOpacity style={[styles.nextBtn, styles.startBtn]} onPress={finish}>
+          <TouchableOpacity style={[styles.nextBtn, styles.startBtn]} onPress={finish} accessibilityRole="button">
             <Text style={styles.nextBtnText}>{t("mobile.onboarding.start")}</Text>
           </TouchableOpacity>
         )}
@@ -94,7 +87,8 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, justifyContent: "space-between", padding: spacing.xl },
-  content: { flex: 1, alignItems: "center", justifyContent: "center" },
+  scroll: { flex: 1 },
+  content: { flexGrow: 1, alignItems: "center", justifyContent: "center" },
   iconGlyph: { alignSelf: "center", marginBottom: spacing.xl },
   title: { fontSize: 28, fontWeight: "800", color: colors.white, textAlign: "center", marginBottom: spacing.md },
   desc: {
@@ -108,7 +102,8 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingBottom: spacing.xl,
   },
-  skipText: { color: colors.textMuted, fontSize: fontSize.md, padding: spacing.md },
+  skipBtn: { minHeight: 44, justifyContent: "center" },
+  skipText: { color: colors.textSecondary, fontSize: fontSize.md, padding: spacing.md },
   nextBtn: {
     backgroundColor: colors.accent, paddingHorizontal: 32, paddingVertical: 16,
     borderRadius: 12,

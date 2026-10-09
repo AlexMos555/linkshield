@@ -3000,7 +3000,9 @@
         "title_paused": "Proteção pausada até {{time}}",
         "sub_paused": "Agora os sites de golpe não estão sendo bloqueados",
         "title_conflict": "A proteção não está funcionando",
-        "sub_conflict": "A configuração de DNS privado está atrapalhando — veja abaixo o que mudar"
+        "sub_conflict": "A configuração de DNS privado está atrapalhando — veja abaixo o que mudar",
+        "title_ios": "Verifique antes de tocar",
+        "sub_ios": "A proteção automática para iPhone está a caminho — veja abaixo"
       },
       "cta_turn_on": "Ativar proteção",
       "check": {
@@ -3013,7 +3015,8 @@
         "share_sheet_body": "Em qualquer aplicativo, toque em Compartilhar e escolha o Cleanway. Nós verificamos o link e dizemos se ele é seguro.",
         "share_sheet_ok": "Entendi",
         "note": "Funciona com tudo o que você pode copiar ou compartilhar — inclusive o iMessage.",
-        "note_android": "Funciona com tudo o que você pode copiar ou compartilhar — links, SMS e mensagens de apps de conversa."
+        "note_android": "Funciona com tudo o que você pode copiar ou compartilhar — links, SMS e mensagens de apps de conversa.",
+        "share_sheet_body_ios": "Em qualquer app, toque em Compartilhar e depois em Cleanway. Não aparece? Deslize a fileira de apps até o fim, toque em Mais e adicione o Cleanway."
       },
       "sms_check": {
         "title": "Verificação de SMS",
@@ -3036,7 +3039,8 @@
       "interrupted": "O celular parou a proteção — por exemplo, ao reiniciar ou para economizar bateria. Sua configuração continua aqui: toque no botão abaixo e depois em “{{button}}”.",
       "interrupted_revoked": "O Android parou a proteção: a permissão de VPN foi retirada nas configurações do celular ou outro app de VPN tomou o lugar. Toque no botão abaixo e depois em “{{button}}”. Se o Android pedir para permitir a conexão, toque em “OK”. O outro app de VPN será desligado: o Android usa só um por vez.",
       "interrupted_private_dns": "A proteção parou por causa da configuração “DNS privado”. Agora essa configuração não atrapalha mais: toque no botão abaixo e depois em “{{button}}”.",
-      "cta_turn_back_on": "Ligar a proteção de novo"
+      "cta_turn_back_on": "Ligar a proteção de novo",
+      "privacy_ios": "Quando você verifica um link, nosso servidor recebe o nome do site e um número de instalação aleatório que muda todo dia. Textos de mensagens e endereços completos de páginas nunca saem do seu telefone."
     },
     "shield": {
       "network": {
@@ -3640,7 +3644,9 @@
       "s3_desc": "No Android, um único passo de configuração bloqueia sites de golpe conhecidos em todos os aplicativos. Golpes recém-criados podem escapar de qualquer lista de bloqueio — é para isso que serve o botão de verificar.",
       "skip": "Pular",
       "next": "Avançar",
-      "start": "Começar"
+      "start": "Começar",
+      "s3_title_ios": "Proteção no iPhone",
+      "s3_desc_ios": "O Cleanway está preparando para o iPhone uma extensão do Safari, um filtro de SMS de golpe e proteção por DNS. Eles chegam em atualizações, e a tela inicial mostra o que já está pronto. Hoje você já pode verificar qualquer coisa com um toque ou com Compartilhar → Cleanway."
     },
     "android_native": {
       "fg_channel": "Proteção Cleanway",
@@ -3801,7 +3807,9 @@
       "delete_store_title": "Primeiro cancele sua assinatura no {{store}}",
       "delete_store_body": "Excluir sua conta não interrompe sua assinatura no {{store}} — só você pode cancelá-la, no {{store}}. Cancele lá para não ser cobrado de novo e depois exclua a conta.",
       "delete_store_open": "Abrir {{store}}",
-      "delete_store_continue": "Excluir mesmo assim"
+      "delete_store_continue": "Excluir mesmo assim",
+      "restore_desc_appstore": "Assinou com este Apple ID em outro telefone ou conta? Traga para cá",
+      "cancel_note_appstore": "Quem cobra esta assinatura é a Apple, então só a Apple pode cancelá-la: Ajustes → seu nome → Assinaturas → Cleanway. Excluir sua conta Cleanway não a cancela."
     },
     "paywall": {
       "close": "Fechar",
@@ -3866,7 +3874,29 @@
       "err_store": "O Google Play não conseguiu concluir a compra. Tente de novo.",
       "err_busy": "Outra compra ainda está em andamento. Aguarde um momento e tente de novo.",
       "err_unknown": "Algo deu errado com a compra. Tente de novo.",
-      "manage": "Gerenciar assinatura"
+      "manage": "Gerenciar assinatura",
+      "prices_loading_appstore": "Buscando preços na App Store…",
+      "prices_failed_appstore": "Não foi possível obter os preços da App Store. Verifique sua conexão e tente de novo.",
+      "prices_empty_appstore": "Esta assinatura ainda não está disponível na App Store do seu país.",
+      "fine_store_appstore": "Cobrado no seu Apple ID. Renova automaticamente, a menos que você cancele pelo menos 24 horas antes do fim do período. Cancele quando quiser em Ajustes → seu nome → Assinaturas.",
+      "note_pending_appstore": "Sua compra está aguardando aprovação. O plano será ativado assim que a App Store confirmar.",
+      "err_already_owned_appstore": "Este Apple ID já tem a assinatura. Toque em Restaurar para transferi-la para esta conta.",
+      "err_network_appstore": "Sem conexão com a App Store. Verifique a internet e tente de novo.",
+      "err_not_allowed_appstore": "As compras estão desativadas neste iPhone (por exemplo, em Tempo de Uso).",
+      "err_store_appstore": "A App Store não conseguiu concluir a compra. Tente de novo."
+    },
+    "ios": {
+      "header": "Proteção no iPhone",
+      "lead": "No iPhone, o Cleanway protege você de três formas. Cada uma ganha aqui seu passo de configuração assim que chegar em uma atualização.",
+      "safari_title": "Extensão do Safari",
+      "safari_line": "Avisa na própria página quando um site no Safari é um golpe conhecido.",
+      "sms_title": "Filtro de SMS de golpe",
+      "sms_line": "Move SMS de golpe de remetentes desconhecidos para Lixo. A Apple nunca deixa o filtro ver o iMessage nem as mensagens dos seus contatos.",
+      "dns_title": "Proteção por DNS",
+      "dns_line": "Bloqueia sites de golpe conhecidos em todos os apps, por meio de um DNS criptografado que você aprova nos Ajustes do iPhone.",
+      "coming": "Em breve",
+      "set_up": "Configurar",
+      "on": "Ativado"
     }
   }
 }

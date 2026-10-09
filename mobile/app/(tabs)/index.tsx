@@ -12,6 +12,11 @@ import { HeroShield, type HeroHold } from "../../src/components/shield/HeroShiel
 import { PauseSheet } from "../../src/components/shield/PauseSheet";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
+import { IosProtectionCard } from "../../src/components/shield/IosProtectionCard";
+import {
+  androidProtectionShown, heroWithoutShieldsKeys, homePrivacyKey, iosProtectionLayers, iosProtectionShown,
+  shareHowToKey,
+} from "../../src/utils/platform-features";
 import { ShieldCard } from "../../src/components/shield/ShieldCard";
 import { useNetworkShield, PAUSE_MINUTES, type ShieldStopReason } from "../../src/hooks/useNetworkShield";
 import { clockTime } from "../../src/utils/relative-time";
@@ -47,31 +52,23 @@ const INTERRUPTED_KEYS: Record<ShieldStopReason | "unknown", string> = {
   unknown: "mobile.home.interrupted",
 };
 
+/**
+ * Android only. The iPhone's layers are listed by IosProtectionCard
+ * (src/utils/platform-features.ts) instead.
+ */
 function rolloutItems(t: TFunction, platform: string, messageCheck: boolean): RolloutItem[] {
-  const browser: RolloutItem = {
-    icon: "compass-outline",
-    title: t("mobile.shield.browser.title"),
-    line: t(platform === "android" ? "mobile.rollout.browser_android" : "mobile.rollout.browser_ios"),
-  };
-  const messages: RolloutItem = {
-    icon: "chatbubble-outline",
-    title: t("mobile.shield.messages.title"),
-    line: t(platform === "android" ? "mobile.rollout.messages_android" : "mobile.rollout.messages_ios"),
-  };
   // On Android the browser/link layer ships as the Link-checking shield card
   // and SMS as the message-check card, so nothing is "rolling out" there. No
   // line promises an automatic check of every incoming SMS: that needs SMS
   // permissions this app deliberately does not ask for. The SMS row stays
   // only for a native build without the analyzer, where it is still true.
-  if (platform === "android") return messageCheck ? [] : [messages];
+  if (!androidProtectionShown(platform) || messageCheck) return [];
   return [
     {
-      icon: "globe-outline",
-      title: t("mobile.shield.network.title"),
-      line: t("mobile.rollout.network_ios"),
+      icon: "chatbubble-outline",
+      title: t("mobile.shield.messages.title"),
+      line: t("mobile.rollout.messages_android"),
     },
-    browser,
-    messages,
   ];
 }
 
@@ -161,6 +158,12 @@ export default function HomeScreen() {
     : null;
 
   const rollout = rolloutItems(t, Platform.OS, messageCheck);
+  // iPhone: no shield exists yet, so the hero says what the app does now
+  // instead of "let's set up — 0 shields active".
+  const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount);
+  // The iPhone's protection layers. Each later step (Safari extension, SMS
+  // filter, DNS settings) passes its status here; until then all are "coming".
+  const iosLayers = iosProtectionShown(Platform.OS) ? iosProtectionLayers() : null;
 
   /**
    * Prominent disclosure, shown BEFORE Android's own consent dialog.
@@ -218,6 +221,7 @@ export default function HomeScreen() {
         state={heroState}
         verifiedCount={verifiedCount}
         totalCount={totalCount}
+        override={heroOverride}
         // No alarm state exists any more: nothing in the code detects a
         // competing VPN, so nothing may claim one. Unproven is shown as
         // unproven, not as a warning.
@@ -424,6 +428,12 @@ export default function HomeScreen() {
         />
       </View>
 
+      {iosLayers && (
+        <View style={s.section}>
+          <IosProtectionCard layers={iosLayers} />
+        </View>
+      )}
+
       {rollout.length > 0 && (
         <View style={s.section}>
           <RolloutList items={rollout} />
@@ -455,7 +465,7 @@ export default function HomeScreen() {
 
       <View style={s.privacyRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
-<Text style={s.privacy}>{t("mobile.home.privacy")}</Text>
+        <Text style={s.privacy}>{t(homePrivacyKey(Platform.OS))}</Text>
       </View>
 
       <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
@@ -505,7 +515,7 @@ function ShareHowToSheet({ visible, onClose }: { visible: boolean; onClose: () =
       <TouchableOpacity style={s.scrim} activeOpacity={1} onPress={onClose}>
         <View style={s.sheet}>
           <Text style={s.sheetTitle}>{t("mobile.home.check.share_sheet_title")}</Text>
-<Text style={s.sheetBody}>{t("mobile.home.check.share_sheet_body")}</Text>
+          <Text style={s.sheetBody}>{t(shareHowToKey(Platform.OS))}</Text>
           <TouchableOpacity style={s.sheetBtn} onPress={onClose} activeOpacity={0.85}>
             <Text style={s.sheetBtnLabel}>{t("mobile.home.check.share_sheet_ok")}</Text>
           </TouchableOpacity>
@@ -527,7 +537,7 @@ const s = StyleSheet.create({
   interruptedText: { ...typo.caption, color: colors.amber, flex: 1 },
 
   cta: {
-    height: 50, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blue,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   ctaLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
@@ -570,7 +580,7 @@ const s = StyleSheet.create({
   sheetTitle: { ...typo.headline, color: colors.textPrimary },
   sheetBody: { ...typo.body, color: colors.textSecondary, marginTop: space.sm },
   sheetBtn: {
-    height: 50, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blue,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   sheetBtnLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },

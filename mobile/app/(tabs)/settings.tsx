@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, I18nManager, AppState,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, I18nManager, AppState, Platform,
 } from "react-native";
 import Constants from "expo-constants";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -19,6 +19,7 @@ import {
   isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
 } from "../../modules/cleanway-vpn";
 import { paidPlansVisible } from "../../src/config/market";
+import { linkGuardSettingShown } from "../../src/utils/platform-features";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -326,7 +327,7 @@ export default function SettingsScreen() {
             <Row icon="log-out-outline" iconColor={colors.danger} tint={colors.danger}
                  label={t("mobile.settings.sign_out")} desc={t("mobile.settings.signed_in_desc")}
                  onPress={confirmSignOut} />
-            {/* Google Play: an app with accounts must let people delete them in the app. */}
+            {/* Google Play and the App Store (5.1.1(v)): an app with accounts must let people delete them in the app. */}
             <Row icon="trash-outline" iconColor={colors.danger} tint={colors.danger}
                  label={t("mobile.account.delete")} desc={t("mobile.account.delete_desc")}
                  onPress={() => confirmDeleteAccount(t, () => setSessionEmail(null))} />
@@ -362,23 +363,27 @@ export default function SettingsScreen() {
         })}
       </Section>
 
-      <Section title={t("mobile.settings.linkguard")} footnote={t("mobile.settings.linkguard_note")}>
-        <Row
-          first
-          icon={linkGuardOn ? "shield-checkmark-outline" : "link-outline"}
-          iconColor={linkGuardOn ? colors.green : colors.textMuted}
-          label={t(linkGuardOn ? "mobile.settings.linkguard_on" : "mobile.settings.linkguard_off")}
-          desc={t(
-            !linkGuardOn ? "mobile.settings.linkguard_off_desc"
-            : linkListReady ? "mobile.settings.linkguard_on_desc"
-            : "mobile.settings.linkguard_on_desc_no_list",
-          )}
-          onPress={linkGuardOn ? undefined : () => void handleLinkGuard()}
-          right={linkGuardOn
-            ? <Ionicons name="checkmark-circle" size={22} color={colors.green} />
-            : <Text style={s.pill}>{t("mobile.settings.linkguard_enable")}</Text>}
-        />
-      </Section>
+      {/* Android only: an iPhone app cannot become the default link handler
+          for every app (platform-features.ts). */}
+      {linkGuardSettingShown(Platform.OS) && (
+        <Section title={t("mobile.settings.linkguard")} footnote={t("mobile.settings.linkguard_note")}>
+          <Row
+            first
+            icon={linkGuardOn ? "shield-checkmark-outline" : "link-outline"}
+            iconColor={linkGuardOn ? colors.green : colors.textMuted}
+            label={t(linkGuardOn ? "mobile.settings.linkguard_on" : "mobile.settings.linkguard_off")}
+            desc={t(
+              !linkGuardOn ? "mobile.settings.linkguard_off_desc"
+              : linkListReady ? "mobile.settings.linkguard_on_desc"
+              : "mobile.settings.linkguard_on_desc_no_list",
+            )}
+            onPress={linkGuardOn ? undefined : () => void handleLinkGuard()}
+            right={linkGuardOn
+              ? <Ionicons name="checkmark-circle" size={22} color={colors.green} />
+              : <Text style={s.pill}>{t("mobile.settings.linkguard_enable")}</Text>}
+          />
+        </Section>
+      )}
 
       <Section title={t("mobile.settings.language")} footnote={t("mobile.settings.language_note")}>
         {SUPPORTED_LOCALES.map((code, i) => {

@@ -3000,7 +3000,9 @@
         "title_paused": "Perlindungan dijeda sampai {{time}}",
         "sub_paused": "Situs penipuan sedang tidak diblokir",
         "title_conflict": "Perlindungan tidak bekerja",
-        "sub_conflict": "Setelan DNS Pribadi menghalangi — lihat di bawah apa yang perlu diubah"
+        "sub_conflict": "Setelan DNS Pribadi menghalangi — lihat di bawah apa yang perlu diubah",
+        "title_ios": "Periksa sebelum mengetuk",
+        "sub_ios": "Perlindungan otomatis untuk iPhone sedang disiapkan — lihat di bawah"
       },
       "cta_turn_on": "Nyalakan perlindungan",
       "check": {
@@ -3013,7 +3015,8 @@
         "share_sheet_body": "Dari aplikasi mana pun, ketuk Bagikan, lalu pilih Cleanway. Kami akan mengecek link itu dan memberi tahu Anda apakah aman.",
         "share_sheet_ok": "Mengerti",
         "note": "Berfungsi untuk apa pun yang bisa Anda salin atau bagikan — termasuk iMessage.",
-        "note_android": "Berfungsi untuk apa pun yang bisa Anda salin atau bagikan — tautan, SMS, dan pesan dari aplikasi chat."
+        "note_android": "Berfungsi untuk apa pun yang bisa Anda salin atau bagikan — tautan, SMS, dan pesan dari aplikasi chat.",
+        "share_sheet_body_ios": "Di aplikasi mana pun, ketuk Bagikan, lalu Cleanway. Tidak terlihat? Geser deretan aplikasi sampai ujung, ketuk Lainnya, lalu tambahkan Cleanway."
       },
       "sms_check": {
         "title": "Cek SMS",
@@ -3036,7 +3039,8 @@
       "interrupted": "Ponsel menghentikan perlindungan — misalnya setelah dinyalakan ulang, atau untuk menghemat baterai. Pengaturan Anda masih ada: ketuk tombol di bawah, lalu \"{{button}}\".",
       "interrupted_revoked": "Android menghentikan perlindungan: izin VPN dicabut di setelan ponsel, atau aplikasi VPN lain mengambil alih. Ketuk tombol di bawah, lalu \"{{button}}\". Jika Android meminta izin untuk koneksi, ketuk \"Oke\". Aplikasi VPN lain akan mati: Android hanya menjalankan satu VPN pada satu waktu.",
       "interrupted_private_dns": "Perlindungan berhenti karena setelan \"DNS Pribadi\". Sekarang setelan itu tidak mengganggu lagi: ketuk tombol di bawah, lalu \"{{button}}\".",
-      "cta_turn_back_on": "Nyalakan perlindungan lagi"
+      "cta_turn_back_on": "Nyalakan perlindungan lagi",
+      "privacy_ios": "Saat Anda memeriksa tautan, server kami menerima nama situs dan nomor instalasi acak yang berubah setiap hari. Teks pesan dan alamat halaman lengkap tidak pernah meninggalkan ponsel Anda."
     },
     "shield": {
       "network": {
@@ -3640,7 +3644,9 @@
       "s3_desc": "Di Android, satu langkah penyiapan memblokir situs penipuan yang sudah dikenal di semua aplikasi. Penipuan yang benar-benar baru bisa lolos dari daftar blokir mana pun — untuk itulah tombol cek disediakan.",
       "skip": "Lewati",
       "next": "Lanjut",
-      "start": "Mulai"
+      "start": "Mulai",
+      "s3_title_ios": "Perlindungan di iPhone",
+      "s3_desc_ios": "Cleanway sedang menyiapkan ekstensi Safari, filter SMS penipuan, dan perlindungan DNS untuk iPhone. Semuanya hadir lewat pembaruan, dan layar utama menunjukkan apa yang sudah siap. Hari ini Anda sudah bisa memeriksa apa saja dengan sekali ketuk atau lewat Bagikan → Cleanway."
     },
     "android_native": {
       "fg_channel": "Perlindungan Cleanway",
@@ -3801,7 +3807,9 @@
       "delete_store_title": "Batalkan dulu langganan {{store}} Anda",
       "delete_store_body": "Menghapus akun tidak menghentikan langganan {{store}} Anda — hanya Anda yang dapat membatalkannya, di {{store}}. Batalkan di sana agar tidak ditagih lagi, lalu hapus akun.",
       "delete_store_open": "Buka {{store}}",
-      "delete_store_continue": "Tetap hapus"
+      "delete_store_continue": "Tetap hapus",
+      "restore_desc_appstore": "Berlangganan dengan Apple ID ini di ponsel atau akun lain? Pindahkan ke sini",
+      "cancel_note_appstore": "Langganan ini ditagih oleh Apple, jadi hanya Apple yang bisa membatalkannya: Pengaturan → nama Anda → Langganan → Cleanway. Menghapus akun Cleanway tidak membatalkannya."
     },
     "paywall": {
       "close": "Tutup",
@@ -3866,7 +3874,29 @@
       "err_store": "Google Play tidak dapat menyelesaikan pembelian. Coba lagi.",
       "err_busy": "Pembelian lain masih berlangsung. Tunggu sebentar lalu coba lagi.",
       "err_unknown": "Terjadi kesalahan saat pembelian. Coba lagi.",
-      "manage": "Kelola langganan"
+      "manage": "Kelola langganan",
+      "prices_loading_appstore": "Mengambil harga dari App Store…",
+      "prices_failed_appstore": "Tidak bisa mengambil harga dari App Store. Periksa koneksi Anda lalu coba lagi.",
+      "prices_empty_appstore": "Langganan ini belum tersedia di App Store di negara Anda.",
+      "fine_store_appstore": "Ditagihkan ke Apple ID Anda. Diperpanjang otomatis kecuali dibatalkan paling lambat 24 jam sebelum periode berakhir. Batalkan kapan saja di Pengaturan → nama Anda → Langganan.",
+      "note_pending_appstore": "Pembelian Anda menunggu persetujuan. Paket aktif begitu App Store mengonfirmasinya.",
+      "err_already_owned_appstore": "Apple ID ini sudah memiliki langganan. Ketuk Pulihkan untuk memindahkannya ke akun ini.",
+      "err_network_appstore": "Tidak ada koneksi ke App Store. Periksa internet lalu coba lagi.",
+      "err_not_allowed_appstore": "Pembelian dinonaktifkan di iPhone ini (misalnya di Durasi Layar).",
+      "err_store_appstore": "App Store tidak dapat menyelesaikan pembelian. Silakan coba lagi."
+    },
+    "ios": {
+      "header": "Perlindungan di iPhone",
+      "lead": "Di iPhone, Cleanway melindungi Anda dengan tiga cara. Masing-masing akan punya langkah penyiapan di sini begitu hadir lewat pembaruan.",
+      "safari_title": "Ekstensi Safari",
+      "safari_line": "Memperingatkan Anda langsung di halaman saat situs di Safari adalah penipuan yang dikenal.",
+      "sms_title": "Filter SMS penipuan",
+      "sms_line": "Memindahkan SMS penipuan dari pengirim tak dikenal ke Sampah. Apple tidak pernah mengizinkannya melihat iMessage atau pesan dari kontak Anda.",
+      "dns_title": "Perlindungan DNS",
+      "dns_line": "Memblokir situs penipuan yang dikenal di semua aplikasi, melalui pengaturan DNS terenkripsi yang Anda setujui di Pengaturan iPhone.",
+      "coming": "Segera hadir",
+      "set_up": "Siapkan",
+      "on": "Aktif"
     }
   }
 }
