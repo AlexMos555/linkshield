@@ -78,7 +78,7 @@ iOS (`readStoreBillingConfig`).
 | | Value |
 |---|---|
 | Bundle id | `ai.cleanway.app` |
-| Targets | `Cleanway` (app), `CleanwayCheckLink` (share extension, `ai.cleanway.app.share-extension`) |
+| Targets | `Cleanway` (app), `CleanwayCheckLink` (share extension, `ai.cleanway.app.share-extension`), `CleanwaySmsFilter` (scam-text filter, `ai.cleanway.app.sms-filter`, §4) |
 | App group | `group.ai.cleanway.app` (app + share extension; the extension hands the shared link/text to the app through it) |
 | Devices | iPhone only (`supportsTablet: false`, see §2.3); iOS 15.1+ |
 | Entitlements | App group only. No push (`aps-environment` is stripped by `plugins/withIosAppStore.js`), no Network Extension, no VPN |
@@ -111,8 +111,8 @@ keep-protection-on card (battery / phone maker / Always-on), link checking
 being called", the on-device SMS analyzer card, the APK update banner, Android
 permission prompts. The rules live in `src/utils/platform-features.ts` and are
 pinned by `mobile/scripts/test-platform-gating.mjs` (CI). Instead the home
-screen shows **Protection on iPhone**: Safari extension, scam-text filter and
-DNS protection, each "Coming soon", and the hero says "Check before you tap"
+screen shows **Protection on iPhone**: Safari extension, scam-text filter
+("Set up", §4) and DNS protection, the unbuilt ones "Coming soon", and the hero says "Check before you tap"
 instead of "Let's set up your protection — 0 shields active". The onboarding's
 third slide is iPhone-specific. The paywall lists only what the iPhone build
 can do (unlimited checks, devices).
@@ -138,9 +138,8 @@ none of that is needed. Revisit when the layouts get a tablet pass.
   entitlement — `withIosAppStore.js` keeps `dns-settings` and strips only VPN
   values. Never call it a VPN in the UI, listing or screenshots (5.4 misfile
   risk; Settings shows it under "VPN & Device Management").
-- **Scam-text filter**: an `ILMessageFilterExtension` target (offline rules
-  only — no server call, the text never leaves the phone). Apple gives the app
-  no "is it enabled" API: the layer can only be "setup" with honest copy.
+- **Scam-text filter**: built — §4. The layer is "setup" (never "on": Apple
+  gives the app no "is it enabled" API) and its row opens the setup steps.
 - **Safari Web Extension**: a separate target, reusing `extension-safari/`.
 - `mobile/native/ios/PacketTunnelProvider.swift` is the parked VPN experiment;
   it is not in any target.
@@ -169,6 +168,9 @@ EAS creates these on the first `eas build` if you let it log in; to do it by han
 1. App ID `ai.cleanway.app` with capability **App Groups** → `group.ai.cleanway.app`
    (and later **Network Extensions** for DNS settings).
 2. App ID `ai.cleanway.app.share-extension` with the same App Group.
+2a. App ID `ai.cleanway.app.sms-filter` (the scam-text filter) with the same
+   App Group. No other capability: a message filter needs no entitlement, and
+   it has no network URL (§4).
 3. Do **not** enable Push Notifications (the app uses none on iOS).
 
 ### 3.3 The app record
@@ -242,7 +244,11 @@ weekly report send anything new.
 > Settings → Delete account. Subscriptions are sold only through In-App
 > Purchase; "Restore purchases" is on the paywall and in Account. The app
 > contains no VPN. The "Protection on iPhone" items marked "Coming soon" are
-> not functional in this version and are labelled as such.
+> not functional in this version and are labelled as such. The scam-text
+> filter is an SMS filter extension: enable it in Settings → Apps → Messages →
+> Unknown & Spam → SMS Filtering → Cleanway. It works offline — it has no
+> network URL and never sends a message anywhere — and moves only texts it
+> judges a scam to Junk.
 
 Provide a demo account the reviewer can sign in with (an email inbox you can
 read the code from, or a review-only bypass on the server) — email-code
@@ -252,6 +258,165 @@ sign-in fails review if the reviewer cannot receive the code.
 
 iPhone 6.9" (1320×2868 or 1290×2796) is the only required size with
 `supportsTablet: false`. Never show the Settings "VPN & Device Management"
-page or the word "VPN" in screenshots or the description. Do not promise
-"blocks scam texts / iMessage": the SMS filter is "coming soon", and iMessage
-is invisible to any app.
+page or the word "VPN" in screenshots or the description. Say "filters scam
+texts (SMS) from unknown senders"; never "blocks all scam texts" or anything
+about iMessage — iOS shows the filter only SMS/MMS from numbers not in the
+contacts, and iMessage is invisible to any app.
+
+---
+
+## 4. Scam-text filter (SMS)
+
+### 4.1 What it is
+
+`CleanwaySmsFilter` is an `ILMessageFilterExtension` (Message Filter
+Extension) embedded in the app. iOS hands it each SMS/MMS **from a number
+that is not in the contacts** — never iMessage, never a known sender — and it
+answers with an `ILMessageFilterAction`:
+
+| Engine verdict | Action | Why |
+|---|---|---|
+| `dangerous` | `.junk` | Messages → Filters → Junk: no notification, links not tappable. No sub-action: in the iOS 26.2 SDK sub-actions exist only for `.transaction` and `.promotion`, which would file a scam as a bill or an offer. |
+| `caution` | `.none` | A caution is a *partial* combination (a brand plus a foreign link, a model score without an ingredient…). Junk hides a message with no way to say why; a real bank or delivery text there costs more than a borderline scam left in the inbox. Revisit with real-device data. |
+| `no_signals` | `.none` | Shown as usual. |
+
+**Offline only.** The extension never calls `deferQueryRequestToNetwork`,
+its Info.plist has no `ILMessageFilterExtensionNetworkURL`, and the engine
+opens no connection — so iOS has nowhere to send a message: its text never
+leaves the phone, not even to us. `mobile/scripts/check-ios-parity-fixture.mjs`
+(CI) fails if any of that appears. Server-assisted filtering is banned
+(docs/MOBILE_AUTO_PROTECTION.md). The sender (`ILMessageFilterQueryRequest.sender`)
+is passed to the engine, where it can only add suspicion (a bank writing
+from a personal number, a "Госуслуги" text from another sender id).
+
+The filter **holds no blocklist** (Android's message check also checks link
+hosts against the synced DNS list; here every host is "not on the list"), so
+`link_blocklisted` never fires on iPhone. Everything else is the Android
+engine, verdict for verdict (§4.3).
+
+### 4.2 Where things are
+
+| | |
+|---|---|
+| `mobile/targets/sms-filter/Sources/CleanwayMessageEngine/` | The engine: a Swift port of `MessageAnalyzer/MessageSignals/MessageGeneric/MessageText/MessageLinks/MessageRules/MessageModel/RemoteConfig.kt`. Works on UTF-16 code units with the JVM's character classes, Java's lowercase, IDNA 2003 (`IDN.swift`: nameprep + punycode, as `java.net.IDN`) and java.util.regex patterns run through ICU with Java's ASCII `\d`/`\s` — Swift's own `String` compares by grapheme and canonical equivalence and would part from Kotlin on exactly the inputs a scammer controls. The model's feature set is the Kotlin open-addressing set bit for bit, so its weights are summed in the same order. |
+| `mobile/targets/sms-filter/Extension/MessageFilterExtension.swift` | The extension's entry point (verdict → action). |
+| `mobile/targets/sms-filter/Package.swift`, `Tests/` | The engine as a Swift package: parity, budget and kill-switch tests (`swift test`). |
+| `mobile/plugins/withSmsFilter.js` | Expo plugin: copies the engine, the entry point and **the Android assets themselves** (`message_rules.json`, `root_zone_tlds.txt`, `message_model.json/.bin` from `modules/cleanway-vpn/android/src/main/assets`) into `ios/CleanwaySmsFilter/`, writes Info.plist / entitlements (app group only) / an empty privacy manifest, adds the target and its embed phase, and declares it in `extra.eas.build.experimental.ios.appExtensions` for EAS signing. A hand-written plugin rather than `@bacons/apple-targets`: one target, four copied files, the same `xcode` API expo-share-intent already uses, no new build dependency. |
+| `mobile/modules/cleanway-sms-filter/` | App side (iOS-only Expo module): `isInstalled()` (the build carries the extension) and `setRemoteConfig(json)` → `remote_config.json` in the app group. |
+
+One vocabulary and one model for both platforms: never edit a copy under
+`ios/` — it is regenerated on every prebuild.
+
+### 4.3 Parity with Android
+
+`MessageIosParityTest.kt` (Android module tests) makes the Kotlin engine
+write `Tests/CleanwayMessageEngineTests/Fixtures/kotlin_parity.json`: every
+message of `MessageCorpus*.kt`, the held-out set, the four blind sets, the
+model's parity texts, sender variants and Unicode edge cases (zero-width
+characters, mixed scripts, IDN/punycode hosts, `ß`/`ﬁ`/`İ`, Greek, Arabic
+digits, emoji, fullwidth dots, transliteration, a 14 000-character text) —
+each under three server configs: model on, model switched off, raised
+thresholds. `KotlinParityTests.swift` replays it and requires the same
+verdict, the same reasons in the same order, the same links, phones,
+organisations and legit shape, and the same model probability (≤ 1e-9).
+
+Result (2026-10-09): **2,426 messages × 3 configs = 7,278 analyses, 0
+mismatches**; model probabilities equal to within 1.7e-17. Run once more over
+the model's training texts (`ml/sms/data/train_{a,b,c}.tsv`, a local-only
+fixture via `CLEANWAY_IOS_PARITY_EXTRA`): 4,297 messages × 3 = 12,891
+analyses, 0 mismatches.
+
+### 4.4 After changing the Android engine, its assets or a corpus
+
+CI (`mobile` job) re-hashes every input the fixture records and fails until
+it is regenerated; the `ios-sms-engine` job (macOS runner) runs the Swift
+parity tests. Locally:
+
+1. Regenerate the fixture with the Kotlin tests, from the JVM (CI runs none).
+   `mobile/android` is prebuild output, so either run the module's unit tests
+   in a prebuilt tree, or a throwaway Gradle project (Kotlin JVM plugin,
+   `org.json:json`, `kotlin-test-junit`) with the module's `Message*.kt`,
+   `RemoteConfig.kt`, `LinkPolicy.kt`, `BlockList.kt`, `UserAllow.kt`,
+   `DnsUtil.kt` and a `DomainPolicy` stub, the test sources above and
+   `src/test/resources` — JDK: Android Studio's
+   (`/Applications/Android Studio.app/Contents/jbr/Contents/Home`):
+   ```bash
+   CLEANWAY_REPO_ROOT=$PWD CLEANWAY_WRITE_IOS_PARITY=1 \
+     gradle test --tests ai.cleanway.app.MessageIosParityTest
+   ```
+   Without `CLEANWAY_WRITE_IOS_PARITY` the same test compares the committed
+   fixture with the engine (it passes on a fresh checkout).
+2. `cd mobile/targets/sms-filter && swift test -c release` — any mismatch is
+   printed with both sides; port the Kotlin change to the Swift file of the
+   same name. (Debug builds of the engine are ~40× slower; the parity test
+   then takes minutes.)
+3. `node mobile/scripts/check-ios-parity-fixture.mjs`.
+
+### 4.5 Memory and speed
+
+A message filter extension runs under a small, undocumented memory limit.
+The engine loads nothing until the first message, keeps the 512 KB float16
+weight table memory-mapped (widened per read, no 1 MB `Float` copy), and does
+not even read the model while the server has it switched off.
+
+| Measured (release build, `FilterBudgetTests`) | macOS (Intel) | iOS 26.2 simulator |
+|---|---|---|
+| First message (load rules + root zone + model, check) | 14 ms | 13 ms |
+| Per message, average over the 2,426 corpus messages | 0.7 ms | 4.0 ms¹ |
+| Worst message (14 000-character text, cut to 10 000) | 71 ms | 296 ms¹ |
+| Footprint (`phys_footprint`) after loading | +0.5 MB | +0.5 MB |
+| Footprint after checking all 2,426 messages | +1.0 MB | +1.0 MB |
+
+¹ Measured while a full app build ran on the same Mac; the macOS column is the
+quiet figure. The extension target is compiled with `-O` even in Debug (whole
+module). The bundled extension is 1.3 MB (0.7 MB binary + the four assets).
+
+### 4.6 The app side
+
+- **Home → Protection on iPhone → Scam-text filter**: "Set up" whenever the
+  build carries the extension (`smsFilterLayerStatus`), never "On" — Apple
+  gives an app no API to learn whether the person enabled the filter, and a
+  filter extension cannot write anything back (no counter, no heartbeat).
+  The row's line says it works once turned on in Settings.
+- **Set up** opens `SmsFilterSetupSheet`: Settings → Apps → Messages →
+  Unknown & Spam → SMS Filtering → Cleanway (iOS 17 and earlier: Settings →
+  Messages → Unknown & Spam), what goes to Junk, that the text never leaves
+  the phone, and the limits (unknown senders only, no iMessage, region/carrier
+  may hide the option). "Open Settings" opens Cleanway's own Settings page —
+  the Messages page has no public URL, and private ones are a review rejection.
+- **Kill switch**: the update check (`useUpdateCheck`) now also runs on an
+  iPhone build with the filter, for the server's switches only (no update
+  nudge on iOS); `setSmsFilterRemoteConfig` stores them, validated like
+  `RemoteConfig.parse`, as `remote_config.json` in `group.ai.cleanway.app`.
+  The extension reads the file for every message; missing or malformed means
+  the shipped defaults. Overrides only raise thresholds.
+
+### 4.7 What was verified, and what needs a phone
+
+On the iOS 26.2 simulator (Xcode 26.3, 2026-10-09), Release build:
+
+- the app builds with the extension embedded as
+  `Cleanway.app/PlugIns/CleanwaySmsFilter.appex` (bundle id
+  `ai.cleanway.app.sms-filter`, extension point
+  `com.apple.identitylookup.message-filter`, principal class
+  `CleanwaySmsFilterExtension.MessageFilterExtension`, the four shared assets
+  and its privacy manifest inside, no network URL in its Info.plist);
+- after install, iOS registers it as a message filter
+  (`xcrun simctl spawn <device> pluginkit -m -p com.apple.identitylookup.message-filter`
+  lists `ai.cleanway.app.sms-filter`);
+- home shows the row as "Set up" with its ready line; "Set up" opens the
+  setup sheet (steps, notes, Open Settings, Done);
+- the engine's Swift tests pass on the simulator too (`xcodebuild test
+  -scheme CleanwayMessageEngine` in `mobile/targets/sms-filter`): parity 0
+  mismatches, the numbers in §4.5;
+- the simulator's Settings → Apps → Messages page is empty (no telephony), so
+  the SMS Filtering list cannot be shown there.
+
+The simulator cannot receive an SMS, so the end-to-end path — a text from an
+unknown number landing in Junk — needs a real iPhone with a SIM and a
+second phone: enable the filter (§4.6), send from a number not in the
+contacts (1) an ordinary text, (2) a corpus scam such as «Госуслуги:
+зафиксирован вход в ваш аккаунт с нового устройства. Если это были не вы,
+срочно позвоните по номеру +7 916 482-15-37» → expect (1) in the inbox, (2)
+under Filters → Junk without a notification. Re-check on every iOS beta
+(MOBILE_AUTO_PROTECTION.md §4.5).

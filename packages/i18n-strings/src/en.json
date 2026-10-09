@@ -3827,6 +3827,21 @@
       "err_not_allowed_appstore": "Purchases are turned off on this iPhone (for example, in Screen Time).",
       "err_store_appstore": "The App Store couldn't complete the purchase. Please try again."
     },
+    "ios_sms": {
+      "line_ready": "Moves scam texts from unknown senders to Junk, right on this iPhone. Works once you turn it on in Settings.",
+      "sheet_title": "Turn on the scam-text filter",
+      "sheet_lead": "Only you can switch on an SMS filter, in iPhone Settings. iPhone doesn't tell Cleanway whether it's on, so this row stays here as a reminder.",
+      "step_settings": "Open Settings.",
+      "step_messages": "Go to Apps → Messages.",
+      "step_filtering": "Tap Unknown & Spam, then SMS Filtering.",
+      "step_choose": "Choose Cleanway.",
+      "older_ios": "On iOS 17 and earlier: Settings → Messages → Unknown & Spam → SMS Filtering.",
+      "note_what": "Only texts that are clearly a scam go to Junk (Messages → Filters → Junk). Doubtful ones stay in your inbox.",
+      "note_privacy": "The check runs on your iPhone. The text of a message never leaves the phone — not even to Cleanway.",
+      "note_limits": "iPhone shows the filter only SMS and MMS from numbers that aren't in your contacts — never iMessage. If SMS Filtering isn't there, your region or carrier doesn't offer it.",
+      "open_settings": "Open Settings",
+      "done": "Done"
+    },
     "ios": {
       "header": "Protection on iPhone",
       "lead": "On iPhone, Cleanway protects you in three ways. Each one gets its setup step here as soon as it arrives in an update.",

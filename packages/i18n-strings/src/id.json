@@ -3885,6 +3885,21 @@
       "err_not_allowed_appstore": "Pembelian dinonaktifkan di iPhone ini (misalnya di Durasi Layar).",
       "err_store_appstore": "App Store tidak dapat menyelesaikan pembelian. Silakan coba lagi."
     },
+    "ios_sms": {
+      "line_ready": "Memindahkan SMS penipuan dari pengirim tak dikenal ke Sampah, langsung di iPhone ini. Berfungsi setelah Anda menyalakannya di Pengaturan.",
+      "sheet_title": "Nyalakan filter SMS penipuan",
+      "sheet_lead": "Hanya Anda yang bisa menyalakan filter SMS, di Pengaturan iPhone. iPhone tidak memberi tahu Cleanway apakah filter sudah menyala, jadi baris ini tetap di sini sebagai pengingat.",
+      "step_settings": "Buka Pengaturan.",
+      "step_messages": "Buka App → Pesan.",
+      "step_filtering": "Ketuk Tak Dikenal & Spam, lalu Pemfilteran SMS.",
+      "step_choose": "Pilih Cleanway.",
+      "older_ios": "Di iOS 17 dan sebelumnya: Pengaturan → Pesan → Tak Dikenal & Spam → Pemfilteran SMS.",
+      "note_what": "Hanya pesan yang jelas penipuan yang masuk ke Sampah (Pesan → Filter → Sampah). Pesan yang meragukan tetap di kotak masuk.",
+      "note_privacy": "Pemeriksaan berjalan di iPhone Anda. Teks pesan tidak pernah meninggalkan ponsel — bahkan tidak ke Cleanway.",
+      "note_limits": "iPhone hanya menunjukkan kepada filter SMS dan MMS dari nomor yang tidak ada di kontak Anda — tidak pernah iMessage. Jika Pemfilteran SMS tidak ada, wilayah atau operator Anda tidak menyediakannya.",
+      "open_settings": "Buka Pengaturan",
+      "done": "Selesai"
+    },
     "ios": {
       "header": "Perlindungan di iPhone",
       "lead": "Di iPhone, Cleanway melindungi Anda dengan tiga cara. Masing-masing akan punya langkah penyiapan di sini begitu hadir lewat pembaruan.",

@@ -257,6 +257,21 @@ jobs:
         # deployment target, the share extension's hand-off URL routed home.
         run: node --experimental-strip-types mobile/scripts/test-platform-gating.mjs
 
+      - name: iPhone scam-text filter table test
+        # The SMS row says "Set up" when the build carries the filter and never
+        # "On" (iOS gives the app no enabled-state API); the setup steps exist in
+        # all 10 locales; the server's switches reach the extension through the
+        # app group; the plugin's target, bundle id, app group and EAS entry.
+        run: node --experimental-strip-types mobile/scripts/test-ios-sms-filter.mjs
+
+      - name: iPhone scam-text filter parity fixture is current
+        # The Swift filter engine must give the Kotlin engine's verdicts; its
+        # tests replay a fixture the Kotlin engine wrote. This re-hashes every
+        # input of that fixture (engine sources, rules, model, corpora) so a
+        # change on either side cannot ship without regenerating it, and pins
+        # the extension offline-only (no network deferral, no network URL).
+        run: node mobile/scripts/check-ios-parity-fixture.mjs
+
       - name: Remote config (SMS text model kill switch) table test
         # The server can turn the on-device SMS text model off without an APK.
         # An answer without a valid block keeps the stored switches (an outage
@@ -336,6 +351,22 @@ jobs:
         # Offline invariant only (no PSL fetch), so an upstream PSL edit does
         # not redden unrelated PRs; the refresh job runs the full --check.
         run: python3 scripts/build_public_suffixes_in_top.py --verify-consistency
+
+  ios-sms-engine:
+    # The iPhone scam-text filter's engine (mobile/targets/sms-filter, Swift)
+    # replays what the Kotlin engine says about every corpus message — 2,400+
+    # messages under three server configs — and must give the same verdict
+    # and reasons; plus its memory/speed budget and the kill switch. Pure
+    # Swift + Foundation, so `swift test` on a Mac runner, no simulator.
+    # Release: the debug build is ~40x slower on this engine.
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Swift parity tests (Kotlin fixture)
+        working-directory: mobile/targets/sms-filter
+        run: swift test -c release
 
   lint:
     runs-on: ubuntu-latest

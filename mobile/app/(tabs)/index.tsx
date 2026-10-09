@@ -13,10 +13,12 @@ import { PauseSheet } from "../../src/components/shield/PauseSheet";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { IosProtectionCard } from "../../src/components/shield/IosProtectionCard";
+import { SmsFilterSetupSheet } from "../../src/components/shield/SmsFilterSetupSheet";
 import {
   androidProtectionShown, heroWithoutShieldsKeys, homePrivacyKey, iosProtectionLayers, iosProtectionShown,
-  shareHowToKey,
+  shareHowToKey, smsFilterLayerStatus, type IosLayerId,
 } from "../../src/utils/platform-features";
+import { smsFilterInstalled } from "../../modules/cleanway-sms-filter";
 import { ShieldCard } from "../../src/components/shield/ShieldCard";
 import { useNetworkShield, PAUSE_MINUTES, type ShieldStopReason } from "../../src/hooks/useNetworkShield";
 import { clockTime } from "../../src/utils/relative-time";
@@ -80,6 +82,7 @@ export default function HomeScreen() {
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [pauseSheetVisible, setPauseSheetVisible] = useState(false);
+  const [smsSetupVisible, setSmsSetupVisible] = useState(false);
   const network = useNetworkShield();
   // The stop screen: a pause asked for during (or right after) a phone call
   // is what a scammer asks for, so it goes through the guard first.
@@ -163,7 +166,13 @@ export default function HomeScreen() {
   const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount);
   // The iPhone's protection layers. Each later step (Safari extension, SMS
   // filter, DNS settings) passes its status here; until then all are "coming".
-  const iosLayers = iosProtectionShown(Platform.OS) ? iosProtectionLayers() : null;
+  const iosLayers = iosProtectionShown(Platform.OS)
+    ? iosProtectionLayers({ sms_filter: smsFilterLayerStatus(smsFilterInstalled()) })
+    : null;
+  // "Set up" on a layer: the scam-text filter's steps (iOS lets only the person enable it).
+  const onIosSetUp = (id: IosLayerId) => {
+    if (id === "sms_filter") setSmsSetupVisible(true);
+  };
 
   /**
    * Prominent disclosure, shown BEFORE Android's own consent dialog.
@@ -430,7 +439,7 @@ export default function HomeScreen() {
 
       {iosLayers && (
         <View style={s.section}>
-          <IosProtectionCard layers={iosLayers} />
+          <IosProtectionCard layers={iosLayers} onSetUp={onIosSetUp} />
         </View>
       )}
 
@@ -469,6 +478,7 @@ export default function HomeScreen() {
       </View>
 
       <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
+      <SmsFilterSetupSheet visible={smsSetupVisible} onClose={() => setSmsSetupVisible(false)} />
       <PauseSheet
         visible={pauseSheetVisible}
         minutes={PAUSE_MINUTES}

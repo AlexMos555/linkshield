@@ -56,22 +56,66 @@ export interface IosLayer {
   status: IosLayerStatus;
 }
 
+/** A layer as listed; `readyLineKey` replaces the line once the layer is no longer "coming". */
+type IosLayerDef = Omit<IosLayer, "status"> & { readyLineKey?: string };
+
 // Literal keys, so scripts/check-mobile-i18n.py can see every one. The order
 // is the order on screen: the one people meet first (Safari) on top.
-const IOS_LAYERS: ReadonlyArray<Omit<IosLayer, "status">> = [
+const IOS_LAYERS: ReadonlyArray<IosLayerDef> = [
   { id: "safari", titleKey: "mobile.ios.safari_title", lineKey: "mobile.ios.safari_line" },
-  { id: "sms_filter", titleKey: "mobile.ios.sms_title", lineKey: "mobile.ios.sms_line" },
+  { id: "sms_filter", titleKey: "mobile.ios.sms_title", lineKey: "mobile.ios.sms_line", readyLineKey: "mobile.ios_sms.line_ready" },
   { id: "dns", titleKey: "mobile.ios.dns_title", lineKey: "mobile.ios.dns_line" },
 ];
 
 const STATUSES: ReadonlySet<string> = new Set(["coming", "setup", "on"]);
 
 export function iosProtectionLayers(availability: IosLayerAvailability = {}): IosLayer[] {
-  return IOS_LAYERS.map((layer) => {
+  return IOS_LAYERS.map(({ readyLineKey, ...layer }) => {
     const reported = availability[layer.id];
-    return { ...layer, status: reported && STATUSES.has(reported) ? reported : "coming" };
+    const status: IosLayerStatus = reported && STATUSES.has(reported) ? reported : "coming";
+    return { ...layer, lineKey: status !== "coming" && readyLineKey ? readyLineKey : layer.lineKey, status };
   });
 }
+
+// ── The scam-text filter (ILMessageFilterExtension) ───────────────────
+
+/**
+ * The filter's layer status: "setup" whenever this build carries the
+ * extension, and never "on". Apple gives an app no way to know whether the
+ * person turned the filter on (Settings → Apps → Messages → Unknown & Spam →
+ * SMS Filtering), and a filter extension cannot write anything back; a row
+ * that turned green on a guess would be the placebo this card exists to
+ * avoid. "coming" on a build without the extension.
+ */
+export function smsFilterLayerStatus(installed: boolean): IosLayerStatus {
+  return installed ? "setup" : "coming";
+}
+
+/**
+ * Ask the server's version endpoint at all: always on Android (update nudge,
+ * message-check switches); on an iPhone only when its build carries the
+ * filter, which needs the same switches (the model's kill switch). The iPhone
+ * never shows an update decision from it.
+ */
+export function remoteConfigFetched(os: string, smsFilterInstalled: boolean): boolean {
+  return os === "android" || (os === "ios" && smsFilterInstalled);
+}
+
+/** The setup sheet, in order: where the switch is, then what it does and what it never does. */
+export const SMS_FILTER_SETUP = {
+  titleKey: "mobile.ios_sms.sheet_title",
+  leadKey: "mobile.ios_sms.sheet_lead",
+  stepKeys: [
+    "mobile.ios_sms.step_settings",
+    "mobile.ios_sms.step_messages",
+    "mobile.ios_sms.step_filtering",
+    "mobile.ios_sms.step_choose",
+  ],
+  olderKey: "mobile.ios_sms.older_ios",
+  noteKeys: ["mobile.ios_sms.note_what", "mobile.ios_sms.note_privacy", "mobile.ios_sms.note_limits"],
+  openSettingsKey: "mobile.ios_sms.open_settings",
+  doneKey: "mobile.ios_sms.done",
+} as const;
 
 // ── Copy that differs by platform ─────────────────────────────────────
 
