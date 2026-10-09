@@ -305,6 +305,7 @@ async def shutdown() -> None:
     task, _stats_task = _stats_task, None
     if task is not None:
         task.cancel()
+        await asyncio.wait({task}, timeout=1.0)
     from api.services.doh_gateway import close_upstream_client
     await close_upstream_client()
 

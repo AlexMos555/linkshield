@@ -114,14 +114,14 @@ async def lifespan(app: FastAPI):
     await doh_startup()
     yield
     # ── Shutdown ──
+    # DoH gateway first (it reads Redis in the background): stop the
+    # blocklist refresher + stats logger, release the upstream connections.
+    from api.routers.doh import shutdown as doh_shutdown
+    await doh_shutdown()
     await close_redis()
     # The billing role's database pool (None on the api role — nothing to close).
     from api.billing.deps import close_context as close_billing_context
     await close_billing_context()
-    # DoH gateway: stop the blocklist refresher + stats logger, release the
-    # pooled upstream connections.
-    from api.routers.doh import shutdown as doh_shutdown
-    await doh_shutdown()
     logger.info("Cleanway API shutdown complete")
 
 

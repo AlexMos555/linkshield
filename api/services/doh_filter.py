@@ -153,7 +153,7 @@ class FilterHolder:
         swapped in. Never raises."""
         try:
             from api.services import cache
-            r = await cache.get_redis()
+            r = await asyncio.wait_for(cache.get_redis(), timeout_s)
             raw = await asyncio.wait_for(r.hgetall(REDIS_META_KEY), timeout_s) or {}
             meta = {(k.decode() if isinstance(k, bytes) else k): (v.decode() if isinstance(v, bytes) else v)
                     for k, v in raw.items()}
@@ -196,13 +196,12 @@ class FilterHolder:
             self._task = asyncio.get_running_loop().create_task(self._loop(every_s))
 
     async def stop(self) -> None:
+        """Cancel the refresher; wait for it briefly, never indefinitely — a
+        Redis call stuck in a connect must not hold up process shutdown."""
         task, self._task = self._task, None
         if task is not None:
             task.cancel()
-            try:
-                await task
-            except (asyncio.CancelledError, Exception):  # noqa: BLE001
-                pass
+            await asyncio.wait({task}, timeout=2.0)
 
     def status(self) -> dict:
         f = self.current
