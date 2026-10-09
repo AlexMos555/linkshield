@@ -552,3 +552,22 @@ def account_store():
         yield store
     finally:
         store_module.set_account_store(None)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_doh_gateway_state():
+    """The DoH gateway keeps per-process state (the in-memory blocklist, the
+    response cache, upstream breakers, metrics, the rate-limit window). A test
+    must never see another test's: start every test from a cold gateway."""
+    from api.routers import doh as doh_router
+    from api.services import doh_filter, doh_metrics, doh_upstream
+
+    def _reset():
+        doh_filter.reset_for_tests()
+        doh_metrics.reset_for_tests()
+        doh_router.reset_for_tests()
+        doh_upstream._reset_upstream_client_for_tests()
+
+    _reset()
+    yield
+    _reset()

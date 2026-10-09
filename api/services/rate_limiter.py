@@ -581,6 +581,33 @@ def rate_limit(
     return ip_dep
 
 
+def doh_rate_check(request: Request) -> Optional[int]:
+    """None when this DNS query is within budget, else seconds to wait."""
+    from api.services import doh_metrics
+    if benchmark_bypass(request):
+        return None
+    retry = doh_metrics.limiter().check(_extract_client_ip(request))
+    if retry is not None:
+        doh_metrics.METRICS.inc("rate_limited")
+    return retry
+
+
+async def doh_rate_limit(request: Request) -> None:
+    """Per-IP DNS budget for /dns-query, kept IN PROCESS
+    (api/services/doh_metrics.WindowLimiter) instead of a Redis INCR per DNS
+    query: no round trip on the hot path and nothing to fail when Redis is
+    down. Same settings (doh_rate_limit_per_window / _window_seconds) and the
+    same benchmark bypass as the "ip" mode's doh category. The fast path
+    (api/services/doh_fastpath.py) applies the same check itself."""
+    retry = doh_rate_check(request)
+    if retry is not None:
+        raise HTTPException(
+            status_code=429,
+            detail={"error": "Too many DNS queries from this IP.", "retry_after_seconds": retry},
+            headers={"Retry-After": str(retry)},
+        )
+
+
 def unsubscribe_rate_limit() -> Callable:
     """
     Dedicated dependency for unsubscribe endpoints.
