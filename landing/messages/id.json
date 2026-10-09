@@ -788,7 +788,7 @@
     "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel atau browser Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
     "back": "Kembali ke Cleanway",
     "title": "Kebijakan privasi",
-    "updated": "Terakhir diperbarui: 8 Oktober 2026",
+    "updated": "Terakhir diperbarui: 9 Oktober 2026",
     "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
     "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
     "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Alamatnya akan muncul di bagian ini begitu berfungsi.",
@@ -894,7 +894,8 @@
         "title": "11. Situs web dan filter DNS",
         "paragraphs": [
           "cleanway.ai tidak memiliki iklan maupun pelacak analitik. Penyedia hosting kami, Vercel untuk situs web dan Railway untuk server, menyimpan log teknis permintaan yang biasa, yang dapat berisi alamat yang diminta dan alamat IP Anda.",
-          "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai) di iPhone, Mac, atau komputer Windows, semua permintaan DNS perangkat dikirim ke server kami. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk; untuk nama yang diblokir, log kami menyimpan paling banyak 32 karakter terakhirnya, tanpa alamat IP Anda."
+          "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai) di iPhone, Mac, atau komputer Windows, semua permintaan DNS perangkat dikirim ke server kami. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk maupun ke log apa pun: server kami hanya menyimpan jumlah total, seperti berapa permintaan yang dijawab dan berapa yang diblokir. Agar pertanyaan yang berulang dijawab lebih cepat, server menyimpan jawaban terbaru di memorinya, berdasarkan pertanyaannya saja (nama situs dan jenis catatan), tidak pernah berdasarkan siapa yang bertanya: selama jawabannya berlaku, paling lama satu jam, dan hingga 6 jam lagi sebagai cadangan jika Cloudflare berhenti menjawab. Jawaban itu tidak pernah ditulis ke disk atau database dan hilang saat server dimulai ulang.",
+          "Aplikasi Cleanway untuk iPhone dapat memasang filter DNS yang sama ini untuk Anda sebagai “Perlindungan DNS”: aplikasi menyimpan pengaturan DNS terenkripsi Cleanway di iPhone, dan pengaturan itu baru bekerja setelah Anda memilihnya di Pengaturan iPhone. Berbeda dengan aplikasi Android, yang mencocokkan nama situs dengan daftar yang tersimpan di ponsel, di iPhone pencocokan dilakukan di server kami: selama perlindungan DNS aktif, iPhone mengirim ke server kami, terenkripsi, nama setiap situs yang dicari aplikasi apa pun, dan server menanganinya seperti dijelaskan di paragraf sebelumnya. Untuk membatasi berapa banyak permintaan dari satu koneksi, server kami menghitungnya di memori dengan kode acak yang dibuat dari alamat IP Anda (hash berkunci), bukan dengan alamat itu sendiri, dan mengosongkan hitungan setiap jam; hitungan itu tidak pernah disimpan bersama nama yang Anda cari. Di iOS 26 dan yang lebih baru, jika server kami tidak menjawab, iPhone dapat bertanya ke server DNS jaringan itu sendiri, seperti tanpa Cleanway. Anda dapat mematikan perlindungan DNS di Pengaturan iPhone atau menghapusnya di aplikasi kapan saja."
         ]
       },
       {

@@ -11,12 +11,13 @@
  *     provisioning profile need the Push capability and invites the question
  *     "why does this app ask for push?" in review. When iOS push is built,
  *     delete this strip and drop the autolinking exclude in the same change.
- *   • com.apple.developer.networking.networkextension — never on the app
- *     target here. The iOS DNS protection (docs/MOBILE_AUTO_PROTECTION.md)
- *     uses NEDNSSettingsManager with the `dns-settings` value, which the
- *     DNS-settings task adds on purpose; a stale `packet-tunnel-provider`
- *     (a VPN — App Review 5.4, Organization accounts only) must not creep
- *     back in from an old app.json.
+ *   • com.apple.developer.networking.networkextension — exactly
+ *     ["dns-settings"] on the app target, ADDED here: the iPhone's DNS
+ *     protection (NEDNSSettingsManager, docs/IOS.md §4) needs it, and the
+ *     Network Extensions capability is open to Individual Apple Developer
+ *     Program accounts. Any VPN value (`packet-tunnel-provider` and kin —
+ *     App Review 5.4, Organization accounts only) is stripped, so a stale
+ *     one cannot creep back in from an old app.json or another plugin.
  *
  * The app group (group.ai.cleanway.app) that expo-share-intent adds is kept:
  * the share extension hands the shared text to the app through it.
@@ -32,16 +33,15 @@ const { withEntitlementsPlist } = require("@expo/config-plugins");
 const STRIPPED = ["aps-environment"];
 const NE_KEY = "com.apple.developer.networking.networkextension";
 const VPN_VALUES = new Set(["packet-tunnel-provider", "app-proxy-provider", "packet-tunnel-provider-systemextension"]);
+const DNS_SETTINGS = "dns-settings";
 
-/** Returns the entitlements without the ones the iPhone app does not use. Pure. */
+/** Returns the entitlements the iPhone app uses: unused ones stripped, `dns-settings` added. Pure. */
 function patchEntitlements(entitlements) {
   const out = { ...entitlements };
   for (const key of STRIPPED) delete out[key];
-  if (Array.isArray(out[NE_KEY])) {
-    const kept = out[NE_KEY].filter((v) => !VPN_VALUES.has(v));
-    if (kept.length > 0) out[NE_KEY] = kept;
-    else delete out[NE_KEY];
-  }
+  const ne = Array.isArray(out[NE_KEY]) ? out[NE_KEY].filter((v) => !VPN_VALUES.has(v)) : [];
+  if (!ne.includes(DNS_SETTINGS)) ne.push(DNS_SETTINGS);
+  out[NE_KEY] = ne;
   return out;
 }
 

@@ -788,7 +788,7 @@
     "meta_description": "Cosa riceve Cleanway, cosa resta sul tuo telefono o nel tuo browser, chi altro vede cosa e per quanto tempo viene conservato tutto.",
     "back": "Torna a Cleanway",
     "title": "Informativa sulla privacy",
-    "updated": "Ultimo aggiornamento: 8 ottobre 2026",
+    "updated": "Ultimo aggiornamento: 9 ottobre 2026",
     "intro": "Questa informativa spiega in parole semplici quali dati tratta Cleanway, perché e chi altro li vede. Descrive il servizio così come funziona oggi. Se qualcosa qui non corrisponde a ciò che Cleanway fa davvero, è un errore e vogliamo saperlo.",
     "contact_live": "Domande e richieste sui tuoi dati:",
     "contact_not_live": "La nostra casella di assistenza è ancora in configurazione, quindi non possiamo ancora ricevere email. L'indirizzo comparirà qui appena funzionerà.",
@@ -894,7 +894,8 @@
         "title": "11. Il sito web e il filtro DNS",
         "paragraphs": [
           "cleanway.ai non ha pubblicità né tracker di analisi. I nostri fornitori di hosting — Vercel per il sito web, Railway per il server — conservano i normali registri tecnici delle richieste, che possono includere l'indirizzo richiesto e il tuo indirizzo IP.",
-          "Se configuri il filtro DNS di Cleanway (dns.cleanway.ai) su un iPhone, un Mac o un computer Windows, tutte le richieste DNS del dispositivo arrivano al nostro server. Il server blocca i nomi della lista e passa il resto a Cloudflare per trovare l'indirizzo. Le richieste non vengono scritte su disco; di un nome bloccato, il nostro registro conserva al massimo gli ultimi 32 caratteri, senza il tuo indirizzo IP."
+          "Se configuri il filtro DNS di Cleanway (dns.cleanway.ai) su un iPhone, un Mac o un computer Windows, tutte le richieste DNS del dispositivo arrivano al nostro server. Il server blocca i nomi della lista e passa il resto a Cloudflare per trovare l'indirizzo. Le richieste non vengono scritte né su disco né in alcun registro: il nostro server conserva solo totali, come quante richieste ha gestito e quante ne ha bloccate. Per rispondere più in fretta alle domande ripetute, tiene le risposte recenti nella sua memoria, archiviate per la domanda stessa (il nome del sito e il tipo di record), mai per chi ha chiesto: finché la risposta è valida, al massimo un'ora, e fino a 6 ore in più come riserva nel caso Cloudflare smetta di rispondere. Non vengono mai scritte su disco o in un database e spariscono al riavvio del server.",
+          "L'app Cleanway per iPhone può configurare per te questo stesso filtro DNS come «Protezione DNS»: l'app salva sull'iPhone l'impostazione DNS cifrata di Cleanway, che funziona solo dopo che l'hai scelta nelle Impostazioni dell'iPhone. A differenza dell'app per Android, che confronta i nomi dei siti con un elenco salvato sul telefono, su iPhone il confronto avviene sul nostro server: finché la protezione DNS è attiva, l'iPhone invia al nostro server, cifrato, il nome di ogni sito che un'app cerca, e il server lo tratta come descritto nel paragrafo precedente. Per limitare quante richieste può fare una connessione, il nostro server le conta nella sua memoria sotto un codice cifrato ricavato dal tuo indirizzo IP (un hash con chiave), non sotto l'indirizzo stesso, e azzera il conteggio ogni ora; non viene mai conservato insieme ai nomi che cerchi. Da iOS 26 in poi, se il nostro server non risponde, l'iPhone può chiedere al server DNS della rete stessa, come senza Cleanway. Puoi disattivare la protezione DNS nelle Impostazioni dell'iPhone o rimuoverla nell'app in qualsiasi momento."
         ]
       },
       {

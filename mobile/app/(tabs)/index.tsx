@@ -13,6 +13,8 @@ import { PauseSheet } from "../../src/components/shield/PauseSheet";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { IosProtectionCard } from "../../src/components/shield/IosProtectionCard";
+import { IosDnsSetupSheet } from "../../src/components/shield/IosDnsSetupSheet";
+import { useIosDnsProtection } from "../../src/hooks/useIosDnsProtection";
 import {
   androidProtectionShown, heroWithoutShieldsKeys, homePrivacyKey, iosProtectionLayers, iosProtectionShown,
   shareHowToKey,
@@ -113,6 +115,9 @@ export default function HomeScreen() {
   // maker's own manager, alerts, Always-on). Re-read when the shield changes:
   // Always-on can only be read while it runs.
   const keepAlive = useKeepAlive(`${network.state}:${network.verified}`);
+  // iPhone: DNS protection (NEDNSSettingsManager), live from iOS. Inert elsewhere.
+  const iosDns = useIosDnsProtection();
+  const [dnsSheetVisible, setDnsSheetVisible] = useState(false);
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -158,12 +163,12 @@ export default function HomeScreen() {
     : null;
 
   const rollout = rolloutItems(t, Platform.OS, messageCheck);
-  // iPhone: no shield exists yet, so the hero says what the app does now
-  // instead of "let's set up — 0 shields active".
-  const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount);
-  // The iPhone's protection layers. Each later step (Safari extension, SMS
-  // filter, DNS settings) passes its status here; until then all are "coming".
-  const iosLayers = iosProtectionShown(Platform.OS) ? iosProtectionLayers() : null;
+  // The iPhone's protection layers. Each step (Safari extension, SMS filter,
+  // DNS settings) passes its status here; one not reported is "coming".
+  const iosLayers = iosProtectionShown(Platform.OS) ? iosProtectionLayers({ dns: iosDns.layer }) : null;
+  // iPhone: no shield exists, so the hero says what the app does now instead
+  // of "let's set up — 0 shields active".
+  const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount, iosLayers ?? []);
 
   /**
    * Prominent disclosure, shown BEFORE Android's own consent dialog.
@@ -430,7 +435,12 @@ export default function HomeScreen() {
 
       {iosLayers && (
         <View style={s.section}>
-          <IosProtectionCard layers={iosLayers} />
+          <IosProtectionCard
+            layers={iosLayers}
+            onSetUp={(id) => {
+              if (id === "dns") setDnsSheetVisible(true);
+            }}
+          />
         </View>
       )}
 
@@ -465,10 +475,13 @@ export default function HomeScreen() {
 
       <View style={s.privacyRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
-        <Text style={s.privacy}>{t(homePrivacyKey(Platform.OS))}</Text>
+        <Text style={s.privacy}>{t(homePrivacyKey(Platform.OS, iosDns.phase === "on"))}</Text>
       </View>
 
       <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
+      {iosLayers && (
+        <IosDnsSetupSheet visible={dnsSheetVisible} dns={iosDns} onClose={() => setDnsSheetVisible(false)} />
+      )}
       <PauseSheet
         visible={pauseSheetVisible}
         minutes={PAUSE_MINUTES}
