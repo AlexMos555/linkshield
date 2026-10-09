@@ -296,9 +296,19 @@ async def test_every_upstream_down_is_none_never_an_exception(two_upstreams):
     assert await doh_upstream.proxy_to_upstream(query("example.org")) is None
 
 
-def test_default_upstreams_are_cloudflare_then_quad9():
+def test_default_upstreams_are_cloudflare_only_as_the_privacy_policy_says():
+    """§11 of the public privacy policy names Cloudflare for names we don't
+    block; Quad9 is added through DOH_UPSTREAMS once the policy says so."""
     assert doh_upstream.configured_urls() == [
-        "https://cloudflare-dns.com/dns-query", "https://dns.quad9.net/dns-query"]
+        "https://cloudflare-dns.com/dns-query", "https://1.1.1.1/dns-query"]
+
+
+def test_quad9_can_be_added_by_configuration(monkeypatch):
+    from api.config import get_settings
+    monkeypatch.setattr(get_settings(), "doh_upstreams",
+                        "https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query",
+                        raising=False)
+    assert doh_upstream.configured_urls()[-1] == "https://dns.quad9.net/dns-query"
 
 
 # ── rate limit (in process) ─────────────────────────────────────────

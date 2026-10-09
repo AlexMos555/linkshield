@@ -14,7 +14,7 @@ DohFastPath (raw ASGI, outermost; api/services/doh_fastpath.py)
   → blocklist decision, in memory        (api/services/doh_filter.py)
        hash of any suffix listed? → confirm with ONE Redis SISMEMBER → NXDOMAIN
   → response cache, in memory            (api/services/doh_cache.py)
-  → upstreams: Cloudflare, then Quad9    (api/services/doh_upstream.py)
+  → upstreams: Cloudflare by name, then by IP; Quad9 opt-in    (api/services/doh_upstream.py)
        HTTP/2 pool · immediate failover on error · hedge after 400 ms · breaker
   → stale cached answer (RFC 8767, TTL 30 s)
   → SERVFAIL  (only when no upstream answered in 4 s and nothing was cached)
@@ -232,7 +232,7 @@ an exception name (Redis trouble; the old list is kept).
 
 | var | default | |
 |---|---|---|
-| `DOH_UPSTREAMS` | Cloudflare, Quad9 | comma-separated RFC 8484 URLs, in order |
+| `DOH_UPSTREAMS` | `cloudflare-dns.com`, `1.1.1.1` | comma-separated RFC 8484 URLs, in order; add `https://dns.quad9.net/dns-query` only after privacy policy §11 names Quad9 |
 | `DOH_CACHE_MAX_ENTRIES` | 20000 | 0 disables the cache |
 | `DOH_CACHE_MAX_TTL_S` | 3600 | |
 | `DOH_SERVE_STALE_S` | 21600 | how long past its TTL an answer may be served while upstreams are down |
@@ -251,3 +251,6 @@ an exception name (Redis trouble; the old list is kept).
 4. Before iOS launch: Cloudflare proxy + the fail-open Worker (step 2), and
    `TRUSTED_PROXY_CIDRS` extended with Cloudflare's ranges in the same change.
 5. Later: second region + load balancer (step 3).
+
+
+> **2026-10-09:** the default is Cloudflare only (two endpoints of the same resolver), so the public privacy policy stays true without a text change. Turning on the Quad9 failover = update §11 in all 10 locales, then set `DOH_UPSTREAMS`.

@@ -35,7 +35,11 @@ logger = logging.getLogger("api.services.doh_gateway")
 
 CLOUDFLARE_DOH_URL = "https://cloudflare-dns.com/dns-query"
 QUAD9_DOH_URL = "https://dns.quad9.net/dns-query"  # no ECS on this endpoint
-DEFAULT_UPSTREAMS = (CLOUDFLARE_DOH_URL, QUAD9_DOH_URL)
+CLOUDFLARE_IP_DOH_URL = "https://1.1.1.1/dns-query"  # same resolver, no DNS lookup of its own name
+# Cloudflare only by default: the public privacy policy (§11) names Cloudflare as
+# where unblocked names go. Quad9 is a ready second operator — add it with
+# DOH_UPSTREAMS once the policy paragraph says so in all locales.
+DEFAULT_UPSTREAMS = (CLOUDFLARE_DOH_URL, CLOUDFLARE_IP_DOH_URL)
 DOH_CONTENT_TYPE = "application/dns-message"
 UPSTREAM_TIMEOUT_S = 4.0
 HEDGE_AFTER_S = 0.4

@@ -194,7 +194,8 @@ class Settings(BaseSettings):
     doh_rate_limit_window_seconds: int = 3600
     # DoH gateway runtime (docs/runbooks/doh-gateway.md). Upstreams are tried
     # in order with hedged failover; comma-separated RFC 8484 URLs. Empty =
-    # Cloudflare then Quad9 (api/services/doh_upstream.DEFAULT_UPSTREAMS).
+    # Cloudflare by name, then by IP (api/services/doh_upstream.DEFAULT_UPSTREAMS);
+    # add Quad9 here only after the privacy policy names it for DoH.
     doh_upstreams: str = ""
     # Per-worker response cache (entries, TTL cap, RFC 8767 serve-stale window).
     doh_cache_max_entries: int = 20000
