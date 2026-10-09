@@ -1419,6 +1419,10 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.match(welcome, /id="cta-scan" data-hide-on-ios>/);
     assert.ok(before(read("src/popup/popup.html"), '<script src="../utils/platform.js">', '<script src="popup.js">'), "popup.html");
     assert.match(read("src/popup/popup.css"), /html\.cw-ios body \{ width: auto;/);
+    // Settings opens in a phone-width tab on iOS; without a viewport it is laid out 980 px wide.
+    for (const page of ["src/options/options.html", "src/popup/popup.html", "src/popup/welcome.html"]) {
+      assert.match(read(page), /<meta name="viewport" content="width=device-width/, page);
+    }
     for (const f of ["src/options/options.js", "src/popup/welcome.js", "src/popup/popup.js"]) {
       assert.match(read(f), /self\.cleanwayPlatform\.applyToPage\(chrome, document\)/, f);
     }
@@ -1450,6 +1454,18 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
       if (savedNavigator) Object.defineProperty(globalThis, "navigator", savedNavigator);
       else delete globalThis.navigator;
     }
+  });
+
+  await check(`[${tree}] block page: a card taller than a phone screen can still be scrolled to its top`, () => {
+    const src = readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8");
+    const root = src.match(/#ls-block-overlay \{([\s\S]*?)\n      \}/);
+    assert.ok(root, "overlay rule");
+    // Centring with align-items made the top overflow out of reach (seen on the iPhone simulator).
+    assert.ok(!/align-items:\s*center/.test(root[1].replace(/\/\*[\s\S]*?\*\//g, "")), "overlay centres vertically with align-items");
+    assert.match(root[1], /overflow-y: auto/);
+    assert.match(src, /\.ls-block-card \{[^}]*margin: auto 0;/);
+    // Focusing the "go back" button must not scroll the stop sign away.
+    assert.match(src, /backBtn\.focus\(\{ preventScroll: true \}\)/);
   });
 
   await check(`[${tree}] content script on cleanway.ai: never checked, but says the extension runs`, () => {

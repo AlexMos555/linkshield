@@ -191,8 +191,14 @@ in `scripts/test-extension-core.mjs` group 6):
 - **Popup**: opens as a sheet the width of the screen (`html.cw-ios`).
 - **Storage**: `storage.local` only (settings, stats, tokens — kilobytes);
   history in IndexedDB, pruned to 30 days. No `unlimitedStorage`.
-- **Permissions UI**: Safari asks per site unless the person picks **All
-  Websites → Allow** in Settings. The manifest's `notifications` and
+- **Permissions UI** (iOS 26, seen on the simulator): Settings → Apps →
+  Safari → Extensions → "Cleanway — …" (the manifest's localized name) has
+  the **Allow Extension** switch, "In Private Browsing", a "Settings" link (the
+  options page) and **Permissions**: one row per host the manifest names
+  (api.cleanway.ai, cleanway.ai) plus **Other Websites**, each Ask / Deny /
+  Allow — older iOS calls the last one "All Websites". Safari asks per site
+  until Other Websites is Allow. Its note "can read … passwords, phone numbers
+  or credit cards" appears for every extension that runs on pages. The manifest's `notifications` and
   `contextMenus` are ignored by Safari on iOS (a console warning, no prompt).
   `nativeMessaging` (Safari tree only) shows no prompt.
 - **Block page**: the content-script overlay (`content/block-page.js`) works
@@ -200,7 +206,8 @@ in `scripts/test-extension-core.mjs` group 6):
 - **Sign-in**: the popup's sign-in opens `cleanway.ai/<locale>/extension/connect`
   in a new Safari tab; `content/connect-relay.js` hands the session to the
   background as on desktop. It needs website access for cleanway.ai — granted
-  by "All Websites", otherwise Safari asks on that page.
+  by "Other Websites → Allow" (or cleanway.ai → Allow), otherwise Safari asks
+  on that page.
 
 **Status in the app** (`src/hooks/useSafariExtension.ts`,
 `modules/cleanway-safari`, `safariLayerState()` in
@@ -209,15 +216,21 @@ in `scripts/test-extension-core.mjs` group 6):
 - iOS 26.2+ answers "switched on?" (`SFSafariExtensionManager
   .getStateOfExtension`) and can open the extension's Settings page
   (`SFSafariSettings.openExtensionsSettings`). Older iOS has no API at all.
+  Both calls answer once with a timeout (3 s / 5 s), so a call iOS never
+  completes cannot leave the card waiting; it then falls back to the "seen"
+  time. On the iOS 26.2 simulator the state followed the switch (off → "Turned
+  off", on → "allow it on other websites"); `openExtensionsSettings` opened
+  the Settings app at its top level rather than the extension's page —
+  re-check both on a device.
 - Website access has no API anywhere, so the extension tells the app: when a
   content script on a real page reaches the background (or the person opens
   cleanway.ai, which the extension never checks but reports from), the
   background sends `{type: "seen"}` through Safari's native messaging, at most
   every 6 h (`background/safari-native.js`); the handler stores the time.
 - Card: switched off → "Set up" + "Turned off in Safari's settings"; on but
-  never seen → "Set up" + "allow it on all websites"; seen in the last 14 days
+  never seen → "Set up" + "allow it on other websites"; seen in the last 14 days
   → **On**; older iOS and never seen → "Set up". "Set up" opens the steps
-  (Settings → Apps → Safari → Extensions → Cleanway → Allow Extension; All
+  (Settings → Apps → Safari → Extensions → Cleanway → Allow Extension; Other
   Websites → Allow), "Open Safari settings" (iOS 26.2+) and "Test it in
   Safari" (opens `cleanway.ai` in Safari via `x-safari-https://`; the card
   says On when the person comes back). The status is re-read whenever the app
@@ -346,7 +359,7 @@ weekly report send anything new.
 > Purchase; "Restore purchases" is on the paywall and in Account. The app
 > contains no VPN. The app includes a Safari Web Extension that warns about
 > scam sites: Settings → Apps → Safari → Extensions → Cleanway → Allow
-> Extension, then All Websites → Allow; open any site in Safari (or the
+> Extension, then Other Websites → Allow; open any site in Safari (or the
 > home screen's "Set up" → "Test it in Safari"). It sends only site names to
 > api.cleanway.ai to check them; it has no purchases or upsell of its own.
 > The "Protection on iPhone" items marked "Coming soon" are not functional in

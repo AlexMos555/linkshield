@@ -49,7 +49,7 @@ export function useSafariExtension() {
     facts,
     layer: safariLayerState(facts, Date.now()),
     /** iOS 26.2+ can open the extension's Settings page directly. */
-    canOpenSettings: facts.bundled && facts.stateKnown,
+    canOpenSettings: facts.bundled && facts.settingsApi,
     refresh,
     openSettings,
     openTestPage,

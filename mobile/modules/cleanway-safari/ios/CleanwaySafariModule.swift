@@ -32,16 +32,17 @@ public class CleanwaySafariModule: Module {
   public func definition() -> ModuleDefinition {
     Name("CleanwaySafari")
 
-    // { bundled, stateKnown, enabled, lastSeenMs }
+    // { bundled, stateKnown, enabled, lastSeenMs, settingsApi }
     AsyncFunction("getStatus") { (promise: Promise) in
-      var result: [String: Any] = [
+      let base: [String: Any] = [
         "bundled": self.extensionId != nil,
         "stateKnown": false,
         "enabled": false,
         "lastSeenMs": self.lastSeenMs ?? NSNull(),
+        "settingsApi": false,
       ]
       guard let id = self.extensionId else {
-        promise.resolve(result)
+        promise.resolve(base)
         return
       }
       // SFSafariExtensionManager is in the iOS 26.2 SDK (Xcode 26.2, Swift
@@ -49,17 +50,24 @@ public class CleanwaySafariModule: Module {
       // lastSeenMs alone.
       #if compiler(>=6.2.3)
       if #available(iOS 26.2, *) {
+        // Answer once: with iOS's state, or without it after 3 s — a call
+        // iOS never completes must not leave the card waiting.
+        var withApi = base
+        withApi["settingsApi"] = true // SFSafariSettings can open the extension's page
+        let once = ResolveOnce(promise)
+        DispatchQueue.global().asyncAfter(deadline: .now() + 3) { once.resolve(withApi) }
         SFSafariExtensionManager.getStateOfExtension(withIdentifier: id) { state, error in
+          var result = withApi
           if let state, error == nil {
             result["stateKnown"] = true
             result["enabled"] = state.isEnabled
           }
-          promise.resolve(result)
+          once.resolve(result)
         }
         return
       }
       #endif
-      promise.resolve(result)
+      promise.resolve(base)
     }
 
     // Opens Settings → Apps → Safari → Extensions → Cleanway (iOS 26.2+).
@@ -71,13 +79,31 @@ public class CleanwaySafariModule: Module {
       }
       #if compiler(>=6.2.3)
       if #available(iOS 26.2, *) {
+        let once = ResolveOnce(promise)
+        DispatchQueue.global().asyncAfter(deadline: .now() + 5) { once.resolve(false) }
         SFSafariSettings.openExtensionsSettings(forIdentifiers: [id]) { error in
-          promise.resolve(error == nil)
+          once.resolve(error == nil)
         }
         return
       }
       #endif
       promise.resolve(false)
     }.runOnQueue(.main)
+  }
+}
+
+/// Resolves a promise the first time only (a reply racing a timeout).
+private final class ResolveOnce {
+  private let lock = NSLock()
+  private var promise: Promise?
+
+  init(_ promise: Promise) { self.promise = promise }
+
+  func resolve(_ value: Any) {
+    lock.lock()
+    let p = promise
+    promise = nil
+    lock.unlock()
+    p?.resolve(value)
   }
 }

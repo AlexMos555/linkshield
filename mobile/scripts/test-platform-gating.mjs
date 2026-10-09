@@ -276,10 +276,10 @@ check("the share extension's hand-off URL lands on home, not on 'Unmatched Route
 check("Safari layer: status and line from what iOS and the extension report", () => {
   const now = Date.UTC(2026, 9, 9);
   const day = 24 * 3600_000;
-  const facts = (o) => ({ bundled: true, stateKnown: false, enabled: false, lastSeenMs: null, ...o });
+  const facts = (o) => ({ bundled: true, stateKnown: false, enabled: false, lastSeenMs: null, settingsApi: false, ...o });
   const table = [
     // An older build without the extension: still "coming".
-    [{ bundled: false, stateKnown: false, enabled: false, lastSeenMs: null }, "coming", "mobile.ios.safari_line"],
+    [NO_SAFARI_EXTENSION, "coming", "mobile.ios.safari_line"],
     // iOS 26.2+: switched off — whatever the extension said before.
     [facts({ stateKnown: true, enabled: false, lastSeenMs: now - day }), "setup", "mobile.ios.safari_line_off"],
     // Switched on but never ran on a page: "All Websites" is the missing step.
@@ -304,12 +304,13 @@ check("Safari layer: the native answer is validated (odd values read as 'not kno
   assert.deepEqual(parseSafariFacts("yes"), NO_SAFARI_EXTENSION);
   assert.deepEqual(
     parseSafariFacts({ bundled: true, stateKnown: true, enabled: true, lastSeenMs: 1_700_000_000_000 }),
-    { bundled: true, stateKnown: true, enabled: true, lastSeenMs: 1_700_000_000_000 },
+    { bundled: true, stateKnown: true, enabled: true, lastSeenMs: 1_700_000_000_000, settingsApi: false },
   );
+  assert.equal(parseSafariFacts({ bundled: true, settingsApi: true }).settingsApi, true);
   // "enabled" means nothing unless iOS answered; NaN / negative / strings are no time.
   assert.deepEqual(
     parseSafariFacts({ bundled: 1, stateKnown: false, enabled: true, lastSeenMs: Number.NaN }),
-    { bundled: false, stateKnown: false, enabled: false, lastSeenMs: null },
+    { bundled: false, stateKnown: false, enabled: false, lastSeenMs: null, settingsApi: false },
   );
   assert.equal(parseSafariFacts({ bundled: true, lastSeenMs: -5 }).lastSeenMs, null);
   assert.equal(parseSafariFacts({ bundled: true, lastSeenMs: "1700000000000" }).lastSeenMs, null);
@@ -340,7 +341,8 @@ check("Safari setup sheet: four steps naming the real switches, in every locale"
     assert.ok(!/VPN/.test(SAFARI_SETUP_STEP_KEYS.map((k) => STRINGS[loc][k]).join(" ")), loc);
   }
   assert.equal(STRINGS.en["mobile.ios.safari_setup_step2"], "Turn on Allow Extension.");
-  assert.match(STRINGS.en["mobile.ios.safari_setup_step3"], /All Websites/);
+  // iOS 26 Settings: Permissions → "Other Websites" (seen on the 26.2 simulator).
+  assert.match(STRINGS.en["mobile.ios.safari_setup_step3"], /Other Websites/);
   // Opens Safari itself (the extension lives nowhere else), on a page the
   // extension reports from (content/index.js EXTENSION_SEEN on cleanway.ai).
   assert.equal(SAFARI_TEST_URL, "x-safari-https://cleanway.ai/");
@@ -355,7 +357,7 @@ check("home wires the Safari layer: status from the hook, Set up opens the sheet
   assert.match(home, /<SafariSetupSheet/);
   const hook = read("src/hooks/useSafariExtension.ts");
   assert.match(hook, /AppState\.addEventListener\("change"/, "re-read when the person comes back from Settings / Safari");
-  assert.match(hook, /canOpenSettings: facts\.bundled && facts\.stateKnown/);
+  assert.match(hook, /canOpenSettings: facts\.bundled && facts\.settingsApi/);
 });
 
 const safariPlugin = require("../plugins/withSafariExtension.js")._internals;
@@ -445,8 +447,11 @@ check("the Safari status module's pod is not above the app's iOS deployment targ
   assert.ok(m && Number(m[1]) * 100 + Number(m[2]) <= 1501, "pod above iOS 15.1");
   const swift = read("modules/cleanway-safari/ios/CleanwaySafariModule.swift");
   // The iOS 26.2 calls stay behind a runtime check (and a compiler check for older Xcode).
-  assert.match(swift, /if #available\(iOS 26\.2, \*\) \{\s*SFSafariExtensionManager\.getStateOfExtension/);
-  assert.match(swift, /if #available\(iOS 26\.2, \*\) \{\s*SFSafariSettings\.openExtensionsSettings/);
+  const guarded = (call) => new RegExp(String.raw`#if compiler\(>=6\.2\.3\)\s*if #available\(iOS 26\.2, \*\) \{[\s\S]*?` + call);
+  assert.match(swift, guarded(String.raw`SFSafariExtensionManager\.getStateOfExtension`));
+  assert.match(swift, guarded(String.raw`SFSafariSettings\.openExtensionsSettings`));
+  // Both answer once, with a timeout: a call iOS never completes must not leave the card waiting.
+  assert.equal((swift.match(/ResolveOnce\(promise\)/g) || []).length, 2);
 });
 if (failures > 0) {
   console.log(`\n${failures} failing`);

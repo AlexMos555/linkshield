@@ -178,7 +178,7 @@ App Store notes for the extension:
   Group `group.ai.cleanway.app` (EAS creates it on the first build from
   `extra.eas.build.experimental.ios.appExtensions`).
 - **Review notes**: say how to switch it on (Settings → Apps → Safari →
-  Extensions → Cleanway → Allow Extension; All Websites → Allow) and that it
+  Extensions → Cleanway → Allow Extension; Other Websites → Allow) and that it
   sends only site names to api.cleanway.ai. Paste-ready text: docs/IOS.md §3.6.
 - **App Privacy**: the extension's traffic is the app's "Browsing History —
   site names, not linked, App Functionality" row (docs/IOS.md §3.5); a

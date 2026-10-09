@@ -96,6 +96,8 @@ export interface SafariExtensionFacts {
   stateKnown: boolean;
   enabled: boolean;
   lastSeenMs: number | null;
+  /** iOS 26.2+: the app can open the extension's page in Settings. */
+  settingsApi: boolean;
 }
 
 export const NO_SAFARI_EXTENSION: SafariExtensionFacts = Object.freeze({
@@ -103,6 +105,7 @@ export const NO_SAFARI_EXTENSION: SafariExtensionFacts = Object.freeze({
   stateKnown: false,
   enabled: false,
   lastSeenMs: null,
+  settingsApi: false,
 });
 
 /** Validates what the native module returned; anything odd reads as "not known". */
@@ -116,6 +119,7 @@ export function parseSafariFacts(raw: unknown): SafariExtensionFacts {
     stateKnown,
     enabled: stateKnown && r.enabled === true,
     lastSeenMs: typeof seen === "number" && Number.isFinite(seen) && seen > 0 ? seen : null,
+    settingsApi: r.settingsApi === true,
   };
 }
 
