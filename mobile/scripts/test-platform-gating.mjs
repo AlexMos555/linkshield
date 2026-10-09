@@ -363,7 +363,7 @@ check("Safari setup sheet: four steps naming the real switches, in every locale"
 check("home wires the Safari layer: status from the hook, Set up opens the sheet", () => {
   const home = read("app/(tabs)/index.tsx");
   assert.match(home, /const safari = useSafariExtension\(\);/);
-  assert.match(home, /iosProtectionLayers\(\s*\{ safari: safari\.layer\.status,[^}]*\},\s*\{ safari: safari\.layer\.lineKey \},?\s*\)/);
+  assert.match(home, /iosProtectionLayers\(\{[^}]*\bsafari: safari\.layer\.status \}, \{\s*safari: safari\.layer\.lineKey,?\s*\}\)/);
   assert.match(home, /if \(id === "safari"\) setSafariSheetVisible\(true\);/);
   // The Safari layer's own line wins; the SMS filter keeps its ready line.
   const merged = iosProtectionLayers({ safari: "setup", sms_filter: "setup" }, { safari: "mobile.ios.safari_line_allow" });

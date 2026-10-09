@@ -174,10 +174,9 @@ export default function HomeScreen() {
   // The iPhone's protection layers. Each step (Safari extension, SMS filter,
   // DNS settings) passes its status here; one not reported is "coming".
   const iosLayers = iosProtectionShown(Platform.OS)
-    ? iosProtectionLayers(
-      { safari: safari.layer.status, dns: iosDns.layer, sms_filter: smsFilterLayerStatus(smsFilterInstalled()) },
-      { safari: safari.layer.lineKey },
-    )
+    ? iosProtectionLayers({ dns: iosDns.layer, sms_filter: smsFilterLayerStatus(smsFilterInstalled()), safari: safari.layer.status }, {
+      safari: safari.layer.lineKey,
+    })
     : null;
   // iPhone: no shield exists, so the hero says what the app does now instead
   // of "let's set up — 0 shields active".
