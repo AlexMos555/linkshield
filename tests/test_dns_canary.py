@@ -92,8 +92,12 @@ def _gateway_answer(rcode: int, soa=None):
     return canary.DnsAnswer(rcode, 1 if rcode == 0 else 0, None)
 
 
+DOH_HEALTH_OK = json.dumps({"ok": True, "filter": {"loaded": True, "count": 470000}}).encode()
+
+
 def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None,
              health=(200, HEALTH_OK), landing=(200, b"<html>"), requests=None,
+             doh_health=None,
              soa=None, public=None, live_feed=(200, b"")):
     """Stub every network call: DoH lookups (our gateway, and the public
     resolver the live probe asks), the artifact fetch, the live-probe feed,
@@ -126,6 +130,8 @@ def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None,
             return _FakeResponse(blob, headers)
         if url.endswith("/health/deep"):
             return _http(url, *health)
+        if url.endswith("/health/doh"):
+            return _http(url, *(doh_health or (200, DOH_HEALTH_OK)))
         if url.endswith("/ru/android"):
             return _http(url, *landing)
         if url == canary.DEFAULT_LIVE_SOURCE:
@@ -463,3 +469,19 @@ def test_the_live_probe_asks_public_dns_a_bounded_number_of_times(monkeypatch):
     many = [f"h{i}.example" for i in range(50)]
     assert canary.pick_live_probes(many) == []
     assert len(asked) == canary.MAX_LIVE_LOOKUPS
+
+
+def test_doh_gateway_unhealthy_fails(monkeypatch, capsys):
+    body = json.dumps({"ok": False, "filter": {"loaded": True}}).encode()
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY, doh_health=(503, body))
+    assert code == 1
+    assert "DOH GATEWAY UNHEALTHY" in out
+
+
+def test_doh_filter_not_loaded_fails(monkeypatch, capsys):
+    body = json.dumps({"ok": True, "filter": {"loaded": False, "error": "artifact missing"}}).encode()
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY, doh_health=(200, body))
+    assert code == 1
+    assert "DOH FILTER NOT LOADED" in out and "artifact missing" in out

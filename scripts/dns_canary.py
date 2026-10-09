@@ -22,6 +22,7 @@ Five questions, all against the LIVE endpoints:
      names. Best-effort: no such host right now is a note, not a failure.
   3. Is the phone artifact fresh, self-consistent, and carrying its canary?
   4. Is the API healthy end to end?  (/health/deep — /health is always-200)
+     and is the DoH gateway iPhones resolve through healthy? (/health/doh)
   5. Is the landing page people install from up?  (/ru/android)
 
 Schedule: GitHub runs '*/15' crons best-effort. Measured 2026-09-18..25:
@@ -305,6 +306,31 @@ def check_health_deep(base: str) -> list[str]:
     return [f"/health/deep: HTTP {status}, status={reported!r}, failing components: {failing or 'unknown'}"]
 
 
+def check_health_doh(base: str) -> list[str]:
+    """/health/doh: the DoH gateway every iPhone with DNS protection resolves
+    through. ok=false (no healthy upstream) or an unloaded blocklist filter is
+    an incident: iPhones would get no protection, or SERVFAIL when every
+    upstream is down and nothing is cached."""
+    url = f"{base}/health/doh"
+    try:
+        status, body = http_get(url)
+    except Exception as exc:  # noqa: BLE001
+        return [f"/health/doh: request failed: {exc}"]
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        return [f"/health/doh: HTTP {status}, body is not JSON"]
+    if not isinstance(payload, dict):
+        return [f"/health/doh: HTTP {status}, unexpected body"]
+    problems: list[str] = []
+    if status != 200 or payload.get("ok") is not True:
+        problems.append(f"DOH GATEWAY UNHEALTHY: HTTP {status}, ok={payload.get('ok')!r}")
+    flt = payload.get("filter") if isinstance(payload.get("filter"), dict) else {}
+    if flt.get("loaded") is not True:
+        problems.append(f"DOH FILTER NOT LOADED: {flt.get('error') or 'no error reported'} — iPhones get no blocking")
+    return problems
+
+
 def check_landing(landing_base: str) -> list[str]:
     """The page Tele2 subscribers install from. 200 or it is an incident."""
     url = f"{landing_base}{LANDING_PATH}"
@@ -370,6 +396,7 @@ def main() -> int:
 
     # 4 + 5. The API end to end, and the page people install from.
     problems += check_health_deep(base)
+    problems += check_health_doh(base)
     print("health-check: /health/deep")
     problems += check_landing(landing_base)
     print(f"landing-check: {LANDING_PATH}")
