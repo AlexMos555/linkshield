@@ -286,9 +286,12 @@ EAS creates these on the first `eas build` if you let it log in; to do it by han
 
 ### 3.3 The app record
 
-1. App Store Connect → My Apps → **+** → iOS, name "Cleanway", bundle id
-   `ai.cleanway.app`, SKU e.g. `cleanway-ios`. Put the numeric Apple ID into
-   `mobile/eas.json` → `submit.production.ios.ascAppId`.
+1. Done 2026-10-09: App Store Connect record "Cleanway: Scam Protection"
+   (plain "Cleanway" is taken on the App Store; the home-screen name stays
+   "Cleanway"), bundle id `ai.cleanway.app`, SKU `cleanway-ios`, primary
+   language English (U.S.), Apple ID `6821030874` — in `mobile/eas.json` →
+   `submit.production.ios.ascAppId`. App Group `group.ai.cleanway.app` is
+   registered and assigned to all four App IDs.
 2. Category: Utilities (or Productivity). Age rating questionnaire: no
    objectionable content → 4+.
 3. Privacy Policy URL `https://cleanway.ai/privacy-policy`; Terms (EULA)

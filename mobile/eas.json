@@ -53,7 +53,7 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "TODO_ASC_APP_ID_AFTER_FIRST_TESTFLIGHT_UPLOAD"
+        "ascAppId": "6821030874"
       },
       "android": {
         "track": "internal"
