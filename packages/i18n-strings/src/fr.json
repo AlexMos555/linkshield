@@ -2339,7 +2339,7 @@
       "meta_description": "Ce que Cleanway reçoit, ce qui reste sur votre téléphone ou dans votre navigateur, qui d'autre voit quoi, et combien de temps tout est conservé.",
       "back": "Retour à Cleanway",
       "title": "Politique de confidentialité",
-      "updated": "Dernière mise à jour : 8 octobre 2026",
+      "updated": "Dernière mise à jour : 9 octobre 2026",
       "intro": "Cette politique explique en termes simples quelles données Cleanway traite, pourquoi et qui d'autre les voit. Elle décrit le service tel qu'il fonctionne aujourd'hui. Si quelque chose ici ne correspond pas à ce que fait réellement Cleanway, c'est une erreur et nous voulons le savoir.",
       "contact_live": "Questions et demandes concernant vos données :",
       "contact_not_live": "Notre boîte d'assistance est encore en cours de configuration : nous ne pouvons donc pas encore recevoir d'e-mails. L'adresse apparaîtra ici dès qu'elle fonctionnera.",
@@ -2445,7 +2445,8 @@
           "title": "11. Le site web et le filtre DNS",
           "paragraphs": [
             "cleanway.ai n'a ni publicité ni traceurs d'analyse. Nos hébergeurs — Vercel pour le site web, Railway pour le serveur — conservent les journaux techniques habituels des requêtes, qui peuvent inclure l'adresse demandée et votre adresse IP.",
-            "Si vous configurez le filtre DNS de Cleanway (dns.cleanway.ai) sur un iPhone, un Mac ou un ordinateur Windows, toutes les requêtes DNS de l'appareil passent par notre serveur. Il bloque les noms de la liste et transmet le reste à Cloudflare pour trouver l'adresse. Les requêtes ne sont pas écrites sur disque ; pour un nom bloqué, notre journal en garde au plus les 32 derniers caractères, sans votre adresse IP."
+            "Si vous configurez le filtre DNS de Cleanway (dns.cleanway.ai) sur un iPhone, un Mac ou un ordinateur Windows, toutes les requêtes DNS de l'appareil passent par notre serveur. Il bloque les noms de la liste et transmet le reste à Cloudflare pour trouver l'adresse. Les requêtes ne sont écrites ni sur disque ni dans aucun journal : notre serveur ne garde que des totaux, comme le nombre de requêtes traitées et bloquées. Pour répondre plus vite aux questions répétées, il garde les réponses récentes en mémoire, rangées par la question elle-même (le nom du site et le type d'enregistrement), jamais par la personne qui a demandé : tant que la réponse est valable, une heure au plus, et jusqu'à 6 heures de plus en secours si Cloudflare ne répond plus. Elles ne sont jamais écrites sur disque ni dans une base de données et disparaissent au redémarrage du serveur.",
+            "L'app Cleanway pour iPhone peut configurer ce même filtre DNS pour vous, sous le nom « Protection DNS » : l'app enregistre sur l'iPhone le réglage DNS chiffré de Cleanway, qui ne fonctionne qu'une fois que vous l'avez choisi dans les Réglages de l'iPhone. Contrairement à l'app Android, qui compare les noms de sites à une liste stockée sur le téléphone, sur iPhone la comparaison se fait sur notre serveur : tant que la protection DNS est activée, l'iPhone envoie à notre serveur, chiffré, le nom de chaque site que recherche une app, et le serveur le traite comme décrit au paragraphe précédent. Pour limiter le nombre de requêtes par connexion, notre serveur les compte dans sa mémoire sous un code brouillé tiré de votre adresse IP (un hachage à clé), et non sous l'adresse elle-même, et remet ce compte à zéro chaque heure ; il n'est jamais conservé avec les noms que vous recherchez. Sous iOS 26 et versions ultérieures, si notre serveur ne répond pas, l'iPhone peut interroger le serveur DNS du réseau lui-même, comme sans Cleanway. Vous pouvez désactiver la protection DNS dans les Réglages de l'iPhone ou la supprimer dans l'app à tout moment."
           ]
         },
         {
@@ -3002,7 +3003,8 @@
         "title_conflict": "La protection ne fonctionne pas",
         "sub_conflict": "Le réglage DNS privé l'en empêche — voir ci-dessous quoi changer",
         "title_ios": "Vérifiez avant de toucher",
-        "sub_ios": "La protection automatique pour iPhone arrive bientôt — voir ci-dessous"
+        "sub_ios": "La protection automatique pour iPhone arrive bientôt — voir ci-dessous",
+        "sub_ios_ready": "Protection automatique pour iPhone — voir ci-dessous"
       },
       "cta_turn_on": "Activer la protection",
       "check": {
@@ -3040,7 +3042,8 @@
       "interrupted_revoked": "Android a arrêté la protection : l'autorisation VPN a été retirée dans les réglages du téléphone, ou une autre appli VPN a pris sa place. Touchez le bouton ci-dessous, puis « {{button}} ». Si Android vous demande d'autoriser la connexion, touchez « OK ». L'autre appli VPN sera coupée : Android n'en fait fonctionner qu'une à la fois.",
       "interrupted_private_dns": "La protection s'est arrêtée à cause du réglage « DNS privé ». Il ne gêne plus : touchez le bouton ci-dessous, puis « {{button}} ».",
       "cta_turn_back_on": "Réactiver la protection",
-      "privacy_ios": "Quand vous vérifiez un lien, notre serveur reçoit le nom du site et un numéro d'installation aléatoire qui change chaque jour. Le texte des messages et l'adresse complète des pages ne quittent jamais votre téléphone."
+      "privacy_ios": "Quand vous vérifiez un lien, notre serveur reçoit le nom du site et un numéro d'installation aléatoire qui change chaque jour. Le texte des messages et l'adresse complète des pages ne quittent jamais votre téléphone.",
+      "privacy_ios_dns": "Quand vous vérifiez un lien, notre serveur reçoit le nom du site et un numéro d'installation aléatoire qui change chaque jour. Avec la protection DNS activée, il reçoit aussi le nom des sites que votre iPhone ouvre, sans enregistrer qui a ouvert quoi. Le texte des messages et l'adresse complète des pages ne quittent jamais votre téléphone."
     },
     "shield": {
       "network": {
@@ -3885,6 +3888,21 @@
       "err_not_allowed_appstore": "Les achats sont désactivés sur cet iPhone (par exemple dans Temps d'écran).",
       "err_store_appstore": "L'App Store n'a pas pu finaliser l'achat. Veuillez réessayer."
     },
+    "ios_sms": {
+      "line_ready": "Range les SMS d'arnaque d'expéditeurs inconnus dans Indésirables, directement sur cet iPhone. Fonctionne une fois activé dans Réglages.",
+      "sheet_title": "Activez le filtre des SMS d'arnaque",
+      "sheet_lead": "Vous seul pouvez activer un filtre SMS, dans les Réglages de l'iPhone. L'iPhone n'indique pas à Cleanway s'il est activé : cette ligne reste donc ici comme rappel.",
+      "step_settings": "Ouvrez Réglages.",
+      "step_messages": "Allez dans Apps → Messages.",
+      "step_filtering": "Touchez Inconnus et spam, puis Filtrage des SMS.",
+      "step_choose": "Choisissez Cleanway.",
+      "older_ios": "Sous iOS 17 et versions antérieures : Réglages → Messages → Inconnus et spam → Filtrage des SMS.",
+      "note_what": "Seuls les messages manifestement frauduleux vont dans Indésirables (Messages → Filtres → Indésirables). Les messages douteux restent dans votre boîte de réception.",
+      "note_privacy": "La vérification se fait sur votre iPhone. Le texte d'un message ne quitte jamais le téléphone, pas même vers Cleanway.",
+      "note_limits": "L'iPhone ne montre au filtre que les SMS et MMS de numéros absents de vos contacts, jamais iMessage. Si Filtrage des SMS n'apparaît pas, votre région ou votre opérateur ne le propose pas.",
+      "open_settings": "Ouvrir Réglages",
+      "done": "OK"
+    },
     "ios": {
       "header": "Protection sur iPhone",
       "lead": "Sur iPhone, Cleanway vous protège de trois façons. Chacune aura ici son étape de configuration dès qu'elle arrivera dans une mise à jour.",
@@ -3909,7 +3927,32 @@
       "dns_line": "Bloque les sites d'arnaque connus dans toutes les apps, grâce à un réglage DNS chiffré que vous approuvez dans les Réglages de l'iPhone.",
       "coming": "Bientôt",
       "set_up": "Configurer",
-      "on": "Activé"
+      "on": "Activé",
+      "dns": {
+        "title": "Protection DNS",
+        "privacy_title": "Ce qui est envoyé, et où",
+        "privacy_body": "Sur iPhone, la vérification se fait sur le serveur de Cleanway, et non sur le téléphone comme sur Android. Tant que la protection DNS est activée, votre iPhone envoie le nom de chaque site qu'une app ouvre (comme example.com — jamais le lien complet ni la page), chiffré, au serveur DNS de Cleanway. Le serveur bloque les noms de la liste des arnaques et demande au DNS de Cloudflare l'adresse des autres. Cleanway n'enregistre pas les sites que vous ouvrez : le serveur ne tient aucun journal des noms, ne garde que des totaux, comme le nombre de sites bloqués, et ne retient les réponses récentes en mémoire que par le nom du site, jamais par la personne qui a demandé. Notre hébergeur conserve ses journaux de requêtes habituels (politique de confidentialité, section 11).",
+        "step_add_title": "Ajoutez le DNS de Cleanway à l'iPhone",
+        "step_add_body": "Enregistre le réglage sur votre iPhone. Il reste désactivé jusqu'à ce que vous le choisissiez dans Réglages.",
+        "step_on_title": "Choisissez Cleanway dans Réglages",
+        "step_on_body": "Ouvrez Réglages, puis Général → VPN et gestion de l’appareil → DNS, et touchez Cleanway.",
+        "add": "Ajouter à l'iPhone",
+        "adding": "Ajout…",
+        "open_settings": "Ouvrir Réglages",
+        "status_checking": "Vérification des réglages de votre iPhone…",
+        "status_add": "Pas encore configuré.",
+        "status_turn_on": "Ajouté. Choisissez maintenant Cleanway dans Réglages — cet écran se met à jour à votre retour.",
+        "status_on": "Activé. Votre iPhone trouve les sites via Cleanway.",
+        "note_off": "Si les sites ne s'ouvrent plus, choisissez Automatique dans le même réglage DNS, ou supprimez Cleanway ci-dessous.",
+        "note_vpn": "Tant qu'une app VPN est connectée, votre iPhone peut utiliser le DNS de ce VPN au lieu de celui de Cleanway.",
+        "remove": "Supprimer de l'iPhone",
+        "removing": "Suppression…",
+        "done": "OK",
+        "step_done": "Fait",
+        "error_status": "Impossible de lire les réglages DNS de votre iPhone. Fermez et réessayez.",
+        "error_add": "Votre iPhone n'a pas enregistré le réglage. Réessayez ; si cela échoue encore, mettez Cleanway à jour.",
+        "error_remove": "Votre iPhone n'a pas supprimé le réglage. Vous pouvez le supprimer dans Réglages → Général → VPN et gestion de l’appareil → DNS."
+      }
     }
   }
 }

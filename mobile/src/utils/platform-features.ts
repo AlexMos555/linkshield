@@ -14,7 +14,8 @@
  * The iPhone app protects through three iOS-native layers instead, built in
  * separate steps: a Safari Web Extension (shipped: safariLayerState below), an SMS filter
  * (ILMessageFilterExtension) and DNS protection (NEDNSSettingsManager with
- * encrypted DNS). Until a layer ships it is listed as "coming soon" — said
+ * encrypted DNS — src/utils/ios-dns.ts reports its layer). Until a layer
+ * ships it is listed as "coming soon" — said
  * plainly, never as a placebo switch. Each later step reports its layer's
  * status through IosLayerAvailability; this file and the home card need no
  * other change.
@@ -56,11 +57,14 @@ export interface IosLayer {
   status: IosLayerStatus;
 }
 
+/** A layer as listed; `readyLineKey` replaces the line once the layer is no longer "coming". */
+type IosLayerDef = Omit<IosLayer, "status"> & { readyLineKey?: string };
+
 // Literal keys, so scripts/check-mobile-i18n.py can see every one. The order
 // is the order on screen: the one people meet first (Safari) on top.
-const IOS_LAYERS: ReadonlyArray<Omit<IosLayer, "status">> = [
+const IOS_LAYERS: ReadonlyArray<IosLayerDef> = [
   { id: "safari", titleKey: "mobile.ios.safari_title", lineKey: "mobile.ios.safari_line" },
-  { id: "sms_filter", titleKey: "mobile.ios.sms_title", lineKey: "mobile.ios.sms_line" },
+  { id: "sms_filter", titleKey: "mobile.ios.sms_title", lineKey: "mobile.ios.sms_line", readyLineKey: "mobile.ios_sms.line_ready" },
   { id: "dns", titleKey: "mobile.ios.dns_title", lineKey: "mobile.ios.dns_line" },
 ];
 
@@ -68,17 +72,19 @@ const STATUSES: ReadonlySet<string> = new Set(["coming", "setup", "on"]);
 
 /**
  * `lines` lets a layer say more than its default line once it is built
- * (e.g. the Safari layer: "turned off" vs "allow on all websites").
+ * (the Safari layer: "turned off" vs "allow it on other websites"); without
+ * one, a built layer shows its `readyLineKey` if it has one.
  */
 export function iosProtectionLayers(
   availability: IosLayerAvailability = {},
   lines: Partial<Record<IosLayerId, string>> = {},
 ): IosLayer[] {
-  return IOS_LAYERS.map((layer) => {
+  return IOS_LAYERS.map(({ readyLineKey, ...layer }) => {
     const reported = availability[layer.id];
     const status: IosLayerStatus = reported && STATUSES.has(reported) ? reported : "coming";
-    const line = status !== "coming" ? lines[layer.id] : undefined;
-    return { ...layer, lineKey: line || layer.lineKey, status };
+    const ready = status !== "coming";
+    const lineKey = (ready && lines[layer.id]) || (ready && readyLineKey) || layer.lineKey;
+    return { ...layer, lineKey, status };
   });
 }
 
@@ -163,6 +169,46 @@ export const SAFARI_SETUP_STEP_KEYS: ReadonlyArray<string> = [
 export const SAFARI_TEST_URL = "x-safari-https://cleanway.ai/";
 export const SAFARI_TEST_URL_FALLBACK = "https://cleanway.ai/";
 
+// ── The scam-text filter (ILMessageFilterExtension) ───────────────────
+
+/**
+ * The filter's layer status: "setup" whenever this build carries the
+ * extension, and never "on". Apple gives an app no way to know whether the
+ * person turned the filter on (Settings → Apps → Messages → Unknown & Spam →
+ * SMS Filtering), and a filter extension cannot write anything back; a row
+ * that turned green on a guess would be the placebo this card exists to
+ * avoid. "coming" on a build without the extension.
+ */
+export function smsFilterLayerStatus(installed: boolean): IosLayerStatus {
+  return installed ? "setup" : "coming";
+}
+
+/**
+ * Ask the server's version endpoint at all: always on Android (update nudge,
+ * message-check switches); on an iPhone only when its build carries the
+ * filter, which needs the same switches (the model's kill switch). The iPhone
+ * never shows an update decision from it.
+ */
+export function remoteConfigFetched(os: string, smsFilterInstalled: boolean): boolean {
+  return os === "android" || (os === "ios" && smsFilterInstalled);
+}
+
+/** The setup sheet, in order: where the switch is, then what it does and what it never does. */
+export const SMS_FILTER_SETUP = {
+  titleKey: "mobile.ios_sms.sheet_title",
+  leadKey: "mobile.ios_sms.sheet_lead",
+  stepKeys: [
+    "mobile.ios_sms.step_settings",
+    "mobile.ios_sms.step_messages",
+    "mobile.ios_sms.step_filtering",
+    "mobile.ios_sms.step_choose",
+  ],
+  olderKey: "mobile.ios_sms.older_ios",
+  noteKeys: ["mobile.ios_sms.note_what", "mobile.ios_sms.note_privacy", "mobile.ios_sms.note_limits"],
+  openSettingsKey: "mobile.ios_sms.open_settings",
+  doneKey: "mobile.ios_sms.done",
+} as const;
+
 // ── Copy that differs by platform ─────────────────────────────────────
 
 export interface OnboardingSlide {
@@ -190,9 +236,14 @@ export function shareHowToKey(os: string): string {
   return os === "ios" ? "mobile.home.check.share_sheet_body_ios" : "mobile.home.check.share_sheet_body";
 }
 
-/** The privacy line at the bottom of home: the Android one talks about shields an iPhone does not have. */
-export function homePrivacyKey(os: string): string {
-  return os === "ios" ? "mobile.home.privacy_ios" : "mobile.home.privacy";
+/**
+ * The privacy line at the bottom of home: the Android one talks about shields
+ * an iPhone does not have. With the iPhone's DNS protection on, site names
+ * also go to Cleanway's DNS server — the line says so.
+ */
+export function homePrivacyKey(os: string, iosDnsOn = false): string {
+  if (os !== "ios") return "mobile.home.privacy";
+  return iosDnsOn ? "mobile.home.privacy_ios_dns" : "mobile.home.privacy_ios";
 }
 
 /**
@@ -201,7 +252,11 @@ export function homePrivacyKey(os: string): string {
  * that does not exist, but what the app does now and where the rest is.
  * Null when the usual hero copy applies.
  */
-export function heroWithoutShieldsKeys(os: string, shieldCount: number): { title: string; sub: string } | null {
+export function heroWithoutShieldsKeys(
+  os: string, shieldCount: number, iosLayers: readonly { status: IosLayerStatus }[] = [],
+): { title: string; sub: string } | null {
   if (shieldCount > 0 || os !== "ios") return null;
-  return { title: "mobile.home.hero.title_ios", sub: "mobile.home.hero.sub_ios" };
+  // "On its way" stops being true once a layer can be set up.
+  const ready = iosLayers.some((l) => l.status !== "coming");
+  return { title: "mobile.home.hero.title_ios", sub: ready ? "mobile.home.hero.sub_ios_ready" : "mobile.home.hero.sub_ios" };
 }

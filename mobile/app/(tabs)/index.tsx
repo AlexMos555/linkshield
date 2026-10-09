@@ -13,12 +13,16 @@ import { PauseSheet } from "../../src/components/shield/PauseSheet";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { IosProtectionCard } from "../../src/components/shield/IosProtectionCard";
+import { SmsFilterSetupSheet } from "../../src/components/shield/SmsFilterSetupSheet";
+import { IosDnsSetupSheet } from "../../src/components/shield/IosDnsSetupSheet";
+import { useIosDnsProtection } from "../../src/hooks/useIosDnsProtection";
 import { SafariSetupSheet } from "../../src/components/shield/SafariSetupSheet";
 import { useSafariExtension } from "../../src/hooks/useSafariExtension";
 import {
   androidProtectionShown, heroWithoutShieldsKeys, homePrivacyKey, iosProtectionLayers, iosProtectionShown,
-  shareHowToKey,
+  shareHowToKey, smsFilterLayerStatus, type IosLayerId,
 } from "../../src/utils/platform-features";
+import { smsFilterInstalled } from "../../modules/cleanway-sms-filter";
 import { ShieldCard } from "../../src/components/shield/ShieldCard";
 import { useNetworkShield, PAUSE_MINUTES, type ShieldStopReason } from "../../src/hooks/useNetworkShield";
 import { clockTime } from "../../src/utils/relative-time";
@@ -82,6 +86,7 @@ export default function HomeScreen() {
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [pauseSheetVisible, setPauseSheetVisible] = useState(false);
+  const [smsSetupVisible, setSmsSetupVisible] = useState(false);
   const [safariSheetVisible, setSafariSheetVisible] = useState(false);
   // iPhone: the Safari extension shipped inside the app (status + setup steps).
   const safari = useSafariExtension();
@@ -118,6 +123,9 @@ export default function HomeScreen() {
   // maker's own manager, alerts, Always-on). Re-read when the shield changes:
   // Always-on can only be read while it runs.
   const keepAlive = useKeepAlive(`${network.state}:${network.verified}`);
+  // iPhone: DNS protection (NEDNSSettingsManager), live from iOS. Inert elsewhere.
+  const iosDns = useIosDnsProtection();
+  const [dnsSheetVisible, setDnsSheetVisible] = useState(false);
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -163,14 +171,24 @@ export default function HomeScreen() {
     : null;
 
   const rollout = rolloutItems(t, Platform.OS, messageCheck);
-  // iPhone: no shield exists yet, so the hero says what the app does now
-  // instead of "let's set up — 0 shields active".
-  const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount);
   // The iPhone's protection layers. Each step (Safari extension, SMS filter,
-  // DNS settings) passes its status here; a layer not reported is "coming".
+  // DNS settings) passes its status here; one not reported is "coming".
   const iosLayers = iosProtectionShown(Platform.OS)
-    ? iosProtectionLayers({ safari: safari.layer.status }, { safari: safari.layer.lineKey })
+    ? iosProtectionLayers(
+      { safari: safari.layer.status, dns: iosDns.layer, sms_filter: smsFilterLayerStatus(smsFilterInstalled()) },
+      { safari: safari.layer.lineKey },
+    )
     : null;
+  // iPhone: no shield exists, so the hero says what the app does now instead
+  // of "let's set up — 0 shields active".
+  const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount, iosLayers ?? []);
+  // "Set up" on a layer opens its sheet. The scam-text filter's only gives the
+  // steps: iOS lets only the person enable an SMS filter.
+  const onIosSetUp = (id: IosLayerId) => {
+    if (id === "safari") setSafariSheetVisible(true);
+    if (id === "dns") setDnsSheetVisible(true);
+    if (id === "sms_filter") setSmsSetupVisible(true);
+  };
 
   /**
    * Prominent disclosure, shown BEFORE Android's own consent dialog.
@@ -437,12 +455,7 @@ export default function HomeScreen() {
 
       {iosLayers && (
         <View style={s.section}>
-          <IosProtectionCard
-            layers={iosLayers}
-            onSetUp={(id) => {
-              if (id === "safari") setSafariSheetVisible(true);
-            }}
-          />
+          <IosProtectionCard layers={iosLayers} onSetUp={onIosSetUp} />
         </View>
       )}
 
@@ -477,10 +490,14 @@ export default function HomeScreen() {
 
       <View style={s.privacyRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
-        <Text style={s.privacy}>{t(homePrivacyKey(Platform.OS))}</Text>
+        <Text style={s.privacy}>{t(homePrivacyKey(Platform.OS, iosDns.phase === "on"))}</Text>
       </View>
 
       <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
+      <SmsFilterSetupSheet visible={smsSetupVisible} onClose={() => setSmsSetupVisible(false)} />
+      {iosLayers && (
+        <IosDnsSetupSheet visible={dnsSheetVisible} dns={iosDns} onClose={() => setDnsSheetVisible(false)} />
+      )}
       {iosLayers && (
         <SafariSetupSheet
           visible={safariSheetVisible}

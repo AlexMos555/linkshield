@@ -92,6 +92,8 @@ export type CleanwayVpnModuleEvents = {
   onNetworkChanged: (params: NetworkChangedPayload) => void;
   /** A call began or ended (CallState.kt) — the stop screen and the home button follow it. */
   onCallStateChanged: (params: CallStatePayload) => void;
+  /** iPhone: the DNS configuration changed (turned on/off in Settings); read dnsSettingsStatus() again. */
+  onDnsSettingsChanged: (params: Record<string, never>) => void;
 };
 
 /**

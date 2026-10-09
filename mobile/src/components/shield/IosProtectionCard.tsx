@@ -18,7 +18,8 @@ const ICONS: Record<IosLayerId, IconName> = {
  * extension, the scam-text filter and DNS protection, each with its honest
  * status. A layer that is not built yet says "Coming soon" — no switch, no
  * chevron, not tappable. When a later build reports a layer as "setup",
- * its row offers [onSetUp]; "on" shows a check.
+ * its row offers [onSetUp]; "on" shows a check, and its row opens the same
+ * flow (to see the state, or to remove it).
  */
 export function IosProtectionCard({ layers, onSetUp }: {
   layers: IosLayer[];
@@ -54,13 +55,14 @@ export function IosProtectionCard({ layers, onSetUp }: {
               )}
             </>
           );
-          return layer.status === "setup" && onSetUp ? (
+          return ready && onSetUp ? (
             <TouchableOpacity
               key={layer.id}
               style={[s.row, s.rowBorder]}
               onPress={() => onSetUp(layer.id)}
               activeOpacity={0.85}
               accessibilityRole="button"
+              accessibilityLabel={`${t(layer.titleKey)}, ${t(layer.status === "on" ? "mobile.ios.on" : "mobile.ios.set_up")}`}
             >
               {row}
             </TouchableOpacity>

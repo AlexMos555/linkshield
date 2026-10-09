@@ -107,6 +107,14 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   setCloseContactPhone?(phone: string | null): boolean;
   /** Open the phone app on the saved number; false when none is saved. */
   dialCloseContact?(): boolean;
+  /**
+   * iPhone DNS protection (NEDNSSettingsManager). Raw report — index.ts
+   * validates it (src/IosDnsSettings.ts). They answer with a report, never
+   * reject. Optional: Android and older iOS builds lack them.
+   */
+  dnsSettingsStatus?(): Promise<Record<string, unknown>>;
+  installDnsSettings?(): Promise<Record<string, unknown>>;
+  removeDnsSettings?(): Promise<Record<string, unknown>>;
 }
 
 export default requireNativeModule<CleanwayVpnModule>('CleanwayVpn');

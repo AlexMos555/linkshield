@@ -788,7 +788,7 @@
     "meta_description": "What Cleanway receives, what stays on your phone or in your browser, who else sees what, and how long anything is kept.",
     "back": "Back to Cleanway",
     "title": "Privacy policy",
-    "updated": "Last updated: October 8, 2026",
+    "updated": "Last updated: October 9, 2026",
     "intro": "This policy explains in plain words what data Cleanway handles, why, and who else sees it. It describes the service as it works today. If something here does not match what Cleanway actually does, that is a mistake and we want to hear about it.",
     "contact_live": "Questions and requests about your data:",
     "contact_not_live": "Our support mailbox is still being set up, so we cannot receive email yet. This section will show the address as soon as it works.",
@@ -894,7 +894,8 @@
         "title": "11. The website and the DNS filter",
         "paragraphs": [
           "cleanway.ai has no advertising or analytics trackers. Our hosting providers — Vercel for the website, Railway for the server — keep standard technical request logs, which can include the requested address and your IP address.",
-          "If you set up the Cleanway DNS filter (dns.cleanway.ai) on an iPhone, Mac or Windows computer, all of your device's DNS queries go to our server. It blocks names from the list and passes the rest to Cloudflare to find the address. Queries are not written to disk; for a blocked name, our log keeps at most its last 32 characters, without your IP address."
+          "If you set up the Cleanway DNS filter (dns.cleanway.ai) on an iPhone, Mac or Windows computer, all of your device's DNS queries go to our server. It blocks names from the list and passes the rest to Cloudflare to find the address. Queries are not written to disk or to any log: our server keeps only totals, such as how many queries it answered and how many it blocked. To answer repeat questions faster, it holds recent answers in its memory, stored by the question alone (the site name and the kind of record), never by who asked — for as long as the answer is valid, at most an hour, and up to 6 more hours as a backup in case Cloudflare stops answering. They are never written to disk or a database and are gone when the server restarts.",
+          "The Cleanway app for iPhone can set up the same DNS filter for you as “DNS protection”: the app saves Cleanway's encrypted DNS setting on the iPhone, and it starts working only after you choose it in the iPhone's Settings. Unlike the Android app, which compares site names with a list stored on the phone, on iPhone the comparison happens on our server: while DNS protection is on, the iPhone sends our server, encrypted, the name of every site any app looks up, and the server handles it as described in the previous paragraph. To limit how many queries one connection can make, our server counts them in its memory under a scrambled code made from your IP address (a keyed hash), not under the address itself, and clears the count every hour; it is never stored together with the names you look up. On iOS 26 and later, if our server does not answer, the iPhone may ask the network's own DNS server instead, as without Cleanway. You can turn DNS protection off in the iPhone's Settings or remove it in the app at any time."
         ]
       },
       {
