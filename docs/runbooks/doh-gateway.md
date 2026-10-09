@@ -141,7 +141,7 @@ worker is below ~60% busy; above that, misses queue. Scale on CPU, not memory.
 
 ## Scaling on Railway
 
-* **Workers.** uvicorn reads `WEB_CONCURRENCY` (the Procfile/nixpacks start
+* **Workers.** uvicorn reads `WEB_CONCURRENCY` (the Dockerfile start
   command needs no change). One worker per vCPU; each holds its own list and
   cache (~170–200 MB). Set `WEB_CONCURRENCY=2` on a 2-vCPU / 1 GB plan.
 * **Replicas.** Railway service → Settings → Replicas ≥ 2, so a crashed or

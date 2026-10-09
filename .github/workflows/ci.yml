@@ -475,11 +475,24 @@ jobs:
             exit 1
           fi
 
-  # Docker build job disabled — we removed the Dockerfile (commit 208efd2)
-  # so Railway uses Nixpacks + Procfile. Railway's build on every push is
-  # effectively this job's replacement. Re-enable if we reintroduce Docker.
+  # Railway builds the root Dockerfile on every push to main. Build and boot the
+  # same image here so a broken Dockerfile or start command never reaches
+  # production.
   docker:
     runs-on: ubuntu-latest
-    if: false
     steps:
-      - run: echo "Docker build disabled — Nixpacks is the builder now."
+      - uses: actions/checkout@v6
+      - name: Build the production image
+        run: docker build -t cleanway-api:ci .
+      - name: Boot it the way Railway does and probe /health
+        run: |
+          docker run -d --name api -e PORT=8080 -e WEB_CONCURRENCY=2 -p 8080:8080 cleanway-api:ci
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health > /dev/null; then
+              echo "healthy after ${i} tries"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs api
+          exit 1
