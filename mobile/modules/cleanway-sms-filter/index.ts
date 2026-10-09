@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
 
 /**
- * The app's side of the iPhone scam-text filter (docs/IOS.md §4). The filter
+ * The app's side of the iPhone scam-text filter (docs/IOS.md §5). The filter
  * itself is the CleanwaySmsFilter extension (plugins/withSmsFilter.js), which
  * checks each SMS from an unknown sender on the phone, offline.
  *

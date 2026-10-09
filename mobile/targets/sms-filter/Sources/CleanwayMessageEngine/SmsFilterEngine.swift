@@ -53,7 +53,7 @@ public final class SmsFilterEngine {
 
     public init(assets: Assets) { self.assets = assets }
 
-    /// Dangerous → Junk. Caution and no signals → shown as usual (docs/IOS.md §4:
+    /// Dangerous → Junk. Caution and no signals → shown as usual (docs/IOS.md §5:
     /// a caution is a partial combination, and Junk hides a message with no
     /// way to see why — a real bank or delivery text there costs more than a
     /// borderline scam left in the inbox).

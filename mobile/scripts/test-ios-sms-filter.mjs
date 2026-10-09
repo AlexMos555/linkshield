@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Table test for the iPhone scam-text filter's app side and build shape
- * (docs/IOS.md §4): the home card's SMS row, its setup sheet, the server's
+ * (docs/IOS.md §5): the home card's SMS row, its setup sheet, the server's
  * switches reaching the extension, and the Expo plugin that adds the
  * ILMessageFilterExtension target. The engine's verdicts are pinned by the
  * Swift parity tests and check-ios-parity-fixture.mjs.

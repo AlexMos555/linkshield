@@ -1,7 +1,7 @@
 /**
  * Expo config plugin: the iPhone's scam-text filter — an ILMessageFilterExtension
  * target ("CleanwaySmsFilter", ai.cleanway.app.sms-filter) embedded in the app.
- * docs/IOS.md §4.
+ * docs/IOS.md §5.
  *
  * What it does on every `expo prebuild -p ios`:
  *   1. copies the engine (mobile/targets/sms-filter/Sources/CleanwayMessageEngine,

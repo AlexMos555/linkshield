@@ -3,7 +3,7 @@
 // as a Swift package, so its parity tests run with `swift test` on a Mac and
 // with xcodebuild on the iOS simulator. The app never links this package: the
 // Expo plugin (mobile/plugins/withSmsFilter.js) compiles these same sources
-// into the CleanwaySmsFilter extension target. docs/IOS.md §4.
+// into the CleanwaySmsFilter extension target. docs/IOS.md §5.
 import PackageDescription
 
 let package = Package(

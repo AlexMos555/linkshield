@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CI gate for the iPhone scam-text filter (docs/IOS.md §4).
+ * CI gate for the iPhone scam-text filter (docs/IOS.md §5).
  *
  * The filter's engine is a Swift port of the Android message check
  * (mobile/targets/sms-filter). Its parity tests replay
@@ -10,7 +10,7 @@
  * from the engine, assets and corpora as they are now, so this script
  * re-hashes every input the fixture records and fails when one changed
  * without the fixture being regenerated. (CI runs no JVM and no Xcode; the
- * regeneration and the Swift run are local, docs/IOS.md §4.4.)
+ * regeneration and the Swift run are local, docs/IOS.md §5.4.)
  *
  * It also pins the privacy promise — message text never leaves the phone:
  * the extension and the engine open no connection and never defer a message
@@ -45,7 +45,7 @@ function check(name, fn) {
 
 const fixture = JSON.parse(readFileSync(FIXTURE, "utf8"));
 const REGEN =
-  "Regenerate it (docs/IOS.md §4.4): run MessageIosParityTest with CLEANWAY_WRITE_IOS_PARITY=1, " +
+  "Regenerate it (docs/IOS.md §5.4): run MessageIosParityTest with CLEANWAY_WRITE_IOS_PARITY=1, " +
   "then `swift test` in mobile/targets/sms-filter — and port the Kotlin change to Swift if a case now differs.";
 
 check("the fixture was made from the current engine, assets and corpora", () => {

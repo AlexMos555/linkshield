@@ -1,7 +1,7 @@
 import ExpoModulesCore
 import Foundation
 
-// The app's side of the iPhone scam-text filter (docs/IOS.md §4). The filter
+// The app's side of the iPhone scam-text filter (docs/IOS.md §5). The filter
 // is the CleanwaySmsFilter extension; the app can only:
 //   - leave the server's switches for it in the app group (the Android twin is
 //     RemoteConfigStore in SharedPreferences): remote_config.json, the same

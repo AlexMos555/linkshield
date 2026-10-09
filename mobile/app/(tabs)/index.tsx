@@ -14,6 +14,8 @@ import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { IosProtectionCard } from "../../src/components/shield/IosProtectionCard";
 import { SmsFilterSetupSheet } from "../../src/components/shield/SmsFilterSetupSheet";
+import { IosDnsSetupSheet } from "../../src/components/shield/IosDnsSetupSheet";
+import { useIosDnsProtection } from "../../src/hooks/useIosDnsProtection";
 import {
   androidProtectionShown, heroWithoutShieldsKeys, homePrivacyKey, iosProtectionLayers, iosProtectionShown,
   shareHowToKey, smsFilterLayerStatus, type IosLayerId,
@@ -116,6 +118,9 @@ export default function HomeScreen() {
   // maker's own manager, alerts, Always-on). Re-read when the shield changes:
   // Always-on can only be read while it runs.
   const keepAlive = useKeepAlive(`${network.state}:${network.verified}`);
+  // iPhone: DNS protection (NEDNSSettingsManager), live from iOS. Inert elsewhere.
+  const iosDns = useIosDnsProtection();
+  const [dnsSheetVisible, setDnsSheetVisible] = useState(false);
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -161,16 +166,18 @@ export default function HomeScreen() {
     : null;
 
   const rollout = rolloutItems(t, Platform.OS, messageCheck);
-  // iPhone: no shield exists yet, so the hero says what the app does now
-  // instead of "let's set up — 0 shields active".
-  const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount);
-  // The iPhone's protection layers. Each later step (Safari extension, SMS
-  // filter, DNS settings) passes its status here; until then all are "coming".
+  // The iPhone's protection layers. Each step (Safari extension, SMS filter,
+  // DNS settings) passes its status here; one not reported is "coming".
   const iosLayers = iosProtectionShown(Platform.OS)
-    ? iosProtectionLayers({ sms_filter: smsFilterLayerStatus(smsFilterInstalled()) })
+    ? iosProtectionLayers({ dns: iosDns.layer, sms_filter: smsFilterLayerStatus(smsFilterInstalled()) })
     : null;
-  // "Set up" on a layer: the scam-text filter's steps (iOS lets only the person enable it).
+  // iPhone: no shield exists, so the hero says what the app does now instead
+  // of "let's set up — 0 shields active".
+  const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount, iosLayers ?? []);
+  // "Set up" on a layer opens its sheet. The scam-text filter's only gives the
+  // steps: iOS lets only the person enable an SMS filter.
   const onIosSetUp = (id: IosLayerId) => {
+    if (id === "dns") setDnsSheetVisible(true);
     if (id === "sms_filter") setSmsSetupVisible(true);
   };
 
@@ -474,11 +481,14 @@ export default function HomeScreen() {
 
       <View style={s.privacyRow}>
         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
-        <Text style={s.privacy}>{t(homePrivacyKey(Platform.OS))}</Text>
+        <Text style={s.privacy}>{t(homePrivacyKey(Platform.OS, iosDns.phase === "on"))}</Text>
       </View>
 
       <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
       <SmsFilterSetupSheet visible={smsSetupVisible} onClose={() => setSmsSetupVisible(false)} />
+      {iosLayers && (
+        <IosDnsSetupSheet visible={dnsSheetVisible} dns={iosDns} onClose={() => setDnsSheetVisible(false)} />
+      )}
       <PauseSheet
         visible={pauseSheetVisible}
         minutes={PAUSE_MINUTES}

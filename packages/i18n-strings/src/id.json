@@ -2339,7 +2339,7 @@
       "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel atau browser Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
       "back": "Kembali ke Cleanway",
       "title": "Kebijakan privasi",
-      "updated": "Terakhir diperbarui: 8 Oktober 2026",
+      "updated": "Terakhir diperbarui: 9 Oktober 2026",
       "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
       "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
       "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Alamatnya akan muncul di bagian ini begitu berfungsi.",
@@ -2445,7 +2445,8 @@
           "title": "11. Situs web dan filter DNS",
           "paragraphs": [
             "cleanway.ai tidak memiliki iklan maupun pelacak analitik. Penyedia hosting kami, Vercel untuk situs web dan Railway untuk server, menyimpan log teknis permintaan yang biasa, yang dapat berisi alamat yang diminta dan alamat IP Anda.",
-            "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai) di iPhone, Mac, atau komputer Windows, semua permintaan DNS perangkat dikirim ke server kami. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk; untuk nama yang diblokir, log kami menyimpan paling banyak 32 karakter terakhirnya, tanpa alamat IP Anda."
+            "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai) di iPhone, Mac, atau komputer Windows, semua permintaan DNS perangkat dikirim ke server kami. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk maupun ke log apa pun: server kami hanya menyimpan jumlah total, seperti berapa permintaan yang dijawab dan berapa yang diblokir. Agar pertanyaan yang berulang dijawab lebih cepat, server menyimpan jawaban terbaru di memorinya, berdasarkan pertanyaannya saja (nama situs dan jenis catatan), tidak pernah berdasarkan siapa yang bertanya: selama jawabannya berlaku, paling lama satu jam, dan hingga 6 jam lagi sebagai cadangan jika Cloudflare berhenti menjawab. Jawaban itu tidak pernah ditulis ke disk atau database dan hilang saat server dimulai ulang.",
+            "Aplikasi Cleanway untuk iPhone dapat memasang filter DNS yang sama ini untuk Anda sebagai “Perlindungan DNS”: aplikasi menyimpan pengaturan DNS terenkripsi Cleanway di iPhone, dan pengaturan itu baru bekerja setelah Anda memilihnya di Pengaturan iPhone. Berbeda dengan aplikasi Android, yang mencocokkan nama situs dengan daftar yang tersimpan di ponsel, di iPhone pencocokan dilakukan di server kami: selama perlindungan DNS aktif, iPhone mengirim ke server kami, terenkripsi, nama setiap situs yang dicari aplikasi apa pun, dan server menanganinya seperti dijelaskan di paragraf sebelumnya. Untuk membatasi berapa banyak permintaan dari satu koneksi, server kami menghitungnya di memori dengan kode acak yang dibuat dari alamat IP Anda (hash berkunci), bukan dengan alamat itu sendiri, dan mengosongkan hitungan setiap jam; hitungan itu tidak pernah disimpan bersama nama yang Anda cari. Di iOS 26 dan yang lebih baru, jika server kami tidak menjawab, iPhone dapat bertanya ke server DNS jaringan itu sendiri, seperti tanpa Cleanway. Anda dapat mematikan perlindungan DNS di Pengaturan iPhone atau menghapusnya di aplikasi kapan saja."
           ]
         },
         {
@@ -3002,7 +3003,8 @@
         "title_conflict": "Perlindungan tidak bekerja",
         "sub_conflict": "Setelan DNS Pribadi menghalangi — lihat di bawah apa yang perlu diubah",
         "title_ios": "Periksa sebelum mengetuk",
-        "sub_ios": "Perlindungan otomatis untuk iPhone sedang disiapkan — lihat di bawah"
+        "sub_ios": "Perlindungan otomatis untuk iPhone sedang disiapkan — lihat di bawah",
+        "sub_ios_ready": "Perlindungan otomatis untuk iPhone — lihat di bawah"
       },
       "cta_turn_on": "Nyalakan perlindungan",
       "check": {
@@ -3040,7 +3042,8 @@
       "interrupted_revoked": "Android menghentikan perlindungan: izin VPN dicabut di setelan ponsel, atau aplikasi VPN lain mengambil alih. Ketuk tombol di bawah, lalu \"{{button}}\". Jika Android meminta izin untuk koneksi, ketuk \"Oke\". Aplikasi VPN lain akan mati: Android hanya menjalankan satu VPN pada satu waktu.",
       "interrupted_private_dns": "Perlindungan berhenti karena setelan \"DNS Pribadi\". Sekarang setelan itu tidak mengganggu lagi: ketuk tombol di bawah, lalu \"{{button}}\".",
       "cta_turn_back_on": "Nyalakan perlindungan lagi",
-      "privacy_ios": "Saat Anda memeriksa tautan, server kami menerima nama situs dan nomor instalasi acak yang berubah setiap hari. Teks pesan dan alamat halaman lengkap tidak pernah meninggalkan ponsel Anda."
+      "privacy_ios": "Saat Anda memeriksa tautan, server kami menerima nama situs dan nomor instalasi acak yang berubah setiap hari. Teks pesan dan alamat halaman lengkap tidak pernah meninggalkan ponsel Anda.",
+      "privacy_ios_dns": "Saat Anda memeriksa tautan, server kami menerima nama situs dan nomor instalasi acak yang berganti setiap hari. Dengan perlindungan DNS aktif, server juga menerima nama situs yang dibuka iPhone Anda, tanpa mencatat siapa membuka apa. Teks pesan dan alamat halaman lengkap tidak pernah keluar dari ponsel Anda."
     },
     "shield": {
       "network": {
@@ -3911,7 +3914,32 @@
       "dns_line": "Memblokir situs penipuan yang dikenal di semua aplikasi, melalui pengaturan DNS terenkripsi yang Anda setujui di Pengaturan iPhone.",
       "coming": "Segera hadir",
       "set_up": "Siapkan",
-      "on": "Aktif"
+      "on": "Aktif",
+      "dns": {
+        "title": "Perlindungan DNS",
+        "privacy_title": "Apa yang dikirim, dan ke mana",
+        "privacy_body": "Di iPhone, pemeriksaan dilakukan di server Cleanway, bukan di ponsel seperti di Android. Selama perlindungan DNS aktif, iPhone Anda mengirim nama setiap situs yang dibuka aplikasi (misalnya example.com — tidak pernah tautan lengkap atau halamannya), terenkripsi, ke server DNS Cleanway. Server memblokir nama yang ada di daftar penipuan dan menanyakan alamat sisanya ke DNS Cloudflare. Cleanway tidak mencatat situs yang Anda buka: server tidak membuat log nama situs, hanya menyimpan jumlah total seperti berapa situs yang diblokir, dan mengingat jawaban terbaru di memori hanya berdasarkan nama situs, tidak pernah berdasarkan siapa yang bertanya. Penyedia hosting kami menyimpan log permintaan standarnya (kebijakan privasi, bagian 11).",
+        "step_add_title": "Tambahkan DNS Cleanway ke iPhone",
+        "step_add_body": "Menyimpan pengaturan di iPhone Anda. Pengaturan tetap nonaktif sampai Anda memilihnya di Pengaturan.",
+        "step_on_title": "Pilih Cleanway di Pengaturan",
+        "step_on_body": "Buka Pengaturan, lalu Umum → VPN & Manajemen Perangkat → DNS, dan ketuk Cleanway.",
+        "add": "Tambahkan ke iPhone",
+        "adding": "Menambahkan…",
+        "open_settings": "Buka Pengaturan",
+        "status_checking": "Memeriksa pengaturan iPhone Anda…",
+        "status_add": "Belum disiapkan.",
+        "status_turn_on": "Sudah ditambahkan. Sekarang pilih Cleanway di Pengaturan — layar ini diperbarui saat Anda kembali.",
+        "status_on": "Aktif. iPhone Anda mencari situs melalui Cleanway.",
+        "note_off": "Jika situs tidak bisa dibuka lagi, pilih Otomatis di pengaturan DNS yang sama, atau hapus Cleanway di bawah.",
+        "note_vpn": "Selama aplikasi VPN terhubung, iPhone Anda mungkin memakai DNS VPN tersebut, bukan DNS Cleanway.",
+        "remove": "Hapus dari iPhone",
+        "removing": "Menghapus…",
+        "done": "Selesai",
+        "step_done": "Selesai",
+        "error_status": "Tidak bisa membaca pengaturan DNS iPhone Anda. Tutup ini dan coba lagi.",
+        "error_add": "iPhone Anda tidak menyimpan pengaturan. Coba lagi; jika terus gagal, perbarui Cleanway.",
+        "error_remove": "iPhone Anda tidak menghapus pengaturan. Anda bisa menghapusnya di Pengaturan → Umum → VPN & Manajemen Perangkat → DNS."
+      }
     }
   }
 }

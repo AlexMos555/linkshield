@@ -18,7 +18,7 @@
   "mobile/modules/cleanway-vpn/android/src/test/java/ai/cleanway/app/MessageCorpus.kt": "fd72e32d97ac2910c47bf71a3edc28bd8f79c74fd980a160cbc3cc4167236011",
   "mobile/modules/cleanway-vpn/android/src/test/java/ai/cleanway/app/MessageSchemeCorpus.kt": "ae6b9091e55f8358a4dff1df1c4d8855f22d3aadb83c718682ec4ed482a8a258",
   "mobile/modules/cleanway-vpn/android/src/test/java/ai/cleanway/app/MessageGenericCorpus.kt": "cff2503f4acaab378684e9d5f9c3195af5681773a096a874aacb306f4f37434c",
-  "mobile/modules/cleanway-vpn/android/src/test/java/ai/cleanway/app/MessageIosParityTest.kt": "655fdc737fb0872cb9be7546a220b39c3e80962514d0a1d46bfedf53d245a4cb",
+  "mobile/modules/cleanway-vpn/android/src/test/java/ai/cleanway/app/MessageIosParityTest.kt": "19018909d5baa466b8dd1861ab994a3fc2c9376044e65256ee535e3cdbcfd9d1",
   "mobile/modules/cleanway-vpn/android/src/test/resources/message_heldout_2026-10.tsv": "f4e762810fadba0f91a5b9a38ea95823183c8359af21ef80751c2dcecce8cf0b",
   "mobile/modules/cleanway-vpn/android/src/test/resources/message_blind_2026-10b.tsv": "5ef3f118d74f52acdb16a799a5efe7708b45fcaa5daafa6cc9d18c0d9e51e740",
   "mobile/modules/cleanway-vpn/android/src/test/resources/message_blind_2026-10c.tsv": "96121f8c7dccee3b24cbb0269e1ba92654bdee4c8710c07fa15dc475519d1100",

@@ -39,6 +39,10 @@ import type {
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
 import { parseKeepAliveStatus, parseRearmDecision, UNKNOWN_KEEP_ALIVE } from './src/KeepAliveStatus';
+import { parseIosDnsReport } from './src/IosDnsSettings';
+import type { IosDnsError, IosDnsReport } from './src/IosDnsSettings';
+
+export type { IosDnsError, IosDnsReport };
 
 export type {
   BlocklistStatus,
@@ -769,6 +773,49 @@ export function isVpnRunning(): boolean {
   } catch {
     return false;
   }
+}
+
+// ── iPhone DNS protection (NEDNSSettingsManager, docs/IOS.md §4) ──────────
+
+/** This build can set up the iPhone's DNS protection (iOS, and a native build that has it). */
+export function isIosDnsSupported(): boolean {
+  return Platform.OS === 'ios' && typeof CleanwayVpn.dnsSettingsStatus === 'function';
+}
+
+type DnsCall = 'dnsSettingsStatus' | 'installDnsSettings' | 'removeDnsSettings';
+
+async function dnsCall(name: DnsCall): Promise<IosDnsReport | null> {
+  if (!isIosDnsSupported()) return null;
+  try {
+    const fn = CleanwayVpn[name];
+    if (typeof fn !== 'function') return null;
+    return parseIosDnsReport(await fn.call(CleanwayVpn));
+  } catch {
+    // The native side answers with a report, never a rejection; a throw here
+    // is a bridge failure — say "failed", not "not set up".
+    return parseIosDnsReport(null);
+  }
+}
+
+/** What iOS has saved and whether the person turned it on. Null where there is no such layer. */
+export function iosDnsStatus(): Promise<IosDnsReport | null> {
+  return dnsCall('dnsSettingsStatus');
+}
+
+/** Save Cleanway's encrypted DNS in iOS. It stays off until the person picks it in Settings. */
+export function installIosDns(): Promise<IosDnsReport | null> {
+  return dnsCall('installDnsSettings');
+}
+
+/** Remove it from iOS altogether. */
+export function removeIosDns(): Promise<IosDnsReport | null> {
+  return dnsCall('removeDnsSettings');
+}
+
+/** iOS changed the DNS configuration (usually: the person switched it in Settings). */
+export function addIosDnsChangedListener(cb: () => void): { remove: () => void } {
+  if (!isIosDnsSupported()) return { remove: () => {} };
+  return CleanwayVpn.addListener('onDnsSettingsChanged', cb);
 }
 
 /**

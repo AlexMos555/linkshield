@@ -5,7 +5,7 @@ import { colors, type as typo, space, radius } from "../../utils/theme";
 import { SMS_FILTER_SETUP } from "../../utils/platform-features";
 
 /**
- * How to turn on the iPhone's scam-text filter (docs/IOS.md §4). iOS lets
+ * How to turn on the iPhone's scam-text filter (docs/IOS.md §5). iOS lets
  * only the person switch an SMS filter on, in Settings → Apps → Messages →
  * Unknown & Spam → SMS Filtering, and never tells the app whether they did —
  * so this sheet gives the steps and says plainly what the filter does and

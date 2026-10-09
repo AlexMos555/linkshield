@@ -78,10 +78,10 @@ iOS (`readStoreBillingConfig`).
 | | Value |
 |---|---|
 | Bundle id | `ai.cleanway.app` |
-| Targets | `Cleanway` (app), `CleanwayCheckLink` (share extension, `ai.cleanway.app.share-extension`), `CleanwaySmsFilter` (scam-text filter, `ai.cleanway.app.sms-filter`, §4) |
+| Targets | `Cleanway` (app), `CleanwayCheckLink` (share extension, `ai.cleanway.app.share-extension`), `CleanwaySmsFilter` (scam-text filter, `ai.cleanway.app.sms-filter`, §5) |
 | App group | `group.ai.cleanway.app` (app + share extension; the extension hands the shared link/text to the app through it) |
 | Devices | iPhone only (`supportsTablet: false`, see §2.3); iOS 15.1+ |
-| Entitlements | App group only. No push (`aps-environment` is stripped by `plugins/withIosAppStore.js`), no Network Extension, no VPN |
+| Entitlements | App group; Network Extensions = `["dns-settings"]` (DNS protection, §4 — added by `plugins/withIosAppStore.js`). No push (`aps-environment` is stripped by the same plugin), no VPN value |
 | Usage strings | Camera only (QR scanner). Microphone and Face ID strings are switched off in `app.json` |
 | Encryption | `ITSAppUsesNonExemptEncryption = false` (HTTPS only) — no export-compliance question on upload |
 | Privacy manifest | `ios.privacyManifests` in `app.json` → `PrivacyInfo.xcprivacy`; pods ship their own (RN core, Expo modules, RevenueCat, Sentry) |
@@ -111,8 +111,9 @@ keep-protection-on card (battery / phone maker / Always-on), link checking
 being called", the on-device SMS analyzer card, the APK update banner, Android
 permission prompts. The rules live in `src/utils/platform-features.ts` and are
 pinned by `mobile/scripts/test-platform-gating.mjs` (CI). Instead the home
-screen shows **Protection on iPhone**: Safari extension, scam-text filter
-("Set up", §4) and DNS protection, the unbuilt ones "Coming soon", and the hero says "Check before you tap"
+screen shows **Protection on iPhone**: Safari extension ("Coming soon" until
+its target ships), scam-text filter ("Set up" → §5) and DNS protection
+("Set up" → §4), and the hero says "Check before you tap"
 instead of "Let's set up your protection — 0 shields active". The onboarding's
 third slide is iPhone-specific. The paywall lists only what the iPhone build
 can do (unlimited checks, devices).
@@ -131,14 +132,8 @@ none of that is needed. Revisit when the layouts get a tablet pass.
   `iosProtectionLayers({ dns: …, sms_filter: …, safari: … })` in
   `app/(tabs)/index.tsx`; `IosProtectionCard` takes an `onSetUp(id)` callback.
   Nothing else on home needs to change.
-- **DNS protection** (`NEDNSSettingsManager`, encrypted DNS to the existing
-  `/dns-query` gateway): status / enable functions go into
-  `modules/cleanway-vpn/ios/CleanwayVpnModule.swift`; add the
-  `com.apple.developer.networking.networkextension = ["dns-settings"]`
-  entitlement — `withIosAppStore.js` keeps `dns-settings` and strips only VPN
-  values. Never call it a VPN in the UI, listing or screenshots (5.4 misfile
-  risk; Settings shows it under "VPN & Device Management").
-- **Scam-text filter**: built — §4. The layer is "setup" (never "on": Apple
+- **DNS protection**: built — §4.
+- **Scam-text filter**: built — §5. The layer is "setup" (never "on": Apple
   gives the app no "is it enabled" API) and its row opens the setup steps.
 - **Safari Web Extension**: a separate target, reusing `extension-safari/`.
 - `mobile/native/ios/PacketTunnelProvider.swift` is the parked VPN experiment;
@@ -165,12 +160,13 @@ be transferred later.
 ### 3.2 Identifiers (developer.apple.com → Certificates, IDs & Profiles)
 
 EAS creates these on the first `eas build` if you let it log in; to do it by hand:
-1. App ID `ai.cleanway.app` with capability **App Groups** → `group.ai.cleanway.app`
-   (and later **Network Extensions** for DNS settings).
+1. App ID `ai.cleanway.app` with capabilities **App Groups** → `group.ai.cleanway.app`
+   and **Network Extensions** (DNS protection, §4; EAS turns it on from the
+   entitlement when it manages the profile).
 2. App ID `ai.cleanway.app.share-extension` with the same App Group.
 2a. App ID `ai.cleanway.app.sms-filter` (the scam-text filter) with the same
    App Group. No other capability: a message filter needs no entitlement, and
-   it has no network URL (§4).
+   it has no network URL (§5).
 3. Do **not** enable Push Notifications (the app uses none on iOS).
 
 ### 3.3 The app record
@@ -227,7 +223,7 @@ Answer from the real egress (same facts as `docs/RUSTORE_SUBMISSION.md` §3):
 | Contact Info → Email Address | Yes, only when the person signs in | Yes | No | App Functionality |
 | Identifiers → User ID (account id) | Yes, when signed in | Yes | No | App Functionality |
 | Identifiers → Device ID (random device id of the account's device list; daily-rotating install number for rate limits) | Yes | Device id: Yes · install number: No | No | App Functionality |
-| Browsing History (site names the person checks — never full URLs, no account token on the check) | Yes | No | No | App Functionality |
+| Browsing History (site names the person checks — never full URLs, no account token on the check; with DNS protection on, every name the iPhone looks up goes to the DNS gateway, §4.3) | Yes | No | No | App Functionality |
 | Purchases → Purchase History (App Store subscription via RevenueCat) | Yes, when subscribing | Yes | No | App Functionality |
 | Diagnostics → Crash Data (Sentry, only when a DSN is set) | Yes | No | No | App Functionality |
 
@@ -244,11 +240,26 @@ weekly report send anything new.
 > Settings → Delete account. Subscriptions are sold only through In-App
 > Purchase; "Restore purchases" is on the paywall and in Account. The app
 > contains no VPN. The "Protection on iPhone" items marked "Coming soon" are
-> not functional in this version and are labelled as such. The scam-text
-> filter is an SMS filter extension: enable it in Settings → Apps → Messages →
-> Unknown & Spam → SMS Filtering → Cleanway. It works offline — it has no
-> network URL and never sends a message anywhere — and moves only texts it
-> judges a scam to Junk.
+> not functional in this version and are labelled as such.
+>
+> DNS protection (home → Protection on iPhone → DNS protection → Set up) uses
+> the public DNS Settings API (NEDNSSettingsManager with
+> NEDNSOverHTTPSSettings, Network Extensions entitlement value
+> `dns-settings`). It is not a VPN: there is no tunnel, no NEVPNManager and no
+> network extension target. The app saves an encrypted DNS-over-HTTPS setting
+> pointing at our resolver, https://dns.cleanway.ai/dns-query, which answers
+> NXDOMAIN for known scam and phishing sites and forwards every other name to
+> Cloudflare's DNS. Nothing changes until the user selects "Cleanway" in
+> Settings → General → VPN & Device Management → DNS. Before the user adds
+> it, the app explains that site names are sent to our DNS server (the
+> matching happens on our server) and that we keep no record of who looked up
+> what — privacy policy, section 11. The user can remove it in the app, or
+> choose "Automatic" on the same Settings page, at any time.
+>
+> The scam-text filter is an SMS filter extension: enable it in Settings →
+> Apps → Messages → Unknown & Spam → SMS Filtering → Cleanway. It works
+> offline — it has no network URL and never sends a message anywhere — and
+> moves only texts it judges a scam to Junk.
 
 Provide a demo account the reviewer can sign in with (an email inbox you can
 read the code from, or a review-only bypass on the server) — email-code
@@ -258,16 +269,163 @@ sign-in fails review if the reviewer cannot receive the code.
 
 iPhone 6.9" (1320×2868 or 1290×2796) is the only required size with
 `supportsTablet: false`. Never show the Settings "VPN & Device Management"
-page or the word "VPN" in screenshots or the description. Say "filters scam
-texts (SMS) from unknown senders"; never "blocks all scam texts" or anything
-about iMessage — iOS shows the filter only SMS/MMS from numbers not in the
-contacts, and iMessage is invisible to any app.
+page or the word "VPN" in screenshots or the description; call the feature
+"DNS protection" or "encrypted DNS", never a VPN (5.4 misfile risk). The
+setup sheet names that Settings page in-app only, because it is Apple's own
+label. Say "filters scam texts (SMS) from unknown senders"; never "blocks all
+scam texts" or anything about iMessage — iOS shows the filter only SMS/MMS
+from numbers not in the contacts, and iMessage is invisible to any app.
 
 ---
 
-## 4. Scam-text filter (SMS)
+## 4. DNS protection (NEDNSSettingsManager)
 
-### 4.1 What it is
+Built on `feat/ios-dns-settings` (2026-10-09). An Individual account cannot
+filter DNS on the phone (a local tunnel is a VPN — App Review 5.4), so the
+iPhone uses iOS's system-wide **encrypted DNS settings**, pointed at the
+existing DoH gateway.
+
+### 4.1 What is in the code
+
+| Piece | Where |
+|---|---|
+| Native: save / read / remove the configuration, change notice | `mobile/modules/cleanway-vpn/ios/CleanwayVpnModule.swift` (`CleanwayDnsSettings`; JS names `dnsSettingsStatus`, `installDnsSettings`, `removeDnsSettings`, event `onDnsSettingsChanged`) |
+| JS bridge + report parser | `modules/cleanway-vpn/index.ts` (`isIosDnsSupported`, `iosDnsStatus`, `installIosDns`, `removeIosDns`, `addIosDnsChangedListener`), `modules/cleanway-vpn/src/IosDnsSettings.ts` |
+| State machine (pure) | `src/utils/ios-dns.ts` — phases `unavailable → checking → add → turn_on → on`, the sheet model, the error wording |
+| Live hook | `src/hooks/useIosDnsProtection.ts` — reads iOS on mount, on every foreground (back from Settings) and on `NEDNSSettingsConfigurationDidChange` |
+| UI | home card row "DNS protection" (`IosProtectionCard`: "Set up" / check mark — both open the sheet) → `src/components/shield/IosDnsSetupSheet.tsx`; home privacy line and hero follow it |
+| Entitlement | `com.apple.developer.networking.networkextension = ["dns-settings"]`, added by `plugins/withIosAppStore.js` (VPN values stripped) — no `app.json` change |
+| Tests (CI) | `mobile/scripts/test-ios-dns.mjs`, `mobile/scripts/test-platform-gating.mjs` |
+
+The configuration: `NEDNSOverHTTPSSettings(servers: [])`, `serverURL =
+https://dns.cleanway.ai/dns-query`, `localizedDescription = "Cleanway"`, no
+on-demand rules, and on iOS 26+ `allowFailover = true`.
+
+### 4.2 Decisions, with sources
+
+- **Entitlement and account.** `dns-settings` is a value of the Network
+  Extensions entitlement: "The APIs you use to create and manage a
+  system-wide DNS configuration"
+  ([Apple: Network Extensions Entitlement](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.networking.networkextension)).
+  The Network Extensions capability is ticked for **ADP** (Apple Developer
+  Program — Individual and Organization memberships alike) and ADEP; only the
+  free "Apple Developer" tier lacks it
+  ([Supported capabilities (iOS)](https://developer.apple.com/help/account/reference/supported-capabilities-ios),
+  checked 2026-10-09). The Organization-only rule is App Review 5.4, about
+  apps "offering VPN services" that "must utilize the NEVPNManager API"
+  ([App Review Guidelines 5.4](https://developer.apple.com/app-store/review/guidelines/#vpn-apps));
+  this feature uses neither. No extension target: "since we're configuring a
+  protocol that's supported by the system, we don't need to implement an
+  extension point" ([WWDC20 "Enable encrypted DNS"](https://developer.apple.com/videos/play/wwdc2020/10047/)).
+- **The person turns it on, not the app.** `isEnabled` is read-only;
+  "configurations are disabled until the user enables the configuration in
+  the Settings app"
+  ([isEnabled](https://developer.apple.com/documentation/networkextension/nednssettingsmanager/isenabled)).
+  On iOS 26.2 the page is Settings → General → **VPN & Device Management** →
+  DNS. There is no public deep link to it: the sheet's "Open Settings" uses
+  `Linking.openSettings()` (Cleanway's own page) and step 2 says where to go
+  from there. No `App-Prefs:` URLs (private API, review risk).
+- **No server IP addresses.** For DoH, "if no ServerAddresses are provided,
+  the system uses the hostname or address in the URL to determine the server
+  addresses"
+  ([DNSSettings payload, ServerURL](https://developer.apple.com/documentation/devicemanagement/dnssettings/dnssettings-data.dictionary)
+  — the settings NEDNSOverHTTPSSettings carries). `dns.cleanway.ai` is a
+  CNAME to Railway's edge (`ics2mtji.up.railway.app` → 69.46.46.49 on
+  2026-10-09, and it answers RFC 8484 GETs); pinned Railway addresses would
+  break every lookup the day Railway changes them.
+- **No on-demand rules.** Without rules the setting applies on every
+  network. Captive-network login (hotel / café Wi-Fi) "is automatically
+  granted an exception" (WWDC20). A "disconnect on cellular/Wi-Fi" rule would
+  only switch protection off where it matters. Forum reports of portals that
+  still fail behind encrypted DNS are why the sheet says "If sites stop
+  opening, choose Automatic…".
+- **Failover on iOS 26+.** `NEDNSSettings.allowFailover` — "failover to the
+  default system resolver is permitted on resolution failure", iOS 26.0+ — is
+  set, matching the gateway's own fail-open policy: a gateway outage must not
+  take every iPhone offline. Guarded by `#if compiler(>=6.2)` and
+  `#available(iOS 26.0, *)`, so an older Xcode (an older EAS image) still
+  builds. Below iOS 26 an outage fails lookups until the person picks
+  "Automatic".
+- **Errors.** Every native call resolves with a report (`installed`,
+  `current`, `enabled`, `error`, `message`), never a rejection. The
+  `NEDNSSettingsManagerError` codes map to `invalid` / `disabled` / `stale` /
+  `cannot_remove`; anything else (e.g. a build without the entitlement) is
+  `failed`, with the raw `domain code: description` kept for logs only. The
+  sheet words the error for the call that failed (read / add / remove).
+
+### 4.3 Privacy — what the copy says, and why it is true
+
+On iPhone the matching happens **on our server**, unlike Android: while DNS
+protection is on, every name any app looks up goes over HTTPS to the gateway
+(`api/routers/doh.py`). The sheet says so before its "Add" button
+(`mobile.ios.dns.privacy_body`), the home privacy line switches to
+`mobile.home.privacy_ios_dns` while it is on, and the public policy has a
+paragraph in §11 (10 locales).
+
+The copy matches the gateway as hardened in PR #124 (on `main` since
+2026-10-09): blocked names get NXDOMAIN, others go to Cloudflare
+(`cloudflare-dns.com`, then `1.1.1.1`); **no per-query log line at all**,
+only aggregate counters (`/health/doh`); an in-memory answer cache keyed by
+the question only (TTL capped at 1 h, up to 6 h stale fallback, never on
+disk / Redis / logs); the per-IP rate limit in process memory under a keyed
+hash, not the raw IP. Any change to that — another upstream operator via
+`DOH_UPSTREAMS`, a log line, a persisted cache — must update the sheet
+copy, policy §11 in all 10 locales and `docs/PRIVACY.md` → "The iPhone app"
+in the same PR. Still open: whether iOS's resolver sends GET or POST (with
+GET the question is in the URL, which Railway's own request log can record
+with the IP) — see §4.4.
+
+### 4.4 Simulator vs. device
+
+Simulator run (iPhone 17, iOS 26.2, Xcode 26.3, Release build, 2026-10-09):
+prebuild writes `dns-settings` (and no push) into `Cleanway.entitlements` and
+the binary's simulated entitlements; the module links and loads; the home
+card shows "DNS protection — Set up" and the hero "Automatic protection for
+iPhone — see below"; the sheet renders the privacy block first, both steps,
+the status and the notes. **The simulator has no NetworkExtension
+configuration daemon**: every `loadFromPreferences` fails with
+`NEConfigurationErrorDomain 11 "IPC failed"` (lost connection to
+`nehelper`), so on the simulator the sheet shows "Couldn't read your
+iPhone's DNS settings" on open and "Your iPhone didn't save the setting"
+after "Add to iPhone" — the error paths, verified; the card stays "Set up",
+never "On". Saving, Settings → DNS → Cleanway, `isEnabled`, the change
+notice and removal can only be tested on a device. What only a device
+(TestFlight) can show — check before submitting:
+
+1. "Cleanway" under Settings → General → VPN & Device Management → DNS on a
+   real phone; selecting it flips the sheet to "On" when the app comes back.
+2. A listed site fails to open in Safari **and** in an in-app browser
+   (WhatsApp / Instagram); unlisted sites keep working.
+3. Captive Wi-Fi login; iOS 26 failover when the gateway is unreachable
+   (block `dns.cleanway.ai` on a router); on iOS < 26, what the person sees.
+4. Another VPN app connected; iCloud Private Relay on.
+5. Whether iOS's resolver sends GET or POST to `/dns-query` — the privacy
+   paragraph in `docs/PRIVACY.md` depends on it.
+6. "Remove from iPhone" removes the Settings entry; adding again works, and
+   whether a re-save keeps the person's on/off choice.
+
+### 4.5 Not built (on purpose)
+
+- **Canary proof of "on".** Android's "on" is proven by a canary query
+  through the tunnel. On iOS the app cannot see the resolver's answer, and
+  `list-canary.cleanway.ai` is NXDOMAIN everywhere, so it cannot tell our
+  resolver from any other. A proof needs a public wildcard name that the
+  gateway alone blocks (e.g. `*.ios-canary.cleanway.ai` with a public A
+  record, always on the published list): a random label that fails while a
+  control name resolves = lookups reach Cleanway. That is an ops + blocklist
+  change; until then "On" means "iOS reports it enabled", and the sheet says a
+  connected VPN may take DNS over.
+- **Pause.** Off is the person's, in Settings ("Automatic"), or "Remove from
+  iPhone" in the sheet. A timed pause would be a disconnect-all on-demand
+  rule — never `removeFromPreferences`, which makes the Settings trek repeat.
+- **Block notifications.** iOS gives the app no per-query signal; per-block
+  alerts would need per-device query attribution on the server.
+
+---
+
+## 5. Scam-text filter (SMS)
+
+### 5.1 What it is
 
 `CleanwaySmsFilter` is an `ILMessageFilterExtension` (Message Filter
 Extension) embedded in the app. iOS hands it each SMS/MMS **from a number
@@ -292,9 +450,9 @@ from a personal number, a "Госуслуги" text from another sender id).
 The filter **holds no blocklist** (Android's message check also checks link
 hosts against the synced DNS list; here every host is "not on the list"), so
 `link_blocklisted` never fires on iPhone. Everything else is the Android
-engine, verdict for verdict (§4.3).
+engine, verdict for verdict (§5.3).
 
-### 4.2 Where things are
+### 5.2 Where things are
 
 | | |
 |---|---|
@@ -307,7 +465,7 @@ engine, verdict for verdict (§4.3).
 One vocabulary and one model for both platforms: never edit a copy under
 `ios/` — it is regenerated on every prebuild.
 
-### 4.3 Parity with Android
+### 5.3 Parity with Android
 
 `MessageIosParityTest.kt` (Android module tests) makes the Kotlin engine
 write `Tests/CleanwayMessageEngineTests/Fixtures/kotlin_parity.json`: every
@@ -326,7 +484,7 @@ the model's training texts (`ml/sms/data/train_{a,b,c}.tsv`, a local-only
 fixture via `CLEANWAY_IOS_PARITY_EXTRA`): 4,297 messages × 3 = 12,891
 analyses, 0 mismatches.
 
-### 4.4 After changing the Android engine, its assets or a corpus
+### 5.4 After changing the Android engine, its assets or a corpus
 
 CI (`mobile` job) re-hashes every input the fixture records and fails until
 it is regenerated; the `ios-sms-engine` job (macOS runner) runs the Swift
@@ -352,7 +510,7 @@ parity tests. Locally:
    then takes minutes.)
 3. `node mobile/scripts/check-ios-parity-fixture.mjs`.
 
-### 4.5 Memory and speed
+### 5.5 Memory and speed
 
 A message filter extension runs under a small, undocumented memory limit.
 The engine loads nothing until the first message, keeps the 512 KB float16
@@ -371,7 +529,7 @@ not even read the model while the server has it switched off.
 quiet figure. The extension target is compiled with `-O` even in Debug (whole
 module). The bundled extension is 1.3 MB (0.7 MB binary + the four assets).
 
-### 4.6 The app side
+### 5.6 The app side
 
 - **Home → Protection on iPhone → Scam-text filter**: "Set up" whenever the
   build carries the extension (`smsFilterLayerStatus`), never "On" — Apple
@@ -391,7 +549,7 @@ module). The bundled extension is 1.3 MB (0.7 MB binary + the four assets).
   The extension reads the file for every message; missing or malformed means
   the shipped defaults. Overrides only raise thresholds.
 
-### 4.7 What was verified, and what needs a phone
+### 5.7 What was verified, and what needs a phone
 
 On the iOS 26.2 simulator (Xcode 26.3, 2026-10-09), Release build:
 
@@ -408,13 +566,13 @@ On the iOS 26.2 simulator (Xcode 26.3, 2026-10-09), Release build:
   setup sheet (steps, notes, Open Settings, Done);
 - the engine's Swift tests pass on the simulator too (`xcodebuild test
   -scheme CleanwayMessageEngine` in `mobile/targets/sms-filter`): parity 0
-  mismatches, the numbers in §4.5;
+  mismatches, the numbers in §5.5;
 - the simulator's Settings → Apps → Messages page is empty (no telephony), so
   the SMS Filtering list cannot be shown there.
 
 The simulator cannot receive an SMS, so the end-to-end path — a text from an
 unknown number landing in Junk — needs a real iPhone with a SIM and a
-second phone: enable the filter (§4.6), send from a number not in the
+second phone: enable the filter (§5.6), send from a number not in the
 contacts (1) an ordinary text, (2) a corpus scam such as «Госуслуги:
 зафиксирован вход в ваш аккаунт с нового устройства. Если это были не вы,
 срочно позвоните по номеру +7 916 482-15-37» → expect (1) in the inbox, (2)

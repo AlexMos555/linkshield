@@ -11,7 +11,7 @@ import IdentityLookup
 /// its text never leaves the phone. Nothing is logged or stored — Apple does
 /// not even let a filter extension write to the shared container.
 ///
-/// Mapping (docs/IOS.md §4): dangerous → .junk; caution and no signals → .none.
+/// Mapping (docs/IOS.md §5): dangerous → .junk; caution and no signals → .none.
 /// Junk has no sub-actions (iOS 16+ sub-actions belong to .transaction and
 /// .promotion, which would mislabel a scam as a bill or an offer).
 final class MessageFilterExtension: ILMessageFilterExtension {

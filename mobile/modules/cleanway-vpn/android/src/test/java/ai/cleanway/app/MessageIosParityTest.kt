@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
  *
  * Run as a normal unit test it COMPARES: the committed fixture must equal what
  * the engine says now. After changing the engine, its assets or a corpus,
- * regenerate it with CLEANWAY_WRITE_IOS_PARITY=1 (docs/IOS.md §4), then run
+ * regenerate it with CLEANWAY_WRITE_IOS_PARITY=1 (docs/IOS.md §5), then run
  * the Swift tests.
  *
  * Every message runs three times, as the iPhone extension can: with the text
