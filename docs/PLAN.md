@@ -12,6 +12,12 @@
 | Аккаунты и устройства | #108, миграции 019–024 применены на тестовой и боевой базе |
 | Сайт | цены по устройствам (#116), политика и условия (#119), `/delete-account` |
 | Бесплатный лимит и экран оплаты | #113, за флагом `EXPO_PUBLIC_FREEMIUM_ENABLED` |
+| iPhone: основа и App Store | #123: сборка на симуляторе iOS 26.2, покупки App Store через RevenueCat, «Поделиться» |
+| iPhone: DNS-защита | #126: NEDNSSettingsManager → `dns.cleanway.ai` (сервер ускорен, #124); проверка нужна на устройстве |
+| iPhone: фильтр SMS | #127: офлайн, движок на Swift совпадает с Android (7 278 проверок, 0 расхождений); проверка нужна на iPhone с SIM |
+| iPhone: расширение Safari | #125: внутри приложения, блокирует мошеннический сайт на симуляторе |
+
+**От основателя для App Store:** аккаунт Apple Developer ($99/год, личного достаточно); App ID для приложения и расширений (`docs/IOS.md` §3); подписки `cleanway.devices.monthly/.yearly`; RevenueCat для App Store; TestFlight на настоящем iPhone (DNS, SMS с SIM, Safari). Перед запуском на iPhone — Cloudflare перед `dns.cleanway.ai` (`docs/runbooks/doh-gateway.md`).
 
 **От основателя для публикации:** ключ Resend в `.env` (вход по почте для всех); аккаунты разработчика Google Play, Chrome Web Store, Firefox, Edge; в Play — загрузить наш ключ подписи как ключ приложения, создать подписки `cleanway.devices` и `cleanway.extra_device`, подключить RevenueCat (`docs/runbooks/revenuecat.md`), 12 тестировщиков на 14 дней; цены в Stripe — `scripts/create_stripe_prices.py`.
 
