@@ -33,7 +33,6 @@ addopts = [
 # configured — pytest-asyncio deprecation warning will become a hard
 # fail".)
 asyncio_mode = "strict"
-faulthandler_timeout = 90
 asyncio_default_fixture_loop_scope = "function"
 asyncio_default_test_loop_scope = "function"
 filterwarnings = [
