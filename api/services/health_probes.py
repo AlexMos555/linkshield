@@ -98,7 +98,10 @@ async def _doh() -> dict:
     started = time.monotonic()
     body, status = await handle_query(_canary_query(), proxy=_no_upstream, log_block=False)
     elapsed_ms = round((time.monotonic() - started) * 1000, 1)
-    out = {"probe": LIST_CANARY, "elapsed_ms": elapsed_ms}
+    from api.services.doh_filter import HOLDER
+    # Which list the decision came from: the in-memory artifact (normal) or,
+    # when it is not loaded, the per-query Redis fallback.
+    out = {"probe": LIST_CANARY, "elapsed_ms": elapsed_ms, "filter": HOLDER.status()}
     if status != 200:
         return {**out, "ok": False, "error": f"http_{status}"}
     answer = parse_response(body)

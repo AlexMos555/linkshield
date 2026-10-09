@@ -317,26 +317,32 @@ def test_deep_reports_a_fresh_blocklist_and_a_blocking_gateway(client, configure
     assert (doh["ok"], doh["rcode"], doh["probe"]) == (True, 3, LIST_CANARY)
 
 
-def test_the_probe_does_not_log_a_block_a_real_query_does(client, configured_settings, monkeypatch, caplog):
+def test_the_probe_does_not_count_a_block_a_real_query_does(client, configured_settings, monkeypatch, caplog):
     """The probe's canary block is ours, not a user's: with a monitor polling
-    /health/deep it would add hundreds of "DoH blocked qname" lines a day,
-    indistinguishable from real blocks."""
+    /health/deep it would add hundreds of blocks a day to the gateway's
+    aggregate counters, indistinguishable from real blocks.
+
+    And no block is ever a log line: the gateway used to log "DoH blocked
+    qname" (with the name's tail) once per blocked query. DNS keeps aggregate
+    counters only (api/services/doh_metrics.py)."""
     import asyncio
     import logging
 
     from api.routers.doh import handle_query
+    from api.services import doh_metrics
     from api.services.health_probes import _canary_query
 
     _serve(monkeypatch, _ProtectionRedis(age_s=3600))
     _patch_httpx(monkeypatch, status_code=200)
-    with caplog.at_level(logging.INFO, logger="api.routers.doh"):
+    with caplog.at_level(logging.DEBUG):
         assert client.get("/health/deep").json()["components"]["doh"]["ok"] is True
-    assert not [r for r in caplog.records if r.getMessage() == "DoH blocked qname"]
+        assert doh_metrics.METRICS.counts["blocked"] == 0
 
-    with caplog.at_level(logging.INFO, logger="api.routers.doh"):
         _body, status = asyncio.run(handle_query(_canary_query()))
     assert status == 200
-    assert [r.getMessage() for r in caplog.records].count("DoH blocked qname") == 1
+    assert doh_metrics.METRICS.counts["blocked"] == 1
+    assert not [r for r in caplog.records if "blocked qname" in r.getMessage()]
+    assert not [r for r in caplog.records if "list-canary" in r.getMessage()]
 
 
 def test_a_stale_blocklist_is_a_warning_not_a_page(client, configured_settings, monkeypatch):

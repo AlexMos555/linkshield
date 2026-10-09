@@ -192,6 +192,21 @@ class Settings(BaseSettings):
     # CGNAT IPv4; 5000/h (~1.4 qps) was exhausted by a handful of phones.
     doh_rate_limit_per_window: int = 20000
     doh_rate_limit_window_seconds: int = 3600
+    # DoH gateway runtime (docs/runbooks/doh-gateway.md). Upstreams are tried
+    # in order with hedged failover; comma-separated RFC 8484 URLs. Empty =
+    # Cloudflare then Quad9 (api/services/doh_upstream.DEFAULT_UPSTREAMS).
+    doh_upstreams: str = ""
+    # Per-worker response cache (entries, TTL cap, RFC 8767 serve-stale window).
+    doh_cache_max_entries: int = 20000
+    doh_cache_max_ttl_s: int = 3600
+    doh_serve_stale_s: int = 6 * 3600
+    # How often each worker checks the published blocklist artifact's sha.
+    doh_filter_refresh_s: float = 30.0
+    # Deadline for the rare Redis calls left on the DNS path (confirming a
+    # blocklist hit; the cold-start fallback). Past it the query fails open.
+    doh_redis_timeout_ms: int = 150
+    # Serve /dns-query from the raw-ASGI fast path (api/services/doh_fastpath).
+    doh_fast_path: bool = True
 
     # Blocklist artifact for phones (GET /api/v1/blocklist/dns). Conditional
     # requests every ~2h per phone, many phones per CGNAT IP.

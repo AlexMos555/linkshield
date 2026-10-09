@@ -1,6 +1,12 @@
 fastapi==0.137.2
 uvicorn[standard]==0.39.0
 httpx==0.28.1
+# HTTP/2 for the DoH gateway's upstream pool (api/services/doh_upstream.py):
+# one multiplexed connection per resolver instead of a pool of HTTP/1.1
+# sockets — ~2x the uncached throughput per worker, measured in
+# docs/runbooks/doh-gateway.md. Optional at runtime: without it the client
+# falls back to HTTP/1.1 keep-alive.
+h2==4.3.0
 redis[hiredis]==5.2.0
 pydantic-settings==2.6.0
 PyJWT==2.15.1
