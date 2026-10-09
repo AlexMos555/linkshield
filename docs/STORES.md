@@ -164,6 +164,38 @@ grep '"version"' extension/manifest.json
 
 **Dev account:** https://developer.apple.com/account/ — $99/year (Apple Developer Program), requires Apple ID.
 
+### 5.1 iPhone / iPad: inside the Cleanway iOS app (no separate listing)
+
+Safari on iOS gets the extension through the Cleanway iPhone app: the Expo
+config plugin `mobile/plugins/withSafariExtension.js` adds the
+`CleanwaySafariExtension` target (`ai.cleanway.app.safari-extension`, iOS
+16.4+) and copies the built `extension-safari/` into it at prebuild. It ships
+with every `eas build -p ios` and is reviewed with the app — there is no
+separate App Store record, price or listing. Details: docs/IOS.md §2.5.
+
+App Store notes for the extension:
+- **Identifiers**: App ID `ai.cleanway.app.safari-extension` with the App
+  Group `group.ai.cleanway.app` (EAS creates it on the first build from
+  `extra.eas.build.experimental.ios.appExtensions`).
+- **Review notes**: say how to switch it on (Settings → Apps → Safari →
+  Extensions → Cleanway → Allow Extension; Other Websites → Allow) and that it
+  sends only site names to api.cleanway.ai. Paste-ready text: docs/IOS.md §3.6.
+- **App Privacy**: the extension's traffic is the app's "Browsing History —
+  site names, not linked, App Functionality" row (docs/IOS.md §3.5); a
+  signed-in extension also sends the account token like the desktop
+  extensions (docs/CWS_SUBMISSION.md §2–4 describe the same egress). The
+  webmail scanner does not exist on iOS, so no email content is collected.
+- **Guideline 4.4 (extensions)**: the extension has no purchases, ads or
+  upsell of its own on iOS; it must keep working for a person who never opens
+  the app again.
+- **Screenshots**: optional; if one shows the block page, use a canary or a
+  test host, never a real brand's look-alike.
+- **Version**: the extension's `CFBundleShortVersionString` follows the app
+  (`app.json` `version`); the manifest keeps its own extension version
+  (0.2.0) — Safari shows the app's.
+
+### 5.2 Mac: a separate macOS app
+
 **Notes:**
 - Safari extensions can't be uploaded as a zip directly — they must be wrapped in a Mac app bundle via Xcode's `Convert to Safari Web Extension` command. The build-store-artifacts script stages the source for you under `dist/store-artifacts/cleanway-<v>-safari/`.
 - The wrapper app needs an App Store Connect listing of its own. Plan for an extra week of round-trips with Apple Review.
@@ -175,6 +207,11 @@ grep '"version"' extension/manifest.json
 3. Build → Archive → Distribute → Upload to App Store Connect
 4. In App Store Connect, fill the macOS listing from `extension/STORE_LISTING.md`
 5. Submit for review. **Safari review can take 7-14 days** — start the clock first.
+
+The same tree also says "seen" to its containing app through native
+messaging (`nativeMessaging` permission, Safari tree only); the converter's
+default handler just echoes, which the extension ignores — no Mac-side code is
+needed. Exact converter flags: docs/IOS.md §2.6.
 
 ---
 
@@ -574,7 +611,8 @@ sites are optional permissions, Firefox's data-collection consent on Firefox
 | Edge Add-ons | Upload `cleanway-0.2.0-edge.zip`; same listing and the **same** permission justifications as Chrome; contact email. |
 | Opera add-ons | Upload `cleanway-0.2.0-opera.zip`; same listing. |
 | Firefox AMO | Upload `cleanway-0.2.0-firefox.zip`. The manifest declares Firefox's `data_collection_permissions` (required: browsing activity, authentication information; optional: personal communications, website content — the webmail switch asks for these). Source code: link the repo; the build is plain, unminified JS. Privacy policy URL. Notes for the reviewer: "Webmail scanning is off by default and asks for the mail sites and Firefox's data consent when switched on in Settings." |
-| Safari | `xcrun safari-web-extension-converter dist/store-artifacts/cleanway-0.2.0-safari/` (§5 above). |
+| Safari (Mac) | `xcrun safari-web-extension-converter dist/store-artifacts/cleanway-0.2.0-safari/` (§5.2 above). |
+| Safari (iPhone) | Nothing separate: ships inside the iOS app (§5.1, docs/IOS.md §2.5). |
 
 ---
 

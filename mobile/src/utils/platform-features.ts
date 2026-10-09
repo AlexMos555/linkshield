@@ -12,7 +12,7 @@
  * greyed out.
  *
  * The iPhone app protects through three iOS-native layers instead, built in
- * separate steps: a Safari Web Extension, an SMS filter
+ * separate steps: a Safari Web Extension (shipped: safariLayerState below), an SMS filter
  * (ILMessageFilterExtension) and DNS protection (NEDNSSettingsManager with
  * encrypted DNS — src/utils/ios-dns.ts reports its layer). Until a layer
  * ships it is listed as "coming soon" — said
@@ -70,13 +70,104 @@ const IOS_LAYERS: ReadonlyArray<IosLayerDef> = [
 
 const STATUSES: ReadonlySet<string> = new Set(["coming", "setup", "on"]);
 
-export function iosProtectionLayers(availability: IosLayerAvailability = {}): IosLayer[] {
+/**
+ * `lines` lets a layer say more than its default line once it is built
+ * (the Safari layer: "turned off" vs "allow it on other websites"); without
+ * one, a built layer shows its `readyLineKey` if it has one.
+ */
+export function iosProtectionLayers(
+  availability: IosLayerAvailability = {},
+  lines: Partial<Record<IosLayerId, string>> = {},
+): IosLayer[] {
   return IOS_LAYERS.map(({ readyLineKey, ...layer }) => {
     const reported = availability[layer.id];
     const status: IosLayerStatus = reported && STATUSES.has(reported) ? reported : "coming";
-    return { ...layer, lineKey: status !== "coming" && readyLineKey ? readyLineKey : layer.lineKey, status };
+    const ready = status !== "coming";
+    const lineKey = (ready && lines[layer.id]) || (ready && readyLineKey) || layer.lineKey;
+    return { ...layer, lineKey, status };
   });
 }
+
+// ── The Safari layer ──────────────────────────────────────────────────
+
+/**
+ * What the app can learn about its Safari Web Extension
+ * (modules/cleanway-safari): whether it ships in this build, whether it is
+ * switched on (iOS 26.2+ only — older iOS has no API), and when it last
+ * ran on a real web page (the extension tells the app, which proves "Allow on
+ * all websites" too — nothing else can).
+ */
+export interface SafariExtensionFacts {
+  bundled: boolean;
+  stateKnown: boolean;
+  enabled: boolean;
+  lastSeenMs: number | null;
+  /** iOS 26.2+: the app can open the extension's page in Settings. */
+  settingsApi: boolean;
+}
+
+export const NO_SAFARI_EXTENSION: SafariExtensionFacts = Object.freeze({
+  bundled: false,
+  stateKnown: false,
+  enabled: false,
+  lastSeenMs: null,
+  settingsApi: false,
+});
+
+/** Validates what the native module returned; anything odd reads as "not known". */
+export function parseSafariFacts(raw: unknown): SafariExtensionFacts {
+  if (!raw || typeof raw !== "object") return NO_SAFARI_EXTENSION;
+  const r = raw as Record<string, unknown>;
+  const seen = r.lastSeenMs;
+  const stateKnown = r.stateKnown === true;
+  return {
+    bundled: r.bundled === true,
+    stateKnown,
+    enabled: stateKnown && r.enabled === true,
+    lastSeenMs: typeof seen === "number" && Number.isFinite(seen) && seen > 0 ? seen : null,
+    settingsApi: r.settingsApi === true,
+  };
+}
+
+/**
+ * "Seen on a web page" counts for two weeks. The extension reports at most
+ * every 6 hours while Safari is used, so a fortnight of silence means it was
+ * switched off on an iOS that cannot say so, or Safari is not being used —
+ * either way, the setup steps are the right thing to show.
+ */
+export const SAFARI_SEEN_FRESH_MS = 14 * 24 * 3600_000;
+
+export function safariLayerState(facts: SafariExtensionFacts, nowMs: number): { status: IosLayerStatus; lineKey: string } {
+  if (!facts.bundled) return { status: "coming", lineKey: "mobile.ios.safari_line" };
+  if (facts.stateKnown && !facts.enabled) return { status: "setup", lineKey: "mobile.ios.safari_line_off" };
+  const seen = facts.lastSeenMs;
+  // A time from the future (clock changed) is not trusted beyond a day.
+  const fresh = seen !== null && nowMs - seen < SAFARI_SEEN_FRESH_MS && seen - nowMs < 24 * 3600_000;
+  if (fresh) return { status: "on", lineKey: "mobile.ios.safari_line_on" };
+  if (facts.stateKnown && facts.enabled) return { status: "setup", lineKey: "mobile.ios.safari_line_allow" };
+  return { status: "setup", lineKey: "mobile.ios.safari_line_setup" };
+}
+
+/**
+ * The setup steps, in order. The Settings path is the iOS 18+ one
+ * (Settings → Apps → Safari); step 1's text names the older path too.
+ */
+export const SAFARI_SETUP_STEP_KEYS: ReadonlyArray<string> = [
+  "mobile.ios.safari_setup_step1",
+  "mobile.ios.safari_setup_step2",
+  "mobile.ios.safari_setup_step3",
+  "mobile.ios.safari_setup_step4",
+];
+
+/**
+ * The page "Test it in Safari" opens. cleanway.ai is never checked by the
+ * extension, but its content script there tells the app it runs
+ * (packages/extension-core/src/content/index.js → EXTENSION_SEEN).
+ * `x-safari-https` makes iOS 17+ open it in Safari even when another browser
+ * is the default — the extension lives only in Safari.
+ */
+export const SAFARI_TEST_URL = "x-safari-https://cleanway.ai/";
+export const SAFARI_TEST_URL_FALLBACK = "https://cleanway.ai/";
 
 // ── The scam-text filter (ILMessageFilterExtension) ───────────────────
 

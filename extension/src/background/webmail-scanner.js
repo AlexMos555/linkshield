@@ -18,6 +18,11 @@
  * cannot run the scanner; Settings says so instead of showing a switch that
  * does nothing.
  *
+ * Not on iPhone or iPad: Safari on iOS never gets the scanner, whatever the
+ * stored flag says (docs/MOBILE_AUTO_PROTECTION.md keeps webmail off on
+ * phones). Settings does not show the switch there (utils/platform.js), and
+ * a flag synced over from nowhere still registers nothing.
+ *
  * Nothing here turns the scanner on. The flag only ever becomes true from
  * the Settings switch, so an update leaves every existing install off.
  *
@@ -30,6 +35,8 @@
  * only while it is granted. Chrome, Safari and older Firefox report nothing,
  * and only the switch and the mail sites decide.
  */
+
+import "../utils/platform.js"; // sets self.cleanwayPlatform (classic UMD file)
 
 export const WEBMAIL_FLAG = "webmailScannerEnabled";
 export const WEBMAIL_SCRIPT_ID = "cleanway-webmail";
@@ -52,6 +59,13 @@ export function isWebmailScannerEnabled(stored) {
 /** True when this browser can register a content script at run time. */
 export function webmailScannerSupported(api) {
   return Boolean(api && api.scripting && typeof api.scripting.registerContentScripts === "function");
+}
+
+/** Safari on iPhone / iPad: the scanner is never offered there. */
+export function webmailScannerBlockedHere(api) {
+  const platform = (typeof self !== "undefined" ? self : globalThis).cleanwayPlatform;
+  if (!platform) return Promise.resolve(false);
+  return platform.detectMobileSafari(api);
 }
 
 /**
@@ -133,11 +147,19 @@ async function injectIntoOpenTabs(api) {
  * runs after the previous one, so a start-up sync and a storage change
  * cannot register the script twice.
  */
-export function createWebmailScanner(api) {
+export function createWebmailScanner(api, { blockedHere = () => webmailScannerBlockedHere(api) } = {}) {
   let chain = Promise.resolve();
 
   async function syncOnce({ injectOpen = false } = {}) {
     if (!webmailScannerSupported(api)) return { supported: false, registered: false };
+    if (await blockedHere()) {
+      // iPhone / iPad: drop anything registered before (an install that
+      // somehow carried the flag) and run nothing.
+      if ((await registeredIds(api.scripting)).length > 0) {
+        await api.scripting.unregisterContentScripts({ ids: [WEBMAIL_SCRIPT_ID] });
+      }
+      return { supported: false, registered: false };
+    }
     const stored = await api.storage.local.get(WEBMAIL_FLAG);
     let want = isWebmailScannerEnabled(stored);
     if (want && (await webmailDataConsent(api)) === false) {
@@ -202,8 +224,8 @@ export function createWebmailScanner(api) {
 }
 
 /** Background wiring: listeners plus a sync on every worker start. */
-export function installWebmailScanner(api) {
-  const scanner = createWebmailScanner(api);
+export function installWebmailScanner(api, options) {
+  const scanner = createWebmailScanner(api, options);
   try {
     api.storage.onChanged.addListener(scanner.onStorageChanged);
   } catch (e) { /* storage events unavailable — the start-up sync still runs */ }

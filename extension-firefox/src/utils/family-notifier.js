@@ -54,8 +54,12 @@ export async function syncFamilyPollAlarm() {
   if (!chrome.alarms) return false;
   let wanted = false;
   try {
+    // Safari (Mac and iPhone) has no chrome.notifications: polling there
+    // would wake the worker every minute and take each alert off the server
+    // without ever showing it. The alerts wait for a browser that can show them.
+    const canNotify = Boolean(chrome.notifications && typeof chrome.notifications.create === "function");
     const stored = await chrome.storage.local.get(["auth_token"]);
-    wanted = Boolean(stored && stored.auth_token) && Boolean(await readFamilyCache());
+    wanted = canNotify && Boolean(stored && stored.auth_token) && Boolean(await readFamilyCache());
     const existing = await chrome.alarms.get(ALARM_NAME);
     if (wanted && !existing) {
       chrome.alarms.create(ALARM_NAME, { periodInMinutes: POLL_PERIOD_MINUTES });

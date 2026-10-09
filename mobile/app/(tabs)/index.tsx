@@ -16,6 +16,8 @@ import { IosProtectionCard } from "../../src/components/shield/IosProtectionCard
 import { SmsFilterSetupSheet } from "../../src/components/shield/SmsFilterSetupSheet";
 import { IosDnsSetupSheet } from "../../src/components/shield/IosDnsSetupSheet";
 import { useIosDnsProtection } from "../../src/hooks/useIosDnsProtection";
+import { SafariSetupSheet } from "../../src/components/shield/SafariSetupSheet";
+import { useSafariExtension } from "../../src/hooks/useSafariExtension";
 import {
   androidProtectionShown, heroWithoutShieldsKeys, homePrivacyKey, iosProtectionLayers, iosProtectionShown,
   shareHowToKey, smsFilterLayerStatus, type IosLayerId,
@@ -85,6 +87,9 @@ export default function HomeScreen() {
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [pauseSheetVisible, setPauseSheetVisible] = useState(false);
   const [smsSetupVisible, setSmsSetupVisible] = useState(false);
+  const [safariSheetVisible, setSafariSheetVisible] = useState(false);
+  // iPhone: the Safari extension shipped inside the app (status + setup steps).
+  const safari = useSafariExtension();
   const network = useNetworkShield();
   // The stop screen: a pause asked for during (or right after) a phone call
   // is what a scammer asks for, so it goes through the guard first.
@@ -169,7 +174,9 @@ export default function HomeScreen() {
   // The iPhone's protection layers. Each step (Safari extension, SMS filter,
   // DNS settings) passes its status here; one not reported is "coming".
   const iosLayers = iosProtectionShown(Platform.OS)
-    ? iosProtectionLayers({ dns: iosDns.layer, sms_filter: smsFilterLayerStatus(smsFilterInstalled()) })
+    ? iosProtectionLayers({ dns: iosDns.layer, sms_filter: smsFilterLayerStatus(smsFilterInstalled()), safari: safari.layer.status }, {
+      safari: safari.layer.lineKey,
+    })
     : null;
   // iPhone: no shield exists, so the hero says what the app does now instead
   // of "let's set up — 0 shields active".
@@ -177,6 +184,7 @@ export default function HomeScreen() {
   // "Set up" on a layer opens its sheet. The scam-text filter's only gives the
   // steps: iOS lets only the person enable an SMS filter.
   const onIosSetUp = (id: IosLayerId) => {
+    if (id === "safari") setSafariSheetVisible(true);
     if (id === "dns") setDnsSheetVisible(true);
     if (id === "sms_filter") setSmsSetupVisible(true);
   };
@@ -488,6 +496,21 @@ export default function HomeScreen() {
       <SmsFilterSetupSheet visible={smsSetupVisible} onClose={() => setSmsSetupVisible(false)} />
       {iosLayers && (
         <IosDnsSetupSheet visible={dnsSheetVisible} dns={iosDns} onClose={() => setDnsSheetVisible(false)} />
+      )}
+      {iosLayers && (
+        <SafariSetupSheet
+          visible={safariSheetVisible}
+          canOpenSettings={safari.canOpenSettings}
+          onOpenSettings={() => {
+            setSafariSheetVisible(false);
+            safari.openSettings();
+          }}
+          onTest={() => {
+            setSafariSheetVisible(false);
+            safari.openTestPage();
+          }}
+          onClose={() => setSafariSheetVisible(false)}
+        />
       )}
       <PauseSheet
         visible={pauseSheetVisible}

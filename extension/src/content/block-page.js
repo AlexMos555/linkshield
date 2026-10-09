@@ -380,14 +380,18 @@ function showBlockPage(result) {
           linear-gradient(180deg, #7f1d1d 0%, #450a0a 100%);
         color: #fef2f2;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Arabic", sans-serif;
-        display: flex; align-items: center; justify-content: center;
+        /* Not align-items:center — a card taller than the screen (any phone,
+           Safari on iPhone) overflowed above the top, where no scroll can
+           reach: the stop sign and the title were cut off. margin:auto on
+           the card centres it only when it fits. */
+        display: flex; align-items: flex-start; justify-content: center;
         padding: 40px 24px; overflow-y: auto;
         animation: ls-fade-in 0.3s ease-out;
       }
       @keyframes ls-fade-in { from { opacity: 0; } to { opacity: 1; } }
       #ls-block-overlay * { box-sizing: border-box; }
       .ls-block-card {
-        max-width: 560px; width: 100%; text-align: center;
+        max-width: 560px; width: 100%; text-align: center; margin: auto 0;
         background: rgba(15, 23, 42, 0.75);
         backdrop-filter: blur(12px);
         border: 1px solid rgba(239, 68, 68, 0.4);
@@ -794,7 +798,10 @@ function showBlockPage(result) {
         } catch (_) { window.close(); }
       }
     });
-    backBtn.focus();
+    // Keyboard focus on the safe choice, but the view stays at the top: on a
+    // phone the button is below the fold, and focus() scrolled the stop sign
+    // and the title out of sight (seen in Safari on the iPhone simulator).
+    backBtn.focus({ preventScroll: true });
   }
 
   // "I understand the risk" — enabled after 5-second countdown

@@ -49,6 +49,10 @@ html, body {
 }
 
 body { width: 380px; min-height: 300px; }
+/* Safari on iPhone shows the popup as a sheet as wide as the screen
+   (utils/platform.js sets cw-ios): fill it instead of a 380 px box that
+   scrolls sideways on a 375 pt phone. */
+html.cw-ios body { width: auto; max-width: 100%; }
 
 .popup { padding: 0; }
 

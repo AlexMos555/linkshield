@@ -25,6 +25,7 @@ rsync -a --delete --exclude '/node_modules' --exclude '/android' --exclude '/ios
 mkdir -p "$M/vendor"
 rsync -a --exclude node_modules packages/api-client/ "$M/vendor/api-client/"
 rsync -a --exclude node_modules packages/api-types/  "$M/vendor/api-types/"
+REPO="$PWD"
 cd "$M"
 # point the two workspace packages at the vendored copies
 node -e '
@@ -37,7 +38,10 @@ const c=JSON.parse(fs.readFileSync("vendor/api-client/package.json"));
 c.dependencies["@cleanway/api-types"]="file:../api-types";
 fs.writeFileSync("vendor/api-client/package.json",JSON.stringify(c,null,2)+"\n");'
 npm install                                    # mobile/package-lock.json comes along
-CI=1 npx expo prebuild -p ios --no-install
+# The Safari extension target bundles the repo's built extension-safari/
+# (plugins/withSafariExtension.js); outside the repo it must be told where.
+bash "$REPO/scripts/build-extensions.sh" > /dev/null
+CLEANWAY_SAFARI_EXTENSION_DIR="$REPO/extension-safari" CI=1 npx expo prebuild -p ios --no-install
 cd ios && LANG=en_US.UTF-8 pod install --repo-update   # --repo-update: RevenueCat's pods are newer than a stale CDN index
 xcodebuild -workspace Cleanway.xcworkspace -scheme Cleanway -configuration Debug \
   -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone Air' \
@@ -78,13 +82,13 @@ iOS (`readStoreBillingConfig`).
 | | Value |
 |---|---|
 | Bundle id | `ai.cleanway.app` |
-| Targets | `Cleanway` (app), `CleanwayCheckLink` (share extension, `ai.cleanway.app.share-extension`), `CleanwaySmsFilter` (scam-text filter, `ai.cleanway.app.sms-filter`, §5) |
-| App group | `group.ai.cleanway.app` (app + share extension; the extension hands the shared link/text to the app through it) |
+| Targets | `Cleanway` (app), `CleanwayCheckLink` (share extension, `ai.cleanway.app.share-extension`), `CleanwaySmsFilter` (scam-text filter, `ai.cleanway.app.sms-filter`, §5), `CleanwaySafariExtension` (Safari Web Extension, `ai.cleanway.app.safari-extension`, iOS 16.4+, §2.5) |
+| App group | `group.ai.cleanway.app` (app + share extension + Safari extension; the share extension hands the shared link/text to the app through it, the Safari extension the time it last ran on a web page) |
 | Devices | iPhone only (`supportsTablet: false`, see §2.3); iOS 15.1+ |
 | Entitlements | App group; Network Extensions = `["dns-settings"]` (DNS protection, §4 — added by `plugins/withIosAppStore.js`). No push (`aps-environment` is stripped by the same plugin), no VPN value |
 | Usage strings | Camera only (QR scanner). Microphone and Face ID strings are switched off in `app.json` |
 | Encryption | `ITSAppUsesNonExemptEncryption = false` (HTTPS only) — no export-compliance question on upload |
-| Privacy manifest | `ios.privacyManifests` in `app.json` → `PrivacyInfo.xcprivacy`; pods ship their own (RN core, Expo modules, RevenueCat, Sentry) |
+| Privacy manifest | `ios.privacyManifests` in `app.json` → `PrivacyInfo.xcprivacy` (UserDefaults: `CA92.1` own defaults, `1C8F.1` the app group); pods ship their own (RN core, Expo modules, RevenueCat, Sentry); the Safari extension has its own (UserDefaults `1C8F.1`, nothing collected) |
 | Launch screen | `SplashScreen.storyboard` from `app.json` `splash` (dark `#0f172a` + logo) |
 | App icon | `assets/icon.png`, 1024², alpha removed at prebuild (App Store rejects transparent icons) |
 | Payments | RevenueCat SDK (StoreKit). No other purchase path in the iOS app |
@@ -111,9 +115,9 @@ keep-protection-on card (battery / phone maker / Always-on), link checking
 being called", the on-device SMS analyzer card, the APK update banner, Android
 permission prompts. The rules live in `src/utils/platform-features.ts` and are
 pinned by `mobile/scripts/test-platform-gating.mjs` (CI). Instead the home
-screen shows **Protection on iPhone**: Safari extension ("Coming soon" until
-its target ships), scam-text filter ("Set up" → §5) and DNS protection
-("Set up" → §4), and the hero says "Check before you tap"
+screen shows **Protection on iPhone**: the Safari extension ("Set up" / "On"
+→ §2.5), scam-text filter ("Set up" → §5) and DNS protection ("Set up" → §4),
+and the hero says "Check before you tap"
 instead of "Let's set up your protection — 0 shields active". The onboarding's
 third slide is iPhone-specific. The paywall lists only what the iPhone build
 can do (unlimited checks, devices).
@@ -135,9 +139,118 @@ none of that is needed. Revisit when the layouts get a tablet pass.
 - **DNS protection**: built — §4.
 - **Scam-text filter**: built — §5. The layer is "setup" (never "on": Apple
   gives the app no "is it enabled" API) and its row opens the setup steps.
-- **Safari Web Extension**: a separate target, reusing `extension-safari/`.
+- **Safari Web Extension**: built — §2.5.
 - `mobile/native/ios/PacketTunnelProvider.swift` is the parked VPN experiment;
   it is not in any target.
+
+### 2.5 The Safari Web Extension (in the app)
+
+The same extension as Chrome / Firefox / the Mac's Safari, inside the iPhone
+app. Nothing is duplicated: `packages/extension-core/` → `bash
+scripts/build-extensions.sh` → `extension-safari/` → **copied at prebuild** by
+`mobile/plugins/withSafariExtension.js` into
+`ios/CleanwaySafariExtension/Resources/` (EAS runs prebuild on every build;
+locally re-run prebuild after changing the extension). A missing tree fails
+the prebuild.
+
+| | |
+|---|---|
+| Target | `CleanwaySafariExtension`, app extension, point `com.apple.Safari.web-extension`, embedded in the app |
+| Bundle id | `ai.cleanway.app.safari-extension` (EAS: `extra.eas.build.experimental.ios.appExtensions`, set by the plugin) |
+| iOS | 16.4+ — the background is an ES-module service worker, which Safari supports from 16.4 (release notes: "Added support for modules in background service workers"). The app stays at 15.1; on older iOS the extension just does not show up in Safari. iPhone only, like the app |
+| Entitlements | App group `group.ai.cleanway.app` only |
+| Native half | `SafariWebExtensionHandler.swift` (generated by the plugin): answers `{type: "seen"}` by storing the time in the app group. Nothing about the page is sent or stored |
+| Why our own plugin | One fixed target needs no new dependency (`@bacons/apple-targets` would add one plus a `targets/` convention); the other plugins here are ours too; it uses the same `xcode` project API Expo and expo-share-intent use |
+
+**What differs on iPhone** (`packages/extension-core/src/utils/platform.js`
+decides — `runtime.getPlatformInfo().os` is `ios`, else the user agent; tests
+in `scripts/test-extension-core.mjs` group 6):
+
+- **Background**: MV3 service worker, never persistent on iOS (Safari stops it
+  after ~30 s idle and may kill it harder on device — iOS 17.4–17.6 had a bug
+  that killed extension workers for good). Nothing depends on it staying
+  alive: state is in `storage.local`, the in-memory verdict cache is just a
+  cache, and the content scripts carry the offline scorer, so a page is still
+  judged when the worker is gone.
+- **Webmail scanner**: never on iOS. Settings removes the switch, the welcome
+  page removes "Scan my inbox", and the background refuses to register the
+  scanner even if the flag were set (`webmail-scanner.js`
+  `webmailScannerBlockedHere`). docs/MOBILE_AUTO_PROTECTION.md.
+- **Family Hub alerts**: Safari (Mac and iPhone) has no `notifications`, so the
+  1-minute poll is not armed there — it would wake the worker every minute and
+  take alerts off the server without showing them.
+- **Context menu / keyboard command / toolbar badge**: not on iOS; already
+  feature-checked (the background loads without them).
+- **Popup**: opens as a sheet the width of the screen (`html.cw-ios`).
+- **Storage**: `storage.local` only (settings, stats, tokens — kilobytes);
+  history in IndexedDB, pruned to 30 days. No `unlimitedStorage`.
+- **Permissions UI** (iOS 26, seen on the simulator): Settings → Apps →
+  Safari → Extensions → "Cleanway — …" (the manifest's localized name) has
+  the **Allow Extension** switch, "In Private Browsing", a "Settings" link (the
+  options page) and **Permissions**: one row per host the manifest names
+  (api.cleanway.ai, cleanway.ai) plus **Other Websites**, each Ask / Deny /
+  Allow — older iOS calls the last one "All Websites". Safari asks per site
+  until Other Websites is Allow. Its note "can read … passwords, phone numbers
+  or credit cards" appears for every extension that runs on pages. The manifest's `notifications` and
+  `contextMenus` are ignored by Safari on iOS (a console warning, no prompt).
+  `nativeMessaging` (Safari tree only) shows no prompt.
+- **Block page**: the content-script overlay (`content/block-page.js`) works
+  unchanged; "Go back" uses history, else closes the tab.
+- **Sign-in**: the popup's sign-in opens `cleanway.ai/<locale>/extension/connect`
+  in a new Safari tab; `content/connect-relay.js` hands the session to the
+  background as on desktop. It needs website access for cleanway.ai — granted
+  by "Other Websites → Allow" (or cleanway.ai → Allow), otherwise Safari asks
+  on that page.
+
+**Status in the app** (`src/hooks/useSafariExtension.ts`,
+`modules/cleanway-safari`, `safariLayerState()` in
+`src/utils/platform-features.ts`):
+
+- iOS 26.2+ answers "switched on?" (`SFSafariExtensionManager
+  .getStateOfExtension`) and can open the extension's Settings page
+  (`SFSafariSettings.openExtensionsSettings`). Older iOS has no API at all.
+  Both calls answer once with a timeout (3 s / 5 s), so a call iOS never
+  completes cannot leave the card waiting; it then falls back to the "seen"
+  time. On the iOS 26.2 simulator the state followed the switch (off → "Turned
+  off", on → "allow it on other websites"); `openExtensionsSettings` opened
+  the Settings app at its top level rather than the extension's page —
+  re-check both on a device.
+- Website access has no API anywhere, so the extension tells the app: when a
+  content script on a real page reaches the background (or the person opens
+  cleanway.ai, which the extension never checks but reports from), the
+  background sends `{type: "seen"}` through Safari's native messaging, at most
+  every 6 h (`background/safari-native.js`); the handler stores the time.
+- Card: switched off → "Set up" + "Turned off in Safari's settings"; on but
+  never seen → "Set up" + "allow it on other websites"; seen in the last 14 days
+  → **On**; older iOS and never seen → "Set up". "Set up" opens the steps
+  (Settings → Apps → Safari → Extensions → Cleanway → Allow Extension; Other
+  Websites → Allow), "Open Safari settings" (iOS 26.2+) and "Test it in
+  Safari" (opens `cleanway.ai` in Safari via `x-safari-https://`; the card
+  says On when the person comes back). The status is re-read whenever the app
+  returns to the foreground.
+
+**Verified on the iOS 26.2 simulator** (Xcode 26.3, 2026-10-09): see the PR
+description for what was checked. Not verifiable in the simulator: the
+service-worker life cycle on a real device — re-check on a device via
+TestFlight before release.
+
+### 2.6 Safari on the Mac (not in this app)
+
+The Mac's Safari needs its own macOS app (a Safari extension cannot ship in an
+iPhone-only app). The same `extension-safari/` tree, wrapped by Apple's
+converter — docs/STORES.md §5:
+
+```bash
+bash scripts/build-store-artifacts.sh          # stages dist/store-artifacts/cleanway-<v>-safari/
+xcrun safari-web-extension-converter dist/store-artifacts/cleanway-<v>-safari/ \
+  --project-location /tmp/cleanway-mac --app-name Cleanway \
+  --bundle-identifier ai.cleanway.safari --macos-only --swift
+```
+
+The converted project's handler ignores `{type: "seen"}` replies it does not
+know; the extension treats a missing answer as "no app around" and tries
+again later, so nothing breaks. A universal (Mac + iPhone) Xcode project from
+the converter is not used: the iPhone side is this Expo target.
 
 ---
 
@@ -167,6 +280,8 @@ EAS creates these on the first `eas build` if you let it log in; to do it by han
 2a. App ID `ai.cleanway.app.sms-filter` (the scam-text filter) with the same
    App Group. No other capability: a message filter needs no entitlement, and
    it has no network URL (§5).
+2b. App ID `ai.cleanway.app.safari-extension` with the same App Group (the
+   Safari extension; EAS creates it from `extra.eas…appExtensions`).
 3. Do **not** enable Push Notifications (the app uses none on iOS).
 
 ### 3.3 The app record
@@ -260,6 +375,12 @@ weekly report send anything new.
 > Apps → Messages → Unknown & Spam → SMS Filtering → Cleanway. It works
 > offline — it has no network URL and never sends a message anywhere — and
 > moves only texts it judges a scam to Junk.
+>
+> The Safari Web Extension warns about scam sites: Settings → Apps → Safari →
+> Extensions → Cleanway → Allow Extension, then Other Websites → Allow; open
+> any site in Safari (or the home screen's "Set up" → "Test it in Safari").
+> It sends only site names to api.cleanway.ai to check them; it has no
+> purchases or upsell of its own.
 
 Provide a demo account the reviewer can sign in with (an email inbox you can
 read the code from, or a review-only bypass on the server) — email-code
