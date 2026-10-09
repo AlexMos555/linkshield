@@ -266,11 +266,14 @@ android --clean`, как в `docs/RUSTORE_SUBMISSION.md` §2). Gradle кешир
   подписку, и пишет в поддержку — вернуть деньги в RevenueCat (Refund), это закрывает и
   подписку.
 
-## 9. App Store (позже)
+## 9. App Store (приложение для iPhone)
 
 - App Store Connect → группа подписок `Cleanway`: `cleanway.devices.monthly`,
   `cleanway.devices.yearly`; отдельная группа `Cleanway devices`:
   `cleanway.extra_device.monthly`, `.yearly` (иначе Apple считает добавку заменой тарифа).
   Эти id сервер уже знает.
 - Ключ In-App Purchase (`.p8`) → RevenueCat; App Store Server Notifications V2 → URL из RevenueCat.
-- Публичный ключ `appl_…` — в приложение. Вебхук и переменные сервера те же.
+- Публичный ключ `appl_…` — в переменную сборки `EXPO_PUBLIC_REVENUECAT_IOS_KEY` (EAS environment
+  variables). Любая iOS-сборка — сборка App Store, `EXPO_PUBLIC_DISTRIBUTION` для iOS не важен. Без
+  ключа экран оплаты пишет «Оплата в приложении скоро появится». Вебхук и переменные сервера те же.
+- Сборка, проверки App Review, App Privacy, заметки для ревью: `docs/IOS.md`.

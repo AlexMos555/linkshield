@@ -1,7 +1,7 @@
 /**
  * Account actions shared by Settings and the Account screen.
  *
- * Delete account (Google Play requires it in apps that have accounts):
+ * Delete account (Google Play and the App Store, 5.1.1(v), require it in apps that have accounts):
  * confirm → DELETE /api/v1/user/account (cancels a Stripe plan at once and
  * starts the 30-day grace) → sign out here. The server refuses — and deletes
  * nothing — when the subscription can't be cancelled; the person is told to
@@ -21,10 +21,11 @@ import { deleteAccount, getEntitlement, type EntitlementResponse } from "./api";
 import { signOut } from "./auth";
 import { rotateDeviceId } from "./device-id";
 import { clearKeypair } from "../lib/family-crypto";
-import { manageUrlFor, playSubscriptionsUrl, storeSubscriptionToCancel } from "../utils/store-billing";
+import {
+  APP_STORE_SUBSCRIPTIONS_URL, manageUrlFor, playSubscriptionsUrl, storeSubscriptionToCancel,
+} from "../utils/store-billing";
 
 const ANDROID_PACKAGE = Constants.expoConfig?.android?.package ?? "ai.cleanway.app";
-const APP_STORE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 
 export async function signOutEverywhereLocal(): Promise<void> {
   await signOut();

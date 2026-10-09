@@ -3000,7 +3000,9 @@
         "title_paused": "Schutz pausiert bis {{time}}",
         "sub_paused": "Betrugsseiten werden gerade nicht blockiert",
         "title_conflict": "Der Schutz funktioniert nicht",
-        "sub_conflict": "Die Einstellung „Privates DNS“ steht im Weg – unten steht, was du ändern musst"
+        "sub_conflict": "Die Einstellung „Privates DNS“ steht im Weg – unten steht, was du ändern musst",
+        "title_ios": "Erst prüfen, dann tippen",
+        "sub_ios": "Automatischer Schutz für das iPhone ist unterwegs – mehr dazu unten"
       },
       "cta_turn_on": "Schutz einschalten",
       "check": {
@@ -3013,7 +3015,8 @@
         "share_sheet_body": "Tippe in einer beliebigen App auf „Teilen“ und wähle Cleanway. Wir prüfen den Link und sagen dir, ob er sicher ist.",
         "share_sheet_ok": "Verstanden",
         "note": "Funktioniert mit allem, was du kopieren oder teilen kannst – auch mit iMessage.",
-        "note_android": "Funktioniert mit allem, was du kopieren oder teilen kannst – Links, SMS und Nachrichten aus Messengern."
+        "note_android": "Funktioniert mit allem, was du kopieren oder teilen kannst – Links, SMS und Nachrichten aus Messengern.",
+        "share_sheet_body_ios": "Tippe in einer beliebigen App auf „Teilen“ und dann auf Cleanway. Nicht zu sehen? Wische die App-Reihe bis zum Ende, tippe auf „Mehr“ und füge Cleanway hinzu."
       },
       "sms_check": {
         "title": "SMS-Prüfung",
@@ -3036,7 +3039,8 @@
       "interrupted": "Das Handy hat den Schutz beendet – zum Beispiel nach einem Neustart oder um Akku zu sparen. Deine Einrichtung ist noch da: Tippe unten auf die Schaltfläche und dann auf „{{button}}“.",
       "interrupted_revoked": "Android hat den Schutz beendet: Die VPN-Berechtigung wurde in den Handy-Einstellungen entzogen, oder eine andere VPN-App hat übernommen. Tippe unten auf die Schaltfläche und dann auf „{{button}}“. Fragt Android, ob die Verbindung erlaubt werden soll, tippe auf „OK“. Die andere VPN-App wird dabei ausgeschaltet: Android nutzt immer nur eine.",
       "interrupted_private_dns": "Der Schutz wurde wegen der Einstellung „Privates DNS“ beendet. Sie stört jetzt nicht mehr: Tippe unten auf die Schaltfläche und dann auf „{{button}}“.",
-      "cta_turn_back_on": "Schutz wieder einschalten"
+      "cta_turn_back_on": "Schutz wieder einschalten",
+      "privacy_ios": "Wenn du einen Link prüfst, bekommt unser Server den Namen der Website und eine zufällige Installationsnummer, die sich jeden Tag ändert. Nachrichtentexte und vollständige Seitenadressen verlassen dein Telefon nie."
     },
     "shield": {
       "network": {
@@ -3640,7 +3644,9 @@
       "s3_desc": "Auf Android blockiert ein einziger Einrichtungsschritt bekannte Betrugsseiten in jeder App. Brandneue Betrugsmaschen können an jeder Sperrliste vorbeirutschen – genau dafür gibt es den Prüfen-Knopf.",
       "skip": "Überspringen",
       "next": "Weiter",
-      "start": "Los geht's"
+      "start": "Los geht's",
+      "s3_title_ios": "Schutz auf dem iPhone",
+      "s3_desc_ios": "Für das iPhone bereitet Cleanway eine Safari-Erweiterung, einen Filter für Betrugs-SMS und DNS-Schutz vor. Sie kommen mit Updates, und der Startbildschirm zeigt, was schon bereit ist. Schon heute kannst du alles mit einem Tipp prüfen – oder über Teilen → Cleanway."
     },
     "android_native": {
       "fg_channel": "Cleanway-Schutz",
@@ -3801,7 +3807,9 @@
       "delete_store_title": "Kündige zuerst dein Abo bei {{store}}",
       "delete_store_body": "Das Löschen deines Kontos beendet dein Abo bei {{store}} nicht — nur du kannst es kündigen, in {{store}}. Kündige es dort, damit dir nichts mehr berechnet wird, und lösche dann das Konto.",
       "delete_store_open": "{{store}} öffnen",
-      "delete_store_continue": "Trotzdem löschen"
+      "delete_store_continue": "Trotzdem löschen",
+      "restore_desc_appstore": "Mit dieser Apple-ID auf einem anderen Telefon oder Konto abonniert? Hierher übernehmen",
+      "cancel_note_appstore": "Dieses Abo rechnet Apple ab, deshalb kann nur Apple es kündigen: Einstellungen → dein Name → Abonnements → Cleanway. Wenn du dein Cleanway-Konto löschst, wird es nicht gekündigt."
     },
     "paywall": {
       "close": "Schließen",
@@ -3866,7 +3874,29 @@
       "err_store": "Google Play konnte den Kauf nicht abschließen. Bitte versuche es erneut.",
       "err_busy": "Ein anderer Kauf läuft noch. Warte einen Moment und versuche es erneut.",
       "err_unknown": "Beim Kauf ist etwas schiefgelaufen. Bitte versuche es erneut.",
-      "manage": "Abo verwalten"
+      "manage": "Abo verwalten",
+      "prices_loading_appstore": "Preise werden aus dem App Store geladen …",
+      "prices_failed_appstore": "Die Preise konnten nicht aus dem App Store geladen werden. Prüfe deine Verbindung und versuche es noch einmal.",
+      "prices_empty_appstore": "Dieses Abo ist in deinem Land noch nicht im App Store erhältlich.",
+      "fine_store_appstore": "Abrechnung über deine Apple-ID. Verlängert sich automatisch, wenn du nicht mindestens 24 Stunden vor Ende des Zeitraums kündigst. Jederzeit kündbar unter Einstellungen → dein Name → Abonnements.",
+      "note_pending_appstore": "Dein Kauf wartet auf Bestätigung. Der Tarif startet, sobald der App Store ihn bestätigt.",
+      "err_already_owned_appstore": "Diese Apple-ID hat das Abo bereits. Tippe auf Wiederherstellen, um es in dieses Konto zu übernehmen.",
+      "err_network_appstore": "Keine Verbindung zum App Store. Prüfe das Internet und versuche es noch einmal.",
+      "err_not_allowed_appstore": "Käufe sind auf diesem iPhone deaktiviert (zum Beispiel in der Bildschirmzeit).",
+      "err_store_appstore": "Der App Store konnte den Kauf nicht abschließen. Bitte versuche es noch einmal."
+    },
+    "ios": {
+      "header": "Schutz auf dem iPhone",
+      "lead": "Auf dem iPhone schützt dich Cleanway auf drei Wegen. Jeder bekommt hier seinen Einrichtungsschritt, sobald er mit einem Update kommt.",
+      "safari_title": "Safari-Erweiterung",
+      "safari_line": "Warnt dich direkt auf der Seite, wenn eine Website in Safari ein bekannter Betrug ist.",
+      "sms_title": "Filter für Betrugs-SMS",
+      "sms_line": "Verschiebt Betrugs-SMS von unbekannten Absendern nach „Unerwünscht“. Apple lässt ihn niemals iMessage oder Nachrichten deiner Kontakte sehen.",
+      "dns_title": "DNS-Schutz",
+      "dns_line": "Blockiert bekannte Betrugsseiten in allen Apps – über eine verschlüsselte DNS-Einstellung, die du in den iPhone-Einstellungen erlaubst.",
+      "coming": "Demnächst",
+      "set_up": "Einrichten",
+      "on": "An"
     }
   }
 }

@@ -1,13 +1,15 @@
 /**
- * Paying in the app through Google Play (RevenueCat SDK), pure — no React
- * Native — so mobile/scripts/test-store-billing.mjs runs it under plain node.
- * The SDK calls themselves are in src/services/store-billing.ts.
+ * Paying in the app through Google Play or the App Store (RevenueCat SDK),
+ * pure — no React Native — so mobile/scripts/test-store-billing.mjs runs it
+ * under plain node. The SDK calls themselves are in src/services/store-billing.ts.
  *
- *   • Only the Play build pays in the app (EXPO_PUBLIC_DISTRIBUTION=play on
- *     Android) and only with a public Play key (goog_…). Anything else — the
+ *   • On Android only the Play build pays in the app (EXPO_PUBLIC_DISTRIBUTION=play)
+ *     and only with a public Play key (goog_…). The iPhone app pays through
+ *     the App Store with a public App Store key (appl_…). Anything else — the
  *     APK from our site, RuStore, a missing or wrong key — is "off" with a
  *     reason, never a crash.
- *   • The plan is the `cleanway.devices` subscription, monthly and yearly,
+ *   • The plan is the `cleanway.devices` subscription, monthly and yearly
+ *     (App Store: cleanway.devices.monthly / cleanway.devices.yearly),
  *     from the RevenueCat offering `default`. Prices are the store's own
  *     strings (localised currency); nothing here invents a price.
  *   • Store errors become a few kinds the paywall can say in words.
@@ -22,27 +24,46 @@
 export interface StoreBillingEnv {
   EXPO_PUBLIC_DISTRIBUTION?: string;
   EXPO_PUBLIC_REVENUECAT_ANDROID_KEY?: string;
+  EXPO_PUBLIC_REVENUECAT_IOS_KEY?: string;
 }
 
+/** Which store takes the money — named the way the server names a plan's `source`. */
+export type BillingStore = "google_play" | "app_store";
+
 export type StoreBillingConfig =
-  | { kind: "on"; apiKey: string }
+  | { kind: "on"; apiKey: string; store: BillingStore }
   /**
-   * not_play — not the Google Play build (site APK, RuStore, iOS);
-   * no_key   — the Play build was made without EXPO_PUBLIC_REVENUECAT_ANDROID_KEY;
-   * bad_key  — the value is not a public Play key (a secret sk_ key or an
-   *            App Store appl_ key must never ship in the app).
+   * not_play — an Android build that is not the Google Play one (site APK, RuStore);
+   * no_key   — the Play build was made without EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+   *            or the iOS build without EXPO_PUBLIC_REVENUECAT_IOS_KEY;
+   * bad_key  — the value is not this store's public key (a secret sk_ key, or
+   *            the other store's key, must never ship in the app).
    */
   | { kind: "off"; why: "not_play" | "no_key" | "bad_key" };
 
 const PUBLIC_PLAY_KEY = /^goog_[A-Za-z0-9]+$/;
+const PUBLIC_APP_STORE_KEY = /^appl_[A-Za-z0-9]+$/;
 
+/**
+ * Pays in the app? On Android only the Google Play build
+ * (EXPO_PUBLIC_DISTRIBUTION=play) with a public goog_ key. On iOS every build
+ * is the App Store one (freemium.ts distributionFor — an EAS profile's
+ * EXPO_PUBLIC_DISTRIBUTION=play must not switch the iPhone app off), and it
+ * pays with a public appl_ key.
+ */
 export function readStoreBillingConfig(env: StoreBillingEnv, os: string): StoreBillingConfig {
+  if (os === "ios") {
+    const key = (env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? "").trim();
+    if (!key) return { kind: "off", why: "no_key" };
+    if (!PUBLIC_APP_STORE_KEY.test(key)) return { kind: "off", why: "bad_key" };
+    return { kind: "on", apiKey: key, store: "app_store" };
+  }
   const dist = (env.EXPO_PUBLIC_DISTRIBUTION ?? "").trim().toLowerCase();
   if (dist !== "play" || os !== "android") return { kind: "off", why: "not_play" };
   const key = (env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? "").trim();
   if (!key) return { kind: "off", why: "no_key" };
   if (!PUBLIC_PLAY_KEY.test(key)) return { kind: "off", why: "bad_key" };
-  return { kind: "on", apiKey: key };
+  return { kind: "on", apiKey: key, store: "google_play" };
 }
 
 /**
@@ -311,9 +332,57 @@ const ERROR_NOTE_KEYS: Record<Exclude<StoreErrorKind, "cancelled">, string> = {
   unknown: "mobile.paywall.err_unknown",
 };
 
+// The same, in App Store words (Apple ID, Screen Time, Ask to Buy). Kinds that
+// name no store share the Google Play sentence.
+const APP_STORE_ERROR_NOTE_KEYS: Record<Exclude<StoreErrorKind, "cancelled">, string> = {
+  pending: "mobile.paywall.note_pending_appstore",
+  already_owned: "mobile.paywall.err_already_owned_appstore",
+  network: "mobile.paywall.err_network_appstore",
+  not_allowed: "mobile.paywall.err_not_allowed_appstore",
+  unavailable: "mobile.paywall.err_unavailable",
+  store_problem: "mobile.paywall.err_store_appstore",
+  busy: "mobile.paywall.err_busy",
+  unknown: "mobile.paywall.err_unknown",
+};
+
 /** The sentence under the button after a failed store call; null when there is nothing to say (cancelled). */
-export function storeErrorNoteKey(kind: StoreErrorKind): string | null {
-  return kind === "cancelled" ? null : ERROR_NOTE_KEYS[kind];
+export function storeErrorNoteKey(kind: StoreErrorKind, store: BillingStore = "google_play"): string | null {
+  if (kind === "cancelled") return null;
+  return store === "app_store" ? APP_STORE_ERROR_NOTE_KEYS[kind] : ERROR_NOTE_KEYS[kind];
+}
+
+/** The paywall's and the account screen's store-named sentences. */
+export interface StoreCopyKeys {
+  pricesLoading: string;
+  pricesFailed: string;
+  pricesEmpty: string;
+  /** The small print under the button: who bills, auto-renewal, where to cancel. */
+  fine: string;
+  /** Under "Restore purchases" on the account screen. */
+  restoreDesc: string;
+}
+
+export function storeCopyKeys(store: BillingStore): StoreCopyKeys {
+  return store === "app_store"
+    ? {
+        pricesLoading: "mobile.paywall.prices_loading_appstore",
+        pricesFailed: "mobile.paywall.prices_failed_appstore",
+        pricesEmpty: "mobile.paywall.prices_empty_appstore",
+        fine: "mobile.paywall.fine_store_appstore",
+        restoreDesc: "mobile.account.restore_desc_appstore",
+      }
+    : {
+        pricesLoading: "mobile.paywall.prices_loading",
+        pricesFailed: "mobile.paywall.prices_failed",
+        pricesEmpty: "mobile.paywall.prices_empty",
+        fine: "mobile.paywall.fine_store",
+        restoreDesc: "mobile.account.restore_desc",
+      };
+}
+
+/** The store this build pays through, by distribution; null when it pays elsewhere (or not at all). */
+export function billingStoreFor(distribution: string): BillingStore | null {
+  return distribution === "appstore" ? "app_store" : distribution === "play" ? "google_play" : null;
 }
 
 // ── Managing and cancelling ───────────────────────────────────────────
@@ -337,11 +406,14 @@ function httpsHost(url: string): string | null {
 
 /** Store pages a store build may open: where Google / Apple manage subscriptions. */
 const STORE_MANAGE_HOSTS: ReadonlySet<string> = new Set(["play.google.com", "apps.apple.com"]);
+/** The iPhone app opens only Apple's own page (App Review 3.1.1: no other store, no website). */
+const APP_STORE_MANAGE_HOSTS: ReadonlySet<string> = new Set(["apps.apple.com"]);
 
 /**
  * "Manage subscription": the server's manage_url, https only. A store build
  * opens only a store's own subscriptions page — never our site (for a plan
- * paid on cleanway.ai the store build just says where it was paid).
+ * paid on cleanway.ai the store build just says where it was paid). The
+ * iPhone app opens only the App Store's page.
  */
 export function manageUrlFor(
   ent: StoreEntitlementLike | null | undefined,
@@ -351,12 +423,35 @@ export function manageUrlFor(
   const host = httpsHost(ent.manage_url);
   if (!host) return null;
   if (distribution === "site") return ent.manage_url.trim();
-  return STORE_MANAGE_HOSTS.has(host) ? ent.manage_url.trim() : null;
+  const allowed = distribution === "appstore" ? APP_STORE_MANAGE_HOSTS : STORE_MANAGE_HOSTS;
+  return allowed.has(host) ? ent.manage_url.trim() : null;
 }
 
 /** Google Play's subscriptions page for this app — when the server sent no manage_url. */
 export function playSubscriptionsUrl(packageName: string): string {
   return `https://play.google.com/store/account/subscriptions?package=${encodeURIComponent(packageName)}`;
+}
+
+/** Apple's subscriptions page (opens Settings → Apple ID → Subscriptions on an iPhone). */
+export const APP_STORE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
+
+/**
+ * "Manage subscription" with a fallback: the server's page (manageUrlFor),
+ * else — for a plan bought in this build's own store — that store's
+ * subscriptions page, so an App Store subscriber can always reach the place
+ * where Apple lets them cancel. Null for the free plan and for a plan paid
+ * somewhere this build must not link to.
+ */
+export function manageSubscriptionUrl(
+  ent: StoreEntitlementLike | null | undefined,
+  distribution: string,
+  androidPackage: string,
+): string | null {
+  const fromServer = manageUrlFor(ent, distribution);
+  if (fromServer || !ent || !paid(ent)) return fromServer;
+  if (ent.source === "app_store" && distribution === "appstore") return APP_STORE_SUBSCRIPTIONS_URL;
+  if (ent.source === "google_play" && distribution === "play") return playSubscriptionsUrl(androidPackage);
+  return null;
 }
 
 /**

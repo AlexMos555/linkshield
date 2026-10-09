@@ -18,8 +18,11 @@
 
 // ── Config ────────────────────────────────────────────────────────────
 
-/** Where this build is installed from. Store builds must never link out to a web checkout. */
-export type Distribution = "site" | "play" | "rustore";
+/**
+ * Where this build is installed from. Store builds must never link out to a web checkout.
+ * "appstore" is the iPhone app — the only way an iOS build ships (TestFlight included).
+ */
+export type Distribution = "site" | "play" | "rustore" | "appstore";
 
 export interface FreemiumConfig {
   enabled: boolean;
@@ -59,15 +62,27 @@ export interface FreemiumEnv {
   EXPO_PUBLIC_DISTRIBUTION?: string;
 }
 
+/**
+ * The build's distribution. An iOS build is always "appstore", whatever the
+ * env says: Apple distributes every iPhone build (App Store, TestFlight), and
+ * an iOS build that fell back to "site" would link to the web checkout —
+ * App Review 3.1.1 rejects that. On Android "appstore" means nothing and an
+ * unknown value is the site APK, as before.
+ */
+export function distributionFor(raw: string | undefined, os: string): Distribution {
+  if (os === "ios") return "appstore";
+  const dist = (raw ?? "").trim().toLowerCase();
+  return dist === "play" || dist === "rustore" || dist === "site" ? dist : DEFAULT_DISTRIBUTION;
+}
+
 /** Off unless the flag says "1" or "true"; a bad number falls back to the default, never to "unlimited". */
-export function readFreemiumConfig(env: FreemiumEnv): FreemiumConfig {
+export function readFreemiumConfig(env: FreemiumEnv, os: string = "android"): FreemiumConfig {
   const flag = (env.EXPO_PUBLIC_FREEMIUM_ENABLED ?? "").trim().toLowerCase();
-  const dist = (env.EXPO_PUBLIC_DISTRIBUTION ?? "").trim().toLowerCase();
   return {
     enabled: flag === "1" || flag === "true",
     dailyLimit: intOr(env.EXPO_PUBLIC_FREE_CHECKS_PER_DAY, DEFAULT_DAILY_LIMIT, 0, 1000),
     trialDays: intOr(env.EXPO_PUBLIC_FREE_TRIAL_DAYS, DEFAULT_TRIAL_DAYS, 0, 365),
-    distribution: dist === "play" || dist === "rustore" || dist === "site" ? dist : DEFAULT_DISTRIBUTION,
+    distribution: distributionFor(env.EXPO_PUBLIC_DISTRIBUTION, os),
   };
 }
 
@@ -263,6 +278,30 @@ export function webCheckoutAllowed(distribution: Distribution): boolean {
  */
 export function smsBenefitShown(distribution: Distribution): boolean {
   return distribution === "rustore";
+}
+
+export type PaywallBenefit = "unlimited" | "sms" | "text_model" | "calls" | "devices";
+
+/**
+ * What the paywall lists as the plan's benefits — only what this build can
+ * do (App Review 2.3.1 / Play's deceptive-behaviour rule). The iPhone app
+ * has no on-device message analyzer, no SMS reading and no call guard (all
+ * Android), so it lists the unlimited checks and the devices only.
+ */
+export function paywallBenefits(distribution: Distribution): PaywallBenefit[] {
+  if (distribution === "appstore") return ["unlimited", "devices"];
+  return smsBenefitShown(distribution)
+    ? ["unlimited", "sms", "text_model", "calls", "devices"]
+    : ["unlimited", "text_model", "calls", "devices"];
+}
+
+/**
+ * Does this build sell the plan through its store's own billing, via
+ * RevenueCat (src/services/store-billing.ts)? Google Play and the App Store.
+ * RuStore billing is not built yet; the site APK sells on the web.
+ */
+export function revenueCatStore(distribution: Distribution): boolean {
+  return distribution === "play" || distribution === "appstore";
 }
 
 /**

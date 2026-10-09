@@ -36,6 +36,11 @@ interface HeroShieldProps {
    * over a shield that was set up and blocking from its list.
    */
   offline?: boolean;
+  /**
+   * Title and line (i18n keys) when this phone has no shield at all — the
+   * iPhone today (platform-features.ts heroWithoutShieldsKeys). Neutral, never green.
+   */
+  override?: { title: string; sub: string } | null;
 }
 
 /**
@@ -45,12 +50,13 @@ interface HeroShieldProps {
  * platform shields are verified-on; never green while the main shield is
  * paused or cannot run.
  */
-export function HeroShield({ state, verifiedCount, totalCount, attention, interrupted, hold, offline }: HeroShieldProps) {
+export function HeroShield({ state, verifiedCount, totalCount, attention, interrupted, hold, offline, override }: HeroShieldProps) {
   const { t, i18n } = useTranslation();
   const quiet = offline && !hold;
-  const active = state !== "none" && !hold && !quiet;
+  const active = state !== "none" && !hold && !quiet && !override;
   const title =
-    hold?.kind === "paused" ? t("mobile.home.hero.title_paused", { time: clockTime(hold.until, i18n.language) })
+    override ? t(override.title)
+    : hold?.kind === "paused" ? t("mobile.home.hero.title_paused", { time: clockTime(hold.until, i18n.language) })
     : hold?.kind === "conflict" ? t("mobile.home.hero.title_conflict")
     : quiet ? t("mobile.home.hero.title_offline")
     : state === "all" ? t("mobile.home.hero.title_all")
@@ -58,7 +64,8 @@ export function HeroShield({ state, verifiedCount, totalCount, attention, interr
     : interrupted ? t("mobile.home.hero.title_interrupted")
     : t("mobile.home.hero.title_none");
   const sub =
-    hold?.kind === "paused" ? t("mobile.home.hero.sub_paused")
+    override ? t(override.sub)
+    : hold?.kind === "paused" ? t("mobile.home.hero.sub_paused")
     : hold?.kind === "conflict" ? t("mobile.home.hero.sub_conflict")
     : quiet ? t("mobile.home.hero.sub_offline")
     : state === "all" ? t("mobile.home.hero.sub_all")

@@ -2942,7 +2942,9 @@
         "title_paused": "Protection paused until {{time}}",
         "sub_paused": "Scam sites aren't being blocked right now",
         "title_conflict": "Protection isn't working",
-        "sub_conflict": "The Private DNS setting is in the way — see below what to change"
+        "sub_conflict": "The Private DNS setting is in the way — see below what to change",
+        "title_ios": "Check before you tap",
+        "sub_ios": "Automatic protection for iPhone is on its way — see below"
       },
       "cta_turn_on": "Turn on protection",
       "check": {
@@ -2955,7 +2957,8 @@
         "share_sheet_body": "From any app, tap Share, then choose Cleanway. We'll check the link and tell you if it's safe.",
         "share_sheet_ok": "Got it",
         "note": "Works with anything you can copy or share — including iMessage.",
-        "note_android": "Works with anything you can copy or share — links, texts and messenger chats."
+        "note_android": "Works with anything you can copy or share — links, texts and messenger chats.",
+        "share_sheet_body_ios": "In any app, tap Share, then Cleanway. Don't see it? Scroll the row of apps to the end, tap More and add Cleanway."
       },
       "sms_check": {
         "title": "SMS check",
@@ -2978,7 +2981,8 @@
       "interrupted": "Your phone stopped protection — for example after a restart, or to save battery. Your setup is still here: tap the button below, then \"{{button}}\".",
       "interrupted_revoked": "Android stopped protection: the VPN permission was taken back in the phone's settings, or another VPN app took its place. Tap the button below, then \"{{button}}\". If Android asks you to allow the connection, tap \"OK\". The other VPN app will switch off: Android runs only one at a time.",
       "interrupted_private_dns": "Protection stopped because of the \"Private DNS\" setting. That setting no longer gets in the way: tap the button below, then \"{{button}}\".",
-      "cta_turn_back_on": "Turn protection back on"
+      "cta_turn_back_on": "Turn protection back on",
+      "privacy_ios": "When you check a link, our server gets the website name and a random install number that changes every day. Message texts and full page addresses never leave your phone."
     },
     "shield": {
       "network": {
@@ -3582,7 +3586,9 @@
       "s3_desc": "On Android, one setup step blocks known scam sites in every app. Brand-new scams can slip past any blocklist — that's what the check button is for.",
       "skip": "Skip",
       "next": "Next",
-      "start": "Get started"
+      "start": "Get started",
+      "s3_title_ios": "Protection on iPhone",
+      "s3_desc_ios": "Cleanway is getting a Safari extension, a scam-text filter and DNS protection for iPhone. They arrive in updates, and the home screen shows what's ready. Today you can check anything in one tap, or with Share → Cleanway."
     },
     "android_native": {
       "fg_channel": "Cleanway protection",
@@ -3743,7 +3749,9 @@
       "delete_store_title": "Cancel your {{store}} subscription first",
       "delete_store_body": "Deleting your account does not stop your {{store}} subscription — only you can cancel it, in {{store}}. Cancel it there so you aren't charged again, then delete the account.",
       "delete_store_open": "Open {{store}}",
-      "delete_store_continue": "Delete anyway"
+      "delete_store_continue": "Delete anyway",
+      "restore_desc_appstore": "Subscribed with this Apple ID on another phone or account? Bring it here",
+      "cancel_note_appstore": "Apple bills this subscription, so only Apple can cancel it: Settings → your name → Subscriptions → Cleanway. Deleting your Cleanway account does not cancel it."
     },
     "paywall": {
       "close": "Close",
@@ -3808,7 +3816,29 @@
       "err_store": "Google Play couldn't complete the purchase. Please try again.",
       "err_busy": "Another purchase is still in progress. Wait a moment and try again.",
       "err_unknown": "Something went wrong with the purchase. Please try again.",
-      "manage": "Manage subscription"
+      "manage": "Manage subscription",
+      "prices_loading_appstore": "Getting prices from the App Store…",
+      "prices_failed_appstore": "Couldn't get prices from the App Store. Check your connection and try again.",
+      "prices_empty_appstore": "This subscription isn't available in the App Store in your country yet.",
+      "fine_store_appstore": "Billed to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Cancel anytime in Settings → your name → Subscriptions.",
+      "note_pending_appstore": "Your purchase is waiting for approval. The plan turns on as soon as the App Store confirms it.",
+      "err_already_owned_appstore": "This Apple ID already has the subscription. Tap Restore to move it to this account.",
+      "err_network_appstore": "No connection to the App Store. Check the internet and try again.",
+      "err_not_allowed_appstore": "Purchases are turned off on this iPhone (for example, in Screen Time).",
+      "err_store_appstore": "The App Store couldn't complete the purchase. Please try again."
+    },
+    "ios": {
+      "header": "Protection on iPhone",
+      "lead": "On iPhone, Cleanway protects you in three ways. Each one gets its setup step here as soon as it arrives in an update.",
+      "safari_title": "Safari extension",
+      "safari_line": "Warns you right on the page when a site in Safari is a known scam.",
+      "sms_title": "Scam-text filter",
+      "sms_line": "Moves scam texts from unknown senders to Junk. Apple never lets it see iMessage or texts from your contacts.",
+      "dns_title": "DNS protection",
+      "dns_line": "Blocks known scam sites in every app, through an encrypted DNS setting you approve in iPhone Settings.",
+      "coming": "Coming soon",
+      "set_up": "Set up",
+      "on": "On"
     }
   }
 }

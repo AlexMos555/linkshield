@@ -15,6 +15,10 @@
  *   • the Google Play build → Google Play billing (src/services/store-billing.ts):
  *     monthly / yearly with the store's own prices, then our server confirms;
  *     never a link to the web checkout, never a price typed into the app;
+ *   • the iPhone app → the App Store, the same way (App Review 3.1.1: no
+ *     web checkout, no other store); Terms of Use and Privacy Policy links
+ *     under the button (3.1.2); without EXPO_PUBLIC_REVENUECAT_IOS_KEY it
+ *     says "paying in the app is coming soon";
  *   • RuStore → not built yet: "coming soon";
  *   • Russia → phone-balance billing is not merged yet: "coming soon" (the
  *     Play build does not mention other ways to pay).
@@ -22,10 +26,13 @@
  * where it was paid, and (store plans) offers "Manage subscription".
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Linking, AppState, ActivityIndicator } from "react-native";
+import {
+  View, Text, StyleSheet, ScrollView, Pressable, Linking, AppState, ActivityIndicator, Platform,
+} from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Localization from "expo-localization";
+import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -34,32 +41,39 @@ import { getSessionState } from "../src/services/auth";
 import { getEntitlement, type EntitlementResponse } from "../src/services/api";
 import { FREEMIUM, applyEntitlement, isPaid } from "../src/services/freemium";
 import {
-  loadStorePlans, restoreStorePurchases, startStorePurchase, storeBillingOn,
+  BILLING_STORE, loadStorePlans, restoreStorePurchases, startStorePurchase, storeBillingOn,
 } from "../src/services/store-billing";
 import {
-  PRICES, WEB_CHECKOUT_URL, marketFor, priceDisplay, purchaseAction, smsBenefitShown, webCheckoutAllowed,
+  PRICES, WEB_CHECKOUT_URL, marketFor, paywallBenefits, priceDisplay, purchaseAction, revenueCatStore,
+  webCheckoutAllowed, type PaywallBenefit,
 } from "../src/utils/freemium";
-import { manageUrlFor, storeErrorNoteKey, type PlanPeriod } from "../src/utils/store-billing";
+import {
+  manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey, type PlanPeriod,
+} from "../src/utils/store-billing";
 import { sourceKey } from "../src/utils/account-session";
 import { StorePlans, type StorePlansState } from "../src/components/paywall/StorePlans";
 import { PublishedPrice } from "../src/components/paywall/PublishedPrice";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const BENEFITS: ReadonlyArray<{ icon: IconName; key: string }> = [
-  { icon: "infinite-outline", key: "mobile.paywall.benefit_unlimited" },
-  { icon: "chatbox-ellipses-outline", key: "mobile.paywall.benefit_sms" },
-  { icon: "document-text-outline", key: "mobile.paywall.benefit_text_model" },
-  { icon: "call-outline", key: "mobile.paywall.benefit_calls" },
-  { icon: "phone-portrait-outline", key: "mobile.paywall.benefit_devices" },
-];
-// The site and Play APKs cannot read SMS, so they never promise it.
-const SHOWN_BENEFITS = BENEFITS.filter(
-  (b) => b.key !== "mobile.paywall.benefit_sms" || smsBenefitShown(FREEMIUM.distribution),
-);
+const BENEFITS: Record<PaywallBenefit, { icon: IconName; key: string }> = {
+  unlimited: { icon: "infinite-outline", key: "mobile.paywall.benefit_unlimited" },
+  sms: { icon: "chatbox-ellipses-outline", key: "mobile.paywall.benefit_sms" },
+  text_model: { icon: "document-text-outline", key: "mobile.paywall.benefit_text_model" },
+  calls: { icon: "call-outline", key: "mobile.paywall.benefit_calls" },
+  devices: { icon: "phone-portrait-outline", key: "mobile.paywall.benefit_devices" },
+};
+// Only what this build can do: the site and Play APKs cannot read SMS, and
+// the iPhone app has no message analyzer or call guard (paywallBenefits).
+const SHOWN_BENEFITS = paywallBenefits(FREEMIUM.distribution).map((b) => BENEFITS[b]);
 
-/** The Google Play build: prices and purchases come from the store. */
-const PLAY = FREEMIUM.distribution === "play";
+const TERMS_URL = "https://cleanway.ai/terms";
+const PRIVACY_URL = "https://cleanway.ai/privacy-policy";
+const ANDROID_PACKAGE = Constants.expoConfig?.android?.package ?? "ai.cleanway.app";
+
+/** A store build (Google Play, the iPhone app): prices and purchases come from the store. */
+const STORE = revenueCatStore(FREEMIUM.distribution);
+const COPY = storeCopyKeys(BILLING_STORE);
 
 /** A note under the button after an attempt: what happened, in words. */
 type Note = null | "store_soon" | "restore_none" | "restore_failed" | "web_opened" | "processing" | "restored";
@@ -96,14 +110,14 @@ export default function PaywallScreen() {
   /** Sent to sign in from the button: buy when back. */
   const continueAfterSignIn = useRef(false);
 
-  const storeOn = PLAY && storeBillingOn();
+  const storeOn = STORE && storeBillingOn();
   const market = marketFor(i18n.language, Localization.getLocales()[0]?.regionCode);
   const price = priceDisplay(market, FREEMIUM.distribution);
   const devices = PRICES[market].devices;
   const signedIn = acct?.signedIn === true;
   const paid = acct?.paid === true;
   const action = purchaseAction({ signedIn, market, distribution: FREEMIUM.distribution });
-  const showStorePlans = PLAY && storeOn && action !== "soon";
+  const showStorePlans = STORE && storeOn && action !== "soon";
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -151,7 +165,7 @@ export default function PaywallScreen() {
   }, [showStorePlans, loadPlans]);
 
   function showStoreError(kind: Parameters<typeof storeErrorNoteKey>[0]): void {
-    setErrorKey(storeErrorNoteKey(kind));
+    setErrorKey(storeErrorNoteKey(kind, BILLING_STORE));
   }
 
   async function buyFromStore(): Promise<void> {
@@ -175,7 +189,7 @@ export default function PaywallScreen() {
           setNote("processing");
           break;
         case "pending":
-          setErrorKey("mobile.paywall.note_pending");
+          setErrorKey(storeErrorNoteKey("pending", BILLING_STORE));
           break;
         case "signed_out":
           continueAfterSignIn.current = true;
@@ -259,28 +273,32 @@ export default function PaywallScreen() {
     }
   }
 
-  const soonCta = PLAY ? "mobile.paywall.cta_soon_play" : "mobile.paywall.cta_soon_ru";
-  const soonFine = PLAY ? "mobile.paywall.fine_soon_play" : "mobile.paywall.fine_soon";
+  const soonCta = STORE ? "mobile.paywall.cta_soon_play" : "mobile.paywall.cta_soon_ru";
+  const soonFine = STORE ? "mobile.paywall.fine_soon_play" : "mobile.paywall.fine_soon";
+  // A store build made without its RevenueCat key: say so up front, no dead
+  // button — and do not send a signed-out person to sign in for a purchase
+  // that cannot happen yet.
+  const playOff = STORE && !storeOn && (action === "store" || action === "sign_in");
   const ctaKey =
-    action === "sign_in" ? "mobile.paywall.cta_sign_in"
+    playOff ? "mobile.paywall.cta_store"
+    : action === "sign_in" ? "mobile.paywall.cta_sign_in"
     : action === "web_checkout" ? "mobile.paywall.cta_web"
     : action === "store" ? "mobile.paywall.cta_store"
     : soonCta;
   const storeNotReady = action === "store" && storeOn && plans.kind !== "ok";
-  // The Play build made without a RevenueCat key: say so up front, no dead button.
-  const playOff = PLAY && !storeOn && action === "store";
   const ctaDisabled = action === "soon" || busy || acct === null || storeNotReady || playOff;
   const fineKey =
     action === "soon" ? soonFine
     : playOff ? "mobile.paywall.note_store_soon"
-    : PLAY ? "mobile.paywall.fine_store"
+    : STORE ? COPY.fine
     : "mobile.paywall.fine_cancel";
-  const manageUrl = manageUrlFor(acct?.ent, FREEMIUM.distribution);
+  const manageUrl = manageSubscriptionUrl(acct?.ent, FREEMIUM.distribution, ANDROID_PACKAGE);
   const paidSource = sourceKey(acct?.ent?.source);
   const leadKey = params.from === "upgrade" ? "mobile.paywall.lead_upgrade" : "mobile.paywall.lead";
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    // iOS shows this as a page sheet below the status bar: no top inset there.
+    <View style={[s.root, { paddingTop: Platform.OS === "ios" ? 0 : insets.top }]}>
       <View style={s.topBar}>
         <Pressable
           onPress={close}
@@ -310,7 +328,7 @@ export default function PaywallScreen() {
           </View>
         ) : showStorePlans ? (
           <StorePlans state={plans} selected={selected} onSelect={setSelected} onRetry={() => void loadPlans()} devices={devices} />
-        ) : PLAY ? null : (
+        ) : STORE ? null : (
           // The site APK and RuStore: the plan's published price. The Play
           // build shows only what Google Play itself quotes (above).
           <PublishedPrice price={price} devices={devices} />
@@ -370,6 +388,19 @@ export default function PaywallScreen() {
           <Ionicons name="shield-outline" size={14} color={colors.textSecondary} />
           <Text style={s.privacy}>{t("mobile.paywall.always_free")}</Text>
         </View>
+
+        {STORE && (
+          // A store subscription sheet must link its Terms of Use and Privacy
+          // Policy (App Store Review 3.1.2; Google Play asks the same).
+          <View style={s.legalRow}>
+            <Pressable onPress={() => void Linking.openURL(TERMS_URL).catch(() => undefined)} style={s.legal} accessibilityRole="link">
+              <Text style={s.legalLabel}>{t("mobile.settings.terms")}</Text>
+            </Pressable>
+            <Pressable onPress={() => void Linking.openURL(PRIVACY_URL).catch(() => undefined)} style={s.legal} accessibilityRole="link">
+              <Text style={s.legalLabel}>{t("mobile.settings.privacy_policy")}</Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -421,4 +452,7 @@ const s = StyleSheet.create({
     gap: 6, marginTop: space.xl, paddingHorizontal: space.md,
   },
   privacy: { fontSize: 14, lineHeight: 20, color: colors.textSecondary, textAlign: "center", flexShrink: 1 },
+  legalRow: { flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: space.md, marginTop: space.md },
+  legal: { minHeight: 44, justifyContent: "center", paddingHorizontal: space.sm },
+  legalLabel: { fontSize: 14, lineHeight: 20, color: colors.textSecondary, textDecorationLine: "underline" },
 });

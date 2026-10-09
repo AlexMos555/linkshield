@@ -3000,7 +3000,9 @@
         "title_paused": "Protection en pause jusqu'à {{time}}",
         "sub_paused": "Les sites frauduleux ne sont pas bloqués pour l'instant",
         "title_conflict": "La protection ne fonctionne pas",
-        "sub_conflict": "Le réglage DNS privé l'en empêche — voir ci-dessous quoi changer"
+        "sub_conflict": "Le réglage DNS privé l'en empêche — voir ci-dessous quoi changer",
+        "title_ios": "Vérifiez avant de toucher",
+        "sub_ios": "La protection automatique pour iPhone arrive bientôt — voir ci-dessous"
       },
       "cta_turn_on": "Activer la protection",
       "check": {
@@ -3013,7 +3015,8 @@
         "share_sheet_body": "Depuis n'importe quelle appli, touchez Partager, puis choisissez Cleanway. Nous vérifierons le lien et vous dirons s'il est sûr.",
         "share_sheet_ok": "Compris",
         "note": "Fonctionne avec tout ce que vous pouvez copier ou partager — y compris iMessage.",
-        "note_android": "Fonctionne avec tout ce que vous pouvez copier ou partager — liens, SMS et messages de messageries."
+        "note_android": "Fonctionne avec tout ce que vous pouvez copier ou partager — liens, SMS et messages de messageries.",
+        "share_sheet_body_ios": "Dans n'importe quelle app, touchez Partager, puis Cleanway. Vous ne le voyez pas ? Faites défiler la rangée d'apps jusqu'au bout, touchez Plus et ajoutez Cleanway."
       },
       "sms_check": {
         "title": "Vérification de SMS",
@@ -3036,7 +3039,8 @@
       "interrupted": "Le téléphone a arrêté la protection — par exemple après un redémarrage, ou pour économiser la batterie. Votre configuration est toujours là : touchez le bouton ci-dessous, puis « {{button}} ».",
       "interrupted_revoked": "Android a arrêté la protection : l'autorisation VPN a été retirée dans les réglages du téléphone, ou une autre appli VPN a pris sa place. Touchez le bouton ci-dessous, puis « {{button}} ». Si Android vous demande d'autoriser la connexion, touchez « OK ». L'autre appli VPN sera coupée : Android n'en fait fonctionner qu'une à la fois.",
       "interrupted_private_dns": "La protection s'est arrêtée à cause du réglage « DNS privé ». Il ne gêne plus : touchez le bouton ci-dessous, puis « {{button}} ».",
-      "cta_turn_back_on": "Réactiver la protection"
+      "cta_turn_back_on": "Réactiver la protection",
+      "privacy_ios": "Quand vous vérifiez un lien, notre serveur reçoit le nom du site et un numéro d'installation aléatoire qui change chaque jour. Le texte des messages et l'adresse complète des pages ne quittent jamais votre téléphone."
     },
     "shield": {
       "network": {
@@ -3640,7 +3644,9 @@
       "s3_desc": "Sur Android, une seule étape de réglage bloque les sites d'arnaque connus dans toutes les applis. Les arnaques toutes neuves peuvent passer à travers n'importe quelle liste de blocage — c'est à ça que sert le bouton de vérification.",
       "skip": "Passer",
       "next": "Suivant",
-      "start": "Commencer"
+      "start": "Commencer",
+      "s3_title_ios": "Protection sur iPhone",
+      "s3_desc_ios": "Cleanway prépare pour iPhone une extension Safari, un filtre des SMS d'arnaque et une protection DNS. Ils arrivent avec les mises à jour, et l'écran d'accueil indique ce qui est prêt. Dès aujourd'hui, vous pouvez tout vérifier en un geste ou via Partager → Cleanway."
     },
     "android_native": {
       "fg_channel": "Protection Cleanway",
@@ -3801,7 +3807,9 @@
       "delete_store_title": "Résiliez d'abord votre abonnement {{store}}",
       "delete_store_body": "Supprimer votre compte n'arrête pas votre abonnement {{store}} — vous seul pouvez le résilier, dans {{store}}. Résiliez-le là-bas pour ne plus être facturé, puis supprimez le compte.",
       "delete_store_open": "Ouvrir {{store}}",
-      "delete_store_continue": "Supprimer quand même"
+      "delete_store_continue": "Supprimer quand même",
+      "restore_desc_appstore": "Abonné avec cet identifiant Apple sur un autre téléphone ou compte ? Récupérez-le ici",
+      "cancel_note_appstore": "Cet abonnement est facturé par Apple : seul Apple peut le résilier, dans Réglages → votre nom → Abonnements → Cleanway. Supprimer votre compte Cleanway ne le résilie pas."
     },
     "paywall": {
       "close": "Fermer",
@@ -3866,7 +3874,29 @@
       "err_store": "Google Play n'a pas pu finaliser l'achat. Réessayez.",
       "err_busy": "Un autre achat est encore en cours. Patientez un instant et réessayez.",
       "err_unknown": "Un problème est survenu pendant l'achat. Réessayez.",
-      "manage": "Gérer l'abonnement"
+      "manage": "Gérer l'abonnement",
+      "prices_loading_appstore": "Récupération des prix sur l'App Store…",
+      "prices_failed_appstore": "Impossible de récupérer les prix sur l'App Store. Vérifiez votre connexion et réessayez.",
+      "prices_empty_appstore": "Cet abonnement n'est pas encore disponible sur l'App Store dans votre pays.",
+      "fine_store_appstore": "Facturé sur votre identifiant Apple. Renouvelé automatiquement sauf résiliation au moins 24 heures avant la fin de la période. Résiliable à tout moment dans Réglages → votre nom → Abonnements.",
+      "note_pending_appstore": "Votre achat attend une approbation. Le forfait s'activera dès que l'App Store l'aura confirmé.",
+      "err_already_owned_appstore": "Cet identifiant Apple a déjà l'abonnement. Touchez Restaurer pour le transférer sur ce compte.",
+      "err_network_appstore": "Pas de connexion à l'App Store. Vérifiez Internet et réessayez.",
+      "err_not_allowed_appstore": "Les achats sont désactivés sur cet iPhone (par exemple dans Temps d'écran).",
+      "err_store_appstore": "L'App Store n'a pas pu finaliser l'achat. Veuillez réessayer."
+    },
+    "ios": {
+      "header": "Protection sur iPhone",
+      "lead": "Sur iPhone, Cleanway vous protège de trois façons. Chacune aura ici son étape de configuration dès qu'elle arrivera dans une mise à jour.",
+      "safari_title": "Extension Safari",
+      "safari_line": "Vous avertit directement sur la page quand un site ouvert dans Safari est une arnaque connue.",
+      "sms_title": "Filtre des SMS d'arnaque",
+      "sms_line": "Range les SMS d'arnaque d'expéditeurs inconnus dans Indésirables. Apple ne lui laisse jamais voir iMessage ni les messages de vos contacts.",
+      "dns_title": "Protection DNS",
+      "dns_line": "Bloque les sites d'arnaque connus dans toutes les apps, grâce à un réglage DNS chiffré que vous approuvez dans les Réglages de l'iPhone.",
+      "coming": "Bientôt",
+      "set_up": "Configurer",
+      "on": "Activé"
     }
   }
 }
