@@ -141,6 +141,10 @@ worker is below ~60% busy; above that, misses queue. Scale on CPU, not memory.
 
 ## Scaling on Railway
 
+State on 2026-10-09: `WEB_CONCURRENCY=2`, 2 replicas, deploy health check
+`/health` — all live. Region is still Southeast Asia (Singapore) for both `web`
+and `Redis`; moving both to EU West is pending (see `docs/PLAN.md`).
+
 * **Workers.** uvicorn reads `WEB_CONCURRENCY` (the Dockerfile start
   command needs no change). One worker per vCPU; each holds its own list and
   cache (~170–200 MB). Set `WEB_CONCURRENCY=2` on a 2-vCPU / 1 GB plan.
