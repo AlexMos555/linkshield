@@ -217,7 +217,11 @@ check("privacy copy: names go to Cleanway's server, unlike Android; Cloudflare n
   assert.match(en, /Android/);
   assert.match(en, /Cloudflare/);
   assert.match(en, /never the full link/);
-  assert.match(en, /without your IP address/);
+  // The gateway since PR #124: no per-query log line, aggregate counters,
+  // a cache keyed by the question only — never "a blocked name in our log".
+  assert.match(en, /writes no log of the names/);
+  assert.match(en, /never by who asked/);
+  assert.ok(!/in our log/.test(en), "the old blocked-name log line is gone");
   for (const loc of LOCALES) {
     const body = STRINGS[loc]["mobile.ios.dns.privacy_body"];
     assert.match(body, /Cloudflare/, loc);
@@ -227,6 +231,27 @@ check("privacy copy: names go to Cleanway's server, unlike Android; Cloudflare n
   }
   assert.ok(!/stays on your (phone|iPhone)|never leaves your (phone|iPhone)/i.test(en));
   assert.match(STRINGS.en["mobile.home.privacy_ios_dns"], /DNS protection/);
+});
+
+check("policy §11 describes the gateway on main: Cloudflare only, no log line, question-keyed memory cache, hashed limit", () => {
+  for (const loc of LOCALES) {
+    const src = JSON.parse(readFileSync(join(REPO, "packages", "i18n-strings", "src", `${loc}.json`), "utf8"));
+    const sec = src.landing.privacy_policy.sections[10];
+    assert.match(sec.title, /^11\./, loc);
+    const [, filter, iphone] = sec.paragraphs;
+    assert.match(filter, /dns\.cleanway\.ai/, loc);
+    assert.match(filter, /Cloudflare/, loc);
+    assert.match(filter, /\b6\b/, `${loc}: the 6 h stale fallback`);
+    assert.match(iphone, /iPhone/, loc);
+    assert.match(iphone, /iOS 26/, loc);
+    for (const p of [filter, iphone]) {
+      assert.ok(!/Quad9/.test(p), `${loc}: Quad9 is not a DoH upstream by default`);
+      assert.ok(!/\b32\b/.test(p), `${loc}: the 32-character log line is gone`);
+    }
+    assert.ok(!/Quad9/.test(STRINGS[loc]["mobile.ios.dns.privacy_body"]), loc);
+  }
+  const ups = readFileSync(join(REPO, "api", "services", "doh_upstream.py"), "utf8");
+  assert.match(ups, /DEFAULT_UPSTREAMS = \(CLOUDFLARE_DOH_URL, CLOUDFLARE_IP_DOH_URL\)/, "the copy names Cloudflare only");
 });
 
 check("never calls the feature a VPN — only Apple's Settings page and VPN apps may say it", () => {

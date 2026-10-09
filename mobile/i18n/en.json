@@ -1926,7 +1926,7 @@
   "mobile.ios.on": "On",
   "mobile.ios.dns.title": "DNS protection",
   "mobile.ios.dns.privacy_title": "What this sends, and where",
-  "mobile.ios.dns.privacy_body": "On iPhone the check happens on Cleanway's server, not on the phone as on Android. While DNS protection is on, your iPhone sends the name of each site an app opens (like example.com — never the full link or the page), encrypted, to Cleanway's DNS server. The server blocks names on the scam list and asks Cloudflare's DNS for the address of the rest. Cleanway doesn't record which sites you open: only the name of a blocked scam site can appear in our log, without your IP address or account. Our hosting provider keeps its standard request logs (privacy policy, section 11).",
+  "mobile.ios.dns.privacy_body": "On iPhone the check happens on Cleanway's server, not on the phone as on Android. While DNS protection is on, your iPhone sends the name of each site an app opens (like example.com — never the full link or the page), encrypted, to Cleanway's DNS server. The server blocks names on the scam list and asks Cloudflare's DNS for the address of the rest. Cleanway doesn't record which sites you open: the server writes no log of the names, keeps only totals such as how many sites it blocked, and remembers recent answers in memory by the site name alone, never by who asked. Our hosting provider keeps its standard request logs (privacy policy, section 11).",
   "mobile.ios.dns.step_add_title": "Add Cleanway's DNS to iPhone",
   "mobile.ios.dns.step_add_body": "Saves the setting on your iPhone. It stays off until you choose it in Settings.",
   "mobile.ios.dns.step_on_title": "Choose Cleanway in Settings",

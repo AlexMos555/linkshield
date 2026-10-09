@@ -353,10 +353,20 @@ protection is on, every name any app looks up goes over HTTPS to the gateway
 (`api/routers/doh.py`). The sheet says so before its "Add" button
 (`mobile.ios.dns.privacy_body`), the home privacy line switches to
 `mobile.home.privacy_ios_dns` while it is on, and the public policy has a
-paragraph in §11 (10 locales). The exact server behaviour and the open
-questions (GET vs POST and Railway's request log; the gateway-hardening
-branch) are in `docs/PRIVACY.md` → "The iPhone app". Re-read all three texts
-when `feat/doh-gateway-hardening` lands.
+paragraph in §11 (10 locales).
+
+The copy matches the gateway as hardened in PR #124 (on `main` since
+2026-10-09): blocked names get NXDOMAIN, others go to Cloudflare
+(`cloudflare-dns.com`, then `1.1.1.1`); **no per-query log line at all**,
+only aggregate counters (`/health/doh`); an in-memory answer cache keyed by
+the question only (TTL capped at 1 h, up to 6 h stale fallback, never on
+disk / Redis / logs); the per-IP rate limit in process memory under a keyed
+hash, not the raw IP. Any change to that — another upstream operator via
+`DOH_UPSTREAMS`, a log line, a persisted cache — must update the sheet
+copy, policy §11 in all 10 locales and `docs/PRIVACY.md` → "The iPhone app"
+in the same PR. Still open: whether iOS's resolver sends GET or POST (with
+GET the question is in the URL, which Railway's own request log can record
+with the IP) — see §4.4.
 
 ### 4.4 Simulator vs. device
 
