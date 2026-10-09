@@ -84,6 +84,13 @@ def _read_opt(buf: bytes, pos: int) -> tuple[bool, bool, bool, int]:
     return bool(ttl & 0x8000), padded, other, end
 
 
+def fold_question(question: bytes) -> bytes:
+    """The question section with the NAME case-folded (RFC 4343) and QTYPE /
+    QCLASS left alone — bytes.lower() over the whole section would also fold
+    a type byte in 0x41..0x5A (HTTPS=65 would collide with AMTRELAY=97)."""
+    return question[:-4].lower() + question[-4:]
+
+
 def query_shape(wire: bytes) -> Optional[QueryShape]:
     """Read a client query. None when it is not a well-formed single-question
     standard query (it is still forwarded, just never cached)."""
@@ -129,7 +136,7 @@ def query_shape(wire: bytes) -> Optional[QueryShape]:
         # the client sent OPT / padding changes the shape of the response.
         bits = ((flags >> 8) & 0x01) | (0x02 if flags & 0x0010 else 0) | (0x04 if edns else 0) \
             | (0x08 if do_bit else 0) | (0x10 if padded else 0) | (0x20 if flags & 0x0020 else 0)
-        key = bytes([bits]) + question.lower()
+        key = bytes([bits]) + fold_question(question)
     return QueryShape(question, question_end, edns, do_bit, padded, other, key)
 
 

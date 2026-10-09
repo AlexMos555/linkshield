@@ -26,7 +26,7 @@ import time
 from collections import OrderedDict
 from typing import NamedTuple, Optional
 
-from api.services.doh_wire import QueryShape, response_shape
+from api.services.doh_wire import QueryShape, fold_question, response_shape
 
 STALE_ANSWER_TTL = 30  # RFC 8767 §4: TTL of an answer served stale
 
@@ -68,7 +68,7 @@ class ResponseCache:
         end = query.question_end
         # The answer must be about exactly this question (case-insensitively);
         # anything else is either a broken upstream or a poisoning attempt.
-        if len(resp) < end or resp[4:6] != b"\x00\x01" or resp[12:end].lower() != query.cache_key[1:]:
+        if len(resp) < end or resp[4:6] != b"\x00\x01" or fold_question(resp[12:end]) != query.cache_key[1:]:
             return None
         shape = response_shape(resp, self.max_ttl)
         if shape.ttl is None:

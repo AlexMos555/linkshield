@@ -154,6 +154,15 @@ def test_a_repeat_is_answered_from_cache_with_the_clients_id_and_case(client, up
     assert resp.content[12:12 + len(again) - 12] == again[12:]
 
 
+def test_query_types_never_share_a_cache_entry():
+    """Case folding applies to the NAME only: HTTPS (65 = 0x41) and AMTRELAY
+    (97 = 0x61) differ by exactly the ASCII case bit."""
+    https, amt = query_shape(query("example.org", qtype=65)), query_shape(query("example.org", qtype=97))
+    assert https.cache_key != amt.cache_key
+    cache = ResponseCache()
+    assert cache.put(https, answer(query("example.org", qtype=97))) is None
+
+
 def test_queries_with_ecs_are_never_cached(client, upstream):
     for txid in (1, 2):
         client.post("/dns-query", content=query("example.org", ecs=True, txid=txid), headers=CT)
