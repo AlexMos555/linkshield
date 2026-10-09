@@ -100,7 +100,8 @@ export function IosDnsSetupSheet({ visible, dns, onClose }: {
               </TouchableOpacity>
             )}
 
-            <Text style={s.note}>{t("mobile.ios.dns.note_off")}</Text>
+            {/* "…or remove Cleanway below" — only once there is something to remove. */}
+            {(sheet.removable || sheet.removing) && <Text style={s.note}>{t("mobile.ios.dns.note_off")}</Text>}
             <Text style={s.note}>{t("mobile.ios.dns.note_vpn")}</Text>
 
             {(sheet.removable || sheet.removing) && (

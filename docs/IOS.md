@@ -360,9 +360,20 @@ when `feat/doh-gateway-hardening` lands.
 
 ### 4.4 Simulator vs. device
 
-The simulator run (iPhone 17, iOS 26.2, Xcode 26.3) is recorded in the PR
-that added this section. What only a device (TestFlight) can show — check
-before submitting:
+Simulator run (iPhone 17, iOS 26.2, Xcode 26.3, Release build, 2026-10-09):
+prebuild writes `dns-settings` (and no push) into `Cleanway.entitlements` and
+the binary's simulated entitlements; the module links and loads; the home
+card shows "DNS protection — Set up" and the hero "Automatic protection for
+iPhone — see below"; the sheet renders the privacy block first, both steps,
+the status and the notes. **The simulator has no NetworkExtension
+configuration daemon**: every `loadFromPreferences` fails with
+`NEConfigurationErrorDomain 11 "IPC failed"` (lost connection to
+`nehelper`), so on the simulator the sheet shows "Couldn't read your
+iPhone's DNS settings" on open and "Your iPhone didn't save the setting"
+after "Add to iPhone" — the error paths, verified; the card stays "Set up",
+never "On". Saving, Settings → DNS → Cleanway, `isEnabled`, the change
+notice and removal can only be tested on a device. What only a device
+(TestFlight) can show — check before submitting:
 
 1. "Cleanway" under Settings → General → VPN & Device Management → DNS on a
    real phone; selecting it flips the sheet to "On" when the app comes back.
