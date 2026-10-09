@@ -248,6 +248,15 @@ jobs:
         # Play subscriber to cancel in Play first.
         run: node --experimental-strip-types mobile/scripts/test-store-billing.mjs
 
+      - name: iPhone platform gating + App Store shape table test
+        # The iPhone never shows Android-only protection (VPN shield, keep-alive,
+        # link guard, call guard); it lists its own layers (Safari, scam texts,
+        # DNS) as "coming soon" until a build reports one. The iOS config stays
+        # App Store-shaped: no VPN or push entitlement, no unused usage strings,
+        # export compliance, a privacy manifest, the native pod not above the
+        # deployment target, the share extension's hand-off URL routed home.
+        run: node --experimental-strip-types mobile/scripts/test-platform-gating.mjs
+
       - name: Remote config (SMS text model kill switch) table test
         # The server can turn the on-device SMS text model off without an APK.
         # An answer without a valid block keeps the stored switches (an outage
