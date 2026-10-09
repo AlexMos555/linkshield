@@ -3,16 +3,18 @@
 Cleanway runs an RFC 8484 DNS-over-HTTPS resolver that:
 
   1. Reads the DNS QNAME from the wire-format request.
-  2. Checks the registrable domain against our `dangerous_domains`
-     Redis set (populated by URLhaus / PhishTank / Safe Browsing /
-     ThreatFox feeds via the existing analyzer cache).
+  2. Checks the name and its parents against the published blocklist —
+     in memory (doh_filter.py: the artifact phones sync, confirmed against
+     the `dangerous_domains` Redis set on a hit), falling back to a
+     per-query Redis lookup only while no list is loaded.
   3. On a match: synthesizes an NXDOMAIN response and returns it
      immediately — the user's browser never resolves the phishing
      host.
-  4. On a clean lookup: proxies the same wire-format request to
-     Cloudflare's 1.1.1.1 DoH endpoint (cloudflare-dns.com/dns-query)
-     and returns the response verbatim. We add NO latency beyond
-     the Redis HEXISTS check (~1ms p50).
+  4. On a clean lookup: answers from a small TTL-honouring cache or
+     forwards the same wire-format request to Cloudflare's DoH endpoint,
+     failing over to Quad9 (doh_upstream.py), and returns the response
+     verbatim. docs/runbooks/doh-gateway.md has the request path, the
+     fail-open decision and the measurements.
 
 Why this matters for #6:
   Users tap a .mobileconfig on iOS (or paste 'dns.cleanway.ai'
@@ -25,12 +27,15 @@ Why this matters for #6:
 Privacy invariants:
   * QNAME is the only identifier we see — same surface as any
     DNS resolver.
-  * We do NOT log QNAMEs to disk or to Sentry. The query exists
-    in memory for the duration of the request and is gone.
-  * Rate-limiting is by IP at the analyzer layer; the DoH gateway
-    itself does not extend the user-identification surface.
-  * The upstream (Cloudflare) has its own privacy policy; we
-    cannot improve on it but we don't make it worse.
+  * We do NOT log QNAMEs or client IPs — not to disk, not to Sentry,
+    not even for blocked names. Aggregate counters only
+    (doh_metrics.py). Answers (keyed by question, never by client) sit
+    in a per-process memory cache for at most their TTL + the
+    serve-stale window.
+  * Rate-limiting is per IP, in process memory, keyed by a keyed hash
+    of the IP; nothing about the client is stored elsewhere.
+  * The upstreams (Cloudflare, Quad9) have their own privacy policies;
+    we add no EDNS client subnet and forward the query bytes unchanged.
 
 This module implements ONLY the protocol layer + intercept
 decision. The router (api/routers/doh.py) wires it to FastAPI
@@ -43,15 +48,14 @@ import logging
 import struct
 from typing import Iterable, Optional
 
-import httpx
+import httpx  # noqa: F401 — kept: tests patch doh_gateway.httpx.AsyncClient
 
 from api.services.dns_wire import BLOCK_SOA_MNAME
+from api.services.doh_wire import opt_record, query_shape
 
 logger = logging.getLogger(__name__)
 
-CLOUDFLARE_DOH_URL = "https://cloudflare-dns.com/dns-query"
 DOH_CONTENT_TYPE = "application/dns-message"
-UPSTREAM_TIMEOUT_S = 4.0
 
 # RFC 1035 wire-format constants.
 _RCODE_NOERROR = 0
@@ -198,10 +202,22 @@ def _soa_rr(qname: str) -> bytes:
     )
 
 
+def _with_opt(wire: bytes, response: bytes) -> bytes:
+    """Append an OPT RR (and bump ARCOUNT) when the query carried one —
+    RFC 6891 §7; padded to the RFC 8467 block when the query was padded."""
+    shape = query_shape(wire)
+    if shape is None or not shape.edns:
+        return response
+    out = bytearray(response)
+    struct.pack_into("!H", out, 10, struct.unpack("!H", response[10:12])[0] + 1)
+    return bytes(out) + opt_record(shape, len(out))
+
+
 def make_nxdomain_response(wire: bytes) -> bytes:
     """Build a syntactically-valid NXDOMAIN response for the query
     `wire`: question echoed, RCODE=3, and an SOA in the authority section
-    so the client negatively caches it (NEGATIVE_TTL_S).
+    so the client negatively caches it (NEGATIVE_TTL_S). A query with EDNS0
+    gets an OPT back (padded if the query was).
     """
     if len(wire) < 12:
         # Can't build a response from a malformed query — return a
@@ -211,24 +227,26 @@ def make_nxdomain_response(wire: bytes) -> bytes:
 
     pos = _question_end(wire)
     tx_id = wire[:2]
-    flags = struct.pack("!H", 0x8403)  # QR=1, AA=1, RA=1 (advisory), RCODE=3
+    # QR=1, AA=1, RA=1 (advisory), RCODE=3; RD and CD echoed from the query.
+    flags = struct.pack("!H", 0x8483 | (struct.unpack("!H", wire[2:4])[0] & 0x0110))
     counts = struct.pack("!HHHH", 1, 0, 1, 0)  # QD=1, AN=0, NS=1 (SOA), AR=0
     question = wire[12:pos]
-    return tx_id + flags + counts + question + _soa_rr(parse_qname(wire) or "")
+    return _with_opt(wire, tx_id + flags + counts + question + _soa_rr(parse_qname(wire) or ""))
 
 
 def make_servfail_response(wire: bytes) -> bytes:
-    """SERVFAIL (RCODE 2) for the query `wire`. Used when the upstream is
-    unreachable: a stub resolver treats SERVFAIL as "try your other servers",
-    whereas an NXDOMAIN would be believed — and negatively cached — as "this
-    site does not exist", for every site, for the length of the outage.
+    """SERVFAIL (RCODE 2) for the query `wire`. Used only when every upstream
+    is unreachable and no stale answer is cached: a stub resolver treats
+    SERVFAIL as "try your other servers", whereas an NXDOMAIN would be
+    believed — and negatively cached — as "this site does not exist", for
+    every site, for the length of the outage.
     """
     if len(wire) < 12:
         return b"\x00\x00\x81\x82" + b"\x00" * 8
     pos = _question_end(wire)
     flags = struct.pack("!H", 0x8182)  # QR=1, RD=1, RA=1, RCODE=2
     counts = struct.pack("!HHHH", 1, 0, 0, 0)
-    return wire[:2] + flags + counts + wire[12:pos]
+    return _with_opt(wire, wire[:2] + flags + counts + wire[12:pos])
 
 
 async def is_blocked(qname: str, dangerous_domains: Iterable[str]) -> bool:
@@ -301,79 +319,16 @@ async def is_blocked_redis(qname: str, redis) -> bool:
         return False
 
 
-# One pooled upstream client per event loop.
-#
-# This function used to open a fresh ``httpx.AsyncClient`` for EVERY DNS
-# query — a full TCP+TLS handshake to Cloudflare per lookup, on a path where
-# a single page load costs tens of lookups. Measured from outside: 0.30-0.72s
-# per query through the gateway vs 0.025s to 1.1.1.1 directly. The DNS-only
-# VPN on the phone was pointed at 1.1.1.1 instead of at us for exactly that
-# reason, which is what leaves first-visit blocking to the phone's own
-# after-the-fact check. Keeping one client alive reuses the connection.
-#
-# The client is bound to the running event loop; tests (and any code that
-# spins up a new loop) get a new one instead of a stale, closed transport.
-_UPSTREAM_MAX_CONNECTIONS = 64
-_UPSTREAM_KEEPALIVE = 32
-_upstream_client: Optional[httpx.AsyncClient] = None
-_upstream_client_loop: object = None
-
-
-def _get_upstream_client() -> httpx.AsyncClient:
-    global _upstream_client, _upstream_client_loop
-    import asyncio
-
-    loop = asyncio.get_running_loop()
-    client = _upstream_client
-    if client is None or _upstream_client_loop is not loop or getattr(client, "is_closed", False):
-        client = httpx.AsyncClient(
-            timeout=UPSTREAM_TIMEOUT_S,
-            limits=httpx.Limits(
-                max_connections=_UPSTREAM_MAX_CONNECTIONS,
-                max_keepalive_connections=_UPSTREAM_KEEPALIVE,
-            ),
-        )
-        _upstream_client = client
-        _upstream_client_loop = loop
-    return client
-
-
-def _reset_upstream_client_for_tests() -> None:
-    global _upstream_client, _upstream_client_loop
-    _upstream_client = None
-    _upstream_client_loop = None
-
-
-async def close_upstream_client() -> None:
-    """Release the pooled connections (call from app shutdown)."""
-    global _upstream_client, _upstream_client_loop
-    client, _upstream_client, _upstream_client_loop = _upstream_client, None, None
-    if client is not None:
-        try:
-            await client.aclose()
-        except Exception:
-            logger.debug("DoH upstream client close failed", exc_info=True)
-
-
-async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
-    """Forward the wire-format query to Cloudflare's DoH endpoint
-    and return the response body. None on any error so the caller
-    can decide whether to synthesise a SERVFAIL or 503.
-    """
-    try:
-        client = _get_upstream_client()
-        resp = await client.post(
-            CLOUDFLARE_DOH_URL,
-            content=wire,
-            headers={
-                "Content-Type": DOH_CONTENT_TYPE,
-                "Accept": DOH_CONTENT_TYPE,
-            },
-        )
-        if resp.status_code != 200:
-            logger.warning("DoH upstream returned %d", resp.status_code)
-            return None
-        return resp.content
-    except Exception as exc:
-        logger.warning("DoH upstream call failed: %s", exc)
-        return None
+# Upstream forwarding (pooled HTTP/2 client, Cloudflare -> Quad9 failover,
+# hedging) lives in doh_upstream.py; the names are re-exported here because
+# the router, the health probe, the DNS canary's parity test and older tests
+# import them from this module.
+from api.services.doh_upstream import (  # noqa: E402,F401
+    CLOUDFLARE_DOH_URL,
+    QUAD9_DOH_URL,
+    UPSTREAM_TIMEOUT_S,
+    _get_upstream_client,
+    _reset_upstream_client_for_tests,
+    close_upstream_client,
+    proxy_to_upstream,
+)

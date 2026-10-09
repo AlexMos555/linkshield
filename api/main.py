@@ -108,15 +108,20 @@ async def lifespan(app: FastAPI):
         },
     )
     await _warm_ml_model()
+    # DoH gateway: load the blocklist artifact into memory (and keep it
+    # fresh) so DNS queries stop paying a Redis round trip each.
+    from api.routers.doh import startup as doh_startup
+    await doh_startup()
     yield
     # ── Shutdown ──
+    # DoH gateway first (it reads Redis in the background): stop the
+    # blocklist refresher + stats logger, release the upstream connections.
+    from api.routers.doh import shutdown as doh_shutdown
+    await doh_shutdown()
     await close_redis()
     # The billing role's database pool (None on the api role — nothing to close).
     from api.billing.deps import close_context as close_billing_context
     await close_billing_context()
-    # DoH gateway keeps one pooled upstream client per loop; release it.
-    from api.services.doh_gateway import close_upstream_client
-    await close_upstream_client()
     logger.info("Cleanway API shutdown complete")
 
 
@@ -152,6 +157,11 @@ app.add_middleware(SecurityHeadersMiddleware, hsts_preload=True)
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
     """Log every request with timing + request ID. Never log sensitive data."""
+    if request.url.path == "/dns-query":
+        # DNS: no per-query log line, ever (privacy + volume). Aggregates live
+        # in api/services/doh_metrics. Normally the fast path answers before
+        # this middleware; this covers DOH_FAST_PATH=false.
+        return await call_next(request)
     import uuid
     request_id = str(uuid.uuid4())[:8]
     start = time.monotonic()
@@ -184,6 +194,13 @@ async def request_logging_middleware(request: Request, call_next):
         },
     )
     return response
+
+
+# Outermost: answers /dns-query before any of the middleware above runs
+# (api/services/doh_fastpath.py). Must stay the LAST add_middleware call.
+from api.services.doh_fastpath import DohFastPath  # noqa: E402
+
+app.add_middleware(DohFastPath)
 
 
 def _scrub_path_for_logs(path: str) -> str:
