@@ -13,6 +13,8 @@ import { PauseSheet } from "../../src/components/shield/PauseSheet";
 import { CheckAnythingCard } from "../../src/components/shield/CheckAnythingCard";
 import { RolloutList, RolloutItem } from "../../src/components/shield/RolloutList";
 import { IosProtectionCard } from "../../src/components/shield/IosProtectionCard";
+import { SafariSetupSheet } from "../../src/components/shield/SafariSetupSheet";
+import { useSafariExtension } from "../../src/hooks/useSafariExtension";
 import {
   androidProtectionShown, heroWithoutShieldsKeys, homePrivacyKey, iosProtectionLayers, iosProtectionShown,
   shareHowToKey,
@@ -80,6 +82,9 @@ export default function HomeScreen() {
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [pauseSheetVisible, setPauseSheetVisible] = useState(false);
+  const [safariSheetVisible, setSafariSheetVisible] = useState(false);
+  // iPhone: the Safari extension shipped inside the app (status + setup steps).
+  const safari = useSafariExtension();
   const network = useNetworkShield();
   // The stop screen: a pause asked for during (or right after) a phone call
   // is what a scammer asks for, so it goes through the guard first.
@@ -161,9 +166,11 @@ export default function HomeScreen() {
   // iPhone: no shield exists yet, so the hero says what the app does now
   // instead of "let's set up — 0 shields active".
   const heroOverride = heroWithoutShieldsKeys(Platform.OS, totalCount);
-  // The iPhone's protection layers. Each later step (Safari extension, SMS
-  // filter, DNS settings) passes its status here; until then all are "coming".
-  const iosLayers = iosProtectionShown(Platform.OS) ? iosProtectionLayers() : null;
+  // The iPhone's protection layers. Each step (Safari extension, SMS filter,
+  // DNS settings) passes its status here; a layer not reported is "coming".
+  const iosLayers = iosProtectionShown(Platform.OS)
+    ? iosProtectionLayers({ safari: safari.layer.status }, { safari: safari.layer.lineKey })
+    : null;
 
   /**
    * Prominent disclosure, shown BEFORE Android's own consent dialog.
@@ -430,7 +437,12 @@ export default function HomeScreen() {
 
       {iosLayers && (
         <View style={s.section}>
-          <IosProtectionCard layers={iosLayers} />
+          <IosProtectionCard
+            layers={iosLayers}
+            onSetUp={(id) => {
+              if (id === "safari") setSafariSheetVisible(true);
+            }}
+          />
         </View>
       )}
 
@@ -469,6 +481,21 @@ export default function HomeScreen() {
       </View>
 
       <ShareHowToSheet visible={shareSheetVisible} onClose={() => setShareSheetVisible(false)} />
+      {iosLayers && (
+        <SafariSetupSheet
+          visible={safariSheetVisible}
+          canOpenSettings={safari.canOpenSettings}
+          onOpenSettings={() => {
+            setSafariSheetVisible(false);
+            safari.openSettings();
+          }}
+          onTest={() => {
+            setSafariSheetVisible(false);
+            safari.openTestPage();
+          }}
+          onClose={() => setSafariSheetVisible(false)}
+        />
+      )}
       <PauseSheet
         visible={pauseSheetVisible}
         minutes={PAUSE_MINUTES}
