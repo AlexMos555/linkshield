@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Linking,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -11,13 +12,15 @@ import { getSessionState } from "../src/services/auth";
 import { getEntitlement, unlinkDevice, type AccountDevice, type EntitlementResponse } from "../src/services/api";
 import { linkThisDevice, signOutUnlinkedDevice } from "../src/services/account";
 import { FREEMIUM, rememberEntitlement } from "../src/services/freemium";
-import { restoreStorePurchases, storeBillingOn } from "../src/services/store-billing";
-import { manageUrlFor, storeErrorNoteKey } from "../src/utils/store-billing";
+import { BILLING_STORE, restoreStorePurchases, storeBillingOn } from "../src/services/store-billing";
+import { manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey } from "../src/utils/store-billing";
 import { confirmDeleteAccount, signOutEverywhereLocal } from "../src/services/account-actions";
 import { accountFailure, planKey, platformKey, sourceKey, statusKey } from "../src/utils/account-session";
 import { paidPlansVisible } from "../src/config/market";
 
 type IconName = keyof typeof Ionicons.glyphMap;
+
+const ANDROID_PACKAGE = Constants.expoConfig?.android?.package ?? "ai.cleanway.app";
 
 const PLATFORM_ICONS: Record<string, IconName> = {
   android: "phone-portrait-outline",
@@ -128,7 +131,7 @@ export default function AccountScreen() {
     );
   }
 
-  /** "Restore purchases" (Google Play build): this Google account's subscription → this account. */
+  /** "Restore purchases" (store builds): the store account's subscription → this account. */
   async function restorePurchases(): Promise<void> {
     setRestoring(true);
     try {
@@ -138,7 +141,7 @@ export default function AccountScreen() {
         r.kind === "restored" ? "mobile.paywall.note_restored"
         : r.kind === "processing" ? "mobile.paywall.note_processing"
         : r.kind === "none" ? "mobile.paywall.note_restore_none"
-        : r.kind === "error" ? storeErrorNoteKey(r.error)
+        : r.kind === "error" ? storeErrorNoteKey(r.error, BILLING_STORE)
         : "mobile.paywall.note_restore_failed";
       if (key) Alert.alert(t("mobile.account.restore"), t(key));
     } finally {
@@ -182,8 +185,11 @@ export default function AccountScreen() {
   const status = statusKey(ent.status, Boolean(ent.period_end));
   const showUpgrade = paidPlansVisible(i18n.language);
   // A store build opens only the store's own page (manageUrlFor).
-  const manageUrl = manageUrlFor(ent, FREEMIUM.distribution);
+  const manageUrl = manageSubscriptionUrl(ent, FREEMIUM.distribution, ANDROID_PACKAGE);
   const canRestore = storeBillingOn();
+  // The App Store wants subscribers told how to cancel: Apple bills it, so
+  // only Apple can stop it — deleting the account here does not.
+  const appleCancelNote = FREEMIUM.distribution === "appstore" && paid && ent.source === "app_store";
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
@@ -212,7 +218,10 @@ export default function AccountScreen() {
         <Row first icon="mail-outline" label={email} />
       </Section>
 
-      <Section title={t("mobile.account.plan_title")}>
+      <Section
+        title={t("mobile.account.plan_title")}
+        footnote={appleCancelNote ? t("mobile.account.cancel_note_appstore") : undefined}
+      >
         <Row
           first
           icon={paid ? "shield-checkmark-outline" : "shield-outline"}
@@ -237,7 +246,7 @@ export default function AccountScreen() {
           <Row
             icon="refresh-outline"
             label={t("mobile.account.restore")}
-            desc={t("mobile.account.restore_desc")}
+            desc={t(storeCopyKeys(BILLING_STORE).restoreDesc)}
             right={restoring ? <ActivityIndicator color={colors.textSecondary} /> : undefined}
             onPress={restoring ? undefined : () => void restorePurchases()}
           />

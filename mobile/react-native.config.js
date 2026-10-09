@@ -16,7 +16,8 @@ const { storeBillingLinked, buildEnv } = require("./plugins/store-billing-linkin
 const dependencies = {};
 if (!storeBillingLinked(buildEnv(__dirname))) {
   // Android only: the site APK and RuStore must not carry Play Billing. iOS
-  // is left alone for the App Store build (not done yet, runbook §9).
+  // always links it: every iPhone build is the App Store one, which pays
+  // through StoreKit (docs/IOS.md). StoreKit asks for no permission.
   dependencies["react-native-purchases"] = { platforms: { android: null } };
 }
 

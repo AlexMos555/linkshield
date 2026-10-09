@@ -1,16 +1,16 @@
 /**
- * The plans as Google Play sells them — monthly and yearly, each with the
+ * The plans as the store (Google Play, App Store) sells them — monthly and yearly, each with the
  * store's own price in the person's currency (never a price typed into the
  * app). One is chosen; the paywall's button buys it. Shown only in the
- * Google Play build (app/paywall.tsx).
+ * store builds (app/paywall.tsx).
  */
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import { colors, space, radius } from "../../utils/theme";
-import type { StorePlan, StorePlansResult } from "../../services/store-billing";
-import type { PlanPeriod } from "../../utils/store-billing";
+import { BILLING_STORE, type StorePlan, type StorePlansResult } from "../../services/store-billing";
+import { storeCopyKeys, type PlanPeriod } from "../../utils/store-billing";
 
 export type StorePlansState = { kind: "loading" } | StorePlansResult;
 
@@ -22,18 +22,19 @@ export function StorePlans({ state, selected, onSelect, onRetry, devices }: {
   devices: number;
 }) {
   const { t } = useTranslation();
+  const copy = storeCopyKeys(BILLING_STORE);
 
   if (state.kind === "loading") {
     return (
       <View style={s.status} accessibilityLiveRegion="polite">
         <ActivityIndicator color={colors.textSecondary} />
-        <Text style={s.statusText}>{t("mobile.paywall.prices_loading")}</Text>
+        <Text style={s.statusText}>{t(copy.pricesLoading)}</Text>
       </View>
     );
   }
   if (state.kind !== "ok") {
     // "unavailable" never reaches here (the paywall says "coming soon" instead).
-    const body = state.kind === "empty" ? t("mobile.paywall.prices_empty") : t("mobile.paywall.prices_failed");
+    const body = state.kind === "empty" ? t(copy.pricesEmpty) : t(copy.pricesFailed);
     return (
       <View style={s.status} accessibilityLiveRegion="polite">
         <Text style={s.statusText}>{body}</Text>

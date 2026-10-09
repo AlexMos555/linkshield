@@ -1,16 +1,17 @@
 /**
- * Paying in the app through Google Play, via the RevenueCat SDK
- * (react-native-purchases). The rules are pure, in src/utils/store-billing.ts;
+ * Paying in the app through Google Play or the App Store, via the RevenueCat
+ * SDK (react-native-purchases). The rules are pure, in src/utils/store-billing.ts;
  * this file makes the SDK calls. Store and server setup:
- * docs/runbooks/revenuecat.md.
+ * docs/runbooks/revenuecat.md, docs/IOS.md.
  *
  * Only the Play build (EXPO_PUBLIC_DISTRIBUTION=play) with a public Play key
- * (EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_…) ever loads the SDK. In every
- * other build the require below is dropped from the release bundle (Metro
- * inlines EXPO_PUBLIC_* and folds the comparison), and mobile/react-native.config.js
- * keeps the native library — Play Billing and its BILLING permission — out
- * of the APK. Without a key the Play build says "paying in the app is coming
- * soon" instead of crashing.
+ * (EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_…), and the iPhone app with a
+ * public App Store key (EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_…), ever load the
+ * SDK. In every other Android build the require below is dropped from the
+ * release bundle (Metro inlines EXPO_PUBLIC_* and Platform.OS and folds the
+ * comparison), and mobile/react-native.config.js keeps the native library —
+ * Play Billing and its BILLING permission — out of the APK. Without a key
+ * the store build says "paying in the app is coming soon" instead of crashing.
  *
  * Identity: RevenueCat knows the person by the Supabase account id, so a
  * purchase lands on the account (the webhook files it under that id). A
@@ -36,6 +37,7 @@ import {
   readStoreBillingConfig,
   storeErrorKind,
   storeHasPlan,
+  type BillingStore,
   type PlanOption,
   type StoreBillingConfig,
   type StoreErrorKind,
@@ -46,11 +48,16 @@ export const STORE_BILLING: StoreBillingConfig = readStoreBillingConfig(
   {
     EXPO_PUBLIC_DISTRIBUTION: process.env.EXPO_PUBLIC_DISTRIBUTION,
     EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+    EXPO_PUBLIC_REVENUECAT_IOS_KEY: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
   },
   Platform.OS,
 );
 
-/** Set once this phone has opened Google Play's purchase sheet: the SDK then starts with the app. */
+/** The store this build pays through — for the store-named sentences; Google Play when off. */
+export const BILLING_STORE: BillingStore =
+  STORE_BILLING.kind === "on" ? STORE_BILLING.store : Platform.OS === "ios" ? "app_store" : "google_play";
+
+/** Set once this phone has opened the store's purchase sheet: the SDK then starts with the app. */
 const PURCHASE_STARTED_KEY = "store_purchase_started";
 
 type Sdk = (typeof import("react-native-purchases"))["default"];
@@ -61,10 +68,11 @@ function loadSdk(): Sdk | null {
   if (_sdk !== undefined) return _sdk;
   _sdk = null;
   if (STORE_BILLING.kind !== "on") return null;
-  // Keep this a plain `=== "play"` on the literal env read: in a release
-  // bundle of any other build it folds to `if (false)` and the SDK's JS is
-  // not bundled at all.
-  if (process.env.EXPO_PUBLIC_DISTRIBUTION === "play") {
+  // Keep this a plain `=== "play"` on the literal env read (or the inlined
+  // Platform.OS): in a release bundle of any other Android build it folds to
+  // `if (false)` and the SDK's JS is not bundled at all. Every iOS build is
+  // the App Store one (utils/freemium.ts distributionFor).
+  if (process.env.EXPO_PUBLIC_DISTRIBUTION === "play" || Platform.OS === "ios") {
     // The native half is linked only when the build was made with the same
     // env (react-native.config.js); without it, purchases are "unavailable".
     if (NativeModules.RNPurchases) {
@@ -78,7 +86,7 @@ function loadSdk(): Sdk | null {
   return _sdk;
 }
 
-/** Can this build pay through Google Play right now (on, with the native SDK present)? */
+/** Can this build pay through its store right now (on, with the native SDK present)? */
 export function storeBillingOn(): boolean {
   return loadSdk() !== null;
 }
@@ -161,7 +169,7 @@ async function startIfPurchaseStarted(accountId: string | null): Promise<void> {
 
 let _initialised = false;
 
-/** Once, at app start. Does nothing outside the Play build. */
+/** Once, at app start. Does nothing outside the store builds. */
 export function initStoreBilling(): void {
   if (_initialised || STORE_BILLING.kind !== "on") return;
   _initialised = true;
@@ -236,7 +244,7 @@ export type StoreRestoreResult =
   | { kind: "unavailable" }
   | { kind: "error"; error: StoreErrorKind };
 
-/** Buy [plan] through Google Play for the signed-in account, then let our server confirm it. */
+/** Buy [plan] through the store for the signed-in account, then let our server confirm it. */
 export async function startStorePurchase(plan: StorePlan): Promise<StorePurchaseResult> {
   const accountId = await currentAccountId();
   if (!accountId) return { kind: "signed_out" };
@@ -267,7 +275,7 @@ export async function startStorePurchase(plan: StorePlan): Promise<StorePurchase
   return settled.paid ? { kind: "purchased", ent: settled.ent } : { kind: "processing" };
 }
 
-/** "Restore purchases": Google Play's subscriptions of this Google account → this Cleanway account. */
+/** "Restore purchases": the store account's subscriptions (Google account / Apple ID) → this Cleanway account. */
 export async function restoreStorePurchases(): Promise<StoreRestoreResult> {
   const accountId = await currentAccountId();
   if (!accountId) return { kind: "signed_out" };

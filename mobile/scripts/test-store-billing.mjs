@@ -13,6 +13,9 @@
  * Pinned (docs/runbooks/revenuecat.md, docs/ACCOUNTS_BILLING_PLAN.md §11):
  *   • only the Google Play build on Android with a public goog_ key pays in
  *     the app; a secret sk_ key or an App Store key never configures it;
+ *   • the iPhone app is always the App Store build and pays with a public
+ *     appl_ key, in App Store words; it opens only Apple's subscriptions page
+ *     and never the web checkout (App Review 3.1.1);
  *   • the plan sold is cleanway.devices monthly / yearly from the `default`
  *     offering, at the store's own price — never the "+1 device" add-on;
  *   • store errors map to a few kinds, each with a sentence in every locale;
@@ -32,21 +35,27 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  APP_STORE_SUBSCRIPTIONS_URL,
   OFFERING_ID,
   PLAN_PRODUCT_ID,
   accountIdFromAccessToken,
+  billingStoreFor,
   configureAtStart,
+  manageSubscriptionUrl,
   manageUrlFor,
   planOptions,
   playSubscriptionsUrl,
   readStoreBillingConfig,
+  storeCopyKeys,
   storeErrorKind,
   storeErrorNoteKey,
   storeHasPlan,
   storeSubscriptionToCancel,
 } from "../src/utils/store-billing.ts";
 import {
+  distributionFor,
   purchaseAction,
+  revenueCatStore,
   selfUpdateAllowed,
   smsBenefitShown,
   webCheckoutAllowed,
@@ -76,7 +85,7 @@ const KEY = ["goog", "x".repeat(8) + "TEST" + "0".repeat(8)].join("_");
 check("Play build on Android with a public Play key: on", () => {
   assert.deepEqual(
     readStoreBillingConfig({ EXPO_PUBLIC_DISTRIBUTION: "play", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: KEY }, "android"),
-    { kind: "on", apiKey: KEY },
+    { kind: "on", apiKey: KEY, store: "google_play" },
   );
   assert.equal(
     readStoreBillingConfig({ EXPO_PUBLIC_DISTRIBUTION: " Play ", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: ` ${KEY} ` }, "android").kind,
@@ -84,18 +93,63 @@ check("Play build on Android with a public Play key: on", () => {
   );
 });
 
-check("site APK, RuStore, unset distribution, iOS: off (not_play), whatever the key", () => {
-  for (const dist of ["site", "rustore", "", undefined, "google"]) {
+check("site APK, RuStore, unset distribution, 'appstore' on Android: off (not_play), whatever the key", () => {
+  for (const dist of ["site", "rustore", "", undefined, "google", "appstore"]) {
     assert.deepEqual(
       readStoreBillingConfig({ EXPO_PUBLIC_DISTRIBUTION: dist, EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: KEY }, "android"),
       { kind: "off", why: "not_play" },
       String(dist),
     );
   }
-  assert.deepEqual(
-    readStoreBillingConfig({ EXPO_PUBLIC_DISTRIBUTION: "play", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: KEY }, "ios"),
-    { kind: "off", why: "not_play" },
+});
+
+// A made-up key of the public App Store shape (assembled, as KEY above).
+const IOS_KEY = ["appl", "y".repeat(8) + "TEST" + "1".repeat(8)].join("_");
+
+check("iPhone app with a public App Store key: on, through the App Store — whatever EXPO_PUBLIC_DISTRIBUTION says", () => {
+  // An EAS profile's EXPO_PUBLIC_DISTRIBUTION=play reaches the iOS build of the
+  // same profile too; it must not switch the iPhone app off.
+  for (const dist of ["appstore", "play", "site", "", undefined]) {
+    assert.deepEqual(
+      readStoreBillingConfig({ EXPO_PUBLIC_DISTRIBUTION: dist, EXPO_PUBLIC_REVENUECAT_IOS_KEY: IOS_KEY }, "ios"),
+      { kind: "on", apiKey: IOS_KEY, store: "app_store" },
+      String(dist),
+    );
+  }
+  assert.equal(
+    readStoreBillingConfig({ EXPO_PUBLIC_REVENUECAT_IOS_KEY: ` ${IOS_KEY} ` }, "ios").kind,
+    "on",
   );
+});
+
+check("iPhone app without its key: off (no_key) — the Play key is never used on iOS", () => {
+  for (const key of [undefined, "", "  "]) {
+    assert.deepEqual(
+      readStoreBillingConfig({ EXPO_PUBLIC_REVENUECAT_IOS_KEY: key, EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: KEY }, "ios"),
+      { kind: "off", why: "no_key" },
+    );
+  }
+});
+
+check("iPhone app: a secret key, a Play key or junk never configures the SDK (bad_key)", () => {
+  for (const key of ["sk_live_abc123", KEY, "appl_", "appl_abc def", "appl_abc;drop", "rcb_abc"]) {
+    assert.deepEqual(
+      readStoreBillingConfig({ EXPO_PUBLIC_REVENUECAT_IOS_KEY: key }, "ios"),
+      { kind: "off", why: "bad_key" },
+      key,
+    );
+  }
+  // …and the App Store key never turns on the Android build.
+  assert.deepEqual(
+    readStoreBillingConfig({ EXPO_PUBLIC_DISTRIBUTION: "play", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: IOS_KEY }, "android"),
+    { kind: "off", why: "bad_key" },
+  );
+});
+
+check("the store this build pays through, by distribution", () => {
+  assert.equal(billingStoreFor("appstore"), "app_store");
+  assert.equal(billingStoreFor("play"), "google_play");
+  for (const d of ["site", "rustore", ""]) assert.equal(billingStoreFor(d), null);
 });
 
 check("Play build without a key: off (no_key) — a clear state, not a crash", () => {
@@ -136,6 +190,22 @@ check("store policy: only the site APK links to the web checkout or offers a sel
   assert.equal(purchaseAction({ signedIn: false, market: "world", distribution: "play" }), "sign_in");
 });
 
+check("store policy: the iPhone app never links to the web checkout, never self-updates, pays in the App Store", () => {
+  assert.equal(webCheckoutAllowed("appstore"), false);
+  assert.equal(selfUpdateAllowed("appstore"), false);
+  assert.equal(smsBenefitShown("appstore"), false);
+  assert.equal(revenueCatStore("appstore"), true);
+  assert.equal(revenueCatStore("play"), true);
+  assert.equal(revenueCatStore("site"), false);
+  assert.equal(revenueCatStore("rustore"), false);
+  assert.equal(purchaseAction({ signedIn: true, market: "world", distribution: "appstore" }), "store");
+  assert.equal(purchaseAction({ signedIn: false, market: "world", distribution: "appstore" }), "sign_in");
+  // An iOS build is the App Store build whatever the env says (no "site" on iOS).
+  for (const raw of ["site", "play", "rustore", "", undefined]) {
+    assert.equal(distributionFor(raw, "ios"), "appstore", String(raw));
+  }
+});
+
 check("'automatic SMS check' is promised only in the RuStore build", () => {
   assert.equal(smsBenefitShown("rustore"), true);
   assert.equal(smsBenefitShown("site"), false);
@@ -170,11 +240,11 @@ check("react-native.config.js turns the Android link off outside the Play build"
   assert.equal(load("play").dependencies["react-native-purchases"], undefined);
 });
 
-check("the SDK's require sits behind a literal EXPO_PUBLIC_DISTRIBUTION === \"play\" (dropped from other bundles)", () => {
+check("the SDK's require sits behind a literal EXPO_PUBLIC_DISTRIBUTION === \"play\" || Platform.OS === \"ios\" (dropped from other Android bundles)", () => {
   const src = readFileSync(join(MOBILE, "src/services/store-billing.ts"), "utf8");
   const requires = [...src.matchAll(/require\("react-native-purchases"\)/g)];
   assert.equal(requires.length, 1, "exactly one require of the SDK");
-  const guard = src.indexOf('if (process.env.EXPO_PUBLIC_DISTRIBUTION === "play") {');
+  const guard = src.indexOf('if (process.env.EXPO_PUBLIC_DISTRIBUTION === "play" || Platform.OS === "ios") {');
   assert.ok(guard >= 0, "literal guard present");
   assert.ok(guard < requires[0].index, "guard comes before the require");
   // No static import of the SDK's runtime anywhere in the app (types only).
@@ -314,16 +384,37 @@ check("store errors map to what the person is told", () => {
   for (const [err, kind] of cases) assert.equal(storeErrorKind(err), kind, JSON.stringify(err));
 });
 
-check("every error kind has its sentence in all 10 locales; a cancel says nothing", () => {
+check("every error kind has its sentence in all 10 locales, for both stores; a cancel says nothing", () => {
   assert.equal(storeErrorNoteKey("cancelled"), null);
+  assert.equal(storeErrorNoteKey("cancelled", "app_store"), null);
   const kinds = ["pending", "already_owned", "network", "not_allowed", "unavailable", "store_problem", "busy", "unknown"];
   for (const loc of ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"]) {
     const strings = JSON.parse(readFileSync(join(MOBILE, "i18n", `${loc}.json`), "utf8"));
-    for (const kind of kinds) {
-      const key = storeErrorNoteKey(kind);
-      assert.ok(key && typeof strings[key] === "string" && strings[key].length > 0, `${loc}: ${kind} → ${key}`);
+    for (const store of ["google_play", "app_store"]) {
+      for (const kind of kinds) {
+        const key = storeErrorNoteKey(kind, store);
+        assert.ok(key && typeof strings[key] === "string" && strings[key].length > 0, `${loc}: ${store} ${kind} → ${key}`);
+      }
+      for (const key of Object.values(storeCopyKeys(store))) {
+        assert.ok(typeof strings[key] === "string" && strings[key].length > 0, `${loc}: ${store} copy ${key}`);
+      }
     }
   }
+});
+
+check("the App Store sentences never mention Google; the Google Play ones keep theirs", () => {
+  const en = JSON.parse(readFileSync(join(MOBILE, "i18n", "en.json"), "utf8"));
+  const kinds = ["pending", "already_owned", "network", "not_allowed", "store_problem"];
+  for (const kind of kinds) {
+    assert.ok(!/Google/.test(en[storeErrorNoteKey(kind, "app_store")]), `app_store ${kind}`);
+  }
+  for (const key of Object.values(storeCopyKeys("app_store"))) assert.ok(!/Google/.test(en[key]), key);
+  assert.equal(storeErrorNoteKey("network"), "mobile.paywall.err_network");
+  assert.equal(storeErrorNoteKey("network", "google_play"), "mobile.paywall.err_network");
+  // The App Store fine print says who bills, that it renews, and where to cancel (3.1.2).
+  assert.match(en["mobile.paywall.fine_store_appstore"], /Apple ID/);
+  assert.match(en["mobile.paywall.fine_store_appstore"], /24 hours/);
+  assert.match(en["mobile.paywall.fine_store_appstore"], /Subscriptions/);
 });
 
 // ── Managing and cancelling ─────────────────────────────────────────
@@ -348,6 +439,30 @@ check("Manage subscription: never for the free plan, never a non-https or look-a
   assert.equal(manageUrlFor({ ...playEnt, manage_url: "https://evil.tk@play.google.com/x" }, "play"), null);
   assert.equal(manageUrlFor({ ...playEnt, manage_url: "intent://x" }, "site"), null);
   assert.equal(manageUrlFor(null, "play"), null);
+});
+
+const APPLE_URL = "https://apps.apple.com/account/subscriptions";
+const appleEnt = { plan: "personal", status: "active", source: "app_store", manage_url: APPLE_URL };
+
+check("the iPhone app opens only Apple's subscriptions page — never Google Play, never our site", () => {
+  assert.equal(manageUrlFor(appleEnt, "appstore"), APPLE_URL);
+  assert.equal(manageUrlFor(playEnt, "appstore"), null);
+  assert.equal(manageUrlFor(stripeEnt, "appstore"), null);
+  assert.equal(manageUrlFor({ ...appleEnt, manage_url: "https://apps.apple.com.evil.tk/x" }, "appstore"), null);
+});
+
+check("Manage subscription falls back to the store's own page for a plan bought in this build's store", () => {
+  const PKG = "ai.cleanway.app";
+  assert.equal(APP_STORE_SUBSCRIPTIONS_URL, APPLE_URL);
+  assert.equal(manageSubscriptionUrl({ ...appleEnt, manage_url: null }, "appstore", PKG), APPLE_URL);
+  assert.equal(manageSubscriptionUrl(appleEnt, "appstore", PKG), APPLE_URL);
+  assert.equal(manageSubscriptionUrl({ ...playEnt, manage_url: null }, "play", PKG), playSubscriptionsUrl(PKG));
+  assert.equal(manageSubscriptionUrl(playEnt, "play", PKG), PLAY_URL);
+  // Bought elsewhere: the iPhone app links nowhere (the account screen says where it was paid).
+  assert.equal(manageSubscriptionUrl({ ...playEnt, manage_url: null }, "appstore", PKG), null);
+  assert.equal(manageSubscriptionUrl(stripeEnt, "appstore", PKG), null);
+  assert.equal(manageSubscriptionUrl({ ...appleEnt, plan: "free", status: "free", manage_url: null }, "appstore", PKG), null);
+  assert.equal(manageSubscriptionUrl(null, "appstore", PKG), null);
 });
 
 check("Play's subscriptions page for this app, when the server sent none", () => {

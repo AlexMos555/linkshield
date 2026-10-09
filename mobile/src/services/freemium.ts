@@ -10,6 +10,7 @@
  * the phone. The only request is GET /api/v1/me/entitlement, when signed in.
  */
 import { EventEmitter } from "events";
+import { Platform } from "react-native";
 
 import { getSetting, setSetting } from "./database";
 import { getSessionState } from "./auth";
@@ -42,6 +43,8 @@ export const FREEMIUM: FreemiumConfig = readFreemiumConfig(
         EXPO_PUBLIC_DISTRIBUTION: process.env.EXPO_PUBLIC_DISTRIBUTION,
       }
     : {},
+  // iOS is always the App Store build (distributionFor): no web checkout, no self-update.
+  Platform.OS,
 );
 
 const QUOTA_KEY = "freemium_quota";

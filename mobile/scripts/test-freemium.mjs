@@ -44,6 +44,7 @@ import {
   marketFor,
   paidFromCache,
   parseEntitlementCache,
+  paywallBenefits,
   priceDisplay,
   purchaseAction,
   quotaForDay,
@@ -109,8 +110,20 @@ check("EXPO_PUBLIC_FREE_TRIAL_DAYS is read; a bad value keeps 7", () => {
 for (const [value, dist] of [["play", "play"], ["rustore", "rustore"], ["site", "site"], ["PLAY", "play"], ["appstore", "site"], ["", "site"]]) {
   check(`EXPO_PUBLIC_DISTRIBUTION=${JSON.stringify(value)} → ${dist}`, () => {
     assert.equal(readFreemiumConfig({ EXPO_PUBLIC_DISTRIBUTION: value }).distribution, dist);
+    assert.equal(readFreemiumConfig({ EXPO_PUBLIC_DISTRIBUTION: value }, "android").distribution, dist);
   });
 }
+check("iOS: always the App Store build, whatever EXPO_PUBLIC_DISTRIBUTION says", () => {
+  for (const value of ["play", "site", "rustore", "appstore", "", undefined]) {
+    assert.equal(readFreemiumConfig({ EXPO_PUBLIC_DISTRIBUTION: value }, "ios").distribution, "appstore", String(value));
+  }
+});
+check("paywall benefits: only what the build can do", () => {
+  assert.deepEqual(paywallBenefits("appstore"), ["unlimited", "devices"]);
+  assert.deepEqual(paywallBenefits("rustore"), ["unlimited", "sms", "text_model", "calls", "devices"]);
+  assert.deepEqual(paywallBenefits("site"), ["unlimited", "text_model", "calls", "devices"]);
+  assert.deepEqual(paywallBenefits("play"), ["unlimited", "text_model", "calls", "devices"]);
+});
 
 console.log("the daily counter");
 check("limit off: every check is detailed, nothing is counted", () => {
@@ -300,13 +313,13 @@ check("no listed link: no verdict claimed (no_signals, no reasons)", () => {
 console.log("paying");
 check("Russia: \"coming soon\" — phone-balance billing is not merged yet", () => {
   for (const signedIn of [true, false]) {
-    for (const distribution of ["site", "play", "rustore"]) {
+    for (const distribution of ["site", "play", "rustore", "appstore"]) {
       assert.equal(purchaseAction({ signedIn, market: "ru", distribution }), "soon");
     }
   }
 });
 check("signed out: sign in first, on every build", () => {
-  for (const distribution of ["site", "play", "rustore"]) {
+  for (const distribution of ["site", "play", "rustore", "appstore"]) {
     assert.equal(purchaseAction({ signedIn: false, market: "world", distribution }), "sign_in");
   }
 });
@@ -314,6 +327,8 @@ check("signed in: site APK → web checkout; store builds → store billing, nev
   assert.equal(purchaseAction({ signedIn: true, market: "world", distribution: "site" }), "web_checkout");
   assert.equal(purchaseAction({ signedIn: true, market: "world", distribution: "play" }), "store");
   assert.equal(purchaseAction({ signedIn: true, market: "world", distribution: "rustore" }), "store");
+  assert.equal(purchaseAction({ signedIn: true, market: "world", distribution: "appstore" }), "store");
+  assert.equal(webCheckoutAllowed("appstore"), false);
   assert.equal(webCheckoutAllowed("play"), false);
   assert.equal(webCheckoutAllowed("rustore"), false);
   assert.equal(webCheckoutAllowed("site"), true);
