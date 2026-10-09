@@ -3828,6 +3828,21 @@
       "err_not_allowed_appstore": "Las compras están desactivadas en este iPhone (por ejemplo, en Tiempo de uso).",
       "err_store_appstore": "El App Store no pudo completar la compra. Inténtalo de nuevo."
     },
+    "ios_sms": {
+      "line_ready": "Mueve los SMS de estafa de remitentes desconocidos a No deseado, en tu propio iPhone. Funciona cuando lo activas en Ajustes.",
+      "sheet_title": "Activa el filtro de SMS de estafa",
+      "sheet_lead": "Solo tú puedes activar un filtro de SMS, en los Ajustes del iPhone. El iPhone no le dice a Cleanway si está activado, así que esta fila se queda aquí como recordatorio.",
+      "step_settings": "Abre Ajustes.",
+      "step_messages": "Ve a Apps → Mensajes.",
+      "step_filtering": "Toca Desconocidos y spam y luego Filtrado de SMS.",
+      "step_choose": "Elige Cleanway.",
+      "older_ios": "En iOS 17 y anteriores: Ajustes → Mensajes → Desconocidos y spam → Filtrado de SMS.",
+      "note_what": "Solo los mensajes que son claramente una estafa van a No deseado (Mensajes → Filtros → No deseado). Los dudosos se quedan en tu bandeja de entrada.",
+      "note_privacy": "La comprobación se hace en tu iPhone. El texto de un mensaje nunca sale del teléfono, ni siquiera hacia Cleanway.",
+      "note_limits": "El iPhone solo muestra al filtro los SMS y MMS de números que no están en tus contactos, nunca iMessage. Si no aparece Filtrado de SMS, tu región u operador no lo ofrece.",
+      "open_settings": "Abrir Ajustes",
+      "done": "Listo"
+    },
     "ios": {
       "header": "Protección en iPhone",
       "lead": "En iPhone, Cleanway te protege de tres maneras. Cada una tendrá aquí su paso de configuración en cuanto llegue en una actualización.",

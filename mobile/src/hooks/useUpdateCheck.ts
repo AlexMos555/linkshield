@@ -3,8 +3,8 @@
  * users, and insists when the running build is below the security floor.
  *
  * Design notes:
- *  - Android only. iOS has no direct-APK funnel yet; when it launches it gets
- *    its own store-aware path, not this one.
+ *  - The update decision is Android only. iOS has no direct-APK funnel yet;
+ *    when it launches it gets its own store-aware path, not this one.
  *  - Reads the running build's embedded version NAME (Constants.version), so
  *    no new native dependency and it works fully offline.
  *  - Persists the last server snapshot, so a known "you must update" verdict
@@ -13,7 +13,9 @@
  *  - The same answer carries the server's switches for the on-phone checks
  *    (src/lib/remote-config.ts — the SMS text model's kill switch). They go
  *    straight to the native module, which keeps them for the Kotlin message
- *    check; an answer without them leaves the stored ones in force.
+ *    check; an answer without them leaves the stored ones in force. On an
+ *    iPhone build with the scam-text filter, the check runs for the switches
+ *    alone: they go to the app group, where the filter extension reads them.
  *  - Asked on app start and, while the app stays open, about daily when it
  *    returns to the foreground — never more than once an hour (refreshDue),
  *    so a switch flipped on the server reaches a phone at its next launch.
@@ -30,6 +32,8 @@ import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
 import { setRemoteConfig } from "../../modules/cleanway-vpn";
+import { setSmsFilterRemoteConfig, smsFilterInstalled } from "../../modules/cleanway-sms-filter";
+import { remoteConfigFetched } from "../utils/platform-features";
 import {
   decideUpdate,
   fetchVersionInfo,
@@ -90,7 +94,9 @@ export function useUpdateCheck(lang: string = "en"): UpdateStatus {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS !== "android") return;
+    // Android for the update nudge and its message check; an iPhone build with
+    // the scam-text filter only for the switches (no update decision on iOS).
+    if (!remoteConfigFetched(Platform.OS, smsFilterInstalled())) return;
     let alive = true;
     let inFlight = false;
 
@@ -124,7 +130,13 @@ export function useUpdateCheck(lang: string = "en"): UpdateStatus {
         if (!fetched) return;
         // The switches first, and even if the screen has gone: the native
         // message check reads them, not this component.
-        if (fetched.remoteConfig) setRemoteConfig(remoteConfigWire(fetched.remoteConfig));
+        // Android keeps them for its message check, iOS in the app group for the scam-text filter
+        // (each call is a no-op on the other platform).
+        if (fetched.remoteConfig) {
+          const wire = remoteConfigWire(fetched.remoteConfig);
+          setRemoteConfig(wire);
+          setSmsFilterRemoteConfig(wire);
+        }
         if (alive) setInfo(fetched);
         try {
           await SecureStore.setItemAsync(SNAPSHOT_KEY, JSON.stringify(fetched));

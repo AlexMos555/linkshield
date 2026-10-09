@@ -3888,6 +3888,21 @@
       "err_not_allowed_appstore": "As compras estão desativadas neste iPhone (por exemplo, em Tempo de Uso).",
       "err_store_appstore": "A App Store não conseguiu concluir a compra. Tente de novo."
     },
+    "ios_sms": {
+      "line_ready": "Move SMS de golpe de remetentes desconhecidos para Lixo, no próprio iPhone. Funciona depois que você o ativa nos Ajustes.",
+      "sheet_title": "Ative o filtro de SMS de golpe",
+      "sheet_lead": "Só você pode ativar um filtro de SMS, nos Ajustes do iPhone. O iPhone não informa ao Cleanway se ele está ativo, por isso esta linha fica aqui como lembrete.",
+      "step_settings": "Abra os Ajustes.",
+      "step_messages": "Vá em Apps → Mensagens.",
+      "step_filtering": "Toque em Desconhecidos e Spam e depois em Filtragem de SMS.",
+      "step_choose": "Escolha o Cleanway.",
+      "older_ios": "No iOS 17 ou anterior: Ajustes → Mensagens → Desconhecidos e Spam → Filtragem de SMS.",
+      "note_what": "Só mensagens claramente de golpe vão para Lixo (Mensagens → Filtros → Lixo). As duvidosas ficam na sua caixa de entrada.",
+      "note_privacy": "A verificação acontece no seu iPhone. O texto da mensagem nunca sai do aparelho — nem para o Cleanway.",
+      "note_limits": "O iPhone só mostra ao filtro SMS e MMS de números que não estão nos seus contatos — nunca o iMessage. Se Filtragem de SMS não aparecer, sua região ou operadora não oferece esse recurso.",
+      "open_settings": "Abrir Ajustes",
+      "done": "Pronto"
+    },
     "ios": {
       "header": "Proteção no iPhone",
       "lead": "No iPhone, o Cleanway protege você de três formas. Cada uma ganha aqui seu passo de configuração assim que chegar em uma atualização.",

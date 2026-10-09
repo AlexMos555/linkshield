@@ -310,7 +310,7 @@ check("JS bridge: iOS only, optional native functions, the change event typed", 
 
 check("home: the DNS layer comes from iOS, its row opens the sheet; the sheet shows privacy before any button", () => {
   const home = read("app/(tabs)/index.tsx");
-  assert.match(home, /iosProtectionLayers\(\{ dns: iosDns\.layer \}\)/);
+  assert.match(home, /iosProtectionLayers\(\{ dns: iosDns\.layer[ ,}]/);
   assert.match(home, /if \(id === "dns"\) setDnsSheetVisible\(true\)/);
   assert.match(home, /<IosDnsSetupSheet visible=\{dnsSheetVisible\}/);
   const sheet = read("src/components/shield/IosDnsSetupSheet.tsx");

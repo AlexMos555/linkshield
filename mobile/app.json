@@ -102,6 +102,7 @@
           ]
         }
       ],
+      "./plugins/withSmsFilter",
       "./plugins/withXcode26Patches",
       "./plugins/withReleaseSigning",
       "./plugins/withAbiFilters",
