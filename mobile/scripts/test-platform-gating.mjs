@@ -29,7 +29,7 @@
  *     floor and Safari extension point.
  */
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -454,6 +454,29 @@ check("Safari extension target: bundles the built extension-safari/ tree, copied
       : [top]))
     .filter((f) => !f.includes("node_modules") && f.endsWith("manifest.json"));
   assert.deepEqual(stray, []);
+});
+
+check("Safari extension: every localized name fits App Store Connect's 40-character limit", () => {
+  const repoTree = join(MOBILE, "..", "extension-safari");
+  const manifest = safariPlugin.assertExtensionTree(repoTree);
+  assert.equal(safariPlugin.SAFARI_NAME_MAX, 40);
+  const key = /^__MSG_(\w+)__$/.exec(manifest.name)[1];
+  for (const locale of readdirSync(join(repoTree, "_locales"))) {
+    const name = JSON.parse(readFileSync(join(repoTree, "_locales", locale, "messages.json"), "utf8"))[key].message;
+    assert.ok([...name].length <= 40, `${locale}: ${name}`);
+  }
+  // A 41-character name is refused at prebuild, not after the archive.
+  const dest = mkdtempSync(join(tmpdir(), "cw-safari-name-"));
+  try {
+    safariPlugin.copyExtensionResources(repoTree, dest);
+    const ru = join(dest, "_locales", "ru", "messages.json");
+    const msgs = JSON.parse(readFileSync(ru, "utf8"));
+    msgs[key].message = "Cleanway — " + "я".repeat(30);
+    writeFileSync(ru, JSON.stringify(msgs));
+    assert.throws(() => safariPlugin.assertLocalizedNamesFit(dest, manifest), /_locales\/ru.*at most 40/);
+  } finally {
+    rmSync(dest, { recursive: true, force: true });
+  }
 });
 
 check("the Safari status module's pod is not above the app's iOS deployment target", () => {

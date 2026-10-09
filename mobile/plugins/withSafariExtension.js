@@ -89,7 +89,32 @@ function assertExtensionTree(dir) {
   for (const entry of RESOURCE_ENTRIES) {
     if (!fs.existsSync(path.join(dir, entry))) throw new Error(`[withSafariExtension] ${entry} missing in ${dir}`);
   }
+  assertLocalizedNamesFit(dir, manifest);
   return manifest;
+}
+
+// App Store Connect rejects the upload when a Safari extension's localized
+// name is over 40 characters (it refused the first TestFlight build for de,
+// es, fr, id, pt and ru). Fail at prebuild instead of after a 20-minute archive.
+const SAFARI_NAME_MAX = 40;
+
+function assertLocalizedNamesFit(dir, manifest) {
+  const key = /^__MSG_(\w+)__$/.exec(manifest.name || "");
+  if (!key) return;
+  const localesDir = path.join(dir, "_locales");
+  for (const locale of fs.readdirSync(localesDir)) {
+    const file = path.join(localesDir, locale, "messages.json");
+    if (!fs.existsSync(file)) continue;
+    const entry = JSON.parse(fs.readFileSync(file, "utf8"))[key[1]];
+    const name = entry && entry.message;
+    // Code points, as App Store Connect counts them (a 40-character Hindi name passes).
+    if (typeof name !== "string" || [...name].length > SAFARI_NAME_MAX) {
+      throw new Error(
+        `[withSafariExtension] _locales/${locale}: "${key[1]}" must be a string of at most ${SAFARI_NAME_MAX} characters ` +
+        `(App Store Connect rule for Safari extensions); got ${JSON.stringify(name)}. Edit packages/i18n-strings/src/${locale}.json.`,
+      );
+    }
+  }
 }
 
 /** Copies the extension's resources into `<ios>/<TARGET>/Resources`, replacing what was there. */
@@ -368,6 +393,8 @@ module.exports._internals = {
   appGroupOf,
   resolveExtensionSource,
   assertExtensionTree,
+  assertLocalizedNamesFit,
+  SAFARI_NAME_MAX,
   copyExtensionResources,
   infoPlistContent,
   entitlementsContent,
