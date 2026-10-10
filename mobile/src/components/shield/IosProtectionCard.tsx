@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import { colors, type as typo, space, radius, sectionHeader } from "../../utils/theme";
-import type { IosLayer, IosLayerId } from "../../utils/platform-features";
+import { iosLeadKey, type IosLayer, type IosLayerId } from "../../utils/platform-features";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -30,7 +30,7 @@ export function IosProtectionCard({ layers, onSetUp }: {
     <View>
       <Text style={s.header} accessibilityRole="header">{t("mobile.ios.header")}</Text>
       <View style={s.card}>
-        <Text style={s.lead}>{t("mobile.ios.lead")}</Text>
+        <Text style={s.lead}>{t(iosLeadKey(layers))}</Text>
         {layers.map((layer) => {
           const ready = layer.status !== "coming";
           const row = (

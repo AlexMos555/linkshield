@@ -1928,6 +1928,7 @@
   "mobile.ios_sms.done": "OK",
   "mobile.ios.header": "Protection sur iPhone",
   "mobile.ios.lead": "Sur iPhone, Cleanway vous protège de trois façons. Chacune aura ici son étape de configuration dès qu'elle arrivera dans une mise à jour.",
+  "mobile.ios.lead_ready": "Sur iPhone, Cleanway vous protège de trois façons. Configurez chacune ci-dessous : cela prend environ une minute.",
   "mobile.ios.safari_title": "Extension Safari",
   "mobile.ios.safari_line": "Vous avertit directement sur la page quand un site ouvert dans Safari est une arnaque connue.",
   "mobile.ios.safari_line_on": "Actif dans Safari. Les sites d'arnaque connus affichent un avertissement directement sur la page.",

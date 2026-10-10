@@ -3846,6 +3846,7 @@
     "ios": {
       "header": "Protección en iPhone",
       "lead": "En iPhone, Cleanway te protege de tres maneras. Cada una tendrá aquí su paso de configuración en cuanto llegue en una actualización.",
+      "lead_ready": "En iPhone, Cleanway te protege de tres maneras. Configura cada una abajo: tarda alrededor de un minuto.",
       "safari_title": "Extensión para Safari",
       "safari_line": "Te avisa en la propia página cuando un sitio en Safari es una estafa conocida.",
       "safari_line_on": "Funciona en Safari. Los sitios de estafa conocidos muestran un aviso en la propia página.",
