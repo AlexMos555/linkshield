@@ -1928,6 +1928,7 @@
   "mobile.ios_sms.done": "Fertig",
   "mobile.ios.header": "Schutz auf dem iPhone",
   "mobile.ios.lead": "Auf dem iPhone schützt dich Cleanway auf drei Wegen. Jeder bekommt hier seinen Einrichtungsschritt, sobald er mit einem Update kommt.",
+  "mobile.ios.lead_ready": "Auf dem iPhone schützt dich Cleanway auf drei Wegen. Richte unten jeden ein – das dauert etwa eine Minute.",
   "mobile.ios.safari_title": "Safari-Erweiterung",
   "mobile.ios.safari_line": "Warnt dich direkt auf der Seite, wenn eine Website in Safari ein bekannter Betrug ist.",
   "mobile.ios.safari_line_on": "Aktiv in Safari. Bekannte Betrugsseiten zeigen eine Warnung direkt auf der Seite.",
