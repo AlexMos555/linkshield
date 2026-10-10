@@ -6,17 +6,37 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
 
+  # One npm entry at the root: landing/, mobile/ and packages/ are workspaces
+  # that share the root package-lock.json. Per-folder entries bumped a
+  # workspace's package.json without the root lock, so every such PR failed
+  # "Verify package-lock is in sync".
   - package-ecosystem: "npm"
-    directory: "/landing"
+    directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 3
-
-  - package-ecosystem: "npm"
-    directory: "/mobile"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
+    ignore:
+      # Expo pins these to the SDK (mobile is on SDK 54): moving them one by
+      # one breaks the native build. They move together, in an SDK upgrade.
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@expo/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@react-native/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # A Next.js major is a migration (the landing was moved to 15 by hand).
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
