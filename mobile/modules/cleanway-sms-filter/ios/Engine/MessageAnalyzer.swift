@@ -1,0 +1,1 @@
+../../../../targets/sms-filter/Sources/CleanwayMessageEngine/MessageAnalyzer.swift

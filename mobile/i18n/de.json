@@ -1407,6 +1407,7 @@
   "mobile.message.link.failed": "Die Seite konnte nicht geprüft werden",
   "mobile.message.link.not_found": "Diese Seite gibt es nicht",
   "mobile.message.list_missing": "Die Liste betrügerischer Seiten ist noch nicht auf diesem Handy, deshalb wurden die Links nicht mit ihr abgeglichen. Die Liste wird geladen, solange der Schutz „Jede App“ an ist.",
+  "mobile.message.list_server_ios": "Auf dem iPhone werden die Seitennamen aus diesen Links auf dem Cleanway-Server geprüft – nie der Text oder die vollständige Adresse.",
   "mobile.message.list_stale": "Die Liste betrügerischer Seiten auf diesem Handy wurde länger nicht aktualisiert. Sie wird aktualisiert, solange der Schutz „Jede App“ an ist.",
   "mobile.message.advice_title": "Was du tun solltest",
   "mobile.message.advice_title_calm": "Zur Sicherheit",

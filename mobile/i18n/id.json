@@ -1407,6 +1407,7 @@
   "mobile.message.link.failed": "Situs tidak bisa dicek",
   "mobile.message.link.not_found": "Situs ini tidak ada",
   "mobile.message.list_missing": "Daftar situs penipuan belum ada di HP ini, jadi tautannya belum dicocokkan dengan daftar itu. Daftar itu diunduh selama perlindungan “Semua aplikasi” aktif.",
+  "mobile.message.list_server_ios": "Di iPhone, nama situs dari tautan ini diperiksa di server Cleanway — tidak pernah teksnya atau alamat lengkapnya.",
   "mobile.message.list_stale": "Daftar situs penipuan di HP ini sudah lama tidak diperbarui. Daftar itu diperbarui selama perlindungan “Semua aplikasi” aktif.",
   "mobile.message.advice_title": "Yang perlu dilakukan",
   "mobile.message.advice_title_calm": "Untuk berjaga-jaga",

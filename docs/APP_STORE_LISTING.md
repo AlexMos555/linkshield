@@ -39,6 +39,7 @@ WHAT IT PROTECTS YOU FROM
 • Scam websites in every app. Turn on DNS protection once, and known scam and phishing sites won't open in Safari, in messengers or in any other app.
 • Scam texts. The SMS filter checks texts from numbers that are not in your contacts and moves the ones that look like a scam to the Junk folder. The check happens on your iPhone and works without internet.
 • Scam sites in Safari. The Safari extension warns you before a known scam page opens.
+• A suspicious text from anyone. Paste it or share it to Cleanway: the text is checked on your iPhone and never leaves it; only the site names from its links go to our server.
 • Suspicious links. Paste a link or share it to Cleanway from any app, and Cleanway checks the site before you open it and explains the result in plain words.
 
 SIMPLE FOR EVERYONE
@@ -95,6 +96,7 @@ Cleanway защищает iPhone от мошенников. Не даёт отк
 • Мошеннические сайты в любом приложении. Включите защиту DNS один раз — и известные мошеннические и фишинговые сайты не откроются ни в Safari, ни в мессенджерах, ни в других приложениях.
 • Мошеннические SMS. Фильтр проверяет сообщения с номеров, которых нет в контактах, и переносит похожие на обман в папку «Спам». Проверка идёт на самом iPhone и работает без интернета.
 • Мошеннические сайты в Safari. Расширение для Safari предупреждает до того, как откроется известная мошенническая страница.
+• Подозрительное сообщение от кого угодно. Вставьте его или поделитесь им с Cleanway: текст проверяется на iPhone и никуда не уходит, на наш сервер отправляются только имена сайтов из ссылок.
 • Подозрительные ссылки. Вставьте ссылку или поделитесь ею с Cleanway из любого приложения — Cleanway проверит сайт и простыми словами объяснит результат.
 
 ПРОСТО ДЛЯ ВСЕХ

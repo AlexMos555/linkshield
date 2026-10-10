@@ -12,6 +12,8 @@ import { requireOptionalNativeModule } from 'expo';
 interface CleanwaySmsFilterNative {
   isInstalled(): boolean;
   setRemoteConfig(json: string): boolean;
+  /** The filter's engine on one message, in the app (newer builds only). */
+  analyzeMessage?(text: string): Promise<unknown>;
 }
 
 const Native: CleanwaySmsFilterNative | null =
@@ -42,4 +44,26 @@ export function setSmsFilterRemoteConfig(json: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * This iPhone build can run the scam-text engine inside the app (the in-app
+ * "Check a text message"). False on Android, web and iOS builds from before
+ * the engine was linked into the app.
+ */
+export function iosMessageCheckSupported(): boolean {
+  try {
+    return typeof Native?.analyzeMessage === 'function';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The engine's raw answer for one message (the same wire shape as Android's
+ * MessageCheck), or undefined when this build has no engine. Throws when the
+ * engine failed; the caller turns that into "couldn't check", never "fine".
+ */
+export async function analyzeMessageOnIos(text: string): Promise<unknown> {
+  return Native?.analyzeMessage ? Native.analyzeMessage(text) : undefined;
 }
