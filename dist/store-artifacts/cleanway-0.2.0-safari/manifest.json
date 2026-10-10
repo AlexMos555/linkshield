@@ -10,7 +10,8 @@
     "alarms",
     "contextMenus",
     "notifications",
-    "scripting"
+    "scripting",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "https://api.cleanway.ai/*",
