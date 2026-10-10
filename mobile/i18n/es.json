@@ -1407,6 +1407,7 @@
   "mobile.message.link.failed": "No se pudo revisar el sitio",
   "mobile.message.link.not_found": "Este sitio no existe",
   "mobile.message.list_missing": "La lista de sitios fraudulentos aún no está en este teléfono, así que los enlaces no se compararon con ella. La lista se descarga mientras el escudo «Todas las apps» está activado.",
+  "mobile.message.list_server_ios": "En iPhone, los nombres de sitio de estos enlaces se comprueban en el servidor de Cleanway, nunca el texto ni la dirección completa.",
   "mobile.message.list_stale": "La lista de sitios fraudulentos de este teléfono lleva tiempo sin actualizarse. Se actualiza mientras el escudo «Todas las apps» está activado.",
   "mobile.message.advice_title": "Qué hacer",
   "mobile.message.advice_title_calm": "Por si acaso",

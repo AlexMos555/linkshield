@@ -674,6 +674,16 @@ module). The bundled extension is 1.3 MB (0.7 MB binary + the four assets).
   `RemoteConfig.parse`, as `remote_config.json` in `group.ai.cleanway.app`.
   The extension reads the file for every message; missing or malformed means
   the shipped defaults. Overrides only raise thresholds.
+- **In-app "Check a text message"** (pasted or shared text) runs the same
+  engine in the app: `CleanwaySmsFilter.analyzeMessage` returns Android's
+  `MessageCheck.toWire()` shape. The module compiles the engine through
+  per-file symlinks in `modules/cleanway-sms-filter/ios/Engine/` (CocoaPods
+  does not walk into a symlinked folder) and bundles the shared Android assets
+  from `EngineAssets/` as `CleanwayMessageEngineAssets.bundle` — one engine,
+  never a copy; `test-ios-sms-filter.mjs` pins the links. There is no list on
+  an iPhone, so `listAvailable` is false and the app asks the server about the
+  link hosts (up to three, host only); the card says so. Before 2026-10-10 the
+  screen answered "Checking messages isn't available on this phone".
 
 ### 5.7 What was verified, and what needs a phone
 

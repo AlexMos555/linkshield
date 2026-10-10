@@ -1407,6 +1407,7 @@
   "mobile.message.link.failed": "Impossibile controllare il sito",
   "mobile.message.link.not_found": "Questo sito non esiste",
   "mobile.message.list_missing": "La lista dei siti truffa non è ancora su questo telefono, quindi i link non sono stati confrontati con essa. La lista si scarica mentre la protezione «Ogni app» è attiva.",
+  "mobile.message.list_server_ios": "Su iPhone i nomi dei siti di questi link vengono controllati sul server di Cleanway: mai il testo né l'indirizzo completo.",
   "mobile.message.list_stale": "La lista dei siti truffa su questo telefono non viene aggiornata da un po'. Si aggiorna mentre la protezione «Ogni app» è attiva.",
   "mobile.message.advice_title": "Cosa fare",
   "mobile.message.advice_title_calm": "Per sicurezza",

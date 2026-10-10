@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import type { MessageLink } from "../../../modules/cleanway-vpn";
@@ -52,7 +52,8 @@ export function MessageLinksCard({ links, linkChecks, listAvailable, listStale }
         <LinkRow key={`${i}:${link.text}`} link={link} verdict={linkVerdict(link, linkChecks)} first={i === 0} />
       ))}
       {!listAvailable ? (
-        <Text style={s.note}>{t("mobile.message.list_missing")}</Text>
+        // iPhone keeps no list on the phone: its links always go to the server check.
+        <Text style={s.note}>{t(Platform.OS === "ios" ? "mobile.message.list_server_ios" : "mobile.message.list_missing")}</Text>
       ) : listStale ? (
         <Text style={s.note}>{t("mobile.message.list_stale")}</Text>
       ) : null}

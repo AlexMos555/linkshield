@@ -3341,6 +3341,7 @@
         "not_found": "Ce site n'existe pas"
       },
       "list_missing": "La liste des sites frauduleux n'est pas encore sur ce téléphone : les liens n'ont donc pas été comparés avec elle. La liste se télécharge tant que la protection « Toutes les applis » est activée.",
+      "list_server_ios": "Sur iPhone, les noms de sites de ces liens sont vérifiés sur le serveur de Cleanway — jamais le texte ni l'adresse complète.",
       "list_stale": "La liste des sites frauduleux de ce téléphone n'a pas été mise à jour depuis un moment. Elle se met à jour tant que la protection « Toutes les applis » est activée.",
       "advice_title": "Que faire",
       "advice_title_calm": "Par précaution",

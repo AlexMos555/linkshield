@@ -3341,6 +3341,7 @@
         "not_found": "Situs ini tidak ada"
       },
       "list_missing": "Daftar situs penipuan belum ada di HP ini, jadi tautannya belum dicocokkan dengan daftar itu. Daftar itu diunduh selama perlindungan “Semua aplikasi” aktif.",
+      "list_server_ios": "Di iPhone, nama situs dari tautan ini diperiksa di server Cleanway — tidak pernah teksnya atau alamat lengkapnya.",
       "list_stale": "Daftar situs penipuan di HP ini sudah lama tidak diperbarui. Daftar itu diperbarui selama perlindungan “Semua aplikasi” aktif.",
       "advice_title": "Yang perlu dilakukan",
       "advice_title_calm": "Untuk berjaga-jaga",

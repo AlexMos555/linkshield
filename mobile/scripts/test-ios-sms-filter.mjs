@@ -20,7 +20,7 @@
  *     a native module pod not above iOS 15.1.
  */
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -191,6 +191,38 @@ check("the module's pod is not above the app's iOS deployment target (15.1)", ()
   const moduleName = /const MODULE_NAME = "([^"]+)"/.exec(src)[1];
   assert.notEqual(moduleName, pod);
   assert.notEqual(moduleName, plugin.TARGET);
+});
+
+check("the in-app message check runs the filter's own engine — linked, never copied", () => {
+  // CocoaPods does not walk into a symlinked folder, so Engine/ holds one link
+  // per engine file. A new engine file without its link would leave the app
+  // module uncompilable (or silently without a rule), so pin the set.
+  const engineDir = join(MOBILE, "targets", "sms-filter", "Sources", "CleanwayMessageEngine");
+  const linkDir = join(MOBILE, "modules", "cleanway-sms-filter", "ios", "Engine");
+  const engine = readdirSync(engineDir).filter((f) => f.endsWith(".swift")).sort();
+  const links = readdirSync(linkDir).filter((f) => f.endsWith(".swift")).sort();
+  assert.deepEqual(links, engine);
+  for (const f of links) {
+    assert.ok(lstatSync(join(linkDir, f)).isSymbolicLink(), `${f} must be a link, not a copy`);
+    assert.equal(realpathSync(join(linkDir, f)), realpathSync(join(engineDir, f)));
+  }
+  const assetsDir = join(MOBILE, "modules", "cleanway-sms-filter", "ios", "EngineAssets");
+  const shared = join(MOBILE, "modules", "cleanway-vpn", "android", "src", "main", "assets");
+  for (const a of plugin.ASSETS) {
+    assert.ok(lstatSync(join(assetsDir, a)).isSymbolicLink(), `${a} must be a link`);
+    assert.equal(realpathSync(join(assetsDir, a)), realpathSync(join(shared, a)));
+  }
+  const podspec = read("modules/cleanway-sms-filter/ios/CleanwaySmsFilter.podspec");
+  assert.match(podspec, /"Engine\/\*\.swift"/);
+  assert.match(podspec, /'CleanwayMessageEngineAssets' => \['EngineAssets\/\*'\]/);
+  const swift = read("modules/cleanway-sms-filter/ios/CleanwaySmsFilterModule.swift");
+  assert.match(swift, /AsyncFunction\("analyzeMessage"\)/);
+  // No list on an iPhone: the app must ask the server about the hosts.
+  assert.match(swift, /"listAvailable": false/);
+  const js = read("modules/cleanway-vpn/index.ts");
+  assert.match(js, /if \(Platform\.OS === 'ios'\) return iosMessageCheckSupported\(\);/);
+  // The note under the links names the server check on iPhone, in every locale.
+  for (const loc of LOCALES) assert.ok(STRINGS[loc]["mobile.message.list_server_ios"], loc);
 });
 
 if (failures > 0) {

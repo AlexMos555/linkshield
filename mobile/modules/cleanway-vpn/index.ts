@@ -38,6 +38,7 @@ import type {
   MessageVerdict,
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
+import { analyzeMessageOnIos, iosMessageCheckSupported } from '../cleanway-sms-filter';
 import { parseKeepAliveStatus, parseRearmDecision, UNKNOWN_KEEP_ALIVE } from './src/KeepAliveStatus';
 import { parseIosDnsReport } from './src/IosDnsSettings';
 import type { IosDnsError, IosDnsReport } from './src/IosDnsSettings';
@@ -685,10 +686,12 @@ export async function requestLinkHandler(): Promise<boolean> {
 
 /**
  * Can this build check a message on the phone? Android with a native build
- * that carries the analyzer; false on iOS, web and older native builds.
+ * that carries the analyzer, or an iPhone build whose scam-text module carries
+ * the same engine (modules/cleanway-sms-filter); false on web and older builds.
  */
 export function isMessageCheckSupported(): boolean {
   try {
+    if (Platform.OS === 'ios') return iosMessageCheckSupported();
     return Platform.OS === 'android' && typeof CleanwayVpn.analyzeMessage === 'function';
   } catch {
     return false;
@@ -726,7 +729,7 @@ export async function analyzeMessage(text: string): Promise<MessageAnalysisResul
     // One character past the limit lets the native side report `truncated`
     // without carrying a whole pasted chat log across the bridge.
     const clipped = text.length > MESSAGE_MAX_CHARS ? text.slice(0, MESSAGE_MAX_CHARS + 1) : text;
-    const raw = await CleanwayVpn.analyzeMessage?.(clipped);
+    const raw = Platform.OS === 'ios' ? await analyzeMessageOnIos(clipped) : await CleanwayVpn.analyzeMessage?.(clipped);
     if (raw === undefined) return { available: false, reason: 'unsupported' };
     const analysis = parseMessageAnalysis(raw);
     return analysis ? { available: true, ...analysis } : { available: false, reason: 'failed' };

@@ -3341,6 +3341,7 @@
         "not_found": "Este site não existe"
       },
       "list_missing": "A lista de sites de golpe ainda não está neste celular, então os links não foram comparados com ela. A lista é baixada enquanto a proteção “Todos os aplicativos” está ligada.",
+      "list_server_ios": "No iPhone, os nomes dos sites desses links são verificados no servidor do Cleanway — nunca o texto nem o endereço completo.",
       "list_stale": "A lista de sites de golpe deste celular não é atualizada há algum tempo. Ela é atualizada enquanto a proteção “Todos os aplicativos” está ligada.",
       "advice_title": "O que fazer",
       "advice_title_calm": "Por via das dúvidas",

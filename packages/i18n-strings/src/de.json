@@ -3341,6 +3341,7 @@
         "not_found": "Diese Seite gibt es nicht"
       },
       "list_missing": "Die Liste betrügerischer Seiten ist noch nicht auf diesem Handy, deshalb wurden die Links nicht mit ihr abgeglichen. Die Liste wird geladen, solange der Schutz „Jede App“ an ist.",
+      "list_server_ios": "Auf dem iPhone werden die Seitennamen aus diesen Links auf dem Cleanway-Server geprüft – nie der Text oder die vollständige Adresse.",
       "list_stale": "Die Liste betrügerischer Seiten auf diesem Handy wurde länger nicht aktualisiert. Sie wird aktualisiert, solange der Schutz „Jede App“ an ist.",
       "advice_title": "Was du tun solltest",
       "advice_title_calm": "Zur Sicherheit",

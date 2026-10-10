@@ -3283,6 +3283,7 @@
         "not_found": "This site doesn't exist"
       },
       "list_missing": "The list of scam sites isn't on this phone yet, so the links weren't compared with it. The list downloads while the “Every app” shield is on.",
+      "list_server_ios": "On iPhone, the site names from these links are checked on Cleanway's server — never the text or the full address.",
       "list_stale": "The list of scam sites on this phone hasn't been updated for a while. It updates while the “Every app” shield is on.",
       "advice_title": "What to do",
       "advice_title_calm": "Just in case",
