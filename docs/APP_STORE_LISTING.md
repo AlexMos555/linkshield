@@ -131,5 +131,6 @@ Cleanway защищает iPhone от мошенников. Не даёт отк
 | Support URL | https://cleanway.ai/support |
 | Marketing URL | https://cleanway.ai |
 | Copyright | 2026 [юридическое название компании] — после перевода аккаунта (`docs/runbooks/company-accounts.md`) |
+| Скриншоты (6,9″) | `mobile/assets/store/app-store/{en,ru}/01…05.png`, порядок и правила — README там же |
 | App Privacy | `docs/IOS.md` §3.5 |
 | Заметки для проверки | `docs/IOS.md` §3.6; демо-аккаунт нужен рабочий вход по почте (ключ Resend) |
