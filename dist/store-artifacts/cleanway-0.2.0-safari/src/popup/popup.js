@@ -4,6 +4,12 @@
  * Никакого жаргона. i18n через chrome.i18n.getMessage с fallback.
  */
 
+// Safari on iPhone / iPad: phone layout, and no webmail scanner
+// (elements marked data-hide-on-ios are removed). utils/platform.js.
+try {
+  if (self.cleanwayPlatform) self.cleanwayPlatform.applyToPage(chrome, document);
+} catch (e) { /* no platform helper: the desktop page is shown */ }
+
 // ─── i18n helpers ─────────────────────────────────────────────
 // chrome.i18n.getMessage читает из _locales/<lang>/messages.json
 // Fallback: inline English для preview panel и dev.

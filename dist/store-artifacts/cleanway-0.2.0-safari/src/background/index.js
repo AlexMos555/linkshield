@@ -35,6 +35,7 @@ import {
 import { pruneOldChecks } from "../utils/storage.js";
 import { handleAuthAlarm, handleAuthMessage } from "./auth.js"; // sign-in: the cleanway.ai → extension handoff + refresh
 import { blockedPageHost, claimFirstBlockToday } from "./page-blocks.js";
+import { createSafariSeen, isWebPageSender } from "./safari-native.js"; // Safari: tells the Cleanway app the extension works
 import { isKnownSafeHost, isUserContentHost } from "./trusted-hosts.js";
 import { installWebmailScanner } from "./webmail-scanner.js"; // opt-in only: injects content/webmail.js while Settings has it on
 
@@ -371,8 +372,17 @@ async function checkLinkUrl(href) {
   return r.results[0] || null;
 }
 
+// Safari only: a content script on a real page reached us, so the extension
+// is on AND allowed on websites — the Cleanway app shows that (safari-native.js).
+const safariSeen = createSafariSeen(chrome);
+const PAGE_MESSAGES = new Set(["CHECK_DOMAINS", "PAGE_BLOCKED", "EXTENSION_SEEN"]);
+
 // ── Messages ──
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+  if (msg && PAGE_MESSAGES.has(msg.type) && isWebPageSender(sender)) safariSeen.note();
+  // A Cleanway page (cleanway.ai is never checked, content/index.js) saying
+  // the extension runs there: nothing to answer, the line above did the work.
+  if (msg && msg.type === "EXTENSION_SEEN") return false;
   // Sign-in (AUTH_*): background/auth.js checks who sent it.
   const authReply = handleAuthMessage(msg, sender, respond);
   if (authReply !== undefined) return authReply;

@@ -286,7 +286,7 @@
     <div class="cta-group">
       <!-- Email scanning is opt-in: this opens its switch and consent text in
            Settings, not the inbox (nothing would be scanned there yet). -->
-      <a href="../options/options.html#webmail-section" class="btn btn-primary" id="cta-scan">
+      <a href="../options/options.html#webmail-section" class="btn btn-primary" id="cta-scan" data-hide-on-ios>
         <span data-i18n="welcome_cta_scan">&#x1F4E7; Scan my inbox for hidden scams</span>
       </a>
       <button class="btn btn-secondary" id="cta-skip" type="button" data-i18n="welcome_cta_skip">
@@ -300,6 +300,7 @@
     </div>
   </div>
 
+  <script src="../utils/platform.js"></script>
   <script src="welcome.js"></script>
 </body>
 </html>
