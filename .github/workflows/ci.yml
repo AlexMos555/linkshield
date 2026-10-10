@@ -14,7 +14,7 @@ jobs:
       SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -160,7 +160,7 @@ jobs:
     # dev sandbox instead.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
@@ -371,7 +371,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Swift parity tests (Kotlin fixture)
         working-directory: mobile/targets/sms-filter
@@ -381,7 +381,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -446,7 +446,7 @@ jobs:
       DEBUG: "true"
       SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
@@ -481,7 +481,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build the production image
         run: docker build -t cleanway-api:ci .
       - name: Boot it the way Railway does and probe /health

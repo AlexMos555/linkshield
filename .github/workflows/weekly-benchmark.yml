@@ -82,7 +82,7 @@ jobs:
     # run one after another.)
     timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # We need full history to compare against the previous
           # week's recall for regression detection.
