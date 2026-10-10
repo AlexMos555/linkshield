@@ -57,7 +57,7 @@ jobs:
 
       - name: Open PR with new hashes
         if: steps.diff.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: cleanway/refresh-brand-favicons
           delete-branch: true
