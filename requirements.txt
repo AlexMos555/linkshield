@@ -42,5 +42,5 @@ anthropic==0.109.2
 #
 # catboost stays a DEV-only dependency (retraining + the .cbm fallback path):
 # install locally with `pip install catboost==1.2.10` when running ml/train_model.py.
-onnxruntime==1.19.2
+onnxruntime==1.24.3
 numpy==1.26.4
