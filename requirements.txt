@@ -8,7 +8,7 @@ httpx==0.28.1
 # falls back to HTTP/1.1 keep-alive.
 h2==4.4.1
 redis[hiredis]==8.1.0
-pydantic-settings==2.6.0
+pydantic-settings==2.15.0
 PyJWT==2.15.1
 python-multipart==0.0.32
 dnspython==2.8.0
