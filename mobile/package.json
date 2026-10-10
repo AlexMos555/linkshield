@@ -32,7 +32,7 @@
     "expo-sharing": "~14.0.8",
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
-    "i18next": "^23.15.0",
+    "i18next": "^26.4.2",
     "punycode": "^2.3.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
