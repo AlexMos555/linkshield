@@ -39,6 +39,7 @@ import {
   androidProtectionShown,
   heroWithoutShieldsKeys,
   homePrivacyKey,
+  iosLeadKey,
   iosProtectionLayers,
   iosProtectionShown,
   linkGuardSettingShown,
@@ -103,12 +104,19 @@ check("the iPhone's layers: Safari, scam texts, DNS — all 'coming' until a bui
   assert.deepEqual(layers.map((l) => l.id), ["safari", "sms_filter", "dns"]);
   assert.ok(layers.every((l) => l.status === "coming"));
   assertKeys(layers.flatMap((l) => [l.titleKey, l.lineKey]));
-  assertKeys(["mobile.ios.header", "mobile.ios.lead", "mobile.ios.coming", "mobile.ios.set_up", "mobile.ios.on"]);
+  assertKeys(["mobile.ios.header", "mobile.ios.lead", "mobile.ios.lead_ready", "mobile.ios.coming", "mobile.ios.set_up", "mobile.ios.on"]);
 });
 
 check("a later step reports its layer; a nonsense status stays 'coming'", () => {
   const layers = iosProtectionLayers({ dns: "setup", safari: "on", sms_filter: "maybe" });
   assert.deepEqual(layers.map((l) => [l.id, l.status]), [["safari", "on"], ["sms_filter", "coming"], ["dns", "setup"]]);
+});
+
+check("the card's opening line stops promising an update once every layer is built", () => {
+  assert.equal(iosLeadKey(iosProtectionLayers()), "mobile.ios.lead");
+  assert.equal(iosLeadKey(iosProtectionLayers({ dns: "setup", safari: "on" })), "mobile.ios.lead");
+  assert.equal(iosLeadKey(iosProtectionLayers({ dns: "setup", safari: "on", sms_filter: "setup" })), "mobile.ios.lead_ready");
+  for (const loc of LOCALES) assert.ok(!/update|обновлени/i.test(STRINGS[loc]["mobile.ios.lead_ready"] || "x update"), loc);
 });
 
 check("onboarding: the third slide is the iPhone one on iOS, the shield one elsewhere", () => {

@@ -3907,6 +3907,7 @@
     "ios": {
       "header": "Proteção no iPhone",
       "lead": "No iPhone, o Cleanway protege você de três formas. Cada uma ganha aqui seu passo de configuração assim que chegar em uma atualização.",
+      "lead_ready": "No iPhone, o Cleanway protege você de três formas. Configure cada uma abaixo — leva cerca de um minuto.",
       "safari_title": "Extensão do Safari",
       "safari_line": "Avisa na própria página quando um site no Safari é um golpe conhecido.",
       "safari_line_on": "Funcionando no Safari. Sites de golpe conhecidos mostram um aviso na própria página.",

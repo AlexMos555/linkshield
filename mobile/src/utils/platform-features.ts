@@ -88,6 +88,15 @@ export function iosProtectionLayers(
   });
 }
 
+/**
+ * The card's opening line. "Each one arrives in an update" was true while a
+ * layer was still "coming"; once every layer is built it would tell people to
+ * wait for something they already have.
+ */
+export function iosLeadKey(layers: ReadonlyArray<Pick<IosLayer, "status">>): string {
+  return layers.some((l) => l.status === "coming") ? "mobile.ios.lead" : "mobile.ios.lead_ready";
+}
+
 // ── The Safari layer ──────────────────────────────────────────────────
 
 /**

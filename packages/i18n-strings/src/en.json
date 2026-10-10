@@ -3849,6 +3849,7 @@
     "ios": {
       "header": "Protection on iPhone",
       "lead": "On iPhone, Cleanway protects you in three ways. Each one gets its setup step here as soon as it arrives in an update.",
+      "lead_ready": "On iPhone, Cleanway protects you in three ways. Set up each one below — it takes about a minute.",
       "safari_title": "Safari extension",
       "safari_line": "Warns you right on the page when a site in Safari is a known scam.",
       "safari_line_on": "Working in Safari. Known scam sites get a warning right on the page.",

@@ -1929,6 +1929,7 @@
   "mobile.ios_sms.done": "Готово",
   "mobile.ios.header": "Защита на iPhone",
   "mobile.ios.lead": "На iPhone Cleanway защищает тремя способами. Как только каждый появится в обновлении, здесь будет шаг для его настройки.",
+  "mobile.ios.lead_ready": "На iPhone Cleanway защищает тремя способами. Настройте каждый ниже — это займёт около минуты.",
   "mobile.ios.safari_title": "Расширение для Safari",
   "mobile.ios.safari_line": "Предупреждает прямо на странице, если сайт в Safari — известное мошенничество.",
   "mobile.ios.safari_line_on": "Работает в Safari. На известных мошеннических сайтах появится предупреждение прямо на странице.",

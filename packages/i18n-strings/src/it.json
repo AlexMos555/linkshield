@@ -3907,6 +3907,7 @@
     "ios": {
       "header": "Protezione su iPhone",
       "lead": "Su iPhone Cleanway ti protegge in tre modi. Ognuno avrà qui il suo passaggio di configurazione appena arriva con un aggiornamento.",
+      "lead_ready": "Su iPhone Cleanway ti protegge in tre modi. Configura ciascuno qui sotto: ci vuole circa un minuto.",
       "safari_title": "Estensione per Safari",
       "safari_line": "Ti avvisa direttamente sulla pagina quando un sito in Safari è una truffa nota.",
       "safari_line_on": "Attiva in Safari. I siti truffa noti mostrano un avviso direttamente sulla pagina.",
