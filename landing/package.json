@@ -15,7 +15,7 @@
   "dependencies": {
     "@cleanway/api-client": "*",
     "@cleanway/api-types": "*",
-    "@sentry/nextjs": "^10.51.0",
+    "@sentry/nextjs": "^11.5.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
     "@tailwindcss/postcss": "^4.2.2",
