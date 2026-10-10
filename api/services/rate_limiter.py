@@ -407,7 +407,11 @@ def _extract_client_ip(request: Request) -> str:
     else:
         xff_trusted = _ip_in_any_cidr(peer, trusted_cidrs)
 
-    xff = request.headers.get("x-forwarded-for") if xff_trusted else None
+    raw_xff = request.headers.get("x-forwarded-for")
+    from api.services import proxy_trust
+    proxy_trust.observe(peer, bool(raw_xff), bool(trusted_cidrs), xff_trusted)
+
+    xff = raw_xff if xff_trusted else None
     if xff:
         return xff.split(",")[0].strip()
     if peer:
