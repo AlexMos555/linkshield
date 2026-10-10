@@ -12,7 +12,7 @@ pydantic-settings==2.6.0
 PyJWT==2.15.1
 python-multipart==0.0.32
 dnspython==2.8.0
-stripe==11.0.0
+stripe==16.0.0
 sentry-sdk[fastapi]==2.59.0
 bcrypt==5.0.0
 
