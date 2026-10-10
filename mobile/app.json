@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ai.cleanway.app",
+      "buildNumber": "2",
       "config": {
         "usesNonExemptEncryption": false
       },
