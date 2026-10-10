@@ -117,6 +117,7 @@ async def stats_logger(every_s: float = STATS_LOG_EVERY_S) -> None:
     while True:
         await asyncio.sleep(every_s)
         try:
-            logger.info("doh_stats", extra={"doh": METRICS.snapshot()})
+            from api.services import proxy_trust
+            logger.info("doh_stats", extra={"doh": METRICS.snapshot(), "proxy_peers": proxy_trust.snapshot()})
         except Exception:  # noqa: BLE001
             pass
