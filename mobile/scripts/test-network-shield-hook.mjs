@@ -137,6 +137,9 @@ const STUBS = {
     },
   },
   "../../modules/cleanway-vpn": VPN,
+  // modules/cleanway-vpn/index.ts routes the iPhone message check here; this
+  // test runs as Android, so the iOS module only has to load.
+  "../cleanway-sms-filter/index": { analyzeMessageOnIos: async () => undefined, iosMessageCheckSupported: () => false },
 };
 
 // hasInternet(): a HEAD to api.cleanway.ai/health.

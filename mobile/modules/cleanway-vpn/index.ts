@@ -38,7 +38,7 @@ import type {
   MessageVerdict,
 } from './src/CleanwayVpn.types';
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
-import { analyzeMessageOnIos, iosMessageCheckSupported } from '../cleanway-sms-filter';
+import { analyzeMessageOnIos, iosMessageCheckSupported } from '../cleanway-sms-filter/index';
 import { parseKeepAliveStatus, parseRearmDecision, UNKNOWN_KEEP_ALIVE } from './src/KeepAliveStatus';
 import { parseIosDnsReport } from './src/IosDnsSettings';
 import type { IosDnsError, IosDnsReport } from './src/IosDnsSettings';
