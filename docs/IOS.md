@@ -354,13 +354,16 @@ weekly report send anything new.
 
 ### 3.6 Review notes (paste into "Notes")
 
-> Cleanway checks links for scams. No account is needed: paste a link on the
-> home screen or share one to Cleanway from Safari. Sign-in (optional) is by a
+> Cleanway checks links and text messages for scams. No account is needed:
+> paste a link or a message on the home screen, or share one to Cleanway from
+> Safari or Messages. A message is checked on the device and never sent; only
+> the site names of its links go to our server. Sign-in (optional) is by a
 > one-time code sent to email — use the demo account below. Account deletion:
 > Settings → Delete account. Subscriptions are sold only through In-App
 > Purchase; "Restore purchases" is on the paywall and in Account. The app
-> contains no VPN. The "Protection on iPhone" items marked "Coming soon" are
-> not functional in this version and are labelled as such.
+> contains no VPN. All three "Protection on iPhone" items (Safari extension,
+> scam-text filter, DNS protection) work in this version; each needs a switch
+> the user turns on in Settings, which the app explains step by step.
 >
 > DNS protection (home → Protection on iPhone → DNS protection → Set up) uses
 > the public DNS Settings API (NEDNSSettingsManager with
@@ -705,6 +708,10 @@ On the iOS 26.2 simulator (Xcode 26.3, 2026-10-09), Release build:
   mismatches, the numbers in §5.5;
 - the simulator's Settings → Apps → Messages page is empty (no telephony), so
   the SMS Filtering list cannot be shown there.
+- 2026-10-10, same simulator: the in-app "Check a text message" (§5.6) runs
+  the engine in the app — a parcel-fee scam text in English and in Russian
+  shows "Looks like a scam" / «Похоже на мошенников» with three reasons, the
+  link host checked on the server, and the iPhone note under the links.
 
 The simulator cannot receive an SMS, so the end-to-end path — a text from an
 unknown number landing in Junk — needs a real iPhone with a SIM and a

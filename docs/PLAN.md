@@ -3,6 +3,8 @@
 ## iPhone и компания (2026-10-10)
 
 - TestFlight: «Cleanway: Scam Protection» (Apple ID 6821030874), сборка 1.0.4 (1) обработана и выдана внутренней группе «Team». Ждём проверку основателя на iPhone: DNS, SMS с SIM, Safari.
+- Сборка 1.0.4 (2) собрана, не выгружена: Xcode теряет сессию Apple ID примерно через час («Failed to Use Accounts»). Нужен повторный вход в Xcode или, надёжнее, ключ App Store Connect API (`.p8` в `~/.appstoreconnect/private_keys/`, Key ID и Issuer ID). В ней: проверка сообщений в приложении на iPhone (#150 — раньше всегда «недоступно»), вводный текст карточки защиты (#149), короткие названия Safari (#145), номер сборки 2 (#153).
+- Для App Store готово: тексты EN/RU с проверкой длин (`docs/APP_STORE_LISTING.md`, #147), скриншоты 6,9″ EN/RU (`mobile/assets/store/app-store/`, #151), заметки для проверяющих (`docs/IOS.md` §3.6). Для проверки Apple нужен рабочий вход по почте — ключ Resend.
 - Публикуем от компании. Весь аккаунт Apple переводится на организацию; Google Play сразу создаётся на организацию. Реквизиты основатель пришлёт 2026-10-12. Шаги и текст заявки: `docs/runbooks/company-accounts.md`.
 - До перевода не делаем: Paid Apps, банк и налоги, подписки в App Store, аккаунт Google Play.
 
