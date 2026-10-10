@@ -266,9 +266,11 @@ the converter is not used: the iPhone side is this Expo target.
 | Seller name on the App Store | Your legal name | The company |
 | Needs | Apple ID + $99/yr | D-U-N-S number, legal entity, $99/yr |
 
-Recommendation (as in `MOBILE_AUTO_PROTECTION.md` §6): stay Individual; the
-iOS plan uses no VPN. Switch only if a company is formed anyway — the app can
-be transferred later.
+Decision 2026-10-10: the founder's company publishes. The whole account
+(Team ID `29LQWL23VQ`, all apps) converts to an Organization through Apple
+Developer support — steps and request text in
+`docs/runbooks/company-accounts.md`. Paid Apps agreement, banking, tax and the
+subscriptions wait for the conversion.
 
 ### 3.2 Identifiers (developer.apple.com → Certificates, IDs & Profiles)
 
