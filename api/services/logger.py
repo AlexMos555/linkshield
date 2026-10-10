@@ -25,7 +25,7 @@ class JsonFormatter(logging.Formatter):
         # Add extra fields (domain, score, etc.)
         for key in ("domain", "score", "level", "status", "method", "path",
                      "elapsed_ms", "error", "user_id", "tier", "checks",
-                     "debug", "origins", "doh"):
+                     "debug", "origins", "doh", "proxy_peers"):
             value = getattr(record, key, None)
             if value is not None:
                 log_entry[key] = value

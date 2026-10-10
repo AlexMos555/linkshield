@@ -86,3 +86,17 @@ async def test_the_periodic_stats_line_carries_the_peer_counts(caplog):
     task.cancel()
     record = next(r for r in caplog.records if r.getMessage() == "doh_stats")
     assert record.proxy_peers == {"100.64.0.0/10|xff=1|no_list": 1}
+
+
+def test_the_json_log_line_really_carries_the_peer_counts():
+    # The formatter prints only whitelisted extras: a LogRecord attribute is
+    # not enough (the first deploy logged doh_stats without proxy_peers).
+    import json
+
+    from api.services.logger import JsonFormatter
+
+    record = logging.LogRecord("cleanway.doh", logging.INFO, __file__, 1, "doh_stats", None, None)
+    record.doh = {"counts": {}}
+    record.proxy_peers = {"100.64.0.0/10|xff=1|no_list": 3}
+    line = json.loads(JsonFormatter().format(record))
+    assert line["proxy_peers"] == {"100.64.0.0/10|xff=1|no_list": 3}
