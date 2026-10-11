@@ -1447,6 +1447,26 @@ def test_subscription_updated_writes_status_period_and_devices(
     assert row["period_end"] == datetime.fromtimestamp(1786723200, tz=timezone.utc).isoformat()
 
 
+def test_subscription_updated_reads_the_period_from_items_on_the_basil_api(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store
+):
+    # API 2025-03-31.basil (a new account's default) keeps the period on each
+    # item, not on the subscription; the entitlement must still get its end.
+    resp = _post_event(client, "customer.subscription.updated", {
+        "id": "sub_basil", "status": "active", "customer": "cus_basil",
+        "metadata": {"user_id": "user-basil"},
+        "items": {"data": [
+            {"price": {"id": "price_unmapped_plan"}, "quantity": 1,
+             "current_period_start": 1786723200 - 30 * 86400, "current_period_end": 1786723200},
+        ]},
+    })
+    assert resp.status_code == 200, resp.text
+    from datetime import datetime, timezone
+
+    row = _stripe_row(account_store, "sub_basil")
+    assert row["period_end"] == datetime.fromtimestamp(1786723200, tz=timezone.utc).isoformat()
+
+
 @pytest.mark.parametrize("stripe_status,expected", [
     ("past_due", "past_due"), ("canceled", "cancelled"), ("unpaid", "expired"),
     ("incomplete", "pending"),

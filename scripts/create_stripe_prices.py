@@ -36,6 +36,7 @@ from typing import Iterator, NamedTuple
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from api.services.pricing import INTERVALS, TIER_NAMES, TIER_PRICES, TIERS  # noqa: E402
+from api.services.stripe_billing import field  # noqa: E402
 
 
 class ProductSpec(NamedTuple):
@@ -89,7 +90,8 @@ def all_specs() -> Iterator[PriceSpec]:
 def get_or_create_product(stripe, spec: ProductSpec, dry_run: bool):
     """One Stripe Product per ProductSpec, found again by metadata."""
     for p in stripe.Product.list(active=True, limit=100).auto_paging_iter():
-        if p.metadata and p.metadata.get("cleanway_product") == spec.key:
+        # stripe-python 15+ objects are not dicts: read metadata through field().
+        if field(field(p, "metadata"), "cleanway_product") == spec.key:
             return p
     if dry_run:
         print(f"  [dry-run] would create Product {spec.name}")
