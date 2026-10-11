@@ -59,3 +59,7 @@ def setup_logging(debug: bool = False) -> None:
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
+    # httpx2 (pulled in by anthropic 1.x, and preferred by Starlette's test
+    # client when present) logs every request URL at INFO under its own name.
+    # A DoH GET carries the query name in ?dns=, so it must never reach a log.
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
