@@ -44,14 +44,63 @@ class BillingError(Exception):
     """Supabase or Stripe failed on the billing path. Never swallow."""
 
 
-def field(obj: Any, key: str) -> Any:
-    """Read `key` from a Stripe object or a plain dict (tests) alike.
+def plain(obj: Any) -> Any:
+    """A Stripe object as plain dicts and lists, all the way down.
 
-    StripeObject subclasses dict in stripe-python, so `.get` works on
-    both; anything else (None, a bare id string) yields None."""
+    stripe-python 15+ objects are no longer dicts (`.get` raises), so the
+    webhook turns the event into plain data once and every handler keeps
+    working on dicts. Older objects (dict subclasses) convert the same way."""
+    to_dict = getattr(obj, "to_dict", None)
+    if callable(to_dict):
+        try:
+            return to_dict(recursive=True)
+        except TypeError:  # an older stripe-python: to_dict() takes no arguments
+            recursive = getattr(obj, "to_dict_recursive", None)
+            return recursive() if callable(recursive) else to_dict()
+    return obj
+
+
+def field(obj: Any, key: str) -> Any:
+    """Read `key` from a Stripe object or a plain dict, None-safe.
+
+    Older stripe-python objects subclass dict; 15+ objects do not and are
+    read through to_dict(). Anything else (None, a bare id string) yields None."""
     if isinstance(obj, dict):
         return obj.get(key)
+    if callable(getattr(obj, "to_dict", None)):
+        return plain(obj).get(key)
     return None
+
+
+def subscription_period(subscription: Any) -> tuple[Optional[int], Optional[int]]:
+    """(current_period_start, current_period_end) in epoch seconds.
+
+    Since API version 2025-03-31.basil Stripe keeps the period on each
+    subscription item, not on the subscription; a new account defaults to
+    that shape. Read the subscription first (older versions), then the items:
+    the earliest start and the latest end, so access never ends before the
+    paid period does."""
+    start = field(subscription, "current_period_start")
+    end = field(subscription, "current_period_end")
+    if start is None or end is None:
+        items = field(field(subscription, "items"), "data") or []
+        starts = [v for v in (field(i, "current_period_start") for i in items) if v is not None]
+        ends = [v for v in (field(i, "current_period_end") for i in items) if v is not None]
+        if start is None and starts:
+            start = min(starts)
+        if end is None and ends:
+            end = max(ends)
+    return start, end
+
+
+def invoice_subscription_id(invoice: Any) -> Optional[str]:
+    """The subscription an invoice bills: `invoice.subscription` before the
+    basil API version, `invoice.parent.subscription_details.subscription` after."""
+    direct = object_id(field(invoice, "subscription"))
+    if direct:
+        return direct
+    details = field(field(invoice, "parent"), "subscription_details")
+    return object_id(field(details, "subscription"))
 
 
 def object_id(value: Any) -> Optional[str]:

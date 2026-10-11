@@ -39,10 +39,13 @@ from api.services.stripe_billing import (
     fetch_subscription_row,
     field,
     has_paid_subscription,
+    invoice_subscription_id,
     object_id,
+    plain,
     resolve_customer_id,
     store_customer_id,
     stripe_client,
+    subscription_period,
     trial_available,
 )
 from api.services.pricing import STRIPE_TRIAL_DAYS
@@ -380,7 +383,8 @@ async def stripe_webhook(request: Request):
     sig_header = request.headers.get("stripe-signature", "")
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        # Plain dicts from here on: stripe-python 15+ objects are not dicts.
+        event = plain(stripe.Webhook.construct_event(payload, sig_header, webhook_secret))
     except Exception as e:
         logger.warning("webhook_signature_invalid", extra={"error": str(e)})
         raise HTTPException(400, "Invalid signature")
@@ -676,8 +680,9 @@ async def _handle_subscription_updated(subscription: dict):
     # Persist the current billing period so the UI can show "renews
     # Aug 14" and support can answer "when does this expire" from our
     # DB without a Stripe round trip. Stripe sends epoch seconds.
-    period_start = _epoch_to_iso(subscription.get("current_period_start"))
-    period_end = _epoch_to_iso(subscription.get("current_period_end"))
+    epoch_start, epoch_end = subscription_period(subscription)
+    period_start = _epoch_to_iso(epoch_start)
+    period_end = _epoch_to_iso(epoch_end)
     await _update_subscription(
         user_id, tier, mapped_status, "stripe", subscription_id,
         current_period_start=period_start,
@@ -733,7 +738,7 @@ async def _handle_subscription_deleted(subscription: dict):
 
 async def _handle_payment_failed(invoice: dict):
     """Payment failed."""
-    subscription_id = invoice.get("subscription")
+    subscription_id = invoice_subscription_id(invoice)
     logger.warning("payment_failed", extra={"subscription_id": subscription_id})
 
 
@@ -763,7 +768,7 @@ async def _handle_invoice_paid(invoice: dict):
     Here we just emit a structured log so analytics / Sentry can pin
     the recovery moment to the actual payment."""
     user_id = (invoice.get("metadata") or {}).get("user_id")
-    subscription_id = invoice.get("subscription")
+    subscription_id = invoice_subscription_id(invoice)
     amount_paid = invoice.get("amount_paid")  # cents
     logger.info(
         "invoice_paid",
