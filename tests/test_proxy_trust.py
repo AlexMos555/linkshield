@@ -100,3 +100,20 @@ def test_the_json_log_line_really_carries_the_peer_counts():
     record.proxy_peers = {"100.64.0.0/10|xff=1|no_list": 3}
     line = json.loads(JsonFormatter().format(record))
     assert line["proxy_peers"] == {"100.64.0.0/10|xff=1|no_list": 3}
+
+
+def test_http_client_loggers_never_log_request_urls():
+    # A DoH GET carries the query name in ?dns=. Every HTTP client the process
+    # may load (httpx, httpcore, and httpx2 that anthropic 1.x brings) must stay
+    # at WARNING so "HTTP Request: GET …/dns-query?dns=…" never reaches a log.
+    from api.services.logger import setup_logging
+
+    root = logging.getLogger()
+    saved = (root.level, list(root.handlers))
+    try:
+        setup_logging(debug=True)
+        for name in ("httpx", "httpcore", "httpx2"):
+            assert logging.getLogger(name).getEffectiveLevel() >= logging.WARNING, name
+    finally:
+        root.setLevel(saved[0])
+        root.handlers[:] = saved[1]
