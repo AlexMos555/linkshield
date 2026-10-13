@@ -67,6 +67,21 @@ export function readStoreBillingConfig(env: StoreBillingEnv, os: string): StoreB
 }
 
 /**
+ * Show paid plans at all: the Plan / Upgrade rows, the paywall and its
+ * prices, and the free daily limit that leads to it? Yes everywhere except
+ * an iPhone build that cannot sell through the App Store (made without its
+ * public appl_ key, or with a wrong one). That build goes to App Review as
+ * having no in-app purchases, so it must not show a plan, a price or a
+ * "coming soon" paywall (guidelines 2.1 / 2.2) — and with nothing to buy it
+ * sets no limit either (freemium.ts readFreemiumConfig). Android is
+ * unchanged: a Play build without its key still shows "coming soon", and the
+ * site APK and RuStore show their paywalls as before.
+ */
+export function paidPlansOffered(billing: StoreBillingConfig, os: string): boolean {
+  return os !== "ios" || billing.kind === "on";
+}
+
+/**
  * Start the SDK when the app starts? Only for a signed-in person on this
  * phone who has started a store purchase before: the SDK must then run to
  * finish a pending ("slow card") purchase and acknowledge it, or Google

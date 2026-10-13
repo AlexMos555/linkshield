@@ -19,6 +19,7 @@ import {
   isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
 } from "../../modules/cleanway-vpn";
 import { paidPlansVisible } from "../../src/config/market";
+import { PAID_PLANS_OFFERED } from "../../src/services/freemium";
 import { linkGuardSettingShown } from "../../src/utils/platform-features";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
@@ -336,7 +337,8 @@ export default function SettingsScreen() {
           <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
                right={chevron} onPress={() => router.push("/auth")} />
         )}
-        {paidPlansVisible(i18n.language) && (
+        {/* No Plan row in an iPhone build without App Store billing (PAID_PLANS_OFFERED). */}
+        {PAID_PLANS_OFFERED && paidPlansVisible(i18n.language) && (
           <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
                right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
                onPress={() => router.push({ pathname: "/paywall", params: { from: "upgrade" } })} />

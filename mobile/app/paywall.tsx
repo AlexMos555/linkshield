@@ -17,8 +17,9 @@
  *     never a link to the web checkout, never a price typed into the app;
  *   • the iPhone app → the App Store, the same way (App Review 3.1.1: no
  *     web checkout, no other store); Terms of Use and Privacy Policy links
- *     under the button (3.1.2); without EXPO_PUBLIC_REVENUECAT_IOS_KEY it
- *     says "paying in the app is coming soon";
+ *     under the button (3.1.2); without EXPO_PUBLIC_REVENUECAT_IOS_KEY the
+ *     build has no paid plans at all (PAID_PLANS_OFFERED): nothing opens
+ *     this sheet, and a stray link to it lands on home;
  *   • RuStore → not built yet: "coming soon";
  *   • Russia → phone-balance billing is not merged yet: "coming soon" (the
  *     Play build does not mention other ways to pay).
@@ -29,7 +30,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Linking, AppState, ActivityIndicator, Platform,
 } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Localization from "expo-localization";
 import Constants from "expo-constants";
@@ -39,7 +40,7 @@ import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius } from "../src/utils/theme";
 import { getSessionState } from "../src/services/auth";
 import { getEntitlement, type EntitlementResponse } from "../src/services/api";
-import { FREEMIUM, applyEntitlement, isPaid } from "../src/services/freemium";
+import { FREEMIUM, PAID_PLANS_OFFERED, applyEntitlement, isPaid } from "../src/services/freemium";
 import {
   BILLING_STORE, loadStorePlans, restoreStorePurchases, startStorePurchase, storeBillingOn,
 } from "../src/services/store-billing";
@@ -94,7 +95,17 @@ interface Account {
   ent: EntitlementResponse | null;
 }
 
-export default function PaywallScreen() {
+/**
+ * An iPhone build without App Store billing went to App Review as having no
+ * in-app purchases: no plan, no price, no "coming soon". Every entry point is
+ * hidden there; this catches a deep link (or /upgrade) that still arrives.
+ */
+export default function PaywallRoute() {
+  if (!PAID_PLANS_OFFERED) return <Redirect href="/(tabs)" />;
+  return <PaywallScreen />;
+}
+
+function PaywallScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();

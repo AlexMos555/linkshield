@@ -32,6 +32,26 @@ import {
   type FreemiumConfig,
   type QuotaState,
 } from "../utils/freemium";
+import { paidPlansOffered, readStoreBillingConfig } from "../utils/store-billing";
+
+/**
+ * Does this build show paid plans at all (utils/store-billing.ts
+ * paidPlansOffered)? False only in an iPhone build without App Store billing:
+ * then no Plan / Upgrade row, no paywall and no daily limit. Read here from
+ * the pure rule rather than services/store-billing.ts, which imports this
+ * file — a cycle would leave one of the two constants undefined at load.
+ */
+export const PAID_PLANS_OFFERED: boolean = paidPlansOffered(
+  readStoreBillingConfig(
+    {
+      EXPO_PUBLIC_DISTRIBUTION: process.env.EXPO_PUBLIC_DISTRIBUTION,
+      EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+      EXPO_PUBLIC_REVENUECAT_IOS_KEY: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
+    },
+    Platform.OS,
+  ),
+  Platform.OS,
+);
 
 // Literal process.env.EXPO_PUBLIC_* reads: Expo inlines exactly these at build time.
 export const FREEMIUM: FreemiumConfig = readFreemiumConfig(
@@ -45,6 +65,8 @@ export const FREEMIUM: FreemiumConfig = readFreemiumConfig(
     : {},
   // iOS is always the App Store build (distributionFor): no web checkout, no self-update.
   Platform.OS,
+  // No paid plans in this build: no limit either (nothing would lift it).
+  PAID_PLANS_OFFERED,
 );
 
 const QUOTA_KEY = "freemium_quota";
