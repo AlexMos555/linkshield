@@ -118,6 +118,28 @@ check("iOS: always the App Store build, whatever EXPO_PUBLIC_DISTRIBUTION says",
     assert.equal(readFreemiumConfig({ EXPO_PUBLIC_DISTRIBUTION: value }, "ios").distribution, "appstore", String(value));
   }
 });
+check("no paid plans in this build (iPhone without App Store billing): no limit, no paywall", () => {
+  // Nothing to buy means nothing to limit: a hard stop with no way out would
+  // be worse than no limit at all (store-billing.ts paidPlansOffered).
+  const env = { EXPO_PUBLIC_FREEMIUM_ENABLED: "1", EXPO_PUBLIC_FREE_TRIAL_DAYS: "0" };
+  const cfg = readFreemiumConfig(env, "ios", false);
+  assert.equal(cfg.enabled, false);
+  const spent = { ...emptyQuota(TODAY), used: 99 };
+  const access = accessFor({ config: cfg, paid: false, installedAt: LONG_AGO, quota: spent, nowMs: NOON });
+  assert.deepEqual(access, { kind: "unlimited", why: "off" });
+  const gate = gateCheck(access, spent, "a.ru");
+  assert.equal(gate.detailed, true);
+  assert.equal(gate.autoPaywall, false);
+  assert.equal(gate.quota, spent); // nothing counted
+  // The same iPhone build with App Store billing: limited as before.
+  const sold = readFreemiumConfig(env, "ios", true);
+  assert.equal(sold.enabled, true);
+  assert.equal(accessFor({ config: sold, paid: false, installedAt: LONG_AGO, quota: spent, nowMs: NOON }).kind, "free");
+  // Android (and any caller that does not say): the flag alone decides, as before.
+  assert.equal(readFreemiumConfig(env, "android").enabled, true);
+  assert.equal(readFreemiumConfig(env).enabled, true);
+  assert.equal(readFreemiumConfig({}, "android").enabled, false);
+});
 check("paywall benefits: only what the build can do", () => {
   assert.deepEqual(paywallBenefits("appstore"), ["unlimited", "devices"]);
   assert.deepEqual(paywallBenefits("rustore"), ["unlimited", "sms", "text_model", "calls", "devices"]);

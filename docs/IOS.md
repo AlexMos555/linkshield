@@ -64,7 +64,7 @@ EAS manages certificates, provisioning profiles and the build number
 | Variable | Value | Without it |
 |---|---|---|
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Sign-in does not work |
-| `EXPO_PUBLIC_REVENUECAT_IOS_KEY` | RevenueCat **public** App Store key, `appl_…` | The paywall says "Paying in the app is coming soon" — no crash |
+| `EXPO_PUBLIC_REVENUECAT_IOS_KEY` | RevenueCat **public** App Store key, `appl_…` | No paid plans anywhere (no Plan/Upgrade row, no paywall, no prices) and no daily check limit — the build has no in-app purchases; no crash |
 | `EXPO_PUBLIC_SENTRY_DSN` | optional | No crash reports |
 
 `EXPO_PUBLIC_DISTRIBUTION` does not matter on iOS: every iOS build is the App

@@ -11,7 +11,7 @@ import { colors, type as typo, space, radius, sectionHeader } from "../src/utils
 import { getSessionState } from "../src/services/auth";
 import { getEntitlement, unlinkDevice, type AccountDevice, type EntitlementResponse } from "../src/services/api";
 import { linkThisDevice, signOutUnlinkedDevice } from "../src/services/account";
-import { FREEMIUM, rememberEntitlement } from "../src/services/freemium";
+import { FREEMIUM, PAID_PLANS_OFFERED, rememberEntitlement } from "../src/services/freemium";
 import { BILLING_STORE, restoreStorePurchases, storeBillingOn } from "../src/services/store-billing";
 import { manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey } from "../src/utils/store-billing";
 import { confirmDeleteAccount, signOutEverywhereLocal } from "../src/services/account-actions";
@@ -183,7 +183,8 @@ export default function AccountScreen() {
   const paid = ent.plan !== "free";
   const source = sourceKey(ent.source);
   const status = statusKey(ent.status, Boolean(ent.period_end));
-  const showUpgrade = paidPlansVisible(i18n.language);
+  // Neither "Upgrade" nor "Add a device" in an iPhone build without App Store billing.
+  const showUpgrade = PAID_PLANS_OFFERED && paidPlansVisible(i18n.language);
   // A store build opens only the store's own page (manageUrlFor).
   const manageUrl = manageSubscriptionUrl(ent, FREEMIUM.distribution, ANDROID_PACKAGE);
   const canRestore = storeBillingOn();

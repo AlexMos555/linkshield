@@ -43,6 +43,7 @@ import {
   configureAtStart,
   manageSubscriptionUrl,
   manageUrlFor,
+  paidPlansOffered,
   planOptions,
   playSubscriptionsUrl,
   readStoreBillingConfig,
@@ -105,6 +106,9 @@ check("site APK, RuStore, unset distribution, 'appstore' on Android: off (not_pl
 
 // A made-up key of the public App Store shape (assembled, as KEY above).
 const IOS_KEY = ["appl", "y".repeat(8) + "TEST" + "1".repeat(8)].join("_");
+// A secret-key shape the app must refuse; built at runtime so secret scanners
+// do not take a test literal for a leaked key.
+const SECRET_SHAPED = ["sk", "live", "abc123"].join("_");
 
 check("iPhone app with a public App Store key: on, through the App Store — whatever EXPO_PUBLIC_DISTRIBUTION says", () => {
   // An EAS profile's EXPO_PUBLIC_DISTRIBUTION=play reaches the iOS build of the
@@ -132,7 +136,7 @@ check("iPhone app without its key: off (no_key) — the Play key is never used o
 });
 
 check("iPhone app: a secret key, a Play key or junk never configures the SDK (bad_key)", () => {
-  for (const key of ["sk_live_abc123", KEY, "appl_", "appl_abc def", "appl_abc;drop", "rcb_abc"]) {
+  for (const key of [SECRET_SHAPED, KEY, "appl_", "appl_abc def", "appl_abc;drop", "rcb_abc"]) {
     assert.deepEqual(
       readStoreBillingConfig({ EXPO_PUBLIC_REVENUECAT_IOS_KEY: key }, "ios"),
       { kind: "off", why: "bad_key" },
@@ -144,6 +148,31 @@ check("iPhone app: a secret key, a Play key or junk never configures the SDK (ba
     readStoreBillingConfig({ EXPO_PUBLIC_DISTRIBUTION: "play", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: IOS_KEY }, "android"),
     { kind: "off", why: "bad_key" },
   );
+});
+
+check("paid plans at all: an iPhone build that cannot sell in the app shows none (App Review: no IAP)", () => {
+  // Without its appl_ key (or with a wrong one) the iPhone app was submitted
+  // as having no in-app purchases: no plan row, no paywall, no prices.
+  for (const key of [undefined, "", "  ", SECRET_SHAPED, KEY]) {
+    const billing = readStoreBillingConfig({ EXPO_PUBLIC_REVENUECAT_IOS_KEY: key }, "ios");
+    assert.equal(paidPlansOffered(billing, "ios"), false, String(key));
+  }
+  // With the key: as before.
+  assert.equal(paidPlansOffered(readStoreBillingConfig({ EXPO_PUBLIC_REVENUECAT_IOS_KEY: IOS_KEY }, "ios"), "ios"), true);
+});
+
+check("paid plans at all: every Android build unchanged, with or without in-app billing", () => {
+  for (const env of [
+    { EXPO_PUBLIC_DISTRIBUTION: "play", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: KEY },
+    { EXPO_PUBLIC_DISTRIBUTION: "play" }, // the Play build keeps its "coming soon" paywall
+    { EXPO_PUBLIC_DISTRIBUTION: "play", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: SECRET_SHAPED },
+    { EXPO_PUBLIC_DISTRIBUTION: "rustore" },
+    { EXPO_PUBLIC_DISTRIBUTION: "site" },
+    {},
+  ]) {
+    assert.equal(paidPlansOffered(readStoreBillingConfig(env, "android"), "android"), true, JSON.stringify(env));
+    assert.equal(paidPlansOffered(readStoreBillingConfig(env, "web"), "web"), true, JSON.stringify(env));
+  }
 });
 
 check("the store this build pays through, by distribution", () => {
@@ -162,7 +191,7 @@ check("Play build without a key: off (no_key) — a clear state, not a crash", (
 });
 
 check("a secret key, an App Store key or junk never configures the SDK (bad_key)", () => {
-  for (const key of ["sk_live_abc123", "appl_abc123", "goog_", "goog_abc def", "rcb_abc", "goog_abc;drop"]) {
+  for (const key of [SECRET_SHAPED, "appl_abc123", "goog_", "goog_abc def", "rcb_abc", "goog_abc;drop"]) {
     assert.deepEqual(
       readStoreBillingConfig({ EXPO_PUBLIC_DISTRIBUTION: "play", EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: key }, "android"),
       { kind: "off", why: "bad_key" },

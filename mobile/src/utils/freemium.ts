@@ -75,11 +75,16 @@ export function distributionFor(raw: string | undefined, os: string): Distributi
   return dist === "play" || dist === "rustore" || dist === "site" ? dist : DEFAULT_DISTRIBUTION;
 }
 
-/** Off unless the flag says "1" or "true"; a bad number falls back to the default, never to "unlimited". */
-export function readFreemiumConfig(env: FreemiumEnv, os: string = "android"): FreemiumConfig {
+/**
+ * Off unless the flag says "1" or "true"; a bad number falls back to the default, never to "unlimited".
+ * [paidPlans] false (store-billing.ts paidPlansOffered: an iPhone build with no
+ * App Store billing) turns the limit off too: a limit whose only way out is a
+ * paywall the build cannot show would be a dead end.
+ */
+export function readFreemiumConfig(env: FreemiumEnv, os: string = "android", paidPlans: boolean = true): FreemiumConfig {
   const flag = (env.EXPO_PUBLIC_FREEMIUM_ENABLED ?? "").trim().toLowerCase();
   return {
-    enabled: flag === "1" || flag === "true",
+    enabled: paidPlans && (flag === "1" || flag === "true"),
     dailyLimit: intOr(env.EXPO_PUBLIC_FREE_CHECKS_PER_DAY, DEFAULT_DAILY_LIMIT, 0, 1000),
     trialDays: intOr(env.EXPO_PUBLIC_FREE_TRIAL_DAYS, DEFAULT_TRIAL_DAYS, 0, 365),
     distribution: distributionFor(env.EXPO_PUBLIC_DISTRIBUTION, os),
