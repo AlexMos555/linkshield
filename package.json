@@ -28,7 +28,7 @@
     "node": ">=18"
   },
   "overrides": {
-    "next": "15.5.25",
+    "next": "15.5.27",
     "expo": "~54.0.37",
     "postcss": "^8.5.23",
     "source-map-js": "^1.2.2",
