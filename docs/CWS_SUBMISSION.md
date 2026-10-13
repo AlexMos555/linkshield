@@ -142,16 +142,15 @@ content,"* and *"we never sell your data."* Both are true and on-brand. See
 
 ---
 
-## 6. Screenshots (need 5, 1280×800 or 640×400)
+## 6. Screenshots and promo tiles
 
-Shot-list (capture on a real page with the extension loaded):
-1. A page with mixed red/yellow/green link badges visible.
-2. The popup showing a verdict for the current tab.
-3. A blocked dangerous site (the block-page overlay).
-4. The webmail phishing banner on an open Gmail/Outlook message.
-5. The Privacy Audit / scorecard for a domain.
-
-Small promo tile (440×280) optional but improves placement.
+Done (2026-10-13), EN and RU, 1280×800, real captures of the 0.2.0 build with
+live API verdicts: `store-assets/browser-extension/screenshots/{en,ru}/01…05.png`
+— link badges, popup verdict (composited over its tab, see the README there),
+block page, credential warning, Settings. Promo tiles 440×280 and 1400×560 in
+`store-assets/browser-extension/{en,ru}/`. Upload order and the rest:
+`docs/STORE_SUBMISSION_KIT.md` §2.3. Not captured: the webmail banner (needs a
+real mailbox) and the Privacy Audit panel.
 
 ---
 
@@ -174,7 +173,7 @@ Small promo tile (440×280) optional but improves placement.
 5. [ ] Fill Privacy practices (§4): tick every category marked YES, add the
        justification text, tick the 3 certifications, add the privacy-policy URL.
 6. [ ] "Are you using remote code?" → **No**.
-7. [ ] Upload 5 screenshots (§6).
+7. [ ] Upload the screenshots and promo tiles (§6).
 8. [ ] Submit. Chrome review is typically 1–3 business days.
 
 Then repeat for Edge/Opera with the same ZIP (Edge validator is pickier on

@@ -223,7 +223,7 @@ https://cleanway.ai/privacy-policy
 |---|---|
 | Does your app collect or share any of the required user data types? | Yes |
 | Is all of the user data collected by your app encrypted in transit? | Yes |
-| Which methods of account creation does your app support? | «Username and other authentication» (email + одноразовый код). Вход необязателен |
+| Which methods of account creation does your app support? | «Username and other authentication» (email + одноразовый код); если формулировки другие — «Other: email address and a one-time code». Вход необязателен |
 | Delete account URL | `https://cleanway.ai/delete-account` |
 | Do you provide a way for users to request that some or all of their data is deleted, without requiring them to delete their account? | No |
 
@@ -417,7 +417,7 @@ Cleanway предупреждает о мошеннических и фишин�
 | Малая промо-плитка 440 × 280 | `store-assets/browser-extension/en/promo-small-440x280.png` (ru: `…/ru/promo-small-440x280.png`) |
 | Большая (marquee) 1400 × 560 | `store-assets/browser-extension/en/promo-marquee-1400x560.png` (ru: `…/ru/…`) |
 | Логотип Edge 300 × 300 | `store-assets/browser-extension/edge-store-logo-300.png` |
-| Скриншоты 1280 × 800 | TODO — не сняты; список кадров: `docs/CWS_SUBMISSION.md` §6 |
+| Скриншоты 1280 × 800 | `store-assets/browser-extension/screenshots/en/` — `01-link-badges.png`, `02-popup-verdict.png`, `03-block-page.png`, `04-credential-warning.png`, `05-settings.png` (ru: те же имена в `…/screenshots/ru/`); что на них — README там же |
 
 <!-- asset: extension/public/icons/icon128.png 128x128 -->
 <!-- asset: store-assets/browser-extension/en/promo-small-440x280.png 440x280 opaque -->
@@ -425,6 +425,16 @@ Cleanway предупреждает о мошеннических и фишин�
 <!-- asset: store-assets/browser-extension/en/promo-marquee-1400x560.png 1400x560 opaque -->
 <!-- asset: store-assets/browser-extension/ru/promo-marquee-1400x560.png 1400x560 opaque -->
 <!-- asset: store-assets/browser-extension/edge-store-logo-300.png 300x300 -->
+<!-- asset: store-assets/browser-extension/screenshots/en/01-link-badges.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/en/02-popup-verdict.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/en/03-block-page.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/en/04-credential-warning.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/en/05-settings.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/ru/01-link-badges.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/ru/02-popup-verdict.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/ru/03-block-page.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/ru/04-credential-warning.png 1280x800 opaque -->
+<!-- asset: store-assets/browser-extension/screenshots/ru/05-settings.png 1280x800 opaque -->
 
 Промо-плитки и картинка для Play нарисованы из иконки и названия скриптом `store-assets/render-graphics.mjs` (без элементов интерфейса); скриншоты — настоящие кадры, см. README рядом с ними.
 
