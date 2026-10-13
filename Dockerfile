@@ -26,8 +26,11 @@ RUN groupadd --system --gid 10001 app \
 WORKDIR /app
 
 # Every pinned dependency ships a manylinux wheel, so no compiler is installed.
+# The base image ships pip 24.0 and setuptools 79, both with published CVEs
+# (pip-audit); move them to fixed releases before installing anything.
 COPY requirements.txt ./
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip==26.2.1 setuptools==84.0.0 \
+ && pip install -r requirements.txt
 
 # The API reads data/, docs/transparency, docs/benchmarks and
 # packages/email-templates/out at runtime; .dockerignore drops the rest.
