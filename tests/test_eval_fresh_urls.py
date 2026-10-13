@@ -324,8 +324,10 @@ def test_a_site_nobody_saw_is_kept_only_for_a_state_body():
 
 
 def test_the_report_s_false_alarms_are_in_the_sample():
+    # bankspb.ru, also named by the report, was dropped 2026-10-13: its name
+    # servers answer SERVFAIL, so no check of it measures anything.
     hosts = {s.host for s in _legit().load_legit_sample()}
-    for named in ("bankspb.ru", "президент.рф", "мойбизнес.рф", "разговорыоважном.рф", "rosreestr.gov.ru"):
+    for named in ("президент.рф", "мойбизнес.рф", "разговорыоважном.рф", "rosreestr.gov.ru"):
         assert named.encode("idna").decode("ascii") in hosts, named
 
 

@@ -46,6 +46,9 @@
 #      removed the same day.)
 #   5. Added the five sites the 2026-09-25 report named (bankspb.ru,
 #      президент.рф, мойбизнес.рф, разговорыоважном.рф, rosreestr.gov.ru).
+#   6. 2026-10-13: removed bankspb.ru — its name servers (dnsproxy*.fm.nic.ru)
+#      answer SERVFAIL, no A or AAAA record via 1.1.1.1, 8.8.8.8 or directly.
+#      The bank's site is bspb.ru, which the allowlist trusts.
 #
 # Re-check before trusting a refresh: python3 scripts/eval_fresh_urls.py
 # --verify-legit-sample (every host resolves and is outside the allowlist).
@@ -240,11 +243,10 @@ xn--d1acc2adacm.xn--p1ai | rf | reachable-abroad | Wikidata Q4166884 P856 | До
 xn--h1aadcdlcf4a.xn--p1ai | rf | blocked-abroad | Wikidata Q2631532 P856 | Нолинский район (нолинский.рф)
 xn--h1aax.xn--p1ai | rf | reachable-abroad | Wikidata Q108523446 P856 | Институт развития интернета (ири.рф)
 
-# ── Regional and small banks (20) ──
+# ── Regional and small banks (19) ──
 abr.ru | bank | reachable-abroad | Wikidata Q827011 P856 | Акционерный банк Россия
 bank-alemar.ru | bank | reachable-abroad | Wikidata Q4062086 P856 | Алемар
 bank-peresvet.ru | bank | reachable-abroad | Wikidata Q97162135 P856 | Пересвет
-bankspb.ru | bank | reachable-abroad | full check 2026-09-25 #1 | Банк «Санкт-Петербург»
 centrinvest.ru | bank | reachable-abroad | Wikidata Q4503942 P856 | Центр-инвест
 chelindbank.ru | bank | reachable-abroad | Wikidata Q4508399 P856 | Челиндбанк
 dvbank.ru | bank | reachable-abroad | Wikidata Q4154232 P856 | Дальневосточный банк
