@@ -172,7 +172,10 @@ jobs:
         run: |
           python3 <<'PY'
           import json, glob, os, sys
-          files = sorted(glob.glob('docs/benchmarks/2*.json'))
+          # Only the fresh-URL runs eval_fresh_urls.py writes: other dated
+          # reports share the folder (2026-10-04-ml-eval.json has no
+          # 'phishing' key) and a KeyError here skipped "Commit results".
+          files = sorted(glob.glob('docs/benchmarks/2*-fresh-urls.json'))
           if len(files) < 2:
               print("regression=false", file=open(os.environ['GITHUB_OUTPUT'], 'a'))
               sys.exit(0)
