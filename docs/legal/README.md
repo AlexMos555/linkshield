@@ -25,7 +25,7 @@
 | `{{INN}}` | ИНН ИП (12 цифр) | `NEXT_PUBLIC_BILLING_SELLER_INN` |
 | `{{OGRNIP}}` | ОГРНИП (15 цифр) | `NEXT_PUBLIC_BILLING_SELLER_OGRNIP` |
 | `{{ADDRESS}}` | адрес для корреспонденции | только оферта |
-| `{{SUPPORT_EMAIL}}` | почта поддержки (сейчас `support@cleanway.ai`, MX ещё не настроен) | `NEXT_PUBLIC_SUPPORT_EMAIL_LIVE=1`, когда заработает |
+| `{{SUPPORT_EMAIL}}` | почта поддержки `support@cleanway.ai` (пересылка на почту основателя с 2026-10-13) | `NEXT_PUBLIC_SUPPORT_EMAIL_LIVE=0`, если ящик перестанет работать |
 | `{{SUPPORT_PHONE}}` | телефон поддержки | `NEXT_PUBLIC_SUPPORT_PHONE` |
 | `{{STOP_NUMBER}}` | короткий номер для SMS «СТОП» (выделяет оператор/агрегатор) | `NEXT_PUBLIC_BILLING_STOP_NUMBER`, экран подтверждения |
 | `{{AGGREGATOR}}` | платёжный агрегатор по договору (кандидат — MIXPLAT) | оферта, политика |

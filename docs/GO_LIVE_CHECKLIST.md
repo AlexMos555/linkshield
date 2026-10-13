@@ -68,6 +68,14 @@ bounce it.
 `support@`, `privacy@`, `legal@` and `business@` all bounce (the landing, the store
 listing and the privacy policy all name them). Records go in Squarespace Domains.
 
+**Status 2026-10-13: fixed** — Squarespace email forwarding (Mailgun MX) sends
+`support@`, `hello@`, `security@` and `conduct@` to the founder's inbox; the
+other addresses above are no longer named anywhere in the repo. SPF is now
+`include:mailgun.org ~all`; outgoing mail goes through Resend from
+`no-reply@cleanway.ai` (DKIM `resend._domainkey`, return path `send.`), which
+satisfies DMARC `p=reject` via aligned DKIM. The landing shows the address by
+default (`landing/lib/support.ts`).
+
 ### 3. Anyone can burn the login-email budget — no CAPTCHA on the auth endpoint
 `POST /auth/v1/otp` is public by design and needs only the anon key, which ships
 inside the APK. With no CAPTCHA configured, a script can request codes in a loop
