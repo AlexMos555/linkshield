@@ -8,7 +8,12 @@ survives review. A declaration that doesn't match the code gets the extension
 **rejected or taken down**.
 
 > Human steps that only you can do: create the $5 CWS developer account, upload the
-> ZIP, paste the answers below, upload 5 screenshots, submit. Target: ~15 minutes.
+> ZIP, paste the answers, upload the screenshots, submit. Target: ~15 minutes.
+>
+> **Paste from `docs/STORE_SUBMISSION_KIT.md` §2–3** (EN + RU description, single
+> purpose, one field per permission, host field, data usage, test instructions,
+> images). This file keeps the code evidence behind those answers; the kit's
+> checker fails if a manifest permission has no justification there.
 
 ---
 

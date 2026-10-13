@@ -1,65 +1,21 @@
 # Chrome Web Store Listing
 
-Used for Chrome, Edge, Opera and Firefox (runbook: `docs/STORES.md`). Paste only
-the text inside the code blocks; the notes around them are for us. Every claim
-was checked against `extension/manifest.json` and `extension/src/` on
-2026-10-08 — evidence and open TODOs are at the end.
+Used for Chrome, Edge, Opera and Firefox (runbook: `docs/STORES.md`; paste-ready
+text: `docs/STORE_SUBMISSION_KIT.md` §2). Every claim was checked against
+`extension/manifest.json` and `extension/src/` on 2026-10-08 — evidence and open
+TODOs are below.
 
 ## Name
 Cleanway — Protection from scam links
 <!-- AUTHORITATIVE: this equals the manifest _locales extension_name — the string Chrome actually renders. To change it, edit extension/src/_locales/*/messages.json + rebuild. -->
 
-## Short Description (132 chars max)
+## Short and detailed description
 
-112 characters:
-
-```text
-Warns you about scam and phishing sites before you type a password or card number. Plain language, for everyone.
-```
-
-## Detailed Description
-
-```text
-Cleanway warns you about scam and phishing websites before you type a password or card number. Everything is in plain language, for you and for your parents.
-
-WHAT IT DOES
-- Marks links on the pages you visit: a green tick, a yellow warning or a red cross, with the reason when you hover.
-- Stops you on a dangerous page with a full-screen warning that explains why, in your language.
-- Warns you on login forms that send your password to a different site than the one you see, and on fake "browser windows" drawn inside a page.
-- Tells you if a password you type has appeared in known data leaks.
-- Optional, off until you switch it on in Settings: checks emails you open in Gmail, Outlook and Yahoo Mail and shows a short banner: looks safe, suspicious, or likely a scam.
-- Right-click any link to check it. Right-click a page for a Privacy Audit: trackers, cookies and forms that ask for personal data. The audit runs in your browser.
-- Removes common tracking tags such as utm_ and fbclid from web addresses.
-- Family: with an account, family members can send each other end-to-end encrypted warnings about dangerous sites.
-
-WHAT LEAVES YOUR BROWSER, HONESTLY
-- Site names. To check a site, Cleanway sends only its name (for example, example.com) to our server, never the full address, the page content or your history. This happens for the page you open and for links on it, except well-known official sites the extension recognises on its own. The server checks the name, including with outside lists of dangerous sites such as Google Safe Browsing.
-- Emails, only if you switch the email check on. It is off until you turn on "Scan emails I open in Gmail, Outlook and Yahoo for phishing" in Settings. While it is on, for each email you open in Gmail, Outlook or Yahoo Mail, Cleanway sends its subject, the sender's name and address, the reply-to address, the text, and the address and text of each link (not the email's HTML) to our server to check it for scams. The email is checked and not stored. Switch it off any time and the checks stop at once.
-- Password leak check. When you leave a password field, Cleanway sends only a short scrambled piece of it (the first 5 characters of its SHA-1 hash), never the password itself. The match is made in your browser.
-- Your check history and counters stay in your browser; history is deleted after 30 days.
-- Signing in is optional. If you sign in through cleanway.ai, the extension keeps its sign-in keys in the browser's extension storage, this browser appears as a device in your Cleanway account (you can unlink it there), and your settings are saved to the account. "Sign out" in Settings deletes the keys.
-- No ads, no analytics inside the extension, and we don't sell data.
-
-WHAT CLEANWAY DOESN'T PROMISE
-New scam sites appear every day, and no tool catches them all. If something feels wrong, don't enter your details.
-
-PRICE
-Free.
-
-PERMISSIONS EXPLAINED
-- "Read and change all your data on all websites": Chrome shows this because Cleanway's scripts run on every page. They are needed to mark links, show the warning page and watch password forms where they appear. They read the page inside your browser; only what is listed above leaves it.
-- Gmail, Outlook and Yahoo Mail sites (optional): asked for only when you switch the email check on, and given back when you switch it off.
-- Scripting: turns the email check on and off; it runs on those mail sites only while it is switched on.
-- cleanway.ai: our checking server (api.cleanway.ai) and the sign-in page that hands your session to the extension.
-- Active tab: check the page you are on when you click the icon or press Ctrl+Shift+K.
-- Storage: settings, counters and (if you sign in) sign-in keys, on your device.
-- Context menus: "Check this link" and "Privacy Audit" in the right-click menu.
-- Alarms: housekeeping on a timer: refresh sign-in, delete history older than 30 days, look for family warnings.
-- Notifications: show family warnings.
-
-Source code: github.com/AlexMos555/linkshield
-Privacy policy: https://cleanway.ai/privacy-policy
-```
+Moved to **`docs/STORE_SUBMISSION_KIT.md` §2** (English §2.1, Russian §2.2,
+AMO summaries §5) — the one place to paste from for Chrome, Edge, Firefox and
+Opera. Chrome and Edge take the short description from the manifest
+(`extension_description` in `_locales`), not from the dashboard. Any change to
+the copy must keep matching the evidence below.
 
 ## Category
 Productivity
