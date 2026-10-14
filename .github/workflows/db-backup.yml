@@ -1,0 +1,82 @@
+name: DB backup (off-site, encrypted)
+
+# Nightly copy of the Supabase database outside Supabase.
+#
+#   pg_dump (read-only role backup_ro, BYPASSRLS, via the session pooler)
+#   → sanity check with pg_restore --list
+#   → age-encrypt to the founder's public key (the private key never leaves
+#     the founder's keychain — GitHub and Cloudflare only ever see ciphertext)
+#   → PUT to the cleanway-backup-sink Worker, which writes it to the R2 bucket
+#     cleanway-db-backups (35-day lifecycle).
+#
+# No long-lived Cloudflare credential exists: the upload authenticates with this
+# job's short-lived GitHub OIDC token; the Worker accepts only tokens for this
+# workflow on main (ops/backup-sink/worker.js). A failed run emails the repo
+# owner (GitHub's default workflow-failure notification).
+# Restore: docs/runbooks/restore.md.
+
+on:
+  schedule:
+    - cron: "17 1 * * *" # 01:17 UTC = 04:17 Moscow / 05:17 Dubai
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PGHOST: aws-1-eu-central-1.pooler.supabase.com
+      PGPORT: "5432"
+      PGUSER: backup_ro.bpyqgzzclsbfvxthyfsf
+      PGDATABASE: postgres
+      PGSSLMODE: require
+      AGE_RECIPIENT: age1yf0z2az8yrxf3zm50psnzyqker94y66dwllvpxnxrew6lxatwuksf6njkn
+      SINK_URL: https://cleanway-backup-sink.amoskotin.workers.dev
+    steps:
+      - name: Install pg_dump 17 and age
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17 age >/dev/null
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump public + auth
+        env:
+          PGPASSWORD: ${{ secrets.BACKUP_DB_PASSWORD }}
+        run: |
+          /usr/lib/postgresql/17/bin/pg_dump -Fc --no-owner --no-privileges \
+            --schema=public --schema=auth -f "$RUNNER_TEMP/db.dump"
+          tables=$(/usr/lib/postgresql/17/bin/pg_restore --list "$RUNNER_TEMP/db.dump" | grep -c "TABLE DATA" || true)
+          echo "tables with data: $tables"
+          # Today 50 (public + auth). Far fewer means a broken or partial dump.
+          test "$tables" -ge 40
+
+      - name: Encrypt
+        run: |
+          age -r "$AGE_RECIPIENT" -o "$RUNNER_TEMP/db.dump.age" "$RUNNER_TEMP/db.dump"
+          shred -u "$RUNNER_TEMP/db.dump"
+          ls -l "$RUNNER_TEMP/db.dump.age"
+
+      - name: Upload to R2 via the sink
+        run: |
+          token=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=cleanway-backup" | jq -r .value)
+          echo "::add-mask::$token"
+          key="db/$(date -u +%Y-%m-%dT%H-%M-%SZ).dump.age"
+          curl -fsS -X PUT -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"$RUNNER_TEMP/db.dump.age" "$SINK_URL/upload/$key"
+          echo
+          echo "stored $key"
