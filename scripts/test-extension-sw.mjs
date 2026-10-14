@@ -550,6 +550,22 @@ async function runTree(tree) {
       assert.deepEqual(roundTrip, { domain: "пример.рф", n: 1 });
     });
 
+    await check("the settings page loads the vendored QR generator for family invites", async () => {
+      const opts = await context.newPage();
+      await opts.goto(`chrome-extension://${extId}/src/options/options.html`);
+      // options.js skips the invite QR silently when the global `qrcode`
+      // is missing, so nothing else would notice a broken vendor path.
+      const img = await opts.evaluate(() => {
+        if (typeof qrcode !== "function") return null;
+        const q = qrcode(0, "M");
+        q.addData("https://cleanway.ai/family/join");
+        q.make();
+        return q.createImgTag(4, 4, "qr");
+      });
+      await opts.close();
+      assert.ok(img && img.startsWith('<img src="data:image/gif;base64,'), `QR generator not loaded: ${img}`);
+    });
+
     await check("content-script warnings come from the browser-language catalog, not English", async () => {
       const { locale, messages } = await activeCatalog(sw, tree);
       const english = readCatalog(tree, "en");
