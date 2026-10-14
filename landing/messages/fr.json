@@ -247,7 +247,7 @@
     "error_network": "Pas de connexion au serveur. Vérifiez votre connexion Internet et réessayez.",
     "error_unavailable": "La connexion n'est pas disponible pour le moment. La protection fonctionne sans compte.",
     "code_heading": "Saisissez le code reçu par e-mail",
-    "code_sent_to": "Nous avons envoyé un code à 6 chiffres à <strong>{email}</strong>.",
+    "code_sent_to": "Nous avons envoyé un code de connexion à <strong>{email}</strong>.",
     "code_label": "Code reçu par e-mail",
     "code_submit": "Se connecter",
     "code_submitting": "Vérification du code…",
@@ -256,7 +256,7 @@
     "code_resend": "Renvoyer le code",
     "code_resend_in": "Renvoyer dans {seconds} s",
     "code_change_email": "Changer d'e-mail",
-    "error_code_incomplete": "Saisissez les 6 chiffres de l'e-mail.",
+    "error_code_incomplete": "Saisissez le code complet reçu par e-mail.",
     "error_code_wrong": "Code incorrect ou expiré. Vérifiez les chiffres ou demandez un nouveau code.",
     "error_link_expired": "Le lien de connexion a expiré. Demandez un nouveau code.",
     "error_link_failed": "Le lien de connexion n'a pas fonctionné. Saisissez ici le code de l'e-mail ou demandez-en un nouveau."

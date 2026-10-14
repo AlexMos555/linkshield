@@ -17,10 +17,24 @@
  *     403 otp_expired for both);
  *   • network_error / timeout → the offline sentence, never "wrong code";
  *   • anything unrecognised, including a non-Error throw, → the generic one.
+ *
+ * Also pins src/utils/otp-code.ts (the code field), here because CI already
+ * runs this file for the sign-in screen:
+ *   • any code of 6 to 8 digits is accepted — 1.0.4 took exactly six, so the
+ *     Supabase OTP length could never be raised without locking it out;
+ *   • a paste of the email's sentence yields the code, not the code glued to
+ *     the "10 minutes" after it;
+ *   • the field never holds more than 8 digits or anything but ASCII digits.
  */
 import assert from "node:assert/strict";
 
 import { authFailure, otpSendErrorKey, otpVerifyErrorKey } from "../src/utils/auth-error-key.ts";
+import {
+  OTP_CODE_MAX_LEN,
+  OTP_CODE_MIN_LEN,
+  isValidOtpCode,
+  normalizeOtpInput,
+} from "../src/utils/otp-code.ts";
 
 let failures = 0;
 function check(name, fn) {
@@ -81,8 +95,52 @@ check("a thrown string ends up generic, not 'wrong code'", () => {
   assert.equal(otpSendErrorKey(authFailure(new TypeError("fetch failed")), false), "mobile.auth.generic_error");
 });
 
+console.log("otp code length range");
+check("6 to 8 digits — today's 6 and the audit's 8", () => {
+  assert.equal(OTP_CODE_MIN_LEN, 6);
+  assert.equal(OTP_CODE_MAX_LEN, 8);
+});
+for (const [code, ok] of [
+  ["123456", true],
+  ["1234567", true],
+  ["12345678", true],
+  [" 12345678 ", true],
+  ["12345", false],
+  ["123456789", false],
+  ["12345a", false],
+  ["", false],
+  ["12３456", false],
+]) {
+  check(`isValidOtpCode(${JSON.stringify(code)}) → ${ok}`, () => assert.equal(isValidOtpCode(code), ok));
+}
+
+console.log("otp code input");
+for (const [raw, want] of [
+  ["1", "1"],
+  ["123456", "123456"],
+  ["12345678", "12345678"],
+  ["123456789", "12345678"],
+  [" 12 34-56 ", "123456"],
+  ["1234 5678", "12345678"],
+  [" 482139 ", "482139"],
+  ["Your code: 48213907. It expires in 10 minutes.", "48213907"],
+  ["Код входа: 482139 (действует 10 минут)", "482139"],
+  ["abc", ""],
+  ["12３4", "124"],
+]) {
+  check(`normalizeOtpInput(${JSON.stringify(raw)}) → ${JSON.stringify(want)}`, () => {
+    assert.equal(normalizeOtpInput(raw), want);
+  });
+}
+check("whatever goes in, what comes out is a valid code or a prefix of one", () => {
+  for (const raw of ["Code 123456789012", "x".repeat(50), "9".repeat(40), "1 2 3 4 5 6 7 8 9"]) {
+    const out = normalizeOtpInput(raw);
+    assert.match(out, /^\d{0,8}$/);
+  }
+});
+
 if (failures) {
   console.log(`\n${failures} failure(s)`);
   process.exit(1);
 }
-console.log("\nall auth-error-key checks passed");
+console.log("\nall auth-error-key + otp-code checks passed");

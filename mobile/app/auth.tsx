@@ -12,7 +12,7 @@ import {
   verifyEmailOtp,
   validateEmail,
   isValidOtpCode,
-  OTP_CODE_LEN,
+  normalizeOtpInput,
 } from "../src/services/auth";
 import { isSupabaseConfigured } from "../src/services/supabase";
 import { linkAfterSignIn } from "../src/services/account";
@@ -24,7 +24,9 @@ import {
 } from "../src/services/captcha";
 
 /**
- * Passwordless sign-in: enter email → receive a 6-digit code → enter it.
+ * Passwordless sign-in: enter email → receive a code → enter it. The code is
+ * 6–8 digits (src/utils/otp-code.ts): the Supabase project sends 6 today and
+ * may move to 8; there is deliberately no auto-submit on length.
  *
  * Unified with the web (same Supabase project), so the SAME email is the SAME
  * account on both surfaces and settings/family sync just works. No password to
@@ -229,13 +231,15 @@ export default function AuthScreen() {
               placeholder={"000000"}
               placeholderTextColor={colors.textMuted}
               value={code}
-              onChangeText={(v) => setCode(v.replace(/\D/g, "").slice(0, OTP_CODE_LEN))}
+              // Digits only, at most 8; a pasted sentence from the email yields
+              // just the code. No maxLength: the native cap truncates a paste
+              // BEFORE onChangeText sees it ("Your code: 48213907" → "Your cod").
+              onChangeText={(v) => setCode(normalizeOtpInput(v))}
               keyboardType="number-pad"
               // iOS can surface an email-delivered code from Mail via
               // oneTimeCode; no Android "sms-otp" hint — the code comes by email,
               // not SMS, so that autofill channel would never fire.
               textContentType="oneTimeCode"
-              maxLength={OTP_CODE_LEN}
               accessibilityLabel={t("mobile.auth.code_title")}
               editable={!loading}
               autoFocus

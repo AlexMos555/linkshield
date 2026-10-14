@@ -247,7 +247,7 @@
     "error_network": "Keine Verbindung zum Server. Prüfe deine Internetverbindung und versuche es noch einmal.",
     "error_unavailable": "Die Anmeldung ist gerade nicht verfügbar. Der Schutz funktioniert ohne Konto.",
     "code_heading": "Code aus der E-Mail eingeben",
-    "code_sent_to": "Wir haben einen 6-stelligen Code an <strong>{email}</strong> gesendet.",
+    "code_sent_to": "Wir haben einen Anmeldecode an <strong>{email}</strong> gesendet.",
     "code_label": "Code aus der E-Mail",
     "code_submit": "Anmelden",
     "code_submitting": "Code wird geprüft…",
@@ -256,7 +256,7 @@
     "code_resend": "Code erneut senden",
     "code_resend_in": "Erneut senden in {seconds} s",
     "code_change_email": "E-Mail ändern",
-    "error_code_incomplete": "Geben Sie die 6 Ziffern aus der E-Mail ein.",
+    "error_code_incomplete": "Geben Sie den vollständigen Code aus der E-Mail ein.",
     "error_code_wrong": "Code falsch oder abgelaufen. Prüfen Sie die Ziffern oder fordern Sie einen neuen Code an.",
     "error_link_expired": "Der Anmeldelink ist abgelaufen. Fordern Sie einen neuen Code an.",
     "error_link_failed": "Der Anmeldelink hat nicht funktioniert. Geben Sie hier den Code aus der E-Mail ein oder fordern Sie einen neuen an."

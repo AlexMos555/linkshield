@@ -71,10 +71,12 @@ DEFAULT_RATE_LIMIT_PER_HOUR = 200
 DEFAULT_MIN_INTERVAL_S = 60
 DEFAULT_RESEND_REGION = "us-east-1"
 
-# The templates promise «Код действует 10 минут» and the app accepts exactly
-# six digits (mobile/src/services/auth.ts OTP_CODE_LEN). Both are pinned here
-# so the copy and the config cannot drift apart again (2026-09-13: Supabase
-# sent 8-digit codes into a 6-digit field). 600 s since the 2026-10 auth
+# The templates promise «Код действует 10 минут» and app builds up to 1.0.4
+# accept exactly six digits (1.0.5+ and the web accept 6-8:
+# mobile/src/utils/otp-code.ts, landing/lib/signup-flow.ts). Both are pinned
+# here so the copy and the config cannot drift apart again (2026-09-13:
+# Supabase sent 8-digit codes into a 6-digit field). Raise OTP_LENGTH to 8
+# only after 1.0.5 adoption — see docs/MOBILE_AUTH.md. 600 s since the 2026-10 auth
 # hardening (was 3600): mailer_otp_exp also bounds the recovery and
 # email-change links, and their templates say so.
 OTP_LENGTH = 6
