@@ -14,7 +14,11 @@
  *   • the code input holds 6–8 digits and nothing else (the Supabase OTP length
  *     may move from 6 to 8; mobile/src/utils/otp-code.ts has the same range),
  *     and a pasted sentence from the email yields just the code;
- *   • a failed link lands on the signup page of the reader's locale.
+ *   • a failed link lands on the signup page of the reader's locale;
+ *   • the Supabase client key (landing/lib/supabase/public-key.ts): the
+ *     publishable key wins over the legacy anon JWT, a non-JWT key is never
+ *     rejected for not being a JWT, and a server-only secret never reaches
+ *     the page bundle.
  */
 import assert from "node:assert/strict";
 
@@ -41,6 +45,11 @@ import {
   mintOutcome,
   signupForConnectPath,
 } from "../landing/lib/extension-connect.ts";
+import {
+  cleanSupabaseValue,
+  resolveSupabaseClientKey,
+  supabaseKeyKind,
+} from "../landing/lib/supabase/public-key.ts";
 
 const LOCALES = ["en", "es", "hi", "pt", "ru", "ar", "fr", "de", "it", "id"];
 
@@ -224,6 +233,57 @@ check("the extension's refusal", () => {
     assert.equal(extensionErrorKey(code), "error_failed", String(code));
   }
 });
+
+const ENV_PREFIX = "NEXT_PUBLIC";
+console.log("supabase client key");
+{
+  const b64url = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const jwt = (claims) => `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url(claims)}.c2ln`;
+  const ANON = jwt({ iss: "supabase", ref: "bpyqgzzclsbfvxthyfsf", role: "anon" });
+  const SERVICE = jwt({ iss: "supabase", ref: "bpyqgzzclsbfvxthyfsf", role: "service_role" });
+  const PUBLISHABLE = "sb_publishable_AbCdEf0123456789_xyz";
+  // Assembled at runtime and low-entropy so secret scanners do not take the
+  // fixture for a leaked key.
+  const SERVER_ONLY = ["sb", "secret", "x".repeat(20)].join("_");
+
+  check("kinds: publishable, legacy JWT, secret by prefix or role, unknown", () => {
+    assert.equal(supabaseKeyKind(PUBLISHABLE), "publishable");
+    assert.equal(supabaseKeyKind(ANON), "legacy_jwt");
+    assert.equal(supabaseKeyKind(SERVICE), "secret");
+    assert.equal(supabaseKeyKind(SERVER_ONLY), "secret");
+    assert.equal(supabaseKeyKind("e2e-public-anon-key"), "unknown");
+    assert.equal(supabaseKeyKind("a.b.c"), "unknown");
+  });
+  check("publishable preferred over the anon JWT", () => {
+    assert.equal(resolveSupabaseClientKey({ publishable: PUBLISHABLE, anon: ANON }), PUBLISHABLE);
+    assert.equal(resolveSupabaseClientKey({ publishable: ` ${PUBLISHABLE}\n`, anon: ANON }), PUBLISHABLE);
+  });
+  check("falls back to the anon key when the publishable one is unset", () => {
+    assert.equal(resolveSupabaseClientKey({ publishable: undefined, anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ publishable: "", anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ publishable: `$${ENV_PREFIX}_SUPABASE_PUBLISHABLE_KEY`, anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ publishable: "sb_publishable_REPLACE_WITH_PUBLISHABLE_KEY", anon: ANON }), ANON);
+  });
+  check("a publishable key alone is enough (not a JWT, still accepted)", () => {
+    assert.equal(resolveSupabaseClientKey({ publishable: PUBLISHABLE }), PUBLISHABLE);
+    assert.equal(resolveSupabaseClientKey({ anon: PUBLISHABLE }), PUBLISHABLE);
+  });
+  check("unknown formats pass through (the landing e2e build's fake key)", () => {
+    assert.equal(resolveSupabaseClientKey({ anon: "e2e-public-anon-key" }), "e2e-public-anon-key");
+  });
+  check("a server-only secret in either slot is never used", () => {
+    assert.equal(resolveSupabaseClientKey({ publishable: SERVER_ONLY, anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ publishable: SERVICE, anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ anon: SERVICE }), "");
+    assert.equal(resolveSupabaseClientKey({ anon: SERVER_ONLY }), "");
+  });
+  check("unset / placeholders → empty (sign-in honestly unavailable)", () => {
+    assert.equal(resolveSupabaseClientKey({}), "");
+    assert.equal(resolveSupabaseClientKey({ anon: "eyJ_REPLACE_WITH_PUBLIC_ANON_KEY" }), "");
+    assert.equal(cleanSupabaseValue("  "), "");
+    assert.equal(cleanSupabaseValue(null), "");
+  });
+}
 
 if (failures) {
   console.log(`\n${failures} failure(s)`);

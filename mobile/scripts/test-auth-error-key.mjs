@@ -25,6 +25,12 @@
  *   • a paste of the email's sentence yields the code, not the code glued to
  *     the "10 minutes" after it;
  *   • the field never holds more than 8 digits or anything but ASCII digits.
+ *
+ * And pins src/utils/supabase-key.ts (the apikey every sign-in call sends):
+ *   • the publishable key (sb_publishable_…, not a JWT) wins over the legacy
+ *     anon JWT and is never rejected for not being a JWT;
+ *   • a server-only secret (sb_secret_…, a service_role JWT) never becomes
+ *     the app's key, in either slot.
  */
 import assert from "node:assert/strict";
 
@@ -35,6 +41,11 @@ import {
   isValidOtpCode,
   normalizeOtpInput,
 } from "../src/utils/otp-code.ts";
+import {
+  cleanSupabaseValue,
+  resolveSupabaseClientKey,
+  supabaseKeyKind,
+} from "../src/utils/supabase-key.ts";
 
 let failures = 0;
 function check(name, fn) {
@@ -139,8 +150,59 @@ check("whatever goes in, what comes out is a valid code or a prefix of one", () 
   }
 });
 
+const ENV_PREFIX = "EXPO_PUBLIC";
+console.log("supabase client key");
+{
+  const b64url = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const jwt = (claims) => `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url(claims)}.c2ln`;
+  const ANON = jwt({ iss: "supabase", ref: "bpyqgzzclsbfvxthyfsf", role: "anon" });
+  const SERVICE = jwt({ iss: "supabase", ref: "bpyqgzzclsbfvxthyfsf", role: "service_role" });
+  const PUBLISHABLE = "sb_publishable_AbCdEf0123456789_xyz";
+  // Assembled at runtime and low-entropy so secret scanners do not take the
+  // fixture for a leaked key.
+  const SERVER_ONLY = ["sb", "secret", "x".repeat(20)].join("_");
+
+  check("kinds: publishable, legacy JWT, secret by prefix or role, unknown", () => {
+    assert.equal(supabaseKeyKind(PUBLISHABLE), "publishable");
+    assert.equal(supabaseKeyKind(ANON), "legacy_jwt");
+    assert.equal(supabaseKeyKind(SERVICE), "secret");
+    assert.equal(supabaseKeyKind(SERVER_ONLY), "secret");
+    assert.equal(supabaseKeyKind("e2e-public-anon-key"), "unknown");
+    assert.equal(supabaseKeyKind("a.b.c"), "unknown");
+  });
+  check("publishable preferred over the anon JWT", () => {
+    assert.equal(resolveSupabaseClientKey({ publishable: PUBLISHABLE, anon: ANON }), PUBLISHABLE);
+    assert.equal(resolveSupabaseClientKey({ publishable: ` ${PUBLISHABLE}\n`, anon: ANON }), PUBLISHABLE);
+  });
+  check("falls back to the anon key when the publishable one is unset", () => {
+    assert.equal(resolveSupabaseClientKey({ publishable: undefined, anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ publishable: "", anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ publishable: `$${ENV_PREFIX}_SUPABASE_PUBLISHABLE_KEY`, anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ publishable: "sb_publishable_REPLACE_WITH_PUBLISHABLE_KEY", anon: ANON }), ANON);
+  });
+  check("a publishable key alone is enough (not a JWT, still accepted)", () => {
+    assert.equal(resolveSupabaseClientKey({ publishable: PUBLISHABLE }), PUBLISHABLE);
+    assert.equal(resolveSupabaseClientKey({ anon: PUBLISHABLE }), PUBLISHABLE);
+  });
+  check("unknown formats pass through (the landing e2e build's fake key)", () => {
+    assert.equal(resolveSupabaseClientKey({ anon: "e2e-public-anon-key" }), "e2e-public-anon-key");
+  });
+  check("a server-only secret in either slot is never used", () => {
+    assert.equal(resolveSupabaseClientKey({ publishable: SERVER_ONLY, anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ publishable: SERVICE, anon: ANON }), ANON);
+    assert.equal(resolveSupabaseClientKey({ anon: SERVICE }), "");
+    assert.equal(resolveSupabaseClientKey({ anon: SERVER_ONLY }), "");
+  });
+  check("unset / placeholders → empty (sign-in honestly unavailable)", () => {
+    assert.equal(resolveSupabaseClientKey({}), "");
+    assert.equal(resolveSupabaseClientKey({ anon: "eyJ_REPLACE_WITH_PUBLIC_ANON_KEY" }), "");
+    assert.equal(cleanSupabaseValue("  "), "");
+    assert.equal(cleanSupabaseValue(null), "");
+  });
+}
+
 if (failures) {
   console.log(`\n${failures} failure(s)`);
   process.exit(1);
 }
-console.log("\nall auth-error-key + otp-code checks passed");
+console.log("\nall auth-error-key + otp-code + supabase-key checks passed");
