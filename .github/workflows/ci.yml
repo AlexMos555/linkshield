@@ -248,6 +248,13 @@ jobs:
         # Play subscriber to cancel in Play first.
         run: node --experimental-strip-types mobile/scripts/test-store-billing.mjs
 
+      - name: Local store (SQLite) reopen + first-run guard test
+        # One shared cleanway.db handle; a query on a closed Android
+        # connection (prepareAsync NPE) reopens once and retries; a failed
+        # read never counts as "first run" (no onboarding replay) and the
+        # counters keep their last value instead of dropping to 0 (#184).
+        run: node --experimental-strip-types mobile/scripts/test-local-store.mjs
+
       - name: iPhone platform gating + App Store shape table test
         # The iPhone never shows Android-only protection (VPN shield, keep-alive,
         # link guard, call guard); it lists its own layers (Safari, scam texts,
