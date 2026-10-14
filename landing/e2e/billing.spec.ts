@@ -171,11 +171,13 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await expect(policy).toContainText("отдельной базе данных на территории России");
     await expect(policy).toContainText("зашифрованном виде");
     await expect(page.locator("section#payments")).toHaveCount(0);
-    await expect(
-      SUPPORT_LIVE
-        ? page.locator('section#contact a[href="mailto:support@cleanway.ai"]')
-        : page.locator("section#contact [data-testid=privacy-contact-not-live]"),
-    ).toBeVisible();
+    const contact = page.locator("section#contact");
+    if (SUPPORT_LIVE) {
+      await expect(contact.locator('a[href="mailto:support@cleanway.ai"]')).toHaveText("support@cleanway.ai");
+      await expect(contact.getByTestId("privacy-contact-not-live")).toHaveCount(0);
+    } else {
+      await expect(contact.getByTestId("privacy-contact-not-live")).toBeVisible();
+    }
   });
 
   test("terms outside Russia keep the Stripe payment section and no lapse policy", async ({ page }) => {
@@ -192,6 +194,16 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await page.goto("/terms");
     await expect(page.locator("section#billing")).toBeVisible();
     await expect(page.locator("section#payments")).toHaveCount(0);
+  });
+
+  test("/ru/cancel offers support as a way to cancel and links the mailbox while it is live", async ({ page }) => {
+    test.skip(!SUPPORT_LIVE, "NEXT_PUBLIC_SUPPORT_EMAIL_LIVE is off");
+    await page.goto("/ru/cancel");
+    const support = page.getByTestId("cancel-way-support");
+    await expect(support).toContainText("в тот же рабочий день");
+    await expect(support).not.toContainText("ещё настраивается");
+    await expect(page.locator('main a[href="mailto:support@cleanway.ai"]')).toHaveText("support@cleanway.ai");
+    await expect(page.getByTestId("cancel-contact-pending")).toHaveCount(0);
   });
 
   test("/ru/cancel does not offer support as a way to cancel while the mailbox is not live", async ({ page }) => {

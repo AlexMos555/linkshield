@@ -1,14 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "@playwright/test";
-import { SUPPORT_LIVE } from "./billing-flag";
 import {
   type BenchmarkSnapshot,
   falsePositiveRateIsPublishable,
   recallIsPublishable,
 } from "../lib/benchmark";
 
-import { BILLING_ON } from "./billing-flag";
+import { BILLING_ON, SUPPORT_LIVE } from "./billing-flag";
 
 // The Android version that ships — the same source check-landing-claims.py
 // reads, so this test follows each release instead of pinning one.
@@ -117,16 +116,29 @@ test("/ru/privacy-policy is Russian and describes only the released app", async 
   }
   await expect(body).not.toContainText("в открытом виде он не хранится");
   // The contact block is attached by section id, inside the last section.
-  await expect(
-    SUPPORT_LIVE
-      ? page.locator('section#contact a[href="mailto:support@cleanway.ai"]')
-      : page.locator("section#contact [data-testid=privacy-contact-not-live]"),
-  ).toBeVisible();
+  const contact = page.locator("section#contact");
+  const mailto = contact.locator('a[href="mailto:support@cleanway.ai"]');
+  const notLive = contact.getByTestId("privacy-contact-not-live");
+  if (SUPPORT_LIVE) {
+    await expect(mailto).toHaveText("support@cleanway.ai");
+    await expect(notLive).toHaveCount(0);
+  } else {
+    await expect(notLive).toBeVisible();
+    await expect(mailto).toHaveCount(0);
+  }
 });
 
-test("/ru/support shows the mailbox only when it is live", async ({ page }) => {
+test("/ru/support shows the mailbox as a mailto link while it is live", async ({ page }) => {
   await page.goto("/ru/support");
-  await expect(page.getByTestId(SUPPORT_LIVE ? "support-email" : "support-email-not-live")).toBeVisible();
+  const mailto = page.getByTestId("support-email").locator('a[href="mailto:support@cleanway.ai"]');
+  const notLive = page.getByTestId("support-email-not-live");
+  if (SUPPORT_LIVE) {
+    await expect(mailto).toHaveText("support@cleanway.ai");
+    await expect(notLive).toHaveCount(0);
+  } else {
+    await expect(notLive).toBeVisible();
+    await expect(page.getByTestId("support-email")).toHaveCount(0);
+  }
   await expect(page.locator('a[href="/ru/android"]')).toBeVisible();
 });
 
