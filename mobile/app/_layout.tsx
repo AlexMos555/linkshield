@@ -8,7 +8,8 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { restoreSession } from "../src/services/auth";
-import { getSetting } from "../src/services/database";
+import { readSetting } from "../src/services/database";
+import { onboardingNeeded } from "../src/utils/local-store";
 import { setAuthToken } from "../src/services/api";
 import { initStoreBilling } from "../src/services/store-billing";
 // Side-effecting import: initialises i18next at boot so every screen
@@ -62,8 +63,17 @@ function OnboardingGate() {
     let cancelled = false;
     (async () => {
       try {
-        const done = await getSetting("onboarding_done");
-        if (cancelled || done === "true") return;
+        // A storage read that fails is "not a first run" (onboardingNeeded).
+        // It used to read as "" here, and with the gate re-running on every
+        // route change, a dead SQLite handle brought the tour back mid-session
+        // for someone who finished it long ago (Galaxy A16, 1.0.4).
+        const needed = await onboardingNeeded(readSetting);
+        if (!needed) {
+          // Answered for this process: no re-read on every navigation.
+          _gateRanThisLaunch = true;
+          return;
+        }
+        if (cancelled) return;
         // A share intent outranks the tour — and it can arrive AFTER this
         // effect started (cold-start share: the intent parses while we read
         // storage). Re-check at decision time, and never replace a screen

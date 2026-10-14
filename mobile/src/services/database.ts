@@ -6,49 +6,58 @@
 
 import { Platform } from "react-native";
 import { MESSAGE_CHECK_SOURCE, splitHosts } from "../utils/history-model";
+import { sharedHandle, statsWhenUnreadable, type ActivityStats } from "../utils/local-store";
 
-// In-memory fallback for web (SQLite is native-only)
+// In-memory fallback for web (SQLite is native-only). On native it also holds
+// the last settings read or written, so a failed read answers with them.
 let _memoryChecks: any[] = [];
 let _memorySettings: Record<string, string> = {};
 let _isNative = Platform.OS !== "web";
 type SQLiteDB = import("expo-sqlite").SQLiteDatabase;
 
-let _db: SQLiteDB | null = null;
+/**
+ * The one SQLite connection. It used to be cached only once its open had
+ * resolved, so the screens reading storage on start each opened the file
+ * again; when Hermes collected one of those spare wrappers, Android closed
+ * the shared native connection under the one in use and every query failed
+ * with a NullPointerException (src/utils/local-store.ts has the whole story).
+ * Now the open is shared, and a query that finds the connection dead reopens
+ * it once and retries.
+ *
+ * useNewConnection: without it expo-sqlite hands back its cached native
+ * connection for "cleanway.db" — the dead one — so a reopen would fail again.
+ *
+ * A failed open is not latched. One transient failure (a locked file during
+ * an OS restore, low disk at the wrong moment) used to switch the whole app
+ * to in-memory storage until the process died; every check from then on was
+ * silently lost on exit. That call falls back, the next one tries again.
+ */
+const _db = sharedHandle<SQLiteDB>(async () => {
+  const SQLite = require("expo-sqlite") as typeof import("expo-sqlite");
+  const db = await SQLite.openDatabaseAsync("cleanway.db", { useNewConnection: true });
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS checks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      url TEXT,
+      domain TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      level TEXT NOT NULL,
+      reasons TEXT,
+      confidence TEXT DEFAULT 'medium',
+      source TEXT DEFAULT 'api',
+      checked_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+  return db;
+});
 
-async function getDB(): Promise<SQLiteDB | null> {
-  if (!_isNative) return null;
-  if (_db) return _db;
-
-  try {
-    const SQLite = require("expo-sqlite") as typeof import("expo-sqlite");
-    _db = await SQLite.openDatabaseAsync("cleanway.db");
-    await _db.execAsync(`
-      CREATE TABLE IF NOT EXISTS checks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        url TEXT,
-        domain TEXT NOT NULL,
-        score INTEGER NOT NULL,
-        level TEXT NOT NULL,
-        reasons TEXT,
-        confidence TEXT DEFAULT 'medium',
-        source TEXT DEFAULT 'api',
-        checked_at TEXT DEFAULT (datetime('now'))
-      );
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );
-    `);
-    return _db;
-  } catch (e) {
-    // Do NOT flip _isNative here. One transient open failure (a locked file
-    // during an OS restore, low disk at the wrong moment) used to latch the
-    // whole app into in-memory storage until the process died — every check
-    // from then on was silently lost on exit while history looked fine.
-    // Fail this call, try again next call.
-    console.warn("SQLite open failed, falling back to memory for this call:", e);
-    return null;
-  }
+/** Runs `fn` on SQLite. Rejects when SQLite failed even after one reopen. */
+function withDB<T>(fn: (db: SQLiteDB) => Promise<T>): Promise<T> {
+  return _db.use(fn);
 }
 
 // ── Check History ──
@@ -73,10 +82,9 @@ export async function saveCheck(check: {
     checked_at: new Date().toISOString(),
   };
 
-  const db = await getDB();
-  if (db) {
+  if (_isNative) {
     try {
-      const result = await db.runAsync(
+      const result = await withDB((db) => db.runAsync(
         // checked_at is written explicitly rather than left to the column
         // default. datetime('now') produces "YYYY-MM-DD HH:MM:SS", but every
         // range query below compares against an ISO string with a "T" — and
@@ -97,7 +105,7 @@ export async function saveCheck(check: {
           check.source || "api",
           entry.checked_at,
         ]
-      );
+      ));
       return result.lastInsertRowId;
     } catch (e) {
       console.warn("SQLite write failed:", e);
@@ -126,13 +134,12 @@ export async function updateCheck(id: number, check: {
   const reasons = check.reasons || [];
   const confidence = check.confidence || "medium";
   const source = check.source || "api";
-  const db = await getDB();
-  if (db) {
+  if (_isNative) {
     try {
-      await db.runAsync(
+      await withDB((db) => db.runAsync(
         `UPDATE checks SET domain = ?, score = ?, level = ?, reasons = ?, confidence = ?, source = ? WHERE id = ?`,
         [check.domain, check.score, check.level, JSON.stringify(reasons), confidence, source, id],
-      );
+      ));
       return;
     } catch (e) {
       console.warn("SQLite update failed:", e);
@@ -174,13 +181,12 @@ export async function saveMessageCheck(entry: MessageCheckRow): Promise<number |
 export async function updateMessageCheck(id: number, entry: MessageCheckRow): Promise<void> {
   const reasons = JSON.stringify(entry.reasons);
   const domain = entry.hosts.join(" ");
-  const db = await getDB();
-  if (db) {
+  if (_isNative) {
     try {
-      await db.runAsync(
+      await withDB((db) => db.runAsync(
         `UPDATE checks SET domain = ?, level = ?, reasons = ? WHERE id = ? AND source = ?`,
         [domain, entry.level, reasons, id, MESSAGE_CHECK_SOURCE],
-      );
+      ));
       return;
     } catch (e) {
       console.warn("SQLite update failed:", e);
@@ -196,13 +202,12 @@ export function messageCheckHosts(row: { domain?: string }): string[] {
 }
 
 export async function getRecentChecks(limit = 50): Promise<any[]> {
-  const db = await getDB();
-  if (db) {
+  if (_isNative) {
     try {
-      const rows = await db.getAllAsync(
+      const rows = await withDB((db) => db.getAllAsync(
         `SELECT * FROM checks ORDER BY checked_at DESC LIMIT ?`,
         [limit]
-      );
+      ));
       return rows.map((r: any) => ({
         ...r,
         reasons: JSON.parse(r.reasons || "[]"),
@@ -216,16 +221,27 @@ export async function getRecentChecks(limit = 50): Promise<any[]> {
   return _memoryChecks.slice(0, limit);
 }
 
+/** The counts SQLite last gave getStats(); what Home keeps showing if a read fails. */
+let _lastStats: ActivityStats | null = null;
+
 /**
  * The home activity counters. A message check counts under "checked" only:
  * nothing was blocked — the person was told what the message looks like —
  * and "Blocked 2" after pasting two scam SMS would teach that Cleanway blocks
  * SMS on its own, which it does not.
  */
-export async function getStats() {
-  const db = await getDB();
-  if (db) {
-    try {
+export async function getStats(): Promise<ActivityStats> {
+  // In memory: on web every check, on native the ones whose write failed.
+  const links = _memoryChecks.filter(c => c.source !== MESSAGE_CHECK_SOURCE);
+  const inMemory: ActivityStats = {
+    total_checks: _memoryChecks.length,
+    threats_blocked: links.filter(c => c.level === "dangerous").length,
+    threats_warned: links.filter(c => c.level === "caution").length,
+  };
+  if (!_isNative) return inMemory;
+
+  try {
+    _lastStats = await withDB(async (db) => {
       const total = await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM checks`);
       const blocked = await db.getFirstAsync<{ count: number }>(
         `SELECT COUNT(*) as count FROM checks WHERE level = 'dangerous' AND ${NOT_MESSAGE}`, [MESSAGE_CHECK_SOURCE],
@@ -238,36 +254,35 @@ export async function getStats() {
         threats_blocked: blocked?.count || 0,
         threats_warned: warned?.count || 0,
       };
-    } catch (e) {
-      console.warn("SQLite stats failed:", e);
-    }
+    });
+    return _lastStats;
+  } catch (e) {
+    console.warn("SQLite stats failed:", e);
   }
-
-  // Fallback: in-memory
-  const links = _memoryChecks.filter(c => c.source !== MESSAGE_CHECK_SOURCE);
-  return {
-    total_checks: _memoryChecks.length,
-    threats_blocked: links.filter(c => c.level === "dangerous").length,
-    threats_warned: links.filter(c => c.level === "caution").length,
-  };
+  // "Checked: 0" on Home while the Score tab showed 3 was this fallback
+  // answering with the in-memory rows alone.
+  return statsWhenUnreadable(_lastStats, inMemory);
 }
 
 /** The weekly report is about links ("Проверено ссылок"); message checks are not links. */
 export async function getWeeklyStats() {
   const weekAgo = Date.now() - 7 * 86400000;
-  const db = await getDB();
-  if (db) {
+  if (_isNative) {
     try {
       const cutoff = new Date(weekAgo).toISOString();
-      const total = await db.getFirstAsync<{ count: number }>(
-        `SELECT COUNT(*) as count FROM checks WHERE checked_at >= ? AND ${NOT_MESSAGE}`, [cutoff, MESSAGE_CHECK_SOURCE],
-      );
-      const blocked = await db.getFirstAsync<{ count: number }>(
-        `SELECT COUNT(*) as count FROM checks WHERE level = 'dangerous' AND checked_at >= ? AND ${NOT_MESSAGE}`,
-        [cutoff, MESSAGE_CHECK_SOURCE],
-      );
-      return { total_checks: total?.count || 0, threats_blocked: blocked?.count || 0 };
-    } catch (e) {}
+      return await withDB(async (db) => {
+        const total = await db.getFirstAsync<{ count: number }>(
+          `SELECT COUNT(*) as count FROM checks WHERE checked_at >= ? AND ${NOT_MESSAGE}`, [cutoff, MESSAGE_CHECK_SOURCE],
+        );
+        const blocked = await db.getFirstAsync<{ count: number }>(
+          `SELECT COUNT(*) as count FROM checks WHERE level = 'dangerous' AND checked_at >= ? AND ${NOT_MESSAGE}`,
+          [cutoff, MESSAGE_CHECK_SOURCE],
+        );
+        return { total_checks: total?.count || 0, threats_blocked: blocked?.count || 0 };
+      });
+    } catch (e) {
+      console.warn("SQLite weekly stats failed:", e);
+    }
   }
 
   // Fallback
@@ -291,8 +306,7 @@ export async function getWeeklyStats() {
  */
 export async function getActiveDaysThisWeek(): Promise<number> {
   const weekAgo = Date.now() - 7 * 86400000;
-  const db = await getDB();
-  if (db) {
+  if (_isNative) {
     try {
       const cutoff = new Date(weekAgo).toISOString();
       // 'localtime': checked_at is stored as ISO UTC, and grouping by the UTC
@@ -300,12 +314,14 @@ export async function getActiveDaysThisWeek(): Promise<number> {
       // Greenwich and a morning check on "yesterday" west of it — a user in
       // the Americas checking at 20:00 two nights running was told they
       // checked on FOUR days. The user's idea of "a day" is local.
-      const row = await db.getFirstAsync<{ days: number }>(
+      const row = await withDB((db) => db.getFirstAsync<{ days: number }>(
         `SELECT COUNT(DISTINCT date(checked_at, 'localtime')) as days FROM checks WHERE checked_at >= ?`,
         [cutoff]
-      );
+      ));
       return Math.min(7, row?.days || 0);
-    } catch (e) {}
+    } catch (e) {
+      console.warn("SQLite active days failed:", e);
+    }
   }
 
   // Fallback — same local-day rule as the SQL path.
@@ -319,38 +335,60 @@ export async function getActiveDaysThisWeek(): Promise<number> {
 
 // ── Settings ──
 
-export async function getSetting(key: string, defaultValue: string = ""): Promise<string> {
-  const db = await getDB();
-  if (db) {
-    try {
-      const row = await db.getFirstAsync<{ value: string }>(`SELECT value FROM settings WHERE key = ?`, [key]);
-      return row?.value || defaultValue;
-    } catch (e) {}
+/**
+ * The stored value, null when the key was never written. REJECTS when
+ * storage cannot be read and this process never saw the value — the caller
+ * decides what "unknown" means (the onboarding gate: not a first run).
+ */
+export async function readSetting(key: string): Promise<string | null> {
+  if (!_isNative) return _memorySettings[key] ?? null;
+  try {
+    const row = await withDB((db) =>
+      db.getFirstAsync<{ value: string }>(`SELECT value FROM settings WHERE key = ?`, [key]),
+    );
+    if (row) _memorySettings[key] = row.value;
+    return row ? row.value : null;
+  } catch (e) {
+    console.warn("SQLite setting read failed:", e);
+    if (key in _memorySettings) return _memorySettings[key];
+    throw e;
   }
-  return _memorySettings[key] || defaultValue;
+}
+
+/** Like readSetting, but a read failure answers with the last known value or `defaultValue`. */
+export async function getSetting(key: string, defaultValue: string = ""): Promise<string> {
+  try {
+    return (await readSetting(key)) || defaultValue;
+  } catch {
+    return defaultValue;
+  }
 }
 
 export async function setSetting(key: string, value: string) {
-  const db = await getDB();
-  if (db) {
-    try {
-      await db.runAsync(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`, [key, value]);
-      return;
-    } catch (e) {}
-  }
+  // Kept in memory either way: the fallback store on web or after a failed
+  // write, and the last known value if a later read fails.
   _memorySettings[key] = value;
+  if (!_isNative) return;
+  try {
+    await withDB((db) => db.runAsync(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`, [key, value]));
+  } catch (e) {
+    console.warn("SQLite setting write failed:", e);
+  }
 }
 
 // ── Cleanup ──
 
 export async function pruneOldChecks(days = 30) {
-  const db = await getDB();
-  if (db) {
+  if (_isNative) {
     try {
       const cutoff = new Date(Date.now() - days * 86400000).toISOString();
-      await db.runAsync(`DELETE FROM checks WHERE checked_at < ?`, [cutoff]);
+      await withDB((db) => db.runAsync(`DELETE FROM checks WHERE checked_at < ?`, [cutoff]));
+      // The counts read before may include what was just deleted.
+      _lastStats = null;
       return;
-    } catch (e) {}
+    } catch (e) {
+      console.warn("SQLite prune failed:", e);
+    }
   }
   // Fallback
   if (days === 0) {
