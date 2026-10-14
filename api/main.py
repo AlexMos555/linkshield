@@ -125,11 +125,25 @@ async def lifespan(app: FastAPI):
     logger.info("Cleanway API shutdown complete")
 
 
+def api_docs_settings(environment: str) -> dict:
+    """FastAPI docs kwargs: no /docs, /redoc or /openapi.json in production.
+
+    The interactive docs and the raw schema are a complete, current map of
+    every route and parameter — useful in development and staging, a gift
+    to anyone probing production. The typed clients never fetch the schema
+    over HTTP: scripts/dump-openapi.py (CI openapi-drift) calls app.openapi()
+    on the app object, which works with openapi_url=None too."""
+    if environment == "production":
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {}
+
+
 app = FastAPI(
     title=__service_name__,
     description="Phishing protection API. Checks domains for safety. Your browsing data lives on your device — we only see domain names.",
     version=__version__,
     lifespan=lifespan,
+    **api_docs_settings(get_settings().environment),
 )
 
 # CORS — origins loaded from env, never wildcard in production
@@ -323,7 +337,7 @@ async def health_check():
 
 
 @app.get("/health/deep")
-async def health_deep_check():
+async def health_deep_check(request: Request):
     """
     Deep health check — pings every downstream we depend on and FAILS HARD
     (HTTP 503) when any of them is unreachable.
@@ -353,6 +367,26 @@ async def health_deep_check():
     # published, non-empty, under 13 h old) and `doh` (the list canary through
     # the gateway's decision code, in process → our NXDOMAIN), both listed in
     # `warnings` when not ok; `ml` (model loaded), informational.
+    #
+    # Public and unauthenticated (the canary and uptime monitors call it), so
+    # results are reused for 30 s and one IP triggers at most one fresh probe
+    # a minute — never a 429. See api/services/health_deep_guard.py.
+    from fastapi.responses import JSONResponse
+
+    from api.services import health_deep_guard
+    from api.services.rate_limiter import _extract_client_ip
+
+    status, body = await health_deep_guard.GUARD.serve(
+        _extract_client_ip(request), _probe_deep_health
+    )
+    if status == 200:
+        return body
+    # Fail HARD on degraded so external monitors page someone.
+    return JSONResponse(status_code=status, content=body)
+
+
+async def _probe_deep_health() -> tuple[int, dict]:
+    """One real pass over every downstream: (HTTP status, body)."""
     settings = get_settings()
     components: dict[str, dict] = {}
 
@@ -362,8 +396,8 @@ async def health_deep_check():
         # asyncio.wait_for guards against a hung connection — without it a
         # half-open Redis socket can block the request indefinitely and the
         # Railway probe times out instead of getting our clean 503.
-        import asyncio
-
+        # (Module-level asyncio: a local import here left the name unbound
+        # for the gather below whenever get_redis() itself raised.)
         await asyncio.wait_for(r.ping(), timeout=2.0)
         components["redis"] = {"ok": True}
     except Exception as e:
@@ -432,12 +466,7 @@ async def health_deep_check():
     all_ok = all(components[name].get("ok") for name in PAGING_COMPONENTS)
     warnings = [name for name in WARNING_COMPONENTS if not components[name].get("ok")]
     body = {"status": "ok" if all_ok else "degraded", "warnings": warnings, "components": components}
-    if all_ok:
-        return body
-    # Fail HARD on degraded so external monitors page someone.
-    from fastapi.responses import JSONResponse
-
-    return JSONResponse(status_code=503, content=body)
+    return (200 if all_ok else 503), body
 
 
 @app.get("/")
@@ -446,5 +475,6 @@ async def root():
         "service": __service_name__,
         "version": __version__,
         "privacy": "We see domain names only. Your browsing history lives on your device.",
-        "docs": "/docs",
+        # None in production, where the docs are switched off.
+        "docs": app.docs_url,
     }

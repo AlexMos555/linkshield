@@ -71,12 +71,23 @@ DEFAULT_RATE_LIMIT_PER_HOUR = 200
 DEFAULT_MIN_INTERVAL_S = 60
 DEFAULT_RESEND_REGION = "us-east-1"
 
-# The templates promise «Код действует 1 час» and the app accepts exactly six
-# digits (mobile/src/services/auth.ts OTP_CODE_LEN). Both are pinned here so
-# the copy and the config cannot drift apart again (2026-09-13: Supabase sent
-# 8-digit codes into a 6-digit field).
+# The templates promise «Код действует 10 минут» and the app accepts exactly
+# six digits (mobile/src/services/auth.ts OTP_CODE_LEN). Both are pinned here
+# so the copy and the config cannot drift apart again (2026-09-13: Supabase
+# sent 8-digit codes into a 6-digit field). 600 s since the 2026-10 auth
+# hardening (was 3600): mailer_otp_exp also bounds the recovery and
+# email-change links, and their templates say so.
 OTP_LENGTH = 6
-OTP_EXPIRY_S = 3600
+OTP_EXPIRY_S = 600
+
+# Auth hardening set in production by hand (2026-10). The smtp step never
+# sends these — so re-running it cannot revert them — and verify only shows
+# them, next to what production should hold.
+HARDENED_EXPECTED: dict[str, object] = {
+    "rate_limit_verify": 10,
+    "password_min_length": 12,
+    "security_update_password_require_reauthentication": True,
+}
 
 # Supabase template types we ship. invite / reauthentication / *_notification
 # are never sent by Cleanway and keep Supabase's defaults.
@@ -638,6 +649,17 @@ def step_dns(provider: str, domain: str, *, with_mx: bool, resend_region: str, c
     return 0 if not missing else 1
 
 
+def _expiry_text(value: object) -> str:
+    try:
+        seconds = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return f"{value} s — want {OTP_EXPIRY_S}"
+    text = f"{seconds} s ({seconds // 60} min)"
+    if seconds != OTP_EXPIRY_S:
+        text += f" — want {OTP_EXPIRY_S}"
+    return text
+
+
 def verify_report(current: Mapping[str, object]) -> tuple[bool, list[str]]:
     """Human-readable state of the live config + one yes/no."""
     host = current.get("smtp_host") or ""
@@ -650,13 +672,18 @@ def verify_report(current: Mapping[str, object]) -> tuple[bool, list[str]]:
         f"sender:           {current.get('smtp_sender_name') or '-'} <{current.get('smtp_admin_email') or '-'}>",
         f"emails per hour:  {rate}",
         f"min interval:     {current.get('smtp_max_frequency')} s",
-        f"otp length/exp:   {otp_len} digits / {otp_exp} s",
+        f"otp length/exp:   {otp_len} digits / {_expiry_text(otp_exp)}",
         f"captcha:          {'on' if current.get('security_captcha_enabled') else 'off'} ({current.get('security_captcha_provider') or '-'})",
     ]
     template_ok = all(
         TOKEN_VAR in str(current.get(f"mailer_templates_{kind}_content") or "") for kind in CODE_TEMPLATES
     )
     lines.append(f"code in templates: {'yes' if template_ok else 'NO — emails would carry no code'}")
+    # Read-only: never part of the verdict and never written by this script.
+    for key, want in HARDENED_EXPECTED.items():
+        have = current.get(key)
+        mark = "" if have == want else f"  (production hardening wants {want!r})"
+        lines.append(f"{key}: {have!r}{mark}")
     ok = bool(host) and rate > 2 and otp_len == OTP_LENGTH and otp_exp == OTP_EXPIRY_S and template_ok
     return ok, lines
 

@@ -447,3 +447,94 @@ async def test_a_crashing_probe_reports_instead_of_raising():
         raise KeyError("sha256")
 
     assert await health_probes._bounded(_boom) == {"ok": False, "error": "KeyError"}
+
+
+# ─── Abuse protection: 30 s cache + one fresh probe per IP per minute ──
+#
+# /health/deep is public (the DNS canary and the founder's uptime monitor
+# call it without a secret) and every fresh call fans out to Redis,
+# Supabase, the blocklist and the DoH gateway. A loop against it used to be
+# a free amplifier against our own dependencies.
+
+
+class _CountingRedis(_FakeRedis):
+    def __init__(self):
+        super().__init__(fail=False)
+        self.pings = 0
+
+    async def ping(self):
+        self.pings += 1
+        return True
+
+
+def _counting_redis(monkeypatch):
+    fake = _CountingRedis()
+
+    async def _get_redis():
+        return fake
+
+    monkeypatch.setattr("api.main.get_redis", _get_redis)
+    return fake
+
+
+def test_deep_results_are_cached_for_30_seconds(client, configured_settings, monkeypatch):
+    redis = _counting_redis(monkeypatch)
+    _patch_httpx(monkeypatch, status_code=200)
+    for i in range(5):
+        resp = client.get("/health/deep", headers={"x-forwarded-for": f"203.0.113.{i}"})
+        assert resp.status_code == 200
+    assert redis.pings == 1
+
+
+def test_a_degraded_answer_is_cached_with_its_503(client, configured_settings, monkeypatch):
+    _patch_redis(monkeypatch, fail=True)
+    _patch_httpx(monkeypatch, status_code=200)
+    assert client.get("/health/deep").status_code == 503
+    # Redis recovers, but within 30 s callers keep seeing the cached 503 —
+    # a monitor never gets a false "ok" for a state nobody re-checked.
+    _patch_redis(monkeypatch, fail=False)
+    resp = client.get("/health/deep")
+    assert resp.status_code == 503
+    assert resp.json()["components"]["redis"]["ok"] is False
+
+
+def test_after_30_seconds_a_new_probe_runs(client, configured_settings, monkeypatch):
+    from api.services import health_deep_guard
+
+    clock = [1000.0]
+    monkeypatch.setattr(health_deep_guard, "_now", lambda: clock[0])
+    redis = _counting_redis(monkeypatch)
+    _patch_httpx(monkeypatch, status_code=200)
+    client.get("/health/deep", headers={"x-forwarded-for": "203.0.113.1"})
+    clock[0] += 31
+    client.get("/health/deep", headers={"x-forwarded-for": "203.0.113.2"})
+    assert redis.pings == 2
+
+
+def test_one_ip_triggers_at_most_one_fresh_probe_per_minute(client, configured_settings, monkeypatch):
+    from api.services import health_deep_guard
+
+    clock = [1000.0]
+    monkeypatch.setattr(health_deep_guard, "_now", lambda: clock[0])
+    redis = _counting_redis(monkeypatch)
+    _patch_httpx(monkeypatch, status_code=200)
+    ip = {"x-forwarded-for": "198.51.100.77"}
+    assert client.get("/health/deep", headers=ip).status_code == 200
+    clock[0] += 45  # cache expired, but this IP probed 45 s ago
+    resp = client.get("/health/deep", headers=ip)
+    # Never a 429 (an uptime monitor would page on it): the last answer.
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"
+    assert redis.pings == 1
+    clock[0] += 16  # 61 s since this IP's probe
+    client.get("/health/deep", headers=ip)
+    assert redis.pings == 2
+
+
+def test_the_per_ip_table_is_bounded():
+    from api.services import health_deep_guard
+
+    guard = health_deep_guard.DeepHealthGuard(max_ips=8)
+    for i in range(100):
+        guard._remember(f"10.0.0.{i}", float(i))
+    assert len(guard._last_probe) <= 8

@@ -349,12 +349,79 @@ def test_legacy_device_route_goes_through_the_limit(client, account_store):
 # ─── auth gate details ────────────────────────────────────────────
 
 
-def test_revocation_check_fails_open_when_redis_is_down(redis_down):
+def test_revocation_check_falls_back_to_the_database_when_redis_is_down(redis_down, account_store):
+    # Redis down used to mean "not revoked": an unlinked phone kept full API
+    # access for as long as Redis was unreachable. Now the row decides.
+    import asyncio
+
+    from api.services.account_devices import is_revoked
+
+    account_store.add_device(ACCOUNT, PHONE, revoked_at="2026-10-01T00:00:00+00:00")
+    account_store.add_device(ACCOUNT, TABLET)
+    assert asyncio.run(is_revoked(ACCOUNT, PHONE)) is True
+    assert asyncio.run(is_revoked(ACCOUNT, TABLET)) is False
+    # Never registered: nothing to refuse.
+    assert asyncio.run(is_revoked(ACCOUNT, LAPTOP)) is False
+    # Another account's revoked row never leaks across.
+    assert asyncio.run(is_revoked(OTHER, PHONE)) is False
+
+
+def test_revocation_check_answers_503_when_redis_and_the_database_are_both_down(
+    redis_down, account_store
+):
+    # Neither source can answer: refuse with a retryable 503, never a 403
+    # device_revoked (that would sign every phone out during an outage) and
+    # never a silent "allowed".
+    import asyncio
+
+    from fastapi import HTTPException
+
+    from api.services.account_devices import is_revoked
+
+    account_store.fail = True
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(is_revoked(ACCOUNT, PHONE))
+    assert exc.value.status_code == 503
+
+
+def test_revocation_check_without_a_database_configured_stays_open(redis_down):
+    # Local dev without Supabase: there are no device rows to consult.
     import asyncio
 
     from api.services.account_devices import is_revoked
 
     assert asyncio.run(is_revoked(ACCOUNT, PHONE)) is False
+
+
+def test_unlinked_device_is_refused_while_redis_is_down(client, account_store, monkeypatch):
+    account_store.add_device(ACCOUNT, PHONE, revoked_at="2026-10-01T00:00:00+00:00")
+
+    async def _boom():
+        raise ConnectionError("simulated Redis outage")
+
+    monkeypatch.setattr("api.services.cache.get_redis", _boom)
+    resp = client.get("/api/v1/me/devices", headers=_headers(PHONE))
+    assert resp.status_code == 403
+    assert resp.json()["detail"]["code"] == "device_revoked"
+
+
+def test_gdpr_export_applies_the_unlinked_device_gate(client, account_store, fake_redis):
+    # /user/export resolves the user with the soft-delete bypass (GDPR Art.
+    # 15), which skipped the device gate: an unlinked browser could still
+    # download everything the account holds.
+    account_store.add_device(ACCOUNT, PHONE, revoked_at="2026-10-01T00:00:00+00:00")
+    resp = client.get("/api/v1/user/export", headers=_headers(PHONE))
+    assert resp.status_code == 403
+    assert resp.json()["detail"]["code"] == "device_revoked"
+
+
+def test_gdpr_export_device_gate_reads_the_redis_marker(client, account_store, fake_redis):
+    import asyncio
+
+    asyncio.run(fake_redis.setex(f"revoked_device:{ACCOUNT}:{TABLET}", 60, "1"))
+    resp = client.get("/api/v1/user/export", headers=_headers(TABLET))
+    assert resp.status_code == 403
+    assert resp.json()["detail"]["code"] == "device_revoked"
 
 
 def test_session_id_claim_reaches_the_auth_user(fake_redis):

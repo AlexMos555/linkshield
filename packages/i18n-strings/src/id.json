@@ -1802,7 +1802,7 @@
       "code_label": "Kode dari email",
       "code_submit": "Masuk",
       "code_submitting": "Memeriksa kode…",
-      "code_valid_for": "Kode berlaku selama 1 jam.",
+      "code_valid_for": "Kode berlaku selama 10 menit.",
       "code_spam_hint": "Email belum masuk? Tunggu semenit dan periksa folder Spam. Pengirimnya adalah Cleanway.",
       "code_resend": "Kirim ulang kode",
       "code_resend_in": "Kirim ulang dalam {seconds} dtk",
@@ -3636,7 +3636,7 @@
       "err_captcha": "Pemeriksaan keamanan tidak selesai. Silakan coba lagi.",
       "err_captcha_update": "Untuk masuk, diperlukan versi Cleanway yang lebih baru. Perbarui aplikasi lalu coba lagi.",
       "captcha_wait": "Menyelesaikan pemeriksaan keamanan…",
-      "code_valid_for": "Kode berlaku selama 1 jam.",
+      "code_valid_for": "Kode berlaku selama 10 menit.",
       "code_spam_hint": "Email belum masuk? Tunggu semenit dan periksa folder Spam. Pengirimnya adalah Cleanway."
     },
     "onboarding": {

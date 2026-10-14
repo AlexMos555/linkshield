@@ -14,7 +14,8 @@ they already use; they just can't add another.
 
 Unlinking marks the row revoked (migration 022), ends its Auth session, and
 leaves a Redis marker so EVERY authenticated request from that install is
-refused with 403 `device_revoked` (api/services/auth.py). The app then signs
+refused with 403 `device_revoked` (api/services/auth.py; when Redis is down
+the devices row decides, see is_revoked). The app then signs
 out locally and makes a new install id; signing in again on that phone is a
 new device that takes a seat like any other.
 """
@@ -130,18 +131,57 @@ async def _mark_revoked(account_id: str, device_hash: Optional[str]) -> None:
         logger.warning("device_revoked_marker_failed", extra={"account_id": account_id, "error": str(e)})
 
 
-async def is_revoked(account_id: str, device_id: Optional[str]) -> bool:
-    """Fast per-request check (Redis). Fails open: Redis down → not revoked;
-    the heartbeat still consults the database."""
+async def is_revoked(account_id: str, device_id: Optional[str], *, strict: bool = False) -> bool:
+    """Was this install unlinked from the account?
+
+    Fast path: the Redis marker written at unlink time. When Redis cannot
+    answer, the devices row decides (it used to fail open, so an unlinked
+    install kept full access for as long as Redis was down). `strict` also
+    consults the row when Redis has no marker — for rare, sensitive reads
+    such as the GDPR export, where one query is cheap and a lost marker must
+    not let an unlinked browser download the account.
+
+    Neither source reachable → 503: never "allowed", and never a 403
+    `device_revoked`, which would sign every phone out during an outage.
+    No database configured (local dev) → there are no rows: not revoked."""
     if not valid_device_id(device_id):
         return False
     try:
         from api.services.cache import get_redis
 
         r = await get_redis()
-        return bool(await r.get(_REVOKED_KEY.format(account_id, device_id)))
-    except Exception:
+        if await r.get(_REVOKED_KEY.format(account_id, device_id)):
+            return True
+        if not strict:
+            return False
+    except Exception as e:
+        logger.warning(
+            "device_revoked_marker_unreadable",
+            extra={"account_id": account_id, "error": type(e).__name__},
+        )
+    return await _revoked_in_database(account_id, device_id)
+
+
+async def _revoked_in_database(account_id: str, device_id: str) -> bool:
+    store = account_store.get_account_store()
+    if store is None:
         return False
+    try:
+        return await store.is_device_revoked(account_id=account_id, device_hash=device_id)
+    except AccountStoreError as e:
+        from fastapi import HTTPException
+
+        logger.error(
+            "device_revoked_check_unavailable",
+            extra={"account_id": account_id, "error": str(e)},
+        )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "Service temporarily unavailable. Please retry shortly.",
+                "retry_after_seconds": 30,
+            },
+        ) from e
 
 
 async def load_entitlement(account_id: str) -> Entitlement:

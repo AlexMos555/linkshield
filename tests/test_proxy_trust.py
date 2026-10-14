@@ -117,3 +117,37 @@ def test_http_client_loggers_never_log_request_urls():
     finally:
         root.setLevel(saved[0])
         root.handlers[:] = saved[1]
+
+
+# ── Right-to-left X-Forwarded-For walk (audit: spoofable leftmost entry) ──
+#
+# Railway's edge APPENDS the address it saw to whatever X-Forwarded-For the
+# client sent. The leftmost entry is therefore whatever the client wrote; the
+# real client is the rightmost entry that is not one of our own proxies.
+
+
+def test_a_client_cannot_pick_its_rate_limit_key_by_prepending_an_ip(trusted):
+    trusted("100.64.0.0/10")
+    # The client sent "X-Forwarded-For: 1.2.3.4"; the edge appended 203.0.113.9.
+    assert _extract_client_ip(_req("100.66.0.9", "1.2.3.4, 203.0.113.9")) == "203.0.113.9"
+
+
+def test_trusted_hops_on_the_right_are_skipped(trusted):
+    trusted("100.64.0.0/10")
+    xff = "6.6.6.6, 198.51.100.7, 100.64.0.2, 100.70.1.1"
+    assert _extract_client_ip(_req("100.66.0.9", xff)) == "198.51.100.7"
+
+
+def test_a_garbage_rightmost_entry_is_still_the_key_not_the_spoofed_left(trusted):
+    trusted("100.64.0.0/10")
+    assert _extract_client_ip(_req("100.66.0.9", "1.2.3.4, not-an-ip")) == "not-an-ip"
+
+
+def test_all_hops_trusted_falls_back_to_the_leftmost(trusted):
+    trusted("100.64.0.0/10")
+    assert _extract_client_ip(_req("100.66.0.9", "100.64.0.5, 100.64.0.6")) == "100.64.0.5"
+
+
+def test_an_empty_header_from_a_trusted_peer_uses_the_peer(trusted):
+    trusted("100.64.0.0/10")
+    assert _extract_client_ip(_req("100.66.0.9", " , ")) == "100.66.0.9"

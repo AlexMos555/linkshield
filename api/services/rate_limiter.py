@@ -378,14 +378,18 @@ def _extract_client_ip(request: Request) -> str:
 
     The fix:
       - When the immediate caller (request.client.host) IS in our
-        trust list, the proxy is responsible for replacing/appending
-        the client's real IP — we honor the leftmost XFF entry.
+        trust list, walk X-Forwarded-For from the RIGHT and take the
+        first address that is not itself one of our proxies. Railway's
+        edge APPENDS the address it saw to whatever header the client
+        sent, so the leftmost entry is attacker-chosen (a client that
+        prepends a fake IP would otherwise pick its own rate-limit key).
       - When it is NOT, ignore XFF and use the TCP peer address.
         That's still a rate-limit signal (it caps the offending box),
         just one the caller can't forge.
 
     `trusted_proxy_cidrs` is empty by default — locally everything
-    runs unproxied, so we keep the legacy "leftmost XFF" behavior.
+    runs unproxied, so we keep the legacy "leftmost XFF" behavior there
+    (no proxy list → no way to tell our hops from the client's).
     Production sets it to Railway's egress range (also covers Vercel
     when it sits in front of the API).
     """
@@ -413,10 +417,30 @@ def _extract_client_ip(request: Request) -> str:
 
     xff = raw_xff if xff_trusted else None
     if xff:
-        return xff.split(",")[0].strip()
+        hops = [h.strip() for h in xff.split(",") if h.strip()]
+        if hops:
+            if not trusted_cidrs:
+                return hops[0]
+            return _rightmost_untrusted(hops, trusted_cidrs)
     if peer:
         return peer
     return "unknown"
+
+
+def _rightmost_untrusted(hops: list[str], trusted_cidrs: list[str]) -> str:
+    """The standard right-to-left X-Forwarded-For walk.
+
+    Every hop to the right of the client was appended by a proxy we trust,
+    so skip those; the first address that is not one of our proxies is the
+    client as our edge saw it. Anything further left was written by the
+    client and is never used. A malformed entry is not a trusted proxy, so it
+    stops the walk too (our edge never writes one). If every hop is a
+    trusted proxy, the leftmost is all we have.
+    """
+    for hop in reversed(hops):
+        if not _ip_in_any_cidr(hop, trusted_cidrs):
+            return hop
+    return hops[0]
 
 
 def _ip_in_any_cidr(ip_str: str, cidrs: list[str]) -> bool:

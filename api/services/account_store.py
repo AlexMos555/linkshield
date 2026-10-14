@@ -60,6 +60,8 @@ class AccountStore(Protocol):
 
     async def list_devices(self, account_id: str) -> list[dict]: ...
 
+    async def is_device_revoked(self, *, account_id: str, device_hash: str) -> bool: ...
+
     async def register_device(
         self,
         *,
@@ -229,6 +231,22 @@ class PostgrestAccountStore:
             headers=self._headers(),
         )
         return list(rows or [])
+
+    async def is_device_revoked(self, *, account_id: str, device_hash: str) -> bool:
+        """True when this install id was unlinked from this account."""
+        rows = await self._call(
+            "get",
+            "/rest/v1/devices",
+            params={
+                "user_id": f"eq.{account_id}",
+                "device_hash": f"eq.{device_hash}",
+                "revoked_at": "not.is.null",
+                "select": "id",
+                "limit": "1",
+            },
+            headers=self._headers(),
+        )
+        return bool(rows)
 
     async def _rpc(self, fn: str, args: dict) -> dict:
         result = await self._call(

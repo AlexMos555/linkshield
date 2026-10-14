@@ -1802,7 +1802,7 @@
       "code_label": "Codice ricevuto via e-mail",
       "code_submit": "Accedi",
       "code_submitting": "Verifica del codice…",
-      "code_valid_for": "Il codice è valido per 1 ora.",
+      "code_valid_for": "Il codice è valido per 10 minuti.",
       "code_spam_hint": "Nessuna e-mail? Attendi un minuto e controlla la cartella Spam. Il mittente è Cleanway.",
       "code_resend": "Invia di nuovo il codice",
       "code_resend_in": "Reinvia tra {seconds} s",
@@ -3636,7 +3636,7 @@
       "err_captcha": "Il controllo di sicurezza non è stato completato. Riprova.",
       "err_captcha_update": "Per accedere serve una versione più recente di Cleanway. Aggiorna l'app e riprova.",
       "captcha_wait": "Completamento del controllo di sicurezza…",
-      "code_valid_for": "Il codice è valido per 1 ora.",
+      "code_valid_for": "Il codice è valido per 10 minuti.",
       "code_spam_hint": "Nessuna e-mail? Attendi un minuto e controlla la cartella Spam. Il mittente è Cleanway."
     },
     "onboarding": {

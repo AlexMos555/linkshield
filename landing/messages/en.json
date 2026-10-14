@@ -251,7 +251,7 @@
     "code_label": "Code from the email",
     "code_submit": "Sign in",
     "code_submitting": "Checking the code…",
-    "code_valid_for": "The code is valid for 1 hour.",
+    "code_valid_for": "The code is valid for 10 minutes.",
     "code_spam_hint": "No email? Give it a minute and check your Spam folder. The sender is Cleanway.",
     "code_resend": "Send the code again",
     "code_resend_in": "Resend in {seconds} s",

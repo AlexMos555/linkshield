@@ -13,18 +13,17 @@
  * Supabase outage.
  */
 
-// Reuse the API base resolution logic from utils/api.js so dev
-// override (chrome.storage.local.api_url) works consistently.
-let API_BASE = "https://api.cleanway.ai";
+// Same API base resolution as utils/api.js: the dev override
+// (chrome.storage.local.api_url) only when allowlisted (utils/api-base.js).
+const apiBaseRules = globalThis.cleanwayApiBase;
+let API_BASE = apiBaseRules.DEFAULT_API_BASE;
 try {
   chrome.storage.local.get("api_url").then((data) => {
-    if (data && typeof data.api_url === "string" && data.api_url.startsWith("http")) {
-      API_BASE = data.api_url.replace(/\/$/, "");
-    }
+    API_BASE = apiBaseRules.resolveApiBase(data && data.api_url);
   }).catch(() => {});
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes && changes.api_url && typeof changes.api_url.newValue === "string") {
-      API_BASE = changes.api_url.newValue.replace(/\/$/, "");
+    if (area === "local" && changes && changes.api_url) {
+      API_BASE = apiBaseRules.resolveApiBase(changes.api_url.newValue);
     }
   });
 } catch { /* storage not available in tests */ }
