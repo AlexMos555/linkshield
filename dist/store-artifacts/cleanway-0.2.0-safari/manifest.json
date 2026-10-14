@@ -46,7 +46,6 @@
         "src/content/modern-phish-guard.js",
         "src/content/password-pwned.js",
         "src/content/reason-labels.js",
-        "src/content/block-page.js",
         "src/content/index.js"
       ],
       "css": [

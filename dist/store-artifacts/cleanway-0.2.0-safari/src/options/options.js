@@ -113,7 +113,7 @@ document.getElementById("account-sign-out").addEventListener("click", async (e) 
 // flips; an hourly token refresh (same state) does not.
 try {
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !changes.auth_token) return;
+    if (!self.cleanwayTokens.isAccessTokenChange(changes, area)) return;
     if (Boolean(changes.auth_token.oldValue) !== Boolean(changes.auth_token.newValue)) location.reload();
   });
 } catch (e) { /* storage events unavailable */ }
@@ -195,10 +195,10 @@ function updatePinControls(pinSet) {
 async function pushSkillToApi(patch) {
   // Non-blocking best-effort: if signed in (JWT in storage), sync to API.
   try {
-    const stored = await chrome.storage.local.get(["auth_token", "api_url"]);
+    const stored = await chrome.storage.local.get(["api_url"]);
+    stored.auth_token = await self.cleanwayTokens.readAccessToken();
     if (!stored.auth_token) return;
-    const apiBase =
-      stored.api_url || "https://api.cleanway.ai";
+    const apiBase = self.cleanwayApiBase.resolveApiBase(stored.api_url);
     await fetch(apiBase + "/api/v1/user/settings", {
       method: "PUT",
       headers: {
@@ -450,18 +450,32 @@ chrome.storage.local.get(["settings"], (data) => {
   document.getElementById("block-miners").checked = s2.blockMiners !== false;
 });
 
-// Load API URL
+// Load API URL (only an allowlisted value is ever shown as active).
 chrome.storage.local.get(["api_url"], (data) => {
-  if (data.api_url) document.getElementById("api-url-input").value = data.api_url;
+  const allowed = self.cleanwayApiBase.allowedApiBase(data.api_url);
+  if (allowed) document.getElementById("api-url-input").value = allowed;
 });
 
-// Save API URL
+// Save API URL. Signed-in calls carry the account's token to this server, so
+// only production (or loopback in an unpacked dev install) is accepted —
+// utils/api-base.js. Anything else is refused and nothing is stored; an empty
+// field (or production itself) clears the override.
 document.getElementById("save-api-url").addEventListener("click", () => {
-  const url = document.getElementById("api-url-input").value.trim();
-  if (url) {
-    chrome.storage.local.set({ api_url: url });
-    flashLabel(document.getElementById("save-api-url"), t("options_saved"), "options_save");
+  const input = document.getElementById("api-url-input");
+  const url = input.value.trim();
+  const rules = self.cleanwayApiBase;
+  const allowed = url ? rules.allowedApiBase(url) : rules.DEFAULT_API_BASE;
+  if (!allowed) {
+    input.style.borderColor = "#ef4444";
+    input.setAttribute("aria-invalid", "true");
+    return;
   }
+  input.style.borderColor = "";
+  input.removeAttribute("aria-invalid");
+  input.value = allowed === rules.DEFAULT_API_BASE ? "" : allowed;
+  if (allowed === rules.DEFAULT_API_BASE) chrome.storage.local.remove("api_url");
+  else chrome.storage.local.set({ api_url: allowed });
+  flashLabel(document.getElementById("save-api-url"), t("options_saved"), "options_save");
 });
 
 // Copy referral link
@@ -518,7 +532,7 @@ async function refreshDeviceOverridePanel() {
   if (!section) return;
   let stored;
   try {
-    stored = await chrome.storage.local.get(["auth_token"]);
+    stored = { auth_token: await self.cleanwayTokens.readAccessToken() };
   } catch {
     return;
   }
@@ -582,7 +596,7 @@ async function refreshDeviceOverridePanel() {
 async function pushDeviceOverride(payload) {
   let stored;
   try {
-    stored = await chrome.storage.local.get(["auth_token"]);
+    stored = { auth_token: await self.cleanwayTokens.readAccessToken() };
   } catch {
     return;
   }
@@ -673,7 +687,7 @@ document.getElementById("export-data").addEventListener("click", () => {
 //   none     → "Create" + "Join" CTAs
 //   active   → list members + recent alerts (+ owner-only invite)
 //
-// Auth: requires chrome.storage.local.auth_token (Supabase access
+// Auth: requires the auth_token (Supabase access
 // token from a successful sign-in). Without it the section stays
 // hidden — "Sign in" in the Account section above goes through
 // cleanway.ai/extension/connect (background/auth.js).
@@ -706,7 +720,7 @@ async function loadFamilyHub() {
 
   let stored;
   try {
-    stored = await chrome.storage.local.get(["auth_token"]);
+    stored = { auth_token: await self.cleanwayTokens.readAccessToken() };
   } catch {
     return;
   }
@@ -871,7 +885,7 @@ async function renderFamilyAlerts(token, familyId) {
 // ─── Event handlers ───────────────────────────────────────────────
 
 document.getElementById("family-create-btn")?.addEventListener("click", async () => {
-  const stored = await chrome.storage.local.get(["auth_token"]);
+  const stored = { auth_token: await self.cleanwayTokens.readAccessToken() };
   if (!stored.auth_token) return;
   const api = await lazyFamilyApi();
   const created = await api.createFamily(stored.auth_token, t("options_family_default_name"));
@@ -920,7 +934,7 @@ document.getElementById("family-accept-btn")?.addEventListener("click", async ()
     return;
   }
   errBox.hidden = true;
-  const stored = await chrome.storage.local.get(["auth_token"]);
+  const stored = { auth_token: await self.cleanwayTokens.readAccessToken() };
   if (!stored.auth_token) return;
   const api = await lazyFamilyApi();
   const joined = await api.acceptInvite(stored.auth_token, code, pin);
