@@ -38,7 +38,13 @@ updates:
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
 
+  # Every action in .github/workflows is pinned to a full commit SHA with a
+  # "# vX.Y.Z" comment; Dependabot bumps the SHA and the comment together.
+  # One grouped PR a month instead of one per action.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      github-actions:
+        patterns: ["*"]

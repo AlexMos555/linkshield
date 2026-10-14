@@ -28,13 +28,16 @@ jobs:
     environment: production
     env:
       ENVIRONMENT: production
+      # Inputs reach run: steps as env vars, never spliced into the script.
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      SKIP_STAGING: ${{ inputs.skip_staging }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.commit_sha }}
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
           cache: pip
@@ -71,7 +74,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_PRODUCTION }}
           RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE_PRODUCTION }}
         run: |
-          echo "Deploying commit ${{ inputs.commit_sha }} to Railway PRODUCTION..."
+          echo "Deploying commit $COMMIT_SHA to Railway PRODUCTION..."
           ~/.railway/bin/railway up --service "$RAILWAY_SERVICE" --detach
 
       - name: Wait for production /health
@@ -94,5 +97,5 @@ jobs:
       - name: Log deploy event
         if: success()
         run: |
-          echo "::notice::Production deploy SUCCESS for commit ${{ inputs.commit_sha }}"
-          echo "Skipped staging: ${{ inputs.skip_staging }}"
+          echo "::notice::Production deploy SUCCESS for commit $COMMIT_SHA"
+          echo "Skipped staging: $SKIP_STAGING"
