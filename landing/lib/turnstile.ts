@@ -14,7 +14,9 @@
  * `scheme` param would turn it into an open redirector into any app on the
  * device.
  *
- * Sitekey: NEXT_PUBLIC_TURNSTILE_SITE_KEY. When unset we fall back to
+ * Sitekey: NEXT_PUBLIC_TURNSTILE_SITE_KEY; else, on a Vercel production build,
+ * the public sitekey of the "Cleanway sign-in" widget (cleanway.ai only — it
+ * fails on localhost/previews). Otherwise we fall back to
  * Cloudflare's documented always-pass TEST key and report `testMode`, which
  * the UI renders as a visible notice — a test key in production must be
  * impossible to miss. Supabase validates the token only while its CAPTCHA
@@ -27,6 +29,14 @@ export const TURNSTILE_SCRIPT_URL =
 /** Cloudflare's documented dummy sitekey: visible widget, always passes. */
 export const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
 
+/**
+ * Public sitekey of the "Cleanway sign-in" Turnstile widget (Cloudflare account
+ * of the founder, domains cleanway.ai + www). Not a secret: it ships in every
+ * page. The matching secret lives only in Cloudflare and, once captcha is
+ * enabled, in Supabase Auth.
+ */
+export const TURNSTILE_PRODUCTION_SITE_KEY = "0x4AAAAAAFWpGtUS2VRUiS2o";
+
 export interface TurnstileSiteKey {
   readonly key: string;
   /** True when the always-pass test key is in use — the UI must say so. */
@@ -35,9 +45,13 @@ export interface TurnstileSiteKey {
 
 export function resolveTurnstileSiteKey(
   configured: string | undefined | null,
+  vercelEnv?: string | null,
 ): TurnstileSiteKey {
   const key = (configured ?? "").trim();
   if (key) return { key, testMode: false };
+  if ((vercelEnv ?? "").trim() === "production") {
+    return { key: TURNSTILE_PRODUCTION_SITE_KEY, testMode: false };
+  }
   return { key: TURNSTILE_TEST_SITE_KEY, testMode: true };
 }
 
@@ -47,6 +61,7 @@ export function resolveTurnstileSiteKey(
  */
 export const TURNSTILE_SITE_KEY: TurnstileSiteKey = resolveTurnstileSiteKey(
   process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+  process.env.NEXT_PUBLIC_VERCEL_ENV,
 );
 
 // ─── Mobile deep-link contract ────────────────────────────────────
