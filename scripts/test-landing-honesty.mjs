@@ -22,6 +22,8 @@
  *      language — and the legal pages swap their payment section by id.
  *  12. The world's /pricing shows the device plan the API serves, falls back to
  *      the base tier for anything else, and never hand-writes a price.
+ *  13. JSON-LD can never close its <script> tag: every inline ld+json block
+ *      goes through safeJsonLd, which escapes <, >, & and U+2028/U+2029.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -63,6 +65,7 @@ import {
 } from "../landing/lib/billing.ts";
 import { paidPlansOffered } from "../landing/lib/paid-plans.ts";
 import { REASON_CODE_TO_KEY, reasonLabelKey, reasonLines } from "../landing/lib/reason-label.ts";
+import { safeJsonLd } from "../landing/lib/json-ld.ts";
 import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
 import { isFlagOn } from "../landing/lib/support.ts";
 import {
@@ -606,6 +609,37 @@ check("the world pricing strings carry no hand-written dollar price, in any loca
       assert.ok(!/\$\s?\d/.test(text), `${locale} landing.pricing.${key}: hand-written price "${text}"`);
     }
   }
+});
+
+console.log("\nJSON-LD never closes its <script> tag");
+check("safeJsonLd escapes the characters that end or confuse an inline script", () => {
+  const out = safeJsonLd({ name: "</script><b>cwprobe", amp: "a&b", gt: "x>y", ls: "a\u2028b\u2029c" });
+  for (const raw of ["<", ">", "&", "\u2028", "\u2029"]) {
+    assert.ok(!out.includes(raw), `raw ${JSON.stringify(raw)} survived: ${out}`);
+  }
+  assert.ok(out.includes("\\u003c/script\\u003e"), out);
+});
+check("safeJsonLd output parses back to the same object", () => {
+  const value = { "@context": "https://schema.org", name: "</script><!-- & -->", list: [1, "a\u2028b"], nested: { ok: true } };
+  assert.deepEqual(JSON.parse(safeJsonLd(value)), value);
+});
+check("every inline ld+json block in the landing goes through safeJsonLd", () => {
+  const offenders = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(tsx?|jsx?)$/.test(entry.name)) {
+        const text = fs.readFileSync(full, "utf-8");
+        // Any __html built with a bare JSON.stringify can carry "</script>".
+        if (/__html:\s*JSON\.stringify/.test(text)) offenders.push(path.relative(ROOT, full));
+      }
+    }
+  };
+  walk(path.join(ROOT, "landing", "app"));
+  walk(path.join(ROOT, "landing", "components"));
+  assert.deepEqual(offenders, [], `bare JSON.stringify in dangerouslySetInnerHTML: ${offenders.join(", ")}`);
 });
 
 if (failures > 0) {

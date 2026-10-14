@@ -11,6 +11,7 @@ import { hostFromSegment } from "@/lib/check-host";
 import { displayHost } from "@/lib/display-host";
 import { localePath } from "@/lib/locale-path";
 import { reasonLines } from "@/lib/reason-label";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -358,7 +359,7 @@ export default async function CheckPage({ params }: Props) {
         </div>
 
         {/* SEO: Structured Data */}
-        {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
+        {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />}
 
         {/* Check Another */}
         <div style={{ marginTop: 32, textAlign: "center" }}>
