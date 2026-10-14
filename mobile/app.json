@@ -49,7 +49,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
-      "versionCode": 104,
+      "versionCode": 105,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.BIND_VPN_SERVICE",
