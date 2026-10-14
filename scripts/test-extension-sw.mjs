@@ -468,7 +468,7 @@ async function runTree(tree) {
       await blockedTab.click("#ls-block-proceed");
       await blockedTab.waitForURL(`http://scam-visit.example:${port}/landing.html`, { timeout: 8000 });
       await sleep(1500);
-      assert.ok(blockedTab.url().startsWith("http://scam-visit.example"), `sent back to the block page: ${blockedTab.url()}`);
+      assert.equal(new URL(blockedTab.url()).hostname, "scam-visit.example", `sent back to the block page: ${blockedTab.url()}`);
       const banner = await (await blockedTab.waitForSelector("#ls-credguard-banner", { state: "attached", timeout: 8000 }))
         .evaluate((el) => el.textContent);
       assert.ok(banner.includes(messages.credguard_page_flagged.message), `banner: ${banner}`);
