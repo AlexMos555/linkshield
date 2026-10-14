@@ -379,8 +379,11 @@ weekly report send anything new.
 > what — privacy policy, section 11. The user can remove it in the app, or
 > choose "Automatic" on the same Settings page, at any time.
 >
-> The scam-text filter is an SMS filter extension: enable it in Settings →
-> Apps → Messages → Unknown & Spam → SMS Filtering → Cleanway. It works
+> The scam-text filter is an SMS filter extension. On iOS 26, enable it in
+> Settings → Apps → Messages: under Unknown Senders turn on Screen Unknown
+> Senders, then tap Text Message Filter → Cleanway (Text Message Filter is
+> greyed out until Screen Unknown Senders is on). On iOS 18: Settings → Apps
+> → Messages → Unknown & Spam → SMS Filtering → Cleanway. It works
 > offline — it has no network URL and never sends a message anywhere — and
 > moves only texts it judges a scam to Junk.
 >
@@ -665,11 +668,26 @@ module). The bundled extension is 1.3 MB (0.7 MB binary + the four assets).
   gives an app no API to learn whether the person enabled the filter, and a
   filter extension cannot write anything back (no counter, no heartbeat).
   The row's line says it works once turned on in Settings.
-- **Set up** opens `SmsFilterSetupSheet`: Settings → Apps → Messages →
-  Unknown & Spam → SMS Filtering → Cleanway (iOS 17 and earlier: Settings →
-  Messages → Unknown & Spam), what goes to Junk, that the text never leaves
-  the phone, and the limits (unknown senders only, no iMessage, region/carrier
-  may hide the option). "Open Settings" opens Cleanway's own Settings page —
+- **Set up** opens `SmsFilterSetupSheet`. iOS 26 steps: Settings → Apps →
+  Messages → (Unknown Senders) turn on Screen Unknown Senders → Text Message
+  Filter → Cleanway. On iOS 26 the Text Message Filter row stays greyed out
+  ("None") until Screen Unknown Senders is on — found by an on-device test on
+  iOS 26.3.1 (2026-10-14); the sheet before that named only the iOS 18 path,
+  which no longer exists. A note right under the steps says what the switch
+  costs: messages from numbers not in the contacts go to a separate Unknown
+  Senders list (Messages → Filters → Unknown Senders), verification codes
+  still notify by default. Then the older paths (iOS 18: Settings → Apps →
+  Messages → Unknown & Spam → SMS Filtering; iOS 17 and earlier: Settings →
+  Messages → Unknown & Spam → SMS Filtering), what goes to Junk, that the
+  text never leaves the phone, and the limits (unknown senders only, no
+  iMessage, region/carrier may hide the option). Apple's labels per locale:
+  [support.apple.com/125068](https://support.apple.com/en-us/125068) ("View
+  conversations from unknown senders in Messages", iOS 26, also in ru-ru,
+  es-es, pt-br, fr-fr, de-de, it-it, id-id, ar-ae) and the iPhone User Guide
+  "Block, filter, and report messages" for iOS 26/18/17 (`iph203ab0be4`;
+  Messages moved under Settings → Apps in iOS 18). Apple has no Hindi
+  support page, so the Hindi sheet describes the iOS 26 switches in words
+  with the English label in brackets. "Open Settings" opens Cleanway's own Settings page —
   the Messages page has no public URL, and private ones are a review rejection.
 - **Kill switch**: the update check (`useUpdateCheck`) now also runs on an
   iPhone build with the filter, for the server's switches only (no update
@@ -707,7 +725,7 @@ On the iOS 26.2 simulator (Xcode 26.3, 2026-10-09), Release build:
   -scheme CleanwayMessageEngine` in `mobile/targets/sms-filter`): parity 0
   mismatches, the numbers in §5.5;
 - the simulator's Settings → Apps → Messages page is empty (no telephony), so
-  the SMS Filtering list cannot be shown there.
+  the filter list (Text Message Filter on iOS 26) cannot be shown there.
 - 2026-10-10, same simulator: the in-app "Check a text message" (§5.6) runs
   the engine in the app — a parcel-fee scam text in English and in Russian
   shows "Looks like a scam" / «Похоже на мошенников» with three reasons, the

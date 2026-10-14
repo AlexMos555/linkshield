@@ -183,8 +183,8 @@ export const SAFARI_TEST_URL_FALLBACK = "https://cleanway.ai/";
 /**
  * The filter's layer status: "setup" whenever this build carries the
  * extension, and never "on". Apple gives an app no way to know whether the
- * person turned the filter on (Settings → Apps → Messages → Unknown & Spam →
- * SMS Filtering), and a filter extension cannot write anything back; a row
+ * person turned the filter on (iOS 26: Settings → Apps → Messages → Screen
+ * Unknown Senders, then Text Message Filter), and a filter extension cannot write anything back; a row
  * that turned green on a guess would be the placebo this card exists to
  * avoid. "coming" on a build without the extension.
  */
@@ -202,16 +202,22 @@ export function remoteConfigFetched(os: string, smsFilterInstalled: boolean): bo
   return os === "android" || (os === "ios" && smsFilterInstalled);
 }
 
-/** The setup sheet, in order: where the switch is, then what it does and what it never does. */
+/**
+ * The setup sheet, in order: where the switch is (iOS 26 steps — Text Message
+ * Filter stays grey until Screen Unknown Senders is on), what that switch does
+ * to unknown senders' messages, the iOS 17–18 path, then what the filter does
+ * and what it never does.
+ */
 export const SMS_FILTER_SETUP = {
   titleKey: "mobile.ios_sms.sheet_title",
   leadKey: "mobile.ios_sms.sheet_lead",
   stepKeys: [
     "mobile.ios_sms.step_settings",
     "mobile.ios_sms.step_messages",
-    "mobile.ios_sms.step_filtering",
+    "mobile.ios_sms.step_screen",
     "mobile.ios_sms.step_choose",
   ],
+  screenNoteKey: "mobile.ios_sms.screen_note",
   olderKey: "mobile.ios_sms.older_ios",
   noteKeys: ["mobile.ios_sms.note_what", "mobile.ios_sms.note_privacy", "mobile.ios_sms.note_limits"],
   openSettingsKey: "mobile.ios_sms.open_settings",
