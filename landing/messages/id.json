@@ -251,7 +251,7 @@
     "code_label": "Kode dari email",
     "code_submit": "Masuk",
     "code_submitting": "Memeriksa kode…",
-    "code_valid_for": "Kode berlaku selama 1 jam.",
+    "code_valid_for": "Kode berlaku selama 10 menit.",
     "code_spam_hint": "Email belum masuk? Tunggu semenit dan periksa folder Spam. Pengirimnya adalah Cleanway.",
     "code_resend": "Kirim ulang kode",
     "code_resend_in": "Kirim ulang dalam {seconds} dtk",

@@ -1804,7 +1804,7 @@
       "code_label": "Code from the email",
       "code_submit": "Sign in",
       "code_submitting": "Checking the code…",
-      "code_valid_for": "The code is valid for 1 hour.",
+      "code_valid_for": "The code is valid for 10 minutes.",
       "code_spam_hint": "No email? Give it a minute and check your Spam folder. The sender is Cleanway.",
       "code_resend": "Send the code again",
       "code_resend_in": "Resend in {seconds} s",
@@ -3578,7 +3578,7 @@
       "err_captcha": "The security check didn't finish. Please try again.",
       "err_captcha_update": "Signing in needs a newer version of Cleanway. Please update the app and try again.",
       "captcha_wait": "Finishing the security check…",
-      "code_valid_for": "The code is valid for 1 hour.",
+      "code_valid_for": "The code is valid for 10 minutes.",
       "code_spam_hint": "No email? Give it a minute and check your Spam folder. The sender is Cleanway."
     },
     "onboarding": {

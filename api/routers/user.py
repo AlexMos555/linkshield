@@ -1143,6 +1143,9 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
 # Rate-limited as a sensitive action: exports run 5+ queries against
 # Supabase per call and produce a downloadable file; we don't want a
 # bot grinding this endpoint to enumerate user state.
+from fastapi import Header as _ExportHeader  # noqa: E402 — kept beside its only user
+
+
 @router.get(
     "/export",
     dependencies=[Depends(rate_limit(mode="sensitive", category="user_export"))],
@@ -1152,8 +1155,28 @@ async def export_user_data(
     # in 30-day grace) MUST still be able to export their data —
     # locking them out of access would defeat their own access right.
     user: AuthUser = Depends(get_current_user_including_deleted),
+    # Hidden from the OpenAPI document like the auth dependency's copy:
+    # a transport detail of our own clients.
+    x_device_id: Optional[str] = _ExportHeader(None, alias="X-Device-Id", include_in_schema=False),
 ) -> dict:
     """Return every server-side row owned by the caller, GDPR Art. 15."""
+    # The soft-delete bypass above also skips get_current_user's unlinked-
+    # device gate, so apply it here — strictly (the devices row is read even
+    # when Redis has no marker): an unlinked browser must not download the
+    # whole account, and an export is rare enough for one extra query.
+    from api.services.account_devices import is_revoked
+
+    if isinstance(x_device_id, str) and x_device_id and await is_revoked(
+        user.id, x_device_id, strict=True
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "device_revoked",
+                "error": "This device was removed from your account. Sign in again to use it.",
+            },
+        )
+
     settings = get_settings()
     if not settings.supabase_url or not settings.supabase_service_key:
         raise HTTPException(503, "Database not configured")

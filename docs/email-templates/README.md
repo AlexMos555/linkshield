@@ -33,9 +33,10 @@ for review and for a future provider that takes a text part).
 - Russian first, one short English line at the bottom.
 - Large type (body 19 px, code 40 px monospace with letter-spacing, 34 px on
   narrow screens) — many readers are on a phone with large system fonts.
-- The code before anything else, then «Код действует 1 час», then
+- The code before anything else, then «Код действует 10 минут», then
   «Никому не сообщайте этот код», then what to do if you did not ask for it.
-- «1 час» is pinned by the script (`mailer_otp_exp = 3600`), so the copy and
+- «10 минут» is pinned by the script (`mailer_otp_exp = 600`; it also bounds
+  the recovery and email-change links), so the copy and
   the config cannot drift.
 - Sender name is `Cleanway` (`smtp_sender_name`); the address is
   `no-reply@cleanway.ai` unless `SMTP_SENDER` says otherwise.
@@ -55,7 +56,7 @@ palette moves.
 | Headings, body | `#F1F5F9` | `textPrimary` |
 | Secondary text | `#94A3B8`; fine print `#6B7A93` | `textSecondary` / `textMuted` |
 | Code box | `#183136`, border `#1C4844` (green wash/stroke over the card) | `greenWash` / `greenStroke` |
-| «Код действует 1 час» | `#34D399` | `green` |
+| «Код действует 10 минут» | `#34D399` | `green` |
 | Warning box | `#302531`, border `#4D303A`, text `#F87171` | `dangerWash` / `dangerStroke` / `danger` |
 | Button (link emails) | `#4C8DFF`, white text, radius 14 | `blue` / `radius.control` |
 

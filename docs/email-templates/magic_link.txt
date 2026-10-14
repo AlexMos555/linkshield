@@ -6,7 +6,7 @@ Cleanway
 
     {{ .Token }}
 
-Код действует 1 час.
+Код действует 10 минут.
 
 Никому не сообщайте этот код — ни «сотруднику банка», ни «службе поддержки», ни родственникам по телефону. Сотрудники Cleanway никогда не спрашивают код.
 
@@ -15,4 +15,4 @@ Cleanway
 --
 Вы получили это письмо, потому что на этот адрес запросили код для входа в Cleanway. В письмах Cleanway с кодом никогда нет ссылок и кнопок. Письмо отправлено автоматически, отвечать на него не нужно. Помощь: support@cleanway.ai или раздел «Поддержка» на сайте cleanway.ai.
 
-Your Cleanway sign-in code is above. It is valid for 1 hour. Never share it with anyone.
+Your Cleanway sign-in code is above. It is valid for 10 minutes. Never share it with anyone.

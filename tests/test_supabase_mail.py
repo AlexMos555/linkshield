@@ -101,7 +101,7 @@ def test_desired_config_pins_port_as_string_and_otp_contract():
     body = sm.smtp_desired_config(sm.resolve_smtp("yandex", _env()))
     assert body["smtp_port"] == "465" and isinstance(body["smtp_port"], str)
     assert body["mailer_otp_length"] == 6
-    assert body["mailer_otp_exp"] == 3600
+    assert body["mailer_otp_exp"] == 600  # 10 minutes (production hardening 2026-10)
     assert body["external_email_enabled"] is True
     assert body["smtp_pass"] == PASS
 
@@ -118,7 +118,7 @@ def _live(**over):
         "smtp_max_frequency": 60,
         "rate_limit_email_sent": 200,
         "mailer_otp_length": 6,
-        "mailer_otp_exp": 3600,
+        "mailer_otp_exp": 600,
     }
     base.update(over)
     return base
@@ -197,7 +197,7 @@ def test_shipped_templates_load_and_follow_the_rules():
         assert "{{ .Token }}" in html
         assert "<a " not in html, "code emails carry no links or buttons"
         assert "Никому не сообщайте" in html
-        assert "1 час" in html
+        assert "10 минут" in html and "1 час" not in html
         assert "Спам" not in html  # the spam hint lives in the app/site, not in mail that may not arrive
     assert all("\n" not in fields[f"mailer_subjects_{k}"] for k in sm.TEMPLATE_TYPES)
 
@@ -304,6 +304,62 @@ def test_verify_report_verdict(config, ok):
     assert not any("whatever-the-api-echoes" in line for line in lines)
 
 
+def test_the_old_one_hour_expiry_is_not_ready():
+    # Production was hardened to 600 s; a project still on 3600 s must be
+    # flagged, and running the smtp step must move it to 600, not back.
+    verdict, lines = sm.verify_report({**_live(mailer_otp_exp=3600), **_templates_with_token()})
+    assert verdict is False
+    assert any("3600 s" in line and "want 600" in line for line in lines)
+    assert sm.OTP_EXPIRY_S == 600
+
+
+def test_verify_prints_the_otp_expiry_in_minutes():
+    _ok, lines = sm.verify_report({**_live(), **_templates_with_token()})
+    assert any("600 s (10 min)" in line for line in lines)
+
+
+# Auth hardening set by hand in production (2026-10): the smtp step must
+# never send these, so re-running the script cannot quietly revert them.
+HARDENED_KEYS = (
+    "rate_limit_verify",
+    "password_min_length",
+    "password_required_characters",
+    "security_update_password_require_reauthentication",
+    "mailer_notifications_password_changed_enabled",
+    "mailer_notifications_email_changed_enabled",
+)
+
+
+def test_the_smtp_step_never_touches_the_hardened_auth_settings():
+    body = sm.smtp_desired_config(sm.resolve_smtp("yandex", _env()))
+    assert not set(HARDENED_KEYS) & set(body)
+    assert not set(HARDENED_KEYS) & set(sm.load_templates())
+
+
+def test_verify_shows_the_hardened_settings_read_only():
+    _ok, lines = sm.verify_report({
+        **_live(), **_templates_with_token(),
+        "rate_limit_verify": 10,
+        "password_min_length": 12,
+        "security_update_password_require_reauthentication": True,
+    })
+    text = "\n".join(lines)
+    assert "rate_limit_verify" in text and "10" in text
+    assert "password_min_length" in text and "12" in text
+    assert "reauthentication" in text
+
+
+def test_every_template_states_the_ten_minute_expiry():
+    # mailer_otp_exp covers the codes AND the recovery / email-change links.
+    for path in sorted(sm.TEMPLATES_DIR.glob("*.html")) + sorted(sm.TEMPLATES_DIR.glob("*.txt")):
+        text = path.read_text(encoding="utf-8")
+        assert "1 час" not in text and "1 hour" not in text, path.name
+        if path.name.endswith(".subject.txt"):
+            continue
+        assert "10 минут" in text, path.name
+        assert "10 minutes" in text, path.name
+
+
 # ─── CLI: dry run never writes, --apply writes the diff ───────────
 
 
@@ -330,7 +386,7 @@ class _FakeApi:
 @pytest.fixture
 def fake_api(monkeypatch, tmp_path):
     _FakeApi.calls = []
-    _FakeApi.state = {"smtp_host": None, "rate_limit_email_sent": 2, "mailer_otp_length": 6, "mailer_otp_exp": 3600}
+    _FakeApi.state = {"smtp_host": None, "rate_limit_email_sent": 2, "mailer_otp_length": 6, "mailer_otp_exp": 600}
     monkeypatch.setattr(sm, "ManagementApi", _FakeApi)
     env_file = tmp_path / ".env"
     env_file.write_text(f"SUPABASE_ACCESS_TOKEN={TOKEN}\nSMTP_PASS={PASS}\n", encoding="utf-8")

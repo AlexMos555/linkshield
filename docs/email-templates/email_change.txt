@@ -7,11 +7,11 @@ Cleanway
 Если это вы, подтвердите по ссылке:
 {{ .ConfirmationURL }}
 
-Ссылка действует 1 час. Пока вы её не откроете, адрес не изменится.
+Ссылка действует 10 минут. Пока вы её не откроете, адрес не изменится.
 
 Если вы ничего не меняли, просто удалите это письмо — адрес останется прежним. Никому не пересылайте это письмо.
 
 --
 Вы получили это письмо, потому что для этого аккаунта запросили смену адреса почты в Cleanway. Письмо отправлено автоматически, отвечать на него не нужно. Помощь: support@cleanway.ai или раздел «Поддержка» на сайте cleanway.ai.
 
-A change of the Cleanway sign-in email from {{ .Email }} to {{ .NewEmail }} was requested. If it was you, open the link above (valid 1 hour). Otherwise delete this email.
+A change of the Cleanway sign-in email from {{ .Email }} to {{ .NewEmail }} was requested. If it was you, open the link above (valid 10 minutes). Otherwise delete this email.

@@ -1074,7 +1074,7 @@ function runWebmailOnMailPage(tree, stored, { hang = false } = {}) {
   const requests = [];
   const observers = [];
   const storageListeners = [];
-  const data = { api_url: "https://api.test", ...stored };
+  const data = { api_url: "https://api.cleanway.ai", ...stored };
   const chrome = {
     i18n: { getMessage: (key) => `<${key}>` },
     storage: {
@@ -1148,7 +1148,7 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     await tab.tick();
     assert.equal(tab.requests.length, 1, "switching on did not start scanning");
     const [req] = tab.requests;
-    assert.equal(req.url, "https://api.test/api/v1/email/analyze");
+    assert.equal(req.url, "https://api.cleanway.ai/api/v1/email/analyze");
     assert.deepEqual(Object.keys(req.body).sort(), [
       "body_html", "body_text", "dkim", "dmarc", "from_address", "from_display", "reply_to", "return_path", "spf", "subject",
     ]);
@@ -1484,6 +1484,77 @@ await check("[extension-safari] asks for nativeMessaging (the iPhone app's statu
     assert.ok(!(readJson(join(tree, "manifest.json")).permissions || []).includes("nativeMessaging"), tree);
   }
 });
+
+// ── Group 7: the API server is allowlisted ──
+//
+// Signed-in calls carry the account's token to wherever api_url points. Only
+// production is accepted, plus loopback in an unpacked (developer) install.
+
+function loadApiBase(tree) {
+  const src = readFileSync(join(ROOT, tree, "src/utils/api-base.js"), "utf8");
+  const ctx = vm.createContext({});
+  vm.runInContext(src, ctx);
+  return ctx.cleanwayApiBase;
+}
+
+const PROD_API = "https://api.cleanway.ai";
+const STORE_INSTALL = { manifest_version: 3, update_url: "https://clients2.google.com/service/update2/crx" };
+const UNPACKED_INSTALL = { manifest_version: 3 };
+const NOT_ALLOWED_API = [
+  "https://evil.example", "http://api.cleanway.ai", "https://api.cleanway.ai.evil.example",
+  "https://api.cleanway.ai@evil.example", "https://evil.example/https://api.cleanway.ai",
+  "https://api.cleanway.ai:8443", "http://localhost.evil.example:8000", "http://127.0.0.1.nip.io",
+  "https://localhost:8000", "javascript:alert(1)", "", "   ", null, undefined, 42,
+];
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the API server is production, or loopback in an unpacked install`, () => {
+    const { resolveApiBase, allowedApiBase, DEFAULT_API_BASE } = loadApiBase(tree);
+    assert.equal(DEFAULT_API_BASE, PROD_API);
+    for (const m of [STORE_INSTALL, UNPACKED_INSTALL, null]) {
+      assert.equal(resolveApiBase("https://api.cleanway.ai/", m), PROD_API);
+      for (const bad of NOT_ALLOWED_API) {
+        assert.equal(resolveApiBase(bad, m), PROD_API, `${String(bad)} with ${JSON.stringify(m)}`);
+        assert.equal(allowedApiBase(bad, m), null, String(bad));
+      }
+    }
+    assert.equal(resolveApiBase("http://localhost:8000", UNPACKED_INSTALL), "http://localhost:8000");
+    assert.equal(resolveApiBase("http://127.0.0.1:53111/", UNPACKED_INSTALL), "http://127.0.0.1:53111");
+    // A store install never talks to loopback; an unknown install is not dev.
+    assert.equal(resolveApiBase("http://localhost:8000", STORE_INSTALL), PROD_API);
+    assert.equal(resolveApiBase("http://localhost:8000", null), PROD_API);
+  });
+
+  await check(`[${tree}] every reader of api_url goes through the allowlist`, () => {
+    const readers = listJs(join(tree, "src")).filter((f) => !f.endsWith("utils/api-base.js"));
+    let seen = 0;
+    for (const file of readers) {
+      const src = stripComments(readFileSync(join(ROOT, file), "utf8"));
+      if (!src.includes("api_url")) continue;
+      seen++;
+      assert.ok(/cleanwayApiBase|allowedApiBase/.test(src), `${file} reads api_url without the allowlist`);
+      assert.ok(!/api_url\.startsWith\(|\.api_url\s*\|\||newValue\.replace\(/.test(src),
+        `${file} still trusts any stored api_url`);
+    }
+    assert.ok(seen >= 6, `expected the six api_url readers, saw ${seen}`);
+  });
+
+  await check(`[${tree}] the settings page loads the allowlist before options.js`, () => {
+    const html = readFileSync(join(ROOT, tree, "src/options/options.html"), "utf8");
+    const at = (s) => html.indexOf(s);
+    assert.ok(at('src="../utils/api-base.js"') >= 0 && at('src="../utils/api-base.js"') < at('src="options.js"'));
+  });
+
+  await check(`[${tree}] the webmail scanner never sends mail to a non-allowlisted server`, async () => {
+    const tab = runWebmailOnMailPage(tree, { api_url: "https://evil.example" });
+    await tab.tick();
+    await tab.setSwitch(true);
+    await tab.tick();
+    await tab.tick();
+    assert.equal(tab.requests.length, 1);
+    assert.equal(tab.requests[0].url, `${PROD_API}/api/v1/email/analyze`);
+  });
+}
 
 console.log(
   failed === 0

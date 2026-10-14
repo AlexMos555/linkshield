@@ -502,6 +502,14 @@ class MemoryAccountStore:
             if r["user_id"] == account_id and r["revoked_at"] is None
         ]
 
+    async def is_device_revoked(self, *, account_id: str, device_hash: str) -> bool:
+        self._check()
+        return any(
+            r["user_id"] == account_id and r["device_hash"] == device_hash
+            and r["revoked_at"] is not None
+            for r in self.devices
+        )
+
     async def register_device(self, *, account_id, device_hash, platform, name,
                               app_version, session_id, device_limit) -> dict:
         self._check()
@@ -552,6 +560,17 @@ def account_store():
         yield store
     finally:
         store_module.set_account_store(None)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_health_deep_cache():
+    """/health/deep reuses a result for 30 s (api/services/health_deep_guard.py);
+    a test must probe its own patched downstreams, never another test's."""
+    from api.services import health_deep_guard
+
+    health_deep_guard.reset_for_tests()
+    yield
+    health_deep_guard.reset_for_tests()
 
 
 @pytest.fixture(autouse=True)

@@ -7,11 +7,11 @@ Cleanway
 Если это вы, откройте ссылку:
 {{ .ConfirmationURL }}
 
-Ссылка действует 1 час и работает только один раз.
+Ссылка действует 10 минут и работает только один раз.
 
 Если вы ничего не запрашивали, просто удалите это письмо — без этой ссылки доступ к аккаунту никто не получит. Никому не пересылайте это письмо.
 
 --
 Вы получили это письмо, потому что для этого адреса запросили восстановление доступа к Cleanway. Письмо отправлено автоматически, отвечать на него не нужно. Помощь: support@cleanway.ai или раздел «Поддержка» на сайте cleanway.ai.
 
-Someone asked to recover the Cleanway account for {{ .Email }}. If it was you, open the link above (valid 1 hour, single use). Otherwise delete this email.
+Someone asked to recover the Cleanway account for {{ .Email }}. If it was you, open the link above (valid 10 minutes, single use). Otherwise delete this email.

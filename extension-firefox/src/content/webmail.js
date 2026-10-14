@@ -482,6 +482,21 @@
   }
 
   // ── Chrome storage helpers ──────────────────────────────────────────────
+  // The rule of utils/api-base.js (a classic content script cannot import
+  // it): production, or loopback in an unpacked dev install. The message
+  // goes out with the account's token, so never to any other server.
+  function allowedApiBase(value) {
+    if (typeof value !== "string") return null;
+    const v = value.trim().replace(/\/+$/, "");
+    if (v === DEFAULT_API_BASE) return v;
+    let dev = false;
+    try {
+      const m = chrome.runtime.getManifest();
+      dev = !!m && !("update_url" in m);
+    } catch (e) { /* no runtime: not a dev install */ }
+    return dev && /^http:\/\/(localhost|127\.0\.0\.1)(:[0-9]{1,5})?$/.test(v) ? v : null;
+  }
+
   function getApiBase() {
     return new Promise((resolve) => {
       if (typeof chrome === "undefined" || !chrome.storage) {
@@ -489,7 +504,7 @@
         return;
       }
       chrome.storage.local.get("api_url", (data) => {
-        resolve((data && data.api_url) || DEFAULT_API_BASE);
+        resolve(allowedApiBase(data && data.api_url) || DEFAULT_API_BASE);
       });
     });
   }

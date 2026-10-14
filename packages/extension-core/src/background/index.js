@@ -18,6 +18,7 @@
 
 import "./browser-compat.js"; // must stay first: aliases chrome → browser in Firefox
 import "../utils/link-target.js"; // sets self.cleanwayLinkTarget (classic UMD file)
+import "../utils/api-base.js"; // sets self.cleanwayApiBase (classic UMD file): the API server allowlist
 // The offline scorer the content script runs, in the same order the manifests
 // load it: the generated data, the server's name rules, then the scorer
 // (self.cleanwayLocalScorer). Classic files, imported for their side effect.
@@ -97,17 +98,18 @@ const _statsMutex = (() => {
   };
 })();
 
-// API base — production Railway default, override via Options page (chrome.storage.local.api_url)
-let API_BASE = "https://api.cleanway.ai";
+// API base — production by default. The Options page override
+// (chrome.storage.local.api_url) is honoured only when allowlisted: see
+// utils/api-base.js (production, or loopback in an unpacked dev install).
+const apiBaseRules = self.cleanwayApiBase;
+let API_BASE = apiBaseRules.DEFAULT_API_BASE;
 try {
   chrome.storage.local.get("api_url").then(function(data) {
-    if (data && typeof data.api_url === "string" && data.api_url.startsWith("http")) {
-      API_BASE = data.api_url.replace(/\/$/, "");
-    }
+    API_BASE = apiBaseRules.resolveApiBase(data && data.api_url);
   }).catch(function() {});
   chrome.storage.onChanged.addListener(function(changes, area) {
-    if (area === "local" && changes && changes.api_url && typeof changes.api_url.newValue === "string") {
-      API_BASE = changes.api_url.newValue.replace(/\/$/, "");
+    if (area === "local" && changes && changes.api_url) {
+      API_BASE = apiBaseRules.resolveApiBase(changes.api_url.newValue);
     }
   });
 } catch (e) { /* ignore */ }

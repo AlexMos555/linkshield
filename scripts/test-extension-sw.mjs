@@ -31,7 +31,9 @@
  * NO PRODUCTION TRAFFIC
  * ---------------------
  * A local mock API answers every call (api_url is pointed at it through the
- * same chrome.storage override the Options page uses), and Chromium's host
+ * same chrome.storage override the Options page uses — accepted because the
+ * extension is loaded unpacked and the mock is on loopback; any other server
+ * is refused, see src/utils/api-base.js), and Chromium's host
  * resolver maps *.cleanway.ai and *.supabase.co to nowhere, so a stray request fails instead of
  * reaching production. The test sites (*.example, *.tk, *.top) resolve to
  * the mock too; it serves the same pages on every hostname.
@@ -740,7 +742,7 @@ async function runWebmailTree(tree) {
           body: JSON.stringify({ level: "dangerous", score: 80, findings: [], links: [] }),
         });
       });
-      await sw.evaluate(() => chrome.storage.local.set({ api_url: "https://api-e2e.example" }));
+      await sw.evaluate(() => chrome.storage.local.set({ api_url: "https://api.cleanway.ai" }));
       const registered = () => sw.evaluate(() => chrome.scripting.getRegisteredContentScripts().then((l) => l.map((s) => s.id)));
       const banner = (tab) => tab.evaluate(() => Boolean(document.getElementById("cleanway-webmail-banner")));
 
