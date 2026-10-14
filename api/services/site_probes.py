@@ -169,6 +169,9 @@ async def check_ssl(domain: str) -> dict:
 def _check_ssl_sync(domain: str) -> dict:
     deadline = time.monotonic() + SITE_PROBE_TOTAL_S
     ctx = ssl.create_default_context()
+    # Python >= 3.10 already refuses TLS 1.0/1.1 here; pinned so the probe
+    # never negotiates them on an older runtime either (requires-python >= 3.9).
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     try:
         address = resolve_public_sync(domain, 443)[0]
     except DomainValidationError as exc:

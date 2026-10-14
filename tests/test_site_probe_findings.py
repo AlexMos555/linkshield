@@ -178,6 +178,22 @@ def test_broken_certificate_is_a_finding(monkeypatch, code, message, problem):
     assert out == {"reachable": True, "has_ssl": True, "certificate_problem": problem}
 
 
+def test_ssl_probe_never_offers_tls_below_1_2(monkeypatch):
+    monkeypatch.setattr(site_probes.socket, "create_connection", lambda *a, **k: _Tcp())
+    ctx = ssl.create_default_context()
+    ctx.minimum_version = ssl.TLSVersion.TLSv1  # what an old runtime would allow
+    seen = {}
+
+    def _wrap(sock, server_hostname=None):
+        seen["minimum"] = ctx.minimum_version
+        raise _cert_error(10, "certificate has expired")
+
+    monkeypatch.setattr(ctx, "wrap_socket", _wrap)
+    monkeypatch.setattr(site_probes.ssl, "create_default_context", lambda: ctx)
+    asyncio.run(site_probes.check_ssl("x.ru"))
+    assert seen["minimum"] == ssl.TLSVersion.TLSv1_2
+
+
 @pytest.mark.parametrize("code", [20, 21, 19])
 def test_unknown_authority_is_not_a_finding(monkeypatch, code):
     """Russian sites signed by the national CA fail verification here and are

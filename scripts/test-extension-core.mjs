@@ -1851,6 +1851,19 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
   });
 }
 
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the page script never judges a host by substring`, () => {
+    // "mail.google.com.evil.example".includes("mail.google.com") is true:
+    // hosts are compared exactly or by "." + suffix (CodeQL
+    // js/incomplete-url-substring-sanitization). The dead EMAIL_PAGE_DETECTED
+    // ping that did this is gone; the webmail scanner is registered by the
+    // background from an exact host list instead.
+    const content = stripComments(readFileSync(join(ROOT, tree, "src/content/index.js"), "utf8"));
+    assert.ok(!/EMAIL_PAGE_DETECTED/.test(content), "EMAIL_PAGE_DETECTED is back");
+    assert.ok(!/\b(?:h|host|hostname)\.(?:includes|indexOf)\(/.test(content), "a hostname substring test in content/index.js");
+  });
+}
+
 console.log(
   failed === 0
     ? `\n${passed} checks passed (source + ${BROWSER_TREES.length} browser trees)`

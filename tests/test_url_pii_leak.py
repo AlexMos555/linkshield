@@ -143,3 +143,53 @@ def test_score_signal_wires_into_calculate_score():
     pii_reasons = [r for r in reasons if r.signal == "url_pii_leak"]
     assert len(pii_reasons) == 1
     assert "email" in pii_reasons[0].detail.lower()
+
+
+# ─── Linear-time matchers (CodeQL py/polynomial-redos) ──────────────────────
+# _has_jwt / _has_email replaced two unanchored regexes that re.search retried
+# from every offset — quadratic on "eyJeyJ…" or "%%%%…". They must answer
+# exactly what the old regexes answered, and in linear time.
+
+import random  # noqa: E402
+import re  # noqa: E402
+import time  # noqa: E402
+
+from api.services.scoring import _has_email, _has_jwt  # noqa: E402
+
+_OLD_JWT_RE = re.compile(r"eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+")
+_OLD_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,24}")
+
+
+@pytest.mark.parametrize("text", [
+    "", "eyJ", "eyJa.b.c", "eyJ.b.c", "eyJa..c", "eyJa.b.", "xxeyJa.b.c", "eyJeyJ.b.c",
+    "a.eyJb.c.d", "eyJa.b", "eyJ-_.x.y", "token=eyJhbGc.eyJzdWI.sig&x=1", "eyJa.b.c.d.e",
+    "a@b.co", "@b.co", "a@b.c", "a@.co", "a@b..co", "%@x.com", "a b@c.de", "a@b@c.de",
+    "foo=bar%40example.com", "a@b.c0m", "me@sub.domain.museum", "x@y." + "z" * 30,
+])
+def test_linear_matchers_agree_with_the_old_regexes(text):
+    assert _has_jwt(text) is bool(_OLD_JWT_RE.search(text))
+    assert _has_email(text) is bool(_OLD_EMAIL_RE.search(text))
+
+
+def test_linear_matchers_agree_on_random_strings():
+    rng = random.Random(20261015)
+    alphabet = ["e", "y", "J", "eyJ", ".", "@", "a", "Z", "9", "-", "_", "%", "+", "&", "=", " ", "co", "com"]
+    for _ in range(5000):
+        text = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 24)))
+        assert _has_jwt(text) is bool(_OLD_JWT_RE.search(text)), text
+        assert _has_email(text) is bool(_OLD_EMAIL_RE.search(text)), text
+
+
+@pytest.mark.parametrize("hostile", [
+    "eyJ" * 30_000,
+    "eyJa" * 30_000 + ".",
+    "%" * 100_000,
+    "a" * 100_000 + "@",
+    "@a" * 50_000,
+    "a@" + "-" * 100_000,
+    "a@" + "a." * 50_000,
+])
+def test_pii_leak_detection_is_linear(hostile):
+    started = time.perf_counter()
+    _detect_url_pii_leak("example.com/?q=" + hostile)
+    assert time.perf_counter() - started < 1.0

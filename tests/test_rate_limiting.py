@@ -204,6 +204,32 @@ async def test_ip_rate_limit_fires_429(fake_redis, tight_limits):
 
 
 @pytest.mark.asyncio
+async def test_ip_rate_limit_log_never_carries_the_raw_ip(fake_redis, caplog):
+    """The 429 warning identifies the client only by a keyed hash.
+
+    The privacy policy says the raw IP lives only in the Redis counter (up to
+    an hour); request logs are kept far longer, so they must not carry it.
+    """
+    import logging
+
+    from fastapi import HTTPException
+    from api.services.audit_log import hash_ip
+    from api.services.rate_limiter import check_ip_rate_limit
+
+    caplog.set_level(logging.WARNING, logger="cleanway.rate_limiter")
+    await check_ip_rate_limit("203.0.113.77", "unit", 1, 60)
+    with pytest.raises(HTTPException):
+        await check_ip_rate_limit("203.0.113.77", "unit", 1, 60)
+
+    records = [r for r in caplog.records if r.getMessage() == "ip_rate_limit_exceeded"]
+    assert records, "the 429 is still logged"
+    for record in records:
+        assert "203.0.113.77" not in repr(record.__dict__)
+        assert not hasattr(record, "ip")
+        assert record.ip_hash == hash_ip("203.0.113.77")
+
+
+@pytest.mark.asyncio
 async def test_ip_rate_limit_isolates_per_ip(fake_redis):
     """Different IPs use independent counters."""
     from api.services.rate_limiter import check_ip_rate_limit

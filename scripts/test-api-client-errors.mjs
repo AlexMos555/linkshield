@@ -14,7 +14,7 @@
  */
 import assert from "node:assert/strict";
 
-import { createClient, errorDetail, normalizePublicCheck } from "../packages/api-client/src/index.ts";
+import { createClient, errorDetail, normalizePublicCheck, stripTrailingSlashes } from "../packages/api-client/src/index.ts";
 
 /**
  * Build a client whose `fetchImpl` returns whatever the test fixture says.
@@ -295,6 +295,33 @@ await test("restore purchases: POST /me/entitlement/refresh, with the token; a 5
   assert.equal(seen[0].headers.Authorization, "Bearer jwt");
   assert.equal(error.kind, "http_5xx");
   assert.equal(error.code, "store_sync_unavailable");
+});
+
+
+await test("baseUrl: trailing slashes are dropped in linear time", async () => {
+  assert.equal(stripTrailingSlashes("https://api.test"), "https://api.test");
+  assert.equal(stripTrailingSlashes("https://api.test/"), "https://api.test");
+  assert.equal(stripTrailingSlashes("https://api.test///"), "https://api.test");
+  assert.equal(stripTrailingSlashes("https://api.test/v1/"), "https://api.test/v1");
+  assert.equal(stripTrailingSlashes("///"), "");
+  assert.equal(stripTrailingSlashes(""), "");
+  // The old /\/+$/ took ~47 s on this input (quadratic backtracking).
+  const hostile = "/".repeat(200_000) + "x";
+  const t0 = performance.now();
+  assert.equal(stripTrailingSlashes(hostile), hostile);
+  assert.ok(performance.now() - t0 < 200, "stripping must be linear");
+
+  const seen = [];
+  const client = createClient({
+    baseUrl: "https://api.test//",
+    timeoutMs: 1000,
+    fetchImpl: async (url) => {
+      seen.push(url);
+      return makeResponse({ status: 503, body: {} });
+    },
+  });
+  await client.account.refreshEntitlement();
+  assert.equal(seen[0], "https://api.test/api/v1/me/entitlement/refresh");
 });
 
 if (failed > 0) {

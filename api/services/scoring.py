@@ -585,9 +585,61 @@ def _url_path_depth(url_or_domain: str) -> int:
 # of them at once doesn't push score over the dangerous threshold
 # by themselves; they're a multiplier, not a verdict.
 
-_JWT_RE = re.compile(r"eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+")
-_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,24}")
+# The JWT and e-mail checks used to be single unanchored regexes:
+#   eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+
+#   [A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,24}
+# re.search retries them from every offset, and each retry rescans the same
+# run of characters, so "eyJeyJeyJ…" or "%%%%…" with no match took quadratic
+# time. _has_jwt / _has_email answer the same question in one pass.
+_TOKEN_DOT_RUN_RE = re.compile(r"[A-Za-z0-9_\-.]+")
+_EMAIL_LOCAL_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._%+-")
+_EMAIL_DOMAIN_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-")
+_ASCII_LETTERS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 _LONG_ENTROPY_RE = re.compile(r"[A-Za-z0-9_\-]{28,}")
+
+
+def _has_jwt(text: str) -> bool:
+    """Whether `text` contains eyJ<tok>+.<tok>+.<tok>+ (tok = [A-Za-z0-9_-]).
+
+    Linear: each maximal run of token characters and dots is split on the
+    dots once. A match needs a segment holding "eyJ" plus at least one more
+    character, followed by two non-empty segments.
+    """
+    for run in _TOKEN_DOT_RUN_RE.finditer(text):
+        segments = run.group().split(".")
+        for i in range(len(segments) - 2):
+            head = segments[i]
+            at = head.find("eyJ")
+            if 0 <= at and at + 3 < len(head) and segments[i + 1] and segments[i + 2]:
+                return True
+    return False
+
+
+def _has_email(text: str) -> bool:
+    """Whether `text` contains <local>+@<domain>+.<letters>{2,24}.
+
+    Linear: for each "@" preceded by a local-part character, the run of domain
+    characters after it is scanned once for a "." that has at least one domain
+    character before it and two letters after it. Domain characters never
+    include "@", so the runs scanned for different "@"s do not overlap.
+    """
+    n = len(text)
+    at = text.find("@")
+    while at != -1:
+        if at > 0 and text[at - 1] in _EMAIL_LOCAL_CHARS:
+            j = at + 1
+            while j < n and text[j] in _EMAIL_DOMAIN_CHARS:
+                if (
+                    text[j] == "."
+                    and j > at + 1
+                    and j + 2 < n
+                    and text[j + 1] in _ASCII_LETTERS
+                    and text[j + 2] in _ASCII_LETTERS
+                ):
+                    return True
+                j += 1
+        at = text.find("@", at + 1)
+    return False
 
 
 def _detect_url_pii_leak(url_or_domain: str) -> dict:
@@ -616,8 +668,8 @@ def _detect_url_pii_leak(url_or_domain: str) -> dict:
     except Exception:
         return {"jwt": False, "email": False, "long_random": False, "weight": 0}
 
-    has_jwt = bool(_JWT_RE.search(decoded))
-    has_email = bool(_EMAIL_RE.search(decoded))
+    has_jwt = _has_jwt(decoded)
+    has_email = _has_email(decoded)
     # Long random matches are noisy — only flag when the URL doesn't
     # already have JWT/email and the random part is in a value position
     # (after =). This avoids triple-counting on `?session=eyJ...`.

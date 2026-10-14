@@ -170,13 +170,24 @@ export interface ClientOptions {
 
 // ── Internal request helper ───────────────────────────────────────
 
+/**
+ * "https://api.example///" → "https://api.example". A plain loop rather than
+ * /\/+$/: that regex backtracks quadratically on a long run of slashes that
+ * is not at the end of the string.
+ */
+export function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47 /* "/" */) end--;
+  return value.slice(0, end);
+}
+
 async function request<T>(
   opts: ClientOptions,
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<Result<T>> {
-  const url = opts.baseUrl.replace(/\/+$/, "") + path;
+  const url = stripTrailingSlashes(opts.baseUrl) + path;
   const timeoutMs = opts.timeoutMs ?? 8_000;
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
 

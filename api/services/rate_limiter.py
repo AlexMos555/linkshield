@@ -31,6 +31,7 @@ from fastapi import Depends, HTTPException, Request
 
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
+from api.services.audit_log import hash_ip
 from api.services.auth import get_current_user_including_deleted
 from api.services.cache import get_redis
 
@@ -230,7 +231,9 @@ async def check_ip_rate_limit(
     safe_ip = (ip or "unknown").strip().lower().lstrip("[").rstrip("]")
     return await _check_window_limit(
         f"rate:ip:{category}:{safe_ip}", category, limit, window_seconds,
-        who={"ip": safe_ip}, error="Too many requests from this IP. Please slow down.",
+        # Logs keep only the keyed hash: the privacy policy promises the raw
+        # address lives only in the Redis counter, for up to an hour.
+        who={"ip_hash": hash_ip(safe_ip)}, error="Too many requests from this IP. Please slow down.",
     )
 
 

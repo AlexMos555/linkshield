@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useTransition, type ChangeEvent } from "react";
 import { LOCALE_NAMES, routing, type Locale } from "@/i18n/routing";
+import { switchLocaleHref } from "@/lib/switch-locale";
 
 /**
  * Compact language switcher for the nav bar.
@@ -16,24 +17,20 @@ export function LanguageSwitcher() {
   const [isPending, startTransition] = useTransition();
 
   function onChange(event: ChangeEvent<HTMLSelectElement>) {
-    const next = event.target.value as Locale;
-    if (next === current) return;
-
-    // Replace the current locale segment with the new one.
-    // `pathname` always starts with `/` and includes the locale prefix when
-    // `localePrefix: "as-needed"` is active AND current locale != default.
-    // When on default locale ('en'), pathname has no /en prefix.
-    const segments = pathname.split("/").filter(Boolean);
-    const hasLocaleSegment =
-      segments.length > 0 && routing.locales.includes(segments[0] as Locale);
-    const rest = hasLocaleSegment ? segments.slice(1) : segments;
-
-    let newPath: string;
-    if (next === routing.defaultLocale) {
-      newPath = rest.length === 0 ? "/" : "/" + rest.join("/");
-    } else {
-      newPath = "/" + [next, ...rest].join("/");
-    }
+    // switchLocaleHref accepts only a locale we serve and only a path on this
+    // origin (see lib/switch-locale.ts). `pathname` carries the locale prefix
+    // only for non-default locales ("as-needed"), which the helper handles.
+    const next = event.target.value;
+    if (typeof window === "undefined") return;
+    const newPath = switchLocaleHref({
+      pathname,
+      current,
+      next,
+      locales: routing.locales,
+      defaultLocale: routing.defaultLocale,
+      origin: window.location.origin,
+    });
+    if (newPath === null) return;
 
     // ── The locale-cookie tug-of-war ──
     // Without this line, switching to the *default* locale (English) from
@@ -45,9 +42,7 @@ export function LanguageSwitcher() {
     //   4. UI looks broken; English is the only locale that "doesn't work".
     // Setting the cookie here BEFORE navigation tells middleware which
     // locale we actually want, breaking the loop.
-    if (typeof document !== "undefined") {
-      document.cookie = `NEXT_LOCALE=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
-    }
+    document.cookie = `NEXT_LOCALE=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
 
     // Hard navigation (window.location) instead of router.replace so the
     // updated cookie is sent on the very next request. router.replace
@@ -55,9 +50,7 @@ export function LanguageSwitcher() {
     // request with the new cookie until the next full reload, which
     // causes a one-page-old flicker of the previous locale.
     startTransition(() => {
-      if (typeof window !== "undefined") {
-        window.location.assign(newPath);
-      }
+      window.location.assign(newPath);
     });
   }
 
