@@ -28,6 +28,7 @@ import type { ApiError } from "../src/services/api";
 import { reasonLabel } from "../src/utils/reason-label";
 import { openInBrowser } from "../modules/cleanway-vpn";
 import { toCheckableHost } from "../src/utils/host";
+import { browserUrlFor } from "../src/utils/open-url";
 import { useDomainCheck } from "../src/hooks/useDomainCheck";
 import {
   isNotFound, reasonsToShow, serverLevel, showScore, shownLevel, type ServerAnswer,
@@ -81,6 +82,9 @@ export default function SharedScreen() {
   // null for junk, which is what finally makes the "No link found" screen
   // below reachable.
   const domain = toCheckableHost(url || "");
+  // What "Open in browser" may open: the checked host, rebuilt — never the
+  // raw string, which any app can put in this deep link (src/utils/open-url.ts).
+  const openTarget = browserUrlFor(url, domain);
 
   // A link-guard hand-off is not a check the person made: the guard already
   // recorded the stop in the block log (History, "Blocked"). Saving it here
@@ -216,7 +220,7 @@ export default function SharedScreen() {
         </View>
       )}
 
-      {via === "guard" && url && (
+      {via === "guard" && openTarget && (
         // Reached here by tapping a link (link guard), not by pasting. Let the
         // person continue to the real browser — muted "open anyway" when the
         // verdict is not safe, so it never nudges them toward a scam.
@@ -224,7 +228,7 @@ export default function SharedScreen() {
           style={safe ? s.primaryBtn : s.secondaryBtn}
           onPress={() => {
             const open = () => {
-              if (openInBrowser(url)) leaveShared();
+              if (openInBrowser(openTarget)) leaveShared();
               else setNoBrowser(true);
             };
             if (safe) open();

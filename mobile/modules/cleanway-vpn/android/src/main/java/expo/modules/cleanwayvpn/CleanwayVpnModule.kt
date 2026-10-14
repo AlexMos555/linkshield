@@ -388,11 +388,19 @@ class CleanwayVpnModule : Module() {
     /**
      * Open a URL in a real browser that is NOT Cleanway — used by the link-
      * guard screen's "Open anyway". Explicit package so it can never bounce
-     * back into our own link guard. Returns false if no other browser exists.
+     * back into our own link guard. Returns false if no other browser exists,
+     * or if the URL is not a plain http(s) URL with a host (OpenUrlPolicy):
+     * an intent:/javascript:/file: URL, or a string Uri.parse and the browser
+     * could read differently, is never launched.
      */
     Function("openInBrowser") { url: String ->
       try {
-        val view = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+        val uri = android.net.Uri.parse(url)
+        if (!ai.cleanway.app.OpenUrlPolicy.isOpenable(url, uri.scheme, uri.host, uri.userInfo)) {
+          android.util.Log.w("CleanwayVpn", "open_in_browser_refused")
+          return@Function false
+        }
+        val view = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
           .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
           .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         val probe = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://example.com"))
