@@ -246,6 +246,9 @@ def test_real_es256_tokens_fresh_passes_old_is_refused(client, monkeypatch):
     install_fake_jwks(monkeypatch, key)
     monkeypatch.setattr("api.services.auth._resolve_user_tier", _free_tier)
     monkeypatch.setattr("api.services.auth._refuse_revoked_device", _no_revocation)
+    # Redis is down here, so the soft-delete gate would read the users row
+    # through the patched httpx client; that gate has its own tests.
+    monkeypatch.setattr("api.services.auth._deletion_requested", _not_deleted)
     monkeypatch.setattr("api.services.cache.get_redis", _no_redis)
 
     old = client.post(
@@ -265,6 +268,10 @@ async def _free_tier(_user_id):
 
 async def _no_revocation(_user_id, _device_id):
     return None
+
+
+async def _not_deleted(_user_id):
+    return False
 
 
 async def _no_redis():

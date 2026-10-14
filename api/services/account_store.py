@@ -62,6 +62,8 @@ class AccountStore(Protocol):
 
     async def is_device_revoked(self, *, account_id: str, device_hash: str) -> bool: ...
 
+    async def is_deletion_requested(self, account_id: str) -> bool: ...
+
     async def register_device(
         self,
         *,
@@ -247,6 +249,24 @@ class PostgrestAccountStore:
             headers=self._headers(),
         )
         return bool(rows)
+
+    # ── soft-deleted accounts ──
+
+    async def is_deletion_requested(self, account_id: str) -> bool:
+        """True while the account is in its deletion grace window
+        (users.deletion_requested_at set by DELETE /user/account). The auth
+        gate reads this only when its Redis flag can't be read."""
+        rows = await self._call(
+            "get",
+            "/rest/v1/users",
+            params={
+                "id": f"eq.{account_id}",
+                "select": "deletion_requested_at",
+                "limit": "1",
+            },
+            headers=self._headers(),
+        )
+        return any(isinstance(r, dict) and r.get("deletion_requested_at") for r in rows or [])
 
     async def _rpc(self, fn: str, args: dict) -> dict:
         result = await self._call(
