@@ -129,7 +129,9 @@ Set the version for this release in `mobile/app.json` first: bump
 prompt is truthful. **As of 2026-10-08 `mobile/app.json` on `main` still says
 `1.0.3` / `103`** — see §7.0.
 
-**Current release: 1.0.4 (versionCode 104).** `mobile/app.json` already says so.
+**Current release: 1.0.4 (versionCode 105).** `mobile/app.json` already says so.
+105 is a rebuild of 1.0.4 (same versionName) with the Supabase sign-in config
+and the SQLite reopen fix (#184); 104 shipped without the Supabase config.
 Change the server **only after** the signed APK is attached to the GitHub
 release `v1.0.4` — announcing a version nobody can download sends every phone
 to a 404. Then, in Railway (API service → Variables), set:
