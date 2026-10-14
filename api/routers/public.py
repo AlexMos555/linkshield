@@ -114,6 +114,9 @@ async def _get_public_cache(domain: str) -> DomainResult | None:
             return None
         data = json.loads(raw)
         out = DomainResult(**data)
+        from api.services.cache import is_retired
+        if is_retired(out):
+            return None
         out.cached = True
         return out
     except Exception:
