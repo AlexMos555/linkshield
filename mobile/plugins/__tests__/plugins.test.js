@@ -245,8 +245,16 @@ class MainActivity : ReactActivity() {
   const excludes = (xml, section) => {
     const body = section ? (xml.match(new RegExp(`<${section}>([\\s\\S]*?)</${section}>`)) || [])[1] : xml;
     assert.ok(body, `<${section}> present`);
-    // Comments mention the names too; only real elements count.
-    const live = body.replace(/<!--[\s\S]*?-->/g, "");
+    // Comments mention the names too; only real elements count. Keep the text
+    // outside <!-- … --> (an unterminated comment swallows the rest).
+    const live = body
+      .split("<!--")
+      .map((seg, i) => {
+        if (i === 0) return seg;
+        const end = seg.indexOf("-->");
+        return end < 0 ? "" : seg.slice(end + 3);
+      })
+      .join("");
     return [...live.matchAll(/<exclude\s+domain="sharedpref"\s+path="([^"]+)"\s*\/>/g)].map((m) => m[1]);
   };
   const extraction = fs.readFileSync(path.join(resXml, "cleanway_data_extraction_rules.xml"), "utf8");
