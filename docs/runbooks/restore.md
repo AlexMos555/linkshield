@@ -43,4 +43,4 @@ A backup that was never restored is a hope, not a backup.
 
 | Date | Object | Result |
 |---|---|---|
-| | | |
+| 2026-10-14 | first run `db/2026-10-14T16-32-17Z.dump.age` (194,946 B) in R2; drill on a fresh dump | encrypt → decrypt with the Keychain key → `pg_restore --list` 50 tables, byte-identical to the plaintext dump |
