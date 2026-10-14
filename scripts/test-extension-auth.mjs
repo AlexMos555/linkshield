@@ -730,6 +730,81 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
   });
 }
 
+// ── 10: the access token in storage.session, the refresh token in local ──
+// Content scripts can read chrome.storage.local; storage.session locked to
+// TRUSTED_CONTEXTS they cannot (utils/token-store.js). A browser restart
+// empties storage.session: the refresh token then mints a new access token.
+
+function splitHarness(tree, { local = {}, session = {}, fetchImpl } = {}) {
+  return import(pathToFileURL(join(ROOT, tree, "src/utils/auth-session.js")).href).then((mod) => {
+    const localArea = memoryStorage(local);
+    const sessionArea = memoryStorage(session);
+    const calls = { fetch: [], alarms: [] };
+    const auth = mod.createAuthSession({
+      storage: localArea,
+      accessStorage: sessionArea,
+      fetchImpl: async (url, init) => {
+        calls.fetch.push({ url, init });
+        return fetchImpl ? fetchImpl(url, init) : jsonResponse(500, {});
+      },
+      now: () => NOW_MS,
+      scheduleRefresh: (when) => calls.alarms.push(when),
+    });
+    return { auth, local: localArea, session: sessionArea, calls };
+  });
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] sign-in puts the access token in storage.session, the rest in storage.local`, async () => {
+    const { auth, local, session: sess } = await splitHarness(tree, { fetchImpl: async () => jsonResponse(204, {}) });
+    await auth.startSignIn();
+    const state = local.data.auth_connect_state.value;
+    const r = await auth.acceptHandoff({ state, session: session() }, connectSender(), RUNTIME_ID);
+    assert.equal(r.ok, true);
+    assert.equal(typeof sess.data.auth_token, "string");
+    assert.deepEqual(Object.keys(sess.data), ["auth_token"], "only the access token is in storage.session");
+    assert.ok(!("auth_token" in local.data), "the access token is readable by content scripts");
+    assert.equal(local.data.auth_refresh_token, REFRESH);
+    assert.equal((await auth.status()).signedIn, true);
+  });
+
+  await check(`[${tree}] after a browser restart (storage.session empty) the refresh token mints a new access token`, async () => {
+    const fresh = accessToken({ exp: NOW_S + 3600 });
+    const stored = signedInStore({ auth_expires_at: NOW_S + 3000 }); // still "valid" by the clock
+    delete stored.auth_token;
+    const { auth, local, session: sess, calls } = await splitHarness(tree, {
+      local: stored,
+      fetchImpl: async () => jsonResponse(200, { access_token: fresh, refresh_token: "rotated_refresh_3", expires_at: NOW_S + 3600, user: {} }),
+    });
+    const r = await auth.ensureFresh();
+    assert.deepEqual(r, { signedIn: true, refreshed: true });
+    assert.equal(calls.fetch.length, 1);
+    assert.equal(sess.data.auth_token, fresh);
+    assert.ok(!("auth_token" in local.data));
+    assert.equal(local.data.auth_refresh_token, "rotated_refresh_3");
+  });
+
+  await check(`[${tree}] sign-out clears both storage areas`, async () => {
+    const all = signedInStore({ auth_expires_at: NOW_S + 3000 });
+    const { auth_token, ...rest } = all;
+    const { auth, local, session: sess } = await splitHarness(tree, {
+      local: rest, session: { auth_token }, fetchImpl: async () => jsonResponse(204, {}),
+    });
+    await auth.signOut();
+    assert.deepEqual(sess.data, {});
+    for (const k of SESSION_KEYS) assert.equal(local.data[k], undefined, k);
+  });
+
+  await check(`[${tree}] the background wires storage.session and TRUSTED_CONTEXTS`, () => {
+    const src = readFileSync(join(ROOT, tree, "src/background/auth.js"), "utf8");
+    assert.match(src, /accessStorage: tokens\.accessArea\(chrome\)/);
+    assert.match(src, /restrictToTrustedContexts\(chrome\)/);
+    assert.match(src, /migrateLegacyAccessToken\(chrome\)/);
+    const store = readFileSync(join(ROOT, tree, "src/utils/token-store.js"), "utf8");
+    assert.match(store, /setAccessLevel\(\{ accessLevel: "TRUSTED_CONTEXTS" \}\)/);
+  });
+}
+
 console.log(
   failed === 0
     ? `\n${passed} checks passed (source + ${BROWSER_TREES.length} browser trees)`

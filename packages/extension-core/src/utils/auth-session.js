@@ -35,9 +35,12 @@
  *    re-linked at most every 6 hours, which is how an unlink made elsewhere
  *    reaches a browser that makes no other account call.
  *
- * Tokens never go into a URL or a log line. They live in
- * chrome.storage.local under the keys below; `auth_token` is the access token
- * every authed call already reads.
+ * Tokens never go into a URL or a log line. They live under the keys below:
+ * the access token (`auth_token`) in chrome.storage.session where the browser
+ * has it — out of content scripts' reach, see utils/token-store.js — and
+ * everything else, the refresh token included, in chrome.storage.local. A
+ * browser restart empties storage.session; ensureFresh() then mints a new
+ * access token from the refresh token.
  */
 
 import { HEARTBEAT_KEY, heartbeatDue } from "./device-link.js";
@@ -241,8 +244,43 @@ export async function refreshSession({ fetchImpl, supabaseUrl = SUPABASE_URL, an
 // ── The stateful part ────────────────────────────────────────────────
 
 /**
+ * One get/set/remove over two storage areas: `sideKeys` live in `side`,
+ * every other key in `main`. Writes land in `main` first and removals start
+ * with `side`, so a listener that wakes on the access token (the popup, the
+ * settings page) already finds the email and the rest.
+ */
+export function splitStorage(main, side, sideKeys) {
+  const isSide = (k) => sideKeys.includes(k);
+  const parts = (keys) => {
+    const list = [].concat(keys);
+    return [list.filter((k) => !isSide(k)), list.filter(isSide)];
+  };
+  return {
+    async get(keys) {
+      const [m, s] = parts(keys);
+      const [a, b] = await Promise.all([m.length ? main.get(m) : {}, s.length ? side.get(s) : {}]);
+      return { ...(a || {}), ...(b || {}) };
+    },
+    async set(obj) {
+      const m = {};
+      const s = {};
+      for (const [k, v] of Object.entries(obj || {})) (isSide(k) ? s : m)[k] = v;
+      if (Object.keys(m).length) await main.set(m);
+      if (Object.keys(s).length) await side.set(s);
+    },
+    async remove(keys) {
+      const [m, s] = parts(keys);
+      if (s.length) await side.remove(s);
+      if (m.length) await main.remove(m);
+    },
+  };
+}
+
+/**
  * @param {object} deps
  * @param {{get: Function, set: Function, remove: Function}} deps.storage  chrome.storage.local-shaped (promises)
+ * @param {{get: Function, set: Function, remove: Function}} [deps.accessStorage]  where the access token
+ *        lives (chrome.storage.session); defaults to `storage`
  * @param {Function} deps.fetchImpl
  * @param {() => number} [deps.now]       ms clock
  * @param {Function} [deps.openTab]       (url) => void
@@ -256,7 +294,8 @@ export async function refreshSession({ fetchImpl, supabaseUrl = SUPABASE_URL, an
  */
 export function createAuthSession(deps) {
   const {
-    storage,
+    storage: mainStorage,
+    accessStorage = null,
     fetchImpl,
     now = () => Date.now(),
     openTab = () => {},
@@ -267,6 +306,9 @@ export function createAuthSession(deps) {
     resetDeviceId = async () => {},
     supabaseUrl = SUPABASE_URL,
   } = deps;
+  const storage = accessStorage && accessStorage !== mainStorage
+    ? splitStorage(mainStorage, accessStorage, [KEYS.access])
+    : mainStorage;
   const nowS = () => Math.floor(now() / 1000);
   let inflight = null; // one refresh at a time: a rotated token must never be sent twice
 
@@ -383,9 +425,11 @@ export function createAuthSession(deps) {
   }
 
   async function doRefresh() {
-    const s = await read([KEYS.refresh, KEYS.anonKey, KEYS.expiresAt]);
+    const s = await read([KEYS.refresh, KEYS.anonKey, KEYS.expiresAt, KEYS.access]);
     if (!s[KEYS.refresh] || !s[KEYS.anonKey]) return { signedIn: false };
-    if (!needsRefresh(s[KEYS.expiresAt], nowS())) {
+    // A refresh token but no access token: the browser was restarted and
+    // storage.session emptied — mint a new one whatever the clock says.
+    if (s[KEYS.access] && !needsRefresh(s[KEYS.expiresAt], nowS())) {
       armFor(s[KEYS.expiresAt]);
       return { signedIn: true, refreshed: false };
     }

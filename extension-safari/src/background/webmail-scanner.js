@@ -37,6 +37,7 @@
  */
 
 import "../utils/platform.js"; // sets self.cleanwayPlatform (classic UMD file)
+import "../utils/token-store.js"; // sets self.cleanwayTokens (classic UMD file)
 
 export const WEBMAIL_FLAG = "webmailScannerEnabled";
 export const WEBMAIL_SCRIPT_ID = "cleanway-webmail";
@@ -221,6 +222,80 @@ export function createWebmailScanner(api, { blockedHere = () => webmailScannerBl
   }
 
   return { sync, onStorageChanged, onPermissionsRemoved, releasePermission, releaseIfOff };
+}
+
+// ── The scan itself ─────────────────────────────────────────────────
+//
+// content/webmail.js builds the payload; the background sends it. The
+// account's access token lives in storage.session, out of every content
+// script's reach (utils/token-store.js), so the authed call is made here.
+// Only for a top-frame mail page, and only while the switch is on.
+
+const WEBMAIL_ORIGINS = Object.freeze(WEBMAIL_MATCHES.map((m) => m.replace(/\/\*$/, "")));
+const ANALYZE_TIMEOUT_MS = 15_000;
+// The API's own caps (api/routers/email.py) are ~0.5 MB of text and links.
+const MAX_PAYLOAD_CHARS = 1_000_000;
+
+/** A content script in the top frame of one of the four mail sites. */
+export function isWebmailSender(sender) {
+  if (!sender || !sender.tab || sender.tab.id == null) return false;
+  if (typeof sender.frameId === "number" && sender.frameId !== 0) return false;
+  let origin;
+  try {
+    origin = new URL(sender.url).origin;
+  } catch (e) {
+    return false;
+  }
+  return WEBMAIL_ORIGINS.includes(origin);
+}
+
+async function analyzeEmail(msg, sender, api, apiBase) {
+  if (!isWebmailSender(sender)) return { ok: false, error: "bad_sender" };
+  if (!isWebmailScannerEnabled(await api.storage.local.get(WEBMAIL_FLAG))) return { ok: false, error: "off" };
+  let body;
+  try {
+    body = JSON.stringify(msg.payload);
+  } catch (e) {
+    return { ok: false, error: "bad_payload" };
+  }
+  if (!body || body.length > MAX_PAYLOAD_CHARS || !msg.payload || typeof msg.payload !== "object") {
+    return { ok: false, error: "bad_payload" };
+  }
+  const tokens = (typeof self !== "undefined" ? self : globalThis).cleanwayTokens;
+  const token = tokens ? await tokens.readAccessToken(api) : null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ANALYZE_TIMEOUT_MS);
+  try {
+    const resp = await fetch(`${apiBase()}/api/v1/email/analyze`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body,
+      signal: ctrl.signal,
+      credentials: "omit",
+    });
+    if (!resp.ok) return { ok: false, status: resp.status };
+    return { ok: true, status: resp.status, result: await resp.json() };
+  } catch (e) {
+    return { ok: false, error: "network" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * The background's onMessage hook for WEBMAIL_ANALYZE: true when the
+ * message was ours (reply async), undefined otherwise.
+ * @param {() => string} apiBase  the allowlisted API base (utils/api-base.js)
+ */
+export function handleWebmailAnalyze(msg, sender, respond, api, apiBase) {
+  if (!msg || msg.type !== "WEBMAIL_ANALYZE") return undefined;
+  analyzeEmail(msg, sender, api, apiBase).then(respond).catch(() => {
+    try { respond({ ok: false, error: "internal" }); } catch (e) { /* port closed */ }
+  });
+  return true;
 }
 
 /** Background wiring: listeners plus a sync on every worker start. */

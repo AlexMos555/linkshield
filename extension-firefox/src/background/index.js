@@ -19,6 +19,7 @@
 import "./browser-compat.js"; // must stay first: aliases chrome → browser in Firefox
 import "../utils/link-target.js"; // sets self.cleanwayLinkTarget (classic UMD file)
 import "../utils/api-base.js"; // sets self.cleanwayApiBase (classic UMD file): the API server allowlist
+import "../utils/token-store.js"; // sets self.cleanwayTokens (classic UMD file): where the access token lives
 // The offline scorer the content script runs, in the same order the manifests
 // load it: the generated data, the server's name rules, then the scorer
 // (self.cleanwayLocalScorer). Classic files, imported for their side effect.
@@ -35,10 +36,11 @@ import {
 } from "../utils/family-notifier.js";
 import { pruneOldChecks } from "../utils/storage.js";
 import { handleAuthAlarm, handleAuthMessage } from "./auth.js"; // sign-in: the cleanway.ai → extension handoff + refresh
+import { createBlockRedirect } from "./block-redirect.js"; // dangerous page → the tab goes to blocked.html
 import { blockedPageHost, claimFirstBlockToday } from "./page-blocks.js";
 import { createSafariSeen, isWebPageSender } from "./safari-native.js"; // Safari: tells the Cleanway app the extension works
 import { isKnownSafeHost, isUserContentHost } from "./trusted-hosts.js";
-import { installWebmailScanner } from "./webmail-scanner.js"; // opt-in only: injects content/webmail.js while Settings has it on
+import { handleWebmailAnalyze, installWebmailScanner } from "./webmail-scanner.js"; // opt-in only: injects content/webmail.js while Settings has it on
 
 const HISTORY_PRUNE_ALARM = "cleanway_history_prune";
 const EMPTY_STATS = Object.freeze({ total_checks: 0, threats_blocked: 0, threats_warned: 0 });
@@ -313,17 +315,33 @@ async function recordCheckStats(results, page) {
 }
 
 // ── A block page is on screen ──
-// content/index.js reports it after rendering the overlay. See page-blocks.js
-// for why this, and never a link verdict, is what counts as a blocked scam.
-async function onPageBlocked(msg, sender) {
-  const host = blockedPageHost(msg, sender);
-  if (!host) return;
-  promoteCredentialGuard(sender.tab.id);
+// Normally the background put it there itself (block-redirect.js: the tab
+// went to blocked.html). Where a browser refused that navigation the content
+// script shows the in-page overlay and reports it (PAGE_BLOCKED). See
+// page-blocks.js for why this, and never a link verdict, is what counts as a
+// blocked scam.
+async function countShownBlock(host) {
   const firstToday = await _statsMutex.runExclusive(() => claimFirstBlockToday(host));
   if (!firstToday) return;
   await updateStats((stats) => ({ ...stats, threats_blocked: stats.threats_blocked + 1 }));
   await reportBlockToAccount(host);
 }
+
+async function onPageBlocked(msg, sender) {
+  const host = blockedPageHost(msg, sender);
+  if (!host) return;
+  promoteCredentialGuard(sender.tab.id);
+  await countShownBlock(host);
+}
+
+const handleBlockMessage = createBlockRedirect({
+  api: chrome,
+  getCached,
+  onShown: (host) => countShownBlock(host),
+  // "Open anyway": the site loads again in this tab, and its credential
+  // guard asks before ANY password leaves the page.
+  onProceeded: (tabId) => promoteCredentialGuard(tabId),
+});
 
 // The user may click past the block page. From then on the credential guard
 // on that tab asks before ANY password leaves the page, not only when its
@@ -342,8 +360,7 @@ function promoteCredentialGuard(tabId) {
 async function reportBlockToAccount(host) {
   const verdict = getCached(host);
   if (!verdict || verdict.source !== "api" || verdict.level !== "dangerous") return;
-  const stored = await chrome.storage.local.get(["auth_token"]);
-  const token = stored && stored.auth_token;
+  const token = await self.cleanwayTokens.readAccessToken(chrome);
   if (!token) return;
   await incrementThreatCounter(token, 1);
   try {
@@ -377,7 +394,7 @@ async function checkLinkUrl(href) {
 // Safari only: a content script on a real page reached us, so the extension
 // is on AND allowed on websites — the Cleanway app shows that (safari-native.js).
 const safariSeen = createSafariSeen(chrome);
-const PAGE_MESSAGES = new Set(["CHECK_DOMAINS", "PAGE_BLOCKED", "EXTENSION_SEEN"]);
+const PAGE_MESSAGES = new Set(["CHECK_DOMAINS", "PAGE_BLOCKED", "BLOCK_PAGE", "EXTENSION_SEEN"]);
 
 // ── Messages ──
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
@@ -388,6 +405,13 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   // Sign-in (AUTH_*): background/auth.js checks who sent it.
   const authReply = handleAuthMessage(msg, sender, respond);
   if (authReply !== undefined) return authReply;
+  // BLOCK_PAGE / BLOCK_PROCEED: background/block-redirect.js checks who sent it.
+  const blockReply = handleBlockMessage(msg, sender, respond);
+  if (blockReply !== undefined) return blockReply;
+  // WEBMAIL_ANALYZE: the opt-in scanner's API call, made here with the token
+  // content scripts can no longer read (webmail-scanner.js checks the sender).
+  const mailReply = handleWebmailAnalyze(msg, sender, respond, chrome, () => API_BASE);
+  if (mailReply !== undefined) return mailReply;
   if (msg.type === "CHECK_DOMAINS") {
     // .catch() prevents an uncaught promise rejection from silently
     // closing the message channel — the content script then waits the
@@ -513,8 +537,12 @@ function installContextMenus() {
 syncFamilyPollAlarm().catch(() => {});
 
 function onFamilyStorageChanged(changes, area) {
-  if (area !== "local" || !changes) return;
-  const token = changes.auth_token;
+  if (!changes) return;
+  // The access token is in storage.session where the browser has it
+  // (utils/token-store.js); the family cache is in storage.local.
+  const token = self.cleanwayTokens.isAccessTokenChange(changes, area, chrome) ? changes.auth_token : null;
+  const familyChanged = area === "local" && Boolean(changes.family_cache);
+  if (!token && !familyChanged) return;
   if (token && !token.newValue) {
     // Signed out: the next account must not inherit this family's keys.
     clearFamilyCache();
@@ -522,7 +550,7 @@ function onFamilyStorageChanged(changes, area) {
     // Signed in: learn the family now, not the next time Options is opened.
     refreshFamilyCache(token.newValue).catch(() => {});
   }
-  if (token || changes.family_cache) syncFamilyPollAlarm().catch(() => {});
+  syncFamilyPollAlarm().catch(() => {});
 }
 
 try {

@@ -10,6 +10,7 @@
 // an unpacked dev install. To use local dev: load the extension unpacked,
 // Options page → set API URL to http://localhost:8000 → Save.
 import "./api-base.js"; // sets globalThis.cleanwayApiBase (classic UMD file)
+import "./token-store.js"; // sets globalThis.cleanwayTokens (classic UMD file)
 import { DEVICE_ID_KEY, linkDevice } from "./device-link.js";
 import { KEYS as AUTH_KEYS } from "./auth-session.js";
 
@@ -82,6 +83,10 @@ async function _authHeaders(token, extra = {}) {
  */
 export async function signOutUnlinkedBrowser() {
   try {
+    // The access token lives in storage.session where the browser has it
+    // (utils/token-store.js); the local copy is removed too either way.
+    const session = globalThis.cleanwayTokens && globalThis.cleanwayTokens.sessionArea();
+    if (session) await session.remove(AUTH_KEYS.access);
     await chrome.storage.local.remove([
       AUTH_KEYS.access, AUTH_KEYS.refresh, AUTH_KEYS.expiresAt, AUTH_KEYS.email,
       AUTH_KEYS.userId, AUTH_KEYS.anonKey, DEVICE_ID_KEY,

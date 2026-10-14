@@ -269,9 +269,13 @@ async function badgeOf(tab, id) {
   }, id);
 }
 
+// A dangerous page is blocked by taking the tab to the extension's own
+// blocked.html (background/block-redirect.js), not by an overlay the page
+// could remove.
 async function openBlocked(context, url) {
   const tab = await context.newPage();
   await tab.goto(url);
+  await tab.waitForURL(/^chrome-extension:\/\/[a-p]{32}\/src\/blocked\/blocked\.html\?/, { timeout: 8000 });
   await tab.waitForSelector("#ls-block-overlay", { timeout: 8000 });
   return tab;
 }
@@ -339,9 +343,10 @@ async function runTree(tree) {
     });
 
     await sw.evaluate(async (cfg) => {
+      // The access token lives in storage.session (utils/token-store.js).
+      await chrome.storage.session.set({ auth_token: cfg.token });
       await chrome.storage.local.set({
         api_url: cfg.base,
-        auth_token: cfg.token,
         family_cache: { family_id: cfg.familyId, members: [{ user_id: "mom", public_key_b64: cfg.momPub }], cached_at: Date.now() },
         family_public_key_b64: cfg.myPub,
         family_secret_key_b64: cfg.mySec,
@@ -442,7 +447,13 @@ async function runTree(tree) {
       assert.equal(alert.alert_type, "block");
       assert.ok(!JSON.stringify(sent.body).includes("scam-visit"), "domain must not travel in clear text");
 
-      await blockedTab.reload();
+      // The block page shows the site by name, as text, and nothing of the scam page.
+      assert.equal(await blockedTab.innerText(".ls-block-domain"), "scam-visit.example");
+      assert.equal(await blockedTab.evaluate(() => location.protocol), "chrome-extension:");
+
+      // Visiting it again the same day blocks again but is not a new blocked scam.
+      await blockedTab.goto(`http://scam-visit.example:${port}/landing.html`);
+      await blockedTab.waitForURL(/\/src\/blocked\/blocked\.html\?/, { timeout: 8000 });
       await blockedTab.waitForSelector("#ls-block-overlay", { timeout: 8000 });
       await sleep(1200);
       assert.equal(posts(api, INCREMENT).length, 1, "a reload is not a new blocked scam");
@@ -450,8 +461,14 @@ async function runTree(tree) {
       assert.equal((await stats(sw)).threats_blocked, 1);
     });
 
-    await check("the blocked page's own sign-in form gets the strict credential warning", async () => {
+    await check("'open anyway' loads the site in that tab, once allowed, with the strict credential warning", async () => {
       const { messages } = await activeCatalog(sw, tree);
+      // The button unlocks after the 5-second countdown.
+      await blockedTab.waitForSelector("#ls-block-proceed:not([disabled])", { timeout: 9000 });
+      await blockedTab.click("#ls-block-proceed");
+      await blockedTab.waitForURL(`http://scam-visit.example:${port}/landing.html`, { timeout: 8000 });
+      await sleep(1500);
+      assert.ok(blockedTab.url().startsWith("http://scam-visit.example"), `sent back to the block page: ${blockedTab.url()}`);
       const banner = await (await blockedTab.waitForSelector("#ls-credguard-banner", { state: "attached", timeout: 8000 }))
         .evaluate((el) => el.textContent);
       assert.ok(banner.includes(messages.credguard_page_flagged.message), `banner: ${banner}`);
@@ -592,7 +609,7 @@ async function runTree(tree) {
     });
 
     await check("signing out stops the family poll and forgets the family", async () => {
-      await sw.evaluate(() => chrome.storage.local.remove("auth_token"));
+      await sw.evaluate(() => chrome.storage.session.remove("auth_token"));
       await until("family poll cleared", () =>
         sw.evaluate(() => chrome.alarms.get("cleanway_family_poll").then((a) => !a)), 5000);
       const left = await sw.evaluate(() => chrome.storage.local.get("family_cache"));
@@ -646,7 +663,10 @@ async function runTree(tree) {
 
       assert.deepEqual(await answers(tab), [{ source: "cleanway-extension", type: "cleanway:connect-result", ok: true, error: null }]);
       const stored = await sw.evaluate(() => chrome.storage.local.get(null));
-      assert.equal(stored.auth_token, access);
+      // The access token is in storage.session, out of content scripts' reach;
+      // the refresh token in storage.local.
+      assert.equal(stored.auth_token, undefined, "the access token is in storage.local");
+      assert.equal((await sw.evaluate(() => chrome.storage.session.get("auth_token"))).auth_token, access);
       assert.equal(stored.auth_refresh_token, "e2e-extension-refresh");
       assert.equal(stored.auth_email, "me@example.com");
       assert.equal(stored.auth_connect_state, undefined, "the state was not spent");
@@ -675,6 +695,7 @@ async function runTree(tree) {
       await popup.evaluate(() => chrome.runtime.sendMessage({ type: "AUTH_SIGN_OUT" }));
       const left = await sw.evaluate(() => chrome.storage.local.get(["auth_token", "auth_refresh_token", "auth_email"]));
       assert.deepEqual(left, {});
+      assert.deepEqual(await sw.evaluate(() => chrome.storage.session.get("auth_token")), {});
       await Promise.all([tab.close(), other.close(), popup.close()]);
       await context.unroute("https://cleanway.ai/**");
     });
