@@ -21,7 +21,7 @@
     "preview": "email dev --dir src/templates"
   },
   "dependencies": {
-    "@react-email/components": "^0.0.25",
+    "@react-email/components": "^1.0.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
