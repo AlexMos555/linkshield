@@ -23,6 +23,32 @@
 ### Tests
 - 382 backend tests passing (was 373). Added 9 parameterized tests for `CheckoutRequest` URL validation.
 
+## [App 1.0.5] - unreleased
+
+iOS build 4, Android versionCode 106. Ships after 1.0.4 clears App Review.
+
+**Что нового**
+- **Приложение больше не «забывает» данные после сна.** Если система закрыла базу на устройстве, приложение открывает её заново, а неудачное чтение больше не считается первым запуском (#184).
+- **iOS 26: обновлены шаги включения фильтра SMS** (#187).
+- **Android: ссылки открываются только для проверенного адреса, журнал блокировок не попадает в резервную копию**, защита от зацикливания проверки ссылок (#201).
+- **Код входа из 6–8 цифр** принимается; вставка всей фразы из письма даёт сам код (#213).
+- **Готовность к капче при входе.** Проверка «я не робот» появится, только если сервер её потребует; пока капча выключена, ничего не меняется (#214).
+- **Готовность к новому ключу Supabase** (publishable вместо anon JWT) (#215).
+- **Доступность.** У всех кнопок есть роли и подписи для VoiceOver и TalkBack; вердикт проверки и загрузка озвучиваются; онбординг говорит «Шаг N из 3». Контраст текста и кнопок — не ниже AA, области нажатия не меньше 44 pt, крупный шрифт больше не обрезается, при «Уменьшить движение» кольцо оценки и окно защиты от звонков не анимируются (#249).
+- **Политика конфиденциальности в приложении** перечисляет обработчиков данных после переезда инфраструктуры (#228); новая причина в результате проверки для сайтов на бесплатных хостингах и динамических DNS (#224).
+
+**What's new**
+- Reopens a closed on-device database instead of losing data; a failed read is never treated as a first run (#184).
+- SMS-filter setup steps updated for iOS 26 (#187).
+- Android: deep links open only for the checked host, block log excluded from backups, link-guard loop brake (#201).
+- Sign-in codes of 6–8 digits accepted; pasting the email's sentence yields the code (#213).
+- Captcha-ready sign-in: the Turnstile check appears only if Supabase asks for it (#214).
+- Supabase publishable-key ready (`*_SUPABASE_PUBLISHABLE_KEY` preferred over the anon JWT) (#215).
+- Accessibility: roles and labels on every touchable for VoiceOver and TalkBack; verdicts and loading states are announced; onboarding says "Step N of 3". Text and button contrast meets AA, touch targets are at least 44 pt, large text is no longer clipped, and Reduce Motion stops the score-ring and call-guard animations (#249).
+- In-app privacy policy lists the subprocessors after the infrastructure move (#228); a new check-result reason for sites on free hosting and dynamic DNS (#224).
+
+Enablement order for the server-side switches: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
+
 ## [Extension 0.2.1] - 2026-10-21
 
 Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version for the stores: 0.2.0 was built but never submitted. Permissions are the same as in 0.2.0.
