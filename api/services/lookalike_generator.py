@@ -90,7 +90,9 @@ from api.services.scoring import (
     is_trusted_top_domain,
     registrable_domain,
 )
-from api.services.site_probes import _REDIRECT_CODES, _hop_is_safe, wire_host
+from api.services.domain_validator import ALLOWED_PORTS
+from api.services.pinned_http import pinned_client
+from api.services.site_probes import _REDIRECT_CODES, _hop_is_safe, hop_port, wire_host
 
 logger = logging.getLogger("cleanway.lookalike_generator")
 
@@ -325,7 +327,8 @@ async def fetch_page(host: str, http: httpx.AsyncClient) -> Optional[str]:
                 if resp.status_code in _REDIRECT_CODES and location:
                     target = httpx.URL(url).join(location)
                     next_host = wire_host(target)
-                    if target.scheme not in ("http", "https") or not next_host or skip_reason(next_host):
+                    if (target.scheme not in ("http", "https") or hop_port(target) not in ALLOWED_PORTS
+                            or not next_host or skip_reason(next_host)):
                         return None
                     if not await _hop_is_safe(next_host):
                         return None
@@ -356,8 +359,8 @@ PAGE_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Mobile) Cleanway-check/1.0 (+
 
 
 def page_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=PAGE_TIMEOUT_S, follow_redirects=False,
-                             headers={"User-Agent": PAGE_USER_AGENT})
+    return pinned_client(timeout=PAGE_TIMEOUT_S,
+                         headers={"User-Agent": PAGE_USER_AGENT})
 
 
 def signals(match: Match, *, listed: Optional[str], level: Optional[str], verdict_basis: Optional[str],

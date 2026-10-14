@@ -15,6 +15,7 @@ import logging
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from api.services import reason_codes
 from api.services.rate_limiter import rate_limit
 from api.services.scam_explainer import LOCALES, explain_scam
 
@@ -50,15 +51,9 @@ async def explain_endpoint(body: ExplainRequest) -> ExplainResponse:
         # Don't reject — fall back to English. UX > strict contract.
         locale = "en"
 
-    # Filter out empty / weird signals — keep what's actionable.
-    clean_signals: list[str] = []
-    for s in body.signals or []:
-        if not isinstance(s, str):
-            continue
-        v = s.strip().lower()
-        if not v or len(v) > 64:
-            continue
-        clean_signals.append(v)
+    # Only reason codes our scorers emit reach the explainer (and its LLM
+    # prompt); free text is dropped, the list capped (reason_codes.py).
+    clean_signals = reason_codes.clean_signals(body.signals or [])
 
     result = await explain_scam(clean_signals, locale)
     return ExplainResponse(**result)

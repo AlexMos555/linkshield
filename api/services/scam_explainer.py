@@ -33,6 +33,12 @@ Architecture:
        locale) for 7 days — explanations for the same scam
        pattern don't change every day.
 
+Cost (audit 2026-10-14): the endpoint is anonymous, so only known reason
+codes reach the prompt (api/services/reason_codes.py — free text is
+dropped), and every live LLM call takes one unit of a service-wide daily
+budget (paid_budget "explainer", config.explainer_daily_budget). Past the
+budget: the last LLM text for the category + locale, else the template.
+
 Privacy:
   * The signal SET is what we cache by, NOT the domain or URL.
   * We never log the user's domain in the explainer path.
@@ -484,6 +490,21 @@ async def _llm_explanation(
     return None
 
 
+_CATEGORY_CACHE_TTL_S = 7 * 24 * 3600
+
+
+def _category_cache_key(category: str, locale: str) -> str:
+    """The last LLM explanation for a category + locale: what a caller gets
+    once the day's LLM budget is spent."""
+    return f"explainer:v1:cat:{category}:{locale}"
+
+
+async def _llm_budget_granted() -> bool:
+    from api.config import get_settings
+    from api.services import paid_budget
+    return await paid_budget.take("explainer", get_settings().explainer_daily_budget)
+
+
 async def explain_scam(
     signals: Iterable[str], locale: str = "en",
 ) -> dict:
@@ -494,17 +515,23 @@ async def explain_scam(
           "category": str,
           "locale": str,
           "explanation": str,
-          "source": "llm" | "template",
+          "source": "llm" | "template" | "cache",
         }
 
     Never raises. Always returns a usable explanation.
     """
+    from api.services.reason_codes import clean_signals
+
     locale = (locale or "en").lower()
     if locale not in LOCALES:
         locale = "en"
-    signals_set = set(signals or ())
+    # Only known reason codes, ever — this list goes into an LLM prompt.
+    signals_set = set(clean_signals(signals))
 
     category = categorise(signals_set)
+
+    def _answer(explanation: str, source: str) -> dict:
+        return {"category": category, "locale": locale, "explanation": explanation, "source": source}
 
     # L1: Redis cache (transparent — failures fall through).
     cache_key = _cache_key(category, signals_set, locale)
@@ -513,25 +540,37 @@ async def explain_scam(
         r = await get_redis()
         cached = await r.get(cache_key)
         if cached:
-            return {
-                "category": category,
-                "locale": locale,
-                "explanation": cached,
-                "source": "cache",
-            }
+            return _answer(cached, "cache")
     except Exception:
         r = None  # cache outage — proceed without
 
-    # L2: LLM when available. Catch every exception here — a
-    # crashing LLM client (network, auth, schema mismatch on the
-    # SDK release) must NEVER take down the explainer endpoint.
-    # The user always gets a usable answer, even if it's the
-    # deterministic template.
-    try:
-        explanation = await _llm_explanation(category, signals_set, locale)
-    except Exception as exc:
-        logger.warning("LLM explainer crashed, falling back: %s", exc)
-        explanation = None
+    # L2: LLM, when there is a key, something known to explain, and budget
+    # left today. Catch every exception here — a crashing LLM client
+    # (network, auth, schema mismatch on the SDK release) must NEVER take
+    # down the explainer endpoint.
+    explanation: Optional[str] = None
+    budget_spent = False
+    if signals_set and _llm_available():
+        if await _llm_budget_granted():
+            try:
+                explanation = await _llm_explanation(category, signals_set, locale)
+            except Exception as exc:
+                logger.warning("LLM explainer crashed, falling back: %s", exc)
+        else:
+            budget_spent = True
+
+    if budget_spent:
+        # Serve what we have, and cache nothing under this signal set: the
+        # next day's budget can still give it a real explanation.
+        if r is not None:
+            try:
+                fallback = await r.get(_category_cache_key(category, locale))
+                if fallback:
+                    return _answer(fallback, "cache")
+            except Exception:
+                pass
+        return _answer(_deterministic_explanation(category, locale), "template")
+
     source = "llm" if explanation else "template"
     if explanation is None:
         explanation = _deterministic_explanation(category, locale)
@@ -540,13 +579,10 @@ async def explain_scam(
     # re-bill the LLM.
     if r is not None:
         try:
-            await r.setex(cache_key, 7 * 24 * 3600, explanation)
+            await r.setex(cache_key, _CATEGORY_CACHE_TTL_S, explanation)
+            if source == "llm":
+                await r.setex(_category_cache_key(category, locale), _CATEGORY_CACHE_TTL_S, explanation)
         except Exception:
             pass
 
-    return {
-        "category": category,
-        "locale": locale,
-        "explanation": explanation,
-        "source": source,
-    }
+    return _answer(explanation, source)

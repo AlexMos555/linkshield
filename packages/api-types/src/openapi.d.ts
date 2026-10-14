@@ -1861,18 +1861,6 @@ export interface components {
             /** Country Code */
             country_code?: string | null;
         };
-        /** Body_analyze_voice_api_v1_scam_analyze_voice_post */
-        Body_analyze_voice_api_v1_scam_analyze_voice_post: {
-            /**
-             * File
-             * @description Audio file, ≤25MB, ≤10min
-             */
-            file: string;
-            /** Language */
-            language?: string | null;
-            /** Country Code */
-            country_code?: string | null;
-        };
         /** Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post */
         Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post: {
             /** List Unsubscribe */
@@ -4800,7 +4788,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_analyze_voice_api_v1_scam_analyze_voice_post"];
+                "multipart/form-data": {
+                    /**
+                     * File
+                     * @description Audio file, ≤25MB, ≤10min
+                     */
+                    file: string;
+                    /** Language */
+                    language?: string | null;
+                    /** Country Code */
+                    country_code?: string | null;
+                };
             };
         };
         responses: {

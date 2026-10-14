@@ -181,6 +181,9 @@ class Settings(BaseSettings):
     # these (api/services/paid_budget.py). 0 turns the source off.
     ipqs_daily_budget: int = 150            # the free plan is 5,000 lookups a month
     llm_judge_daily_budget: int = 300       # live Claude calls (cache hits are free)
+    # POST /api/v1/explain (anonymous): live Haiku calls a day for the whole
+    # service; past it, cached or template text (api/services/scam_explainer.py).
+    explainer_daily_budget: int = 500
 
     # Wall-clock budget for ONE fresh domain analysis (all sources, the site
     # probes and the LLM judge). Checks still running at the deadline are cut
@@ -501,6 +504,21 @@ def validate_settings(settings: "Settings") -> None:
                 "webhook signing secret format). Got something that "
                 "doesn't — likely confused with the publishable key."
             )
+
+    # 5e) Webhook secrets in prod. An empty secret makes its webhook answer
+    # 503 (never "verify" against an empty key — anyone can sign with that),
+    # so billing events stop arriving. Not fatal: which webhooks a deploy
+    # uses is a product decision, and a crash here would take the whole API
+    # down for a webhook. CRITICAL so it pages through Sentry.
+    if env == "production":
+        for var, value in (
+            ("STRIPE_WEBHOOK_SECRET", settings.stripe_webhook_secret),
+            ("REVENUECAT_WEBHOOK_AUTH", settings.revenuecat_webhook_auth),
+        ):
+            if not _is_safe_nonempty(value):
+                logger.critical(
+                    "%s is empty in production — that webhook answers 503 and its events are lost", var,
+                )
 
     # 6) Soft warnings (not fatal)
     if env != "development" and not (

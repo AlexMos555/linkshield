@@ -31,6 +31,11 @@ judged whatever a site shows foreign visitors on port 80. They follow
 redirects BY HAND and vet every hop's address first: httpx's automatic
 following would connect to a 30x pointing at 127.0.0.1 or an internal
 address, which the analyzer's SSRF guard (first host only) never sees.
+
+Every connection — TLS, plain HTTP on port 80, each HTTPS hop — goes to an
+address resolved and vetted for THAT connection (domain_validator
+.resolve_public_sync, api/services/pinned_http.py), never to the name: a
+second lookup at connect time is what DNS rebinding exploits.
 """
 
 from __future__ import annotations
@@ -46,7 +51,14 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from api.services.domain_validator import DomainValidationError, validate_domain_resolution
+from api.services.domain_validator import (
+    ALLOWED_PORTS,
+    DomainValidationError,
+    HostNotFound,
+    resolve_public,
+    resolve_public_sync,
+)
+from api.services.pinned_http import pinned_client
 
 logger = logging.getLogger("cleanway.site_probes")
 
@@ -108,6 +120,11 @@ def _unreachable(exc: BaseException, **extra) -> dict:
     return {"reachable": False, "error": failure_kind(exc), **extra}
 
 
+def _not_connectable(exc: DomainValidationError) -> dict:
+    """The name has no address, or none we may connect to: nothing measured."""
+    return {"reachable": False, "error": "dns" if isinstance(exc, HostNotFound) else "network"}
+
+
 def ascii_host(host: str) -> str:
     """The wire (punycode) form of a hostname typed in Unicode.
 
@@ -153,7 +170,11 @@ def _check_ssl_sync(domain: str) -> dict:
     deadline = time.monotonic() + SITE_PROBE_TOTAL_S
     ctx = ssl.create_default_context()
     try:
-        with socket.create_connection((domain, 443), timeout=SITE_PROBE_TIMEOUT_S) as sock:
+        address = resolve_public_sync(domain, 443)[0]
+    except DomainValidationError as exc:
+        return _not_connectable(exc)
+    try:
+        with socket.create_connection((address, 443), timeout=SITE_PROBE_TIMEOUT_S) as sock:
             with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
                 cert = ssock.getpeercert()
     except ssl.SSLCertVerificationError as exc:
@@ -162,7 +183,7 @@ def _check_ssl_sync(domain: str) -> dict:
             return {"reachable": True, "has_ssl": True, "certificate_problem": problem}
         return _unreachable(exc)
     except Exception as exc:
-        if _may_have_no_https(exc) and _serves_plain_http(domain, deadline):
+        if _may_have_no_https(exc) and _serves_plain_http(domain, address, deadline):
             return {"reachable": True, "has_ssl": False, "http_only": True}
         return _unreachable(exc)
     return _describe_certificate(cert or {})
@@ -180,7 +201,7 @@ def _may_have_no_https(exc: BaseException) -> bool:
     )
 
 
-def _serves_plain_http(domain: str, deadline: float) -> bool:
+def _serves_plain_http(domain: str, address: str, deadline: float) -> bool:
     """True when port 80 serves a real page over plain HTTP.
 
     A 2xx, or a redirect that stays on plain HTTP. A redirect to https:// means
@@ -188,7 +209,7 @@ def _serves_plain_http(domain: str, deadline: float) -> bool:
     as likely to be a foreign-visitor block page as anything — neither is
     evidence of "no HTTPS".
     """
-    head = _plain_http_head(domain, deadline)
+    head = _plain_http_head(domain, address, deadline)
     if head is None:
         return False
     status, location = head
@@ -199,10 +220,10 @@ def _serves_plain_http(domain: str, deadline: float) -> bool:
     return False
 
 
-def _plain_http_head(domain: str, deadline: float) -> Optional[tuple[int, Optional[str]]]:
+def _plain_http_head(domain: str, address: str, deadline: float) -> Optional[tuple[int, Optional[str]]]:
     """(status, Location) of `GET http://<domain>/`, or None if port 80 did not
-    answer HTTP by `deadline`. One request, no redirects followed: nothing but
-    the domain the SSRF guard already vetted is ever contacted."""
+    answer HTTP by `deadline`. One request, no redirects followed, sent to
+    `address` — the one vetted for port 443 — so nothing else is contacted."""
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         return None
@@ -211,7 +232,7 @@ def _plain_http_head(domain: str, deadline: float) -> Optional[tuple[int, Option
         "Accept: */*\r\nConnection: close\r\n\r\n"
     ).encode("ascii", "ignore")
     try:
-        with socket.create_connection((domain, 80), timeout=min(SITE_PROBE_TIMEOUT_S, remaining)) as sock:
+        with socket.create_connection((address, 80), timeout=min(SITE_PROBE_TIMEOUT_S, remaining)) as sock:
             sock.sendall(request)
             raw = _read_head(sock, deadline)
     except OSError:
@@ -278,15 +299,28 @@ def _cert_age_days(not_before: Optional[str]) -> Optional[int]:
 
 # ── Redirects, followed by hand ──
 
-async def _hop_is_safe(host: str) -> bool:
-    """The SSRF guard for one redirect hop: False when `host` resolves to a
-    private, loopback, link-local or otherwise internal address."""
+async def _hop_is_safe(host: str, port: int = 443) -> bool:
+    """The SSRF guard for one redirect hop: False when the port is not 80/443,
+    or `host` is a private name, does not resolve, or resolves to any private,
+    loopback, link-local or otherwise internal address. (The transport checks
+    again at connect time and connects to the address it checked.)"""
     try:
-        await validate_domain_resolution(host)
+        await resolve_public(host, port)
         return True
     except DomainValidationError:
         logger.warning("redirect_hop_blocked", extra={"host": host})
         return False
+
+
+def hop_port(target: httpx.URL) -> int:
+    return target.port or (443 if target.scheme == "https" else 80)
+
+
+async def target_is_safe(target: httpx.URL) -> bool:
+    """A redirect target we may follow: http(s), port 80/443, a vetted host."""
+    if target.scheme not in ("http", "https") or hop_port(target) not in ALLOWED_PORTS:
+        return False
+    return await _hop_is_safe(wire_host(target), hop_port(target))
 
 
 async def _fetch(
@@ -310,13 +344,13 @@ async def _fetch(
             return resp, hosts, "too_many_redirects"
         target = httpx.URL(url).join(location)
         hosts.append(wire_host(target))
-        if target.scheme not in ("http", "https") or not await _hop_is_safe(hosts[-1]):
+        if not await target_is_safe(target):
             return resp, hosts, "unsafe_hop"
         url = str(target)
 
 
 def _client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=SITE_PROBE_TIMEOUT_S, follow_redirects=False)
+    return pinned_client(timeout=SITE_PROBE_TIMEOUT_S)
 
 
 # ── Security headers ──

@@ -140,16 +140,15 @@ async def analyze_domain(
         logger.info("analysis_not_found", extra={"domain": domain})
         return vb.not_found_result(domain)
 
-    # Block internal IPs before making any requests to the site.
+    # Block internal names and addresses before making any requests to the
+    # site. The answer is the SAME as for a name that does not exist: a
+    # distinct "resolves to a blocked network" let anyone map our private
+    # network by name (redis.railway.internal) through the anonymous check.
     try:
         probes_allowed = await resolution
     except DomainValidationError as e:
         logger.warning("DNS resolution blocked (SSRF): %s — %s", domain, str(e))
-        return DomainResult(
-            domain=domain, score=100, level=RiskLevel.dangerous,
-            reasons=[DomainReason(signal="ssrf_blocked", detail="Domain resolves to a blocked network", weight=100)],
-            exists=exists, verdict_basis=vb.BASIS_HEURISTICS,
-        )
+        return vb.not_found_result(domain)
 
     outcomes, unfinished = await run_within_budget(
         _check_calls(domain, probes_allowed), deadline.remaining(),

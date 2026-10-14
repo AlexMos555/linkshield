@@ -377,7 +377,12 @@ async def stripe_webhook(request: Request):
 
     settings = get_settings()
     stripe.api_key = getattr(settings, "stripe_secret_key", "")
-    webhook_secret = getattr(settings, "stripe_webhook_secret", "")
+    webhook_secret = (getattr(settings, "stripe_webhook_secret", "") or "").strip()
+    if not webhook_secret:
+        # construct_event with an empty key checks an HMAC anyone can compute:
+        # a forged event would be accepted. Not configured = refuse, loudly.
+        logger.error("stripe_webhook_not_configured")
+        raise HTTPException(503, "Stripe webhook is not configured")
 
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
