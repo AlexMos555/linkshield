@@ -505,6 +505,21 @@ def validate_settings(settings: "Settings") -> None:
                 "doesn't — likely confused with the publishable key."
             )
 
+    # 5e) Webhook secrets in prod. An empty secret makes its webhook answer
+    # 503 (never "verify" against an empty key — anyone can sign with that),
+    # so billing events stop arriving. Not fatal: which webhooks a deploy
+    # uses is a product decision, and a crash here would take the whole API
+    # down for a webhook. CRITICAL so it pages through Sentry.
+    if env == "production":
+        for var, value in (
+            ("STRIPE_WEBHOOK_SECRET", settings.stripe_webhook_secret),
+            ("REVENUECAT_WEBHOOK_AUTH", settings.revenuecat_webhook_auth),
+        ):
+            if not _is_safe_nonempty(value):
+                logger.critical(
+                    "%s is empty in production — that webhook answers 503 and its events are lost", var,
+                )
+
     # 6) Soft warnings (not fatal)
     if env != "development" and not (
         _is_safe_nonempty(settings.google_safe_browsing_key) or _is_safe_nonempty(settings.web_risk_api_key)
