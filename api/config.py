@@ -181,6 +181,9 @@ class Settings(BaseSettings):
     # these (api/services/paid_budget.py). 0 turns the source off.
     ipqs_daily_budget: int = 150            # the free plan is 5,000 lookups a month
     llm_judge_daily_budget: int = 300       # live Claude calls (cache hits are free)
+    # POST /api/v1/explain (anonymous): live Haiku calls a day for the whole
+    # service; past it, cached or template text (api/services/scam_explainer.py).
+    explainer_daily_budget: int = 500
 
     # Wall-clock budget for ONE fresh domain analysis (all sources, the site
     # probes and the LLM judge). Checks still running at the deadline are cut
