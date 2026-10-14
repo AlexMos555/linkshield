@@ -189,15 +189,28 @@
   // network twice.
   var _brandHostCache = Object.create(null);
 
+  // The rule of utils/api-base.js (a classic content script cannot import
+  // it): production, or loopback in an unpacked dev install.
+  function allowedApiBase(value) {
+    if (typeof value !== "string") return null;
+    var v = value.trim().replace(/\/+$/, "");
+    if (v === "https://api.cleanway.ai") return v;
+    var dev = false;
+    try {
+      var m = chrome.runtime.getManifest();
+      dev = !!m && !("update_url" in m);
+    } catch (e) { /* no runtime: not a dev install */ }
+    return dev && /^http:\/\/(localhost|127\.0\.0\.1)(:[0-9]{1,5})?$/.test(v) ? v : null;
+  }
+
   async function _fetchVerifiedHosts(brand) {
     if (_brandHostCache[brand]) return _brandHostCache[brand];
     try {
       var apiBase = "https://api.cleanway.ai";
       try {
         var stored = await chrome.storage.local.get("api_url");
-        if (stored && typeof stored.api_url === "string" && stored.api_url.startsWith("http")) {
-          apiBase = stored.api_url.replace(/\/+$/, "");
-        }
+        var allowed = allowedApiBase(stored && stored.api_url);
+        if (allowed) apiBase = allowed;
       } catch (e) { /* storage unavailable */ }
       var resp = await fetch(
         apiBase + "/api/v1/credentials/verified?brand=" + encodeURIComponent(brand),

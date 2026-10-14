@@ -34,8 +34,15 @@
  * 5. The webmail scanner is opt-in: no manifest loads it or asks for the
  *    mail sites at install, the background registers it only while Settings
  *    has it on, switched off it reads no email and sends nothing, switching
- *    it off mid-scan aborts the request, and it sends a message's links
- *    instead of its HTML.
+ *    it off mid-scan draws nothing, and it sends a message's links instead
+ *    of its HTML — through the background, which holds the token and sends
+ *    only to the allowlisted API server.
+ *
+ * 6. A dangerous page is blocked by taking the tab to the extension's own
+ *    blocked.html (not an overlay the page could remove): the address
+ *    carries only validated, encoded fields, "open anyway" is allowed only
+ *    from that page and only back to the blocked http(s) address, and the
+ *    access token lives in storage.session, out of content scripts' reach.
  *
  * Every group runs against packages/extension-core/ AND the three generated
  * trees, so a hand-edit to a generated copy (or a forgotten rebuild) fails too.
@@ -1092,25 +1099,31 @@ function runWebmailOnMailPage(tree, stored, { hang = false } = {}) {
     observe() { this.connected = true; }
     disconnect() { this.connected = false; }
   }
+  // The background (WEBMAIL_ANALYZE) answers; with `hang` it answers only
+  // when the test says so.
+  const pending = [];
+  chrome.runtime = {
+    lastError: undefined,
+    sendMessage(message, cb) {
+      requests.push({ type: message.type, body: message.payload });
+      const answer = () => cb({ ok: true, status: 200, result: { level: "dangerous", score: 80, findings: [], links: [] } });
+      if (hang) pending.push(answer);
+      else queueMicrotask(answer);
+    },
+  };
   const window = {};
   const ctx = vm.createContext({
     window, chrome, document: page.document, location: { hostname: "mail.google.com" },
     MutationObserver, AbortController, console: { warn() {}, log() {} },
     setTimeout: (fn) => { timers.push(fn); return timers.length; },
     clearTimeout: () => {},
-    fetch: (url, init) => {
-      requests.push({ url, body: JSON.parse(init.body), signal: init.signal });
-      if (hang) {
-        // A slow API: answers only by failing when the request is aborted.
-        return new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted"))));
-      }
-      return Promise.resolve({ ok: true, status: 200, json: async () => ({ level: "dangerous", score: 80, findings: [], links: [] }) });
-    },
+    fetch: () => { throw new Error("content/webmail.js must not fetch: the background makes the call"); },
   });
   vm.runInContext(readFileSync(join(ROOT, tree, "src/content/webmail.js"), "utf8"), ctx);
   const settle = () => new Promise((r) => setTimeout(r, 0));
   return {
     page, requests, observers, window,
+    answerPending() { for (const fn of pending.splice(0)) fn(); },
     async tick() {
       await settle();
       const due = timers.splice(0);
@@ -1148,7 +1161,7 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     await tab.tick();
     assert.equal(tab.requests.length, 1, "switching on did not start scanning");
     const [req] = tab.requests;
-    assert.equal(req.url, "https://api.cleanway.ai/api/v1/email/analyze");
+    assert.equal(req.type, "WEBMAIL_ANALYZE", "the scan goes through the background");
     assert.deepEqual(Object.keys(req.body).sort(), [
       "body_html", "body_text", "dkim", "dmarc", "from_address", "from_display", "reply_to", "return_path", "spf", "subject",
     ]);
@@ -1187,14 +1200,14 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.equal(tab.requests.length, 2, "switching back on did not rescan");
   });
 
-  await check(`[${tree}] webmail scanner: switching off mid-request aborts it and draws nothing`, async () => {
+  await check(`[${tree}] webmail scanner: switching off mid-request draws nothing`, async () => {
     const tab = runWebmailOnMailPage(tree, { webmailScannerEnabled: true }, { hang: true });
     await tab.tick();
-    // The request is in flight once the scan reaches fetch.
+    // The request is in flight once the scan reaches the background.
     await tab.tick();
     assert.equal(tab.requests.length, 1);
     await tab.setSwitch(false);
-    assert.equal(tab.requests[0].signal.aborted, true, "the request in flight was not aborted");
+    tab.answerPending(); // the late answer must not draw a banner
     await tab.tick();
     assert.equal(tab.page.banner(), null);
   });
@@ -1536,7 +1549,8 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
       assert.ok(!/api_url\.startsWith\(|\.api_url\s*\|\||newValue\.replace\(/.test(src),
         `${file} still trusts any stored api_url`);
     }
-    assert.ok(seen >= 6, `expected the six api_url readers, saw ${seen}`);
+    // content/webmail.js no longer reads it: the background sends the scan.
+    assert.ok(seen >= 5, `expected the five api_url readers, saw ${seen}`);
   });
 
   await check(`[${tree}] the settings page loads the allowlist before options.js`, () => {
@@ -1545,14 +1559,295 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.ok(at('src="../utils/api-base.js"') >= 0 && at('src="../utils/api-base.js"') < at('src="options.js"'));
   });
 
-  await check(`[${tree}] the webmail scanner never sends mail to a non-allowlisted server`, async () => {
-    const tab = runWebmailOnMailPage(tree, { api_url: "https://evil.example" });
-    await tab.tick();
-    await tab.setSwitch(true);
-    await tab.tick();
-    await tab.tick();
-    assert.equal(tab.requests.length, 1);
-    assert.equal(tab.requests[0].url, `${PROD_API}/api/v1/email/analyze`);
+  await check(`[${tree}] the webmail scan: only a mail page's top frame, only while on, token added in the background`, async () => {
+    const { handleWebmailAnalyze } = await scannerModule(tree);
+    await import(pathToFileURL(join(ROOT, tree, "src/utils/token-store.js")).href);
+    const stored = { webmailScannerEnabled: true };
+    const session = { auth_token: "session-token" };
+    const api = {
+      storage: {
+        local: memoryStorage(stored),
+        session: memoryStorage(session),
+      },
+    };
+    const sent = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      sent.push({ url, init });
+      return { ok: true, status: 200, json: async () => ({ level: "safe" }) };
+    };
+    const ask = (sender, payload = { subject: "hi" }) => new Promise((resolve) => {
+      const r = handleWebmailAnalyze({ type: "WEBMAIL_ANALYZE", payload }, sender, resolve, api, () => PROD_API);
+      assert.equal(r, true);
+    });
+    const mail = { tab: { id: 4 }, frameId: 0, url: "https://mail.google.com/mail/u/0/#inbox/1" };
+    try {
+      assert.equal(handleWebmailAnalyze({ type: "OTHER" }, mail, () => {}, api, () => PROD_API), undefined);
+      const ok = await ask(mail);
+      assert.equal(ok.ok, true);
+      assert.equal(sent.length, 1);
+      assert.equal(sent[0].url, `${PROD_API}/api/v1/email/analyze`);
+      assert.equal(sent[0].init.headers.Authorization, "Bearer session-token");
+      assert.deepEqual(JSON.parse(sent[0].init.body), { subject: "hi" });
+      for (const bad of [
+        { ...mail, frameId: 2 },
+        { ...mail, url: "https://mail.google.com.evil.example/x" },
+        { ...mail, url: "https://evil.example/?mail.google.com" },
+        { frameId: 0, url: mail.url },
+      ]) {
+        assert.equal((await ask(bad)).error, "bad_sender", JSON.stringify(bad));
+      }
+      api.storage.local.data.webmailScannerEnabled = false;
+      assert.equal((await ask(mail)).error, "off");
+      assert.equal(sent.length, 1, "sent while the switch is off or for a bad sender");
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+}
+
+// ── Group 9: a dangerous page is blocked from the extension's own page ──
+// The block page used to be an overlay appended into the scam page's own DOM
+// at document_idle — the page could remove it. Now the background takes the
+// tab to src/blocked/blocked.html (background/block-redirect.js), whose
+// address carries the verdict (utils/blocked-url.js).
+
+const EXT = "chrome-extension://abcdefghijklmnop/";
+
+function loadBlockedUrl(tree) {
+  const ctx = vm.createContext({ URL, URLSearchParams });
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/utils/blocked-url.js"), "utf8"), ctx);
+  return ctx.cleanwayBlockedUrl;
+}
+
+const blockRedirectModule = (tree) => import(pathToFileURL(join(ROOT, tree, "src/background/block-redirect.js")).href);
+
+function fakeBlockApi({ updateFails = false, session = true } = {}) {
+  const log = { updates: [], injected: [], removedListeners: [] };
+  const api = {
+    runtime: { id: "abcdefghijklmnop", getURL: (p) => EXT + p },
+    storage: session ? { session: memoryStorage({}) } : {},
+    tabs: {
+      update: async (tabId, props) => {
+        if (updateFails) throw new Error("not allowed");
+        log.updates.push({ tabId, url: props.url });
+      },
+      onRemoved: { addListener: (fn) => log.removedListeners.push(fn) },
+    },
+    scripting: { executeScript: async (opts) => { log.injected.push(opts); } },
+  };
+  return { api, log };
+}
+
+const DANGER = {
+  domain: "paypa1-login.example",
+  level: "dangerous",
+  confidence_pct: 91,
+  reasons: [
+    { signal: "typosquatting", detail: "Impersonates paypal.com (high similarity)" },
+    { signal: "domain_age", detail: "Registered 2 days ago" },
+  ],
+};
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] block page address: encoded fields, parsed back and validated`, () => {
+    const B = loadBlockedUrl(tree);
+    const url = B.build(EXT, DANGER, "https://paypa1-login.example/signin?next=/a&x=<b>#frag");
+    assert.ok(url.startsWith(`${EXT}src/blocked/blocked.html?d=paypa1-login.example&u=`), url);
+    assert.ok(!/[<>"' ]/.test(url), `unencoded characters in ${url}`);
+    const back = B.parse(url.slice(url.indexOf("?")));
+    assert.equal(back.domain, "paypa1-login.example");
+    assert.equal(back.url, "https://paypa1-login.example/signin?next=/a&x=%3Cb%3E#frag");
+    assert.equal(back.confidence_pct, 91);
+    assert.deepEqual(JSON.parse(JSON.stringify(back.reasons)), DANGER.reasons.map(({ signal, detail }) => ({ signal, detail })));
+    // Not a hostname → nothing to build.
+    for (const bad of ["", "<img src=x onerror=alert(1)>", "a b.example", "evil.example/path", null, 42]) {
+      assert.equal(B.build(EXT, { ...DANGER, domain: bad }, "https://x.example/"), null, String(bad));
+    }
+  });
+
+  await check(`[${tree}] block page address: hostile query strings are neutralised`, () => {
+    const B = loadBlockedUrl(tree);
+    const q = (o) => "?" + Object.entries(o).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    // A domain that is markup, or a reason that is markup: the domain is
+    // dropped, the reason stays text (blocked.js renders with textContent).
+    let v = B.parse(q({ d: "<script>alert(1)</script>", u: "https://x.example/" }));
+    assert.equal(v.domain, "");
+    assert.equal(v.url, "", "no domain → no 'open anyway' address");
+    // "Open anyway" goes only to http(s) on the blocked host itself.
+    for (const u of [
+      "javascript:alert(1)//paypa1-login.example",
+      "data:text/html,<script>alert(1)</script>",
+      "chrome://settings",
+      "https://evil.example/?paypa1-login.example",
+      "https://paypa1-login.example.evil.example/",
+      "https://paypa1-login.example@evil.example/",
+      "https://user:pw@paypa1-login.example/",
+      "intent://paypa1-login.example/#Intent;scheme=https;end",
+    ]) {
+      v = B.parse(q({ d: "paypa1-login.example", u }));
+      assert.equal(v.url, "", u);
+    }
+    assert.equal(B.parse(q({ d: "PAYPA1-login.example", u: "http://paypa1-login.example:8080/a" })).url,
+      "http://paypa1-login.example:8080/a");
+    // Reason codes are snake_case words; details are capped; at most eight.
+    const many = Array.from({ length: 20 }, (_, i) => ({ s: i % 2 ? "domain_age" : "X; drop", t: "d".repeat(500) }));
+    v = B.parse(q({ d: "a.example", r: JSON.stringify(many), c: "150" }));
+    assert.equal(v.reasons.length, 8);
+    assert.ok(v.reasons.every((r) => r.signal === "" || r.signal === "domain_age"));
+    assert.ok(v.reasons.every((r) => r.detail.length === 200));
+    assert.equal(v.confidence_pct, null, "confidence outside 50–99 is dropped");
+    assert.deepEqual(JSON.parse(JSON.stringify(B.parse(q({ d: "a.example", r: "{not json" })).reasons)), []);
+    assert.equal(B.parse(undefined).domain, "");
+    assert.equal(B.isBlockedPageUrl(`${EXT}src/blocked/blocked.html?d=a.example`, EXT), true);
+    assert.equal(B.isBlockedPageUrl(`${EXT}src/blocked/blocked.htmlx?d=a.example`, EXT), false);
+    assert.equal(B.isBlockedPageUrl(`chrome-extension://other/src/blocked/blocked.html?d=a.example`, EXT), false);
+  });
+
+  await check(`[${tree}] a dangerous page sends the tab to blocked.html, from its own top frame only`, async () => {
+    globalThis.self = globalThis;
+    const { createBlockRedirect } = await blockRedirectModule(tree);
+    const { api, log } = fakeBlockApi();
+    const shown = [];
+    const handle = createBlockRedirect({
+      api, getCached: () => null, onShown: async (host) => { shown.push(host); }, onProceeded: () => {},
+    });
+    const ask = (msg, sender) => new Promise((resolve) => assert.equal(handle(msg, sender, resolve), true));
+    const top = { tab: { id: 7 }, frameId: 0, url: "https://paypa1-login.example/signin" };
+
+    assert.equal(handle({ type: "CHECK_DOMAINS" }, top, () => {}), undefined, "not ours");
+    assert.deepEqual(await ask({ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: DANGER }, top), { action: "navigated" });
+    assert.equal(log.updates.length, 1);
+    assert.equal(log.updates[0].tabId, 7);
+    assert.ok(log.updates[0].url.startsWith(`${EXT}src/blocked/blocked.html?d=paypa1-login.example&u=`));
+    assert.deepEqual(shown, ["paypa1-login.example"], "the shown block is counted");
+
+    for (const [msg, sender, why] of [
+      [{ type: "BLOCK_PAGE", domain: "other.example", result: DANGER }, top, "about another site"],
+      [{ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: DANGER }, { ...top, frameId: 3 }, "from an iframe"],
+      [{ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: DANGER }, { frameId: 0, url: top.url }, "not from a tab"],
+      [{ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: { ...DANGER, level: "safe" } }, top, "not dangerous"],
+    ]) {
+      assert.deepEqual(await ask(msg, sender), { action: "none" }, why);
+    }
+    assert.equal(log.updates.length, 1, "navigated for a bad sender or a safe verdict");
+  });
+
+  await check(`[${tree}] "open anyway": only from blocked.html, back to the blocked address, then allowed in that tab`, async () => {
+    const { createBlockRedirect } = await blockRedirectModule(tree);
+    const B = loadBlockedUrl(tree);
+    const { api, log } = fakeBlockApi();
+    const proceeded = [];
+    const handle = createBlockRedirect({
+      api, getCached: () => null, onShown: async () => {}, onProceeded: (tabId) => proceeded.push(tabId),
+    });
+    const ask = (msg, sender) => new Promise((resolve) => handle(msg, sender, resolve));
+    const page = B.build(EXT, DANGER, "https://paypa1-login.example/signin?a=1");
+    const blockedTab = { id: "abcdefghijklmnop", tab: { id: 7 }, frameId: 0, url: page };
+
+    // Not from the block page: refused, nothing allowed, nowhere navigated.
+    for (const sender of [
+      { ...blockedTab, url: "https://paypa1-login.example/signin" },
+      { ...blockedTab, url: `${EXT}src/options/options.html?d=paypa1-login.example&u=https%3A%2F%2Fpaypa1-login.example%2F` },
+      { ...blockedTab, id: "another-extension" },
+      { ...blockedTab, tab: undefined },
+      { ...blockedTab, url: `${EXT}src/blocked/blocked.html?d=paypa1-login.example&u=javascript%3Aalert(1)` },
+    ]) {
+      assert.deepEqual(await ask({ type: "BLOCK_PROCEED", url: "https://evil.example/" }, sender), { ok: false }, sender.url);
+    }
+    assert.equal(log.updates.length, 0);
+
+    // From the block page: back to the address in ITS OWN url, never the message's.
+    assert.deepEqual(await ask({ type: "BLOCK_PROCEED", url: "https://evil.example/" }, blockedTab), { ok: true });
+    assert.deepEqual(log.updates, [{ tabId: 7, url: "https://paypa1-login.example/signin?a=1" }]);
+
+    // The page loads again in that tab: not blocked again, the credential guard goes strict.
+    const top = { tab: { id: 7 }, frameId: 0, url: "https://paypa1-login.example/signin?a=1" };
+    assert.deepEqual(await ask({ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: DANGER }, top), { action: "proceed" });
+    assert.deepEqual(proceeded, [7]);
+    // Another tab, or another site in this tab: blocked as usual.
+    assert.equal((await ask({ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: DANGER }, { ...top, tab: { id: 8 } })).action, "navigated");
+    const other = { tab: { id: 7 }, frameId: 0, url: "https://other-scam.example/" };
+    assert.equal((await ask({ type: "BLOCK_PAGE", domain: "other-scam.example", result: { ...DANGER, domain: "other-scam.example" } }, other)).action, "navigated");
+    // Closing the tab forgets the allowance.
+    for (const fn of log.removedListeners) fn(7);
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal((await ask({ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: DANGER }, top)).action, "navigated");
+  });
+
+  await check(`[${tree}] a browser that refuses the navigation gets the in-page overlay as a last resort`, async () => {
+    const { createBlockRedirect } = await blockRedirectModule(tree);
+    const { api, log } = fakeBlockApi({ updateFails: true, session: false });
+    const handle = createBlockRedirect({ api, getCached: () => null, onShown: async () => {}, onProceeded: () => {} });
+    const top = { tab: { id: 9 }, frameId: 0, url: "https://paypa1-login.example/" };
+    const reply = await new Promise((resolve) => handle({ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: DANGER }, top, resolve));
+    assert.deepEqual(reply, { action: "overlay" });
+    assert.deepEqual(JSON.parse(JSON.stringify(log.injected)), [{ target: { tabId: 9, frameIds: [0] }, files: ["src/content/block-page.js"] }]);
+  });
+}
+
+for (const tree of BROWSER_TREES) {
+  await check(`[${tree}] the block page is the extension's own, out of the web's reach`, () => {
+    const m = readJson(join(tree, "manifest.json"));
+    const scripts = (m.content_scripts || []).flatMap((cs) => cs.js || []);
+    assert.ok(!scripts.includes("src/content/block-page.js"), "block-page.js is a static content script again");
+    const war = JSON.stringify(m.web_accessible_resources || []);
+    assert.ok(!/blocked|block-page/.test(war), `the block page is web-accessible: ${war}`);
+    assert.ok(existsSync(join(ROOT, tree, "src/blocked/blocked.html")));
+    const html = readFileSync(join(ROOT, tree, "src/blocked/blocked.html"), "utf8");
+    const order = ["../utils/blocked-url.js", "../content/reason-labels.js", "../content/block-page.js", "blocked.js"]
+      .map((f) => html.indexOf(`src="${f}"`));
+    assert.ok(order.every((i) => i >= 0), `blocked.html scripts: ${order}`);
+    assert.deepEqual([...order].sort((a, b) => a - b), order, "blocked.html loads its scripts in order");
+  });
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the block page puts the site's name and brand on screen as text, never markup`, () => {
+    const src = stripComments(readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8"));
+    assert.ok(!/\$\{e\(domain\)\}|\$\{e\(bt\("block_explanation"|\$\{e\(bt\("block_brand_impersonation"/.test(src),
+      "domain / brand interpolated into innerHTML again");
+    assert.match(src, /_setText\("\.ls-block-domain", domain\)/);
+    const content = stripComments(readFileSync(join(ROOT, tree, "src/content/index.js"), "utf8"));
+    assert.match(content, /type: "BLOCK_PAGE"/, "the page check no longer asks the background to block");
+  });
+
+  await check(`[${tree}] the access token: storage.session (trusted contexts), never read from storage.local`, async () => {
+    const ctx = vm.createContext({});
+    vm.runInContext(readFileSync(join(ROOT, tree, "src/utils/token-store.js"), "utf8"), ctx);
+    const T = ctx.cleanwayTokens;
+    const levels = [];
+    const local = memoryStorage({ auth_token: "legacy", auth_refresh_token: "r" });
+    const session = { ...memoryStorage({}), setAccessLevel: async (o) => { levels.push(o.accessLevel); } };
+    const api = { storage: { local, session } };
+    assert.equal(T.accessAreaName(api), "session");
+    assert.equal(await T.restrictToTrustedContexts(api), true);
+    assert.deepEqual(levels, ["TRUSTED_CONTEXTS"]);
+    assert.equal(await T.migrateLegacyAccessToken(api), true);
+    assert.equal(session.data.auth_token, "legacy");
+    assert.ok(!("auth_token" in local.data), "the copy content scripts could read is gone");
+    assert.equal(local.data.auth_refresh_token, "r", "the refresh token stays in storage.local");
+    assert.equal(await T.readAccessToken(api), "legacy");
+    assert.equal(T.isAccessTokenChange({ auth_token: {} }, "session", api), true);
+    assert.equal(T.isAccessTokenChange({ auth_token: {} }, "local", api), false);
+    // No storage.session (Firefox < 115, Safari < 16.4): storage.local, as before.
+    const old = { storage: { local: memoryStorage({ auth_token: "t" }) } };
+    assert.equal(T.accessAreaName(old), "local");
+    assert.equal(await T.readAccessToken(old), "t");
+    assert.equal(await T.restrictToTrustedContexts(old), false);
+    assert.equal(await T.migrateLegacyAccessToken(old), false);
+
+    // Every reader goes through token-store; no page or script reads it from storage.local.
+    for (const file of listJs(join(tree, "src"))) {
+      const text = stripComments(readFileSync(join(ROOT, file), "utf8"));
+      assert.ok(!/storage\.local\.get\([^)]*auth_token/.test(text), `${file} reads the access token from storage.local`);
+    }
+    for (const page of ["src/popup/popup.html", "src/options/options.html"]) {
+      const html = readFileSync(join(ROOT, tree, page), "utf8");
+      const at = (s) => html.indexOf(s);
+      const main = page.endsWith("popup.html") ? 'src="popup.js"' : 'src="options.js"';
+      assert.ok(at('src="../utils/token-store.js"') >= 0 && at('src="../utils/token-store.js"') < at(main), `${page} loads token-store.js first`);
+    }
   });
 }
 

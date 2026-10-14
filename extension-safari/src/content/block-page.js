@@ -8,11 +8,18 @@
  * Localized via chrome.i18n.getMessage (_locales/<lang>/messages.json).
  * Falls back to English if chrome.i18n is unavailable (preview mode).
  *
- * Loaded as a CLASSIC content script (manifest content_scripts, before
- * index.js) — NOT an ES module. The whole file is wrapped in an IIFE so
- * its helpers stay private and the only thing published to the shared
- * isolated-world scope is `window.__cleanwayShowBlockPage`. See the
- * bottom of the file for the export/preview mechanics.
+ * Where it runs: the extension's own page src/blocked/blocked.html, which
+ * the background navigates a dangerous tab to (background/block-redirect.js)
+ * — the scam page can neither script nor remove it. Only where a browser
+ * refuses that navigation does the background inject this file into the
+ * page itself as a last resort (the old overlay), and the preview page
+ * (popup/block-preview.html) loads it too.
+ *
+ * A CLASSIC script — NOT an ES module. The whole file is wrapped in an IIFE
+ * so its helpers stay private and the only thing published is
+ * `window.__cleanwayShowBlockPage`. See the bottom of the file for the
+ * export/preview mechanics. Everything that comes from the blocked site
+ * (its name, the brand it imitates) is put on screen with textContent.
  */
 
 (function () {
@@ -301,21 +308,28 @@ function extractBrand(reasons) {
 }
 
 /**
- * Show full-screen block page overlay.
+ * Show the full-screen block page.
  * @param {{domain: string, score?: number, reasons?: Array<{detail: string}>}} result
+ * @param {{onBack?: Function, onProceed?: Function}} [actions]  what "Go back"
+ *   and "open anyway" do. blocked.html passes both; without them (the in-page
+ *   overlay, the preview) "Go back" leaves the page and "open anyway" removes
+ *   the overlay.
  */
-function showBlockPage(result) {
+function showBlockPage(result, actions) {
   if (document.getElementById("ls-block-overlay")) return;
 
-  const { domain = "", reasons = [], confidence_pct } = result || {};
+  const { reasons = [], confidence_pct } = result || {};
+  const domain = String((result && result.domain) || "");
+  const onBack = actions && typeof actions.onBack === "function" ? actions.onBack : null;
+  const onProceed = actions && typeof actions.onProceed === "function" ? actions.onProceed : null;
   const brand = extractBrand(reasons);
   // Strategy doc #12 — render a small confidence chip near the
   // headline. We trust the server-side value (50-99) verbatim.
-  // Missing field → no chip; we never invent a number.
-  const confidenceChipHTML = (typeof confidence_pct === "number"
-    && confidence_pct >= 50 && confidence_pct <= 99)
-    ? `<div class="ls-block-confidence">${e(bt("confidence_chip", [String(confidence_pct)]))}</div>`
-    : "";
+  // Missing field → no chip; we never invent a number. Filled in with
+  // textContent below, like the domain and the brand.
+  const hasConfidence = typeof confidence_pct === "number"
+    && confidence_pct >= 50 && confidence_pct <= 99;
+  const confidenceChipHTML = hasConfidence ? `<div class="ls-block-confidence"></div>` : "";
   const rtl = isRTL();
 
   const overlay = document.createElement("div");
@@ -325,9 +339,7 @@ function showBlockPage(result) {
   overlay.setAttribute("aria-labelledby", "ls-block-title");
   if (rtl) overlay.setAttribute("dir", "rtl");
 
-  const brandLine = brand
-    ? `<p class="ls-block-brand">${e(bt("block_brand_impersonation", [brand]))}</p>`
-    : "";
+  const brandLine = brand ? `<p class="ls-block-brand"></p>` : "";
 
   // Strategy Top-20 #4 — Annotated Evidence Cards.
   //
@@ -549,8 +561,8 @@ function showBlockPage(result) {
       <div class="ls-block-stop-icon" aria-hidden="true">&#x26D4;</div>
       <h1 id="ls-block-title" class="ls-block-title">${e(bt("block_title"))}</h1>
       <p class="ls-block-subtitle">${e(bt("block_subtitle_scam"))}</p>
-      <div class="ls-block-domain" dir="ltr">${e(domain)}</div>
-      <p class="ls-block-explanation">${e(bt("block_explanation", [domain]))}</p>
+      <div class="ls-block-domain" dir="ltr"></div>
+      <p class="ls-block-explanation"></p>
       ${brandLine}
       ${confidenceChipHTML}
 
@@ -587,6 +599,16 @@ function showBlockPage(result) {
       </p>
     </div>
   `;
+
+  // The blocked site's name and the brand it imitates: text only, never markup.
+  const _setText = (sel, text) => {
+    const el = overlay.querySelector(sel);
+    if (el) el.textContent = text;
+  };
+  _setText(".ls-block-domain", domain);
+  _setText(".ls-block-explanation", bt("block_explanation", [domain]));
+  if (brand) _setText(".ls-block-brand", bt("block_brand_impersonation", [brand]));
+  if (hasConfidence) _setText(".ls-block-confidence", bt("confidence_chip", [String(confidence_pct)]));
 
   document.body.appendChild(overlay);
   const prevOverflow = document.body.style.overflow;
@@ -786,6 +808,10 @@ function showBlockPage(result) {
   const backBtn = overlay.querySelector("#ls-block-back");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
+      if (onBack) {
+        onBack();
+        return;
+      }
       if (window.history.length > 1) {
         window.history.back();
       } else {
@@ -818,6 +844,11 @@ function showBlockPage(result) {
         proceedBtn.disabled = false;
         proceedBtn.textContent = bt("block_proceed_button");
         proceedBtn.addEventListener("click", () => {
+          if (onProceed) {
+            proceedBtn.disabled = true;
+            onProceed();
+            return;
+          }
           overlay.remove();
           document.body.style.overflow = prevOverflow;
         }, { once: true });

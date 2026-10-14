@@ -12,10 +12,21 @@
  * Anything else falls through to the main listener in index.js.
  */
 
+import "../utils/token-store.js"; // sets self.cleanwayTokens (classic UMD file)
 import { registerDevice, resetDeviceHash } from "../utils/api.js";
 import { createAuthSession, isExtensionPageSender } from "../utils/auth-session.js";
 
 const AUTH_REFRESH_ALARM = "cleanway_auth_refresh";
+const tokens = self.cleanwayTokens;
+
+// The access token goes to chrome.storage.session, kept from content
+// scripts (TRUSTED_CONTEXTS); the refresh token stays in storage.local so
+// a browser restart doesn't sign anyone out. Browsers without
+// storage.session keep both in storage.local — utils/token-store.js.
+const sessionReady = (async () => {
+  await tokens.restrictToTrustedContexts(chrome);
+  await tokens.migrateLegacyAccessToken(chrome);
+})().catch(() => {});
 
 function browserPlatform() {
   let base = "";
@@ -36,6 +47,7 @@ function scheduleRefresh(whenMs) {
 
 export const auth = createAuthSession({
   storage: chrome.storage.local,
+  accessStorage: tokens.accessArea(chrome),
   fetchImpl: (url, init) => fetch(url, init),
   openTab: (url) => chrome.tabs.create({ url }),
   uiLanguage: () => {
@@ -92,5 +104,6 @@ export function handleAuthAlarm(alarm) {
 }
 
 // Worker start (browser launch, wake-up): refresh a token that expired while
-// the worker slept, and re-arm the alarm the browser may have dropped.
-auth.ensureFresh().catch(() => {});
+// the worker slept — or that a browser restart wiped from storage.session —
+// and re-arm the alarm the browser may have dropped.
+sessionReady.then(() => auth.ensureFresh()).catch(() => {});

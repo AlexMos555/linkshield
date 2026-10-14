@@ -21,12 +21,13 @@ src/
 │   ├── index.js           (entry; STATIC imports only — import() is forbidden in a service worker)
 │   ├── browser-compat.js  (Firefox chrome → browser alias; imported first)
 │   ├── auth.js            (sign-in: AUTH_* messages, the refresh alarm — wires utils/auth-session.js)
+│   ├── block-redirect.js  (dangerous page → the tab goes to blocked/blocked.html; "open anyway" per tab)
 │   ├── page-blocks.js     (what counts as a blocked scam: a block page shown, once per site per day)
 │   ├── trusted-hosts.js   (exact official hosts answered "safe", and user-content hosts answered "can't be checked")
 │   └── webmail-scanner.js (opt-in: registers content/webmail.js only while Settings has it on)
 ├── content/            ← Content scripts injected into every page
 │   ├── index.js           (main orchestrator)
-│   ├── block-page.js      (STOP overlay for scam sites)
+│   ├── block-page.js      (the STOP page's renderer — drawn in blocked/blocked.html; injected into a page only as a last resort)
 │   ├── connect-relay.js   (ONLY on cleanway.ai/<locale>/extension/connect: relays the sign-in handoff)
 │   ├── webmail.js         (OPT-IN, in no manifest: Gmail / Outlook / Yahoo banner, injected by background/webmail-scanner.js)
 │   ├── reason-labels.js   (badge reason lines in the browser's language, by reason code)
@@ -36,12 +37,17 @@ src/
 │   ├── breach-check.js
 │   ├── tracking-cleaner.js
 │   └── crypto-blocker.js
+├── blocked/            ← The block page a dangerous tab is sent to (not web-accessible)
+│   ├── blocked.html
+│   └── blocked.js
 ├── options/            ← Settings page
 │   ├── options.html
 │   └── options.js
 └── utils/              ← Shared helpers
     ├── api.js              (API_BASE resolution + 410 lock detection + chrome.storage.local override; registerDevice() hook)
     ├── auth-session.js     (sign-in handoff checks, token storage, Supabase refresh — pure, no chrome at top level)
+    ├── blocked-url.js      (the block page's address: encoded on the way in, validated on the way out)
+    ├── token-store.js      (the access token in storage.session, TRUSTED_CONTEXTS — out of content scripts' reach)
     ├── family-api.js       (Family Hub REST client)
     ├── family-crypto.js    (curve25519 + xchacha20-poly1305 alert envelope)
     ├── family-fanout.js    (per-recipient alert dispatch)

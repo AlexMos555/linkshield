@@ -275,13 +275,12 @@ function addBadge(linkEl, result) {
 // 3. BLOCK PAGE
 // ════════════════════════════════════════════════════
 //
-// The full-screen block overlay is rendered by block-page.js (annotated
-// evidence cards, cultural scam explainer, confidence chip, and the
-// granny / kids / pro skill personas). It loads as a classic content
-// script immediately BEFORE this one and publishes the entry point on
-// the shared isolated-world global as window.__cleanwayShowBlockPage.
-// The page-check in section 7 calls it. This file no longer ships its
-// own stripped-down duplicate overlay.
+// A dangerous page is not covered by an overlay in its own DOM any more —
+// the page could remove it. The page check in section 7 tells the
+// background (BLOCK_PAGE), which takes the tab to the extension's own
+// src/blocked/blocked.html (background/block-redirect.js). Only when a
+// browser refuses that navigation does the background inject
+// block-page.js here, and this script shows its overlay as a last resort.
 
 // ═══════════════════════════════════════════════════
 // 4. FLOATING RESULT (for context menu)
@@ -416,8 +415,23 @@ function _reportBlockedPage(domain) {
 
 _log("Content script loaded on", window.location.hostname);
 
-// Check current page first
-(async function() {
+// What the background did with a dangerous verdict for this page.
+function _blockPage(domain, result) {
+  return new Promise(function(resolve) {
+    try {
+      chrome.runtime.sendMessage({ type: "BLOCK_PAGE", domain: domain, result: result }, function(reply) {
+        void chrome.runtime.lastError; // no background: nothing was done
+        resolve(reply || { action: "none" });
+      });
+    } catch (e) {
+      resolve({ action: "none" });
+    }
+  });
+}
+
+// Check current page first — and again when the page comes back from the
+// back/forward cache, where no script runs anew.
+async function checkCurrentPage() {
   try {
     var domain = window.location.hostname.toLowerCase();
     if (!domain || domain === "localhost" || domain.length < 4) return;
@@ -444,22 +458,24 @@ _log("Content script loaded on", window.location.hostname);
 
     var results = await checkDomains([domain], true);
     if (results && results[0] && results[0].level === "dangerous") {
-      // Rich overlay lives in block-page.js, which loads as a classic
-      // content script before this one and publishes the renderer on the
-      // shared isolated-world global. Guard defensively: if it somehow
-      // failed to load we skip the overlay rather than throw (which would
-      // also kill the link-scanning below).
-      if (typeof window.__cleanwayShowBlockPage === "function") {
+      // "navigated": the tab is on its way to blocked.html. "proceed": the
+      // person chose "open anyway" for this site in this tab.
+      var reply = await _blockPage(domain, results[0]);
+      if (reply.action === "overlay" && typeof window.__cleanwayShowBlockPage === "function") {
+        // Last resort (the background injected block-page.js just now).
         window.__cleanwayShowBlockPage(results[0]);
         _reportBlockedPage(domain);
-      } else {
-        _log("block-page.js not loaded — block overlay unavailable for", domain);
       }
     }
   } catch(e) {
     _log("Page check error:", e);
   }
-})();
+}
+
+checkCurrentPage();
+window.addEventListener("pageshow", function(ev) {
+  if (ev && ev.persisted) checkCurrentPage();
+});
 
 // Scan links
 setTimeout(function() {

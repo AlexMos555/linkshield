@@ -29,6 +29,7 @@
  * import() is forbidden (it used to be called here and always threw).
  */
 
+import "./token-store.js"; // sets globalThis.cleanwayTokens (classic UMD file)
 import { listAlerts } from "./family-api.js";
 import { decryptForMe, getOrCreateKeypair } from "./family-crypto.js";
 import { familyStateFor, readFamilyCache } from "./family-fanout.js";
@@ -58,8 +59,8 @@ export async function syncFamilyPollAlarm() {
     // would wake the worker every minute and take each alert off the server
     // without ever showing it. The alerts wait for a browser that can show them.
     const canNotify = Boolean(chrome.notifications && typeof chrome.notifications.create === "function");
-    const stored = await chrome.storage.local.get(["auth_token"]);
-    wanted = canNotify && Boolean(stored && stored.auth_token) && Boolean(await readFamilyCache());
+    const token = await globalThis.cleanwayTokens.readAccessToken();
+    wanted = canNotify && Boolean(token) && Boolean(await readFamilyCache());
     const existing = await chrome.alarms.get(ALARM_NAME);
     if (wanted && !existing) {
       chrome.alarms.create(ALARM_NAME, { periodInMinutes: POLL_PERIOD_MINUTES });
@@ -85,7 +86,8 @@ export function isFamilyPollAlarm(alarmName) {
 export async function pollAndNotify() {
   let stored;
   try {
-    stored = await chrome.storage.local.get(["auth_token", SEEN_KEY]);
+    stored = await chrome.storage.local.get([SEEN_KEY]);
+    stored.auth_token = await globalThis.cleanwayTokens.readAccessToken();
   } catch {
     return 0;
   }

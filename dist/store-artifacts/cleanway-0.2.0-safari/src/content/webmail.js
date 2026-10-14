@@ -101,7 +101,6 @@
   // ── Config ───────────────────────────────────────────────────────────────
   const BANNER_ID = "cleanway-webmail-banner";
   const DEBOUNCE_MS = 600;
-  const DEFAULT_API_BASE = "https://api.cleanway.ai";
   // The Settings switch (background/webmail-scanner.js WEBMAIL_FLAG).
   const ENABLED_KEY = "webmailScannerEnabled";
   // The API's own caps (api/routers/email.py): over them it answers 422.
@@ -275,7 +274,6 @@
   // off stops everything at once, turning it back on restarts this copy.
   let active = false;
   let generation = 0; // bumps on every stop, so a scan in flight knows it is stale
-  let inflight = null; // AbortController of the request in flight
   let scanTimer = null;
   let lastSignature = null;
   let observer = null;
@@ -311,8 +309,6 @@
     observer = null;
     clearTimeout(scanTimer);
     scanTimer = null;
-    if (inflight) inflight.abort();
-    inflight = null;
     lastSignature = null;
     removeBanner();
   }
@@ -359,43 +355,28 @@
 
     renderBanner(container, { state: "scanning" });
 
-    const apiBase = await getApiBase();
-    const token = await getAuthToken();
-    if (!active || gen !== generation) return;
-
-    const ctrl = new AbortController();
-    inflight = ctrl;
-    const timer = setTimeout(() => ctrl.abort(), 15_000);
+    // The background makes the call (background/webmail-scanner.js
+    // handleWebmailAnalyze): it holds the account's token, which content
+    // scripts can't read (utils/token-store.js), and it sends only to the
+    // allowlisted API server (utils/api-base.js).
     try {
-      const resp = await fetch(`${apiBase}/api/v1/email/analyze`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-        signal: ctrl.signal,
-      });
-      if (gen !== generation) return;
-      if (!resp.ok) {
-        // 429 means the public IP bucket is full — surface a quiet "slow
-        // down" state rather than a red error.
-        if (resp.status === 429) {
-          renderBanner(container, { state: "rate_limited" });
-          return;
-        }
-        throw new Error(`HTTP ${resp.status}`);
-      }
-      const result = await resp.json();
-      if (gen !== generation) return;
-      renderBanner(container, { state: "ready", result });
-    } catch (err) {
+      const reply = await analyzeInBackground(payload);
       if (gen !== generation) return; // switched off mid-request: say nothing
+      if (reply && reply.ok && reply.result) {
+        renderBanner(container, { state: "ready", result: reply.result });
+        return;
+      }
+      // 429 means the public IP bucket is full — surface a quiet "slow
+      // down" state rather than a red error.
+      if (reply && reply.status === 429) {
+        renderBanner(container, { state: "rate_limited" });
+        return;
+      }
+      throw new Error((reply && (reply.error || `HTTP ${reply.status}`)) || "no answer");
+    } catch (err) {
+      if (gen !== generation) return;
       console.warn("[Cleanway] webmail analyze failed:", err && err.message);
       renderBanner(container, { state: "error" });
-    } finally {
-      clearTimeout(timer);
-      if (inflight === ctrl) inflight = null;
     }
   }
 
@@ -481,28 +462,20 @@
     adapter.insertBanner(banner, container);
   }
 
-  // ── Chrome storage helpers ──────────────────────────────────────────────
-  function getApiBase() {
-    return new Promise((resolve) => {
-      if (typeof chrome === "undefined" || !chrome.storage) {
-        resolve(DEFAULT_API_BASE);
-        return;
+  // ── The background relay ─────────────────────────────────────────────────
+  function analyzeInBackground(payload) {
+    return new Promise((resolve, reject) => {
+      try {
+        const sent = chrome.runtime.sendMessage({ type: "WEBMAIL_ANALYZE", payload }, (reply) => {
+          const err = chrome.runtime.lastError;
+          if (err) reject(new Error(err.message || "no background"));
+          else resolve(reply);
+        });
+        // Firefox's promise-style runtime answers through the promise instead.
+        if (sent && typeof sent.then === "function") sent.then(resolve, reject);
+      } catch (e) {
+        reject(e);
       }
-      chrome.storage.local.get("api_url", (data) => {
-        resolve((data && data.api_url) || DEFAULT_API_BASE);
-      });
-    });
-  }
-
-  function getAuthToken() {
-    return new Promise((resolve) => {
-      if (typeof chrome === "undefined" || !chrome.storage) {
-        resolve(null);
-        return;
-      }
-      chrome.storage.local.get("auth_token", (data) => {
-        resolve((data && data.auth_token) || null);
-      });
     });
   }
 })();

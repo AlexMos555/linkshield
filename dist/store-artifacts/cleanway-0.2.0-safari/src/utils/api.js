@@ -5,21 +5,24 @@
  * Privacy: only domain names are sent — never full URLs or page content.
  */
 
-// API base resolution: chrome.storage.local.api_url (dev override) → production Railway URL
-// To use local dev: Options page → set API URL to http://localhost:8000 → Save
+// API base resolution: chrome.storage.local.api_url (dev override) → production URL.
+// The override is allowlisted (utils/api-base.js): production, or loopback in
+// an unpacked dev install. To use local dev: load the extension unpacked,
+// Options page → set API URL to http://localhost:8000 → Save.
+import "./api-base.js"; // sets globalThis.cleanwayApiBase (classic UMD file)
+import "./token-store.js"; // sets globalThis.cleanwayTokens (classic UMD file)
 import { DEVICE_ID_KEY, linkDevice } from "./device-link.js";
 import { KEYS as AUTH_KEYS } from "./auth-session.js";
 
-let API_BASE = "https://api.cleanway.ai";
+const apiBaseRules = globalThis.cleanwayApiBase;
+let API_BASE = apiBaseRules.DEFAULT_API_BASE;
 try {
   chrome.storage.local.get("api_url").then(function(data) {
-    if (data && typeof data.api_url === "string" && data.api_url.startsWith("http")) {
-      API_BASE = data.api_url.replace(/\/$/, "");
-    }
+    API_BASE = apiBaseRules.resolveApiBase(data && data.api_url);
   }).catch(function() {});
   chrome.storage.onChanged.addListener(function(changes, area) {
-    if (area === "local" && changes && changes.api_url && typeof changes.api_url.newValue === "string") {
-      API_BASE = changes.api_url.newValue.replace(/\/$/, "");
+    if (area === "local" && changes && changes.api_url) {
+      API_BASE = apiBaseRules.resolveApiBase(changes.api_url.newValue);
     }
   });
 } catch (e) { /* storage not available (tests, edge cases) */ }
@@ -80,6 +83,10 @@ async function _authHeaders(token, extra = {}) {
  */
 export async function signOutUnlinkedBrowser() {
   try {
+    // The access token lives in storage.session where the browser has it
+    // (utils/token-store.js); the local copy is removed too either way.
+    const session = globalThis.cleanwayTokens && globalThis.cleanwayTokens.sessionArea();
+    if (session) await session.remove(AUTH_KEYS.access);
     await chrome.storage.local.remove([
       AUTH_KEYS.access, AUTH_KEYS.refresh, AUTH_KEYS.expiresAt, AUTH_KEYS.email,
       AUTH_KEYS.userId, AUTH_KEYS.anonKey, DEVICE_ID_KEY,

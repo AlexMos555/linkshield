@@ -333,8 +333,7 @@ async function loadThresholdNudge() {
   var nudge = $("threshold-nudge");
   if (!nudge) return;
   try {
-    var stored = await chrome.storage.local.get(["auth_token"]);
-    var token = stored && stored.auth_token;
+    var token = await self.cleanwayTokens.readAccessToken();
     if (!token) return;
 
     // Lazy-import the helper so the popup still works in preview mode
@@ -660,8 +659,7 @@ async function handleRestoreClick(apiModule) {
   if (errBox) errBox.hidden = true;
 
   try {
-    var stored = await chrome.storage.local.get(["auth_token"]);
-    var token = stored && stored.auth_token;
+    var token = await self.cleanwayTokens.readAccessToken();
     if (!token) {
       // Without a JWT we can't call /restore. Open the landing
       // restore page where the user will be prompted to sign in.
@@ -740,7 +738,7 @@ function wireAccountRow() {
   try {
     chrome.storage.onChanged.addListener(function(changes, area) {
       // Signing in or out on the cleanway.ai tab while the popup is open.
-      if (area !== "local" || !changes.auth_token) return;
+      if (!self.cleanwayTokens.isAccessTokenChange(changes, area)) return;
       if (Boolean(changes.auth_token.oldValue) !== Boolean(changes.auth_token.newValue)) loadAccountRow();
     });
   } catch (e) { /* storage events unavailable */ }
