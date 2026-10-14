@@ -9,11 +9,14 @@ hands the result to the extension. Pinned here:
 - the answer carries the new pair and is marked no-store;
 - a session that resolves to a different user is refused, not returned;
 - upstream failures are a 502 with no token in the logs;
-- the sensitive-action limit is consulted, and an unconfigured server says 503.
+- the sensitive-action limit is consulted, and an unconfigured server says 503;
+- the website's token must be FRESH (issued ≤ 10 min ago): an older one gets
+  401 `reauth_required`, so a stolen token can't mint a long-lived session.
 """
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, Dict, List
 
 import httpx
@@ -23,6 +26,12 @@ from fastapi.testclient import TestClient
 from api.models.schemas import AuthUser, UserTier
 
 USER = AuthUser(id="user-123", email="ann@example.com", tier=UserTier.free)
+
+
+def _fresh(user: AuthUser = USER, age_s: int = 0) -> AuthUser:
+    """The user as the verified token describes it, issued `age_s` ago."""
+    return user.model_copy(update={"issued_at": int(time.time()) - age_s})
+
 NEW_ACCESS = "new-access-token-for-the-extension"
 NEW_REFRESH = "new-refresh-token-abc"
 
@@ -102,7 +111,7 @@ def client(monkeypatch):
     _FakeClient.calls = []
     _FakeClient.script = _ok_script()
 
-    app.dependency_overrides[get_current_user] = lambda: USER
+    app.dependency_overrides[get_current_user] = lambda: _fresh()
     c = TestClient(app)
     c.limited = limited  # type: ignore[attr-defined]
     try:
@@ -189,7 +198,7 @@ def test_account_without_email_is_409(client):
     from api.main import app
     from api.services.auth import get_current_user
 
-    app.dependency_overrides[get_current_user] = lambda: AuthUser(id="u", email=None, tier=UserTier.free)
+    app.dependency_overrides[get_current_user] = lambda: _fresh(AuthUser(id="u", email=None, tier=UserTier.free))
     assert _post(client).status_code == 409
     assert _FakeClient.calls == []
 
@@ -200,3 +209,63 @@ def test_requires_a_signed_in_user():
     app.dependency_overrides.clear()
     resp = TestClient(app).post("/api/v1/auth/extension-session")
     assert resp.status_code == 401
+
+
+# ─── a fresh token only ─────────────────────────────────────────
+
+
+def test_token_issued_over_ten_minutes_ago_is_refused_with_reauth_required(client):
+    from api.main import app
+    from api.services.auth import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: _fresh(age_s=11 * 60)
+    resp = _post(client)
+    assert resp.status_code == 401
+    assert resp.json()["detail"]["code"] == "reauth_required"
+    assert _FakeClient.calls == []
+    assert client.limited == []
+
+
+def test_user_without_an_issue_time_is_refused(client):
+    from api.main import app
+    from api.services.auth import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: USER
+    resp = _post(client)
+    assert resp.status_code == 401
+    assert resp.json()["detail"]["code"] == "reauth_required"
+
+
+def test_real_es256_tokens_fresh_passes_old_is_refused(client, monkeypatch):
+    """End to end through the JWKS verifier, no dependency override."""
+    from api.main import app
+    from tests.jwt_helpers import SigningKey, install_fake_jwks
+
+    app.dependency_overrides.clear()
+    key = SigningKey()
+    install_fake_jwks(monkeypatch, key)
+    monkeypatch.setattr("api.services.auth._resolve_user_tier", _free_tier)
+    monkeypatch.setattr("api.services.auth._refuse_revoked_device", _no_revocation)
+    monkeypatch.setattr("api.services.cache.get_redis", _no_redis)
+
+    old = client.post(
+        "/api/v1/auth/extension-session", headers=key.headers(USER.id, email=USER.email, iat_ago=601)
+    )
+    assert old.status_code == 401
+    assert old.json()["detail"]["code"] == "reauth_required"
+    assert _FakeClient.calls == []
+
+    fresh = client.post("/api/v1/auth/extension-session", headers=key.headers(USER.id, email=USER.email))
+    assert fresh.status_code == 200, fresh.text
+
+
+async def _free_tier(_user_id):
+    return UserTier.free
+
+
+async def _no_revocation(_user_id, _device_id):
+    return None
+
+
+async def _no_redis():
+    raise ConnectionError("no redis in this test")

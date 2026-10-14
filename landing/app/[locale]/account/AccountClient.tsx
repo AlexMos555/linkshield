@@ -131,7 +131,12 @@ export default function AccountClient() {
     if (!window.confirm(t("delete_confirm"))) return;
     setBusy("delete");
     setNotice(null);
-    const { error } = await api.user.deleteAccount();
+    let { error } = await api.user.deleteAccount();
+    if (error?.kind === "unauthorized" && error.code === "reauth_required") {
+      // Deleting needs a token issued in the last 10 minutes: refresh once.
+      await getSupabaseClient().auth.refreshSession().catch(() => null);
+      ({ error } = await api.user.deleteAccount());
+    }
     setBusy(null);
     if (error) {
       setNotice(t("delete_failed"));

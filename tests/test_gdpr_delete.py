@@ -12,9 +12,13 @@ test suite — that's an ops concern). What we test here:
   - POST /api/v1/user/account/restore → clears the field
   - 503 when Supabase env missing (no silent failure)
   - 500 when Supabase rejects the PATCH (don't lie about success)
+  - a token issued over 10 minutes ago gets 401 `reauth_required` and
+    deletes nothing; after deletion every session is signed out
+    (GoTrue POST /auth/v1/logout?scope=global with the caller's token)
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
@@ -32,6 +36,11 @@ class _SupabaseStub:
         # it up to cancel any live Stripe subscription first.
         self.subscription_row: Dict[str, Any] | None = None
         self.gets: List[str] = []
+        self.posts: List[Dict[str, Any]] = []
+        self.logout_status = 204
+
+    def logouts(self) -> List[Dict[str, Any]]:
+        return [p for p in self.posts if p["url"].endswith("/auth/v1/logout")]
 
     def build(self):
         stub = self
@@ -59,7 +68,12 @@ class _SupabaseStub:
                 rows = [stub.subscription_row] if stub.subscription_row else []
                 return _Resp(200, rows)
 
-            async def post(self, url: str, json=None, headers=None, **_kw):
+            async def post(self, url: str, json=None, headers=None, params=None, **_kw):
+                stub.posts.append({"url": url, "params": dict(params or {}), "headers": dict(headers or {})})
+                if url.endswith("/auth/v1/logout"):
+                    if isinstance(stub.logout_status, Exception):
+                        raise stub.logout_status
+                    return _Resp(stub.logout_status)
                 return _Resp(201, [])
 
             async def patch(self, url: str, params=None, json=None, headers=None, **_kw):
@@ -92,7 +106,8 @@ def supabase_stub(monkeypatch):
 
 @pytest.fixture
 def authed_user():
-    return AuthUser(id="user-77", email="bob@gmail.com", tier=UserTier.free)
+    # Issued just now: deleting the account needs a fresh token.
+    return AuthUser(id="user-77", email="bob@gmail.com", tier=UserTier.free, issued_at=int(time.time()))
 
 
 class _FakeRedis:
@@ -172,6 +187,49 @@ def test_delete_account_sets_deletion_timestamp(client, supabase_ok, supabase_st
     assert patch["params"] == {"id": "eq.user-77"}
     assert "deletion_requested_at" in patch["body"]
     assert patch["body"]["deletion_requested_at"] is not None
+
+
+def test_delete_account_refuses_a_token_older_than_ten_minutes(
+    client, authed_user, supabase_ok, supabase_stub, fake_stripe
+):
+    """A stolen (or long-idle) token must not be able to delete the
+    account: the caller re-authenticates (clients refresh the session and
+    retry) and NOTHING is cancelled, marked, or signed out meanwhile."""
+    authed_user.issued_at = int(time.time()) - 11 * 60
+    supabase_stub.subscription_row = _paid_row()
+    fake_stripe.add_subscription("sub_77", "cus_77", status="active")
+
+    resp = client.delete("/api/v1/user/account", headers={"Authorization": "Bearer old-token"})
+
+    assert resp.status_code == 401
+    assert resp.json()["detail"]["code"] == "reauth_required"
+    assert supabase_stub.patches == []
+    assert fake_stripe.cancel_calls == []
+    assert supabase_stub.logouts() == []
+
+
+def test_delete_account_signs_out_every_session(client, supabase_ok, supabase_stub):
+    resp = client.delete("/api/v1/user/account", headers={"Authorization": "Bearer caller-token"})
+
+    assert resp.status_code == 200, resp.text
+    (logout,) = supabase_stub.logouts()
+    assert logout["url"] == "https://fake.supabase.co/auth/v1/logout"
+    assert logout["params"] == {"scope": "global"}
+    # GoTrue's logout acts on the session of the token it is given.
+    assert logout["headers"]["Authorization"] == "Bearer caller-token"
+    assert logout["headers"]["apikey"]
+
+
+@pytest.mark.parametrize("failure", [500, ConnectionError("gotrue down")])
+def test_delete_account_survives_a_failed_global_sign_out(client, supabase_ok, supabase_stub, failure):
+    """The deletion already happened; the 410 lock keeps the account shut
+    even if GoTrue couldn't end the sessions."""
+    supabase_stub.logout_status = failure
+
+    resp = client.delete("/api/v1/user/account", headers={"Authorization": "Bearer caller-token"})
+
+    assert resp.status_code == 200, resp.text
+    assert len(supabase_stub.patches) == 1
 
 
 def test_delete_account_503_when_supabase_missing(client, authed_user, monkeypatch):

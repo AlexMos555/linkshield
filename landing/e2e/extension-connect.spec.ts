@@ -149,6 +149,55 @@ test.describe("with sign-in configured", () => {
     expect(page.url()).not.toContain("access_token");
   });
 
+  test("a website token older than 10 minutes: refreshed once, then minted", async ({ page }) => {
+    await signIn(page);
+    await fakeSupabase(page);
+    // The refresh grant answers with a newly issued access token.
+    const refreshed = fakeJwt({ sub: "user-1", email: "ann@example.com", aud: "authenticated", exp: nowS() + 3600 });
+    await page.route(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { "access-control-allow-origin": "*" },
+        contentType: "application/json",
+        body: JSON.stringify({
+          access_token: refreshed,
+          token_type: "bearer",
+          expires_in: 3600,
+          expires_at: nowS() + 3600,
+          refresh_token: "website-refresh-token-2",
+          user: { id: "user-1", aud: "authenticated", email: "ann@example.com", app_metadata: {}, user_metadata: {} },
+        }),
+      });
+    });
+    const apiAuth: string[] = [];
+    await page.route(`${API}/api/v1/auth/extension-session`, async (route) => {
+      const cors = {
+        "access-control-allow-origin": "*",
+        "access-control-allow-headers": "authorization, content-type",
+        "access-control-allow-methods": "POST, OPTIONS",
+      };
+      if (route.request().method() === "OPTIONS") {
+        await route.fulfill({ status: 204, headers: cors, body: "" });
+        return;
+      }
+      const bearer = route.request().headers()["authorization"] ?? "";
+      apiAuth.push(bearer);
+      const fresh = bearer === `Bearer ${refreshed}`;
+      await route.fulfill({
+        status: fresh ? 200 : 401,
+        headers: cors,
+        contentType: "application/json",
+        body: JSON.stringify(fresh ? MINTED : { detail: { code: "reauth_required", error: "Please sign in again." } }),
+      });
+    });
+    await fakeExtension(page, { ok: true, error: null });
+
+    await page.goto(`/extension/connect?state=${STATE}`);
+    await page.getByRole("button", { name: "Connect", exact: true }).click();
+    await expect(page.getByTestId("connect-done")).toContainText("This browser is connected");
+    expect(apiAuth).toEqual([`Bearer ${WEB_ACCESS}`, `Bearer ${refreshed}`]);
+  });
+
   test("no extension in this browser: says so and opens no session", async ({ page }) => {
     await signIn(page);
     await fakeSupabase(page);

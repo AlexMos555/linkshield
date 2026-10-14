@@ -35,7 +35,21 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_key: str = ""  # For server-side operations
+    # LEGACY HS256 shared secret. User access tokens are signed with the
+    # project's asymmetric key (ES256) and verified against its public JWKS
+    # (api/services/auth.py); this secret no longer verifies anything unless
+    # SUPABASE_ALLOW_LEGACY_HS256 is on. It stays only as the fallback HMAC
+    # key below until UNSUBSCRIBE_HMAC_KEY / AUDIT_IP_HASH_KEY are set —
+    # docs/runbooks/supabase-jwt-signing-keys.md.
     supabase_jwt_secret: str = ""
+    # Emergency opt-in: also accept HS256 tokens signed with the legacy secret
+    # (issuer + audience still checked). Off by default — anyone holding that
+    # secret could forge a token for any user.
+    supabase_allow_legacy_hs256: bool = False
+    # Dedicated HMAC key for the audit-log IP hash (falls back to the legacy
+    # JWT secret). UNSUBSCRIBE_HMAC_KEY is read from the environment directly
+    # by api/routers/email_unsubscribe.py.
+    audit_ip_hash_key: str = ""
 
     # CORS — comma-separated allowed origins.
     # Default covers cleanway web + all webmail providers the extension

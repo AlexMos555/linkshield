@@ -1,17 +1,18 @@
 """Account devices + entitlement endpoints (api/routers/account.py).
 
-Requests go through the REAL auth dependency with signed test JWTs, so the
+Requests go through the REAL auth dependency with signed test JWTs (ES256,
+verified against a fake JWKS — tests/jwt_helpers.py), so the
 "unlinked device is refused everywhere" gate in api/services/auth.py is
 exercised end to end, not mocked away.
 """
 from __future__ import annotations
 
-import time
 import uuid
 
-import jwt
 import pytest
 from fastapi.testclient import TestClient
+
+from tests.jwt_helpers import SigningKey, install_fake_jwks
 
 ACCOUNT = "11111111-1111-4111-8111-111111111111"
 OTHER = "22222222-2222-4222-8222-222222222222"
@@ -21,17 +22,16 @@ LAPTOP = "laptop-install-0003-ccc"
 FOURTH = "fourth-install-0004-ddd"
 
 
-def _token(sub: str = ACCOUNT, session_id: str | None = None) -> str:
-    from api.config import get_settings
+KEY = SigningKey()
 
-    payload = {
-        "sub": sub,
-        "email": "person@example.com",
-        "aud": "authenticated",
-        "exp": int(time.time()) + 3600,
-        "session_id": session_id or str(uuid.uuid4()),
-    }
-    return jwt.encode(payload, get_settings().supabase_jwt_secret, algorithm="HS256")
+
+@pytest.fixture(autouse=True)
+def _jwks(monkeypatch):
+    install_fake_jwks(monkeypatch, KEY)
+
+
+def _token(sub: str = ACCOUNT, session_id: str | None = None) -> str:
+    return KEY.token(sub, email="person@example.com", session_id=session_id or str(uuid.uuid4()))
 
 
 def _headers(device: str | None = None, sub: str = ACCOUNT, session_id: str | None = None) -> dict:

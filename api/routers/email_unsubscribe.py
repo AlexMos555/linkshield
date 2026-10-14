@@ -9,7 +9,10 @@ Also supports RFC 8058 one-click (POST with Content-Type: multipart/form-data
   and body `List-Unsubscribe=One-Click`). Gmail/Apple fire this automatically
   when user taps their built-in "unsubscribe" button.
 
-Tokens are HMAC-signed with SUPABASE_JWT_SECRET + a per-email purpose string.
+Tokens are HMAC-signed with UNSUBSCRIBE_HMAC_KEY (falling back to the legacy
+SUPABASE_JWT_SECRET while that is unset) + a per-email purpose string. Links
+signed with the legacy secret keep verifying for their 90-day life after the
+switch — docs/runbooks/supabase-jwt-signing-keys.md.
 Expire after 90 days. A stolen token only lets the attacker UNSUBSCRIBE the user
 (which they can reverse in settings) — no data exfiltration risk.
 
@@ -39,11 +42,25 @@ _TOKEN_TTL_SECONDS = 90 * 24 * 3600  # 90 days
 _PURPOSE = "email_unsubscribe_v1"
 
 
+def _verification_secrets() -> list[bytes]:
+    """Keys a link may be signed with: the dedicated key first, then the
+    legacy JWT secret (links minted before the switch)."""
+    keys: list[bytes] = []
+    for name in ("UNSUBSCRIBE_HMAC_KEY", "SUPABASE_JWT_SECRET"):
+        value = os.environ.get(name, "").strip()
+        if value and value.encode("utf-8") not in keys:
+            keys.append(value.encode("utf-8"))
+    return keys
+
+
 def _get_secret() -> bytes:
-    secret = os.environ.get("SUPABASE_JWT_SECRET", "").strip()
-    if not secret:
-        raise RuntimeError("SUPABASE_JWT_SECRET not configured — cannot sign unsubscribe tokens")
-    return secret.encode("utf-8")
+    """The key new links are signed with."""
+    keys = _verification_secrets()
+    if not keys:
+        raise RuntimeError(
+            "UNSUBSCRIBE_HMAC_KEY / SUPABASE_JWT_SECRET not configured — cannot sign unsubscribe tokens"
+        )
+    return keys[0]
 
 
 def mint_token(user_id: str, email_template: str) -> str:
@@ -89,8 +106,10 @@ def verify_token(token: str) -> Optional[dict]:
     except Exception:
         return None
 
-    expected = hmac.new(_get_secret(), payload_bytes, hashlib.sha256).digest()
-    if not hmac.compare_digest(expected, signature):
+    if not any(
+        hmac.compare_digest(hmac.new(key, payload_bytes, hashlib.sha256).digest(), signature)
+        for key in _verification_secrets()
+    ):
         return None
 
     try:

@@ -15,13 +15,14 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from api.services.auth import (
     get_current_user,
     get_current_user_including_deleted,
     get_current_user_no_disposable,
+    get_recently_authenticated_user,
 )
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import (
@@ -1297,8 +1298,15 @@ _DELETION_GRACE_DAYS = 30
     response_model=DeleteAccountResponse,
     dependencies=[Depends(rate_limit(mode="sensitive", category="account_delete"))],
 )
-async def delete_account(user: AuthUser = Depends(get_current_user)) -> DeleteAccountResponse:
-    """Mark the caller's account for deletion. Hard-deleted 30 days later."""
+async def delete_account(
+    # Fresh token only (issued <= 10 min ago, else 401 `reauth_required`; the
+    # apps refresh the session and retry): an older, possibly stolen token
+    # can't delete the account.
+    user: AuthUser = Depends(get_recently_authenticated_user),
+    authorization: Optional[str] = Header(None),
+) -> DeleteAccountResponse:
+    """Mark the caller's account for deletion. Hard-deleted 30 days later.
+    Afterwards every session of the account is signed out."""
     settings = get_settings()
     if not settings.supabase_url or not settings.supabase_service_key:
         raise HTTPException(503, "Database not configured")
@@ -1383,6 +1391,12 @@ async def delete_account(user: AuthUser = Depends(get_current_user)) -> DeleteAc
     except Exception:
         pass
 
+    # End every session (all devices, the extension): their refresh tokens
+    # stop working, so nothing stays signed in to a deleted account. Access
+    # tokens already out are shut by the 410 gate above until they expire.
+    # The person can still sign in again to restore within the grace window.
+    await _sign_out_everywhere(user.id, authorization)
+
     restore_until = now + timedelta(days=_DELETION_GRACE_DAYS)
     logger.info(
         "account_deletion_scheduled",
@@ -1407,6 +1421,39 @@ async def delete_account(user: AuthUser = Depends(get_current_user)) -> DeleteAc
         grace_period_days=_DELETION_GRACE_DAYS,
         restore_until=restore_until.isoformat(),
     )
+
+
+async def _sign_out_everywhere(user_id: str, authorization: Optional[str]) -> None:
+    """GoTrue ``POST /auth/v1/logout?scope=global`` with the caller's own
+    token -- the call behind supabase-js ``auth.admin.signOut(jwt, "global")``;
+    GoTrue has no admin "sign this user id out" endpoint. Best-effort: the
+    deletion already happened and the 410 lock holds without it."""
+    import httpx
+
+    settings = get_settings()
+    token = (authorization or "").replace("Bearer ", "").strip()
+    if not token or not settings.supabase_url:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                f"{settings.supabase_url.rstrip('/')}/auth/v1/logout",
+                params={"scope": "global"},
+                headers={
+                    "apikey": settings.supabase_anon_key or settings.supabase_service_key,
+                    "Authorization": f"Bearer {token}",
+                },
+            )
+        if resp.status_code not in (200, 204):
+            logger.warning(
+                "account_delete_global_signout_failed",
+                extra={"user_id": user_id, "status": resp.status_code},
+            )
+    except Exception as e:
+        logger.warning(
+            "account_delete_global_signout_error",
+            extra={"user_id": user_id, "error": type(e).__name__},
+        )
 
 
 class RestoreAccountResponse(BaseModel):
