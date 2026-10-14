@@ -46,8 +46,6 @@ import logging
 import pathlib
 from typing import Optional
 
-import httpx
-
 from api.services.cache import get_redis
 
 logger = logging.getLogger(__name__)
@@ -102,36 +100,21 @@ async def _fetch_favicon(domain: str) -> Optional[bytes]:
 
     Hardened against:
 
-      * SSRF — re-validates the domain's DNS just before connect,
-        rejecting any answer that points at private/link-local space.
-        analyzer.py validates at the top of analyze_domain too;
-        this is defense-in-depth against DNS rebinding between
-        the analyzer's gate and our connect (TOCTOU narrowing).
-      * Redirect-based bypass — `follow_redirects=False` because a
-        302 to a new host has NOT been gated by validate_domain_resolution.
+      * SSRF — the client is a PinnedTransport (api/services/pinned_http.py):
+        the name is resolved once, every address must be public, and the
+        connection goes to the address that was checked (Host header and
+        TLS name unchanged), so a DNS answer that changes between the
+        analyzer's gate and our connect (rebinding) cannot point us inside.
+      * Redirect-based bypass — redirects are never followed.
       * Body-size DoS — streams the response, aborting once we've
         accumulated FAVICON_MAX_BYTES instead of trusting the whole
         Content-Length / unmetered download.
     """
-    # Local import — avoids a cycle in module-load order.
-    from api.services.domain_validator import (
-        DomainValidationError, validate_domain_resolution,
-    )
-    try:
-        await validate_domain_resolution(domain)
-    except DomainValidationError as exc:
-        # The analyzer already filtered this, but a re-check here
-        # closes the rebinding window between that gate and our
-        # TCP connect. A failure here is silent — no upstream signal.
-        logger.warning("favicon fetch SSRF re-check rejected %s: %s", domain, exc)
-        return None
+    from api.services.pinned_http import pinned_client  # local: module-load order
 
     url = f"https://{domain}/favicon.ico"
     try:
-        async with httpx.AsyncClient(
-            timeout=FAVICON_FETCH_TIMEOUT,
-            follow_redirects=False,  # see docstring — redirects bypass SSRF gate
-        ) as client:
+        async with pinned_client(timeout=FAVICON_FETCH_TIMEOUT) as client:
             async with client.stream("GET", url) as resp:
                 if resp.status_code != 200:
                     return None

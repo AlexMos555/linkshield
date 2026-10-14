@@ -336,6 +336,27 @@ def offline_analyzer(monkeypatch):
     return configure
 
 
+# ─── Hermetic name resolution for the SSRF guard ───────────────────
+
+PUBLIC_TEST_ADDRESS = "93.184.216.34"
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_ssrf_dns(monkeypatch):
+    """The SSRF guard resolves every host before anything connects to it
+    (domain_validator.resolve_public_sync). Tests must not depend on the
+    real DNS: every name resolves to one public address unless a test
+    replaces `domain_validator._getaddrinfo` itself."""
+    import socket
+
+    from api.services import domain_validator
+
+    def _fake(host, port):
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (PUBLIC_TEST_ADDRESS, port))]
+
+    monkeypatch.setattr(domain_validator, "_getaddrinfo", _fake)
+
+
 # ─── Site probes over a table instead of the network ───────────────
 
 @pytest.fixture
@@ -372,12 +393,13 @@ def probe_web(monkeypatch):
             kwargs["transport"] = httpx.MockTransport(_handler)
             return real_client(*args, **kwargs)
 
-        async def _vet(host):
+        async def _vet(host, port=443):
             if host in unsafe:
                 raise DomainValidationError(f"{host} resolves to a blocked network")
+            return ["93.184.216.34"]
 
         monkeypatch.setattr(site_probes.httpx, "AsyncClient", _client)
-        monkeypatch.setattr(site_probes, "validate_domain_resolution", _vet)
+        monkeypatch.setattr(site_probes, "resolve_public", _vet)
         return requested
 
     return configure
