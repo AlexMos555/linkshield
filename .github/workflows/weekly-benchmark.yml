@@ -40,9 +40,9 @@ on:
         type: number
         default: 100
 
+# Read-only by default; only the benchmark job writes.
 permissions:
-  contents: write       # commit benchmark results
-  pull-requests: write  # raise a PR on recall regression
+  contents: read
 
 jobs:
   window:
@@ -71,6 +71,9 @@ jobs:
     needs: window
     if: needs.window.outputs.go == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # commit benchmark results
+      pull-requests: write  # raise a PR on recall regression
     # Sized for VirusTotal, the slowest resolver: 16 s a lookup, measured
     # 15.75 s a URL (run 35589801520, 2026-09-21), so 2 x 200 URLs ≈ 105 min.
     # The resolvers run side by side, so the run takes about as long as VT
@@ -82,13 +85,13 @@ jobs:
     # run one after another.)
     timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # We need full history to compare against the previous
           # week's recall for regression detection.
           fetch-depth: 0
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
           cache: pip
@@ -123,6 +126,8 @@ jobs:
           # (X-Cleanway-Install) and stays under the server's per-IP
           # ceilings — see "Rate-limit identity" in the script.
           BENCHMARK_BYPASS_TOKEN: ${{ secrets.BENCHMARK_BYPASS_TOKEN }}
+          # Dispatch input reaches the shell as an env var, never spliced in.
+          SAMPLE_INPUT: ${{ github.event.inputs.sample }}
         run: |
           # We deliberately use the live PUBLIC endpoint here, not
           # --local-analyzer. The point is to measure what a real
@@ -136,8 +141,8 @@ jobs:
           # alongside, sets the wall time: ~105 min for 400 lookups (see
           # timeout-minutes). Above 200 per side VT is skipped: 2 x sample
           # lookups would pass both its 500-a-day free quota and the timeout.
-          if [ -n "${{ github.event.inputs.sample }}" ]; then
-            SAMPLE="${{ github.event.inputs.sample }}"
+          if [ -n "$SAMPLE_INPUT" ]; then
+            SAMPLE="$SAMPLE_INPUT"
           else
             SAMPLE=200
           fi
@@ -212,7 +217,7 @@ jobs:
 
       - name: Open regression PR
         if: steps.regression.outputs.regression == 'true'
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: cleanway/recall-regression-alert
           delete-branch: true

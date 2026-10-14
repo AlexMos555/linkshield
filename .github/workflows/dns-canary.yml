@@ -60,12 +60,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
       - name: Probe live DNS, blocklist artifact, /health/deep and landing
+        # Inputs reach the shell as env vars, never spliced into the script.
+        env:
+          CANARY_BASE: ${{ inputs.base || 'https://api.cleanway.ai' }}
+          CANARY_LANDING_BASE: ${{ inputs.landing_base || 'https://cleanway.ai' }}
         run: >-
           python3 scripts/dns_canary.py
-          --base "${{ inputs.base || 'https://api.cleanway.ai' }}"
-          --landing-base "${{ inputs.landing_base || 'https://cleanway.ai' }}"
+          --base "$CANARY_BASE"
+          --landing-base "$CANARY_LANDING_BASE"
