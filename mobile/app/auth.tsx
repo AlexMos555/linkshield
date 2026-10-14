@@ -22,6 +22,16 @@ import {
   requestCaptchaToken,
   cancelCaptcha,
 } from "../src/services/captcha";
+import { createOtpRequester } from "../src/utils/otp-request";
+
+// Module scope on purpose: once GoTrue has asked for a captcha, a resend (or a
+// second visit to this screen) in the same app session goes captcha-first
+// instead of probing with a plain request again.
+const requestOtp = createOtpRequester({
+  captchaConfigured: isCaptchaRequired(),
+  send: sendEmailOtp,
+  getCaptchaToken: requestCaptchaToken,
+});
 
 /**
  * Passwordless sign-in: enter email → receive a code → enter it. The code is
@@ -102,21 +112,16 @@ export default function AuthScreen() {
     }
     setLoading(true);
     try {
-      // OPTIONAL captcha. With EXPO_PUBLIC_CAPTCHA_URL unset — today's state —
-      // isCaptchaRequired() is false, this block is skipped entirely and the
-      // call below is byte-for-byte the request it has always been.
-      let captchaToken: string | undefined;
-      if (isCaptchaRequired()) {
-        // Name it `token`, not `t` — `t` is the i18n function above.
-        const token = await requestCaptchaToken();
-        if (!token) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          setError(t("mobile.auth.err_captcha"));
-          return;
-        }
-        captchaToken = token;
+      // Captcha ON DEMAND (src/utils/otp-request.ts): the plain request goes
+      // first; only a `captcha_failed` answer opens the challenge page, and
+      // only in a build with EXPO_PUBLIC_CAPTCHA_URL. While Supabase captcha
+      // is off this is byte-for-byte the request the app has always sent.
+      const outcome = await requestOtp(cleanEmail);
+      if (outcome.kind === "captcha_cancelled") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setError(t("mobile.auth.err_captcha"));
+        return;
       }
-      await sendEmailOtp(cleanEmail, captchaToken);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setStep("code");
       setCode("");

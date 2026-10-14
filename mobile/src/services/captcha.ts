@@ -10,10 +10,14 @@
  *
  * OFF BY DEFAULT — AND OFF MEANS BYTE-IDENTICAL
  * The whole feature hangs off one build-time env var. With
- * `EXPO_PUBLIC_CAPTCHA_URL` unset (today's state — the founder has no captcha
- * account yet) `isCaptchaRequired()` is false, the sign-in screen never calls
- * anything here, no browser opens, no extra request is made, and the OTP body
- * is exactly what it is today. The only cost is one `.length > 0` check.
+ * `EXPO_PUBLIC_CAPTCHA_URL` unset `isCaptchaRequired()` is false, the sign-in
+ * screen never calls anything here, no browser opens, no extra request is
+ * made, and the OTP body is exactly what it always was.
+ *
+ * SET MEANS "READY", NOT "ALWAYS"
+ * Store builds from 1.0.5 set it (mobile/eas.json). Even then the challenge
+ * opens only when GoTrue answers `captcha_failed` (src/utils/otp-request.ts),
+ * so until Supabase captcha protection is switched on nobody sees it.
  *
  * WHY A BROWSER ROUND-TRIP AND NOT AN INLINE WIDGET
  * A captcha is HTML+JS; rendering it in-app needs a webview. `react-native-webview`
