@@ -8,6 +8,16 @@ from api.models.schemas import DomainResult
 
 _redis_client: Optional[redis.Redis] = None
 
+# Reasons no fresh analysis produces any more. A cached verdict carrying one
+# is a miss: "ssrf_blocked" ("resolves to a blocked network") told internal
+# names apart from missing ones and was retired in #197 — internal names now
+# get the not-found verdict.
+RETIRED_REASONS = frozenset({"ssrf_blocked"})
+
+
+def is_retired(result: DomainResult) -> bool:
+    return any(r.signal in RETIRED_REASONS for r in result.reasons or ())
+
 
 async def get_redis() -> redis.Redis:
     global _redis_client
@@ -24,6 +34,8 @@ async def get_cached_result(domain: str) -> Optional[DomainResult]:
         data = await r.get(f"check:{domain}")
         if data:
             result = DomainResult(**json.loads(data))
+            if is_retired(result):
+                return None
             result.cached = True
             return result
     except Exception:
