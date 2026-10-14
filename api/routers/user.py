@@ -1401,9 +1401,10 @@ async def delete_account(
     #   2. Set a `deleted:{user_id}` flag with TTL = grace window.
     #      The auth dependency reads this on every authenticated
     #      request and 410-rejects (except on /restore and /export).
-    #      If Redis is dead, the soft-delete gate silently fails open
-    #      — better one user briefly past the gate than the whole API
-    #      unavailable.
+    #      While Redis is down the gate reads deletion_requested_at
+    #      (PATCHed above) instead. A flag lost here is bounded by the
+    #      global sign-out below: no refresh token survives, so the last
+    #      access tokens expire within the hour.
     try:
         from api.services.cache import get_redis
 
@@ -1411,8 +1412,11 @@ async def delete_account(
         await r.delete(f"tier:{user.id}")
         grace_seconds = _DELETION_GRACE_DAYS * 24 * 3600
         await r.setex(f"deleted:{user.id}", grace_seconds, "1")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "account_delete_flag_failed",
+            extra={"user_id": user.id, "error": type(e).__name__},
+        )
 
     # End every session (all devices, the extension): their refresh tokens
     # stop working, so nothing stays signed in to a deleted account. Access
