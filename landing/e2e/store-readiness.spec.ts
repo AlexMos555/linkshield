@@ -13,7 +13,8 @@ import { test, expect, type Page } from "@playwright/test";
  */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+// Same preference as lib/supabase/public-key.ts: publishable key, else anon.
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const API = process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
 const BASE = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 

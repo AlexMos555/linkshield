@@ -24,7 +24,24 @@ Mobile auth is dead until `EXPO_PUBLIC_SUPABASE_ANON_KEY` reaches the bundle.
 - **EAS cloud build:** add the same var to the `env` block of each profile in
   `mobile/eas.json`, or as an EAS project env var.
 
-The key is the **anon / public** key (Supabase dashboard → Project Settings →
+**From 1.0.5 (and on the web): the publishable key is preferred.** Set
+`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (EAS environment variable, or
+`mobile/.env`) and, for the site, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in
+Vercel — the `sb_publishable_…` value from Supabase dashboard → Project
+Settings → API Keys. When set it is used instead of the anon key
+(`mobile/src/utils/supabase-key.ts`, `landing/lib/supabase/public-key.ts`); the
+anon key stays as the fallback. The extension gets the key from the site's
+connect page and already accepts `sb_publishable_…`. Nothing decodes the key
+as a JWT to accept it; a `sb_secret_…` key or a `service_role` JWT is refused in
+either slot. Order to retire the legacy HS256 JWT secret:
+1. ★ set both publishable variables, redeploy the site, build 1.0.5 with it;
+2. wait until 1.0.4 and older (which carry the anon JWT) are negligible;
+3. ★ Supabase → API Keys → disable the legacy anon/service_role keys, then
+   revoke the legacy JWT secret. The API's own server-side Supabase calls
+   (`api/`, `SUPABASE_ANON_KEY` / service key) must be moved to the new keys
+   before this step.
+
+The legacy key is the **anon / public** key (Supabase dashboard → Project Settings →
 API → Project API keys → `anon` `public`). It is safe to embed — every web page
 already ships it and all access is gated by Row-Level Security. It is **not**
 the `service_role` key; never put that in the app.

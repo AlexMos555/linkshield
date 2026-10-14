@@ -1,8 +1,9 @@
 /**
  * Supabase client for browser-side code (client components).
  *
- * Reads NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY from
- * the environment at build time. Both must be set in Vercel for prod
+ * Reads NEXT_PUBLIC_SUPABASE_URL + the client key
+ * (NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, else NEXT_PUBLIC_SUPABASE_ANON_KEY)
+ * from the environment at build time. Both must be set in Vercel for prod
  * and in .env.local for dev — falling back to empty strings here keeps
  * tsc / next build happy when the env is unconfigured.
  *
@@ -14,8 +15,15 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 
+import { resolveSupabaseClientKey } from "./public-key";
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+// Publishable key (sb_publishable_…) preferred, legacy anon JWT as fallback —
+// lib/supabase/public-key.ts. Both reads stay literal so Next inlines them.
+const SUPABASE_ANON_KEY = resolveSupabaseClientKey({
+  publishable: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+});
 
 let _client: ReturnType<typeof createBrowserClient> | null = null;
 
@@ -36,8 +44,8 @@ export function isAuthConfigured(): boolean {
 }
 
 /**
- * The project URL and the PUBLIC anon key, for the extension connect page:
- * the extension needs the anon key to refresh its own session at
+ * The project URL and the PUBLIC client key (publishable or legacy anon), for
+ * the extension connect page: the extension needs it to refresh its own session at
  * <project>/auth/v1/token. Both are already in every page's bundle.
  */
 export function supabasePublicConfig(): { url: string; anonKey: string } {

@@ -9,8 +9,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import { resolveSupabaseClientKey } from "./public-key";
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+// Publishable key (sb_publishable_…) preferred, legacy anon JWT as fallback —
+// lib/supabase/public-key.ts. Both reads stay literal so Next inlines them.
+const SUPABASE_ANON_KEY = resolveSupabaseClientKey({
+  publishable: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+});
 
 export async function getSupabaseServer() {
   const cookieStore = await cookies();
