@@ -146,3 +146,7 @@ class AuthUser(BaseModel):
     # Supabase Auth session behind the JWT (`session_id` claim). Stored on
     # the device row so unlinking a device can end exactly that session.
     session_id: Optional[str] = None
+    # `iat` of the verified access token (unix seconds). Sensitive actions
+    # (account deletion, minting the extension's session) require it to be
+    # recent — api/services/auth.py::get_recently_authenticated_user.
+    issued_at: Optional[int] = None

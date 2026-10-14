@@ -24,7 +24,7 @@ from pydantic import BaseModel, field_validator
 
 from api.config import get_settings
 from api.models.schemas import AuthUser
-from api.services.auth import get_current_user
+from api.services.auth import get_recently_authenticated_user
 from api.services.email_validator import is_disposable_email
 from api.services.rate_limiter import check_sensitive_action_limit, rate_limit
 
@@ -107,7 +107,10 @@ def _hashed_token(link: dict[str, Any]) -> tuple[Optional[str], str]:
 @router.post("/extension-session", response_model=ExtensionSessionResponse)
 async def extension_session(
     response: Response,
-    user: AuthUser = Depends(get_current_user),
+    # A fresh website token only (issued ≤ 10 min ago, else 401
+    # `reauth_required`): a stolen older token must not be able to mint a
+    # long-lived session of its own. The page refreshes and retries.
+    user: AuthUser = Depends(get_recently_authenticated_user),
 ) -> ExtensionSessionResponse:
     """Open a new Supabase session for the signed-in user's browser extension.
 
@@ -123,7 +126,8 @@ async def extension_session(
     caller's own address (``admin/generate_link`` — no email is sent), and the
     token is exchanged at ``/verify`` right here, so it never leaves the
     server. The address comes from the verified JWT, never from the request,
-    so a caller can only ever open a session for themselves. The soft-delete
+    so a caller can only ever open a session for themselves, and only with a
+    token issued in the last 10 minutes. The soft-delete
     gate in ``get_current_user`` applies (410 while the account is on hold),
     and the per-user sensitive-action limit (10 an hour) caps how many
     sessions a token can open.

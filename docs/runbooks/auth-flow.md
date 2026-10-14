@@ -92,4 +92,4 @@ calls. When we wire Jest (jest-expo preset), these tests fall out easily.
 
 - **Should the extension do its own sign-in?** Leaning no — one sign-in flow in the mobile app is simpler. Bridge via browser tab + postMessage.
 - **How do we rotate the Supabase anon key?** Build-time env. We need a process doc for rotating EAS secrets without bricking existing installs.
-- **Supabase RLS policies vs. server-side middleware** — our FastAPI backend already checks JWT signatures server-side (via `supabase_jwt_secret`). The RLS policies in `supabase/migrations/00[1-4]_*.sql` are defense-in-depth. Keep both.
+- **Supabase RLS policies vs. server-side middleware** — our FastAPI backend already checks JWT signatures server-side (against the project's JWKS — docs/runbooks/supabase-jwt-signing-keys.md). The RLS policies in `supabase/migrations/00[1-4]_*.sql` are defense-in-depth. Keep both.

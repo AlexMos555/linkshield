@@ -11,6 +11,7 @@ Two layers:
 from __future__ import annotations
 
 import hashlib
+import time
 from typing import Any, Dict, List
 
 import pytest
@@ -195,7 +196,8 @@ async def test_write_never_raises_on_network_failure(supabase_ok, monkeypatch):
 
 @pytest.fixture
 def authed_user():
-    return AuthUser(id="user-audit", email="z@gmail.com", tier=UserTier.free)
+    # Issued just now: deleting the account needs a fresh token.
+    return AuthUser(id="user-audit", email="z@gmail.com", tier=UserTier.free, issued_at=int(time.time()))
 
 
 @pytest.fixture

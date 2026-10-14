@@ -47,8 +47,11 @@ def _hash_ip(ip: Optional[str]) -> Optional[str]:
         return None
     # Deferred import — get_settings() triggers env validation and we
     # don't want to import that transitively at module load time.
+    # AUDIT_IP_HASH_KEY first; the legacy JWT secret until it is set
+    # (docs/runbooks/supabase-jwt-signing-keys.md).
     try:
-        secret = get_settings().supabase_jwt_secret
+        settings = get_settings()
+        secret = settings.audit_ip_hash_key or settings.supabase_jwt_secret
     except Exception:
         secret = ""
     if not secret:

@@ -142,15 +142,13 @@ def test_initial_purchase_writes_a_google_play_entitlement(client, account_store
     assert e.is_paid and e.source == "google_play" and e.device_limit == 3
 
 
-def test_entitlement_endpoint_says_where_to_manage_a_play_plan(client, account_store):
-    import jwt
+def test_entitlement_endpoint_says_where_to_manage_a_play_plan(client, account_store, monkeypatch):
+    from tests.jwt_helpers import SigningKey, install_fake_jwks
 
-    from api.config import get_settings
-
+    key = SigningKey()
+    install_fake_jwks(monkeypatch, key)
     post(client, load("initial_purchase"))
-    token = jwt.encode({"sub": ACCOUNT, "email": "p@example.com", "aud": "authenticated",
-                        "exp": int(time.time()) + 3600}, get_settings().supabase_jwt_secret, algorithm="HS256")
-    body = client.get("/api/v1/me/entitlement", headers={"Authorization": f"Bearer {token}"}).json()
+    body = client.get("/api/v1/me/entitlement", headers=key.headers(ACCOUNT, email="p@example.com")).json()
     assert body["source"] == "google_play" and body["plan"] == "personal"
     assert body["manage_url"] == (
         "https://play.google.com/store/account/subscriptions?sku=cleanway.devices&package=ai.cleanway.app"

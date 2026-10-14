@@ -71,6 +71,21 @@ export function mintOutcome(status: number): MintOutcome {
   return "error_failed";
 }
 
+/**
+ * The API mints only for a website token issued in the last 10 minutes and
+ * answers an older one with 401 `reauth_required`: the page then refreshes the
+ * website session (a refresh issues a new token) and asks once more.
+ */
+export async function isReauthRequired(resp: Response): Promise<boolean> {
+  if (resp.status !== 401) return false;
+  try {
+    const body = (await resp.clone().json()) as { detail?: { code?: unknown } } | null;
+    return body?.detail?.code === "reauth_required";
+  } catch {
+    return false;
+  }
+}
+
 export interface MintedSession {
   access_token: string;
   refresh_token: string;

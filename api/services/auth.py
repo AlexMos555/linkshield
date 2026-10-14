@@ -1,15 +1,26 @@
 """
 Authentication service.
 
-Validates Supabase JWTs and resolves user tier from database.
+Validates Supabase access tokens and resolves user tier from database.
 Tier is cached in Redis for 5 minutes to avoid per-request DB calls.
+
+Supabase signs user access tokens with the project's ASYMMETRIC signing key
+(ES256 today; RS256 also accepted) and publishes the public half at
+``<SUPABASE_URL>/auth/v1/.well-known/jwks.json``. Tokens are verified against
+that JWKS only: signature, ``exp``, ``iat``, ``aud == "authenticated"`` and
+``iss == <SUPABASE_URL>/auth/v1``. HS256 tokens signed with the legacy shared
+secret are refused unless SUPABASE_ALLOW_LEGACY_HS256 is explicitly on —
+docs/runbooks/supabase-jwt-signing-keys.md.
 """
 
+import asyncio
 import logging
-from typing import Optional
+import threading
+import time
+from typing import Any, Optional
 
 import jwt
-from fastapi import HTTPException, Header
+from fastapi import Depends, HTTPException, Header
 
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
@@ -18,6 +29,138 @@ logger = logging.getLogger("cleanway.auth")
 
 # Cache tier in Redis for 5 minutes
 _TIER_CACHE_TTL = 300
+
+_AUDIENCE = "authenticated"
+_ASYMMETRIC_ALGORITHMS = ("ES256", "RS256")
+# Clock skew tolerated on exp / iat / nbf.
+_LEEWAY_S = 30
+# JWKS cache: keys are reused for 10 minutes; an unknown kid refetches the
+# set, at most once per cooldown so random kids can't hammer Supabase.
+_JWKS_LIFESPAN_S = 600
+_JWKS_UNKNOWN_KID_COOLDOWN_S = 30
+_JWKS_TIMEOUT_S = 5
+
+# Sensitive actions need a token issued at most this long ago.
+RECENT_AUTH_MAX_AGE_S = 600
+
+_INVALID = "Invalid or expired token"
+
+
+def _auth_unavailable() -> HTTPException:
+    # Deliberately no upstream detail: the reason is in the server log.
+    return HTTPException(
+        status_code=503,
+        detail={
+            "code": "auth_unavailable",
+            "error": "Sign-in can't be checked right now. Please try again in a moment.",
+        },
+    )
+
+
+class _SupabaseJWKClient(jwt.PyJWKClient):
+    """PyJWKClient that keeps serving the last good key set when a refetch
+    fails (stale-if-error): a short Supabase blip must not sign everyone out.
+    With nothing fetched yet, the error propagates and the API fails closed."""
+
+    def __init__(self, uri: str) -> None:
+        super().__init__(
+            uri,
+            cache_jwk_set=True,
+            lifespan=_JWKS_LIFESPAN_S,
+            timeout=_JWKS_TIMEOUT_S,
+            cooldown_duration=_JWKS_UNKNOWN_KID_COOLDOWN_S,
+        )
+        self._last_good: Optional[dict[str, Any]] = None
+
+    def _download(self) -> Any:
+        return jwt.PyJWKClient.fetch_data(self)
+
+    def fetch_data(self) -> Any:
+        try:
+            data = self._as_jwk_set_payload(self._download())
+        except jwt.PyJWKClientConnectionError:
+            if self._last_good is None:
+                raise
+            logger.warning("jwks_fetch_failed_serving_cached_keys")
+            return self._last_good
+        if self.jwk_set_cache is not None:
+            self.jwk_set_cache.put(data)
+        self._last_successful_fetch = time.monotonic()
+        self._last_good = data
+        return data
+
+
+_jwks_clients: dict[str, _SupabaseJWKClient] = {}
+_jwks_lock = threading.Lock()
+
+
+def _supabase_base() -> str:
+    return (get_settings().supabase_url or "").strip().rstrip("/")
+
+
+def _jwks_client() -> _SupabaseJWKClient:
+    """One client (and key cache) per process for the configured project."""
+    uri = f"{_supabase_base()}/auth/v1/.well-known/jwks.json"
+    with _jwks_lock:
+        client = _jwks_clients.get(uri)
+        if client is None:
+            client = _jwks_clients[uri] = _SupabaseJWKClient(uri)
+        return client
+
+
+def _verify_supabase_token(token: str) -> dict[str, Any]:
+    """Verify signature + claims; return the payload. Blocking (a JWKS fetch
+    may hit the network) — call it off the event loop."""
+    settings = get_settings()
+    base = _supabase_base()
+    if not base:
+        logger.error("jwt_verify_unconfigured_supabase_url")
+        raise _auth_unavailable()
+
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail=_INVALID)
+    alg = header.get("alg")
+
+    key: Any
+    if alg in _ASYMMETRIC_ALGORITHMS:
+        try:
+            key = _jwks_client().get_signing_key_from_jwt(token)
+        except jwt.PyJWKClientConnectionError as e:
+            logger.error("jwks_unavailable", extra={"error": type(e).__name__})
+            raise _auth_unavailable()
+        except jwt.PyJWKSetError as e:
+            logger.error("jwks_malformed", extra={"error": str(e)})
+            raise _auth_unavailable()
+        except (jwt.PyJWKClientError, jwt.InvalidTokenError) as e:
+            # Unknown kid (after the allowed refetch) or a malformed header.
+            logger.warning("jwt_unknown_signing_key", extra={"error": str(e)})
+            raise HTTPException(status_code=401, detail=_INVALID)
+        algorithms = [alg]
+    elif alg == "HS256" and settings.supabase_allow_legacy_hs256 and settings.supabase_jwt_secret:
+        key = settings.supabase_jwt_secret
+        algorithms = ["HS256"]
+    else:
+        logger.warning("jwt_algorithm_refused", extra={"alg": str(alg)[:16]})
+        raise HTTPException(status_code=401, detail=_INVALID)
+
+    try:
+        return jwt.decode(
+            token,
+            key,
+            algorithms=algorithms,
+            audience=_AUDIENCE,
+            issuer=f"{base}/auth/v1",
+            leeway=_LEEWAY_S,
+            options={"require": ["exp", "iat", "iss", "aud", "sub"]},
+        )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        # Log the real error server-side, return generic message to client.
+        logger.warning("jwt_invalid", extra={"error": str(e)})
+        raise HTTPException(status_code=401, detail=_INVALID)
 
 
 async def _decode_jwt_and_resolve(authorization: Optional[str]) -> AuthUser:
@@ -31,9 +174,9 @@ async def _decode_jwt_and_resolve(authorization: Optional[str]) -> AuthUser:
     let the two paths drift on subtle behaviour (audience claim,
     algorithm allowlist, error wording).
 
-    Throws HTTPException(401) on any auth failure. Callers layer on
-    additional gates (soft-delete check, disposable-email check) AFTER
-    this returns successfully.
+    Throws HTTPException(401) on any auth failure, 503 when the signing keys
+    can't be fetched and none are cached. Callers layer on additional gates
+    (soft-delete check, disposable-email check) AFTER this returns.
     """
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header required")
@@ -42,35 +185,38 @@ async def _decode_jwt_and_resolve(authorization: Optional[str]) -> AuthUser:
     if not token:
         raise HTTPException(status_code=401, detail="Token required")
 
-    settings = get_settings()
-
-    try:
-        payload = jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError as e:
-        # Log the real error server-side, return generic message to client.
-        logger.warning("jwt_invalid", extra={"error": str(e)})
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    # Off the event loop: a cache miss fetches the JWKS over the network.
+    payload = await asyncio.to_thread(_verify_supabase_token, token)
 
     user_id = payload.get("sub")
     email = payload.get("email")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    if not isinstance(user_id, str) or not user_id:
+        raise HTTPException(status_code=401, detail=_INVALID)
 
     tier = await _resolve_user_tier(user_id)
     session_id = payload.get("session_id")
+    iat = payload.get("iat")
     return AuthUser(
         id=user_id,
-        email=email,
+        email=email if isinstance(email, str) and email else None,
         tier=tier,
         session_id=session_id if isinstance(session_id, str) else None,
+        issued_at=int(iat) if isinstance(iat, (int, float)) else None,
     )
+
+
+def require_recent_auth(user: AuthUser, max_age_s: int = RECENT_AUTH_MAX_AGE_S) -> None:
+    """401 `reauth_required` unless the caller's token was issued within
+    `max_age_s`. Clients answer it by refreshing the session (a refresh
+    issues a new access token) and retrying, or by asking for a sign-in."""
+    if user.issued_at is None or time.time() - user.issued_at > max_age_s:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "code": "reauth_required",
+                "error": "Please sign in again to continue.",
+            },
+        )
 
 
 async def _refuse_revoked_device(user_id: str, device_id: Optional[str]) -> None:
@@ -156,6 +302,17 @@ async def get_current_user(
         # Sentry isn't configured in dev / tests — silent.
         pass
 
+    return user
+
+
+async def get_recently_authenticated_user(
+    user: AuthUser = Depends(get_current_user),
+) -> AuthUser:
+    """get_current_user + a token issued at most RECENT_AUTH_MAX_AGE_S ago.
+
+    For actions a stolen, older token must not be able to take: deleting the
+    account, minting the browser extension a long-lived session of its own."""
+    require_recent_auth(user)
     return user
 
 

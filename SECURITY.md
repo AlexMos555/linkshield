@@ -100,7 +100,7 @@ We model 6 attacker classes. Defenses are mapped per class.
 ### Backend (FastAPI)
 - **Security headers middleware:** HSTS (1 yr, includeSubDomains), CSP (strict for API, scoped for /docs), X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy (deny camera/mic/geo/etc.), COOP same-origin, CORP cross-origin
 - **No `Server` header leak:** uvicorn started with `--no-server-header`, middleware double-checks
-- **JWT validation:** HS256 with min 32-char secret enforced at startup; reject expired/malformed tokens with generic 401
+- **JWT validation:** Supabase access tokens verified against the project's JWKS (ES256/RS256 only; `exp`, `iat`, `aud`, `iss`, `sub` required); legacy HS256 refused unless `SUPABASE_ALLOW_LEGACY_HS256=1`; generic 401, 503 `auth_unavailable` when no signing key can be fetched. Account deletion and the extension's session need a token issued ≤10 min ago (`reauth_required`). See docs/runbooks/supabase-jwt-signing-keys.md
 - **SSRF protection:** `domain_validator.py` rejects private/loopback/link-local/multicast IPs and metadata addresses (169.254.169.254, metadata.google.internal, etc.) before any outbound HTTP
 - **CORS lockdown:** allowed origins from env var, never `*`, credentials gated by exact origin match
 - **Rate limiting:** per-user daily quota + burst window via Redis sliding window
@@ -143,7 +143,7 @@ We model 6 attacker classes. Defenses are mapped per class.
 ### Cryptography
 - **Family alerts:** AES-256-GCM via libsodium; server stores ciphertext blobs only (cannot decrypt)
 - **Breach check:** k-anonymity via SHA-1 hash prefix (5 chars sent, 35 chars match locally) — same protocol as HIBP
-- **JWT:** HS256 with 256-bit secret rotated quarterly
+- **JWT:** Supabase asymmetric signing key (ES256), public keys from JWKS; the legacy HS256 secret is being retired (docs/runbooks/supabase-jwt-signing-keys.md)
 - **TLS:** 1.2 minimum at edge (Cloudflare/Vercel/Railway enforce)
 - **Hash storage:** SHA-256 for device fingerprints (no raw IDs server-side)
 
@@ -152,6 +152,9 @@ We model 6 attacker classes. Defenses are mapped per class.
 ## Secret Rotation Procedure
 
 ### Supabase (anon + service_role + JWT secret)
+Signing keys are asymmetric now: rotate in Supabase → JWT Keys (the API picks
+up the new key from the JWKS by `kid`, no redeploy). Retiring the legacy
+secret: docs/runbooks/supabase-jwt-signing-keys.md. Legacy procedure:
 1. Supabase Dashboard → Settings → API → "Roll JWT secret"
 2. Update Railway env vars: `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY`
 3. Trigger Railway redeploy → all sessions invalidated, users re-auth

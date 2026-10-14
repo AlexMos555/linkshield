@@ -431,6 +431,7 @@ export interface paths {
         /**
          * Delete Account
          * @description Mark the caller's account for deletion. Hard-deleted 30 days later.
+         *     Afterwards every session of the account is signed out.
          */
         delete: operations["delete_account_api_v1_user_account_delete"];
         options?: never;
@@ -1345,7 +1346,8 @@ export interface paths {
          *     caller's own address (``admin/generate_link`` — no email is sent), and the
          *     token is exchanged at ``/verify`` right here, so it never leaves the
          *     server. The address comes from the verified JWT, never from the request,
-         *     so a caller can only ever open a session for themselves. The soft-delete
+         *     so a caller can only ever open a session for themselves, and only with a
+         *     token issued in the last 10 minutes. The soft-delete
          *     gate in ``get_current_user`` applies (410 while the account is on hold),
          *     and the per-user sensitive-action limit (10 an hour) caps how many
          *     sessions a token can open.

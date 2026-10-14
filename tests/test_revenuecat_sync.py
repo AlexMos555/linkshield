@@ -11,17 +11,16 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
-import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
-import jwt
 import pytest
 from fastapi.testclient import TestClient
 
 from api.services import entitlements as ent
+from tests.jwt_helpers import SigningKey, install_fake_jwks
 from api.services import store_products
 
 DATA = Path(__file__).parent / "data" / "revenuecat"
@@ -81,15 +80,16 @@ def client(fake_redis, account_store, monkeypatch):
     return TestClient(app)
 
 
-def _headers() -> dict:
-    from api.config import get_settings
+KEY = SigningKey()
 
-    token = jwt.encode(
-        {"sub": ACCOUNT, "email": "p@example.com", "aud": "authenticated",
-         "exp": int(time.time()) + 3600, "session_id": str(uuid.uuid4())},
-        get_settings().supabase_jwt_secret, algorithm="HS256",
-    )
-    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture(autouse=True)
+def _jwks(monkeypatch):
+    install_fake_jwks(monkeypatch, KEY)
+
+
+def _headers() -> dict:
+    return KEY.headers(ACCOUNT, email="p@example.com", session_id=str(uuid.uuid4()))
 
 
 def refresh(client):

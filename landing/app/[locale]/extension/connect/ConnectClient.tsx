@@ -15,6 +15,7 @@ import {
   RESULT_TIMEOUT_MS,
   extensionErrorKey,
   isMintedSession,
+  isReauthRequired,
   isValidConnectState,
   mintOutcome,
   signupForConnectPath,
@@ -173,11 +174,19 @@ export default function ConnectClient({ state }: { state: string | null }) {
         window.location.replace(signupHref);
         return;
       }
-      const resp = await fetch(`${apiBase()}/api/v1/auth/extension-session`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${bearer}` },
-        cache: "no-store",
-      });
+      const mint = (token: string) =>
+        fetch(`${apiBase()}/api/v1/auth/extension-session`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+      let resp = await mint(bearer);
+      if (await isReauthRequired(resp)) {
+        // The website token is older than the API accepts here: refresh once.
+        const refreshed = await getSupabaseClient().auth.refreshSession().catch(() => null);
+        const fresh = refreshed?.data.session?.access_token;
+        if (fresh) resp = await mint(fresh);
+      }
       const outcome = mintOutcome(resp.status);
       if (outcome === "signin") {
         window.location.replace(signupHref);

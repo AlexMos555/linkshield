@@ -54,13 +54,13 @@ def locked_user():
 
 
 def _patch_token_verify(monkeypatch, user: AuthUser):
-    """Skip JWT verification by stubbing the underlying decode call."""
-    import jwt as _jwt
+    """Skip JWT verification by stubbing the signature + claims check
+    (tests/test_jwt_verification.py covers the real one)."""
 
-    def _fake_decode(*_a, **_kw):
+    def _fake_verify(_token):
         return {"sub": user.id, "email": user.email}
 
-    monkeypatch.setattr(_jwt, "decode", _fake_decode)
+    monkeypatch.setattr("api.services.auth._verify_supabase_token", _fake_verify)
 
 
 def _patch_resolver(monkeypatch, user: AuthUser):
