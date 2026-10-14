@@ -31,9 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
 
@@ -62,12 +62,17 @@ jobs:
           # benchmark uses the same secret for a different purpose.
           BLOCKLIST_LICENSED_ONLY: ${{ vars.BLOCKLIST_LICENSED_ONLY }}
           PHISHTANK_API_KEY: ${{ vars.BLOCKLIST_PHISHTANK_SOURCE == 'true' && secrets.PHISHTANK_API_KEY || '' }}
+          # Dispatch inputs reach the shell as env vars, never spliced in.
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          FORCE: ${{ inputs.force }}
         run: |
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            python scripts/refresh_dangerous_domains.py ${{ inputs.force && '--force' || '' }} --dry-run
+          force_flag=""
+          if [ "$FORCE" = "true" ]; then force_flag="--force"; fi
+          if [ "$DRY_RUN" = "true" ]; then
+            python scripts/refresh_dangerous_domains.py $force_flag --dry-run
           else
             set +e
-            python scripts/refresh_dangerous_domains.py ${{ inputs.force && '--force' || '' }}
+            python scripts/refresh_dangerous_domains.py $force_flag
             code=$?
             # Exit codes: 0 published; 2 no feed readable; 4 a publish gate
             # kept the previous set; 5 post-publish check failed, rolled back;

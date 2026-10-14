@@ -219,6 +219,41 @@ def require_recent_auth(user: AuthUser, max_age_s: int = RECENT_AUTH_MAX_AGE_S) 
         )
 
 
+async def _deletion_requested(user_id: str) -> bool:
+    """Is this account in its deletion grace window?
+
+    Fast path: the `deleted:{id}` Redis flag written by DELETE /user/account.
+    When Redis cannot answer, the users row (deletion_requested_at) decides:
+    failing open let a deleted account keep full API access for as long as
+    Redis was down. Neither source reachable → 503 — never "allowed", and
+    never a 410 that would tell every live user their account is going away.
+    No database configured (local dev) → there is no row: not deleted."""
+    try:
+        from api.services.cache import get_redis
+
+        r = await get_redis()
+        return bool(await r.get(f"deleted:{user_id}"))
+    except Exception as e:
+        logger.warning(
+            "deleted_flag_unreadable",
+            extra={"user_id": user_id, "error": type(e).__name__},
+        )
+
+    from api.services import account_store
+
+    store = account_store.get_account_store()
+    if store is None:
+        return False
+    try:
+        return await store.is_deletion_requested(user_id)
+    except account_store.AccountStoreError as e:
+        logger.error(
+            "deleted_check_unavailable",
+            extra={"user_id": user_id, "error": str(e)},
+        )
+        raise _auth_unavailable() from e
+
+
 async def _refuse_revoked_device(user_id: str, device_id: Optional[str]) -> None:
     """403 `device_revoked` when this install was unlinked from the account.
 
@@ -261,27 +296,18 @@ async def get_current_user(
     # window) and cleared by /user/account/restore. Two endpoints opt
     # out via `get_current_user_including_deleted` so the user can
     # still restore + export their data while locked out of everything
-    # else.
-    try:
-        from api.services.cache import get_redis
+    # else. When Redis can't answer, the users row decides (see
+    # _deletion_requested) — it used to fail open.
+    if await _deletion_requested(user.id):
+        raise HTTPException(
+            status_code=410,
+            detail={
+                "error": "Account is scheduled for deletion.",
+                "restore_url": "/api/v1/user/account/restore",
+            },
+        )
 
-        r = await get_redis()
-        if await r.get(f"deleted:{user.id}"):
-            raise HTTPException(
-                status_code=410,
-                detail={
-                    "error": "Account is scheduled for deletion.",
-                    "restore_url": "/api/v1/user/account/restore",
-                },
-            )
-    except HTTPException:
-        raise
-    except Exception:
-        # Redis blip → fail-open. Better one user briefly past the
-        # gate than the whole API down on a Redis hiccup.
-        pass
-
-    # Unlinked device gate (fails open on Redis trouble, like the above).
+    # Unlinked device gate (Redis marker, the devices row when Redis is down).
     # Called directly from Python (get_optional_user, tests) the parameter
     # holds FastAPI's Header() default instead of a string — ignored then.
     await _refuse_revoked_device(user.id, x_device_id if isinstance(x_device_id, str) else None)

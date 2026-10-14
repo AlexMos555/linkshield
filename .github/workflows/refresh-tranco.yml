@@ -36,9 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25  # well above the worst-case 5-min load
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
           cache: pip
@@ -53,8 +53,10 @@ jobs:
         env:
           REDIS_URL: ${{ secrets.REDIS_URL_PRODUCTION }}
           TRANCO_REFRESH_VERSION: ${{ github.run_id }}
+          # Dispatch input reaches the shell as an env var, never spliced in.
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "$DRY_RUN" = "true" ]; then
             python scripts/refresh_tranco.py --dry-run
           else
             set +e

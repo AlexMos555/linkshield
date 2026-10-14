@@ -426,6 +426,9 @@ class MemoryAccountStore:
         # RevenueCat webhook event ids already applied (migration 024).
         self.processed_events: dict[str, str] = {}
         self.register_calls: list[dict] = []
+        # Accounts whose users.deletion_requested_at is set (soft-deleted).
+        self.deletion_requested: set[str] = set()
+        self.deletion_checks: list[str] = []
         self._ids = itertools.count(1)
 
     def _check(self) -> None:
@@ -523,6 +526,11 @@ class MemoryAccountStore:
             dict(r) for r in self.devices
             if r["user_id"] == account_id and r["revoked_at"] is None
         ]
+
+    async def is_deletion_requested(self, account_id: str) -> bool:
+        self.deletion_checks.append(account_id)
+        self._check()
+        return account_id in self.deletion_requested
 
     async def is_device_revoked(self, *, account_id: str, device_hash: str) -> bool:
         self._check()
