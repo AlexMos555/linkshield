@@ -222,6 +222,73 @@ class MainActivity : ReactActivity() {
     assert.ok(cam, "expo-camera plugin entry present");
     assert.strictEqual(cam[1].recordAudioAndroid, false);
   });
+
+  // --- Android backup rules (withBackupRules) ------------------------------
+  // The block log is a browsing trail and the allow list is the person's own;
+  // neither may reach a Google Drive backup or a new phone. The rule files are
+  // committed resources of the native module; the manifest is prebuild output,
+  // so its two attributes are asserted through the plugin's transform.
+  const backup = require("../withBackupRules.js");
+  const resXml = path.join(__dirname, "..", "..", "modules", "cleanway-vpn", "android", "src", "main", "res", "xml");
+  const ktDir = path.join(__dirname, "..", "..", "modules", "cleanway-vpn", "android", "src", "main", "java", "ai", "cleanway", "app");
+  // Read the pref names from the Kotlin source, so a rename there cannot
+  // silently put the data back into backups.
+  const prefsName = (file) => {
+    const m = fs.readFileSync(path.join(ktDir, file), "utf8").match(/private const val PREFS = "([^"]+)"/);
+    assert.ok(m, `${file} declares PREFS`);
+    return m[1];
+  };
+  const PRIVATE_PREFS = [prefsName("BlockLog.kt"), prefsName("UserAllow.kt")];
+  check("private prefs are the block log and the allow list", () => {
+    assert.deepStrictEqual(PRIVATE_PREFS, ["cleanway_block_log", "cleanway_user_allow"]);
+  });
+  const excludes = (xml, section) => {
+    const body = section ? (xml.match(new RegExp(`<${section}>([\\s\\S]*?)</${section}>`)) || [])[1] : xml;
+    assert.ok(body, `<${section}> present`);
+    // Comments mention the names too; only real elements count.
+    const live = body.replace(/<!--[\s\S]*?-->/g, "");
+    return [...live.matchAll(/<exclude\s+domain="sharedpref"\s+path="([^"]+)"\s*\/>/g)].map((m) => m[1]);
+  };
+  const extraction = fs.readFileSync(path.join(resXml, "cleanway_data_extraction_rules.xml"), "utf8");
+  const legacy = fs.readFileSync(path.join(resXml, "cleanway_backup_rules.xml"), "utf8");
+  for (const [label, xml, section] of [
+    ["Android 12+ cloud backup", extraction, "cloud-backup"],
+    ["Android 12+ device transfer", extraction, "device-transfer"],
+    ["Android 11- full backup", legacy, null],
+  ]) {
+    check(`${label} excludes the block log, the allow list and SecureStore`, () => {
+      const ex = excludes(xml, section);
+      for (const name of PRIVATE_PREFS) assert.ok(ex.includes(`${name}.xml`), `${name}.xml excluded`);
+      assert.ok(ex.includes("SecureStore"), "keeps expo-secure-store's exclusion");
+    });
+  }
+  check("withBackupRules points the manifest at Cleanway's rule files", () => {
+    // Shaped like a manifest that expo-secure-store's plugin already touched.
+    const manifest = {
+      manifest: {
+        application: [{
+          $: {
+            "android:name": ".MainApplication",
+            "android:allowBackup": "true",
+            "android:fullBackupContent": "@xml/secure_store_backup_rules",
+            "android:dataExtractionRules": "@xml/secure_store_data_extraction_rules",
+          },
+        }],
+      },
+    };
+    const app = backup._apply(manifest).manifest.application[0].$;
+    assert.strictEqual(app["android:fullBackupContent"], "@xml/cleanway_backup_rules");
+    assert.strictEqual(app["android:dataExtractionRules"], "@xml/cleanway_data_extraction_rules");
+  });
+  check("app.json registers withBackupRules and turns off expo-secure-store's backup rules", () => {
+    assert.ok((appJson.plugins || []).includes("./plugins/withBackupRules"));
+    const ss = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-secure-store");
+    assert.ok(ss, "expo-secure-store plugin entry present");
+    // Otherwise it warns on every prebuild that other backup rules exist, and
+    // a reorder of plugins would be one step from its rules (SecureStore
+    // only) being the ones in force.
+    assert.strictEqual(ss[1].configureAndroidBackup, false);
+  });
 }
 
 console.log(`\n${passed} assertions passed`);

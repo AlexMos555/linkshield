@@ -75,7 +75,8 @@
       [
         "expo-secure-store",
         {
-          "faceIDPermission": false
+          "faceIDPermission": false,
+          "configureAndroidBackup": false
         }
       ],
       "expo-notifications",
@@ -109,7 +110,8 @@
       "./plugins/withReleaseSigning",
       "./plugins/withAbiFilters",
       "./plugins/withSeedGuard",
-      "./plugins/withDarkSystemBars"
+      "./plugins/withDarkSystemBars",
+      "./plugins/withBackupRules"
     ]
   }
 }

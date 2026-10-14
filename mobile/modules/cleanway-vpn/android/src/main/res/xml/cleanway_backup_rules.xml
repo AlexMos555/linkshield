@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup rules, Android 11 and lower (android:fullBackupContent).
+  Same content as cleanway_data_extraction_rules.xml — see the comment there.
+  Wired in by mobile/plugins/withBackupRules.js.
+-->
+<full-backup-content>
+  <include domain="sharedpref" path="."/>
+  <exclude domain="sharedpref" path="SecureStore"/>
+  <exclude domain="sharedpref" path="cleanway_block_log.xml"/>
+  <exclude domain="sharedpref" path="cleanway_user_allow.xml"/>
+</full-backup-content>

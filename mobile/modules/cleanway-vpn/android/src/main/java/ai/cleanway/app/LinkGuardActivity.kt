@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 
 /**
@@ -42,8 +43,16 @@ class LinkGuardActivity : Activity() {
             finish()
             return
         }
+        val host = hostOf(url)
+        // Loop brake: a page or app re-firing the same VIEW intent must not
+        // spin the browser / warning screen (LinkGuardThrottle). A dropped
+        // repeat simply finishes — the first launch already did the work.
+        if (!THROTTLE.admit(host ?: url, SystemClock.elapsedRealtime())) {
+            Log.w(TAG, "link_guard_throttled")
+            finish()
+            return
+        }
         try {
-            val host = hostOf(url)
             // The shield's live list, else the synced file with the same veto as DNS.
             val listed = host?.let {
                 LinkPolicy.listedSuffix(it, BlocklistHolder.current(this), BlocklistHolder.allowed(this))
@@ -150,5 +159,8 @@ class LinkGuardActivity : Activity() {
 
     private companion object {
         const val TAG = "CleanwayLinkGuard"
+
+        /** Process-wide, in memory: a loop lives within one process lifetime. */
+        val THROTTLE = LinkGuardThrottle()
     }
 }

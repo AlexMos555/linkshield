@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup + device-to-device transfer rules, Android 12 and higher.
+  Wired in by mobile/plugins/withBackupRules.js (android:dataExtractionRules).
+
+  Starts from expo-secure-store's own rules (only SharedPreferences are backed
+  up; SecureStore is excluded because its Keystore-wrapped values cannot be
+  decrypted on another device) and also keeps out:
+    - cleanway_block_log   (BlockLog.kt)  every site the shield or the link
+      guard stopped or warned about, with times — a browsing trail;
+    - cleanway_user_allow  (UserAllow.kt) sites the person marked "not a scam".
+  Both stay on this phone only: neither goes to the Google Drive backup nor to
+  a new phone. Pinned by mobile/plugins/__tests__/plugins.test.js.
+-->
+<data-extraction-rules>
+  <cloud-backup>
+    <include domain="sharedpref" path="."/>
+    <exclude domain="sharedpref" path="SecureStore"/>
+    <exclude domain="sharedpref" path="cleanway_block_log.xml"/>
+    <exclude domain="sharedpref" path="cleanway_user_allow.xml"/>
+  </cloud-backup>
+  <device-transfer>
+    <include domain="sharedpref" path="."/>
+    <exclude domain="sharedpref" path="SecureStore"/>
+    <exclude domain="sharedpref" path="cleanway_block_log.xml"/>
+    <exclude domain="sharedpref" path="cleanway_user_allow.xml"/>
+  </device-transfer>
+</data-extraction-rules>

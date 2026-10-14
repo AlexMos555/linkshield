@@ -186,6 +186,13 @@ jobs:
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
 
+      - name: Link guard "Open in browser" URL table test
+        # The guard screen opens only the host it checked, rebuilt as an
+        # http(s) URL — never the raw string from the deep link (intent:,
+        # "https://a https://b", userinfo, backslash). OpenUrlPolicy.kt is the
+        # native backstop; its Kotlin test does not run in CI.
+        run: node mobile/scripts/test-open-url.mjs
+
       - name: Message check vocabulary asset
         # message_rules.json is hand-edited; a parse error or a renamed group
         # ships an APK whose text check is silently off. The Kotlin tests that
