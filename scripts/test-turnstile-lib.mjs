@@ -18,6 +18,7 @@
 import assert from "node:assert/strict";
 
 import {
+  TURNSTILE_PRODUCTION_SITE_KEY,
   TURNSTILE_TEST_SITE_KEY,
   buildCaptchaReturnUrl,
   parseCaptchaRequest,
@@ -46,6 +47,16 @@ check("blank env → test key + testMode", () => {
 });
 check("configured env → that key, not test mode", () => {
   assert.deepEqual(resolveTurnstileSiteKey(" 0x4AAAAAAAExample "), { key: "0x4AAAAAAAExample", testMode: false });
+});
+check("unset env on a Vercel production build → the cleanway.ai widget key", () => {
+  assert.deepEqual(resolveTurnstileSiteKey(undefined, "production"), { key: TURNSTILE_PRODUCTION_SITE_KEY, testMode: false });
+});
+check("unset env on a preview or local build → test key (the real one fails off cleanway.ai)", () => {
+  assert.deepEqual(resolveTurnstileSiteKey(undefined, "preview"), { key: TURNSTILE_TEST_SITE_KEY, testMode: true });
+  assert.deepEqual(resolveTurnstileSiteKey(undefined, undefined), { key: TURNSTILE_TEST_SITE_KEY, testMode: true });
+});
+check("configured env wins over the production default", () => {
+  assert.deepEqual(resolveTurnstileSiteKey("0x4AAAAAAAOther", "production"), { key: "0x4AAAAAAAOther", testMode: false });
 });
 
 console.log("parseCaptchaRequest");
