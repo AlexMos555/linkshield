@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect } from "@playwright/test";
+import { SUPPORT_LIVE } from "./billing-flag";
 import {
   type BenchmarkSnapshot,
   falsePositiveRateIsPublishable,
@@ -116,12 +117,16 @@ test("/ru/privacy-policy is Russian and describes only the released app", async 
   }
   await expect(body).not.toContainText("в открытом виде он не хранится");
   // The contact block is attached by section id, inside the last section.
-  await expect(page.locator("section#contact [data-testid=privacy-contact-not-live]")).toBeVisible();
+  await expect(
+    SUPPORT_LIVE
+      ? page.locator('section#contact a[href="mailto:support@cleanway.ai"]')
+      : page.locator("section#contact [data-testid=privacy-contact-not-live]"),
+  ).toBeVisible();
 });
 
-test("/ru/support does not promise an email reply while the mailbox is down", async ({ page }) => {
+test("/ru/support shows the mailbox only when it is live", async ({ page }) => {
   await page.goto("/ru/support");
-  await expect(page.getByTestId("support-email-not-live")).toBeVisible();
+  await expect(page.getByTestId(SUPPORT_LIVE ? "support-email" : "support-email-not-live")).toBeVisible();
   await expect(page.locator('a[href="/ru/android"]')).toBeVisible();
 });
 

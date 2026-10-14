@@ -171,7 +171,11 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await expect(policy).toContainText("отдельной базе данных на территории России");
     await expect(policy).toContainText("зашифрованном виде");
     await expect(page.locator("section#payments")).toHaveCount(0);
-    await expect(page.locator("section#contact [data-testid=privacy-contact-not-live]")).toBeVisible();
+    await expect(
+      SUPPORT_LIVE
+        ? page.locator('section#contact a[href="mailto:support@cleanway.ai"]')
+        : page.locator("section#contact [data-testid=privacy-contact-not-live]"),
+    ).toBeVisible();
   });
 
   test("terms outside Russia keep the Stripe payment section and no lapse policy", async ({ page }) => {
