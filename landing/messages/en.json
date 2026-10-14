@@ -247,7 +247,7 @@
     "error_network": "No connection to the server. Check your internet and try again.",
     "error_unavailable": "Signing in isn't available right now. Protection works without an account.",
     "code_heading": "Enter the code from the email",
-    "code_sent_to": "We sent a 6-digit code to <strong>{email}</strong>.",
+    "code_sent_to": "We sent a sign-in code to <strong>{email}</strong>.",
     "code_label": "Code from the email",
     "code_submit": "Sign in",
     "code_submitting": "Checking the code…",
@@ -256,7 +256,7 @@
     "code_resend": "Send the code again",
     "code_resend_in": "Resend in {seconds} s",
     "code_change_email": "Change email",
-    "error_code_incomplete": "Enter the 6 digits from the email.",
+    "error_code_incomplete": "Enter the whole code from the email.",
     "error_code_wrong": "Wrong or expired code. Check the digits or request a new code.",
     "error_link_expired": "That sign-in link has expired. Request a new code.",
     "error_link_failed": "That sign-in link didn't work. Enter the code from the email here, or request a new one."

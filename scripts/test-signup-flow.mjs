@@ -11,13 +11,16 @@
  *   • a wrong code and an expired code are the same message (GoTrue cannot
  *     tell them apart either), and only a REJECTED token triggers the
  *     "signup" retry — never a network error;
- *   • the code input holds six digits and nothing else;
+ *   • the code input holds 6–8 digits and nothing else (the Supabase OTP length
+ *     may move from 6 to 8; mobile/src/utils/otp-code.ts has the same range),
+ *     and a pasted sentence from the email yields just the code;
  *   • a failed link lands on the signup page of the reader's locale.
  */
 import assert from "node:assert/strict";
 
 import {
-  OTP_CODE_LEN,
+  OTP_CODE_MAX_LEN,
+  OTP_CODE_MIN_LEN,
   OTP_VERIFY_TYPES,
   RESEND_COOLDOWN_S,
   callbackPrecheck,
@@ -53,8 +56,9 @@ function check(name, fn) {
 }
 
 console.log("constants shared with the app");
-check("6 digits, 62 s cooldown, email then signup", () => {
-  assert.equal(OTP_CODE_LEN, 6);
+check("6–8 digits, 62 s cooldown, email then signup", () => {
+  assert.equal(OTP_CODE_MIN_LEN, 6);
+  assert.equal(OTP_CODE_MAX_LEN, 8);
   assert.equal(RESEND_COOLDOWN_S, 62);
   assert.deepEqual([...OTP_VERIFY_TYPES], ["email", "signup"]);
 });
@@ -92,16 +96,26 @@ check("4xx token errors retry, everything else does not", () => {
 });
 
 console.log("code input");
-check("keeps digits only, caps at six", () => {
+check("keeps digits only, caps at eight", () => {
   assert.equal(normalizeOtpInput(" 12 34-56 "), "123456");
-  assert.equal(normalizeOtpInput("1234567"), "123456");
+  assert.equal(normalizeOtpInput("1234567"), "1234567");
+  assert.equal(normalizeOtpInput("12345678"), "12345678");
+  assert.equal(normalizeOtpInput("123456789"), "12345678");
+  assert.equal(normalizeOtpInput("1234 5678"), "12345678");
   assert.equal(normalizeOtpInput("abc"), "");
   assert.equal(normalizeOtpInput("12３4"), "124"); // full-width digit is not \d
 });
-check("complete means exactly six digits", () => {
+check("a pasted sentence yields the code, not the code plus the '10 minutes'", () => {
+  assert.equal(normalizeOtpInput("Your code: 48213907. It expires in 10 minutes."), "48213907");
+  assert.equal(normalizeOtpInput("Код входа: 482139 (действует 10 минут)"), "482139");
+  assert.equal(normalizeOtpInput(" 482139 "), "482139");
+});
+check("complete means 6 to 8 digits", () => {
   assert.equal(isCompleteOtpCode("123456"), true);
+  assert.equal(isCompleteOtpCode("1234567"), true);
+  assert.equal(isCompleteOtpCode("12345678"), true);
   assert.equal(isCompleteOtpCode("12345"), false);
-  assert.equal(isCompleteOtpCode("1234567"), false);
+  assert.equal(isCompleteOtpCode("123456789"), false);
   assert.equal(isCompleteOtpCode("12345a"), false);
 });
 

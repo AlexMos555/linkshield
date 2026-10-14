@@ -8,7 +8,6 @@ import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import TurnstileWidget, { useTurnstileToken } from "@/components/TurnstileWidget";
 import { localePath } from "@/lib/locale-path";
 import {
-  OTP_CODE_LEN,
   OTP_VERIFY_TYPES,
   RESEND_COOLDOWN_S,
   isCompleteOtpCode,
@@ -49,7 +48,7 @@ type Step = "email" | "code";
  * Passwordless sign-in form via Supabase Auth — the same two steps as the app.
  *
  * Flow:
- *   1. Enter email → `signInWithOtp()`; Supabase emails a 6-digit code
+ *   1. Enter email → `signInWithOtp()`; Supabase emails a 6–8 digit code
  *      (the templates in docs/email-templates/ show the code and no link).
  *   2. Type the code → `verifyOtp()` sets the session cookie (@supabase/ssr),
  *      so /pricing's checkout sees the signed-in user → redirect to `next`.
@@ -309,7 +308,8 @@ export default function SignupForm({ planFromQuery, intervalFromQuery, errorFrom
               inputMode="numeric"
               autoComplete="one-time-code"
               pattern="[0-9]*"
-              maxLength={OTP_CODE_LEN}
+              // No maxLength: the browser would truncate a pasted sentence
+              // before normalizeOtpInput could pull the code out of it.
               placeholder="000000"
               value={code}
               onChange={(e) => setCode(normalizeOtpInput(e.target.value))}

@@ -3,7 +3,7 @@
  * Supabase so they can be table-tested (scripts/test-signup-flow.mjs).
  *
  * /signup sends a one-time code (Supabase `signInWithOtp`) and then lets the
- * person TYPE the 6-digit code from the email — the same thing the app does.
+ * person TYPE the code from the email — the same thing the app does.
  * The magic-link click still works for the recovery / email-change mails, and
  * a link that fails lands back on /signup with a stable `?error=` code that
  * this module turns into a sentence in the reader's language.
@@ -12,11 +12,18 @@
  * email is read, while a PKCE magic link only works in the browser that asked
  * for it (the verifier is a cookie there). A person who starts on the laptop
  * and opens the mail on the phone used to get a dead link; now she reads the
- * six digits off the phone and types them on the laptop.
+ * digits off the phone and types them on the laptop.
  */
 
-/** Must match mobile/src/services/auth.ts OTP_CODE_LEN and Supabase mailer_otp_length. */
-export const OTP_CODE_LEN = 6;
+/**
+ * Accepted code lengths — same range as mobile/src/utils/otp-code.ts.
+ * Supabase `mailer_otp_length` is 6 today; the audit wants 8. Accepting the
+ * whole range on both surfaces is what lets that switch happen without a
+ * lock-out. With a variable length there is no "complete" digit count, so the
+ * form never auto-submits.
+ */
+export const OTP_CODE_MIN_LEN = 6;
+export const OTP_CODE_MAX_LEN = 8;
 
 /**
  * Seconds before «Отправить ещё раз» re-enables. Supabase refuses a second
@@ -77,13 +84,23 @@ function isRateLimited(error: AuthFailure): boolean {
   return error.status === 429 || (error.code ?? "").includes("rate_limit");
 }
 
-/** Digits only, at most six — what the code input is allowed to hold. */
+const CODE_IN_TEXT_RE = new RegExp(`(?:^|\\D)(\\d{${OTP_CODE_MIN_LEN},${OTP_CODE_MAX_LEN}})(?!\\d)`);
+const OTP_RE = new RegExp(`^\\d{${OTP_CODE_MIN_LEN},${OTP_CODE_MAX_LEN}}$`);
+
+/**
+ * What the code input may hold: digits only, at most OTP_CODE_MAX_LEN. A paste
+ * of the email's sentence ("Код: 482139, действует 10 минут") yields the
+ * standalone code run, not the code glued to the "10"; otherwise every
+ * non-digit is dropped so "123 456" still works.
+ */
 export function normalizeOtpInput(raw: string): string {
-  return raw.replace(/\D/g, "").slice(0, OTP_CODE_LEN);
+  const run = CODE_IN_TEXT_RE.exec(raw);
+  if (run && /\D/.test(raw)) return run[1];
+  return raw.replace(/\D/g, "").slice(0, OTP_CODE_MAX_LEN);
 }
 
 export function isCompleteOtpCode(value: string): boolean {
-  return new RegExp(`^\\d{${OTP_CODE_LEN}}$`).test(value);
+  return OTP_RE.test(value);
 }
 
 // ─── /auth/callback → /signup?error=… ─────────────────────────────

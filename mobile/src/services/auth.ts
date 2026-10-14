@@ -281,7 +281,7 @@ export async function signUp(
 // The web signs up with a magic link; the app uses the SAME Supabase project,
 // so a code sent here logs into the SAME account and sync just works. No
 // password to set or remember (grandma-friendly), and no fragile web→app token
-// handoff: the user types the 6-digit code from the email on either surface.
+// handoff: the user types the code from the email on either surface.
 //
 // Requires the Supabase project's email template to expose the code
 // (`{{ .Token }}`); see docs/MOBILE_AUTH.md.
@@ -316,7 +316,8 @@ export async function sendEmailOtp(
 }
 
 /**
- * Exchange the 6-digit code the user typed for a session.
+ * Exchange the code the user typed (6–8 digits, see utils/otp-code.ts) for a
+ * session.
  *
  * Why two types are tried: GoTrue issues a different token kind depending on
  * whether the address already existed. An existing user gets a magic-link/email
@@ -546,10 +547,11 @@ export function validatePassword(v: string): string | null {
   return null;
 }
 
-export const OTP_CODE_LEN = 6;
-const OTP_RE = /^\d{6}$/;
-
-/** True when `v` is a well-formed 6-digit login code. */
-export function isValidOtpCode(v: string): boolean {
-  return OTP_RE.test(v.trim());
-}
+// The code field's rules (6–8 digits, paste handling) live in
+// src/utils/otp-code.ts so they can be table-tested without expo.
+export {
+  OTP_CODE_MIN_LEN,
+  OTP_CODE_MAX_LEN,
+  isValidOtpCode,
+  normalizeOtpInput,
+} from "../utils/otp-code";

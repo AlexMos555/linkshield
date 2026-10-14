@@ -247,7 +247,7 @@
     "error_network": "Sem conexão com o servidor. Confira sua internet e tente de novo.",
     "error_unavailable": "Não é possível entrar agora. A proteção funciona sem conta.",
     "code_heading": "Digite o código do e-mail",
-    "code_sent_to": "Enviamos um código de 6 dígitos para <strong>{email}</strong>.",
+    "code_sent_to": "Enviamos um código de acesso para <strong>{email}</strong>.",
     "code_label": "Código do e-mail",
     "code_submit": "Entrar",
     "code_submitting": "Verificando o código…",
@@ -256,7 +256,7 @@
     "code_resend": "Enviar o código de novo",
     "code_resend_in": "Reenviar em {seconds} s",
     "code_change_email": "Trocar e-mail",
-    "error_code_incomplete": "Digite os 6 dígitos do e-mail.",
+    "error_code_incomplete": "Digite o código completo do e-mail.",
     "error_code_wrong": "Código incorreto ou expirado. Confira os dígitos ou peça um novo código.",
     "error_link_expired": "O link de acesso expirou. Peça um novo código.",
     "error_link_failed": "O link de acesso não funcionou. Digite aqui o código do e-mail ou peça um novo."

@@ -247,7 +247,7 @@
     "error_network": "No hay conexión con el servidor. Comprueba tu internet y vuelve a intentarlo.",
     "error_unavailable": "Ahora mismo no se puede iniciar sesión. La protección funciona sin cuenta.",
     "code_heading": "Introduce el código del correo",
-    "code_sent_to": "Hemos enviado un código de 6 dígitos a <strong>{email}</strong>.",
+    "code_sent_to": "Hemos enviado un código de acceso a <strong>{email}</strong>.",
     "code_label": "Código del correo",
     "code_submit": "Entrar",
     "code_submitting": "Comprobando el código…",
@@ -256,7 +256,7 @@
     "code_resend": "Enviar el código de nuevo",
     "code_resend_in": "Reenviar en {seconds} s",
     "code_change_email": "Cambiar correo",
-    "error_code_incomplete": "Introduce los 6 dígitos del correo.",
+    "error_code_incomplete": "Introduce el código completo del correo.",
     "error_code_wrong": "Código incorrecto o caducado. Revisa los dígitos o pide un código nuevo.",
     "error_link_expired": "El enlace de acceso ha caducado. Pide un código nuevo.",
     "error_link_failed": "El enlace de acceso no ha funcionado. Introduce aquí el código del correo o pide uno nuevo."
