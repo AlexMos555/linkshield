@@ -186,6 +186,8 @@ def test_linear_matchers_agree_on_random_strings():
     "%" * 100_000,
     "a" * 100_000 + "@",
     "@a" * 50_000,
+    "a@" + "-" * 100_000,
+    "a@" + "a." * 50_000,
 ])
 def test_pii_leak_detection_is_linear(hostile):
     started = time.perf_counter()
