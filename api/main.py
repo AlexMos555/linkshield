@@ -210,6 +210,13 @@ async def request_logging_middleware(request: Request, call_next):
     return response
 
 
+# Before routing, auth and body parsing: dns.cleanway.ai serves DNS only, and
+# every request body is capped (api/services/request_guards.py).
+from api.services.request_guards import BodySizeLimit, DnsHostOnly  # noqa: E402
+
+app.add_middleware(BodySizeLimit)
+app.add_middleware(DnsHostOnly)
+
 # Outermost: answers /dns-query before any of the middleware above runs
 # (api/services/doh_fastpath.py). Must stay the LAST add_middleware call.
 from api.services.doh_fastpath import DohFastPath  # noqa: E402
@@ -326,11 +333,13 @@ async def health_check():
     except Exception:
         pass
 
+    # Breaker states stay out of the body: their names listed which paid
+    # threat-intel sources this deployment has keys for. They still turn
+    # `status` to "degraded" above.
     return {
         "status": status,
         "version": __version__,
         "redis": "ok" if redis_ok else "down",
-        "circuit_breakers": breakers,
         "blocklist_version": blocklist_version,
         "blocklist_age_s": blocklist_age_s,
     }

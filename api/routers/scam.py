@@ -20,7 +20,9 @@ import logging
 import re
 from typing import Optional, Protocol
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Request
+from starlette.datastructures import UploadFile
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field
 
 from api.models.schemas import AuthUser
@@ -249,15 +251,40 @@ async def analyze_text(
     return verdict
 
 
+# The multipart body is parsed INSIDE the handler, after the dependencies:
+# FastAPI parses declared File/Form parameters before it runs any dependency,
+# so an anonymous caller could make us spool a 25 MB upload before the auth
+# check refused it. The documented request body is unchanged.
+_VOICE_REQUEST_BODY = {
+    "required": True,
+    "content": {"multipart/form-data": {"schema": {
+        "type": "object",
+        "required": ["file"],
+        "title": "Body_analyze_voice_api_v1_scam_analyze_voice_post",
+        "properties": {
+            "file": {
+                "type": "string", "contentMediaType": "application/octet-stream",
+                "title": "File", "description": "Audio file, ≤25MB, ≤10min",
+            },
+            "language": {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Language"},
+            "country_code": {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Country Code"},
+        },
+    }}},
+}
+
+
+def _form_text(value) -> Optional[str]:
+    return value if isinstance(value, str) else None
+
+
 @router.post(
     "/analyze_voice",
     response_model=ScamVerdict,
     dependencies=[Depends(rate_limit(mode="sensitive", category="scam_analyze_voice"))],
+    openapi_extra={"requestBody": _VOICE_REQUEST_BODY},
 )
 async def analyze_voice(
-    file: UploadFile = File(..., description="Audio file, ≤25MB, ≤10min"),
-    language: Optional[str] = Form(None),
-    country_code: Optional[str] = Form(None),
+    request: Request,
     user: AuthUser = Depends(get_current_user),
     classifier: ScamClassifier = Depends(get_classifier),
 ) -> ScamVerdict:
@@ -268,6 +295,19 @@ async def analyze_voice(
     lands (ANTHROPIC_API_KEY / OPENAI_API_KEY). Returns an explicit
     "transcription_pending" status so clients can render the right UX.
     """
+    # Only now — the caller is authenticated and within its rate limit — is
+    # the upload read (and capped at the edge by request_guards.BodySizeLimit).
+    try:
+        form = await request.form(max_files=1, max_fields=4)
+    except StarletteHTTPException:
+        raise  # 413 from the body cap, 400 from a malformed multipart body
+    except Exception:
+        raise HTTPException(status_code=422, detail="Expected a multipart/form-data upload")
+    file = form.get("file")
+    if not isinstance(file, UploadFile):
+        raise HTTPException(status_code=422, detail="Missing audio file")
+    language = _form_text(form.get("language"))
+
     if file.content_type and file.content_type not in ALLOWED_AUDIO_MIMES:
         raise HTTPException(
             status_code=415,
