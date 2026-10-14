@@ -42,6 +42,7 @@ import { AppState, type AppStateStatus } from "react-native";
 import { EventEmitter } from "events";
 import { setAuthToken, setTokenProvider } from "./api";
 import { needsRefresh, refreshDelayMs, singleFlight } from "../utils/account-session";
+import { otpRequestBody } from "../utils/otp-request";
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -292,27 +293,20 @@ export async function signUp(
  * GoTrue returns 200 with an empty body; it never reveals whether the address
  * already existed (no account enumeration).
  *
- * `captchaToken` is OPTIONAL and omitted entirely when absent. Pass it only
- * when the Supabase project has captcha protection enabled — see
- * src/services/captcha.ts for how the app obtains one, and note that the
- * server-side switch is project-wide (it breaks web sign-up at the same
- * instant it protects mobile).
+ * `captchaToken` is OPTIONAL and omitted entirely when absent. The screen
+ * does not decide when to pass it — src/utils/otp-request.ts does: plain
+ * first, and a token only once GoTrue has answered `captcha_failed`. The
+ * server-side switch is project-wide (it starts guarding web sign-up at the
+ * same instant), see docs/MOBILE_AUTH.md for the enablement order.
  */
 export async function sendEmailOtp(
   email: string,
   captchaToken?: string,
 ): Promise<void> {
-  await goTrue("/auth/v1/otp", {
-    email,
-    create_user: true,
-    // The spread is load-bearing. With no captcha configured the body is
-    // EXACTLY `{"email":…,"create_user":true}` — the same bytes as before this
-    // parameter existed. Sending `gotrue_meta_security: {}` unconditionally
-    // (what supabase-js does) would be tolerated by GoTrue, but "tolerated" is
-    // a weaker guarantee than "unchanged", and unchanged is what the launch
-    // needs while captcha is off.
-    ...(captchaToken ? { gotrue_meta_security: { captcha_token: captchaToken } } : {}),
-  });
+  // otpRequestBody keeps the token-less body EXACTLY
+  // `{"email":…,"create_user":true}` — the same bytes as before captcha
+  // support existed (pinned in mobile/scripts/test-captcha-service.mjs).
+  await goTrue("/auth/v1/otp", otpRequestBody(email, captchaToken));
 }
 
 /**

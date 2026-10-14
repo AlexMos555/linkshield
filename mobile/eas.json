@@ -25,7 +25,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.cleanway.ai",
         "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_CAPTCHA_URL": "https://cleanway.ai/auth/captcha"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -40,7 +41,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.cleanway.ai",
         "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_CAPTCHA_URL": "https://cleanway.ai/auth/captcha"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -60,7 +62,7 @@
       }
     }
   },
-  "//captcha": "EXPO_PUBLIC_CAPTCHA_URL is OPTIONAL and deliberately NOT listed in the env blocks above. Unset (today) the sign-in flow is unchanged: no captcha, no browser hop, no extra request. Set it — as an EAS environment variable, or in mobile/.env for local gradle builds — only after Supabase captcha protection is enabled, pointing at the hosted challenge page (https://cleanway.ai/auth/captcha). It is left OUT of the profiles on purpose: an empty string here could shadow a value set in the Expo dashboard. See mobile/.env.example and mobile/src/services/captcha.ts.",
+  "//captcha": "EXPO_PUBLIC_CAPTCHA_URL (preview + production) is the hosted Turnstile challenge page. Since 1.0.5 it is used ON DEMAND only (src/utils/otp-request.ts): the code request goes out without a token, and only if Supabase answers captcha_failed does the app open this page and resend with the token. So while Supabase captcha protection is off nothing changes for anyone - no browser hop, same request bytes - and the day it is switched on (after 1.0.5 adoption, see docs/MOBILE_AUTH.md) every 1.0.5+ build already copes. The page needs NEXT_PUBLIC_TURNSTILE_SITE_KEY set on Vercel. Remove the line to build without captcha support (then a captcha_failed answer shows update-the-app).",
   "//ios": "iOS builds are always the App Store build (EXPO_PUBLIC_DISTRIBUTION is ignored on iOS). In-app purchase needs EXPO_PUBLIC_REVENUECAT_IOS_KEY (public appl_ key) as an EAS environment variable; without it (or with a wrong key) the build shows no paid plans at all — no Plan/Upgrade row, no paywall, no prices — and sets no daily check limit (src/utils/store-billing.ts paidPlansOffered). Build recipe, entitlements, App Store Connect checklist: docs/IOS.md.",
   "//supabase":"EXPO_PUBLIC_SUPABASE_ANON_KEY must exist as an EAS environment variable (Expo dashboard -> project -> Environment variables) or the build ships with sign-in dead. Local gradle builds read it from the git-ignored mobile/.env instead. See docs/MOBILE_AUTH.md."
 }

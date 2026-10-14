@@ -91,26 +91,14 @@ takes an optional captcha token, the sign-in screen fetches one when
 variable unset — today — the flow is byte-identical to before: no captcha, no
 browser hop, no extra request, the same OTP body on the wire.
 
-**Still to do, in this order:**
-1. Create an hCaptcha or Turnstile account and get a sitekey (founder-gated —
-   this is the only reason the blocker is still open).
-2. Build the hosted challenge page (`landing/app/auth/captcha`) that renders the
-   widget and redirects to `cleanway://captcha-return?nonce=…&token=…`, and add
-   the provider's origins to the CSP in `landing/next.config.ts`
-   (`script-src` / `frame-src` / `connect-src`). In progress as of 2026-09-13
-   (separate change); it still needs the provider sitekey from step 1 to go live.
-3. Pass `options.captchaToken` in `landing/app/[locale]/signup/SignupForm.tsx`
-   (in progress with step 2). **This is not optional.** The Supabase switch is PROJECT-WIDE, not
-   per-client: turning it on breaks web sign-up at the same instant it protects
-   mobile.
-4. Set `EXPO_PUBLIC_CAPTCHA_URL` and ship a new APK — `EXPO_PUBLIC_*` is inlined
-   at build time, so already-installed builds send no token and cannot sign in
-   until they update (the app names that case explicitly rather than showing a
-   generic error).
-5. Only then enable it in Supabase (Authentication → Settings → Bot and abuse
-   protection). **Enable it LAST** — after the web challenge page is deployed AND
-   the new APK is the one people download; the toggle is project-wide, so flipping
-   it earlier locks out web sign-up and every v1.0.0 install at once.
+**Status (2026-10, app 1.0.5):** the challenge page (`landing/app/auth/captcha`)
+and the web token (`SignupForm.tsx` → `options.captchaToken`) are done; from
+1.0.5 store builds carry `EXPO_PUBLIC_CAPTCHA_URL` and solve the captcha ON
+DEMAND (only after a `captcha_failed` answer), so shipping it changes nothing
+until the switch is flipped. Left for the founder: a real Turnstile sitekey on
+Vercel, then — after 1.0.5 adoption — the Supabase switch. Exact order and
+checks: [docs/MOBILE_AUTH.md → "Auth hardening"](MOBILE_AUTH.md). **Enable it
+LAST** — the toggle is project-wide and locks out every older install at once.
 
 ---
 

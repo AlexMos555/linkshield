@@ -293,3 +293,143 @@ test("cancel with nothing pending is a no-op", async () => {
   captcha.cancelCaptcha();
   assert.equal(removedListeners, removedBefore);
 });
+
+// ─── OTP request: captcha on demand (src/utils/otp-request.ts) ────
+//
+// Pinned here, next to the captcha service it drives:
+//   • the request body is byte-identical to the pre-captcha one without a
+//     token, and carries it as gotrue_meta_security.captcha_token with one
+//     (the field GoTrue reads; supabase-js's options.captchaToken maps to it);
+//   • a build WITHOUT a challenge URL never asks for a token — today's flow;
+//   • a build WITH one sends the plain request first and solves a captcha only
+//     when GoTrue answers captcha_failed, so shipping the URL in 1.0.5 costs
+//     nobody a browser hop until the Supabase switch is actually flipped;
+//   • once the server has asked, later requests (resend) go captcha-first;
+//   • a cancelled captcha is an outcome, not a throw; any other error is
+//     rethrown untouched for the screen's error mapping.
+
+const otp = await import("../src/utils/otp-request.ts");
+
+const CAPTCHA_FAILED = Object.assign(new Error("captcha protection: request disallowed"), {
+  code: "captcha_failed",
+  status: 400,
+});
+
+function fakeDeps({ configured, tokens = [], failures = [] }) {
+  const sent = [];
+  let captchaCalls = 0;
+  return {
+    sent,
+    get captchaCalls() {
+      return captchaCalls;
+    },
+    deps: {
+      captchaConfigured: configured,
+      async send(email, captchaToken) {
+        sent.push({ email, captchaToken });
+        const next = failures.shift();
+        if (next) throw next;
+      },
+      async getCaptchaToken() {
+        captchaCalls += 1;
+        return tokens.shift() ?? null;
+      },
+    },
+  };
+}
+
+test("otp body: no token → exactly {email, create_user}", () => {
+  assert.deepEqual(otp.otpRequestBody("a@b.co"), { email: "a@b.co", create_user: true });
+  assert.deepEqual(otp.otpRequestBody("a@b.co", ""), { email: "a@b.co", create_user: true });
+  assert.equal(JSON.stringify(otp.otpRequestBody("a@b.co")), '{"email":"a@b.co","create_user":true}');
+});
+
+test("otp body: token → gotrue_meta_security.captcha_token", () => {
+  assert.deepEqual(otp.otpRequestBody("a@b.co", "tok"), {
+    email: "a@b.co",
+    create_user: true,
+    gotrue_meta_security: { captcha_token: "tok" },
+  });
+});
+
+test("isCaptchaRejection: only GoTrue's captcha_failed", () => {
+  assert.equal(otp.isCaptchaRejection(CAPTCHA_FAILED), true);
+  assert.equal(otp.isCaptchaRejection({ code: "over_email_send_rate_limit", status: 429 }), false);
+  assert.equal(otp.isCaptchaRejection(new Error("captcha_failed")), false);
+  assert.equal(otp.isCaptchaRejection(null), false);
+});
+
+test("captcha not configured → one plain send, never a challenge", async () => {
+  const f = fakeDeps({ configured: false });
+  const request = otp.createOtpRequester(f.deps);
+  assert.deepEqual(await request("a@b.co"), { kind: "sent" });
+  assert.deepEqual(f.sent, [{ email: "a@b.co", captchaToken: undefined }]);
+  assert.equal(f.captchaCalls, 0);
+});
+
+test("captcha not configured → captcha_failed is rethrown (screen says: update the app)", async () => {
+  const f = fakeDeps({ configured: false, failures: [CAPTCHA_FAILED] });
+  const request = otp.createOtpRequester(f.deps);
+  await assert.rejects(request("a@b.co"), (e) => e === CAPTCHA_FAILED);
+  assert.equal(f.captchaCalls, 0);
+});
+
+test("configured, server not asking → plain send, no browser hop", async () => {
+  const f = fakeDeps({ configured: true });
+  const request = otp.createOtpRequester(f.deps);
+  assert.deepEqual(await request("a@b.co"), { kind: "sent" });
+  assert.deepEqual(await request("a@b.co"), { kind: "sent" });
+  assert.equal(f.captchaCalls, 0);
+  assert.deepEqual(f.sent.map((s) => s.captchaToken), [undefined, undefined]);
+});
+
+test("configured, server asks → solve once, resend with the token", async () => {
+  const f = fakeDeps({ configured: true, tokens: ["tok-1"], failures: [CAPTCHA_FAILED] });
+  const request = otp.createOtpRequester(f.deps);
+  assert.deepEqual(await request("a@b.co"), { kind: "sent" });
+  assert.equal(f.captchaCalls, 1);
+  assert.deepEqual(f.sent, [
+    { email: "a@b.co", captchaToken: undefined },
+    { email: "a@b.co", captchaToken: "tok-1" },
+  ]);
+});
+
+test("after the server asked once, the next request goes captcha-first", async () => {
+  const f = fakeDeps({ configured: true, tokens: ["tok-1", "tok-2"], failures: [CAPTCHA_FAILED] });
+  const request = otp.createOtpRequester(f.deps);
+  await request("a@b.co");
+  assert.deepEqual(await request("a@b.co"), { kind: "sent" });
+  assert.deepEqual(f.sent.map((s) => s.captchaToken), [undefined, "tok-1", "tok-2"]);
+});
+
+test("cancelled challenge → captcha_cancelled, nothing more sent", async () => {
+  const f = fakeDeps({ configured: true, tokens: [null], failures: [CAPTCHA_FAILED] });
+  const request = otp.createOtpRequester(f.deps);
+  assert.deepEqual(await request("a@b.co"), { kind: "captcha_cancelled" });
+  assert.equal(f.sent.length, 1);
+});
+
+test("captcha-first and cancelled → nothing sent at all", async () => {
+  const f = fakeDeps({ configured: true, tokens: ["tok-1", null], failures: [CAPTCHA_FAILED] });
+  const request = otp.createOtpRequester(f.deps);
+  await request("a@b.co");
+  const before = f.sent.length;
+  assert.deepEqual(await request("a@b.co"), { kind: "captcha_cancelled" });
+  assert.equal(f.sent.length, before);
+});
+
+test("a rejected token is rethrown, not retried in a loop", async () => {
+  const f = fakeDeps({ configured: true, tokens: ["bad"], failures: [CAPTCHA_FAILED, CAPTCHA_FAILED] });
+  const request = otp.createOtpRequester(f.deps);
+  await assert.rejects(request("a@b.co"), (e) => e === CAPTCHA_FAILED);
+  assert.equal(f.captchaCalls, 1);
+  assert.equal(f.sent.length, 2);
+});
+
+test("other errors pass through untouched and never open a challenge", async () => {
+  const rate = Object.assign(new Error("rate"), { code: "over_email_send_rate_limit", status: 429 });
+  const f = fakeDeps({ configured: true, failures: [rate] });
+  const request = otp.createOtpRequester(f.deps);
+  await assert.rejects(request("a@b.co"), (e) => e === rate);
+  assert.equal(f.captchaCalls, 0);
+});
