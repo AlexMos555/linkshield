@@ -30,7 +30,7 @@ from api.config import get_settings
 logger = logging.getLogger("cleanway.audit_log")
 
 
-def _hash_ip(ip: Optional[str]) -> Optional[str]:
+def hash_ip(ip: Optional[str]) -> Optional[str]:
     """HMAC-SHA-256 the raw IP with our JWT secret so a leaked audit
     table alone (without the secret) cannot be used to deanonymise
     users. Truncated to 16 hex chars (64 bits) — enough for
@@ -58,13 +58,17 @@ def _hash_ip(ip: Optional[str]) -> Optional[str]:
         # Belt-and-suspenders: if the secret is somehow empty, fall
         # back to the plain-hash behaviour so we never emit an empty
         # actor_ip_hash. Emit a warning so the leak-through is loud.
-        logger.warning("_hash_ip: JWT secret unavailable, falling back to plain SHA-256 (still HMAC-preferred).")
+        logger.warning("hash_ip: JWT secret unavailable, falling back to plain SHA-256 (still HMAC-preferred).")
         return hashlib.sha256(ip.encode("utf-8")).hexdigest()[:16]
     return hmac.new(
         secret.encode("utf-8"),
         ip.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()[:16]
+
+
+# The original private name; tests and older callers still import it.
+_hash_ip = hash_ip
 
 
 async def write(

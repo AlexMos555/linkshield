@@ -500,12 +500,6 @@ var observer = new MutationObserver(function(mutations) {
 });
 observer.observe(document.body, { childList: true, subtree: true });
 
-// Gmail/Outlook detection
-var h = window.location.hostname;
-if (h.includes("mail.google.com") || h.includes("outlook")) {
-  try { chrome.runtime.sendMessage({ type: "EMAIL_PAGE_DETECTED" }); } catch(e) {}
-}
-
 // Inject animation CSS
 var style = document.createElement("style");
 style.textContent = "@keyframes ls-slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}";

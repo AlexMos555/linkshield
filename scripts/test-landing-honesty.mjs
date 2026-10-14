@@ -24,6 +24,8 @@
  *      the base tier for anything else, and never hand-writes a price.
  *  13. JSON-LD can never close its <script> tag: every inline ld+json block
  *      goes through safeJsonLd, which escapes <, >, & and U+2028/U+2029.
+ *  14. The language switcher only ever navigates to a locale we serve, on
+ *      this origin — never to a protocol-relative or foreign URL.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -67,6 +69,7 @@ import { paidPlansOffered } from "../landing/lib/paid-plans.ts";
 import { REASON_CODE_TO_KEY, reasonLabelKey, reasonLines } from "../landing/lib/reason-label.ts";
 import { safeJsonLd } from "../landing/lib/json-ld.ts";
 import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
+import { switchLocaleHref } from "../landing/lib/switch-locale.ts";
 import { isFlagOn } from "../landing/lib/support.ts";
 import {
   DEFAULT_PRICING,
@@ -641,6 +644,40 @@ check("every inline ld+json block in the landing goes through safeJsonLd", () =>
   walk(path.join(ROOT, "landing", "components"));
   assert.deepEqual(offenders, [], `bare JSON.stringify in dangerouslySetInnerHTML: ${offenders.join(", ")}`);
 });
+
+console.log("switchLocaleHref");
+{
+  const LOCS = ["en", "es", "hi", "pt", "ru", "ar", "fr", "de", "it", "id"];
+  const sw = (pathname, current, next) =>
+    switchLocaleHref({ pathname, current, next, locales: LOCS, defaultLocale: "en", origin: "https://cleanway.ai" });
+  check("non-default → other non-default swaps the prefix", () => assert.equal(sw("/es/check", "es", "ru"), "/ru/check"));
+  check("non-default → default drops the prefix", () => assert.equal(sw("/es/check", "es", "en"), "/check"));
+  check("default → non-default adds the prefix", () => assert.equal(sw("/check/example.com", "en", "fr"), "/fr/check/example.com"));
+  check("home page both ways", () => {
+    assert.equal(sw("/", "en", "ru"), "/ru");
+    assert.equal(sw("/ru", "ru", "en"), "/");
+  });
+  check("same locale → nothing", () => assert.equal(sw("/ru/check", "ru", "ru"), null));
+  check("a value that is not a served locale → nothing", () => {
+    for (const bad of ["xx", "", "//evil.example", "javascript:alert(1)", "https://evil.example", "\\evil.example"]) {
+      assert.equal(sw("/check", "en", bad), null, JSON.stringify(bad));
+    }
+  });
+  check("a path that would resolve off-site → nothing", () => {
+    assert.equal(sw("/es/\\evil.example/x", "es", "en"), null);
+    assert.equal(sw("/\\evil.example", "en", "en"), null);
+  });
+  check("every result is a same-origin absolute path", () => {
+    for (const p of ["/", "/es", "/es/check", "//evil.example", "/es//evil.example", "/%2F%2Fevil.example"]) {
+      for (const next of LOCS) {
+        const out = sw(p, "es", next);
+        if (out === null) continue;
+        assert.ok(out.startsWith("/") && !out.startsWith("//"), `${p} → ${next}: ${out}`);
+        assert.equal(new URL(out, "https://cleanway.ai").origin, "https://cleanway.ai");
+      }
+    }
+  });
+}
 
 if (failures > 0) {
   console.log(`\n${failures} check(s) failed`);
