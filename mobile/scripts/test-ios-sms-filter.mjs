@@ -13,7 +13,10 @@
  *     (Apple gives the app no way to know the filter is enabled), "coming"
  *     without it; its line then says it works once turned on in Settings;
  *   • the setup sheet's steps and notes exist in all 10 locales and name the
- *     real path (Apps → Messages → Unknown & Spam → SMS Filtering → Cleanway);
+ *     real iOS 26 path (Apps → Messages → Screen Unknown Senders on → Text
+ *     Message Filter → Cleanway), say what that switch does to unknown
+ *     senders' messages, and keep the iOS 17–18 path (Unknown & Spam → SMS
+ *     Filtering);
  *   • home and the update check really use those switches (a source check);
  *   • the plugin: target, bundle id, app group, EAS appExtensions entry,
  *     entitlements limited to the app group, the shared Android assets, and
@@ -80,14 +83,23 @@ check("the row: 'setup' with the extension, 'coming' without — never 'on'", ()
 
 check("the setup sheet: every string in all 10 locales, the real Settings path", () => {
   const keys = [
-    SMS_FILTER_SETUP.titleKey, SMS_FILTER_SETUP.leadKey, ...SMS_FILTER_SETUP.stepKeys, SMS_FILTER_SETUP.olderKey,
+    SMS_FILTER_SETUP.titleKey, SMS_FILTER_SETUP.leadKey, ...SMS_FILTER_SETUP.stepKeys,
+    SMS_FILTER_SETUP.screenNoteKey, SMS_FILTER_SETUP.olderKey,
     ...SMS_FILTER_SETUP.noteKeys, SMS_FILTER_SETUP.openSettingsKey, SMS_FILTER_SETUP.doneKey,
   ];
   assertKeys(keys);
   const en = STRINGS.en;
   assert.match(en["mobile.ios_sms.step_messages"], /Apps → Messages/);
-  assert.match(en["mobile.ios_sms.step_filtering"], /Unknown & Spam.*SMS Filtering/);
-  assert.match(en["mobile.ios_sms.step_choose"], /Cleanway/);
+  // iOS 26: Text Message Filter stays grey until Screen Unknown Senders is on
+  // (seen on an iOS 26.3.1 iPhone; labels from support.apple.com/125068), so
+  // the sheet must name that switch first.
+  const steps = SMS_FILTER_SETUP.stepKeys.map((k) => en[k]).join(" ");
+  assert.match(steps, /Screen Unknown Senders.*Text Message Filter.*Cleanway/);
+  assert.ok(!/Unknown & Spam|SMS Filtering/.test(steps), "the main steps are the iOS 26 ones");
+  // The trade-off: unknown senders' messages move to their own list.
+  assert.match(en[SMS_FILTER_SETUP.screenNoteKey], /separate list/);
+  assert.match(en[SMS_FILTER_SETUP.olderKey], /iOS 18: Settings → Apps → Messages → Unknown & Spam → SMS Filtering/);
+  assert.match(en[SMS_FILTER_SETUP.olderKey], /iOS 17 and earlier: Settings → Messages → Unknown & Spam → SMS Filtering/);
   for (const loc of LOCALES) {
     // Every locale names Cleanway in the last step, and promises nothing about iMessage.
     assert.match(STRINGS[loc]["mobile.ios_sms.step_choose"], /Cleanway/, loc);

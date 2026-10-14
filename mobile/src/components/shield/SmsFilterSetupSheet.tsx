@@ -6,10 +6,11 @@ import { SMS_FILTER_SETUP } from "../../utils/platform-features";
 
 /**
  * How to turn on the iPhone's scam-text filter (docs/IOS.md §5). iOS lets
- * only the person switch an SMS filter on, in Settings → Apps → Messages →
- * Unknown & Spam → SMS Filtering, and never tells the app whether they did —
- * so this sheet gives the steps and says plainly what the filter does and
- * does not do. There is no public link to the Messages settings page (the
+ * only the person switch an SMS filter on — on iOS 26 in Settings → Apps →
+ * Messages: Screen Unknown Senders on, then Text Message Filter → Cleanway
+ * (iOS 18: Unknown & Spam → SMS Filtering) — and never tells the app whether
+ * they did. So this sheet gives the steps and says plainly what the filter
+ * does and does not do. There is no public link to the Messages settings page (the
  * private settings URLs are a review rejection); "Open Settings" opens
  * Cleanway's own page, one level below Apps.
  */
@@ -30,6 +31,7 @@ export function SmsFilterSetupSheet({ visible, onClose }: { visible: boolean; on
                 <Text style={s.stepText}>{t(key)}</Text>
               </View>
             ))}
+            <Text style={s.note}>{t(SMS_FILTER_SETUP.screenNoteKey)}</Text>
             <Text style={s.older}>{t(SMS_FILTER_SETUP.olderKey)}</Text>
             {SMS_FILTER_SETUP.noteKeys.map((key) => (
               <Text key={key} style={s.note}>{t(key)}</Text>
