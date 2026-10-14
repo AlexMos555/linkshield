@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { InstallButtons } from "@/components/InstallButtons";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { routing, type Locale } from "@/i18n/routing";
+import { hostFromSegment } from "@/lib/check-host";
+import { displayHost } from "@/lib/display-host";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -20,14 +24,17 @@ function urlFor(locale: Locale, domain: string): string {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain, locale } = await params;
-  const decoded = decodeURIComponent(domain);
+  // Not a site name: the page redirects or 404s; keep it out of the index.
+  const host = hostFromSegment(domain);
+  if (!host) return { robots: { index: false, follow: false } };
+  const decoded = displayHost(host);
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
 
-  const canonical = urlFor(safeLocale, domain);
+  const canonical = urlFor(safeLocale, host);
   const languages: Record<string, string> = {};
-  for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, domain);
-  languages["x-default"] = urlFor(routing.defaultLocale as Locale, domain);
+  for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, host);
+  languages["x-default"] = urlFor(routing.defaultLocale as Locale, host);
 
   const title = `${decoded} Privacy Audit — Cleanway`;
   const description = `Privacy report for ${decoded}. See trackers, cookies, data collection, and fingerprinting. Grade A through F, runs 100% on your device.`;
@@ -60,10 +67,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function AuditPage({ params }: Props) {
   const { domain, locale } = await params;
-  const d = decodeURIComponent(domain);
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
-  const canonical = urlFor(safeLocale, domain);
+  // The segment is URL text: only a site name gets a page (same parser as
+  // /check). Anything else used to be echoed into the JSON-LD and the HTML.
+  const host = hostFromSegment(domain);
+  if (!host) notFound();
+  if (host !== domain) redirect(pathFor(safeLocale, host));
+  const d = displayHost(host);
+  const canonical = urlFor(safeLocale, host);
   // Android-only label for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
 
@@ -180,7 +192,7 @@ export default async function AuditPage({ params }: Props) {
           Privacy Audit runs 100% on your device. No data sent to our servers.
         </p>
 
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       </div>
     </div>
   );

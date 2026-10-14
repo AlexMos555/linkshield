@@ -13,6 +13,7 @@ import { billingMessageArgs } from "@/lib/billing";
 import { BILLING_TERMS, SELLER, SUPPORT_PHONE, pricingVariantFor } from "@/lib/billing-config";
 import { localePath } from "@/lib/locale-path";
 import { DEFAULT_PRICING, intervalFrom, normalizePricing, usd, type WorldPricing } from "@/lib/world-pricing";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -228,7 +229,7 @@ export default async function PricingPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(buildPricingJsonLd(pricing, faq, t("plan_name"))),
+          __html: safeJsonLd(buildPricingJsonLd(pricing, faq, t("plan_name"))),
         }}
       />
     </div>

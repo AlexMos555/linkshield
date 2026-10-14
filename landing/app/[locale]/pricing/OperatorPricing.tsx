@@ -5,6 +5,7 @@ import { billingMessageArgs, formatPhone, sellerIsComplete, type BillingTerms, t
 import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 import PricingNav from "./PricingNav";
+import { safeJsonLd } from "@/lib/json-ld";
 
 /**
  * /pricing for Russian visitors once NEXT_PUBLIC_BILLING_ENABLED is on: the
@@ -182,7 +183,7 @@ export default function OperatorPricing({ locale, terms, seller, supportPhone }:
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(terms, faq)) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(buildJsonLd(terms, faq)) }}
       />
     </div>
   );

@@ -9,6 +9,7 @@ import { localePath } from "@/lib/locale-path";
 import { billingMessageArgs } from "@/lib/billing";
 import { BILLING_TERMS, pricingVariantFor } from "@/lib/billing-config";
 import { routing, type Locale } from "@/i18n/routing";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -328,7 +329,7 @@ export default async function Home({ params }: HomeProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: safeJsonLd({
             "@context": "https://schema.org",
             "@graph": [
               {

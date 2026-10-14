@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { InstallButtons } from "@/components/InstallButtons";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import ShareScanButton from "@/components/ShareScanButton";
 import { routing, type Locale } from "@/i18n/routing";
+import { hostFromSegment } from "@/lib/check-host";
+import { displayHost } from "@/lib/display-host";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -72,18 +75,19 @@ function normalizeLetter(raw: string): GradeLetter | null {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain, letter, locale } = await params;
   const grade = normalizeLetter(letter);
-  if (!grade) {
-    // Returning empty metadata is fine — page itself will 404.
-    return { title: "Privacy Audit — Cleanway" };
+  const host = hostFromSegment(domain);
+  if (!grade || !host) {
+    // The page itself redirects or 404s; keep it out of the index.
+    return { title: "Privacy Audit — Cleanway", robots: { index: false, follow: false } };
   }
-  const decoded = decodeURIComponent(domain);
+  const decoded = displayHost(host);
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
-  const canonical = urlFor(safeLocale, domain, grade);
+  const canonical = urlFor(safeLocale, host, grade);
 
   const languages: Record<string, string> = {};
-  for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, domain, grade);
-  languages["x-default"] = urlFor(routing.defaultLocale as Locale, domain, grade);
+  for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, host, grade);
+  languages["x-default"] = urlFor(routing.defaultLocale as Locale, host, grade);
 
   const info = GRADE_INFO[grade];
   const title = `${decoded} — Privacy Grade ${grade} · Cleanway`;
@@ -120,11 +124,16 @@ export default async function GradePage({ params }: Props) {
   const { domain, letter, locale } = await params;
   const grade = normalizeLetter(letter);
   if (!grade) notFound();
+  // The segment is URL text: only a site name gets a page (same parser as
+  // /check). Anything else used to be echoed into the JSON-LD and the HTML.
+  const host = hostFromSegment(domain);
+  if (!host) notFound();
 
-  const decoded = decodeURIComponent(domain);
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
-  const canonical = urlFor(safeLocale, domain, grade);
+  if (host !== domain || grade !== letter) redirect(pathFor(safeLocale, host, grade));
+  const decoded = displayHost(host);
+  const canonical = urlFor(safeLocale, host, grade);
   const info = GRADE_INFO[grade];
   // Android-only labels for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
@@ -155,7 +164,7 @@ export default async function GradePage({ params }: Props) {
         itemReviewed: {
           "@type": "WebSite",
           name: decoded,
-          url: `https://${decoded}`,
+          url: `https://${host}`,
         },
         reviewBody: info.description,
         reviewRating: {
@@ -326,7 +335,7 @@ export default async function GradePage({ params }: Props) {
           <a href="/privacy-policy" style={{ color: "#60a5fa" }}>Privacy Policy</a>
         </p>
 
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       </div>
     </div>
   );
