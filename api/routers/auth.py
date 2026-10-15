@@ -24,6 +24,7 @@ from pydantic import BaseModel, field_validator
 
 from api.config import get_settings
 from api.models.schemas import AuthUser
+from api.services import security_alerts
 from api.services.auth import get_recently_authenticated_user
 from api.services.email_validator import is_disposable_email
 from api.services.rate_limiter import check_sensitive_action_limit, rate_limit
@@ -142,6 +143,9 @@ async def extension_session(
     if not user.email:
         # Phone-only accounts have no magic link to mint.
         raise HTTPException(status_code=409, detail="This account has no email address")
+
+    # The service key acts for this request (admin/generate_link below).
+    await security_alerts.record("admin_or_service_key_use", key=user.id)
 
     base = settings.supabase_url.rstrip("/")
     service = settings.supabase_service_key

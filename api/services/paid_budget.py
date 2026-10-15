@@ -46,5 +46,8 @@ async def take(source: str, daily_limit: int) -> bool:
     if used > daily_limit:
         if used == daily_limit + 1:  # once a day, not on every skipped call
             logger.warning("paid_budget_exhausted", extra={"source": source, "limit": daily_limit})
+            from api.services import security_alerts
+
+            await security_alerts.record("paid_budget_exhausted", key=source)
         return False
     return True

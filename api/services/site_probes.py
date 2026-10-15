@@ -55,6 +55,7 @@ from api.services.domain_validator import (
     ALLOWED_PORTS,
     DomainValidationError,
     HostNotFound,
+    SSRFBlocked,
     resolve_public,
     resolve_public_sync,
 )
@@ -310,8 +311,12 @@ async def _hop_is_safe(host: str, port: int = 443) -> bool:
     try:
         await resolve_public(host, port)
         return True
-    except DomainValidationError:
+    except DomainValidationError as exc:
         logger.warning("redirect_hop_blocked", extra={"host": host})
+        if isinstance(exc, SSRFBlocked):
+            from api.services import security_alerts
+
+            await security_alerts.record("ssrf_blocked")
         return False
 
 

@@ -31,6 +31,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
 from api.config import get_settings
+from api.services import security_alerts
 from api.services.auth import get_current_user
 from api.services.rate_limiter import rate_limit
 from api.services.stripe_billing import (
@@ -392,6 +393,7 @@ async def stripe_webhook(request: Request):
         event = plain(stripe.Webhook.construct_event(payload, sig_header, webhook_secret))
     except Exception as e:
         logger.warning("webhook_signature_invalid", extra={"error": str(e)})
+        await security_alerts.record("webhook_signature_invalid", key="stripe")
         raise HTTPException(400, "Invalid signature")
 
     event_id = event.get("id", "")

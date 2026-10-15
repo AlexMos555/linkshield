@@ -202,3 +202,11 @@ def test_export_partial_failure_surfaces_per_table(
     assert body["tables"]["devices"] == {"error": "upstream returned 502"}
     # Other tables still populated
     assert isinstance(body["tables"]["users"], list)
+
+
+# ─── security alerts ────────────────────────────────────────────
+
+
+def test_every_export_is_reported_for_anomaly_alerts(client, supabase_ok, supabase_stub, security_events):
+    assert client.get("/api/v1/user/export").status_code == 200
+    assert security_events == [("user_export", "user-42")]

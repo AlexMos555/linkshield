@@ -1530,3 +1530,14 @@ def test_failed_entitlement_write_is_a_5xx_and_the_retry_processes(
     assert second.status_code == 200
     assert second.json().get("duplicate") is not True
     assert _stripe_row(account_store, "sub_retry")["status"] == "active"
+
+
+# ─── security alerts ────────────────────────────────────────────
+
+
+def test_bad_stripe_signature_is_reported(client, supabase_ok, security_events):
+    payload = _event("checkout.session.completed", {"metadata": {"user_id": "u1"}})
+    resp = client.post("/api/v1/payments/webhook", content=payload,
+                       headers={"stripe-signature": "t=1,v1=deadbeef"})
+    assert resp.status_code == 400
+    assert security_events == [("webhook_signature_invalid", "stripe")]

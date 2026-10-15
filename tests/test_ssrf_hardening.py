@@ -385,3 +385,63 @@ def test_public_check_cannot_tell_internal_from_missing(monkeypatch, redis_down)
         body["verdict"] = body["verdict"].replace("redis.railway.internal", "X").replace("redis.railway.nowhere-xyz.com", "X")
     assert a == b
     assert "blocked" not in internal.text.lower()
+
+
+# ── Security alerts: SSRF probing is counted ──
+
+def test_internal_names_and_addresses_raise_the_ssrf_subclass(monkeypatch):
+    monkeypatch.setattr(dv, "_getaddrinfo", _answers("10.0.0.5")[0])
+    for host, port in (("redis.railway.internal", 443), ("127.0.0.1", 443),
+                       ("looks-public.example.com", 443), ("example.com", 6379)):
+        with pytest.raises(dv.SSRFBlocked):
+            dv.resolve_public_sync(host, port)
+    with pytest.raises(dv.SSRFBlocked):
+        dv.validate_domain("localhost")
+    with pytest.raises(dv.SSRFBlocked):
+        dv.validate_domain("169.254.169.254")
+
+
+def test_typos_are_not_ssrf(monkeypatch):
+    for bad in ("not a domain!", ""):
+        with pytest.raises(dv.DomainValidationError) as exc:
+            dv.validate_domain(bad)
+        assert not isinstance(exc.value, dv.SSRFBlocked)
+    with pytest.raises(dv.DomainValidationError) as exc:
+        dv.resolve_public_sync("shop.notarealtld", 443)
+    assert not isinstance(exc.value, dv.SSRFBlocked)
+
+
+def test_analyzer_reports_ssrf_blocks(offline_analyzer, monkeypatch, security_events):
+    from api.services import analyzer
+
+    asyncio.run(analyzer.analyze_domain("localhost", budget_s=5.0))
+    assert security_events == [("ssrf_blocked", None)]
+
+    offline_analyzer(exists=True)
+
+    async def _blocked(domain):
+        raise dv.SSRFBlocked("Domain resolves to a blocked IP range")
+
+    monkeypatch.setattr(analyzer, "validate_domain_resolution", _blocked)
+    asyncio.run(analyzer.analyze_domain("redis.railway.internal", budget_s=5.0))
+    assert security_events == [("ssrf_blocked", None)] * 2
+
+
+def test_analyzer_does_not_report_malformed_input(security_events):
+    from api.services import analyzer
+
+    asyncio.run(analyzer.analyze_domain("not a domain!", budget_s=5.0))
+    assert security_events == []
+
+
+def test_redirect_hop_and_transport_report_ssrf_blocks(monkeypatch, security_events):
+    monkeypatch.setattr(dv, "_getaddrinfo", _answers("127.0.0.1")[0])
+    assert asyncio.run(site_probes.target_is_safe(httpx.URL("http://redis.railway.internal/"))) is False
+
+    async def go():
+        async with httpx.AsyncClient(transport=PinnedTransport(inner=_Recorder())) as c:
+            await c.get("https://loopback.example.com/")
+
+    with pytest.raises(BlockedDestination):
+        asyncio.run(go())
+    assert security_events == [("ssrf_blocked", None)] * 2

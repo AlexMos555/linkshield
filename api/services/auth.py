@@ -24,6 +24,7 @@ from fastapi import Depends, HTTPException, Header
 
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
+from api.services import security_alerts
 
 logger = logging.getLogger("cleanway.auth")
 
@@ -44,6 +45,7 @@ _JWKS_TIMEOUT_S = 5
 RECENT_AUTH_MAX_AGE_S = 600
 
 _INVALID = "Invalid or expired token"
+_EXPIRED = "Token expired"
 
 
 def _auth_unavailable() -> HTTPException:
@@ -156,7 +158,7 @@ def _verify_supabase_token(token: str) -> dict[str, Any]:
             options={"require": ["exp", "iat", "iss", "aud", "sub"]},
         )
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
+        raise HTTPException(status_code=401, detail=_EXPIRED)
     except jwt.InvalidTokenError as e:
         # Log the real error server-side, return generic message to client.
         logger.warning("jwt_invalid", extra={"error": str(e)})
@@ -186,7 +188,14 @@ async def _decode_jwt_and_resolve(authorization: Optional[str]) -> AuthUser:
         raise HTTPException(status_code=401, detail="Token required")
 
     # Off the event loop: a cache miss fetches the JWKS over the network.
-    payload = await asyncio.to_thread(_verify_supabase_token, token)
+    try:
+        payload = await asyncio.to_thread(_verify_supabase_token, token)
+    except HTTPException as e:
+        # Forged, foreign-key or malformed tokens. An expired token is the
+        # everyday case (clients refresh), so it is not counted.
+        if e.status_code == 401 and e.detail != _EXPIRED:
+            await security_alerts.record("auth_invalid_token")
+        raise
 
     user_id = payload.get("sub")
     email = payload.get("email")
@@ -338,7 +347,11 @@ async def get_recently_authenticated_user(
 
     For actions a stolen, older token must not be able to take: deleting the
     account, minting the browser extension a long-lived session of its own."""
-    require_recent_auth(user)
+    try:
+        require_recent_auth(user)
+    except HTTPException:
+        await security_alerts.record("reauth_required", key=user.id)
+        raise
     return user
 
 

@@ -286,3 +286,13 @@ def test_rate_limits_fail_open_without_redis(client, monkeypatch, redis_down):
     """Dev posture: a Redis outage never blocks a registration (prod sets RATE_LIMIT_FAIL_CLOSED)."""
     monkeypatch.setattr("api.services.rate_limiter.get_redis", __import__("api.services.cache", fromlist=["get_redis"]).get_redis)
     assert client.post("/billing/v1/devices", json={"platform": "android"}).status_code == 201
+
+
+
+def test_forged_webhooks_and_partner_calls_are_reported(client, ctx, security_events):
+    r = client.post("/billing/v1/webhooks/fake", headers={"X-Fake-Signature": "bad"}, content=b"{}")
+    assert r.status_code == 400
+    body = json.dumps({"partner": "t2", "license_ref": "L-9", "seats": 1, "months": 1}).encode()
+    assert client.post("/billing/v1/partner/licenses", headers={"X-Partner-Signature": "0" * 64},
+                       content=body).status_code == 401
+    assert security_events == [("webhook_signature_invalid", "fake"), ("webhook_signature_invalid", "partner")]

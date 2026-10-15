@@ -21,7 +21,8 @@ from typing import Awaitable, Callable, Optional
 
 import httpx
 
-from api.services.domain_validator import DomainValidationError, resolve_public
+from api.services import security_alerts
+from api.services.domain_validator import DomainValidationError, SSRFBlocked, resolve_public
 
 Resolver = Callable[[str, int], Awaitable[list[str]]]
 
@@ -47,6 +48,9 @@ class PinnedTransport(httpx.AsyncBaseTransport):
         try:
             addresses = await resolve(host, port)
         except DomainValidationError as exc:
+            if isinstance(exc, SSRFBlocked):
+                # Usually DNS rebinding: the name passed an earlier check.
+                await security_alerts.record("ssrf_blocked")
             raise BlockedDestination(str(exc), request=request) from exc
         extensions = dict(request.extensions)
         if url.scheme == "https":

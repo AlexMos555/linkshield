@@ -452,3 +452,16 @@ def test_sample_payloads_are_unchanged_by_load():
     shifted = load("initial_purchase")
     assert set(raw["event"]) == set(shifted["event"])
     assert copy.deepcopy(raw)["event"]["original_transaction_id"] == GPA
+
+
+# ─── security alerts ────────────────────────────────────────────
+
+
+def test_wrong_authorization_is_reported(client, security_events):
+    assert post(client, load("initial_purchase"), auth="wrong").status_code == 401
+    assert security_events == [("webhook_signature_invalid", "revenuecat")]
+
+
+def test_good_authorization_is_not_reported(client, security_events):
+    assert post(client, load("initial_purchase")).status_code == 200
+    assert security_events == []

@@ -24,6 +24,7 @@ from api.services.auth import (
     get_current_user_no_disposable,
     get_recently_authenticated_user,
 )
+from api.services import security_alerts
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import (
     AuthUser,
@@ -1177,6 +1178,10 @@ async def export_user_data(
             },
         )
 
+    # Every export counts: a burst of them (one user or many) is what a
+    # mass account takeover looks like.
+    await security_alerts.record("user_export", key=user.id)
+
     settings = get_settings()
     if not settings.supabase_url or not settings.supabase_service_key:
         raise HTTPException(503, "Database not configured")
@@ -1393,6 +1398,8 @@ async def delete_account(
     except Exception as e:
         logger.error("account_delete_exception", extra={"user_id": user.id, "error": str(e)})
         raise HTTPException(500, "Failed to schedule account deletion")
+
+    await security_alerts.record("account_delete", key=user.id)
 
     # Invalidate the user's tier cache so the next request sees the
     # Two Redis ops, both best-effort:
