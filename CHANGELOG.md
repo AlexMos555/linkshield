@@ -23,6 +23,28 @@
 ### Tests
 - 382 backend tests passing (was 373). Added 9 parameterized tests for `CheckoutRequest` URL validation.
 
+## [App 1.0.5] - unreleased
+
+iOS build 4, Android versionCode 106. Ships after 1.0.4 clears App Review.
+
+**Что нового**
+- **Приложение больше не «забывает» данные после сна.** Если система закрыла базу на устройстве, приложение открывает её заново, а неудачное чтение больше не считается первым запуском (#184).
+- **iOS 26: обновлены шаги включения фильтра SMS** (#187).
+- **Android: ссылки открываются только для проверенного адреса, журнал блокировок не попадает в резервную копию**, защита от зацикливания проверки ссылок (#201).
+- **Код входа из 6–8 цифр** принимается; вставка всей фразы из письма даёт сам код (#213).
+- **Готовность к капче при входе.** Проверка «я не робот» появится, только если сервер её потребует; пока капча выключена, ничего не меняется (#214).
+- **Готовность к новому ключу Supabase** (publishable вместо anon JWT) (#215).
+
+**What's new**
+- Reopens a closed on-device database instead of losing data; a failed read is never treated as a first run (#184).
+- SMS-filter setup steps updated for iOS 26 (#187).
+- Android: deep links open only for the checked host, block log excluded from backups, link-guard loop brake (#201).
+- Sign-in codes of 6–8 digits accepted; pasting the email's sentence yields the code (#213).
+- Captcha-ready sign-in: the Turnstile check appears only if Supabase asks for it (#214).
+- Supabase publishable-key ready (`*_SUPABASE_PUBLISHABLE_KEY` preferred over the anon JWT) (#215).
+
+Enablement order for the server-side switches: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
+
 ## [Android 1.0.4] - 2026-10-08
 
 Android app, versionCode 104.
