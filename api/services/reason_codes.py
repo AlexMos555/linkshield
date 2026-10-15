@@ -23,7 +23,7 @@ _BACKEND = frozenset({
     "abnormal_vowel_ratio", "abused_registrar", "alienvault_otx", "alienvault_otx_high",
     "analysis_error", "at_symbol", "brand_subdomain_abuse", "consonant_cluster",
     "cross_domain_redirect", "deep_path", "domain_new", "domain_very_new",
-    "double_slash_redirect", "excessive_redirects", "excessive_special_chars",
+    "double_slash_redirect", "dynamic_dns_host", "excessive_redirects", "excessive_special_chars",
     "excessive_subdomains", "fake_tld_subdomain", "favicon_brand_clone", "feodo",
     "free_ssl_new_domain", "hex_encoding", "high_digit_ratio", "high_entropy",
     "homograph_attack", "invalid", "invalid_certificate", "invalid_domain", "ip_based",

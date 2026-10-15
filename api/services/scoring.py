@@ -31,6 +31,7 @@ from typing import Mapping, NamedTuple, Optional
 
 from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
 from api.services import ru_brands, ru_lures
+from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns_suffix_of
 from api.services.hosting_platforms import is_shared_platform_site
 
 logger = logging.getLogger("cleanway.scoring")
@@ -155,6 +156,11 @@ def is_regional_government_domain(domain: str) -> bool:
     name = (domain or "").lower().strip(".")
     return any(name == g or name.endswith("." + g) for g in REGIONAL_GOVERNMENT_DOMAINS)
 
+# A site on a free dynamic-DNS service (hosting_platforms.DYNAMIC_DNS_SUFFIXES).
+# 15, measured 2026-10-15 against 10 and 20 on the fresh feeds and on the 21
+# dynamic-DNS hosts in the Tranco top-1M (scoring rule 3.5b explains).
+DYNAMIC_DNS_WEIGHT = 15
+
 # ── Shared platforms: subdomains can be anyone's ──
 # Kept in sync with refresh_dangerous_domains. The ML model's tenant feature
 # (ml_features.shared_tenant) reads this list through _SCORER_SHARED_SUFFIXES.
@@ -246,6 +252,9 @@ def is_trusted_top_domain(domain: str) -> bool:
     if d in GOOGLE_ABUSED_SUBDOMAINS or any(d.startswith(g) for g in GOOGLE_ABUSED_SUBDOMAINS):
         return False
     if _is_under_shared_suffix(d):
+        return False
+    # A customer's name on a dynamic-DNS service in the top-100k (ns01.info).
+    if _dynamic_dns_suffix_of(d):
         return False
     return True
 
@@ -1078,6 +1087,24 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             f"anyone can publish to"
         )
         reasons.append(DomainReason(signal="brand_subdomain_abuse", weight=30, detail=detail))
+
+    # ── 3.5b A name on a free dynamic-DNS service ──
+    # gedivan.duckdns.org, havuwuzu.ipv64.net: a name that costs nothing,
+    # takes a minute and points at any machine. Since features_version 5 the
+    # ML model reads such a host by its own label and scores fresh malware
+    # and phishing there 0.4-0.8 where it used to say 0.95 (weekly benchmark
+    # 2026-10-11), so the platform itself is weighed here. Alone it does not
+    # even reach 'caution'; it tips a host only where other signals agree.
+    # Measured 2026-10-15: 15 and 10 catch the same fresh hosts and turn one
+    # of the 21 dynamic-DNS hosts in the Tranco top-1M 'dangerous'
+    # (snowflake-cortex.duckdns.org); 20 catches three more and turns three.
+    dyn_suffix = _dynamic_dns_suffix_of(ascii_domain)
+    if dyn_suffix:
+        score += DYNAMIC_DNS_WEIGHT
+        reasons.append(DomainReason(
+            signal="dynamic_dns_host", weight=DYNAMIC_DNS_WEIGHT,
+            detail=f"Uses a free dynamic-DNS name ({dyn_suffix}) — anyone can create one in a minute",
+        ))
 
     # ── 3.6 Fake TLD in subdomain: "paypal.com.evil.xyz" ──
     # ASCII form: looks for literal 'com'/'org'/… labels; decoding never
@@ -2439,14 +2466,38 @@ def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
         pairs = [a + b for a, b in zip(words, words[1:])]
         for brand in _HOSTING_TENANT_BRANDS:
             if brand in words:
-                if any(_is_lure_word(w, brand) for w in words + pairs if w != brand):
+                if any(_is_tenant_lure(w, brand) for w in words + pairs if w != brand):
                     return brand
             elif len(brand) >= _RU_ZONE_BRAND_PART_MIN:
                 for w in words:
                     glued = w[len(brand):] if w.startswith(brand) else w[: -len(brand)] if w.endswith(brand) else ""
-                    if glued and glued != w and _is_lure_word(glued, brand):
+                    if glued and glued != w and _is_tenant_lure(glued, brand):
                         return brand
     return None
+
+
+# Lure words a site builder's free name carries that a brand's own campaign
+# page or a fan page does not: facebook-supports.blogspot.com,
+# gmail-support.netlify.app, facebook-new-security.blogspot.com (OpenPhish /
+# phishunt, 2026-10-15). Only next to a brand, only on a hosting tenant.
+_TENANT_EXTRA_LURES = frozenset({"support", "supports", "security", "helpdesk", "customer"})
+# English lure words long enough to be read as the START of a glued run:
+# facebookloginuser, facebookloginguidance, instagramverifyaccount.
+_TENANT_GLUED_LURES = tuple(sorted((w for w in _COMBOSQUAT_KEYWORDS | _TENANT_EXTRA_LURES
+                                    if len(w) >= 5 and "-" not in w), key=lambda w: (-len(w), w)))
+
+
+def _is_tenant_lure(word: str, brand: str) -> bool:
+    """_is_lure_word, as a hosting customer writes it: with a counter on the
+    end (login0, login17, login99999 — free names are taken, so the kits
+    number them), glued to more letters after it (loginuser), or one of
+    _TENANT_EXTRA_LURES."""
+    w = word.rstrip("0123456789")
+    if not w:
+        return False
+    if _is_lure_word(w, brand) or w in _TENANT_EXTRA_LURES:
+        return True
+    return any(w.startswith(lure) for lure in _TENANT_GLUED_LURES)
 
 
 # ── Suspicious keywords ──

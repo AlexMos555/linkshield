@@ -5,8 +5,21 @@
     "user_content_hosts": "One hostname, many users' pages at different PATHS (forms.yandex.ru/u/<id>). The public check only sees the host, so it can vouch for the service, never for the page: the host itself gets the fixed 'real service, cannot vouch for the page' answer, never name/brand/ML scoring (its name is the platform's).",
     "operator_hosts": "Subdomains of a tenant suffix that the platform runs itself (dashboards, webmail, its own site), so they are NOT customer sites. www.<suffix> is always the operator's and need not be listed. Confirmed in the 2026-09-27 review: these lost the instant-safe path and drew 'anyone can publish here' plus ML caution.",
     "sources": "Confirmed on the live /public/check on 2026-09-25 (tw1.ru x2, weebly, wpcomstaging.com, screenconnect.com all came back 'safe, 99%'), plus the registrables of the 34,193 active feed hosts that sat under a top-100k name with no tenant rule (fullcheck recheck-tenant, PhishTank + OpenPhish + URLhaus, 2026-09-25). Names already covered by data/public_suffixes_in_top.json or the scorer's hand list need not be repeated here, but a duplicate is harmless.",
-    "updated": "2026-09-27"
+    "dynamic_dns_services": "Free dynamic-DNS services: anyone gets <name>.<suffix> pointed at any address in a minute. The scorer weighs a name there (scoring 'dynamic_dns_host') and never trusts one as a top-100k name (mb-way.ns01.info, an MB WAY phish under ChangeIP's ns01.info, was answered 'safe' without analysis, 2026-10-15). The tenant_suffixes 'dynamic_dns' group counts too. Kept OUT of tenant_suffixes on purpose: those feed the ML model's tenant feature, which changes only with a retrain (model_meta shared_suffixes).",
+    "updated": "2026-10-15"
   },
+  "dynamic_dns_services": [
+    "duckdns.org", "ddns.net", "no-ip.org", "no-ip.biz", "no-ip.info", "hopto.org",
+    "zapto.org", "sytes.net", "servehttp.com", "redirectme.net", "myftp.biz", "myftp.org",
+    "serveftp.com", "servegame.com", "servebeer.com", "bounceme.net", "ddnsking.com",
+    "3utilities.com", "gotdns.ch", "myvnc.com", "webhop.me", "serveirc.com", "freeddns.org",
+    "dynu.net", "dynv6.net", "ipv64.de", "ipv64.net", "home64.de", "ddnss.de", "ddnss.org",
+    "homeip.net", "dnsalias.com", "dnsalias.net", "dnsalias.org", "dynalias.com",
+    "chickenkiller.com", "loseyourip.com", "kozow.com", "ooguy.com",
+    "accesscam.org", "camdvr.org", "mywire.org", "webredirect.org", "giize.com", "gleeze.com",
+    "casacam.net", "freedynamicdns.net", "freedynamicdns.org", "ddnsfree.com",
+    "ns01.info", "ns02.info", "ns01.us", "ns02.us", "ns1.name", "ns2.name"
+  ],
   "tenant_suffixes": {
     "ru_hosting": [
       "tw1.ru", "tmweb.ru", "twc1.net", "timeweb.cloud",

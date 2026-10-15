@@ -69,6 +69,25 @@ def _load(path: str = _DATA_PATH) -> tuple[frozenset[str], frozenset[str], froze
 TENANT_SUFFIXES, USER_CONTENT_HOSTS, OPERATOR_HOSTS = _load()
 
 
+def _load_dynamic_dns(path: str = _DATA_PATH) -> frozenset[str]:
+    """Free dynamic-DNS services (duckdns.org, ipv64.de, ns01.info …), where a
+    name costs nothing and points anywhere: the 'dynamic_dns_services' list
+    plus the tenant_suffixes 'dynamic_dns' group. The scorer weighs a name
+    there (dynamic_dns_host) and never trusts one as a top domain. The list is
+    deliberately not a tenant suffix: those are ML model features."""
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return frozenset()
+    groups = data.get("tenant_suffixes") or {}
+    group = groups.get("dynamic_dns", []) if isinstance(groups, dict) else []
+    return _flatten(data.get("dynamic_dns_services", [])) | _flatten(group)
+
+
+DYNAMIC_DNS_SUFFIXES = _load_dynamic_dns()
+
+
 def _clean(domain: str) -> str:
     return (domain or "").lower().strip(".")
 
@@ -110,6 +129,18 @@ def tenant_suffix_of(domain: str, extra_suffixes: frozenset[str] = frozenset()) 
     for k in range(len(parts) - 1, 1, -1):
         suffix = ".".join(parts[-k:])
         if suffix in TENANT_SUFFIXES or suffix in extra_suffixes:
+            return None if _is_operator_host(d, suffix) else suffix
+    return None
+
+
+def dynamic_dns_suffix_of(domain: str) -> str | None:
+    """The dynamic-DNS service `domain` is a name under (gedivan.duckdns.org →
+    duckdns.org), or None — also for the service's own hosts (www.duckdns.org)."""
+    d = _clean(domain)
+    parts = d.split(".")
+    for k in range(len(parts) - 1, 1, -1):
+        suffix = ".".join(parts[-k:])
+        if suffix in DYNAMIC_DNS_SUFFIXES:
             return None if _is_operator_host(d, suffix) else suffix
     return None
 

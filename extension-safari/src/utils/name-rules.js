@@ -91,6 +91,8 @@
   var VOWELS = D ? D.vowels : "";
   var GENERIC_TAILS = D ? D.genericTails : [];
   var COMBO_KEYWORDS = set(D && D.comboKeywords);
+  var TENANT_EXTRA_LURES = set(D && D.tenantExtraLures);
+  var TENANT_GLUED_LURES = (D && D.tenantGluedLures) || [];
   var COMBO_SUFFIXES = set(D && D.comboGenericSuffixes);
   var COMBO_PREFIXES = set(D && D.comboGenericPrefixes);
   var COMBO_COUNTRY = set(D && D.comboCountrySuffixes);
@@ -277,14 +279,14 @@
         var brand = TENANT_BRANDS[b];
         if (words.indexOf(brand) !== -1) {
           for (var c = 0; c < candidates.length; c++) {
-            if (candidates[c] !== brand && isLureWord(candidates[c], brand)) return brand;
+            if (candidates[c] !== brand && isTenantLure(candidates[c], brand)) return brand;
           }
         } else if (brand.length >= ZONE_BRAND_PART_MIN) {
           for (var w = 0; w < words.length; w++) {
             var word = words[w];
             var glued = startsWith(word, brand) ? word.slice(brand.length)
               : endsWith(word, brand) ? word.slice(0, word.length - brand.length) : "";
-            if (glued && glued !== word && isLureWord(glued, brand)) return brand;
+            if (glued && glued !== word && isTenantLure(glued, brand)) return brand;
           }
         }
       }
@@ -522,6 +524,16 @@
     if (COMBO_KEYWORDS.has(word) || isRuLure(word)) return true;
     var own = BRAND_LURE_WORDS.get(brand);
     return !!own && own.has(lureSkeleton(word));
+  }
+
+  // _is_tenant_lure: a lure word with a counter on the end (login17), glued
+  // to more letters after it (loginuser), or one of the extra tenant lures.
+  function isTenantLure(word, brand) {
+    var w = word.replace(/[0-9]+$/, "");
+    if (!w) return false;
+    if (isLureWord(w, brand) || TENANT_EXTRA_LURES.has(w)) return true;
+    for (var i = 0; i < TENANT_GLUED_LURES.length; i++) if (startsWith(w, TENANT_GLUED_LURES[i])) return true;
+    return false;
   }
 
   // _check_lure_combo: the brand as one whole word plus a lure word, glued
