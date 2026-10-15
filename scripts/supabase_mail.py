@@ -69,7 +69,7 @@ DEFAULT_SENDER_LOCAL = "no-reply"
 DEFAULT_SENDER_NAME = "Cleanway"
 DEFAULT_RATE_LIMIT_PER_HOUR = 200
 DEFAULT_MIN_INTERVAL_S = 60
-DEFAULT_RESEND_REGION = "us-east-1"
+DEFAULT_RESEND_REGION = "eu-west-1"  # the cleanway.ai domain is in Resend's EU region (Ireland)
 
 # The templates promise «Код действует 10 минут» and app builds up to 1.0.4
 # accept exactly six digits (1.0.5+ and the web accept 6-8:
@@ -91,8 +91,9 @@ HARDENED_EXPECTED: dict[str, object] = {
     "security_update_password_require_reauthentication": True,
 }
 
-# Supabase template types we ship. invite / reauthentication / *_notification
-# are never sent by Cleanway and keep Supabase's defaults.
+# Supabase template types we ship. invite / reauthentication are never sent by
+# Cleanway; the *_notification security notices (password / email changed) are
+# switched on by hand in production (2026-10) and keep Supabase's text.
 TEMPLATE_TYPES = ("magic_link", "confirmation", "recovery", "email_change")
 # Code-first templates: the person types the code, no link is needed. The
 # other two keep {{ .ConfirmationURL }} because nothing in the app or on the
@@ -633,7 +634,7 @@ def step_templates(api: ManagementApi | None, current: Mapping[str, object], *, 
 
 def step_dns(provider: str, domain: str, *, with_mx: bool, resend_region: str, check: bool) -> int:
     records = dns_records(provider, domain, with_mx=with_mx, resend_region=resend_region)
-    print(f"→ DNS records for {domain} ({PRESETS[provider].label}); add at the registrar (Squarespace Domains → DNS):")
+    print(f"→ DNS records for {domain} ({PRESETS[provider].label}); add in Cloudflare (cleanway.ai → DNS → Records):")
     for r in records:
         prio = f" {r.priority}" if r.priority is not None else ""
         tag = "" if r.required else " [optional]"
@@ -710,7 +711,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true", help="re-send the password even when nothing else differs")
     p.add_argument("--domain", default=None, help="sender domain for the DNS step (default: SMTP_SENDER's domain)")
     p.add_argument("--with-mx", action="store_true", help="include the MX record for support@ on the same provider")
-    p.add_argument("--resend-region", default=DEFAULT_RESEND_REGION, help="region shown in Resend → Domains (default us-east-1)")
+    p.add_argument("--resend-region", default=DEFAULT_RESEND_REGION, help="region shown in Resend → Domains (default eu-west-1)")
     p.add_argument("--check-dns", action="store_true", help="look the records up over DNS-over-HTTPS")
     p.add_argument("--env-file", type=Path, default=ENV_FILE, help=argparse.SUPPRESS)
     return p

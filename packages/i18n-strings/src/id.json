@@ -1974,7 +1974,7 @@
       "way_sms_pending": "Nomor singkat untuk SMS akan muncul di sini setelah operator menetapkannya. Sementara itu, batalkan di aplikasi atau di operator Anda.",
       "way_support_title": "Melalui dukungan",
       "way_support_body": "Hubungi kami dengan menyebutkan nomor telepon langganan. Kami membatalkannya pada hari kerja yang sama dan mengonfirmasi lewat pesan.",
-      "way_support_pending": "Kotak surat dukungan masih disiapkan: cara ini tersedia begitu alamatnya muncul. Sementara itu, batalkan di aplikasi atau di operator Anda.",
+      "way_support_pending": "Kotak surat dukungan untuk sementara tidak berfungsi: cara ini tersedia lagi begitu alamatnya kembali. Sementara itu, batalkan di aplikasi atau di operator Anda.",
       "way_operator_title": "Di operator Anda",
       "way_operator_body": "Langganan yang ditagihkan ke pulsa tercantum di area pelanggan dan aplikasi operator Anda — di sana juga bisa dimatikan.",
       "after_title": "Apa yang terjadi setelah pembatalan",
@@ -1986,7 +1986,7 @@
       "refund_body": "Kami mengembalikan biaya bulan itu jika perlindungan tidak berfungsi karena kesalahan kami, atau tagihan terjadi setelah Anda membatalkan. Hubungi dukungan dengan nomor telepon dan tanggal penagihan. Uang dikembalikan ke pulsa atau dengan cara yang ditawarkan operator Anda — biasanya dalam 10 hari kerja.",
       "refund_law": "Ini tidak membatasi hak Anda menurut undang-undang perlindungan konsumen.",
       "contact_title": "Dukungan",
-      "contact_pending": "Kotak surat dukungan masih disiapkan; alamatnya akan muncul di sini begitu berfungsi. Sementara itu, batalkan di aplikasi."
+      "contact_pending": "Kotak surat dukungan untuk sementara tidak berfungsi; alamatnya akan muncul lagi di sini begitu berfungsi. Sementara itu, batalkan di aplikasi."
     },
     "transparency": {
       "page_title": "Laporan transparansi",
@@ -2116,8 +2116,8 @@
       "a_fp": "Buka Cleanway, masuk ke tab \"Riwayat\", lalu ketuk situs itu. Kemudian ketuk \"Bukan penipuan — izinkan\" dan konfirmasi. Cleanway tidak akan memblokir situs itu lagi di ponsel Anda. Jika seseorang di telepon meminta Anda mengizinkan sebuah situs, dia penipu. Tutup teleponnya. Izinkan situs hanya jika Anda yakin situs itu asli.",
       "q_privacy": "Data apa yang kalian kumpulkan?",
       "a_privacy": "Situs dicocokkan dengan daftar di ponsel Anda. Jika sebuah situs perlu diperiksa lebih teliti, hanya namanya yang dikirim ke server kami, bukan tautan lengkap atau siapa Anda. Teks pesan yang Anda periksa tidak pernah keluar dari ponsel. Semua detailnya ada di kebijakan privasi.",
-      "email_not_live_title": "Kami belum bisa menerima email",
-      "email_not_live_body": "Kotak surat dukungan kami masih disiapkan, jadi pesan ke support@cleanway.ai mungkin tidak sampai kepada kami. Untuk sementara, jangan kirim hal penting ke sana. Jawaban di bawah ini mencakup masalah yang paling sering terjadi.",
+      "email_not_live_title": "Saat ini kami tidak bisa menerima email",
+      "email_not_live_body": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi pesan ke support@cleanway.ai mungkin tidak sampai kepada kami. Untuk sementara, jangan kirim hal penting ke sana. Jawaban di bawah ini mencakup masalah yang paling sering terjadi.",
       "q_app_vpn": "Aplikasi lain meminta saya mematikan VPN",
       "a_app_vpn": "Beberapa aplikasi, seperti bank, aplikasi pesan, dan layanan pemerintah, tidak mau berjalan selama VPN apa pun menyala, dan bagi Android perlindungan Cleanway terlihat seperti VPN. Buka Cleanway, ketuk \"Jeda perlindungan\", gunakan aplikasi itu, lalu nyalakan lagi perlindungannya.",
       "q_no_internet": "Internet tidak jalan setelah saya memasang Cleanway",
@@ -2227,7 +2227,7 @@
       "updated": "Terakhir diperbarui: 8 Oktober 2026",
       "privacy_link": "Baca kebijakan privasi",
       "contact_live": "Pertanyaan tentang ketentuan ini:",
-      "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Halaman bantuan menjawab pertanyaan yang umum.",
+      "contact_not_live": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima email. Halaman bantuan menjawab pertanyaan yang umum.",
       "support_link": "Halaman bantuan",
       "sections": [
         {
@@ -2339,10 +2339,10 @@
       "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel atau browser Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
       "back": "Kembali ke Cleanway",
       "title": "Kebijakan privasi",
-      "updated": "Terakhir diperbarui: 9 Oktober 2026",
+      "updated": "Terakhir diperbarui: 15 Oktober 2026",
       "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
       "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
-      "contact_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima email. Alamatnya akan muncul di bagian ini begitu berfungsi.",
+      "contact_not_live": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima email. Alamatnya akan muncul lagi di bagian ini begitu berfungsi.",
       "sections": [
         {
           "title": "1. Singkatnya",
@@ -2431,8 +2431,11 @@
           "title": "9. Akun dan perangkat",
           "paragraphs": [
             "Akun bersifat opsional: diperlukan untuk fitur keluarga, paket berbayar, dan untuk melihat perangkat Anda di satu tempat. Jika Anda membuat akun, kami menyimpan alamat email Anda, paket Anda, dan pengaturan aplikasi Anda. Anda masuk dengan kode sekali pakai (di aplikasi) atau tautan sekali pakai (di situs web) yang dikirim ke email Anda; tidak ada kata sandi.",
+            "Kode dan tautan masuk serta email layanan kami lainnya dikirim melalui Resend, layanan pengiriman email, dari wilayah UE-nya (Irlandia); Resend menerima alamat email Anda dan teks pesannya. Kode atau tautan masuk berlaku selama 10 menit. Jika alamat email atau kata sandi sebuah akun diubah, pemberitahuan keamanan dikirim ke alamat email akun tersebut.",
+            "Pendaftaran dan proses masuk di cleanway.ai, serta pemeriksaan yang dapat dibuka aplikasi di browser Anda sebelum mengirim kode, dilindungi oleh Cloudflare Turnstile. Untuk membedakan manusia dari bot, Cloudflare melihat alamat IP Anda dan tanda-tanda teknis dari browser Anda.",
             "Setiap ponsel, tablet, atau browser yang masuk ke akun Anda muncul di daftar perangkat Anda dengan ID perangkat acak (tidak berasal dari perangkat keras), jenis dan namanya, versi aplikasi atau ekstensi, serta kapan terakhir dipakai. Anda bisa melihat daftar itu dan melepaskan perangkat di cleanway.ai/account atau di aplikasi. Perangkat yang dilepaskan langsung keluar dari akun, dan pemblokiran situs penipuan yang dikenal tetap berjalan di perangkat itu.",
-            "Akun disimpan di penyedia basis data kami, Supabase. Supabase juga dapat mencatat alamat IP asal proses masuk di log keamanannya sendiri."
+            "Akun disimpan di penyedia basis data kami, Supabase. Supabase juga dapat mencatat alamat IP asal proses masuk di log keamanannya sendiri.",
+            "Setiap malam, tugas otomatis di GitHub membuat salinan cadangan basis data ini. Salinan itu dienkripsi di mesin tugas tersebut sebelum meninggalkannya, dengan kunci yang tidak dimiliki Cloudflare, lalu disimpan selama 35 hari di penyimpanan Cloudflare di UE (Eropa Barat). Dalam bentuk tidak terenkripsi, salinan itu hanya ada sebentar di mesin tersebut selama tugas berjalan; tidak ada yang disimpan di GitHub."
           ]
         },
         {
@@ -2444,7 +2447,7 @@
         {
           "title": "11. Situs web dan filter DNS",
           "paragraphs": [
-            "cleanway.ai tidak memiliki iklan maupun pelacak analitik. Penyedia hosting kami, Vercel untuk situs web dan Railway untuk server, menyimpan log teknis permintaan yang biasa, yang dapat berisi alamat yang diminta dan alamat IP Anda.",
+            "cleanway.ai tidak memiliki iklan maupun pelacak analitik. Penyedia hosting kami, Vercel untuk situs web dan Railway untuk server, menyimpan log teknis permintaan yang biasa, yang dapat berisi alamat yang diminta dan alamat IP Anda. Server kami, termasuk filter DNS yang dijelaskan di bawah, berjalan di UE, di Amsterdam (Belanda).",
             "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai) di iPhone, Mac, atau komputer Windows, semua permintaan DNS perangkat dikirim ke server kami. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk maupun ke log apa pun: server kami hanya menyimpan jumlah total, seperti berapa permintaan yang dijawab dan berapa yang diblokir. Agar pertanyaan yang berulang dijawab lebih cepat, server menyimpan jawaban terbaru di memorinya, berdasarkan pertanyaannya saja (nama situs dan jenis catatan), tidak pernah berdasarkan siapa yang bertanya: selama jawabannya berlaku, paling lama satu jam, dan hingga 6 jam lagi sebagai cadangan jika Cloudflare berhenti menjawab. Jawaban itu tidak pernah ditulis ke disk atau database dan hilang saat server dimulai ulang.",
             "Aplikasi Cleanway untuk iPhone dapat memasang filter DNS yang sama ini untuk Anda sebagai “Perlindungan DNS”: aplikasi menyimpan pengaturan DNS terenkripsi Cleanway di iPhone, dan pengaturan itu baru bekerja setelah Anda memilihnya di Pengaturan iPhone. Berbeda dengan aplikasi Android, yang mencocokkan nama situs dengan daftar yang tersimpan di ponsel, di iPhone pencocokan dilakukan di server kami: selama perlindungan DNS aktif, iPhone mengirim ke server kami, terenkripsi, nama setiap situs yang dicari aplikasi apa pun, dan server menanganinya seperti dijelaskan di paragraf sebelumnya. Untuk membatasi berapa banyak permintaan dari satu koneksi, server kami menghitungnya di memori dengan kode acak yang dibuat dari alamat IP Anda (hash berkunci), bukan dengan alamat itu sendiri, dan mengosongkan hitungan setiap jam; hitungan itu tidak pernah disimpan bersama nama yang Anda cari. Di iOS 26 dan yang lebih baru, jika server kami tidak menjawab, iPhone dapat bertanya ke server DNS jaringan itu sendiri, seperti tanpa Cleanway. Anda dapat mematikan perlindungan DNS di Pengaturan iPhone atau menghapusnya di aplikasi kapan saja."
           ]
@@ -2472,17 +2475,19 @@
         {
           "title": "14. Siapa yang memproses data untuk kami",
           "items": [
-            "Railway: menjalankan server kami (api.cleanway.ai);",
+            "Railway: menjalankan server kami (api.cleanway.ai) beserta cache-nya, di UE (Amsterdam, Belanda);",
             "Vercel: menjadi hosting situs web;",
             "Supabase: menyimpan akun dan data keluarga;",
-            "GitHub: menyimpan file aplikasi yang Anda unduh dan melihat alamat IP Anda saat mengunduh;",
+            "Resend: mengirim kode masuk dan email layanan dari UE (Irlandia); menerima alamat email Anda dan teks pesannya;",
+            "Cloudflare: mengelola DNS cleanway.ai; meneruskan email yang dikirim ke alamat kami di cleanway.ai ke kotak surat kami; menjalankan pemeriksaan Turnstile saat pendaftaran dan proses masuk, dan untuk itu melihat alamat IP Anda serta tanda-tanda dari browser; menyimpan salinan cadangan terenkripsi basis data kami di UE (Eropa Barat); menjalankan pemantau ketersediaan kami, yang tidak memproses data pribadi;",
+            "GitHub: menyimpan file aplikasi yang Anda unduh dan melihat alamat IP Anda saat mengunduh; menjalankan tugas pencadangan malam kami, yang mengenkripsi salinan sebelum meninggalkan mesin GitHub, sehingga tidak ada bagian darinya yang disimpan di GitHub;",
             "Cloudflare dan Quad9: DNS publik yang dipakai aplikasi, lihat bagian 3;",
             "layanan pemeriksaan di bagian 5 dan Anthropic: hanya menerima nama situs atau tanda-tanda abstrak;",
             "Sentry: laporan galat dan pengukuran waktu;",
             "Stripe: pembayaran di situs web; Google Play, App Store, dan RevenueCat: pembelian di aplikasi (pembayaran tidak ditawarkan di Rusia)."
           ],
           "after": [
-            "Perusahaan-perusahaan ini berada di luar Rusia, terutama di AS dan UE, sehingga data yang mereka proses ditransfer ke luar negeri."
+            "Perusahaan-perusahaan ini berada di luar Rusia, terutama di AS dan UE, sehingga data yang mereka proses ditransfer ke luar negeri. Server kami dan salinan cadangan basis data berada di UE."
           ]
         },
         {
@@ -2491,6 +2496,7 @@
             "hasil pemeriksaan di cache server: hingga 24 jam;",
             "alamat IP Anda di penghitung batas pemeriksaan: paling lama satu jam;",
             "data akun: sampai Anda menghapus akun; setelah ada permintaan penghapusan, kami menyimpannya 30 hari lagi kalau-kalau Anda berubah pikiran, lalu menghapusnya;",
+            "salinan cadangan malam terenkripsi dari basis data: 35 hari; karena itu, data yang dihapus dari basis data juga hilang dari salinan cadangan dalam 35 hari;",
             "log keamanan untuk tindakan akun (dengan alamat IP dalam bentuk hash): 2 tahun;",
             "penghitung mingguan akun (hanya angka, tanpa nama situs): 1 tahun;",
             "peringatan keluarga terenkripsi: hingga 30 hari;",
@@ -2517,7 +2523,8 @@
           "id": "contact",
           "title": "18. Perubahan dan kontak",
           "paragraphs": [
-            "Jika kami mengubah kebijakan ini, versi baru akan kami publikasikan di halaman ini dengan tanggal baru."
+            "Jika kami mengubah kebijakan ini, versi baru akan kami publikasikan di halaman ini dengan tanggal baru.",
+            "Email yang Anda kirim ke alamat kami di cleanway.ai melewati Cloudflare, yang meneruskannya ke kotak surat kami."
           ]
         }
       ],
@@ -2642,6 +2649,7 @@
       "kept_heading": "Apa yang tetap disimpan",
       "kept_items": [
         "log keamanan tindakan akun — apa yang dilakukan dan kapan, dengan hash alamat IP yang dipersingkat, bukan alamatnya — selama 2 tahun;",
+        "salinan cadangan malam terenkripsi dari basis data kami — selama 35 hari lagi setelah penghapusan; setelah itu tidak ada lagi data akun di dalamnya;",
         "catatan pembayaran yang wajib disimpan Stripe, Google Play, atau App Store berdasarkan kewajiban hukum mereka sendiri;",
         "apa yang tersimpan di ponsel atau browser Anda, seperti riwayat pemeriksaan: copot aplikasi atau ekstensinya untuk menghapusnya."
       ],
@@ -2649,7 +2657,7 @@
       "subscription_body": "Langganan yang dibayar di cleanway.ai langsung dibatalkan saat Anda menghapus akun, dan tidak ada tagihan lagi. Langganan yang dibeli di Google Play atau App Store tidak dibatalkan dengan menghapus akun: batalkan di pengaturan langganan toko.",
       "help_heading": "Tidak bisa masuk?",
       "help_live": "Jika Anda tidak lagi menerima email di alamat itu, tulis kepada kami dari alamat tersebut atau jelaskan akun Anda, dan kami akan membantu:",
-      "help_not_live": "Kotak surat dukungan kami masih disiapkan, jadi kami belum bisa menerima permintaan penghapusan lewat email. Alamatnya akan muncul di halaman ini begitu berfungsi.",
+      "help_not_live": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima permintaan penghapusan lewat email. Alamatnya akan muncul lagi di halaman ini begitu berfungsi.",
       "privacy_link": "Baca kebijakan privasi"
     },
     "business": {
@@ -2671,7 +2679,7 @@
       "pricing_cta": "Lihat harga",
       "contact_heading": "Tim yang lebih besar?",
       "contact_live": "Jika Anda ingin melindungi banyak perangkat, atau memerlukan faktur, tulis kepada kami:",
-      "contact_not_live": "Kotak surat kami masih disiapkan, jadi kami belum bisa menerima permintaan lewat email. Sementara itu, gunakan paket di halaman Harga; alamat kami akan muncul di halaman ini begitu berfungsi.",
+      "contact_not_live": "Kotak surat kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima permintaan lewat email. Sementara itu, gunakan paket di halaman Harga; alamat kami akan muncul lagi di halaman ini begitu berfungsi.",
       "honest_heading": "Yang tidak dilakukan Cleanway",
       "honest_body": "Cleanway bukan paket keamanan korporat: tidak ada konsol admin, single sign-on, kebijakan terpusat, atau pelatihan phishing. Cleanway tidak melihat aktivitas browsing, pesan, atau kata sandi tim Anda. Tidak ada alat yang bisa menangkap setiap situs penipuan baru, jadi tetap pegang aturan biasa: jangan pernah membagikan kode dari SMS, dan pastikan permintaan pembayaran yang mendesak lewat telepon."
     }

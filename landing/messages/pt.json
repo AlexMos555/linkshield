@@ -423,7 +423,7 @@
     "way_sms_pending": "O número curto para SMS aparecerá aqui quando a operadora o atribuir. Até lá, cancele no app ou na sua operadora.",
     "way_support_title": "Pelo suporte",
     "way_support_body": "Escreva para nós informando o número de telefone da assinatura. Cancelamos no mesmo dia útil e confirmamos por mensagem.",
-    "way_support_pending": "A caixa de e-mail do suporte ainda está sendo configurada: esta opção estará disponível assim que o endereço aparecer. Até lá, cancele no app ou na sua operadora.",
+    "way_support_pending": "A caixa de e-mail do suporte está temporariamente fora do ar: esta opção volta a ficar disponível assim que o endereço voltar. Até lá, cancele no app ou na sua operadora.",
     "way_operator_title": "Na sua operadora",
     "way_operator_body": "Assinaturas cobradas na conta do celular aparecem na área do cliente e no app da sua operadora — lá também é possível desativá-las.",
     "after_title": "O que acontece depois do cancelamento",
@@ -435,7 +435,7 @@
     "refund_body": "Devolvemos o mês se a proteção não funcionou por culpa nossa ou se uma cobrança foi feita depois de você cancelar. Escreva ao suporte com o número de telefone e a data da cobrança. O dinheiro volta para a conta do celular ou da forma que a operadora oferecer — normalmente em até 10 dias úteis.",
     "refund_law": "Isso não limita seus direitos segundo a legislação de defesa do consumidor.",
     "contact_title": "Suporte",
-    "contact_pending": "A caixa de e-mail do suporte ainda está sendo configurada; o endereço aparecerá aqui assim que funcionar. Até lá, cancele no app."
+    "contact_pending": "A caixa de e-mail do suporte está temporariamente fora do ar; o endereço voltará a aparecer aqui assim que funcionar. Até lá, cancele no app."
   },
   "Transparency": {
     "page_title": "Relatório de transparência",
@@ -565,8 +565,8 @@
     "a_fp": "Abra o Cleanway, vá até a aba “Histórico” e toque nesse site. Depois toque em “Não é golpe — permitir” e confirme. O Cleanway deixa de bloquear esse site no seu celular. Se alguém no telefone está pedindo para você permitir um site, é golpe. Desligue. Só permita um site se tiver certeza de que ele é o verdadeiro.",
     "q_privacy": "O que vocês coletam?",
     "a_privacy": "Os sites são comparados com a lista no seu celular. Quando um site precisa de uma análise mais detalhada, só o nome dele vai para o nosso servidor, não o link completo nem quem você é. O texto das mensagens que você verifica nunca sai do celular. Todos os detalhes estão na política de privacidade.",
-    "email_not_live_title": "Ainda não conseguimos receber e-mails",
-    "email_not_live_body": "Nossa caixa de suporte ainda está sendo configurada, então mensagens para support@cleanway.ai podem não chegar até nós. Por enquanto, não envie nada importante para lá. As respostas abaixo resolvem os problemas mais comuns.",
+    "email_not_live_title": "No momento não conseguimos receber e-mails",
+    "email_not_live_body": "Nossa caixa de suporte está temporariamente fora do ar, então mensagens para support@cleanway.ai podem não chegar até nós. Por enquanto, não envie nada importante para lá. As respostas abaixo resolvem os problemas mais comuns.",
     "q_app_vpn": "Outro app pede para desligar a VPN",
     "a_app_vpn": "Alguns apps — bancos, mensageiros, serviços do governo — não funcionam com qualquer VPN ligada, e para o Android a proteção do Cleanway parece uma VPN. Abra o Cleanway, toque em “Pausar a proteção”, use aquele app e depois ative a proteção de novo.",
     "q_no_internet": "A internet parou de funcionar depois que instalei o Cleanway",
@@ -676,7 +676,7 @@
     "updated": "Última atualização: 8 de outubro de 2026",
     "privacy_link": "Ler a política de privacidade",
     "contact_live": "Dúvidas sobre estes termos:",
-    "contact_not_live": "Nossa caixa de suporte ainda está sendo configurada, então ainda não conseguimos receber e-mails. A página de ajuda responde às dúvidas mais comuns.",
+    "contact_not_live": "Nossa caixa de suporte está temporariamente fora do ar, então no momento não conseguimos receber e-mails. A página de ajuda responde às dúvidas mais comuns.",
     "support_link": "Página de ajuda",
     "sections": [
       {
@@ -788,10 +788,10 @@
     "meta_description": "O que o Cleanway recebe, o que fica no seu celular ou no seu navegador, quem mais vê o quê e por quanto tempo tudo é guardado.",
     "back": "Voltar para o Cleanway",
     "title": "Política de privacidade",
-    "updated": "Última atualização: 9 de outubro de 2026",
+    "updated": "Última atualização: 15 de outubro de 2026",
     "intro": "Esta política explica em palavras simples quais dados o Cleanway trata, por quê e quem mais os vê. Ela descreve o serviço como funciona hoje. Se algo aqui não bater com o que o Cleanway realmente faz, é um erro e queremos saber.",
     "contact_live": "Dúvidas e pedidos sobre os seus dados:",
-    "contact_not_live": "Nossa caixa de suporte ainda está sendo configurada, então ainda não conseguimos receber e-mails. O endereço vai aparecer nesta seção assim que funcionar.",
+    "contact_not_live": "Nossa caixa de suporte está temporariamente fora do ar, então no momento não conseguimos receber e-mails. O endereço vai voltar a aparecer nesta seção assim que funcionar.",
     "sections": [
       {
         "title": "1. Resumo",
@@ -880,8 +880,11 @@
         "title": "9. Conta e dispositivos",
         "paragraphs": [
           "A conta é opcional: ela é necessária para os recursos de família, para os planos pagos e para ver seus dispositivos em um só lugar. Se você criar uma, guardamos seu endereço de e-mail, seu plano e os ajustes do app. Você entra com um código de uso único (no app) ou um link de uso único (no site) enviados para o seu e-mail; não há senha.",
+          "Os códigos e links de login e nossos outros e-mails de serviço são enviados pela Resend, um serviço de envio de e-mails, a partir da sua região na UE (Irlanda); ela recebe o seu endereço de e-mail e o texto da mensagem. Um código ou link de login vale por 10 minutos. Se o endereço de e-mail ou a senha de uma conta for alterado, um aviso de segurança é enviado para o e-mail da conta.",
+          "O cadastro e o login em cleanway.ai, e a verificação que o app pode abrir no seu navegador antes de enviar um código, são protegidos pelo Cloudflare Turnstile. Para distinguir uma pessoa de um robô, a Cloudflare vê o seu endereço IP e sinais técnicos do seu navegador.",
           "Cada celular, tablet ou navegador conectado à sua conta aparece na sua lista de dispositivos com um identificador aleatório do dispositivo (que não vem do hardware), o tipo e o nome, a versão do app ou da extensão e quando foi usado pela última vez. Você pode ver a lista e desvincular um dispositivo em cleanway.ai/account ou no app. Um dispositivo desvinculado é desconectado na hora, e o bloqueio de sites de golpe conhecidos continua funcionando nele.",
-          "As contas ficam no nosso provedor de banco de dados, a Supabase. A Supabase também pode registrar no próprio registro de segurança o endereço IP de onde foi feito o login."
+          "As contas ficam no nosso provedor de banco de dados, a Supabase. A Supabase também pode registrar no próprio registro de segurança o endereço IP de onde foi feito o login.",
+          "Toda noite, uma tarefa automática no GitHub faz uma cópia de segurança deste banco de dados. A cópia é criptografada na máquina da tarefa antes de sair dela, com uma chave que a Cloudflare não tem, e fica guardada por 35 dias no armazenamento da Cloudflare na UE (Europa Ocidental). Sem criptografia, a cópia existe só por pouco tempo nessa máquina, enquanto a tarefa roda; nada fica guardado no GitHub."
         ]
       },
       {
@@ -893,7 +896,7 @@
       {
         "title": "11. O site e o filtro DNS",
         "paragraphs": [
-          "cleanway.ai não tem anúncios nem rastreadores de análise. Nossos provedores de hospedagem — a Vercel para o site e a Railway para o servidor — mantêm registros técnicos comuns das requisições, que podem incluir o endereço pedido e o seu endereço IP.",
+          "cleanway.ai não tem anúncios nem rastreadores de análise. Nossos provedores de hospedagem — a Vercel para o site e a Railway para o servidor — mantêm registros técnicos comuns das requisições, que podem incluir o endereço pedido e o seu endereço IP. Nosso servidor, incluindo o filtro DNS descrito abaixo, roda na UE, em Amsterdã (Países Baixos).",
           "Se você configurar o filtro DNS do Cleanway (dns.cleanway.ai) em um iPhone, Mac ou computador com Windows, todas as consultas DNS do aparelho vão para o nosso servidor. Ele bloqueia os nomes da lista e repassa o resto para a Cloudflare achar o endereço. As consultas não são gravadas em disco nem em nenhum log: nosso servidor guarda só totais, como quantas consultas respondeu e quantas bloqueou. Para responder mais rápido a perguntas repetidas, ele mantém as respostas recentes na memória, pela pergunta em si (o nome do site e o tipo de registro), nunca por quem perguntou: enquanto a resposta for válida, no máximo uma hora, e até 6 horas a mais como reserva caso a Cloudflare pare de responder. Elas nunca são gravadas em disco ou em banco de dados e somem quando o servidor reinicia.",
           "O app Cleanway para iPhone pode configurar esse mesmo filtro DNS para você como “Proteção por DNS”: o app salva no iPhone o ajuste de DNS criptografado do Cleanway, que só começa a funcionar depois que você o escolhe nos Ajustes do iPhone. Diferente do app para Android, que compara os nomes dos sites com uma lista guardada no telefone, no iPhone a comparação acontece no nosso servidor: enquanto a proteção por DNS está ativada, o iPhone envia ao nosso servidor, criptografado, o nome de cada site que qualquer app procura, e o servidor o trata como descrito no parágrafo anterior. Para limitar quantas consultas uma conexão pode fazer, nosso servidor as conta na memória sob um código embaralhado feito a partir do seu endereço IP (um hash com chave), e não sob o próprio endereço, e zera a contagem a cada hora; ela nunca é guardada junto com os nomes que você procura. No iOS 26 ou posterior, se nosso servidor não responder, o iPhone pode consultar o servidor DNS da própria rede, como sem o Cleanway. Você pode desativar a proteção por DNS nos Ajustes do iPhone ou removê-la no app a qualquer momento."
         ]
@@ -921,17 +924,19 @@
       {
         "title": "14. Quem trata dados por nós",
         "items": [
-          "Railway — roda o nosso servidor (api.cleanway.ai);",
+          "Railway — roda o nosso servidor (api.cleanway.ai) e o cache dele, na UE (Amsterdã, Países Baixos);",
           "Vercel — hospeda o site;",
           "Supabase — guarda as contas e os dados da família;",
-          "GitHub — hospeda o arquivo do app que você baixa e vê o seu endereço IP no download;",
+          "Resend — envia os códigos de login e os e-mails de serviço a partir da UE (Irlanda); recebe o seu endereço de e-mail e o texto da mensagem;",
+          "Cloudflare — cuida do DNS de cleanway.ai; encaminha para a nossa caixa os e-mails enviados aos nossos endereços em cleanway.ai; faz a verificação Turnstile no cadastro e no login e, para isso, vê o seu endereço IP e sinais do navegador; guarda as cópias de segurança criptografadas do nosso banco de dados na UE (Europa Ocidental); roda o nosso monitor de disponibilidade, que não trata dados pessoais;",
+          "GitHub — hospeda o arquivo do app que você baixa e vê o seu endereço IP no download; roda a nossa tarefa noturna de cópia de segurança, que criptografa a cópia antes que ela saia da máquina do GitHub, então nada dela fica guardado no GitHub;",
           "Cloudflare e Quad9 — DNS públicos usados pelo app, veja a seção 3;",
           "os serviços de verificação da seção 5 e a Anthropic — recebem só nomes de sites ou sinais abstratos;",
           "Sentry — relatórios de erro e medições de tempo;",
           "Stripe — pagamentos no site; Google Play, App Store e RevenueCat — compras no app (não há pagamentos na Rússia)."
         ],
         "after": [
-          "Essas empresas ficam fora da Rússia, principalmente nos EUA e na UE, então os dados que elas tratam são transferidos para o exterior."
+          "Essas empresas ficam fora da Rússia, principalmente nos EUA e na UE, então os dados que elas tratam são transferidos para o exterior. Nosso servidor e as cópias de segurança do banco de dados ficam na UE."
         ]
       },
       {
@@ -940,6 +945,7 @@
           "resultados de verificação no cache do servidor — até 24 horas;",
           "seu endereço IP no contador que limita as verificações — no máximo uma hora;",
           "dados da conta — até você excluir a conta; depois de um pedido de exclusão, guardamos por mais 30 dias caso você mude de ideia e então apagamos;",
+          "cópias de segurança noturnas criptografadas do banco de dados — 35 dias; por isso, dados apagados do banco somem das cópias em até 35 dias;",
           "registro de segurança das ações da conta (com endereços IP em hash) — 2 anos;",
           "contadores semanais das contas (só números, sem nomes de sites) — 1 ano;",
           "alertas criptografados da família — até 30 dias;",
@@ -966,7 +972,8 @@
         "id": "contact",
         "title": "18. Mudanças e contato",
         "paragraphs": [
-          "Se mudarmos esta política, publicaremos a nova versão nesta página com uma data nova."
+          "Se mudarmos esta política, publicaremos a nova versão nesta página com uma data nova.",
+          "Os e-mails que você envia para os nossos endereços em cleanway.ai passam pela Cloudflare, que os encaminha para a nossa caixa."
         ]
       }
     ],
@@ -1091,6 +1098,7 @@
     "kept_heading": "O que é mantido",
     "kept_items": [
       "o registro de segurança das ações da conta — o que foi feito e quando, com um hash encurtado do endereço IP no lugar do endereço — por 2 anos;",
+      "as cópias de segurança noturnas criptografadas do nosso banco de dados — por mais 35 dias depois da exclusão definitiva; depois disso, não resta nada da conta nelas;",
       "os registros de pagamento que a Stripe, o Google Play ou a App Store precisam manter por obrigações legais próprias;",
       "o que está guardado no seu celular ou no seu navegador, como o histórico de verificações: remova o app ou a extensão para apagar."
     ],
@@ -1098,7 +1106,7 @@
     "subscription_body": "Uma assinatura paga em cleanway.ai é cancelada na hora quando você exclui a conta, e nada mais é cobrado. Uma assinatura comprada no Google Play ou na App Store não é cancelada com a exclusão da conta: cancele-a nas configurações de assinaturas da loja.",
     "help_heading": "Não consegue entrar?",
     "help_live": "Se você não recebe mais e-mails nesse endereço, escreva para nós a partir dele ou descreva a sua conta, e vamos ajudar:",
-    "help_not_live": "Nossa caixa de suporte ainda está sendo configurada, então ainda não conseguimos receber pedidos de exclusão por e-mail. Esta página vai mostrar o endereço assim que funcionar.",
+    "help_not_live": "Nossa caixa de suporte está temporariamente fora do ar, então no momento não conseguimos receber pedidos de exclusão por e-mail. Esta página vai voltar a mostrar o endereço assim que funcionar.",
     "privacy_link": "Ler a política de privacidade"
   },
   "Business": {
@@ -1120,7 +1128,7 @@
     "pricing_cta": "Ver preços",
     "contact_heading": "Uma equipe maior?",
     "contact_live": "Se você quer proteger muitos dispositivos ou precisa de uma fatura, escreva para nós:",
-    "contact_not_live": "Nossa caixa de e-mail ainda está sendo configurada, então ainda não conseguimos receber pedidos por e-mail. Até lá, use o plano da página de Preços; esta página vai mostrar nosso endereço assim que funcionar.",
+    "contact_not_live": "Nossa caixa de e-mail está temporariamente fora do ar, então no momento não conseguimos receber pedidos por e-mail. Até lá, use o plano da página de Preços; esta página vai voltar a mostrar nosso endereço assim que funcionar.",
     "honest_heading": "O que o Cleanway não faz",
     "honest_body": "O Cleanway não é uma suíte de segurança corporativa: não há console de administração, login único, políticas centrais nem treinamento contra phishing. Ele não vê a navegação, as mensagens nem as senhas da sua equipe. Nenhuma ferramenta detecta cada novo site de golpe, então mantenha as regras de sempre: nunca compartilhe códigos de SMS e confirme por telefone pedidos de pagamento urgentes."
   },
