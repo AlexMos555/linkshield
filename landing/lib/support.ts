@@ -1,8 +1,9 @@
 /**
  * How people can reach us — and whether they actually can.
  *
- * Since 2026-10-13 support@cleanway.ai forwards to the founder's inbox
- * (Squarespace email forwarding, MX on cleanway.ai), so pages show the address
+ * support@cleanway.ai forwards to the founder's inbox (since 2026-10-13; since
+ * the 2026-10 infra move through Cloudflare Email Routing, MX on cleanway.ai —
+ * the privacy policy names Cloudflare for it), so pages show the address
  * by default. If the mailbox ever stops working, set
  * NEXT_PUBLIC_SUPPORT_EMAIL_LIVE=0 in the Vercel project and redeploy: every
  * page then says plainly that mail may not reach us and points at what the

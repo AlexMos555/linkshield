@@ -64,6 +64,16 @@ test("the privacy policy covers the browser extension and store purchases", asyn
   await expect(page.locator("main")).toContainText("cleanway.ai/delete-account");
 });
 
+test("the privacy policy names the infrastructure processors and where they run", async ({ page }) => {
+  await page.goto("/privacy-policy");
+  const main = page.locator("main");
+  // 2026-10 infra move: email delivery, captcha, mail forwarding, backups, EU hosting.
+  for (const fact of ["Resend", "Cloudflare Turnstile", "Amsterdam", "35 days", "10 minutes"]) {
+    await expect(main).toContainText(fact);
+  }
+  await expect(main).not.toContainText("Singapore");
+});
+
 test("the terms cover store purchases and the refund rule", async ({ page }) => {
   await page.goto("/terms");
   const main = page.locator("main");

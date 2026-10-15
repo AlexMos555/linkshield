@@ -423,7 +423,7 @@
     "way_sms_pending": "The short number for SMS appears here once the operator assigns it. Until then, cancel in the app or with your operator.",
     "way_support_title": "Through support",
     "way_support_body": "Write to us with the phone number the subscription is on. We cancel it the same working day and confirm by message.",
-    "way_support_pending": "The support mailbox is still being set up: this way opens as soon as its address appears. Until then, cancel in the app or with your operator.",
+    "way_support_pending": "The support mailbox is temporarily not working: this way opens again as soon as its address is back. Until then, cancel in the app or with your operator.",
     "way_operator_title": "With your operator",
     "way_operator_body": "Subscriptions billed to the phone account are listed in your mobile operator's account area and app — you can switch them off there too.",
     "after_title": "What happens after cancelling",
@@ -435,7 +435,7 @@
     "refund_body": "We refund the month if protection did not work through our fault, or a charge went through after you cancelled. Write to support with the phone number and the date of the charge. The money goes back to the phone account or in the way your operator offers — usually within 10 working days.",
     "refund_law": "This does not limit your rights under consumer-protection law.",
     "contact_title": "Support",
-    "contact_pending": "The support mailbox is still being set up; the address appears here as soon as it works. Until then, cancel in the app."
+    "contact_pending": "The support mailbox is temporarily not working; the address appears here again as soon as it works. Until then, cancel in the app."
   },
   "Transparency": {
     "page_title": "Transparency report",
@@ -565,8 +565,8 @@
     "a_fp": "Open Cleanway, go to the History tab and tap that site. Then tap \"Not a scam — allow it\" and confirm. Cleanway will stop blocking the site on your phone. If someone on the phone is asking you to allow a site, it's a scammer. Hang up. Allow a site only if you are sure it is the real one.",
     "q_privacy": "What do you collect?",
     "a_privacy": "Sites are checked against the list on your phone. When a site needs a closer look, only its name goes to our server — not the full link and not who you are. The text of messages you check never leaves the phone. The full details are in the privacy policy.",
-    "email_not_live_title": "We can't receive email yet",
-    "email_not_live_body": "Our support mailbox is still being set up, so messages to support@cleanway.ai may not reach us. Please don't send anything important there for now. The answers below cover the most common problems.",
+    "email_not_live_title": "We can't receive email right now",
+    "email_not_live_body": "Our support mailbox is temporarily not working, so messages to support@cleanway.ai may not reach us. Please don't send anything important there for now. The answers below cover the most common problems.",
     "q_app_vpn": "Another app asks me to turn off my VPN",
     "a_app_vpn": "Some apps — banks, messengers, government services — refuse to work while any VPN is on, and to Android, Cleanway's protection looks like one. Open Cleanway, tap \"Pause protection\", use that app, then turn protection back on.",
     "q_no_internet": "The internet stopped working after I installed Cleanway",
@@ -676,7 +676,7 @@
     "updated": "Last updated: October 8, 2026",
     "privacy_link": "Read the privacy policy",
     "contact_live": "Questions about these terms:",
-    "contact_not_live": "Our support mailbox is still being set up, so we cannot receive email yet. The support page has answers to common questions.",
+    "contact_not_live": "Our support mailbox is temporarily not working, so we cannot receive email right now. The support page has answers to common questions.",
     "support_link": "Support page",
     "sections": [
       {
@@ -788,10 +788,10 @@
     "meta_description": "What Cleanway receives, what stays on your phone or in your browser, who else sees what, and how long anything is kept.",
     "back": "Back to Cleanway",
     "title": "Privacy policy",
-    "updated": "Last updated: October 9, 2026",
+    "updated": "Last updated: October 15, 2026",
     "intro": "This policy explains in plain words what data Cleanway handles, why, and who else sees it. It describes the service as it works today. If something here does not match what Cleanway actually does, that is a mistake and we want to hear about it.",
     "contact_live": "Questions and requests about your data:",
-    "contact_not_live": "Our support mailbox is still being set up, so we cannot receive email yet. This section will show the address as soon as it works.",
+    "contact_not_live": "Our support mailbox is temporarily not working, so we cannot receive email right now. This section will show the address again as soon as it works.",
     "sections": [
       {
         "title": "1. In short",
@@ -880,8 +880,11 @@
         "title": "9. Account and devices",
         "paragraphs": [
           "An account is optional: it is needed for family features, for paid plans and to see your devices in one place. If you create one, we store your email address, your plan and your app settings. You sign in with a one-time code (in the app) or a one-time link (on the website) sent to your email; there is no password.",
+          "Sign-in codes, sign-in links and our other service emails are sent through Resend, an email delivery service, from its EU region (Ireland); it receives your email address and the text of the email. A sign-in code or link is valid for 10 minutes. If the email address or the password of an account is changed, a security notice is sent to the account's email address.",
+          "Signing up and signing in on cleanway.ai, and the check the app may open in your browser before it sends a code, are protected by Cloudflare Turnstile. To tell a person from a bot, Cloudflare sees your IP address and technical signals from your browser.",
           "Every phone, tablet or browser signed in to your account appears in your device list with a random device ID (not derived from the hardware), its type and name, the version of the app or extension, and when it was last used. You can see the list and unlink a device at cleanway.ai/account or in the app. An unlinked device is signed out at once, and blocking known scam sites keeps working on it.",
-          "Accounts are stored with our database provider, Supabase. Supabase may also record the IP address a sign-in came from in its own security log."
+          "Accounts are stored with our database provider, Supabase. Supabase may also record the IP address a sign-in came from in its own security log.",
+          "Every night an automated job on GitHub makes a backup copy of this database. The copy is encrypted on the job's machine before it leaves it, with a key that Cloudflare does not have, and is kept in Cloudflare's storage in the EU (Western Europe) for 35 days. Unencrypted, the copy exists only briefly on that machine while the job runs; nothing is kept on GitHub."
         ]
       },
       {
@@ -893,7 +896,7 @@
       {
         "title": "11. The website and the DNS filter",
         "paragraphs": [
-          "cleanway.ai has no advertising or analytics trackers. Our hosting providers — Vercel for the website, Railway for the server — keep standard technical request logs, which can include the requested address and your IP address.",
+          "cleanway.ai has no advertising or analytics trackers. Our hosting providers — Vercel for the website, Railway for the server — keep standard technical request logs, which can include the requested address and your IP address. Our server, including the DNS filter described below, runs in the EU, in Amsterdam (the Netherlands).",
           "If you set up the Cleanway DNS filter (dns.cleanway.ai) on an iPhone, Mac or Windows computer, all of your device's DNS queries go to our server. It blocks names from the list and passes the rest to Cloudflare to find the address. Queries are not written to disk or to any log: our server keeps only totals, such as how many queries it answered and how many it blocked. To answer repeat questions faster, it holds recent answers in its memory, stored by the question alone (the site name and the kind of record), never by who asked — for as long as the answer is valid, at most an hour, and up to 6 more hours as a backup in case Cloudflare stops answering. They are never written to disk or a database and are gone when the server restarts.",
           "The Cleanway app for iPhone can set up the same DNS filter for you as “DNS protection”: the app saves Cleanway's encrypted DNS setting on the iPhone, and it starts working only after you choose it in the iPhone's Settings. Unlike the Android app, which compares site names with a list stored on the phone, on iPhone the comparison happens on our server: while DNS protection is on, the iPhone sends our server, encrypted, the name of every site any app looks up, and the server handles it as described in the previous paragraph. To limit how many queries one connection can make, our server counts them in its memory under a scrambled code made from your IP address (a keyed hash), not under the address itself, and clears the count every hour; it is never stored together with the names you look up. On iOS 26 and later, if our server does not answer, the iPhone may ask the network's own DNS server instead, as without Cleanway. You can turn DNS protection off in the iPhone's Settings or remove it in the app at any time."
         ]
@@ -921,17 +924,19 @@
       {
         "title": "14. Who processes data for us",
         "items": [
-          "Railway — runs our server (api.cleanway.ai);",
+          "Railway — runs our server (api.cleanway.ai) and its cache, in the EU (Amsterdam, the Netherlands);",
           "Vercel — hosts the website;",
           "Supabase — stores accounts and family data;",
-          "GitHub — hosts the app file you download and sees your IP address when you download it;",
+          "Resend — sends sign-in codes and service emails from the EU (Ireland); receives your email address and the text of the email;",
+          "Cloudflare — runs the DNS of cleanway.ai; forwards email sent to our addresses at cleanway.ai to our mailbox; runs the Turnstile check on sign-up and sign-in, for which it sees your IP address and browser signals; keeps the encrypted backups of our database in the EU (Western Europe); runs our uptime monitor, which handles no personal data;",
+          "GitHub — hosts the app file you download and sees your IP address when you download it; runs our nightly backup job, which encrypts the copy before it leaves GitHub's machine, so nothing of it is kept on GitHub;",
           "Cloudflare and Quad9 — public DNS used by the app, see section 3;",
           "the checking services listed in section 5, and Anthropic — receive site names or abstract signals only;",
           "Sentry — error reports and timing measurements;",
           "Stripe — payments on the website; Google Play, the App Store and RevenueCat — purchases in the app (payments are not offered in Russia)."
         ],
         "after": [
-          "These companies are based outside Russia, mainly in the USA and the EU, so the data they process is transferred abroad."
+          "These companies are based outside Russia, mainly in the USA and the EU, so the data they process is transferred abroad. Our server and our database backups are located in the EU."
         ]
       },
       {
@@ -940,6 +945,7 @@
           "site check results in the server cache — up to 24 hours;",
           "your IP address in the check-limit counter — up to an hour;",
           "account data — until you delete the account; after a deletion request we keep it for 30 more days in case you change your mind, then delete it;",
+          "encrypted nightly backups of the database — 35 days; data deleted from the database therefore disappears from the backups within 35 days;",
           "the security log of account actions (with hashed IP addresses) — 2 years;",
           "weekly counters for accounts (numbers only, no site names) — 1 year;",
           "encrypted family alerts — up to 30 days;",
@@ -966,7 +972,8 @@
         "id": "contact",
         "title": "18. Changes and contact",
         "paragraphs": [
-          "If we change this policy, we will publish the new version on this page with a new date."
+          "If we change this policy, we will publish the new version on this page with a new date.",
+          "Email you send to our addresses at cleanway.ai passes through Cloudflare, which forwards it to our mailbox."
         ]
       }
     ],
@@ -1091,6 +1098,7 @@
     "kept_heading": "What is kept",
     "kept_items": [
       "the security log of account actions — what was done and when, with a shortened hash of the IP address instead of the address — for 2 years;",
+      "encrypted nightly backups of our database, for 35 more days after the erase — then nothing of the account is left in them;",
       "payment records that Stripe, Google Play or the App Store must keep under their own legal obligations;",
       "what is stored on your phone or in your browser, such as check history: remove the app or the extension to delete it."
     ],
@@ -1098,7 +1106,7 @@
     "subscription_body": "A subscription paid on cleanway.ai is cancelled at once when you delete the account, and nothing more is charged. A subscription bought in Google Play or the App Store is not cancelled by deleting the account: cancel it in the store's subscription settings.",
     "help_heading": "Can't sign in?",
     "help_live": "If you no longer receive email at that address, write to us from it or describe your account, and we will help:",
-    "help_not_live": "Our support mailbox is still being set up, so we cannot take deletion requests by email yet. This page will show the address as soon as it works.",
+    "help_not_live": "Our support mailbox is temporarily not working, so we cannot take deletion requests by email right now. This page will show the address again as soon as it works.",
     "privacy_link": "Read the privacy policy"
   },
   "Business": {
@@ -1120,7 +1128,7 @@
     "pricing_cta": "See prices",
     "contact_heading": "A larger team?",
     "contact_live": "If you want to protect many devices, or need an invoice, write to us:",
-    "contact_not_live": "Our mailbox is still being set up, so we cannot take requests by email yet. Until then, use the plan on the Pricing page; this page will show our address as soon as it works.",
+    "contact_not_live": "Our mailbox is temporarily not working, so we cannot take requests by email right now. Until then, use the plan on the Pricing page; this page will show our address again as soon as it works.",
     "honest_heading": "What Cleanway does not do",
     "honest_body": "Cleanway is not a corporate security suite: there is no admin console, single sign-on, central policies or phishing training. It does not see your team's browsing, messages or passwords. No tool catches every new scam site, so keep the usual rules: never share codes from text messages and check urgent payment requests by phone."
   },

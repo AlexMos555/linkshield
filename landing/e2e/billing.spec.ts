@@ -198,7 +198,7 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     test.skip(SUPPORT_LIVE, "NEXT_PUBLIC_SUPPORT_EMAIL_LIVE is on");
     await page.goto("/ru/cancel");
     const support = page.getByTestId("cancel-way-support");
-    await expect(support).toContainText("ещё настраивается");
+    await expect(support).toContainText("временно не работает");
     await expect(support).not.toContainText("в тот же рабочий день");
     await expect(page.getByTestId("cancel-way-sms")).not.toContainText("через поддержку");
     await expect(page.getByTestId("cancel-contact-pending")).toBeVisible();
