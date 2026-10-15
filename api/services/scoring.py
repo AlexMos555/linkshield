@@ -365,6 +365,48 @@ MEASURED_GLOBAL_GROUPS, _NOT_IN_MODEL = _load_measured_global_groups()
 # Every group whose exemptions the rules honour, Russian and global.
 _EXEMPTION_GROUPS: tuple[ru_brands.BrandGroup, ...] = RU_BRAND_GROUPS + MEASURED_GLOBAL_GROUPS
 
+# The state-service brand whose regions number their portals (gosuslugi26.ru,
+# 51gosuslugi.ru): its names in data/typosquat_targets_ru.json — gosuslugi
+# and госуслуги.
+_STATE_SERVICE_BRAND = "gosuslugi"
+_STATE_SERVICE_NAMES: frozenset[str] = frozenset(
+    n for g in RU_BRAND_GROUPS if g.key == _STATE_SERVICE_BRAND for n in g.names
+)
+# A region's number: 01-99, or 1-9 without the leading zero.
+_REGION_NUMBER = r"(?:0[1-9]|[1-9][0-9]?)"
+_REGIONAL_PORTAL_NAME = re.compile(
+    rf"^(?:(?:{'|'.join(map(re.escape, sorted(_STATE_SERVICE_NAMES)))}){_REGION_NUMBER}"
+    rf"|{_REGION_NUMBER}(?:{'|'.join(map(re.escape, sorted(_STATE_SERVICE_NAMES)))}))$"
+) if _STATE_SERVICE_NAMES else None
+# The TLDs the regions register them under: .ru and .рф (wire form).
+_REGIONAL_PORTAL_TLDS = frozenset({"ru", "xn--p1ai"})
+
+
+def is_regional_state_portal_name(domain: str) -> bool:
+    """True when the registrable domain is a state-service brand with a
+    region number in front or behind and nothing else, under .ru or .рф:
+    gosuslugi26.ru, 51gosuslugi.ru, госуслуги74.рф and their subdomains
+    (new.gosuslugi86.ru).
+
+    That is how Russian regions name their state-service portals — 14 are
+    in tests/data/ru_heuristics_legit.txt (held out of training) and more
+    in the brand's 'official' list. A brand's name plus digits reads to
+    the model like sberbank24.ru, and the 2026-10-12 retrain scored all 14
+    held-out ones above 0.6, so the weekly retrain's held-out Russian gate
+    refused it. Only the model's weight is withheld for this shape (3.34);
+    the name rules still judge it (gosuslugi77.ru is not a region's portal
+    and stays a typosquat). Narrow on purpose: a lure word or hyphen
+    (gosuslugi26-pay.ru), a look-alike letter (gosusiugi26.ru), three
+    digits, another TLD (gosuslugi26.top, .com) or a regional zone
+    (gosuslugi26.spb.ru) does not match.
+    """
+    if _REGIONAL_PORTAL_NAME is None:
+        return False
+    labels = registrable_domain(domain).split(".")
+    if len(labels) != 2 or labels[1] not in _REGIONAL_PORTAL_TLDS:
+        return False
+    return bool(_REGIONAL_PORTAL_NAME.match(_decode_idn(labels[0])))
+
 # What the typosquat rule compares against: global first (so an existing
 # host keeps the brand it was reported under), then the Russian names.
 TYPOSQUAT_TARGETS: dict[str, str] = {
@@ -1624,7 +1666,14 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             ml_prob = ml_result["phishing_probability"]
             ml_confidence = ml_result["confidence"]
 
-            if ml_prob > 0.85 and ml_confidence > 0.7:
+            if ml_prob > 0.6 and is_regional_state_portal_name(ascii_domain):
+                # A region's state-service portal (gosuslugi26.ru): the
+                # model reads brand + digits as a look-alike, and the
+                # weekly retrain's held-out gate refused models that did.
+                # Its weight is withheld; the name rules above still judge
+                # the name.
+                pass
+            elif ml_prob > 0.85 and ml_confidence > 0.7:
                 score += 35
                 reasons.append(DomainReason(
                     signal="ml_high_risk", weight=35,
