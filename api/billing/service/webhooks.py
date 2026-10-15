@@ -33,6 +33,7 @@ from api.billing.providers.base import (
     event_to_bytes,
 )
 from api.billing.service.checkout import apply_provider_event
+from api.services import security_alerts
 
 logger = logging.getLogger("cleanway.billing.webhooks")
 
@@ -61,6 +62,7 @@ async def ingest_webhook(ctx: BillingContext, *, provider_code: str, headers: Ma
     try:
         events = provider.parse_webhook(headers, body)
     except InvalidSignature as e:
+        await security_alerts.record("webhook_signature_invalid", key=provider_code)
         await _store_rejected(ctx, provider_code, body, str(e))
         return _error(400, "invalid_signature", "signature verification failed")
     except NotConfiguredError:

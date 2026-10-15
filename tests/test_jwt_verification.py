@@ -233,3 +233,21 @@ def test_http_answers_401_and_503_never_500(jwks, key):
     resp = c.post(path, headers=key.headers())
     assert resp.status_code == 503
     assert resp.json()["detail"]["code"] == "auth_unavailable"
+
+
+# ─── security alerts ────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_forged_tokens_are_reported_to_security_alerts(jwks, key, security_events):
+    await _refused("not-a-jwt")
+    await _refused(SigningKey(kid=key.kid).token())
+    await _refused(_legacy_token())
+    assert security_events == [("auth_invalid_token", None)] * 3
+
+
+@pytest.mark.asyncio
+async def test_expired_tokens_are_not_an_anomaly(jwks, key, security_events):
+    await _refused(key.token(iat_ago=7200, ttl=3600))
+    await _decode(key.token())
+    assert security_events == []

@@ -72,6 +72,11 @@ class DomainValidationError(Exception):
     pass
 
 
+class SSRFBlocked(DomainValidationError):
+    """The name, address or port points inside a private network (not a
+    mere typo). Counted by api/services/security_alerts.py as `ssrf_blocked`."""
+
+
 def normalize_domain(raw_input: str) -> str:
     """
     Normalize user input into a clean domain name.
@@ -109,7 +114,7 @@ def validate_domain(domain: str) -> str:
 
     # Check blocked domain names
     if domain in _BLOCKED_DOMAINS:
-        raise DomainValidationError(f"Domain '{domain}' is not allowed")
+        raise SSRFBlocked(f"Domain '{domain}' is not allowed")
 
     # Check if it's an IP address
     if _IP_PATTERN.match(domain):
@@ -131,7 +136,7 @@ def _validate_ip(ip_str: str) -> None:
         raise DomainValidationError(f"Invalid IP address: '{ip_str}'")
 
     if _is_blocked_ip(ip):
-        raise DomainValidationError(f"IP address '{ip_str}' is in a blocked range")
+        raise SSRFBlocked(f"IP address '{ip_str}' is in a blocked range")
 
 
 def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -250,7 +255,7 @@ def check_hostname_policy(host: str) -> None:
     if "." not in h:
         raise DomainValidationError(f"single-label hostname '{h}' is not allowed")
     if h in _BLOCKED_DOMAINS or any(h.endswith(s) or h == s[1:] for s in _INTERNAL_SUFFIXES):
-        raise DomainValidationError(f"hostname '{h}' names a private network")
+        raise SSRFBlocked(f"hostname '{h}' names a private network")
     tld = h.rsplit(".", 1)[1]
     if _KNOWN_TLDS and tld not in _KNOWN_TLDS:
         raise DomainValidationError(f"hostname '{h}' is not under a public suffix")
@@ -269,12 +274,12 @@ def resolve_public_sync(host: str, port: int = 443) -> list[str]:
     to one of the returned addresses — never to the name again.
     """
     if port not in ALLOWED_PORTS:
-        raise DomainValidationError(f"port {port} is not allowed")
+        raise SSRFBlocked(f"port {port} is not allowed")
     h = _clean_host(host)
     literal = _ip_literal(h)
     if literal is not None:
         if not is_public_address(literal):
-            raise DomainValidationError(f"address '{h}' is not public")
+            raise SSRFBlocked(f"address '{h}' is not public")
         return [str(literal)]
     check_hostname_policy(h)
     try:
@@ -287,10 +292,10 @@ def resolve_public_sync(host: str, port: int = 443) -> list[str]:
             ip = ipaddress.ip_address(sockaddr[0])
         except ValueError:
             # A scoped address (fe80::1%eth0) and anything unparsable.
-            raise DomainValidationError(f"'{h}' resolves to an unusable address")
+            raise SSRFBlocked(f"'{h}' resolves to an unusable address")
         if not is_public_address(ip):
             logger.warning("SSRF attempt blocked: domain=%s resolved_ip=%s", h, ip)
-            raise DomainValidationError(f"Domain '{h}' resolves to a blocked IP range")
+            raise SSRFBlocked(f"Domain '{h}' resolves to a blocked IP range")
         if str(ip) not in addresses:
             addresses.append(str(ip))
     if not addresses:

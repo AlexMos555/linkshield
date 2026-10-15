@@ -37,7 +37,9 @@ from api.billing.service import devices as device_service
 from api.billing.service import seats as seat_service
 from api.billing.service import trial as trial_service
 from api.billing.service.passes import compute_entitlement
+from api.billing.service.errors import Unauthorized
 from api.billing.service.webhooks import MAX_WEBHOOK_BODY_BYTES, ingest_webhook
+from api.services import security_alerts
 
 router = APIRouter(prefix="/billing/v1", tags=["billing"])
 
@@ -243,6 +245,10 @@ async def create_partner_license(request: Request, response: Response):
     ctx = await get_context()
     await limit_ip(request, "partner", ctx.settings.billing_register_per_ip_per_hour)
     body = await request.body()
-    partner_service.verify_partner_signature(ctx.settings.billing_partner_hmac_key, dict(request.headers), body)
+    try:
+        partner_service.verify_partner_signature(ctx.settings.billing_partner_hmac_key, dict(request.headers), body)
+    except Unauthorized:
+        await security_alerts.record("webhook_signature_invalid", key="partner")
+        raise
     req = partner_service.parse_partner_request(body)
     return ok(await partner_service.create_partner_license(ctx, **req))

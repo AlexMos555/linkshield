@@ -402,3 +402,17 @@ def test_restore_account_503_when_redis_unreachable(
     # A retry is idempotent because the field is already null.
     assert len(supabase_stub.patches) == 1
     assert supabase_stub.patches[0]["body"]["deletion_requested_at"] is None
+
+
+# ─── security alerts ────────────────────────────────────────────
+
+
+def test_scheduled_deletion_is_reported(client, supabase_ok, supabase_stub, security_events):
+    assert client.delete("/api/v1/user/account").status_code == 200
+    assert security_events == [("account_delete", "user-77")]
+
+
+def test_failed_deletion_is_not_reported(client, supabase_ok, supabase_stub, security_events):
+    supabase_stub.patch_status = 500
+    assert client.delete("/api/v1/user/account").status_code == 500
+    assert security_events == []

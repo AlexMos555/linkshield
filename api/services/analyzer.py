@@ -37,7 +37,7 @@ from typing import Any, Optional
 import httpx
 
 from api.config import get_settings
-from api.services import licensed_intel, paid_budget
+from api.services import licensed_intel, paid_budget, security_alerts
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.hosting_platforms import is_user_content_service
@@ -49,6 +49,7 @@ from api.services.domain_validator import (
     validate_domain,
     validate_domain_resolution,
     DomainValidationError,
+    SSRFBlocked,
 )
 from api.services.circuit_breaker import (
     safe_browsing_breaker, phishtank_breaker, urlhaus_breaker,
@@ -114,6 +115,8 @@ async def analyze_domain(
         domain = validate_domain(domain)
     except DomainValidationError as e:
         logger.warning("Domain validation failed: %s — %s", domain, str(e))
+        if isinstance(e, SSRFBlocked):
+            await security_alerts.record("ssrf_blocked")
         return DomainResult(
             domain=domain, score=0, level=RiskLevel.caution,
             reasons=[DomainReason(signal="invalid_domain", detail=f"Invalid domain: {str(e)}", weight=0)],
@@ -148,6 +151,8 @@ async def analyze_domain(
         probes_allowed = await resolution
     except DomainValidationError as e:
         logger.warning("DNS resolution blocked (SSRF): %s — %s", domain, str(e))
+        if isinstance(e, SSRFBlocked):
+            await security_alerts.record("ssrf_blocked")
         return vb.not_found_result(domain)
 
     outcomes, unfinished = await run_within_budget(

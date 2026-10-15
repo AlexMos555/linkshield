@@ -33,6 +33,7 @@ from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
 from api.services.audit_log import hash_ip
 from api.services.auth import get_current_user_including_deleted
+from api.services import security_alerts
 from api.services.cache import get_redis
 
 logger = logging.getLogger("cleanway.rate_limiter")
@@ -85,6 +86,7 @@ async def check_rate_limit(user: AuthUser, num_domains: int = 1) -> int:
                 "rate_limit_exceeded",
                 extra={"user_id": user.id, "tier": user.tier.value, "used": current},
             )
+            await security_alerts.record("rate_limited", key="daily_quota")
             raise HTTPException(
                 status_code=429,
                 detail={
@@ -162,6 +164,7 @@ async def _check_burst_limit(
             "burst_limit_exceeded",
             extra={"user_id": user_id, "count": current, "window": window_seconds},
         )
+        await security_alerts.record("rate_limited", key="burst")
         raise HTTPException(
             status_code=429,
             detail={
@@ -275,6 +278,7 @@ async def _check_window_limit(
                     "limit": limit,
                 },
             )
+            await security_alerts.record("rate_limited", key=category)
             raise HTTPException(
                 status_code=429,
                 detail={
@@ -337,6 +341,7 @@ async def check_sensitive_action_limit(
                     "count": current,
                 },
             )
+            await security_alerts.record("rate_limited", key=f"sensitive:{category}")
             raise HTTPException(
                 status_code=429,
                 detail={

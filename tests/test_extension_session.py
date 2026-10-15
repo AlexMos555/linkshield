@@ -276,3 +276,20 @@ async def _not_deleted(_user_id):
 
 async def _no_redis():
     raise ConnectionError("no redis in this test")
+
+
+# ─── security alerts ────────────────────────────────────────────
+
+
+def test_minting_a_session_with_the_service_key_is_reported(client, security_events):
+    assert _post(client).status_code == 200
+    assert security_events == [("admin_or_service_key_use", USER.id)]
+
+
+def test_reauth_required_is_reported(client, security_events):
+    from api.main import app
+    from api.services.auth import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: _fresh(age_s=11 * 60)
+    assert _post(client).status_code == 401
+    assert security_events == [("reauth_required", USER.id)]

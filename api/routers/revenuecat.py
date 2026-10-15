@@ -27,7 +27,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from api.config import get_settings
-from api.services import account_store
+from api.services import account_store, security_alerts
 from api.services.account_store import AccountStoreError
 from api.services.revenuecat import RevenueCatError, apply_event
 
@@ -57,6 +57,7 @@ async def revenuecat_webhook(request: Request):
         raise HTTPException(503, "RevenueCat webhook is not configured")
     if not _authorized(request.headers.get("authorization", ""), secret):
         logger.warning("revenuecat_webhook_unauthorized")
+        await security_alerts.record("webhook_signature_invalid", key="revenuecat")
         raise HTTPException(401, "Unauthorized")
 
     payload = await request.body()

@@ -52,8 +52,13 @@ class FakeRedis:
     async def get(self, key: str):
         return self._kv.get(key)
 
-    async def set(self, key: str, val: Any, **_kw):
+    async def set(self, key: str, val: Any, nx: bool = False, ex: int | None = None, **_kw):
+        # SET NX answers None when the key already exists (redis-py semantics).
+        if nx and key in self._kv:
+            return None
         self._kv[key] = val
+        if ex is not None:
+            self._ttls[key] = int(ex)
         return True
 
     async def setex(self, key: str, ttl: int, val: Any):
@@ -141,6 +146,21 @@ def redis_down(monkeypatch):
         raise ConnectionError("simulated Redis outage")
 
     monkeypatch.setattr("api.services.cache.get_redis", _boom)
+
+
+@pytest.fixture
+def security_events(monkeypatch) -> list[tuple[str, Any]]:
+    """Capture security_alerts.record() calls as (event, key) tuples.
+
+    Call sites use `security_alerts.record(...)` through the module, so
+    patching the module attribute intercepts every one of them."""
+    calls: list[tuple[str, Any]] = []
+
+    async def _record(event: str, *, key: Any = None) -> None:
+        calls.append((event, key))
+
+    monkeypatch.setattr("api.services.security_alerts.record", _record)
+    return calls
 
 
 # ─── Fake Stripe API ───────────────────────────────────────────────
