@@ -32,7 +32,7 @@ from typing import Mapping, NamedTuple, Optional
 from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
 from api.services import ru_brands, ru_lures
 from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns_suffix_of
-from api.services.hosting_platforms import is_shared_platform_site
+from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 
 logger = logging.getLogger("cleanway.scoring")
 
@@ -227,6 +227,35 @@ def is_hosting_platform_site(domain: str) -> bool:
     PSL-derived set: that also holds restricted registries such as gov.ru,
     where "anyone can publish here" would be a false statement."""
     return is_shared_platform_site((domain or "").lower().strip("."), HOSTING_PLATFORMS)
+
+
+# Platforms that name their customers' hosts themselves (d37rwvwgfzyjhn.cloudfront.net,
+# s-gke-usc1-nssi3-45.firebaseio.com): the label is a machine id, so the
+# name-shape rules have nothing to judge in it. Measured 2026-10-15 on the
+# Tranco top-1M: judging the label would have put 1,114 CloudFront and 112
+# Firebase hosts at 'caution' by name alone, and no phishing in the
+# evaluation sets was on either.
+_PROVIDER_NAMED_SUFFIXES: frozenset[str] = frozenset({"cloudfront.net", "firebaseio.com"})
+
+
+def _tenant_label(domain: str) -> Optional[str]:
+    """The name a customer chose on a dynamic-DNS service (gedivan of
+    gedivan.duckdns.org) or a curated hosting platform (HOSTING_PLATFORMS
+    and data/hosting_platforms.json: polite-tulumba-704e1b of
+    polite-tulumba-704e1b.netlify.app), else None — for registered names,
+    their subdomains, the platforms' own hosts (www.duckdns.org) and the
+    platforms that name hosts themselves (_PROVIDER_NAMED_SUFFIXES).
+
+    Deliberately not the PSL-derived suffixes: those are mostly
+    infrastructure (trafficmanager.net, elb.amazonaws.com) whose host names
+    nobody picked."""
+    d = (domain or "").lower().strip(".")
+    suffix = _dynamic_dns_suffix_of(d)
+    if not suffix:
+        suffix = tenant_suffix_of(d, HOSTING_PLATFORMS)
+        if not suffix or suffix in _PROVIDER_NAMED_SUFFIXES or registrable_domain(d).endswith("." + suffix):
+            return None
+    return d[: -(len(suffix) + 1)].split(".")[-1]
 
 
 def is_trusted_top_domain(domain: str) -> bool:
@@ -816,6 +845,14 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # Name under judgement: the decoded registrable label.
     unicode_base = _extract_base_domain(unicode_domain)
     domain_name = unicode_base.split(".")[0] if "." in unicode_base else unicode_base
+    # On a dynamic-DNS service or a hosting platform the name someone chose
+    # is the tenant's label: the name-shape rules (3.13-3.32) read
+    # 'gedivan' of gedivan.duckdns.org, not 'duckdns', which gave every
+    # *.duckdns.org host +12 (a 5-consonant run, a 1:6 vowel ratio) and
+    # never looked at the tenant's own name (2026-10-15).
+    tenant_label = _tenant_label(ascii_domain)
+    if tenant_label:
+        domain_name = _decode_idn(tenant_label)
 
     # ════════════════════════════════════════════
     # LAYER 1: BLOCKLIST CHECK (instant block)
