@@ -104,6 +104,11 @@ EDGE_CASES = (
     "att-sign-in-1c41ac.webflow.io", "my-xfinitysignin.weebly.com", "novobanco.novoalerta.com",
     "nfinity.com", "myway.com", "comcash.com", "dfinity.org", "trezor.cz", "trezor.top", "olx.ua",
     "att.net", "bellmouth.com", "xfimity.com", "allegrro.pl",
+    # 2026-10-15: tenant lure words with a counter, glued, or support/security
+    "facebooklogin17.blogspot.com", "facebook-login0.blogspot.com", "facebookloginuser.blogspot.com",
+    "facebook-supports.blogspot.com", "gmail-support.netlify.app", "facebook-new-security.blogspot.com",
+    "facebook-benjamin.blogspot.com", "netflix-lake.vercel.app", "facebook-2024.blogspot.com",
+    "mb-way.ns01.info", "gedivan.duckdns.org",
     # malformed / degenerate input must not crash either side
     "a", "xn--", "xn---.com", "xn--a.com", "....xn--p1ai", "ru.com", "a.ru.com",
     # astral-plane letters: one character to Python, two UTF-16 units to JS
@@ -254,6 +259,9 @@ def scorer_data() -> dict:
         "operatorHosts": _sorted(hosting_platforms.OPERATOR_HOSTS),
         "registryOnlyZones": _sorted(scoring._REGISTRY_ONLY_ZONES),
         "hostingTenantBrands": list(scoring._HOSTING_TENANT_BRANDS),
+        # _is_tenant_lure: the extra lure words and the glued-prefix lures.
+        "tenantExtraLures": _sorted(scoring._TENANT_EXTRA_LURES),
+        "tenantGluedLures": list(scoring._TENANT_GLUED_LURES),
         "lureWords": _sorted(ru_lures.LURE_WORDS),
         "lureStems": list(ru_lures.LURE_STEMS),
         "brandLureWords": {n: _sorted(v) for n, v in sorted(scoring._BRAND_LURE_WORDS.items())},

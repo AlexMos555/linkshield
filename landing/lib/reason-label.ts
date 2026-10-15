@@ -68,6 +68,7 @@ const CODE_TO_KEY: Readonly<Record<string, string>> = {
   hex_encoding: "random_name",
   no_mx_record: "not_a_real_business",
   low_dns_ttl: "shifty_setup",
+  dynamic_dns_host: "shifty_setup",
   many_a_records: "shifty_setup",
   excessive_subdomains: "padded_address",
   ml_suspicious: "detector_suspicious",

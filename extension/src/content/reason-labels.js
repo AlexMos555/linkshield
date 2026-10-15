@@ -113,6 +113,7 @@
     no_mx_record: "not_a_real_business",
     // Both are also how CDNs run; the line says "scam networks ALSO use it"
     low_dns_ttl: "shifty_setup",
+    dynamic_dns_host: "shifty_setup",
     many_a_records: "shifty_setup",
     excessive_subdomains: "padded_address",
     deep_subdomains: "padded_address",
