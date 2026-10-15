@@ -55,9 +55,10 @@ project.
 - Vercel shows a CNAME target (typically `cname.vercel-dns.com`).
   Note it down.
 
-### 2. DNS (Squarespace)
+### 2. DNS (Cloudflare)
 
-- Squarespace DNS → Custom Records.
+- Cloudflare dashboard → cleanway.ai → DNS → Records (the zone moved from
+  Squarespace to Cloudflare in 2026-10). Proxy status: DNS only.
 - Add: `Type=CNAME`, `Host=addin`, `Data=cname.vercel-dns.com`,
   `TTL=4 Hrs` (default fine).
 - Save.

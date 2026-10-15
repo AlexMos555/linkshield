@@ -49,7 +49,8 @@ Management-API call.* Without this, launch with accounts is not possible.
 
 **Status 2026-09-13: still open** — SMTP is still Supabase's built-in sender, Resend
 is not wired. What the DNS side needs, so it is not rediscovered: the zone is edited
-in **Squarespace Domains** (not Google Cloud DNS, and not "the registrar" panel).
+in **Squarespace Domains** (not Google Cloud DNS, and not "the registrar" panel) —
+*since the 2026-10 infra move the zone is in **Cloudflare DNS** instead.*
 Resend must verify the **apex** `cleanway.ai` (DMARC is `adkim=s`, strict DKIM
 alignment, so a subdomain-only verification would fail DMARC); its records go on
 `send.cleanway.ai` (return-path MX + SPF TXT) and `resend._domainkey` (DKIM). The
@@ -66,7 +67,8 @@ bounce it.
 
 **Status 2026-09-13: still open** — `dig MX cleanway.ai` is still empty, so
 `support@`, `privacy@`, `legal@` and `business@` all bounce (the landing, the store
-listing and the privacy policy all name them). Records go in Squarespace Domains.
+listing and the privacy policy all name them). Records go in Squarespace Domains
+(since 2026-10: Cloudflare DNS).
 
 **Status 2026-10-13: fixed** — Squarespace email forwarding (Mailgun MX) sends
 `support@`, `hello@`, `security@` and `conduct@` to the founder's inbox; the
@@ -75,6 +77,12 @@ other addresses above are no longer named anywhere in the repo. SPF is now
 `no-reply@cleanway.ai` (DKIM `resend._domainkey`, return path `send.`), which
 satisfies DMARC `p=reject` via aligned DKIM. The landing shows the address by
 default (`landing/lib/support.ts`).
+
+**Status 2026-10-15: moved** — the `cleanway.ai` zone is on Cloudflare DNS and
+the four addresses are Cloudflare Email Routing rules (Squarespace forwarding /
+Mailgun MX are gone; re-check SPF with `dig TXT cleanway.ai`). Resend sends from
+its EU region (Ireland). The privacy policy names Cloudflare and Resend
+(sections 9, 14, 18).
 
 ### 3. Anyone can burn the login-email budget — no CAPTCHA on the auth endpoint
 `POST /auth/v1/otp` is public by design and needs only the anon key, which ships
@@ -140,13 +148,14 @@ simultaneously, without weakening any check. What it took, for the record:
    path filter). `/android`, `/support`, `/api/v1/mobile/version` are live in prod.
 3. **Real SMTP** (blocker #1) — hand Claude the Resend key, or configure it in the
    Supabase dashboard: Project Settings → Auth → SMTP. Verify the apex domain in
-   Resend first (records in Squarespace Domains, see blocker #1). **Do not flip the
+   Resend first (records in Squarespace Domains — Cloudflare DNS since 2026-10 — see blocker #1). **Do not flip the
    CAPTCHA toggle in the same pass** (blocker #3): it is project-wide, so it goes on
    LAST — after the web challenge page ships and the new APK is what people
    download. Until then, keep the send budget in mind: once real SMTP works, an
    unprotected OTP endpoint is the cheapest way to deny sign-in to everyone.
 4. **Mail for `support@`** (blocker #2) — still no MX on 2026-09-13; `privacy@`,
    `legal@`, `business@` are equally dead. Records go in Squarespace Domains.
+   ✅ Fixed 2026-10-13; Cloudflare Email Routing since 2026-10 (blocker #2).
 5. ✅ **Host the APK — DONE 2026-09-01**: GitHub Release `v1.0.0`, asset
    `cleanway-1.0.0-100-arm.apk`. ⏳ **Still open — wire the URL (this is now your
    first move):** `/ru/android` shows «скоро» because `NEXT_PUBLIC_APK_URL` is
