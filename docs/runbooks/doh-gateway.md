@@ -195,10 +195,12 @@ service. In order of value per effort:
    };
    ```
    Notes: the Worker must not log (no `console.log` of the request; Workers
-   Logs off for this route). Behind the proxy the client IP arrives in
-   `X-Forwarded-For`: add Cloudflare's IP ranges
-   (https://www.cloudflare.com/ips/) to `TRUSTED_PROXY_CIDRS`, or every phone
-   shares one rate-limit bucket per Cloudflare edge address. Workers bill per
+   Logs off for this route). Behind the proxy the client IP comes from
+   `CF-Connecting-IP`, which the API believes only when the hop in front of
+   Railway's edge is a Cloudflare address (vendored ranges,
+   `api/data/cloudflare_ips.txt`) — `TRUSTED_PROXY_CIDRS` stays
+   `100.64.0.0/10`. Before proxying `dns.` read
+   `docs/runbooks/cloudflare-proxy.md` (why it stays DNS-only for now). Workers bill per
    request (Paid: $5/month incl. 10M, then $0.30/M) — at 10k phones × ~2k
    queries/day ≈ 600M/month ≈ $180/month; the alternative at that size is
    step 3. Cloudflare already is our upstream, so the proxy adds no new party
@@ -252,8 +254,9 @@ an exception name (Redis trouble; the old list is kept).
 2. External monitor on `/health/doh` (step 1 above).
 3. Privacy policy §11: mention the Quad9 failover (see "Privacy"), or pin
    `DOH_UPSTREAMS` to Cloudflare-only until it does.
-4. Before iOS launch: Cloudflare proxy + the fail-open Worker (step 2), and
-   `TRUSTED_PROXY_CIDRS` extended with Cloudflare's ranges in the same change.
+4. Before iOS launch: Cloudflare proxy + the fail-open Worker (step 2). No
+   `TRUSTED_PROXY_CIDRS` change is needed: the API recognises Cloudflare's
+   ranges itself (`docs/runbooks/cloudflare-proxy.md`).
 5. Later: second region + load balancer (step 3).
 
 

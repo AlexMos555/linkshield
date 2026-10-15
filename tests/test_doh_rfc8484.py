@@ -248,3 +248,25 @@ def test_upstream_down_serves_stale_before_servfail(monkeypatch, client, upstrea
     assert stale.content[3] & 0x0F == 0 and stale.headers["cache-control"] == f"max-age={STALE_ANSWER_TTL}"
     never_seen = client.post("/dns-query", content=query("other.example"), headers=CT)
     assert never_seen.content[3] & 0x0F == 2
+
+
+# ── Behind a shared HTTP cache (Cloudflare, docs/runbooks/cloudflare-proxy.md) ──
+
+def test_a_429_is_never_cacheable(client, upstream, monkeypatch):
+    # A 429 kept by a shared cache would refuse DNS to everyone behind it.
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "doh_rate_limit_per_window", 1)
+    wire = b64url(query("example.org"))
+    resps = [client.get("/dns-query", params={"dns": wire}) for _ in range(3)]
+    limited = [r for r in resps if r.status_code == 429]
+    assert limited, [r.status_code for r in resps]
+    for resp in limited:
+        assert "no-store" in resp.headers.get("cache-control", "")
+
+
+def test_a_get_answer_is_shared_cache_safe(client, upstream):
+    # RFC 8484 §5.1: freshness = smallest TTL; nothing per-client in the answer.
+    upstream["ttls"] = (60,)
+    resp = client.get("/dns-query", params={"dns": b64url(query("example.org"))})
+    assert resp.headers["cache-control"] == "max-age=60"
+    assert "set-cookie" not in resp.headers

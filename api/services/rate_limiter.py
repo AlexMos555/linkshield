@@ -400,6 +400,15 @@ def _extract_client_ip(request: Request) -> str:
     (no proxy list → no way to tell our hops from the client's).
     Production sets it to Railway's egress range (also covers Vercel
     when it sits in front of the API).
+
+    Cloudflare in front (orange cloud, docs/runbooks/cloudflare-proxy.md):
+    the chain is client → Cloudflare edge → Railway edge → app, so the
+    walk's first untrusted hop is a Cloudflare edge address — keying on it
+    would put every user behind that edge into one bucket. When (and only
+    when) that hop is inside Cloudflare's published ranges, the client is
+    CF-Connecting-IP (Cloudflare overwrites it), else the address
+    Cloudflare appended just left of its own hop. The header is never read
+    otherwise: anyone can send it straight to the Railway origin.
     """
     settings = get_settings()
     peer = request.client.host if request.client else None
@@ -423,20 +432,23 @@ def _extract_client_ip(request: Request) -> str:
     from api.services import proxy_trust
     proxy_trust.observe(peer, bool(raw_xff), bool(trusted_cidrs), xff_trusted)
 
+    cf_header = request.headers.get("cf-connecting-ip")
     xff = raw_xff if xff_trusted else None
     if xff:
         hops = [h.strip() for h in xff.split(",") if h.strip()]
         if hops:
             if not trusted_cidrs:
                 return hops[0]
-            return _rightmost_untrusted(hops, trusted_cidrs)
+            return _client_from_hops(hops, trusted_cidrs, cf_header)
+    if cf_header and trusted_cidrs:
+        proxy_trust.observe_cloudflare("cloudflare_header_ignored")
     if peer:
         return peer
     return "unknown"
 
 
-def _rightmost_untrusted(hops: list[str], trusted_cidrs: list[str]) -> str:
-    """The standard right-to-left X-Forwarded-For walk.
+def _client_from_hops(hops: list[str], trusted_cidrs: list[str], cf_header: Optional[str]) -> str:
+    """The standard right-to-left X-Forwarded-For walk, aware of Cloudflare.
 
     Every hop to the right of the client was appended by a proxy we trust,
     so skip those; the first address that is not one of our proxies is the
@@ -444,10 +456,30 @@ def _rightmost_untrusted(hops: list[str], trusted_cidrs: list[str]) -> str:
     client and is never used. A malformed entry is not a trusted proxy, so it
     stops the walk too (our edge never writes one). If every hop is a
     trusted proxy, the leftmost is all we have.
+
+    If that first hop is a Cloudflare edge, the client is CF-Connecting-IP,
+    or (header missing/garbled) the one address Cloudflare appended left of it.
     """
-    for hop in reversed(hops):
-        if not _ip_in_any_cidr(hop, trusted_cidrs):
-            return hop
+    from api.services import proxy_trust
+
+    for i in range(len(hops) - 1, -1, -1):
+        hop = hops[i]
+        # Checked before the trust list, so adding Cloudflare's ranges to
+        # TRUSTED_PROXY_CIDRS (older runbook advice) changes nothing.
+        if proxy_trust.is_cloudflare(hop):
+            cf_ip = proxy_trust.parse_ip(cf_header)
+            if cf_ip is not None:
+                proxy_trust.observe_cloudflare("cloudflare|client=header")
+                return str(cf_ip)
+            proxy_trust.observe_cloudflare("cloudflare|client=xff")
+            # Exactly one step left: what Cloudflare saw. Further left is
+            # client-written, even when it looks like a Cloudflare address.
+            return hops[i - 1] if i > 0 else hop
+        if _ip_in_any_cidr(hop, trusted_cidrs):
+            continue
+        if cf_header:
+            proxy_trust.observe_cloudflare("cloudflare_header_ignored")
+        return hop
     return hops[0]
 
 
