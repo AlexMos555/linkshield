@@ -13,7 +13,7 @@ Data sources (refreshed by scripts/refresh_training_feeds.py, weekly in
   - Held out: every host in HELD_OUT_FILES, by registrable domain, is kept
     out of BOTH classes, so those sets stay an honest evaluation.
 
-Features: 27 numeric features extracted from the domain only
+Features: 29 numeric features extracted from the domain only
   (api/services/ml_features.py, shared with inference — no API calls, the
   model runs locally in <1ms per URL).
 
@@ -35,17 +35,22 @@ from urllib.parse import urlparse
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
 
 # Feature extraction is shared with inference — single source of truth.
 # See api/services/ml_features.py. Training-only code below adds sklearn
 # bits; inference never has to import sklearn.
 from api.services.hosting_platforms import TENANT_SUFFIXES, is_user_content_host  # noqa: E402
 from api.services.ml_features import (  # noqa: E402
+    PLATFORM_ABUSE_RATES_PATH,
+    brand_region_number,
     extract_ml_features,
+    reload_platform_abuse_rates,
     shared_tenant,
     FEATURE_NAMES,
 )
 from api.services.scoring import (  # noqa: E402
+    RU_BRAND_GROUPS,
     _SCORER_SHARED_SUFFIXES,
     _is_under_shared_suffix,
     _ru_registrable_domain,
@@ -54,6 +59,7 @@ from api.services.scoring import (  # noqa: E402
     registrable_domain,
 )
 from api.services.url_features import FEATURES_VERSION  # noqa: E402
+import platform_abuse_rates  # noqa: E402  (ml/, next to this file)
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 DATA_DIR = os.path.join(ROOT, "data")
@@ -91,6 +97,13 @@ TENANT_SHARE = 0.05
 # Pages sites, 88 Blogspot blogs or 40 pages.dev sites, which carry the
 # names people give their sites.
 TENANTS_PER_PLATFORM = 20
+# A platform's abuse rate may only raise the score. Its value is one number
+# per platform, so without the constraint the trees read it as the
+# platform's name and learned each platform's training mix instead: the
+# benign class holds up to TENANTS_PER_PLATFORM popular blogs and the feeds
+# few blog phish, so facebook-login.blogspot.com fell from 0.75 to 0.20
+# although Blogspot's rate is among the highest.
+MONOTONE_CONSTRAINTS = [1 if name == "platform_abuse_rate" else 0 for name in FEATURE_NAMES]
 # Subdomain levels (left of the registrable domain, or of the shared suffix
 # for a tenant) a host-shape sample may have: www.example.com,
 # kvs.gov.spb.ru and foo.github.io are 1, zenit.kfis.gov.spb.ru 2.
@@ -293,6 +306,45 @@ def load_benign_domains(max_n: int = 12000, exclude: Iterable[str] = (),
     return benign
 
 
+def verified_regional_portals(held_out: frozenset[str] = frozenset()) -> list[str]:
+    """Regional state-service portals (brand_region_number 1: gosuslugi29.ru,
+    26gosuslugi.ru) that data/typosquat_targets_ru.json lists as the brand's
+    'official' domains, each with its evidence — benign samples of a shape
+    the feeds and Tranco hardly ever show the model. Held-out ones
+    (gosuslugi26.ru and 13 more in tests/data/ru_heuristics_legit.txt)
+    stay out: they are what the held-out gate scores."""
+    out = {
+        d for g in RU_BRAND_GROUPS for d in g.official
+        if d.isascii() and brand_region_number(d) and registrable_domain(d) not in held_out
+    }
+    return sorted(out)
+
+
+def ensure_platform_abuse_rates(held_out: frozenset[str], refresh: bool = False) -> str:
+    """The rates the model trains on: the committed data/platform_abuse_rates.json
+    as it is, so the model and the file served with it always agree; computed
+    from the feeds (and rewritten) only when the file is missing or `refresh`.
+    Returns the file's sha256 for model_meta.json."""
+    if refresh or not os.path.exists(PLATFORM_ABUSE_RATES_PATH):
+        platform_abuse_rates.refresh(DATA_DIR, held_out, PLATFORM_ABUSE_RATES_PATH)
+    reload_platform_abuse_rates()
+    return platform_abuse_rates.file_sha256(PLATFORM_ABUSE_RATES_PATH)
+
+
+def leave_own_host_out(hosts: list[str], rows: list[list[float]], doc: dict) -> int:
+    """In place: each phishing host's platform_abuse_rate without the host
+    itself (platform_abuse_rates.leave_one_out). Returns how many rows moved.
+    Phishing rows only — a served host is never one of the counted ones."""
+    col = FEATURE_NAMES.index("platform_abuse_rate")
+    moved = 0
+    for host, row in zip(hosts, rows):
+        rate = platform_abuse_rates.leave_one_out(host, doc)
+        if rate is not None:
+            row[col] = rate
+            moved += 1
+    return moved
+
+
 def build_feature_matrix(domains: Iterable[str]) -> tuple[list[str], list[list[float]]]:
     """Rows in FEATURE_NAMES order — the vector ml_scorer.ml_predict() feeds
     the served model for the same domain (tests/test_ml_feature_parity.py)."""
@@ -327,7 +379,7 @@ def _names_only_metrics(hosts: list[str], y_true: np.ndarray, y_proba: np.ndarra
     }
 
 
-def train():
+def train(refresh_platform_rates: bool = False):
     from catboost import CatBoostClassifier
     from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
     from sklearn.model_selection import train_test_split
@@ -343,17 +395,24 @@ def train():
     # Exclude any benign that also appears in the phishing feed (compromised-legit
     # domains show up in both) so labels stay clean.
     benign = load_benign_domains(12000, exclude=phishing, held_out=held_out)
+    portals = [d for d in verified_regional_portals(held_out) if d not in benign and d not in phishing]
+    benign += portals
+    rates_sha = ensure_platform_abuse_rates(held_out, refresh_platform_rates)
     n_ips = sum(_is_ip_literal(d) for d in phishing)
     n_shapes = sum(bool(_subdomain_labels(d)) or bool(_ru_registrable_domain(d)) for d in benign)
     n_tenants = sum(shared_tenant(d)[0] is not None for d in benign)
     print(f"  Held out:         {len(held_out)} registrable domains (evaluation sets)")
     print(f"  Phishing domains: {len(phishing)} ({len(phishing) - n_ips} names, {n_ips} IPs)")
     print(f"  Benign domains:   {len(benign)} ({n_shapes} host shapes, {n_tenants} of them hosting tenants)")
+    print(f"  Verified regional portals: {portals}")
+    print(f"  Platform abuse rates: {PLATFORM_ABUSE_RATES_PATH} sha256 {rates_sha[:12]}")
 
     # ── Extract features ──
     print("\nExtracting features...")
     start = time.time()
     phishing, X_phish = build_feature_matrix(phishing)
+    n_loo = leave_own_host_out(phishing, X_phish, platform_abuse_rates.load(PLATFORM_ABUSE_RATES_PATH))
+    print(f"  platform_abuse_rate left its own host out for {n_loo} phishing tenants")
     benign, X_benign = build_feature_matrix(benign)
     hosts = phishing + benign
     X = np.array(X_phish + X_benign)
@@ -381,6 +440,7 @@ def train():
         auto_class_weights="Balanced",
         random_seed=42,
         verbose=100,
+        monotone_constraints=MONOTONE_CONSTRAINTS,
     )
     model.fit(X_train, y_train, eval_set=(X_test, y_test), early_stopping_rounds=50)
 
@@ -456,6 +516,9 @@ def train():
             "held_out_registrable_domains": len(held_out),
             # The suffixes the tenant feature knows (ml_features.shared_tenant).
             "shared_suffixes": len(_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES),
+            # The platform_abuse_rate values the model was trained on.
+            "platform_abuse_rates_sha256": rates_sha,
+            "verified_regional_portals": len(portals),
         }, f, indent=2)
     print(f"Metadata saved to: {meta_path}")
 
@@ -464,4 +527,10 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--refresh-platform-rates", action="store_true",
+                    help="recompute data/platform_abuse_rates.json from the feeds before training "
+                         "(commit it with the model)")
+    train(ap.parse_args().refresh_platform_rates)

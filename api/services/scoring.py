@@ -229,6 +229,22 @@ def is_hosting_platform_site(domain: str) -> bool:
     return is_shared_platform_site((domain or "").lower().strip("."), HOSTING_PLATFORMS)
 
 
+def _tenant_label(domain: str) -> Optional[str]:
+    """The tenant's own label on a dynamic-DNS service (gedivan of
+    gedivan.duckdns.org) or a shared hosting suffix the ML model knows
+    (ml_features.shared_tenant: ledgerlogin-home of
+    ledgerlogin-home.wasmer.app), else None — for registered names, their
+    subdomains and the platforms' own hosts (www.duckdns.org)."""
+    d = (domain or "").lower().strip(".")
+    suffix = _dynamic_dns_suffix_of(d)
+    if suffix:
+        return d[: -(len(suffix) + 1)].split(".")[-1]
+    # Imported here: ml_features imports this module.
+    from api.services.ml_features import shared_tenant
+
+    return shared_tenant(d)[1]
+
+
 def is_trusted_top_domain(domain: str) -> bool:
     """The ONE rule for the instant-safe allowlist short-circuit.
 
@@ -816,6 +832,14 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # Name under judgement: the decoded registrable label.
     unicode_base = _extract_base_domain(unicode_domain)
     domain_name = unicode_base.split(".")[0] if "." in unicode_base else unicode_base
+    # On a dynamic-DNS service or a hosting platform the name someone chose
+    # is the tenant's label: the name-shape rules (3.13-3.32) read
+    # 'gedivan' of gedivan.duckdns.org, not 'duckdns', which gave every
+    # *.duckdns.org host +12 (a 5-consonant run, a 1:6 vowel ratio) and
+    # never looked at a generated tenant name (2026-10-15).
+    tenant_label = _tenant_label(ascii_domain)
+    if tenant_label:
+        domain_name = _decode_idn(tenant_label)
 
     # ════════════════════════════════════════════
     # LAYER 1: BLOCKLIST CHECK (instant block)
@@ -1586,8 +1610,17 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         if ml_result:
             ml_prob = ml_result["phishing_probability"]
             ml_confidence = ml_result["confidence"]
+            from api.services.ml_features import brand_region_number
 
-            if ml_prob > 0.85 and ml_confidence > 0.7:
+            if ml_prob > 0.6 and brand_region_number(ascii_domain):
+                # A state-service brand with a region number (gosuslugi26.ru,
+                # 51gosuslugi.ru) is how the regions name their portals, and
+                # the model has three verified ones to learn that from: the
+                # 2026-10-12 retrain scored all 14 held-out ones above 0.6.
+                # Its weight is withheld; the name rules still judge the name
+                # (gosuslugi77.ru, not an official portal, is a typosquat).
+                pass
+            elif ml_prob > 0.85 and ml_confidence > 0.7:
                 score += 35
                 reasons.append(DomainReason(
                     signal="ml_high_risk", weight=35,

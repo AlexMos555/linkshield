@@ -12,14 +12,20 @@ from here, guaranteeing the feature contract stays in sync.
 """
 from __future__ import annotations
 
+import json
+import logging
+import os
+import re
 from typing import Optional
 
-from api.services.hosting_platforms import tenant_suffix_of
+from api.services import ru_brands
+from api.services.hosting_platforms import dynamic_dns_suffix_of, tenant_suffix_of
 from api.services.scoring import (
     _SCORER_SHARED_SUFFIXES,
     _check_brand_in_subdomain,
     _check_homograph,
     _check_typosquatting_v2,
+    _decode_idn,
     _digit_ratio,
     _extract_tld,
     _has_fake_tld_in_subdomain,
@@ -40,6 +46,12 @@ from api.services.url_features import (
     consecutive_consonants_max,
     trigram_uniqueness,
     vowel_consonant_ratio,
+)
+
+logger = logging.getLogger("cleanway.ml_features")
+
+PLATFORM_ABUSE_RATES_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", "data", "platform_abuse_rates.json"
 )
 
 
@@ -85,6 +97,115 @@ def shared_tenant(domain: str) -> tuple[Optional[str], Optional[str]]:
     return suffix, dom[: -(len(suffix) + 1)].split(".")[-1]
 
 
+def platform_of(domain: str) -> Optional[str]:
+    """The hosting or dynamic-DNS platform `domain` is a customer's site on:
+    the shared suffix (shared_tenant) or the dynamic-DNS service
+    (hosting_platforms.dynamic_dns_suffix_of), else None — also for the
+    platform's own hosts."""
+    suffix, _ = shared_tenant(domain)
+    return suffix or dynamic_dns_suffix_of(domain)
+
+
+class PlatformAbuseRates(dict):
+    """platform -> rate, and `default`: the rate of a platform the file does
+    not list."""
+
+    default: float = 0.0
+
+
+def load_platform_abuse_rates(path: str = PLATFORM_ABUSE_RATES_PATH) -> PlatformAbuseRates:
+    """data/platform_abuse_rates.json (ml/platform_abuse_rates.py writes it).
+    A missing or malformed file leaves every rate 0 and says so: the model
+    was trained on the file's values, so serving without it moves every
+    tenant's score."""
+    out = PlatformAbuseRates()
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = json.load(f)
+        out.update({str(k).lower(): float(v) for k, v in doc["rates"].items()})
+        out.default = float(doc.get("default", 0.0))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        logger.warning("platform_abuse_rates.json not loaded (%s) — platform_abuse_rate is 0", e)
+        out.clear()
+        out.default = 0.0
+    return out
+
+
+PLATFORM_ABUSE_RATES: PlatformAbuseRates = load_platform_abuse_rates()
+
+
+def reload_platform_abuse_rates(path: str = PLATFORM_ABUSE_RATES_PATH) -> None:
+    """Re-read the file after ml/train_model.py has rewritten it."""
+    fresh = load_platform_abuse_rates(path)
+    PLATFORM_ABUSE_RATES.clear()
+    PLATFORM_ABUSE_RATES.update(fresh)
+    PLATFORM_ABUSE_RATES.default = fresh.default
+
+
+def platform_abuse_rate(domain: str) -> float:
+    """How much phishing the host's platform carries for its popular
+    legitimate sites, from data/platform_abuse_rates.json: (phishing hosts
+    on it + smoothing x prior) / (its tenants in the Tranco top-1M +
+    smoothing). The file's default (the prior) for a platform it does not
+    list; 0 for a host that is not a platform's customer.
+
+    Since features_version 5 a tenant is read by its own label, and a
+    generic one (hp9316.craftum.io, a facebook-* blog) gave the model
+    nothing: free-hosting phishing scored 0.3-0.8 where it had scored
+    0.93-0.99 (2026-10-15). The platform's own record is what is left.
+    """
+    platform = platform_of(domain)
+    if not platform:
+        return 0.0
+    return PLATFORM_ABUSE_RATES.get(platform, PLATFORM_ABUSE_RATES.default)
+
+
+def _state_service_names(path=ru_brands.DATA_PATH) -> frozenset[str]:
+    """The names of the brands data/typosquat_targets_ru.json lists for
+    government-services fraud (a 'fraud' source filed under 'government
+    services' — gosuslugi and госуслуги on 2026-10-15)."""
+    try:
+        brands = json.loads(path.read_text(encoding="utf-8"))["brands"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        logger.warning("%s not loaded (%s) — brand_region_number is 0", path, e)
+        return frozenset()
+    return frozenset(
+        name.lower()
+        for brand in brands.values()
+        if any("government service" in str(v).lower() for v in (brand.get("fraud") or {}).values())
+        for name in brand.get("names", {})
+    )
+
+
+STATE_SERVICE_NAMES: frozenset[str] = _state_service_names()
+# A region's number: 1-99, written with or without a leading zero (01-09).
+_REGION = r"(?:0[1-9]|[1-9][0-9]?)"
+_REGIONAL_PORTAL = re.compile(
+    rf"^(?:(?:{'|'.join(map(re.escape, sorted(STATE_SERVICE_NAMES)))}){_REGION}"
+    rf"|{_REGION}(?:{'|'.join(map(re.escape, sorted(STATE_SERVICE_NAMES)))}))$"
+) if STATE_SERVICE_NAMES else None
+
+
+def brand_region_number(domain: str) -> float:
+    """1 when the registered name is a state-service brand with a region
+    number in front or behind and nothing else (gosuslugi26.ru,
+    51gosuslugi.ru, госуслуги74.рф), else 0.
+
+    That is how Russian regions name their state-service portals: 14 of
+    them are in tests/data/ru_heuristics_legit.txt and three more in the
+    brand's 'official' list. The 2026-10-12 retrain scored all 14 above 0.6
+    (a brand's name plus digits reads like sberbank24.ru), and the held-out
+    gate refused it. With the shape a feature, the model can tell it apart,
+    and the scorer does not let the model alone flag it (scoring 3.34).
+    A tenant's site (gosuslugi26.tw1.ru) is 0: its registered name is the
+    platform's.
+    """
+    if _REGIONAL_PORTAL is None:
+        return 0.0
+    _, name, _ = host_shape(domain)
+    return 1.0 if _REGIONAL_PORTAL.match(_decode_idn(name).lower()) else 0.0
+
+
 def has_suspicious_keyword(name: str) -> bool:
     """scoring._check_suspicious_keywords' test, on the registered name.
 
@@ -104,7 +225,9 @@ def extract_ml_features(domain: str) -> dict[str, float]:
     (user_part) count from the registrable domain. On a shared hosting
     suffix (shared_tenant) the lexical features read the tenant's label and
     the suffix's popularity is not the tenant's.
-    features_version 5 (api.services.url_features.FEATURES_VERSION).
+    Version 7 adds the platform's abuse rate (platform_abuse_rate) and the
+    regional state-service portal shape (brand_region_number).
+    features_version 7 (api.services.url_features.FEATURES_VERSION).
     """
     base, name, sub_labels = host_shape(domain)
     tld = _extract_tld(domain)
@@ -161,6 +284,10 @@ def extract_ml_features(domain: str) -> dict[str, float]:
 
     # ── Max brand similarity (global and Russian brands) ──
     f["max_brand_similarity"] = _max_brand_similarity(user_part)
+
+    # ── features_version 7 ──
+    f["platform_abuse_rate"] = platform_abuse_rate(domain)
+    f["brand_region_number"] = brand_region_number(domain)
 
     return f
 

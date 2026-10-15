@@ -309,7 +309,13 @@ def char_diversity(s: str) -> float:
 #    transliterated lure word (sberbank-bonus, ozon-priz, госуслуги-лк,
 #    yandex-pay-login): see api/services/ru_lures.py (PR #64, numbered 4
 #    there before this branch's 4 and 5 merged). Retrained.
-FEATURES_VERSION = 6
+# 7 (2026-10-15): two model features (ml_features): platform_abuse_rate —
+#    a tenant's platform's phishing hosts per Tranco tenant, from
+#    data/platform_abuse_rates.json (ml/platform_abuse_rates.py), 0 off a
+#    platform — and brand_region_number, 1 for a state-service brand with a
+#    region number as the whole registered name (gosuslugi26.ru). The logged
+#    row is unchanged. Retrained.
+FEATURES_VERSION = 7
 
 
 def extract_features(domain: str, signals: dict) -> dict[str, float]:
