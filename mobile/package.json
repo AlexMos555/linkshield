@@ -35,7 +35,7 @@
     "i18next": "^23.15.0",
     "punycode": "^2.3.1",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react-dom": "19.1.9",
     "react-i18next": "^15.0.0",
     "react-native": "0.81.5",
     "react-native-get-random-values": "~1.11.0",
