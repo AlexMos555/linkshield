@@ -22,7 +22,7 @@
     "build:emails": "tsx scripts/build-emails.mjs"
   },
   "devDependencies": {
-    "tsx": "^4.19.0"
+    "tsx": "^4.23.15"
   },
   "engines": {
     "node": ">=18"
