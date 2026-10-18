@@ -107,7 +107,8 @@
       "connect.secure.wellsfargo.com"
     ],
     "known_favicon_hashes": [
-      "2420e2dd77fbe0494070da2c"
+      "2420e2dd77fbe0494070da2c",
+      "8670da3c95c03b59b091eac8"
     ]
   },
   "bankofamerica": {
@@ -176,7 +177,8 @@
     ],
     "known_favicon_hashes": [
       "9ca2236bb4ec1714e173cecb",
-      "5c2b47f43cadef4d9e8727e3"
+      "5c2b47f43cadef4d9e8727e3",
+      "279419b97fa7c89075bb3145"
     ]
   },
   "fedex": {
@@ -186,7 +188,8 @@
     ],
     "known_favicon_hashes": [
       "f644a556676907e89b2144cf",
-      "ece22f1455bba697ca6b50db"
+      "ece22f1455bba697ca6b50db",
+      "437ef929a63eac5b2c5be708"
     ]
   },
   "linkedin": {
@@ -196,7 +199,8 @@
     ],
     "known_favicon_hashes": [
       "19b079c09197fba68d021fa3",
-      "19afb2a51408c29a7c654967"
+      "19afb2a51408c29a7c654967",
+      "254a2a36f43cc539cb6864b9"
     ]
   },
   "twitter": {
