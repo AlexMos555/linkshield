@@ -1,7 +1,10 @@
 """The blocklist's licence switches (plan §4): prepared, not flipped.
 
-  * BLOCKLIST_LICENSED_ONLY=1 leaves URLhaus, OpenPhish and phishing.army out
-    of the build; unset, every feed is fetched exactly as before.
+  * BLOCKLIST_LICENSED_ONLY=1 leaves OpenPhish and phishing.army out of the
+    build; unset, every feed is fetched exactly as before.
+  * URLhaus is retired for good (2026-10-21: abuse.ch answers 410 Gone without
+    a personal key, and its terms are not-for-profit only): never fetched,
+    and the published names only it backed leave on the next publish.
   * A feed left out is not an outage: nothing is carried for it, its stored
     health state goes, and the names only it backed leave with that publish
     instead of lingering in retention.
@@ -70,7 +73,7 @@ def _requested(monkeypatch) -> list[str]:
 def test_defaults_keep_every_feed_and_no_phishtank():
     assert rdd.excluded_feeds({}) == frozenset()
     assert [spec[0] for spec in rdd._feed_specs()] == [
-        "URLhaus", "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt", "TweetFeed", "CERT Polska",
+        "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt", "TweetFeed", "CERT Polska",
         "PhishDestroy",
     ]
     assert rdd.phishtank_key({}) == ""
@@ -91,12 +94,12 @@ def test_exclude_env_takes_feed_names_and_ignores_typos(caplog):
     assert rdd.excluded_feeds(env) == frozenset({"TweetFeed", "CSIRT Italia"})
     assert "'tweetfeed' is not a feed name" in caplog.text
     assert [spec[0] for spec in rdd._feed_specs(frozenset({"TweetFeed"}))] == [
-        "URLhaus", "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt", "CERT Polska", "PhishDestroy",
+        "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt", "CERT Polska", "PhishDestroy",
     ]
 
 
 @pytest.mark.asyncio
-async def test_by_default_the_three_feeds_are_fetched_as_before(monkeypatch):
+async def test_by_default_the_two_feeds_are_fetched_as_before(monkeypatch):
     fake = _FakeRedis()
     _world(monkeypatch, fake, extra={rdd.PHISHING_ARMY: "\n".join(ARMY)})
     seen = _requested(monkeypatch)
@@ -106,19 +109,20 @@ async def test_by_default_the_three_feeds_are_fetched_as_before(monkeypatch):
 
     monkeypatch.setattr(rdd, "_fetch_conditional", _never)
     assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
-    assert {rdd.URLHAUS_CSV, rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY} <= set(seen)
+    assert {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY} <= set(seen)
+    assert not any("abuse.ch" in url for url in seen), "URLhaus is retired"
     assert set(ARMY) <= _published(fake)
 
 
 @pytest.mark.asyncio
-async def test_licensed_only_leaves_the_three_feeds_out_of_the_build(monkeypatch, caplog):
+async def test_licensed_only_leaves_the_two_feeds_out_of_the_build(monkeypatch, caplog):
     caplog.set_level(logging.INFO)
     fake = _FakeRedis()
     _world(monkeypatch, fake, extra={rdd.PHISHING_ARMY: "\n".join(ARMY)}, env={rdd.LICENSED_ONLY_ENV: "1"})
     seen = _requested(monkeypatch)
     assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
-    assert not {rdd.URLHAUS_CSV, rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY} & set(seen)
-    assert "licence switch: leaving out OpenPhish, URLhaus, phishing.army" in caplog.text
+    assert not {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY} & set(seen)
+    assert "licence switch: leaving out OpenPhish, phishing.army" in caplog.text
     assert set(BASE) <= _published(fake)
     assert not set(ARMY) & _published(fake)
     assert "FEED DEGRADED" not in caplog.text
@@ -164,7 +168,7 @@ async def test_an_excluded_feed_is_not_an_outage_and_takes_its_names_with_it(mon
                           force=True)
     assert code == 0
     assert "FEED DEGRADED" not in caplog.text
-    assert "OpenPhish, URLhaus, phishing.army not a source this run — forgetting their state" in caplog.text
+    assert "OpenPhish, phishing.army not a source this run — forgetting their state" in caplog.text
     assert "phishing.army" not in fake.data.get(feed_health.FEED_DOWN_SINCE_KEY, {})
     assert "phishing.army" not in fake.data.get(feed_health.FEED_COUNTS_KEY, {})
     assert not set(ARMY) & _published(fake)
@@ -444,3 +448,73 @@ async def test_an_empty_phishtank_dump_is_a_failed_fetch_not_an_empty_feed():
 
     with pytest.raises(ValueError, match="parsed to no hosts"):
         await phishtank_feed.fetch_hosts(None, "k3y", T0, _empty)
+
+
+# ── URLhaus, retired 2026-10-21 ──────────────────────────────────────────────
+#
+# abuse.ch stopped anonymous downloads (csv_online answers 410 Gone) and its
+# terms are not-for-profit only. Production's last state before the change:
+# URLhaus marked down since the first 410, and a backing record naming the
+# published hosts only URLhaus vouched for.
+
+URLHAUS_ONLY = [f"malware{i}.top" for i in range(40)]
+# Phishunt stays healthy on both runs (a feed that shrinks under half its
+# last size is an outage, which would hold every departure).
+PHISHUNT_STABLE = "\n".join(f"https://hunt{i}.top/x" for i in range(100))
+
+
+def test_urlhaus_is_no_source_and_no_feed_name():
+    assert "URLhaus" not in rdd.FEED_NAMES
+    assert "URLhaus" not in {spec[0] for spec in rdd._feed_specs()}
+    assert "URLhaus" in rdd.RETIRED_FEEDS
+    assert not hasattr(rdd, "URLHAUS_CSV")
+    assert rdd.NON_COMMERCIAL_FEEDS == frozenset({"OpenPhish", "phishing.army"})
+
+
+def test_urlhaus_in_the_exclude_env_is_ignored_not_an_error():
+    assert rdd.excluded_feeds({rdd.EXCLUDE_FEEDS_ENV: "URLhaus"}) == frozenset()
+
+
+async def _production_before_retirement(monkeypatch, fake) -> None:
+    """A healthy publish with URLHAUS_ONLY on the list, then the state the
+    410s left behind: URLhaus down for 13 h and its backing record."""
+    extra = {rdd.PHISHUNT_FEED: "\n".join([PHISHUNT_STABLE] + [f"https://{h}/x" for h in URLHAUS_ONLY])}
+    assert await _refresh(monkeypatch, fake, T0, extra=extra) == 0
+    assert set(URLHAUS_ONLY) <= _published(fake)
+    await feed_backing.save(fake, {"URLhaus": feed_backing.build(URLHAUS_ONLY, T0)},
+                            rdd.FEED_NAMES | {"URLhaus"})
+    # Phishunt's own record must not vouch for them, or they would be its
+    # ordinary departures (retained) rather than URLhaus's (leaving).
+    await fake.hdel(feed_backing.BACKING_KEY, "Phishunt")
+    await fake.hset(feed_health.FEED_DOWN_SINCE_KEY, {"URLhaus": str(T0 - 7 * 3600)})
+
+
+@pytest.mark.asyncio
+async def test_retired_urlhaus_is_not_an_outage_and_its_names_leave(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    await _production_before_retirement(monkeypatch, fake)
+
+    caplog.clear()
+    code = await _refresh(monkeypatch, fake, T0 + 6 * 3600, extra={rdd.PHISHUNT_FEED: PHISHUNT_STABLE})
+    assert code == 0, "13 h of 410s would have exited 6; a retired feed is not down"
+    assert "FEED DEGRADED" not in caplog.text
+    assert "URLhaus not a source this run — forgetting its state" in caplog.text
+    assert "URLhaus" not in fake.data.get(feed_health.FEED_DOWN_SINCE_KEY, {})
+    assert "40 published names only URLhaus backed leave with this publish" in caplog.text
+    assert not set(URLHAUS_ONLY) & _published(fake), "not carried, not retained"
+    assert not set(URLHAUS_ONLY) & set(fake.data.get(retention.LAST_SEEN_KEY, {}))
+    assert not _phone_blocks(fake, URLHAUS_ONLY[0])
+    assert set(BASE) <= _published(fake)
+    assert "URLhaus" not in fake.data.get(feed_backing.BACKING_KEY, {}), "its record goes with the publish"
+
+
+@pytest.mark.asyncio
+async def test_a_name_a_live_feed_still_lists_stays_after_urlhaus_retires(monkeypatch):
+    fake = _FakeRedis()
+    await _production_before_retirement(monkeypatch, fake)
+    kept = URLHAUS_ONLY[0]
+    assert await _refresh(monkeypatch, fake, T0 + 6 * 3600,
+                          extra={rdd.PHISHUNT_FEED: f"{PHISHUNT_STABLE}\nhttps://{kept}/x"}) == 0
+    assert kept in _published(fake)
+    assert not set(URLHAUS_ONLY[1:]) & _published(fake)
