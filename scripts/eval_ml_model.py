@@ -2,8 +2,11 @@
 """What the domain ML model says on names it never trained on — alone, and
 inside the name-only pipeline.
 
-The served model (data/phishing_model.onnx) is retrained weekly on URLhaus +
-OpenPhish hosts against a Tranco sample (ml/train_model.py). Its test AUC in
+The served model (data/phishing_model.onnx) is retrained weekly against a
+Tranco sample (ml/train_model.py) — on the commercially licensed feeds in
+scripts/refresh_training_feeds.py since 2026-10-21, on URLhaus + OpenPhish
+before; a retrain replaces it only when it is no worse on held-out real
+sites. Its test AUC in
 data/model_meta.json is measured on a split of THAT corpus. This script asks
 the question the founder needs answered instead: on Russian traffic and on
 fresh phishing from sources the training never reads, is the model helping,

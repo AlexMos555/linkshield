@@ -3,7 +3,9 @@ Train CatBoost ML model for phishing URL detection.
 
 Data sources (refreshed by scripts/refresh_training_feeds.py, weekly in
 .github/workflows/retrain-ml.yml; all three files are gitignored):
-  - Positive (phishing): data/phishtank.csv — URLhaus full dump + OpenPhish
+  - Positive (phishing): data/phishtank.csv — PhishDestroy, CERT Polska,
+                         TweetFeed and Phishunt, capped per feed (until
+                         2026-10-21 URLhaus + OpenPhish, both non-commercial)
   - Negative (benign):   data/top-1m.csv — Tranco top-1M registrable domains
                          data/top-1m-subdomains.csv — Tranco top-1M with
                          subdomains, for the host-shape stratum: names under
@@ -12,6 +14,10 @@ Data sources (refreshed by scripts/refresh_training_feeds.py, weekly in
                          load_benign_domains)
   - Held out: every host in HELD_OUT_FILES, by registrable domain, is kept
     out of BOTH classes, so those sets stay an honest evaluation.
+  - Replacement guard: the committed model is overwritten only when the
+    candidate flags no more held-out real sites than it does (see
+    REPLACE_TOLERANCE); otherwise train() prints a ::warning:: and leaves
+    data/ as it was. `--replace-anyway` overrides.
 
 Features: 27 numeric features extracted from the domain only
   (api/services/ml_features.py, shared with inference — no API calls, the
@@ -91,6 +97,15 @@ TENANT_SHARE = 0.05
 # Pages sites, 88 Blogspot blogs or 40 pages.dev sites, which carry the
 # names people give their sites.
 TENANTS_PER_PLATFORM = 20
+# The same cap on the phishing side. The domain feeds the corpus has come
+# from since 2026-10-21 (scripts/refresh_training_feeds.py) are a quarter
+# hosting tenants (pages.dev, vercel.app, blogspot.com …): against 5% in the
+# benign class that made "is a tenant" a phishing feature, and the model
+# scored official-shop.myshopify.com 0.59 and myshop.tw1.ru 0.66. Capped
+# near the benign share, the tenant's own label decides — which is what the
+# tenant guard in retrain-ml.yml checks.
+PHISH_TENANT_SHARE = 0.08
+PHISH_TENANTS_PER_PLATFORM = 60
 # Subdomain levels (left of the registrable domain, or of the shared suffix
 # for a tenant) a host-shape sample may have: www.example.com,
 # kvs.gov.spb.ru and foo.github.io are 1, zenit.kfis.gov.spb.ru 2.
@@ -125,6 +140,64 @@ def load_held_out(paths: Iterable[str] = HELD_OUT_FILES) -> frozenset[str]:
     return frozenset(regs)
 
 
+# ── Replacement guard ──
+#
+# The gates in retrain-ml.yml judge a few named hosts and the VERDICT on the
+# held-out Russian sets, where the name rules mask most of what the model
+# does. On 2026-10-21 a model trained on the commercially clean corpus
+# (refresh_training_feeds.PHISHING_SOURCES) passed all of them and still
+# scored 41 of the 270 real Russian sites in data/benchmark_legit_ru.txt
+# and 23 of the 300 in ru_heuristics_legit.txt above 0.6; the served model
+# scores none of them there. So train() compares the candidate's own
+# probabilities on those held-out real sites with the committed model's and
+# leaves the committed files alone when the candidate flags more than
+# REPLACE_TOLERANCE extra — the gates then re-check the served model and the
+# commit step finds nothing to commit. `--replace-anyway` overrides.
+LEGIT_FLAG_THRESHOLD = 0.6  # scoring's ml_suspicious bar
+REPLACE_TOLERANCE = 3
+
+
+def load_held_out_legit() -> list[str]:
+    """The real sites among the held-out sets (ru_heuristics_legit and the
+    weekly benchmark's RU sample), deduplicated, in file order."""
+    out: list[str] = []
+    for path in (HELD_OUT_FILES[0], HELD_OUT_FILES[2]):
+        with open(path, encoding="utf-8") as f:
+            for host in _hosts_in_file(f):
+                if host not in out:
+                    out.append(host)
+    return out
+
+
+def replacement_decision(candidate_flagged: int, committed_flagged: Optional[int], n: int) -> tuple[bool, str]:
+    """(replace the committed model?, why). None for the committed count
+    means it could not be scored on today's features — nothing to compare."""
+    if committed_flagged is None:
+        return True, "no comparable committed model (feature schema changed) — the gates judge the candidate"
+    if candidate_flagged > committed_flagged + REPLACE_TOLERANCE:
+        return False, (f"candidate scores {candidate_flagged} of {n} held-out real sites above "
+                       f"{LEGIT_FLAG_THRESHOLD}, the served model {committed_flagged} — keeping the served model")
+    return True, (f"candidate {candidate_flagged} / served {committed_flagged} of {n} held-out real sites "
+                  f"above {LEGIT_FLAG_THRESHOLD}")
+
+
+def _committed_flagged(hosts_matrix: np.ndarray) -> Optional[int]:
+    """How many held-out real sites the committed .cbm scores above the bar,
+    or None when it was trained on another feature schema or is unreadable."""
+    from catboost import CatBoostClassifier
+    try:
+        with open(os.path.join(MODEL_DIR, "model_meta.json")) as f:
+            meta = json.load(f)
+        if meta.get("features_version") != FEATURES_VERSION or meta.get("n_features") != len(FEATURE_NAMES):
+            return None
+        committed = CatBoostClassifier()
+        committed.load_model(os.path.join(MODEL_DIR, "phishing_model.cbm"))
+        return int((committed.predict_proba(hosts_matrix)[:, 1] > LEGIT_FLAG_THRESHOLD).sum())
+    except Exception as e:  # noqa: BLE001 — no committed model to compare with is not a failure
+        print(f"  committed model not comparable ({type(e).__name__}: {e})")
+        return None
+
+
 def _read_tranco(path: str) -> list[tuple[int, str]]:
     ranked = []
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
@@ -148,11 +221,18 @@ def load_phishing_domains(max_n: int = 12000, held_out: frozenset[str] = frozens
     names saw 28% of the phishing names there were, and its held-out AUC was
     mostly an IP-versus-name score. IPs still fill the class, since they are
     what the analyzer passes for an IP-based URL.
+
+    Hosting tenants beyond PHISH_TENANT_SHARE of the class, or beyond
+    PHISH_TENANTS_PER_PLATFORM on one platform, are left out (in file order,
+    which refresh_training_feeds interleaves by source).
     """
     csv_path = os.path.join(DATA_DIR, "phishtank.csv")
     seen: set[str] = set()
     names: list[str] = []
     ips: list[str] = []
+    max_tenants = int(max_n * PHISH_TENANT_SHARE)
+    tenants = 0
+    per_platform: dict[str, int] = {}
     with open(csv_path, "r", encoding="utf-8", errors="ignore") as f:
         for row in csv.DictReader(f):
             try:
@@ -165,6 +245,12 @@ def load_phishing_domains(max_n: int = 12000, held_out: frozenset[str] = frozens
             if host in seen or registrable_domain(host) in held_out:
                 continue
             seen.add(host)
+            platform = shared_tenant(host)[0]
+            if platform:
+                if tenants >= max_tenants or per_platform.get(platform, 0) >= PHISH_TENANTS_PER_PLATFORM:
+                    continue
+                tenants += 1
+                per_platform[platform] = per_platform.get(platform, 0) + 1
             (ips if _is_ip_literal(host) else names).append(host)
     return (names + ips)[:max_n]
 
@@ -327,7 +413,7 @@ def _names_only_metrics(hosts: list[str], y_true: np.ndarray, y_proba: np.ndarra
     }
 
 
-def train():
+def train(replace_anyway: bool = False):
     from catboost import CatBoostClassifier
     from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
     from sklearn.model_selection import train_test_split
@@ -424,6 +510,19 @@ def train():
     elapsed = time.time() - start
     print(f"  {elapsed/1000*1000:.2f}ms per prediction (1K iterations)")
 
+    # ── Replacement guard (see REPLACE_TOLERANCE) ──
+    legit_hosts, X_legit = build_feature_matrix(load_held_out_legit())
+    X_legit = np.array(X_legit)
+    candidate_flagged = int((model.predict_proba(X_legit)[:, 1] > LEGIT_FLAG_THRESHOLD).sum())
+    replace, why = replacement_decision(candidate_flagged, _committed_flagged(X_legit), len(legit_hosts))
+    print(f"\nReplacement guard: {why}")
+    if not replace:
+        if replace_anyway:
+            print("  --replace-anyway: replacing it regardless")
+        else:
+            print(f"::warning::retrain held back — {why}. The served model stays; nothing will be committed.")
+            return
+
     # ── Save model ──
     model_path = os.path.join(MODEL_DIR, "phishing_model.cbm")
     model.save_model(model_path)
@@ -464,4 +563,4 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    train(replace_anyway="--replace-anyway" in sys.argv[1:])
