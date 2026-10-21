@@ -35,7 +35,7 @@ try {
   execFileSync(
     "npx",
     [
-      "tsc", src, "--outDir", out, "--rootDir", root,
+      "tsc", "--ignoreConfig", src, "--outDir", out, "--rootDir", root,
       "--module", "esnext", "--target", "es2020", "--moduleResolution", "bundler", "--skipLibCheck",
     ],
     { cwd: root, stdio: "inherit" },

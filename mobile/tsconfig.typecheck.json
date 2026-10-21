@@ -14,11 +14,18 @@
   // so putting it there makes the bundler resolve the `react` *module* to a
   // types-only directory and the app dies at startup with
   // "While trying to resolve module `react`". Verified the hard way.
+  //
+  // SDK 58 (react 19.3 / react-native 0.88): landing keeps react 19.2 at the
+  // root, so npm nests mobile's react-native under mobile/node_modules while
+  // many expo-* packages still hoist to the root. Their `import "react-native"`
+  // then finds no react-native (CI) or a stale one further up the disk, so the
+  // compile pins react-native the same way it pins react.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
-      "react": ["./node_modules/@types/react"]
+      "react": ["./node_modules/@types/react"],
+      "react-native": ["./node_modules/react-native/types_generated/index.d.ts"]
     }
   }
 }

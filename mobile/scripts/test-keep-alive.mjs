@@ -42,7 +42,7 @@ function check(name, got, want) {
 try {
   execFileSync(
     "npx",
-    ["tsc", statusSrc, rowsSrc, "--outDir", out, "--rootDir", root, "--module", "esnext", "--target", "es2020",
+    ["tsc", "--ignoreConfig", statusSrc, rowsSrc, "--outDir", out, "--rootDir", root, "--module", "esnext", "--target", "es2020",
       "--moduleResolution", "bundler", "--skipLibCheck"],
     { cwd: root, stdio: "inherit" },
   );

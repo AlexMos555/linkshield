@@ -30,7 +30,7 @@ try {
   execFileSync(
     "npx",
     [
-      "tsc", resolve(root, "src/utils/open-url.ts"), resolve(root, "src/utils/host.ts"),
+      "tsc", "--ignoreConfig", "--types", "node", resolve(root, "src/utils/open-url.ts"), resolve(root, "src/utils/host.ts"),
       "--outDir", out, "--rootDir", root,
       "--module", "esnext", "--target", "es2020", "--moduleResolution", "bundler", "--skipLibCheck",
     ],
