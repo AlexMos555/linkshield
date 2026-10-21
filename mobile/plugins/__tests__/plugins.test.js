@@ -217,6 +217,17 @@ class MainActivity : ReactActivity() {
   check("app.json registers the dark-system-bars plugin", () => {
     assert.ok((appJson.plugins || []).includes("./plugins/withDarkSystemBars"));
   });
+  // "Позвонить близкому" promises no contacts and no call permission
+  // (docs/PRIVACY.md): the system picker and ACTION_DIAL need neither, so a
+  // library that asks for one is blocked instead of shipping under that promise.
+  check("app.json blocks contacts and call permissions", () => {
+    const blocked = (appJson.android && appJson.android.blockedPermissions) || [];
+    const requested = (appJson.android && appJson.android.permissions) || [];
+    for (const perm of ["android.permission.READ_CONTACTS", "android.permission.CALL_PHONE"]) {
+      assert.ok(blocked.includes(perm), `${perm} must be in android.blockedPermissions`);
+      assert.ok(!requested.includes(perm), `${perm} must not be in android.permissions`);
+    }
+  });
   check("expo-camera plugin disables Android audio recording", () => {
     const cam = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-camera");
     assert.ok(cam, "expo-camera plugin entry present");

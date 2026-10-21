@@ -13,6 +13,7 @@ import { isNotFound, reasonsToShow, serverLevel, showScore, shownLevel } from ".
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
 import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
 import { useAutoPaywall, useDetailGate } from "../src/hooks/useFreemium";
+import { CallCloseOneButton } from "../src/components/checkup/CallCloseOneButton";
 
 /**
  * Say what actually went wrong. A rate limit, a slow server and a dead server
@@ -132,6 +133,8 @@ export default function ResultScreen() {
       {/* Today's free detailed checks are used up: the list's verdict above
           stands; the server's reasons and details are what the plan adds. */}
       {locked && <LockedDetailsCard />}
+      {/* Not safe: the saved close one is one tap away (nothing when none is saved). */}
+      {level !== "safe" && <CallCloseOneButton />}
 
       {/* Signals — the list's own line first when it decided. */}
       {hasSignals && (
