@@ -71,6 +71,7 @@ def test_defaults_keep_every_feed_and_no_phishtank():
     assert rdd.excluded_feeds({}) == frozenset()
     assert [spec[0] for spec in rdd._feed_specs()] == [
         "URLhaus", "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt", "TweetFeed", "CERT Polska",
+        "PhishDestroy",
     ]
     assert rdd.phishtank_key({}) == ""
 
@@ -90,7 +91,7 @@ def test_exclude_env_takes_feed_names_and_ignores_typos(caplog):
     assert rdd.excluded_feeds(env) == frozenset({"TweetFeed", "CSIRT Italia"})
     assert "'tweetfeed' is not a feed name" in caplog.text
     assert [spec[0] for spec in rdd._feed_specs(frozenset({"TweetFeed"}))] == [
-        "URLhaus", "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt", "CERT Polska",
+        "URLhaus", "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt", "CERT Polska", "PhishDestroy",
     ]
 
 
