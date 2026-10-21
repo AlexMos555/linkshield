@@ -92,7 +92,7 @@ export default function OperatorPricing({ locale, terms, seller, supportPhone }:
               </a>
             </article>
           </div>
-          <p className="text-center text-sm text-slate-500 mt-6">{t("plan_cta_hint")}</p>
+          <p className="text-center text-sm text-slate-400 mt-6">{t("plan_cta_hint")}</p>
         </section>
 
         {/* Included */}
@@ -155,7 +155,7 @@ export default function OperatorPricing({ locale, terms, seller, supportPhone }:
             ) : (
               <p className="text-amber-300 text-sm m-0" data-testid="requisites-pending">{t("requisites_pending")}</p>
             )}
-            <p className="text-slate-500 text-xs leading-relaxed mt-4 mb-0">{t("requisites_note")}</p>
+            <p className="text-slate-400 text-xs leading-relaxed mt-4 mb-0">{t("requisites_note")}</p>
           </div>
           <div className="bg-slate-800/50 rounded-2xl p-6" data-testid="operator-support">
             <h2 className="text-lg font-bold text-white mb-3">{t("support_title")}</h2>

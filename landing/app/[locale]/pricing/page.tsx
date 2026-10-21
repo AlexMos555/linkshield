@@ -149,6 +149,7 @@ export default async function PricingPage({
     <div className="min-h-screen bg-[#0f172a] text-slate-200" data-testid="world-pricing">
       <PricingNav locale={safeLocale} />
 
+      <main>
       {/* Hero */}
       <section className="pt-20 pb-12 px-6 text-center">
         <div className="max-w-3xl mx-auto">
@@ -201,7 +202,7 @@ export default async function PricingPage({
               </details>
             ))}
           </div>
-          <p className="mt-10 text-center text-sm text-slate-500">
+          <p className="mt-10 text-center text-sm text-slate-400">
             {t("business_note")}{" "}
             <a href={localePath(safeLocale, "/business")} className="text-green-400 underline hover:text-green-300">{t("business_link")}</a>
           </p>
@@ -224,6 +225,7 @@ export default async function PricingPage({
           </div>
         </div>
       </section>
+      </main>
 
       {/* Rich snippets — Product (with the regional offers) + FAQPage */}
       <script

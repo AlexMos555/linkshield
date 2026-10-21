@@ -94,7 +94,7 @@ export default async function BusinessPage({ params }: Props) {
           {SUPPORT_EMAIL_LIVE ? (
             <p style={body}>
               {t("contact_live")}{" "}
-              <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#60a5fa" }}>{SUPPORT_EMAIL}</a>
+              <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#60a5fa", textDecoration: "underline" }}>{SUPPORT_EMAIL}</a>
             </p>
           ) : (
             <p style={body} data-testid="business-contact-not-live">{t("contact_not_live")}</p>
@@ -138,7 +138,7 @@ const badge: CSSProperties = {
 };
 const button: CSSProperties = {
   display: "inline-block",
-  background: "#4c8dff",
+  background: "#2563eb",
   color: "#fff",
   borderRadius: 10,
   padding: "12px 18px",

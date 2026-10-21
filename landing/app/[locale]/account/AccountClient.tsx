@@ -306,7 +306,7 @@ const row: CSSProperties = {
 };
 const button: CSSProperties = {
   display: "inline-block",
-  background: "#4c8dff",
+  background: "#2563eb",
   color: "#fff",
   border: "none",
   borderRadius: 10,

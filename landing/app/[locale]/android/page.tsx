@@ -179,7 +179,7 @@ export default async function AndroidPage({
             {t("download_soon")}
           </div>
         )}
-        <p style={{ color: "#64748b", fontSize: 13.5, textAlign: "center", marginTop: 10 }}>
+        <p style={{ color: "#8796ab", fontSize: 13.5, textAlign: "center", marginTop: 10 }}>
           {/* Without a hosted APK the steps below describe a button that is not
               on the page — say so plainly instead of letting the reader hunt
               for a download that does not exist yet. */}
@@ -256,7 +256,7 @@ export default async function AndroidPage({
         }}
       >
         <span style={{ color: "#e2e8f0", fontSize: 15, fontWeight: 600 }}>{t("rustore")}</span>
-        <span style={{ color: "#64748b", fontSize: 13 }}>{t("store_soon")}</span>
+        <span style={{ color: "#8796ab", fontSize: 13 }}>{t("store_soon")}</span>
       </div>
 
       {/* Anti-impersonation: the pattern scammers copy is "install our protection app". */}

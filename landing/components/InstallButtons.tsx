@@ -48,7 +48,7 @@ export function InstallButtons({
           >
             <span>{info.label}</span>
             {status && (
-              <span className="text-[10px] uppercase tracking-wide text-slate-500">{status}</span>
+              <span className="text-[10px] uppercase tracking-wide text-slate-400">{status}</span>
             )}
           </span>
         );

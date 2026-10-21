@@ -209,7 +209,7 @@ export default async function GradePage({ params }: Props) {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "60px 24px" }}>
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: "60px 24px" }}>
         {/* Hero card with the grade */}
         <div
           style={{
@@ -303,7 +303,7 @@ export default async function GradePage({ params }: Props) {
 
         {/* Grade scale legend */}
         <div style={{ marginTop: 32, padding: "20px", background: "#1e293b80", borderRadius: 12, border: "1px solid #1e293b" }}>
-          <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: "#8796ab", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>
             How grades work
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -330,13 +330,13 @@ export default async function GradePage({ params }: Props) {
           </div>
         </div>
 
-        <p style={{ textAlign: "center", fontSize: 12, color: "#475569", marginTop: 32 }}>
+        <p style={{ textAlign: "center", fontSize: 12, color: "#8796ab", marginTop: 32 }}>
           Privacy Audit runs 100% on your device. We see only the domain name you scanned, never the page content.{" "}
-          <a href="/privacy-policy" style={{ color: "#60a5fa" }}>Privacy Policy</a>
+          <a href="/privacy-policy" style={{ color: "#60a5fa", textDecoration: "underline" }}>Privacy Policy</a>
         </p>
 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
-      </div>
+      </main>
     </div>
   );
 }

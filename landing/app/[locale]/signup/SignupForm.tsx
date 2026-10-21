@@ -346,7 +346,7 @@ export default function SignupForm({ planFromQuery, intervalFromQuery, errorFrom
             type="button"
             onClick={() => void requestCode()}
             disabled={busy || cooldown > 0}
-            style={{ ...STYLES.linkButton, color: cooldown > 0 ? "#64748b" : "#60a5fa" }}
+            style={{ ...STYLES.linkButton, color: cooldown > 0 ? "#8796ab" : "#60a5fa" }}
           >
             {cooldown > 0 ? t("code_resend_in", { seconds: cooldown }) : t("code_resend")}
           </button>
@@ -359,7 +359,7 @@ export default function SignupForm({ planFromQuery, intervalFromQuery, errorFrom
       {step === "email" && (
         <p style={STYLES.footer}>
           {t("footer_lead")} {t("footer_or")}{" "}
-          <PrimaryInstallLink androidLabel={nav("install_android")} style={{ color: "#60a5fa" }}>
+          <PrimaryInstallLink androidLabel={nav("install_android")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("footer_install_cta")}
           </PrimaryInstallLink>{" "}
           {t("footer_install_tail")}
@@ -386,7 +386,6 @@ const STYLES: Record<string, CSSProperties> = {
     borderRadius: 10,
     padding: "12px 14px",
     fontSize: 15,
-    outline: "none",
   },
   codeInput: { fontSize: 30, fontWeight: 700, letterSpacing: 10, textAlign: "center", fontVariantNumeric: "tabular-nums" },
   hint: { fontSize: 14, color: "#94a3b8", margin: 0, lineHeight: 1.6 },

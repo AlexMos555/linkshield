@@ -89,7 +89,7 @@ export default async function SignupPage({ searchParams, params }: Props) {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 480, margin: "0 auto", padding: "60px 24px" }}>
+      <main style={{ maxWidth: 480, margin: "0 auto", padding: "60px 24px" }}>
         <h1 style={{ fontSize: 30, fontWeight: 800, color: "#f8fafc", marginBottom: 8 }}>
           {t("heading")}
         </h1>
@@ -111,7 +111,7 @@ export default async function SignupPage({ searchParams, params }: Props) {
               gap: 12,
             }}
           >
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#22c55e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+            <div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: "50%", background: "#22c55e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
               ✓
             </div>
             <div style={{ flex: 1 }}>
@@ -135,18 +135,18 @@ export default async function SignupPage({ searchParams, params }: Props) {
 
         {/* Privacy reassurance */}
         <div style={{ marginTop: 28, padding: "16px 18px", background: "#1e293b80", borderRadius: 10, border: "1px solid #1e293b" }}>
-          <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: "#8796ab", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>
             {t("store_title")}
           </div>
           <ul style={{ margin: 0, paddingInlineStart: 18, fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>
             {storeItems.map((item) => <li key={item}>{item}</li>)}
           </ul>
-          <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>
+          <div style={{ marginTop: 10, fontSize: 12, color: "#8796ab" }}>
             {t("store_note")}{" "}
-            <a href={localePath(safeLocale, "/privacy-policy")} style={{ color: "#60a5fa" }}>{t("store_more")}</a>
+            <a href={localePath(safeLocale, "/privacy-policy")} style={{ color: "#60a5fa", textDecoration: "underline" }}>{t("store_more")}</a>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

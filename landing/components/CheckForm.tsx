@@ -36,13 +36,13 @@ interface CheckFormProps {
 }
 
 const INPUT: Record<"large" | "compact", CSSProperties> = {
-  large: { flex: 1, minWidth: 0, padding: "14px 18px", borderRadius: 10, border: "1px solid #334155", background: "#1e293b", color: "#e2e8f0", fontSize: 16, outline: "none" },
-  compact: { flex: 1, minWidth: 0, padding: "10px 14px", borderRadius: 8, border: "1px solid #334155", background: "#0f172a", color: "#e2e8f0", fontSize: 14, outline: "none" },
+  large: { flex: 1, minWidth: 0, padding: "14px 18px", borderRadius: 10, border: "1px solid #334155", background: "#1e293b", color: "#e2e8f0", fontSize: 16 },
+  compact: { flex: 1, minWidth: 0, padding: "10px 14px", borderRadius: 8, border: "1px solid #334155", background: "#0f172a", color: "#e2e8f0", fontSize: 14 },
 };
 
 const BUTTON: Record<"large" | "compact", CSSProperties> = {
   large: { background: "#22c55e", color: "#052e16", border: "none", padding: "14px 24px", borderRadius: 10, fontWeight: 700, fontSize: 16, cursor: "pointer" },
-  compact: { background: "#3b82f6", color: "white", border: "none", padding: "10px 20px", borderRadius: 8, fontWeight: 600, cursor: "pointer" },
+  compact: { background: "#2563eb", color: "white", border: "none", padding: "10px 20px", borderRadius: 8, fontWeight: 600, cursor: "pointer" },
 };
 
 const FORM: Record<"large" | "compact", CSSProperties> = {

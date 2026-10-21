@@ -194,9 +194,9 @@ export default async function Home({ params }: HomeProps) {
             </a>
           </div>
           <div className="mt-6 space-y-3">
-            <p className="text-xs uppercase tracking-wide text-slate-500">{install("mobile_label")}</p>
+            <p className="text-xs uppercase tracking-wide text-slate-400">{install("mobile_label")}</p>
             <InstallButtons platforms={["android", "ios"]} size="sm" />
-            <p className="text-xs uppercase tracking-wide text-slate-500 mt-4">{install("browser_label")}</p>
+            <p className="text-xs uppercase tracking-wide text-slate-400 mt-4">{install("browser_label")}</p>
             <InstallButtons platforms={["chrome", "firefox", "edge", "safari"]} size="sm" />
           </div>
           <p className="text-xs text-slate-400 mt-6">{hero("cta_footer")}</p>
@@ -291,7 +291,7 @@ export default async function Home({ params }: HomeProps) {
             <div key={i} data-testid="testimonial-card" className="bg-slate-800/50 rounded-2xl p-6">
               <p className="text-slate-200 text-[15px] leading-relaxed mb-4">{item.q}</p>
               <p className="text-sm font-semibold text-green-400">{item.n}</p>
-              {item.r ? <p className="text-xs text-slate-500">{item.r}</p> : null}
+              {item.r ? <p className="text-xs text-slate-400">{item.r}</p> : null}
             </div>
           ))}
         </div>
@@ -399,7 +399,7 @@ export default async function Home({ params }: HomeProps) {
             <a href={href("/support")} className="text-sm text-slate-400 hover:text-white transition">{footer("contact")}</a>
             <a href="https://github.com/AlexMos555/linkshield" className="text-sm text-slate-400 hover:text-white transition">{footer("github")}</a>
           </div>
-          <p className="text-xs text-slate-600">&copy; 2026 Cleanway. {footer("tagline")}</p>
+          <p className="text-xs text-slate-400">&copy; 2026 Cleanway. {footer("tagline")}</p>
         </div>
       </footer>
     </div>

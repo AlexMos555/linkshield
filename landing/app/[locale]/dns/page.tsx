@@ -96,7 +96,7 @@ export default async function DnsPage({
           {t("hero_title")}
         </h1>
         <p style={{ color: "#94a3b8", fontSize: 17 }}>{t("hero_subtitle")}</p>
-        <p style={{ color: "#64748b", fontSize: 13, marginTop: 16 }}>
+        <p style={{ color: "#8796ab", fontSize: 13, marginTop: 16 }}>
           {t("hero_meta")}
         </p>
       </header>
@@ -126,7 +126,7 @@ export default async function DnsPage({
         >
           {t("ios_cta")}
         </a>
-        <p style={{ fontSize: 13, color: "#64748b", marginTop: 12 }}>
+        <p style={{ fontSize: 13, color: "#8796ab", marginTop: 12 }}>
           {t("ios_unsigned_note")}
         </p>
       </section>
@@ -227,15 +227,15 @@ export default async function DnsPage({
         <p style={{ marginBottom: 8 }}>{t("privacy_logs")}</p>
         <p>
           {t("privacy_more")}{" "}
-          <a href="/transparency" style={{ color: "#60a5fa" }}>
+          <a href="/transparency" style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("transparency_link")}
           </a>
           .
         </p>
       </section>
 
-      <p style={{ textAlign: "center", fontSize: 12, color: "#475569", marginTop: 32 }}>
-        <a href="/privacy-policy" style={{ color: "#60a5fa" }}>
+      <p style={{ textAlign: "center", fontSize: 12, color: "#8796ab", marginTop: 32 }}>
+        <a href="/privacy-policy" style={{ color: "#60a5fa", textDecoration: "underline" }}>
           {t("privacy_policy_link")}
         </a>
       </p>

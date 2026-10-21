@@ -33,7 +33,7 @@ export default async function ReferralPage({ params }: Props) {
         </p>
 
         <div style={{ background: "#1e293b", borderRadius: 12, padding: 20, marginBottom: 24, border: "1px solid #22c55e40" }}>
-          <div style={{ fontSize: 14, color: "#64748b", marginBottom: 4 }}>Referral code</div>
+          <div style={{ fontSize: 14, color: "#8796ab", marginBottom: 4 }}>Referral code</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: "#22c55e", letterSpacing: 2 }}>{code}</div>
         </div>
 
@@ -53,22 +53,22 @@ export default async function ReferralPage({ params }: Props) {
           <InstallButtons platforms={["ios", "android"]} size="sm" />
         </div>
 
-        <p style={{ fontSize: 13, color: "#64748b" }}>
+        <p style={{ fontSize: 13, color: "#8796ab" }}>
           After installing, enter code <strong>{code}</strong> in extension settings to activate your trial.
         </p>
 
         <div style={{ marginTop: 32, display: "flex", justifyContent: "center", gap: 24, fontSize: 13 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: "#22c55e" }}>9</div>
-            <div style={{ color: "#64748b" }}>Threat sources</div>
+            <div style={{ color: "#8796ab" }}>Threat sources</div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: "#f8fafc" }}>42+</div>
-            <div style={{ color: "#64748b" }}>Signals</div>
+            <div style={{ color: "#8796ab" }}>Signals</div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: "#f8fafc" }}>0</div>
-            <div style={{ color: "#64748b" }}>Data stored</div>
+            <div style={{ color: "#8796ab" }}>Data stored</div>
           </div>
         </div>
       </div>

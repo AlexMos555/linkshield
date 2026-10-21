@@ -62,7 +62,7 @@ export function LanguageSwitcher() {
         onChange={onChange}
         disabled={isPending}
         aria-label={t("label")}
-        className="bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none hover:border-slate-500 transition disabled:opacity-50"
+        className="bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-3 py-1.5 text-sm hover:border-slate-500 transition disabled:opacity-50"
       >
         {routing.locales.map((loc) => (
           <option key={loc} value={loc}>

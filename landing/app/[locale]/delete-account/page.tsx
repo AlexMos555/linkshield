@@ -127,7 +127,7 @@ const card: CSSProperties = {
 };
 const button: CSSProperties = {
   display: "inline-block",
-  background: "#4c8dff",
+  background: "#2563eb",
   color: "#fff",
   borderRadius: 10,
   padding: "12px 18px",

@@ -72,7 +72,7 @@ export default function ShareScanButton({ text, title, url }: ShareScanButtonPro
         type="button"
         onClick={handleNativeShare}
         style={{
-          background: "#3b82f6",
+          background: "#2563eb",
           color: "white",
           border: "none",
           padding: "10px 20px",

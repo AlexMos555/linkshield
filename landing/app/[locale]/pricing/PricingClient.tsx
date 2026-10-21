@@ -176,7 +176,7 @@ export default function PricingClient({ pricing, initialInterval }: PricingClien
         <div className="grid md:grid-cols-2 gap-6 items-stretch">
           {/* Free */}
           <article data-testid="plan-card-free" className="relative rounded-2xl p-6 flex flex-col bg-slate-800/50 border border-slate-700">
-            <h3 className="text-xl font-bold text-white mb-1">{t("free_plan_name")}</h3>
+            <h2 className="text-xl font-bold text-white mb-1">{t("free_plan_name")}</h2>
             <p className="text-sm text-slate-400 mb-5">{t("free_plan_tagline")}</p>
             <p className="mb-6 text-4xl font-extrabold text-white">$0</p>
             <ul className="space-y-2 flex-grow mb-6">
@@ -201,7 +201,7 @@ export default function PricingClient({ pricing, initialInterval }: PricingClien
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-green-950 text-xs font-bold px-3 py-1 rounded-full">
               {t("plan_badge")}
             </span>
-            <h3 className="text-xl font-bold text-white mb-1">{t("plan_name")}</h3>
+            <h2 className="text-xl font-bold text-white mb-1">{t("plan_name")}</h2>
             <p className="text-sm text-slate-400 mb-5">{t("plan_tagline")}</p>
             <p className="flex items-baseline gap-1" data-testid="plan-price">
               <span className="text-4xl font-extrabold text-white">{usd(price.amount)}</span>
@@ -261,7 +261,7 @@ export default function PricingClient({ pricing, initialInterval }: PricingClien
         </div>
 
         {pricing.country === null && (
-          <p className="mt-6 text-center text-xs text-slate-500">{t("base_region_note")}</p>
+          <p className="mt-6 text-center text-xs text-slate-400">{t("base_region_note")}</p>
         )}
       </div>
     </section>
