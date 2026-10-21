@@ -34,7 +34,7 @@ https://cleanway.ai/privacy-policy
 
 ---
 
-## Evidence (manifest version 0.2.0)
+## Evidence (manifest version 0.2.1)
 
 | Claim | Code |
 |---|---|
@@ -45,7 +45,7 @@ https://cleanway.ai/privacy-policy
 | No local blocklist: the name-rule scorer is a fallback when the API does not answer | `extension/src/background/index.js:166-173`, `:236-257` |
 | Webmail check is off until switched on in Settings; then sends subject, sender, reply-to, text and links (no HTML), not stored | `extension/src/background/webmail-scanner.js` (registers `webmail.js` only while `webmailScannerEnabled === true`), `extension/src/content/webmail.js` `buildPayload()`, `extension/src/options/options.js` (switch + `permissions.request`), `api/routers/email.py` (logs verdict and counts only) |
 | Password leak check sends a 5-char SHA-1 prefix | `extension/src/content/password-pwned.js:1-10`, `:82` |
-| Sign-in tokens in `chrome.storage.local`; browser linked as an account device | `extension/src/utils/auth-session.js:39`, `extension/src/background/auth.js:38`; `docs/ACCOUNTS_BILLING_PLAN.md` §9 |
+| Sign-in: refresh token in `chrome.storage.local`, access token in `chrome.storage.session` (content scripts cannot read it, `extension/src/utils/token-store.js`); browser linked as an account device | `extension/src/utils/auth-session.js:39`, `extension/src/background/auth.js:38`; `docs/ACCOUNTS_BILLING_PLAN.md` §9 |
 | Privacy Audit runs in the page | `extension/src/content/index.js:311-336` |
 | Notifications = family warnings only | `extension/src/utils/family-notifier.js:141` (only `notifications.create`) |
 

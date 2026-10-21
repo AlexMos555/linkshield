@@ -9,7 +9,7 @@
  * /api/v1/public/check/<host>). No sign-in, no webmail scanning, no form is
  * ever submitted. Only the demo pages are served locally (context.route on
  * hosts we control the content of); every badge, verdict, warning and the
- * block page come from the extension itself.
+ * block page (the extension's own blocked.html) come from the extension itself.
  *
  * The public check allows ~60 requests/hour per IP; one language costs ~8.
  *
@@ -40,7 +40,7 @@ const EXT = resolve(HERE, "../../../extension");
 const W = 1280, H = 800;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Hosts. Verdicts come from the live API at capture time (checked 2026-10-13):
+// Hosts. Verdicts come from the live API at capture time (checked 2026-10-21):
 const DEMO = "news.example"; // our demo page; reserved TLD, nobody's brand
 const DANGEROUS = "account-verify-login-secure.netlify.app"; // API: dangerous
 const LINKS = ["en.wikipedia.org", "github.com", "parcel-fee-redelivery.top", "prize-claim-now.xyz", DANGEROUS];
@@ -156,8 +156,11 @@ async function launch(lang, ext = EXT) {
   return { context, sw, extId, dir, page };
 }
 
+// Since 0.2.1 the tab is taken to the extension's own blocked.html
+// (background/block-redirect.js) instead of an overlay inside the scam page.
 async function openBlockPage(page) {
   await page.goto(`https://${DANGEROUS}/verify`);
+  await page.waitForURL(/^chrome-extension:\/\/[a-p]{32}\/src\/blocked\/blocked\.html\?/, { timeout: 60000 });
   await page.waitForSelector("#ls-block-overlay", { timeout: 60000 });
   await sleep(6500); // let the 5-second "continue anyway" countdown finish
 }

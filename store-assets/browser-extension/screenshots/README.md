@@ -10,7 +10,7 @@ The file names are the same in `en/` and `ru/`.
 |------|---------------|
 | `01-link-badges.png` | An ordinary page of shared links with Cleanway's badges next to each link. Wikipedia and GitHub get green ticks. `parcel-fee-redelivery.top` and `prize-claim-now.xyz` get yellow warning marks. `account-verify-login-secure.netlify.app` gets a red cross, and its tooltip (opened by hovering) lists the three reasons for the verdict. |
 | `02-popup-verdict.png` | The toolbar popup on the blocked scam tab: "This is a scam site" with the "Close this page" button. It sits at the top right, over the block page of that same tab. **This one is a composite, see below.** |
-| `03-block-page.png` | The full-page block that the extension puts over `account-verify-login-secure.netlify.app` by itself: STOP, the domain, and the "Why we blocked this site" evidence cards. It was captured after the 5-second countdown on the "continue anyway" button had finished. |
+| `03-block-page.png` | The block page for `account-verify-login-secure.netlify.app`: STOP, the domain, and the "Why we blocked this site" evidence cards. Since 0.2.1 this is the extension's own page (`src/blocked/blocked.html`), which the tab is taken to, not an overlay inside the scam page. It was captured after the 5-second countdown on the "continue anyway" button had finished. |
 | `04-credential-warning.png` | The credential guard on a sign-in page at `secure-login-update.xyz`. The form's password would be posted to a different site (`collector-endpoint.example`) and the address is on a `.xyz` domain, so the full red "Stop — this looks like a scam page" banner appears. Nothing was typed into the form and it was never submitted. |
 | `05-settings.png` | The top of the Settings page: Account (not signed in), the "Who uses this browser" persona picker, and the start of "Email scanning" with the switch off, which is the default. |
 
@@ -18,8 +18,8 @@ No shots were dropped. All five planned screens were captured in both languages.
 
 ## How they were captured
 
-- **Date:** 2026-10-13
-- **Build:** the unpacked `extension/` folder at version 0.2.0 (MV3), loaded with `--load-extension` exactly as a user would load it.
+- **Date:** 2026-10-21 (all ten images; the 2026-10-13 set showed the old in-page overlay in 02 and 03)
+- **Build:** the unpacked `extension/` folder at version 0.2.1 (MV3), loaded with `--load-extension` exactly as a user would load it.
 - **Browser:** Chromium 151.0.7922.34 (Chrome for Testing from Playwright 1.62.1), new headless mode, on macOS. The viewport was 1280x800 at device scale factor 1.
 - **Locale:** for each set, Chromium's UI language was set (`-AppleLanguages`, `--lang` and `LANGUAGE`). The extension reported `chrome.i18n` UI locale `en_US` (which uses `_locales/en`) and `ru` respectively. The script refuses to capture if the locale does not match. The extension has no language setting of its own: it follows the browser's language.
 - **API:** the extension's built-in default, the production `https://api.cleanway.ai`. It made only read-only `GET /api/v1/public/check/<host>` calls. There was no sign-in, webmail scanning stayed off, and no form was submitted.
@@ -33,7 +33,7 @@ No shots were dropped. All five planned screens were captured in both languages.
 | `github.com` | safe, score 0 | 01 |
 | `parcel-fee-redelivery.top` | caution, score 25 (the address does not resolve) | 01 |
 | `prize-claim-now.xyz` | caution, score 25 (the address does not resolve) | 01 |
-| `account-verify-login-secure.netlify.app` | **dangerous**, score 65 (missing security headers, hyphen-heavy name, ML phishing model) | 01, 02, 03 |
+| `account-verify-login-secure.netlify.app` | **dangerous**, score 81 (missing security headers, random-looking name, ML phishing model) | 01, 02, 03 |
 | `secure-login-update.xyz` | caution, score 25 | 04 (the banner itself comes from the on-page credential check) |
 | `news.example` | caution, score 25 | host of the demo page in 01; no badge is drawn for the page's own host |
 
