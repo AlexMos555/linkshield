@@ -111,7 +111,8 @@
       "./plugins/withAbiFilters",
       "./plugins/withSeedGuard",
       "./plugins/withDarkSystemBars",
-      "./plugins/withBackupRules"
+      "./plugins/withBackupRules",
+      "./plugins/withRustoreVariant"
     ]
   }
 }

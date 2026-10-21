@@ -25,6 +25,10 @@
  *  - An OPTIONAL nudge is dismissible per target version (dismiss once, we stay
  *    quiet until there's an even newer one). A REQUIRED gate is never
  *    dismissible.
+ *  - A RuStore install (or the RuStore build, which checks incoming SMS) is
+ *    never sent to the website APK — that would silently drop its SMS check.
+ *    It is pointed at the RuStore listing when that is live, else left to
+ *    RuStore's own updates (planUpdate).
  */
 import { useCallback, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
@@ -35,12 +39,15 @@ import { setRemoteConfig } from "../../modules/cleanway-vpn";
 import { setSmsFilterRemoteConfig, smsFilterInstalled } from "../../modules/cleanway-sms-filter";
 import { remoteConfigFetched } from "../utils/platform-features";
 import {
-  decideUpdate,
   fetchVersionInfo,
+  planUpdate,
+  type UpdateChannel,
   type UpdateDecision,
   type VersionInfo,
 } from "../lib/update-check";
 import { readStamp, refreshDue, remoteConfigWire, type RefreshTrigger } from "../lib/remote-config";
+import { rustoreListingUrl } from "../config/stores";
+import { RUSTORE_INSTALLER, installSource, smsAutoSupported } from "../../modules/cleanway-vpn";
 
 const API_BASE = (
   (typeof process !== "undefined" && process.env?.EXPO_PUBLIC_API_URL) ||
@@ -63,8 +70,13 @@ const RUNNING = Constants.expoConfig?.version ?? "0.0.0";
 export interface UpdateStatus {
   decision: UpdateDecision; // "none" | "optional" | "required"
   latestVersionName: string;
-  /** Best download target: the server's signed APK URL, else the /android page. */
+  /**
+   * Where "Update" leads: the server's signed APK URL, else the /android page;
+   * for a RuStore install, the RuStore listing.
+   */
   downloadUrl: string;
+  /** The update comes from the store listing (the button says so). */
+  viaStore: boolean;
   releaseNotes: string | null;
   dismiss: () => void;
 }
@@ -73,9 +85,19 @@ const NONE: UpdateStatus = {
   decision: "none",
   latestVersionName: "",
   downloadUrl: `${WEB_BASE}/android`,
+  viaStore: false,
   releaseNotes: null,
   dismiss: () => {},
 };
+
+/**
+ * RuStore installed it, or it is the RuStore build (however it got here):
+ * either way the website APK must not be offered. Read once — neither can
+ * change while the app runs.
+ */
+function readChannel(): UpdateChannel {
+  return smsAutoSupported() || installSource()?.installer === RUSTORE_INSTALLER ? "rustore" : "direct";
+}
 
 function downloadUrlFor(info: VersionInfo | null, lang: string): string {
   if (info?.apkUrl) return info.apkUrl;
@@ -92,6 +114,7 @@ export function useUpdateCheck(lang: string = "en"): UpdateStatus {
   const [info, setInfo] = useState<VersionInfo | null>(null);
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [channel] = useState<UpdateChannel>(readChannel);
 
   useEffect(() => {
     // Android for the update nudge and its message check; an iPhone build with
@@ -186,23 +209,17 @@ export function useUpdateCheck(lang: string = "en"): UpdateStatus {
 
   if (!ready || Platform.OS !== "android" || !info) return NONE;
 
-  // hasDownload=false when the server has no signed APK URL yet: we still tell
-  // the user, but never as an undismissable demand they cannot satisfy.
-  const raw = decideUpdate(
-    RUNNING,
-    info.latestVersionName,
-    info.minSupportedVersionName,
-    !!info.apkUrl,
-  );
+  const plan = planUpdate(RUNNING, info, channel, downloadUrlFor(info, lang), rustoreListingUrl());
   // Required is never suppressible; an optional nudge the user already waved
   // away stays hidden until a newer version supersedes what they dismissed.
   const decision: UpdateDecision =
-    raw === "optional" && dismissedVersion === info.latestVersionName ? "none" : raw;
+    plan.decision === "optional" && dismissedVersion === info.latestVersionName ? "none" : plan.decision;
 
   return {
     decision,
     latestVersionName: info.latestVersionName,
-    downloadUrl: downloadUrlFor(info, lang),
+    downloadUrl: plan.url,
+    viaStore: plan.viaStore,
     releaseNotes: info.releaseNotes,
     dismiss,
   };

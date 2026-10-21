@@ -7,16 +7,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space } from "../../src/utils/theme";
 import {
-  HISTORY_FILTERS, filterHistory, findShieldEvent, isTruncated, parseDeepLinkDomain, parseHistoryFilter,
-  type HistoryFilter, type HistoryItem, type ShieldItem,
+  HISTORY_FILTERS, filterHistory, findShieldEvent, findSmsAlert, isTruncated, parseDeepLinkDomain,
+  parseDeepLinkSmsId, parseHistoryFilter,
+  type HistoryFilter, type HistoryItem, type ShieldItem, type SmsAlertItem,
 } from "../../src/utils/history-model";
-import { FILTER_HINT_KEYS } from "../../src/utils/history-labels";
+import { filterHintKey } from "../../src/utils/history-labels";
 import { useHistoryItems } from "../../src/hooks/useHistoryItems";
 import { FilterChips } from "../../src/components/history/FilterChips";
 import { HistoryRow } from "../../src/components/history/HistoryRows";
 import { HistoryEmpty } from "../../src/components/history/HistoryEmpty";
 import { ShieldEventSheet } from "../../src/components/history/ShieldEventSheet";
-import { isMessageCheckSupported } from "../../modules/cleanway-vpn";
+import { SmsAlertSheet } from "../../src/components/history/SmsAlertSheet";
+import { isMessageCheckSupported, smsAutoSupported } from "../../modules/cleanway-vpn";
 
 /**
  * History: what the shields did on their own, and what the person checked.
@@ -28,25 +30,35 @@ import { isMessageCheckSupported } from "../../modules/cleanway-vpn";
  *    domain=…). Opens that site's entry once, then is cleared. Ignored unless
  *    the site is really in the block log: the scheme is public, and a crafted
  *    link must not put a made-up site and its "allow" button on screen.
+ *  - sms: from an SMS warning (cleanway:///history?filter=sms&sms=<id>).
+ *    Opens that flagged SMS once, then is cleared — and only if the SMS event
+ *    log holds that id, for the same reason.
  */
 export default function HistoryScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const params = useLocalSearchParams<{ filter?: string; domain?: string }>();
+  const params = useLocalSearchParams<{ filter?: string; domain?: string; sms?: string }>();
   const filter = parseHistoryFilter(params.filter);
   const deepLinkDomain = parseDeepLinkDomain(params.domain);
+  const deepLinkSmsId = parseDeepLinkSmsId(params.sms);
   const history = useHistoryItems();
   const { reload } = history;
   const [open, setOpen] = useState<ShieldItem | null>(null);
+  const [openAlert, setOpenAlert] = useState<SmsAlertItem | null>(null);
   const [messageCheck] = useState(() => isMessageCheckSupported());
+  const [smsAuto] = useState(() => smsAutoSupported());
 
   const visible = useMemo(() => filterHistory(history.items, filter), [history.items, filter]);
+  const hasSmsAlerts = useMemo(() => history.items.some((i) => i.type === "sms_alert"), [history.items]);
   // The SMS chip only where a message can be checked, or where old rows exist.
   const filters = useMemo(
-    () => HISTORY_FILTERS.filter((f) => f !== "sms" || messageCheck || history.items.some((i) => i.type === "sms")),
-    [messageCheck, history.items],
+    () => HISTORY_FILTERS.filter(
+      (f) => f !== "sms" || messageCheck || smsAuto || history.items.some((i) => i.type === "sms" || i.type === "sms_alert"),
+    ),
+    [messageCheck, smsAuto, history.items],
   );
   const hasCheckRows = useMemo(() => visible.some((i) => i.type === "check"), [visible]);
+  const hint = filterHintKey(filter, smsAuto || hasSmsAlerts);
 
   // A notification tap: re-read first (the block happened after the last
   // read), then open the entry, then drop the param so a later focus or
@@ -64,6 +76,21 @@ export default function HistoryScreen() {
     };
   }, [deepLinkDomain, filter, reload, router]);
 
+  // An SMS warning tap: same order — the warning was written by another
+  // process just before, so re-read, then open, then drop the param.
+  useEffect(() => {
+    if (!deepLinkSmsId) return;
+    let cancelled = false;
+    void reload().then((fresh) => {
+      if (cancelled) return;
+      setOpenAlert(findSmsAlert(fresh, deepLinkSmsId));
+      router.setParams({ sms: undefined });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deepLinkSmsId, reload, router]);
+
   const selectFilter = useCallback((next: HistoryFilter) => {
     // In the route, not in local state: a counter on the home screen sets the
     // same param, so tapping "Blocked" there after picking "All" here works.
@@ -78,7 +105,7 @@ export default function HistoryScreen() {
   }, [router]);
 
   const renderItem = useCallback(
-    ({ item }: { item: HistoryItem }) => <HistoryRow item={item} onOpenShield={setOpen} />,
+    ({ item }: { item: HistoryItem }) => <HistoryRow item={item} onOpenShield={setOpen} onOpenSmsAlert={setOpenAlert} />,
     [],
   );
 
@@ -104,13 +131,14 @@ export default function HistoryScreen() {
         ListHeaderComponent={
           <View style={s.header}>
             <FilterChips filters={filters} selected={filter} onSelect={selectFilter} />
-            <Text style={s.hint}>{t(FILTER_HINT_KEYS[filter])}</Text>
+            <Text style={s.hint}>{t(hint)}</Text>
             {hasCheckRows && <Text style={s.hint}>{t("mobile.history.score_hint")}</Text>}
           </View>
         }
         ListEmptyComponent={
           <HistoryEmpty
             filter={filter}
+            smsWarnings={smsAuto}
             onCheckLink={() => router.push("/check")}
             onCheckMessage={() => router.push("/message")}
             onTurnOn={() => router.navigate({ pathname: "/", params: { setup: "1" } })}
@@ -138,6 +166,7 @@ export default function HistoryScreen() {
         onChanged={() => void reload()}
         onMore={openMore}
       />
+      <SmsAlertSheet item={openAlert} onClose={() => setOpenAlert(null)} />
     </View>
   );
 }
