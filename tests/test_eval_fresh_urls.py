@@ -552,9 +552,6 @@ async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran
     async def fake_feed(_limit):
         return phishing
 
-    async def no_feed(_limit):
-        return []
-
     def fake_adapter(name):
         async def _check(_client, url):
             calls.append(name)
@@ -562,8 +559,7 @@ async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran
             return eval_module.Verdict(name, "dangerous" if "phish" in url else "safe", detail=url)
         return _check
 
-    monkeypatch.setattr(eval_module, "fetch_urlhaus_recent", fake_feed)
-    monkeypatch.setattr(eval_module, "fetch_phishtank_recent", no_feed)
+    monkeypatch.setattr(eval_module, "fetch_phishtank_recent", fake_feed)
     monkeypatch.setattr(eval_module, "VT_KEY", "stub")
     for name in ("cleanway", "gsb", "phishtank", "cloudflare_families", "virustotal"):
         monkeypatch.setitem(eval_module.ADAPTERS, name, fake_adapter(name))
@@ -585,6 +581,43 @@ async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran
     assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", window["start"])
     assert window["start"] <= window["end"]
     assert not (tmp_path / "latest.json").exists()  # 3 URLs never pass the gate
+
+
+def test_the_phishing_sample_is_phishtank_only_since_urlhaus_retired():
+    """2026-10-21: abuse.ch's csv_recent/ answers 410 Gone without a personal
+    key, and its terms are not-for-profit only. The phishing sample is
+    PhishTank's online-valid dump — held out from the blocklist unless
+    PHISHTANK_API_KEY makes it a source there."""
+    eval_module = _load_eval_module()
+    assert not hasattr(eval_module, "fetch_urlhaus_recent")
+    assert not hasattr(eval_module, "URLHAUS_RECENT_URL")
+    source = (Path(__file__).resolve().parent.parent / "scripts" / "eval_fresh_urls.py").read_text(encoding="utf-8")
+    assert "abuse.ch/" not in source, "no abuse.ch download is left"
+
+
+@pytest.mark.asyncio
+async def test_the_report_names_phishtank_as_the_phishing_source(tmp_path, monkeypatch):
+    eval_module = _load_eval_module()
+
+    async def fake_feed(_limit):
+        return ["https://phish0.example/login"]
+
+    async def _check(_client, url):
+        return eval_module.Verdict("x", "dangerous" if "phish" in url else "safe")
+
+    monkeypatch.setattr(eval_module, "fetch_phishtank_recent", fake_feed)
+    monkeypatch.setattr(eval_module, "VT_KEY", None)
+    for name in ("cleanway", "gsb", "phishtank", "cloudflare_families"):
+        monkeypatch.setitem(eval_module.ADAPTERS, name, _check)
+        monkeypatch.setitem(eval_module.MIN_INTERVAL_S, name, 0.0)
+    monkeypatch.setattr(sys, "argv", ["eval_fresh_urls.py", "--sample", "1", "--out-tag", "t",
+                                      "--out-dir", str(tmp_path)])
+    assert await eval_module.main() == 0
+    report = json.loads((tmp_path / "t-fresh-urls.json").read_text(encoding="utf-8"))
+    assert report["sources"]["phishing"].startswith("PhishTank online-valid (1 URLs)")
+    assert "URLhaus" not in report["sources"]["phishing"]
+    md = (tmp_path / "t-fresh-urls.md").read_text(encoding="utf-8")
+    assert "Phishing samples are fresh PhishTank entries" in md
 
 
 @pytest.mark.asyncio

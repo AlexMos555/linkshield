@@ -105,12 +105,14 @@ class Settings(BaseSettings):
     web_risk_api_key: str = ""
 
     # Which threat-intel lookups the analyzer consults (api/services/
-    # licensed_intel.py). "all" (default) — every source, today's behaviour.
-    # "licensed" — without SURBL, the Spamhaus DBL public mirror, ThreatFox,
+    # licensed_intel.py). "licensed" (default since 2026-10-21) — without
+    # SURBL, the Spamhaus DBL public mirror, URLhaus, ThreatFox,
     # MalwareBazaar and Feodo Tracker, whose free tiers are for
-    # non-commercial use. A switched-off source is not consulted at all and
-    # leaves the check total, so confidence figures stay honest.
-    licensed_intel: Literal["all", "licensed"] = "all"
+    # non-commercial use (and abuse.ch's APIs now need a personal key).
+    # "all" — every source, an explicit opt-in. A switched-off source is not
+    # consulted at all and leaves the check total, so confidence figures
+    # stay honest.
+    licensed_intel: Literal["all", "licensed"] = "licensed"
 
     # PhishTank (no key needed for free tier, but optional)
     phishtank_api_key: str = ""

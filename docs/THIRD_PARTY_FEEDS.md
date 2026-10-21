@@ -93,19 +93,20 @@ PhishTank can be ingested and the public number stays measurable.
 ## 2. Lookups the API makes for one `/check`
 
 `api/services/analyzer.py` asks up to 19 sources about the bare domain name
-(never a URL, never who asked). `docs/PRIVACY.md` lists them for users.
+(never a URL, never who asked) — 13 under the default `LICENSED_INTEL=licensed`.
+`docs/PRIVACY.md` lists them for users.
 
 | Source | Endpoint | Terms (date read) | Switch |
 |---|---|---|---|
 | **Google Safe Browsing v4** | `safebrowsing.googleapis.com/v4/threatMatches:find` | developers.google.com/safe-browsing/terms: "Unless you have a separate agreement … you may not use the Safe Browsing API for commercial purposes" (read 2026-09-29). v4 support ends 2027-03-31 (*likely*) | Replaced by Web Risk when `WEB_RISK_API_KEY` is set |
 | **Google Web Risk** Lookup API | `webrisk.googleapis.com/v1/uris:search` | Google Cloud terms; billed per lookup after 100,000 a month (cloud.google.com/web-risk/pricing, read 2026-09-29). Results may not be passed on to third parties — `PUBLISH_CONFIRMED_THREATS` stays off. Needs a Google Cloud project with billing, which may not be open to a Russian legal entity (*uncertain*) | **On with `WEB_RISK_API_KEY`** (`api/services/web_risk.py`); threat types MALWARE, SOCIAL_ENGINEERING, UNWANTED_SOFTWARE; answers cached until Google's `expireTime` |
 | **PhishTank** checkurl | `checkurl.phishtank.com/checkurl/` | FAQ: commercial use OK; key needed for rate limits (read 2026-09-29) | Always on (answers nothing for fresh URLs without a key) |
-| **URLhaus** host API | `urlhaus-api.abuse.ch/v1/host/` | abuse.ch ToU 2025-11-04 (non-commercial) | Not in `LICENSED_INTEL` — **open question**: same terms as ThreatFox; kept for now because the licence audit of 2026-09-21 scoped the runtime cut to the five below. Decide with the others |
-| **ThreatFox** | `threatfox-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04 (non-commercial, no derivative works) | **`LICENSED_INTEL=licensed` switches off** |
-| **MalwareBazaar** | `mb-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04 | **`LICENSED_INTEL=licensed` switches off** |
-| **Feodo Tracker** | `feodotracker.abuse.ch/downloads/ipblocklist.json` | abuse.ch ToU 2025-11-04 | **`LICENSED_INTEL=licensed` switches off** |
-| **Spamhaus DBL** public mirror | DNS `<domain>.dbl.spamhaus.org` | DNSBL fair-use policy: "free of charge for non-commercial use by small and medium sized organisations"; queries must come from an identifiable resolver, not large shared hosting (read 2026-09-29). Through a public resolver the mirror answers `127.255.255.254` — until 2026-09-29 the analyzer read that as "not listed" (`api/services/dnsbl_checks.py` fixes it: an error code is "not consulted") | **`LICENSED_INTEL=licensed` switches off** |
-| **SURBL** multi | DNS `<base>.multi.surbl.org` | surbl.org/guidelines: `127.0.0.1` means access is blocked, sign up for the Sponsored Data Service; the usage policy excludes the free service from paid products (*likely*, read 2026-09-21/29) | **`LICENSED_INTEL=licensed` switches off** |
+| **URLhaus** host API | `urlhaus-api.abuse.ch/v1/host/` | abuse.ch ToU 2025-11-04 (non-commercial). **401 Unauthorized without a personal `Auth-Key` header since 2026-10-21** (probed that day) | **Off by default** (`LICENSED_INTEL=licensed`). The open question of 2026-09-21 is resolved: same terms as ThreatFox, so it goes with them. Until the fix a 401 read as "not listed" on every check; a non-2xx answer now raises (a failed, unmeasured check) |
+| **ThreatFox** | `threatfox-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04 (non-commercial, no derivative works). 401 without a key since 2026-10-21 | **Off by default** (`LICENSED_INTEL=licensed`); a 401 raises |
+| **MalwareBazaar** | `mb-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04. 401 without a key since 2026-10-21 | **Off by default** (`LICENSED_INTEL=licensed`); a 401 raises |
+| **Feodo Tracker** | `feodotracker.abuse.ch/downloads/ipblocklist.json` | abuse.ch ToU 2025-11-04. Still answers 200 without a key (2026-10-21) | **Off by default** (`LICENSED_INTEL=licensed`) |
+| **Spamhaus DBL** public mirror | DNS `<domain>.dbl.spamhaus.org` | DNSBL fair-use policy: "free of charge for non-commercial use by small and medium sized organisations"; queries must come from an identifiable resolver, not large shared hosting (read 2026-09-29). Through a public resolver the mirror answers `127.255.255.254` — until 2026-09-29 the analyzer read that as "not listed" (`api/services/dnsbl_checks.py` fixes it: an error code is "not consulted") | **Off by default** (`LICENSED_INTEL=licensed`) |
+| **SURBL** multi | DNS `<base>.multi.surbl.org` | surbl.org/guidelines: `127.0.0.1` means access is blocked, sign up for the Sponsored Data Service; the usage policy excludes the free service from paid products (*likely*, read 2026-09-21/29) | **Off by default** (`LICENSED_INTEL=licensed`) |
 | **PhishStats** | `phishstats.info:2096/api/phishing` | Free API, no key; terms not located (*uncertain*) | On |
 | **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution) | On |
 | **IPQualityScore** | `ipqualityscore.com/api/json/url/…` | Vendor API terms, free tier 5,000/month, paid above; keyed | On with `IPQUALITYSCORE_KEY`, daily budget |
@@ -118,9 +119,18 @@ PhishTank can be ingested and the public number stays measurable.
 
 ### What `LICENSED_INTEL=licensed` does, exactly
 
-The five sources are not in the analyzer's plan at all: not asked, so never
+**The default since 2026-10-21** (it was `all`). That day abuse.ch's APIs
+started answering 401 without a personal key — URLhaus, ThreatFox and
+MalwareBazaar had been reporting "not listed" for every domain, a silent
+miss inflating the measured-check count — and Cleanway sells plans, which
+all six free tiers exclude. `LICENSED_INTEL=all` is the explicit opt-in for
+a not-for-profit deployment; the abuse.ch lookups then also need a key the
+analyzer does not send, and without one they fail as unmeasured checks.
+
+The six sources (SURBL, Spamhaus DBL, URLhaus, ThreatFox, MalwareBazaar,
+Feodo Tracker) are not in the analyzer's plan at all: not asked, so never
 "not listed", and they leave the total a verdict is measured against — an
-analysis is 14 checks of 14, not 14 of 19 with five that were never asked.
+analysis is 13 checks of 13, not 13 of 19 with six that were never asked.
 Scores, levels and `confidence_pct` for the same evidence are identical
 with the switch on or off (pinned in `tests/test_licensed_intel.py`).
 
@@ -131,8 +141,10 @@ caution 1; PHISH 174: caught 142 (caution 108 + dangerous 32). That is
 expected and is the point: the name-only rules never consult these sources.
 What the switch costs is only measurable on live traffic — on 2026-09-21
 SURBL appeared in 9 of 10 dangerous verdicts sampled, but 9 of those 10 also
-rested on our own signals. Measure on the live fan-out before flipping;
-do not re-weight the scorer blind.
+rested on our own signals. That is the cost of the default: verdicts SURBL or
+the DBL alone carried. Watch the weekly benchmark after the flip; the way
+back for those two is a paid feed (Spamhaus DQS / SURBL Sponsored Data), not
+the free mirrors. Do not re-weight the scorer blind.
 
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
