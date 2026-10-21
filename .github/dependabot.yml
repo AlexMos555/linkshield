@@ -35,14 +35,15 @@ updates:
       - dependency-name: "react"
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       # Majors that need the Expo SDK / toolchain upgrade first.
+      # Native module pinned by the Expo SDK (expo install); moves with it.
       - dependency-name: "@sentry/react-native"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "@babel/*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@sentry/nextjs"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       # A Next.js major is a migration (the landing was moved to 15 by hand).
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
