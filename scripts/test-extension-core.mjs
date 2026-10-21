@@ -1893,9 +1893,22 @@ const attr = (tag, name) => {
   const m = tag.match(new RegExp(`\\s${name}="([^"]*)"`));
   return m ? m[1] : null;
 };
-// Text a person would hear: tags out, entities for symbols (×) are not words.
-const spokenText = (inner) =>
-  inner.replace(/<[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/[a-z]+>/g, "").replace(/<[^>]+>/g, "").replace(/&[#a-z0-9]+;/gi, "");
+// Text a person would hear: the text between tags, minus aria-hidden
+// elements; entities for symbols (&times;) are not words. (Split, not
+// replace: this reads our own markup, it does not sanitize anything.)
+const spokenText = (inner) => {
+  let out = "";
+  let hidden = 0;
+  for (const part of inner.split(/(<[^>]*>)/)) {
+    if (part.startsWith("<")) {
+      if (hidden) hidden += part.startsWith("</") ? -1 : part.endsWith("/>") ? 0 : 1;
+      else if (/\saria-hidden="true"/.test(part)) hidden = 1;
+      continue;
+    }
+    if (!hidden) out += part;
+  }
+  return out.split(/&[#a-z0-9]+;/i).join("");
+};
 const hasWords = (s) => /\p{L}/u.test(s);
 
 function namedByAttr(tag, html) {
