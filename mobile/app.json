@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "cleanway",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ai.cleanway.app",
@@ -72,6 +66,14 @@
     "plugins": [
       "./plugins/withIosAppStore",
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0f172a"
+        }
+      ],
       [
         "expo-secure-store",
         {

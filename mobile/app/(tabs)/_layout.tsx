@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Platform, type ColorValue } from "react-native";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,13 +7,15 @@ import { colors } from "../../src/utils/theme";
 
 interface TabIconProps {
   focused: boolean;
-  color: string;
+  // RN 0.87+ strict types: the tab bar hands over a ColorValue (string, number
+  // or platform color); our tints are theme strings, and Ionicons takes a string.
+  color: ColorValue;
 }
 
 /** Outline at rest, filled when active — quiet, no emoji, one green accent. */
 function icon(outline: keyof typeof Ionicons.glyphMap, filled: keyof typeof Ionicons.glyphMap) {
   return ({ focused, color }: TabIconProps) => (
-    <Ionicons name={focused ? filled : outline} size={24} color={color} />
+    <Ionicons name={focused ? filled : outline} size={24} color={typeof color === "string" ? color : undefined} />
   );
 }
 

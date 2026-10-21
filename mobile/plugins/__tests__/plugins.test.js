@@ -209,10 +209,11 @@ class MainActivity : ReactActivity() {
   });
   // Google Play target API 36 (Expo SDK 54): RN still relies on onBackPressed,
   // which Android 16 stops calling for targetSdk 36 apps unless predictive back
-  // is opted out; and the legacy architecture is what reanimated 3 needs.
-  check("app.json keeps predictive back off and the legacy architecture", () => {
+  // is opted out. Since SDK 55 the New Architecture is the only one and
+  // `newArchEnabled` is rejected by the app.json schema, so it must stay out.
+  check("app.json keeps predictive back off and has no newArchEnabled", () => {
     assert.strictEqual(appJson.android.predictiveBackGestureEnabled, false);
-    assert.strictEqual(appJson.newArchEnabled, false);
+    assert.ok(!("newArchEnabled" in appJson), "newArchEnabled was removed in Expo SDK 55");
   });
   check("app.json registers the dark-system-bars plugin", () => {
     assert.ok((appJson.plugins || []).includes("./plugins/withDarkSystemBars"));

@@ -37,7 +37,7 @@ const full = {
 try {
   execFileSync(
     "npx",
-    ["tsc", src, "--outDir", out, "--module", "esnext", "--target", "es2020", "--moduleResolution", "bundler", "--skipLibCheck"],
+    ["tsc", "--ignoreConfig", src, "--outDir", out, "--module", "esnext", "--target", "es2020", "--moduleResolution", "bundler", "--skipLibCheck"],
     { cwd: resolve(here, ".."), stdio: "inherit" },
   );
 
