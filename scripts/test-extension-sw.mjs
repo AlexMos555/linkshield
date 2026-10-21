@@ -461,6 +461,29 @@ async function runTree(tree) {
       assert.equal((await stats(sw)).threats_blocked, 1);
     });
 
+    await check("the popup over the block page says the site is a scam, not 'safe'", async () => {
+      // A toolbar click opens the popup over the active tab. Here the popup
+      // is a background tab in the same window, so its "active tab" is still
+      // the block page (as in store-assets/.../capture.mjs).
+      await blockedTab.bringToFront();
+      const [popup] = await Promise.all([
+        context.waitForEvent("page"),
+        sw.evaluate((url) => chrome.tabs.create({ url, active: false }),
+          `chrome-extension://${extId}/src/popup/popup.html`),
+      ]);
+      await popup.waitForFunction(() => document.getElementById("status-card").dataset.state !== "scanning",
+        null, { timeout: 8000 });
+      const card = await popup.evaluate(() => ({
+        state: document.getElementById("status-card").dataset.state,
+        subtitle: document.getElementById("status-subtitle").textContent,
+        close: !document.getElementById("primary-action").hidden,
+      }));
+      await popup.close();
+      assert.equal(card.state, "danger", `popup over blocked.html: ${JSON.stringify(card)}`);
+      assert.ok(card.subtitle.includes("scam-visit.example"), `subtitle names the blocked site: ${card.subtitle}`);
+      assert.ok(card.close, "the 'Close this page' button is offered");
+    });
+
     await check("'open anyway' loads the site in that tab, once allowed, with the strict credential warning", async () => {
       const { messages } = await activeCatalog(sw, tree);
       // The button unlocks after the 5-second countdown.

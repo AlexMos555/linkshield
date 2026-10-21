@@ -1,0 +1,4 @@
+7b8bb9592cd7b08b29c162d03f74ddf04bbe0c18c8b872efc8c9265d3f03c191  cleanway-0.2.1-chrome.zip
+7b8bb9592cd7b08b29c162d03f74ddf04bbe0c18c8b872efc8c9265d3f03c191  cleanway-0.2.1-edge.zip
+a48e6f69bdc2edc69acf4f3b74b796c52862fe850191e4a72ddbd255c3487122  cleanway-0.2.1-firefox.zip
+7b8bb9592cd7b08b29c162d03f74ddf04bbe0c18c8b872efc8c9265d3f03c191  cleanway-0.2.1-opera.zip

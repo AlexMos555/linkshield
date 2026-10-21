@@ -2011,6 +2011,23 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
   });
 }
 
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the popup over the block page reads it as a scam, not as a safe non-web page`, () => {
+    // blocked.html is a chrome-extension:// page; the popup used to treat
+    // it like chrome:// and say "This page is safe" over the STOP screen.
+    // The browser check is in scripts/test-extension-sw.mjs.
+    const html = readFileSync(join(ROOT, tree, "src/popup/popup.html"), "utf8");
+    const at = (s) => html.indexOf(s);
+    assert.ok(at('src="../utils/blocked-url.js"') >= 0 && at('src="../utils/blocked-url.js"') < at('src="popup.js"'),
+      "popup.html loads blocked-url.js before popup.js");
+    const js = stripComments(readFileSync(join(ROOT, tree, "src/popup/popup.js"), "utf8"));
+    const status = js.slice(js.indexOf("async function loadPageStatus"));
+    const blockedAt = status.indexOf("blockedPageUrl(tab)");
+    const nonWebAt = status.indexOf("^https?:$");
+    assert.ok(blockedAt > 0 && blockedAt < nonWebAt, "the block page is recognised before the non-web 'safe' branch");
+  });
+}
+
 console.log(
   failed === 0
     ? `\n${passed} checks passed (source + ${BROWSER_TREES.length} browser trees)`

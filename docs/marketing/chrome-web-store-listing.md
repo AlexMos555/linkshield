@@ -168,7 +168,7 @@ Suggested image size: 1280×800. Show real UI, no mockups.
 ## Submission checklist
 
 - [ ] $5 dev account purchased
-- [ ] ZIP is `dist/store-artifacts/cleanway-0.2.0-chrome.zip`, rebuilt clean via `bash scripts/build-extensions.sh && bash scripts/build-store-artifacts.sh`
+- [ ] ZIP is `dist/store-artifacts/cleanway-0.2.1-chrome.zip`, rebuilt clean via `bash scripts/build-extensions.sh && bash scripts/build-store-artifacts.sh`
 - [ ] Privacy policy URL works: https://cleanway.ai/privacy-policy
 - [ ] Permissions justifications match what manifest.json actually requests
 - [ ] 5 screenshots uploaded at 1280×800

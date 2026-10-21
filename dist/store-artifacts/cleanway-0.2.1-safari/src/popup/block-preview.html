@@ -16,17 +16,18 @@
     .preview-controls input { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 12px; }
     .preview-controls button { padding: 6px 10px; border-radius: 6px; border: none; background: #22c55e; color: #052e16; font-weight: 700; cursor: pointer; font-size: 12px; }
     .preview-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-    .fake-page { padding: 40px; color: #64748b; }
+    .fake-page { padding: 40px; color: #8a9bb3; }
     .fake-page h1 { color: #e2e8f0; }
+    :focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
   </style>
 </head>
 <body>
   <!-- Preview controls -->
   <div class="preview-controls">
     <div class="preview-label">Block page preview</div>
-    <input id="domain-input" type="text" placeholder="Domain (e.g. sberbank-fake.ru)" value="sberbank-secure-login.ru">
-    <input id="brand-input" type="text" placeholder="Impersonated brand (optional)" value="Sberbank">
-    <button id="show-block">Show block page</button>
+    <input id="domain-input" type="text" aria-label="Domain" placeholder="Domain (e.g. sberbank-fake.ru)" value="sberbank-secure-login.ru">
+    <input id="brand-input" type="text" aria-label="Impersonated brand" placeholder="Impersonated brand (optional)" value="Sberbank">
+    <button id="show-block" type="button">Show block page</button>
     <div class="preview-label" style="margin-top: 4px;">Simulates what user sees when hitting scam site. Standalone — uses English fallback (no chrome.i18n).</div>
   </div>
 
