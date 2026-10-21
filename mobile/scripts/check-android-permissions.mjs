@@ -6,7 +6,8 @@
  * What this build promises never to ask for, pinned so that no "small"
  * change can slip it in:
  *  - no SMS permissions: message text is checked only when the person
- *    hands it over, and never leaves the phone;
+ *    hands it over, and never leaves the phone (the RuStore-only APK adds
+ *    RECEIVE_SMS through its own build type — see RUSTORE_ONLY below);
  *  - no phone-state, call-log or call-answering permissions and no
  *    call-screening role: call awareness comes from the audio mode alone
  *    (CallState.kt), which needs nothing;
@@ -72,6 +73,23 @@ const SPECIAL_ALLOWED = [
   },
 ];
 
+/**
+ * The RuStore APK's one exception (docs/RUSTORE_SUBMISSION.md, "Two APKs, one
+ * app"): RECEIVE_SMS, for the opt-in automatic SMS check. It may appear only
+ * in the config plugin that writes the RuStore build type's manifest overlay
+ * and in the constant AppInstallInfo.kt uses to ask whether the installed
+ * manifest has it. The shared module manifest and app.json still never
+ * declare it, so the browser APK cannot get it; each built APK is checked
+ * again by check-apk-permissions.mjs (direct: no SMS at all; rustore:
+ * RECEIVE_SMS and nothing more).
+ */
+const RUSTORE_ONLY = {
+  RECEIVE_SMS: [
+    join("plugins", "withRustoreVariant.js"),
+    join("modules", "cleanway-vpn", "android", "src", "main", "java", "ai", "cleanway", "app", "AppInstallInfo.kt"),
+  ],
+};
+
 /** Phone permissions the app config must actively strip at manifest merge. */
 const MUST_BLOCK = [
   "android.permission.SYSTEM_ALERT_WINDOW",
@@ -121,6 +139,7 @@ const files = [
 for (const f of files) {
   const text = readFileSync(f, "utf8");
   for (const needle of [...FORBIDDEN, ...FORBIDDEN_SPECIAL]) {
+    if ((RUSTORE_ONLY[needle] ?? []).includes(relative(mobile, f))) continue;
     if (declares(text, needle)) failures.push(`${relative(mobile, f)}: ${needle}`);
   }
 }

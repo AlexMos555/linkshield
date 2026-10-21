@@ -14,6 +14,23 @@ claims.
 
 RuStore is the **primary** channel for the Tele2 RF launch.
 
+> **Two APKs, one app (decided 2026-09-25).** The same code, package
+> (`ai.cleanway.app`), version and release key build two APKs:
+>
+> | APK | Build | Where it goes | SMS |
+> |---|---|---|---|
+> | **Direct** `app-release.apk` | `./gradlew assembleRelease` | cleanway.ai/android + the GitHub release. Never RuStore. | **None** — no SMS permission, no SMS receiver, ever. |
+> | **RuStore** `app-rustore.apk` | `./gradlew assembleRustore` | **RuStore only.** | `RECEIVE_SMS` + a receiver, off until the person turns on "SMS-сообщения". |
+>
+> ⛔ **Never upload `app-rustore.apk` to the website or a GitHub release.** Google
+> Play Protect's enhanced fraud protection hard-blocks (no "install anyway")
+> any browser- or messenger-downloaded APK that declares `RECEIVE_SMS`, and
+> Android 15+ puts it behind "restricted settings". Store installs are not
+> affected. Both APKs share the signature, so either installs over the other:
+> the direct APK installed over the RuStore one silently removes the SMS
+> check, which is why the RuStore build's in-app update banner never points
+> at the website APK (`planUpdate` in `mobile/src/lib/update-check.ts`).
+
 > **Google Play: the target-API blocker is fixed in code (2026-10-08), not yet
 > shipped.** Since **31 Aug 2026** Play requires new apps and updates to target
 > **API 36** (Android 16) — [Target API level requirements](https://developer.android.com/google/play/requirements/target-sdk)
@@ -236,7 +253,7 @@ grep -n "cleanway-seed-guard" android/app/build.gradle
 
 cd android
 
-# A) Direct-download APK for the Tele2 funnel. Do NOT pass
+# A) Direct-download APK for the Tele2 funnel (cleanway.ai + GitHub). Do NOT pass
 #    -PreactNativeArchitectures: it does NOT slim the APK (it only feeds
 #    splits.abi.include, and splits are off by default). Slimming is handled by
 #    plugins/withAbiFilters.js, which drops the emulator-only x86/x86_64.
@@ -245,6 +262,16 @@ cd android
 #    → android/app/build/outputs/apk/release/app-release.apk
 #    (arm64-only, ~20 MB smaller but excludes old 32-bit phones:
 #     CLEANWAY_ABIS=arm64-v8a npx expo prebuild -p android --clean, then rebuild.)
+
+# A2) Prove it declares no SMS access before it goes anywhere (exit 0 = PASS):
+node "$REPO/mobile/scripts/check-apk-permissions.mjs" app/build/outputs/apk/release/app-release.apk direct
+
+# R) The RuStore APK — the one that checks incoming SMS. RuStore ONLY.
+#    Same code, version and key as A; its manifest adds RECEIVE_SMS and the
+#    SMS receiver (mobile/plugins/withRustoreVariant.js, build type "rustore").
+./gradlew assembleRustore
+#    → android/app/build/outputs/apk/rustore/app-rustore.apk
+node "$REPO/mobile/scripts/check-apk-permissions.mjs" app/build/outputs/apk/rustore/app-rustore.apk rustore
 
 # B) App Bundle for the stores (35 MB). NOTE: withAbiFilters applies to every
 #    RELEASE variant, so the AAB is ARM-only too (armeabi-v7a + arm64-v8a), not
@@ -385,6 +412,7 @@ for the safety check).
 | **Crash logs & diagnostics** | Yes | Yes → Sentry | Stability / bug-fixing | Processor only (Sentry) |
 | **Approximate info from the request** (server sees the connection IP like any web request; raw in expiring rate-limit keys ≤ 1 h, hashed in the audit log) | Minimal | Inherent to any request | Abuse/rate control | No |
 | **DNS lookups of sites that are NOT blocked** | Not collected by us | Go to the network's own DNS (operator / Wi-Fi), fallback Cloudflare `1.1.1.1` / Quad9 `9.9.9.9` — as they would without Cleanway | Normal name resolution | Those resolvers see the name, as without Cleanway; Cleanway's server does not |
+| **SMS** (RuStore APK only, when the person turns on "SMS-сообщения") | **Processed on the device only, not collected**: each incoming SMS is checked in memory and dropped. For one that looks like a scam the phone keeps time, sender, verdict, reason codes and link hosts — on the phone, never sent | **No** — nothing about an SMS leaves the phone, not even a link's domain | App functionality — warning about scam SMS | No |
 | Precise location, contacts, photos, call logs, phone numbers, full browsing history | **No** | No | — | — |
 
 Cross-cutting answers:
@@ -414,11 +442,12 @@ justification, so every `uses-permission` in the APK is listed here.
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | **Used — new in 1.0.4** | The "Чтобы защита не выключалась" checklist asks Android once, after explaining why, to stop battery optimisation from killing the shield. The person can decline. Justification text in §4. |
 | `POST_NOTIFICATIONS`, `VIBRATE` | **Used** | The persistent "shield on" notification, blocked-site alerts, and the after-call reminder. |
 | `CAMERA` | **Used** | QR-code scanning only (`scanner.tsx`); runtime-requested on first use; no photo/video capture. |
+| `RECEIVE_SMS` | **Used — RuStore APK only** | The automatic SMS check (§4). Runtime-requested only when the person turns on "SMS-сообщения", after an in-app explanation. Not `READ_SMS`: the inbox is never read. Absent from the direct APK. |
 | `INTERNET`, `ACCESS_NETWORK_STATE`, `WAKE_LOCK` | **Used** | Host checks against `api.cleanway.ai`, blocklist refresh, offline detection. |
 | `USE_BIOMETRIC`, `USE_FINGERPRINT` | Library | Declared by `expo-secure-store` for keystore-backed storage; the app never prompts for biometrics. |
 | `com.google.android.c2dm.permission.RECEIVE`, launcher badge permissions (`com.sec…`, `com.huawei…`, `com.htc…`, `READ_APP_BADGE`, …) | Library | Declared by `expo-notifications` for push/badges. No Firebase project is configured in the app, so no push token is ever created. |
 | `RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` | **Removed** (since versionCode 101) | Library/template defaults the app does not use. |
-| `READ_PHONE_STATE`, `READ_CALL_LOG`, `ANSWER_PHONE_CALLS`, `CALL_PHONE`; any SMS permission | **Never requested** | Blocked in `app.json` and pinned by `mobile/scripts/check-android-permissions.mjs` (CI). The call screen knows *that* a call is going on from the phone's audio mode only (`CallState.kt`); it cannot see numbers or hear calls. |
+| `READ_PHONE_STATE`, `READ_CALL_LOG`, `ANSWER_PHONE_CALLS`, `CALL_PHONE`; any SMS permission (direct APK); any SMS permission other than `RECEIVE_SMS` (RuStore APK) | **Never requested** | Blocked in `app.json` and pinned by `mobile/scripts/check-android-permissions.mjs` (CI) and, per built APK, `mobile/scripts/check-apk-permissions.mjs`. The call screen knows *that* a call is going on from the phone's audio mode only (`CallState.kt`); it cannot see numbers or hear calls. |
 
 The "removed" rows are blocked in `mobile/app.json`
 (`expo.android.blockedPermissions` + `expo-camera` → `recordAudioAndroid: false`),
@@ -479,6 +508,27 @@ Google Play specifics:
 > does not access the photo gallery. Audio recording is not used (the
 > `RECORD_AUDIO` permission is removed from builds after versionCode 100).
 
+**SMS — `RECEIVE_SMS`** (RuStore APK only; paste into RuStore's field for
+sensitive permissions, it is written for the moderator in Russian):
+
+> Разрешение RECEIVE_SMS нужно для одной функции — автоматической проверки
+> входящих SMS на мошенничество («SMS-сообщения» на главном экране). Она
+> выключена, пока пользователь сам её не включит: перед системным запросом
+> приложение объясняет, что SMS проверяются прямо на телефоне, текст никуда не
+> отправляется и не сохраняется. Каждое входящее SMS проверяется на устройстве
+> по встроенным правилам (просьба назвать код, «безопасный счёт», звонок на
+> неофициальный номер и т. п.) и по списку мошеннических сайтов, хранящемуся на
+> телефоне. Если сообщение похоже на мошенническое, приложение показывает
+> уведомление-предупреждение. Текст SMS не передаётся ни на наш сервер, ни
+> третьим лицам, не записывается в память устройства и не попадает в журналы и
+> отчёты об ошибках; для подозрительного SMS в истории на телефоне остаются
+> только время, отправитель, причины и названия сайтов из ссылок. Уведомлений
+> немного: не больше трёх со звуком в час и десяти в сутки, одно на
+> отправителя за шесть часов, остальные сворачиваются в одно тихое. Мы не
+> запрашиваем READ_SMS (не читаем папку «Входящие»), не отправляем SMS и не
+> становимся приложением для SMS по умолчанию. Выключить проверку можно в любой
+> момент — на главном экране или в «Настройки → SMS-сообщения».
+
 ---
 
 ## 5. Store assets & review notes
@@ -504,10 +554,15 @@ optional and every protection feature works without it — both are true).
 - **Review note** (paste): "The VPN permission is used only for a local on-device
   DNS phishing filter — no remote VPN gateway, no IP masking, no traffic proxying;
   lookups that are not blocked go to the network's own DNS as usual. See the
-  VpnService justification. The camera is used only to scan QR codes. The app has
-  no SMS, phone-state or call-log permissions: a message is checked only when the
-  user shares or pastes it, and the call warning knows only that a call is in
-  progress (from the audio mode). Core protection is free; no login is required —
+  VpnService justification. The camera is used only to scan QR codes.
+  RECEIVE_SMS (RuStore build only) is used only by the optional on-device
+  scam-SMS check, which is off until the user turns it on (Home →
+  «SMS-сообщения» → «Включить»); SMS text never leaves the device and the inbox
+  is never read. To try it, send the test phone an SMS such as «Ваша карта
+  заблокирована. Срочно позвоните 8 999 123-45-67 и назовите код из SMS» — a
+  warning notification appears within seconds. There are no phone-state or
+  call-log permissions: the call warning knows only that a call is in progress
+  (from the audio mode). Core protection is free; no login is required —
   sign-in (email code) is optional and shows the account's linked devices."
 
 ---
@@ -522,6 +577,15 @@ optional and every protection feature works without it — both are true).
 - ⏳ **Founder:** RuStore account (VK ID), transactional SMTP for sign-in mail
   (§5), host the signed APK + set `NEXT_PUBLIC_APK_URL`, confirm the support
   mailbox, install-and-update test on a real phone (§2), the 1.0.4 TODOs in §7.0.
+- ⏳ **Founder, SMS check (RuStore APK):** upload `app-rustore.apk` (never the
+  direct one) with a bumped versionCode; paste the RECEIVE_SMS justification
+  (§4) and the review note (§5). When the listing is live, set
+  `STORES.rustore` to `{ available: true, url: "<listing URL>" }` in
+  `mobile/src/config/stores.ts`: that turns on the "в версии Cleanway из
+  RuStore" line in the website APK and the RuStore update banner in the RuStore
+  build. Raise the server's `min_supported` version only once the RuStore
+  release is live too. Still unverified on a real phone: whether a RuStore
+  install on Android 15+ is under "restricted settings" (the app handles both).
 
 ---
 
@@ -540,12 +604,11 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       "проверка СМС стала точнее" — true with the on-device text model (#99) and
       the new rules (#81–#96). If the model is switched off in the build, the
       sentence still holds for the rules alone; if you change more, re-read §7.5.
-- [ ] **Automatic SMS check is NOT in this copy.** It lives only on
-      `feat/sms-auto-rustore`, which is not merged into `main` (no SMS receiver in
-      `mobile/`, and `check-android-permissions.mjs` forbids SMS permissions). If
-      you decide to ship it in the RuStore build, the copy, §3 and §4 must all
-      change (new permission, new data row) — ask for a rewrite, do not edit one
-      line.
+- [ ] **Automatic SMS check is NOT in this copy.** It is built only into
+      `app-rustore.apk` (`feat/sms-auto-rustore`, not merged into `main`); §3 and
+      §4 already carry its permission and data rows, but the listing text below
+      (7.3, 7.5, screenshots) does not mention it. If you decide to ship it in the
+      RuStore build, ask for a rewrite of §7 — do not edit one line.
 - [ ] **Pricing line.** The Russian build hides paid plans
       (`mobile/src/config/market.ts`: `PAID_PLANS_HIDDEN_LANGUAGES = {"ru"}`), the
       daily free-check limit and the 7-day trial are not in the app, and RuStore

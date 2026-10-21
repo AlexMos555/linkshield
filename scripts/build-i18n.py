@@ -39,6 +39,11 @@ ANDROID_RES_DIR = ROOT / "mobile" / "modules" / "cleanway-vpn" / "android" / "sr
 ANDROID_NATIVE_NAMESPACE = ("mobile", "android_native")
 # Android resource qualifiers; Indonesian is the legacy "in" on Android.
 ANDROID_LOCALE_DIR = {"en": "values", "id": "values-in"}
+# Native strings with more than one placeholder, keyed by their sorted names,
+# list them in the order Kotlin passes them: getString(id, sender, reason) for
+# the SMS warning (SmsNotifier.kt). Positional, so a translation may put them
+# in any order. Every other native string has one placeholder → %1$s.
+ANDROID_MULTI_ARG_ORDER = {("reason", "sender"): ["sender", "reason"]}
 
 
 # Extension namespaces that get flattened back to chrome.i18n format.
@@ -203,9 +208,11 @@ def flatten_for_mobile(source: dict[str, Any]) -> dict[str, str]:
 def android_strings_xml(source: dict[str, Any]) -> str | None:
     """Render mobile.android_native.* as an Android strings.xml.
 
-    {{domain}} → %1$s (positional, so RTL/word-order translations can move
-    it). Apostrophes, ampersands and angle brackets are escaped for XML.
-    Returns None when the namespace is absent (older source files).
+    A lone {{placeholder}} → %1$s; {{sender}}/{{reason}} → %1$s/%2$s (positional,
+    so RTL/word-order translations can move them; see ANDROID_MULTI_ARG_ORDER).
+    Apostrophes, ampersands and angle brackets are escaped for XML. A
+    placeholder with no mapping is an error, not a literal "{{x}}" in a
+    notification. Returns None when the namespace is absent (older source files).
     """
     node: Any = source
     for key in ANDROID_NATIVE_NAMESPACE:
@@ -219,14 +226,22 @@ def android_strings_xml(source: dict[str, Any]) -> str | None:
         if isinstance(value, dict):
             value = value.get("text", "")
         text = str(value)
-        # Each native string carries at most one placeholder (whatever its
-        # name: domain, time, reason, n), so it maps to the first positional
-        # argument. A second distinct one would render the same value twice
-        # in silence — refuse it instead.
+        # A native string carries at most one placeholder (whatever its name:
+        # domain, time, reason, n, count), mapped to the first positional
+        # argument — unless ANDROID_MULTI_ARG_ORDER names the order Kotlin
+        # passes several in. Any other second placeholder would render the
+        # same value twice in silence — refuse it instead.
         names = sorted(set(PLACEHOLDER_RE.findall(text)))
         if len(names) > 1:
-            sys.exit(f"ERROR: android_native.{name} carries several placeholders {names}; one per string")
-        text = PLACEHOLDER_RE.sub("%1$s", text)
+            order = ANDROID_MULTI_ARG_ORDER.get(tuple(names))
+            if order is None:
+                sys.exit(f"ERROR: android_native.{name} carries several placeholders {names}; "
+                         "one per string, or add the order to ANDROID_MULTI_ARG_ORDER")
+            text = PLACEHOLDER_RE.sub(lambda m: f"%{order.index(m.group(1)) + 1}$s", text)
+        else:
+            text = PLACEHOLDER_RE.sub("%1$s", text)
+        if "%" in re.sub(r"%[12]\$s", "", text):
+            sys.exit(f"ERROR: android_native.{name}: bare % in {text!r}")
         text = (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                     .replace("'", "\\'").replace('"', '\\"'))
         lines.append(f'    <string name="{name}">{text}</string>')
