@@ -22,7 +22,7 @@ names. Redistribution to every phone is the act each licence has to allow.
 
 | Source | URL | Terms (date read) | How we use it | Switch |
 |---|---|---|---|---|
-| **URLhaus** (abuse.ch) | `https://urlhaus.abuse.ch/downloads/csv_online/` | abuse.ch Terms of Use 2025-11-04: free for not-for-profit use only, no derivative works; commercial use through a Spamhaus subscription (read 2026-09-21, 2026-09-29) | Hosts of online malware URLs | **`BLOCKLIST_LICENSED_ONLY=1` removes it** |
+| ~~**URLhaus** (abuse.ch)~~ | ~~`https://urlhaus.abuse.ch/downloads/csv_online/`~~ | abuse.ch Terms of Use 2025-11-04: free for not-for-profit use only, no derivative works; commercial use through a Spamhaus subscription (read 2026-09-21, 2026-09-29). Since 2026-10-21 the anonymous exports answer **410 Gone**; downloads need a personal Auth-Key in the URL | **Retired 2026-10-21** (`RETIRED_FEEDS`): never fetched; the ~900 published names only it backed left with the first publish without it (not carried, not retained). Cleanway sells plans, so we did not request a key | Gone |
 | **OpenPhish** community feed | `https://openphish.com/feed.txt` | openphish.com/terms.html: no commercial use "including … security operations, threat intelligence, detection … customer protection", no redistribution of any part to third parties; lifted only by written consent (read 2026-09-21, 2026-09-29) | Phishing URL hosts | **`BLOCKLIST_LICENSED_ONLY=1` removes it** |
 | **phishing.army** extended | `https://phishing.army/download/phishing_army_blocklist_extended.txt` | CC BY-NC 4.0 (the file's own header). Aggregates PhishTank, OpenPhish, CERT.pl, PhishFindR, urlscan, Phishunt (read 2026-09-21) | ~150k domain names | **`BLOCKLIST_LICENSED_ONLY=1` removes it** |
 | **Phishing.Database** (mitchellkrogza) | `https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt` | MIT on the compilation; the README does not name its sources, and MIT does not launder PhishTank/OpenPhish terms if the data comes from there (read 2026-09-29) | ~390k active phishing domains — the bulk of the list | Keep. **One e-mail to the maintainer about provenance is open** (plan §4) |
@@ -47,7 +47,7 @@ Unset (default): every row above except PhishTank, byte for byte the list
 published today (proved in the PR on one feed snapshot: same names, same
 count, the only header difference the build timestamp). Set to `1`:
 
-* URLhaus, OpenPhish and phishing.army are not downloaded and not in
+* OpenPhish and phishing.army are not downloaded and not in
   `fetched` — so they are **not an outage**: nothing is carried for them,
   their stored health state is forgotten, and the run does not go red.
 * The published names only they backed (per the last healthy run's backing
@@ -56,6 +56,12 @@ count, the only header difference the build timestamp). Set to `1`:
   phishing site, not for data we may no longer ship.
 * The set changes by more than the 50 % churn gate: the first run after
   flipping needs `--force` (the workflow's `force` input). One run.
+  (Retiring URLhaus did not: ~900 names of ~560k, 0.2 %. Measured
+  2026-10-21 on a dry run against the live artifact, the first publish with
+  PhishDestroy and without URLhaus changes the artifact by ~29 % at most —
+  +114k / −28.6k hashes, and most of the −28.6k are names production keeps
+  in retention, which a Redis-less dry run cannot see — so no allowance was
+  needed.)
 * `BLOCKLIST_EXCLUDE_FEEDS=TweetFeed` (comma-separated names) leaves further
   feeds out — used by `scripts/eval_day_one_coverage.py` to build the
   variants it scores, never in production.
@@ -205,6 +211,7 @@ Cleanway's blocklist includes data from Phishunt.io (CC0), TweetFeed.live
 (CC0), CERT Polska's Lista Ostrzeżeń, CSIRT Italia (TLP:CLEAR),
 Phishing.Database (MIT, © Mitchell Krog), PhishDestroy DestroyList
 (phishdestroy.io, CC0 / MIT) and — until the licence cut —
-phishing.army (CC BY-NC 4.0), OpenPhish and URLhaus (abuse.ch). Domain
+phishing.army (CC BY-NC 4.0) and OpenPhish; until 2026-10-21 also URLhaus
+(abuse.ch). Domain
 popularity from Tranco (Le Pochat et al.). Public suffixes from the Mozilla
 Public Suffix List (MPL 2.0).
