@@ -16,7 +16,9 @@ export const colors = {
   // Text
   textPrimary: "#F1F5F9",
   textSecondary: "#94A3B8",
-  textMuted: "#6B7A93",
+  // Lifted from #6B7A93 (4.3:1 on bg, 3.6:1 on raised cards) to clear WCAG AA
+  // 4.5:1 for captions on every surface (scripts/test-theme-contrast.mjs).
+  textMuted: "#8592A6",
   textDisabled: "#475569",
 
   // Semantic — the only three hues in the app
@@ -24,7 +26,11 @@ export const colors = {
   greenWash: "#34D3991F",
   greenStroke: "#34D39940",
   blue: "#4C8DFF",
-  bluePressed: "#3A75E8",
+  // Filled buttons/chips with a white label. White on `blue` is only 3.2:1;
+  // `blue` itself stays for text and icons on the dark background, where a
+  // darker blue would fall below 4.5:1 (scripts/test-theme-contrast.mjs).
+  blueFill: "#1469FF",
+  bluePressed: "#0F5FE8",
   blueWash: "#4C8DFF1F",
   amber: "#FBBF24",
   amberWash: "#FBBF241F",

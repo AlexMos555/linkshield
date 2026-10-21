@@ -18,17 +18,21 @@ interface CheckAnythingCardProps {
 export function CheckAnythingCard({ onOpen, onPaste, onScanQr, onHowToShare }: CheckAnythingCardProps) {
   const { t } = useTranslation();
   return (
-    <TouchableOpacity style={s.card} onPress={onOpen} activeOpacity={0.85} accessibilityRole="button">
-      <View style={s.titleRow}>
+    // The whole card still opens the check for a tap anywhere, but it is not
+    // one screen-reader element: an accessible parent swallowed the Paste / QR
+    // / Share chips, so VoiceOver could not reach them. The title row is the
+    // "open" button; each chip is its own.
+    <TouchableOpacity style={s.card} onPress={onOpen} activeOpacity={0.85} accessible={false}>
+      <TouchableOpacity style={s.titleRow} onPress={onOpen} activeOpacity={0.85} accessibilityRole="button">
         <View style={s.iconBox}>
           <Ionicons name="search-outline" size={22} color={colors.textSecondary} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>{t("mobile.home.check.title")}</Text>
-<Text style={s.desc}>{t("mobile.home.check.desc")}</Text>
+          <Text style={s.desc}>{t("mobile.home.check.desc")}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-      </View>
+      </TouchableOpacity>
 
       <View style={s.chipRow}>
         <Chip icon="clipboard-outline" label={t("mobile.home.check.paste")} onPress={onPaste} />
@@ -75,7 +79,7 @@ const s = StyleSheet.create({
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: 14 },
   chip: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    height: 40, paddingHorizontal: space.md,
+    minHeight: 44, paddingHorizontal: space.md,
     backgroundColor: "#FFFFFF0A",
     borderWidth: 1, borderColor: colors.stroke,
     borderRadius: radius.chip,

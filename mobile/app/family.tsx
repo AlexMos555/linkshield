@@ -258,7 +258,7 @@ export default function FamilyScreen() {
       <View style={[styles.container, styles.center]}>
         <Text style={styles.h1}>{t("mobile.family.title")}</Text>
         <Text style={styles.sub}>{t("mobile.family.signed_out_body")}</Text>
-        <TouchableOpacity style={[styles.btnPrimary, styles.btnSolo]} onPress={() => router.push("/auth")}>
+        <TouchableOpacity style={[styles.btnPrimary, styles.btnSolo]} onPress={() => router.push("/auth")} accessibilityRole="button">
           <Text style={styles.btnPrimaryText}>{t("mobile.family.sign_in")}</Text>
         </TouchableOpacity>
       </View>
@@ -271,6 +271,7 @@ export default function FamilyScreen() {
         <Text style={styles.h1}>{t("mobile.family.title")}</Text>
         <Text style={styles.sub}>{t("mobile.family.load_failed_body")}</Text>
         <TouchableOpacity
+          accessibilityRole="button"
           style={[styles.btnPrimary, styles.btnSolo]}
           onPress={() => {
             setScreen({ kind: "loading" });
@@ -291,6 +292,7 @@ export default function FamilyScreen() {
 
         <View style={styles.row}>
           <TouchableOpacity
+            accessibilityRole="button"
             style={styles.btnPrimary}
             disabled={busy}
             onPress={handleCreate}
@@ -300,6 +302,7 @@ export default function FamilyScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityRole="button"
             style={styles.btnGhost}
             onPress={() => setJoinOpen(true)}
           >
@@ -336,6 +339,7 @@ export default function FamilyScreen() {
             />
             {joinError && <Text style={styles.error}>{joinError}</Text>}
             <TouchableOpacity
+              accessibilityRole="button"
               style={[styles.btnPrimary, { marginTop: spacing.md }]}
               disabled={busy}
               onPress={handleAccept}
@@ -404,6 +408,7 @@ export default function FamilyScreen() {
                 anywhere and the scanner cannot read invites. */}
             <Text style={styles.cardDesc}>{t("mobile.family.invite_desc")}</Text>
             <TouchableOpacity
+              accessibilityRole="button"
               style={[styles.btnPrimary, { marginTop: spacing.md }]}
               disabled={busy}
               onPress={handleInvite}
@@ -458,14 +463,16 @@ export default function FamilyScreen() {
         animationType="fade"
         onRequestClose={() => setInvite(null)}
       >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setInvite(null)}
-        >
+        <View style={styles.modalBackdrop}>
+          {/* Backdrop as a sibling behind the card, not its parent: a
+              touchable parent made the card one screen-reader button. */}
           <Pressable
-            style={styles.modalCard}
-            onPress={(e) => e.stopPropagation()}
-          >
+            style={StyleSheet.absoluteFill}
+            onPress={() => setInvite(null)}
+            accessible={false}
+            importantForAccessibility="no"
+          />
+          <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>{t("mobile.family.modal_title")}</Text>
             <Text style={styles.modalDesc}>{t("mobile.family.modal_desc")}</Text>
             <View style={styles.codeBox}>
@@ -477,18 +484,19 @@ export default function FamilyScreen() {
               <Text style={styles.pinValue}>{invite?.pin ?? ""}</Text>
             </View>
             <View style={[styles.row, { marginTop: spacing.md }]}>
-              <TouchableOpacity style={styles.btnGhost} onPress={handleCopyInvite}>
+              <TouchableOpacity style={styles.btnGhost} onPress={handleCopyInvite} accessibilityRole="button">
                 <Text style={styles.btnGhostText}>{t("mobile.family.copy_both")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                accessibilityRole="button"
                 style={styles.btnPrimary}
                 onPress={() => setInvite(null)}
               >
                 <Text style={styles.btnPrimaryText}>{t("mobile.family.done")}</Text>
               </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </ScrollView>
   );

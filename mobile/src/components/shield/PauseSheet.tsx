@@ -71,7 +71,7 @@ const s = StyleSheet.create({
   warningText: { fontSize: 17, lineHeight: 24, fontWeight: "600", color: colors.amber, flex: 1 },
   body: { ...typo.body, color: colors.textSecondary, marginTop: space.md },
   keepBtn: {
-    minHeight: 54, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 54, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   keepLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },

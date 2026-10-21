@@ -34,6 +34,7 @@ import {
   isNotFound, reasonsToShow, serverLevel, showScore, shownLevel, type ServerAnswer,
 } from "../src/utils/check-verdict";
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
+import { useAnnounce } from "../src/hooks/useAnnounce";
 import { useCallGuard } from "../src/components/call/CallGuardProvider";
 import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
 import { useAutoPaywall, useDetailGate } from "../src/hooks/useFreemium";
@@ -96,6 +97,19 @@ export default function SharedScreen() {
   const { listed, result, error, pending, retry } = useDomainCheck(domain, via !== "guard", gate.deep);
   useAutoPaywall(locked, gate.autoPaywall, listed === undefined ? undefined : Boolean(listed), gate.key);
 
+  const loading = listed === undefined || (!listed && pending);
+  const level = loading ? null : shownLevel(listed, result);
+  // Spoken to VoiceOver as "checking" turns into the answer (TalkBack reads
+  // the live regions below on its own).
+  useAnnounce(
+    !domain ? null
+      : loading ? t("mobile.result.loading", { domain })
+      : !listed && isNotFound(result) ? `${t("mobile.result.not_found_title")}. ${domain}`
+      : locked && !listed ? `${t("mobile.paywall.not_listed_title")}. ${domain}`
+      : !level ? t("mobile.result.error_title")
+      : `${listed ? t("mobile.result.listed_title") : t(`mobile.result.verdict_${level}`)}. ${result?.domain ?? domain}`,
+  );
+
   if (!domain) {
     return (
       <CenteredMessage
@@ -109,9 +123,9 @@ export default function SharedScreen() {
   }
 
   // Waiting — but never for the server when the list already knows the site.
-  if (listed === undefined || (!listed && pending)) {
+  if (loading) {
     return (
-      <View style={s.center}>
+      <View style={s.center} accessibilityLiveRegion="polite">
         <ActivityIndicator size="large" color={colors.blue} />
         <Text style={s.centerTitle}>{t("mobile.result.loading", { domain })}</Text>
         <Text style={s.centerSub}>{t("mobile.result.loading_sub")}</Text>
@@ -140,7 +154,6 @@ export default function SharedScreen() {
     );
   }
 
-  const level = shownLevel(listed, result);
   if (!level) {
     return (
       <CenteredMessage
@@ -168,6 +181,7 @@ export default function SharedScreen() {
       <View
         style={[s.verdictCard, { borderColor: levelStrokes[level] }]}
         accessibilityRole="summary"
+        accessibilityLiveRegion="polite"
         accessibilityLabel={
           score === undefined
             ? `${label}. ${domain}`
@@ -302,7 +316,7 @@ interface CenteredMessageProps {
 
 function CenteredMessage({ icon, title, body, action, onAction }: CenteredMessageProps) {
   return (
-    <View style={s.center}>
+    <View style={s.center} accessibilityLiveRegion="polite">
       <Ionicons name={icon} size={44} color={colors.amber} />
       <Text style={s.centerTitle}>{title}</Text>
       <Text style={s.centerBody}>{body}</Text>
@@ -365,13 +379,13 @@ const s = StyleSheet.create({
   moreSignals: { ...typo.caption, color: colors.textMuted, marginTop: space.sm },
 
   primaryBtn: {
-    height: 50, backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 50, backgroundColor: colors.blueFill, borderRadius: radius.control,
     paddingHorizontal: space.xxl,
     alignItems: "center", justifyContent: "center", marginTop: space.sm,
   },
   primaryLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
   secondaryBtn: {
-    height: 50, backgroundColor: colors.surface,
+    minHeight: 50, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.stroke, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", marginTop: space.sm, marginBottom: space.lg,
   },

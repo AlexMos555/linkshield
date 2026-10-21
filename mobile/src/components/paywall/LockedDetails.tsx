@@ -49,6 +49,7 @@ export function NotListedCard({ domain }: { domain: string }) {
       style={s.verdict}
       accessible
       accessibilityRole="summary"
+      accessibilityLiveRegion="polite"
       accessibilityLabel={`${t("mobile.paywall.not_listed_title")}. ${domain}. ${t("mobile.paywall.not_listed_body")}`}
     >
       <Ionicons name="help-circle-outline" size={44} color={colors.textPrimary} />
@@ -86,7 +87,7 @@ const s = StyleSheet.create({
   title: { ...typo.headline, color: colors.textPrimary, flex: 1 },
   body: { fontSize: 15, lineHeight: 21, color: colors.textSecondary, marginTop: space.sm },
   button: {
-    minHeight: 50, backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 50, backgroundColor: colors.blueFill, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", paddingHorizontal: space.lg, marginTop: space.lg,
   },
   buttonPressed: { backgroundColor: colors.bluePressed },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Animated, Easing, AccessibilityInfo, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, Animated, Easing, TouchableOpacity,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../../src/utils/theme";
 import { getStats, getWeeklyStats, getActiveDaysThisWeek } from "../../src/services/database";
+import { useReduceMotion } from "../../src/hooks/useReduceMotion";
 
 /**
  * Habit score (docs/design/shield-checklist-design.md §1 tokens, §5 motion, §6 a11y).
@@ -150,15 +151,14 @@ function ScoreRing({ days, band, t }: { days: number; band: Band; t: TFunction }
   // faster than a fraction, but the exact fraction sits right underneath it.
   const score = Math.round((days / 7) * 100);
   const [shown, setShown] = useState(0);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  // null until the setting is known: the count-up waits rather than starting
+  // and then snapping to the end for someone who asked for no motion.
+  const reduceMotion = useReduceMotion();
   const progress = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.96)).current;
 
   useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion).catch(() => {});
-  }, []);
-
-  useEffect(() => {
+    if (reduceMotion === null) return;
     // Listener + Math.round: interpolating an Animated.Value straight into a
     // string used to render fractional digits ("43.7") mid-count.
     const id = progress.addListener(({ value }) => setShown(Math.round(value)));
@@ -262,8 +262,8 @@ const s = StyleSheet.create({
     textAlign: "center", marginTop: space.xs,
   },
   emptyCta: {
-    height: 50, paddingHorizontal: space.xxxl, borderRadius: radius.control,
-    backgroundColor: colors.blue, alignItems: "center", justifyContent: "center",
+    minHeight: 50, paddingHorizontal: space.xxxl, borderRadius: radius.control,
+    backgroundColor: colors.blueFill, alignItems: "center", justifyContent: "center",
     marginTop: space.xl,
   },
   emptyCtaLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },

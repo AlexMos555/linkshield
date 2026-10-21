@@ -47,7 +47,7 @@ const s = StyleSheet.create({
     borderRadius: radius.full, borderWidth: 1, borderColor: colors.stroke,
     backgroundColor: colors.surface,
   },
-  chipOn: { backgroundColor: colors.blue, borderColor: colors.blue },
+  chipOn: { backgroundColor: colors.blueFill, borderColor: colors.blueFill },
   label: { fontSize: 15, fontWeight: "600", color: colors.textSecondary },
   labelOn: { color: "#FFFFFF" },
 });

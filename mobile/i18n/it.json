@@ -1689,6 +1689,7 @@
   "mobile.onboarding.start": "Inizia",
   "mobile.onboarding.s3_title_ios": "Protezione su iPhone",
   "mobile.onboarding.s3_desc_ios": "Per iPhone Cleanway sta preparando un'estensione per Safari, un filtro per gli SMS truffa e la protezione DNS. Arriveranno con gli aggiornamenti e la schermata principale mostrerà cosa è pronto. Già oggi puoi controllare qualsiasi cosa con un tocco o con Condividi → Cleanway.",
+  "mobile.onboarding.step_a11y": "Passo {{current}} di {{total}}",
   "mobile.android_native.fg_channel": "Protezione Cleanway",
   "mobile.android_native.fg_channel_desc": "Mostrata mentre la protezione anti-phishing è attiva",
   "mobile.android_native.fg_title": "La protezione Cleanway è attiva",

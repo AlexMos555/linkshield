@@ -1689,6 +1689,7 @@
   "mobile.onboarding.start": "Los geht's",
   "mobile.onboarding.s3_title_ios": "Schutz auf dem iPhone",
   "mobile.onboarding.s3_desc_ios": "Für das iPhone bereitet Cleanway eine Safari-Erweiterung, einen Filter für Betrugs-SMS und DNS-Schutz vor. Sie kommen mit Updates, und der Startbildschirm zeigt, was schon bereit ist. Schon heute kannst du alles mit einem Tipp prüfen – oder über Teilen → Cleanway.",
+  "mobile.onboarding.step_a11y": "Schritt {{current}} von {{total}}",
   "mobile.android_native.fg_channel": "Cleanway-Schutz",
   "mobile.android_native.fg_channel_desc": "Wird angezeigt, solange der Phishing-Schutz aktiv ist",
   "mobile.android_native.fg_title": "Cleanway-Schutz ist an",

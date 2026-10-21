@@ -1689,6 +1689,7 @@
   "mobile.onboarding.start": "Mulai",
   "mobile.onboarding.s3_title_ios": "Perlindungan di iPhone",
   "mobile.onboarding.s3_desc_ios": "Cleanway sedang menyiapkan ekstensi Safari, filter SMS penipuan, dan perlindungan DNS untuk iPhone. Semuanya hadir lewat pembaruan, dan layar utama menunjukkan apa yang sudah siap. Hari ini Anda sudah bisa memeriksa apa saja dengan sekali ketuk atau lewat Bagikan → Cleanway.",
+  "mobile.onboarding.step_a11y": "Langkah {{current}} dari {{total}}",
   "mobile.android_native.fg_channel": "Perlindungan Cleanway",
   "mobile.android_native.fg_channel_desc": "Ditampilkan selama perlindungan phishing aktif",
   "mobile.android_native.fg_title": "Perlindungan Cleanway menyala",

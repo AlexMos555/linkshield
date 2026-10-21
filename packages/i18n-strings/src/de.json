@@ -3658,7 +3658,8 @@
       "next": "Weiter",
       "start": "Los geht's",
       "s3_title_ios": "Schutz auf dem iPhone",
-      "s3_desc_ios": "Für das iPhone bereitet Cleanway eine Safari-Erweiterung, einen Filter für Betrugs-SMS und DNS-Schutz vor. Sie kommen mit Updates, und der Startbildschirm zeigt, was schon bereit ist. Schon heute kannst du alles mit einem Tipp prüfen – oder über Teilen → Cleanway."
+      "s3_desc_ios": "Für das iPhone bereitet Cleanway eine Safari-Erweiterung, einen Filter für Betrugs-SMS und DNS-Schutz vor. Sie kommen mit Updates, und der Startbildschirm zeigt, was schon bereit ist. Schon heute kannst du alles mit einem Tipp prüfen – oder über Teilen → Cleanway.",
+      "step_a11y": "Schritt {{current}} von {{total}}"
     },
     "android_native": {
       "fg_channel": "Cleanway-Schutz",

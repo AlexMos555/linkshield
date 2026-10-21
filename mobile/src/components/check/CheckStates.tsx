@@ -57,6 +57,7 @@ export function NotFoundCard({ domain }: { domain: string }) {
     <View
       style={s.card}
       accessibilityRole="summary"
+      accessibilityLiveRegion="polite"
       accessibilityLabel={`${t("mobile.result.not_found_title")}. ${domain}`}
     >
       <Ionicons name="help-circle-outline" size={48} color={colors.amber} />

@@ -200,7 +200,7 @@ const s = StyleSheet.create({
   what: { ...typo.caption, fontWeight: "600", marginTop: 2 },
   meta: { ...typo.caption, color: colors.textMuted, marginTop: 1 },
   scoreChip: {
-    minWidth: 44, height: 28, paddingHorizontal: space.sm, borderWidth: 1,
+    minWidth: 44, minHeight: 28, paddingHorizontal: space.sm, borderWidth: 1,
     borderRadius: radius.chip, alignItems: "center", justifyContent: "center",
   },
   scoreValue: { fontSize: 15, fontWeight: "600" },

@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 import { colors, spacing, fontSize } from "../src/utils/theme";
 import { setSetting } from "../src/services/database";
 import { onboardingSlides } from "../src/utils/platform-features";
+import { useAnnounce } from "../src/hooks/useAnnounce";
 
 const { width } = Dimensions.get("window");
 
@@ -47,18 +48,25 @@ export default function OnboardingScreen() {
   }
 
   const slide = slides[page];
+  // "Next" swaps the slide under the button the screen reader is resting on:
+  // say the new slide's title (the first one is read with the screen).
+  useAnnounce(page > 0 ? t(slide.titleKey) : null);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom }]}>
       {/* Scrolls when the person's text size makes a slide taller than the screen. */}
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Ionicons name={slide.icon} size={72} color={colors.safe} style={styles.iconGlyph} />
-        <Text style={styles.title} accessibilityRole="header">{t(slide.titleKey)}</Text>
+        <Text style={styles.title} accessibilityRole="header" accessibilityLiveRegion="polite">{t(slide.titleKey)}</Text>
         <Text style={styles.desc}>{t(slide.descKey)}</Text>
       </ScrollView>
 
       {/* Dots */}
-      <View style={styles.dots}>
+      <View
+        style={styles.dots}
+        accessible
+        accessibilityLabel={t("mobile.onboarding.step_a11y", { current: page + 1, total: slides.length })}
+      >
         {slides.map((_, i) => (
           <View key={i} style={[styles.dot, i === page && styles.dotActive]} />
         ))}

@@ -141,7 +141,7 @@ const s = StyleSheet.create({
   title: { ...typo.title2, color: colors.textPrimary, marginTop: space.lg, textAlign: "center" },
   body: { ...typo.body, color: colors.textSecondary, textAlign: "center", marginTop: space.sm },
   primaryBtn: {
-    minHeight: 50, paddingHorizontal: space.xxxl, backgroundColor: colors.blue,
+    minHeight: 50, paddingHorizontal: space.xxxl, backgroundColor: colors.blueFill,
     borderRadius: radius.control, alignItems: "center", justifyContent: "center",
     marginTop: space.xl, alignSelf: "stretch",
   },

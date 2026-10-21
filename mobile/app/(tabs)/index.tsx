@@ -338,6 +338,7 @@ export default function HomeScreen() {
             // in its own line, never fold it into "You're protected".
             <TouchableOpacity
               style={s.hintRow}
+              hitSlop={{ top: 13, bottom: 13 }}
               onPress={network.refreshBlocklist}
               activeOpacity={0.85}
               accessibilityRole="button"
@@ -370,6 +371,7 @@ export default function HomeScreen() {
             // on must be the easiest thing on this screen.
             <TouchableOpacity
               style={s.hintRow}
+              hitSlop={{ top: 13, bottom: 13 }}
               onPress={network.resume}
               activeOpacity={0.85}
               accessibilityRole="button"
@@ -382,6 +384,7 @@ export default function HomeScreen() {
           {network.state === "conflict" && (
             <TouchableOpacity
               style={s.hintRow}
+              hitSlop={{ top: 13, bottom: 13 }}
               onPress={network.openPrivateDnsSettings}
               activeOpacity={0.85}
               accessibilityRole="button"
@@ -555,15 +558,25 @@ function ShareHowToSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={s.scrim} activeOpacity={1} onPress={onClose}>
+      <View style={s.scrim}>
+        {/* The scrim is a sibling BEHIND the sheet, not its parent: a
+            touchable parent made the whole sheet one screen-reader button.
+            Screen-reader users close with OK or Back (onRequestClose). */}
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+          accessible={false}
+          importantForAccessibility="no"
+        />
         <View style={s.sheet}>
-          <Text style={s.sheetTitle}>{t("mobile.home.check.share_sheet_title")}</Text>
+          <Text style={s.sheetTitle} accessibilityRole="header">{t("mobile.home.check.share_sheet_title")}</Text>
           <Text style={s.sheetBody}>{t(shareHowToKey(Platform.OS))}</Text>
-          <TouchableOpacity style={s.sheetBtn} onPress={onClose} activeOpacity={0.85}>
+          <TouchableOpacity style={s.sheetBtn} onPress={onClose} activeOpacity={0.85} accessibilityRole="button">
             <Text style={s.sheetBtnLabel}>{t("mobile.home.check.share_sheet_ok")}</Text>
           </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 }
@@ -580,7 +593,7 @@ const s = StyleSheet.create({
   interruptedText: { ...typo.caption, color: colors.amber, flex: 1 },
 
   cta: {
-    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   ctaLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
@@ -623,7 +636,7 @@ const s = StyleSheet.create({
   sheetTitle: { ...typo.headline, color: colors.textPrimary },
   sheetBody: { ...typo.body, color: colors.textSecondary, marginTop: space.sm },
   sheetBtn: {
-    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   sheetBtnLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
