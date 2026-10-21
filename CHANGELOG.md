@@ -35,7 +35,7 @@ iOS build 4, Android versionCode 106. Ships after 1.0.4 clears App Review.
 - **Готовность к капче при входе.** Проверка «я не робот» появится, только если сервер её потребует; пока капча выключена, ничего не меняется (#214).
 - **Готовность к новому ключу Supabase** (publishable вместо anon JWT) (#215).
 - **Доступность.** У всех кнопок есть роли и подписи для VoiceOver и TalkBack; вердикт проверки и загрузка озвучиваются; онбординг говорит «Шаг N из 3». Контраст текста и кнопок — не ниже AA, области нажатия не меньше 44 pt, крупный шрифт больше не обрезается, при «Уменьшить движение» кольцо оценки и окно защиты от звонков не анимируются (#249).
-- **Политика конфиденциальности в приложении** перечисляет обработчиков данных после переезда инфраструктуры (#228); новая причина в результате проверки для сайтов на бесплатных хостингах и динамических DNS (#224).
+- **Политика конфиденциальности в приложении** перечисляет обработчиков данных после переезда инфраструктуры (#228); для сайтов на динамических DNS результат проверки показывает понятную причину (#224).
 
 **What's new**
 - Reopens a closed on-device database instead of losing data; a failed read is never treated as a first run (#184).
@@ -45,7 +45,7 @@ iOS build 4, Android versionCode 106. Ships after 1.0.4 clears App Review.
 - Captcha-ready sign-in: the Turnstile check appears only if Supabase asks for it (#214).
 - Supabase publishable-key ready (`*_SUPABASE_PUBLISHABLE_KEY` preferred over the anon JWT) (#215).
 - Accessibility: roles and labels on every touchable for VoiceOver and TalkBack; verdicts and loading states are announced; onboarding says "Step N of 3". Text and button contrast meets AA, touch targets are at least 44 pt, large text is no longer clipped, and Reduce Motion stops the score-ring and call-guard animations (#249).
-- In-app privacy policy lists the subprocessors after the infrastructure move (#228); a new check-result reason for sites on free hosting and dynamic DNS (#224).
+- In-app privacy policy lists the subprocessors after the infrastructure move (#228); sites on dynamic DNS get a plain-language reason in the check result (#224).
 
 Enablement order for the server-side switches: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
 
