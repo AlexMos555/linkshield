@@ -16,6 +16,7 @@ its URL constant below and in docs/THIRD_PARTY_FEEDS.md:
   * TweetFeed.live   — 365-day OSINT window from reporting accounts (CC0 1.0)
   * CERT Polska      — Lista Ostrzeżeń, hole.cert.pl (unrestricted processing)
   * CSIRT Italia/ACN — public MISP feed, TLP:CLEAR events only
+  * PhishDestroy     — DestroyList, DNS-verified active domains (CC0 / MIT)
   * PhishTank        — verified-online dump, ONLY with PHISHTANK_API_KEY
                        (api/services/phishtank_feed.py: one download a day)
 
@@ -226,6 +227,31 @@ CERT_PL_DOMAINS = "https://hole.cert.pl/domains/v2/domains.txt"
 # infostealer callbacks.
 CSIRT_IT_MANIFEST = "https://www.csirt.gov.it/feed-misp/manifest.json"
 
+# ── 2026-10-21: PhishDestroy DestroyList, licence-checked before it was wired ──
+#
+# phishdestroy.io/dataset: the domain lists are "Released under CC0 1.0
+# Universal" — "no restrictions, no attribution required", named fit "for
+# research, commercial products, or ML training". The repository is MIT
+# ("MIT — Free, open, yours to use!"); the dataset page itself notes its
+# HuggingFace card says MIT and its Live page CC-BY-4.0. Every one of the
+# three allows a paid product; we attribute anyway (docs/THIRD_PARTY_FEEDS.md
+# §5), which satisfies the strictest. "Non-commercial volunteer project" in
+# the README describes who runs it, not a term on the data.
+#
+# We read the DNS-verified "Primary Live" file, not list.json: the full list
+# was 55% resolvable on a 300-name sample, this one 93% — a dead name costs
+# artifact bytes and protects nobody. Measured 2026-10-21 against the live
+# artifact (493,525 hashes): 137k hosts, 14% already covered, ~114k new after
+# every guard (top-100k + Tranco-1M + PSL + tenant rules), zero names on the
+# Tranco-1M list, zero hits on data/canary_must_resolve.txt, the RU legit
+# lists or the brand domains in data/typosquat_targets*.json. Mostly crypto
+# drainers, wallet/exchange lures and fake shops, ~850 under RU/CIS ccTLDs
+# (darknet-market mirrors, "AML check" scams). Provenance: their own parsers
+# (ads, SEO, social media, dnstwist) plus Telegram-bot reports; the
+# aggregated "Community" list is a different file and is never read here.
+PHISHDESTROY_ACTIVE = ("https://raw.githubusercontent.com/phishdestroy/destroylist/"
+                       "main/dns/active_domains.json")
+
 BATCH = 5_000
 SET_KEY = "dangerous_domains"
 TTL_SECONDS = 60 * 60 * 24 * 3  # 3-day safety TTL: if the cron dies, the set expires
@@ -244,7 +270,8 @@ LICENSED_ONLY_ENV = "BLOCKLIST_LICENSED_ONLY"
 EXCLUDE_FEEDS_ENV = "BLOCKLIST_EXCLUDE_FEEDS"
 # Every source name a run can have, for validating BLOCKLIST_EXCLUDE_FEEDS.
 FEED_NAMES = frozenset({"URLhaus", "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt",
-                        "TweetFeed", "CERT Polska", "CSIRT Italia", phishtank_feed.SOURCE_NAME})
+                        "TweetFeed", "CERT Polska", "CSIRT Italia", "PhishDestroy",
+                        phishtank_feed.SOURCE_NAME})
 
 
 def _env_flag(name: str, environ=None) -> bool:
@@ -537,6 +564,23 @@ def _hosts_from_openphish(text: str):
             h = urlparse(line).hostname
             if h:
                 yield h.lower()
+
+
+def _hosts_from_json_list(text: str):
+    """PhishDestroy: one JSON array of hostnames. Anything but an array
+    raises, so the run records the feed as down instead of reading an HTML
+    error page as every one of its names having left. A wildcard or a
+    leading-dot entry is skipped, never widened to its parent."""
+    data = json.loads(text)
+    if not isinstance(data, list):
+        raise ValueError(f"expected a JSON array of hostnames, got {type(data).__name__}")
+    for item in data:
+        if not isinstance(item, str):
+            continue
+        host = item.strip().lower().rstrip(".")
+        if not host or host.startswith(("*", ".")) or "/" in host or any(c.isspace() for c in host):
+            continue
+        yield host
 
 
 # TLDs that are also common file extensions. TweetFeed's reporters post
@@ -984,6 +1028,7 @@ def _feed_specs(excluded: frozenset = frozenset()) -> tuple:
         ("Phishunt", PHISHUNT_FEED, _hosts_from_openphish, True),
         ("TweetFeed", TWEETFEED_YEAR, _hosts_from_tweetfeed, True),
         ("CERT Polska", CERT_PL_DOMAINS, _hosts_from_domain_list, False),
+        ("PhishDestroy", PHISHDESTROY_ACTIVE, _hosts_from_json_list, True),
     )
     return tuple(spec for spec in specs if spec[0] not in excluded)
 

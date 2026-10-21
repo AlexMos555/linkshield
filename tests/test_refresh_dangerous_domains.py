@@ -556,6 +556,8 @@ def _stub_world(monkeypatch, fake, openphish_urls, top=frozenset(), extra=None) 
         # A healthy MISP feed with no events — an unparseable body would be an
         # outage, which suppresses departure recording for every other feed.
         rdd.CSIRT_IT_MANIFEST: "{}",
+        # Same for PhishDestroy: an empty JSON array is a healthy, empty feed.
+        rdd.PHISHDESTROY_ACTIVE: "[]",
         **(extra or {}),
     }
 
@@ -974,6 +976,43 @@ def test_cert_polska_parser_reads_one_host_per_line_including_punycode():
     assert rdd._norm_host(got[0]) == "0-ilxrc-w285.p9bckp.sbs"
 
 
+# https://raw.githubusercontent.com/phishdestroy/destroylist/main/dns/active_domains.json
+# — a JSON array of hostnames. The first four are verbatim from the feed; the
+# rest are the shapes a parser must not widen or choke on.
+PHISHDESTROY_SAMPLE = json.dumps([
+    "0-autht-lo-xfin-ity-w0965.vercel.app",
+    "ledger-up-walet.pages.dev",
+    "aml-proverka.ru",
+    "xn--dexscreenr-76a.com",
+    "Claim-Zetachain.COM.",      # case and the root dot are folded
+    "*.wildcard-phish.top",      # a wildcard is never widened to its parent
+    ".paypal.com",               # nor a leading-dot suffix rule
+    "https://url-not-host.com/x",
+    "two words.com",
+    "",
+    42,
+    None,
+])
+
+
+def test_phishdestroy_parser_reads_hosts_and_never_widens_a_pattern():
+    assert list(rdd._hosts_from_json_list(PHISHDESTROY_SAMPLE)) == [
+        "0-autht-lo-xfin-ity-w0965.vercel.app",
+        "ledger-up-walet.pages.dev",
+        "aml-proverka.ru",
+        "xn--dexscreenr-76a.com",
+        "claim-zetachain.com",
+    ]
+
+
+@pytest.mark.parametrize("body", ["<html>502 Bad Gateway</html>", "", '{"domains": []}', '"x.com"'])
+def test_phishdestroy_body_that_is_not_an_array_raises(body):
+    """Raising is what makes the run record the feed as DOWN: an error page
+    parsed as 'no names' would read as every PhishDestroy name having left."""
+    with pytest.raises(ValueError):
+        list(rdd._hosts_from_json_list(body))
+
+
 def test_misp_event_yields_names_and_nothing_else():
     got = list(rdd._hosts_from_misp_event(CSIRT_EVENT["Event"]))
     assert got == ["anarchy10.duckdns.org", "c2.bioscolombia.com.co",
@@ -1172,6 +1211,32 @@ async def test_cert_polska_tenant_sites_never_darken_the_platform(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_phishdestroy_names_pass_every_guard_before_they_are_published(monkeypatch):
+    """PhishDestroy promotes like the other domain lists, and like them it
+    never gets past the tenant, popularity or zone guards: a pages.dev tenant
+    is blocked exactly, a top-100k name is never blocked, and a dedicated
+    phishing domain named with its www. host is blocked whole."""
+    fake = _FakeRedis()
+    feed = json.dumps(["ledger-login.pages.dev", "sberbank.ru", "online.sberbank.ru",
+                       "aml-proverka.ru", "www.aml-proverka.ru", "com.br"])
+    extra = {rdd.PHISHDESTROY_ACTIVE: feed}
+    _stub_world(monkeypatch, fake, [], frozenset({"sberbank.ru"}), extra)
+
+    async def _psl():
+        return set(PSL) | {"ru", "dev", "pages.dev"}
+
+    monkeypatch.setattr(rdd, "_fetch_psl", _psl)
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
+    published = _published(fake)
+    assert "ledger-login.pages.dev" in published
+    assert "pages.dev" not in published and not _phone_blocks(fake, "someone-else.pages.dev")
+    assert not (published & {"sberbank.ru", "online.sberbank.ru"})
+    assert not _phone_blocks(fake, "online.sberbank.ru")
+    assert "aml-proverka.ru" in published and _phone_blocks(fake, "lk.aml-proverka.ru")
+    assert "com.br" not in published
+
+
+@pytest.mark.asyncio
 async def test_a_retained_exact_only_host_does_not_promote_later(monkeypatch):
     """A retained name is one NO feed still lists, so nothing vouches for its
     registrable. Without this, a CERT Polska tenant host would quietly darken
@@ -1187,7 +1252,7 @@ async def test_a_retained_exact_only_host_does_not_promote_later(monkeypatch):
 
 
 @pytest.mark.parametrize("failing", ["PHISHUNT_FEED", "TWEETFEED_YEAR", "CERT_PL_DOMAINS",
-                                     "CSIRT_IT_MANIFEST"])
+                                     "CSIRT_IT_MANIFEST", "PHISHDESTROY_ACTIVE"])
 @pytest.mark.asyncio
 async def test_a_new_feed_that_fails_to_download_does_not_break_the_publish(monkeypatch, caplog,
                                                                            failing):

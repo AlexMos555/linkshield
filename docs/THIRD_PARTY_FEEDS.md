@@ -30,6 +30,7 @@ names. Redistribution to every phone is the act each licence has to allow.
 | **TweetFeed.live** | `https://raw.githubusercontent.com/0xDanielLopez/TweetFeed/master/year.csv` | README: CSV/JSON/RSS/MISP/STIX feeds and public API responses under CC0 1.0, no attribution required. The `/v1/ioc` and `external.json` blocks are abuse.ch-licensed and are never read (read 2026-09-21) | 365-day window of reported domains/URLs | Keep — but it is a *source*, so a TweetFeed sample is not a held-out benchmark for this list |
 | **CERT Polska** Lista Ostrzeżeń | `https://hole.cert.pl/domains/v2/domains.txt` | API spec §1: publicly available, may be processed without restriction, manually or automatically; names that leave the list must be unblocked (we rebuild from scratch every run) (read 2026-09-21) | Exact hosts only (never promoted to a whole domain) | Keep |
 | **CSIRT Italia / ACN** MISP feed | `https://www.csirt.gov.it/feed-misp/manifest.json` | Only events tagged `tlp:clear` / `tlp:white` are read — TLP:CLEAR means unlimited disclosure; anything else is skipped (*likely* for the feed as a whole; the TLP marking is read per event, 2026-09-21) | Malware C2 hostnames, exact only | Keep |
+| **PhishDestroy** DestroyList, DNS-verified active domains | `https://raw.githubusercontent.com/phishdestroy/destroylist/main/dns/active_domains.json` | phishdestroy.io/dataset: data "Released under CC0 1.0 Universal", "no restrictions, no attribution required", fit for "commercial products"; repository MIT; the same page notes the HuggingFace card says MIT and the Live page CC-BY-4.0 — all three allow a paid product, and §5 attributes it anyway. Sources: their own parsers (ads, SEO, social, dnstwist) and Telegram-bot reports; the aggregated "Community" list is a different file and is not read. "Non-commercial volunteer project" describes the operator, not a term (read 2026-10-21) | ~137k crypto-drainer, wallet/exchange-lure and fake-shop domains, re-resolved daily by the maintainer; promotes like Phishing.Database. Measured 2026-10-21: ~114k names new to the list after every guard, 0 on Tranco-1M, 0 on the must-resolve and RU legit lists, ~850 under RU/CIS ccTLDs | Keep |
 | **PhishTank** (Cisco/OpenDNS) online-valid dump | `https://data.phishtank.com/data/<key>/online-valid.csv.gz` | FAQ: commercial use of the API — "Yes, it is OK" (read 2026-09-29). Needs an application key; registration closed at the moment. Terms of Use refer to the Cisco EULA (*likely*) | Verified-online phishing URL hosts, **one cached download a day** (`api/services/phishtank_feed.py`) | **Off without `PHISHTANK_API_KEY`**; on the job through the `BLOCKLIST_PHISHTANK_SOURCE` variable |
 | **Cleanway checks** (server-confirmed hosts) | — | Google Safe Browsing / Web Risk verdicts; both bar passing results on (see §2) | Hosts our own checks confirmed dangerous | **Off** (`PUBLISH_CONFIRMED_THREATS`), stays off |
 
@@ -150,11 +151,43 @@ SI-CERT, USOM Turkey, CERT-AgID, NCSC-UK PDNS, ruSpamModels / RUSpam
 datasets (CC BY-NC 4.0). Commercial feeds (Kaspersky Phishing URL Data Feed
 OEM, F6) are priced for later.
 
+Checked 2026-10-21 for the DNS list (licence read at the source; overlap and
+false-positive numbers against the live artifact of that day, 493,525
+hashes, after the same guards the refresh applies):
+
+* **HaGeZi TIF / Fake**, **jarelllama Scam-Blocklist**, **ScamSniffer** —
+  GPL-3.0 on the list; HaGeZi also says its inputs keep their own licences.
+  Copyleft on data we ship as hashes is not a term we can meet. jarelllama
+  has not been updated since 2025-11; ScamSniffer's public copy is 7 days
+  late by design.
+* **The Block List Project** phishing/scam/fraud (Unlicense) — licence fine,
+  data not: 37 % (phishing) and 18 % (fraud) of a sample resolve, the
+  phishing list is years of compromised legitimate sites, and it is fed
+  from HaGeZi (GPL) among others, so the Unlicense cannot be relied on.
+* **MetaMask eth-phishing-detect** — ~103k crypto-phishing names, 59 % live,
+  no FP found; but the licence is the "Don't Be A Dick Public License", not
+  a standard one. A founder decision, not wired.
+* **polkadot-js/phishing** (Apache-2.0) — 85 % of a sample NXDOMAIN.
+* **Discord-AntiScam** (no licence = all rights reserved), **KADhosts**
+  (CC BY-SA 4.0), **malware-filter phishing-filter** (built from OpenPhish
+  and PhishTank, CC BY-SA), **StevenBlack/hosts** (ad and tracker hosts, 1,430
+  Tranco top-10k registrables), **ShadowWhisperer Scam** / **durablenapkin**
+  (small, opinionated "scam" verdicts on ranked sites such as xcover.com),
+  **DigitalSide** (133 names, last push 2024-10).
+* **urlscan.io** — terms: "personal, non-commercial use"; commercial use
+  "requires express written permission". **Spamhaus DROP** is free with
+  credit but is IP ranges, not names. **PhishStats** no longer offers a bulk
+  file (API, 50 requests a day anonymous).
+* No Russian or CIS CERT (НКЦКИ, RU-CERT, F6/CERT-GIB, KZ-CERT, UZCERT,
+  CERT.BY) publishes a downloadable phishing-domain list; the .RU/.РФ
+  Coordination Center's Domain Patrol is a per-domain lookup only.
+
 ## 5. Attribution
 
 Cleanway's blocklist includes data from Phishunt.io (CC0), TweetFeed.live
 (CC0), CERT Polska's Lista Ostrzeżeń, CSIRT Italia (TLP:CLEAR),
-Phishing.Database (MIT, © Mitchell Krog) and — until the licence cut —
+Phishing.Database (MIT, © Mitchell Krog), PhishDestroy DestroyList
+(phishdestroy.io, CC0 / MIT) and — until the licence cut —
 phishing.army (CC BY-NC 4.0), OpenPhish and URLhaus (abuse.ch). Domain
 popularity from Tranco (Le Pochat et al.). Public suffixes from the Mozilla
 Public Suffix List (MPL 2.0).
