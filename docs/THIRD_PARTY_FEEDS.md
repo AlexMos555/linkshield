@@ -132,14 +132,31 @@ do not re-weight the scorer blind.
 
 | Source | Terms | Use |
 |---|---|---|
-| URLhaus full dump `https://urlhaus.abuse.ch/downloads/csv/` | abuse.ch ToU 2025-11-04 (non-commercial, no derivative works — a trained model is a derivative) | Phishing/malware corpus for `ml/train_model.py` |
-| OpenPhish public feed (GitHub mirror) | openphish.com terms (non-commercial) | Phishing corpus |
+| PhishDestroy DestroyList (DNS-verified) | CC0 1.0 dataset, named fit for commercial products and ML training; repo MIT (read 2026-10-21) | Phishing corpus, at most 3,500 hosts |
+| CERT Polska Lista Ostrzeżeń | API spec §1: processing without restriction (read 2026-09-21) | Phishing corpus, at most 3,500 hosts |
+| TweetFeed `year.csv` | CC0 1.0 (README; the abuse.ch `external` block is never read) | Phishing corpus, at most 3,500 hosts |
+| Phishunt `feed.txt` | CC0 1.0 (terms §7) | Phishing corpus (~1,400 hosts, all it carries) |
 | Tranco top-1M | Free research list | Benign corpus |
 
-**Open**: the model shipped in production (`data/phishing_model.onnx`) was
-trained on the two non-commercial corpora. The licence cut for the list and
-the API does not cover it; a retrain on Phishing.Database + Phishunt +
-TweetFeed + PhishTank (with a key) is the clean path. Not in this PR.
+Since 2026-10-21. Before: the URLhaus full dump (abuse.ch ToU 2025-11-04:
+non-commercial, no derivative works — a trained model is a derivative; the
+anonymous download answers 410 Gone since that day) and the OpenPhish public
+feed (terms: no "product development", "detection" or "customer
+protection"). **Not used for training**: Phishing.Database (MIT on the
+compilation, sources unnamed — waits on the provenance e-mail in §1),
+phishing.army (CC BY-NC), PhishTank (needs a key).
+
+**Open — the served model**: `data/phishing_model.onnx` (2026-10-21, AUC
+0.9703) was still trained on URLhaus + OpenPhish. A model trained on the
+clean corpus above is all domain names (URLhaus was ~80% bare IPs) and on
+2026-10-21 it failed the retrain gates — it scored
+official-shop.myshopify.com 0.59 and flagged 6 held-out Russian sites (limit
+3) — and put 69 of 539 held-out real sites above 0.6, where the served model
+puts none. `ml/train_model.py` therefore keeps the served model unless a
+candidate is no worse on those sites (replacement guard), so the weekly job
+stays green and commits nothing until the clean corpus produces a model that
+is. Keeping the old model, switching the model off, or shipping the clean
+one anyway (`--replace-anyway`) is a founder decision.
 
 ## 4. Considered and not used
 
