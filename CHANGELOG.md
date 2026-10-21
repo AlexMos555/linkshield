@@ -34,6 +34,7 @@ Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version
 - **Расширение говорит только с сервером Cleanway.** Адрес сервера нельзя подменить на чужой.
 - **Ловит больше мошеннических сайтов на бесплатных хостингах** (например, `gmail-support.netlify.app`, `facebook-login0.vercel.app`) и на сервисах бесплатных доменов вроде duckdns.org.
 - **Убран неиспользуемый код**, который узнавал почтовые сайты по части адреса (его обманул бы адрес вроде `mail.google.com.evil.example`); на защиту он не влиял.
+- **Генератор QR-кода в настройках — официальный файл библиотеки** qrcode-generator 1.4.4 без минификации, байт в байт как в npm-пакете, чтобы проверяющие магазинов могли сверить его с релизом. QR-код выглядит как раньше.
 
 **What's new**
 - **The dangerous-site warning is now the extension's own page.** The red STOP screen used to be drawn inside the scam page itself, which could remove it. Now the tab moves to a Cleanway page the site cannot reach. "Go back" returns you to where you came from; "Open anyway" lets you into that site in that tab for an hour, and its password form stays under strict watch.
@@ -42,6 +43,7 @@ Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version
 - **The extension talks only to Cleanway's server.** The server address cannot be pointed somewhere else.
 - **Catches more scam sites on free hosting** (for example `gmail-support.netlify.app`, `facebook-login0.vercel.app`) and on free dynamic-DNS names such as duckdns.org.
 - **Removed unused code** that recognised mail sites by part of the address (an address like `mail.google.com.evil.example` would have fooled it); it never affected protection.
+- **The QR code generator in Settings is the library's official file**: qrcode-generator 1.4.4, unminified, byte for byte as in its npm package, so store reviewers can check it against the release. The QR code looks the same.
 
 ## [Android 1.0.4] - 2026-10-08
 

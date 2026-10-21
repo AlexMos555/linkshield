@@ -476,8 +476,10 @@ What 0.2.1 adds over the never-submitted 0.2.0 (CHANGELOG `[Extension 0.2.1]`):
 the block page is the extension's own `src/blocked/blocked.html` (PR #207, the
 tab is taken there instead of an overlay inside the scam page), the access
 token lives in `chrome.storage.session` (#207), the API address is allowlisted
-(#196), hosting-tenant and dynamic-DNS name rules (#224), the popup over the
-block page says "scam" instead of "safe" (this release). Permissions are unchanged.
+(#196), hosting-tenant and dynamic-DNS name rules (#224), the official unminified
+`qrcode.js` of qrcode-generator 1.4.4 instead of jsDelivr's minified build (#189),
+the popup over the block page says "scam" instead of "safe" (this release).
+Permissions are unchanged.
 
 What 0.2.0 already had: the opt-in webmail scanner (PR #117 — off by default, mail
 sites are optional permissions, Firefox's data-collection consent on Firefox
@@ -488,7 +490,7 @@ sites are optional permissions, Firefox's data-collection consent on Firefox
 | Chrome Web Store | Upload `cleanway-0.2.1-chrome.zip`; everything else: `docs/STORE_SUBMISSION_KIT.md` §3 (evidence: `docs/CWS_SUBMISSION.md` §3–5). |
 | Edge Add-ons | Upload `cleanway-0.2.1-edge.zip`; `docs/STORE_SUBMISSION_KIT.md` §4. |
 | Opera add-ons | Upload `cleanway-0.2.1-opera.zip`; same listing. |
-| Firefox AMO | Upload `cleanway-0.2.1-firefox.zip`. The manifest declares Firefox's `data_collection_permissions` (required: browsing activity, authentication information; optional: personal communications, website content — the webmail switch asks for these). Source code: our JS is unminified, but two vendored third-party libraries are minified — upload `cleanway-0.2.1-firefox-source.zip` and paste the reviewer notes (`docs/STORE_SUBMISSION_KIT.md` §5). Privacy policy URL. Notes for the reviewer: "Webmail scanning is off by default and asks for the mail sites and Firefox's data consent when switched on in Settings." |
+| Firefox AMO | Upload `cleanway-0.2.1-firefox.zip`. The manifest declares Firefox's `data_collection_permissions` (required: browsing activity, authentication information; optional: personal communications, website content — the webmail switch asks for these). Source code: our JS is unminified, but a vendored third-party library (tweetnacl) is minified and `scorer-data.js` is generated — upload `cleanway-0.2.1-firefox-source.zip` and paste the reviewer notes (`docs/STORE_SUBMISSION_KIT.md` §5). Privacy policy URL. Notes for the reviewer: "Webmail scanning is off by default and asks for the mail sites and Firefox's data consent when switched on in Settings." |
 | Safari (Mac) | `xcrun safari-web-extension-converter dist/store-artifacts/cleanway-0.2.1-safari/` (§5.2 above). |
 | Safari (iPhone) | Nothing separate: ships inside the iOS app (§5.1, docs/IOS.md §2.5). |
 

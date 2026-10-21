@@ -598,7 +598,7 @@ Same build and same permission justifications as our Chrome Web Store item. No a
 Консоль: addons.mozilla.org/developers → **Submit a New Add-on** → «On this site».
 
 1. Загрузить ZIP. Платформы: **Firefox** — да, **Firefox for Android** — снять галочку (в манифесте нет `gecko_android`, на Android не проверено).
-2. «Do you need to submit source code?» → **Yes** и загрузить `dist/store-artifacts/cleanway-0.2.1-firefox-source.zip`. Наш код не минифицирован, но в пакете две минифицированные сторонние библиотеки и один сгенерированный файл данных — проверяющие просят исходники в таких случаях.
+2. «Do you need to submit source code?» → **Yes** и загрузить `dist/store-artifacts/cleanway-0.2.1-firefox-source.zip`. Наш код не минифицирован, но в пакете одна минифицированная сторонняя библиотека (tweetnacl) и один сгенерированный файл данных — проверяющие просят исходники в таких случаях.
 3. Описание дополнения:
 
 | Поле | Значение |
