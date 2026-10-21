@@ -33,6 +33,7 @@ from api.models.schemas import (
     UserSettingsUpdate,
 )
 from api.config import get_settings
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.user")
 
@@ -150,7 +151,7 @@ async def submit_weekly_aggregate(
     import httpx
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(503, "Database not configured")
 
     # Calculate current week (Monday)
@@ -159,8 +160,7 @@ async def submit_weekly_aggregate(
 
     try:
         headers = {
-            "apikey": settings.supabase_service_key,
-            "Authorization": f"Bearer {settings.supabase_service_key}",
+            **supabase_keys.server_headers(settings),
             "Content-Type": "application/json",
             "Prefer": "resolution=merge-duplicates",
         }
@@ -220,7 +220,7 @@ async def get_percentile(user: AuthUser = Depends(get_current_user)):
     except Exception:
         pass
 
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         # Fallback: return estimate
         return PercentileResponse(percentile=75, total_blocks=0, bracket="top 25%")
 
@@ -229,8 +229,7 @@ async def get_percentile(user: AuthUser = Depends(get_current_user)):
 
     try:
         headers = {
-            "apikey": settings.supabase_service_key,
-            "Authorization": f"Bearer {settings.supabase_service_key}",
+            **supabase_keys.server_headers(settings),
         }
 
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -312,7 +311,7 @@ async def sync_score(
     import httpx
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         return {"status": "ok", "note": "Database not configured, score not persisted"}
 
     today = datetime.now(timezone.utc).date()
@@ -320,8 +319,7 @@ async def sync_score(
 
     try:
         headers = {
-            "apikey": settings.supabase_service_key,
-            "Authorization": f"Bearer {settings.supabase_service_key}",
+            **supabase_keys.server_headers(settings),
             "Content-Type": "application/json",
             "Prefer": "resolution=merge-duplicates",
         }
@@ -423,7 +421,7 @@ async def get_user_settings(user: AuthUser = Depends(get_current_user)) -> UserS
     import httpx
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         # Degraded mode — return defaults so UI still renders
         return UserSettings()
 
@@ -435,8 +433,7 @@ async def get_user_settings(user: AuthUser = Depends(get_current_user)) -> UserS
                 "select": "skill_level,preferred_locale,voice_alerts_enabled,font_scale,parental_pin_hash",
             },
             headers={
-                "apikey": settings.supabase_service_key,
-                "Authorization": f"Bearer {settings.supabase_service_key}",
+                **supabase_keys.server_headers(settings),
             },
         )
         if resp.status_code != 200:
@@ -496,7 +493,7 @@ async def update_user_settings(
             )
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(
             status_code=503,
             detail="User settings storage unavailable",
@@ -537,8 +534,7 @@ async def update_user_settings(
             params={"id": f"eq.{user.id}"},
             json=payload,
             headers={
-                "apikey": settings.supabase_service_key,
-                "Authorization": f"Bearer {settings.supabase_service_key}",
+                **supabase_keys.server_headers(settings),
                 "Content-Type": "application/json",
                 "Prefer": "return=representation",
             },
@@ -584,10 +580,9 @@ async def get_profile(user: AuthUser = Depends(get_current_user)):
     devices_count = 0
     member_since: Optional[str] = None
 
-    if settings.supabase_url and settings.supabase_service_key:
+    if settings.supabase_url and supabase_keys.server_key(settings):
         headers = {
-            "apikey": settings.supabase_service_key,
-            "Authorization": f"Bearer {settings.supabase_service_key}",
+            **supabase_keys.server_headers(settings),
             "Prefer": "count=exact",
         }
         try:
@@ -662,8 +657,7 @@ async def _fetch_threat_row(
                 "select": "threats_blocked_lifetime,threshold_nudge_shown_at,threshold_nudge_count",
             },
             headers={
-                "apikey": service_key,
-                "Authorization": f"Bearer {service_key}",
+                **supabase_keys.api_key_headers(service_key),
             },
         )
     if resp.status_code != 200:
@@ -681,14 +675,14 @@ async def _fetch_threat_row(
 async def get_threat_status(user: AuthUser = Depends(get_current_user)) -> ThreatStatus:
     """Return blocked-threats counter + freemium gating decision."""
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         # Degraded mode — return zeroed counter; gating disabled until DB recovers.
         return ThreatStatus(tier=user.tier.value)
 
     row = await _fetch_threat_row(
         user.id,
         base_url=settings.supabase_url,
-        service_key=settings.supabase_service_key,
+        service_key=supabase_keys.server_key(settings),
     )
     counter = int(row.get("threats_blocked_lifetime") or 0)
     return ThreatStatus(
@@ -726,14 +720,14 @@ async def increment_threats(
     import httpx
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(503, "User settings storage unavailable")
 
     # Read current state to compute first-crossing transition
     row = await _fetch_threat_row(
         user.id,
         base_url=settings.supabase_url,
-        service_key=settings.supabase_service_key,
+        service_key=supabase_keys.server_key(settings),
     )
     prev_counter = int(row.get("threats_blocked_lifetime") or 0)
     new_counter = prev_counter + body.count
@@ -753,8 +747,7 @@ async def increment_threats(
         "threshold_nudge_count": int(row.get("threshold_nudge_count") or 0),
     }
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
@@ -812,8 +805,7 @@ async def _fetch_user_skill_defaults(
                 "select": "skill_level,voice_alerts_enabled,font_scale",
             },
             headers={
-                "apikey": service_key,
-                "Authorization": f"Bearer {service_key}",
+                **supabase_keys.api_key_headers(service_key),
             },
         )
     if resp.status_code != 200:
@@ -845,8 +837,7 @@ async def _fetch_device_overrides(
                 "select": "skill_level_override,voice_alerts_enabled,font_scale",
             },
             headers={
-                "apikey": service_key,
-                "Authorization": f"Bearer {service_key}",
+                **supabase_keys.api_key_headers(service_key),
             },
         )
     if resp.status_code != 200:
@@ -870,7 +861,7 @@ async def get_effective_skill(
     extension and mobile clients to know which UX mode to render.
     """
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         # Degraded — return safe defaults
         return EffectiveSkillResponse(
             device_hash=device_hash,
@@ -885,13 +876,13 @@ async def get_effective_skill(
     user_row = await _fetch_user_skill_defaults(
         user.id,
         base_url=settings.supabase_url,
-        service_key=settings.supabase_service_key,
+        service_key=supabase_keys.server_key(settings),
     )
     device_row = await _fetch_device_overrides(
         user.id,
         device_hash,
         base_url=settings.supabase_url,
-        service_key=settings.supabase_service_key,
+        service_key=supabase_keys.server_key(settings),
     )
 
     user_skill = SkillLevel(user_row.get("skill_level") or "regular")
@@ -954,7 +945,7 @@ async def update_device_overrides(
         raise HTTPException(422, "font_scale must be between 0.8 and 2.5")
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(503, "Device storage unavailable")
 
     payload: dict = {}
@@ -987,8 +978,7 @@ async def update_device_overrides(
             },
             json=payload,
             headers={
-                "apikey": settings.supabase_service_key,
-                "Authorization": f"Bearer {settings.supabase_service_key}",
+                **supabase_keys.server_headers(settings),
                 "Content-Type": "application/json",
                 "Prefer": "return=minimal",
             },
@@ -1028,14 +1018,13 @@ class WelcomeResponse(BaseModel):
 async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> WelcomeResponse:
     """First-signin welcome email. Idempotent — won't re-send."""
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         return WelcomeResponse(sent=False, reason="storage_unavailable")
 
     import httpx
 
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
     }
 
     # Read the existing settings JSONB so we can preserve other keys, and
@@ -1183,12 +1172,11 @@ async def export_user_data(
     await security_alerts.record("user_export", key=user.id)
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(503, "Database not configured")
 
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
     }
 
     # Tables to dump: (table_name, filter_column). Family-scoped data
@@ -1336,7 +1324,7 @@ async def delete_account(
     """Mark the caller's account for deletion. Hard-deleted 30 days later.
     Afterwards every session of the account is signed out."""
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(503, "Database not configured")
 
     import httpx
@@ -1373,8 +1361,7 @@ async def delete_account(
 
     now = datetime.now(timezone.utc)
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }
@@ -1474,7 +1461,7 @@ async def _sign_out_everywhere(user_id: str, authorization: Optional[str]) -> No
                 f"{settings.supabase_url.rstrip('/')}/auth/v1/logout",
                 params={"scope": "global"},
                 headers={
-                    "apikey": settings.supabase_anon_key or settings.supabase_service_key,
+                    "apikey": supabase_keys.public_key(settings) or supabase_keys.server_key(settings),
                     "Authorization": f"Bearer {token}",
                 },
             )
@@ -1508,14 +1495,13 @@ async def restore_account(
 ) -> RestoreAccountResponse:
     """Clear a pending deletion request. Available during 30-day grace."""
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(503, "Database not configured")
 
     import httpx
 
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }

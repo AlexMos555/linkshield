@@ -36,6 +36,7 @@ from pydantic import BaseModel
 from api.models.schemas import AuthUser
 from api.services.auth import get_current_user
 from api.services.rate_limiter import rate_limit
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.referral")
 
@@ -69,7 +70,7 @@ async def _grant_credit_days(user_id: str, days: int) -> None:
     in Redis, and operators can reconcile from logs.
     """
     supabase_url = os.environ.get("SUPABASE_URL", "").strip()
-    service_key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+    service_key = supabase_keys.server_key_from_env()
     if not supabase_url or not service_key:
         logger.warning(
             "referral.grant_skipped_no_supabase",
@@ -80,8 +81,7 @@ async def _grant_credit_days(user_id: str, days: int) -> None:
     import httpx
 
     headers = {
-        "apikey": service_key,
-        "Authorization": f"Bearer {service_key}",
+        **supabase_keys.api_key_headers(service_key),
     }
     timeout = httpx.Timeout(5.0)
 

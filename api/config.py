@@ -33,8 +33,15 @@ class Settings(BaseSettings):
 
     # Supabase
     supabase_url: str = ""
-    supabase_anon_key: str = ""
-    supabase_service_key: str = ""  # For server-side operations
+    # Server key. SUPABASE_SECRET_KEY (sb_secret_…, the new key) wins over
+    # the legacy service_role JWT in SUPABASE_SERVICE_KEY; every call site
+    # reads it through api/services/supabase_keys.server_key(). Same for the
+    # public key: SUPABASE_PUBLISHABLE_KEY (sb_publishable_…) over
+    # SUPABASE_ANON_KEY. docs/runbooks/supabase-jwt-signing-keys.md.
+    supabase_secret_key: str = ""
+    supabase_service_key: str = ""  # legacy service_role JWT (fallback)
+    supabase_publishable_key: str = ""
+    supabase_anon_key: str = ""  # legacy anon JWT (fallback)
     # LEGACY HS256 shared secret. User access tokens are signed with the
     # project's asymmetric key (ES256) and verified against its public JWKS
     # (api/services/auth.py); this secret no longer verifies anything unless
@@ -422,11 +429,29 @@ def validate_settings(settings: "Settings") -> None:
             )
 
     # 3) Supabase connection required in staging/prod
+    from api.services import supabase_keys
+
+    key_problems = supabase_keys.validate(settings)
+    if key_problems:
+        raise ConfigError(" ".join(key_problems))
     if env in ("staging", "production"):
         if not _is_safe_nonempty(settings.supabase_url):
             raise ConfigError(f"SUPABASE_URL is required in environment={env}.")
-        if not _is_safe_nonempty(settings.supabase_service_key):
-            raise ConfigError(f"SUPABASE_SERVICE_KEY is required in environment={env}.")
+        server_key = supabase_keys.server_key(settings)
+        if not _is_safe_nonempty(server_key):
+            raise ConfigError(
+                f"SUPABASE_SECRET_KEY is required in environment={env} "
+                "(the legacy SUPABASE_SERVICE_KEY is still accepted in its place)."
+            )
+        if supabase_keys.key_kind(server_key) != "secret":
+            # Not fatal: the legacy key still works until it is disabled in
+            # Supabase — but then every server call fails at once.
+            logger.warning(
+                "supabase_server_key is the legacy service_role key (kind=%s) — set "
+                "SUPABASE_SECRET_KEY before disabling legacy keys "
+                "(docs/runbooks/supabase-jwt-signing-keys.md)",
+                supabase_keys.key_kind(server_key),
+            )
 
     # 4) Stripe live/test mode must match environment
     if _is_safe_nonempty(settings.stripe_secret_key):
@@ -542,11 +567,18 @@ def validate_settings(settings: "Settings") -> None:
             "environment": env,
             "debug": settings.debug,
             "has_supabase": bool(settings.supabase_url),
+            "supabase_server_key_kind": _supabase_server_key_kind(settings),
             "has_stripe": bool(settings.stripe_secret_key),
             "has_revenuecat": bool(settings.revenuecat_webhook_auth),
             "has_sentry": bool(settings.sentry_dsn),
         },
     )
+
+
+def _supabase_server_key_kind(settings: Settings) -> str:
+    from api.services import supabase_keys
+
+    return supabase_keys.key_kind(supabase_keys.server_key(settings))
 
 
 @lru_cache

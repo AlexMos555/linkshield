@@ -28,6 +28,7 @@ from api.services import security_alerts
 from api.services.auth import get_recently_authenticated_user
 from api.services.email_validator import is_disposable_email
 from api.services.rate_limiter import check_sensitive_action_limit, rate_limit
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.auth_router")
 
@@ -138,7 +139,7 @@ async def extension_session(
     await check_sensitive_action_limit(user, "extension_session")
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(status_code=503, detail="Sign-in is not configured")
     if not user.email:
         # Phone-only accounts have no magic link to mint.
@@ -148,16 +149,15 @@ async def extension_session(
     await security_alerts.record("admin_or_service_key_use", key=user.id)
 
     base = settings.supabase_url.rstrip("/")
-    service = settings.supabase_service_key
+    service = supabase_keys.server_key(settings)
     admin_headers = {
-        "apikey": service,
-        "Authorization": f"Bearer {service}",
+        **supabase_keys.api_key_headers(service),
         "Content-Type": "application/json",
     }
-    # /verify is a public endpoint: the anon key is the right apikey when the
-    # API has it; the service key is accepted too.
+    # /verify is a public endpoint: the publishable (or legacy anon) key is
+    # the right apikey when the API has it; the server key is accepted too.
     public_headers = {
-        "apikey": settings.supabase_anon_key or service,
+        "apikey": supabase_keys.public_key(settings) or service,
         "Content-Type": "application/json",
     }
 

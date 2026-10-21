@@ -20,6 +20,7 @@ import logging
 from typing import Any, Optional
 
 from api.config import get_settings
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.stripe_billing")
 
@@ -112,16 +113,12 @@ def object_id(value: Any) -> Optional[str]:
 
 
 def _supabase_headers() -> dict[str, str]:
-    settings = get_settings()
-    return {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
-    }
+    return supabase_keys.server_headers(get_settings())
 
 
 def supabase_configured() -> bool:
     settings = get_settings()
-    return bool(settings.supabase_url and settings.supabase_service_key)
+    return bool(settings.supabase_url and supabase_keys.server_key(settings))
 
 
 async def fetch_subscription_row(

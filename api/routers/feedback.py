@@ -22,6 +22,7 @@ from api.services.auth import get_current_user, get_optional_user
 from api.services.rate_limiter import install_key, rate_limit
 from api.models.schemas import AuthUser
 from api.config import get_settings
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.feedback")
 
@@ -88,14 +89,13 @@ async def report_domain(
     })
     await _queue_for_verification(request, http_request)
 
-    if settings.supabase_url and settings.supabase_service_key:
+    if settings.supabase_url and supabase_keys.server_key(settings):
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
                 await client.post(
                     f"{settings.supabase_url}/rest/v1/feedback_reports",
                     headers={
-                        "apikey": settings.supabase_service_key,
-                        "Authorization": f"Bearer {settings.supabase_service_key}",
+                        **supabase_keys.server_headers(settings),
                         "Content-Type": "application/json",
                     },
                     json={

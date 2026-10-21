@@ -46,6 +46,7 @@ from api.config import get_settings
 from api.models.schemas import AuthUser
 from api.services.auth import get_current_user
 from api.services.rate_limiter import rate_limit
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.family")
 
@@ -217,12 +218,11 @@ async def _supabase_request(
     import httpx
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(503, "Family service unavailable")
 
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
         "Content-Type": "application/json",
     }
     if extra_headers:

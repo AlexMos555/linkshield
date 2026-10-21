@@ -38,6 +38,7 @@ from api.models.schemas import AuthUser, UserTier
 from api.services.auth import get_current_user
 from api.services.rate_limiter import rate_limit
 from api.services.watchtower import eTLD1, scan_brand
+from api.services import supabase_keys
 
 logger = logging.getLogger(__name__)
 
@@ -114,12 +115,11 @@ async def _supabase(method: str, path: str, *, params=None, json=None, extra_hea
     import httpx
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise HTTPException(503, "Watchtower service unavailable")
 
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
         "Content-Type": "application/json",
     }
     if extra_headers:

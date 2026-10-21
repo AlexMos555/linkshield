@@ -93,7 +93,7 @@ class TestStaging:
             validate_settings(self._base(supabase_url=""))
 
     def test_missing_service_key_rejected(self):
-        with pytest.raises(ConfigError, match="SUPABASE_SERVICE_KEY is required"):
+        with pytest.raises(ConfigError, match="SUPABASE_SECRET_KEY is required"):
             validate_settings(self._base(supabase_service_key=""))
 
     def test_stripe_live_key_rejected(self):

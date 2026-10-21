@@ -413,7 +413,10 @@ async def _probe_deep_health() -> tuple[int, dict]:
         components["redis"] = {"ok": False, "error": type(e).__name__}
 
     # ── Supabase REST ──
-    if not settings.supabase_url or not settings.supabase_anon_key:
+    from api.services import supabase_keys
+
+    public_key = supabase_keys.public_key(settings)
+    if not settings.supabase_url or not public_key:
         components["supabase"] = {"ok": False, "error": "not_configured"}
     else:
         try:
@@ -426,10 +429,7 @@ async def _probe_deep_health() -> tuple[int, dict]:
                 # well-known canonical probe.
                 resp = await client.get(
                     f"{settings.supabase_url.rstrip('/')}/rest/v1/",
-                    headers={
-                        "apikey": settings.supabase_anon_key,
-                        "Authorization": f"Bearer {settings.supabase_anon_key}",
-                    },
+                    headers=supabase_keys.api_key_headers(public_key),
                 )
                 if resp.status_code in (200, 401):
                     # 401 means "Supabase is up and rejected our anon as
@@ -443,6 +443,12 @@ async def _probe_deep_health() -> tuple[int, dict]:
                     }
         except Exception as e:
             components["supabase"] = {"ok": False, "error": type(e).__name__}
+
+    # Informational, never paging: does the server key (SUPABASE_SECRET_KEY,
+    # else the legacy service_role key) act as service_role? `kind` says
+    # which generation is live — the check before disabling legacy keys
+    # (docs/runbooks/supabase-jwt-signing-keys.md).
+    components["supabase_server_key"] = await supabase_keys.probe_server_key(settings)
 
     # The ML model is deliberately NOT part of the paging decision: scoring
     # fail-softs without it (rules + 18-check fan-out still run), so a model

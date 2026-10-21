@@ -25,6 +25,7 @@ from fastapi import Depends, HTTPException, Header
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
 from api.services import security_alerts
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.auth")
 
@@ -478,7 +479,7 @@ async def _fetch_tier_from_supabase(user_id: str) -> UserTier:
 
     settings = get_settings()
 
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         logger.debug("Supabase not configured — defaulting to free tier")
         return UserTier.free
 
@@ -504,8 +505,7 @@ async def _fetch_tier_from_supabase(user_id: str) -> UserTier:
             f"&limit=1"
         )
         headers = {
-            "apikey": settings.supabase_service_key,
-            "Authorization": f"Bearer {settings.supabase_service_key}",
+            **supabase_keys.server_headers(settings),
         }
 
         async with httpx.AsyncClient(timeout=3.0) as client:
