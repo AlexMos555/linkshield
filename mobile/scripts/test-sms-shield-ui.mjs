@@ -17,7 +17,7 @@
  * TypeScript, run the table for real, exit non-zero on failure.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -54,6 +54,19 @@ try {
     ],
     { cwd: root, stdio: "inherit" },
   );
+  // tsc keeps the sources' extensionless relative imports ("./remote-config"),
+  // which Node's ESM loader will not resolve: point them at the emitted .js.
+  const fixImports = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) fixImports(p);
+      else if (name.endsWith(".js")) {
+        const text = readFileSync(p, "utf8");
+        writeFileSync(p, text.replace(/(from\s+["'])(\.{1,2}\/[^"']+?)(["'])/g, (m, a, spec, b) => (/\.[cm]?js$/.test(spec) ? m : `${a}${spec}.js${b}`)));
+      }
+    }
+  };
+  fixImports(out);
   const load = (f) => import(pathToFileURL(join(out, f.replace(/\.ts$/, ".js"))).href);
   const v = await load(FILES[0]);
   const stores = await load(FILES[1]);

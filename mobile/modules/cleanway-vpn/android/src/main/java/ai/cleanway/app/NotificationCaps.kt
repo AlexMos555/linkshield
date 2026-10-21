@@ -21,14 +21,21 @@ package ai.cleanway.app
  * caller keeps it (SmsEventLog does, on disk — the ":sms" process that
  * decides is short-lived). Nothing here reads the clock or the phone.
  *
- * One object on purpose: the site-block alerts (BlockNotifier) get their
- * own caps in a parallel change; when that lands, both should read their
- * limits from here.
+ * The site-block alerts have their own caps in [AlertBudget] (BlockNotifier,
+ * the VPN process). The thresholds are the same plan-№7 numbers and are read
+ * from there, so the founder tunes them in one place. The bookkeeping stays
+ * separate on purpose: AlertBudget keeps its state in memory and saves it
+ * between VPN-service restarts, while the ":sms" process lives for one
+ * broadcast and decides under SmsEventLog's file lock from what went out.
+ * They differ in two rules — here a repeat sender and "be careful" warnings
+ * count toward the daily limit and fold; there a repeat site refreshes
+ * silently and "careful" never counts — and they do not share one budget
+ * (a person can get both kinds on one day). Merging them is open work.
  */
 object NotificationCaps {
-    const val MAX_LOUD_PER_HOUR = 3
-    const val MAX_PER_DAY = 10
-    const val PER_SENDER_WINDOW_MS = 6L * 60 * 60_000
+    const val MAX_LOUD_PER_HOUR = AlertBudget.MAX_HEADS_UP_PER_HOUR
+    const val MAX_PER_DAY = AlertBudget.MAX_HEADS_UP_PER_DAY
+    const val PER_SENDER_WINDOW_MS = AlertBudget.PER_KEY_HEADS_UP_WINDOW_MS
     const val HOUR_MS = 60L * 60_000
     const val DAY_MS = 24L * HOUR_MS
 

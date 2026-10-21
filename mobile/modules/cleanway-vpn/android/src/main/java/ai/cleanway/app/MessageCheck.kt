@@ -67,7 +67,9 @@ object MessageCheck {
      * nothing, not even a host, leaves the phone in automatic mode.
      *
      * The allow list is read fresh: the main process writes it, and this one
-     * may have loaded an older copy hours ago.
+     * may have loaded an older copy hours ago. The text model and the
+     * server's switches for it (RemoteConfig.kt) apply exactly as in [analyze]:
+     * with the model switched off remotely, the rules alone decide here too.
      */
     fun analyzeIncoming(context: Context, text: String, sender: String?): MessageAnalysis {
         val list = BlocklistHolder.current(context)
@@ -77,7 +79,10 @@ object MessageCheck {
             Log.w(TAG, "allow_read_error: ${e.javaClass.simpleName}")
             emptySet()
         }
-        return MessageAnalyzer(rules(context)) { host -> LinkPolicy.classify(host, list, allowed) }.analyze(text, sender)
+        val remote = RemoteConfigStore.current(context)
+        val textModel = if (remote.smsTextModelEnabled) model(context) else null
+        return MessageAnalyzer(rules(context), textModel, remote) { host -> LinkPolicy.classify(host, list, allowed) }
+            .analyze(text, sender)
     }
 
     /** The listed suffix that blocks [host] (DNS rules: system and allowed names never match), or null. */

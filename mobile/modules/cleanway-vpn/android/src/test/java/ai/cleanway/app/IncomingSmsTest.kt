@@ -34,9 +34,11 @@ class IncomingSmsTest {
     @Test
     fun `a scam split across parts is caught once the parts are joined`() {
         val analyzer = MessageTestSupport.analyzer()
+        // Split where neither half is dangerous on its own: with the on-device
+        // text model (#99) "…взломан. Срочно позвоните " alone already is.
         val parts = listOf(
-            SmsPart("+79161234567", "Госуслуги: ваш аккаунт взломан. Срочно позвоните ", 1L),
-            SmsPart("+79161234567", "+7 912 345-67-89", 1L),
+            SmsPart("+79161234567", "Госуслуги: ваш аккаунт ", 1L),
+            SmsPart("+79161234567", "взломан. Срочно позвоните +7 912 345-67-89", 1L),
         )
         val joined = IncomingSmsParts.group(parts).single()
         assertEquals(MessageVerdict.DANGEROUS, analyzer.analyze(joined.text, joined.sender).verdict)

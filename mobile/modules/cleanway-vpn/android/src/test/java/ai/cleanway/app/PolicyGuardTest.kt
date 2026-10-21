@@ -37,6 +37,14 @@ class PolicyGuardTest {
         "MANAGE_EXTERNAL_STORAGE", "ACCESS_BACKGROUND_LOCATION", "PACKAGE_USAGE_STATS",
     )
 
+    /**
+     * The RuStore APK's one exception: AppInstallInfo names RECEIVE_SMS to ask
+     * whether the installed manifest has it (the permission itself comes from
+     * the RuStore build type's overlay, plugins/withRustoreVariant.js). Same
+     * rule as RUSTORE_ONLY in check-android-permissions.mjs.
+     */
+    private val rustoreOnly = mapOf("RECEIVE_SMS" to setOf("AppInstallInfo.kt"))
+
     /** The module's manifest and sources (the app's config is checked by the CI script). */
     private fun moduleFiles(): List<File> =
         File("src/main").walkTopDown().filter { it.isFile && (it.extension == "kt" || it.extension == "xml") }.toList()
@@ -47,7 +55,7 @@ class PolicyGuardTest {
         assertTrue("run from the module directory: ${manifest.absolutePath}", manifest.isFile)
         val hits = moduleFiles().flatMap { f ->
             val text = f.readText()
-            forbidden.filter { needle ->
+            forbidden.filter { needle -> f.name !in rustoreOnly[needle].orEmpty() }.filter { needle ->
                 // A mention in a comment is fine; a declaration, a string
                 // constant or a class reference is not.
                 Regex("""(uses-permission[^>]*$needle|permission\.$needle|"[A-Z_.]*$needle"|extends\s+$needle|:\s*$needle\(|import\s+[\w.]*$needle)""")

@@ -62,9 +62,13 @@ object SmsAlertText {
         SmsAlertReason.CONFIRM_DATA to setOf(MessageAnalyzer.R_CONFIRM_DATA),
         SmsAlertReason.BAIT to setOf(MessageAnalyzer.R_BAIT),
         SmsAlertReason.SENDER to setOf(MessageAnalyzer.R_SENDER_MISMATCH, MessageAnalyzer.R_SENDER_PERSONAL),
-        SmsAlertReason.THREAT to setOf(MessageAnalyzer.R_THREAT),
+        // Secrecy ("никому не рассказывайте") is pressure, like a threat.
+        SmsAlertReason.THREAT to setOf(MessageAnalyzer.R_THREAT, MessageAnalyzer.R_SECRECY),
         SmsAlertReason.ORGANISATION to setOf(MessageAnalyzer.R_ORGANISATION),
         SmsAlertReason.DISGUISED to setOf(MessageAnalyzer.R_DISGUISED),
+        // The on-device text model names no trap of its own: the generic line,
+        // and only when no rule above gave a more useful one.
+        SmsAlertReason.GENERIC to setOf(MessageAnalyzer.R_TEXT_RESEMBLES_SCAM),
     )
 
     /** Every analyzer code maps to a phrase; an unknown one (a newer rules file) falls back to GENERIC. */
