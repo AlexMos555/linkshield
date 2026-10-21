@@ -16,10 +16,11 @@ Then 19 checks run in parallel via circuit breakers, inside ONE time budget
   enrichment (5)     WHOIS/RDAP age, TLS certificate, security headers, DNS,
                      redirect chain (the connection probes live in site_probes)
 
-With LICENSED_INTEL=licensed (api/services/licensed_intel) the five sources
-whose free tiers are non-commercial — ThreatFox, Spamhaus DBL, SURBL,
-MalwareBazaar, Feodo Tracker — are not consulted: they leave the plan and
-the total, so an analysis is 14 checks of 14, not 14 of 19.
+With LICENSED_INTEL=licensed (api/services/licensed_intel; the default since
+2026-10-21) the six sources whose free tiers are non-commercial — URLhaus,
+ThreatFox, Spamhaus DBL, SURBL, MalwareBazaar, Feodo Tracker — are not
+consulted: they leave the plan and the total, so an analysis is 13 checks of
+13, not 13 of 19. LICENSED_INTEL=all consults all 19.
 
 A check still running at the deadline is cancelled and named in
 `checks_incomplete`; the LLM judge only gets whatever budget is left.
@@ -621,12 +622,16 @@ async def check_phishtank(domain: str) -> bool:
 # ═══════════════════════════════════════════════════════════════
 
 async def check_urlhaus(domain: str) -> bool:
-    """Check domain against URLhaus malware URL database (free, no key needed)."""
+    """Check domain against URLhaus malware URL database. Only consulted with
+    LICENSED_INTEL=all. Since 2026-10-21 abuse.ch answers 401 without a
+    personal Auth-Key: a non-2xx answer raises (a failed, unmeasured check),
+    never reads as "not listed"."""
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.post(
             "https://urlhaus-api.abuse.ch/v1/host/",
             data={"host": domain},
         )
+        resp.raise_for_status()
         data = resp.json()
         # query_status: "no_results" = clean, "is_host" = found
         hit = data.get("query_status") == "is_host"
@@ -722,12 +727,14 @@ def _without_www(host: str) -> str:
 # ═══════════════════════════════════════════════════════════════
 
 async def check_threatfox(domain: str) -> bool:
-    """Check domain against ThreatFox IOC database (free, no key)."""
+    """Check domain against ThreatFox IOC database. Only consulted with
+    LICENSED_INTEL=all; a non-2xx answer (401 without a key) raises."""
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
         resp = await client.post(
             "https://threatfox-api.abuse.ch/api/v1/",
             json={"query": "search_ioc", "search_term": domain},
         )
+        resp.raise_for_status()
         data = resp.json()
         hit = data.get("query_status") == "ok" and len(data.get("data", [])) > 0
         if hit:
@@ -753,6 +760,8 @@ async def check_malware_bazaar(domain: str) -> bool:
             "https://mb-api.abuse.ch/api/v1/",
             data={"query": "get_taginfo", "tag": domain, "limit": "1"},
         )
+        # 401 without a key since 2026-10-21: a failed lookup, not "clean".
+        resp.raise_for_status()
         try:
             data = resp.json()
         except ValueError:

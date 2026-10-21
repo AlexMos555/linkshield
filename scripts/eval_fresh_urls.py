@@ -82,7 +82,11 @@ BENCHMARK_BYPASS_TOKEN = os.environ.get("BENCHMARK_BYPASS_TOKEN", "").strip()
 GSB_KEY = os.environ.get("GOOGLE_SAFE_BROWSING_KEY")
 PHISHTANK_KEY = os.environ.get("PHISHTANK_API_KEY")  # optional
 VT_KEY = os.environ.get("VT_API_KEY")
-URLHAUS_RECENT_URL = "https://urlhaus.abuse.ch/downloads/csv_recent/"
+# The phishing sample is PhishTank's online-valid dump alone since 2026-10-21:
+# URLhaus's csv_recent/ (the other half until then) answers 410 Gone without a
+# personal Auth-Key, and abuse.ch's terms are not-for-profit only. PhishTank is
+# held out from the blocklist unless PHISHTANK_API_KEY makes it a source there
+# (scripts/refresh_dangerous_domains.py), and its FAQ allows commercial use.
 PHISHTANK_FEED_URL = "https://data.phishtank.com/data/online-valid.csv.gz"
 
 # Rough per-request budget. Cleanway is hot and on-network so we
@@ -343,32 +347,6 @@ def dedup_urls(urls: list[str]) -> list[str]:
 # Sample sources
 # ─────────────────────────────────────────────────────────────────
 
-async def fetch_urlhaus_recent(limit: int) -> list[str]:
-    """URLhaus daily CSV: ~500-1000 recent malicious URLs. No auth."""
-    log.info("fetching URLhaus recent feed …")
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        r = await client.get(URLHAUS_RECENT_URL)
-        r.raise_for_status()
-        # CSV is gzipped + has comment lines starting with '#'.
-        text = r.text
-    out = []
-    for line in text.splitlines():
-        if not line or line.startswith("#"):
-            continue
-        # columns: id,dateadded,url,url_status,threat,tags,urlhaus_link,reporter
-        parts = next(csv.reader(io.StringIO(line), quotechar='"'))
-        if len(parts) < 3:
-            continue
-        url = parts[2].strip().strip('"')
-        if not url:
-            continue
-        out.append(url)
-        if len(out) >= limit:
-            break
-    log.info("URLhaus: %d urls", len(out))
-    return out
-
-
 async def fetch_phishtank_recent(limit: int) -> list[str]:
     """PhishTank online-valid.csv.gz — ALL active verified phish.
     Anonymous download works; PHISHTANK_API_KEY is optional and
@@ -591,8 +569,9 @@ async def check_cleanway_local(client: httpx.AsyncClient, url: str) -> Verdict:
     /api/v1/check would return. Calls all 18 parallel checks
     including 16 threat-intel sources.
 
-    Free sources (URLhaus / ThreatFox / MalwareBazaar / Feodo /
-    Cloudflare DoH / crt.sh) work without keys. Paid sources
+    Free sources (Cloudflare DoH / crt.sh / RDAP) work without keys;
+    the non-commercial ones (URLhaus / ThreatFox / MalwareBazaar / Feodo,
+    SURBL, Spamhaus) are only asked with LICENSED_INTEL=all. Paid sources
     (Safe Browsing / PhishTank API / IPQS / AlienVault) fail
     silently through the circuit breakers and return False —
     so this is a LOWER-BOUND on the full authed-endpoint
@@ -997,7 +976,9 @@ def render_md(report: dict) -> str:
         lines += benchmark_legit.render_breakdown_md(report["cleanway_on_legit"])
     lines.append("## Methodology")
     lines.append("")
-    lines.append("- Phishing samples are fresh URLhaus + PhishTank entries; "
+    lines.append("- Phishing samples are fresh PhishTank entries (online-valid dump; "
+                 "until 2026-10-21 also URLhaus, which then closed anonymous downloads — "
+                 "earlier runs are a different mix); "
                  "the Cleanway ML model has NOT been trained on these specific URLs.")
     if report.get("sources", {}).get("legit_outside_allowlist"):
         lines.append("- Legit samples are real Russian sites OUTSIDE the Tranco top-100k — "
@@ -1229,16 +1210,11 @@ async def main() -> int:
 
     # ── Fetch samples ────────────────────────────────────────────
     try:
-        urlhaus = await fetch_urlhaus_recent(args.sample)
-    except Exception as exc:
-        log.error("URLhaus fetch failed: %s", exc)
-        urlhaus = []
-    try:
         phishtank = await fetch_phishtank_recent(args.sample)
     except Exception as exc:
         log.error("PhishTank fetch failed: %s", exc)
         phishtank = []
-    phishing_urls = dedup_urls(urlhaus + phishtank)[:args.sample]
+    phishing_urls = dedup_urls(phishtank)[:args.sample]
     legit_urls, legit_sites, legit_sources = pick_legit(args.legit_source, args.sample)
 
     if not phishing_urls or not legit_urls:
@@ -1278,8 +1254,7 @@ async def main() -> int:
         "n_phishing": len(phishing_urls),
         "n_safe": len(legit_urls),
         "sources": {
-            "phishing": f"URLhaus daily feed ({len(urlhaus)} URLs) + "
-                        f"PhishTank online-valid ({len(phishtank)} URLs), "
+            "phishing": f"PhishTank online-valid ({len(phishtank)} URLs), "
                         "deduplicated by registrable domain.",
             # `legit` and `legit_outside_allowlist`: see pick_legit. The
             # landing publishes a false-positive rate only when the latter is

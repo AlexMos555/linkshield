@@ -92,6 +92,15 @@ def test_analyzer_heuristic_dangerous_is_not_blocking(offline_analyzer):
 
 
 def test_analyzer_listing_is_threat_intel(offline_analyzer):
+    """A source consulted under the default (commercial-safe) licence."""
+    offline_analyzer(site="reachable", hits={"safe_browsing": True})
+    result = asyncio.run(analyze_domain("p6ihks.casa", budget_s=5.0))
+    assert result.verdict_basis == "threat_intel"
+
+
+def test_an_opt_in_non_commercial_listing_is_threat_intel_too(offline_analyzer, monkeypatch):
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "licensed_intel", "all")
     offline_analyzer(site="reachable", hits={"spamhaus": True, "urlhaus": True})
     result = asyncio.run(analyze_domain("p6ihks.casa", budget_s=5.0))
     assert result.verdict_basis == "threat_intel"

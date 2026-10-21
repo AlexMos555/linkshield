@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from api import config
 from api.services import analyzer, confirmed_threats
 
 # Breaker name the tests speak of → check name in conftest's offline_analyzer.
@@ -94,7 +95,9 @@ async def test_a_hit_that_is_not_an_exact_live_host_listing_is_not_recorded(monk
     """Each of these alone ends DANGEROUS, but none says "this host is
     malicious now": ThreatFox's IOC search is a wildcard, MalwareBazaar's is
     uploader-set tags, URLhaus /host/ counts offline URLs, and PhishTank is
-    our held-out benchmark."""
+    our held-out benchmark. The abuse.ch three are only asked at all with
+    LICENSED_INTEL=all (off by default since 2026-10-21)."""
+    monkeypatch.setattr(config.get_settings(), "licensed_intel", "all")
     r = _world(monkeypatch, offline_analyzer, {breaker: True})
     result = await analyzer.analyze_domain("bank-shop.example")
     assert result.level.value == "dangerous"
@@ -105,6 +108,8 @@ async def test_a_hit_that_is_not_an_exact_live_host_listing_is_not_recorded(monk
 async def test_a_verdict_from_untrusted_sources_is_not_recorded(monkeypatch, offline_analyzer, publishing_on):
     # Spamhaus + SURBL push the score over the line, but they list spam, not
     # phishing, and their terms are non-commercial: no DNS block from them.
+    # (Only asked at all with LICENSED_INTEL=all.)
+    monkeypatch.setattr(config.get_settings(), "licensed_intel", "all")
     r = _world(monkeypatch, offline_analyzer, {"spamhaus_breaker": True, "surbl_breaker": True})
     result = await analyzer.analyze_domain("newsletter.example")
     assert result.level.value == "dangerous"
