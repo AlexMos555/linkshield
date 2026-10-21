@@ -31,6 +31,7 @@ import { isMessageCheckSupported } from "../modules/cleanway-vpn";
 import { handOffMessage } from "../src/services/message-handoff";
 import { isMessageText } from "../src/utils/message-verdict";
 import { toCheckableHost } from "../src/utils/host";
+import { billing } from "../src/services/billing";
 
 /**
  * Bridges an inbound "Share -> Cleanway" (iOS Share Extension / Android ACTION_SEND,
@@ -133,6 +134,19 @@ function ShareIntentRouter() {
   return null;
 }
 
+/**
+ * Starts the subscription store once per process (billing plan A.10). With
+ * the build's switch off this only makes sure the native shield holds no
+ * pass; with it on it loads the stored pass, hands it to the shield and asks
+ * the billing server for the current one.
+ */
+function BillingBoot() {
+  useEffect(() => {
+    void billing.boot();
+  }, []);
+  return null;
+}
+
 export default function RootLayout() {
   const { t } = useTranslation();
   // Android 15+ (targetSdk 35+) draws the app edge-to-edge, under the system
@@ -232,6 +246,8 @@ export default function RootLayout() {
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
         {/* Without an entry the header renders the raw route slug "family". */}
         <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />
+        {/* The subscription screens carry their own stack and titles. */}
+        <Stack.Screen name="subscription" options={{ headerShown: false }} />
         {/* Deep-link sink for the OPTIONAL captcha flow. Unreachable unless
             EXPO_PUBLIC_CAPTCHA_URL is set; it exists so the route is registered
             (and headerless) the moment it is. */}
@@ -243,6 +259,7 @@ export default function RootLayout() {
           the restore CTA whenever any authed call returns 410 Gone. */}
       <ShareIntentRouter />
       <OnboardingGate />
+      <BillingBoot />
       <AccountLockedModal />
       {/* Session refresh, device link / heartbeat, unlinked-device sign-out. */}
       <AccountWatcher />

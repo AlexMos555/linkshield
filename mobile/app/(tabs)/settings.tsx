@@ -21,6 +21,7 @@ import {
 import { paidPlansVisible } from "../../src/config/market";
 import { PAID_PLANS_OFFERED } from "../../src/services/freemium";
 import { linkGuardSettingShown } from "../../src/utils/platform-features";
+import { billingEnabled } from "../../src/config/billing";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -336,6 +337,10 @@ export default function SettingsScreen() {
         ) : (
           <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
                right={chevron} onPress={() => router.push("/auth")} />
+        )}
+        {billingEnabled() && (
+          <Row label={t("mobile.settings.subscription")} desc={t("mobile.settings.subscription_desc")}
+               right={chevron} onPress={() => router.push("/subscription")} />
         )}
         {/* No Plan row in an iPhone build without App Store billing (PAID_PLANS_OFFERED). */}
         {PAID_PLANS_OFFERED && paidPlansVisible(i18n.language) && (
