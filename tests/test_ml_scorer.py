@@ -42,9 +42,41 @@ def test_legit_longtail_not_flagged(domain):
     assert prob < 0.6, f"{domain} should read benign, got {prob:.3f}"
 
 
-@pytest.mark.parametrize("domain", ["paypal.account-verify.tk", "apple-id-locked-verify.xyz"])
-def test_obvious_phish_flagged(domain):
-    assert ml_predict(domain)["phishing_probability"] > 0.8
+# Constructed brand + lure-word names on cheap TLDs: what the model is there
+# to catch from the name alone. None is in a feed, so none is a training row.
+OBVIOUS_LURES = (
+    "paypal.account-verify.tk", "apple-id-locked-verify.xyz",
+    "paypal-secure-login.top", "appleid-verify-account.xyz", "amazon-account-suspended.top",
+    "netflix-billing-update.xyz", "microsoft-login-verify.online", "chase-secure-verify.top",
+    "wellsfargo-account-locked.xyz", "coinbase-login-secure.xyz", "binance-wallet-verify.top",
+    "facebook-security-check.xyz", "instagram-verify-badge.top", "sberbank-online-verify.top",
+    "gosuslugi-login-verify.xyz", "tinkoff-secure-login.top",
+)
+
+
+def test_obvious_phish_flagged():
+    """The model scores obvious lures as phishing — measured on a set, not
+    on one host. This was `> 0.8` for paypal.account-verify.tk and
+    apple-id-locked-verify.xyz alone. On the 2026-10-21 feeds five retrains
+    (seeds 42/7/123, two 85% feed subsamples) gave apple-id-locked-verify.xyz
+    0.42-0.82, under 0.8 in four, while the median of this set was 0.82-0.90
+    in the four that pass below. One host's number is a draw from the
+    seed; the set's median is the model. The seed-7 model really was worse
+    (median 0.60, 8 of 16 over 0.6) and fails here as it should."""
+    probs = sorted(ml_predict(d)["phishing_probability"] for d in OBVIOUS_LURES)
+    median = (probs[7] + probs[8]) / 2
+    over_suspicious = sum(p > 0.6 for p in probs)
+    assert median > 0.8, f"median {median:.3f} over {len(probs)} obvious lures"
+    assert over_suspicious >= 12, f"only {over_suspicious}/{len(probs)} lures clear ml_suspicious: {probs}"
+
+
+@pytest.mark.parametrize("domain", OBVIOUS_LURES)
+def test_an_obvious_lure_is_never_safe(domain):
+    """What a person gets is the verdict: every lure in the set is at least
+    'caution' from the name alone, with the model on."""
+    from api.services import scoring
+
+    assert scoring.calculate_score({"domain": domain})[1].value != "safe"
 
 
 @pytest.mark.parametrize("domain", ["gosuslugi-vhod.netlify.app", "sberbank-online.pages.dev"])
@@ -63,9 +95,22 @@ def test_a_subdomain_of_an_unknown_name_is_suspicious_not_obvious():
     2026-09-28 gave it 0.96 and its apex safeinflow.com 0.09: the whole margin
     was 'has a subdomain', the shortcut that also scored www.dropbox.com 0.98
     and every *.gov.spb.ru host 0.92-0.99. The name itself has no lure in it,
-    so since features_version 5 it clears the ml_suspicious threshold, not
-    the ml_high_risk one."""
-    assert 0.6 < ml_predict("track.safeinflow.com")["phishing_probability"] < 0.9
+    so since features_version 5 it stays under the ml_high_risk threshold.
+
+    It also had to clear 0.6 (ml_suspicious), and that half asked for the
+    shortcut back. The model that gave it 0.77 (2026-10-05) scored 64% of
+    track.<site> for 500 Tranco rank-100k-1M .com sites over 0.6 too, and
+    8% of Tranco's subdomain hosts; track.safeinflow.com sat at its peers'
+    78th percentile, so nothing but the shape put it there. Every retrain on
+    the 2026-10-21 feeds (five: three seeds, two feed subsamples) puts it at
+    0.30-0.48 and the same legit peers 3-8% over 0.6. What "suspicious"
+    can mean for a name with no lure is relative: it ranks above its own
+    apex and above famous sites' hosts of the same shape."""
+    p = ml_predict("track.safeinflow.com")["phishing_probability"]
+    assert p < 0.85, f"track.safeinflow.com={p:.3f} is ml_high_risk: the subdomain shortcut is back"
+    for control in ("safeinflow.com", "www.example.com", "docs.google.com", "mail.yandex.ru"):
+        c = ml_predict(control)["phishing_probability"]
+        assert p > c, f"track.safeinflow.com={p:.3f} does not rank above {control}={c:.3f}"
 
 
 def test_onnx_matches_catboost_when_both_present():
