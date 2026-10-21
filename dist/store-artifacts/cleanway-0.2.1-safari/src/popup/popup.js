@@ -198,10 +198,50 @@ async function loadStats() {
 }
 
 // ─── Check current tab ────────────────────────────────────────
+// The address of the block page (src/blocked/blocked.html?d=…) the tab is
+// on, or "". The browser may not hand the popup the URL of an extension page
+// (no "tabs" permission), so when tab.url is missing the page itself is
+// asked: the extension can always read its own pages.
+function blockedPageUrl(tab) {
+  var lib = self.cleanwayBlockedUrl;
+  if (!lib || !tab) return "";
+  var base = "";
+  try { base = chrome.runtime.getURL(""); } catch (e) { return ""; }
+  if (tab.url) return lib.isBlockedPageUrl(tab.url, base) ? tab.url : "";
+  if (tab.id == null) return "";
+  try {
+    var views = chrome.extension.getViews({ type: "tab", tabId: tab.id }) || [];
+    for (var i = 0; i < views.length; i++) {
+      var href = views[i].location.href;
+      if (lib.isBlockedPageUrl(href, base)) return href;
+    }
+  } catch (e) { /* getViews unavailable: treat as an ordinary page */ }
+  return "";
+}
+
 async function loadPageStatus() {
   var tabs = [];
   try { tabs = await chrome.tabs.query({ active: true, currentWindow: true }); } catch (e) {}
   var tab = tabs[0];
+
+  // The tab is on our block page: the site behind it is a scam. Without
+  // this the extension page fell into "not a web page" below and the popup
+  // said "This page is safe" over the STOP screen.
+  var blockedHref = blockedPageUrl(tab);
+  if (blockedHref) {
+    var shown = self.cleanwayBlockedUrl.parse(blockedHref);
+    setStatus("danger", t("status_danger_title"),
+      shown.domain ? t("status_danger_subtitle", [shown.domain]) : "");
+    if (typeof shown.confidence_pct === "number") {
+      var blockedChip = $("confidence-chip");
+      if (blockedChip) {
+        blockedChip.textContent = t("confidence_chip", [String(shown.confidence_pct)]);
+        blockedChip.hidden = false;
+      }
+    }
+    return;
+  }
+
   if (!tab || !tab.url) {
     setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
     return;
