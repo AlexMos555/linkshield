@@ -2085,7 +2085,7 @@
       "col_fpr": "Taxa de alarmes falsos",
       "col_fp": "Alarmes falsos",
       "col_tn": "Corretos",
-      "dataset_phishing_desc": "links recentes das fontes públicas URLhaus e PhishTank, baixados a cada execução e sem duplicatas por domínio.",
+      "dataset_phishing_desc": "links recentes da fonte pública PhishTank (até outubro de 2026 também URLhaus), baixados a cada execução e sem duplicatas por domínio.",
       "dataset_safe_desc": "domínios aleatórios da lista Tranco top-1M, das posições 100 a 100.000, com uma semente aleatória fixa para que a amostra possa ser reproduzida.",
       "dataset_safe_desc_curated": "sites russos reais fora do top 100.000 da Tranco — administrações regionais e municipais, universidades, sites .рф, pequenos bancos e empresas, museus e teatros — de uma lista publicada que indica a fonte de cada site, com uma semente aleatória fixa.",
       "mapping_cleanway": "Cleanway: “perigoso” conta como perigoso, “seguro” como seguro, “cuidado” como desconhecido.",

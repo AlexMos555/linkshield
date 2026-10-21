@@ -2085,7 +2085,7 @@
       "col_fpr": "Taux de fausses alertes",
       "col_fp": "Fausses alertes",
       "col_tn": "Corrects",
-      "dataset_phishing_desc": "liens récents des sources publiques URLhaus et PhishTank, téléchargés à chaque exécution et dédoublonnés par domaine.",
+      "dataset_phishing_desc": "liens récents de la source publique PhishTank (jusqu’en octobre 2026, aussi URLhaus), téléchargés à chaque exécution et dédoublonnés par domaine.",
       "dataset_safe_desc": "domaines aléatoires de la liste Tranco top-1M, des rangs 100 à 100 000, avec une graine aléatoire fixe pour que l'échantillon soit reproductible.",
       "dataset_safe_desc_curated": "de vrais sites russes hors du top 100 000 de Tranco — administrations régionales et municipales, universités, sites en .рф, petites banques et entreprises, musées et théâtres — tirés d'une liste publiée qui donne la source de chaque site, avec une graine aléatoire fixe.",
       "mapping_cleanway": "Cleanway : « dangereux » compte comme dangereux, « sûr » comme sûr, « prudence » comme inconnu.",
