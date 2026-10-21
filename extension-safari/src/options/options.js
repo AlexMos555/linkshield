@@ -39,7 +39,10 @@ function applyI18n() {
     });
   }
   try {
-    document.documentElement.lang = chrome.i18n.getUILanguage();
+    const uiLang = chrome.i18n.getUILanguage();
+    document.documentElement.lang = uiLang;
+    // Arabic reads right to left, as on the block page and in the popup.
+    document.documentElement.dir = /^ar(-|$)/i.test(uiLang) ? "rtl" : "ltr";
   } catch (e) { /* keep lang="en" */ }
 }
 
@@ -997,6 +1000,34 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
   if (linkWrap) linkWrap.hidden = false;
 
   modal.hidden = false;
+  // Keyboard and screen readers: focus goes into the dialog (its title is
+  // read), Tab stays inside it, Escape closes it like "Done", and focus
+  // returns to "Generate invite".
+  const opener = document.activeElement;
+  const dialog = modal.querySelector('[role="dialog"]');
+  if (dialog) {
+    dialog.tabIndex = -1;
+    dialog.focus();
+  }
+  modal.onkeydown = (ev) => {
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      document.getElementById("family-invite-close-btn").click();
+      return;
+    }
+    if (ev.key !== "Tab") return;
+    const buttons = [...modal.querySelectorAll("button")].filter((b) => b.offsetParent !== null);
+    if (!buttons.length) return;
+    const first = buttons[0];
+    const last = buttons[buttons.length - 1];
+    if (ev.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+      ev.preventDefault();
+      last.focus();
+    } else if (!ev.shiftKey && document.activeElement === last) {
+      ev.preventDefault();
+      first.focus();
+    }
+  };
 
   document.getElementById("family-invite-copy-btn").onclick = async () => {
     try {
@@ -1021,9 +1052,11 @@ document.getElementById("family-invite-btn")?.addEventListener("click", async ()
 
   document.getElementById("family-invite-close-btn").onclick = () => {
     modal.hidden = true;
+    modal.onkeydown = null;
     // Hide the link/QR sections so the next open of an empty modal looks clean.
     if (qrWrap) qrWrap.hidden = true;
     if (linkWrap) linkWrap.hidden = true;
+    if (opener && typeof opener.focus === "function") opener.focus();
   };
 });
 

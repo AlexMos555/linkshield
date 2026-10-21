@@ -121,7 +121,10 @@ function applyI18n() {
   // Screen readers pick their voice from <html lang>.
   try {
     if (typeof chrome !== "undefined" && chrome.i18n && chrome.i18n.getUILanguage) {
-      document.documentElement.lang = chrome.i18n.getUILanguage();
+      var uiLang = chrome.i18n.getUILanguage();
+      document.documentElement.lang = uiLang;
+      // Arabic reads right to left; the block page does the same.
+      document.documentElement.dir = /^ar(-|$)/i.test(uiLang) ? "rtl" : "ltr";
     }
   } catch (e) { /* preview panel — keep lang="en" */ }
 }
@@ -642,6 +645,9 @@ async function checkAndRenderLockState() {
     var btn = $("btn-restore-account");
     if (btn) {
       btn.addEventListener("click", function() { handleRestoreClick(apiModule); });
+      // The rest of the popup is hidden: keyboard focus starts on the one
+      // thing this screen offers.
+      btn.focus();
     }
     return true;
   } catch (e) {

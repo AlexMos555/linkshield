@@ -117,6 +117,25 @@ async function calculateSecurityScore() {
   };
 }
 
+// Keyboard and screen-reader access for the overlay: focus moves to its
+// close button, Tab stays there (the only control), Escape closes, and focus
+// goes back to where it was on the page.
+function _scoreDialog(div, closeBtn) {
+  var before = document.activeElement;
+  function onKey(e) {
+    if (e.key === "Escape") { e.preventDefault(); close(); }
+    else if (e.key === "Tab") { e.preventDefault(); closeBtn.focus(); }
+  }
+  function close() {
+    document.removeEventListener("keydown", onKey, true);
+    div.remove();
+    if (before && typeof before.focus === "function" && document.contains(before)) before.focus();
+  }
+  document.addEventListener("keydown", onKey, true);
+  closeBtn.onclick = close;
+  closeBtn.focus();
+}
+
 function showSecurityScore(scoreData) {
   var existing = document.getElementById("ls-score-overlay");
   if (existing) existing.remove();
@@ -129,7 +148,7 @@ function showSecurityScore(scoreData) {
   var label = _scoreT(labelKey);
 
   var factorsHTML = scoreData.factors.map(function(f) {
-    var color = f.points > 0 ? "#22c55e" : f.points < 0 ? "#ef4444" : "#64748b";
+    var color = f.points > 0 ? "#22c55e" : f.points < 0 ? "#ef4444" : "#94a3b8";
     var sign = f.points > 0 ? "+" : "";
     return '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;">' +
       '<span style="color:#94a3b8;">' + _scoreEsc(f.detail) + '</span>' +
@@ -139,19 +158,19 @@ function showSecurityScore(scoreData) {
   var div = document.createElement("div");
   div.id = "ls-score-overlay";
   div.innerHTML = '<div style="position:fixed;inset:0;z-index:999999;background:#0f172aee;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#e2e8f0;">' +
-    '<div style="background:#1e293b;border-radius:16px;padding:32px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">' +
+    '<div role="dialog" aria-modal="true" aria-labelledby="ls-score-title" style="background:#1e293b;border-radius:16px;padding:32px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
-    '<h2 style="font-size:20px;font-weight:700;margin:0;">' + _scoreEsc(_scoreT("score_title")) + '</h2>' +
-    '<span id="ls-score-close" style="cursor:pointer;color:#6b7280;font-size:20px;">×</span></div>' +
+    '<h2 id="ls-score-title" style="font-size:20px;font-weight:700;margin:0;">' + _scoreEsc(_scoreT("score_title")) + '</h2>' +
+    '<button type="button" id="ls-score-close" aria-label="' + _scoreEsc(_scoreT("breach_close")) + '" style="background:none;border:none;padding:4px 8px;line-height:1;font-family:inherit;cursor:pointer;color:#94a3b8;font-size:20px;"><span aria-hidden="true">×</span></button></div>' +
     '<div style="text-align:center;margin-bottom:20px;">' +
     '<div style="font-size:64px;font-weight:800;color:' + scoreColor + ';">' + (parseInt(scoreData.score, 10) || 0) + '</div>' +
     '<div style="font-size:16px;color:' + scoreColor + ';font-weight:600;">' + _scoreEsc(label) + '</div></div>' +
     '<div style="margin-bottom:16px;">' +
-    '<div style="font-size:12px;color:#64748b;text-transform:uppercase;margin-bottom:8px;">' + _scoreEsc(_scoreT("score_breakdown")) + '</div>' +
+    '<div style="font-size:12px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">' + _scoreEsc(_scoreT("score_breakdown")) + '</div>' +
     factorsHTML + '</div>' +
-    '<div style="font-size:10px;color:#475569;text-align:center;">🔒 ' + _scoreEsc(_scoreT("score_on_device")) + '</div>' +
+    '<div style="font-size:10px;color:#94a3b8;text-align:center;">🔒 ' + _scoreEsc(_scoreT("score_on_device")) + '</div>' +
     '</div></div>';
 
   document.body.appendChild(div);
-  document.getElementById("ls-score-close").onclick = function() { div.remove(); };
+  _scoreDialog(div, document.getElementById("ls-score-close"));
 }

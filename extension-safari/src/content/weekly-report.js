@@ -76,6 +76,25 @@ function _weeklyDate(isoDay) {
   }
 }
 
+// Keyboard and screen-reader access for the overlay: focus moves to its
+// close button, Tab stays there (the only control), Escape closes, and focus
+// goes back to where it was on the page.
+function _weeklyDialog(div, closeBtn) {
+  var before = document.activeElement;
+  function onKey(e) {
+    if (e.key === "Escape") { e.preventDefault(); close(); }
+    else if (e.key === "Tab") { e.preventDefault(); closeBtn.focus(); }
+  }
+  function close() {
+    document.removeEventListener("keydown", onKey, true);
+    div.remove();
+    if (before && typeof before.focus === "function" && document.contains(before)) before.focus();
+  }
+  document.addEventListener("keydown", onKey, true);
+  closeBtn.onclick = close;
+  closeBtn.focus();
+}
+
 /**
  * Show weekly report as floating overlay
  */
@@ -90,19 +109,19 @@ function showWeeklyReport(report) {
   var div = document.createElement("div");
   div.id = "ls-weekly-report";
   div.innerHTML = '<div style="position:fixed;inset:0;z-index:999999;background:#0f172aee;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#e2e8f0;">' +
-    '<div style="background:#1e293b;border-radius:16px;padding:32px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">' +
+    '<div role="dialog" aria-modal="true" aria-labelledby="ls-weekly-title" style="background:#1e293b;border-radius:16px;padding:32px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
-    '<h2 style="font-size:20px;font-weight:700;margin:0;">' + _weeklyEsc(_weeklyT("weekly_title")) + '</h2>' +
-    '<span id="ls-report-close" style="cursor:pointer;color:#6b7280;font-size:20px;">\u00D7</span></div>' +
-    '<div style="font-size:12px;color:#64748b;margin-bottom:16px;">' + _weeklyEsc(_weeklyDate(report.period.start)) + ' \u2014 ' + _weeklyEsc(_weeklyDate(report.period.end)) + '</div>' +
+    '<h2 id="ls-weekly-title" style="font-size:20px;font-weight:700;margin:0;">' + _weeklyEsc(_weeklyT("weekly_title")) + '</h2>' +
+    '<button type="button" id="ls-report-close" aria-label="' + _weeklyEsc(_weeklyT("breach_close")) + '" style="background:none;border:none;padding:4px 8px;line-height:1;font-family:inherit;cursor:pointer;color:#94a3b8;font-size:20px;"><span aria-hidden="true">\u00D7</span></button></div>' +
+    '<div style="font-size:12px;color:#94a3b8;margin-bottom:16px;">' + _weeklyEsc(_weeklyDate(report.period.start)) + ' \u2014 ' + _weeklyEsc(_weeklyDate(report.period.end)) + '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">' +
-    '<div style="background:#111827;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:bold;">' + (parseInt(report.totalChecks, 10) || 0) + '</div><div style="font-size:10px;color:#64748b;">' + _weeklyEsc(_weeklyT("weekly_checked")) + '</div></div>' +
-    '<div style="background:#111827;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:bold;color:#ef4444;">' + (parseInt(report.threatsBlocked, 10) || 0) + '</div><div style="font-size:10px;color:#64748b;">' + _weeklyEsc(_weeklyT("weekly_blocked")) + '</div></div>' +
-    '<div style="background:#111827;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:bold;color:#f59e0b;">' + (parseInt(report.warnings, 10) || 0) + '</div><div style="font-size:10px;color:#64748b;">' + _weeklyEsc(_weeklyT("weekly_warnings")) + '</div></div></div>' +
-    '<div style="margin-bottom:16px;"><div style="font-size:12px;color:#64748b;text-transform:uppercase;margin-bottom:8px;">' + _weeklyEsc(_weeklyT("weekly_top_threats")) + '</div>' + threatList + '</div>' +
-    '<div style="font-size:10px;color:#475569;text-align:center;">\uD83D\uDD12 ' + _weeklyEsc(_weeklyT("weekly_on_device")) + '</div>' +
+    '<div style="background:#111827;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:bold;">' + (parseInt(report.totalChecks, 10) || 0) + '</div><div style="font-size:10px;color:#94a3b8;">' + _weeklyEsc(_weeklyT("weekly_checked")) + '</div></div>' +
+    '<div style="background:#111827;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:bold;color:#ef4444;">' + (parseInt(report.threatsBlocked, 10) || 0) + '</div><div style="font-size:10px;color:#94a3b8;">' + _weeklyEsc(_weeklyT("weekly_blocked")) + '</div></div>' +
+    '<div style="background:#111827;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:24px;font-weight:bold;color:#f59e0b;">' + (parseInt(report.warnings, 10) || 0) + '</div><div style="font-size:10px;color:#94a3b8;">' + _weeklyEsc(_weeklyT("weekly_warnings")) + '</div></div></div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:12px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">' + _weeklyEsc(_weeklyT("weekly_top_threats")) + '</div>' + threatList + '</div>' +
+    '<div style="font-size:10px;color:#94a3b8;text-align:center;">\uD83D\uDD12 ' + _weeklyEsc(_weeklyT("weekly_on_device")) + '</div>' +
     '</div></div>';
 
   document.body.appendChild(div);
-  document.getElementById("ls-report-close").onclick = function() { div.remove(); };
+  _weeklyDialog(div, document.getElementById("ls-report-close"));
 }

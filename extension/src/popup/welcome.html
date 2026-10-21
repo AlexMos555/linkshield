@@ -12,7 +12,8 @@
       --border: rgba(51, 65, 85, 0.6);
       --text: #f8fafc;
       --text-muted: #94a3b8;
-      --text-dim: #64748b;
+      /* #64748b was 3.1:1 on the cards; this is ≥ 5:1 (WCAG AA). */
+      --text-dim: #8a9bb3;
       --green: #22c55e;
       --green-bg: rgba(34, 197, 94, 0.12);
       --green-text: #4ade80;
@@ -37,6 +38,12 @@
         radial-gradient(ellipse at bottom, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
     }
     [dir="rtl"] { font-family: "Noto Sans Arabic", -apple-system, sans-serif; }
+    /* Keyboard focus: one visible ring everywhere (7:1 on the page). */
+    :focus-visible { outline: 2px solid var(--blue-text); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+      .step:hover, .btn-primary:hover, .persona-card:hover { transform: none; }
+    }
 
     .container {
       max-width: 640px;
@@ -186,7 +193,6 @@
       color: var(--text-muted);
       cursor: pointer;
       font-family: inherit;
-      outline: none;
     }
     .lang-selector:hover { color: var(--text); border-color: rgba(148, 163, 184, 0.5); }
     .persona { margin: 8px 0 24px; }
