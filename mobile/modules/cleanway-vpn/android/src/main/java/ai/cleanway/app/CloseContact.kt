@@ -19,11 +19,12 @@ import java.io.File
  * [StopReasonStore]), which Android's backup and device-to-device transfer
  * never copy — the same posture as the "close one" contact the checkup
  * screen (#55) keeps in expo-secure-store. That screen is the hook that
- * writes here: its `saveCloseOne` / `clearCloseOne` mirror the number with
- * the module's `setCloseContactPhone`, so the service can offer "Позвонить
- * близкому" on the after-call notice, where JS is not running. Until that
- * ships nothing is saved, and every "call a close one" button and
- * notification action simply stays hidden.
+ * writes here: its `saveCloseOne` / `clearCloseOne`
+ * (mobile/src/services/checkup-store.ts) mirror the number with the
+ * module's `setCloseContactPhone`, and `loadCloseOne` re-copies it when this
+ * file is missing or differs, so the service can offer "Позвонить близкому"
+ * on the after-call notice, where JS is not running. With no number saved,
+ * every "call a close one" button and notification action stays hidden.
  */
 object CloseContact {
     private const val FILE = "cleanway_close_contact"

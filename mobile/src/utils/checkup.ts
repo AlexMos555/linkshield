@@ -18,7 +18,7 @@ import type { OfficialLinkId } from "../config/official-links";
 
 /** Mirror of ShieldCard's ShieldState, kept structural so this file stays React-free. */
 export type ShieldStateLike =
-  | "setup" | "on" | "paused" | "conflict" | "network-blocked" | "unverified" | "offline";
+  | "setup" | "stopped" | "on" | "paused" | "conflict" | "network-blocked" | "unverified" | "offline";
 
 export interface DeviceCheckInput {
   /** The "All apps" shield, or null where this build has none (iOS). */
@@ -75,6 +75,10 @@ function shieldRow(shield: NonNullable<DeviceCheckInput["shield"]>): DeviceCheck
       return shield.interrupted
         ? row("fix", "mobile.checkup.device.shield_stopped", "shield_on")
         : row("fix", "mobile.checkup.device.shield_off", "shield_on");
+    case "stopped":
+      // The home screen's "was on, something else stopped it" (useNetworkShield
+      // itself reports that as "setup" + interrupted).
+      return row("fix", "mobile.checkup.device.shield_stopped", "shield_on");
     case "paused":
       return row("fix", "mobile.checkup.device.shield_paused", "shield_resume", { time: shield.pausedTime });
     case "on":
@@ -238,6 +242,21 @@ export function makeCloseOne(name: string | null | undefined, number: string | n
   if (!dialable) return null;
   const trimmed = typeof name === "string" ? name.trim().slice(0, MAX_NAME_LENGTH) : "";
   return { name: trimmed.length > 0 ? trimmed : null, number: dialable };
+}
+
+/**
+ * What the native copy of the number (CloseContact.kt — the after-call
+ * notice offers "Позвонить близкому" from it while JS is not running) must
+ * be set to once the saved contact has been read: the saved number when the
+ * native copy differs (an older native build that never got it, a mirror
+ * that failed), otherwise nothing. Never a clear: a failed secure-store
+ * read also reads as "nothing saved", and only "Remove number" removes it.
+ * The number is already a normalizePhone() result, which
+ * CloseContact.normalize keeps as is.
+ */
+export function closeContactMirror(saved: CloseOne | null, native: string | null): string | undefined {
+  if (!saved) return undefined;
+  return saved.number === native ? undefined : saved.number;
 }
 
 /** The saved contact read back from storage, re-validated; null when absent or broken. */

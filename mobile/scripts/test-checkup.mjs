@@ -123,6 +123,11 @@ try {
       [["shield", "fix", "shield_stopped", "shield_on"]],
     ],
     [
+      "the home screen's own \"stopped\" state reads the same, and the list waits on the shield",
+      () => brief(m.deviceChecks(input({ shield: shield("stopped") }))).filter(([id]) => id === "shield" || id === "list"),
+      [["shield", "fix", "shield_stopped", "shield_on"], ["list", "wait", "list_needs_shield", null]],
+    ],
+    [
       "strict Private DNS: the fix is that setting, and the host is named",
       () => {
         const row = rowOf(m.deviceChecks(input({ shield: shield("conflict", { privateDnsHost: "dns.google" }) })), "shield");
@@ -293,6 +298,32 @@ try {
         m.parseCloseOne(null),
       ],
       [{ name: "Мама", number: "+79161234567" }, null, null, null, null],
+    ],
+    [
+      // CloseContact.kt holds the number for the call guard's after-call
+      // notice; the app re-copies it on read, but never clears it from a read
+      // (a failed secure-store read also looks like "nothing saved").
+      "the native copy of the number: re-copied when missing or different, never cleared by a read",
+      () => {
+        const saved = m.makeCloseOne("Саша", "+7 916 123-45-67");
+        return [
+          m.closeContactMirror(saved, null),
+          m.closeContactMirror(saved, "+79161234567"),
+          m.closeContactMirror(saved, "+79990000000"),
+          m.closeContactMirror(null, "+79161234567"),
+          m.closeContactMirror(null, null),
+        ];
+      },
+      ["+79161234567", undefined, "+79161234567", undefined, undefined],
+    ],
+    [
+      // CloseContact.normalize keeps "+" and 3–20 digits as is, so what the
+      // app saves is what the native side stores (no silent rewrite).
+      "a saved number is in the form CloseContact.kt stores unchanged",
+      () => ["+7 916 123-45-67", "8 (916) 123 45 67", "112", "+44 20 7123 4567"]
+        .map((raw) => m.makeCloseOne(null, raw).number)
+        .every((n) => /^\+?[0-9]{3,20}$/.test(n)),
+      true,
     ],
 
     // ── official links ────────────────────────────────────────────────

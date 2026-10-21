@@ -281,7 +281,7 @@ export function closeContactPhone(): string | null {
  * calls from `saveCloseOne` / `clearCloseOne` (src/services/checkup-store.ts),
  * mirroring the secure-store contact into the module's no-backup file so the
  * service can offer "call a close one" on the after-call notice, where JS is
- * not running. Until that ships nothing is saved and the buttons stay hidden.
+ * not running. With no number saved the buttons stay hidden.
  */
 export function setCloseContactPhone(phone: string | null): boolean {
   try {
