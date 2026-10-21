@@ -130,17 +130,17 @@ Unlike the extension, the mobile check history is **not pruned automatically**: 
 | Domain + verdict + score (cache) | Redis (server) | 5 min (dangerous) / 15 min (suspicious) / 1 hr (safe); public endpoint 24 hr |
 | **Switched off in production** (`PUBLISH_CONFIRMED_THREATS`). When on: a checked host that Google Safe Browsing lists as **phishing or malware** and our scorer rated **dangerous** + time of the last such check — no user, IP or URL. Only the site's own name is kept (`evil.xyz`, `www.evil.xyz`, `shop.vercel.app`, or one short plain word above it such as `login.evil.xyz`), never a longer name that could carry an email address, a full name or an ID | Redis sorted set `dangerous_domains:confirmed` | Published in the shared blocklist every phone downloads (as a hash) for 7 days after the last confirmation. Deleted 2 days after that whenever the server records another host or republishes the list (every 6 h); if both stop, the whole set expires 10 days after the last host was recorded. At most 20,000 hosts. Switched off, stored hosts leave the published list at the next refresh |
 | Domain + ML feature vector + timestamp | Local `feature_log.jsonl` file (server) | **Off by default in production**; only written when `FEATURE_LOG_ENABLED=true` for an offline training run, then size-capped (default 50 MB, auto-rotated) |
-| User ID + action + target + hashed IP + metadata | Supabase `audit_log` | 2 years (730 days), purged by `purge_old_audit_log` |
+| User ID + action + target + hashed IP + metadata | Supabase `audit_log` | 2 years (730 days), deleted by the retention job (`api/services/retention.py`, rule `audit_log_2y`) |
 | User ID + email | Supabase `users` | Until account deletion |
 | User ID + subscription tier + Stripe customer ID | Supabase `subscriptions` | Until account deletion |
 | Device hash + platform + name + app/extension version + last seen + device settings (an unlinked device keeps its row, marked revoked) | Supabase `devices` | Until account deletion |
 | Purchases: source + store purchase/subscription ID + plan + status + dates + device limit (no card data) | Supabase `entitlements` | Until account deletion (the store and Stripe keep their own records under their terms) |
 | User whitelist domains | Redis set `whitelist:{user_id}` | 1 year (365-day TTL, refreshed on each add) |
-| Weekly threat aggregates (counts only) | Supabase `weekly_aggregates` | 1 year, then deleted |
-| Family alert ciphertext + nonce + sender pubkey | Supabase `family_alerts` | 30 days (`ALERT_DEFAULT_TTL_DAYS = 30`); see caveat |
+| Weekly threat aggregates (counts only) | Supabase `weekly_aggregates` | 1 year, then deleted by the retention job (`weekly_aggregates_1y`) |
+| Family alert ciphertext + nonce + sender pubkey | Supabase `family_alerts` | 30 days (`ALERT_DEFAULT_TTL_DAYS = 30`): not served after `expires_at`, deleted by the retention job; see caveat |
 | Family public keys (32-byte curve25519) | Supabase `family_member_keys` | No TTL (needed to route encrypted alerts) |
-| Family invite: SHA-256 code hash + bcrypt PIN hash | Supabase `family_invites` | Until redeemed or 7-day expiry |
-| Deletion flag (soft-delete) | Redis | 30-day grace period before hard delete |
+| Family invite: SHA-256 code hash + bcrypt PIN hash | Supabase `family_invites` | Until redeemed or 7-day expiry; the retention job deletes the row after expiry, or a day after redemption |
+| Deletion flag (soft-delete) | Redis | 30-day grace period before hard delete (`api/services/account_purge.py`, run by the retention job; it also drops the user's Redis whitelist) |
 | Nightly database backup (`pg_dump` of the Supabase `public` + `auth` schemas — every table above that lives in Supabase), `age`-encrypted to the founder's key | Cloudflare R2 bucket `cleanway-db-backups`, location Western Europe (WEUR) | 35 days (bucket lifecycle rule); a row deleted from the database is gone from every backup 35 days later |
 | Extension check history | Device (IndexedDB) | 30 days, auto-pruned |
 | Mobile check history: link host(s) + verdict + reason codes + time (never message text) | Device (SQLite `cleanway.db`) | Until you tap Settings → Clear history |
@@ -148,7 +148,9 @@ Unlike the extension, the mobile check history is **not pruned automatically**: 
 
 **Feature-log note:** Cleanway can optionally collect a machine-learning training log (`feature_log.jsonl`) recording the domain name, the analysis score, and the feature vector. It is **off by default** — in production no domain is written to disk at all unless an operator explicitly sets `FEATURE_LOG_ENABLED=true` for a training run. When enabled, the file is size-capped (default 50 MB via `FEATURE_LOG_MAX_BYTES`) and auto-rotated to its most recent half, so it never grows without bound. It never records user identity — only the domain, score, and features.
 
-**Family-alert retention caveat:** The code sets a **30-day** expiry on family alerts (`expires_at = now() + 30 days`). An earlier version of our published policy referenced 7 days; the code implements 30. A database migration includes a commented-out 7-day cleanup job, but the code does not show an active cron enforcing it, so alerts should be assumed to persist for up to 30 days server-side (as ciphertext the server cannot read — see Family Hub encryption).
+**Family-alert retention caveat:** The code sets a **30-day** expiry on family alerts (`expires_at = now() + 30 days`). An earlier version of our published policy referenced 7 days; the code implements 30. The commented-out 7-day cleanup in migration 001 was never active. Since 2026-10-21 an alert past `expires_at` is no longer listed, and the retention job deletes it (and rows from before the column existed, 30 days after `created_at`).
+
+**Retention job:** `api/services/retention.py` runs inside the API process (first pass 15 minutes after start, then every 6 hours) and enforces the account erase (30 days), `audit_log` (2 years), `weekly_aggregates` (1 year), family alerts and invites. It runs only when `RETENTION_PURGE` is `on` in production (`dry_run` counts, `off` — the default — does nothing). Before 2026-10-21 none of these deletions had a scheduler: the account purge existed but nothing called it, and `purge_old_audit_log` (migration 017) is not installed in the production database. Audit and founder steps: `docs/runbooks/data-retention.md`.
 
 ## What we never collect
 

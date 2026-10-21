@@ -125,6 +125,10 @@ class FakeSupabase:
                     out = [r for r in out if str(r.get(k)) in allowed]
                 elif v == "is.null":
                     out = [r for r in out if r.get(k) is None]
+                elif k == "or" and v.startswith("(expires_at.is.null,expires_at.gt."):
+                    # The one `or` the router sends: not yet expired.
+                    cutoff = v.split(".gt.", 1)[1].rstrip(")")
+                    out = [r for r in out if r.get("expires_at") is None or r["expires_at"] > cutoff]
             return out
 
         class _MockClient:
@@ -771,6 +775,31 @@ def test_submit_alerts_blocks_non_member(authed_user, supabase_ok, fake_sb, clie
         },
     )
     assert resp.status_code == 403
+
+
+def test_list_alerts_hides_expired_envelopes(supabase_ok, fake_sb, client_factory):
+    """The policy keeps family alerts for up to 30 days: one past its
+    expires_at is never served, even before the retention purge runs."""
+    fake_sb.families["fam"] = {"id": "fam", "owner_id": "user-A", "name": "F"}
+    fake_sb.members.append({"family_id": "fam", "user_id": "user-A", "role": "owner"})
+    base = {
+        "family_id": "fam",
+        "recipient_user_id": "user-A",
+        "sender_user_id": "user-B",
+        "encrypted_payload": "\\x" + b"x".hex(),
+        "nonce": "\\x" + bytes(24).hex(),
+        "sender_pubkey": "\\x" + bytes(32).hex(),
+        "alert_type": "block",
+        "created_at": "2026-04-28T00:00:00+00:00",
+    }
+    fake_sb.alerts.append({**base, "id": "old", "expires_at": "2020-01-01T00:00:00+00:00"})
+    fake_sb.alerts.append({**base, "id": "live", "expires_at": "2999-01-01T00:00:00+00:00"})
+    fake_sb.alerts.append({**base, "id": "legacy", "expires_at": None})
+
+    a = AuthUser(id="user-A", email="a@t.com", tier=UserTier.free)
+    resp = client_factory(a).get("/api/v1/family/fam/alerts")
+    assert resp.status_code == 200
+    assert sorted(i["id"] for i in resp.json()["alerts"]) == ["legacy", "live"]
 
 
 def test_list_alerts_returns_only_caller_envelopes(supabase_ok, fake_sb, client_factory):

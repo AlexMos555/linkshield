@@ -980,6 +980,11 @@ async def list_alerts(
         params={
             "family_id": f"eq.{family_id}",
             "recipient_user_id": f"eq.{user.id}",
+            # Past expires_at an alert is gone as far as anyone can tell,
+            # even before the retention purge deletes the row
+            # (api/services/retention.py). Rows from before the column
+            # existed have NULL and are aged out by created_at there.
+            "or": f"(expires_at.is.null,expires_at.gt.{datetime.now(timezone.utc).isoformat()})",
             "select": "id,sender_user_id,sender_pubkey,nonce,encrypted_payload,alert_type,created_at",
             "order": "created_at.desc",
             "limit": "100",

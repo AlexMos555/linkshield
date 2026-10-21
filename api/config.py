@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # JWT secret). UNSUBSCRIBE_HMAC_KEY is read from the environment directly
     # by api/routers/email_unsubscribe.py.
     audit_ip_hash_key: str = ""
+    # Retention purge (api/services/retention.py): off | dry_run | on.
+    # Off by default; dry_run logs what would be deleted, on deletes
+    # (accounts 30 days after a deletion request, audit_log after 2 years,
+    # weekly_aggregates after 1 year, expired family alerts / invites).
+    # docs/runbooks/data-retention.md.
+    retention_purge: str = "off"
 
     # CORS — comma-separated allowed origins.
     # Default covers cleanway web + all webmail providers the extension

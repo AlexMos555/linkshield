@@ -302,6 +302,48 @@ async def test_purge_writes_audit_row_per_deleted_user(supabase_ok, supabase_stu
     assert all(row.get("actor_user_id") is None for row in supabase_stub.audit_posts)
 
 
+@pytest.mark.asyncio
+async def test_purge_drops_the_users_redis_keys(supabase_ok, supabase_stub, monkeypatch):
+    """The trusted-sites whitelist lives in Redis with a 1-year TTL; it must
+    go with the account, not a year later."""
+    from api.services import account_purge
+
+    deleted: list = []
+
+    class _R:
+        async def delete(self, *keys):
+            deleted.extend(keys)
+            return len(keys)
+
+    async def _get_redis():
+        return _R()
+
+    monkeypatch.setattr("api.services.cache.get_redis", _get_redis)
+    supabase_stub.list_response = [{"id": "u1"}, {"id": "u2"}]
+
+    result = await account_purge.purge_expired_accounts()
+
+    assert result["deleted"] == 2
+    for uid in ("u1", "u2"):
+        assert f"whitelist:{uid}" in deleted
+        assert f"percentile:{uid}" in deleted
+        assert f"tier:{uid}" in deleted
+
+
+@pytest.mark.asyncio
+async def test_purge_survives_redis_outage(supabase_ok, supabase_stub, monkeypatch):
+    from api.services import account_purge
+
+    async def _down():
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr("api.services.cache.get_redis", _down)
+    supabase_stub.list_response = [{"id": "u1"}]
+
+    result = await account_purge.purge_expired_accounts()
+    assert result["deleted"] == 1
+
+
 # ─── auth.users + Stripe ──────────────────────────────────────
 #
 # public.users.id has no FK to auth.users, so deleting the app row left
