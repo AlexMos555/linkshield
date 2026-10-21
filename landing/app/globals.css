@@ -9,7 +9,7 @@
   --text-primary: #f8fafc;
   --text-secondary: #e2e8f0;
   --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-dim: #8796ab; /* 4.8:1 on --bg-card, WCAG AA */
   --safe: #22c55e;
   --safe-bg: #052e16;
   --caution: #f59e0b;
@@ -91,6 +91,34 @@ h1, h2, h3 {
 .stagger > *:nth-child(4) { animation-delay: 0.4s; }
 .stagger > *:nth-child(5) { animation-delay: 0.5s; }
 .stagger > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* Keyboard focus — one clear ring everywhere (WCAG 2.4.7). Unlayered, so it
+   wins over Tailwind utilities; mouse clicks don't trigger :focus-visible. */
+:focus-visible {
+  outline: 3px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+/* Reduced motion (WCAG 2.3.3): no fade/slide-ins, no smooth scrolling.
+   Content that starts at opacity 0 must still end up visible. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .animate-in,
+  .stagger > * {
+    opacity: 1;
+    transform: none;
+  }
+}
 
 /* Glow effect on hover */
 .glow-hover:hover {

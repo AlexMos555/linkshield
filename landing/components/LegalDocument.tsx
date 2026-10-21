@@ -42,7 +42,7 @@ export function LegalDocument({ backHref, backLabel, backArrow, title, updated, 
           {backArrow} {backLabel}
         </a>
         <h1 style={{ fontSize: 36, fontWeight: 800, color: "#f8fafc", margin: "24px 0 8px" }}>{title}</h1>
-        <p style={{ color: "#64748b", marginBottom: intro ? 20 : 40 }}>{updated}</p>
+        <p style={{ color: "#8796ab", marginBottom: intro ? 20 : 40 }}>{updated}</p>
         {intro && <p style={{ ...body, marginBottom: 40 }}>{intro}</p>}
 
         {sections.map((section) => (

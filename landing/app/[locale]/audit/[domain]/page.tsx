@@ -133,7 +133,7 @@ export default async function AuditPage({ params }: Props) {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "48px 24px", textAlign: "center" }}>
+      <main style={{ maxWidth: 600, margin: "0 auto", padding: "48px 24px", textAlign: "center" }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", marginBottom: 8 }}>
           Privacy Audit: {d}
         </h1>
@@ -143,7 +143,7 @@ export default async function AuditPage({ params }: Props) {
 
         {/* Teaser Card */}
         <div style={{ background: "#1e293b", borderRadius: 16, padding: 32, marginBottom: 24, border: "1px solid #334155" }}>
-          <div style={{ fontSize: 64, fontWeight: 800, color: "#64748b", marginBottom: 8 }}>?</div>
+          <div style={{ fontSize: 64, fontWeight: 800, color: "#8796ab", marginBottom: 8 }}>?</div>
           <p style={{ fontSize: 18, color: "#f8fafc", fontWeight: 600, marginBottom: 4 }}>Grade: Hidden</p>
           <p style={{ fontSize: 14, color: "#94a3b8" }}>
             Install the extension to see trackers, cookies, data collection forms,
@@ -158,8 +158,8 @@ export default async function AuditPage({ params }: Props) {
               { label: "Fingerprinting", value: "?" },
             ].map((item, i) => (
               <div key={i} style={{ background: "#111827", borderRadius: 10, padding: 12, textAlign: "center" }}>
-                <div style={{ fontSize: 24, fontWeight: 800, color: "#475569" }}>{item.value}</div>
-                <div style={{ fontSize: 11, color: "#64748b" }}>{item.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "#8796ab" }}>{item.value}</div>
+                <div style={{ fontSize: 11, color: "#8796ab" }}>{item.label}</div>
               </div>
             ))}
           </div>
@@ -188,12 +188,12 @@ export default async function AuditPage({ params }: Props) {
           <InstallButtons platforms={["ios", "android"]} size="sm" />
         </div>
 
-        <p style={{ fontSize: 12, color: "#475569", marginTop: 20 }}>
+        <p style={{ fontSize: 12, color: "#8796ab", marginTop: 20 }}>
           Privacy Audit runs 100% on your device. No data sent to our servers.
         </p>
 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
-      </div>
+      </main>
     </div>
   );
 }

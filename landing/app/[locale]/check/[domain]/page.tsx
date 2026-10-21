@@ -39,6 +39,13 @@ const LEVEL_COLORS: Record<Level, string> = {
   dangerous: "#ef4444",
 };
 
+// Text on the dark card needs AA contrast; the red above is 3.9:1 there.
+const LEVEL_TEXT_COLORS: Record<Level, string> = {
+  safe: "#22c55e",
+  caution: "#f59e0b",
+  dangerous: "#f87171",
+};
+
 const LEVEL_ICONS: Record<Level, string> = {
   safe: "✅",
   caution: "⚠️",
@@ -167,7 +174,7 @@ export default async function CheckPage({ params }: Props) {
   // "Caution — Score ?/100" for a check that never ran is a verdict we never made.
   const level: Level | null = isLevel(result.level) ? result.level : null;
   const score = typeof result.score === "number" ? result.score : null;
-  const color = level ? LEVEL_COLORS[level] : "#64748b";
+  const color = level ? LEVEL_COLORS[level] : "#8796ab";
   const canonical = urlFor(safeLocale, decodedDomain);
   const signals = level ? reasonLabels(result, (key) => reasons(key)) : [];
   const href = (path: string) => localePath(safeLocale, path);
@@ -243,7 +250,7 @@ export default async function CheckPage({ params }: Props) {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px" }}>
+      <main style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px" }}>
         {/* Main Result Card */}
         <div
           data-testid="check-result"
@@ -257,6 +264,7 @@ export default async function CheckPage({ params }: Props) {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
             <div
+              aria-hidden="true"
               style={{
                 width: 64,
                 height: 64,
@@ -276,7 +284,7 @@ export default async function CheckPage({ params }: Props) {
                 {t("heading", { domain: shownDomain })}
               </h1>
               {level && (
-                <p style={{ fontSize: 18, color, fontWeight: 600, margin: "4px 0 0" }}>
+                <p style={{ fontSize: 18, color: LEVEL_TEXT_COLORS[level], fontWeight: 600, margin: "4px 0 0" }}>
                   {t(`level_${level}`)}
                   {score !== null && <> &mdash; {t("risk_score", { score })}</>}
                 </p>
@@ -304,12 +312,12 @@ export default async function CheckPage({ params }: Props) {
 
           {signals.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 14, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+              <h2 style={{ fontSize: 14, color: "#8796ab", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
                 {t("signals_heading")}
               </h2>
               {signals.map((s, i) => (
                 <div key={i} style={{ display: "flex", gap: 8, padding: "6px 0", fontSize: 14, color: "#94a3b8" }}>
-                  <span style={{ color }}>&#x2022;</span>
+                  <span aria-hidden="true" style={{ color }}>&#x2022;</span>
                   <span>{s}</span>
                 </div>
               ))}
@@ -363,7 +371,7 @@ export default async function CheckPage({ params }: Props) {
 
         {/* Check Another */}
         <div style={{ marginTop: 32, textAlign: "center" }}>
-          <p style={{ color: "#64748b", fontSize: 14, marginBottom: 12 }}>{t("another")}</p>
+          <p style={{ color: "#8796ab", fontSize: 14, marginBottom: 12 }}>{t("another")}</p>
           <CheckForm
             locale={safeLocale}
             placeholder={t("input_placeholder")}
@@ -374,16 +382,16 @@ export default async function CheckPage({ params }: Props) {
           />
         </div>
 
-        <p style={{ textAlign: "center", fontSize: 12, color: "#475569", marginTop: 32 }}>
+        <p style={{ textAlign: "center", fontSize: 12, color: "#8796ab", marginTop: 32 }}>
           {t("footer_note")}{" "}
-          <a href={href("/transparency/methodology")} style={{ color: "#60a5fa" }}>
+          <a href={href("/transparency/methodology")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("how_we_measure")}
           </a>{" "}&middot;{" "}
-          <a href={href("/privacy-policy")} style={{ color: "#60a5fa" }}>
+          <a href={href("/privacy-policy")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("privacy_link")}
           </a>
         </p>
-      </div>
+      </main>
     </div>
   );
 }

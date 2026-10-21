@@ -134,7 +134,7 @@ export default function JoinClient() {
           marginBottom: 24,
         }}
       >
-        <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+        <div style={{ fontSize: 12, color: "#8796ab", textTransform: "uppercase", marginBottom: 6 }}>
           Code
         </div>
         <div
@@ -149,7 +149,7 @@ export default function JoinClient() {
         >
           {invite.code}
         </div>
-        <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", marginBottom: 6 }}>
+        <div style={{ fontSize: 12, color: "#8796ab", textTransform: "uppercase", marginBottom: 6 }}>
           PIN
         </div>
         <div
@@ -202,14 +202,14 @@ export default function JoinClient() {
               Install the Cleanway browser extension (
               <a
                 href={PRIMARY_INSTALL_HREF}
-                style={{ color: "#60a5fa" }}
+                style={{ color: "#60a5fa", textDecoration: "underline" }}
               >
                 Chrome
               </a>{" "}
               /{" "}
               <a
                 href={PRIMARY_INSTALL_HREF}
-                style={{ color: "#60a5fa" }}
+                style={{ color: "#60a5fa", textDecoration: "underline" }}
               >
                 Firefox
               </a>
@@ -238,7 +238,7 @@ export default function JoinClient() {
         {copied ? "Copied ✓" : "Copy invite link"}
       </button>
 
-      <p style={{ color: "#64748b", fontSize: 13, marginTop: 24, lineHeight: 1.6 }}>
+      <p style={{ color: "#8796ab", fontSize: 13, marginTop: 24, lineHeight: 1.6 }}>
         Privacy note: the code + PIN above are kept in the URL fragment (after the{" "}
         <code style={{ background: "#1e293b", padding: "1px 4px", borderRadius: 3 }}>#</code>) and
         never sent to Cleanway servers. Even our analytics see only{" "}

@@ -90,7 +90,7 @@ export default async function PrivacyPolicy({
   const contact = SUPPORT_EMAIL_LIVE ? (
     <p style={{ margin: 0 }}>
       {t("contact_live")}{" "}
-      <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#60a5fa" }}>{SUPPORT_EMAIL}</a>
+      <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#60a5fa", textDecoration: "underline" }}>{SUPPORT_EMAIL}</a>
     </p>
   ) : (
     <p style={{ margin: 0 }} data-testid="privacy-contact-not-live">{t("contact_not_live")}</p>

@@ -356,5 +356,5 @@ const STYLES: Record<string, CSSProperties> = {
     padding: "8px 12px",
     cursor: "pointer",
   },
-  note: { fontSize: 12, color: "#64748b", marginTop: 20, lineHeight: 1.5, textAlign: "center" },
+  note: { fontSize: 12, color: "#8796ab", marginTop: 20, lineHeight: 1.5, textAlign: "center" },
 };

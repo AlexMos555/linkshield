@@ -136,7 +136,7 @@ export default async function TransparencyPage({
         <h2 style={h2}>{t("section_how")}</h2>
         <p>
           {t("how_body")}{" "}
-          <a href={localePath(safeLocale, "/transparency/methodology")} style={{ color: "#60a5fa" }}>
+          <a href={localePath(safeLocale, "/transparency/methodology")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("methodology_link")}
           </a>
         </p>

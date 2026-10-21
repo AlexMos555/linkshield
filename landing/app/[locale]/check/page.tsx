@@ -34,7 +34,7 @@ export default async function CheckSearch({
 
   return (
     <div style={{ background: "#0f172a", color: "#e2e8f0", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center", maxWidth: 500, padding: 24 }}>
+      <main style={{ textAlign: "center", maxWidth: 500, padding: 24 }}>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#f8fafc", marginBottom: 16 }}>
           {t("index_title")}
         </h1>
@@ -50,10 +50,10 @@ export default async function CheckSearch({
           initiallyInvalid={Boolean(q) && !host}
           autoFocus
         />
-        <p style={{ fontSize: 12, color: "#475569", marginTop: 16 }}>
+        <p style={{ fontSize: 12, color: "#8796ab", marginTop: 16 }}>
           {t("index_footer")}
         </p>
-      </div>
+      </main>
     </div>
   );
 }

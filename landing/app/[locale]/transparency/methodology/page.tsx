@@ -229,7 +229,7 @@ export default async function MethodologyPage({
     >
       <header style={{ marginBottom: 36 }}>
         <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 4 }}>
-          <a href={transparencyHref} style={{ color: "#60a5fa" }}>
+          <a href={transparencyHref} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             ← {t("back_to_transparency")}
           </a>
         </p>
@@ -258,7 +258,7 @@ export default async function MethodologyPage({
         <h2 style={_h2}>{t("results_heading")}</h2>
         <Results data={data} t={t} locale={safeLocale} />
         <p style={{ marginTop: 12 }}>
-          <a href={`${REPO_URL}/tree/main/docs/benchmarks`} style={{ color: "#60a5fa" }}>
+          <a href={`${REPO_URL}/tree/main/docs/benchmarks`} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("all_runs_link")}
           </a>
         </p>
@@ -299,7 +299,7 @@ export default async function MethodologyPage({
           {t("reproduce_note")}{" "}
           <a
             href={`${REPO_URL}/blob/main/scripts/eval_fresh_urls.py`}
-            style={{ color: "#60a5fa" }}
+            style={{ color: "#60a5fa", textDecoration: "underline" }}
           >
             scripts/eval_fresh_urls.py
           </a>
@@ -314,7 +314,7 @@ export default async function MethodologyPage({
           {t("cadence_p2")}{" "}
           <a
             href={`${REPO_URL}/blob/main/.github/workflows/weekly-benchmark.yml`}
-            style={{ color: "#60a5fa" }}
+            style={{ color: "#60a5fa", textDecoration: "underline" }}
           >
             .github/workflows/weekly-benchmark.yml
           </a>
@@ -333,12 +333,12 @@ export default async function MethodologyPage({
         style={{
           textAlign: "center",
           fontSize: 12,
-          color: "#475569",
+          color: "#8796ab",
           marginTop: 32,
           paddingBottom: 40,
         }}
       >
-        <a href={transparencyHref} style={{ color: "#60a5fa" }}>
+        <a href={transparencyHref} style={{ color: "#60a5fa", textDecoration: "underline" }}>
           {t("back_to_transparency")}
         </a>
       </p>

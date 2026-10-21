@@ -115,7 +115,7 @@ export default async function SuccessPage({ searchParams, params }: Props) {
           </div>
 
           <div style={{ display: "flex", gap: 14, marginBottom: 16, alignItems: "flex-start" }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#3b82f6", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>2</div>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#2563eb", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>2</div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>{t("step2_title")}</div>
               <div style={{ fontSize: 13, color: "#94a3b8" }}>{t("step2_body")}</div>
@@ -136,7 +136,7 @@ export default async function SuccessPage({ searchParams, params }: Props) {
             ~4.5:1. (Audit landing-a11y MEDIUM contrast.) */}
         <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 32, lineHeight: 1.6 }}>
           {t("support_question")}{" "}
-          <a href="mailto:support@cleanway.ai" style={{ color: "#60a5fa" }}>support@cleanway.ai</a>
+          <a href="mailto:support@cleanway.ai" style={{ color: "#60a5fa", textDecoration: "underline" }}>support@cleanway.ai</a>
           {session_id ? (
             <>
               <br />

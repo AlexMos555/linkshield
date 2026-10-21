@@ -8,6 +8,8 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const PORT = Number(process.env.PORT || 3000);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const MOCK_API_PORT = Number(process.env.MOCK_API_PORT || 3999);
+const MOCK_API_URL = `http://127.0.0.1:${MOCK_API_PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -52,12 +54,26 @@ export default defineConfig({
   // Spin up the Next.js dev server automatically when running locally
   webServer: process.env.BASE_URL
     ? undefined
-    : {
-        // CI already ran `npm run build`: test the artifact that ships (prod
-        // CSP, prod bundles) instead of the dev server. Locally, keep dev.
-        command: process.env.CI ? "npm run start" : "npm run dev",
-        url: BASE_URL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
-      },
+    : [
+        // A stand-in for the API's public check endpoint, so /check/<domain>
+        // renders (e2e/a11y.spec.ts audits it) without calling the production
+        // API, which is rate-limited per IP. Only that page (and its share
+        // image) reads API_URL on the server; client-side calls are untouched.
+        {
+          command: "node e2e/mock-api.mjs",
+          url: `${MOCK_API_URL}/health`,
+          env: { MOCK_API_PORT: String(MOCK_API_PORT) },
+          reuseExistingServer: !process.env.CI,
+          timeout: 10_000,
+        },
+        {
+          // CI already ran `npm run build`: test the artifact that ships (prod
+          // CSP, prod bundles) instead of the dev server. Locally, keep dev.
+          command: process.env.CI ? "npm run start" : "npm run dev",
+          url: BASE_URL,
+          env: { API_URL: MOCK_API_URL },
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+      ],
 });
