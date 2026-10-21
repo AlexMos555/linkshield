@@ -266,6 +266,15 @@ jobs:
         # counters keep their last value instead of dropping to 0 (#184).
         run: node --experimental-strip-types mobile/scripts/test-local-store.mjs
 
+      - name: Accessibility labels and roles
+        # Every pressable has a role and a localized label, decorative icons
+        # are hidden from screen readers (#249).
+        run: node mobile/scripts/check-a11y-labels.mjs
+
+      - name: Theme contrast (WCAG AA)
+        # Text/background pairs in src/utils/theme.ts stay readable (#249).
+        run: node mobile/scripts/test-theme-contrast.mjs
+
       - name: iPhone platform gating + App Store shape table test
         # The iPhone never shows Android-only protection (VPN shield, keep-alive,
         # link guard, call guard); it lists its own layers (Safari, scam texts,
