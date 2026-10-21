@@ -72,7 +72,7 @@ export function AccountLockedModal(): JSX.Element | null {
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.icon} accessibilityElementsHidden>
+          <Text style={styles.icon} accessibilityElementsHidden importantForAccessibility="no">
             ⏳
           </Text>
           <Text style={styles.title}>

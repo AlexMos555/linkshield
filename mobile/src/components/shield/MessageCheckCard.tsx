@@ -83,7 +83,7 @@ const s = StyleSheet.create({
   title: { ...typo.headline, color: colors.textPrimary },
   desc: { ...typo.body, color: colors.textSecondary, marginTop: 2 },
   cta: {
-    minHeight: 50, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 50, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", paddingHorizontal: space.lg, marginTop: 14,
   },
   ctaLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },

@@ -353,7 +353,7 @@ const s = StyleSheet.create({
   bannerActions: { flexDirection: "row", alignItems: "center", gap: space.md, marginTop: space.md, flexWrap: "wrap" },
 
   button: {
-    backgroundColor: colors.blue, borderRadius: radius.control,
+    backgroundColor: colors.blueFill, borderRadius: radius.control,
     paddingHorizontal: space.lg, minHeight: 44, justifyContent: "center",
   },
   buttonText: { ...typo.body, fontWeight: "600", color: "#FFFFFF" },
@@ -375,7 +375,7 @@ const s = StyleSheet.create({
   rowDesc: { ...typo.caption, color: colors.textSecondary, marginTop: 2 },
   danger: { ...typo.body, fontWeight: "600", color: colors.danger },
   pill: {
-    backgroundColor: colors.blue, color: "#FFFFFF", overflow: "hidden",
+    backgroundColor: colors.blueFill, color: "#FFFFFF", overflow: "hidden",
     borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: 6,
     fontSize: 13, lineHeight: 18, fontWeight: "600",
   },

@@ -129,7 +129,7 @@ const s = StyleSheet.create({
   title: { fontSize: 26, lineHeight: 33, fontWeight: "700", color: colors.textPrimary, textAlign: "center", marginTop: space.xl },
   body: { fontSize: 19, lineHeight: 27, color: colors.textPrimary, textAlign: "center", marginTop: space.lg },
   keepBtn: {
-    minHeight: 60, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 60, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: space.xxxl, paddingHorizontal: space.lg,
   },
   keepLabel: { fontSize: 19, fontWeight: "700", color: "#FFFFFF", textAlign: "center" },

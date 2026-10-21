@@ -1689,6 +1689,7 @@
   "mobile.onboarding.start": "शुरू करें",
   "mobile.onboarding.s3_title_ios": "iPhone पर सुरक्षा",
   "mobile.onboarding.s3_desc_ios": "Cleanway iPhone के लिए Safari एक्सटेंशन, धोखाधड़ी SMS फ़िल्टर और DNS सुरक्षा तैयार कर रहा है। ये अपडेट के साथ आएँगे, और होम स्क्रीन बताएगी कि क्या तैयार है। अभी से आप किसी भी चीज़ को एक टैप में या शेयर → Cleanway से जाँच सकते हैं।",
+  "mobile.onboarding.step_a11y": "{{total}} में से चरण {{current}}",
   "mobile.android_native.fg_channel": "Cleanway सुरक्षा",
   "mobile.android_native.fg_channel_desc": "फ़िशिंग सुरक्षा चालू रहने पर दिखता है",
   "mobile.android_native.fg_title": "Cleanway सुरक्षा चालू है",

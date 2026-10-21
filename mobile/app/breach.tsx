@@ -5,6 +5,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useAnnounce } from "../src/hooks/useAnnounce";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { checkBreach } from "../src/services/api";
 
@@ -137,16 +138,16 @@ function ResultCard({ state }: { state: BreachState }) {
   const body = state.kind === "found"
     ? t("mobile.breach.found_body", { times: state.count })
     : t(`mobile.breach.${state.kind}_body`);
+  const title = t(`mobile.breach.${state.kind}_title`);
+  useAnnounce(`${title}. ${body}`);
 
   return (
-    <View style={[s.card, s.resultCard, { borderColor: tone.stroke }]}>
+    <View style={[s.card, s.resultCard, { borderColor: tone.stroke }]} accessibilityLiveRegion="polite">
       <View style={[s.resultIcon, { backgroundColor: tone.wash }]}>
         <Ionicons name={tone.icon} size={22} color={tone.color} />
       </View>
       <View style={s.resultBodyCol}>
-        <Text style={[s.resultTitle, { color: tone.color }]}>
-          {t(`mobile.breach.${state.kind}_title`)}
-        </Text>
+        <Text style={[s.resultTitle, { color: tone.color }]}>{title}</Text>
         <Text style={s.resultText}>{body}</Text>
       </View>
     </View>
@@ -224,13 +225,13 @@ const s = StyleSheet.create({
   note: { ...typo.caption, color: colors.textSecondary, flex: 1 },
 
   input: {
-    height: 56, backgroundColor: colors.surfaceRaised, borderWidth: 1,
+    minHeight: 56, backgroundColor: colors.surfaceRaised, borderWidth: 1,
     borderColor: colors.stroke, borderRadius: radius.control, marginBottom: space.md,
     paddingHorizontal: space.lg, color: colors.textPrimary, fontSize: 17,
   },
   inputFocused: { borderColor: colors.blue },
   submit: {
-    height: 50, backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 50, backgroundColor: colors.blueFill, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", marginBottom: space.xxl,
   },
   submitDisabled: { opacity: 0.4 },

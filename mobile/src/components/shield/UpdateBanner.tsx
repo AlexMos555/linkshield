@@ -25,6 +25,9 @@ export function UpdateBanner({ status }: { status: UpdateStatus }) {
 
   const required = status.decision === "required";
   const accent = required ? colors.danger : colors.blue;
+  // White on the light red is 2.8:1 — the red button gets a dark label.
+  const fill = required ? colors.danger : colors.blueFill;
+  const labelColor = required ? colors.bg : "#FFFFFF";
   const wash = required ? colors.dangerWash : colors.blueWash;
   const stroke = required ? colors.dangerStroke : colors.stroke;
 
@@ -53,17 +56,17 @@ export function UpdateBanner({ status }: { status: UpdateStatus }) {
 
       <View style={s.actions}>
         {!required && (
-          <TouchableOpacity onPress={status.dismiss} activeOpacity={0.7} style={s.later}>
+          <TouchableOpacity onPress={status.dismiss} activeOpacity={0.7} style={s.later} accessibilityRole="button">
             <Text style={s.laterLabel}>{t("mobile.update.later")}</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
           onPress={open}
           activeOpacity={0.85}
-          style={[s.update, { backgroundColor: accent }]}
+          style={[s.update, { backgroundColor: fill }]}
           accessibilityRole="button"
         >
-          <Text style={s.updateLabel}>{t("mobile.update.action")}</Text>
+          <Text style={[s.updateLabel, { color: labelColor }]}>{t("mobile.update.action")}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -84,9 +87,11 @@ const s = StyleSheet.create({
   body: { ...typo.caption, color: colors.textSecondary },
   notes: { ...typo.caption, color: colors.textMuted, marginTop: space.xs },
   actions: { flexDirection: "row", justifyContent: "flex-end", gap: space.sm },
-  later: { paddingVertical: space.sm, paddingHorizontal: space.md },
+  later: { minHeight: 44, justifyContent: "center", paddingVertical: space.sm, paddingHorizontal: space.md },
   laterLabel: { ...typo.body, color: colors.textSecondary, fontWeight: "600" },
   update: {
+    minHeight: 44,
+    justifyContent: "center",
     paddingVertical: space.sm,
     paddingHorizontal: space.lg,
     borderRadius: radius.control,

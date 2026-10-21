@@ -3658,7 +3658,8 @@
       "next": "Lanjut",
       "start": "Mulai",
       "s3_title_ios": "Perlindungan di iPhone",
-      "s3_desc_ios": "Cleanway sedang menyiapkan ekstensi Safari, filter SMS penipuan, dan perlindungan DNS untuk iPhone. Semuanya hadir lewat pembaruan, dan layar utama menunjukkan apa yang sudah siap. Hari ini Anda sudah bisa memeriksa apa saja dengan sekali ketuk atau lewat Bagikan → Cleanway."
+      "s3_desc_ios": "Cleanway sedang menyiapkan ekstensi Safari, filter SMS penipuan, dan perlindungan DNS untuk iPhone. Semuanya hadir lewat pembaruan, dan layar utama menunjukkan apa yang sudah siap. Hari ini Anda sudah bisa memeriksa apa saja dengan sekali ketuk atau lewat Bagikan → Cleanway.",
+      "step_a11y": "Langkah {{current}} dari {{total}}"
     },
     "android_native": {
       "fg_channel": "Perlindungan Cleanway",

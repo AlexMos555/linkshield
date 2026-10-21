@@ -1689,6 +1689,7 @@
   "mobile.onboarding.start": "ابدأ",
   "mobile.onboarding.s3_title_ios": "الحماية على iPhone",
   "mobile.onboarding.s3_desc_ios": "يُعدّ Cleanway لـ iPhone إضافة Safari وفلترًا لرسائل الاحتيال وحماية DNS. ستصل مع التحديثات، وتُظهر الشاشة الرئيسية ما أصبح جاهزًا. ويمكنك اليوم فحص أي شيء بلمسة واحدة أو عبر «مشاركة» ← Cleanway.",
+  "mobile.onboarding.step_a11y": "الخطوة {{current}} من {{total}}",
   "mobile.android_native.fg_channel": "حماية Cleanway",
   "mobile.android_native.fg_channel_desc": "يظهر أثناء تشغيل الحماية من التصيّد",
   "mobile.android_native.fg_title": "حماية Cleanway مفعّلة",

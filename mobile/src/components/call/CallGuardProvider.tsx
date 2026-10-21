@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState, type
 import { Modal } from "react-native";
 import { noteCallEvent } from "../../../modules/cleanway-vpn";
 import { useCallState } from "../../hooks/useCallState";
+import { useReduceMotion } from "../../hooks/useReduceMotion";
 import type { GuardReason, GuardedActionKind } from "../../utils/call-guard";
 import { CallGuardScreen } from "./CallGuardScreen";
 
@@ -31,6 +32,8 @@ export function CallGuardProvider({ children }: { children: ReactNode }) {
   const { reason, refresh } = useCallState();
   const [shown, setShown] = useState<GuardReason | null>(null);
   const pending = useRef<(() => void) | null>(null);
+  // A full-screen slide is the kind of motion "Reduce motion" asks to drop.
+  const reduceMotion = useReduceMotion();
 
   const guard = useCallback((_kind: GuardedActionKind, action: () => void) => {
     // Re-read the snapshot now: the call may have started after the last event.
@@ -64,7 +67,7 @@ export function CallGuardProvider({ children }: { children: ReactNode }) {
   return (
     <CallGuardContext.Provider value={api}>
       {children}
-      <Modal visible={shown !== null} animationType="slide" onRequestClose={keep}>
+      <Modal visible={shown !== null} animationType={reduceMotion ? "fade" : "slide"} onRequestClose={keep}>
         {shown !== null && <CallGuardScreen mode="intercept" reason={shown} onKeep={keep} onProceed={proceed} />}
       </Modal>
     </CallGuardContext.Provider>

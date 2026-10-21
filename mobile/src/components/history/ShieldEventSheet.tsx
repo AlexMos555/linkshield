@@ -203,7 +203,7 @@ const s = StyleSheet.create({
   factValue: { ...typo.body, color: colors.textPrimary, flexShrink: 1 },
   advice: { ...typo.body, color: colors.textPrimary, marginTop: space.lg },
   primaryBtn: {
-    minHeight: 50, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 50, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: space.xl, paddingHorizontal: space.lg,
   },
   primaryLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },

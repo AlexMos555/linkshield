@@ -16,6 +16,7 @@ import {
 } from "../../utils/message-verdict";
 import { MessageLinksCard } from "./MessageLinksCard";
 import { LockedDetailsCard } from "../paywall/LockedDetails";
+import { useAnnounce } from "../../hooks/useAnnounce";
 
 interface Props {
   /** The checked text — shown back on this screen only, never stored. */
@@ -69,6 +70,9 @@ export function MessageResult(props: Props) {
   });
   const verdicts = analysis.links.map((l) => linkVerdict(l, linkChecks));
   const canRetry = !verdicts.includes("checking") && verdicts.some((v) => RETRYABLE.has(v));
+  // The headline changes as the links are checked ("checking the link" ->
+  // "dangerous"): VoiceOver hears each change, TalkBack reads the live region.
+  useAnnounce(`${verdictLabel}. ${verdictSub}`);
 
   return (
     <>
@@ -78,6 +82,7 @@ export function MessageResult(props: Props) {
         style={[s.verdictCard, { backgroundColor: look.wash, borderColor: look.stroke }]}
         accessible
         accessibilityRole="summary"
+        accessibilityLiveRegion="polite"
         accessibilityLabel={`${verdictLabel}. ${verdictSub}`}
       >
         {pending === "checking" ? (
@@ -204,7 +209,7 @@ const s = StyleSheet.create({
   quoteText: { fontSize: 15, lineHeight: 21, color: colors.textSecondary, marginTop: 2 },
 
   primaryBtn: {
-    minHeight: 54, backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 54, backgroundColor: colors.blueFill, borderRadius: radius.control,
     paddingHorizontal: space.xl, alignItems: "center", justifyContent: "center", marginTop: space.sm,
   },
   primaryLabel: { fontSize: 18, fontWeight: "600", color: "#FFFFFF", textAlign: "center" },

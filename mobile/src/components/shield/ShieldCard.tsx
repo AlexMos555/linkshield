@@ -79,6 +79,7 @@ export function ShieldCard(props: ShieldCardProps) {
         <TouchableOpacity
           style={s.pauseRow}
           onPress={onPause}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={t("mobile.shield.status.pause_action")}
@@ -129,6 +130,7 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
         style={[s.pill, { backgroundColor: colors.surface, borderColor: colors.stroke }]}
         onPress={onAction}
         activeOpacity={0.85}
+        hitSlop={{ top: 8, bottom: 8 }}
         accessibilityRole="button"
       >
         <Ionicons name="pause-circle-outline" size={16} color={colors.textSecondary} />
@@ -157,6 +159,7 @@ function StatusControl({ state, onAction }: { state: ShieldState; onAction?: () 
       style={[s.pill, { backgroundColor: colors.amberWash, borderColor: colors.amberStroke }]}
       onPress={onAction}
       activeOpacity={0.85}
+      hitSlop={{ top: 8, bottom: 8 }}
       accessibilityRole="button"
     >
       <Ionicons name="alert-circle" size={16} color={colors.amber} />
@@ -187,8 +190,8 @@ const s = StyleSheet.create({
   honestyRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 10 },
   honesty: { ...typo.caption, color: colors.textSecondary, flex: 1 },
   setupBtn: {
-    height: 36, paddingHorizontal: 14,
-    backgroundColor: colors.blue, borderRadius: radius.pill,
+    minHeight: 36, paddingHorizontal: 14,
+    backgroundColor: colors.blueFill, borderRadius: radius.pill,
     alignItems: "center", justifyContent: "center",
   },
   setupLabel: { fontSize: 15, fontWeight: "700", color: "#FFFFFF" },

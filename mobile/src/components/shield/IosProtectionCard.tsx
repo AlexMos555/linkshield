@@ -45,7 +45,16 @@ export function IosProtectionCard({ layers, onSetUp }: {
                 <Text style={s.line}>{t(layer.lineKey)}</Text>
               </View>
               {layer.status === "on" ? (
-                <Ionicons name="checkmark-circle" size={22} color={colors.green} accessibilityLabel={t("mobile.ios.on")} />
+                <Ionicons
+                  name="checkmark-circle"
+                  size={22}
+                  color={colors.green}
+                  // Icons are hidden by default (decorative-icons.ts); this one is the only "On".
+                  accessible
+                  accessibilityElementsHidden={false}
+                  importantForAccessibility="yes"
+                  accessibilityLabel={t("mobile.ios.on")}
+                />
               ) : layer.status === "setup" ? (
                 <Text style={s.setUp}>{t("mobile.ios.set_up")}</Text>
               ) : (

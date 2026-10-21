@@ -167,8 +167,8 @@ const s = StyleSheet.create({
     textAlign: "center", marginTop: space.sm,
   },
   primaryBtn: {
-    height: 50, alignSelf: "stretch",
-    backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 50, alignSelf: "stretch",
+    backgroundColor: colors.blueFill, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   primaryLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
@@ -189,7 +189,7 @@ const s = StyleSheet.create({
   },
 
   secondaryBtn: {
-    height: 50, flexDirection: "row", gap: space.sm, alignSelf: "stretch",
+    minHeight: 50, flexDirection: "row", gap: space.sm, alignSelf: "stretch",
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
     borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,

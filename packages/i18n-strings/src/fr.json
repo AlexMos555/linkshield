@@ -3658,7 +3658,8 @@
       "next": "Suivant",
       "start": "Commencer",
       "s3_title_ios": "Protection sur iPhone",
-      "s3_desc_ios": "Cleanway prépare pour iPhone une extension Safari, un filtre des SMS d'arnaque et une protection DNS. Ils arrivent avec les mises à jour, et l'écran d'accueil indique ce qui est prêt. Dès aujourd'hui, vous pouvez tout vérifier en un geste ou via Partager → Cleanway."
+      "s3_desc_ios": "Cleanway prépare pour iPhone une extension Safari, un filtre des SMS d'arnaque et une protection DNS. Ils arrivent avec les mises à jour, et l'écran d'accueil indique ce qui est prêt. Dès aujourd'hui, vous pouvez tout vérifier en un geste ou via Partager → Cleanway.",
+      "step_a11y": "Étape {{current}} sur {{total}}"
     },
     "android_native": {
       "fg_channel": "Protection Cleanway",

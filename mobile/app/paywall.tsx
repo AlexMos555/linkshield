@@ -448,7 +448,7 @@ const s = StyleSheet.create({
   benefitText: { fontSize: 17, lineHeight: 24, color: colors.textPrimary, flex: 1 },
 
   cta: {
-    minHeight: 56, backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 56, backgroundColor: colors.blueFill, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", paddingHorizontal: space.lg, marginTop: space.xxl,
   },
   ctaPressed: { backgroundColor: colors.bluePressed },

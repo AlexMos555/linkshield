@@ -516,7 +516,8 @@ function Row({
       onPress={onPress}
       activeOpacity={0.85}
       accessibilityRole={role ?? "button"}
-      accessibilityState={role === "radio" ? { selected } : undefined}
+      // checked is what TalkBack reads for a radio; selected is VoiceOver's.
+      accessibilityState={role === "radio" ? { selected, checked: selected } : undefined}
       accessibilityLabel={a11yLabel}
     >
       {inner}
@@ -546,7 +547,7 @@ const s = StyleSheet.create({
   value: { ...typo.body, color: colors.textMuted },
   removeLabel: { ...typo.body, color: colors.danger },
   pill: {
-    backgroundColor: colors.blue, color: "#FFFFFF", overflow: "hidden",
+    backgroundColor: colors.blueFill, color: "#FFFFFF", overflow: "hidden",
     borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: 6,
     fontSize: 13, lineHeight: 18, fontWeight: "600",
   },

@@ -220,7 +220,7 @@ export default function AuthScreen() {
                 : <Text style={styles.btnText}>{t("mobile.auth.otp_send")}</Text>}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.skipBtn} onPress={leaveAuth}>
+            <TouchableOpacity style={styles.skipBtn} onPress={leaveAuth} accessibilityRole="button">
               <Text style={styles.skipText}>{t("mobile.auth.skip")}</Text>
             </TouchableOpacity>
           </View>
@@ -267,6 +267,7 @@ export default function AuthScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessibilityRole="button"
               style={styles.switchBtn}
               onPress={() => void requestCode()}
               disabled={loading || cooldown > 0}
@@ -278,7 +279,7 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.switchBtn} onPress={changeEmail}>
+            <TouchableOpacity style={styles.switchBtn} onPress={changeEmail} accessibilityRole="button">
               <Text style={styles.forgotText}>{t("mobile.auth.code_change_email")}</Text>
             </TouchableOpacity>
           </View>
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
   switchText: { color: colors.primary, fontSize: fontSize.md },
   switchDisabled: { color: colors.textMuted },
   forgotText: { color: colors.textSecondary, fontSize: fontSize.sm },
-  skipBtn: { alignItems: "center", padding: spacing.sm },
+  skipBtn: { minHeight: 44, justifyContent: "center", alignItems: "center", padding: spacing.sm },
   skipText: { color: colors.textMuted, fontSize: fontSize.sm },
   errorText: {
     color: colors.dangerous, fontSize: fontSize.sm,

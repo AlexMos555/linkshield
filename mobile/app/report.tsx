@@ -211,7 +211,7 @@ const s = StyleSheet.create({
   emptyBody: { ...typo.body, color: colors.textSecondary, marginTop: space.xs, textAlign: "center" },
 
   shareBtn: {
-    height: 50, flexDirection: "row", gap: space.sm,
+    minHeight: 50, flexDirection: "row", gap: space.sm,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
     borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", marginTop: space.xxl,

@@ -22,7 +22,7 @@ export function SafariSetupSheet({ visible, canOpenSettings, onOpenSettings, onT
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.scrim}>
-        <TouchableOpacity style={s.scrimTap} activeOpacity={1} onPress={onClose} accessibilityLabel={t("mobile.ios.safari_setup_close")} />
+        <TouchableOpacity style={s.scrimTap} activeOpacity={1} onPress={onClose} accessibilityRole="button" accessibilityLabel={t("mobile.ios.safari_setup_close")} />
         <View style={s.sheet}>
           <ScrollView bounces={false} contentContainerStyle={s.content}>
             <Text style={s.title} accessibilityRole="header">{t("mobile.ios.safari_setup_title")}</Text>
@@ -70,14 +70,14 @@ const s = StyleSheet.create({
   title: { ...typo.headline, color: colors.textPrimary, marginBottom: space.md },
   step: { flexDirection: "row", alignItems: "flex-start", gap: space.md, marginTop: space.md },
   num: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: colors.blue,
+    width: 24, height: 24, borderRadius: 12, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: 1,
   },
   numLabel: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
   stepText: { ...typo.body, color: colors.textPrimary, flex: 1 },
   why: { ...typo.caption, color: colors.textSecondary, marginTop: space.lg },
   primary: {
-    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   primaryLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },

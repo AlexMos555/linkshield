@@ -3600,7 +3600,8 @@
       "next": "Next",
       "start": "Get started",
       "s3_title_ios": "Protection on iPhone",
-      "s3_desc_ios": "Cleanway is getting a Safari extension, a scam-text filter and DNS protection for iPhone. They arrive in updates, and the home screen shows what's ready. Today you can check anything in one tap, or with Share → Cleanway."
+      "s3_desc_ios": "Cleanway is getting a Safari extension, a scam-text filter and DNS protection for iPhone. They arrive in updates, and the home screen shows what's ready. Today you can check anything in one tap, or with Share → Cleanway.",
+      "step_a11y": "Step {{current}} of {{total}}"
     },
     "android_native": {
       "fg_channel": "Cleanway protection",

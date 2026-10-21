@@ -29,6 +29,7 @@ import { MessageResult } from "../src/components/message/MessageResult";
 import { ChecksLeftHint } from "../src/components/paywall/LockedDetails";
 import { useAccess, useAutoPaywall } from "../src/hooks/useFreemium";
 import { beginDetailedCheck } from "../src/services/freemium";
+import { useAnnounce } from "../src/hooks/useAnnounce";
 
 export default function MessageScreen() {
   const router = useRouter();
@@ -65,6 +66,14 @@ export default function MessageScreen() {
     stop?.auto ?? false,
     state.phase === "done" ? state.verdict === "dangerous" : undefined,
     stop?.id ?? null,
+  );
+  // VoiceOver hears the screen change; the verdict itself is announced by
+  // MessageResult. TalkBack reads the live regions below.
+  useAnnounce(
+    state.phase === "checking" ? t("mobile.message.checking")
+      : state.phase === "unavailable" ? t("mobile.message.error_title")
+      : state.phase !== "done" && clipboardEmpty ? t("mobile.message.paste_empty")
+      : null,
   );
 
   // Someone who shared a message wants the verdict, not a Check button — and
@@ -116,7 +125,7 @@ export default function MessageScreen() {
 
   if (state.phase === "checking") {
     return (
-      <View style={s.center}>
+      <View style={s.center} accessibilityLiveRegion="polite">
         <ActivityIndicator size="large" color={colors.blue} />
         <Text style={s.centerTitle}>{t("mobile.message.checking")}</Text>
         <Text style={s.centerBody}>{t("mobile.message.checking_sub")}</Text>
@@ -127,7 +136,7 @@ export default function MessageScreen() {
   if (state.phase === "unavailable") {
     const failed = state.reason === "failed";
     return (
-      <View style={s.center}>
+      <View style={s.center} accessibilityLiveRegion="polite">
         <Ionicons name="alert-circle-outline" size={44} color={colors.amber} />
         <Text style={s.centerTitle}>{t("mobile.message.error_title")}</Text>
         <Text style={s.centerBody}>
@@ -196,7 +205,7 @@ export default function MessageScreen() {
         <Ionicons name="clipboard-outline" size={20} color={colors.textPrimary} />
         <Text style={s.pasteLabel}>{t("mobile.message.paste")}</Text>
       </TouchableOpacity>
-      {clipboardEmpty && <Text style={s.hint}>{t("mobile.message.paste_empty")}</Text>}
+      {clipboardEmpty && <Text style={s.hint} accessibilityLiveRegion="polite">{t("mobile.message.paste_empty")}</Text>}
 
       <TouchableOpacity
         style={[s.checkBtn, !canCheck && s.checkBtnDisabled]}
@@ -263,7 +272,7 @@ const s = StyleSheet.create({
   pasteLabel: { fontSize: 17, fontWeight: "600", color: colors.textPrimary },
   hint: { fontSize: 15, lineHeight: 21, color: colors.amber, marginTop: space.sm, paddingHorizontal: space.xs },
   checkBtn: {
-    minHeight: 54, backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 54, backgroundColor: colors.blueFill, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", paddingHorizontal: space.lg, marginTop: space.md,
   },
   checkBtnDisabled: { opacity: 0.45 },

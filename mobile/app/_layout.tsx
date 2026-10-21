@@ -6,6 +6,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
+// Side-effecting import: hides every icon glyph from screen readers by
+// default — each one sits beside words that say the same thing.
+import "../src/utils/decorative-icons";
 import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { restoreSession } from "../src/services/auth";
 import { readSetting } from "../src/services/database";

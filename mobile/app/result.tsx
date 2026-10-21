@@ -13,6 +13,7 @@ import { isNotFound, reasonsToShow, serverLevel, showScore, shownLevel } from ".
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
 import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
 import { useAutoPaywall, useDetailGate } from "../src/hooks/useFreemium";
+import { useAnnounce } from "../src/hooks/useAnnounce";
 
 /**
  * Say what actually went wrong. A rate limit, a slow server and a dead server
@@ -43,9 +44,21 @@ export default function ResultScreen() {
   const { listed, result, error, pending, retry } = useDomainCheck(domain || null, record, gate.deep);
   useAutoPaywall(locked, gate.autoPaywall, listed === undefined ? undefined : Boolean(listed), gate.key);
 
-  if (listed === undefined || (!listed && pending)) {
+  const loading = listed === undefined || (!listed && pending);
+  const level = loading ? null : shownLevel(listed, result);
+  // Spoken to VoiceOver as the screen moves from "checking" to the answer
+  // (TalkBack reads the live regions below on its own).
+  useAnnounce(
+    loading ? t("mobile.result.loading", { domain })
+      : !listed && isNotFound(result) ? `${t("mobile.result.not_found_title")}. ${domain}`
+      : locked && !listed ? `${t("mobile.paywall.not_listed_title")}. ${domain}`
+      : !level ? t("mobile.result.error_title")
+      : `${listed ? t("mobile.result.listed_title") : t(`mobile.result.verdict_${level}`)}. ${result?.domain ?? domain}`,
+  );
+
+  if (loading) {
     return (
-      <View style={s.center}>
+      <View style={s.center} accessibilityLiveRegion="polite">
         <ActivityIndicator size="large" color={colors.blue} />
         <Text style={s.loadingText}>{t("mobile.result.loading", { domain })}</Text>
         <Text style={s.loadingSub}>{t("mobile.result.loading_sub")}</Text>
@@ -70,14 +83,13 @@ export default function ResultScreen() {
     );
   }
 
-  const level = shownLevel(listed, result);
   if (!level) {
     return (
-      <View style={s.center}>
+      <View style={s.center} accessibilityLiveRegion="polite">
         <Ionicons name="alert-circle" size={44} color={colors.amber} />
         <Text style={s.errorTitle}>{t("mobile.result.error_title")}</Text>
         <Text style={s.errorBody}>{t(errorBodyKey(error))}</Text>
-        <TouchableOpacity style={s.retryBtn} onPress={retry} activeOpacity={0.85}>
+        <TouchableOpacity style={s.retryBtn} onPress={retry} activeOpacity={0.85} accessibilityRole="button">
           <Text style={s.retryLabel}>{t("mobile.result.error_retry")}</Text>
         </TouchableOpacity>
       </View>
@@ -96,7 +108,7 @@ export default function ResultScreen() {
     <ScrollView style={s.container} contentContainerStyle={s.content}>
       {/* Verdict card with score ring — or, when the on-device list decided
           and the server has no agreeing score, the list's mark instead. */}
-      <View style={[s.verdictCard, { borderColor: stroke }]}>
+      <View style={[s.verdictCard, { borderColor: stroke }]} accessibilityLiveRegion="polite">
         {score === undefined ? (
           <ListedMark size={120} />
         ) : (
@@ -233,8 +245,8 @@ const s = StyleSheet.create({
   errorTitle: { ...typo.headline, color: colors.textPrimary, marginTop: space.md },
   errorBody: { ...typo.body, color: colors.textSecondary, textAlign: "center", marginTop: space.sm },
   retryBtn: {
-    height: 50, paddingHorizontal: space.xxxl,
-    backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 50, paddingHorizontal: space.xxxl,
+    backgroundColor: colors.blueFill, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", marginTop: space.xl,
   },
   retryLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },
@@ -265,7 +277,7 @@ const s = StyleSheet.create({
   signalDot: { width: 6, height: 6, borderRadius: 3 },
   signalText: { ...typo.body, color: colors.textSecondary, flex: 1 },
   weightChip: {
-    height: 24, paddingHorizontal: 8, borderRadius: 8,
+    minHeight: 24, paddingHorizontal: 8, borderRadius: 8,
     alignItems: "center", justifyContent: "center",
   },
   weightLabel: { fontSize: 13, fontWeight: "600" },
@@ -276,7 +288,7 @@ const s = StyleSheet.create({
   detailValue: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
 
   shareBtn: {
-    height: 50, flexDirection: "row", gap: space.sm,
+    minHeight: 50, flexDirection: "row", gap: space.sm,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.stroke,
     borderRadius: radius.control,
     alignItems: "center", justifyContent: "center", marginBottom: space.lg,

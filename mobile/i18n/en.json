@@ -1689,6 +1689,7 @@
   "mobile.onboarding.start": "Get started",
   "mobile.onboarding.s3_title_ios": "Protection on iPhone",
   "mobile.onboarding.s3_desc_ios": "Cleanway is getting a Safari extension, a scam-text filter and DNS protection for iPhone. They arrive in updates, and the home screen shows what's ready. Today you can check anything in one tap, or with Share → Cleanway.",
+  "mobile.onboarding.step_a11y": "Step {{current}} of {{total}}",
   "mobile.android_native.fg_channel": "Cleanway protection",
   "mobile.android_native.fg_channel_desc": "Shown while phishing protection is active",
   "mobile.android_native.fg_title": "Cleanway protection is on",

@@ -87,11 +87,11 @@ export default function CheckScreen() {
       />
 
       <View style={s.buttons}>
-        <TouchableOpacity style={s.pasteBtn} onPress={handlePaste} activeOpacity={0.85}>
+        <TouchableOpacity style={s.pasteBtn} onPress={handlePaste} activeOpacity={0.85} accessibilityRole="button">
           <Ionicons name="clipboard-outline" size={18} color={colors.textSecondary} />
           <Text style={s.pasteBtnText}>{t("mobile.check.paste_btn")}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.checkBtn} onPress={handleCheck} activeOpacity={0.85}>
+        <TouchableOpacity style={s.checkBtn} onPress={handleCheck} activeOpacity={0.85} accessibilityRole="button">
           <Text style={s.checkBtnText}>{t("mobile.check.submit")}</Text>
         </TouchableOpacity>
         <ChecksLeftHint access={access} />
@@ -100,7 +100,7 @@ export default function CheckScreen() {
       <Text style={s.sectionTitle}>{t("mobile.check.try")}</Text>
       <View style={s.chipGrid}>
         {["google.com", "paypa1-verify.tk", "pay-pal.com", "evil.netlify.app"].map(d => (
-          <TouchableOpacity key={d} style={s.tryChip} onPress={() => quickCheck(d)} activeOpacity={0.85}>
+          <TouchableOpacity key={d} style={s.tryChip} onPress={() => quickCheck(d)} activeOpacity={0.85} hitSlop={{ top: 4, bottom: 4 }} accessibilityRole="button">
             <Text style={s.tryText}>{d}</Text>
           </TouchableOpacity>
         ))}
@@ -111,7 +111,7 @@ export default function CheckScreen() {
           <Text style={s.sectionTitle}>{t("mobile.check.recent")}</Text>
           <View style={s.chipGrid}>
             {recent.map(d => (
-              <TouchableOpacity key={d} style={s.recentChip} onPress={() => quickCheck(d)} activeOpacity={0.85}>
+              <TouchableOpacity key={d} style={s.recentChip} onPress={() => quickCheck(d)} activeOpacity={0.85} hitSlop={{ top: 4, bottom: 4 }} accessibilityRole="button">
                 <Text style={s.recentText}>{d}</Text>
               </TouchableOpacity>
             ))}
@@ -128,7 +128,7 @@ const s = StyleSheet.create({
   title: { ...typo.title1, color: colors.textPrimary, marginTop: space.sm },
   subtitle: { ...typo.body, color: colors.textSecondary, marginTop: 4, marginBottom: space.xxl },
   input: {
-    height: 56,
+    minHeight: 56,
     backgroundColor: colors.surfaceRaised,
     borderWidth: 1, borderColor: colors.stroke,
     borderRadius: radius.control,
@@ -139,12 +139,12 @@ const s = StyleSheet.create({
   inputFocused: { borderColor: colors.blue },
   buttons: { gap: space.sm, marginBottom: space.xxl + 4 },
   checkBtn: {
-    height: 50, backgroundColor: colors.blue, borderRadius: radius.control,
+    minHeight: 50, backgroundColor: colors.blueFill, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center",
   },
   checkBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 17 },
   pasteBtn: {
-    height: 50, flexDirection: "row", gap: space.sm,
+    minHeight: 50, flexDirection: "row", gap: space.sm,
     backgroundColor: colors.surface, borderRadius: radius.control,
     alignItems: "center", justifyContent: "center",
     borderWidth: 1, borderColor: colors.stroke,
@@ -153,13 +153,13 @@ const s = StyleSheet.create({
   sectionTitle: { ...sectionHeader, marginBottom: space.sm },
   chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginBottom: space.xl },
   tryChip: {
-    height: 36, justifyContent: "center",
+    minHeight: 36, justifyContent: "center",
     backgroundColor: colors.surface, borderRadius: radius.chip, paddingHorizontal: space.md,
     borderWidth: 1, borderColor: colors.stroke,
   },
   tryText: { color: colors.textSecondary, fontSize: 13, fontWeight: "600" },
   recentChip: {
-    height: 36, justifyContent: "center",
+    minHeight: 36, justifyContent: "center",
     backgroundColor: colors.blueWash, borderRadius: radius.chip, paddingHorizontal: space.md,
     borderWidth: 1, borderColor: "#4C8DFF40",
   },

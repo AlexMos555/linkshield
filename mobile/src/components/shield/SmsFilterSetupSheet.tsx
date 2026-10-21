@@ -67,7 +67,7 @@ const s = StyleSheet.create({
   body: { ...typo.body, color: colors.textSecondary, marginTop: space.sm },
   step: { flexDirection: "row", alignItems: "flex-start", gap: space.md, marginTop: space.lg },
   stepNum: {
-    width: 26, height: 26, borderRadius: 13, backgroundColor: colors.blue,
+    width: 26, height: 26, borderRadius: 13, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center",
   },
   stepNumLabel: { fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
@@ -75,7 +75,7 @@ const s = StyleSheet.create({
   older: { ...typo.caption, color: colors.textMuted, marginTop: space.md },
   note: { ...typo.caption, color: colors.textSecondary, marginTop: space.md },
   primary: {
-    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 50, paddingHorizontal: space.lg, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: space.lg,
   },
   primaryLabel: { fontSize: 17, fontWeight: "600", color: "#FFFFFF" },

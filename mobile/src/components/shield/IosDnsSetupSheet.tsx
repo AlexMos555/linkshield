@@ -189,7 +189,7 @@ const s = StyleSheet.create({
   statusTextOn: { color: colors.green, fontWeight: "600" },
   error: { ...typo.body, color: colors.danger, marginTop: space.sm },
   primaryBtn: {
-    minHeight: 54, borderRadius: radius.control, backgroundColor: colors.blue,
+    minHeight: 54, borderRadius: radius.control, backgroundColor: colors.blueFill,
     alignItems: "center", justifyContent: "center", marginTop: space.lg, flexDirection: "row",
   },
   primaryBusy: { opacity: 0.7 },
