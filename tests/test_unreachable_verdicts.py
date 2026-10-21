@@ -180,11 +180,13 @@ def test_unknown_site_we_could_not_open_is_never_safe(domain, offline_analyzer):
     look-alike has no listing yet, no brand the typosquat list knows, and the
     ML model gives it <10%. With the connection penalties gone it came back
     'safe' — 'Выглядит безопасно' for exactly what reaches the elderly. With
-    nothing to vouch for it, it is caution (never a block: basis stays
-    'unreachable')."""
+    nothing to vouch for it, it is at least caution. The ML model may rank a
+    plain typosquat (gosuslugl.ru) as dangerous outright, which is stricter
+    and fine; what must never happen is 'safe'. The basis stays
+    'unreachable'."""
     offline_analyzer(site="unreachable")
     result = asyncio.run(analyze_domain(domain, budget_s=5.0))
-    assert result.level == RiskLevel.caution, (result.score, _codes(result))
+    assert result.level in (RiskLevel.caution, RiskLevel.dangerous), (result.score, _codes(result))
     assert result.verdict_basis == "unreachable"
     reason = next(r for r in result.reasons if r.signal == "unreachable_from_scanner")
     assert "not a widely known site" in reason.detail

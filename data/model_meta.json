@@ -32,19 +32,19 @@
   "features_version": 6,
   "train_samples": 19200,
   "total_samples": 24000,
-  "test_auc": 0.9718,
+  "test_auc": 0.9703,
   "test_names_only": {
-    "n_phishing": 695,
+    "n_phishing": 458,
     "n_benign": 2400,
-    "auc": 0.9025,
-    "recall_at_0.6": 0.5928,
-    "recall_at_0.85": 0.3482,
-    "benign_flagged_at_0.6": 0.0267
+    "auc": 0.8441,
+    "recall_at_0.6": 0.2729,
+    "recall_at_0.85": 0.1659,
+    "benign_flagged_at_0.6": 0.01
   },
-  "phishing_names": 3480,
-  "phishing_ips": 8520,
-  "benign_host_shapes": 3579,
-  "benign_tenants": 535,
-  "held_out_registrable_domains": 686,
+  "phishing_names": 2237,
+  "phishing_ips": 9763,
+  "benign_host_shapes": 3551,
+  "benign_tenants": 522,
+  "held_out_registrable_domains": 685,
   "shared_suffixes": 1764
 }
